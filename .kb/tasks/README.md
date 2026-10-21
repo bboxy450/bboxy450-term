@@ -2,7 +2,7 @@
 
 | Id | Task | Assignee | Status |
 |---|---|---|---|
-| A | [[2026-10-21-gpu-terminal-research]] GPU terminal stack in Rust | Rook Ashwhisker <EXECUTOR> | ASSIGNED, awaiting operator authorization in its pane |
+| A | [[2026-10-21-gpu-terminal-research]] GPU terminal stack in Rust | Rook Ashwhisker <EXECUTOR> | RUNNING, authorized by operator |
 | B | [[2026-10-21-agent-messaging-research]] embedded agent messaging | Nyx Copperwing <EXECUTOR> | DONE, accepted |
 | C | UX divergence → `research/ux-divergence.md` | Lumen Foxglove <CREATIVITY> | RUNNING |
 | D | [[2026-10-21-harness-touchpoints-research]] harness touch points | Oracle subagent + Nyx Copperwing <EXECUTOR> | RUNNING (redundant) |
