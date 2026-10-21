@@ -122,6 +122,15 @@ versions and truncated bodies, and decode fragmented/coalesced frames. Native
 tests verify echo, cwd/env attribution, `stty size`, generation-tagged exit,
 two-seat separation, 50-seat echo, lease replacement without child duplication,
 input-ID retry/conflict, live Unix admission/framing and blocked-write ambiguity.
+The finite-output test orders the child's final bytes before exit. The slow
+subscriber test drains exactly 4 MiB plus `TAIL`, with contiguous sequences,
+after first leaving the bounded channel unread.
+
+Verified locally on 2026-10-21: **12 mux tests**, **134 workspace tests**, workspace
+build, mux clippy with `-D warnings`, formatting and `git diff --check` all
+passed. The final command output is in `.kb/runs/w2-1-final-*.log`; the earlier
+compile error and its correction remain in the numbered logs. Hosted CI has
+not been run for W2.1 by this Executor.
 
 Not covered: rings/checkpoints or disk durability; logic/supervisor process
 splitting; GUI wiring; native harnesses/input guards; close grace/undo/resume;

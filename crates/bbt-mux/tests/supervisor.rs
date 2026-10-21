@@ -544,3 +544,104 @@ fn blocked_write_survives_fencing_and_becomes_unknown_without_replay() {
         final_receipt.bytes_written, final_receipt.bytes_total
     );
 }
+
+#[test]
+fn natural_exit_follows_all_final_output() {
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let client = supervisor.connect().unwrap();
+    let mut spec = shell();
+    spec.args = vec![
+        "-f".into(),
+        "-c".into(),
+        "printf FINAL_BYTES; exit 7".into(),
+    ];
+    let info = client.spawn(spec).unwrap();
+    client.attach(info.seat, 1).unwrap();
+    let mut output = Vec::new();
+    let mut next_sequence = 1;
+    let deadline = Instant::now() + DEADLINE;
+    loop {
+        assert!(Instant::now() < deadline);
+        match client.recv_timeout(Duration::from_secs(2)).unwrap() {
+            Event::Output {
+                seat,
+                generation,
+                seq,
+                bytes,
+            } => {
+                assert_eq!((seat, generation, seq), (info.seat, 1, next_sequence));
+                next_sequence += 1;
+                output.extend(bytes);
+            }
+            Event::Exited {
+                seat,
+                generation,
+                seq,
+                status,
+            } => {
+                assert_eq!((seat, generation, seq), (info.seat, 1, next_sequence));
+                assert_eq!(status.code, 7);
+                assert_eq!(status.signal, None);
+                break;
+            }
+            event => panic!("unexpected {event:?}"),
+        }
+    }
+    assert_eq!(output, b"FINAL_BYTES");
+}
+
+#[test]
+fn slow_reader_backpressures_and_recovers_the_complete_output() {
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let client = supervisor.connect().unwrap();
+    let mut spec = shell();
+    spec.args = vec![
+        "-f".into(),
+        "-c".into(),
+        "dd if=/dev/zero bs=65536 count=64 2>/dev/null; printf TAIL".into(),
+    ];
+    let info = client.spawn(spec).unwrap();
+    client.attach(info.seat, 1).unwrap();
+    // More than the 128 x 16 KiB channel plus one pending chunk: the child
+    // cannot finish until this test starts consuming, rather than losing bytes.
+    std::thread::sleep(Duration::from_millis(100));
+    let Reply::Seats { seats } = client.request(Action::ListOwnedSeats).unwrap() else {
+        panic!()
+    };
+    assert!(seats[0].exited.is_none());
+    let mut count = 0;
+    let mut next_sequence = 1;
+    let mut tail = Vec::new();
+    let deadline = Instant::now() + DEADLINE;
+    loop {
+        assert!(Instant::now() < deadline);
+        match client.recv_timeout(Duration::from_secs(2)).unwrap() {
+            Event::Output {
+                seat,
+                generation,
+                seq,
+                bytes,
+            } => {
+                assert_eq!((seat, generation, seq), (info.seat, 1, next_sequence));
+                next_sequence += 1;
+                for byte in bytes {
+                    if count < 4 * 1024 * 1024 {
+                        assert_eq!(byte, 0);
+                    } else {
+                        tail.push(byte);
+                    }
+                    count += 1;
+                }
+            }
+            Event::Exited { seq, status, .. } => {
+                assert_eq!(seq, next_sequence);
+                assert_eq!(status.code, 0);
+                break;
+            }
+            event => panic!("unexpected {event:?}"),
+        }
+    }
+    assert_eq!(count, 4 * 1024 * 1024 + 4);
+    assert_eq!(tail, b"TAIL");
+    eprintln!("slow subscriber: complete 4 MiB + TAIL recovered with contiguous record sequences");
+}
