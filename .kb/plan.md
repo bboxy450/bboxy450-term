@@ -16,7 +16,7 @@ One Cargo workspace, weavie-managed once Nix is installed ([[monorepo-weavie]]).
 | `mux` | supervisor + logic processes, seats, PTYs (portable-pty), byte ring, harness adapters, messaging, MCP server, state streams | [[mux-daemon]] [[harness-adapters]] [[messaging]] [[mcp-control-plane]] |
 | `ui-model` | seat/cohort/tab/split state enums and layout tree, no rendering deps; shared with the lab | [[ux-prototype]] |
 | `renderer` | wgpu device, cell instancing, text pipeline per ghostty, chrome primitives, glow/ripple shaders | [[text-rendering]], renderer architecture (Oracle, next) |
-| `app` | winit window, borderless title bar, GUI client of the mux, settings | [[ux-prototype]] |
+| `app` | winit window, borderless title bar, GUI client of the mux, settings | [[ux-prototype]] at tag `ux-prototype-v2` (operator: the implementation starting point), `design/bboxy-design-system.json`, `design/style.json`, `design/tokens.toml`, `lab/web` |
 | `lab` | Rust component gallery on the real renderer, tokens from `design/tokens.toml` | [[ux-prototype]] §7 |
 
 ## Workstreams and first assignments
