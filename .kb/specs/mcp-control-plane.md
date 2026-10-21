@@ -232,3 +232,17 @@ Original M document checks on 2026-10-21, before the purge decision and S sweep:
 Scope: this file plus the specifically requested swarm-mute amendment in [[messaging]] and close lifecycle amendment in [[mux-daemon]]. No runtime, harness config, UI, task-board or provider changes; no commits.
 
 — Nyx Copperwing <EXECUTOR>
+
+## Task tools (operator decision 2026-10-21, see [[work-items]])
+
+| Tool | Parameters | Mechanism | Roles |
+|---|---|---|---|
+| `task_delegate` | `op_id, task_path, seat_id \| spawn_spec, role?` | Rewrite frontmatter `assignee`, `delegated_by`, `status: claimed`; send the `task.delegate` message through the adapter; with `spawn_spec`, reserve capacity, spawn, then delegate in one op. | O |
+| `task_reassign` | `op_id, task_path, seat_id` | Rewrite `assignee`; `task.release` to the old seat, `task.delegate` to the new. | O |
+| `task_status` | `task_path \| task_id` | Frontmatter plus the delivery evidence of the last task message. | O; E C for own tasks |
+| `task_list` | `swarm_id?, status?, assignee?` | Index query over `.bboxy/`. | O; E C for own tasks |
+| `task_accept` | `op_id, task_path` | `status: accepted`, `task.accept` to the seat. | O |
+| `task_reject` | `op_id, task_path, reason` | `status: rejected`, `task.reject` to the seat. | O |
+| `task_report` | `op_id, task_path, summary, commit?, verify_result?` | The responsible seat's report: `status: reported`, `task.report` to `delegated_by`, sidebar notice on the delegating seat. | E C for own task; O |
+
+Catalogue total: 32 tools. Workers now have seven: the four from before plus `task_status`, `task_list`, `task_report` on their own tasks.

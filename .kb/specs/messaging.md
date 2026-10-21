@@ -152,3 +152,7 @@ For a generic PTY, require a current ready-state signal from the harness adapter
 Proportionate implementation evidence should cover: a forged role/unknown issuer cannot gain Oracle priority; destination grants reject an unauthorized send; duplicate retries yield one inbox record; a restart preserves pending lower-priority records; native-unknown is not automatically resubmitted; injection waits through an interactive foreground tool; and 1000-seat queue/latency measurements. These are future acceptance checks, not tests run by this research assignment.
 
 — Nyx Copperwing <EXECUTOR>
+
+## Task messages (operator decision 2026-10-21, see [[work-items]])
+
+A third `body` variant in the same signed envelope: `task`. Kinds: `delegate{task_id, path, role, brief_excerpt}` sent oracle-class to the responsible seat; `release{task_id}` to a seat that is no longer responsible; `report{task_id, summary, commit?, verify_result?}` from the responsible seat, routed to `delegated_by`; `accept{task_id}` / `reject{task_id, reason}` from the delegating seat. The mux mirrors every task message into the item's frontmatter (`assignee`, `status`, `updated`) before delivery evidence is recorded, so the file and the stream never disagree for longer than one write. Priority: `delegate`, `release`, `accept`, `reject` carry the sender's class; `report` carries worker class but bypasses the Oracle token bucket (it is the thing the Oracle is waiting for).

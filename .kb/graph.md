@@ -10,7 +10,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
 | Lumen Foxglove | Creativity | Claude Code | lab passes under the operator's direct review; design system | nothing |
-| Nyx Copperwing | Executor | Codex | **W3.1 renderer harness** | nothing |
+| Nyx Copperwing | Executor | Codex | **W2.1 mux supervisor + PTY + lease** | nothing |
 | Rook Ashwhisker | Executor | Codex | idle | in-session authorization from the operator |
 | subagent gui-spec | Oracle instrument | Claude | drafting `specs/gui-components.md` | nothing |
 | subagent net-spec | Oracle instrument | Claude | drafting `specs/networking.md` | nothing |
@@ -26,13 +26,13 @@ specs (drafting): gui-components ──▶ W3.2 brief
                   networking     ──▶ W4.1 brief
 
 W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
-   ├──▶ W3.1 renderer harness  [Nyx, RUNNING]
+   ├──▶ W3.1 renderer harness ✔ (Nyx, fcc8eca, 5 tests, 48 PNGs, CI green on macos-15)
    │       └──▶ W3.2 GUI components [PENDING SPEC]
    │               └──▶ W3.3 glow/locate/dim fx
    │                       └──▶ W3.4 app: window, sidebar, stage, launcher, GUI client
    └──▶ W1.2 byte ring [OPEN, after W2.1]
 
-W2.1 supervisor + PTY + lease [OPEN, no dependency]
+W2.1 supervisor + PTY + lease [Nyx, RUNNING]
    ├──▶ W1.2 byte ring [OPEN]
    ├──▶ W2.2 logic: seat registry, state streams Snapshot/Delta/Applied
    │       └──▶ W3.4 app GUI client
@@ -51,8 +51,8 @@ W4.1 Transport trait on quinn + loopback + provider traits [PENDING SPEC]
 
 | State | Items |
 |---|---|
-| RUNNING | W3.1 (Nyx); gui-components spec; networking spec; lab passes (Lumen) |
-| OPEN, claimable now | W2.1 |
+| RUNNING | W2.1 (Nyx); gui-components spec; networking spec; lab passes (Lumen) |
+| OPEN, claimable now | none until W3.2/W4.1 specs land |
 | OPEN, after W2.1 | W1.2, W2.3 |
 | PENDING SPEC | W3.2, W4.1 |
 | NOT YET BRIEFED | W2.2, W2.4, W2.5 (incl. task_delegate), W3.3, W3.4 |
@@ -61,7 +61,7 @@ W4.1 Transport trait on quinn + loopback + provider traits [PENDING SPEC]
 
 ## Done
 
-W1.1, A, B, C, D, E, F, G, H(Claude), I, I2, M, S, T, kittens, weavie, iTerm plugin, UX prototype v1 and v2.
+W1.1, W3.1, A, B, C, D, E, F, G, H(Claude), I, I2, M, S, T, kittens, weavie, iTerm plugin, UX prototype v1 and v2.
 
 ## Rules for this file
 
