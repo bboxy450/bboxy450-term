@@ -35,7 +35,11 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self { socket_path: None, max_seats: 1024, write_timeout: Duration::from_secs(5) }
+        Self {
+            socket_path: None,
+            max_seats: 1024,
+            write_timeout: Duration::from_secs(5),
+        }
     }
 }
 
@@ -51,24 +55,47 @@ pub struct Supervisor {
 impl Supervisor {
     pub fn start(config: Config) -> io::Result<Self> {
         if config.max_seats == 0 || config.max_seats > 1024 || config.write_timeout.is_zero() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid supervisor limits"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "invalid supervisor limits",
+            ));
         }
         let poll = Poll::new()?;
         let waker = Arc::new(Waker::new(poll.registry(), WAKE)?);
-        let mut socket = config.socket_path.as_deref().map(BoundSocket::bind).transpose()?;
+        let mut socket = config
+            .socket_path
+            .as_deref()
+            .map(BoundSocket::bind)
+            .transpose()?;
         if let Some(socket) = socket.as_mut() {
-            poll.registry().register(&mut socket.listener, LISTENER, Interest::READABLE)?;
+            poll.registry()
+                .register(&mut socket.listener, LISTENER, Interest::READABLE)?;
         }
         let mut capability = [0; 32];
         getrandom::fill(&mut capability).map_err(io::Error::other)?;
         let (tx, rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
         let mut actor = Actor {
-            poll, socket, config, capability, boot: Ulid::new(), rx,
-            clients: HashMap::new(), routes: HashMap::new(), seats: BTreeMap::new(),
-            active: None, next_token: 2,
+            poll,
+            socket,
+            config,
+            capability,
+            boot: Ulid::new(),
+            rx,
+            clients: HashMap::new(),
+            routes: HashMap::new(),
+            seats: BTreeMap::new(),
+            active: None,
+            next_token: 2,
         };
-        let thread = thread::Builder::new().name("bbt-supervisor".into()).spawn(move || actor.run())?;
-        Ok(Self { tx, waker, thread: Some(thread), capability })
+        let thread = thread::Builder::new()
+            .name("bbt-supervisor".into())
+            .spawn(move || actor.run())?;
+        Ok(Self {
+            tx,
+            waker,
+            thread: Some(thread),
+            capability,
+        })
     }
 
     /// The startup owner passes this capability out of band, never via argv/logs.
@@ -80,14 +107,27 @@ impl Supervisor {
         let id = Ulid::new();
         let (events_tx, events_rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
         let (reply_tx, reply_rx) = mpsc::sync_channel(1);
-        self.tx.send(Control::Register { id, events: events_tx, reply: reply_tx })
+        self.tx
+            .send(Control::Register {
+                id,
+                events: events_tx,
+                reply: reply_tx,
+            })
             .map_err(|_| disconnected())?;
         self.waker.wake()?;
-        reply_rx.recv_timeout(CALL_TIMEOUT).map_err(|_| disconnected())??;
+        reply_rx
+            .recv_timeout(CALL_TIMEOUT)
+            .map_err(|_| disconnected())??;
         let mut client = Client {
-            id, lease: Ulid::nil(), tx: self.tx.clone(), waker: self.waker.clone(), events: events_rx,
+            id,
+            lease: Ulid::nil(),
+            tx: self.tx.clone(),
+            waker: self.waker.clone(),
+            events: events_rx,
         };
-        match client.request(Action::AcquireLogic { capability: self.capability })? {
+        match client.request(Action::AcquireLogic {
+            capability: self.capability,
+        })? {
             Reply::Acquired { logic_lease, .. } => client.lease = logic_lease,
             _ => return Err(disconnected()),
         }
@@ -102,7 +142,9 @@ impl Supervisor {
         if let Some(thread) = self.thread.take() {
             let _ = self.tx.send(Control::Shutdown);
             let _ = self.waker.wake();
-            thread.join().map_err(|_| io::Error::other("supervisor thread panicked"))??;
+            thread
+                .join()
+                .map_err(|_| io::Error::other("supervisor thread panicked"))??;
         }
         Ok(())
     }
@@ -133,11 +175,19 @@ impl Client {
 
     pub fn request_frame(&self, frame: Frame<Request>) -> Result<Reply, Failure> {
         let (reply, rx) = mpsc::sync_channel(1);
-        self.tx.send(Control::Request { client: self.id, frame, reply })
+        self.tx
+            .send(Control::Request {
+                client: self.id,
+                frame,
+                reply,
+            })
             .map_err(|_| disconnected())?;
         self.waker.wake()?;
         rx.recv_timeout(CALL_TIMEOUT).map_err(|_| {
-            Failure::new(FailureCode::Io, "reply unavailable; operation outcome unknown, query before retry")
+            Failure::new(
+                FailureCode::Io,
+                "reply unavailable; operation outcome unknown, query before retry",
+            )
         })?
     }
 
@@ -155,20 +205,34 @@ impl Client {
         }
     }
 
-    pub fn input(&self, attachment: &Attachment, input_id: Ulid, bytes: &[u8]) -> Result<InputReceipt, Failure> {
-        match self.request(Action::Input { attachment: attachment.clone(), input_id, bytes: bytes.into() })? {
+    pub fn input(
+        &self,
+        attachment: &Attachment,
+        input_id: Ulid,
+        bytes: &[u8],
+    ) -> Result<InputReceipt, Failure> {
+        match self.request(Action::Input {
+            attachment: attachment.clone(),
+            input_id,
+            bytes: bytes.into(),
+        })? {
             Reply::Input { receipt } => Ok(receipt),
             _ => Err(disconnected()),
         }
     }
 
     pub fn resize(&self, attachment: &Attachment, size: SeatSize) -> Result<Reply, Failure> {
-        self.request(Action::Resize { attachment: attachment.clone(), size })
+        self.request(Action::Resize {
+            attachment: attachment.clone(),
+            size,
+        })
     }
 
     /// Asynchronously requests SIGHUP, escalating to SIGKILL after 250 ms.
     pub fn kill(&self, attachment: &Attachment) -> Result<Reply, Failure> {
-        self.request(Action::Kill { attachment: attachment.clone() })
+        self.request(Action::Kill {
+            attachment: attachment.clone(),
+        })
     }
 
     pub fn recv_timeout(&self, timeout: Duration) -> Result<Event, mpsc::RecvTimeoutError> {
@@ -186,8 +250,16 @@ impl Drop for Client {
 }
 
 enum Control {
-    Register { id: Ulid, events: mpsc::SyncSender<Event>, reply: mpsc::SyncSender<Result<(), Failure>> },
-    Request { client: Ulid, frame: Frame<Request>, reply: mpsc::SyncSender<Result<Reply, Failure>> },
+    Register {
+        id: Ulid,
+        events: mpsc::SyncSender<Event>,
+        reply: mpsc::SyncSender<Result<(), Failure>>,
+    },
+    Request {
+        client: Ulid,
+        frame: Frame<Request>,
+        reply: mpsc::SyncSender<Result<Reply, Failure>>,
+    },
     Disconnect(Ulid),
     Shutdown,
 }
@@ -220,7 +292,10 @@ struct Actor {
 impl Actor {
     fn token(&mut self) -> Token {
         let token = Token(self.next_token);
-        self.next_token = self.next_token.checked_add(1).expect("poll token exhausted");
+        self.next_token = self
+            .next_token
+            .checked_add(1)
+            .expect("poll token exhausted");
         token
     }
 
@@ -235,10 +310,19 @@ impl Actor {
                         let result = if self.clients.len() < MAX_CLIENTS {
                             self.clients.insert(id, Target::Local(events));
                             Ok(())
-                        } else { Err(Failure::new(FailureCode::Limit, "too many logic connections")) };
+                        } else {
+                            Err(Failure::new(
+                                FailureCode::Limit,
+                                "too many logic connections",
+                            ))
+                        };
                         let _ = reply.send(result);
                     }
-                    Ok(Control::Request { client, frame, reply }) => {
+                    Ok(Control::Request {
+                        client,
+                        frame,
+                        reply,
+                    }) => {
                         let result = self.dispatch(client, frame);
                         let _ = reply.send(result);
                     }
@@ -254,86 +338,153 @@ impl Actor {
                 self.seats.insert(id, seat);
             }
             self.flush_sockets();
-            let ready = self.seats.values().any(|seat| seat.read_ready && seat.pending_event.is_none()
-                && seat.writer.is_some() && !seat.exit_published);
-            match self.poll.poll(&mut events, Some(if ready { Duration::ZERO } else { TICK })) {
-                Ok(()) => {},
+            let ready = self.seats.values().any(|seat| {
+                seat.read_ready
+                    && seat.pending_event.is_none()
+                    && seat.writer.is_some()
+                    && !seat.exit_published
+            });
+            match self
+                .poll
+                .poll(&mut events, Some(if ready { Duration::ZERO } else { TICK }))
+            {
+                Ok(()) => {}
                 Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
                 Err(error) => return Err(error),
             }
             for event in &events {
                 match event.token() {
-                    WAKE => {},
+                    WAKE => {}
                     LISTENER => self.accept_sockets()?,
                     token => match self.routes.get(&token).copied() {
                         Some(Route::Seat(id)) => {
                             if let Some(seat) = self.seats.get_mut(&id) {
-                                if event.is_readable() || event.is_read_closed() || event.is_error() {
+                                if event.is_readable() || event.is_read_closed() || event.is_error()
+                                {
                                     seat.read_ready = true;
                                 }
-                                if event.is_writable() { seat.write_ready = true; }
+                                if event.is_writable() {
+                                    seat.write_ready = true;
+                                }
                             }
                         }
                         Some(Route::Socket(id)) => self.read_socket(id),
-                        None => {},
-                    }
+                        None => {}
+                    },
                 }
             }
         }
     }
 
     fn dispatch(&mut self, client: Ulid, frame: Frame<Request>) -> Result<Reply, Failure> {
-        if frame.version != VERSION { return Err(Failure::new(FailureCode::Version, "unsupported version")); }
-        if !self.clients.contains_key(&client) { return Err(disconnected()); }
+        if frame.version != VERSION {
+            return Err(Failure::new(FailureCode::Version, "unsupported version"));
+        }
+        if !self.clients.contains_key(&client) {
+            return Err(disconnected());
+        }
         let request = frame.body;
-        if request.request_id == Ulid::nil() { return Err(Failure::new(FailureCode::Invalid, "nil request id")); }
+        if request.request_id == Ulid::nil() {
+            return Err(Failure::new(FailureCode::Invalid, "nil request id"));
+        }
         if let Action::AcquireLogic { capability } = request.action {
             // Constant-time comparison of the fixed-width startup capability.
-            let difference = capability.iter().zip(self.capability).fold(0, |acc, (a, b)| acc | (a ^ b));
-            if difference != 0 { return Err(Failure::new(FailureCode::Unauthorized, "invalid startup capability")); }
+            let difference = capability
+                .iter()
+                .zip(self.capability)
+                .fold(0, |acc, (a, b)| acc | (a ^ b));
+            if difference != 0 {
+                return Err(Failure::new(
+                    FailureCode::Unauthorized,
+                    "invalid startup capability",
+                ));
+            }
             let lease = Ulid::new();
             self.active = Some((client, lease));
-            for seat in self.seats.values_mut() { seat.writer = None; }
-            return Ok(Reply::Acquired { logic_lease: lease, supervisor_boot: self.boot });
+            for seat in self.seats.values_mut() {
+                seat.writer = None;
+            }
+            return Ok(Reply::Acquired {
+                logic_lease: lease,
+                supervisor_boot: self.boot,
+            });
         }
-        if self.active.is_none() || self.active != request.logic_lease.map(|lease| (client, lease)) {
-            return Err(Failure::new(FailureCode::StaleLease, "logic lease was replaced or disconnected"));
+        if self.active.is_none() || self.active != request.logic_lease.map(|lease| (client, lease))
+        {
+            return Err(Failure::new(
+                FailureCode::StaleLease,
+                "logic lease was replaced or disconnected",
+            ));
         }
         match request.action {
             Action::AcquireLogic { .. } => unreachable!(),
-            Action::ListOwnedSeats => Ok(Reply::Seats { seats: self.seats.values().map(Seat::info).collect() }),
+            Action::ListOwnedSeats => Ok(Reply::Seats {
+                seats: self.seats.values().map(Seat::info).collect(),
+            }),
             Action::Spawn { spec } => self.spawn_seat(spec),
             Action::Attach { seat, generation } => {
                 let seat = self.seat_mut(seat, generation)?;
-                let attachment = Attachment { seat: seat.spec.seat, generation, writer_lease: Ulid::new() };
+                let attachment = Attachment {
+                    seat: seat.spec.seat,
+                    generation,
+                    writer_lease: Ulid::new(),
+                };
                 seat.writer = Some((client, attachment.writer_lease));
                 Ok(Reply::Attached {
-                    attachment, info: seat.info(),
-                    first_available_sequence: seat.pending_event.as_ref().and_then(Event::sequence).unwrap_or(seat.next_seq),
+                    attachment,
+                    info: seat.info(),
+                    first_available_sequence: seat
+                        .pending_event
+                        .as_ref()
+                        .and_then(Event::sequence)
+                        .unwrap_or(seat.next_seq),
                 })
             }
-            Action::Input { attachment, input_id, bytes } => {
+            Action::Input {
+                attachment,
+                input_id,
+                bytes,
+            } => {
                 let timeout = self.config.write_timeout;
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
                 let receipt = seat.accept_input(input_id, bytes, timeout)?;
                 Ok(Reply::Input { receipt })
             }
-            Action::InputStatus { seat, generation, input_id } => {
+            Action::InputStatus {
+                seat,
+                generation,
+                input_id,
+            } => {
                 let seat = self.seat_mut(seat, generation)?;
-                let record = seat.inputs.get(&input_id).ok_or_else(|| Failure::new(FailureCode::NotFound, "input id not accepted"))?;
-                Ok(Reply::Input { receipt: record.receipt.clone() })
+                let record = seat
+                    .inputs
+                    .get(&input_id)
+                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "input id not accepted"))?;
+                Ok(Reply::Input {
+                    receipt: record.receipt.clone(),
+                })
             }
             Action::Resize { attachment, size } => {
                 size.validate()?;
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
                 seat.check_live()?;
-                if seat.pending_event.is_some() { return Err(Failure::new(FailureCode::Busy, "drain pending records before resize")); }
+                if seat.pending_event.is_some() {
+                    return Err(Failure::new(
+                        FailureCode::Busy,
+                        "drain pending records before resize",
+                    ));
+                }
                 seat.master.resize(pty_size(size)).map_err(pty_error)?;
                 seat.size = size;
                 let sequence = seat.sequence();
-                seat.pending_event = Some(Event::Resized { seat: attachment.seat, generation: attachment.generation, seq: sequence, size });
+                seat.pending_event = Some(Event::Resized {
+                    seat: attachment.seat,
+                    generation: attachment.generation,
+                    seq: sequence,
+                    size,
+                });
                 Ok(Reply::Resized { size, sequence })
             }
             Action::Kill { attachment } => {
@@ -350,9 +501,15 @@ impl Actor {
     }
 
     fn seat_mut(&mut self, id: Ulid, generation: u64) -> Result<&mut Seat, Failure> {
-        let seat = self.seats.get_mut(&id).ok_or_else(|| Failure::new(FailureCode::NotFound, "seat not owned"))?;
+        let seat = self
+            .seats
+            .get_mut(&id)
+            .ok_or_else(|| Failure::new(FailureCode::NotFound, "seat not owned"))?;
         if seat.spec.generation != generation {
-            return Err(Failure::new(FailureCode::StaleGeneration, "process generation changed"));
+            return Err(Failure::new(
+                FailureCode::StaleGeneration,
+                "process generation changed",
+            ));
         }
         Ok(seat)
     }
@@ -361,15 +518,26 @@ impl Actor {
         spec.validate()?;
         if let Some(old) = self.seats.get(&spec.seat) {
             // The exact retry returns the original child, even after its exit.
-            if old.spec == spec { return Ok(Reply::Spawned { info: old.info() }); }
+            if old.spec == spec {
+                return Ok(Reply::Spawned { info: old.info() });
+            }
             if spec.generation != old.spec.generation.checked_add(1).unwrap_or(0) {
-                return Err(Failure::new(FailureCode::StaleGeneration, "replacement needs the next generation"));
+                return Err(Failure::new(
+                    FailureCode::StaleGeneration,
+                    "replacement needs the next generation",
+                ));
             }
             if !old.exit_published || old.pending_event.is_some() {
-                return Err(Failure::new(FailureCode::Busy, "old process or its final records are still live"));
+                return Err(Failure::new(
+                    FailureCode::Busy,
+                    "old process or its final records are still live",
+                ));
             }
         } else if spec.generation != 1 {
-            return Err(Failure::new(FailureCode::StaleGeneration, "first process generation must be 1"));
+            return Err(Failure::new(
+                FailureCode::StaleGeneration,
+                "first process generation must be 1",
+            ));
         } else if self.seats.len() >= self.config.max_seats {
             return Err(Failure::new(FailureCode::Limit, "machine seat cap reached"));
         }
@@ -388,9 +556,16 @@ impl Actor {
             Some(Target::Local(tx)) => match tx.try_send(event.clone()) {
                 Ok(()) => true,
                 Err(mpsc::TrySendError::Full(_)) => false,
-                Err(mpsc::TrySendError::Disconnected(_)) => { self.disconnect(client); false },
+                Err(mpsc::TrySendError::Disconnected(_)) => {
+                    self.disconnect(client);
+                    false
+                }
             },
-            Some(Target::Socket { peer, .. }) => peer.enqueue(Message::Event { event: event.clone() }).unwrap_or(false),
+            Some(Target::Socket { peer, .. }) => peer
+                .enqueue(Message::Event {
+                    event: event.clone(),
+                })
+                .unwrap_or(false),
             None => false,
         }
     }
@@ -402,7 +577,9 @@ impl Actor {
         }
         if self.active.is_some_and(|(client, _)| client == id) {
             self.active = None;
-            for seat in self.seats.values_mut() { seat.writer = None; }
+            for seat in self.seats.values_mut() {
+                seat.writer = None;
+            }
         }
     }
 
@@ -415,11 +592,21 @@ impl Actor {
                 Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
                 Err(error) => return Err(error),
             };
-            if self.clients.len() >= MAX_CLIENTS { continue; }
+            if self.clients.len() >= MAX_CLIENTS {
+                continue;
+            }
             let id = Ulid::new();
             let token = self.token();
-            self.poll.registry().register(&mut stream, token, Interest::READABLE)?;
-            self.clients.insert(id, Target::Socket { token, peer: SocketPeer::new(stream) });
+            self.poll
+                .registry()
+                .register(&mut stream, token, Interest::READABLE)?;
+            self.clients.insert(
+                id,
+                Target::Socket {
+                    token,
+                    peer: SocketPeer::new(stream),
+                },
+            );
             self.routes.insert(token, Route::Socket(id));
         }
     }
@@ -430,7 +617,10 @@ impl Actor {
             let mut bytes = [0; 8192];
             let frames = match self.clients.get_mut(&id) {
                 Some(Target::Socket { peer, .. }) => match peer.stream.read(&mut bytes) {
-                    Ok(0) => { self.disconnect(id); return; },
+                    Ok(0) => {
+                        self.disconnect(id);
+                        return;
+                    }
                     Ok(count) => peer.decoder.push(&bytes[..count]),
                     Err(error) if error.kind() == io::ErrorKind::WouldBlock => return,
                     Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
@@ -438,15 +628,26 @@ impl Actor {
                 },
                 _ => return,
             };
-            let frames = match frames { Ok(frames) => frames, Err(_) => { self.disconnect(id); return; } };
+            let frames = match frames {
+                Ok(frames) => frames,
+                Err(_) => {
+                    self.disconnect(id);
+                    return;
+                }
+            };
             for frame in frames {
                 let request_id = frame.body.request_id;
                 let result = self.dispatch(id, frame);
                 let queued = match self.clients.get_mut(&id) {
-                    Some(Target::Socket { peer, .. }) => peer.enqueue(Message::Reply { request_id, result }).unwrap_or(false),
+                    Some(Target::Socket { peer, .. }) => peer
+                        .enqueue(Message::Reply { request_id, result })
+                        .unwrap_or(false),
                     _ => false,
                 };
-                if !queued { self.disconnect(id); return; }
+                if !queued {
+                    self.disconnect(id);
+                    return;
+                }
             }
         }
     }
@@ -455,14 +656,24 @@ impl Actor {
         let mut failed = Vec::new();
         for (&id, target) in &mut self.clients {
             if let Target::Socket { token, peer } = target {
-                let result = peer.flush().and_then(|()| self.poll.registry().reregister(
-                    &mut peer.stream, *token,
-                    if peer.wants_write() { Interest::READABLE | Interest::WRITABLE } else { Interest::READABLE },
-                ));
-                if result.is_err() { failed.push(id); }
+                let result = peer.flush().and_then(|()| {
+                    let interest = if peer.wants_write() {
+                        Interest::READABLE | Interest::WRITABLE
+                    } else {
+                        Interest::READABLE
+                    };
+                    self.poll
+                        .registry()
+                        .reregister(&mut peer.stream, *token, interest)
+                });
+                if result.is_err() {
+                    failed.push(id);
+                }
             }
         }
-        for id in failed { self.disconnect(id); }
+        for id in failed {
+            self.disconnect(id);
+        }
     }
 }
 
@@ -497,95 +708,175 @@ struct Seat {
     exited: Option<ExitInfo>,
     exit_published: bool,
     terminate_at: Option<Instant>,
+    termination_escalated: bool,
 }
 
 impl Seat {
     fn spawn(spec: LaunchSpec, token: Token, registry: &mio::Registry) -> Result<Self, Failure> {
-        let pair = native_pty_system().openpty(pty_size(spec.size)).map_err(pty_error)?;
-        let fd = pair.master.as_raw_fd().ok_or_else(|| Failure::new(FailureCode::Io, "PTY has no raw fd"))?;
+        let pair = native_pty_system()
+            .openpty(pty_size(spec.size))
+            .map_err(pty_error)?;
+        let fd = pair
+            .master
+            .as_raw_fd()
+            .ok_or_else(|| Failure::new(FailureCode::Io, "PTY has no raw fd"))?;
         set_nonblocking(fd)?;
         registry.register(&mut SourceFd(&fd), token, Interest::READABLE)?;
         let mut command = CommandBuilder::new(&spec.program);
         command.args(&spec.args);
         command.cwd(&spec.cwd);
         command.env("TERM", "xterm-256color");
-        for (key, value) in &spec.env { command.env(key, value); }
+        for (key, value) in &spec.env {
+            command.env(key, value);
+        }
         command.env("BBOXY_SEAT_ID", spec.seat.to_string());
         command.env("BBOXY_PROCESS_GENERATION", spec.generation.to_string());
         let child = pair.slave.spawn_command(command).map_err(pty_error)?;
         drop(pair.slave);
-        let pid = child.process_id().ok_or_else(|| Failure::new(FailureCode::Io, "child has no pid"))?;
+        let pid = child
+            .process_id()
+            .ok_or_else(|| Failure::new(FailureCode::Io, "child has no pid"))?;
         Ok(Self {
-            size: spec.size, spec, master: pair.master, child, pid, fd, token, registered: true,
-            read_ready: false, write_ready: true, eof: false, next_seq: 1, writer: None,
-            pending_event: None, pending_write: None, inputs: HashMap::new(),
-            exited: None, exit_published: false, terminate_at: None,
+            size: spec.size,
+            spec,
+            master: pair.master,
+            child,
+            pid,
+            fd,
+            token,
+            registered: true,
+            read_ready: false,
+            write_ready: true,
+            eof: false,
+            next_seq: 1,
+            writer: None,
+            pending_event: None,
+            pending_write: None,
+            inputs: HashMap::new(),
+            exited: None,
+            exit_published: false,
+            terminate_at: None,
+            termination_escalated: false,
         })
     }
 
     fn info(&self) -> SeatInfo {
         SeatInfo {
-            seat: self.spec.seat, generation: self.spec.generation, pid: self.pid,
-            size: self.size, next_sequence: self.next_seq, exited: self.exited.clone(),
+            seat: self.spec.seat,
+            generation: self.spec.generation,
+            pid: self.pid,
+            size: self.size,
+            next_sequence: self.next_seq,
+            exited: self.exited.clone(),
         }
     }
 
     fn sequence(&mut self) -> u64 {
         let seq = self.next_seq;
-        self.next_seq = self.next_seq.checked_add(1).expect("seat sequence exhausted");
+        self.next_seq = self
+            .next_seq
+            .checked_add(1)
+            .expect("seat sequence exhausted");
         seq
     }
 
     fn check_live(&self) -> Result<(), Failure> {
         if self.exited.is_some() || self.eof || self.terminate_at.is_some() {
-            return Err(Failure::new(FailureCode::Exited, "child exited or termination is pending"));
+            return Err(Failure::new(
+                FailureCode::Exited,
+                "child exited or termination is pending",
+            ));
         }
         Ok(())
     }
 
     fn check_writer(&self, client: Ulid, attachment: &Attachment) -> Result<(), Failure> {
         if self.writer != Some((client, attachment.writer_lease)) {
-            return Err(Failure::new(FailureCode::StaleWriter, "writer attachment was replaced"));
+            return Err(Failure::new(
+                FailureCode::StaleWriter,
+                "writer attachment was replaced",
+            ));
         }
         Ok(())
     }
 
-    fn accept_input(&mut self, id: Ulid, bytes: Vec<u8>, timeout: Duration) -> Result<InputReceipt, Failure> {
+    fn accept_input(
+        &mut self,
+        id: Ulid,
+        bytes: Vec<u8>,
+        timeout: Duration,
+    ) -> Result<InputReceipt, Failure> {
         if id == Ulid::nil() || bytes.is_empty() || bytes.len() > MAX_INPUT_BYTES {
-            return Err(Failure::new(FailureCode::Invalid, "input needs a nonnil id and 1..65536 bytes"));
+            return Err(Failure::new(
+                FailureCode::Invalid,
+                "input needs a nonnil id and 1..65536 bytes",
+            ));
         }
         let digest: [u8; 32] = Sha256::digest(&bytes).into();
         if let Some(stored) = self.inputs.get(&id) {
-            if stored.digest != digest { return Err(Failure::new(FailureCode::InputConflict, "input id reused for different bytes")); }
+            if stored.digest != digest {
+                return Err(Failure::new(
+                    FailureCode::InputConflict,
+                    "input id reused for different bytes",
+                ));
+            }
             return Ok(stored.receipt.clone());
         }
         self.check_live()?;
-        if self.pending_write.is_some() { return Err(Failure::new(FailureCode::Busy, "a previous input is still in flight")); }
-        if self.inputs.len() >= MAX_INPUT_IDS { return Err(Failure::new(FailureCode::Limit, "input deduplication capacity reached; ids are never silently evicted")); }
-        let receipt = InputReceipt { input_id: id, state: InputState::Pending, bytes_written: 0, bytes_total: bytes.len() };
+        if self.pending_write.is_some() {
+            return Err(Failure::new(
+                FailureCode::Busy,
+                "a previous input is still in flight",
+            ));
+        }
+        if self.inputs.len() >= MAX_INPUT_IDS {
+            return Err(Failure::new(
+                FailureCode::Limit,
+                "input deduplication capacity reached; ids are never silently evicted",
+            ));
+        }
+        let receipt = InputReceipt {
+            input_id: id,
+            state: InputState::Pending,
+            bytes_written: 0,
+            bytes_total: bytes.len(),
+        };
         self.inputs.insert(id, StoredInput { digest, receipt });
-        self.pending_write = Some(PendingWrite { id, bytes, deadline: Instant::now() + timeout });
+        self.pending_write = Some(PendingWrite {
+            id,
+            bytes,
+            deadline: Instant::now() + timeout,
+        });
         self.write_ready = true;
         self.write_pending();
         Ok(self.inputs[&id].receipt.clone())
     }
 
     fn write_pending(&mut self) {
-        let Some(pending) = self.pending_write.as_ref() else { return; };
+        let Some(pending) = self.pending_write.as_ref() else {
+            return;
+        };
         let stored = self.inputs.get_mut(&pending.id).unwrap();
         if self.exited.is_some() || self.eof || Instant::now() >= pending.deadline {
             stored.receipt.state = InputState::PartialUnknown;
             self.pending_write = None;
             return;
         }
-        if !self.write_ready { return; }
+        if !self.write_ready {
+            return;
+        }
         while stored.receipt.bytes_written < pending.bytes.len() {
             let remaining = &pending.bytes[stored.receipt.bytes_written..];
             // SAFETY: master owns fd for this call; remaining is a valid slice.
             let count = unsafe { libc::write(self.fd, remaining.as_ptr().cast(), remaining.len()) };
-            if count > 0 { stored.receipt.bytes_written += count as usize; continue; }
+            if count > 0 {
+                stored.receipt.bytes_written += count as usize;
+                continue;
+            }
             let error = io::Error::last_os_error();
-            if count < 0 && error.kind() == io::ErrorKind::Interrupted { continue; }
+            if count < 0 && error.kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
             if count < 0 && error.kind() == io::ErrorKind::WouldBlock {
                 self.write_ready = false;
                 return;
@@ -609,16 +900,24 @@ impl Seat {
     }
 
     fn tick(&mut self, actor: &mut Actor) -> io::Result<()> {
-        if self.writer.is_some_and(|(client, _)| !actor.active.is_some_and(|(active, _)| active == client)) {
+        if self
+            .writer
+            .is_some_and(|(client, _)| !actor.active.is_some_and(|(active, _)| active == client))
+        {
             self.writer = None;
         }
         if self.exited.is_none() {
             if let Some(status) = self.child.try_wait()? {
-                self.exited = Some(ExitInfo { code: status.exit_code(), signal: status.signal().map(str::to_owned) });
+                self.exited = Some(ExitInfo {
+                    code: status.exit_code(),
+                    signal: status.signal().map(str::to_owned),
+                });
                 self.read_ready = true;
-            } else if self.terminate_at.is_some_and(|at| Instant::now() >= at) {
+            } else if !self.termination_escalated
+                && self.terminate_at.is_some_and(|at| Instant::now() >= at)
+            {
                 signal(self.pid, libc::SIGKILL)?;
-                self.terminate_at = None;
+                self.termination_escalated = true;
             }
         }
         self.write_pending();
@@ -626,21 +925,31 @@ impl Seat {
         // One pending output chunk per seat bounds capture without a ring. A
         // stalled/detached logic applies kernel PTY backpressure, not silent loss.
         for _ in 0..4 {
-            if !self.read_ready || self.pending_event.is_some() || self.writer.is_none() || self.exit_published { break; }
+            if !self.read_ready
+                || self.pending_event.is_some()
+                || self.writer.is_none()
+                || self.exit_published
+            {
+                break;
+            }
             let mut bytes = [0; OUTPUT_CHUNK_BYTES];
             // SAFETY: master owns fd; bytes is writable for its stated length.
             let count = unsafe { libc::read(self.fd, bytes.as_mut_ptr().cast(), bytes.len()) };
             if count > 0 {
                 let seq = self.sequence();
                 self.pending_event = Some(Event::Output {
-                    seat: self.spec.seat, generation: self.spec.generation, seq,
+                    seat: self.spec.seat,
+                    generation: self.spec.generation,
+                    seq,
                     bytes: bytes[..count as usize].into(),
                 });
                 self.publish_pending(actor);
                 continue;
             }
             let error = io::Error::last_os_error();
-            if count < 0 && error.kind() == io::ErrorKind::Interrupted { continue; }
+            if count < 0 && error.kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
             self.read_ready = false;
             if count == 0 || error.raw_os_error() == Some(libc::EIO) {
                 self.eof = true;
@@ -650,10 +959,17 @@ impl Seat {
             break;
         }
         if let Some(status) = self.exited.clone()
-            && !self.read_ready && self.pending_event.is_none() && !self.exit_published
+            && !self.read_ready
+            && self.pending_event.is_none()
+            && !self.exit_published
         {
             let seq = self.sequence();
-            self.pending_event = Some(Event::Exited { seat: self.spec.seat, generation: self.spec.generation, seq, status });
+            self.pending_event = Some(Event::Exited {
+                seat: self.spec.seat,
+                generation: self.spec.generation,
+                seq,
+                status,
+            });
             self.exit_published = true;
             self.publish_pending(actor);
         }
@@ -663,8 +979,15 @@ impl Seat {
                 self.registered = false;
             }
         } else if self.registered {
-            actor.poll.registry().reregister(&mut SourceFd(&self.fd), self.token,
-                if self.pending_write.is_some() { Interest::READABLE | Interest::WRITABLE } else { Interest::READABLE })?;
+            actor.poll.registry().reregister(
+                &mut SourceFd(&self.fd),
+                self.token,
+                if self.pending_write.is_some() {
+                    Interest::READABLE | Interest::WRITABLE
+                } else {
+                    Interest::READABLE
+                },
+            )?;
         }
         Ok(())
     }
@@ -680,7 +1003,12 @@ impl Drop for Seat {
 }
 
 fn pty_size(size: SeatSize) -> PtySize {
-    PtySize { rows: size.rows, cols: size.cols, pixel_width: size.pixel_width, pixel_height: size.pixel_height }
+    PtySize {
+        rows: size.rows,
+        cols: size.cols,
+        pixel_width: size.pixel_width,
+        pixel_height: size.pixel_height,
+    }
 }
 
 fn pty_error(error: impl std::fmt::Display) -> Failure {

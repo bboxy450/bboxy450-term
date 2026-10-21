@@ -14,7 +14,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Rook Ashwhisker | Executor | Codex | idle | in-session authorization from the operator |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
-| subagent provenance | Oracle instrument | Claude | researching provenance and document systems → `research/provenance-and-documents.md` | nothing |
+| subagent provenance | Oracle instrument | Claude | done → `research/provenance-and-documents.md`, decided in `specs/provenance.md` | — |
 | subagent state-backend | Oracle instrument | Claude | researching sqlite vs alternatives → `research/state-backend.md` | nothing |
 | operator | operator | human | lab review with Lumen | Codex trust for the fixture dir; Rook's pane |
 
@@ -23,7 +23,8 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 ```
 specs (done): messaging, subagent-detection, mux-daemon, harness-adapters,
               mcp-control-plane, terminal-core, identity, renderer, ux-prototype(v2),
-              work-items (epics/specs/tasks as md+frontmatter)
+              work-items (epics/specs/tasks/bugs/notes/invariants/artifacts), provenance,
+              networking, gui-components
 specs (done +2): gui-components ✔ ──▶ W3.2a brief ✔ [OPEN]; networking ✔ ──▶ W4.1 brief ✔ [OPEN]
 
 W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)

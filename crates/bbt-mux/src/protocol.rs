@@ -20,7 +20,10 @@ pub struct Frame<T> {
 
 impl<T> Frame<T> {
     pub fn new(body: T) -> Self {
-        Self { version: VERSION, body }
+        Self {
+            version: VERSION,
+            body,
+        }
     }
 }
 
@@ -35,14 +38,22 @@ pub struct SeatSize {
 
 impl Default for SeatSize {
     fn default() -> Self {
-        Self { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 }
+        Self {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        }
     }
 }
 
 impl SeatSize {
     pub(crate) fn validate(self) -> Result<(), Failure> {
         if self.rows == 0 || self.cols == 0 {
-            return Err(Failure::new(FailureCode::Invalid, "PTY dimensions must be nonzero"));
+            return Err(Failure::new(
+                FailureCode::Invalid,
+                "PTY dimensions must be nonzero",
+            ));
         }
         Ok(())
     }
@@ -64,18 +75,30 @@ pub struct LaunchSpec {
 impl LaunchSpec {
     pub fn new(program: impl Into<String>, cwd: impl Into<PathBuf>) -> Self {
         Self {
-            seat: Ulid::new(), generation: 1, program: program.into(), args: Vec::new(),
-            cwd: cwd.into(), env: BTreeMap::new(), size: SeatSize::default(),
+            seat: Ulid::new(),
+            generation: 1,
+            program: program.into(),
+            args: Vec::new(),
+            cwd: cwd.into(),
+            env: BTreeMap::new(),
+            size: SeatSize::default(),
         }
     }
 
     pub(crate) fn validate(&self) -> Result<(), Failure> {
         self.size.validate()?;
-        if self.seat == Ulid::nil() || self.generation == 0 || self.program.is_empty()
-            || self.program.contains('\0') || !self.cwd.is_absolute()
-            || self.args.len() > 1024 || self.env.len() > 256
+        if self.seat == Ulid::nil()
+            || self.generation == 0
+            || self.program.is_empty()
+            || self.program.contains('\0')
+            || !self.cwd.is_absolute()
+            || self.args.len() > 1024
+            || self.env.len() > 256
         {
-            return Err(Failure::new(FailureCode::Invalid, "invalid launch identity, cwd or command"));
+            return Err(Failure::new(
+                FailureCode::Invalid,
+                "invalid launch identity, cwd or command",
+            ));
         }
         let mut bytes = self.program.len() + self.cwd.as_os_str().len();
         for arg in &self.args {
@@ -87,11 +110,17 @@ impl LaunchSpec {
         for (key, value) in &self.env {
             bytes = bytes.saturating_add(key.len()).saturating_add(value.len());
             if key.is_empty() || key.contains(['=', '\0']) || value.contains('\0') {
-                return Err(Failure::new(FailureCode::Invalid, "invalid environment override"));
+                return Err(Failure::new(
+                    FailureCode::Invalid,
+                    "invalid environment override",
+                ));
             }
         }
         if bytes > MAX_INPUT_BYTES {
-            return Err(Failure::new(FailureCode::Limit, "launch configuration exceeds 64 KiB"));
+            return Err(Failure::new(
+                FailureCode::Limit,
+                "launch configuration exceeds 64 KiB",
+            ));
         }
         Ok(())
     }
@@ -107,7 +136,11 @@ pub struct Request {
 
 impl Request {
     pub fn new(logic_lease: Option<Ulid>, action: Action) -> Self {
-        Self { request_id: Ulid::new(), logic_lease, action }
+        Self {
+            request_id: Ulid::new(),
+            logic_lease,
+            action,
+        }
     }
 }
 
@@ -115,14 +148,34 @@ impl Request {
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Action {
     /// Admission capability comes from the owner, never from a seat name/path.
-    AcquireLogic { capability: [u8; 32] },
+    AcquireLogic {
+        capability: [u8; 32],
+    },
     ListOwnedSeats,
-    Spawn { spec: LaunchSpec },
-    Attach { seat: Ulid, generation: u64 },
-    Input { attachment: Attachment, input_id: Ulid, bytes: Vec<u8> },
-    InputStatus { seat: Ulid, generation: u64, input_id: Ulid },
-    Resize { attachment: Attachment, size: SeatSize },
-    Kill { attachment: Attachment },
+    Spawn {
+        spec: LaunchSpec,
+    },
+    Attach {
+        seat: Ulid,
+        generation: u64,
+    },
+    Input {
+        attachment: Attachment,
+        input_id: Ulid,
+        bytes: Vec<u8>,
+    },
+    InputStatus {
+        seat: Ulid,
+        generation: u64,
+        input_id: Ulid,
+    },
+    Resize {
+        attachment: Attachment,
+        size: SeatSize,
+    },
+    Kill {
+        attachment: Attachment,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -171,41 +224,69 @@ pub struct InputReceipt {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Reply {
-    Acquired { logic_lease: Ulid, supervisor_boot: Ulid },
-    Seats { seats: Vec<SeatInfo> },
-    Spawned { info: SeatInfo },
+    Acquired {
+        logic_lease: Ulid,
+        supervisor_boot: Ulid,
+    },
+    Seats {
+        seats: Vec<SeatInfo>,
+    },
+    Spawned {
+        info: SeatInfo,
+    },
     Attached {
         attachment: Attachment,
         info: SeatInfo,
         /// No historical replay before this cursor in W2.1 (the ring is W1.2).
         first_available_sequence: u64,
     },
-    Input { receipt: InputReceipt },
-    Resized { size: SeatSize, sequence: u64 },
+    Input {
+        receipt: InputReceipt,
+    },
+    Resized {
+        size: SeatSize,
+        sequence: u64,
+    },
     Terminating,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Event {
-    Output { seat: Ulid, generation: u64, seq: u64, bytes: Vec<u8> },
-    Resized { seat: Ulid, generation: u64, seq: u64, size: SeatSize },
-    Exited { seat: Ulid, generation: u64, seq: u64, status: ExitInfo },
-    InputReceipt { seat: Ulid, generation: u64, receipt: InputReceipt },
+    Output {
+        seat: Ulid,
+        generation: u64,
+        seq: u64,
+        bytes: Vec<u8>,
+    },
+    Resized {
+        seat: Ulid,
+        generation: u64,
+        seq: u64,
+        size: SeatSize,
+    },
+    Exited {
+        seat: Ulid,
+        generation: u64,
+        seq: u64,
+        status: ExitInfo,
+    },
 }
 
 impl Event {
     pub fn seat(&self) -> Ulid {
         match self {
-            Self::Output { seat, .. } | Self::Resized { seat, .. }
-            | Self::Exited { seat, .. } | Self::InputReceipt { seat, .. } => *seat,
+            Self::Output { seat, .. } | Self::Resized { seat, .. } | Self::Exited { seat, .. } => {
+                *seat
+            }
         }
     }
 
     pub(crate) fn sequence(&self) -> Option<u64> {
         match self {
-            Self::Output { seq, .. } | Self::Resized { seq, .. } | Self::Exited { seq, .. } => Some(*seq),
-            Self::InputReceipt { .. } => None,
+            Self::Output { seq, .. } | Self::Resized { seq, .. } | Self::Exited { seq, .. } => {
+                Some(*seq)
+            }
         }
     }
 }
@@ -213,14 +294,29 @@ impl Event {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Message {
-    Reply { request_id: Ulid, result: Result<Reply, Failure> },
-    Event { event: Event },
+    Reply {
+        request_id: Ulid,
+        result: Result<Reply, Failure>,
+    },
+    Event {
+        event: Event,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FailureCode {
-    Unauthorized, StaleLease, StaleGeneration, StaleWriter, NotFound,
-    Invalid, Limit, Busy, Exited, InputConflict, Io, Version,
+    Unauthorized,
+    StaleLease,
+    StaleGeneration,
+    StaleWriter,
+    NotFound,
+    Invalid,
+    Limit,
+    Busy,
+    Exited,
+    InputConflict,
+    Io,
+    Version,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -232,7 +328,10 @@ pub struct Failure {
 
 impl Failure {
     pub(crate) fn new(code: FailureCode, message: impl Into<String>) -> Self {
-        Self { code, message: message.into() }
+        Self {
+            code,
+            message: message.into(),
+        }
     }
 }
 

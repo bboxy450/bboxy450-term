@@ -49,7 +49,7 @@ Wikilinks are the link primitive everywhere: frontmatter, body, messages. Syntax
 
 | Form | Meaning |
 |---|---|
-| `[[slug]]` | link, relation `ref`, weight 1 |
+| `[[slug]]`, `[[slug\|display]]` | link, relation `ref`, weight 1; exactly Obsidian's forms |
 | `[[slug\|rel]]` | typed link: `spec`, `evidence`, `parent`, `child`, `depends`, `blocks`, `see` |
 | `[[slug\|rel\|w]]` | typed and weighted, `w` a positive number; higher = stronger |
 
@@ -96,7 +96,7 @@ Each detection appends an **artifact event** `{artifact_id, seat, kind: created|
 
 ## Provenance (operator, 2026-10-21: "provenance in that system is very important")
 
-Every item and every status transition records who did it, from what, and under which key. Research running: `research/provenance-and-documents.md`; the decided design lands as [[provenance]] and adds the fifth graph: item ← activity ← seat ← grant ← root. Until then the rule is: no anonymous write to `.bboxy/`. The terminal stamps `updated_by: seat:<id>` on every frontmatter write it performs, and a seat's commits carry the `Bboxy-Seat` and `Bboxy-Task` trailers.
+Every item and every status transition records who did it, from what, and under which key. Decided in [[provenance]]: signed digests on every markdown, a hash-chained activity log with signed checkpoints, commit trailers, and the provenance graph (markdown ← activity ← seat ← grant ← root) as the sixth graph. Until then the rule is: no anonymous write to `.bboxy/`. The terminal stamps `updated_by: seat:<id>` on every frontmatter write it performs, and a seat's commits carry the `Bboxy-Seat` and `Bboxy-Task` trailers.
 
 ## Rules
 

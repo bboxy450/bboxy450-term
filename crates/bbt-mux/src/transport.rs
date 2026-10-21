@@ -19,8 +19,8 @@ use crate::protocol::{Frame, Message, Request, VERSION};
 pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
 pub(crate) const MAX_SOCKET_QUEUE_BYTES: usize = 4 * MAX_FRAME_BYTES;
 
-fn invalid(message: impl Into<String>) -> io::Error {
-    io::Error::new(io::ErrorKind::InvalidData, message.into())
+fn invalid(message: impl std::fmt::Display) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, message.to_string())
 }
 
 pub fn encode<T: Serialize>(frame: &Frame<T>) -> io::Result<Vec<u8>> {
@@ -76,7 +76,11 @@ pub struct Decoder<T> {
 
 impl<T> Default for Decoder<T> {
     fn default() -> Self {
-        Self { buffer: Vec::new(), body_len: None, marker: PhantomData }
+        Self {
+            buffer: Vec::new(),
+            body_len: None,
+            marker: PhantomData,
+        }
     }
 }
 
@@ -113,15 +117,15 @@ impl<T: DeserializeOwned> Decoder<T> {
 /// Private per-user control endpoint. Nothing binds here merely by using the crate.
 pub fn default_socket_path() -> io::Result<PathBuf> {
     #[cfg(target_os = "macos")]
-    let base = std::env::var_os("HOME").map(|home| {
-        PathBuf::from(home).join("Library/Application Support/bboxy450-term/run")
-    });
+    let base = std::env::var_os("HOME")
+        .map(|home| PathBuf::from(home).join("Library/Application Support/bboxy450-term/run"));
     #[cfg(not(target_os = "macos"))]
     let base = std::env::var_os("XDG_RUNTIME_DIR")
         .map(|dir| PathBuf::from(dir).join("bboxy450-term"))
-        .or_else(|| std::env::var_os("HOME").map(|home| {
-            PathBuf::from(home).join(".local/state/bboxy450-term/run")
-        }));
+        .or_else(|| {
+            std::env::var_os("HOME")
+                .map(|home| PathBuf::from(home).join(".local/state/bboxy450-term/run"))
+        });
     base.map(|dir| dir.join("mux.sock"))
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no private runtime directory"))
 }
@@ -135,21 +139,31 @@ pub(crate) struct BoundSocket {
 
 impl BoundSocket {
     pub fn bind(path: &Path) -> io::Result<Self> {
-        let parent = path.parent().filter(|p| !p.as_os_str().is_empty())
+        let parent = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
             .ok_or_else(|| invalid("socket path must have a private parent directory"))?;
-        DirBuilder::new().recursive(true).mode(0o700).create(parent)?;
+        DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(parent)?;
         let metadata = fs::symlink_metadata(parent)?;
         // SAFETY: geteuid has no arguments and no memory-safety preconditions.
         let uid = unsafe { libc::geteuid() };
         if !metadata.is_dir() || metadata.uid() != uid || metadata.mode() & 0o077 != 0 {
-            return Err(io::Error::new(io::ErrorKind::PermissionDenied, "runtime parent must be owned and mode 0700"));
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "runtime parent must be owned and mode 0700",
+            ));
         }
         // Never unlink an existing socket; another supervisor may own it.
         let listener = UnixListener::bind(path)?;
         let metadata = fs::symlink_metadata(path)?;
         let bound = Self {
-            listener: MioListener::from_std(listener), path: path.to_owned(),
-            dev: metadata.dev(), ino: metadata.ino(),
+            listener: MioListener::from_std(listener),
+            path: path.to_owned(),
+            dev: metadata.dev(),
+            ino: metadata.ino(),
         };
         fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
         // mio requires nonblocking descriptors, including those passed from_std.
@@ -161,7 +175,8 @@ impl BoundSocket {
 impl Drop for BoundSocket {
     fn drop(&mut self) {
         if let Ok(metadata) = fs::symlink_metadata(&self.path)
-            && metadata.dev() == self.dev && metadata.ino() == self.ino
+            && metadata.dev() == self.dev
+            && metadata.ino() == self.ino
         {
             let _ = fs::remove_file(&self.path);
         }
@@ -178,7 +193,13 @@ pub(crate) struct SocketPeer {
 
 impl SocketPeer {
     pub fn new(stream: UnixStream) -> Self {
-        Self { stream, decoder: Decoder::default(), queue: VecDeque::new(), offset: 0, queued_bytes: 0 }
+        Self {
+            stream,
+            decoder: Decoder::default(),
+            queue: VecDeque::new(),
+            offset: 0,
+            queued_bytes: 0,
+        }
     }
 
     pub fn enqueue(&mut self, message: Message) -> io::Result<bool> {
