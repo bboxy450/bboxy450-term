@@ -189,3 +189,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Artifacts are leaves, seats carry their count, the graph keeps the history
 **Rule:** an artifact is a row under its task (kind glyph, ref, digest, responsible-seat chip from artifact_claim); a seat row shows "N artifacts" touched; the Graph tab has an artifact history card (time · seat · event · ref · grade) and artifacts as leaves in the tree. **Why:** operator decisions on first-class artifacts and terminal-detected artifact events. **Where:** `artifactRow`, `touched` in `seatRow`, history in `graphPage`; design system v14.
+
+### Provenance is visible, and links carry their relation
+**Rule:** the Graph tab has a Provenance card: created by / updated by, derived-from as annotated wikilink chips, the signed digest pair, and the hash-chained activity log with its signed daily checkpoint. Any rendered wikilink uses the annotation form `[[slug|display]]{rel:w}` as a chip with a relation badge. **Why:** provenance.md decision and the Obsidian-compatible link syntax. **Where:** `renderLinks`, `provenanceCard` in `components.js`; design system v15.

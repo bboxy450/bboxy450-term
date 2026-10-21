@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 14,
+  "version": 15,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -392,6 +392,12 @@
       "source": "terminal-detected artifact events attributed to the seat",
       "anatomy": "small archive glyph + count badge on the seat row, before the unread dot",
       "status": "built"
+    },
+    "wikilink_chip": {
+      "purpose": "a rendered wikilink with its relation and weight",
+      "source": "provenance.md: [[slug]], [[slug|display]], [[slug]]{rel:w}",
+      "anatomy": "a two-part chip: slug or display in accent on the left, the relation badge (and weight) in mono on the right; relation colours: derives accent, constrains amber, violates red; the pure forms render without the badge",
+      "status": "built"
     }
   },
   "modules": {
@@ -672,6 +678,17 @@
         "the Oracle's graph.md is the hand-kept version of this; the terminal generates it from frontmatter",
         "rows link to seats (click focuses later)",
         "artifacts hang under their task in the tree as ├─ leaves with the responsible chip"
+      ],
+      "status": "built"
+    },
+    "provenance_card": {
+      "purpose": "where an item came from and who touched it, with proof",
+      "source": "provenance.md",
+      "anatomy": "in the Graph tab: per item: kind chip · title · created by / updated by in seat colours; derived from as annotated wikilink chips; digest pair as a short content hash with ✓ signed · by whom or unsigned; then the activity log from .bboxy/log/ as hash-chained lines (chain prefix · time · text) with the daily checkpoint line in green naming its signer",
+      "rules": [
+        "signed by the operator primary now, device key later",
+        "a missing signature reads unsigned, never broken",
+        "the provenance graph is the sixth graph; this card is its per-item view"
       ],
       "status": "built"
     }

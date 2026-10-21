@@ -214,6 +214,7 @@
     }
     tree.append(pre);
     root.append(agents, tree);
+    if (opts.provenance) root.append(provenanceCard(opts.provenance));
     const hist = opts.history || [];
     if (hist.length) {
       const h = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Artifact history · ' + hist.length)));
@@ -250,6 +251,37 @@
     if (art.responsible) right.append(el('span', { class: 'achip', style: 'color:' + (art.responsibleColor || 'var(--fg)') + ';border-color:' + (art.responsibleColor || 'var(--line)'), title: 'responsible: ' + art.responsible + ' (artifact_claim)' }, art.responsible.split(' ')[0]));
     row.append(right);
     return row;
+  }
+
+  // Wikilinks with the annotation form: [[slug]] · [[slug|display]] · [[slug]]{rel:w}. Rendered as a link chip plus a relation badge.
+  const LINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\{([a-z_]+)(?::([0-9.]+))?\})?/g;
+  function renderLinks(text) {
+    const frag = el('span', { class: 'links' }); let last = 0, m;
+    while ((m = LINK_RE.exec(text))) {
+      if (m.index > last) frag.append(text.slice(last, m.index));
+      const chip = el('span', { class: 'wl', title: m[1] + (m[3] ? ' · ' + m[3] + (m[4] ? ' · weight ' + m[4] : '') : '') }, el('span', { class: 'wl-slug' }, m[2] || m[1]));
+      if (m[3]) chip.append(el('span', { class: 'wl-rel ' + m[3] }, m[3] + (m[4] ? ' ' + m[4] : '')));
+      frag.append(chip); last = m.index + m[0].length;
+    }
+    if (last < text.length) frag.append(text.slice(last));
+    return frag;
+  }
+
+  // Provenance card: created_by / updated_by, weighted derived_from, the signed digest pair, and the hash-chained activity log
+  function provenanceCard(prov) {
+    const card = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Provenance · ' + (prov.items || []).length + ' items · log ' + (prov.log || []).length)));
+    for (const it of (prov.items || []).slice(0, 6)) {
+      const row = el('div', { class: 'p-item' });
+      row.append(el('div', { class: 'p-head' }, el('span', { class: 'ekind' }, it.type || 'note'), el('b', {}, it.title), el('span', { class: 'p-by' }, 'created by ', el('span', { style: 'color:' + (it.createdColor || 'var(--fg)') }, it.created_by), it.updated_by && it.updated_by !== it.created_by ? [' · updated by ', el('span', { style: 'color:' + (it.updatedColor || 'var(--fg)') }, it.updated_by)] : null)));
+      if (it.derived_from) row.append(el('div', { class: 'p-derived' }, el('span', { class: 'p-lbl' }, 'derived from'), renderLinks(it.derived_from)));
+      if (it.digest) row.append(el('div', { class: 'p-digest' }, el('span', { class: 'p-lbl' }, 'digest'), el('code', {}, it.digest.content.slice(0, 12)), el('span', { class: 'p-sig' + (it.digest.signed ? ' ok' : '') }, it.digest.signed ? '✓ signed · ' + it.digest.by : 'unsigned')));
+      card.append(row);
+    }
+    if ((prov.log || []).length) {
+      card.append(el('div', { class: 'p-loghead' }, 'activity log · .bboxy/log/ · hash-chained'));
+      for (const ev of prov.log.slice(-6).reverse()) card.append(el('div', { class: 'p-log' + (ev.checkpoint ? ' cp' : '') }, el('code', { class: 'p-hash' }, ev.hash.slice(0, 7)), el('span', { class: 'p-time' }, ev.time), el('span', { class: 'p-text' }, ev.checkpoint ? '✓ daily checkpoint · signed by ' + ev.by : ev.text)));
+    }
+    return card;
   }
 
   function miniGrid(tree, focusedKey, big) {
@@ -723,5 +755,5 @@
     return root;
   }
 
-  window.C = { artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

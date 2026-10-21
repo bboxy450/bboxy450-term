@@ -759,3 +759,24 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .g-hist .href { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .g-hist .hgrade { font-family: var(--font-mono); font-size: 9.5px; text-align: right; color: var(--fg-dim); }
 .g-hist .hgrade.reported { color: var(--fg); }
+
+/* wikilink chips with the annotation form [[slug]]{rel:w} */
+.wl { display: inline-flex; align-items: center; gap: 0; border-radius: 5px; overflow: hidden; vertical-align: middle; font-size: 11px; box-shadow: 0 0 0 1px var(--hair, var(--line)); margin: 0 2px; }
+.wl .wl-slug { padding: 0 6px; color: var(--accent-soft); background: color-mix(in srgb, var(--accent) 10%, transparent); line-height: 16px; }
+.wl .wl-rel { padding: 0 5px; font-family: var(--font-mono); font-size: 9.5px; color: var(--fg-dim); background: var(--badge, var(--surface-2)); line-height: 16px; }
+.wl .wl-rel.violates { color: var(--c-errored); } .wl .wl-rel.constrains { color: var(--c-waiting); } .wl .wl-rel.derives, .wl .wl-rel.derived_from { color: var(--accent-soft); }
+/* provenance card */
+.p-item { padding: 7px 0; border-bottom: 1px solid var(--hair, var(--line)); display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; }
+.p-head { display: flex; align-items: center; gap: 8px; }
+.p-head b { font-size: 12.5px; }
+.p-by { color: var(--fg-dim); font-size: 11px; margin-left: auto; white-space: nowrap; }
+.p-derived, .p-digest { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.p-lbl { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-dim); width: 86px; flex: none; }
+.p-digest code { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg); }
+.p-sig { font-family: var(--font-mono); font-size: 10px; color: var(--fg-dim); } .p-sig.ok { color: #2EE6A8; }
+.p-loghead { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-dim); padding: 10px 0 4px; }
+.p-log { display: grid; grid-template-columns: 56px 44px 1fr; gap: 8px; align-items: center; padding: 3px 0; font-size: 11px; color: var(--fg-dim); }
+.p-log .p-hash { font-family: var(--font-mono); font-size: 10px; color: var(--fg); }
+.p-log .p-time { font-family: var(--font-mono); font-size: 10px; }
+.p-log .p-text { color: var(--fg); }
+.p-log.cp .p-text { color: #2EE6A8; }
