@@ -154,7 +154,7 @@ Mute/unmute is an idempotent policy transition under `expected_policy_epoch` (th
 
 Close, mute and harness activity are orthogonal. `seat_close` uses [[mux-daemon]]'s retained restoration record and deadline; closing is reversible during grace without a confirmation dialog. A live grace-period process continues consuming the spawn budget. Undo addresses that exact close generation; an expired close is a later resume operation, not proof of original-process survival.
 
-**Oracle decision on purge (Vesper Greywind, 2026-10-21):** `seat_purge` = skip the remaining grace, terminate the process, and delete the retained ring and checkpoints for that seat. Operator only, from the GUI with a typed seat name as confirmation; not exposed to any MCP role, Oracle included. The Oracle can close (grace) and undo-close; it never deletes history.
+**Oracle decision on purge (Vesper Greywind, 2026-10-21):** `seat_purge` = skip the remaining grace, terminate the process, and move the retained ring, checkpoints and events to cold blob storage; the terminal never deletes them ([[storage]], never-delete). Deletion is an out-of-band operator action. Operator only, from the GUI with a typed seat name as confirmation; not exposed to any MCP role, Oracle included. The Oracle can close (grace) and undo-close; it never deletes history.
 
 ## Swarm templates and spawn caps
 
