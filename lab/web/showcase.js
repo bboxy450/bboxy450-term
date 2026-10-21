@@ -12,7 +12,7 @@
   const mq = matchMedia('(prefers-color-scheme: dark)');
   let themeMode = localStorage.getItem('showcase.theme') || 'auto';
   const theme = () => themeMode === 'auto' ? (mq.matches ? 'dark' : 'light') : themeMode;
-  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = 'compact'; Lab.applyTokens(); document.documentElement.style.setProperty('--gutter', GUTTER + 'px'); }
+  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = 'cozy'; Lab.applyTokens(); document.documentElement.style.setProperty('--gutter', GUTTER + 'px'); }
   mq.addEventListener('change', () => { if (themeMode === 'auto') { applyTheme(); render(); } });
   applyTheme();
 
@@ -22,7 +22,7 @@
   const PAL_LIGHT = ['#B8860B', '#C2185B', '#6A3FD1', '#0E8F6A', '#1E4FD1', '#D1541C', '#0E7FA8', '#5B6480', '#9A7B10', '#1F8F4A', '#9C1FBF', '#C63B3B', '#0E86B8', '#8A6B2E', '#1E9C7E'];
   const mk = (i, name, harness, role, title, state) => ({ key: 'sc' + i, name, harness, role, title, state, pal: i });
   const BASE = [
-    mk(0, 'Vesper Greywind', 'claude', 'oracle', 'cohort control', 'active'),
+    mk(0, 'Vesper Greywind', 'claude', 'oracle', 'swarm control', 'active'),
     mk(1, 'Nyx Copperwing', 'codex', 'executor', 'messaging spec', 'active'),
     mk(2, 'Lumen Foxglove', 'claude', 'creativity', 'ux lab', 'idle'),
     mk(3, 'Rook Ashwhisker', 'codex', 'executor', 'gpu research', 'waiting'),
@@ -55,7 +55,7 @@
     stageTree = V(0.6, S(0), H(0.5, S(1), S(3)));
     model = { spaces: [
       { name: 'term', key: 'space-term', tabs: [
-        { name: 'cohort', shortcut: '⌘1', tree: stageTree, seats: [S(0), S(1), S(3)] },
+        { name: 'core', shortcut: '⌘1', tree: stageTree, seats: [S(0), S(1), S(3)] },
         { name: 'ux lab', shortcut: '⌘2', tree: S(2), seats: [S(2)] },
         { name: 'hooks', shortcut: '⌘3', tree: S(4), seats: [S(4)] },
       ] },
@@ -92,7 +92,7 @@
     const z = { key: 'z' + spaceN, name: 'zsh', harness: 'zsh', role: null, title: '~', state: 'idle', pal: (spaceN + 6) % 15 };
     Object.defineProperty(z, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
     seats.push(z); startReplay(z, seats.length - 1);
-    const sp = { name: 'space ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [] };
+    const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [] };
     model.spaces.push(sp); jumpSpace(sp);
   }
   // Close is reversible (operator): the seat enters a 60 s grace state. The pane leaves the split, the row becomes a

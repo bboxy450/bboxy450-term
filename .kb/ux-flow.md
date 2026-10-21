@@ -78,3 +78,9 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Closing a seat is reversible (operator decision, also in vision)
 **Rule:** close puts the seat in a 60 s grace state: the pane leaves the split, the row becomes a collapsed closed strip in its cohort (struck name, countdown, undo). Undo or ⌘Z restores it in place with its split position and refocuses it. After the window the seat is gone. No confirm dialog; the undo window is the confirmation. **Where:** `closeSeat` / `undoClose` in `showcase.js`, `.closed-strip` in `components.js`; the mux and MCP specs carry the process side.
+
+### Not XFCE: macOS proportions at the same footprint
+**Rule:** the showcase runs a `cozy` density: 24 px rows, 12.5 px text, 14 px icons, inset rounded selection, sentence-case semibold section labels, band 24 px with softer tracking, bumper 4 px. Compact (20 px) stays for the 1000-seat reading. **Why:** 20 px rows with 10 px tracked labels and a thick bumper read like XFCE. **Where:** `[density.cozy]` in tokens, macOS block in `lab.css`.
+
+### Cohorts are called swarms
+**Rule:** the UI word for the block is swarm: SWARM bands, "+ new swarm". The vision vocabulary (space, cohort) is the Oracle's to update. **Where:** strings in `components.js` and `showcase.js`; `.kb/specs/ux-prototype.md` updated. CSS class names unchanged.

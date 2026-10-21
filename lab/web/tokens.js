@@ -56,6 +56,16 @@ window.TOKENS = {
       "row_h": 20,
       "tab_h": 18
     },
+    "cozy": {
+      "font": 12.5,
+      "font_small": 11,
+      "gap": 5,
+      "glyph": 11,
+      "icon": 14,
+      "pad_x": 10,
+      "row_h": 24,
+      "tab_h": 22
+    },
     "touch": {
       "font": 15,
       "font_small": 13,

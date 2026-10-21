@@ -383,3 +383,19 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .tab-row.closed-strip .tname { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--fg-dim) 60%, transparent); }
 .tab-row.closed-strip .undo { background: transparent; border: 1px solid var(--line); color: var(--fg); border-radius: 999px; font: inherit; font-size: 9px; letter-spacing: .08em; padding: 0 7px; cursor: pointer; }
 .tab-row.closed-strip .undo:hover { background: var(--surface-2); }
+
+/* macOS proportions (operator 2026-10-21): inset rounded selection, sentence-case section labels, softer band, thinner bumper */
+.space { border-bottom-width: 4px; padding: 4px 4px 0; }
+.space.closed { border-bottom-width: 3px; }
+.space-head { height: calc(var(--strip-h) + 2px); font-size: 10.5px; letter-spacing: .16em; padding: 0 12px; }
+.space-head .count { font-size: 10.5px; }
+.space-body .seat-row, .space-body .tab-row { margin: 0 2px; border-radius: 6px; }
+.seat-row.focused { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: none; }
+.seat-row .name { font-weight: 600; }
+.tab-row.participants, .tab-row.newseat { text-transform: none; letter-spacing: 0; font-size: 11px; font-weight: 600; color: var(--fg-dim); margin-top: 6px; }
+.tab-row.participants .caret { display: none; }
+.tab-row.newseat { font-weight: 500; }
+.tab-row.newseat .plus { font-size: 14px; color: var(--fg-dim); }
+.tab-row .tname { letter-spacing: 0; }
+.new-cohort { height: 40px; font-size: 12.5px; letter-spacing: 0; font-weight: 500; }
+.sidebar .sb-foot { height: 34px; }

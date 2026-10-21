@@ -62,7 +62,7 @@
       el('a', { class: 'back', href: 'index.html' }, '← lab'),
       el('h1', {}, spec.title),
       el('div', { class: 'spacer' }),
-      seg(['touch', 'comfortable', 'compact'], prefs.density, v => { prefs.density = v; page(spec); }),
+      seg(['touch', 'comfortable', 'cozy', 'compact'], prefs.density, v => { prefs.density = v; page(spec); }),
       seg(['dark', 'light'], prefs.theme, v => { prefs.theme = v; page(spec); }),
     );
     const strip = el('div', { class: 'state-strip' });

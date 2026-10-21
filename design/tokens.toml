@@ -71,6 +71,17 @@ font_small = 11
 pad_x = 10
 gap = 6
 
+[density.cozy]
+# the showcase default: compact's footprint with macOS proportions (operator: "not XFCE")
+row_h = 24
+tab_h = 22
+glyph = 11
+icon = 14
+font = 12.5
+font_small = 11
+pad_x = 10
+gap = 5
+
 [density.compact]
 row_h = 20
 tab_h = 18
