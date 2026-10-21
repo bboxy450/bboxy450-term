@@ -55,6 +55,8 @@ Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection combine
 
 - macOS first. Linux and mobile devices follow. wgpu keeps that cheap. One unified look and feel on every platform, our own, transcending OS styles.
 - Seats survive terminal crashes and restarts. Sessions are recovered and resumed automatically. The terminal keeps a durable seat id and the mapping seat id → harness session id. This implies a mux daemon separate from the GUI process.
+- **VTE runs in the mux daemon, not the GUI** (DECIDED 2026-10-21 from [[cloud-and-mosh]]): mosh, tmux, zellij, wezterm all do this; it gives crash survival, remote parity, and lets the Oracle read any seat's screen without the GUI. The GUI receives screen state diffs mosh-style, scheduled per seat by RTT and visibility.
+- **Memory model at 1000 seats**: an `alacritty_terminal` grid with 10k scrollback measured 15–20 MB per seat, so 1000 seats would be 15–20 GB. Not viable. The daemon keeps a viewport-sized grid per seat plus a bounded raw-byte scrollback ring with a monotonic cursor; scrollback lines are re-parsed lazily on demand. Hidden seats send the GUI only a state bit for the sidebar.
 - Target scale: swarms of **1000 agents**. Some local, some remote over ssh, some in the user's chosen cloud. The sidebar, the mux and the messaging layer must be designed for that count from the start.
 
 ## Future (RECORDED, not v0.1)

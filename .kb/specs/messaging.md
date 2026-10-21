@@ -20,9 +20,9 @@ The network connection authenticates the remote mux device's delegated key, boun
 
 Own the contact/discovery records and helper operation as part of this service. Public channels may use namespaced DHT discovery with signed contact records; never publish private group capabilities as public discovery names. A helper carries no application execution authority and is not an offline mailbox. Persist messages through path changes, relay expiry and reconnect, then retry the same message IDs. Port ICQ's authentication and bounding properties, not its eight-circuit or 64-identity limits unchanged. Export per-stage outcomes and backpressure so capacity exhaustion cannot masquerade as successful delivery.
 
-**Conditional alternative:** Iroh remains eligible only if its license, maintainer review, self-hosted relay deployment and discovery configuration pass the operator's requirements, including operation with no n0 infrastructure dependency. Local 1.3.0 declares MIT OR Apache-2.0 and uses noq (`Iroh/Cargo.toml.orig:7`, `:44`); the [project documents a self-hostable relay](https://github.com/n0-computer/iroh#repository-structure). Its [documented default](https://docs.rs/iroh/1.4.0/iroh/#connection-establishment) normally establishes via a home relay before upgrading direct. Verify direct-first policy and independence in a deployment test rather than assuming that disabling a public relay is sufficient. This is a conditional option, not the selected baseline.
+**Conditional alternative:** Iroh passes the source-level license/configuration checks: local 1.3.0 is MIT OR Apache-2.0 and uses noq (`Iroh/Cargo.toml.orig:7`, `:44`); `Iroh/src/endpoint.rs:1993` supports a custom relay map and `:596` clears default address lookup services. The [project documents self-hosting the relay](https://docs.iroh.computer/iroh-services/relays/self-hosted). That enables an explicit own-infrastructure configuration; it is not a tested deployment here. Its [documented default](https://docs.rs/iroh/1.4.0/iroh/#connection-establishment) normally establishes via a home relay before upgrading direct. Reconsider it only if maintainer review, direct-first policy and a deployment with no n0 dependency pass the operator's requirements. The parallel [[transport-and-identity]] review is now read and agrees on Quinn; this alternative does not reopen that decision.
 
-**Gap:** no self-hosted Iroh independence/traversal test or maintainer trust review was performed. [[transport-and-identity]] was not present when this section was written; the Oracle explicitly removed that dependency and requested this Quinn baseline. Review that evidence when it lands without reopening the rest of this spec.
+**Gap:** no self-hosted Iroh independence/traversal test or independent maintainer trust review was performed in B. The parallel review was checked against local license, noq dependency and configuration source; its broader funding, cadence and OAuth claims were not independently re-audited here. Keep the transport boundary independent of rooms/priority so a future change does not expose Quinn/noq types throughout the application.
 
 ## Service boundary
 
@@ -34,7 +34,7 @@ Transport workers handle connections outside the storage transaction. Bounded ac
 
 ## Identity: one account, separate seats
 
-Use a root public key as the account ID. The email is account metadata with a separately represented verification state. The same root key identifies the account across machines; each device and each seat has its own key rather than sharing one seat secret.
+Use a root public key as the account ID. The email is account metadata with a separately represented verification state. The same root key identifies the account across machines; each device and each seat has its own key rather than sharing one seat secret. Google sign-in is in v0.1 and Apple is deferred, as now decided in [[vision]]; provider assertions supplement this key model.
 
 Proposed chain:
 
