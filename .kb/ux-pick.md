@@ -35,7 +35,7 @@ Mouse-dwell focus stays, but it only changes focus brightness; the ripple needs 
 
 ## Row-pane link ripple (DECIDED, operator loved it 2026-10-21)
 
-Clicking a pane fires a ripple on its sidebar row; clicking a row fires it on the pane corner. The sidebar scrolls the row into view if needed. The ripple is the map legend: it answers "where is this seat in the list" and "which pane is this row" without reading. Keep it in the real build as a shader effect tied to focus change, both directions, every time.
+Clicking a pane fires a ripple on its sidebar row; clicking a row fires it from the **centre of the pane** (operator, 2026-10-21: centre, not the top-left corner). The sidebar scrolls the row into view if needed. The ripple is the map legend: it answers "where is this seat in the list" and "which pane is this row" without reading. Keep it in the real build as a shader effect tied to focus change, both directions, every time.
 
 ## Border glow spec (DECIDED, operator words)
 
