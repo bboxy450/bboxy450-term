@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 2,
+  "version": 3,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -625,7 +625,31 @@
       "demo keys (1-4, M, P) are suspended while the modal is open",
       "the list never scrolls the window; the panel scrolls",
       "the name is rolled from the fantasy / sci-fi / furry pools; reroll never changes the choice"
-    ]
+    ],
+    "matching": {
+      "purpose": "typing finds the thing you mean, not the string you typed",
+      "tiers": [
+        "1 prefix: label words and aliases (goto, go, jump; harness ids)",
+        "2 facets: every item carries tags; seats carry harness, where (local|ssh|cloud), host, role, state, swarm, muted; \"codex\", \"ssh\", \"cloud\", \"oracle\", \"waiting\" filter Go to by facet",
+        "3 subtitle substring",
+        "4 fuzzy: subsequence on the label for words of 3+ letters (\"nyxc\" → Nyx Copperwing)",
+        "5 semantic (real app only): the Jev encoder embeds every row (label + subtitle + tags) once and the query per keystroke; cosine over 384-d vectors; rows above 0.55 join the list below the lexical tiers; also re-ranks ties"
+      ],
+      "words": "typed words are ANDed: \"codex ssh\" = Codex seats over ssh; a word that names a parent descends instead (ssh rig codex)",
+      "ranking": "tier of the first word, then original order; the list never jumps on a keystroke beyond what the tier change requires",
+      "jev": {
+        "what": "the local small neural encoder ICQ ships for `icq how`: pocket-encoder/minilm-l3-q4-g32-v1, 384 dimensions, attention-masked mean pooling, L2 normalised, 128 tokens, no daemon, no network, no download",
+        "use_in_launcher": "embed each row text once when the list is built (seats change rarely); embed the query on each keystroke after a 40 ms debounce; cosine against all rows; merge with lexical tiers by reciprocal rank fusion; show at most 5 semantic-only rows under a \"Related\" section so lexical hits stay on top",
+        "use_elsewhere": [
+          "Go to by meaning: \"the one doing the gpu research\" → Rook",
+          "stream search: find messages by meaning across a swarm",
+          "command palette later: verbs by meaning (\"shut this\" → close seat)"
+        ],
+        "limits": "queries over 128 tokens truncate; names from the fantasy / sci-fi / furry pools are out of vocabulary for the encoder, so names stay lexical (tier 1) and semantic covers titles, roles, states and messages",
+        "cost": "one forward pass per keystroke on a 3-layer MiniLM; sub-millisecond on M-series; rows cached",
+        "not_in_web_demo": true
+      }
+    }
   },
   "interactions": {
     "focus": "click a row or a pane; Tab / Shift+Tab across panes; pane dwell 150 ms; a seat in another tab or swarm switches the stage; open/shut of swarms is separate",

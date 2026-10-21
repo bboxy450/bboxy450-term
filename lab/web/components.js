@@ -343,8 +343,14 @@
       }
       return { level, qq, virt };
     }
-    const hit = (it, qq) => !qq || aliasOf(it).some(a => a.startsWith(qq)) || norm(it.label).split(' ').some(w => w.startsWith(qq)) || norm(it.sub).includes(qq) || (it.id || '').startsWith(qq);
-    const matches = () => { const s = scope(); return s.level.filter(it => hit(it, s.qq)); };
+    // matching tiers (design system › modal › matching): 1 label / alias prefix, 2 facet tags (harness, where, host,
+    // role, state, swarm), 3 subtitle substring, 4 fuzzy subsequence. Tier 5, semantic via the Jev encoder, lives in the
+    // real app, not the web demo. Every typed word must hit on some tier; words are ANDed.
+    const subseq = (hay, needle) => { let i = 0; for (const ch of hay) if (ch === needle[i]) i++; return i === needle.length; };
+    const wordHit = (it, w) => aliasOf(it).some(a => a.startsWith(w)) || norm(it.label).split(' ').some(x => x.startsWith(w)) || (it.tags || []).some(t => norm(t).startsWith(w)) || norm(it.sub).includes(w) || (it.id || '').startsWith(w) || (w.length >= 3 && subseq(norm(it.label).replace(/\s/g, ''), w));
+    const hit = (it, qq) => !qq || qq.split(' ').filter(Boolean).every(w => wordHit(it, w));
+    const tier = (it, qq) => { if (!qq) return 0; const w = qq.split(' ')[0]; if (aliasOf(it).some(a => a.startsWith(w)) || norm(it.label).split(' ').some(x => x.startsWith(w))) return 1; if ((it.tags || []).some(t => norm(t).startsWith(w))) return 2; if (norm(it.sub).includes(w)) return 3; return 4; };
+    const matches = () => { const s = scope(); return s.level.filter(it => hit(it, s.qq)).map((it, i) => [tier(it, s.qq), i, it]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]); };
     const path = () => [...stack, ...scope().virt];
     const dive = it => { stack = [...path(), it]; q = ''; input.value = ''; sel = 0; draw(); };
     const climb = () => { if (!stack.length) return; stack = stack.slice(0, -1); q = ''; input.value = ''; sel = 0; draw(); };

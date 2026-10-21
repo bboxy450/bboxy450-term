@@ -141,3 +141,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### SSH picks the machine first
 **Rule:** SSH ▸ machine ▸ harness ▸ placement, Cloud ▸ region ▸ harness ▸ placement. Machines come from `~/.ssh/config` in the real app. "ssh rig codex" types through all three levels. **Where:** `HOSTS`, `remoteRow` in `showcase.js`.
+
+### Typing matches meaning, in tiers
+**Rule:** Go to filters by facet as well as name: harness, where, host, role, state, swarm, muted ("goto codex", "goto ssh", "goto cloud", "goto waiting"); words are ANDed; fuzzy subsequence catches "nyxc"; in the real app a fifth tier uses the Jev encoder (ICQ's local pocket-encoder MiniLM, 384-d, no network) to add "Related" rows by meaning under the lexical hits. Not in the web demo. **Why:** "codex" under Go to returned nothing; the operator wants smart matching and the encoder is already on the machine. **Where:** `wordHit`/`tier` in `picker()`, `tags` on go-to items, design system v3 `modal.matching` and `modal.matching.jev`.
