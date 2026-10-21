@@ -4,16 +4,21 @@ Owner: Vesper Greywind <ORACLE>. 2026-10-21. DECIDED by the operator: native sup
 
 ## Shape
 
-A work item is one Markdown file with YAML frontmatter in the repository the swarm works on, under `.kb/` by default (configurable per swarm). Three types, one schema. Git is the database; the terminal is a reader, writer and watcher of these files, nothing more.
+A work item is one Markdown file with YAML frontmatter in the repository the swarm works on, under **`.bboxy/`** (operator decision 2026-10-21; this repo's `.kb/` migrates to `.bboxy/` as the dogfood). `.bboxy/` holds all of a repo's tasks and knowledge: epics, specs, tasks, research, runs. Knowledge files are the same schema with `type: note`. Three types, one schema. Git is the database; the terminal is a reader, writer and watcher of these files, nothing more.
 
 ```yaml
 ---
 id: 01JAX3K9Q7M2N8P4R6S1T0V5W9      # ULID, assigned on creation, never changes
-type: task | spec | epic
+type: task | spec | epic | note
 title: fork alacritty_terminal + vte into bbt-core
 status: open | claimed | running | reported | accepted | rejected | blocked | done
-parent: 01JAX…                       # epic for a spec/task, spec for a task (optional)
+parent: 01JAX…                       # single parent, optional
+children: [01JAX…, …]                # kept in sync with children's parent by the terminal
 depends_on: [01JAX…, …]
+links:                               # typed outbound links, any target
+  - { to: "[[messaging]]", rel: spec }
+  - { to: "https://docs.rs/quinn/0.11.12", rel: reference }
+  - { to: "research/osc7501-capture.md", rel: evidence }
 assignee: seat:01JAX… | name:Nyx Copperwing | none
 role: executor | oracle | creativity  # role header the delegate carries
 allowed_paths: [crates/bbt-core/**, Cargo.lock]
@@ -23,13 +28,13 @@ updated: 2026-10-21T21:40:00Z
 ---
 ```
 
-Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]]` between items. The filename is `<type>s/<date>-<slug>.md`; the id in the frontmatter is the identity, the filename is for humans.
+Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]]` anywhere in frontmatter or body resolve to items in `.bboxy/` by id or slug; plain URLs and repo paths are links too. The terminal indexes both the typed `links` and inline wikilinks into one graph. The filename is `<type>s/<date>-<slug>.md`; the id in the frontmatter is the identity, the filename is for humans.
 
 ## What the terminal does with them
 
 | Action | Mechanism |
 |---|---|
-| Index | Watch `.kb/**/*.md`, parse frontmatter, build the graph (parent, depends_on). Invalid frontmatter = shown as broken, never silently skipped. |
+| Index | Watch `.bboxy/**/*.md`, parse frontmatter, build the graph (parent, depends_on). Invalid frontmatter = shown as broken, never silently skipped. |
 | Delegate | `task_delegate{task: path}` reads the file, sets `assignee`, `status: claimed`, `updated`, commits nothing (the file change is the operator's or the seat's to commit), injects the role header plus the body into the seat. |
 | Track | Seat events move `status` (`running` on first activity, `reported` when the seat's report lands on the stream with the task id); the Oracle or operator sets `accepted`/`rejected` via `task_accept`. Every transition rewrites the frontmatter only. |
 | Show | A task is a row under its seat in the sidebar with its status glyph; an epic is a collapsible group in the stream dock with its specs and tasks; `blocked` shows what it waits on. |
@@ -43,7 +48,7 @@ Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]
 
 ## Dogfood
 
-This repository's `.kb/tasks/*.md` are converted to this frontmatter on the next touch of each file; `.kb/specs/*.md` get `type: spec`; `.kb/plan.md` workstreams become epics. `.kb/graph.md` stays hand-maintained until the index exists.
+This repository's `.kb/` becomes `.bboxy/` in one move (git mv, wikilinks unchanged); tasks get the frontmatter on the next touch of each file, specs get `type: spec`, research and runs get `type: note`, `plan.md` workstreams become epics with `children`. `graph.md` stays hand-maintained until the index exists.
 
 ## Gaps
 
