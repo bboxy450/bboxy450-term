@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 13,
+  "version": 14,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -374,6 +374,24 @@
       "source": "work-items.md item type invariant; typed links violates / constrains",
       "anatomy": "a small outlined chip \"inv · <title>\" on spec and task lines (constrains) and a red one on bug lines (violates); in the graph tree an invariant is its own line with the items it binds beneath",
       "status": "drawn, not built"
+    },
+    "artifact_row": {
+      "purpose": "a provenance leaf under its task",
+      "source": "work-items.md Artifacts (type artifact: kind, ref, digest, produced_by, for, derived_from)",
+      "anatomy": "indented under the task row: kind glyph (▤ markdown ⎇ pr ▣ binary ▢ file ▧ image ◆ release) · KIND chip · ref in mono · short digest · responsible-seat chip",
+      "status": "built"
+    },
+    "responsible_chip": {
+      "purpose": "which seat claimed responsibility for an artifact",
+      "source": "artifact_claim",
+      "anatomy": "outlined pill with the seat's first name in the seat colour; absent on unclaimed (auto-created) records",
+      "status": "built"
+    },
+    "touched_count": {
+      "purpose": "how many artifacts a seat has touched",
+      "source": "terminal-detected artifact events attributed to the seat",
+      "anatomy": "small archive glyph + count badge on the seat row, before the unread dot",
+      "status": "built"
     }
   },
   "modules": {
@@ -648,11 +666,12 @@
         "⌘G",
         "Graph row in the launcher (aliases who, status, board)"
       ],
-      "anatomy": "Agents card: seat (tile · name in seat colour · state glyph) · role · now (live task with its status glyph, or the seat state and waiting kind) · blocked on; Graph card: epics with done/total, then ├─ └─ branches of specs and tasks with status glyph, kind chip, title, assignee, and ◀ waits on X for dependencies",
+      "anatomy": "Agents card: seat (tile · name in seat colour · state glyph) · role · now (live task with its status glyph, or the seat state and waiting kind) · blocked on; Graph card: epics with done/total, then ├─ └─ branches of specs and tasks with status glyph, kind chip, title, assignee, and ◀ waits on X for dependencies; Artifact history card: last twelve events newest first (time · seat in its colour · created / modified / claimed · kind glyph · ref · grade reported | inferred)",
       "rules": [
         "read-only projection of the same data the dock and the rows use",
         "the Oracle's graph.md is the hand-kept version of this; the terminal generates it from frontmatter",
-        "rows link to seats (click focuses later)"
+        "rows link to seats (click focuses later)",
+        "artifacts hang under their task in the tree as ├─ leaves with the responsible chip"
       ],
       "status": "built"
     }

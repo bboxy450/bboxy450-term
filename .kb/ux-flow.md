@@ -186,3 +186,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### The graph is a tab
 **Rule:** ⌘G or Graph in the launcher opens a Graph tab: Agents (seat · role · now · blocked on) and the work tree (epics → specs and tasks with status, assignee, dependencies), generated from the same data as the rows and the dock. **Why:** the operator loves the Oracle's graph.md; the terminal should draw it live. Bug rows and invariant chips drawn for the next pass. **Where:** `graphPage()` in `components.js`, `openGraph` in `showcase.js`; design system v13.
+
+### Artifacts are leaves, seats carry their count, the graph keeps the history
+**Rule:** an artifact is a row under its task (kind glyph, ref, digest, responsible-seat chip from artifact_claim); a seat row shows "N artifacts" touched; the Graph tab has an artifact history card (time · seat · event · ref · grade) and artifacts as leaves in the tree. **Why:** operator decisions on first-class artifacts and terminal-detected artifact events. **Where:** `artifactRow`, `touched` in `seatRow`, history in `graphPage`; design system v14.
