@@ -105,7 +105,10 @@ border_active = 2
 [glow]
 # Border glow spec (.kb/ux-pick.md): particle glow in the seat colour, four readings, one shader.
 pane_radius = 14              # px, blur radius at the pane border
-row_radius = 5                # px, same glow on the sidebar row, reduced
+row_radius = 4                # px, sidebar row glow radius; rows sit 20 px apart so halos must not meet
+row_alpha = 0.3               # sidebar rows get this fraction of the pane glow alpha (operator: colours mix into dirt)
+row_particles_active = 4      # particles on an active sidebar row; other states get none
+row_idle = false              # idle rows do not glow at all in the sidebar
 idle_alpha = 0.12             # idle / done: very mild, static
 active_alpha_min = 0.25       # active: pulsates between min and max
 active_alpha_max = 0.70

@@ -6,7 +6,8 @@
 | B | [[2026-10-21-agent-messaging-research]] embedded agent messaging | Nyx Copperwing <EXECUTOR> | DONE, accepted |
 | C | UX divergence → `research/ux-divergence.md` | Lumen Foxglove <CREATIVITY> | RUNNING |
 | D | [[2026-10-21-harness-touchpoints-research]] harness touch points | Nyx DONE, accepted; Oracle subagent still running | CONVERGE when both land |
-| E | [[2026-10-21-cloud-and-mosh-research]] mux daemon, mosh, cloud | both DONE, accepted | CONVERGE → Nyx writes `specs/mux-daemon.md` |
+| E | [[2026-10-21-cloud-and-mosh-research]] mux daemon, mosh, cloud | DONE; `specs/mux-daemon.md` accepted | DONE |
+| M | [[2026-10-21-mcp-control-plane]] MCP control plane, it2-modelled | Nyx Copperwing <EXECUTOR> | ASSIGNED |
 | F | [[2026-10-21-transport-identity-research]] iroh vs quinn, Apple/Google sign-in | Oracle subagent DONE; Nyx cross-checked in B | CLOSED |
 | G | usage limits via tachyon → `research/usage-limits-tachyon.md` | Oracle subagent | DONE (future item) |
 | T | [[2026-10-21-text-rendering-research]] ghostty text rendering, our wgpu equivalent | Oracle subagent + open Executor | RUNNING (redundant open) |
