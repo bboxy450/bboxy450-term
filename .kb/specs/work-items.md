@@ -81,7 +81,18 @@ All from the same index; none hand-maintained once the index exists.
 
 Harnesses produce **artifacts**. A markdown in `.bboxy/` is an artifact. A PR is an artifact. A binary, a release, a file, an image, a rendered PNG from the lab are artifacts. An artifact has an id (ULID), a `kind` (markdown, pr, binary, file, image, release, other), a `ref` (path, URL, digest, PR number), a `digest` where content-addressable, and a **responsible seat**.
 
-A harness claims responsibility over MCP: `artifact_claim{op_id, kind, ref, digest?, task?}` = "this is my artifact, I am responsible for it". The mux records the artifact in `.bboxy/artifacts/<id>.md` (frontmatter `type: artifact`, `kind`, `ref`, `digest`, `produced_by: seat:<id>`, `for: [[task]]`, `derived_from: [[…]]`) and links it from the task. `artifact_release{op_id, artifact_id, to: seat}` hands responsibility over; `artifact_list` and `artifact_get` read. Responsibility is one seat at a time, like tasks. The seat roster plus the artifact record is the provenance leaf: who, under which key, for which task, from what.
+A harness claims responsibility over MCP: `artifact_claim{op_id, kind, ref, digest?, task?}` = "this is my artifact, I am responsible for it". The mux records the artifact in `.bboxy/artifacts/<id>.md` (frontmatter `type: artifact`, `kind`, `ref`, `digest`, `produced_by: seat:<id>`, `for: [[task]]`, `derived_from: [[…]]`) and links it from the task. `artifact_release{op_id, artifact_id, to: seat}` hands responsibility over; `artifact_list` and `artifact_get` read. Responsibility is one seat at a time, like tasks.
+
+**Detection, not only declaration (operator, 2026-10-21).** The terminal detects artifact creation and modification itself and keeps the history, whether or not the harness claimed anything:
+
+| Source | What is detected | Attribution |
+|---|---|---|
+| Filesystem watch on the seat's cwd and worktree (FSEvents on macOS, inotify on Linux) | file created, modified, deleted, renamed; digest before/after | the seat whose PTY was active in that worktree in the window; `inferred` grade |
+| Harness tool events (hooks `PostToolUse` Write/Edit, Codex `turn/*` with file diffs, OSC 7502) | exact path and the tool that wrote it | the seat, `reported` grade |
+| git in the worktree | commits, branches, tags, their trailers | the seat named in `Bboxy-Seat`, else the seat active at commit time |
+| `gh` / provider APIs (later) | PR opened, updated, merged, release published | the seat that ran the command, else `artifact_claim` |
+
+Each detection appends an **artifact event** `{artifact_id, seat, kind: created|modified|deleted|renamed|committed|published, digest, ts, grade, source}` to the artifact's markdown as a `history:` list in frontmatter (bounded, newest N inline, the rest in `.bboxy/log/`). An unclaimed detected artifact gets an auto-created record with `produced_by` = the inferred seat and `claimed: false`; `artifact_claim` later flips it to `claimed: true` and upgrades the grade. The sidebar shows "N artifacts touched" on a seat row and the Graph tab shows the artifact's history. Grade rules are the same as seat state: reported beats inferred; nothing is shown as certain that was only inferred. The seat roster plus the artifact record is the provenance leaf: who, under which key, for which task, from what.
 
 ## Provenance (operator, 2026-10-21: "provenance in that system is very important")
 
