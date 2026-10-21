@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 11,
+  "version": 12,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -592,7 +592,10 @@
         "Google is a link for cloud, drawn as a link, never a sign-in",
         "per-seat commit signing is assumed, not decided: switchable, default off",
         "devices and seats are certified leaf keys, not subkeys",
-        "expired, revoked or forked authority blocks controls and messages on its own axis, apart from seat state"
+        "expired, revoked or forked authority blocks controls and messages on its own axis, apart from seat state",
+        "a revocation certificate revokes, never restores; recovery needs the protected GPG secret backup or an external paperkey plus its matching public certificate, and restores identity only",
+        "attribution proves the signing chain to the pinned primary, never which model authored the content and never a permission to execute it",
+        "authority can be cached as available while the primary is offline; enrollment may stay awaiting the primary signature"
       ],
       "account": "hero: portrait beside the key block; full fingerprint large in mono; ed25519 · signing chip; unlocked · gpg-agent cache; uid line; copy fingerprint; trust path GPG primary → certified device key → certified seat key; primary held by gpg-agent · pinned from your keyring · never exported; device cards are certified leaf keys with revoke (local; peers learn on next contact); enroll card produces a signed request when the primary is elsewhere; Signatures card; Link Google for cloud as a link; paper recovery = the GPG paperkey fallback with the identity-only caption",
       "roles": "per account, assigned per seat in any swarm; built-in oracle / executor / creativity chipped built-in, editable, not deletable; + new role card: name, colour, mark, default system prompt, may-send-to, priority class (oracle | worker) editable on every card with the caption \"changing class re-issues this role's seat grants\"; receivers trust the signed class, never the name",

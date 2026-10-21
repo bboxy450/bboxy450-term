@@ -551,7 +551,7 @@
               trust,
               el('div', { class: 'held' }, el('span', {}, 'primary held by gpg-agent · pinned from your keyring · never exported'), el('button', { class: 'chip cact' }, icon('open'), 'open in gpg')),
               el('div', { class: 'acts' },
-                el('div', { class: 'act' }, btn('Show paper recovery', 'key', 'primary'), el('small', {}, 'restores identity only · seats, history and grants are not recovered')),
+                el('div', { class: 'act' }, btn('Show paper recovery', 'key', 'primary'), el('small', {}, 'restores identity only · needs your GPG backup or paperkey plus the public certificate · seats, history and grants are not recovered')),
                 el('div', { class: 'act' }, btn('Link Google for cloud', 'link', 'link'), el('small', {}, 'binds a provider for cloud seats · the key stays the identity'))))),
           group('Devices · certified leaf keys', 'revoke is local · peers learn on next contact'),
           el('div', { class: 'subkeys' },
