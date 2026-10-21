@@ -40,6 +40,10 @@ name = "bboxy450-term"
 version = "0.0.1"
 
 [[package]]
+name = "bboxybook"
+version = "0.0.1"
+
+[[package]]
 name = "bbt-core"
 version = "0.0.1"
 dependencies = [
@@ -55,10 +59,6 @@ dependencies = [
  "serde_json",
  "unicode-width",
 ]
-
-[[package]]
-name = "bbt-lab"
-version = "0.0.1"
 
 [[package]]
 name = "bbt-mux"
