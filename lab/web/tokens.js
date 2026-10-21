@@ -87,6 +87,9 @@ window.TOKENS = {
     "waiting_alpha_max": 0.8,
     "waiting_alpha_min": 0.25
   },
+  "layout": {
+    "gutter": 2
+  },
   "meta": {
     "brand_tilt_deg": -12,
     "version": 1

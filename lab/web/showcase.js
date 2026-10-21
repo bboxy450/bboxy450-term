@@ -6,12 +6,13 @@
   const T = window.TOKENS, G = T.glow, el = Lab.el;
   const q = new URLSearchParams(location.search);
   const SCENE = q.get('scene') === '15' ? 15 : 3;
+  const GUTTER = q.has('gutter') ? Math.max(0, +q.get('gutter')) : T.layout.gutter;
 
   // ---------- theme: auto (prefers-color-scheme) | dark | light ----------
   const mq = matchMedia('(prefers-color-scheme: dark)');
   let themeMode = localStorage.getItem('showcase.theme') || 'auto';
   const theme = () => themeMode === 'auto' ? (mq.matches ? 'dark' : 'light') : themeMode;
-  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = 'comfortable'; Lab.applyTokens(); document.documentElement.style.setProperty('--stage-gap', (SCENE === 15 ? 12 : 28) + 'px'); }
+  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = 'compact'; Lab.applyTokens(); document.documentElement.style.setProperty('--gutter', GUTTER + 'px'); }
   mq.addEventListener('change', () => { if (themeMode === 'auto') { applyTheme(); render(); } });
   applyTheme();
 
@@ -130,7 +131,7 @@
 
   // ---------- WebGL2 ----------
   const cv = document.getElementById('glow');
-  const gl = cv.getContext('webgl2', { antialias: false, alpha: false, premultipliedAlpha: false });
+  const gl = cv.getContext('webgl2', { antialias: false, alpha: true, premultipliedAlpha: true });
   if (!gl) { document.getElementById('hint').textContent = 'WebGL2 unavailable'; render(); return; }
   const MAXR = 40, MAXRIP = 6;
   const vs = `#version 300 es
@@ -198,12 +199,14 @@
         float ring = exp(-pow(dist - rr, 2.0) / (2.0*9.0)) * (1.0 - age/900.0) * 0.9;
         acc += uRipCol[j].rgb * ring; w += ring;
       }
+      // The canvas sits above the DOM (zero layout space): output is premultiplied alpha over whatever is beneath.
       if (uLight > 0.5) {
-        // light ground: additive washes out, so the halo multiplies the background toward the seat colour (darker than bg)
+        // light ground: additive washes out, so the halo darkens toward the seat colour
         vec3 tint = w > 0.001 ? acc / w : vec3(1.0);
-        o = vec4(uBg * mix(vec3(1.0), tint, clamp(w * 1.1, 0.0, 0.8)), 1.0);
+        float a = clamp(w * 1.1, 0.0, 0.8);
+        o = vec4(uBg * tint * a, a);
       } else {
-        o = vec4(uBg + acc, 1.0);
+        o = vec4(acc, clamp(w, 0.0, 1.0));
       }
     }`;
   function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
@@ -242,12 +245,13 @@
     gl.uniform1i(U.uN, n); gl.uniform4fv(U.uRect, rectBuf); gl.uniform4fv(U.uCol, colBuf); gl.uniform4fv(U.uPar, parBuf);
     ripples.forEach((rp, j) => { ripBuf.set([rp.x * dpr, rp.y * dpr, rp.t0, 0], j * 4); ripCol.set([rp.c[0], rp.c[1], rp.c[2], 1], j * 4); });
     gl.uniform1i(U.uNR, ripples.length); gl.uniform4fv(U.uRip, ripBuf); gl.uniform4fv(U.uRipCol, ripCol);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     if (lastNow) { const ft = now - lastNow; ftAcc += ft; ftMax = Math.max(ftMax, ft); } lastNow = now;
     frames++; if (now - fpsT > 1000) { fps = frames; window.__fps = { fps, avgMs: +(ftAcc / frames).toFixed(2), maxMs: +ftMax.toFixed(1), rects: rects.length, scene: SCENE }; frames = 0; ftAcc = 0; ftMax = 0; fpsT = now; hint(); }
     requestAnimationFrame(frame);
   }
-  function hint() { const f = window.__fps || {}; document.getElementById('hint').innerHTML = '<b>' + fps + '</b> fps · ' + (f.avgMs || '–') + ' ms avg · ' + (f.maxMs || '–') + ' ms max · ' + rects.length + ' rects · scene ' + SCENE + ' · hover or click a seat · <a href="?scene=' + (SCENE === 15 ? 3 : 15) + '">scene ' + (SCENE === 15 ? 3 : 15) + '</a>'; }
+  function hint() { const f = window.__fps || {}; document.getElementById('hint').innerHTML = '<b>' + fps + '</b> fps · ' + (f.avgMs || '–') + ' ms avg · ' + (f.maxMs || '–') + ' ms max · ' + rects.length + ' rects · scene ' + SCENE + ' · gutter ' + GUTTER + ' · <a href="?scene=' + SCENE + '&gutter=2">2</a> <a href="?scene=' + SCENE + '&gutter=4">4</a> · <a href="?scene=' + (SCENE === 15 ? 3 : 15) + '&gutter=' + GUTTER + '">scene ' + (SCENE === 15 ? 3 : 15) + '</a>'; }
 
   // ---------- life ----------
   const CYCLE = { idle: 'active', active: 'waiting', waiting: 'active', errored: 'idle' };

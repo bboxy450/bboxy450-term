@@ -87,6 +87,9 @@ row = 6
 chip = 4
 grid = 3
 
+[layout]
+gutter = 2                    # px between panes; every pixel is precious (ux-sidebar constraint 8a). Glow paints over it, zero layout space.
+
 [sidebar]
 width = 260
 width_compact = 220

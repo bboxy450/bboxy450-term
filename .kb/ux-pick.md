@@ -18,6 +18,21 @@ Selected by Vesper Greywind <ORACLE> on 2026-10-21 from [[ux-divergence]] under 
 | Component lab | **Option c, both staged.** Web lab now for shape iteration; Rust `lab` binary on the real renderer once Task A picks the toolkit, then the web lab is archived. **`design/tokens.toml` from day one**, consumed by both. States as one enum in a `ui-model` crate. Screenshot diffs in CI. ASSUMED medium. | §14 |
 | Role / priority in the stream | Not picked yet. Lumen proposes one in the lab's message-row component; Oracle picks there. | §5 |
 
+## Visual signal semantics (DECIDED 2026-10-21, after operator: "too many blinky circles, inconsistent")
+
+One signal per meaning. One meaning per signal. Nothing animates without a cause the operator produced or a state change in a seat.
+
+| Signal | Means | Fires when | Never fires on |
+|---|---|---|---|
+| **Locate ripple** (ring from row ↔ pane corner, seat colour) | "this row is that pane" | an explicit focus change by click or keyboard, both directions; clicking a row whose seat is already visible | mouse dwell, timers, message arrival, state change |
+| **Border glow** (particles, seat colour) | the seat's **state** | continuously: idle mild static, active breathing, waiting amber pulse, errored red static | anything else |
+| **Focus brightness** (glow and strip brighter) | "this seat has keyboard focus" | focus is here | hover |
+| **State glyph** (● ○ ◐ ✕) | the seat's state | state change; waiting pulses with the glow | anything else |
+| **Unread dot** on a row (role colour) | "a message for this seat is unread" | message arrival | anything else, no ripple for messages |
+| **Hover** | "the pointer is here" | pointer over row or pane: subtle highlight only | no glow change, no ripple |
+
+Mouse-dwell focus stays, but it only changes focus brightness; the ripple needs a click or a key. Demo pages do not randomise states on a timer; a demo exposes keys (1 idle, 2 active, 3 waiting, 4 errored on the focused seat; M = message arrives) so one thing changes at a time and the operator sees cause and effect.
+
 ## Row-pane link ripple (DECIDED, operator loved it 2026-10-21)
 
 Clicking a pane fires a ripple on its sidebar row; clicking a row fires it on the pane corner. The sidebar scrolls the row into view if needed. The ripple is the map legend: it answers "where is this seat in the list" and "which pane is this row" without reading. Keep it in the real build as a shader effect tied to focus change, both directions, every time.
