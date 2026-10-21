@@ -79,6 +79,8 @@ Supervisor sequences PTY reads, resize events and process boundaries into one pe
 
 Supervisor retains input IDs and receipts across logic restart. Retry/query the same ID, not a fresh paste. A successful write proves bytes crossed the PTY boundary; it does not prove harness consumption, submission or command completion. Storage bookkeeping and a PTY write are not one atomic transaction. If a supervisor crash or partial write leaves the outcome uncertain, preserve that uncertainty and do not automatically reissue it.
 
+Lease replacement does not restart an in-flight write. Keep per-seat write exclusion until its receipt is completed or explicitly unknown, then admit another writer. A stale lease cannot submit a second attempt around that boundary.
+
 Native queue/RPC adapters remain preferred under [[harness-touchpoints-exec]]. Generic PTY fallback still requires the current seat/session/process/generation readiness contract and serialized operator/injected input. A status report, quiet screen, packet ack or new logic lease is not composer readiness.
 
 ## Ring records, checkpoints and eviction
@@ -171,6 +173,8 @@ Evidence is in `../research/cloud-and-mosh-exec.md:59` and `:102`, with fixture 
 | Toy append-log kill | One complete fsynced record recovered, 19-byte incomplete tail ignored. Demonstrates framed recovery only; not production ring or power-loss verification. |
 | Payload-ring capacity | Estimated 1.95 GiB for 1000 full 2 MiB rings, or 3.91 GiB for 4 MiB; viewport models, checkpoint/index overhead, queues and harness memory are additional. |
 
+The toy log used CRC32; this spec's CRC32C format and checkpoint publication sequence are unimplemented. The toy result proves only that its framed reader rejected its deliberately incomplete suffix.
+
 Initial ring size/line goals come from [[vision]]'s assumed defaults, not a measured final capacity policy. Byte retention and checkpoint/index budgets must be configured together; a nominal byte cap must include a defined bound on large records and checkpoint storage. Schedule only subscribed frame work and coalesce state; defer frame-rate/performance tuning under the operator's working rules.
 
 ## Acceptance and remaining decisions
@@ -185,6 +189,8 @@ These are implementation acceptance criteria, not tests passed by this document:
 - Retry a completed input ID after logic restart and simulate an ambiguous partial write/owner failure: no duplicate PTY submission, explicit unknown outcomes, no automatic Enter replay.
 - Kill the supervisor: supported harnesses resume with the same durable seat/session mapping and a new process generation; unsupported/missing mappings report their limitation honestly.
 - Verify owned remote bootstrap retries, SSH fallback and permission checks; phantom presence never yields screen access, a writer lease or a spawned pane.
+
+Document verification on 2026-10-21: `ls .kb/specs/mux-daemon.md` and section count returned 0 with ten level-two sections; structure/source-pointer/whitespace validation returned 0; `git diff --check` returned 0. These check the document, not the future implementation. No runtime tests were added or run for this convergence.
 
 **Gap:** terminal-fork checkpoint serialization/version migration and semantic index representation must be implemented and validated; no existing viewport-only serializer is assumed.
 
