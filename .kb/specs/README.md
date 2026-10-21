@@ -92,3 +92,12 @@ Apply on next touch of each file; no separate pass unless noted.
 | S14 | No spool for off-PTY events. On reattach the adapter takes a snapshot from its channel (sessions file, app-server status, extension state query) and revalidates. |
 | S15 | The Oracle token bucket is a cap, not a progress proof. Add a weighted fair queue: at least one worker dispatch per four Oracle dispatches when both are pending. |
 | S16 | Add `seat_interrupt` to the catalogue, Oracle only, mapping to native Now/steer, with `op_id` and audit. 26 tools. |
+
+## Oracle decisions on the UI proposals Nyx flagged (2026-10-21)
+
+| Proposal | Decision |
+|---|---|
+| Audit lines in the swarm stream | Yes. The swarm stream shows audit entries from the durable audit log to readers authorized for that swarm; it is a projection, not a second store. mcp-control-plane: add `audit_read` scope = swarm members. |
+| Listener count on seat rows | Yes, as telemetry from the socket broker: count of attached external clients per seat, no identities shown. |
+| Interrupt and restarted signal types | Yes. `interrupt_sent` (one-shot, from `seat_interrupt`) and `restarted` (one-shot, on process generation change) join the signal table in ux-prototype; both are notices, not states. |
+| First-run module | Must match identity.md: select and pin an existing GPG primary; never create a root or show 24 words as the root. The paper key is recovery material for the leaf chain only. |
