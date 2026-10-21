@@ -661,6 +661,8 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .picker .foot .pill .sep { width: 1px; height: 12px; background: var(--line); }
 
 /* mute: a muted seat is 1:1 with the operator; its row stays, marked; its strip shows the toggle */
+.seat-row .held { font-family: var(--font-mono); font-size: 9.5px; line-height: 14px; padding: 0 5px; border-radius: 5px; white-space: nowrap; color: var(--c-waiting); background: color-mix(in srgb, var(--c-waiting) 14%, transparent); }
+.seat-row .held.blocked { color: var(--fg-dim); background: transparent; border: 1px dashed var(--line); line-height: 12px; }
 .seat-row .mutemark { --icon: 11px; color: var(--c-waiting); display: inline-flex; flex: none; }
 .seat-row.muted .name { opacity: .7; }
 .strip .mute { --icon: 12px; display: inline-flex; opacity: .55; cursor: pointer; }

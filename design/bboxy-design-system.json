@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 19,
+  "version": 20,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -214,7 +214,7 @@
     "held_count": {
       "means": "swarm traffic held while muted",
       "drawing": "muted row shows a small \"held N\" badge; on unmute only still-authorised eligible items release, the rest stay with their reason and original ids, so the badge may not reach zero at once",
-      "status": "drawn, not built"
+      "status": "built: \"held N\" pill in the seat row's right cluster, amber while muted (tooltip: in/out counts, eligible items release on unmute); after unmute only blocked items stay, as a dashed dim pill whose tooltip lists original id and reason; the unmute stream line says released N, M still held; seat-row.html?state=muted · held"
     },
     "restarted_notice": {
       "means": "the seat process generation changed",

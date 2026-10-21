@@ -169,7 +169,10 @@
   function toggleMute(seat) {
     seat.muted = !seat.muted;
     const t = tabOf(seat.key); const sp = t ? t.sp : space();
-    sp.stream.push({ presence: true, text: seat.name + (seat.muted ? ' muted · 1:1 with the operator' : ' unmuted · back in the swarm'), time: new Date().toTimeString().slice(0, 5) });
+    // unmute commits its notice first, then releases only eligible held work; blocked items stay with reason and original id
+    let rel = '';
+    if (!seat.muted && (seat.held || []).length) { const before = seat.held.length; seat.held = seat.held.filter(h => h.blocked); const n = before - seat.held.length; rel = ' · released ' + n + (seat.held.length ? ', ' + seat.held.length + ' still held' : ''); if (n) { seat.unread = (seat.unread || 0) + n; seat.unreadRole = seat.unreadRole || 'executor'; } }
+    sp.stream.push({ presence: true, text: seat.name + (seat.muted ? ' muted · 1:1 with the operator' : ' unmuted · back in the swarm' + rel), time: new Date().toTimeString().slice(0, 5) });
     render();
   }
   addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f) toggleMute(f); } });
@@ -635,6 +638,8 @@
     else if (e.key === 'm' || e.key === 'M') {
       // a message arrives for the next seat in order, from a sender role that cycles; unread dot only, no ripple
       const s = seats[msgN % seats.length], role = ['executor', 'oracle', 'creativity'][msgN % 3]; msgN++;
+      // a muted seat holds swarm traffic instead (demo: every fourth held item is outgoing work its grant no longer permits)
+      if (s.muted) { s.held = s.held || []; const k = s.held.length; s.held.push({ id: 'msg-' + C.hash32(s.key + k).toString(16).slice(0, 6), dir: k % 4 === 3 ? 'out' : 'in', blocked: k % 4 === 3 ? 'sent under an old grant epoch · the current grant no longer permits the swarm' : null }); render(); return; }
       s.unread = (s.unread || 0) + 1;
       if (!s.unreadRole || ROLE_RANK[role] < ROLE_RANK[s.unreadRole]) s.unreadRole = role;
       render();

@@ -147,7 +147,7 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 1 | state grade | harness-adapters §3 | BUILT: reported solid, shim ringed, inferred dashed at 72%; inferred glows at half; grade from the harness record's state source |
 | 2 | waiting kinds | OSC 7501 | BUILT: ◐ with a tiny kind mark (⚿ permission, ? question, ⚷ auth); the strip title spells it |
 | 3 | delivery evidence | messaging | BUILT: tick ladder after the time on message rows (· ✓ ✓✓ ✓✓ ✓✓✓); queued dims its second tick; acknowledged in accent; unknown is ✓ then a dashed hollow ring, never red, never a failure |
-| 4 | held count | mute | muted row shows "held N" |
+| 4 | held count | mute | BUILT: muted row shows an amber "held N"; unmute releases only eligible items and the stream line counts them; blocked items stay as a dashed "held N" with id and reason |
 | 5 | reconnect | mux state streams | stale frame dimmed under a "reconnecting…" pill; "restarted" chip on generation change |
 | 6 | scrollback gap | ring eviction | hairline with a caption from the supplied retained range; never an invented count |
 | 7 | pending row | MCP mutation status | dashed row with spinner until applied; rejected shows the reason |

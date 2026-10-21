@@ -156,6 +156,14 @@
     if (seat.muted) { row.classList.add('muted'); row.append(el('span', { class: 'mutemark', title: 'muted: 1:1 with the operator' }, harnessIcon('muted'))); }
     row.append(el('span', { class: 'title' }, seat.title || ''));
     const right = el('span', { class: 'right' });
+    // held work (messaging.md swarm mute): muted → everything waits; after unmute only items still blocked by current authority stay, with reason and original id
+    const held = seat.held || [];
+    if (held.length) {
+      const nIn = held.filter(h => h.dir === 'in').length, blocked = held.filter(h => h.blocked);
+      const tip = seat.muted ? held.length + ' held while muted · ' + nIn + ' in, ' + (held.length - nIn) + ' out · eligible items release on unmute'
+        : blocked.map(h => h.id + ' · ' + h.blocked).join('\n');
+      right.append(el('span', { class: 'held' + (seat.muted ? '' : ' blocked'), title: tip }, 'held ' + held.length));
+    }
     const touched = seat.touched || 0;
     if (touched) right.append(el('span', { class: 'touched', title: touched + ' artifact' + (touched === 1 ? '' : 's') + ' touched by this seat' }, harnessIcon('archive'), String(touched)));
     const unread = opts.unread != null ? opts.unread : seat.unread, unreadRole = opts.unreadRole || seat.unreadRole || 'executor';
