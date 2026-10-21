@@ -12,7 +12,7 @@ Index: [[README]] · tasks in `tasks/` · research in `research/` · specs in `s
 
 | Term | Meaning |
 |---|---|
-| **seat** | One pane holding one harness session (or a plain zsh). Has an id, a name, a harness, a role, a state, a key. |
+| **seat** | One pane holding one harness session (or a plain zsh). Has an id, a name, a harness, a role, a state, a key, and a **where** (local, ssh host, cloud host; from the lab 2026-10-21, drawn as a where-mark before the harness tile). |
 | **swarm** | The sidebar block and the unit of everything: a group of tabs, the seats under one Oracle, its own stream and panes. DECIDED 2026-10-21 by the operator in the lab: "swarm" replaces both "space" and "cohort". Specs that say cohort mean swarm; rename on next touch. |
 | **tab** | A member of a space. A tab holds one seat or a split tree of seats. |
 | **split** | Vertical or horizontal division of a tab into seats. Binary tree. |

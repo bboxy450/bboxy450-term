@@ -1,0 +1,103 @@
+{
+  "agent": "claude",
+  "start_utc": "2026-10-21T20:51:50Z",
+  "duration_ms": 120213.914,
+  "pty_columns": 120,
+  "pty_rows": 36,
+  "term": "xterm-256color",
+  "term_program": "bboxy450-term",
+  "probe_echo_hex": "1b5d373530313b3f1b5c",
+  "argv": [
+    "/opt/homebrew/bin/claude",
+    "This is the operator-authorized OSC 7501 live-wire experiment, not implementation work. Use the Agent tool exactly once with subagent_type wire_probe, description OSC7501 child fixture, prompt 'Reply exactly CAPTURE_CHILD_DONE. Use no tools.', and run_in_background false. Wait for that child, then reply exactly CAPTURE_PARENT_DONE. Do not read files, run commands, edit anything, or send messages. One child only.",
+    "--tools",
+    "Agent",
+    "--allowedTools",
+    "Agent",
+    "--agents",
+    "{\"wire_probe\": {\"description\": \"Protocol-capture fixture child; no implementation or tools.\", \"prompt\": \"You are a fixture subagent in an operator-authorized OSC capture. Reply exactly CAPTURE_CHILD_DONE. Do not use tools, read files, write anything or send messages.\", \"tools\": []}}",
+    "--setting-sources",
+    "",
+    "--settings",
+    "{\"disableAllHooks\": true}",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\": {}}",
+    "--disable-slash-commands",
+    "--no-chrome"
+  ],
+  "records": [
+    {
+      "direction": "harness_to_terminal",
+      "t_ms": 541.568,
+      "offset": 0,
+      "length": 9
+    },
+    {
+      "direction": "harness_to_terminal",
+      "t_ms": 1093.908,
+      "offset": 9,
+      "length": 34
+    },
+    {
+      "direction": "harness_to_terminal",
+      "t_ms": 4350.55,
+      "offset": 43,
+      "length": 70
+    },
+    {
+      "direction": "harness_to_terminal",
+      "t_ms": 4350.624,
+      "offset": 113,
+      "length": 93
+    },
+    {
+      "direction": "harness_to_terminal",
+      "t_ms": 6792.944,
+      "offset": 206,
+      "length": 40
+    },
+    {
+      "direction": "harness_to_terminal",
+      "t_ms": 120039.005,
+      "offset": 246,
+      "length": 19
+    },
+    {
+      "direction": "harness_to_terminal",
+      "t_ms": 120043.377,
+      "offset": 265,
+      "length": 19
+    },
+    {
+      "direction": "harness_to_terminal",
+      "t_ms": 120044.596,
+      "offset": 284,
+      "length": 19
+    }
+  ],
+  "events": [
+    {
+      "event": "probe_echo",
+      "t_ms": 541.579,
+      "hex": "1b5d373530313b3f1b5c"
+    },
+    {
+      "event": "capture_deadline",
+      "t_ms": 120036.056
+    }
+  ],
+  "probe_count": 1,
+  "report_count": 7,
+  "task_ids": [
+    "a757b93c3d3a12516"
+  ],
+  "last_main_state": "clear",
+  "observed_working": true,
+  "pty_bytes_read_and_discarded_except_frames": 8954,
+  "retained_bytes": 303,
+  "sha256": "9bb03e9f070fd7108b402b4ac10ed10ed726c356ce97fa27c211478c91083d04",
+  "exit_code": 143,
+  "other_osc_counts": {},
+  "terminal_reply_bytes": 29
+}

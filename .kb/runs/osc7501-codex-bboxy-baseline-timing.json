@@ -1,0 +1,39 @@
+{
+  "agent": "codex",
+  "start_utc": "2026-10-21T20:54:36Z",
+  "duration_ms": 30015.816,
+  "pty_columns": 120,
+  "pty_rows": 36,
+  "term": "xterm-256color",
+  "term_program": "bboxy450-term",
+  "probe_echo_hex": "1b5d373530313b3f1b5c",
+  "argv": [
+    "/opt/homebrew/bin/codex",
+    "--no-alt-screen",
+    "--no-daemon",
+    "--sandbox",
+    "read-only",
+    "--ask-for-approval",
+    "never",
+    "This is an operator-authorized terminal-protocol fixture. Do not use tools, read files, send messages or modify anything. Think briefly, then reply exactly CAPTURE_CODEX_DONE."
+  ],
+  "records": [],
+  "events": [
+    {
+      "event": "capture_deadline",
+      "t_ms": 30009.0
+    }
+  ],
+  "probe_count": 0,
+  "report_count": 0,
+  "task_ids": [],
+  "last_main_state": null,
+  "observed_working": false,
+  "pty_bytes_read_and_discarded_except_frames": 1858,
+  "retained_bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "exit_code": -15,
+  "other_osc_counts": {},
+  "terminal_reply_bytes": 68,
+  "diagnostic_flags": []
+}
