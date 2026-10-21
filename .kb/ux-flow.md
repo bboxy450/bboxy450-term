@@ -153,3 +153,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Arrows walk the panes
 **Rule:** arrow keys move focus to the nearest pane in that direction, chosen by alignment first and distance second; ⌘⌥ arrows while a field has focus (iTerm), plain arrows otherwise. Keyboard moves locate on both sides. **Where:** `neighbour()` in `showcase.js`.
+
+### Identity is the GPG key
+**Rule:** the operator's existing Ed25519 GPG key is the identity: fingerprint and uid are the hero of Account, devices are subkeys with revoke, seats sign under the roster, commits and messages are signed, Google is a secondary link for cloud. **Why:** the operator loves identity based on the GPG key; lean in. **Where:** Account hero and Signatures card in `settingsPage()` (designer pass); identity spec alignment requested from the Oracle.
