@@ -122,7 +122,8 @@
   let hoverT = null, lastKey = 0, lastMove = 0;
   addEventListener('keydown', () => { lastKey = performance.now(); });
   addEventListener('pointermove', () => { lastMove = performance.now(); }, { passive: true });
-  function armHover(key) { disarmHover(); hoverT = setTimeout(() => { if (performance.now() - lastKey > 1000 && performance.now() - lastMove < 2000) setFocus(key); }, 150);  // no locate: dwell only brightens }
+  // Dwell passes no locate: it only moves focus brightness.
+  function armHover(key) { disarmHover(); hoverT = setTimeout(() => { if (performance.now() - lastKey > 1000 && performance.now() - lastMove < 2000) setFocus(key); }, 150); }
   function disarmHover() { if (hoverT) { clearTimeout(hoverT); hoverT = null; } }
   // Rect measurement happens once per render and on resize, never per frame: no layout thrash.
   function measure() {
