@@ -309,37 +309,37 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .tab-row.participants { color: var(--fg-dim); font-size: var(--font-small); letter-spacing: .04em; margin-top: 4px; }
 .tab-row.participants:hover { background: transparent; }
 
-/* ---------- finish: flush body, gloss bands, hairline gaps (Range Rover 2023 rear, operator 2026-10-21) ----------
-   No left bars, no chevrons. Sections are thin gloss-black bands with wide-tracked small caps set into the body.
-   Rows separate by hairline panel gaps. The seat colour appears only as a lit hairline, like a hidden tail light. */
-.space { background: transparent; border: 0; border-left: 0; border-radius: 0; margin: 0 0 var(--gap); overflow: visible; }
-.space-head {
-  height: var(--strip-h); padding: 0 var(--pad-x); gap: 10px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--navy) 92%, #fff) 0%, var(--navy) 55%, color-mix(in srgb, var(--navy) 85%, #000) 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.35);
-  border-radius: 3px; color: color-mix(in srgb, #fff 72%, var(--navy));
-  font-size: 10px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase;
-  position: relative;
+/* ---------- finish: the block is the car (Range Rover 2023 rear, operator 2026-10-21) ----------
+   A space is a rounded body. The dark gloss wordmark band is set into the top. Rows sit on the body with no
+   hairlines. The bottom is the bumper: a dark strip carrying the tail light, a thin line in the space colour. */
+.space {
+  background: var(--surface); border: 0; border-radius: 11px; margin: 0 0 var(--gap); overflow: hidden; position: relative;
+  padding: 5px 5px 0; border-bottom: 6px solid var(--navy);
 }
-.space-head:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--navy) 86%, #fff) 0%, var(--navy) 55%, color-mix(in srgb, var(--navy) 85%, #000) 100%); }
-.space-head::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 1px; background: var(--space); opacity: .75; }  /* the copper line */
+.space::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 2px; height: 2px; border-radius: 1px; background: var(--space); box-shadow: 0 0 6px color-mix(in srgb, var(--space) 70%, transparent); }  /* tail light */
+.space-head {
+  height: var(--strip-h); padding: 0 var(--pad-x); gap: 10px; margin: 0 0 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--navy) 90%, #fff) 0%, var(--navy) 55%, color-mix(in srgb, var(--navy) 85%, #000) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.35);
+  border-radius: 4px; color: color-mix(in srgb, #fff 70%, var(--navy));
+  font-size: 10px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase;
+}
+.space-head:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--navy) 84%, #fff) 0%, var(--navy) 55%, color-mix(in srgb, var(--navy) 85%, #000) 100%); }
 .space-head .caret { display: none; }
 .space-head .count { color: color-mix(in srgb, #fff 45%, var(--navy)); letter-spacing: 0; font-size: 10px; }
 .space-head .roll .glyph { --glyph: 9px; }
 .space-head .badge { height: 14px; line-height: 14px; min-width: 14px; font-size: 9px; }
-.space-body { padding: 2px 0 0; }
-.seat-row, .tab-row { border-radius: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
-.tab-body .seat-row:last-child, .space-body > :last-child .seat-row:last-child { border-bottom-color: transparent; }
-.seat-row.focused { --inset: 0 0 0 transparent; background: linear-gradient(180deg, color-mix(in srgb, var(--surface-2) 80%, #fff 0%) 0%, var(--surface-2) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
-.seat-row.focused::after { content: ""; position: absolute; left: var(--pad-x); right: var(--pad-x); bottom: -1px; height: 1px; background: var(--seat); }  /* lit line under the focused seat */
+.space-body { padding: 0 0 4px; }
+.seat-row, .tab-row { border-radius: 4px; border-bottom: 0; }
+.seat-row.focused { --inset: 0 0 0 transparent; background: color-mix(in srgb, var(--surface-2) 85%, transparent); box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
 .tab-row .caret { display: none; }
 .tab-row .tname { font-size: var(--font-small); letter-spacing: .04em; }
-.tab-row.participants { text-transform: uppercase; letter-spacing: .18em; font-size: 9px; border-bottom: 0; }
+.tab-row.participants { text-transform: uppercase; letter-spacing: .18em; font-size: 9px; }
 .sidebar .sb-top { height: var(--strip-h); padding: 0 10px; letter-spacing: .08em; }
 .sidebar .sb-foot {
   height: var(--strip-h); padding: 0 10px; border-top: 0;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--navy) 92%, #fff) 0%, var(--navy) 55%, color-mix(in srgb, var(--navy) 85%, #000) 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10); color: color-mix(in srgb, #fff 55%, var(--navy)); letter-spacing: .12em; text-transform: uppercase; font-size: 9px; border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--navy) 90%, #fff) 0%, var(--navy) 55%, color-mix(in srgb, var(--navy) 85%, #000) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10); color: color-mix(in srgb, #fff 55%, var(--navy)); letter-spacing: .12em; text-transform: uppercase; font-size: 9px; border-radius: 4px;
 }
 .sidebar .sb-foot button, .picker .foot button {
   background: linear-gradient(180deg, #1c2140 0%, #0f1226 100%); border: 0; color: color-mix(in srgb, #fff 80%, var(--navy));
