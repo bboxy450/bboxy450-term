@@ -12,9 +12,7 @@
   /* the shader is the only glow here: kill the CSS fake and let the canvas show through */
   .sidebar, .space, .pane, .seat-row { box-shadow: none !important; animation: none !important; }
   .sidebar { background: transparent; border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
-  .space { background: color-mix(in srgb, var(--surface) 55%, transparent); }
   .seat-row.waiting, .seat-row.errored { background: transparent; }
-  .seat-row.focused { background: color-mix(in srgb, var(--surface-2) 80%, transparent); }
   .stage { flex: 1; padding: 0; background: transparent; min-width: 0; }
   .split { display: flex; gap: var(--gutter); min-width: 0; min-height: 0; }
   .split.v { flex-direction: row; } .split.h { flex-direction: column; }
