@@ -316,7 +316,7 @@
     const list = el('div');
     const foot = el('div', { class: 'foot' });
     function nameFor(seed) { return rollName(rng('roll' + seed)); }
-    const matches = () => items0.filter(it => it.label.toLowerCase().startsWith(q.toLowerCase()) || it.id.startsWith(q.toLowerCase()));
+    const matches = () => { const qq = q.toLowerCase(); return items0.filter(it => !qq || it.label.toLowerCase().startsWith(qq) || it.id.startsWith(qq) || it.label.toLowerCase().split(' ').some(w => w.startsWith(qq)) || (it.sub || '').toLowerCase().includes(qq)); };
     const pick = (it, ev) => { if (it && opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }); };
     function draw() {
       list.innerHTML = '';

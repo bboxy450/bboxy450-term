@@ -114,3 +114,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### ⌘D and ⌘⇧D split like iTerm, then ask which harness
 **Rule:** ⌘D opens the launcher preset to "split right of <focused seat>", ⌘⇧D to "split below"; the placeholder names the placement, ↵ launches the chosen harness there, ⌥↵ opens a tab instead, and the pill shows the preset actions. ⌘T remains "new tab", with ⌘↵ / ⌘⇧↵ as the split variants. **Why:** iTerm muscle memory. **Where:** `openSpotlight(sp, preset)` in `showcase.js`, `actions` in `picker()`.
+
+### ⌘T also goes places
+**Rule:** the ⌘T launcher lists, under "Go to", every seat (name, swarm · title, harness tile) and every swarm (name, seat count, swarm colour tile). Typing filters launchables and destinations together; ↵ on a seat focuses it with the locate signal, ↵ on a swarm opens it and jumps to its first seat. ⌘D / ⌘⇧D presets stay launch-only. **Where:** `openSpotlight` items in `showcase.js`; `matches()` in `picker()` matches label prefix, any word, or the subtitle.

@@ -123,9 +123,16 @@
     sp = sp || space();
     const back = el('div', { class: 'spot-back', onclick: e => { if (e.target === back) closeSpotlight(); } });
     const anchor = focused, anchorSeat = seats.find(x => x.key === anchor);   // ⌘↵ splits right of the focused pane, ⌘⇧↵ below it, ↵ opens a new tab
-    const ph = preset && anchorSeat ? 'split ' + (preset === 'right' ? 'right of ' : 'below ') + anchorSeat.name + ' · pick a harness' : 'launch in ' + sp.name + ' · type to search';
-    const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : undefined;
-    const pk = C.picker({ placeholder: ph, actions, onClose: closeSpotlight, onPick: (it, name, mods) => {
+    const ph = preset && anchorSeat ? 'split ' + (preset === 'right' ? 'right of ' : 'below ') + anchorSeat.name + ' · pick a harness' : 'launch or go to · type to search';
+    const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : [['Launch / go', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']];
+    // ⌘T also goes places: every seat and every swarm is a row; typing filters across launch and go-to
+    const tileOf = h => (C.LAUNCH.find(l => l.harness === h) || {}).tile || '#374151';
+    const goSeats = seats.map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Go to', seat: x }; });
+    const goSwarms = model.spaces.map(x => ({ id: 'swarm:' + x.key, label: x.name, sub: x.tabs.reduce((n, t) => n + t.seats.length, 0) + ' seats', harness: 'sidebarfoxopen', kind: 'Swarm', tile: x.color, section: 'Go to', swarm: x }));
+    const items = preset ? C.LAUNCH : [...C.LAUNCH, ...goSeats, ...goSwarms];
+    const pk = C.picker({ placeholder: ph, actions, items, onClose: closeSpotlight, onPick: (it, name, mods) => {
+      if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
+      if (it.swarm) { closeSpotlight(); jumpSpace(it.swarm); return; }
       const seat = { key: 'n' + Date.now().toString(36), name: it.harness === 'zsh' ? 'zsh' : name, harness: it.harness, role: C.DEFAULT_ROLE[it.harness], title: it.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15 };
       Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
       seats.push(seat); startReplay(seat, seats.length - 1);

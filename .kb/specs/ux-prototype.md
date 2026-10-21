@@ -87,7 +87,7 @@ The ripple says where the thing you did not click is.
 The red dot closes the seat into a 60 s grace state: the pane leaves the split (sibling takes its place), the row becomes a closed strip with undo and countdown, focus moves to the first remaining pane. `undo` or ⌘Z restores it in its exact split position and refocuses it. After the window the seat is gone. No confirm dialog; the undo window is the confirmation. The process keeps running during grace (mux spec).
 
 ### 5.4 Launcher
-"+ new seat" or ⌘T opens a centred Spotlight-style launcher over the blurred window: a large search field, rows grouped under section labels (Harnesses, Shells; later Browser, Remote) each with icon, name and a kind tag, prefix filter, ↑↓ and Enter, Escape or a click outside closes. The footer shows the rolled character name with a reroll and the key hints. Enter launches the seat as a new tab in that swarm, focuses and locates it. Launchables are data rows.
+"+ new seat" or ⌘T opens a centred Spotlight-style launcher over the blurred window: a large search field, rows grouped under section labels (Harnesses, Shells; later Browser, Remote) each with icon, name and a kind tag, prefix filter, ↑↓ and Enter, Escape or a click outside closes. The footer shows the rolled character name with a reroll and the key hints. Enter launches the seat as a new tab in that swarm, focuses and locates it. Launchables are data rows. Under "Go to" the same launcher lists every seat and every swarm: Enter on a seat focuses it (with locate), Enter on a swarm opens it and jumps to its first seat. Typing filters launch and go-to together.
 
 ### 5.5 Splits
 Two ways, same result.
