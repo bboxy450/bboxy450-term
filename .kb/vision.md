@@ -48,6 +48,10 @@ Index: [[README]] · tasks in `tasks/` · research in `research/` · specs in `s
 - **Waking a harness:** `icq` already taps Claude, Codex, pi and omp sockets or channels. Reuse those touch points. **Fallback for any harness: type into its PTY and press Enter.** The terminal owns the PTY, so it must watch for interactive input state before injecting.
 - Every seat gets a generated character name (fantasy, sci-fi, furry pools) and its own key. **Gap:** whether seats sign git commits with their own key, and how that relates to the operator's signing key.
 
+## Seats are sockets (DECIDED by operator, 2026-10-21)
+
+Every seat exposes a socket: a unix socket always, HTTP optionally. Whatever is written to it goes into that seat's harness as input through the adapter and the input guard; whatever the seat emits (state, 7501 reports, hook events, output lines) comes out as an event stream on the same socket. The terminal is event-based end to end, the same way the operator's `kittens` harness is. The point is glue: cron, scripts, other agents, other machines plug into a seat with nothing but a socket path. Research: `research/kittens-events.md` (what kittens does, what we take). Specs: [[mux-daemon]] (the socket is owned by the logic process, bound to seat id and process generation), [[mcp-control-plane]] (MCP is one client of the same event bus, not a separate path).
+
 ## Harness touch points (DECIDED, mechanism found)
 
 Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection: OSC 7501 reports are the primary grade, hooks are the secondary shim grade, PTY cadence is a negative-only check (see [[harness-adapters]] §0 R1). Research: `tasks/2026-10-21-harness-touchpoints-research.md`.
