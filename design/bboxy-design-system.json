@@ -683,7 +683,7 @@
     }
   },
   "interactions": {
-    "focus": "click a row or a pane; Tab / Shift+Tab across panes; pane dwell 150 ms; a seat in another tab or swarm switches the stage; open/shut of swarms is separate",
+    "focus": "click a row or a pane; Tab / Shift+Tab across panes; arrow keys move to the nearest pane in that direction (⌘⌥ arrows while typing, plain arrows otherwise); pane dwell 150 ms; a seat in another tab or swarm switches the stage; open/shut of swarms is separate",
     "locate": "directional: row click → pane ring; pane click → row bounce; keyboard → both; after a stage switch too",
     "split": "launcher ⌘↵ / ⌘⇧↵, ⌘D / ⌘⇧D presets, placements sublist, or drag a row or strip onto a pane half (50/50); dragged seats move",
     "resize": "sidebar edge 160–520 px; any gutter 10–90%",

@@ -150,3 +150,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Settings are a tab, in the same material
 **Rule:** ⌘, or Settings in the launcher opens a settings tab in the current swarm: left nav with search, cards. Account carries sign-in (Google, deferred to cloud), the root key, devices; Cloud carries providers; Machines carries ssh hosts; Roles carry default system prompts and send permissions; Harnesses, Appearance, Shortcuts follow. Read-mostly from config.toml, changed rows dotted with reset. **Why:** the operator asked for settings with login, cloud, ssh machines, roles and their default prompts. **Where:** `settingsPage()` in `components.js`, `openSettings` in `showcase.js`, `.settings` in `lab.css`.
+
+### Arrows walk the panes
+**Rule:** arrow keys move focus to the nearest pane in that direction, chosen by alignment first and distance second; ⌘⌥ arrows while a field has focus (iTerm), plain arrows otherwise. Keyboard moves locate on both sides. **Where:** `neighbour()` in `showcase.js`.

@@ -363,6 +363,28 @@
     if (opts.locate) locate(key, opts.locate);
     if (changed) { main.querySelectorAll('.seat-row[data-key="' + key + '"]').forEach(n => { if (f.unread) { f.unread = 0; render(); } }); }
   }
+  // Arrow keys move focus to the nearest pane in that direction (iTerm: ⌘⌥ arrows; plain arrows too while nothing types).
+  function neighbour(dir) {
+    const me = rects.find(R => R.pane && R.key === focused); if (!me) return null;
+    const cx = me.x + me.w / 2, cy = me.y + me.h / 2; let best = null, bd = Infinity;
+    for (const R of rects) {
+      if (!R.pane || R.key === focused) continue;
+      const x = R.x + R.w / 2, y = R.y + R.h / 2, dx = x - cx, dy = y - cy;
+      const ahead = dir === 'ArrowRight' ? dx > 0 && R.x >= me.x + me.w - 2 : dir === 'ArrowLeft' ? dx < 0 && R.x + R.w <= me.x + 2 : dir === 'ArrowDown' ? dy > 0 && R.y >= me.y + me.h - 2 : dy < 0 && R.y + R.h <= me.y + 2;
+      if (!ahead) continue;
+      const along = Math.abs(dir === 'ArrowRight' || dir === 'ArrowLeft' ? dx : dy), across = Math.abs(dir === 'ArrowRight' || dir === 'ArrowLeft' ? dy : dx);
+      const d = along + across * 2;                       // prefer the pane most in line
+      if (d < bd) { bd = d; best = R.key; }
+    }
+    return best;
+  }
+  addEventListener('keydown', e => {
+    if (!/^Arrow(Left|Right|Up|Down)$/.test(e.key) || spot) return;
+    const typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (typing && !(e.metaKey && e.altKey)) return;
+    const next = neighbour(e.key); if (!next) return;
+    e.preventDefault(); setFocus(next, { locate: 'both' });
+  });
   // Hover focus on panes only (operator): a 150 ms dwell moves focus brightness, no ring; typing blocks it for a second.
   // Sidebar rows never focus on hover: click changes what you see.
   let hoverT = null, lastKey = 0, lastMove = 0;

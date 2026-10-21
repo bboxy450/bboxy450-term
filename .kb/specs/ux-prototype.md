@@ -73,7 +73,7 @@ Focus brightens every state (×1.6). On a light ground the halo multiplies the b
 ### 5.1 Focus
 - Click a row or a pane: focus. If the seat lives in another tab or swarm, the stage switches to it; no block opens or shuts because of it.
 - Hover a pane for 150 ms: focus (brightness only), blocked for one second after typing. Hover a sidebar row: highlight only, never focus.
-- Tab / Shift+Tab: next or previous pane.
+- Tab / Shift+Tab: next or previous pane. Arrow keys: the nearest pane in that direction (⌘⌥ arrows while a field has focus, plain arrows otherwise). Keyboard moves fire locate on both sides.
 - Open/shut of a swarm and focus are two separate actions; neither triggers the other.
 
 ### 5.2 Locate (directional)
