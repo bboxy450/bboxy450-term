@@ -351,7 +351,12 @@
       e.stopPropagation();
     });
     draw();
-    box.append(input, list, foot);
+    const inrow = el('div', { class: 'inrow' }, input);
+    if (opts.preview) {   // split preview: the existing pane and the new one, lit
+      const pv = el('span', { class: 'split-preview ' + opts.preview, title: 'where the new seat lands' }, el('i', { class: 'old' }), el('i', { class: 'new' }));
+      inrow.append(pv);
+    }
+    box.append(inrow, list, foot);
     box.focus = () => input.focus();
     return box;
   }

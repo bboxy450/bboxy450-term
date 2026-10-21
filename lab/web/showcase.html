@@ -95,7 +95,20 @@
   .spot-back { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) var(--back-dim), transparent); backdrop-filter: blur(var(--back-blur)) saturate(1.15); display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; }
   .spot-back .picker { width: min(760px, 92vw); border-radius: var(--r-panel); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: var(--sh-float), 0 0 0 1px var(--hair), inset 0 1px 0 var(--hi); animation: spotIn var(--appear-ms) var(--ease); overflow: hidden; }
   @keyframes spotIn { from { transform: translateY(-8px) scale(.985); opacity: 0; } to { transform: none; opacity: 1; } }
-  .spot-back .picker input { font-size: var(--t-input); padding: 20px 24px 18px; border-bottom: 1px solid var(--hair); font-weight: 400; }
+  .spot-back .picker .inrow { display: flex; align-items: center; border-bottom: 1px solid var(--hair); padding-right: 20px; gap: 12px; }
+  .spot-back .picker input { font-size: var(--t-input); padding: 20px 24px 18px; border-bottom: 0; font-weight: 400; flex: 1; min-width: 0; }
+  /* split preview: two cells, the new one lit and breathing */
+  .split-preview { display: inline-grid; gap: 3px; width: 44px; height: 30px; padding: 3px; border-radius: var(--r-badge); background: var(--badge); flex: none; }
+  .split-preview.right { grid-template-columns: 1fr 1fr; } .split-preview.bottom { grid-template-rows: 1fr 1fr; }
+  .split-preview i { border-radius: 3px; background: color-mix(in srgb, var(--fg) 35%, transparent); display: block; }
+  .split-preview i.new { background: var(--accent); animation: cellBreathe 1.2s ease-in-out infinite; box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent); }
+  @keyframes cellBreathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+  /* the focused pane types: its cursor blinks */
+  .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
+  @keyframes curBlink { 50% { opacity: 0; } }
+  /* while the preset launcher is open the target half of the pane behind it is lit, same tint as drag-to-split */
+  .pane.will-right::after, .pane.will-bottom::after { opacity: 1; background: color-mix(in srgb, var(--accent) 22%, transparent); animation: cellBreathe 1.2s ease-in-out infinite; }
+  .pane.will-right::after { left: 50%; } .pane.will-bottom::after { top: 50%; }
   .spot-back .picker input::placeholder { color: color-mix(in srgb, var(--fg-dim) 80%, transparent); }
   .spot-back .picker .sec { font-size: var(--t-section); font-weight: var(--t-weight_section, 500); letter-spacing: 0; padding: 12px 24px 6px; }
   .spot-back .picker .opt { display: flex; align-items: center; gap: 12px; padding: 8px var(--row-px); margin: 0 var(--row-mx); border-radius: var(--r-row); font-size: var(--t-title); color: var(--fg); }

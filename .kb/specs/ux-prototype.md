@@ -91,7 +91,8 @@ The red dot closes the seat into a 60 s grace state: the pane leaves the split (
 
 ### 5.5 Splits
 Two ways, same result.
-- **Launcher keys**: ⌘T opens the launcher for a new tab; inside it ↵ new tab, ⌘↵ split right of the focused pane, ⌘⇧↵ split below. ⌘D and ⌘⇧D (iTerm) open the launcher already preset to split right or below of the focused seat: the placeholder names the placement, ↵ launches there, ⌥↵ makes a tab instead. The footer pill names the active actions.
+- **Launcher keys**: ⌘T opens the launcher for a new tab; inside it ↵ new tab, ⌘↵ split right of the focused pane, ⌘⇧↵ split below. ⌘D and ⌘⇧D (iTerm) open the launcher already preset to split right or below of the focused seat: the placeholder names the placement, ↵ launches there, ⌥↵ makes a tab instead. The footer pill names the active actions. With a split preset the target half of the focused pane breathes in the accent tint behind the modal and the input row shows a two-cell diagram with the new cell lit, so the placement is unmistakable before Enter.
+- **After launch**: the new pane is focused, the locate ring fires at its centre, its cursor blinks, and the pointer warps to the pane centre (native only; the lab cannot move the OS pointer).
 - **Drag and drop**: drag a seat row from the sidebar, or a pane by its strip, onto another pane. The hovered half of the target (left, right, top, bottom) tints with the selection tint; dropping splits there at 50/50. A dragged seat moves: its old split collapses into the sibling. Phantoms cannot be dragged.
 Either way the placed seat gets focus and the locate signal. Ratios are then adjusted by dragging the gutter (section 2).
 

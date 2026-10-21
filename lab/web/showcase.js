@@ -139,7 +139,10 @@
     const goSeats = seats.map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Go to', seat: x }; });
     const goSwarms = model.spaces.map(x => ({ id: 'swarm:' + x.key, label: x.name, sub: x.tabs.reduce((n, t) => n + t.seats.length, 0) + ' seats', harness: 'sidebarfoxopen', kind: 'Swarm', tile: x.color, section: 'Go to', swarm: x }));
     const items = preset ? C.LAUNCH : [...C.LAUNCH, ...goSeats, ...goSwarms];
-    const pk = C.picker({ placeholder: ph, actions, items, onClose: closeSpotlight, onPick: (it, name, mods) => {
+    // show the split before it happens: light the target half of the focused pane and draw it in the launcher
+    const anchorEl = preset && anchor ? main.querySelector('.pane[data-key="' + anchor + '"]') : null;
+    if (anchorEl) anchorEl.classList.add('will-' + preset);
+    const pk = C.picker({ placeholder: ph, actions, items, preview: preset || null, onClose: closeSpotlight, onPick: (it, name, mods) => {
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
       if (it.swarm) { closeSpotlight(); jumpSpace(it.swarm); return; }
       const seat = { key: 'n' + Date.now().toString(36), name: it.harness === 'zsh' ? 'zsh' : name, harness: it.harness, role: C.DEFAULT_ROLE[it.harness], title: it.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15 };
@@ -151,7 +154,7 @@
     } });
     back.append(pk); document.body.append(back); spot = back; pk.focus();
   }
-  function closeSpotlight() { if (spot) { spot.remove(); spot = null; } }
+  function closeSpotlight() { if (spot) { spot.remove(); spot = null; } main.querySelectorAll('.pane.will-right, .pane.will-bottom').forEach(n => n.classList.remove('will-right', 'will-bottom')); }
   addEventListener('keydown', e => {
     const mod = e.metaKey || e.ctrlKey, kk = e.key.toLowerCase();
     if (mod && kk === 't') { e.preventDefault(); openSpotlight(); }
