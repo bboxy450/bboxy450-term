@@ -166,7 +166,13 @@
     render();
   }
   function acceptTask(task, seat) { task.state = 'accepted'; const sp = (tabOf(seat.key) || {}).sp || space(); streamLine(sp, 'Oracle accepted · ' + task.title + ' from ' + seat.name); render(); }
-  addEventListener('keydown', e => { if ((e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !spot) { const f = seats.find(x => x.key === focused); if (f && !f.settings) delegateTask(f); } });
+  addEventListener('keydown', e => { if ((e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !spot) { const f = seats.find(x => x.key === focused); if (f && !f.settings && !f.graph) delegateTask(f); } });
+  // Graph: who is on what and the work tree, as a tab (⌘G or the Graph launcher row). Generated from the same data as the dock.
+  const graphSeat = { key: 'graph', name: 'Graph', harness: 'sidebarfoxopen', role: null, title: 'who is on what', state: 'idle', graph: true };
+  Object.defineProperty(graphSeat, 'color', { get() { return T.color[theme()].accent_soft; }, enumerable: true });
+  function openGraph() { const sp = space(); if (!seats.includes(graphSeat)) seats.push(graphSeat); if (!tabOf('graph')) sp.tabs.push({ name: 'graph', shortcut: '⌘G', tree: graphSeat, seats: [graphSeat] }); open.add(sp.key); focused = 'graph'; render(); }
+  function closeGraph() { detach(graphSeat); seats.splice(seats.indexOf(graphSeat), 1); const t = space().tabs[0]; focused = t ? t.seats[0].key : null; render(); }
+  addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g') { e.preventDefault(); openGraph(); } });
   // Settings open as a tab in the current swarm (⌘, or the Settings row in the launcher); closing it removes the tab, no grace.
   const settingsSeat = { key: 'settings', name: 'Settings', harness: 'gear', role: null, title: 'config.toml', state: 'idle', settings: true, section: 'Account' };
   Object.defineProperty(settingsSeat, 'color', { get() { return T.color[theme()].accent_soft; }, enumerable: true });
@@ -192,7 +198,7 @@
     const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : [['Launch / go', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']];
     // rows with sublists: each launchable → placements; 'Go to' → every seat and swarm. 'goto <name>' types straight in.
     const tileOf = h => (C.LAUNCH.find(l => l.harness === h) || {}).tile || '#374151';
-    const goSeats = () => seats.map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || '') + (x.where && x.where !== 'local' ? ' · ' + x.where + (x.host ? ' ' + x.host : '') : ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Seats', seat: x, tags: [x.harness, x.where || 'local', x.host || '', x.role || '', x.state, x.grade || '', x.state === 'waiting' ? (x.waitKind || 'question') : '', t ? t.sp.name : '', x.muted ? 'muted' : '', ...((x.tasks || []).map(t => t.title))].filter(Boolean) }; });
+    const goSeats = () => seats.filter(x => !x.settings && !x.graph).map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || '') + (x.where && x.where !== 'local' ? ' · ' + x.where + (x.host ? ' ' + x.host : '') : ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Seats', seat: x, tags: [x.harness, x.where || 'local', x.host || '', x.role || '', x.state, x.grade || '', x.state === 'waiting' ? (x.waitKind || 'question') : '', t ? t.sp.name : '', x.muted ? 'muted' : '', ...((x.tasks || []).map(t => t.title))].filter(Boolean) }; });
     const goSwarms = () => model.spaces.map(x => ({ id: 'swarm:' + x.key, label: x.name, sub: x.tabs.reduce((n, t) => n + t.seats.length, 0) + ' seats', harness: 'sidebarfoxopen', kind: 'Swarm', tile: x.color, section: 'Swarms', swarm: x, tags: ['swarm'] }));
     const placements = l => [
       { id: l.id + ':tab', label: 'New tab', sub: 'in ' + sp.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'tab', launch: l },
@@ -210,7 +216,8 @@
     const remoteRows = [remoteRow('ssh', 'SSH', 'ssh', '#374151'), remoteRow('cloud', 'Cloud', 'cloud', '#2E6BFF')];
     const goRow = { id: 'goto', label: 'Go to', aliases: ['goto', 'go', 'jump'], sub: 'a seat or a swarm', harness: 'sidebarfoxopen', kind: 'Navigate', tile: '#6B7190', section: 'Navigate', children: () => [...goSeats(), ...goSwarms()] };
     const settingsRow = { id: 'settings', label: 'Settings', aliases: ['prefs', 'preferences', 'config'], sub: 'account · cloud · machines · roles · harnesses · appearance', harness: 'gear', kind: 'Open', tile: '#6B7190', section: 'Navigate', settingsOpen: true, enterPicks: true, children: () => ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Shortcuts'].map(sct => ({ id: 'settings:' + sct.toLowerCase(), label: sct, harness: 'gear', kind: 'Section', tile: '#6B7190', settingsOpen: true, section: sct })) };
-    const items = [...launchRows, ...remoteRows, goRow, settingsRow];
+    const graphRow = { id: 'graph', label: 'Graph', aliases: ['who', 'status', 'board'], sub: 'who is on what · epics → work', harness: 'sidebarfoxopen', kind: 'Open', tile: '#6B7190', section: 'Navigate', graphOpen: true, enterPicks: true };
+    const items = [...launchRows, ...remoteRows, goRow, graphRow, settingsRow];
     const acts = p => (p.length && p[p.length - 1].id === 'goto') ? [['Go', '↵'], ['Back', '←']] : (p.length ? [['Place', '↵'], ['Back', '←']] : (preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['Placements', '→'], ['New tab instead', '⌥↵']] : [['New tab', '↵'], ['Placements', '→'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵']]));
     // banner above the panel: the real pane layout, large, with the new cell lit; nothing subtle about it
     if (preset && anchorSeat && stageTree) {
@@ -235,6 +242,7 @@
       back.append(el('div', { class: 'spot-banner' }, strip, el('div', { class: 'txt' }, el('div', { class: 'big' }, 'New tab'), el('div', { class: 'of' }, 'in ', el('b', { style: 'color:' + sp.color }, sp.name), ' · the new seat gets a tab of its own · type goto <name> to go somewhere'))));
     }
     const pk = C.picker({ placeholder: ph, actions: acts, items, onClose: closeSpotlight, onPick: (it, name, mods, path) => {
+      if (it.graphOpen) { closeSpotlight(); openGraph(); return; }
       if (it.settingsOpen) { closeSpotlight(); openSettings(it.section); return; }
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
       if (it.swarm) { closeSpotlight(); jumpSpace(it.swarm); return; }
@@ -308,6 +316,7 @@
   app.append(titlebar, main);
   let rects = [];
   function splitDom(t) {
+    if (t.key && t.graph) { const sp = space(); const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘G', onClose: closeGraph }), C.graphPage({ seats: seats.filter(x => !x.settings && !x.graph && (tabOf(x.key) || {}).sp === sp), epics: sp.epics, swarm: sp.name })); p.dataset.key = t.key; return p; }
     if (t.key && t.settings) { const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘,', onClose: closeSettings }), C.settingsPage({ section: t.section, onChange: (sec, k, v) => { if (sec === 'appearance') settingsSeat.section = 'Appearance'; applySetting(sec, k, v); } })); p.dataset.key = t.key; return p; }
     if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute });
     const A = splitDom(t.a), B = splitDom(t.b);
@@ -578,7 +587,7 @@
   let msgN = 0;
   addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey || spot) return;
-    const f = seats.find(s => s.key === focused); if (!f || f.settings) return;
+    const f = seats.find(s => s.key === focused); if (!f || f.settings || f.graph) return;
     const st = { '1': 'idle', '2': 'active', '3': 'waiting', '4': 'errored' }[e.key];
     if (st) { if (st === 'waiting' && f.state === 'waiting') { const ks = ['permission', 'question', 'auth']; f.waitKind = ks[(ks.indexOf(f.waitKind || 'question') + 1) % 3]; render(); return; } setState(f, st); if (st === 'active' && f.replay && f.replay.waiting) { f.replay.waiting = false; schedule(f, 200); } }
     else if (e.key === 'm' || e.key === 'M') {
@@ -658,7 +667,7 @@
     schedule(seat, 30 + rnd() * 90);
   }
   function startReplay(seat, i) {
-    if (seat.settings) return;
+    if (seat.settings || seat.graph) return;
     const lines = fixtureFor(seat, i);
     const start = Math.floor(C.rng('start' + seat.key)() * lines.length);
     seat.replay = { lines, idx: start, buf: lines.slice(Math.max(0, start - 12), start), burst: 0, waiting: false, rnd: C.rng('replay' + seat.key), timer: null };

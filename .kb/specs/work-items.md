@@ -76,6 +76,10 @@ All from the same index; none hand-maintained once the index exists.
 | Show | A task is a row under its seat in the sidebar with its status glyph; an epic is a collapsible group in the stream dock with its specs and tasks; `blocked` shows what it waits on. |
 | Graph | `.kb/graph.md`-style view generated from frontmatter, not hand-maintained once this exists. |
 
+## Provenance (operator, 2026-10-21: "provenance in that system is very important")
+
+Every item and every status transition records who did it, from what, and under which key. Research running: `research/provenance-and-documents.md`; the decided design lands as [[provenance]] and adds the fifth graph: item ← activity ← seat ← grant ← root. Until then the rule is: no anonymous write to `.bboxy/`. The terminal stamps `updated_by: seat:<id>` on every frontmatter write it performs, and a seat's commits carry the `Bboxy-Seat` and `Bboxy-Task` trailers.
+
 ## Rules
 
 - The terminal never deletes a work item. `done` and `rejected` are states.

@@ -182,6 +182,38 @@
     return row;
   }
 
+  // Graph page: who is on what (agents) and the work-item tree (epics → specs/tasks with dependencies), generated from data
+  function graphPage(opts) {
+    opts = opts || {};
+    const seats = opts.seats || [], epics = opts.epics || [], swarmName = opts.swarm || '';
+    const root = el('div', { class: 'graph' });
+    const agents = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Agents · ' + swarmName)));
+    const hdr = el('div', { class: 'g-row g-hdr' }, el('span', {}, 'seat'), el('span', {}, 'role'), el('span', {}, 'now'), el('span', {}, 'blocked on'));
+    agents.append(hdr);
+    for (const s of seats) {
+      const live = (s.tasks || []).find(t => ['claimed', 'running', 'reported'].includes(t.state));
+      const blocked = (s.tasks || []).find(t => t.state === 'blocked');
+      const tileCol = (LAUNCH.find(l => l.harness === s.harness) || {}).tile || 'var(--surface-2)';
+      agents.append(el('div', { class: 'g-row', 'data-key': s.key }, el('span', { class: 'g-seat' }, el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(s.harness)), el('b', { style: 'color:' + seatColor(s) }, s.name), glyph(s.state, s)), el('span', {}, s.role ? roleMark(s.role) : '', ' ', s.role || 'shell'), el('span', { class: 'g-now' }, live ? [el('span', { class: 'tglyph ' + live.state }, TASK_GLYPH[live.state]), ' ', live.title] : (s.state === 'waiting' ? 'waiting · ' + (s.waitKind || 'answer') : s.state)), el('span', { class: 'g-block' }, blocked ? 'waits on ' + blocked.waits : (s.state === 'waiting' ? 'the operator' : '—'))));
+    }
+    const tree = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Graph · epics → work')));
+    const pre = el('div', { class: 'g-tree' });
+    for (const ep of epics) {
+      const done = (ep.items || []).filter(i => ['accepted', 'done'].includes(i.state)).length;
+      pre.append(el('div', { class: 'g-epic' }, el('span', { class: 'ekind' }, 'epic'), el('b', {}, ep.title), el('span', { class: 'ecount' }, done + '/' + (ep.items || []).length)));
+      (ep.items || []).forEach((it, i, arr) => {
+        const last = i === arr.length - 1;
+        const line = el('div', { class: 'g-item ' + it.state }, el('span', { class: 'g-branch' }, last ? '└─' : '├─'), el('span', { class: 'tglyph' }, TASK_GLYPH[it.state] || '○'), el('span', { class: 'ekind' }, it.type || 'task'), el('span', { class: 'g-title' }, it.title));
+        if (it.assignee) line.append(el('span', { class: 'eass' }, '· ' + it.assignee));
+        if (it.waits) line.append(el('span', { class: 'g-dep' }, '◀ waits on ' + it.waits));
+        pre.append(line);
+      });
+    }
+    tree.append(pre);
+    root.append(agents, tree);
+    return root;
+  }
+
   // Epic group: a collapsible header in the stream dock with the epic's specs and tasks as lines (work-items.md)
   function epicGroup(epic, opts) {
     opts = opts || {};
@@ -669,5 +701,5 @@
     return root;
   }
 
-  window.C = { epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

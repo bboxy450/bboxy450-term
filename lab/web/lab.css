@@ -712,3 +712,24 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .epic .eitem.running .tglyph { color: var(--accent); } .epic .eitem.reported .tglyph { color: var(--c-waiting); }
 .epic .eitem.accepted .tglyph, .epic .eitem.done .tglyph { color: #2EE6A8; } .epic .eitem.rejected .tglyph, .epic .eitem.blocked .tglyph { color: var(--c-errored); }
 .epic .eitem .twaits { font-size: 9.5px; color: var(--c-errored); white-space: nowrap; }
+
+/* graph page: agents table + work tree */
+.graph { height: 100%; overflow: auto; padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 14px; background: var(--bg); font-size: var(--t-body, 13px); }
+.g-row { display: grid; grid-template-columns: 1.4fr .8fr 1.6fr 1fr; gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--hair, var(--line)); font-size: 12.5px; }
+.g-row:last-child { border-bottom: 0; }
+.g-hdr { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-dim); font-weight: 600; }
+.g-seat { display: flex; align-items: center; gap: 8px; }
+.g-seat .tile { width: 16px; height: 16px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.g-seat .tile .hicon { --icon: 10px; }
+.g-now { color: var(--fg); } .g-now .tglyph { font-family: var(--font-mono); }
+.g-now .tglyph.running { color: var(--accent); } .g-now .tglyph.reported { color: var(--c-waiting); } .g-now .tglyph.claimed { color: var(--fg-dim); }
+.g-block { color: var(--fg-dim); }
+.g-tree { font-family: var(--font-mono); font-size: 12px; padding: 4px 0 6px; display: flex; flex-direction: column; gap: 3px; }
+.g-epic { display: flex; align-items: center; gap: 8px; padding: 6px 0 2px; font-family: var(--font-chrome); }
+.g-epic b { font-size: 13px; }
+.g-item { display: flex; align-items: center; gap: 8px; padding-left: 8px; color: var(--fg-dim); }
+.g-item .g-branch { color: var(--line); }
+.g-item .g-title { color: var(--fg); font-family: var(--font-chrome); }
+.g-item.running .tglyph { color: var(--accent); } .g-item.reported .tglyph { color: var(--c-waiting); }
+.g-item.accepted .tglyph, .g-item.done .tglyph { color: #2EE6A8; } .g-item.rejected .tglyph, .g-item.blocked .tglyph { color: var(--c-errored); }
+.g-item .g-dep { color: var(--c-errored); font-size: 11px; }
