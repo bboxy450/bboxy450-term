@@ -8,7 +8,9 @@
 
   // ---------- model: two spaces, eight seats, three of them on stage in a V(H) split ----------
   const r = C.rng('showcase');
-  const mk = (i, name, harness, role, title, state) => ({ key: 'sc' + i, name, harness, role, title, state });
+  // seat colours use the operator-override path so the eight seats spread across the wheel
+  const PAL = ['#FFC53D', '#FF4FA3', '#B07BFF', '#2EE6A8', '#2E6BFF', '#FF7A45', '#58D7FF', '#9AA3C7'];
+  const mk = (i, name, harness, role, title, state) => ({ key: 'sc' + i, name, harness, role, title, state, color: PAL[i] });
   const seats = [
     mk(0, 'Vesper Greywind', 'claude', 'oracle', 'cohort control', 'active'),
     mk(1, 'Nyx Copperwing', 'codex', 'executor', 'messaging spec', 'active'),
@@ -102,7 +104,7 @@
         // soft glow: exponential falloff from the border, slightly thinner inside the rect
         float inside = step(dOut, 0.0);
         float g = exp(-d / (rad * mix(1.0, 0.45, inside)));
-        acc += col * g * a * 0.55;
+        acc += col * g * a * 0.38;
         // particles: perimeter coordinate t in [0,1), advect with time, gaussian in t and in d
         vec2 e = hs - abs(q); float P = 4.0*(hs.x + hs.y);
         float t;
@@ -119,9 +121,9 @@
           float tk = fract(s0 + uTime*0.001*sp);
           float dt = abs(fract(t - tk + 0.5) - 0.5) * P;
           float tw = 0.65 + 0.35*sin(uTime*0.004 + float(k)*1.7);
-          pk += exp(-(dt*dt)/(2.0*sig*sig*2.2)) * exp(-(d*d)/(2.0*sig*sig)) * tw;
+          pk += exp(-(dt*dt)/(2.0*sig*sig*3.0)) * exp(-(d*d)/(2.0*sig*sig*0.6)) * tw;
         }
-        acc += col * pk * a * 1.6;
+        acc += col * min(pk, 1.5) * a * 0.9;
       }
       for (int j = 0; j < ${MAXRIP}; j++) {
         if (j >= uNR) break;
@@ -141,7 +143,7 @@
   gl.uniform3fv(U.uBg, bg); gl.uniform3fv(U.uAmber, C.hslToRgb(T.color.state.waiting)); gl.uniform3fv(U.uRed, C.hslToRgb(T.color.state.errored));
   gl.uniform1f(U.uPulseMs, T.motion.pulse_ms); gl.uniform1f(U.uActiveMs, G.active_pulse_ms); gl.uniform1f(U.uIdleA, G.idle_alpha);
   gl.uniform1f(U.uActMin, G.active_alpha_min); gl.uniform1f(U.uActMax, G.active_alpha_max); gl.uniform1f(U.uWaitMin, G.waiting_alpha_min); gl.uniform1f(U.uWaitMax, G.waiting_alpha_max);
-  gl.uniform1f(U.uErrA, G.errored_alpha); gl.uniform1f(U.uBoost, G.focused_boost); gl.uniform1f(U.uSpeed, G.particle_speed); gl.uniform1f(U.uPSize, G.particle_size * 1.4);
+  gl.uniform1f(U.uErrA, G.errored_alpha); gl.uniform1f(U.uBoost, G.focused_boost); gl.uniform1f(U.uSpeed, G.particle_speed); gl.uniform1f(U.uPSize, G.particle_size * Math.min(devicePixelRatio, 2));
 
   const STATE_IDX = { idle: 0, active: 1, waiting: 2, errored: 3 };
   const rectBuf = new Float32Array(MAXR * 4), colBuf = new Float32Array(MAXR * 4), parBuf = new Float32Array(MAXR * 4);
