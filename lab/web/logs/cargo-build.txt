@@ -1,2 +1,2 @@
    Compiling weavie v0.2.0 (/Users/feral/mydev/graph-repo/crates/weavie)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.59s
+    Finished `release` profile [optimized] target(s) in 0.90s
