@@ -60,7 +60,7 @@ For our Quinn transport, retain the baseline/diff/application-ack idea and input
 
 Use the already-decided **VTE in the PTY-owning daemon**. The GUI keeps render/cache state. It can reconnect without replaying every application's original byte stream, and remote daemons can serve MCP screen reads without a GUI. Moving the parser to the GUI would relocate memory rather than solve the full-history cost.
 
-Independent fixture: `Probe/Cargo.toml:6` pins `alacritty_terminal = 0.25.1`; `Probe/src/main.rs:17` allocates 80×24 terms and feeds a fresh parser per term. RSS comes from `ps -o rss=` before/after allocation, with terms retained until after the sample. Host: Apple M4, 25769803776 bytes RAM; rustc 1.99.0; optimized offline build. This measures terminal models, not PTYs, harnesses, GPU resources or connections.
+Independent fixture: `Probe/Cargo.toml:6` pins `alacritty_terminal = 0.25.1`; `Probe/src/main.rs:19` allocates 80×24 terms and feeds a fresh parser per term. RSS comes from `ps -o rss=` before/after allocation, with terms retained until after the sample. Host: Apple M4, 25769803776 bytes RAM; rustc 1.99.0; optimized offline build. This measures terminal models, not PTYs, harnesses, GPU resources or connections.
 
 | Actual command, all exit 0 | Delta RSS / seat | Other actual output |
 |---|---:|---|

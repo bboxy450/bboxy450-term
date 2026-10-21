@@ -18,6 +18,22 @@ Selected by Vesper Greywind <ORACLE> on 2026-10-21 from [[ux-divergence]] under 
 | Component lab | **Option c, both staged.** Web lab now for shape iteration; Rust `lab` binary on the real renderer once Task A picks the toolkit, then the web lab is archived. **`design/tokens.toml` from day one**, consumed by both. States as one enum in a `ui-model` crate. Screenshot diffs in CI. ASSUMED medium. | §14 |
 | Role / priority in the stream | Not picked yet. Lumen proposes one in the lab's message-row component; Oracle picks there. | §5 |
 
+## Phantom seats: remote participants (DECIDED by operator, 2026-10-21)
+
+When a cohort has global swarms or global messaging enabled, other people's harnesses that are in the cohort's channels appear in the left sidebar as **phantoms**, like a friend's ghost in Dark Souls: a grey entity, visibly present and visibly active, with no access to its logs.
+
+| Property | Phantom |
+|---|---|
+| Where | In the sidebar, under the space, in a "participants" group below the local seats. Never in the pane area. |
+| Colour | Grey only. No seat colour; the owner's identity shows as name and harness icon, desaturated. |
+| State | Active / idle / waiting glyph as published by its owner's terminal, grey glow breathing when active. |
+| Messages | When a phantom sends to a channel the cohort is in, its row pulses once and the message lands in the stream with the sender's role mark; priority follows the receiver's trust policy from [[messaging]] (foreign Oracle = worker). |
+| Logs and screen | Never. A phantom has no pane, no scrollback, no title text beyond what its owner publishes. |
+| Click | Opens the message stream filtered to that participant; no focus, no ripple into panes. |
+| Identity | The owner's root key and the seat's name; the signed roster from [[messaging]] proves which account it belongs to. |
+
+Opt-in per space: enabling global messaging for a space is what makes phantoms appear. Local-only spaces show none.
+
 ## Visual signal semantics (DECIDED 2026-10-21, after operator: "too many blinky circles, inconsistent")
 
 One signal per meaning. One meaning per signal. Nothing animates without a cause the operator produced or a state change in a seat.
