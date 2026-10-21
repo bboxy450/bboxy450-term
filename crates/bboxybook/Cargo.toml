@@ -9,3 +9,15 @@ rust-version.workspace = true
 description = "bboxy450-term: bboxybook"
 
 [dependencies]
+bbt-ui-model = { path = "../bbt-ui-model" }
+bbt-render = { path = "../bbt-render" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+png = "0.18"
+wgpu = { version = "=30.0.1", default-features = false, features = ["std", "metal", "wgsl"] }
+winit = "=0.30.13"
+pollster = "0.4"
+
+[build-dependencies]
+regex = "1"
+resvg = { version = "=0.48.1", default-features = false }

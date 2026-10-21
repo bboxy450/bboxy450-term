@@ -15,6 +15,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
 | subagent provenance | Oracle instrument | Claude | done → `research/provenance-and-documents.md`, decided in `specs/provenance.md` | — |
+| subagent pubsub | Oracle instrument | Claude | researching NATS-class pubsub for the minimal bus → `research/pubsub-nats.md` | nothing |
 | subagent state-backend | Oracle instrument | Claude | done → `research/state-backend.md`, decided in `specs/storage.md` | — |
 | operator | operator | human | lab review with Lumen | Codex trust for the fixture dir; Rook's pane |
 

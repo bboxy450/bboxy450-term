@@ -4,6 +4,7 @@
 //! Callers supply durable IDs, observation updates and a monotonic time for undo.
 
 pub mod event;
+pub mod draw;
 pub mod layout;
 pub mod model;
 pub mod tokens;

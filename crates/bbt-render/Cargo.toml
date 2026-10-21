@@ -9,6 +9,7 @@ rust-version.workspace = true
 description = "bboxy450-term: bbt-render"
 
 [dependencies]
+bbt-ui-model = { path = "../bbt-ui-model" }
 bytemuck = { version = "1.25", features = ["derive"] }
 png = "0.18"
 pollster = "0.4"

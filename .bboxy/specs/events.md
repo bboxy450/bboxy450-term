@@ -42,6 +42,10 @@ A subscription with `deliver: webhook` POSTs envelopes to an operator-configured
 
 A remote object (seat on a VM, swarm in the cloud) runs the same bus locally and relays its topics over the Transport to subscribers elsewhere; subscriptions cross machines by account grant. Phase 2 per [[vision]]; the envelope and topic names are fixed now so nothing is renamed later.
 
+## Messages are an abstraction on the bus (operator, 2026-10-21)
+
+A message is an event on `swarm/<id>/stream`, `channel/<name>` or `dm/<seat>` whose payload is the signed messaging envelope; delivery evidence states are events; mute is a subscription filter; priority is consumer-side ordering. [[messaging]] keeps its envelope, grants and evidence vocabulary and loses its own transport: it is a client of this bus. Research on NATS-class systems is running (`research/pubsub-nats.md`); the bus is to be designed under LESS IS MORE and KISS, borrowing NATS subject grammar and JetStream's stream/consumer model where it is small, and refusing everything that is not.
+
 ## Rules
 
 - One envelope, one bus, one sequence per topic. Messages, task transitions, doc edits and GitHub webhooks are the same kind of thing.

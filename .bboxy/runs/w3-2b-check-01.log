@@ -1,0 +1,165 @@
+    Checking bitflags v2.13.2
+    Checking objc2-encode v4.1.0
+   Compiling syn v3.0.9
+    Checking libc v0.2.191
+    Checking foldhash v0.2.0
+   Compiling syn v2.0.119
+    Checking equivalent v1.0.3
+    Checking libm v0.2.16
+   Compiling simd-adler32 v0.3.10
+    Checking rustc-hash v1.1.0
+    Checking unicode-width v0.2.2
+    Checking bit-vec v0.9.1
+    Checking hashbrown v0.17.1
+    Checking raw-window-handle v0.6.2
+   Compiling arrayvec v0.7.8
+   Compiling adler2 v2.0.1
+    Checking codespan-reporting v0.13.1
+    Checking objc2 v0.6.5
+    Checking static_assertions v1.1.0
+    Checking bit-set v0.10.0
+   Compiling bytemuck v1.25.2
+   Compiling objc-sys v0.3.5
+    Checking once_cell v1.21.4
+   Compiling cfg-if v1.0.5
+    Checking smallvec v1.16.3
+    Checking scopeguard v1.2.0
+   Compiling float-cmp v0.9.0
+    Checking unicode-ident v1.0.27
+    Checking lock_api v0.4.14
+   Compiling strict-num v0.1.1
+   Compiling crc32fast v1.5.3
+   Compiling miniz_oxide v0.9.1
+   Compiling polycool v0.4.0
+   Compiling log v0.4.34
+   Compiling arrayref v0.3.9
+   Compiling tiny-skia-path v0.12.0
+   Compiling kurbo v0.13.1
+    Checking indexmap v2.14.2
+   Compiling miniz_oxide v0.8.9
+    Checking parking_lot_core v0.9.12
+   Compiling flate2 v1.1.10
+    Checking parking_lot v0.12.5
+    Checking num-traits v0.2.19
+   Compiling fdeflate v0.3.7
+    Checking libloading v0.8.9
+   Compiling siphasher v1.0.4
+    Checking profiling v1.0.18
+   Compiling png v0.18.1
+    Checking objc2 v0.5.3
+   Compiling simplecss v0.2.2
+   Compiling aho-corasick v1.1.5
+    Checking dispatch2 v0.3.1
+    Checking block2 v0.6.2
+   Compiling roxmltree v0.21.1
+   Compiling pico-args v0.5.0
+   Compiling regex-syntax v0.8.11
+   Compiling imagesize v0.15.0
+    Checking objc2-core-foundation v0.3.2
+   Compiling svgtypes v0.16.1
+   Compiling data-url v0.3.2
+    Checking core-foundation-sys v0.8.7
+    Checking core-foundation v0.9.4
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+    Checking block2 v0.5.1
+   Compiling usvg v0.48.1
+   Compiling tiny-skia v0.12.0
+   Compiling rgb v0.8.53
+    Checking dispatch v0.2.0
+    Checking foreign-types-shared v0.3.1
+    Checking bitflags v1.3.2
+    Checking objc2-foundation v0.2.2
+    Checking core-graphics-types v0.1.3
+   Compiling winit v0.30.13
+    Checking tracing-core v0.1.36
+    Checking pin-project-lite v0.2.17
+    Checking tracing v0.1.44
+    Checking cursor-icon v1.2.0
+    Checking smol_str v0.2.2
+    Checking pollster v0.4.0
+    Checking dpi v0.1.2
+   Compiling zerocopy-derive v0.8.63
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling foreign-types-macros v0.2.4
+   Compiling serde_derive v1.0.229
+   Compiling regex-automata v0.4.18
+   Compiling resvg v0.48.1
+    Checking foreign-types v0.5.0
+    Checking objc2-foundation v0.3.2
+    Checking thiserror v2.0.21
+    Checking core-graphics v0.23.2
+    Checking naga-types v30.0.1
+    Checking wgpu-types v30.0.1
+    Checking zerocopy v0.8.63
+    Checking serde v1.0.229
+    Checking objc2-metal v0.3.2
+    Checking objc2-app-kit v0.2.2
+   Compiling regex v1.13.1
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Checking half v2.7.1
+    Checking naga v30.0.1
+    Checking objc2-core-graphics v0.3.2
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-naga-bridge v30.0.1
+    Checking wgpu-hal v30.0.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+error[E0308]: mismatched types
+   --> crates/bbt-render/src/chrome/text.rs:25:81
+    |
+ 25 |         let attributed=unsafe { CFAttributedString::new(None,Some(&string),Some(&attrs)) }.ok_or("CoreText attributed string")?;
+    |                                                                            ---- ^^^^^^ expected `&CFDictionary`, found `&CFRetained<CFDictionary<_, CFType>>`
+    |                                                                            |
+    |                                                                            arguments to this enum variant are incorrect
+    |
+    = note: expected reference `&CFDictionary<objc2_core_foundation::opaque::Opaque, objc2_core_foundation::opaque::Opaque>`
+               found reference `&CFRetained<CFDictionary<CFString, CFType>>`
+help: the type constructed contains `&CFRetained<CFDictionary<CFString, CFType>>` due to the type of the argument passed
+   --> crates/bbt-render/src/chrome/text.rs:25:76
+    |
+ 25 |         let attributed=unsafe { CFAttributedString::new(None,Some(&string),Some(&attrs)) }.ok_or("CoreText attributed string")?;
+    |                                                                            ^^^^^------^
+    |                                                                                 |
+    |                                                                                 this argument influences the type of `Some`
+note: tuple variant defined here
+   --> /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:606:5
+    |
+606 |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ^^^^
+
+error[E0308]: `?` operator has incompatible types
+  --> crates/bbt-render/src/chrome/text.rs:35:142
+   |
+35 | ...:once(&'…')).collect();if measure(&make(&trial)?)<=limit {lo=mid;}else{hi=mid-1;}}
+   |                                       ^^^^^^^^^^^^^ expected `CTLine`, found `CFRetained<CTLine>`
+   |
+   = note: `?` operator cannot convert from `CFRetained<CTLine>` to `CTLine`
+   = note: expected struct `CTLine`
+              found struct `CFRetained<CTLine>`
+
+error[E0599]: no method named `chunks` found for enum `std::result::Result<T, E>` in the current scope
+    --> crates/bbt-render/src/chrome/mod.rs:63:133
+     |
+  63 | ... usize);for row in mapped.chunks(stride as usize).take(height as usize){rgba.extend_from_slice(&row[..(width*4) as usize]);}dro...
+     |                              ^^^^^^ method not found in `std::result::Result<BufferView, MapRangeError>`
+     |
+note: the method `chunks` exists on the type `BufferView`
+    --> /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/mod.rs:1154:5
+     |
+1154 |     pub const fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the `?` operator to extract the `BufferView` value, propagating a `Result::Err` value to the caller
+     |
+  63 |         let mapped=buffer.slice(..).get_mapped_range();let mut rgba=Vec::with_capacity((width*height*4) as usize);for row in mapped?.chunks(stride as usize).take(height as usize){rgba.extend_from_slice(&row[..(width*4) as usize]);}drop(mapped);buffer.unmap();Ok(rgba)
+     |                                                                                                                                    +
+
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `bbt-render` (lib) due to 3 previous errors
+
+exit_status: 101

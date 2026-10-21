@@ -2,6 +2,7 @@
 
 pub mod atlas;
 pub mod cells;
+pub mod chrome;
 pub mod device;
 pub mod headless;
 pub mod text;
