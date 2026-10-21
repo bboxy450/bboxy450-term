@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 6,
+  "version": 7,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -584,7 +584,10 @@
         "Google is a link for cloud, drawn as a link, never a sign-in",
         "per-seat commit signing is assumed, not decided: switchable, default off"
       ],
-      "account": "hero: portrait beside the key block; full fingerprint large in mono; ed25519 · signing chip; unlocked · gpg-agent cache; uid line; copy fingerprint; trust path root → device subkeys → seat keys; subkey cards per device with revoke; Signatures card; Link Google for cloud as a link; paper recovery with the identity-only caption"
+      "account": "hero: portrait beside the key block; full fingerprint large in mono; ed25519 · signing chip; unlocked · gpg-agent cache; uid line; copy fingerprint; trust path root → device subkeys → seat keys; subkey cards per device with revoke; Signatures card; Link Google for cloud as a link; paper recovery with the identity-only caption",
+      "roles": "per account, assigned per seat in any swarm; built-in oracle / executor / creativity chipped built-in, editable, not deletable; + new role card: name, colour, mark, default system prompt, may-send-to, priority class (oracle | worker) editable on every card with the caption \"changing class re-issues this role's seat grants\"; receivers trust the signed class, never the name",
+      "harnesses": "built-in tiles chipped built-in; + new harness tile: name, command, tile colour, icon, default role (built-in + custom), wake method (default pty), state source (default output cadence), hooks; user-added harnesses run through the generic PTY adapter and appear in the launcher",
+      "appearance": "theme as window thumbnails, density as four row previews at real heights, gutter segmented 2 / 4, glow and subtitle toggles; all apply live"
     },
     "nested_subagent_rows": {
       "purpose": "a harness's subagents under its seat row",
