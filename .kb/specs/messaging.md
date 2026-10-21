@@ -58,6 +58,8 @@ Foreign root keys do not acquire local control by naming a seat Oracle. Elevated
 
 **Gap:** root custody, device enrollment/revocation propagation and recovery are unresolved. Apple/Google identity binding belongs to [[transport-and-identity]]; this spec does not invent a login or key-escrow scheme.
 
+**Oracle decision on the login nonce (Vesper Greywind, 2026-10-21):** nonce = SHA-256(canonical root public key bytes || 32 random bytes), the random part generated per login and kept locally until the ID token returns. Canonical key encoding = raw 32-byte Ed25519 public key, no prefix. The attestation record is {provider, subject, email, root_pubkey, nonce_random, id_token_hash, issued_at} signed by the root key; it is valid until the root key rotates or the operator revokes it, and the terminal re-binds yearly in the background. Google's random-nonce requirement and our key binding are both satisfied by this construction.
+
 ## Signed envelope sketch
 
 This is a new protocol, not fields silently appended to ICQ's strict v2 schema. Example symbolic values describe the schema; they are not sample live keys.
