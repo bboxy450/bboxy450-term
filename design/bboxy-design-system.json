@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 15,
+  "version": 16,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -571,11 +571,12 @@
       "status": "drawn, not built"
     },
     "purge_modal": {
-      "purpose": "skip grace, terminate, delete ring and checkpoints",
-      "source": "mcp-control-plane purge decision: GUI only, never MCP",
-      "anatomy": "the launcher material, red title, the seat name must be typed to enable the button",
+      "purpose": "skip grace, terminate, and move the seat's ring, checkpoints and events to cold storage (never delete)",
+      "source": "mcp-control-plane purge decision (GUI only, never MCP) + storage.md never-delete",
+      "anatomy": "the launcher material, red title \"Purge seat\", the seat name must be typed to enable the button; subtext \"terminates now and moves its history to cold storage · nothing is deleted\"",
       "rules": [
-        "the one place a confirm dialog exists, because it is irreversible"
+        "the one place a confirm dialog exists, because it ends the process without grace",
+        "the word delete never appears"
       ],
       "status": "drawn, not built"
     },
