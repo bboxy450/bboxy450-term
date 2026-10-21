@@ -9,7 +9,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Agent | Role | Harness | Now | Blocked on |
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
-| Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | lab passes under the operator's direct review; first: custom-harness tile subtext, then the design-system drawn-not-built queue | nothing |
+| Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); checkpoint to operator every 3 passes | nothing |
 | Nyx Copperwing | Executor | Codex | **W3.2b bboxybook: draw atoms, chrome pass, modules, parity loop** | nothing |
 | Rook Ashwhisker | Executor | Codex | idle | in-session authorization from the operator |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |

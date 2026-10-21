@@ -8,6 +8,22 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --workspace
       - run: cargo test --workspace
+      - name: Detect parity inputs
+        id: parity
+        shell: bash
+        run: |
+          if git diff-tree --no-commit-id --name-only -r HEAD | rg '^(crates/(bboxybook|bbt-ui-model|bbt-render)/|lab/web/|design/|scripts/parity.sh)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Web and native component parity
+        if: steps.parity.outputs.run == 'true'
+        run: sh scripts/parity.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bboxybook-parity
+          path: target/parity
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: always()
         with:
