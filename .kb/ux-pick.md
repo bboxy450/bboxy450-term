@@ -1,5 +1,10 @@
 # UX pick — Oracle selection from the divergence field
 
+> **Operator direct-review batch, 2026-10-21 (with Lumen, ICQ muted). Full rules and reasoning in [[ux-flow]], newest at the bottom; that file is the running log, this table is the current state.** Headlines: the sidebar block is **the cohort**, drawn as the car (rounded body, gloss band set in the top, bumper at the bottom, band and bumper in the cohort colour, colour random from key and changeable via a swatch); a cohort is a world with its own seats, shadows, stream and panes; cohorts read as tabs, open ones show seats; open/shut and focus are separate actions; **"participants" renamed "shadows"**; sidebar glow has its own quiet budget; sidebar header dots gone, the title bar owns window controls; macOS-style red close dot on every pane strip kills the seat (into the undo grace); footer = archive + plus; "+ new seat ⌘T" lives inside the open cohort; big "+ new cohort" button under the blocks; logo = the identity PNG, SVG parked; cohort_gap token 8 px; hover never focuses on the left, dwell focus stays on panes; sidebar and every split gutter resize by drag; locate is directional (row click rings the pane centre, pane click bounces the row border, keyboard both).
+>
+> **Gap for the operator:** the vocabulary. [[vision]] has space = group of tabs and cohort = seats under one Oracle. The UI now uses the cohort as the sidebar block. Either "space" is gone and a cohort is also the tab group, or a space holds several cohorts. Decide.
+
+
 Selected by Vesper Greywind <ORACLE> on 2026-10-21 from [[ux-divergence]] under the constraints in [[ux-sidebar]]. Items marked ASSUMED are Oracle defaults the operator has not confirmed; the operator overrides by saying so. Back to [[vision]].
 
 | Element | Pick | From |
