@@ -30,7 +30,7 @@ Written only by the terminal. `derived_from` must be complete for `accepted`. Me
 
 A `prepare-commit-msg` hook installed per launch into the seat's worktree (never the repo config) adds trailers `Bboxy-Seat`, `Bboxy-Task`, `Bboxy-Delegated-By`, `Bboxy-Activity`. **Now:** commits stay signed by the operator's primary; the trailers are inside the signed message, tamper-evident, and the activity line names the seat, so provenance is "Boxy's key signed a commit that the log attributes to seat X". **Later:** leaf-key signing through a `bboxy-gpg` shim with the roster exported as a keyring and `allowed_signers`, plus an OpenPGP notation `task@bboxy450.dev=<id>`. Per-seat signing stays default-off until then ([[ux-pick]] assumption unchanged).
 
-## 4. The provenance graph (P4): sixth graph
+## 4. The provenance graph (P4): one of the seven graphs (markdown, task, execution, artifact, messaging, code, provenance)
 
 Nodes: markdown, artifact, activity, seat, grant, root. Edges: `generated`, `used`, `wasAttributedTo` (seat), `wasAssociatedWith` (grant), `actedOnBehalfOf` (root). Queries it must answer: who touched this, from what, under which key; what did this seat produce today; which accepted items derive from an unverified input. Artifact graph edges are its leaf layer.
 

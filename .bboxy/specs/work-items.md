@@ -57,7 +57,7 @@ Wikilinks are the link primitive everywhere: frontmatter, body, messages. Syntax
 
 ## The graphs the terminal builds
 
-All from the same index; none hand-maintained once the index exists.
+All from the same index; none hand-maintained once the index exists. The code graph is built with tree-sitter (grammars bundled for Rust, TypeScript, Python, Go, Zig to start) by the `.bboxy` indexer's sibling, the code indexer, incrementally on file events; LSP is not required and is an optional enrichment later. It lives in the same in-memory index and is persisted in the index object ([[storage]]).
 
 | Graph | Nodes | Edges and weights | Used for |
 |---|---|---|---|
@@ -65,6 +65,7 @@ All from the same index; none hand-maintained once the index exists.
 | **artifact graph** | artifacts: markdowns, PRs, binaries, files, images, releases | `produced_by` seat, `for` task, `derived_from` artifact; weights by link type | "who is responsible for this", release manifests, the provenance graph's leaves |
 | **task graph** | epics, specs, tasks | `parent`/`child`, `depends`/`blocks` | ordering, what is blocked, what is claimable |
 | **execution graph** | seats × tasks | `assignee`, `delegated_by`, status, live seat state | the sidebar's task rows, the Oracle's view of who is on what, this repo's `graph.md` generated |
+| **code graph** (operator, 2026-10-21: "codegraphs!") | symbols (functions, types, modules, files) in the seat's worktree | defines, references, calls, imports/depends; weight = reference count | "what calls this", "what breaks if this changes", impact of a task's `allowed_paths`, wikilinks from markdowns to code symbols (`[[code:crate::module::fn]]`) |
 | **messaging graph** | seats, swarms, channels | who messaged whom; weight = count decayed by recency; role class on the edge | stream filters, "who is talking to whom", starvation and silence detection |
 
 ## What the terminal does with them
