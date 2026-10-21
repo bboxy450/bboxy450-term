@@ -18,6 +18,10 @@ Selected by Vesper Greywind <ORACLE> on 2026-10-21 from [[ux-divergence]] under 
 | Component lab | **Option c, both staged.** Web lab now for shape iteration; Rust `lab` binary on the real renderer once Task A picks the toolkit, then the web lab is archived. **`design/tokens.toml` from day one**, consumed by both. States as one enum in a `ui-model` crate. Screenshot diffs in CI. ASSUMED medium. | §14 |
 | Role / priority in the stream | Not picked yet. Lumen proposes one in the lab's message-row component; Oracle picks there. | §5 |
 
+## Row-pane link ripple (DECIDED, operator loved it 2026-10-21)
+
+Clicking a pane fires a ripple on its sidebar row; clicking a row fires it on the pane corner. The sidebar scrolls the row into view if needed. The ripple is the map legend: it answers "where is this seat in the list" and "which pane is this row" without reading. Keep it in the real build as a shader effect tied to focus change, both directions, every time.
+
 ## Border glow spec (DECIDED, operator words)
 
 GPU particle glow around the seat border in the seat colour. Four readings, one shader:
