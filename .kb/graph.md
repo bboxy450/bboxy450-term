@@ -54,7 +54,7 @@ W4.1 Transport trait on quinn + loopback + provider traits [PENDING SPEC]
 | OPEN, claimable now | W2.1 |
 | OPEN, after W2.1 | W1.2, W2.3 |
 | PENDING SPEC | W3.2, W4.1 |
-| NOT YET BRIEFED | W2.2, W2.4, W2.5, W3.3, W3.4 |
+| NOT YET BRIEFED | W2.2, W2.4, W2.5 (incl. task_delegate), W3.3, W3.4 |
 | PARTIAL | H Codex capture (operator trust) |
 | REDUNDANT, optional | Rook's `-exec` passes on A and H |
 
