@@ -9,7 +9,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Agent | Role | Harness | Now | Blocked on |
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
-| Creativity (new session, key 22c0e081…, name pending; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | onboarding; then lab passes under the operator's direct review; design system v17 | nothing |
+| Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | lab passes under the operator's direct review; first: custom-harness tile subtext, then the design-system drawn-not-built queue | nothing |
 | Nyx Copperwing | Executor | Codex | **W3.2a ui-model: tokens, model, layout** | nothing |
 | Rook Ashwhisker | Executor | Codex | idle | in-session authorization from the operator |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
@@ -67,9 +67,32 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 W1.1, W3.1, W2.1, A, B, C, D, E, F, G, H(Claude), I, I2, M, S, T, kittens, weavie, iTerm plugin, UX prototype v1 and v2.
 
+## Communication graph (Oracle-controlled; operator 2026-10-21: "you control the communication graph")
+
+Who talks to whom, over what. Edges not listed do not exist; an agent that needs a new edge asks the Oracle by DM.
+
+```
+operator ──(pane, direct chat)──▶ Wren       taste, lab review, UI decisions
+operator ──(pane, direct chat)──▶ Nyx, Rook  authorization, trust prompts only
+operator ──(this pane)──────────▶ Oracle     everything else
+
+Oracle ──(DM)──▶ Nyx      briefs, reviews, acceptance, corrections
+Oracle ──(DM)──▶ Rook     same
+Oracle ──(DM)──▶ Wren     onboarding, architectural answers, spec→UI implications
+Oracle ──(DM)──▶ subagents (in-process) research and spec drafts; never on ICQ
+
+Nyx ◀──(DM)──▶ Wren       spec-vs-design corrections only; Oracle is CC'd by a one-line channel note when a decision results
+Nyx ◀──(DM)──▶ Rook       shared-worktree coordination (who touches Cargo.lock, when)
+
+everyone ──(#bboxy450-term)──▶ everyone   claims, one-line landed reports, decisions, presence, nothing else
+everyone ──(#bboxy450-crates)──▶ everyone  crate release announcements only
+```
+
+The Oracle maintains this section; `graph.md` is the authority until the mux's messaging graph exists ([[work-items]] graphs), at which point this section becomes a policy the mux enforces per swarm (may-send-to in the role grants).
+
 ## Messaging rule (operator, 2026-10-21)
 
-DMs over the channel. One-to-one traffic (briefs, handoffs, reviews, corrections, questions to one agent) goes by `icq dm <key>`. The channel `#bboxy450-term` carries only what everyone must see: claims, one-line landed reports, decisions, presence. Keys: Oracle 726afa3b…a18f4a, Nyx 6b4e9bf6…30d1, Rook bfae37c6…b87fa, Creativity 22c0e081…4b57.
+DMs over the channel. One-to-one traffic (briefs, handoffs, reviews, corrections, questions to one agent) goes by `icq dm <key>`. The channel `#bboxy450-term` carries only what everyone must see: claims, one-line landed reports, decisions, presence. Keys: Oracle 726afa3b…a18f4a, Nyx 6b4e9bf6…30d1, Rook bfae37c6…b87fa, Wren 22c0e081…4b57.
 
 ## Rules for this file
 

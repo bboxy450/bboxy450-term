@@ -721,13 +721,15 @@
       }
 
       if (cur === 'Harnesses' || needle) {
+        // generic PTY adapter (harness-adapters R7): no hooks → operator handoff, never an inferred Enter; hooks → typed only after an idle hook
+        const submitHint = (wake, hooks) => wake !== 'pty' ? null : hooks ? 'types only after a hook says idle' : 'never submits on its own · your Enter sends';
         const hTile = h => {
           const v = SET.harness[h], d = SET_DEF.harness[h] || null, ch = k => !!d && v[k] !== d[k], rs = k => () => { v[k] = d[k]; emit('harness', h, v); draw(); }, set = k => x => { v[k] = x; emit('harness', h, v); draw(); };
           return el('div', { class: 's-card htile' },
             el('div', { class: 'hh' }, el('span', { class: 'tile', style: 'background:' + v.tile }, harnessIcon(v.icon || h)), el('div', { class: 'ht' }, el('b', {}, (LAUNCH.find(l => l.harness === h) || {}).label || h), el('code', {}, v.command || h)),
               v.custom ? el('button', { class: 'del', onclick: () => { delete SET.harness[h]; emit('harness', h, null); draw(); } }, 'delete') : chip('built-in', 'bi')),
             row('Default role', null, select(roleNames(), v.role, set('role')), ch('role'), rs('role')),
-            row('Wake', null, select(WAKES, v.wake, set('wake')), ch('wake'), rs('wake')),
+            row('Wake', v.custom ? submitHint(v.wake, v.hooks) : null, select(WAKES, v.wake, set('wake')), ch('wake'), rs('wake')),
             row('State from', null, select(STATE_FROM, v.stateFrom, set('stateFrom')), ch('stateFrom'), rs('stateFrom')),
             row('Hooks', 'state from harness hooks', toggle(v.hooks, set('hooks')), ch('hooks'), rs('hooks')));
         };
@@ -738,10 +740,10 @@
             el('div', { class: 'hh' }, swatch(hue(dh.ci), () => { dh.ci++; draw(); }), el('div', { class: 'ht' }, text(dh.name, 'harness name', x => { dh.name = x; }), text(dh.command, 'aider --model …', x => { dh.command = x; }, true)), chip('new', 'bi')),
             field('Icon', el('div', { class: 'marks icons' }, ...ICONS.map(i => el('button', { class: i === dh.icon ? 'on' : '', style: i === dh.icon ? 'background:' + hue(dh.ci) : '', onclick: () => { dh.icon = i; draw(); } }, harnessIcon(i))))),
             row('Default role', null, select(roleNames(), dh.role, x => { dh.role = x; })),
-            row('Wake', null, select(WAKES, dh.wake, x => { dh.wake = x; })),
+            row('Wake', submitHint(dh.wake, dh.hooks), select(WAKES, dh.wake, x => { dh.wake = x; draw(); })),
             row('State from', null, select(STATE_FROM, dh.stateFrom, x => { dh.stateFrom = x; })),
             row('Hooks', null, toggle(dh.hooks, x => { dh.hooks = x; draw(); })),
-            el('div', { class: 's-note' }, 'unknown harnesses run through the PTY adapter: input is typed, state is inferred'),
+            el('div', { class: 's-note' }, 'unknown harnesses run through the PTY adapter: state is inferred from output until hooks or OSC 7501 upgrade it'),
             el('div', { class: 'facts' }, btn('Add harness', null, 'primary'), btn('Cancel', null, 'ghost')));
         };
         const grid = el('div', { class: 'htiles' }, ...Object.keys(SET.harness).map(hTile), newHarness());
