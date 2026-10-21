@@ -268,4 +268,6 @@ Catalogue total: 36 tools. Workers: eleven.
 
 | `find` | `query, kinds?: [markdown\|task\|artifact\|seat\|message], swarm_id?, limit?` | Hybrid lexical + semantic lookup over the in-memory index ([[storage]]); returns ranked items with the matching graph edges, scoped to the caller's grants. | O E C |
 
-Catalogue total: 40 tools. `.bboxy/graph.md` is the hand-maintained ancestor of `graph_read execution` and `communication`; once the index exists the file is generated, not edited.
+| `how` | `question, limit?` | Natural-language help, the icq `how` / clap-how-to / Cloudflare `how` pattern: hybrid FTS5 + vector search over (a) the terminal's own tool catalogue and their help, (b) the bundled docs, (c) the repo's `.bboxy/` markdowns, (d) the operator's configured doc roots. Returns up to N matches, each a tool or a doc excerpt with its path and why it matched; it never executes anything and never generates an answer beyond the excerpts. "How do I message a channel" → `message_send` with its parameters plus the messaging spec section. | O E C |
+
+Catalogue total: 41 tools. `how` and `find` share the index: `find` returns items and graph edges, `how` returns tools and doc excerpts. `.bboxy/graph.md` is the hand-maintained ancestor of `graph_read execution` and `communication`; once the index exists the file is generated, not edited.

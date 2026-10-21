@@ -4,11 +4,13 @@
   const T = window.TOKENS;
   // storage that never throws (private windows, blocked site data)
   const store = { get(k) { try { return window.localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { window.localStorage.setItem(k, v); } catch {} } };
+  // ?theme= and ?density= win over storage so headless runs (scripts/parity.sh) can deep-link; a click on the toggle drops the override
+  const url = new URLSearchParams(location.search), pick = (k, ok) => { const v = url.get(k); return v && ok[v] ? v : null; };
   const prefs = {
-    get theme() { return store.get('lab.theme') || 'dark'; },
-    set theme(v) { store.set('lab.theme', v); },
-    get density() { return store.get('lab.density') || 'comfortable'; },
-    set density(v) { store.set('lab.density', v); },
+    get theme() { return pick('theme', T.color) || store.get('lab.theme') || 'dark'; },
+    set theme(v) { url.delete('theme'); store.set('lab.theme', v); },
+    get density() { return pick('density', T.density) || store.get('lab.density') || 'comfortable'; },
+    set density(v) { url.delete('density'); store.set('lab.density', v); },
   };
 
   function applyTokens() {
