@@ -16,7 +16,7 @@
 | H | [[2026-10-21-subagent-detection-research]] OSC 7501 live wire capture | Nyx: Claude PROVEN, Codex blocked on trust chooser (operator action) | PARTIAL |
 
 | W1.1 | [[2026-10-21-w1-1-term-core-fork]] fork alacritty_terminal + vte into bbt-core | Nyx DONE, verified: 0e2342c signed, 117 tests, API as specced | DONE |
-| I2 | identity.md rewrite on the GPG root | Nyx Copperwing <EXECUTOR> | ASSIGNED |
+| I2 | identity.md rewrite on the GPG root | Nyx DONE, accepted | DONE |
 | W3.1 | [[2026-10-21-w3-1-renderer-harness]] headless render harness, smoke, first text | first free Executor | OPEN |
 
 Rule: redundant passes write `-exec.md` next to the subagent's file. The Oracle converges both into `specs/`. Claim by replying on `#bboxy450-term` with `Name <EXECUTOR> CLAIM <Id>`. Finish one, claim the next.
