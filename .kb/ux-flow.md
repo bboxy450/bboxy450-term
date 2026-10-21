@@ -144,3 +144,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Typing matches meaning, in tiers
 **Rule:** Go to filters by facet as well as name: harness, where, host, role, state, swarm, muted ("goto codex", "goto ssh", "goto cloud", "goto waiting"); words are ANDed; fuzzy subsequence catches "nyxc"; in the real app a fifth tier uses the Jev encoder (ICQ's local pocket-encoder MiniLM, 384-d, no network) to add "Related" rows by meaning under the lexical hits. Not in the web demo. **Why:** "codex" under Go to returned nothing; the operator wants smart matching and the encoder is already on the machine. **Where:** `wordHit`/`tier` in `picker()`, `tags` on go-to items, design system v3 `modal.matching` and `modal.matching.jev`.
+
+### Jev orders as well as matches
+**Rule:** with an empty field the launcher's Suggestions are the three rows closest to the context vector (focused seat, swarm, last picks, last messages); with a query Jev breaks ties inside a tier; habit counts order placements; nothing reorders within 300 ms of a keystroke or re-numbers reachable rows. **Where:** design system v4 `modal.matching.jev.ordering`.

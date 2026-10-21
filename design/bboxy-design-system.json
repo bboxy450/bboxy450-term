@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 3,
+  "version": 4,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -643,11 +643,25 @@
         "use_elsewhere": [
           "Go to by meaning: \"the one doing the gpu research\" → Rook",
           "stream search: find messages by meaning across a swarm",
-          "command palette later: verbs by meaning (\"shut this\" → close seat)"
+          "command palette later: verbs by meaning (\"shut this\" → close seat)",
+          "sidebar Shadows and stream ordering by relevance to the focused seat, opt-in"
         ],
         "limits": "queries over 128 tokens truncate; names from the fantasy / sci-fi / furry pools are out of vocabulary for the encoder, so names stay lexical (tier 1) and semantic covers titles, roles, states and messages",
         "cost": "one forward pass per keystroke on a 3-layer MiniLM; sub-millisecond on M-series; rows cached",
-        "not_in_web_demo": true
+        "not_in_web_demo": true,
+        "ordering": {
+          "what": "with an empty field, rows are ordered by closeness to the context, not by a fixed list",
+          "context_vector": "the focused seat (name, title, harness, role, state, where), the swarm name, the last three launcher picks, the last three stream messages, and the time since the seat last changed state; embedded as one short text, refreshed when any of those change",
+          "suggestions_section": "the top three rows by cosine to the context vector become the Suggestions section; the rest keep their section order; a row never moves within its section on a keystroke",
+          "examples": [
+            "focused seat is a waiting Codex over ssh → Suggestions: Go to ▸ that seat, SSH ▸ rig ▸ Codex, Split right",
+            "last three picks were cloud launches → Cloud rises above SSH",
+            "stream is full of gpu talk → the gpu-research seat rises in Go to"
+          ],
+          "with_a_query": "lexical tiers decide membership; Jev breaks ties inside a tier and orders the Related section",
+          "frequency_is_not_jev": "plain counts order placements (if you mostly split right, Split right is first); Jev orders by meaning, counts order by habit; counts win inside a tier when both apply",
+          "never": "reorder while the user is holding a key or within 300 ms of the last keystroke; reorder rows the user can reach by number keys without re-numbering them"
+        }
       }
     }
   },
