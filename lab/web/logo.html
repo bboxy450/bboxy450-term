@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>logo · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+const T = TOKENS;
+Lab.page({ title: 'logo', checker: true, note: 'Pick §9 shapes 1 + 9 + 2. Head silhouette, flat two-tone: electric fill, navy ear interiors, hair tuft and hood collar. Tilted ' + Math.abs(T.meta.brand_tilt_deg) + '° counter-clockwise as the brand gesture. Ears-only below 32 px. Rendered from the directions, not traced from the portrait; the operator judges likeness in the lab.',
+  states: ['head silhouette', 'untilted vs tilted', 'ears only ≤ 32', 'sizes ladder', 'app icon tile', 'on light', 'with face (three-tone)'],
+  render(s, body, ctx) {
+    const lt = (px, opts, label) => el('div', { class: 'lt' }, C.logo(px, opts), el('small', {}, label || px));
+    if (s === 'head silhouette') body.append(el('div', { class: 'logo-row' }, lt(256, { ears: false }, '256')));
+    if (s === 'untilted vs tilted') body.append(el('div', { class: 'logo-row' }, lt(160, { ears: false, tilt: 0 }, '0°'), lt(160, { ears: false }, T.meta.brand_tilt_deg + '°')));
+    if (s === 'ears only ≤ 32') body.append(el('div', { class: 'logo-row' }, lt(12, { ears: true }), lt(16, { ears: true }), lt(20, { ears: true }), lt(24, { ears: true }), lt(32, { ears: true }), lt(64, { ears: true }, '64 ears'), lt(64, { ears: false }, '64 head')));
+    if (s === 'sizes ladder') body.append(el('div', { class: 'logo-row' }, ...[12, 16, 24, 32, 48, 64, 96, 128].map(px => lt(px, {}))));
+    if (s === 'app icon tile') { const tile = (px, bg) => el('div', { class: 'lt' }, el('div', { class: 'tile', style: 'width:' + px + 'px;height:' + px + 'px;background:' + bg }, C.logo(Math.round(px * .72), { ears: px < 48 })), el('small', {}, px)); body.append(el('div', { class: 'logo-row' }, tile(128, T.color.dark.accent_soft), tile(128, T.color.dark.navy), tile(128, T.color.dark.bg), tile(64, T.color.dark.accent_soft), tile(32, T.color.dark.accent_soft))); }
+    if (s === 'on light') body.append(el('div', { class: 'logo-row', style: 'background:' + T.color.light.bg + ';padding:24px;border-radius:var(--r-pill)' }, lt(128, {}), lt(64, {}), lt(32, {}), lt(16, {}), lt(96, { fill: T.color.dark.navy, navy: T.color.dark.accent }, 'inverted')));
+    if (s === 'with face (three-tone)') body.append(el('div', { class: 'logo-row' }, lt(192, { ears: false, face: true }, 'cream muzzle, not in the pick'), lt(192, { ears: false }, 'pick: two-tone')));
+  } });
+</script></body></html>

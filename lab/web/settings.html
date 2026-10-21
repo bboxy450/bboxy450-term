@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>settings · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+const DEF = { claude: { role: 'oracle', wake: 'socket', hooks: true, prompt: 'You are the Oracle. Supervise, verify, never implement.' }, codex: { role: 'executor', wake: 'hook', hooks: true, prompt: 'You are an Executor. Do the assigned work, report evidence.' }, pi: { role: 'executor', wake: 'pty', hooks: false, prompt: '' }, omp: { role: 'executor', wake: 'pty', hooks: false, prompt: '' } };
+const CUR = JSON.parse(JSON.stringify(DEF)); CUR.claude.prompt += ' Sign every message Name <ROLE>.'; CUR.pi.role = 'creativity';
+function row(label, hint, control, changed, onReset) {
+  const r = el('div', { class: 's-row' + (changed ? ' changed' : '') }, el('div', { class: 'lbl' }, label, hint ? el('small', {}, hint) : null), control, el('div', { class: 'diff' }, changed ? [el('i', { title: 'differs from default' }), el('button', { onclick: onReset }, 'reset')] : null));
+  return r;
+}
+function select(opts, val) { const s = el('select'); for (const o of opts) s.append(el('option', { value: o, ...(o === val ? { selected: '' } : {}) }, o)); return s; }
+function hcard(name, rerender) {
+  const cur = CUR[name], def = DEF[name];
+  const card = el('div', { class: 'hcard' }, el('div', { class: 'hh' }, C.harnessIcon(name), name, el('span', { class: 'role' }, cur.role)));
+  card.append(
+    row('default role', null, select(['oracle', 'executor', 'creativity'], cur.role), cur.role !== def.role, () => { cur.role = def.role; rerender(); }),
+    row('wake method', null, select(['socket', 'hook', 'mcp', 'pty'], cur.wake), cur.wake !== def.wake, () => { cur.wake = def.wake; rerender(); }),
+    row('hooks', 'state from harness hooks', el('span', { class: 'toggle' + (cur.hooks ? ' on' : ''), onclick: () => { cur.hooks = !cur.hooks; rerender(); } }), cur.hooks !== def.hooks, () => { cur.hooks = def.hooks; rerender(); }),
+    row('system prompt', 'fed at launch', el('textarea', { html: cur.prompt }), cur.prompt !== def.prompt, () => { cur.prompt = def.prompt; rerender(); }),
+  );
+  return card;
+}
+function page(opts) {
+  opts = opts || {};
+  const root = el('div', { class: 'settings' });
+  const q = el('input', { placeholder: 'search settings', value: opts.query || '' });
+  const scroll = el('div', { class: 's-scroll' });
+  const draw = () => {
+    scroll.innerHTML = '';
+    const needle = q.value.toLowerCase();
+    const sec = (title, kids) => { const vis = kids.filter(k => !needle || k.textContent.toLowerCase().includes(needle)); if (!vis.length) return; scroll.append(el('h2', {}, title), ...vis); };
+    sec('harnesses', [el('div', { class: 'hcards' }, ...Object.keys(DEF).map(n => hcard(n, draw)))]);
+    sec('roles', [
+      row('oracle colour', null, el('input', { type: 'text', value: TOKENS.color.role.oracle }), false),
+      row('executor colour', null, el('input', { type: 'text', value: TOKENS.color.role.executor }), false),
+      row('creativity colour', null, el('input', { type: 'text', value: '#C084FF' }), true, draw),
+      row('oracle outranks', 'priority ordering and badging', el('span', { class: 'toggle on' }), false),
+    ]);
+    sec('appearance', [
+      row('density', null, select(['touch', 'comfortable', 'compact'], Lab.prefs.density), Lab.prefs.density !== 'comfortable', draw),
+      row('theme', null, select(['dark', 'light'], Lab.prefs.theme), Lab.prefs.theme !== 'dark', draw),
+      row('seat colour', 'hash of seat key, override per seat', select(['hash of key', 'per-space palette'], 'hash of key'), false),
+      row('glow', 'particle border glow', el('span', { class: 'toggle on' }), false),
+      row('last-output subtitle', 'opt-in second line on seat rows', el('span', { class: 'toggle' }), false),
+    ]);
+    sec('identity', [
+      el('div', { class: 'passport' }, C.logo(64, { face: true }), el('div', {}, el('div', { style: 'font-weight:600' }, 'Boxy'), el('div', { class: 'fp' }, 'ed25519 844E CC05 87DE 7AB0'), el('div', { class: 'fp' }, 'bboxy450@gmail.com · 3 devices · 2 channels'))),
+      row('seat keys', 'seats sign with their own key, roster bound to root', select(['per seat, bound to root', 'one key for all seats'], 'per seat, bound to root'), false),
+    ]);
+    sec('shortcuts', [
+      row('new seat', null, el('input', { type: 'text', value: '⌘T' }), false),
+      row('new zsh', null, el('input', { type: 'text', value: '⌘⇧T' }), false),
+      row('toggle sidebar', null, el('input', { type: 'text', value: '⌘\\\\' }), true, draw),
+    ]);
+    if (!scroll.children.length) scroll.append(el('p', { class: 'lab-note', style: 'padding:14px 0' }, 'nothing matches "' + q.value + '"'));
+  };
+  q.addEventListener('input', draw); draw();
+  root.append(el('div', { class: 's-search' }, q), scroll);
+  return root;
+}
+Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab in the current space with a gear seat row. Single long page, sticky section headers, search. One card per harness: icon, default role, wake method, hooks, system prompt. Rows that differ from default get the dot and a reset. Everything here is live: edit, search, reset.',
+  states: ['in a tab', 'long page', 'harness cards', 'diff from default', 'search "role"'],
+  render(s, body) {
+    if (s === 'in a tab') {
+      const model = C.makeModel(10, 'phone');
+      const gearSeat = { key: 'settings', name: 'settings', harness: 'gear', role: null, title: '', state: 'idle', color: TOKENS.color.dark.accent };
+      model.spaces[0].tabs.push({ name: 'settings', shortcut: '⌘,', tree: gearSeat, seats: [gearSeat] });
+      const frame = el('div', { class: 'sb-frame', style: 'height:640px' });
+      const pane = el('div', { class: 'pane focused', style: '--seat:' + TOKENS.color.dark.accent + ';height:100%' }, C.titleStrip(gearSeat, { shortcut: '⌘,' }), page());
+      frame.append(C.sidebar(model, { openSpaces: [model.spaces[0].key], focusedKey: 'settings' }), el('div', { class: 'stage', style: 'display:block' }, pane));
+      body.append(frame); return;
+    }
+    const frame = el('div', { style: 'height:640px;border:1px solid var(--line);border-radius:var(--r-pill);overflow:hidden' });
+    frame.append(page({ query: s === 'search "role"' ? 'role' : '' }));
+    body.append(frame);
+    if (s === 'harness cards') requestAnimationFrame(() => frame.querySelector('.s-scroll').scrollTop = 0);
+    if (s === 'diff from default') requestAnimationFrame(() => { const t = frame.querySelector('.s-row.changed'); if (t) t.scrollIntoView({ block: 'center' }); });
+  } });
+</script></body></html>

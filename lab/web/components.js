@@ -46,10 +46,27 @@
     omp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>',
     zsh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l7 6-7 6M13 18h6"/></svg>',
     gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
-    // sidebar-toggle fox: standard sidebar glyph, left column grows an ear tip (pick §8 shape 3)
-    sidebarfox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h16v12H4zM9 8v12M4 8l2.5-4L9 8"/></svg>',
+    // sidebar-toggle fox: standard sidebar glyph, left column grows an ear tip (pick §8 shape 3). open = sidebar shown (column filled)
+    sidebarfox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8h18v12H3zM9 8v12M3 8l2.6-5L9 8"/></svg>',
+    sidebarfoxopen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8h18v12H3zM3 8l2.6-5L9 8"/><path d="M3 8h6v12H3z" fill="currentColor"/></svg>',
     ears: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 19 5.5 3l5.5 11.5zM22 19 18.5 3 13 14.5z"/></svg>',
   };
+  // Logo: head silhouette, flat two-tone (electric fill, navy ear interiors + hair tuft + hood collar), tilted 12° CCW. Ears-only below 32 px.
+  function logoSvg(opts) {
+    opts = opts || {};
+    const c = T.color.dark, fill = opts.fill || c.accent, navy = opts.navy || c.navy, tilt = opts.tilt == null ? T.meta.brand_tilt_deg : opts.tilt;
+    const head = `<g transform="rotate(${tilt} 50 54)">
+      <path fill="${fill}" d="M17 4 L40 30 Q50 26 60 30 L83 4 L91 42 Q97 74 71 92 Q50 104 29 92 Q3 74 9 42 Z"/>
+      <path fill="${navy}" d="M21 13 L36 31 L15 39 Z M79 13 L64 31 L85 39 Z"/>
+      <path fill="${navy}" d="M34 30 L42 17 L49 27 L55 13 L61 27 L71 20 L67 33 Q50 26 34 30 Z"/>
+      <path fill="${navy}" d="M20 84 Q50 108 80 84 L88 100 L12 100 Z"/>
+      ${opts.face ? `<path fill="${c.fg}" d="M44 60 Q50 56 56 60 Q58 70 50 74 Q42 70 44 60 Z"/><circle cx="50" cy="60" r="3.2" fill="${navy}"/>` : ''}
+    </g>`;
+    const ears = `<g transform="rotate(${tilt} 50 50)"><path fill="${fill}" d="M12 92 L22 10 L48 60 Z M88 92 L78 10 L52 60 Z"/><path fill="${navy}" d="M24 26 L40 58 L20 72 Z M76 26 L60 58 L80 72 Z"/></g>`;
+    return `<svg viewBox="0 0 100 104" xmlns="http://www.w3.org/2000/svg">${opts.ears ? ears : head}</svg>`;
+  }
+  function logo(px, opts) { opts = opts || {}; const ears = opts.ears != null ? opts.ears : px < 32; return el('span', { class: 'logo', style: 'width:' + px + 'px;height:' + px + 'px;display:inline-block', html: logoSvg({ ...opts, ears }) }); }
+
   function harnessIcon(name, extra) { return el('span', { class: 'hicon ' + (extra || ''), title: name, html: ICON_SVG[name] || ICON_SVG.zsh }); }
   function roleMark(role) { return el('span', { class: 'rmark', style: 'color:var(--role-' + (role || 'unsigned') + ')', title: role || 'unsigned' }, ROLE_MARK[role || 'unsigned']); }
   function kbd(s) { return el('span', { class: 'kbd' }, s); }
@@ -282,5 +299,5 @@
     return row;
   }
 
-  window.C = { syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

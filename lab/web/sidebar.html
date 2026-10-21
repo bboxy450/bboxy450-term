@@ -12,7 +12,16 @@ Lab.page({ title: 'sidebar', wide: true, note: 'Pill stack. 10 seats open by def
       const model = C.makeModel(10, 'phone');
       const focused = model.spaces[0].tabs[0].seats[0];
       const frame = el('div', { class: 'sb-frame phone' });
-      frame.append(el('div', { class: 'stage', style: 'display:block' }, C.pane({ ...focused }, { focused: true, height: 240 })), C.sidebar(model, { openSpaces: [model.spaces[0].key], focusedKey: focused.key }));
+      const sb = C.sidebar(model, { openSpaces: [model.spaces[0].key], focusedKey: focused.key });
+      sb.classList.add('open');
+      const handle = el('div', { class: 'handle' }, el('i'), el('span', {}, 'drag or tap'));
+      sb.prepend(handle);
+      let startY = 0, startT = 0, h = 0, moved = false;
+      const setT = y => sb.style.transform = 'translateY(' + Math.max(0, Math.min(h - 44, y)) + 'px)';
+      handle.addEventListener('pointerdown', e => { h = sb.offsetHeight; startY = e.clientY; startT = sb.classList.contains('open') ? 0 : h - 44; moved = false; sb.classList.add('dragging'); handle.setPointerCapture(e.pointerId); });
+      handle.addEventListener('pointermove', e => { if (!sb.classList.contains('dragging')) return; const dy = e.clientY - startY; if (Math.abs(dy) > 3) moved = true; setT(startT + dy); });
+      handle.addEventListener('pointerup', e => { sb.classList.remove('dragging'); const dy = e.clientY - startY; const open = moved ? (startT + dy) < (h - 44) / 2 : !sb.classList.contains('open'); sb.classList.toggle('open', open); sb.style.transform = ''; });
+      frame.append(el('div', { class: 'stage', style: 'display:block' }, C.pane({ ...focused }, { focused: true, height: 520 })), sb);
       body.append(frame); return;
     }
     const n = parseInt(s), model = C.makeModel(n, 'sb' + n);
