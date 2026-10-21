@@ -1,0 +1,6 @@
+JetBrains Mono fixture source: https://github.com/JetBrains/JetBrainsMono
+revision: 19371302b95d218af43299bce79ddbddd0bc364d
+JetBrainsMono-Regular.ttf: 270224 bytes; sha256 e6fd0d7e91550b3ed2b735d4312474362c4716edc4fc0577a0f61ed782d5aed1
+OFL.txt: 4399 bytes; sha256 a76abf002c49097d146e86740a3105a5d00450b1592e820a1109a8c5680cd697
+Unmodified font fixture under OFL-1.1; process-local CoreText registration only. SF Mono uses the existing Terminal.app font, not a redistributed copy.
+exit_status: 0

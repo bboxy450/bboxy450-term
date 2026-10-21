@@ -1,0 +1,35 @@
+$ cargo test -p bbt-render -- --nocapture
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.12s
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-48d3a1121585bb47)
+
+running 1 test
+test atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/smoke.rs (target/debug/deps/smoke-696d55f6e2bbaf8e)
+
+running 2 tests
+test metal_quad_and_80_by_24_cell_backgrounds ... ok
+test coretext_ink_lands_only_in_expected_ascii_cells ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+     Running tests/variants.rs (target/debug/deps/variants-73cb24c46bb9eb85)
+
+running 1 test
+render adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 48 PNGs to /Users/feral/mydev/bboxy450-term/crates/bbt-render/../../target/render/smoke
+test generate_smoke_font_size_scale_theme_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.04s
+
+   Doc-tests bbt_render
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit_status: 0

@@ -1,0 +1,122 @@
+$ cargo test -p bbt-render --no-run
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling bitflags v2.13.2
+   Compiling objc2 v0.6.5
+   Compiling objc2-encode v4.1.0
+   Compiling cfg_aliases v0.2.2
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling foldhash v0.2.0
+   Compiling thiserror v2.0.21
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.3
+   Compiling zerocopy v0.8.63
+   Compiling rustc-hash v1.1.0
+   Compiling naga v30.0.1
+   Compiling bit-vec v0.9.1
+   Compiling num-traits v0.2.19
+   Compiling bit-set v0.10.0
+   Compiling indexmap v2.14.2
+   Compiling codespan-reporting v0.13.1
+   Compiling arrayvec v0.7.8
+   Compiling static_assertions v1.1.0
+   Compiling smallvec v1.16.3
+   Compiling raw-window-handle v0.6.2
+   Compiling once_cell v1.21.4
+   Compiling wgpu-hal v30.0.1
+   Compiling simd-adler32 v0.3.10
+   Compiling parking_lot_core v0.9.12
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling adler2 v2.0.1
+   Compiling crc32fast v1.5.3
+   Compiling wgpu-core v30.0.1
+   Compiling litrs v1.0.1
+   Compiling miniz_oxide v0.9.1
+   Compiling parking_lot v0.12.5
+   Compiling wgpu v30.0.1
+   Compiling miniz_oxide v0.8.9
+   Compiling document-features v0.2.12
+   Compiling fdeflate v0.3.7
+   Compiling flate2 v1.1.10
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+   Compiling pollster v0.4.0
+   Compiling png v0.18.1
+   Compiling dispatch2 v0.3.1
+   Compiling block2 v0.6.2
+   Compiling objc2-core-foundation v0.3.2
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling zerocopy-derive v0.8.63
+   Compiling bytemuck v1.25.2
+   Compiling objc2-foundation v0.3.2
+   Compiling naga-types v30.0.1
+   Compiling wgpu-types v30.0.1
+   Compiling objc2-metal v0.3.2
+   Compiling half v2.7.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+error[E0277]: the trait bound `wgpu::InstanceDescriptor: std::default::Default` is not satisfied
+  --> crates/bbt-render/src/device.rs:16:48
+   |
+16 |             backends: wgpu::Backends::METAL, ..Default::default()
+   |                                                ^^^^^^^^^^^^^^^^^^ the trait `std::default::Default` is not implemented for `wgpu::InstanceDescriptor`
+
+error[E0308]: mismatched types
+  --> crates/bbt-render/src/device.rs:15:44
+   |
+15 |           let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+   |  ________________________-------------------_^
+   | |                        |
+   | |                        arguments to this function are incorrect
+16 | |             backends: wgpu::Backends::METAL, ..Default::default()
+17 | |         });
+   | |_________^ expected `InstanceDescriptor`, found `&InstanceDescriptor`
+   |
+note: associated function defined here
+  --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wgpu-30.0.1/src/api/instance.rs:63:12
+   |
+63 |     pub fn new(desc: InstanceDescriptor) -> Self {
+   |            ^^^
+help: consider removing the borrow
+   |
+15 -         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+15 +         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+   |
+
+error[E0063]: missing field `apply_limit_buckets` in initializer of `RequestAdapterOptions<&wgpu::Surface<'_>>`
+  --> crates/bbt-render/src/device.rs:18:49
+   |
+18 |         let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `apply_limit_buckets`
+
+error[E0599]: no method named `chunks_exact` found for enum `std::result::Result<T, E>` in the current scope
+    --> crates/bbt-render/src/headless.rs:134:27
+     |
+ 134 |         for row in mapped.chunks_exact(padded_row_bytes as usize) { rgba.extend_from_slice(&row[..row_bytes as usize]); }
+     |                           ^^^^^^^^^^^^ method not found in `std::result::Result<BufferView, MapRangeError>`
+     |
+note: the method `chunks_exact` exists on the type `BufferView`
+    --> /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/mod.rs:1241:5
+     |
+1241 |     pub const fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the `?` operator to extract the `BufferView` value, propagating a `Result::Err` value to the caller
+     |
+ 134 |         for row in mapped?.chunks_exact(padded_row_bytes as usize) { rgba.extend_from_slice(&row[..row_bytes as usize]); }
+     |                          +
+
+Some errors have detailed explanations: E0063, E0277, E0308, E0599.
+For more information about an error, try `rustc --explain E0063`.
+error: could not compile `bbt-render` (lib) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+exit_status: 101
