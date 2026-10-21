@@ -9,6 +9,7 @@ window.TOKENS = {
       "fg_dim": "#8A90B0",
       "line": "#2A2F55",
       "navy": "#141A3C",
+      "sidebar": "#1A1E3C",
       "surface": "#12142A",
       "surface_2": "#1B1F3F"
     },
@@ -20,6 +21,7 @@ window.TOKENS = {
       "fg_dim": "#6B7190",
       "line": "#D6D4F0",
       "navy": "#141A3C",
+      "sidebar": "#E6E4F5",
       "surface": "#FFFFFF",
       "surface_2": "#ECEAFF"
     },

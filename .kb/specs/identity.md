@@ -6,11 +6,15 @@
 
 ## Identity and authority
 
-An account is its **Ed25519 root public key**, encoded as the lowercase hex of the raw 32 bytes. Same root, same account; a different root is a different account. Email, Google subject, character name and avatar are metadata, never alternate roots or recovery credentials. Day one accepts an operator-entered email as self-asserted; Google adds a separately graded binding in v0.1. Apple stays deferred under [[vision]].
+An account is its **Ed25519 root public key**, encoded as the lowercase hex of the raw 32 bytes. Same root, same account; a different root is a different account. Email, Google subject, character name and avatar are metadata, never alternate roots or recovery credentials. An operator-entered email is self-asserted; Google adds a separately graded binding when cross-instance identity ships. Apple stays deferred under [[vision]].
+
+Milestone scope follows the latest [[vision]] cut: the first prototype prioritizes rendering, local messaging/MCP and harness visibility. Google binding and cross-instance enrollment/revocation flows are specified here for the later phases; they do not block that prototype. The operator's current vocabulary is **swarm**.
 
 Use three signing levels, matching [[messaging]]: root → device → seat. Generate independent keys from the OS cryptographic RNG; no child derives another child's secret. Transport session encryption keys are separate from these long-lived authentication keys. A signed role proves terminal-issued authority, not a model's identity or permission to execute peer text.
 
 The root resides on one **controller Mac** by default. Other enrolled devices receive their own device grant and never receive the root seed. Only an authenticated operator action can use the root for enrollment, device authority changes, recovery or Google binding. Oracle can exercise its delegated seat controls; no MCP role gets root export, arbitrary root signing or account recovery.
+
+Initial creation generates the root and controller-device keys separately, stores them through the protected backend, and commits the first root-signed device grant/head at account epoch 1 with a null predecessor. Backup remains explicitly incomplete until the paper re-entry check succeeds. Import/recovery must match the expected root; it never silently overwrites another account.
 
 Review lens: key possession, delegated authority, rollback/expiry, recovery and provider/provenance evidence. Assumes an uncompromised root and the stated OS custody boundary. A stolen root or an unrestricted process inside that boundary breaks the account authority assumption.
 
@@ -33,13 +37,15 @@ Public keys are lowercase 64-character hex; signatures are unpadded base64url of
 
 | Record / signer | Required payload fields and meaning |
 |---|---|
-| `AccountHead` / root | `version, root_pubkey, account_epoch, previous_head_id, active_devices, revoked_devices, issued_at`. Each active entry names device ID, device public key and device epoch. A root-signed membership head, not a helper's assertion. |
+| `AccountHead` / root | `version, root_pubkey, account_epoch, previous_head_id, active_devices, revoked_devices, current_binding_ids, revoked_binding_ids, issued_at`. Each active entry names device ID, device public key and device epoch. Binding references are record digests, not public email/token payloads. A root-signed authority head, not a helper's assertion. |
 | `DeviceGrant` / root | `version, root_pubkey, account_epoch, device_id, device_pubkey, device_epoch, serial, scopes, role_ceiling, not_before, expires_at`. Scopes distinguish device transport, issuing seat grants and publishing provenance. It cannot delegate root custody/recovery. |
-| `SeatGrant` / owning device | `version, root_pubkey, device_grant_id, device_id, device_epoch, seat_id, seat_pubkey, key_epoch, grant_epoch, previous_grant_id, cohort_id, harness_kind, role, destinations, control_scopes, muted, not_before, expires_at`. Destination permissions and mute match [[messaging]]; scope/role cannot exceed the parent. |
-| `SeatRoster` / authorized device | `version, root_pubkey, device_grant_id, device_epoch, roster_sequence, previous_roster_id, issued_at, entries`. Public provenance entries are defined below; no private cohort/destination policy is exported. |
+| `SeatGrant` / owning device | `version, root_pubkey, device_grant_id, device_id, device_epoch, seat_id, seat_pubkey, key_epoch, grant_epoch, previous_grant_id, swarm_id, harness_kind, role, destinations, control_scopes, muted, not_before, expires_at`. Destination permissions and mute match [[messaging]]; scope/role cannot exceed the parent. |
+| `SeatRoster` / authorized device | `version, root_pubkey, device_grant_id, device_epoch, roster_sequence, previous_roster_id, issued_at, entries`. Public provenance entries are defined below; no private swarm/destination policy is exported. |
 | `GoogleBinding` / root | The decided fields `provider, subject, email, root_pubkey, nonce_random, id_token_hash, issued_at`; separate root signature and provider proof bundle. This does not grant device/seat permissions. |
 
 Initial validity policy: device grants last at most **30 days**, seat grants at most **24 hours** and never beyond their parent. These are operator-configurable finite defaults, not measured capacities or provider rules. Root-approved renewal can keep the same device key; the owning device renews seat grants within its current ceiling. No issuer can backdate or extend a child beyond its own valid interval. Expiry blocks new authenticated effects; it does not kill a harness or delete stored messages/history.
+
+`role_ceiling` is an explicit allowed-role set, not a numeric priority rank. Executor and Creativity sharing a scheduling class does not make their identities interchangeable.
 
 A verifier pins the expected root, verifies every signature/domain and parent reference, matches the subject key to the actual authenticated peer, checks membership/device epochs, validity, scope and role eligibility, then applies current receiver policy. Codex/other harnesses remain Executor; Claude may be Oracle or explicitly Creativity. A signature cannot override that harness policy.
 
@@ -87,7 +93,7 @@ A captured ticket is not proof that the requester is the intended physical devic
 
 ## Revocation, epochs and partition behavior
 
-The root controller serializes membership changes in a durable journal. Adding/revoking a device or changing its authority publishes a higher `account_epoch` and root-signed `AccountHead` linked to its predecessor. Reissue grants for remaining authorized devices in the new epoch. Device key replacement also advances that device's epoch. A device advances a seat's grant epoch for role/destination/mute changes and its key epoch for key replacement.
+The root controller serializes account-authority changes in a durable journal. Adding/revoking a device, changing its authority or publishing/revoking a Google binding advances `account_epoch` and publishes a root-signed `AccountHead` linked to its predecessor. Reissue grants for remaining authorized devices in the new epoch. Device key replacement also advances that device's epoch. A device advances a seat's grant epoch for role/destination/mute changes and its key epoch for key replacement.
 
 On accepting a head/grant, persist its high-water mark before acknowledging or acting. Reject lower epochs; an equal epoch with different signed content is a **fork**, not “last packet wins.” Suspend new affected control effects and show the conflicting proofs for operator resolution. The controller must not restore a stale private journal and issue an independently competing head.
 
@@ -121,7 +127,7 @@ The root remains the identity throughout this flow. Use the system browser and a
 2. Compute exactly the decided nonce: `hex_lower(SHA-256(raw_root_pubkey_32 || nonce_random_32))`. Send that string as `nonce` with `scope=openid email`, `response_type=code`, configured client ID, state and `code_challenge_method=S256`.
 3. Accept only the matching loopback callback/path, one bounded response, no duplicate parameters, and exact constant-time state match. Exchange the code over HTTPS using the same redirect, client ID and PKCE verifier; a desktop client secret is not a confidential trust anchor.
 4. Verify the ID token with Google's trusted discovery/JWKS: allowed signature algorithm/key, issuer, this app's audience, authorized party where applicable, expiry/issued time, exact nonce, stable `sub` and email claims. Set verified-email status only when `email_verified` is true. Provider identity is issuer plus subject; matching email strings never merge roots. [Google token verification](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token), [Google OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect).
-5. Root-sign the decided binding record below only after validation. `nonce_random` is unpadded base64url of the actual 32 bytes, `id_token_hash` is SHA-256 of the exact compact JWT bytes, and `issued_at` is this verified binding's time. Store the proof bundle separately: record, root signature, original provider ID token and required public issuer/audience context. A hash alone does not let another verifier validate Google's signature.
+5. Root-sign the decided binding record below only after validation. `nonce_random` is unpadded base64url of the actual 32 bytes, `id_token_hash` is SHA-256 of the exact compact JWT bytes, and `issued_at` is this verified binding's time. Commit its digest in `AccountHead.current_binding_ids`; explicit revocation moves it to `revoked_binding_ids`. Store the proof bundle separately: record, root signature, original provider ID token and required public issuer/audience context. A hash alone does not let another verifier validate Google's signature.
 6. Discard OAuth access/refresh tokens when not needed for another explicitly authorized feature; identity binding does not request offline API access. Do not put the code, verifier or bearer tokens in logs/rosters. Sharing the email/ID-token proof bundle requires the operator's chosen visibility; it is not automatically broadcast to global channels.
 
 Decided record shape, with symbolic values rather than live credentials:
@@ -148,7 +154,7 @@ The yearly job can mark rebinding due in the background. A fresh nonce/browser a
 
 Maintain an append-only signed roster history per issuing device, with its root-signed `DeviceGrant` authorizing provenance issuance. Each public entry binds `seat_id, seat_pubkey, key_epoch, character_name, harness_kind, role, valid_from, valid_until?, status` plus a reference to its private seat grant. Status is a key/provenance status (current/retired/revoked), not a new harness activity state. Sign the manifest with the authorized device key and include its root proof and predecessor hash.
 
-Do not export the private seat grant's channels/DMs, private cohort membership, harness conversation ID, cwd, tokens or host contact details in a public commit roster. The device's public provenance assertion binds the leaf key/name to the root; it is not a redacted runtime grant signature. A verifier pins the root, verifies device authority/epochs and the roster signature, finds the exact leaf key and checks key status. Keep historical signed entries after rotation so “Boxy's seat Nyx Copperwing” can be resolved for older commits.
+Do not export the private seat grant's channels/DMs, private swarm membership, harness conversation ID, cwd, tokens or host contact details in a public commit roster. The device's public provenance assertion binds the leaf key/name to the root; it is not a redacted runtime grant signature. A verifier pins the root, verifies device authority/epochs and the roster signature, finds the exact leaf key and checks key status. Keep historical signed entries after rotation so “Boxy's seat Nyx Copperwing” can be resolved for older commits.
 
 Per-seat Git signing can use the leaf's `ssh-ed25519` public representation and SSHSIG's `git` namespace through a seat-bound signer. Signing access must be restricted to that seat and operator-approved purpose; no root/device private key is offered as the seat's Git key. This is the integration shape if that signing mode is approved, not a signer implemented by this document.
 
@@ -174,7 +180,9 @@ Only `.kb/specs/identity.md` is written by task I. No keys/tickets were generate
 | Local Rust source reads / symbol searches at the paths above | Exit 0 for inspected source; generated API availability is not behavior verification. |
 | `git --version`; `ssh -V` | Exit 0: Git 2.54.0 (Apple Git-157), OpenSSH 10.3p1. No signing invocation. |
 | Primary web sources linked above, plus Apple's documentation JSON payloads | Fetched on 2026-10-21; Apple HTML was JavaScript-only, JSON supplied the actual Enclave/Keychain text. Old Tailscale KB URL and OpenSSH raw certificate URL failed; current Tailscale docs and OpenBSD manual supplied those mechanisms. |
-| Required document check | `ls .kb/specs/identity.md && grep -c '^## ' .kb/specs/identity.md`; execute before handoff. |
+| Required document check | `ls .kb/specs/identity.md && grep -c '^## ' .kb/specs/identity.md` — exit 0, ten level-two sections. |
+
+Document validation on 2026-10-21: JSON/fence/whitespace checks, ten required sections, eight local wikilinks, eleven local Rust source pointers and the nonce/authority/recovery/provenance contract assertions passed, exit 0. `git diff --check` exited 0. These are document/source checks, not runtime acceptance.
 
 Implementation acceptance, not checks passed by this specification:
 

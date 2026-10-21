@@ -84,3 +84,21 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Cohorts are called swarms
 **Rule:** the UI word for the block is swarm: SWARM bands, "+ new swarm". The vision vocabulary (space, cohort) is the Oracle's to update. **Where:** strings in `components.js` and `showcase.js`; `.kb/specs/ux-prototype.md` updated. CSS class names unchanged.
+
+### Nothing in the sidebar moves on focus
+**Rule:** the "+ new seat ⌘T" row is in every open swarm, not only the focused one. **Why:** a row that appears where focus is makes the whole list jiggle on every focus change. **Where:** `components.js` space pill.
+
+### Unfocused swarms dim like unfocused panes
+**Rule:** the swarm holding the focused seat is full contrast; every other swarm's band and rows desaturate and fade with the same `[dim]` tokens as panes, the body washes toward grey, the bumper keeps its colour. Hover lifts an unfocused swarm a little. **Why:** the same reading left and right says what is focused at a glance. **Where:** `.space.unfocused` in `lab.css`, class set in `components.js`.
+
+### The sidebar has its own ground
+**Rule:** the sidebar background is a token pair: lighter than the window in dark mode (#1A1E3C under #12142A blocks), darker than the window in light mode (#E6E4F5 under white blocks), so swarm blocks contrast with their ground in both themes. **Where:** `color.*.sidebar` tokens, `--sidebar-bg`.
+
+### Swarms are named in place
+**Rule:** double-click a swarm band to rename it; Enter or blur commits, Escape cancels. A new swarm is born as `swarm N` with the name field already open. **Where:** `spaceHeader` in `components.js`, `editName` in `showcase.js`.
+
+### One icon for the theme
+**Rule:** the title bar has one theme icon: sun in dark mode, moon in light mode, click flips. No auto label, no three-state cycle; the OS preference only sets the start. **Why:** it is a demo, simplify. **Where:** `themeBtn` in `showcase.js`.
+
+### No sidebar footer
+**Rule:** the sidebar has no bottom row. No archive, no plus. The big "+ new swarm" button under the blocks is the one way to create a swarm. **Where:** `components.js` sidebar; the stream dock now sits at the very bottom.

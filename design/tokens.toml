@@ -20,6 +20,7 @@ fg_dim = "#8A90B0"            # muted text
 accent = "#2E6BFF"            # electric
 accent_soft = "#7B8CFF"       # periwinkle
 navy = "#141A3C"
+sidebar = "#1A1E3C"           # sidebar ground: lighter than bg so the swarm blocks (surface) sit darker on it
 
 [color.light]
 bg = "#F4F3FF"
@@ -31,6 +32,7 @@ fg_dim = "#6B7190"
 accent = "#2E6BFF"
 accent_soft = "#7B8CFF"
 navy = "#141A3C"
+sidebar = "#E6E4F5"           # sidebar ground: darker than bg so the white swarm blocks pop
 
 [color.state]
 idle = "#6B7190"

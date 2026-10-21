@@ -86,14 +86,14 @@
   let focused = stageKeys[0];
   function jumpSpace(sp) { open.add(sp.key); const first = sp.tabs[0] && sp.tabs[0].seats[0]; if (first) focused = first.key; render(); }   // dot: open it and focus its first seat
   function toggleSpace(sp) { open.has(sp.key) ? open.delete(sp.key) : open.add(sp.key); render(); }                                    // band: open/shut only
-  let spaceN = model.spaces.length;
+  let spaceN = model.spaces.length, editName = null;
   function newSpace() {
     spaceN++;
     const z = { key: 'z' + spaceN, name: 'zsh', harness: 'zsh', role: null, title: '~', state: 'idle', pal: (spaceN + 6) % 15 };
     Object.defineProperty(z, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
     seats.push(z); startReplay(z, seats.length - 1);
     const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [] };
-    model.spaces.push(sp); jumpSpace(sp);
+    model.spaces.push(sp); editName = sp.key; jumpSpace(sp);
   }
   // Close is reversible (operator): the seat enters a 60 s grace state. The pane leaves the split, the row becomes a
   // closed strip with undo, ⌘Z restores it in place with its split position. After the window it is terminated.
@@ -136,8 +136,9 @@
 
   // ---------- DOM ----------
   const app = document.getElementById('app');
-  const themeBtn = el('span', { class: 'tbtn theme', title: 'theme: auto → dark → light', onclick: () => { themeMode = { auto: 'dark', dark: 'light', light: 'auto' }[themeMode]; localStorage.setItem('showcase.theme', themeMode); applyTheme(); drawThemeBtn(); render(); } });
-  function drawThemeBtn() { themeBtn.innerHTML = ''; themeBtn.append(el('span', {}, theme() === 'dark' ? '◑' : '◐'), el('span', {}, themeMode)); }
+  // one icon: sun in dark mode, moon in light mode; a click flips. The OS preference only sets the start.
+  const themeBtn = el('span', { class: 'tbtn theme', title: 'toggle light / dark', onclick: () => { themeMode = theme() === 'dark' ? 'light' : 'dark'; localStorage.setItem('showcase.theme', themeMode); applyTheme(); drawThemeBtn(); render(); } });
+  function drawThemeBtn() { themeBtn.innerHTML = ''; themeBtn.append(C.harnessIcon(theme() === 'dark' ? 'sun' : 'moon')); }
   drawThemeBtn();
   const titlebar = el('div', { class: 'titlebar' }, el('span', { class: 'win' }, el('i'), el('i'), el('i')), el('span', { class: 'tbtn on' }, C.harnessIcon('sidebarfoxopen')), C.logo(18, { ears: false }), el('span', { class: 'ttl' }, 'bboxy450-term'), el('span', { id: 'crumb' }), el('span', { class: 'spacer' }), themeBtn, el('span', { class: 'tbtn' }, C.harnessIcon('gear')));
   const main = el('div', { id: 'main' });
@@ -162,8 +163,9 @@
     main.innerHTML = '';
     stageTree = stageOf(); stageKeys = stageTree ? C.leaves(stageTree).map(s => s.key) : [];
     if (focused && !stageKeys.includes(focused) && !phantoms.some(p => p.key === focused)) focused = stageKeys[0] || null;
+    const birth = editName; editName = null;
     const sb = C.sidebar(model, { openSpaces: [...open], openTabs: model.spaces.flatMap(s => s.tabs.map(t => s.key + '/' + t.name)), focusedKey: focused, currentSpace: space().key,
-      onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: () => {}, onUndo: undoClose,
+      onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: () => {}, onUndo: undoClose, onRename: () => render(), editName: birth,
       onColor: sp => { const hues = [0, 30, 50, 90, 150, 190, 220, 260, 300, 330]; sp.hueI = ((sp.hueI == null ? -1 : sp.hueI) + 1) % hues.length; sp.color = 'hsl(' + hues[sp.hueI] + ' 70% ' + (theme() === 'light' ? 42 : 58) + '%)'; render(); } });
     const stage = el('div', { class: 'stage' }, (() => { if (!stageTree) return el('div'); const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
     main.append(sb, stage);
@@ -173,7 +175,7 @@
       n.addEventListener('click', () => { const s = seats.find(x => x.key === n.dataset.key); s.unread = 0; setFocus(n.dataset.key, { locate: n.classList.contains('pane') ? 'row' : 'pane' }); });
       if (n.classList.contains('pane')) { n.addEventListener('pointerenter', () => armHover(n.dataset.key)); n.addEventListener('pointerleave', disarmHover); }   // panes: dwell focus, brightness only; rows: never
     });
-    sb.insertBefore(el('div', { class: 'stream-dock', id: 'stream' }), sb.querySelector('.sb-foot'));
+    sb.append(el('div', { class: 'stream-dock', id: 'stream' }));
     // sidebar width: drag the right edge; persisted
     sb.style.width = (localStorage.getItem('showcase.sbw') || T.sidebar.width_compact) + 'px';
     sb.append(el('div', { class: 'sb-resize', onpointerdown: e => {

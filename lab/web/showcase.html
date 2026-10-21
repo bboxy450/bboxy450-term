@@ -14,7 +14,7 @@
   /* row locate: a bouncy border in the seat colour, the one CSS animation the showcase allows on a row */
   .seat-row.bounce { animation: rowBounce 520ms cubic-bezier(.34,1.56,.64,1) !important; outline: 2px solid var(--seat); outline-offset: 0; }
   @keyframes rowBounce { 0% { transform: scale(1); outline-offset: 0; outline-color: transparent; } 35% { transform: scale(1.045); outline-offset: 3px; outline-color: var(--seat); } 70% { transform: scale(0.99); outline-offset: 1px; } 100% { transform: scale(1); outline-offset: 0; outline-color: transparent; } }
-  .sidebar { background: transparent; border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+  .sidebar { background: var(--sidebar-bg); border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
   .seat-row.waiting, .seat-row.errored { background: transparent; }
   .stage { flex: 1; padding: 0; background: transparent; min-width: 0; }
   .split { display: flex; gap: 0; min-width: 0; min-height: 0; }
@@ -43,7 +43,7 @@
   .stream-dock .filter { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--fg-dim); padding: 0 0 4px 6px; font-family: var(--font-mono); }
   .stream-dock .filter b { color: var(--fg); font-weight: 500; }
   .stream-dock .filter button { background: transparent; border: 1px solid var(--line); color: var(--fg-dim); border-radius: 999px; font: inherit; font-size: 10px; padding: 0 6px; cursor: pointer; }
-  .tbtn.theme { font-family: var(--font-mono); font-size: 11px; gap: 6px; align-items: center; }
+  .tbtn.theme { --icon: 18px; }
 </style>
 <script src="tokens.js"></script><script src="logs.js"></script><script src="lab.js"></script><script src="components.js"></script>
 </head><body>

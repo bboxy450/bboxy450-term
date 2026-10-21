@@ -12,26 +12,30 @@ The window is a cockpit for swarms of agents. The left sidebar is the map; the r
 
 ## 2. Window
 
-- **One canvas, our chrome.** No native toolkit widgets. Dark theme by default, light theme real (not inverted), theme follows the OS (`prefers-color-scheme`) with a title-bar toggle cycling auto → dark → light, persisted.
-- **Title bar** (36 px): three window dots on the left (the only window controls anywhere), sidebar-toggle icon, the identity portrait as the mark (18 px, circle-cropped `bboxy.png`), app name, a crumb `· swarm · seat` naming what is focused, theme toggle and settings gear on the right.
+- **One canvas, our chrome.** No native toolkit widgets. Dark theme by default, light theme real (not inverted), theme starts from the OS (`prefers-color-scheme`); one title-bar icon (sun in dark, moon in light) flips it, persisted.
+- **Title bar** (36 px): three window dots on the left (the only window controls anywhere), sidebar-toggle icon, the identity portrait as the mark (18 px, circle-cropped `bboxy.png`), app name, a crumb `· swarm · seat` naming what is focused, the theme icon and the settings gear on the right.
 - **Every pixel is precious.** No outer padding. Panes sit 2 px apart (`layout.gutter`, 4 is the alternative). The glow paints over gutters and edges and takes no layout space.
 - **Everything resizes by drag.** The sidebar's right edge drags between 160 and 520 px and persists. Every gutter between panes is a divider with an 8 px grab zone; dragging changes the split ratio (10% to 90%), the split tree keeps it, the sidebar mini-grid follows on release.
 
 ## 3. Sidebar: the map
 
+The sidebar sits on its own ground (`color.*.sidebar`): lighter than the window in dark mode, darker in light mode, so swarm blocks contrast with it in both themes.
+
 ### 3.1 Swarm block (the car)
+- **Name**: double-click the band to rename in place; Enter or blur commits, Escape cancels. A new swarm is born as `swarm N` with its name field already open.
 A swarm (space) is a rounded body (radius 11, surface colour) in the finish language of the 2023 Range Rover rear: flush, nothing protrudes, no chevrons, no left bars, no hairlines.
 - **Band**: a thin (22 px) gloss band set into the top of the body, in the swarm colour, with the swarm name in wide-tracked uppercase (10 px, .22 em), the seat count, and on the right a colour swatch.
 - **Bumper**: a 6 px strip along the bottom of the body in the swarm colour (3 px when shut). No accent line anywhere.
 - **Colour**: one per swarm, random from its key (36 hues × 2 lightness bands), user-changeable by clicking the swatch. Hover lightens the band's own colour; it never turns white or grey.
 - **Open and shut**: every swarm's band is always visible. Clicking a band opens or shuts the block, nothing else. A shut block is a thin tab: band only, with the roll-up of its seats' state glyphs (worst first, max 6) and a waiting badge. Several blocks may be open. Blocks sit 8 px apart (`layout.cohort_gap`).
+- **Unfocused**: the swarm holding the focused seat is full contrast; every other swarm's band and rows desaturate and fade with the pane `[dim]` tokens, the body washes toward grey, the bumper keeps its colour.
 - **Below the blocks**: a big body-coloured button `+ new swarm` (44 px). A swarm is a world: its own seats, tabs, shadows and stream. A new swarm starts with one zsh seat.
 
 ### 3.2 Inside an open block
 Rows at cozy density (24 px, 12.5 px text, 14 px icons: compact's footprint with macOS proportions), flush on the body, no separators. Selection is an inset rounded highlight. Section labels (Shadows, new seat) are sentence case, 11 px semibold grey.
 - **Tab row**: caret-less name, roll-up glyphs when collapsed, ⌘N, and the split **mini-grid**: the tab's split tree drawn as a tiny grid with real ratios, focused cell in accent, waiting and errored cells tinted. A single-seat tab shows no grid.
 - **Seat row**: harness icon · character name in the seat colour · role mark (♔ oracle, ♟ executor, ♝ creativity) · title (hidden at compact density) · ⌘N · state glyph. Rows never reorder. The focused row has a quiet gloss band and no bar.
-- **`+ new seat ⌘T`**: last row of the swarm that holds the focused seat, like Arc's New Tab inside the space.
+- **`+ new seat ⌘T`**: last seat row of every open swarm, like Arc's New Tab inside the space. It never moves with focus.
 - **Closed strip**: a seat in grace after close (see 5.3): struck name, grey icon, countdown, `undo ⌘Z`.
 - **SHADOWS**: a group of other people's harnesses in this swarm's channels (spec term: phantom seats). Grey name, desaturated icon, state glyph as published, grey breathing glow when active. No pane, no logs. Clicking one filters the stream to that participant; it never focuses or ripples.
 
@@ -39,7 +43,7 @@ Rows at cozy density (24 px, 12.5 px text, 14 px icons: compact's footprint with
 Above the footer, hidden until the first message. Shows the last four messages of the current swarm: role rail (gold oracle, blue executor, dashed violet creativity, grey unsigned), parsed `<ROLE>` token, text, time, unread dot. A foreign Oracle gets no priority chip. Filter chip `from <name> × all` when a shadow is selected.
 
 ### 3.4 Footer
-Archive icon on the left, `+` on the right (also creates a swarm), nothing between. No space dots: every swarm is already a band.
+None. The big `+ new swarm` button is the only creator; the stream dock is the bottom-most element.
 
 ### 3.5 Sidebar glow budget
 Rows carry the state glow at a quieter budget than panes so halos on 20 px rows never mix: radius 4, 30% of pane alpha, 4 particles on active rows only, idle rows do not glow (`glow.row_*`).
@@ -102,8 +106,6 @@ Colour (dark and light sets, state and role colours, seat colour hash), density 
 Keys 1-4 (state of the focused seat), M (message arrives), P (shadow speaks), the log replay with its state following, `?scene=15`, `?gutter=`. No legend in the window; the list lives on the lab index.
 
 ## 9. Gaps
-- Naming a new swarm (currently `space N`).
-- Archive icon has no behaviour yet.
 - Mute / unmute of a seat with presence notices (operator decision in [[vision]]) has no UI yet.
 - Remote owned seats versus shadows: owned seats over ssh look like local seats; not shown in the lab.
 - Settings as a tab, the ⌘T picker and the toolbar icon exist as lab pages but are not wired into the showcase.

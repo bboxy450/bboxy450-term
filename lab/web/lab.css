@@ -131,7 +131,7 @@ code, .mono { font-family: var(--font-mono); }
 
 /* sidebar */
 .sidebar {
-  width: var(--sb-w); background: var(--bg); border-right: 1px solid var(--line);
+  width: var(--sb-w); background: var(--sidebar-bg); border-right: 1px solid var(--line);
   display: flex; flex-direction: column; height: 100%; min-height: 0;
 }
 .density-compact .sidebar { width: var(--sb-w-compact); }
@@ -399,3 +399,12 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .tab-row .tname { letter-spacing: 0; }
 .new-cohort { height: 40px; font-size: 12.5px; letter-spacing: 0; font-weight: 500; }
 .sidebar .sb-foot { height: 34px; }
+
+/* unfocused swarm on the left dims exactly like an unfocused pane on the right: band and rows fade and desaturate,
+   the bumper keeps the swarm colour as the pane border keeps the seat colour */
+.space.unfocused { background: color-mix(in srgb, var(--surface) calc(100% - var(--dim-wash)), var(--fg-dim)); }
+.space.unfocused .space-head, .space.unfocused .space-body { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); transition: opacity var(--hover-ms), filter var(--hover-ms); }
+.space.unfocused:hover .space-head, .space.unfocused:hover .space-body { opacity: calc(var(--dim-opacity) + 0.2); }
+
+/* swarm rename in place */
+.space-head .sname-edit { background: rgba(0,0,0,.25); border: 0; outline: 0; color: #fff; font: inherit; letter-spacing: inherit; text-transform: inherit; width: 120px; padding: 1px 6px; border-radius: 3px; }

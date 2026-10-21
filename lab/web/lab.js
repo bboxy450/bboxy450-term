@@ -15,7 +15,7 @@
     const d = T.density[prefs.density];
     const set = (k, v) => r.setProperty(k, v);
     set('--bg', c.bg); set('--surface', c.surface); set('--surface-2', c.surface_2); set('--line', c.line);
-    set('--fg', c.fg); set('--fg-dim', c.fg_dim); set('--accent', c.accent); set('--accent-soft', c.accent_soft); set('--navy', c.navy);
+    set('--fg', c.fg); set('--fg-dim', c.fg_dim); set('--accent', c.accent); set('--accent-soft', c.accent_soft); set('--navy', c.navy); set('--sidebar-bg', c.sidebar);
     set('--c-idle', T.color.state.idle); set('--c-waiting', T.color.state.waiting); set('--c-errored', T.color.state.errored);
     for (const [k, v] of Object.entries(T.color.role)) set('--role-' + k, v);
     set('--row-h', d.row_h + 'px'); set('--tab-h', d.tab_h + 'px'); set('--glyph', d.glyph + 'px'); set('--icon', d.icon + 'px');
