@@ -91,6 +91,19 @@
     { time: '13:52', seat: 'Nyx Copperwing', seatColor: '#FF4FA3', event: 'claimed', kind: 'pr', ref: 'bboxy450-term#14', grade: 'reported' },
     { time: '14:03', seat: 'Rook Ashwhisker', seatColor: '#2EE6A8', event: 'modified', kind: 'markdown', ref: '.bboxy/research/gpu-terminals-rust.md', grade: 'inferred' });
   seats[1].touched = 2; seats[3].touched = 1;
+  // subscriptions and external events (events.md): auto-subscriptions follow delegation; external arrives from webhooks, CI, cloud, cron
+  model.spaces[0].subscriptions = [
+    { seat: 'Vesper Greywind', color: '#FFC53D', patterns: [{ pattern: 'task/*', auto: true, why: 'the Oracle follows every task it delegated' }, { pattern: 'seat/*/state' }, { pattern: 'doc/specs/**' }] },
+    { seat: 'Nyx Copperwing', color: '#FF4FA3', patterns: [{ pattern: 'task/w2-1', auto: true, why: 'its delegated task' }, { pattern: 'doc/specs/mux-daemon', auto: true, why: 'derived_from of the task' }, { pattern: 'doc/specs/events', auto: true, why: 'derived_from of the task' }, { pattern: 'artifact/*/for:w2-1' }] },
+    { seat: 'Rook Ashwhisker', color: '#2EE6A8', patterns: [{ pattern: 'task/w4-1', auto: true, why: 'its delegated task' }, { pattern: 'doc/specs/networking', auto: true, why: 'derived_from of the task' }] },
+  ];
+  model.spaces[0].external = [
+    { source: 'github', text: 'PR #14 review requested · bboxy450/bboxy450-term', time: '13:45' },
+    { source: 'ci', text: 'macos-15 · render smoke · passed (51 PNGs)', time: '13:58' },
+    { source: 'cloud', text: 'eu-2 · seat rig-codex reconnected', time: '14:10' },
+    { source: 'cron', text: 'daily checkpoint signed · .bboxy/log/', time: '23:59' },
+  ];
+  let extOpen = true;
   // provenance fixture: items with weighted derived_from in the annotation form, signed digests, a hash-chained log
   model.spaces[0].provenance = {
     items: [
@@ -129,7 +142,7 @@
     Object.defineProperty(z, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
     Object.defineProperty(z, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
     seats.push(z); startReplay(z, seats.length - 1);
-    const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [], history: [], epics: [{ id: 'e' + spaceN, title: 'swarm ' + spaceN, open: true, items: [] }] };
+    const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [], history: [], external: [], epics: [{ id: 'e' + spaceN, title: 'swarm ' + spaceN, open: true, items: [] }] };
     model.spaces.push(sp); editName = sp.key; jumpSpace(sp);
   }
   // Placement: a seat goes into a swarm as a new tab, or splits a target pane on one of its four sides.
@@ -169,6 +182,10 @@
     if (key === 'glow') { document.getElementById('glow').style.display = value ? '' : 'none'; }
     const keep = settingsSeat.section; applyTheme(); settingsSeat.section = keep; render();
   }
+  // key E: an external event arrives (GitHub / CI / cloud / cron cycle)
+  const EXT_DEMO = [['github', 'PR #15 opened · W2.1 mux supervisor'], ['ci', 'macos-15 · workspace tests · 134 passed'], ['cloud', 'us-1 · provider quota at 80%'], ['webhook', 'operator webhook · deploy window opens']];
+  let extN = 0;
+  addEventListener('keydown', e => { if ((e.key === 'e' || e.key === 'E') && !e.metaKey && !e.ctrlKey && !spot) { const [source, text] = EXT_DEMO[extN++ % EXT_DEMO.length]; (space().external = space().external || []).push({ source, text, time: new Date().toTimeString().slice(0, 5) }); drawStream(); } });
   // Tasks (operator: task_delegate): a durable task bound to a seat; a row under the seat and a line in the stream.
   // Key T delegates a demo task to the focused seat; T again walks it: assigned → acknowledged → running → reported; accept via the pill.
   const TASK_TITLES = ['gpu research spec', 'relay bench on eu-2', 'review PR 14', 'fix glyphon atlas growth', 'write harness adapter'];
@@ -341,7 +358,7 @@
   app.append(titlebar, main);
   let rects = [];
   function splitDom(t) {
-    if (t.key && t.graph) { const sp = space(); const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘G', onClose: closeGraph }), C.graphPage({ seats: seats.filter(x => !x.settings && !x.graph && (tabOf(x.key) || {}).sp === sp), epics: sp.epics, swarm: sp.name, history: sp.history, provenance: sp.provenance })); p.dataset.key = t.key; return p; }
+    if (t.key && t.graph) { const sp = space(); const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘G', onClose: closeGraph }), C.graphPage({ seats: seats.filter(x => !x.settings && !x.graph && (tabOf(x.key) || {}).sp === sp), epics: sp.epics, swarm: sp.name, history: sp.history, provenance: sp.provenance, subscriptions: sp.subscriptions })); p.dataset.key = t.key; return p; }
     if (t.key && t.settings) { const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘,', onClose: closeSettings }), C.settingsPage({ section: t.section, onChange: (sec, k, v) => { if (sec === 'appearance') settingsSeat.section = 'Appearance'; applySetting(sec, k, v); } })); p.dataset.key = t.key; return p; }
     if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute });
     const A = splitDom(t.a), B = splitDom(t.b);
@@ -631,10 +648,11 @@
     dock.innerHTML = '';
     const stream = space().stream;
     for (const ep of (space().epics || [])) if (ep.items.length) dock.append(C.epicGroup(ep, { onToggle: drawStream }));
+    if ((space().external || []).length) dock.append(C.externalLane(space().external, { open: extOpen, onToggle: () => { extOpen = !extOpen; drawStream(); } }));
     const items = stream.filter(m => !streamFilter || m.fromKey === streamFilter).slice(-4);
     if (streamFilter) { const ph = space().participants.find(p => p.key === streamFilter); if (!ph) { streamFilter = null; return drawStream(); } dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
     for (const m of items) dock.append(C.messageRow(m));
-    dock.style.display = (stream.length || (space().epics || []).some(e => e.items.length)) ? '' : 'none';
+    dock.style.display = (stream.length || (space().epics || []).some(e => e.items.length) || (space().external || []).length) ? '' : 'none';
   }
   const PHRASES = ['relay bench green on eu-2, 41 ms p50', 'claiming the glyphon atlas question', 'B spec amended, envelope has presence now', 'who owns the ssh bootstrap doc?', 'pushed fixtures, four files'];
   let phN = 0;

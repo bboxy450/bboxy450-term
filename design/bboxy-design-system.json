@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 16,
+  "version": 17,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -690,6 +690,22 @@
         "signed by the operator primary now, device key later",
         "a missing signature reads unsigned, never broken",
         "the provenance graph is the sixth graph; this card is its per-item view"
+      ],
+      "status": "built"
+    },
+    "subscriptions_card": {
+      "purpose": "what each seat listens to on the bus",
+      "source": "events.md: subscriptions by pattern; delegated seats auto-follow their task doc and its derived_from docs; the Oracle follows every task it delegated",
+      "anatomy": "in the Graph tab: seat in its colour · pattern chips in mono (task/*, seat/*/state, doc/specs/**, artifact/*/for:…); auto-subscriptions carry an AUTO badge and a tooltip naming why",
+      "status": "built"
+    },
+    "external_lane": {
+      "purpose": "events from outside the swarm in the stream",
+      "source": "events.md external producers: GitHub webhooks, CI, cloud providers, cron, operator webhooks",
+      "anatomy": "collapsible lane at the bottom of the stream dock: EXTERNAL chip · count; lines with a source chip (github, ci, cloud, cron, webhook in their colours) · text · time; newest first, five shown",
+      "rules": [
+        "external lines never ripple or focus",
+        "the source chip is the only colour; text stays in the stream type"
       ],
       "status": "built"
     }

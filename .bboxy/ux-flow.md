@@ -192,3 +192,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Provenance is visible, and links carry their relation
 **Rule:** the Graph tab has a Provenance card: created by / updated by, derived-from as annotated wikilink chips, the signed digest pair, and the hash-chained activity log with its signed daily checkpoint. Any rendered wikilink uses the annotation form `[[slug|display]]{rel:w}` as a chip with a relation badge. **Why:** provenance.md decision and the Obsidian-compatible link syntax. **Where:** `renderLinks`, `provenanceCard` in `components.js`; design system v15.
+
+### Subscriptions are visible, external events have their lane
+**Rule:** the Graph tab shows what each seat listens to (pattern chips, AUTO where delegation subscribed it); the stream dock ends with a collapsible external lane (github, ci, cloud, cron, webhook chips). **Why:** events.md, the spine. **Where:** `subscriptionsCard`, `externalLane` in `components.js`; key E in the demo; design system v17.

@@ -214,6 +214,7 @@
     }
     tree.append(pre);
     root.append(agents, tree);
+    if (opts.subscriptions) root.append(subscriptionsCard(opts.subscriptions));
     if (opts.provenance) root.append(provenanceCard(opts.provenance));
     const hist = opts.history || [];
     if (hist.length) {
@@ -282,6 +283,28 @@
       for (const ev of prov.log.slice(-6).reverse()) card.append(el('div', { class: 'p-log' + (ev.checkpoint ? ' cp' : '') }, el('code', { class: 'p-hash' }, ev.hash.slice(0, 7)), el('span', { class: 'p-time' }, ev.time), el('span', { class: 'p-text' }, ev.checkpoint ? '✓ daily checkpoint · signed by ' + ev.by : ev.text)));
     }
     return card;
+  }
+
+  // Subscriptions card: each seat and the topic patterns it follows (events.md); auto-subscriptions are badged
+  function subscriptionsCard(subs) {
+    const card = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Subscriptions · ' + subs.length + ' seats')));
+    for (const s of subs) {
+      const row = el('div', { class: 'sub-row' }, el('span', { class: 'sub-seat', style: 'color:' + (s.color || 'var(--fg)') }, s.seat));
+      const pats = el('span', { class: 'sub-pats' });
+      for (const pt of s.patterns) pats.append(el('span', { class: 'sub-pat' + (pt.auto ? ' auto' : ''), title: pt.auto ? 'auto-subscribed: ' + pt.why : 'subscribed' }, el('code', {}, pt.pattern), pt.auto ? el('i', {}, 'auto') : null));
+      row.append(pats);
+      card.append(row);
+    }
+    return card;
+  }
+  // External-events lane: GitHub, CI, cloud, cron, operator webhooks as compact lines with a source chip
+  const EXT_TILE = { github: '#24292F', ci: '#2E6BFF', cloud: '#0EA5E9', cron: '#7C3AED', webhook: '#FF7A45' };
+  function externalLane(events, opts) {
+    opts = opts || {};
+    const lane = el('div', { class: 'ext-lane' + (opts.open === false ? ' shut' : '') });
+    lane.append(el('div', { class: 'ext-head', onclick: () => { if (opts.onToggle) opts.onToggle(); } }, el('span', { class: 'ecaret' }, opts.open === false ? '▸' : '▾'), el('span', { class: 'ekind' }, 'external'), el('span', { class: 'ext-count' }, events.length + ' events')));
+    if (opts.open !== false) for (const ev of events.slice(-5).reverse()) lane.append(el('div', { class: 'ext-ev' }, el('span', { class: 'ext-src', style: 'background:' + (EXT_TILE[ev.source] || '#374151') }, ev.source), el('span', { class: 'ext-text' }, ev.text), el('span', { class: 'ext-time' }, ev.time)));
+    return lane;
   }
 
   function miniGrid(tree, focusedKey, big) {
@@ -755,5 +778,5 @@
     return root;
   }
 
-  window.C = { renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
