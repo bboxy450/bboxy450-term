@@ -113,7 +113,8 @@ The first collector treated a UTF-8 continuation byte `0x9d` as a C1 OSC introdu
 - `python3 .kb/runs/osc7501-capture.py --self-test` — exit 0; byte-at-a-time parsing includes UTF-8 prompt text, ST/BEL frames and a cursor query; ordinary text is excluded.
 - `python3 .kb/runs/osc7501-capture.py --verify` — exit 0; validates hashes, contiguous raw offsets, frame/code/terminators, timing order, base64 fields, task-ID grammar and counts. Claude: 13 frames / 12 reports / one task. Codex: empty capture explicitly unproven.
 - `python3 .kb/runs/osc7501-capture.py --verify --require-both` — **exit 1, expected unmet acceptance**: Codex has no live status report.
-- Final file/link/whitespace checks are recorded at handoff. No runtime regression suite applies to a research-only capture.
+- Report/link/source-line/whitespace checks — exit 0; verifies the literal raw probe and child frame against the stated offsets and confirms sidecars contain no startup token lists or environment dumps.
+- `ls -l .kb/research/osc7501-capture.md .kb/runs/osc7501-{claude,codex}.bin` and `git diff --check` — exit 0. No runtime regression suite applies to a research-only capture.
 
 **Not checked:** no-reply control; live iTerm2 response bytes/display nesting; Codex transitions; waiting/error/permission states; multiple simultaneous children; C1 OSC; arbitrary transcript replay; input readiness or message-consumption evidence. A displayed done/idle report does not authorize peer-input injection.
 
