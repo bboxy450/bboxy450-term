@@ -280,6 +280,169 @@ Objections that fired while generating, recorded and not obeyed:
 - No candidate was tested against colour-blindness simulators.
 - Arc, iTerm2 and the other sources are recalled from use and from the three screenshots, not re-opened.
 
+---
+
+# Part two: diverging inside the constraints
+
+Added after the Oracle's three addenda. Source: [[ux-sidebar]] constraints 0..8 and `runs/ref-iterm-full-window-bad.png`. Sections 1 and 2 above stay as the unconstrained field; the shapes below obey the constraints and are the ones that can actually be picked.
+
+What the bad reference shows, measured by eye: the top tab strip carries grouping and shortcuts well (coloured pills, ⌘N). The right panel is a second list of the same seats in a different order, with text-only rows and a two-line preview, so the operator has to read to map a row to a pane. Two lists, one truth, no shared identity. The fix is one list, spatial, identity-carrying.
+
+## 10. The one left element
+
+Each shape obeys: one element, stable order, row identity = seat identity, space → tab → mini-grid, icons over text, ⌘N visible, collapses to 1000.
+
+1. **Pill stack.** iTerm's coloured group pill rotated vertical. A space is a tall rounded pill; its tabs sit inside as rows; each tab row ends in its mini-grid and ⌘N. The pill colour is the space colour; the row colour is the seat colour. Source: the good iTerm reference, turned 90 degrees.
+2. **Rail and leaves.** Space is a header, tabs hang from a thin vertical rail, each leaf is a seat row with the mini-grid of its tab beside the first leaf only. The rail carries the state lamps so the row text stays clean. Source: patch bays.
+3. **Mini-grid as the row.** The tab row *is* the mini-grid, enlarged to the sidebar width, each cell containing the seat's icon and name. A split tab is literally a small picture of itself. Below the collapse threshold this is the most honest map there is. Source: Mission Control, Arc tiles.
+4. **Card per tab.** Each tab is a card: title strip with ⌘N, body is the mini-grid with seat initials. Cards stack inside a space. Dense enough at 10, collapses to a one-line card at 1000. Source: Trello.
+5. **Colour-first.** Every seat row is a solid colour block with the name in white, the harness icon as a knockout. The in-pane title strip uses the identical block. Mapping is instant by colour alone. Source: Google Calendar event chips.
+6. **Monogram chips.** Row = coloured circle with the character's initials, then name, then state glyph at the far right. The pane title strip shows the same circle. Source: Slack avatars, Linear assignee chips.
+7. **Breadcrumb row.** Each row reads `space ▸ tab ▸ seat` with the mini-grid at the end. Flat list, hierarchy in the text, collapses by prefix. Source: Finder path bar.
+8. **Two-density sidebar.** One element with a density toggle: comfortable (rows with title) and compact (icon + glyph only, 18 px rows). At 1000 the compact mode holds about 50 rows per screen plus collapsed spaces. Source: Gmail density.
+
+ASCII of shape 1 at 10 seats, with constraint 3's title strip shown on the right so the mapping is visible:
+
+```
+sidebar                               seat title strip (inside pane)
+╭──────────────────────────╮         ┌─────────────────────────────────
+│ ▎term                 ⌘1 │         │ ◆ Vesper Greywind  ·  gpu research
+│  ◆ Vesper Greywind    ●  │ ──────▶ │ (strip is the seat's colour,
+│  ◇ Thorn Ashvale      ◐  │         │  same icon, same name)
+│  ◆ Lumen Foxglove     ○  │
+│  ┌─┬─┐                   │         mini-grid of this tab: V(a, H(b,c))
+│  │ │ │  ⌘2               │
+│  │ ├─┤                   │
+│  └─┴─┘                   │
+╰──────────────────────────╯
+╭──────────────────────────╮
+│ ▎winnow               ⌘3 │
+│  ◇ Marrow Finch       ✕  │
+│  ▢ zsh                ○  │
+╰──────────────────────────╯
+```
+
+ASCII of the same shape at 1000 seats, constraint 8 (collapse with rolled-up state):
+
+```
+╭──────────────────────────╮
+│ ▸ term        3  ●●○     │  space row: seat count, worst-first glyphs
+│ ▸ winnow      2  ✕○      │
+│ ▸ cloud-eu   48  ◐◐◐●…   │  up to 6 glyphs, then an ellipsis
+│ ▾ rig        12          │  expanded space
+│   ▸ ingest    4  ●●●○ ⌘4 │  tab rows: count, glyphs, shortcut
+│   ▾ parse     3       ⌘5 │  expanded tab shows seat rows
+│     ◇ Ash Vale        ●  │
+│     ◇ Pip Hollow      ◐  │
+│     ◇ Sable Quill     ○  │
+│ ▸ ssh:alpha  200 ●●●●●●… │
+│ …                        │
+│ 1000 seats · 7 waiting   │
+╰──────────────────────────╯
+```
+
+Rule shared by every shape above: a seat's row never moves. State changes the glyph and may add a glow (section 12); it never re-sorts. "Waiting" aggregates into the parent's count so the operator can find it without the list moving under them.
+
+## 11. Seat colour and the title strip (the two open gaps)
+
+Colour assignment, three shapes, each with what it breaks:
+
+1. **Hash of name.** Deterministic, survives restarts, same colour on every machine. Breaks: two neighbours can collide; no control.
+2. **Per-space palette, assigned in creation order.** Eight to twelve hues per space, cycling. Neighbours never collide inside a space. Breaks: the same name in two spaces has two colours.
+3. **Hash of key.** Seat colour derives from the seat's own key, so colour is identity in the cryptographic sense too. Operator can override per seat. Breaks: nothing visible; the override is the escape hatch. Source: GPG identicons, Keybase.
+
+Title strip, four shapes:
+
+1. **Full-width bar.** A 22 px strip across the top of the seat in the seat colour: icon, name, title, state glyph at right, ⌘N at far right. Mirrors the sidebar row exactly. Source: iTerm pane titles, but coloured.
+2. **Left edge rail.** A 3 px vertical rail in the seat colour down the pane's left edge, plus a name tag in the top-left corner. Minimal chrome, strong identity. Source: Git gutters.
+3. **Corner tag.** Only a small rounded tag in the top-right corner: icon + name in the seat colour. Scrollback keeps every pixel. Source: Figma frame labels.
+4. **Tinted border.** The pane border itself is the seat colour, 1 px idle, 2 px glowing when active. No text at all; the sidebar row is where the name lives. Source: focus rings.
+
+## 12. One look everywhere: phone to 1000-seat desktop
+
+Constraint 0 says no Aqua, no GTK, no Material. Our chrome is drawn, not borrowed, so the same drawing must fit three shapes of screen.
+
+1. **The sidebar is a sheet.** Desktop: a pinned left panel. Narrow desktop: it overlays. Phone: it is a bottom sheet pulled up by a drag handle, the same rows, the same mini-grids. One component, three positions. Source: Maps apps.
+2. **Seat as a card deck on phone.** The phone shows one seat full-screen; swipe horizontally between seats of a tab, vertically between tabs. The mini-grid becomes a page indicator. Source: Safari tab switcher.
+3. **Mini-grid as the phone's home.** On phone the home screen *is* the mini-grid of the current tab at full size; tap a cell to enter the seat. Source: Mission Control.
+4. **Density tokens, not breakpoints.** One layout with three density tokens (touch, comfortable, compact) that scale row height, glyph size and hit targets. Phone gets touch, 1000 seats gets compact. Source: Material density, but ours.
+5. **Pointer-agnostic rows.** Every row action (focus, close, split, assign role) is a long-press or right-click menu, never a hover-only affordance. Hover adds glow, nothing else. Source: iPadOS pointer.
+6. **Title bar is ours.** No native traffic lights: our own three glyphs in the seat palette, drawn in the same strip as the space label. Desktop OSes allow this with a borderless window. Phone has no title bar; the strip becomes the status area.
+7. **The whole app is a canvas.** One wgpu surface, chrome and terminals in it, no platform widgets anywhere. Phone and desktop differ only in input and in which layout tokens are active. This is the mechanism that makes constraint 0 possible, and it is what Task A's toolkit question is really asking.
+
+## 13. GPU chrome: where shaders earn a place
+
+Shaders are a first-class tool. A field of uses, each with the state it serves, so nothing glows for decoration.
+
+1. **Active glow.** The seat colour bleeds 6 px outside the row and the pane border with a soft blur while the seat is active. Idle has no glow. The glow is the state. Source: neon signs.
+2. **Waiting pulse.** Waiting-on-input rows and borders pulse the glow at 1 Hz. The only animation that repeats. Source: pagers.
+3. **Error fracture.** Errored seats get a brief chromatic-aberration shiver on the border, 300 ms, once, then a static red rail. Loud once, quiet after. Source: glitch art.
+4. **Scrollback depth fog.** The top of a seat's visible area fades into a dark gradient when there is scrollback above, so "more above" is felt, not scrollbar'd. Source: fog of war.
+5. **Message ripple.** When a message arrives for a seat, a ring expands from its sidebar row and from its pane corner, 400 ms, in the sender's role colour. Connects the stream to the map. Source: water, Material ripple but spatial.
+6. **Split reveal.** Creating a split animates the mini-grid and the pane in sync, the new cell growing from the divider. Source: Figma auto-layout.
+7. **Focus vignette.** Unfocused panes darken 10 percent with a subtle vignette; the focused one is full brightness. Source: stage lighting.
+8. **Frosted sidebar.** The sidebar background blurs the terminal content behind it when it overlays on narrow screens. The one place blur is structural. Source: macOS vibrancy, but ours.
+9. **Heat trail in the mini-grid.** Cells in the mini-grid brighten with recent output cadence and decay over 10 s. The map shows where the work is. Source: thermal cameras.
+10. **Identity shimmer.** The seat colour in the title strip carries a slow, barely visible animated noise so two seats of similar hue still feel distinct. Source: holographic foils.
+
+Budget rule for the pick: at 1000 seats, only glyphs and static colour render by default; glow, pulse and ripple apply to on-screen rows only, and the heat trail is per expanded tab. Shaders cost per pixel, not per seat.
+
+## 14. The component lab
+
+The Oracle asked for a storybook-style lab to prototype every UI element with all its states before it is built in Rust.
+
+### Medium: three options, costed
+
+| option | what it is | fast to iterate | true to the renderer | sync cost |
+|---|---|---|---|---|
+| **a. Web lab** | Static HTML + CSS + a little JS per component, one page per component, a state switcher. Served locally, no framework. | highest | none: CSS glow is not a wgpu glow; fonts and glyph metrics differ | tokens must be mirrored by hand or generated |
+| **b. Rust lab** | A `lab` binary in the workspace on the real wgpu renderer. Each component is a Rust module with a `states()` list; the binary shows a gallery with a state switcher and hot-reloads the tokens file. | medium: compile times; hot reload of tokens and shaders only | total | zero: it is the build |
+| **c. Both, staged** | Web lab for shape and layout divergence in the first weeks; Rust lab becomes the lab of record once the renderer exists. Web pages are archived, not maintained. | high early, true later | true where it matters | one-way handoff, deliberate |
+
+Shapes for the Rust lab's UI itself: a left list of components, a state strip across the top (one chip per state), the component centred on a checkerboard, a token panel on the right, a density toggle (touch / comfortable / compact), a screenshot key that writes `runs/lab/<component>-<state>.png`.
+
+### Component list, each with its states
+
+| component | states |
+|---|---|
+| state glyph | active, idle, waiting, errored; each at 10, 14, 18 px |
+| harness icon | claude, codex, pi, omp, zsh; template and colour variants |
+| role mark | oracle, executor, creativity; unsigned |
+| seat row | each state × focused/unfocused × with/without subtitle × 3 densities |
+| tab row | expanded, collapsed, with ⌘N, with 1..8 seats |
+| mini-grid | single, V, H, V(H), H(V), depth 3, focused cell, heat trail |
+| space header | expanded, collapsed with rolled-up glyphs, 1..999 seat count |
+| sidebar | 10 seats, 100 seats, 1000 seats, phone sheet |
+| seat title strip | each colour-assignment shape × each state |
+| pane border | idle, active glow, waiting pulse, error fracture |
+| message row | each role × read/unread × reply-nested |
+| unread badge | 1, 12, 99+, priority colour |
+| harness picker | open, filtered, name reroll |
+| settings page | each section; diff-from-default marker |
+| toolbar icon | each shape in section 8, light and dark, 16 and 32 px |
+| logo | each direction in section 9, 16 to 1024 px |
+| colour tokens | the full palette, light and dark, contrast grid |
+
+### Staying in sync with the Rust build
+
+1. **One tokens file.** `design/tokens.toml`: colours, radii, row heights per density, glyph sizes, glow radii, animation durations. The Rust build includes it with `include_str!` at compile time; the web lab reads the same file through a 20-line generator that emits CSS variables. Tokens drift is impossible because there is one file.
+2. **States are data.** Every component's state list lives in one Rust enum in a `ui-model` crate with no rendering dependency. The lab iterates the enum; the app matches on it. A state added to the enum appears in the lab on next build.
+3. **Screenshot diffs.** The Rust lab writes `runs/lab/*.png` per component and state. A CI job diffs against the previous commit's set and posts changed images. Visual regressions are seen, not described.
+4. **The lab is the build.** Option b and c make the lab a binary target in the same workspace, so a renderer change cannot leave the lab behind. The web lab, if used, is explicitly disposable.
+5. **Divergence stays in `.kb`.** Shapes live here as text; the lab holds only what the Oracle selected. The field and the pick never mix in one place.
+
+Gap: whether `glyphon` or `sugarloaf` can render the glyph table in section 4 at 10 px with hinting good enough to judge; Task A answers this and the lab's first component depends on it.
+
+## Censor log, part two
+
+- "Just build it in Rust, skip the web lab." Logged. Option c exists because the renderer does not yet, and shapes are cheaper in CSS for a week.
+- "Shaders are decoration." Every shader in section 13 is tied to a state or a structure; the budget rule is there so the pick can cut.
+- "Phone is years away." Constraint 0 says design for it now. Logged, overruled by the brief; the sheet shape costs nothing to keep in mind.
+
+## Links
+
+[[vision]] · [[ux-sidebar]] · tasks: `tasks/2026-10-21-gpu-terminal-research.md` (toolkit question for the lab's renderer)
+
 ## Next
 
-Oracle selects one shape per section, or a merge, and names it. Then the UI prototype under [[vision]] process step 2.
+Oracle selects one shape per section, or a merge, and names it. Then the UI prototype under [[vision]] process step 2, in the lab from section 14.
