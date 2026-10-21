@@ -5,8 +5,8 @@
 | A | [[2026-10-21-gpu-terminal-research]] GPU terminal stack in Rust | Rook Ashwhisker <EXECUTOR> | RUNNING, authorized by operator |
 | B | [[2026-10-21-agent-messaging-research]] embedded agent messaging | Nyx Copperwing <EXECUTOR> | DONE, accepted |
 | C | UX divergence → `research/ux-divergence.md` | Lumen Foxglove <CREATIVITY> | RUNNING |
-| D | [[2026-10-21-harness-touchpoints-research]] harness touch points | Oracle subagent + Nyx Copperwing <EXECUTOR> | RUNNING (redundant) |
-| E | [[2026-10-21-cloud-and-mosh-research]] mux daemon, mosh, cloud | Oracle subagent DONE + unclaimed Executor | OPEN (redundant) |
+| D | [[2026-10-21-harness-touchpoints-research]] harness touch points | Nyx DONE, accepted; Oracle subagent still running | CONVERGE when both land |
+| E | [[2026-10-21-cloud-and-mosh-research]] mux daemon, mosh, cloud | Oracle subagent DONE + Nyx Copperwing <EXECUTOR> | RUNNING (redundant) |
 | F | [[2026-10-21-transport-identity-research]] iroh vs quinn, Apple/Google sign-in | Oracle subagent DONE; Nyx cross-checked in B | CLOSED |
 | G | usage limits via tachyon → `research/usage-limits-tachyon.md` | Oracle subagent | DONE (future item) |
 | T | [[2026-10-21-text-rendering-research]] ghostty text rendering, our wgpu equivalent | Oracle subagent + open Executor | RUNNING (redundant open) |

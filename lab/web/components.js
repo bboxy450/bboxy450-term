@@ -150,7 +150,9 @@
         if (big) c.textContent = t.name.split(' ')[0];
         return c;
       }
-      return el('div', { class: 'mg ' + t.dir }, walk(t.a), walk(t.b));
+      const A = walk(t.a), B = walk(t.b);
+      if (t.ratio) { A.style.flex = t.ratio; B.style.flex = 1 - t.ratio; }
+      return el('div', { class: 'mg ' + t.dir }, A, B);
     }
     const root = tree.key ? el('div', { class: 'mg' }, walk(tree)) : walk(tree);
     root.classList.add('mg'); if (big) root.classList.add('big');

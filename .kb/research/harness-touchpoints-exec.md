@@ -2,7 +2,7 @@
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment D.
 
-[[vision]] · [[harness-touchpoints]] · [[agent-messaging]] · [[2026-10-21-harness-touchpoints-research]]
+[[vision]] · [[harness-touchpoints]] · [[agent-messaging]] · [[iterm-harness-plugin]] · [[subagent-detection]] · [[2026-10-21-harness-touchpoints-research]]
 
 ## Evidence boundary
 
@@ -18,25 +18,46 @@ Pointers use these local roots:
 | `TUI/` | `Pi/node_modules/@earendil-works/pi-tui/dist/` |
 | `SDK/` | `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/` |
 | `Man/` | `/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/share/man/man3/` |
+| `ClaudeBin` | `/opt/homebrew/Caskroom/claude-code/2.1.304/claude` |
+| `CodexBin` | `/opt/homebrew/Caskroom/codex/0.163.0/bin/codex` |
 
-ICQ is the published **0.20.2 registry package**, revision `6524c3b689dc70ff9d379192f8a57a62c0c047ef`; it is not the older `~/mydev/icq-connect` repository. Pi's readable JavaScript and shipped docs were inspected; OMP's shipped TypeScript declarations establish interface contracts, not tested runtime behavior. Claude/Codex opaque binaries were queried through help/version only. Primary online documentation was fetched on this date; a documented feature is distinguished from a feature exercised in this installation. Proof-limit conclusions below are inferences from the interfaces, not live race tests.
+ICQ is the published **0.20.2 registry package**, revision `6524c3b689dc70ff9d379192f8a57a62c0c047ef`; it is not the older `~/mydev/icq-connect` repository. Pi's readable JavaScript and shipped docs were inspected; OMP's shipped TypeScript declarations establish interface contracts, not tested runtime behavior. Claude's embedded JavaScript and Codex's binary string fragments were read at the offsets below; `@0x…` means original file byte offset, not a line or virtual address. Primary online documentation was fetched on this date; a documented feature is distinguished from a feature exercised in this installation. Proof-limit conclusions below are inferences from the interfaces, not live race tests.
 
 ## Touch-point matrix
 
-| Harness | Launch / role context | Hooks or lifecycle | MCP / skills | Input into an existing seat |
+| Harness | Launch / role context | Primary observation / supplemental lifecycle | MCP / skills | Input into an existing seat |
 |---|---|---|---|---|
-| Claude | `--append-system-prompt`, `--system-prompt`, `--settings`; print-mode structured I/O is a separate mode | JSON hooks in settings; stream hook events in print mode | `--mcp-config`, project `.mcp.json`; personal/project skills | ICQ's owned Unix socket; structured print input for a process launched in that mode; PTY fallback only with readiness evidence |
-| Codex | initial prompt, `-c developer_instructions=…`; replacement instructions file is a different operation | `hooks.json` / inline config; app-server lifecycle and pending requests | `mcp_servers` in config; `.agents/skills` discovery | installed `codex queue` command; ICQ exact-thread queue adapter; app-server input methods in an app-server integration |
+| Claude | `--append-system-prompt`, `--system-prompt`, `--settings`; print-mode structured I/O is a separate mode | OSC 7501 main/task reports; secondary JSON hooks for detail/boundaries; print-mode hook stream | `--mcp-config`, project `.mcp.json`; personal/project skills | ICQ's owned Unix socket; structured print input for a process launched in that mode; PTY fallback only with readiness evidence |
+| Codex | initial prompt, `-c developer_instructions=…`; replacement instructions file is a different operation | OSC 7501 main status, OSC 21337 hint; secondary hooks; app-server events for that integration | `mcp_servers` in config; `.agents/skills` discovery | installed `codex queue` command; ICQ exact-thread queue adapter; app-server input methods in an app-server integration |
 | Pi 1.0.0 | system/append flags, SYSTEM/APPEND_SYSTEM files, extension prompt sections | TypeScript/JavaScript extension events; JSON/RPC event stream | native MCP config; user/project/shared skills | extension `sendUserMessage`; JSONL RPC when launched in RPC mode; ICQ session-bound bridge |
 | OMP 18.4.12 | system/append/template flags; SDK prompt override | extension and hook modules; RPC; approval events | capability-based MCP discovery; skills under configured resource roots | extension `sendUserMessage`; JSONL RPC; ICQ session/generation-bound bridge |
 
 These are alternatives at different process boundaries. An RPC/headless mode is not the same instance as an already running interactive TUI unless its documented attachment mechanism connects them. MCP supplies tools when the agent calls them; having an MCP server configured does not itself push a user message or prove readiness.
 
+## Primary PTY observation: OSC 7501 and Codex OSC 21337
+
+For Claude/Codex status, use OSC 7501 as the primary observation channel per the Oracle's addendum. Hooks remain secondary for tool/permission details and session boundaries. [[iterm-harness-plugin]] supplied the search leads; the offsets below were independently read from the installed artifacts. [[subagent-detection]] is a proposed consumer spec, not evidence that its parser or state rules already work.
+
+| Local evidence | Mechanism established statically |
+|---|---|
+| `ClaudeBin @0xd491da4`, `@0xdbd981d` | OSC table assigns PROGRAM_STATUS=7501 and TAB_STATUS=21337. `PZo` constructs the 7501 `?` probe and accepts an OSC 7501 reply starting with `?`. Echoing the probe satisfies that matcher; no live exchange was captured. |
+| `ClaudeBin @0xd49286e`, helpers immediately before it, `@0xccabed3` | `GTr` encodes colon-separated `state`, `app=claude-code`, optional `id`, blocked `kind`, bounded progress, base64 title/message. Helpers set 192/2048-byte title/message limits, truncate through TextEncoder.encodeInto, and sanitize IDs to 32 characters. Clear-all and clear-one encoders are adjacent. |
+| `ClaudeBin @0xec2b869`, `@0xec2bb16` | Main-state mapping distinguishes working, blocked, done, idle, error/auth. `mIo` derives running agent-task reports with sanitized ID and description; paused/remote-input tasks can be blocked. This is evidence for individual Claude task rows. |
+| `ClaudeBin @0xec2c5d3`, `@0xec2c63f` | `o7` reads the settled programStatus capability. `Txe` gates writes on it, writes changed reports, and clears removed task IDs/unmounted reports. Static code establishes the gate; it does not show a running process receiving the probe. |
+| `CodexBin @0xb3f1fa7`, `@0xb8d8e4c` | Literal fragments contain OSC 7501 `state=` / `:app=codex` and a clear report. Formatting bytes between fragments are not captured wire output. This scan does not establish a Codex task-ID encoder or its enablement condition. |
+| `CodexBin @0xb3f1f6e`, `@0xb8d8e1b` | OSC 21337 fragments set `status`, `indicator`, `status-color`, `detail`, plus an empty-value clear. iTerm2's [escape-code documentation](https://iterm2.com/documentation-escape-codes.html#session-status) confirms its status/indicator/color fields and omission/clearing semantics. Treat it as a display hint beneath 7501. |
+
+Claude's encoded payload shape is `state=<s>:app=claude-code[:id=<id>][:kind=<kind>][:progress=<n>][:title=<base64>][:msg=<base64>]`; clear is `state=clear[:id=<id>]`. The main-state mapping and adjacent clear encoder cover idle/working/blocked/done/error/clear. Parse OSC framing before fields; base64 text remains untrusted child data. Bound payload and decoded text, associate reports with the owning seat/process generation, and keep the authenticated peer identity/role channel separate. A PTY writer can imitate another app's status string.
+
+**Gap:** no live wire/probe capture was run; Codex probing and individual subagent reports remain unproven. No literal `7501;?` occurred in the Codex binary, which does not exclude a constructed probe. A bounded scan of installed Pi/OMP `.js`/`.mjs`/`.cjs` output plus Pi TUI found no 7501/21337 protocol identifier; OMP's two `7501` hits were color-matrix decimal fractions. Dynamic construction or dependencies outside that scan remain possible. Use their documented lifecycle interfaces until a runtime capture proves OSC support. Live capture is the separate assignment, not completed by this pass.
+
+An observed `idle`, `done`, `clear`, or `blocked` report is not permission to type: a modal, approval dialog, stale generation or operator draft can still own input. Neither 7501 nor 21337 provides a consumable composer-ready token. Keep the interactive-input guard below even when primary status works.
+
 ## Claude Code
 
 **Launch/instructions.** Installed `claude --help` confirms system and append-system flags, settings JSON/file input, session/resume selection, MCP configuration, and print-mode `--input-format stream-json` / `--output-format stream-json`. `--include-hook-events` exposes lifecycle records in the output stream. These flags were inspected, not executed with a prompt. The same help describes system-prompt snapshots across resumes; changing a later launch flag must not be assumed to replace an already recorded prompt. [CLI reference](https://code.claude.com/docs/en/cli-reference).
 
-**Hook files and states.** [Hooks reference](https://code.claude.com/docs/en/hooks) documents user/project/local settings hook sources. `UserPromptSubmit` marks submitted input; `PreToolUse`/`PostToolUse` surround tool work. `PermissionRequest` identifies an approval gate. `Stop` is a turn stopping boundary, not a certificate that stdin belongs to the composer. `StopFailure` covers an API-error stop; tool failures have their own events. `Notification` idle/permission messages are conditional notifications: `idle_prompt` can arrive roughly a minute later and depends on user absence/background work. Do not use its absence as active-state evidence.
+**Secondary hook files and states.** [Hooks reference](https://code.claude.com/docs/en/hooks) documents user/project/local settings hook sources. `UserPromptSubmit` marks submitted input; `PreToolUse`/`PostToolUse` surround tool work. `PermissionRequest` identifies an approval gate. `Stop` is a turn stopping boundary, not a certificate that stdin belongs to the composer. `StopFailure` covers an API-error stop; tool failures have their own events. `Notification` idle/permission messages are conditional notifications: `idle_prompt` can arrive roughly a minute later and depends on user absence/background work. Do not use its absence as active-state evidence.
 
 **MCP/skills.** [MCP documentation](https://code.claude.com/docs/en/mcp) gives project `.mcp.json` and launch `--mcp-config`; project trust and managed policy affect loading. [Skills documentation](https://code.claude.com/docs/en/skills) gives `~/.claude/skills/<name>/SKILL.md` and project `.claude/skills/`. This machine's shared guidance keeps actual skill sources under `~/.agents/skills/`; preserve its links instead of making another copy.
 
@@ -50,7 +71,7 @@ ICQ's launch wrapper sets `crossSessionInbound: accept` (`ICQ/src/launch.rs:200`
 
 **Launch/instructions.** Installed help confirms `-c/--config`, `-C/--cd`, profiles and `--no-alt-screen`; `codex exec --json` is a noninteractive JSONL output mode. The [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference) describes additive `developer_instructions` and a separate `model_instructions_file` replacement. Use the additive surface for role context without treating an ordinary initial user prompt as system instructions.
 
-**Hooks, MCP, skills.** [Official OpenAI hooks documentation](https://learn.chatgpt.com/docs/hooks) lists SessionStart/End, UserPromptSubmit, tool, permission, stop, interrupt and subagent events. Hooks load next to active config layers as `hooks.json` or inline tables; project and hook trust affect execution. `SessionStart` and `UserPromptSubmit` may supply additional developer context. [MCP](https://learn.chatgpt.com/docs/extend/mcp) is configured in user `~/.codex/config.toml` or a trusted project's `.codex/config.toml`. [Build skills](https://learn.chatgpt.com/docs/build-skills) documents repository `.agents/skills` discovery up to the repository root. Keep shared sources in `~/.agents/skills` as required on this machine.
+**Secondary hooks, MCP, skills.** [Official OpenAI hooks documentation](https://learn.chatgpt.com/docs/hooks) lists SessionStart/End, UserPromptSubmit, tool, permission, stop, interrupt and subagent events. Hooks load next to active config layers as `hooks.json` or inline tables; project and hook trust affect execution. `SessionStart` and `UserPromptSubmit` may supply additional developer context. [MCP](https://learn.chatgpt.com/docs/extend/mcp) is configured in user `~/.codex/config.toml` or a trusted project's `.codex/config.toml`. [Build skills](https://learn.chatgpt.com/docs/build-skills) documents repository `.agents/skills` discovery up to the repository root. Keep shared sources in `~/.agents/skills` as required on this machine.
 
 **Structured observation.** [App-server documentation](https://learn.chatgpt.com/docs/app-server) provides `turn/started`, `turn/completed` with completed/interrupted/failed status, thread status notifications, approval requests, user-input requests and their resolution notifications. Track outstanding request IDs to distinguish waiting from active work; completion of a tool item is not completion of its turn. `thread/status/changed` can carry `waitingOnApproval`. App-server transport and a terminal TUI are separate integration choices.
 
@@ -84,6 +105,7 @@ ICQ's launch wrapper sets `crossSessionInbound: accept` (`ICQ/src/launch.rs:200`
 
 | Signal | Evidence / limit |
 |---|---|
+| OSC 7501 / 21337 | Artifact evidence above supplies primary application-reported status and supplemental display text. Reports can identify Claude tasks; they do not authenticate the writer, prove editor focus, or acknowledge a message. |
 | Foreground process group | `Man/tcgetpgrp.3:49` and `SDK/sys/ttycom.h:121`: identifies a tty's foreground group when the query succeeds. A harness, shell, child tool or same-group descendant can still own input; an error means unknown. |
 | ICANON / ECHO | `SDK/sys/termios.h:240` / `:247`: echo and canonical line discipline. Raw full-screen editors and password prompts can both disable echo. Flags do not identify the composer or authorize text. |
 | Output silence / queue length | Silence only measures no recent output. `SDK/sys/ttycom.h:124` defines an output-queue count. Neither excludes network waits, suppressed output, computation or buffered redraw. |
@@ -115,12 +137,23 @@ The tty observations above are local. An ssh/tmux remote foreground process is n
 | Targeted `rg -n`, `nl -ba … | sed -n …p` on installed sources/docs/types | Exit 0 for evidence reads; exploratory no-match searches returned 1 and were not treated as proof. |
 | Whitelisted local-config structure read | Exit 0; Claude has ten configured event names and user inbound policy accept; Codex hooks file has only SessionStart. Configured is not effective/trusted. Credential values were never printed or copied. |
 | Primary online docs fetches | OpenAI hooks/app-server/config/MCP/skills, Claude docs, XTerm and WezTerm read. Old guessed OpenAI MCP/skills URLs returned 404; canonical current pages were subsequently fetched. POSIX web pages returned 403; installed macOS manual/header evidence was used instead. |
+| Python read-only mmap/byte search and SHA-256 of `ClaudeBin` / `CodexBin` | Exit 0; offsets and fragments above independently reproduced. No target was launched for this scan. |
+| REA `binary_session {}` | Successful status result, no target open. Ghidra/Hopper/IDA/Kuna were all unavailable or unconfigured. No decompilation, provider installation or configuration change was attempted; byte inspection above is not control-flow analysis of Codex. |
+| Bounded `rg -l` for `7501\|21337\|PROGRAM_STATUS\|programStatus` under Pi/OMP installed JS and Pi TUI; Python hit inspection | Both commands exit 0; only OMP cli.js matched, and its two numeric hits were unrelated color fractions. Search coverage is limited to those roots/extensions. |
+| Required file-existence / gap-count command from Task D's Verification section | Exit 0; file exists, count 8. |
+| Python source-pointer/structure/whitespace check | Exit 0; 47 qualified source pointers exist within file line ranges, all eight required sections present, no trailing whitespace, final newline present. Pointer ranges alone do not certify semantic correctness. |
+| `git diff --check`; `git status --short` | Exit 0; no whitespace errors. At handoff the only modified path was this deliverable; Oracle had committed its earlier draft. No commit was made by this Executor. |
 
 Representative source fingerprints, SHA-256 over ordered `(UTF-8 relative path, NUL, raw bytes, NUL)` records:
 
 - ICQ: `src/harness.rs`, `src/session.rs`, `src/native.rs`, `extensions/host.mjs`, `extensions/bridge.mjs` → `fcfe4e13e84c39259480d7b33583fbdc8ce6197fc3f542c24de3129337911a2d`.
 - Pi: `package.json`, `dist/core/extensions/types.d.ts`, `dist/core/agent-session.js` → `e9065c7566f4033bf5908934aa26a5c0840bad11107fd91677b8ce0702adedc6`.
 - OMP: `package.json`, `dist/types/extensibility/shared-events.d.ts`, `dist/types/session/agent-session-types.d.ts` → `bdee0d56159c47045d4f831f572d1efda61cc576fd717bd47f893a8c9246a552`.
+
+Native artifact SHA-256 (whole files, independent of the source-record hashing convention above):
+
+- `ClaudeBin`, 271161296 bytes → `b9ac5374839f14abf3f1f45610637c332b5daee5ce0d1634726cef87aab78e6a`.
+- `CodexBin`, 249952688 bytes → `8813367285524ac798dd96d1b071aea30d58708c7226fd236cd275cf1cfdee31`.
 
 **Gap:** all runtime transition/injection claims remain unexercised. This pass supplies installed interface/source evidence and primary documentation, not a compatibility certification. No memory-only assertion is offered as proof. No application code, harness configuration, credentials, task board or parallel research file was edited; only this deliverable was written. Oracle owns convergence into the adapter spec.
 
