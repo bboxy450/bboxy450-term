@@ -121,7 +121,7 @@ code, .mono { font-family: var(--font-mono); }
   display: flex; align-items: center; gap: var(--gap); height: var(--tab-h); padding: 0 var(--pad-x);
   font-size: var(--font-small); font-weight: 600; color: var(--fg); cursor: default; letter-spacing: .02em;
 }
-.space-head:hover { background: var(--surface-2); }
+
 .space-head .caret { width: 10px; font-size: 9px; color: var(--fg-dim); }
 .space-head .count { color: var(--fg-dim); font-weight: 400; font-family: var(--font-mono); }
 .space-head .roll { display: flex; gap: 2px; }
@@ -316,20 +316,21 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
    A space is a rounded body. The dark gloss wordmark band is set into the top. Rows sit on the body with no
    hairlines. The bottom is the bumper: a dark strip carrying the tail light, a thin line in the space colour. */
 .space {
-  background: var(--surface); border: 0; border-radius: 11px; margin: 0 0 var(--gap); overflow: hidden; position: relative;
-  padding: 5px 5px 0; border-bottom: 6px solid var(--navy);
+  background: var(--surface); border: 0; border-radius: 11px; margin: 0 0 var(--cohort-gap); overflow: hidden; position: relative;
+  padding: 5px 5px 0; border-bottom: 6px solid var(--space);
 }
-.space::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 2px; height: 2px; border-radius: 1px; background: var(--space); box-shadow: 0 0 6px color-mix(in srgb, var(--space) 70%, transparent); }  /* tail light */
 .space-head {
   height: var(--strip-h); padding: 0 var(--pad-x); gap: 10px; margin: 0 0 3px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--navy) 90%, #fff) 0%, var(--navy) 55%, color-mix(in srgb, var(--navy) 85%, #000) 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.35);
-  border-radius: 4px; color: color-mix(in srgb, #fff 70%, var(--navy));
-  font-size: 10px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--space) 88%, #fff) 0%, var(--space) 55%, color-mix(in srgb, var(--space) 82%, #000) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(0,0,0,.25);
+  border-radius: 4px; color: rgba(255,255,255,.92); text-shadow: 0 1px 0 rgba(0,0,0,.25);
+  font-size: 10px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase;
 }
-.space-head:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--navy) 84%, #fff) 0%, var(--navy) 55%, color-mix(in srgb, var(--navy) 85%, #000) 100%); }
+.space-head:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--space) 78%, #fff) 0%, color-mix(in srgb, var(--space) 92%, #fff) 55%, var(--space) 100%); }  /* hover = lighter of the same colour, never white */
+.space-head .swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--space); border: 1.5px solid rgba(255,255,255,.85); box-shadow: 0 0 0 1px rgba(0,0,0,.2); cursor: pointer; flex: none; }
+.space-head .swatch:hover { transform: scale(1.25); }
 .space-head .caret { display: none; }
-.space-head .count { color: color-mix(in srgb, #fff 45%, var(--navy)); letter-spacing: 0; font-size: 10px; }
+.space-head .count { color: rgba(255,255,255,.7); letter-spacing: 0; font-size: 10px; }
 .space-head .roll .glyph { --glyph: 9px; }
 .space-head .badge { height: 14px; line-height: 14px; min-width: 14px; font-size: 9px; }
 .space-body { padding: 0 0 4px; }
@@ -354,7 +355,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .sb-frame.phone { border-radius: 28px; }
 
 /* footer, Arc style (operator 2026-10-21): quiet row, archive · space dots · plus */
-.sidebar .sb-foot { background: none; box-shadow: none; border-radius: 0; height: 30px; padding: 0 8px; justify-content: center; gap: 0; text-transform: none; letter-spacing: 0; color: var(--fg-dim); }
+.sidebar .sb-foot { background: none; box-shadow: none; border-radius: 0; height: 30px; padding: 0 8px; justify-content: space-between; gap: 0; text-transform: none; letter-spacing: 0; color: var(--fg-dim); }
 .sidebar .sb-foot .fbtn { --icon: 15px; color: var(--fg-dim); display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; font-size: 17px; line-height: 1; }
 .sidebar .sb-foot .fbtn:hover { background: var(--surface-2); color: var(--fg); }
 .sidebar .sb-foot .dots { flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; }
@@ -364,3 +365,13 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .tab-row.newseat { color: var(--fg-dim); cursor: pointer; }
 .tab-row.newseat .plus { width: 12px; text-align: center; font-size: 13px; }
 .tab-row.newseat:hover { color: var(--fg); background: var(--surface-2); }
+
+/* big body-coloured button under the cohort block: creates a cohort */
+.new-cohort { height: 44px; margin: var(--cohort-gap) 0; border-radius: 11px; background: var(--surface); color: var(--fg-dim); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; letter-spacing: .06em; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); transition: background var(--hover-ms), color var(--hover-ms); }
+.new-cohort .plus { font-size: 18px; line-height: 1; }
+.new-cohort:hover { background: var(--surface-2); color: var(--fg); }
+
+/* collapsed cohort = a tab: just its band, body shut, bumper thin */
+.space.closed { padding-bottom: 0; border-bottom-width: 3px; cursor: pointer; }
+.space.closed .space-head { margin-bottom: 0; }
+.space.closed:hover .space-head { filter: brightness(1.08); }

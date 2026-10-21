@@ -206,6 +206,7 @@
     const right = el('span', { class: 'right' });
     if (waiting && !opts.expanded) right.append(el('span', { class: 'badge', style: 'background:var(--c-waiting);color:#000' }, waiting));
     if (opts.shortcut) right.append(kbd(opts.shortcut));
+    right.append(el('span', { class: 'swatch', title: 'change colour', onclick: e => { e.stopPropagation(); if (opts.onColor) opts.onColor(space); } }));
     head.append(right);
     if (opts.onToggle) head.addEventListener('click', opts.onToggle);
     return head;
@@ -213,8 +214,8 @@
 
   function spacePill(space, st) {
     const expanded = st.openSpaces.has(space.key);
-    const pill = el('div', { class: 'space', style: '--space:' + seatColor({ key: space.key }), 'data-space': space.key });
-    pill.append(spaceHeader(space, { expanded, onToggle: () => { expanded ? st.openSpaces.delete(space.key) : st.openSpaces.add(space.key); st.rerender(); } }));
+    const pill = el('div', { class: 'space' + (expanded ? ' open' : ' closed'), style: '--space:' + seatColor(space), 'data-space': space.key });
+    pill.append(spaceHeader(space, { expanded, onColor: st.onColor, onToggle: () => { if (st.onToggleSpace) { st.onToggleSpace(space); return; } expanded ? st.openSpaces.delete(space.key) : st.openSpaces.add(space.key); st.rerender(); } }));
     if (expanded) {
       const body = el('div', { class: 'space-body' });
       for (const tab of space.tabs) {
@@ -224,7 +225,7 @@
       }
       if (st.currentSpace === space.key) body.append(el('div', { class: 'tab-row newseat', onclick: () => st.onNewSeat && st.onNewSeat(space) }, el('span', { class: 'plus' }, '+'), el('span', { class: 'tname' }, 'new seat'), el('span', { class: 'right' }, kbd('⌘T'))));
       if (space.participants && space.participants.length) {
-        body.append(el('div', { class: 'tab-row participants' }, el('span', { class: 'caret' }, '·'), el('span', { class: 'tname' }, 'participants'), el('span', { class: 'right' }, el('span', { class: 'kbd' }, space.participants.length))));
+        body.append(el('div', { class: 'tab-row participants' }, el('span', { class: 'caret' }, '·'), el('span', { class: 'tname' }, 'shadows'), el('span', { class: 'right' }, el('span', { class: 'kbd' }, space.participants.length))));
         for (const ph of space.participants) { const row = seatRow(ph, {}); row.classList.add('phantom'); body.append(row); }
       }
       pill.append(body);
@@ -236,20 +237,21 @@
     opts = opts || {};
     const seats = model.spaces.flatMap(s => s.tabs.flatMap(t => t.seats || leaves(t.tree)));
     const waiting = seats.filter(s => s.state === 'waiting').length;
-    const st = { openSpaces: new Set(opts.openSpaces || []), openTabs: new Set(opts.openTabs || []), focusedKey: opts.focusedKey || seats[0].key, autoOpenSingles: seats.length <= 40, onNewSeat: opts.onNewSeat };
+    const st = { openSpaces: new Set(opts.openSpaces || []), openTabs: new Set(opts.openTabs || []), focusedKey: opts.focusedKey || seats[0].key, autoOpenSingles: seats.length <= 40, onNewSeat: opts.onNewSeat, onColor: opts.onColor };
     const owner = model.spaces.find(sp => sp.tabs.some(t => (t.seats || leaves(t.tree)).some(s => s.key === st.focusedKey)));
-    st.currentSpace = owner ? owner.key : (model.spaces[0] && model.spaces[0].key);
+    st.currentSpace = opts.currentSpace || (owner ? owner.key : (model.spaces[0] && model.spaces[0].key));
+    // cohorts read as tabs: every band shows; open/shut is the caller's set (band click toggles it) and is separate from focus
+    const shown = model.spaces;
+    st.onToggleSpace = opts.onToggleSpace;
     const sb = el('div', { class: 'sidebar' });
     const scroll = el('div', { class: 'sb-scroll' });
-    st.rerender = () => { scroll.innerHTML = ''; for (const s of model.spaces) scroll.append(spacePill(s, st)); };
+    st.rerender = () => { scroll.innerHTML = ''; for (const s of shown) scroll.append(spacePill(s, st)); if (opts.onNewSpace) scroll.append(el('div', { class: 'new-cohort', onclick: () => opts.onNewSpace() }, el('span', { class: 'plus' }, '+'), 'new cohort')); };
     st.rerender();
-    // footer, Arc style: archive · one dot per space (current filled, in its colour) · plus creates a space
-    const dots = el('span', { class: 'dots' });
-    for (const sp of model.spaces) dots.append(el('i', { class: sp.key === st.currentSpace ? 'on' : '', title: sp.name, style: sp.key === st.currentSpace ? 'background:' + seatColor({ key: sp.key }) : '', onclick: () => { const b = scroll.querySelector('[data-space="' + sp.key + '"]'); if (b) scroll.scrollTo({ top: b.offsetTop - scroll.offsetTop - 4, behavior: 'smooth' }); } }));
+    // footer: archive · plus. No space dots: every cohort is already a band in the list.
     sb.append(
       el('div', { class: 'sb-top' }, harnessIcon('sidebarfox'), el('span', {}, 'bboxy450-term'), el('span', { style: 'margin-left:auto' }, harnessIcon('gear'))),
       scroll,
-      el('div', { class: 'sb-foot' }, el('span', { class: 'fbtn', title: 'archive' }, harnessIcon('archive')), dots, el('span', { class: 'fbtn plus', title: 'new space', onclick: () => opts.onNewSpace && opts.onNewSpace() }, '+')),
+      el('div', { class: 'sb-foot' }, el('span', { class: 'fbtn', title: 'archive' }, harnessIcon('archive')), el('span', { class: 'spacer' }), el('span', { class: 'fbtn plus', title: 'new cohort', onclick: () => opts.onNewSpace && opts.onNewSpace() }, '+')),
     );
     sb.seatCount = seats.length; sb.waitingCount = waiting;
     return sb;

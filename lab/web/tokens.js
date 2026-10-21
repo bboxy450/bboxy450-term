@@ -96,6 +96,7 @@ window.TOKENS = {
     "waiting_alpha_min": 0.25
   },
   "layout": {
+    "cohort_gap": 8,
     "gutter": 2
   },
   "meta": {

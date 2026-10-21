@@ -30,6 +30,8 @@ The persistent mux service owns seat IDs, harness-session mappings, message stor
 
 Each seat's MCP/CLI connection receives a local capability bound to its seat ID. The service looks up the role and allowed destinations from terminal state; a caller cannot select an arbitrary signing identity or supply its own elevated role. Oracle control tools may change those grants only under the terminal's configured control permissions.
 
+Discovery and session visibility default to the seat's own cohort. Explicit global-channel/DM grants remain possible; they do not grant another seat's screen or control. Oracle account-wide inspection requires its delegated control scope, as specified in [[mcp-control-plane]].
+
 Transport workers handle connections outside the storage transaction. Bounded active workers can serve 1000 persisted seat records without one network socket, OS thread or in-memory queue per seat. **Gap:** throughput, storage capacity and delivery latency at that scale have not been measured.
 
 ## Identity: one account, separate seats
@@ -48,7 +50,7 @@ Proposed chain:
 account root key
   signs device grant {device key, scopes, epoch, expiry}
     signs seat grant {seat id, session key, cohort, role,
-                      allowed destinations, epoch, expiry}
+                      allowed destinations, muted, epoch, expiry}
       session key signs messages
 ```
 
@@ -90,15 +92,22 @@ Presence is a second `body` variant in the same signed envelope, published by th
 ```json
 {
   "type": "presence",
+  "event": "state",
   "name": "Nyx Copperwing",
   "harness": "codex",
-  "state": "active"
+  "state": "active",
+  "muted": false,
+  "policy_epoch": 0
 }
 ```
 
 The outer account/device/seat fields and verified seat grant identify the participant; the owner terminal signs using that seat's granted key. `state` uses the shared active/idle/waiting/errored vocabulary. Receivers validate the signature, grant, destination and publication order before updating a phantom keyed by `(account, seat)`. The phantom shows only the name, harness and state its owner publishes, following [[ux-pick]]. Presence supplies no pane, logs, scrollback or control capability, and a foreign Oracle still receives worker precedence under local trust policy.
 
-Persist accepted presence under the normal inbox rules, then update the derived phantom view. Presence is metadata and never enters the native/PTY harness-wake queue. Channel text messages keep their normal role/priority delivery. **Gap:** presence freshness/expiry, withdrawal and sequence continuity across key/grant changes need a protocol decision; a cached publication is last-reported state, not proof of current reachability.
+Persist accepted presence under the normal inbox rules, then update the derived phantom view. Ordinary `event:"state"` presence is metadata and never enters the native/PTY harness-wake queue. Channel text messages keep their normal role/priority delivery. **Gap:** presence freshness/expiry, withdrawal and sequence continuity across key/grant changes need a protocol decision; a cached publication is last-reported state, not proof of current reachability.
+
+The same presence body carries terminal-authored `event:"mute"` / `event:"unmute"` notices, with `muted:true` / `false` and `policy_epoch` equal to the authorizing seat-grant epoch. The outer seat identifies the affected seat; the owning terminal publishes the notice with that seat's signature and the replacement device-signed seat grant proving its mute policy. Receivers require agreement with the current authorized grant and reject stale policy epochs; a seat's arbitrary text or signature alone cannot change cohort membership policy. Only the authenticated operator or delegated Oracle control path can request a transition. Audit the actual initiating controller separately.
+
+Commit the seat's mute flag, replacement grant and notice outbox entry as one policy transition. Each real transition creates one stable notice ID addressed to the whole cohort; repeated mute/unmute requests return the existing state rather than duplicate notices. Publish this terminal-generated control notice even though ordinary outbound cohort traffic is held. Cohort members display it in the stream; informational harness delivery follows their existing cohort/adapter policy, deduplicated by that same notice ID. Persistence/dispatch proves neither universal delivery nor model receipt.
 
 The seat key signs a fixed-order tuple of every field except the signature, using a protocol-specific domain separator. Define the exact UTF-8 JSON tuple encoding and integer bounds in the wire implementation; transport route/TTL and receiver-local sequence are outside this signed body. Exchange the full signed grant chain when its digest is unknown, with bounded parsing and no priority elevation while verification is pending.
 
@@ -121,6 +130,12 @@ Persist an accepted message before scheduling it. Lower priority delays eligibil
 Use distinct evidence states: sender-stored, recipient-stored, native-queued, native-written, native-unknown, and application-acknowledged. The last state requires an explicit harness/application acknowledgment. A QUIC acknowledgment or socket write is insufficient.
 
 Sender outbox and recipient inbox live in the mux's durable store. Retries reuse the original message identity; a recipient commit can be safely deduplicated and acknowledged again. Persist receipt and attempt records. Resume network retries after restart, but do not blindly repeat an ambiguous native input attempt. Keep that message visible with its unknown outcome.
+
+**Cohort mute (operator decision, 2026-10-21):** persist `muted` on the seat record and terminal-issued grant. While muted, keep incoming cohort traffic in the inbox without scheduling native/PTY delivery, and keep outgoing cohort traffic in the outbox without publishing it. Return a held state/reason and retain original message IDs; never drop the records. Self status and authenticated direct operator control remain available so the operator can work one to one. Peer messages cannot claim that bypass. Mute is independent of harness activity, process lifecycle and sidebar row position.
+
+Unmute commits its presence notice before releasing eligible held work under the current destination grants, membership, receiver priority and adapter guard. It does not erase a record whose old grant no longer permits sending; keep it visibly blocked rather than publishing under revoked authority. Already submitted native traffic cannot be recalled; ambiguous attempts are never automatically retried. A crash restores mute before scheduling, and no reconnect/focus operation implicitly unmutes a seat. See [[mcp-control-plane]] for Oracle-only transition tools.
+
+A mute-only policy update is not a key revocation and does not invalidate the immutable signatures/IDs of held traffic by itself. Release still checks current authority; never rewrite an already published signed envelope under the same ID.
 
 Global public channel names need a shared namespace and discovery protocol; their peer list is not complete membership. Maintain an explicit pending dissemination record for publications, and expose known-recipient receipts rather than claiming all global subscribers received them. For private groups and group DMs, use a signed membership epoch/recipient set and retain pending work for those known recipients. A capability-protected invitation alone does not provide membership revocation or offline history synchronization.
 

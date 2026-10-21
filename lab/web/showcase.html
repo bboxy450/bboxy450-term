@@ -11,10 +11,22 @@
   #main { flex: 1; display: flex; min-height: 0; }
   /* the shader is the only glow here: kill the CSS fake and let the canvas show through */
   .sidebar, .space, .pane, .seat-row { box-shadow: none !important; animation: none !important; }
+  /* row locate: a bouncy border in the seat colour, the one CSS animation the showcase allows on a row */
+  .seat-row.bounce { animation: rowBounce 520ms cubic-bezier(.34,1.56,.64,1) !important; outline: 2px solid var(--seat); outline-offset: 0; }
+  @keyframes rowBounce { 0% { transform: scale(1); outline-offset: 0; outline-color: transparent; } 35% { transform: scale(1.045); outline-offset: 3px; outline-color: var(--seat); } 70% { transform: scale(0.99); outline-offset: 1px; } 100% { transform: scale(1); outline-offset: 0; outline-color: transparent; } }
   .sidebar { background: transparent; border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
   .seat-row.waiting, .seat-row.errored { background: transparent; }
   .stage { flex: 1; padding: 0; background: transparent; min-width: 0; }
-  .split { display: flex; gap: var(--gutter); min-width: 0; min-height: 0; }
+  .split { display: flex; gap: 0; min-width: 0; min-height: 0; }
+  .split > .divider { flex: none; position: relative; z-index: 2; }
+  .split.v > .divider { width: var(--gutter); cursor: col-resize; }
+  .split.h > .divider { height: var(--gutter); cursor: row-resize; }
+  .split > .divider::after { content: ""; position: absolute; inset: 0; }
+  .split.v > .divider::after { left: -4px; right: -4px; }
+  .split.h > .divider::after { top: -4px; bottom: -4px; }
+  .sidebar { position: relative; }
+  .sb-resize { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 3; }
+  body.resizing, body.resizing * { cursor: inherit !important; user-select: none; }
   .split.v { flex-direction: row; } .split.h { flex-direction: column; }
   .stage .pane { background: var(--bg); min-height: 0; min-width: 0; border-radius: 0; }
   .sidebar { padding-left: var(--gutter); }

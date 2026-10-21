@@ -88,6 +88,7 @@ chip = 4
 grid = 3
 
 [layout]
+cohort_gap = 8                # px of air between cohort blocks in the sidebar
 gutter = 2                    # px between panes; every pixel is precious (ux-sidebar constraint 8a). Glow paints over it, zero layout space.
 
 [sidebar]

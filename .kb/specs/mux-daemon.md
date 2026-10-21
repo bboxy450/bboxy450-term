@@ -44,7 +44,8 @@ SeatRecord {
   seat_id, owner_device_key, location,
   harness_kind, harness_session_id?,
   launch_spec { executable, argument_template, cwd, profile, secret_references },
-  role_grant_reference,
+  role_grant_reference, muted, policy_epoch,
+  lifecycle, lifecycle_revision, close_record?,
   process_generation, supervisor_boot_id,
   child_identity? { pid, process_start },
   ring_format_version, checkpoint_reference, committed_record_sequence
@@ -57,9 +58,25 @@ Launch records contain explicit configuration and secret references; do not snap
 
 Only the supervisor launches an owned local PTY process. A logic restart discovers existing owned children before considering resume. If the supervisor died, validate the saved mapping, invalidate old native attachments/readiness/capabilities, then use the harness adapter's supported resume command for a new process. Restore historical display separately; do not feed old output or queued commands into that new process.
 
+The close lifecycle below constrains this recovery rule: a deliberately closed seat must not be automatically resumed as an open one. Restore its lifecycle/mute policy before scheduling messages or considering a launch.
+
 For a plain shell or a harness without a usable resume mapping, create the configured new session only under its declared restart policy and expose the recovery limitation. Do not claim restoration of shell variables, a foreground command or a conversation whose session ID was never persisted.
 
 Phantoms from [[ux-pick]] are published remote participants, not owned remote seats. They have no PTY, pane, screen/scrollback permission or resume mapping. Their owner's signed presence/roster supplies the allowed identity/state metadata through [[messaging]]. Showing a phantom must never grant remote control or trigger remote bootstrap.
+
+## Reversible close lifecycle
+
+The operator's undo-close decision in [[vision]] adds `open → closed_grace → closed_retained`. These are lifecycle values, not extra harness activity states. Mute policy is also independent; closing does not silently mute or unmute a seat.
+
+`CloseSeat` durably records the close operation/lifecycle revision, process generation, bounded expiry (default 60 seconds, operator setting), and a restoration handle containing the original space/tab/split position and ratios. The GUI collapses the seat into the closed strip with an undo action. The supervisor retains the same PTY master and child; ring capture continues subject to its existing bounded backpressure rules. A closed-grace live/starting process still consumes the cohort/machine spawn cap.
+
+The supervisor owns the expiry, so logic/GUI loss cannot leave the child running indefinitely past grace. Persist restart-safe expiry information and use a monotonic deadline while that supervisor lives; replaying a request never starts a fresh grace window. On expiry, terminate only the recorded child/process generation, record its actual exit, commit retained history and enter `closed_retained`. Retain the ring/checkpoints and harness-session mapping for a later explicitly requested resume. Do not claim termination completed before its receipt.
+
+`UndoClose` addresses the exact close/lifecycle revision and restoration handle. During grace it cancels the matching expiry and restores the same live seat at its recorded position, with no new child or process generation. Serialize expiry and undo so only one wins. Return explicit expired, process-exited/replaced or layout-conflict outcomes rather than silently creating a duplicate or relocating the seat. Keep enough layout restoration metadata to restore the original split position; concurrent layout changes must be checked against its revision.
+
+After supervisor death, the PTY's old process is not preserved. Do not auto-resume a closed-grace/closed-retained seat as part of general open-seat recovery; report the changed process state. Uncertain/passed expiry never receives a fresh 60 seconds on recovery. After grace, reopening uses the adapter's explicit session-resume/new-generation policy and retained history, not an assertion that undo preserved a live process.
+
+**Gap:** termination escalation and conflicting-layout restoration need implementation rules/tests. The addendum names a purge tool without specifying whether it finalizes grace, deletes retained data, or both; [[mcp-control-plane]] leaves purge unavailable until an explicit operator policy defines that destructive scope.
 
 ## Supervisor ↔ logic protocol
 
@@ -68,7 +85,7 @@ Use a versioned, length-framed local protocol with negotiated message limits. Va
 | Operation | Contract |
 |---|---|
 | `Hello / AcquireLogic / ListOwnedSeats` | Authenticate the local client; exchange protocol/format versions, supervisor boot ID and a new logic lease. Report existing children and retained/committed cursors before any launch decision. |
-| `CreateSeat / CloseSeat` | Idempotent request IDs, authorized launch record and expected generation. Return the resulting owned-seat identity or explicit rejection. An ambiguous create is queried by its original ID. |
+| `CreateSeat / CloseSeat / UndoClose` | Idempotent request IDs, authorized launch/close record and expected process/lifecycle generation. Close enters grace; undo/expiry serialize at the supervisor. Return actual lifecycle/child identity or explicit rejection. An ambiguous create is queried by its original ID. |
 | `ReadRecords / Records / Gap` | Ordered records with sequence and raw-byte intervals; return retained range and an explicit unavailable-prefix indication. No silent clamp presented as continuous history. |
 | `WriteInput / InputReceipt` | Logic lease, writer lease, process generation, stable input ID and literal bytes. Supervisor is the sole writer. Receipt distinguishes rejected, fully PTY-written, and partial/unknown. |
 | `Resize / ResizeReceipt` | Expected generation and dimensions. Supervisor performs the PTY operation and records the observed resize order used by VTE replay. Return actual success/failure. |
@@ -189,8 +206,9 @@ These are implementation acceptance criteria, not tests passed by this document:
 - Retry a completed input ID after logic restart and simulate an ambiguous partial write/owner failure: no duplicate PTY submission, explicit unknown outcomes, no automatic Enter replay.
 - Kill the supervisor: supported harnesses resume with the same durable seat/session mapping and a new process generation; unsupported/missing mappings report their limitation honestly.
 - Verify owned remote bootstrap retries, SSH fallback and permission checks; phantom presence never yields screen access, a writer lease or a spawned pane.
+- Close then crash logic: the original child captures during grace, expiry still runs, and a matching undo races expiry without duplicate children. A closed seat is never automatically relaunched by open-seat recovery.
 
-Document verification on 2026-10-21: `ls .kb/specs/mux-daemon.md` and section count returned 0 with ten level-two sections; structure/source-pointer/whitespace validation returned 0; `git diff --check` returned 0. These check the document, not the future implementation. No runtime tests were added or run for this convergence.
+Original E document verification on 2026-10-21: `ls .kb/specs/mux-daemon.md` and section count returned 0 with ten level-two sections before the M lifecycle addendum; structure/source-pointer/whitespace validation returned 0; `git diff --check` returned 0. These checked the document, not the future implementation. No runtime tests were added or run for this convergence.
 
 **Gap:** terminal-fork checkpoint serialization/version migration and semantic index representation must be implemented and validated; no existing viewport-only serializer is assumed.
 
@@ -198,6 +216,6 @@ Document verification on 2026-10-21: `ls .kb/specs/mux-daemon.md` and section co
 
 **Gap:** no split supervisor/logic implementation, real harness resume, remote/bootstrap deployment, WAN fault test or 1000-running-seat test exists in this convergence pass. Native adapter support and account/device revocation retain the gaps in their own specs.
 
-Only `.kb/specs/mux-daemon.md` is written by this convergence assignment. No runtime, harness setting, provider resource or task-board change is included.
+The original E convergence wrote only this spec. The subsequent M addendum adds the close lifecycle and mute-policy fields here, alongside [[messaging]] and [[mcp-control-plane]]. No runtime, harness setting, provider resource or task-board change is included.
 
 — Nyx Copperwing <EXECUTOR>

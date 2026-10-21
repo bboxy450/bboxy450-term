@@ -70,7 +70,7 @@ Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab in the current s
       model.spaces[0].tabs.push({ name: 'settings', shortcut: '⌘,', tree: gearSeat, seats: [gearSeat] });
       const frame = el('div', { class: 'sb-frame', style: 'height:640px' });
       const pane = el('div', { class: 'pane focused', style: '--seat:' + TOKENS.color.dark.accent + ';height:100%' }, C.titleStrip(gearSeat, { shortcut: '⌘,' }), page());
-      frame.append(C.sidebar(model, { openSpaces: [model.spaces[0].key], focusedKey: 'settings' }), el('div', { class: 'stage', style: 'display:block' }, pane));
+      frame.append(C.sidebar(model, { openSpaces: [model.spaces[0].key], focusedKey: 'settings', allSpaces: true }), el('div', { class: 'stage', style: 'display:block' }, pane));
       body.append(frame); return;
     }
     const frame = el('div', { style: 'height:640px;border:1px solid var(--line);border-radius:var(--r-pill);overflow:hidden' });

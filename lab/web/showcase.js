@@ -75,18 +75,33 @@
   for (const ph of phantoms) Object.defineProperty(ph, 'color', { get() { return GREY[theme()]; }, enumerable: true });
   model.spaces[0].participants = phantoms;
   const everyone = [...seats, ...phantoms];
-  const stream = []; let streamFilter = null;
+  let streamFilter = null;
+  // A space is a cohort: its own seats, participants and stream. One shows at a time; the footer dots switch.
+  const open = new Set([model.spaces[0].key]);   // which cohort blocks are open: band click toggles, focus never touches it
+  for (const sp of model.spaces) { sp.participants = sp.participants || []; sp.stream = []; }
+  function space() { const hit = tabOf(focused); return hit ? hit.sp : model.spaces[0]; }   // the cohort of the focused seat
+  function tabOf(key) { for (const sp of model.spaces) for (const t of sp.tabs) if ((t.seats || []).some(x => x.key === key)) return { sp, t }; return null; }
+  function stageOf() { const sp = space(); const hit = tabOf(focused); const t = hit && hit.sp === sp ? hit.t : sp.tabs[0]; return t ? t.tree : null; }
   let stageKeys = C.leaves(stageTree).map(s => s.key);
   let focused = stageKeys[0];
+  function jumpSpace(sp) { open.add(sp.key); const first = sp.tabs[0] && sp.tabs[0].seats[0]; if (first) focused = first.key; render(); }   // dot: open it and focus its first seat
+  function toggleSpace(sp) { open.has(sp.key) ? open.delete(sp.key) : open.add(sp.key); render(); }                                    // band: open/shut only
+  let spaceN = model.spaces.length;
+  function newSpace() {
+    spaceN++;
+    const z = { key: 'z' + spaceN, name: 'zsh', harness: 'zsh', role: null, title: '~', state: 'idle', pal: (spaceN + 6) % 15 };
+    Object.defineProperty(z, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
+    seats.push(z); startReplay(z, seats.length - 1);
+    const sp = { name: 'space ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [] };
+    model.spaces.push(sp); jumpSpace(sp);
+  }
   // Close kills the seat: its leaf collapses into the sibling, the row leaves the sidebar, focus moves to the first pane.
   function prune(t, key) { if (t.key) return t.key === key ? null : t; const a = prune(t.a, key), b = prune(t.b, key); if (!a) return b; if (!b) return a; return { ...t, a, b }; }
   function closeSeat(seat) {
-    if (stageKeys.length <= 1) return;
-    stageTree = prune(stageTree, seat.key); stageKeys = C.leaves(stageTree).map(s => s.key);
     for (const sp of model.spaces) for (const tab of sp.tabs) { if (tab.seats.includes(seat)) { tab.seats = tab.seats.filter(x => x !== seat); tab.tree = prune(tab.tree, seat.key) || tab.seats[0]; } }
     for (const sp of model.spaces) sp.tabs = sp.tabs.filter(t => t.seats.length);
     seats.splice(seats.indexOf(seat), 1); clearTimeout(seat.replay && seat.replay.timer);
-    if (focused === seat.key) focused = stageKeys[0];
+    if (focused === seat.key) { const t = space().tabs[0]; focused = t ? t.seats[0].key : null; }
     render();
   }
 
@@ -114,29 +129,54 @@
     if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat });
     const A = splitDom(t.a), B = splitDom(t.b);
     A.style.flex = t.ratio || 0.5; B.style.flex = 1 - (t.ratio || 0.5);
-    return el('div', { class: 'split ' + t.dir }, A, B);
+    const box = el('div', { class: 'split ' + t.dir });
+    // the gutter is the divider: drag it to change the split ratio; the tree keeps the ratio, the mini-grid follows on re-render
+    const div = el('div', { class: 'divider', onpointerdown: e => {
+      e.preventDefault(); div.setPointerCapture(e.pointerId); document.body.classList.add('resizing'); document.body.style.cursor = t.dir === 'v' ? 'col-resize' : 'row-resize';
+      const move = ev => { const r = box.getBoundingClientRect(); const f = t.dir === 'v' ? (ev.clientX - r.left) / r.width : (ev.clientY - r.top) / r.height; t.ratio = Math.min(0.9, Math.max(0.1, f)); A.style.flex = t.ratio; B.style.flex = 1 - t.ratio; measure(); };
+      const up = () => { div.removeEventListener('pointermove', move); div.removeEventListener('pointerup', up); document.body.classList.remove('resizing'); document.body.style.cursor = ''; render(); };
+      div.addEventListener('pointermove', move); div.addEventListener('pointerup', up);
+    } });
+    box.append(A, div, B);
+    return box;
   }
   function render() {
     main.innerHTML = '';
-    const sb = C.sidebar(model, { openSpaces: model.spaces.map(s => s.key), openTabs: model.spaces.flatMap(s => s.tabs.map(t => s.key + '/' + t.name)), focusedKey: focused,
-      onNewSpace: () => { const n = model.spaces.length + 1; model.spaces.push({ name: 'space ' + n, key: 'space-new-' + n, tabs: [] }); render(); const b = main.querySelector('[data-space="space-new-' + n + '"]'); if (b) b.scrollIntoView({ block: 'nearest' }); },
-      onNewSeat: () => {} });
-    const stage = el('div', { class: 'stage' }, (() => { const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
+    stageTree = stageOf(); stageKeys = stageTree ? C.leaves(stageTree).map(s => s.key) : [];
+    if (focused && !stageKeys.includes(focused) && !phantoms.some(p => p.key === focused)) focused = stageKeys[0] || null;
+    const sb = C.sidebar(model, { openSpaces: [...open], openTabs: model.spaces.flatMap(s => s.tabs.map(t => s.key + '/' + t.name)), focusedKey: focused, currentSpace: space().key,
+      onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: () => {},
+      onColor: sp => { const hues = [0, 30, 50, 90, 150, 190, 220, 260, 300, 330]; sp.hueI = ((sp.hueI == null ? -1 : sp.hueI) + 1) % hues.length; sp.color = 'hsl(' + hues[sp.hueI] + ' 70% ' + (theme() === 'light' ? 42 : 58) + '%)'; render(); } });
+    const stage = el('div', { class: 'stage' }, (() => { if (!stageTree) return el('div'); const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
     main.append(sb, stage);
     main.querySelectorAll('[data-key]').forEach(n => {
-      const ph = phantoms.find(x => x.key === n.dataset.key);
+      const ph = space().participants.find(x => x.key === n.dataset.key);
       if (ph) { n.addEventListener('click', () => { streamFilter = streamFilter === ph.key ? null : ph.key; drawStream(); }); return; }  // no focus, no ripple
-      n.addEventListener('click', () => { const s = seats.find(x => x.key === n.dataset.key); s.unread = 0; setFocus(n.dataset.key, { locate: true }); });
-      n.addEventListener('pointerenter', () => armHover(n.dataset.key));
-      n.addEventListener('pointerleave', disarmHover);
+      n.addEventListener('click', () => { const s = seats.find(x => x.key === n.dataset.key); s.unread = 0; setFocus(n.dataset.key, { locate: n.classList.contains('pane') ? 'row' : 'pane' }); });
+      if (n.classList.contains('pane')) { n.addEventListener('pointerenter', () => armHover(n.dataset.key)); n.addEventListener('pointerleave', disarmHover); }   // panes: dwell focus, brightness only; rows: never
     });
     sb.insertBefore(el('div', { class: 'stream-dock', id: 'stream' }), sb.querySelector('.sb-foot'));
+    // sidebar width: drag the right edge; persisted
+    sb.style.width = (localStorage.getItem('showcase.sbw') || T.sidebar.width_compact) + 'px';
+    sb.append(el('div', { class: 'sb-resize', onpointerdown: e => {
+      e.preventDefault(); const hnd = e.currentTarget; hnd.setPointerCapture(e.pointerId); document.body.classList.add('resizing'); document.body.style.cursor = 'col-resize';
+      const move = ev => { const w = Math.min(520, Math.max(160, ev.clientX - sb.getBoundingClientRect().left)); sb.style.width = w + 'px'; localStorage.setItem('showcase.sbw', w); measure(); };
+      const up = () => { hnd.removeEventListener('pointermove', move); hnd.removeEventListener('pointerup', up); document.body.classList.remove('resizing'); document.body.style.cursor = ''; measure(); };
+      hnd.addEventListener('pointermove', move); hnd.addEventListener('pointerup', up);
+    } }));
     drawStream();
     setFocus(focused, { force: true });
     for (const seat of seats) paintTerm(seat);
     measure();
   }
   // Focus change touches classes only: no re-render, no re-measure (rows never move).
+  // Locate ripple: row at its left edge, pane at its centre, in the seat colour.
+  // Directional (operator): a row click rings the pane; a pane click bounces the row's border; keyboard does both.
+  function locate(key, where) {
+    const f = seats.find(x => x.key === key); if (!f) return;
+    if (where === 'pane' || where === 'both') { const col = C.hslToRgb(f.color); for (const R of rects) if (R.key === key && R.pane) ripple(R.x + R.w / 2, R.y + R.h / 2, col); }
+    if (where === 'row' || where === 'both') { const row = main.querySelector('.seat-row[data-key="' + key + '"]'); if (row) { row.classList.remove('bounce'); void row.offsetWidth; row.classList.add('bounce'); row.addEventListener('animationend', () => row.classList.remove('bounce'), { once: true }); } }
+  }
   // Signal semantics (.kb/ux-pick.md): focus = brightness only. The locate ripple fires only with opts.locate,
   // which click and keyboard pass and dwell does not. Timers and messages never ripple.
   function setFocus(key, opts) {
@@ -144,10 +184,11 @@
     if (key === focused && !opts.force && !opts.locate) return;
     const changed = key !== focused;
     focused = key;
+    if (!opts.force && !stageKeys.includes(key)) { render(); if (opts.locate) locate(key, opts.locate); return; }   // another tab: the stage switches, then the ripple says where you landed
     main.querySelectorAll('.seat-row[data-key]').forEach(n => n.classList.toggle('focused', n.dataset.key === key));
     main.querySelectorAll('.pane[data-key]').forEach(n => { const f = n.dataset.key === key; n.classList.toggle('focused', f); n.classList.toggle('unfocused', !f); });
     const f = seats.find(s => s.key === key);
-    document.getElementById('crumb').textContent = '· ' + model.spaces[0].name + ' · ' + f.name;
+    document.getElementById('crumb').textContent = '· ' + space().name + ' · ' + f.name;
     // locate (DECIDED): every focus change ripples the row and the pane corner in the seat colour, both directions;
     // an off-screen row scrolls into view inside the sidebar (never the window), then rects are re-measured once.
     const row = main.querySelector('.seat-row[data-key="' + key + '"]'), sc = main.querySelector('.sb-scroll');
@@ -155,21 +196,21 @@
       const top = row.offsetTop - sc.offsetTop, bottom = top + row.offsetHeight;
       if (top < sc.scrollTop || bottom > sc.scrollTop + sc.clientHeight) { sc.scrollTop = top - sc.clientHeight / 2; measure(); }
     }
-    if (opts.locate) { const col = C.hslToRgb(f.color); for (const R of rects) if (R.key === key) ripple(R.pane ? R.x + R.w / 2 : R.x + 10, R.pane ? R.y + R.h / 2 : R.y + R.h / 2, col); }  // pane: centre; row: left edge
+    if (opts.locate) locate(key, opts.locate);
     if (changed) { main.querySelectorAll('.seat-row[data-key="' + key + '"]').forEach(n => { if (f.unread) { f.unread = 0; render(); } }); }
   }
-  // Focus follows the mouse after a short dwell. Typing holds focus: a keydown within the last second blocks hover focus.
+  // Hover focus on panes only (operator): a 150 ms dwell moves focus brightness, no ring; typing blocks it for a second.
+  // Sidebar rows never focus on hover: click changes what you see.
   let hoverT = null, lastKey = 0, lastMove = 0;
   addEventListener('keydown', () => { lastKey = performance.now(); });
   addEventListener('pointermove', () => { lastMove = performance.now(); }, { passive: true });
-  // Dwell passes no locate: it only moves focus brightness.
-  function armHover(key) { disarmHover(); hoverT = setTimeout(() => { if (performance.now() - lastKey > 1000 && performance.now() - lastMove < 2000) setFocus(key); }, 150); }
+  function armHover(key) { disarmHover(); hoverT = setTimeout(() => { if (performance.now() - lastKey > 1000) setFocus(key); }, 150); }
   function disarmHover() { if (hoverT) { clearTimeout(hoverT); hoverT = null; } }
   // Rect measurement happens once per render and on resize, never per frame: no layout thrash.
   function measure() {
     rects = [];
     main.querySelectorAll('[data-key]').forEach(n => {
-      const s = everyone.find(x => x.key === n.dataset.key); if (!s) return;
+      const s = seats.find(x => x.key === n.dataset.key) || space().participants.find(x => x.key === n.dataset.key); if (!s) return;
       const b = n.getBoundingClientRect();
       rects.push({ key: s.key, seat: s, pane: n.classList.contains('pane'), x: b.left, y: b.top, w: b.width, h: b.height });
     });
@@ -316,15 +357,16 @@
       if (!s.unreadRole || ROLE_RANK[role] < ROLE_RANK[s.unreadRole]) s.unreadRole = role;
       render();
     }
-    else if (e.key === 'Tab') { e.preventDefault(); const i = stageKeys.indexOf(focused); setFocus(stageKeys[(i + (e.shiftKey ? -1 : 1) + stageKeys.length) % stageKeys.length], { locate: true }); }
+    else if (e.key === 'Tab') { e.preventDefault(); const i = stageKeys.indexOf(focused); setFocus(stageKeys[(i + (e.shiftKey ? -1 : 1) + stageKeys.length) % stageKeys.length], { locate: 'both' }); }
   });
 
   // ---------- stream dock: messages land here; clicking a phantom filters to that participant ----------
   function drawStream() {
     const dock = document.getElementById('stream'); if (!dock) return;
     dock.innerHTML = '';
+    const stream = space().stream;
     const items = stream.filter(m => !streamFilter || m.fromKey === streamFilter).slice(-4);
-    if (streamFilter) { const ph = phantoms.find(p => p.key === streamFilter); dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
+    if (streamFilter) { const ph = space().participants.find(p => p.key === streamFilter); if (!ph) { streamFilter = null; return drawStream(); } dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
     for (const m of items) dock.append(C.messageRow(m));
     dock.style.display = stream.length ? '' : 'none';
   }
@@ -332,9 +374,10 @@
   let phN = 0;
   addEventListener('keydown', e => {
     if (e.key !== 'p' && e.key !== 'P') return;
-    const ph = phantoms[phN % phantoms.length], text = PHRASES[phN % PHRASES.length]; phN++;
+    const phs = space().participants; if (!phs.length) return;
+    const ph = phs[phN % phs.length], text = PHRASES[phN % PHRASES.length]; phN++;
     ph.pulseT = performance.now();                                        // row pulses once
-    stream.push({ from: ph.name, fromKey: ph.key, role: ph.role, foreign: true, text, time: new Date().toTimeString().slice(0, 5), unread: true });
+    space().stream.push({ from: ph.name, fromKey: ph.key, role: ph.role, foreign: true, text, time: new Date().toTimeString().slice(0, 5), unread: true });
     drawStream();
   });
 
@@ -382,12 +425,13 @@
     }
     schedule(seat, 30 + rnd() * 90);
   }
-  seats.forEach((seat, i) => {
+  function startReplay(seat, i) {
     const lines = fixtureFor(seat, i);
     const start = Math.floor(C.rng('start' + seat.key)() * lines.length);
     seat.replay = { lines, idx: start, buf: lines.slice(Math.max(0, start - 12), start), burst: 0, waiting: false, rnd: C.rng('replay' + seat.key), timer: null };
-    if (seat.state === 'waiting') seat.replay.waiting = true; else if (seat.state === 'errored') { /* errored seats hold until the operator presses 2 */ seat.replay.waiting = true; }
-  });
+    if (seat.state === 'waiting' || seat.state === 'errored') seat.replay.waiting = true;   // held until the operator presses 2
+    else schedule(seat, 300 + i * 170);
+  }
   render(); resize(); requestAnimationFrame(frame);
-  seats.forEach((seat, i) => { if (!seat.replay.waiting) schedule(seat, 300 + i * 170); });
+  seats.slice().forEach((seat, i) => startReplay(seat, i));
 })();
