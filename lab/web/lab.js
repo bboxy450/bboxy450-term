@@ -33,6 +33,18 @@
     set('--pulse-ms', T.motion.pulse_ms + 'ms'); set('--ripple-ms', T.motion.ripple_ms + 'ms'); set('--hover-ms', T.motion.hover_ms + 'ms');
     set('--dim-sat', T.dim.saturate); set('--dim-opacity', T.dim.opacity); set('--dim-wash', T.dim.wash * 100 + '%');
     set('--font-chrome', T.font.chrome); set('--font-mono', T.font.mono);
+    // style.json → CSS vars: one radius scale, one material, one type scale, one tint
+    const S = window.STYLE; if (S) {
+      for (const [k, v] of Object.entries(S.radius)) set('--r-' + k, v + 'px');
+      set('--mat-alpha', S.material.panel_alpha * 100 + '%'); set('--card-alpha', S.material.card_alpha * 100 + '%'); set('--mat-blur', S.material.panel_blur_px + 'px'); set('--mat-sat', S.material.panel_saturate);
+      set('--back-dim', S.material.backdrop_dim_alpha * 100 + '%'); set('--back-blur', S.material.backdrop_blur_px + 'px');
+      set('--hair', 'color-mix(in srgb, var(--line) ' + S.material.hairline_alpha * 100 + '%, transparent)'); set('--hi', 'rgba(255,255,255,' + S.material.inner_highlight_alpha + ')');
+      set('--sel', 'color-mix(in srgb, var(--fg) ' + S.tint.selection_alpha * 100 + '%, transparent)'); set('--sel-hover', 'color-mix(in srgb, var(--fg) ' + S.tint.selection_hover_alpha * 100 + '%, transparent)');
+      set('--badge', 'color-mix(in srgb, var(--fg-dim) ' + S.tint.badge_alpha * 100 + '%, transparent)'); set('--badge-sel', 'color-mix(in srgb, var(--fg-dim) ' + S.tint.badge_selected_alpha * 100 + '%, transparent)');
+      for (const [k, v] of Object.entries(S.type)) if (typeof v === 'number') set('--t-' + k, v + 'px');
+      set('--sh-float', S.shadow.floating); set('--sh-pill', S.shadow.pill); set('--appear-ms', S.motion.appear_ms + 'ms'); set('--ease', S.motion.ease);
+      set('--grid', S.spacing.grid + 'px'); set('--row-mx', S.spacing.row_margin_x + 'px'); set('--row-px', S.spacing.row_pad_x + 'px');
+    }
     document.documentElement.className = 'theme-' + prefs.theme + ' density-' + prefs.density;
   }
 

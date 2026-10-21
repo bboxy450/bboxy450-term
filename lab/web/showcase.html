@@ -3,55 +3,110 @@
 <title>bboxy450-term · showcase</title>
 <link rel="stylesheet" href="lab.css">
 <style>
+  /* ========= showcase: the style.json material applied to every surface (operator 2026-10-21) ========= */
   html, body { height: 100%; overflow: hidden; background: var(--bg); }
   #glow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; display: block; pointer-events: none; }
   #app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; }
-  .titlebar { border-radius: 0; border-left: 0; border-right: 0; border-top: 0; background: color-mix(in srgb, var(--surface) 70%, transparent); backdrop-filter: blur(8px); flex: none; }
-  .titlebar .logo { width: 18px; height: 18px; }
   #main { flex: 1; display: flex; min-height: 0; }
-  /* the shader is the only glow here: kill the CSS fake and let the canvas show through */
+  /* the shader is the only glow: kill the CSS fakes */
   .sidebar, .space, .pane, .seat-row { box-shadow: none !important; animation: none !important; }
-  /* row locate: a bouncy border in the seat colour, the one CSS animation the showcase allows on a row */
-  .seat-row.bounce { animation: rowBounce 520ms cubic-bezier(.34,1.56,.64,1) !important; outline: 2px solid var(--seat); outline-offset: 0; }
+  .seat-row.bounce { animation: rowBounce 520ms var(--ease) !important; outline: 2px solid var(--seat); outline-offset: 0; }
   @keyframes rowBounce { 0% { transform: scale(1); outline-offset: 0; outline-color: transparent; } 35% { transform: scale(1.045); outline-offset: 3px; outline-color: var(--seat); } 70% { transform: scale(0.99); outline-offset: 1px; } 100% { transform: scale(1); outline-offset: 0; outline-color: transparent; } }
-  .sidebar { background: var(--sidebar-bg); border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+  body.resizing, body.resizing * { cursor: inherit !important; user-select: none; }
+
+  /* --- title bar: panel material, hairline below --- */
+  .titlebar { border: 0; border-bottom: 1px solid var(--hair); border-radius: 0; background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: inset 0 1px 0 var(--hi); flex: none; height: 38px; padding: 0 14px; gap: 10px; font-size: var(--t-body); }
+  .titlebar .ttl { font-weight: var(--t-weight_title, 500); }
+  .titlebar .logo { width: 18px; height: 18px; }
+  .titlebar .tbtn { border-radius: var(--r-badge); }
+  .titlebar .tbtn.on { background: var(--sel); color: var(--fg); }
+  .tbtn.theme { --icon: 18px; }
+
+  /* --- sidebar: frosted ground, resizable edge --- */
+  .sidebar { position: relative; background: color-mix(in srgb, var(--sidebar-bg) var(--mat-alpha), var(--bg)); border-right: 1px solid var(--hair); padding-left: var(--gutter); }
+  .sidebar .sb-top { display: none; }
+  .sidebar .sb-scroll { padding: var(--grid) calc(var(--grid) - 2px) 0 calc(var(--grid) - 2px); }
+  .sb-resize { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 3; }
+
+  /* --- swarm block: card material, band set in, bumper carries the colour --- */
+  .space { background: color-mix(in srgb, var(--surface) var(--card-alpha), transparent); border-radius: var(--r-card); box-shadow: 0 0 0 1px var(--hair) !important; padding: 4px 4px 0; margin: 0 0 var(--cohort-gap); border-bottom: 4px solid var(--space); }
+  .space.closed { border-bottom-width: 3px; }
+  .space.unfocused { background: color-mix(in srgb, color-mix(in srgb, var(--surface) calc(100% - var(--dim-wash)), var(--fg-dim)) var(--card-alpha), transparent); }
+  .space-head { height: 24px; border-radius: var(--r-tile); padding: 0 12px; font-size: 10.5px; letter-spacing: .16em; }
+  .space-head .swatch { width: 10px; height: 10px; }
+  .space-body { padding: 2px 0 4px; }
+
+  /* --- rows: tile · name · title · badge · glyph; selection and hover are tints --- */
+  .space-body .seat-row, .space-body .tab-row { margin: 0 2px; border-radius: var(--r-row); padding-left: 8px; padding-right: 8px; }
+  .seat-row:hover, .tab-row:hover { background: var(--sel-hover); }
+  .seat-row.focused { background: var(--sel); box-shadow: none; }
   .seat-row.waiting, .seat-row.errored { background: transparent; }
+  .seat-row .tile { width: 16px; height: 16px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; color: #fff; flex: none; }
+  .seat-row .tile .hicon { --icon: 10px; }
+  .seat-row.phantom .tile { background: var(--badge) !important; color: var(--fg-dim); }
+  .seat-row .name { font-weight: var(--t-weight_name, 600); }
+  .kbd { font-family: var(--font-mono); font-size: 10px; color: var(--fg-dim); background: var(--badge); border-radius: 5px; padding: 1px 5px; line-height: 14px; }
+  .seat-row.focused .kbd { background: var(--badge-sel); color: var(--fg); }
+  .tab-row .tname { letter-spacing: 0; }
+  .tab-row.participants, .tab-row.newseat { font-size: var(--t-section); font-weight: var(--t-weight_section, 500); color: var(--fg-dim); margin-top: 6px; text-transform: none; letter-spacing: 0; }
+  .tab-row.participants .kbd { background: transparent; }
+  .tab-row.newseat { border-radius: var(--r-row); }
+  .tab-row.closed-strip { background: var(--sel-hover); border-radius: var(--r-row); }
+  .tab-row.closed-strip .undo { border: 1px solid var(--hair); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); border-radius: var(--r-pill); font-size: 10px; }
+
+  /* --- new swarm: a card-shaped button --- */
+  .new-cohort { height: 40px; margin: var(--cohort-gap) 0; border-radius: var(--r-card); background: color-mix(in srgb, var(--surface) var(--card-alpha), transparent); box-shadow: 0 0 0 1px var(--hair); color: var(--fg-dim); font-size: var(--t-row); font-weight: 500; }
+  .new-cohort:hover { background: color-mix(in srgb, var(--surface) 95%, var(--fg)); color: var(--fg); }
+
+  /* --- stream dock: rows of the same anatomy --- */
+  .stream-dock { border-top: 1px solid var(--hair); padding: 6px 6px 6px 4px; max-height: 38%; overflow: auto; font-size: var(--t-caption); }
+  .stream-dock .msg { font-size: var(--t-caption); padding: 4px 14px 4px 0; gap: 8px; border-radius: var(--r-row); }
+  .stream-dock .msg:hover { background: var(--sel-hover); }
+  .stream-dock .msg .head { font-size: 10px; }
+  .stream-dock .msg .text { margin-top: 0; }
+  .stream-dock .msg.unread::after { width: 5px; height: 5px; top: 7px; right: 4px; }
+  .stream-dock .filter { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--fg-dim); padding: 0 0 4px 6px; font-family: var(--font-mono); }
+  .stream-dock .filter b { color: var(--fg); font-weight: 500; }
+  .stream-dock .filter button { background: transparent; border: 1px solid var(--hair); color: var(--fg-dim); border-radius: var(--r-pill); font: inherit; font-size: 10px; padding: 0 6px; cursor: pointer; }
+
+  /* --- stage: split tree, gutters are dividers --- */
   .stage { flex: 1; padding: 0; background: transparent; min-width: 0; }
   .split { display: flex; gap: 0; min-width: 0; min-height: 0; }
+  .split.v { flex-direction: row; } .split.h { flex-direction: column; }
   .split > .divider { flex: none; position: relative; z-index: 2; }
   .split.v > .divider { width: var(--gutter); cursor: col-resize; }
   .split.h > .divider { height: var(--gutter); cursor: row-resize; }
   .split > .divider::after { content: ""; position: absolute; inset: 0; }
   .split.v > .divider::after { left: -4px; right: -4px; }
   .split.h > .divider::after { top: -4px; bottom: -4px; }
-  .sidebar { position: relative; }
-  .sb-resize { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 3; }
-  body.resizing, body.resizing * { cursor: inherit !important; user-select: none; }
-  .split.v { flex-direction: row; } .split.h { flex-direction: column; }
   .stage .pane { background: var(--bg); min-height: 0; min-width: 0; border-radius: 0; }
-  .sidebar { padding-left: var(--gutter); }
-  .sidebar .sb-top { display: none; }
-  .sidebar .sb-scroll { padding: 0 var(--gutter) 0 0; }
-  .space { margin: var(--gutter) 0; }
+  .pane .strip .kbd { background: rgba(0,0,0,.22); color: rgba(255,255,255,.85); }
   .pane .term { font-size: 12px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
   .pane .term .lines { white-space: pre; overflow: hidden; }
-  .stream-dock { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); padding: 4px var(--gutter) 4px 0; max-height: 38%; overflow: auto; font-size: 11px; }
-  .stream-dock .msg { font-size: 11px; padding: 3px 14px 3px 0; gap: 6px; }
-  .stream-dock .msg .head { font-size: 10px; }
-  .stream-dock .msg .text { margin-top: 0; }
-  .stream-dock .msg.unread::after { width: 5px; height: 5px; top: 6px; right: 4px; }
-  .stream-dock .filter { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--fg-dim); padding: 0 0 4px 6px; font-family: var(--font-mono); }
-  .stream-dock .filter b { color: var(--fg); font-weight: 500; }
-  .stream-dock .filter button { background: transparent; border: 1px solid var(--line); color: var(--fg-dim); border-radius: 999px; font: inherit; font-size: 10px; padding: 0 6px; cursor: pointer; }
-  .tbtn.theme { --icon: 18px; }
-  /* spotlight: centred launcher over a blurred window */
-  .spot-back { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 45%, transparent); backdrop-filter: blur(10px) saturate(1.1); display: flex; align-items: flex-start; justify-content: center; padding-top: 18vh; }
-  .spot-back .picker { width: 520px; font-size: 14px; border-radius: 14px; box-shadow: 0 30px 90px rgba(0,0,0,.55), 0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent); animation: spotIn 160ms cubic-bezier(.2,.8,.2,1); }
+
+  /* --- launcher: the panel --- */
+  .spot-back { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) var(--back-dim), transparent); backdrop-filter: blur(var(--back-blur)) saturate(1.15); display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; }
+  .spot-back .picker { width: min(760px, 92vw); border-radius: var(--r-panel); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: var(--sh-float), 0 0 0 1px var(--hair), inset 0 1px 0 var(--hi); animation: spotIn var(--appear-ms) var(--ease); overflow: hidden; }
   @keyframes spotIn { from { transform: translateY(-8px) scale(.985); opacity: 0; } to { transform: none; opacity: 1; } }
-  .spot-back .picker input { font-size: 20px; padding: 16px 18px; }
-  .spot-back .picker .opt { padding: 10px 18px; font-size: 14px; }
-  .spot-back .picker .opt .hicon { --icon: 18px; }
-  .spot-back .picker .foot { padding: 10px 18px; font-size: 12px; }
+  .spot-back .picker input { font-size: var(--t-input); padding: 20px 24px 18px; border-bottom: 1px solid var(--hair); font-weight: 400; }
+  .spot-back .picker input::placeholder { color: color-mix(in srgb, var(--fg-dim) 80%, transparent); }
+  .spot-back .picker .sec { font-size: var(--t-section); font-weight: var(--t-weight_section, 500); letter-spacing: 0; padding: 12px 24px 6px; }
+  .spot-back .picker .opt { display: flex; align-items: center; gap: 12px; padding: 8px var(--row-px); margin: 0 var(--row-mx); border-radius: var(--r-row); font-size: var(--t-title); color: var(--fg); }
+  .spot-back .picker .opt.sel { background: var(--sel); color: var(--fg); }
+  .spot-back .picker .opt .tile { width: 30px; height: 30px; border-radius: var(--r-tile); display: inline-flex; align-items: center; justify-content: center; color: #fff; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+  .spot-back .picker .opt .tile .hicon { --icon: 17px; }
+  .spot-back .picker .opt .lbl { font-weight: var(--t-weight_title, 500); }
+  .spot-back .picker .opt .sub { color: var(--fg-dim); font-size: var(--t-subtitle); margin-left: 2px; }
+  .spot-back .picker .opt .kind { margin-left: auto; color: var(--fg-dim); font-size: var(--t-kind); }
+  .spot-back .picker .opt .num { width: 24px; height: 22px; border-radius: var(--r-badge); background: var(--badge); color: var(--fg); font-size: var(--t-badge); font-family: var(--font-mono); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .spot-back .picker .opt.sel .num { background: var(--badge-sel); }
+  .spot-back .picker .foot { display: flex; align-items: center; gap: 10px; padding: 10px 14px 12px 20px; border-top: 1px solid var(--hair); font-size: var(--t-body); }
+  .spot-back .picker .foot .sw { width: 12px; height: 12px; }
+  .spot-back .picker .foot .nm { font-weight: var(--t-weight_name, 600); font-size: 14px; }
+  .spot-back .picker .foot button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--hair); background: transparent; color: var(--fg); font-size: 14px; padding: 0; margin: 0; }
+  .spot-back .picker .foot .pill { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--surface) 85%, transparent); box-shadow: 0 0 0 1px var(--hair), var(--sh-pill); font-size: var(--t-body); color: var(--fg); }
+  .spot-back .picker .foot .pill kbd { font-family: var(--font-mono); font-size: 11px; background: var(--badge); border-radius: 5px; padding: 2px 6px; }
+  .spot-back .picker .foot .pill .sep { width: 1px; height: 16px; background: var(--hair); }
 </style>
 <script src="tokens.js"></script><script src="logs.js"></script><script src="lab.js"></script><script src="components.js"></script>
 </head><body>

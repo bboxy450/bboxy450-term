@@ -1,0 +1,81 @@
+{
+  "name": "bboxy450-term visual style",
+  "version": 1,
+  "sources": {
+    "launcher_and_material": "Raycast launcher screenshot, operator 2026-10-21",
+    "swarm_block": "Range Rover 2023 rear: band set into a rounded body, bumper carries the colour",
+    "sizes": "macOS proportions at a compact footprint (cozy density)"
+  },
+  "rules": [
+    "one material for every surface: translucent, blurred, hairline-edged; no opaque boxes",
+    "hairlines, never borders; the only solid borders are pane borders, which carry identity",
+    "selection is a tint of the foreground, never a colour",
+    "colour means identity only: a seat's colour, a swarm's colour, a role's colour; state is glyph and glow",
+    "numbers live in badges, kinds live in muted text on the right, icons live in tiles",
+    "one radius scale, one type scale, one spacing grid; nothing is sized by eye",
+    "shadows only under floating things; flat things cast none",
+    "motion is one curve and one duration; nothing animates without a cause"
+  ],
+  "material": {
+    "panel_alpha": 0.78,
+    "panel_blur_px": 30,
+    "panel_saturate": 1.4,
+    "card_alpha": 0.72,
+    "backdrop_dim_alpha": 0.35,
+    "backdrop_blur_px": 14,
+    "hairline_alpha": 0.7,
+    "inner_highlight_alpha": 0.08
+  },
+  "radius": { "panel": 20, "card": 12, "row": 10, "tile": 8, "badge": 6, "pill": 999 },
+  "shadow": {
+    "floating": "0 40px 120px rgba(0,0,0,.45)",
+    "pill": "0 6px 20px rgba(0,0,0,.18)",
+    "flat": "none"
+  },
+  "type": {
+    "family": "system sans (SF, Inter)",
+    "mono": "ui-monospace",
+    "input": 22,
+    "title": 16,
+    "subtitle": 15,
+    "kind": 14,
+    "body": 13,
+    "row": 12.5,
+    "section": 12,
+    "badge": 12,
+    "caption": 11,
+    "weight_title": 500,
+    "weight_name": 600,
+    "weight_section": 500
+  },
+  "spacing": {
+    "grid": 8,
+    "panel_pad_x": 24,
+    "row_pad_x": 14,
+    "row_gap": 12,
+    "row_margin_x": 10,
+    "row_height_panel": 46,
+    "row_height_sidebar": 24,
+    "section_pad_top": 12,
+    "section_pad_bottom": 6
+  },
+  "tint": {
+    "selection_alpha": 0.09,
+    "selection_hover_alpha": 0.06,
+    "badge_alpha": 0.18,
+    "badge_selected_alpha": 0.30,
+    "tile_text": "#ffffff"
+  },
+  "components": {
+    "panel": "frosted surface at panel_alpha with panel_blur, radius.panel, hairline ring, shadow.floating, inner top highlight",
+    "card": "frosted surface at card_alpha, radius.card, hairline ring, no shadow (the swarm block body)",
+    "row": "radius.row, margin row_margin_x, selection tint on select, hover tint on hover, tile · title · subtitle · kind · badge",
+    "tile": "radius.tile square in the harness colour, white glyph inside",
+    "badge": "radius.badge square, badge_alpha tint, mono digits (⌘N, numbers)",
+    "pill": "radius.pill, panel material, shadow.pill; floating actions with kbd hints",
+    "section": "type.section at weight_section, muted, sentence case",
+    "band": "swarm colour gloss band set into the card top, tracked uppercase 10.5px",
+    "bumper": "4px strip of swarm colour along the card bottom, 3px when shut"
+  },
+  "motion": { "appear_ms": 160, "hover_ms": 120, "ease": "cubic-bezier(.2,.8,.2,1)" }
+}

@@ -135,7 +135,8 @@
   function seatRow(seat, opts) {
     opts = opts || {};
     const row = el('div', { class: 'seat-row ' + seat.state + (opts.focused ? ' focused' : ''), style: '--seat:' + seatColor(seat) });
-    row.append(harnessIcon(seat.harness), el('span', { class: 'name', style: 'color:' + seatColor(seat) }, seat.name));
+    const tileCol = (LAUNCH.find(l => l.harness === seat.harness) || {}).tile || 'var(--surface-2)';
+    row.append(el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(seat.harness)), el('span', { class: 'name', style: 'color:' + seatColor(seat) }, seat.name));
     if (seat.role) row.append(roleMark(seat.role));
     row.append(el('span', { class: 'title' }, seat.title || ''));
     const right = el('span', { class: 'right' });
@@ -300,11 +301,11 @@
   // ⌘T picker: vertical, keyboard-first, typed prefix, name reveal with reroll
   // Launchables: harnesses and zsh today; browser tab, vnc and ssh later. Rows are data, the picker does not care.
   const LAUNCH = [
-    { id: 'claude', label: 'Claude Code', harness: 'claude', hint: 'oracle', section: 'Harnesses' },
-    { id: 'codex', label: 'Codex', harness: 'codex', hint: 'executor', section: 'Harnesses' },
-    { id: 'pi', label: 'pi', harness: 'pi', hint: 'executor', section: 'Harnesses' },
-    { id: 'omp', label: 'omp', harness: 'omp', hint: 'executor', section: 'Harnesses' },
-    { id: 'zsh', label: 'zsh', harness: 'zsh', hint: 'shell', section: 'Shells' },
+    { id: 'claude', label: 'Claude Code', sub: 'oracle by default', harness: 'claude', kind: 'Harness', tile: '#D97757', section: 'Suggestions' },
+    { id: 'codex', label: 'Codex', sub: 'executor by default', harness: 'codex', kind: 'Harness', tile: '#1F2937', section: 'Suggestions' },
+    { id: 'pi', label: 'pi', sub: 'executor by default', harness: 'pi', kind: 'Harness', tile: '#7C3AED', section: 'Harnesses' },
+    { id: 'omp', label: 'omp', sub: 'executor by default', harness: 'omp', kind: 'Harness', tile: '#0EA5E9', section: 'Harnesses' },
+    { id: 'zsh', label: 'zsh', sub: '~', harness: 'zsh', kind: 'Shell', tile: '#111827', section: 'Shells' },
   ];
   function picker(opts) {
     opts = opts || {};
@@ -324,15 +325,15 @@
       let lastSec = null;
       items.forEach((it, i) => {
         if (it.section && it.section !== lastSec) { list.append(el('div', { class: 'sec' }, it.section)); lastSec = it.section; }
-        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : ''), onclick: () => pick(it), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, harnessIcon(it.harness));
-        const label = el('span'); const L = it.label, m = q && L.toLowerCase().startsWith(q.toLowerCase()) ? q.length : 0;
+        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : ''), onclick: () => pick(it), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
+        const label = el('span', { class: 'lbl' }); const L = it.label, m = q && L.toLowerCase().startsWith(q.toLowerCase()) ? q.length : 0;
         if (m) label.append(el('span', { class: 'm' }, L.slice(0, m)), L.slice(m)); else label.textContent = L;
-        o.append(label, el('span', { class: 'role tag' }, it.hint || ''));
+        o.append(label, el('span', { class: 'sub' }, it.sub || ''), el('span', { class: 'kind' }, it.kind || it.hint || ''), el('span', { class: 'num' }, String(i + 1)));
         list.append(o);
       });
       const nm = nameFor(seed);
       foot.innerHTML = '';
-      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }) }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); } }, '↻'), el('span', { class: 'hints' }, el('kbd', {}, '↵'), ' launch ', el('kbd', {}, '↑↓'), ' move ', el('kbd', {}, 'esc'), ' close'));
+      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }), title: 'seat colour' }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); }, title: 'reroll name' }, '↻'), el('span', { class: 'pill' }, el('span', {}, 'Launch'), el('kbd', {}, '↵'), el('span', { class: 'sep' }), el('span', {}, 'Reroll'), el('kbd', {}, '⌘R')));
     }
     input.addEventListener('input', () => { q = input.value; sel = 0; draw(); });
     input.addEventListener('keydown', e => {
@@ -341,6 +342,8 @@
       else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + n - 1) % Math.max(n, 1); draw(); }
       else if (e.key === 'Enter') { e.preventDefault(); pick(matches()[sel]); }
       else if (e.key === 'Escape') { if (opts.onClose) opts.onClose(); }
+      else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'r') { e.preventDefault(); seed++; draw(); }
+      else if (/^[1-9]$/.test(e.key) && !q) { e.preventDefault(); pick(matches()[+e.key - 1]); }
       e.stopPropagation();
     });
     draw();
