@@ -52,7 +52,7 @@ The matrix is generated, so 4 fonts × 3 sizes × 2 scales × 2 themes × 8 stat
 
 **4.4 Comparison.** Perceptual diff (`dssim` or a per-channel tolerance plus a 0.1% changed-pixel budget), never exact bytes: Metal and CoreText output drifts across OS versions. A failing compare writes a side-by-side `diff.png`. Goldens update only via an explicit `UPDATE_GOLDENS=1 cargo test` with the diff attached to the PR.
 
-**4.5 Showcase parity.** Parity target is tag `ux-prototype-v2`. The Rust `bboxybook` renders the same scenes as the web showcase (`?scene=3`, `?scene=15`, every component page) to PNG; a parity report puts web and Rust side by side for the operator. Not a pass/fail in v0.1; a review artifact.
+**4.5 Showcase parity, scripted.** Parity target is tag `ux-prototype-v2`. `scripts/parity.sh` captures the web lab headless, renders the same matrix through bboxybook, perceptual-diffs every pair, and writes `target/parity/index.html` (web | native | diff, worst first) plus `report.md` for the next iteration; it runs in CI. The improvement loop is: render, read the report, fix the worst, re-run. The Rust `bboxybook` renders the same scenes as the web showcase (`?scene=3`, `?scene=15`, every component page) to PNG; a parity report puts web and Rust side by side for the operator. Not a pass/fail in v0.1; a review artifact.
 
 **4.6 Performance smoke.** Headless frame time for the 15-seat scene at 2×, logged, not asserted (no pre-emptive optimisation rule). Asserted only against a generous ceiling to catch a 10× regression.
 
