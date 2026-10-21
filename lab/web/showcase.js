@@ -68,6 +68,17 @@
   const stageKeys = C.leaves(stageTree).map(s => s.key);
   let focused = stageKeys[0];
 
+  // State change without a full render: swap glyphs and classes in place so replay text and scroll survive.
+  function setState(seat, st) {
+    if (seat.state === st) return;
+    seat.state = st;
+    for (const n of main.querySelectorAll('[data-key="' + seat.key + '"]')) {
+      for (const k of C.STATES) n.classList.remove(k);
+      n.classList.add(st);
+      const g = n.querySelector('.glyph'); if (g) g.replaceWith(C.glyph(st, seat));
+    }
+  }
+
   // ---------- DOM ----------
   const app = document.getElementById('app');
   const themeBtn = el('span', { class: 'tbtn theme', title: 'theme: auto → dark → light', onclick: () => { themeMode = { auto: 'dark', dark: 'light', light: 'auto' }[themeMode]; localStorage.setItem('showcase.theme', themeMode); applyTheme(); drawThemeBtn(); render(); } });
@@ -94,6 +105,7 @@
       n.addEventListener('pointerleave', disarmHover);
     });
     setFocus(focused, { force: true });
+    for (const seat of seats) paintTerm(seat);
     measure();
   }
   // Focus change touches classes only: no re-render, no re-measure (rows never move).
@@ -257,7 +269,7 @@
     frames++; if (now - fpsT > 1000) { fps = frames; window.__fps = { fps, avgMs: +(ftAcc / frames).toFixed(2), maxMs: +ftMax.toFixed(1), rects: rects.length, scene: SCENE }; frames = 0; ftAcc = 0; ftMax = 0; fpsT = now; }
     requestAnimationFrame(frame);
   }
-  function hint() { document.getElementById('hint').innerHTML = '<b>1</b> idle · <b>2</b> active · <b>3</b> waiting · <b>4</b> errored (focused seat) · <b>M</b> message arrives · <b>Tab</b> focus next · click row or pane = locate · gutter ' + GUTTER + ' <a href="?scene=' + SCENE + '&gutter=2">2</a> <a href="?scene=' + SCENE + '&gutter=4">4</a> · <a href="?scene=' + (SCENE === 15 ? 3 : 15) + '&gutter=' + GUTTER + '">scene ' + (SCENE === 15 ? 3 : 15) + '</a>'; }
+  function hint() { document.getElementById('hint').innerHTML = '<b>1</b> idle · <b>2</b> active / resume · <b>3</b> waiting · <b>4</b> errored (focused seat) · <b>M</b> message arrives · <b>Tab</b> focus next · click row or pane = locate · gutter ' + GUTTER + ' <a href="?scene=' + SCENE + '&gutter=2">2</a> <a href="?scene=' + SCENE + '&gutter=4">4</a> · <a href="?scene=' + (SCENE === 15 ? 3 : 15) + '&gutter=' + GUTTER + '">scene ' + (SCENE === 15 ? 3 : 15) + '</a>'; }
 
   // ---------- cause and effect: no timers. Keys change one thing at a time. ----------
   const ROLE_RANK = { oracle: 0, executor: 1, creativity: 2, unsigned: 3 };
@@ -266,7 +278,7 @@
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const f = seats.find(s => s.key === focused);
     const st = { '1': 'idle', '2': 'active', '3': 'waiting', '4': 'errored' }[e.key];
-    if (st) { f.state = st; render(); }
+    if (st) { setState(f, st); if (st === 'active' && f.replay && f.replay.waiting) { f.replay.waiting = false; schedule(f, 200); } }
     else if (e.key === 'm' || e.key === 'M') {
       // a message arrives for the next seat in order, from a sender role that cycles; unread dot only, no ripple
       const s = seats[msgN % seats.length], role = ['executor', 'oracle', 'creativity'][msgN % 3]; msgN++;
@@ -278,5 +290,56 @@
   });
   hint();
 
+  // ---------- live log replay ----------
+  // Each seat replays one fixture line by line: bursts of 1-6 lines at 30-120 ms, pauses of 0.4-2 s between bursts,
+  // a 3-6 s pause at the end of the fixture, then it loops. State follows the replay: active while lines flow,
+  // idle at the loop pause, waiting when a burst ends on a line containing 'Allow' or ending in '?', until key 2.
+  const L = window.LOGS || {};
+  const SHELL = [['cargo build --release', 'cargo-build'], ['git log -3', 'git-log'], ['icq --human status', 'icq-status'], ['ls -R .kb', 'ls-kb']];
+  function fixtureFor(seat, i) {
+    if (seat.harness === 'claude') return (L['claude-session'] || '').split('\n');
+    if (seat.harness === 'codex') return (L['codex-session'] || '').split('\n');
+    const out = []; // shell seats: prompt + each shell fixture, rotated by seat index so panes differ
+    for (let k = 0; k < SHELL.length; k++) { const [cmd, name] = SHELL[(k + i) % SHELL.length]; out.push('$ ' + cmd, ...(L[name] || '').split('\n'), ''); }
+    return out;
+  }
+  const MAXLINES = 400;
+  function paintTerm(seat) {
+    const term = main.querySelector('.pane[data-key="' + seat.key + '"] .term'); if (!term || !seat.replay) return;
+    const rp = seat.replay;
+    term.innerHTML = '';
+    const lines = el('div', { class: 'lines' }, rp.buf.join('\n'));
+    lines.append(el('span', { class: 'cur', style: 'margin-left:2px' }));
+    term.append(lines);
+  }
+  function emit(seat, line) {
+    const rp = seat.replay; rp.buf.push(line); if (rp.buf.length > MAXLINES) rp.buf.shift();
+    paintTerm(seat);
+  }
+  function schedule(seat, ms) { clearTimeout(seat.replay.timer); seat.replay.timer = setTimeout(() => step(seat), ms); }
+  function step(seat) {
+    const rp = seat.replay, rnd = rp.rnd;
+    if (rp.waiting) return;
+    if (rp.idx >= rp.lines.length) {                     // end of fixture: idle at the loop pause, then restart
+      setState(seat, 'idle');
+      rp.idx = 0; rp.burst = 0; rp.buf.push(''); 
+      return schedule(seat, 3000 + rnd() * 3000);
+    }
+    if (rp.burst === 0) rp.burst = 1 + Math.floor(rnd() * 6);
+    setState(seat, 'active');
+    const line = rp.lines[rp.idx++]; emit(seat, line); rp.burst--;
+    if (rp.burst === 0) {                                 // burst ended
+      if (/Allow|\?\s*$/.test(line)) { rp.waiting = true; setState(seat, 'waiting'); return; }
+      return schedule(seat, 400 + rnd() * 1600);
+    }
+    schedule(seat, 30 + rnd() * 90);
+  }
+  seats.forEach((seat, i) => {
+    const lines = fixtureFor(seat, i);
+    const start = Math.floor(C.rng('start' + seat.key)() * lines.length);
+    seat.replay = { lines, idx: start, buf: lines.slice(Math.max(0, start - 12), start), burst: 0, waiting: false, rnd: C.rng('replay' + seat.key), timer: null };
+    if (seat.state === 'waiting') seat.replay.waiting = true; else if (seat.state === 'errored') { /* errored seats hold until the operator presses 2 */ seat.replay.waiting = true; }
+  });
   render(); resize(); requestAnimationFrame(frame);
+  seats.forEach((seat, i) => { if (!seat.replay.waiting) schedule(seat, 300 + i * 170); });
 })();

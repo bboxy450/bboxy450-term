@@ -22,12 +22,13 @@
   .sidebar { padding-left: var(--gutter); }
   .sidebar .sb-scroll { padding: 0 var(--gutter) 0 0; }
   .space { margin: var(--gutter) 0; }
-  .pane .term { font-size: 12px; }
+  .pane .term { font-size: 12px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+  .pane .term .lines { white-space: pre; overflow: hidden; }
   .tbtn.theme { font-family: var(--font-mono); font-size: 11px; gap: 6px; align-items: center; }
   .hint { position: fixed; right: 14px; bottom: 10px; z-index: 3; font-size: 11px; color: var(--fg-dim); font-family: var(--font-mono); opacity: .8; }
   .hint b { color: var(--fg); font-weight: 500; }
 </style>
-<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+<script src="tokens.js"></script><script src="logs.js"></script><script src="lab.js"></script><script src="components.js"></script>
 </head><body>
 <canvas id="glow"></canvas>
 <div id="app"></div>

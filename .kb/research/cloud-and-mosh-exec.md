@@ -178,6 +178,9 @@ Keep durable seat identity separate from a provider/harness session ID. A cross-
 | `sysctl`, `rustc --version`, local manual/header reads | Exit 0; host/toolchain and flush semantics verified. |
 | Primary web reads | RFC 9000/9221, OpenSSH, Fly, AWS and GCP fetched. Initial GCP Linux page timed out; canonical overview fetched. Hetzner rendered API page exposed no fields; pinned official SDK source was fetched instead. No provider credentials/API mutations. |
 | Local session structure enumeration | Exit 0; counts above. Transcript contents deliberately untouched. |
+| Required `ls` / section-count command from Task E | Exit 0; file exists, nine level-two sections. |
+| Source-pointer / document validation script | Exit 0; all 30 qualified pointers exist within line ranges, all seven topical sections and four required wikilinks present, no trailing whitespace/control characters, final newline present. Range validation is not semantic proof. |
+| `git diff --check`; `git status --short` | Exit 0; no whitespace errors. Only this deliverable was modified at final verification; the Oracle had already committed an earlier draft. No commit by this Executor. |
 
 Fixture hashes (SHA-256, whole file): `Probe/src/main.rs` = `8a0b6fe6909fe9a496d4214c28fff6f47ed50d08da3b5c25d16ef4ba1d08579a`; `Probe/crash_probe.py` = `3cffeaa042c6cb1034bff2b2f61a391c432ecff4bfce018367284694edb11b1d`; `Probe/Cargo.lock` = `4a54662389ecac2d44b80612a9d5316d10a437f1c3a71020321b3b9539da7c75`; measurements = `10a051bb8afa18f02b645cda36ff452acd277ee541ce9e880fa1e6b8e41ecfd1`.
 
