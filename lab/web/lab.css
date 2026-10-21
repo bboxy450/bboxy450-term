@@ -689,10 +689,26 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .task-row .ttitle { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 .task-row .right { display: flex; align-items: center; gap: 6px; flex: none; }
 .task-row .tstate { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .04em; }
-.task-row.assigned .tglyph, .task-row.acknowledged .tglyph { color: var(--fg-dim); }
+.task-row.open .tglyph, .task-row.claimed .tglyph { color: var(--fg-dim); }
 .task-row.running .tglyph { color: var(--accent); }
 .task-row.reported .tglyph, .task-row.reported .tstate { color: var(--c-waiting); }
-.task-row.accepted .tglyph, .task-row.accepted .tstate { color: #2EE6A8; }
+.task-row.accepted .tglyph, .task-row.accepted .tstate, .task-row.done .tglyph, .task-row.done .tstate { color: #2EE6A8; }
 .task-row.rejected .tglyph, .task-row.rejected .tstate { color: var(--c-errored); }
-.task-row.reassigned .tglyph { color: var(--fg-dim); }
+.task-row.blocked .tglyph, .task-row.blocked .tstate { color: var(--c-errored); }
+.task-row .twaits { font-size: 9.5px; color: var(--c-errored); white-space: nowrap; }
 .task-row .accept { background: var(--c-waiting); color: #000; border: 0; border-radius: 999px; font: inherit; font-size: 9.5px; font-weight: 600; padding: 1px 7px; cursor: pointer; }
+
+/* epic group in the stream dock */
+.epic { border-radius: var(--r-row, 8px); padding: 2px 0 4px; }
+.epic .ehead { display: flex; align-items: center; gap: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; color: var(--fg); border-radius: var(--r-row, 8px); }
+.epic .ehead:hover { background: var(--sel-hover, var(--surface-2)); }
+.epic .ecaret { width: 10px; font-size: 9px; color: var(--fg-dim); }
+.epic .ekind { font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-dim); background: var(--badge, var(--surface-2)); border-radius: 4px; padding: 1px 5px; }
+.epic .etitle { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.epic .ecount { font-family: var(--font-mono); font-size: 10px; color: var(--fg-dim); }
+.epic .eitem { display: flex; align-items: center; gap: 6px; padding: 2px 8px 2px 24px; font-size: 11px; color: var(--fg-dim); }
+.epic .eitem .etitle { color: var(--fg); font-weight: 400; }
+.epic .eitem .eass { font-size: 10px; color: var(--fg-dim); white-space: nowrap; }
+.epic .eitem.running .tglyph { color: var(--accent); } .epic .eitem.reported .tglyph { color: var(--c-waiting); }
+.epic .eitem.accepted .tglyph, .epic .eitem.done .tglyph { color: #2EE6A8; } .epic .eitem.rejected .tglyph, .epic .eitem.blocked .tglyph { color: var(--c-errored); }
+.epic .eitem .twaits { font-size: 9.5px; color: var(--c-errored); white-space: nowrap; }

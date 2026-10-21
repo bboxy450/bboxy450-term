@@ -83,7 +83,16 @@
   let streamFilter = null;
   // A space is a cohort: its own seats, participants and stream. One shows at a time; the footer dots switch.
   const open = new Set([model.spaces[0].key]);   // which cohort blocks are open: band click toggles, focus never touches it
-  for (const sp of model.spaces) { sp.participants = sp.participants || []; sp.stream = []; }
+  for (const sp of model.spaces) { sp.participants = sp.participants || []; sp.stream = []; sp.epics = []; }
+  model.spaces[0].epics.push(
+    { id: 'e1', title: 'W3 renderer', open: true, items: [
+      { id: 's1', type: 'spec', title: 'renderer.md', state: 'accepted' },
+      { id: 'w31', type: 'task', title: 'W3.1 renderer harness', state: 'reported', assignee: 'Nyx Copperwing' },
+      { id: 'w32', type: 'task', title: 'W3.2 GUI component library', state: 'blocked', waits: 'W3.1' },
+      { id: 'w33', type: 'task', title: 'W3.3 showcase parity', state: 'open' } ] },
+    { id: 'e2', title: 'W1 term core', open: false, items: [
+      { id: 'w11', type: 'task', title: 'W1.1 term-core fork', state: 'done', assignee: 'Nyx Copperwing' },
+      { id: 'w12', type: 'task', title: 'W1.2 byte ring', state: 'open' } ] });
   function space() { const hit = tabOf(focused); return hit ? hit.sp : model.spaces[0]; }   // the cohort of the focused seat
   function tabOf(key) { for (const sp of model.spaces) for (const t of sp.tabs) if ((t.seats || []).some(x => x.key === key)) return { sp, t }; return null; }
   function stageOf() { const sp = space(); const hit = tabOf(focused); const t = hit && hit.sp === sp ? hit.t : sp.tabs[0]; return t ? t.tree : null; }
@@ -98,7 +107,7 @@
     Object.defineProperty(z, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
     Object.defineProperty(z, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
     seats.push(z); startReplay(z, seats.length - 1);
-    const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [] };
+    const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [], epics: [{ id: 'e' + spaceN, title: 'swarm ' + spaceN, open: true, items: [] }] };
     model.spaces.push(sp); editName = sp.key; jumpSpace(sp);
   }
   // Placement: a seat goes into a swarm as a new tab, or splits a target pane on one of its four sides.
@@ -148,11 +157,11 @@
     seat.tasks = seat.tasks || [];
     const open_ = seat.tasks.find(t => !['accepted', 'rejected', 'reassigned'].includes(t.state));
     if (open_) {
-      const next = { assigned: 'acknowledged', acknowledged: 'running', running: 'reported', reported: 'reported' }[open_.state];
+      const next = { open: 'claimed', claimed: 'running', running: 'reported', reported: 'reported' }[open_.state];
       if (next !== open_.state) { open_.state = next; streamLine(sp, seat.name + ' ' + next + ' · ' + open_.title); }
     } else {
-      const task = { id: 't' + (++taskN), title: TASK_TITLES[taskN % TASK_TITLES.length], state: 'assigned', from: 'Vesper Greywind' };
-      seat.tasks.push(task); streamLine(sp, 'Oracle delegated · ' + task.title + ' → ' + seat.name);
+      const task = { id: 't' + (++taskN), title: TASK_TITLES[taskN % TASK_TITLES.length], state: 'claimed', from: 'Vesper Greywind', assignee: seat.name };
+      seat.tasks.push(task); sp.epics[0].items.push(task); streamLine(sp, 'Oracle delegated · ' + task.title + ' → ' + seat.name);
     }
     render();
   }
@@ -587,10 +596,11 @@
     const dock = document.getElementById('stream'); if (!dock) return;
     dock.innerHTML = '';
     const stream = space().stream;
+    for (const ep of (space().epics || [])) if (ep.items.length) dock.append(C.epicGroup(ep, { onToggle: drawStream }));
     const items = stream.filter(m => !streamFilter || m.fromKey === streamFilter).slice(-4);
     if (streamFilter) { const ph = space().participants.find(p => p.key === streamFilter); if (!ph) { streamFilter = null; return drawStream(); } dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
     for (const m of items) dock.append(C.messageRow(m));
-    dock.style.display = stream.length ? '' : 'none';
+    dock.style.display = (stream.length || (space().epics || []).some(e => e.items.length)) ? '' : 'none';
   }
   const PHRASES = ['relay bench green on eu-2, 41 ms p50', 'claiming the glyphon atlas question', 'B spec amended, envelope has presence now', 'who owns the ssh bootstrap doc?', 'pushed fixtures, four files'];
   let phN = 0;

@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 10,
+  "version": 11,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -604,6 +604,28 @@
       "source": "OSC 7501 (Claude) / hooks (Codex)",
       "anatomy": "optional per harness: indented rows with description and working/idle glyph; absent when the harness gives nothing",
       "status": "drawn, not built"
+    },
+    "task_row": {
+      "purpose": "a delegated work item under its seat",
+      "source": "work-items.md + task_delegate",
+      "anatomy": "indented under the seat row: status glyph (○ open ◔ claimed ◑ running ◕ reported ● accepted ✓ done ✕ rejected ⊘ blocked) · title · \"waits on X\" when blocked · accept pill when reported (Oracle/operator) · status chip in mono",
+      "rules": [
+        "statuses are the frontmatter statuses; the file is the contract",
+        "rows never reorder",
+        "a task also writes a line in the swarm stream on delegate, each status change and accept"
+      ],
+      "status": "built"
+    },
+    "epic_group": {
+      "purpose": "an epic and its specs and tasks in the swarm stream dock",
+      "source": "work-items.md",
+      "anatomy": "collapsible header: caret · EPIC chip · title · done/total; lines: status glyph · kind chip (spec | task) · title · assignee · \"waits on X\" when blocked",
+      "rules": [
+        "shut by default once accepted; open while work is live",
+        "blocked shows its dependency",
+        "never deletes an item: done and rejected are states"
+      ],
+      "status": "built"
     }
   },
   "modal": {

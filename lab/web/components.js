@@ -167,17 +167,35 @@
   }
 
   // Task row: a delegated task under its seat. State is a glyph + chip; reported shows an accept pill (Oracle/operator).
-  const TASK_STATES = ['assigned', 'acknowledged', 'running', 'reported', 'accepted', 'rejected', 'reassigned'];
-  const TASK_GLYPH = { assigned: '○', acknowledged: '◔', running: '◑', reported: '◕', accepted: '●', rejected: '✕', reassigned: '↷' };
+  // statuses are the work-item frontmatter statuses (work-items.md): the file is the contract
+  const TASK_STATES = ['open', 'claimed', 'running', 'reported', 'accepted', 'rejected', 'blocked', 'done'];
+  const TASK_GLYPH = { open: '○', claimed: '◔', running: '◑', reported: '◕', accepted: '●', done: '✓', rejected: '✕', blocked: '⊘' };
   function taskRow(task, seat, opts) {
     opts = opts || {};
     const row = el('div', { class: 'task-row ' + task.state, 'data-task': task.id, title: task.title + ' · ' + task.state + (task.from ? ' · from ' + task.from : '') });
     row.append(el('span', { class: 'tglyph' }, TASK_GLYPH[task.state] || '○'), el('span', { class: 'ttitle' }, task.title));
+    if (task.state === 'blocked' && task.waits) row.append(el('span', { class: 'twaits' }, 'waits on ' + task.waits));
     const right = el('span', { class: 'right' });
     if (task.state === 'reported' && opts.onAccept) right.append(el('button', { class: 'accept', onclick: e => { e.stopPropagation(); opts.onAccept(task, seat); } }, 'accept'));
     right.append(el('span', { class: 'tstate' }, task.state));
     row.append(right);
     return row;
+  }
+
+  // Epic group: a collapsible header in the stream dock with the epic's specs and tasks as lines (work-items.md)
+  function epicGroup(epic, opts) {
+    opts = opts || {};
+    const items = epic.items || [], done = items.filter(i => ['accepted', 'done'].includes(i.state)).length;
+    const g = el('div', { class: 'epic' + (epic.open === false ? ' shut' : '') });
+    const head = el('div', { class: 'ehead', onclick: () => { epic.open = epic.open === false; if (opts.onToggle) opts.onToggle(epic); } }, el('span', { class: 'ecaret' }, epic.open === false ? '▸' : '▾'), el('span', { class: 'ekind' }, 'epic'), el('span', { class: 'etitle' }, epic.title), el('span', { class: 'ecount' }, done + '/' + items.length));
+    g.append(head);
+    if (epic.open !== false) for (const it of items) {
+      const line = el('div', { class: 'eitem ' + it.state }, el('span', { class: 'tglyph' }, TASK_GLYPH[it.state] || '○'), el('span', { class: 'ekind' }, it.type || 'task'), el('span', { class: 'etitle' }, it.title));
+      if (it.assignee) line.append(el('span', { class: 'eass' }, it.assignee));
+      if (it.state === 'blocked' && it.waits) line.append(el('span', { class: 'twaits' }, 'waits on ' + it.waits));
+      g.append(line);
+    }
+    return g;
   }
 
   function miniGrid(tree, focusedKey, big) {
@@ -651,5 +669,5 @@
     return root;
   }
 
-  window.C = { taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

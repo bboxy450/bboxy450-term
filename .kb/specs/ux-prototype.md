@@ -103,7 +103,10 @@ Either way the placed seat gets focus and the locate signal. Ratios are then adj
 ### 5.7 Mute
 ⌘M or the speaker icon in the pane strip toggles mute on the focused seat. A muted seat works one to one with the operator: its row stays in place with an amber muted mark and a dimmed name; its messages to the swarm are held; the swarm stream shows a centred presence notice on mute and again on unmute. No other signal changes.
 
-### 5.8 Messages
+### 5.8 Work items
+Tasks, specs and epics are Markdown files with frontmatter (see [[work-items]]); the terminal draws them. A task delegated to a seat is a row under that seat: status glyph (open ○, claimed ◔, running ◑, reported ◕, accepted ●, done ✓, rejected ✕, blocked ⊘), title, "waits on X" when blocked, an accept pill when reported (Oracle/operator), the status chip. An epic is a collapsible group in the stream dock: EPIC chip, title, done/total, then its specs and tasks as lines with status glyph, kind chip, title and assignee. Delegation, every status change and acceptance also write a line in the stream. Demo: T delegates to the focused seat and walks the status.
+
+### 5.9 Messages
 Unread shows as a dot on the seat row in the highest-priority unread role colour; focusing or clicking the seat clears it. A shadow's message pulses its row once (700 ms) and lands in the stream dock. No ripple for messages.
 
 ## 6. Signal semantics (one meaning per signal)
