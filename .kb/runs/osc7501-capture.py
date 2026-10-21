@@ -16,7 +16,7 @@ def command(agent):
  if agent=="claude":
   agents={"wire_probe":{"description":"Protocol-capture fixture child; no implementation or tools.","prompt":"You are a fixture subagent in an operator-authorized OSC capture. Reply exactly CAPTURE_CHILD_DONE. Do not use tools, read files, write anything or send messages.","tools":[]}}
   return ["/opt/homebrew/bin/claude",PROMPTS[agent],"--tools","Agent","--allowedTools","Agent","--agents",json.dumps(agents),"--setting-sources","","--settings",json.dumps({"disableAllHooks":True}),"--strict-mcp-config","--mcp-config",json.dumps({"mcpServers":{}}),"--disable-slash-commands","--no-chrome"]
- return ["/opt/homebrew/bin/codex","--no-alt-screen","--no-daemon","--disable","hooks","--sandbox","read-only","--ask-for-approval","never",PROMPTS[agent]]
+ return ["/opt/homebrew/bin/codex","--no-alt-screen","--no-daemon","--disable","hooks","-c",'projects."'+str(ROOT)+'".trust_level="untrusted"',"--sandbox","read-only","--ask-for-approval","never",PROMPTS[agent]]
 
 class Filter:
  def __init__(self,on_osc,respond):
@@ -123,7 +123,7 @@ def run(agent,timeout,term_program):
    print(json.dumps({"agent":agent,"event":"report","t_ms":elapsed(),"state":state,"has_task_id":"id" in fields}),flush=True)
  parser=Filter(on_osc,respond)
  recent_text=""; diagnostics=set()
- diagnostic_patterns={"config_error":"error:","trust_prompt":"trust the files", "trust_question":"trust this","directory_trust":"directory","hook_trust":"hooks","yes_option":"yes,","no_option":"no,","proceed_option":"proceed", "auth_prompt":"sign in", "update_prompt":"update available", "press_enter":"press enter", "codex_fixture_text":"CAPTURE_CODEX_DONE","hook_notice":"hook","trust_notice":"trust","migration_notice":"migrat","update_notice":"update","confirmation_notice":"confirm","mcp_notice":"mcp","error_notice":"error","model_notice":"model","terminal_notice":"terminal","question_notice":"?","upgrade_notice":"upgrade","config_warning":"config.toml","trusted_project_warning":"trusted project","initial_model_dialog":"new model","new_model_dialog":"newest model","try_model_dialog":"try the","escape_hint":"esc","enter_hint":"enter","continue_hint":"continue","select_hint":"select","proceed_hint":"proceed","untrusted_warning":"untrusted","sign_in_hint":"sign","blocked_prompt":"approval"}
+ diagnostic_patterns={"config_error":"error:","trust_prompt":"trust the files", "trust_question":"trust this","open_restricted_visible":"open restricted","trust_continue_visible":"trust and continue","directory_trust":"directory","hook_trust":"hooks","yes_option":"yes,","no_option":"no,","proceed_option":"proceed", "auth_prompt":"sign in", "update_prompt":"update available", "press_enter":"press enter", "codex_fixture_text":"CAPTURE_CODEX_DONE","hook_notice":"hook","trust_notice":"trust","migration_notice":"migrat","update_notice":"update","confirmation_notice":"confirm","mcp_notice":"mcp","error_notice":"error","model_notice":"model","terminal_notice":"terminal","question_notice":"?","upgrade_notice":"upgrade","config_warning":"config.toml","trusted_project_warning":"trusted project","initial_model_dialog":"new model","new_model_dialog":"newest model","try_model_dialog":"try the","escape_hint":"esc","enter_hint":"enter","continue_hint":"continue","select_hint":"select","proceed_hint":"proceed","untrusted_warning":"untrusted","sign_in_hint":"sign","blocked_prompt":"approval"}
  try:
   while True:
    now=time.monotonic(); duration=(time.monotonic_ns()-start)/1e9
