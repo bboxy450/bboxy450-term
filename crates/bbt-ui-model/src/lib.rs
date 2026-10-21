@@ -9,4 +9,4 @@ pub mod model;
 pub mod tokens;
 
 pub use model::*;
-pub use tokens::{Density, Theme, STYLE, TOKENS};
+pub use tokens::{Density, STYLE, TOKENS, Theme};

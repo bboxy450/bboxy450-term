@@ -3,7 +3,10 @@ use std::time::Instant;
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct TextField { pub value: String, pub selection: std::ops::Range<usize> }
+pub struct TextField {
+    pub value: String,
+    pub selection: std::ops::Range<usize>,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Shadow {
@@ -17,12 +20,27 @@ pub struct Shadow {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PresenceKind { Presence, Audit }
+pub enum PresenceKind {
+    Presence,
+    Audit,
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StreamItem {
-    Message { id: MessageId, from: String, role: Option<Role>, foreign: bool, text: String,
-        time: String, unread: bool, reply_to: Option<MessageId> },
-    Presence { kind: PresenceKind, text: String, time: String },
+    Message {
+        id: MessageId,
+        from: String,
+        role: Option<Role>,
+        foreign: bool,
+        text: String,
+        time: String,
+        unread: bool,
+        reply_to: Option<MessageId>,
+    },
+    Presence {
+        kind: PresenceKind,
+        text: String,
+        time: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,7 +54,11 @@ pub struct UndoRecord {
     pub process_generation: u64,
 }
 #[derive(Debug, Clone, PartialEq)]
-pub struct ClosedStrip { pub seat: SeatId, pub until: Instant, pub undo: UndoRecord }
+pub struct ClosedStrip {
+    pub seat: SeatId,
+    pub until: Instant,
+    pub undo: UndoRecord,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Swarm {
@@ -51,7 +73,15 @@ pub struct Swarm {
 }
 impl Swarm {
     pub fn new(id: SwarmId, name: impl Into<String>, tabs: Vec<Tab>) -> Self {
-        Self { id, name: name.into(), tabs, color: SeatColor::Derived, closed: Vec::new(),
-            shadows: Vec::new(), stream: Vec::new(), renaming: None }
+        Self {
+            id,
+            name: name.into(),
+            tabs,
+            color: SeatColor::Derived,
+            closed: Vec::new(),
+            shadows: Vec::new(),
+            stream: Vec::new(),
+            renaming: None,
+        }
     }
 }

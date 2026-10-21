@@ -12,6 +12,13 @@ pub struct Tab {
 }
 impl Tab {
     pub fn new(id: TabId, name: impl Into<String>, tree: SplitNode) -> Self {
-        Self { id, name: name.into(), shortcut: None, seats: tree.leaves(), tree, expanded: true }
+        Self {
+            id,
+            name: name.into(),
+            shortcut: None,
+            seats: tree.leaves(),
+            tree,
+            expanded: true,
+        }
     }
 }
