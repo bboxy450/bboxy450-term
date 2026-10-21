@@ -5,7 +5,7 @@
 <script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
 </head><body><script>
 const el = Lab.el;
-Lab.page({ title: 'toolbar icon', checker: true, note: 'Pick §8 shapes 3 + 1. Toolbar: the standard sidebar-toggle glyph whose left column grows an ear tip; filled column = sidebar shown. It <i>is</i> the sidebar toggle. Menubar: the ear pair as a template icon. Shown at sizes, tinted, and in our own title bar (no native chrome).',
+Lab.page({ title: 'toolbar icon', checker: true, wide: true, note: 'Pick §8 shapes 3 + 1. Toolbar: the standard sidebar-toggle glyph whose left column grows an ear tip; filled column = sidebar shown. It <i>is</i> the sidebar toggle. Menubar: the ear pair as a template icon. Shown at sizes, tinted, and in our own title bar (no native chrome).',
   states: ['sidebar toggle · closed', 'sidebar toggle · open', 'ear pair', 'sizes ladder', 'in our title bar', 'in the menubar'],
   render(s, body) {
     const ladder = name => { const r = el('div', { class: 'logo-row' }); for (const px of [12, 16, 20, 24, 32, 64]) r.append(el('div', { class: 'lt', style: '--icon:' + px + 'px' }, C.harnessIcon(name), el('small', {}, px))); r.append(el('div', { class: 'lt', style: '--icon:32px;color:var(--accent)' }, C.harnessIcon(name), el('small', {}, 'tinted'))); return r; };

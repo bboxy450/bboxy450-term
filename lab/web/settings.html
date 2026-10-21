@@ -77,6 +77,6 @@ Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab in the current s
     frame.append(page({ query: s === 'search "role"' ? 'role' : '' }));
     body.append(frame);
     if (s === 'harness cards') requestAnimationFrame(() => frame.querySelector('.s-scroll').scrollTop = 0);
-    if (s === 'diff from default') requestAnimationFrame(() => { const t = frame.querySelector('.s-row.changed'); if (t) t.scrollIntoView({ block: 'center' }); });
+    if (s === 'diff from default') requestAnimationFrame(() => { const sc = frame.querySelector('.s-scroll'), t = frame.querySelector('.s-row.changed'); if (t) sc.scrollTop = t.offsetTop - sc.clientHeight / 2; });
   } });
 </script></body></html>

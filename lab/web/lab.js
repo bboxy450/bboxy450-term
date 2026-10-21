@@ -54,7 +54,7 @@
 
   function page(spec) {
     applyTokens();
-    let current = localStorage.getItem('lab.state.' + spec.title) || 'all';
+    let current = new URLSearchParams(location.search).get('state') || localStorage.getItem('lab.state.' + spec.title) || 'all';
     const root = document.body;
     root.innerHTML = '';
     const top = el('div', { class: 'lab-top' },
@@ -66,7 +66,7 @@
     );
     const strip = el('div', { class: 'state-strip' });
     const names = ['all', ...spec.states];
-    for (const s of names) strip.append(el('button', { class: 'chip' + (s === current ? ' on' : ''), onclick: () => { current = s; localStorage.setItem('lab.state.' + spec.title, s); page(spec); } }, s));
+    for (const s of names) strip.append(el('button', { class: 'chip' + (s === current ? ' on' : ''), onclick: () => { current = s; localStorage.setItem('lab.state.' + spec.title, s); history.replaceState(null, '', s === 'all' ? location.pathname : '?state=' + encodeURIComponent(s)); page(spec); } }, s));
     const main = el('div', { class: 'lab-main' + (current === 'all' && !spec.wide ? '' : ' single') });
     const ctx = { theme: prefs.theme, density: prefs.density, tokens: T, el };
     const draw = (s) => {

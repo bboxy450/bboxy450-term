@@ -6,7 +6,7 @@
 </head><body><script>
 const el = Lab.el;
 const T = TOKENS;
-Lab.page({ title: 'logo', checker: true, note: 'Pick §9 shapes 1 + 9 + 2. Head silhouette, flat two-tone: electric fill, navy ear interiors, hair tuft and hood collar. Tilted ' + Math.abs(T.meta.brand_tilt_deg) + '° counter-clockwise as the brand gesture. Ears-only below 32 px. Rendered from the directions, not traced from the portrait; the operator judges likeness in the lab.',
+Lab.page({ title: 'logo', checker: true, wide: true, note: 'Pick §9 shapes 1 + 9 + 2. Head silhouette, flat two-tone: electric fill, navy ear interiors, hair tuft and hood collar. Tilted ' + Math.abs(T.meta.brand_tilt_deg) + '° counter-clockwise as the brand gesture. Ears-only below 32 px. Rendered from the directions, not traced from the portrait; the operator judges likeness in the lab.',
   states: ['head silhouette', 'untilted vs tilted', 'ears only ≤ 32', 'sizes ladder', 'app icon tile', 'on light', 'with face (three-tone)'],
   render(s, body, ctx) {
     const lt = (px, opts, label) => el('div', { class: 'lt' }, C.logo(px, opts), el('small', {}, label || px));

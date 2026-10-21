@@ -47,9 +47,11 @@ Index: [[README]] · tasks in `tasks/` · research in `research/` · specs in `s
 - **Waking a harness:** `icq` already taps Claude, Codex, pi and omp sockets or channels. Reuse those touch points. **Fallback for any harness: type into its PTY and press Enter.** The terminal owns the PTY, so it must watch for interactive input state before injecting.
 - Every seat gets a generated character name (fantasy, sci-fi, furry pools) and its own key. **Gap:** whether seats sign git commits with their own key, and how that relates to the operator's signing key.
 
-## Harness touch points (DECIDED, mechanism under research)
+## Harness touch points (DECIDED, mechanism found)
 
 Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection combines PTY output cadence with harness hooks; hooks win when present. Research: `tasks/2026-10-21-harness-touchpoints-research.md`.
+
+**Primary state channel (found 2026-10-21, [[iterm-harness-plugin]], spec [[subagent-detection]]):** Claude Code (since 2.1.295) and Codex (0.163) emit **OSC 7501, the Program Status Protocol**, on their own PTY once the terminal answers the probe `ESC]7501;?ESC\`. Wire form: `ESC]7501;state=<idle|working|blocked|done|error|clear>:app=<name>[:id=<agent id>][:kind=permission|question|auth][:progress=N][:title=<base64>][:msg=<base64>]ESC\`. Each running Claude subagent is its own report with `id=` and `title=` the Agent tool description; that is how iTerm2 nests subagent rows under a seat. Codex also emits OSC 21337 status. Because we own the PTY, we answer the probe and parse the stream: zero install, no hooks needed for the baseline. Hooks (`bboxy-hook` shim via a per-launch settings overlay writing a namespaced OSC 7502 to `/dev/tty`, seat id from `BBOXY_SEAT_ID`) add the events 7501 lacks. Unix socket fallback, PTY heuristic for unknown harnesses.
 
 ## Persistence and scale (DECIDED)
 

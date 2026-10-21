@@ -24,3 +24,7 @@ ls .kb/research/iterm-harness-plugin-exec.md && grep -c 'file:\|:[0-9]' .kb/rese
 ```
 
 Report on `#bboxy450-term`.
+
+## Addendum 2026-10-21 (Oracle): the Executor pass is now a live capture
+
+The subagent found the channel: OSC 7501 emitted by Claude Code and Codex themselves after a terminal probe echo. See [[iterm-harness-plugin]] and [[subagent-detection]]. The redundant Executor pass changes scope to **proving it on the wire**: run `claude` (and `codex`) under `script` or a small PTY harness that answers `ESC]7501;?ESC\` with the echo, launch one Agent-tool subagent, capture the raw PTY bytes to `.kb/runs/osc7501-claude.bin` and `.kb/runs/osc7501-codex.bin`, and write `.kb/research/osc7501-capture.md` with the decoded sequence of reports (state, id, title) and timing. Never capture transcript content; only the escape sequences and timestamps.

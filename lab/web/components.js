@@ -47,23 +47,24 @@
     zsh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l7 6-7 6M13 18h6"/></svg>',
     gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
     // sidebar-toggle fox: standard sidebar glyph, left column grows an ear tip (pick §8 shape 3). open = sidebar shown (column filled)
-    sidebarfox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8h18v12H3zM9 8v12M3 8l2.6-5L9 8"/></svg>',
-    sidebarfoxopen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8h18v12H3zM3 8l2.6-5L9 8"/><path d="M3 8h6v12H3z" fill="currentColor"/></svg>',
+    sidebarfox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M9.5 8v12"/><path d="M3.2 8.5 3.8 2.2 8.6 7.6Z" fill="currentColor" stroke="none"/></svg>',
+    sidebarfoxopen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 8h6.5v12H3z" fill="currentColor" stroke="none"/><path d="M3.2 8.5 3.8 2.2 8.6 7.6Z" fill="currentColor" stroke="none"/></svg>',
     ears: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 19 5.5 3l5.5 11.5zM22 19 18.5 3 13 14.5z"/></svg>',
   };
   // Logo: head silhouette, flat two-tone (electric fill, navy ear interiors + hair tuft + hood collar), tilted 12° CCW. Ears-only below 32 px.
   function logoSvg(opts) {
     opts = opts || {};
     const c = T.color.dark, fill = opts.fill || c.accent, navy = opts.navy || c.navy, tilt = opts.tilt == null ? T.meta.brand_tilt_deg : opts.tilt;
-    const head = `<g transform="rotate(${tilt} 50 54)">
-      <path fill="${fill}" d="M17 4 L40 30 Q50 26 60 30 L83 4 L91 42 Q97 74 71 92 Q50 104 29 92 Q3 74 9 42 Z"/>
-      <path fill="${navy}" d="M21 13 L36 31 L15 39 Z M79 13 L64 31 L85 39 Z"/>
-      <path fill="${navy}" d="M34 30 L42 17 L49 27 L55 13 L61 27 L71 20 L67 33 Q50 26 34 30 Z"/>
-      <path fill="${navy}" d="M20 84 Q50 108 80 84 L88 100 L12 100 Z"/>
-      ${opts.face ? `<path fill="${c.fg}" d="M44 60 Q50 56 56 60 Q58 70 50 74 Q42 70 44 60 Z"/><circle cx="50" cy="60" r="3.2" fill="${navy}"/>` : ''}
+    // 100x110 box. Ears tall and set wide, cheeks flare, chin comes to a point: a fox, not a cat.
+    const head = `<g transform="rotate(${tilt} 50 56)">
+      <path fill="${navy}" d="M16 84 Q50 110 84 84 L92 110 L8 110 Z"/>
+      <path fill="${fill}" d="M12 2 L38 36 Q50 31 62 36 L88 2 L96 46 C104 68 80 86 50 100 C20 86 -4 68 4 46 Z"/>
+      <path fill="${navy}" d="M17 17 L30 35 L14 39 Z M83 17 L70 35 L86 39 Z"/>
+      <path fill="${navy}" d="M38 46 L42 33 L47 41 L53 29 L59 40 L66 35 L64 48 Q52 42 38 50 Z"/>
+      ${opts.face ? `<path fill="${c.fg}" d="M38 66 Q50 60 62 66 Q60 84 50 90 Q40 84 38 66 Z"/><ellipse cx="50" cy="70" rx="4.5" ry="3.5" fill="${navy}"/>` : ''}
     </g>`;
-    const ears = `<g transform="rotate(${tilt} 50 50)"><path fill="${fill}" d="M12 92 L22 10 L48 60 Z M88 92 L78 10 L52 60 Z"/><path fill="${navy}" d="M24 26 L40 58 L20 72 Z M76 26 L60 58 L80 72 Z"/></g>`;
-    return `<svg viewBox="0 0 100 104" xmlns="http://www.w3.org/2000/svg">${opts.ears ? ears : head}</svg>`;
+    const ears = `<g transform="rotate(${tilt} 50 55)"><path fill="${fill}" d="M8 102 L24 6 L50 72 L76 6 L92 102 Q50 86 8 102 Z"/><path fill="${navy}" d="M25 30 L38 66 L20 78 Z M75 30 L62 66 L80 78 Z"/></g>`;
+    return `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">${opts.ears ? ears : head}</svg>`;
   }
   function logo(px, opts) { opts = opts || {}; const ears = opts.ears != null ? opts.ears : px < 32; return el('span', { class: 'logo', style: 'width:' + px + 'px;height:' + px + 'px;display:inline-block', html: logoSvg({ ...opts, ears }) }); }
 
