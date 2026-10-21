@@ -155,9 +155,11 @@
       back.append(el('div', { class: 'spot-banner' }, grid, el('div', { class: 'txt' }, el('div', { class: 'big' }, preset === 'right' ? 'Split right' : 'Split down'), el('div', { class: 'of' }, 'of ', el('b', { style: 'color:' + anchorSeat.color }, anchorSeat.name), ' · the new seat lands in the lit cell'))));
     } else if (!preset) {
       // ⌘T: a new tab. The banner shows the swarm's tabs as a strip with the new one lit at the end.
-      const strip = el('div', { class: 'tab-strip' });
-      for (const t of sp.tabs) strip.append(el('span', { class: 'tcell' }, t.name));
-      strip.append(el('span', { class: 'tcell new' }, 'new tab'));
+      // drawn the way the sidebar draws it: a mini swarm block, band on top, tab rows stacked, the new row lit
+      const strip = el('div', { class: 'tab-stack', style: '--space:' + sp.color }, el('span', { class: 'tband' }, sp.name));
+      for (const t of sp.tabs.slice(0, 4)) strip.append(el('span', { class: 'tcell' }, t.name));
+      if (sp.tabs.length > 4) strip.append(el('span', { class: 'tcell more' }, '… ' + (sp.tabs.length - 4) + ' more'));
+      strip.append(el('span', { class: 'tcell new' }, '+ new tab'));
       back.append(el('div', { class: 'spot-banner' }, strip, el('div', { class: 'txt' }, el('div', { class: 'big' }, 'New tab'), el('div', { class: 'of' }, 'in ', el('b', { style: 'color:' + sp.color }, sp.name), ' · the new seat gets a tab of its own · type goto <name> to go somewhere'))));
     }
     const pk = C.picker({ placeholder: ph, actions: acts, items, onClose: closeSpotlight, onPick: (it, name, mods, path) => {
