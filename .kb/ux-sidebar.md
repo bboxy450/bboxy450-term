@@ -22,6 +22,7 @@ Owner: Vesper Greywind <ORACLE>. Source: operator critique of iTerm2 on 2026-10-
 5. **Icons over text.** Harness icon, state glyph, role mark. Text is the seat name and a short title, nothing else by default. Last-output subtitle is opt-in.
 6. **Shortcuts visible.** ⌘N per tab like iTerm's pill.
 7. **Simpler than the iTerm plugin.** If a row needs two lines of explanation it is wrong.
+8a. **Every pixel is precious** (operator, 2026-10-21). Minimise space between panes: gutters of a few pixels at most, no padding inside the window edge, the glow lives in the gutter and over the pane edge rather than taking layout room, title strips stay 22 px, the sidebar has a compact density and collapses fully. Terminal cells are the content; chrome earns its pixels or goes.
 8. Must still read at 1000 seats: collapse by space, then by tab, with state rolled up (a space shows how many seats are waiting).
 
 ## Open

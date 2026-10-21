@@ -103,6 +103,14 @@
     main.querySelectorAll('.pane[data-key]').forEach(n => { const f = n.dataset.key === key; n.classList.toggle('focused', f); n.classList.toggle('unfocused', !f); });
     const f = seats.find(s => s.key === key);
     document.getElementById('crumb').textContent = '· ' + model.spaces[0].name + ' · ' + f.name;
+    // locate (DECIDED): every focus change ripples the row and the pane corner in the seat colour, both directions;
+    // an off-screen row scrolls into view inside the sidebar (never the window), then rects are re-measured once.
+    const row = main.querySelector('.seat-row[data-key="' + key + '"]'), sc = main.querySelector('.sb-scroll');
+    if (row && sc) {
+      const top = row.offsetTop - sc.offsetTop, bottom = top + row.offsetHeight;
+      if (top < sc.scrollTop || bottom > sc.scrollTop + sc.clientHeight) { sc.scrollTop = top - sc.clientHeight / 2; measure(); }
+    }
+    if (!force) { const col = C.hslToRgb(f.color); for (const R of rects) if (R.key === key) ripple(R.pane ? R.x + 8 : R.x + 10, R.pane ? R.y + 8 : R.y + R.h / 2, col); }
   }
   // Focus follows the mouse after a short dwell. Typing holds focus: a keydown within the last second blocks hover focus.
   let hoverT = null, lastKey = 0, lastMove = 0;
@@ -180,7 +188,7 @@
           float tw = 0.65 + 0.35*sin(uTime*0.004 + float(k)*1.7);
           pk += exp(-(dt*dt)/(2.0*sig*sig*3.0)) * exp(-(d*d)/(2.0*sig*sig*0.6)) * tw;
         }
-        float pg = min(pk, 1.5) * a * 0.9;
+        float pg = min(pk, 1.5) * a * mix(0.9, 0.45, uLight);
         acc += col * pg; w += pg;
       }
       for (int j = 0; j < ${MAXRIP}; j++) {

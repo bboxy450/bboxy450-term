@@ -159,9 +159,9 @@ code, .mono { font-family: var(--font-mono); }
 .pane.unfocused { filter: brightness(calc(1 - var(--vignette))); }
 .strip {
   height: var(--strip-h); display: flex; align-items: center; gap: 8px; padding: 0 8px;
-  background: var(--seat); color: #fff; font-size: 11px; flex: none;
+  background: var(--seat); color: #fff; font-size: 11px; flex: none; overflow: hidden;
 }
-.strip .name { font-weight: 600; }
+.strip .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .strip .title { opacity: .8; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .strip .kbd { color: rgba(255,255,255,.75); }
 .strip .hicon { --icon: 13px; }
