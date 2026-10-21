@@ -127,7 +127,7 @@
   const settingsSeat = { key: 'settings', name: 'Settings', harness: 'gear', role: null, title: 'config.toml', state: 'idle', settings: true, section: 'Account' };
   Object.defineProperty(settingsSeat, 'color', { get() { return T.color[theme()].accent_soft; }, enumerable: true });
   function openSettings(section) {
-    settingsSeat.section = section || settingsSeat.section;
+    settingsSeat.section = section || 'Account';   // opening settings always lands on Account unless a section was asked for
     const sp = space();
     if (!seats.includes(settingsSeat)) seats.push(settingsSeat);
     if (!tabOf('settings')) sp.tabs.push({ name: 'settings', shortcut: '⌘,', tree: settingsSeat, seats: [settingsSeat] });
