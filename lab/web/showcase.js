@@ -114,6 +114,15 @@
     }
     focused = seat.key; render(); locate(seat.key, 'both');
   }
+  // Mute (operator, vision 'Cohort scope and mute'): a muted seat leaves the swarm stream and works 1:1 with the operator;
+  // its row stays where it is with a muted mark; mute and unmute each post a presence notice to the whole swarm.
+  function toggleMute(seat) {
+    seat.muted = !seat.muted;
+    const t = tabOf(seat.key); const sp = t ? t.sp : space();
+    sp.stream.push({ presence: true, text: seat.name + (seat.muted ? ' muted · 1:1 with the operator' : ' unmuted · back in the swarm'), time: new Date().toTimeString().slice(0, 5) });
+    render();
+  }
+  addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f) toggleMute(f); } });
   // Spotlight launcher (operator): '+ new seat' or ⌘T opens a centred search over the window; Enter launches into the
   // swarm as a new tab and focuses it. The list is data (C.LAUNCH): harnesses and zsh now, browser / vnc / ssh later.
   let spot = null;
@@ -199,7 +208,7 @@
   app.append(titlebar, main);
   let rects = [];
   function splitDom(t) {
-    if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat });
+    if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute });
     const A = splitDom(t.a), B = splitDom(t.b);
     A.style.flex = t.ratio || 0.5; B.style.flex = 1 - (t.ratio || 0.5);
     const box = el('div', { class: 'split ' + t.dir });

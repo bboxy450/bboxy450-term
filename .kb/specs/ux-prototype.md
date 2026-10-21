@@ -95,7 +95,10 @@ Two ways, same result.
 - **Drag and drop**: drag a seat row from the sidebar, or a pane by its strip, onto another pane. The hovered half of the target (left, right, top, bottom) tints with the selection tint; dropping splits there at 50/50. A dragged seat moves: its old split collapses into the sibling. Phantoms cannot be dragged.
 Either way the placed seat gets focus and the locate signal. Ratios are then adjusted by dragging the gutter (section 2).
 
-### 5.6 Messages
+### 5.6 Mute
+⌘M or the speaker icon in the pane strip toggles mute on the focused seat. A muted seat works one to one with the operator: its row stays in place with an amber muted mark and a dimmed name; its messages to the swarm are held; the swarm stream shows a centred presence notice on mute and again on unmute. No other signal changes.
+
+### 5.7 Messages
 Unread shows as a dot on the seat row in the highest-priority unread role colour; focusing or clicking the seat clears it. A shadow's message pulses its row once (700 ms) and lands in the stream dock. No ripple for messages.
 
 ## 6. Signal semantics (one meaning per signal)
@@ -119,6 +122,5 @@ Colour (dark and light sets, state and role colours, seat colour hash), density 
 Keys 1-4 (state of the focused seat), M (message arrives), P (shadow speaks), the log replay with its state following, `?scene=15`, `?gutter=`. No legend in the window; the list lives on the lab index.
 
 ## 9. Gaps
-- Mute / unmute of a seat with presence notices (operator decision in [[vision]]) has no UI yet.
 - Remote owned seats versus shadows: owned seats over ssh look like local seats; not shown in the lab.
 - Settings as a tab and the toolbar icon exist as lab pages but are not wired into the showcase.

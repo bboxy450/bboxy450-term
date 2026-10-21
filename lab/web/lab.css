@@ -428,3 +428,12 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .picker .foot .pill { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; font-size: 11px; color: var(--fg-dim); }
 .picker .foot .pill kbd { font-family: var(--font-mono); font-size: 10px; background: color-mix(in srgb, var(--fg-dim) 14%, transparent); border-radius: 4px; padding: 1px 5px; color: var(--fg); }
 .picker .foot .pill .sep { width: 1px; height: 12px; background: var(--line); }
+
+/* mute: a muted seat is 1:1 with the operator; its row stays, marked; its strip shows the toggle */
+.seat-row .mutemark { --icon: 11px; color: var(--c-waiting); display: inline-flex; flex: none; }
+.seat-row.muted .name { opacity: .7; }
+.strip .mute { --icon: 12px; display: inline-flex; opacity: .55; cursor: pointer; }
+.strip .mute:hover, .strip .mute.on { opacity: 1; }
+.strip .mute.on { color: #FFE08A; }
+.msg.presence { justify-content: center; gap: 8px; color: var(--fg-dim); font-size: 10.5px; font-family: var(--font-mono); padding: 3px 8px; }
+.msg.presence .time { margin-left: 0; }

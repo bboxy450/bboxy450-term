@@ -117,3 +117,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### ⌘T also goes places
 **Rule:** the ⌘T launcher lists, under "Go to", every seat (name, swarm · title, harness tile) and every swarm (name, seat count, swarm colour tile). Typing filters launchables and destinations together; ↵ on a seat focuses it with the locate signal, ↵ on a swarm opens it and jumps to its first seat. ⌘D / ⌘⇧D presets stay launch-only. **Where:** `openSpotlight` items in `showcase.js`; `matches()` in `picker()` matches label prefix, any word, or the subtitle.
+
+### Mute is a mark on the row and a toggle on the strip
+**Rule:** ⌘M, or the speaker icon in the pane strip, mutes the focused seat: it works 1:1 with the operator, its row stays where it is with an amber muted mark and a dimmed name, and the swarm stream gets a centred presence notice ("<name> muted · 1:1 with the operator"); unmute posts the matching notice. Nothing moves, nothing glows differently. **Why:** the operator's vision decision, lifted into the sidebar like `icq mute`. **Where:** `toggleMute` in `showcase.js`, `.mutemark`, `.strip .mute`, `.msg.presence`.
