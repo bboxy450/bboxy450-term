@@ -49,6 +49,10 @@ Index: [[README]] · tasks in `tasks/` · research in `research/` · specs in `s
 - **Waking a harness:** `icq` already taps Claude, Codex, pi and omp sockets or channels. Reuse those touch points. **Fallback for any harness: type into its PTY and press Enter.** The terminal owns the PTY, so it must watch for interactive input state before injecting.
 - Every seat gets a generated character name (fantasy, sci-fi, furry pools) and its own key. **Gap:** whether seats sign git commits with their own key, and how that relates to the operator's signing key.
 
+## User-defined harnesses (DECIDED by operator via the lab, 2026-10-21)
+
+Users add harnesses in settings: name, command, tile colour, icon, default role, wake method, state source, hooks. A user-added harness runs through the **generic adapter**: PTY typing behind the input guard, state inferred from output cadence (grade `inferred`), upgraded to `reported` if it speaks OSC 7501 or to `shim` if the user wires hooks. It appears in the launcher like the built-ins. The built-in adapters are the same record with code behind it. One consequence for [[harness-adapters]]: the adapter trait is instantiated from a harness record, not a hard-coded enum; `harness_kind` is open.
+
 ## Seats are sockets (DECIDED by operator, 2026-10-21)
 
 Every seat exposes a socket: a unix socket always, HTTP optionally. Whatever is written to it goes into that seat's harness as input through the adapter and the input guard; whatever the seat emits (state, 7501 reports, hook events, output lines) comes out as an event stream on the same socket. The terminal is event-based end to end, the same way the operator's `kittens` harness is. The point is glue: cron, scripts, other agents, other machines plug into a seat with nothing but a socket path. Research: `research/kittens-events.md` (what kittens does, what we take). Specs: [[mux-daemon]] (the socket is owned by the logic process, bound to seat id and process generation), [[mcp-control-plane]] (MCP is one client of the same event bus, not a separate path).
