@@ -45,7 +45,16 @@ The allocator test preserves old masks/coordinates across atlas growth.
 
 Not implemented: CJK/emoji, shaping/bidi/ligatures, colour atlas, decorations,
 sprites/cursor, damage retention, term-core corpus/goldens/diffs, chrome/fx,
-surface presentation, Linux/mobile and hosted-runner Metal verification. ASCII
+surface presentation and Linux/mobile. ASCII
 outside the grid or unsupported text returns an error instead of fake glyphs.
 Tests require a real Metal adapter on macOS and do not silently pass without it;
 only an observed CI failure can justify the brief's environment-variable gate.
+
+Hosted `macos-15` verification passed at renderer commit
+`cd5fa5ffd029483561951bf7e88650653843deb7`:
+<https://github.com/bboxy450/bboxy450-term/actions/runs/39685613972>.
+Its artifact contains 51 PNGs (48 smoke variants), and the actual downloaded text
+image is upright. The runner resolved SF Mono to Menlo, so its manifest records
+36 distinct image hashes versus 48 locally with SF Mono Terminal available.
+No environment-variable skip was added. CI excerpts/artifact metadata are in
+`.kb/runs/w3-1-ci.log`.

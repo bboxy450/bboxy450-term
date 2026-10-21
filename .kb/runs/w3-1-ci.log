@@ -1,0 +1,21 @@
+CI run: https://github.com/bboxy450/bboxy450-term/actions/runs/39685613972
+tested_commit: cd5fa5ffd029483561951bf7e88650653843deb7
+status: completed; conclusion: success
+artifact: 12387080088; all_pngs: 51; smoke_pngs: 48
+effective_fonts: {('JetBrains Mono', 'JetBrainsMono-Regular'): 12, ('SF Mono', 'Menlo-Regular'): 12, ('Menlo', 'Menlo-Regular'): 24}
+smoke_unique_png_hashes: 36
+macos	Run cargo build --workspace	2026-10-21T22:19:42.6895590Z ^[[1m^[[92m   Compiling^[[0m bbt-render v0.0.1 (/Users/runner/work/bboxy450-term/bboxy450-term/crates/bbt-render)
+macos	Run cargo test --workspace	2026-10-21T22:19:43.4245310Z ^[[1m^[[92m   Compiling^[[0m bbt-render v0.0.1 (/Users/runner/work/bboxy450-term/bboxy450-term/crates/bbt-render)
+macos	Run cargo test --workspace	2026-10-21T22:19:46.5031750Z ^[[1m^[[92m     Running^[[0m unittests src/lib.rs (target/debug/deps/bbt_render-707276fe39f22a63)
+macos	Run cargo test --workspace	2026-10-21T22:19:46.5081670Z ^[[1m^[[92m     Running^[[0m tests/smoke.rs (target/debug/deps/smoke-1350ab24fd61f717)
+macos	Run cargo test --workspace	2026-10-21T22:19:46.5085950Z test atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks ... ok
+macos	Run cargo test --workspace	2026-10-21T22:19:46.6197180Z test asymmetric_glyph_is_upright ... ok
+macos	Run cargo test --workspace	2026-10-21T22:19:47.0288430Z test metal_quad_and_80_by_24_cell_backgrounds ... ok
+macos	Run cargo test --workspace	2026-10-21T22:19:47.0436910Z test coretext_ink_lands_only_in_expected_ascii_cells ... ok
+macos	Run cargo test --workspace	2026-10-21T22:19:47.0455220Z ^[[1m^[[92m     Running^[[0m tests/variants.rs (target/debug/deps/variants-fc47cea6ebe634be)
+macos	Run cargo test --workspace	2026-10-21T22:19:52.9446980Z test generate_smoke_font_size_scale_theme_matrix ... ok
+macos	Run cargo test --workspace	2026-10-21T22:19:53.3399360Z ^[[1m^[[92m   Doc-tests^[[0m bbt_render
+macos	Run actions/upload-artifact@v4	2026-10-21T22:19:54.5396090Z Artifact render.zip successfully finalized. Artifact ID 12387080088
+macos	Run actions/upload-artifact@v4	2026-10-21T22:19:54.5396700Z Artifact render has been successfully uploaded! Final size is 231445 bytes. Artifact ID is 12387080088
+gh API / log / artifact commands exit_status: 0
+No environment-variable skip was necessary; macOS tests created Metal devices, asserted pixels and wrote PNGs.
