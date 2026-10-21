@@ -1,0 +1,11 @@
+[package]
+name = "bboxy450-term"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "bboxy450-term: bboxy450-term"
+
+[dependencies]

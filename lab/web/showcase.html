@@ -89,7 +89,7 @@
   .stage .pane { background: var(--bg); min-height: 0; min-width: 0; border-radius: 0; }
   .pane .strip .kbd { background: rgba(0,0,0,.22); color: rgba(255,255,255,.85); }
   .pane.settings-pane { display: flex; flex-direction: column; }
-  .pane.settings-pane .settings { flex: 1; min-height: 0; }
+  .pane.settings-pane .settings { flex: 1; min-height: 0; flex-direction: row !important; }
   .pane.settings-pane.unfocused .settings { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); }
   .pane .term { font-size: 12px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
   .pane .term .lines { white-space: pre; overflow: hidden; }

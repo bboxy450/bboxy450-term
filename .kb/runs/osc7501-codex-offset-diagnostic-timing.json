@@ -54,13 +54,5 @@
       "offset": 192761942,
       "length": 40
     }
-  ],
-  "startup_control_words": [
-    "codex",
-    "codex",
-    "trust",
-    "continue",
-    "continue",
-    "esc"
   ]
 }

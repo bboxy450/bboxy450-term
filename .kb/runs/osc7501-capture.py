@@ -27,8 +27,8 @@ class Filter:
    positions=[x for x in (self.buf.find(b"\x1b"),) if x>=0]
    if not positions: self.buf=b""; return
    self.buf=self.buf[min(positions):]
-   if self.buf.startswith(b"\x9d") or self.buf.startswith(b"\x1b]"):
-    start=1 if self.buf[0]==0x9d else 2
+   if self.buf.startswith(b"\x1b]"):
+    start=2
     ends=[(x,n) for x,n in ((self.buf.find(b"\x07",start),1),(self.buf.find(ST,start),2)) if x>=0]
     if not ends:
      if len(self.buf)>65536: self.buf=b""
@@ -150,14 +150,13 @@ def run(agent,timeout,term_program):
     total+=len(data); parser.feed(data)
     recent_text=(recent_text+data.decode("utf-8","replace"))[-32768:]
     clean=re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]","",recent_text).lower()
-    restricted=re.search(r"(?<![0-9])([1-9])[.)]\s+open restricted",clean)
-    if agent=="codex" and restricted and not any(e["event"]=="restricted_startup_choice" for e in events):
-     respond(restricted.group(1).encode()+b"\r")
-     events.append({"event":"restricted_startup_choice","t_ms":elapsed(),"option_number":restricted.group(1)})
-     print(json.dumps({"agent":agent,"event":"restricted_startup_choice","t_ms":elapsed(),"option_number":restricted.group(1)}),flush=True)
     for label,pattern in diagnostic_patterns.items():
      if pattern.lower() in clean and label not in diagnostics:
       diagnostics.add(label); print(json.dumps({"agent":agent,"event":"diagnostic_flag","flag":label,"t_ms":elapsed()}),flush=True)
+      if agent=="codex" and label=="trust_continue_visible" and shutdown_at is None:
+       events.append({"event":"startup_trust_gate","t_ms":elapsed()})
+       shutdown_at=now
+       os.killpg(pid,signal.SIGTERM)
    waited,status=os.waitpid(pid,os.WNOHANG)
    if waited:
     reaped=status
@@ -198,12 +197,47 @@ def run(agent,timeout,term_program):
      else: continue
      break
     if len(static_matches)>=12: break
-  result={"agent":agent,"start_utc":start_utc,"duration_ms":elapsed(),"pty_columns":120,"pty_rows":36,"term":"xterm-256color","term_program":term_program,"probe_echo_hex":PROBE.hex(),"argv":argv,"records":records,"events":events,"probe_count":probes,"report_count":report_count,"task_ids":sorted(task_ids),"last_main_state":last_state,"observed_working":worked,"pty_bytes_read_and_discarded_except_frames":total,"retained_bytes":len(content),"sha256":hashlib.sha256(content).hexdigest(),"exit_code":os.waitstatus_to_exitcode(reaped) if reaped is not None else None,"other_osc_counts":parser.other,"terminal_reply_bytes":sent,"diagnostic_flags":sorted(diagnostics),"startup_static_matches":static_matches,"startup_control_words":[word for word in re.findall(r"[a-z]+",clean) if word in {"config","settings","files","folders","load","project","trusted","models","update","select","new","try","keep","esc","enter","continue","next","beta","codex","trust","welcome","plan","subscription","limit","upgrade","skip","login","sign","in","out","approval","read","only","error","setup","hook","hooks"}][:100]}
+  result={"agent":agent,"start_utc":start_utc,"duration_ms":elapsed(),"pty_columns":120,"pty_rows":36,"term":"xterm-256color","term_program":term_program,"probe_echo_hex":PROBE.hex(),"argv":argv,"records":records,"events":events,"probe_count":probes,"report_count":report_count,"task_ids":sorted(task_ids),"last_main_state":last_state,"observed_working":worked,"pty_bytes_read_and_discarded_except_frames":total,"retained_bytes":len(content),"sha256":hashlib.sha256(content).hexdigest(),"exit_code":os.waitstatus_to_exitcode(reaped) if reaped is not None else None,"other_osc_counts":parser.other,"terminal_reply_bytes":sent,"diagnostic_flags":sorted(diagnostics),"startup_static_matches":static_matches}
   meta.write_text(json.dumps(result,indent=2)+"\n")
   print(json.dumps({key:result[key] for key in ("agent","probe_count","report_count","task_ids","retained_bytes","exit_code","duration_ms","other_osc_counts")}),flush=True)
 
+def verify(require_both=False):
+ import base64
+ summaries=[]
+ for agent in ("claude","codex"):
+  raw=(RUNS/f"osc7501-{agent}.bin").read_bytes()
+  meta=json.loads((RUNS/f"osc7501-{agent}-timing.json").read_text())
+  assert hashlib.sha256(raw).hexdigest()==meta["sha256"],agent
+  assert len(raw)==meta["retained_bytes"],agent
+  end=0; previous=-1; probes=reports=0; ids=set()
+  for item in meta["records"]:
+   assert item["offset"]==end and item["t_ms"]>=previous,(agent,item)
+   frame=raw[end:end+item["length"]]
+   assert frame.startswith(b"\x1b]7501;") and len(frame)<=4096,(agent,item)
+   term=b"\x07" if frame.endswith(b"\x07") else ST
+   assert frame.endswith(term)
+   payload=frame[7:-len(term)]
+   if payload==b"?": probes+=1
+   else:
+    values=dict(part.split(b"=",1) for part in payload.split(b":") if b"=" in part)
+    assert values[b"state"] in {b"idle",b"working",b"blocked",b"done",b"error",b"clear"}
+    for key in (b"title",b"msg"):
+     if key in values: base64.b64decode(values[key],validate=True).decode("utf-8")
+    if b"id" in values:
+     assert re.fullmatch(rb"[A-Za-z0-9_.+-]{1,32}",values[b"id"])
+     ids.add(values[b"id"].decode())
+    reports+=1
+   end+=len(frame); previous=item["t_ms"]
+  assert end==len(raw) and probes==meta["probe_count"] and reports==meta["report_count"]
+  assert sorted(ids)==meta["task_ids"]
+  summaries.append({"agent":agent,"frames":len(meta["records"]),"reports":reports,"probes":probes,"task_ids":sorted(ids),"bytes":len(raw),"artifact_integrity":"passed","live_status":"proven" if reports else "unproven"})
+ print(json.dumps({"verification":summaries},indent=2))
+ if require_both and any(x["reports"]==0 for x in summaries):
+  raise SystemExit("UNMET: both harnesses must emit live status; Codex is startup-gated")
+
 if __name__=="__main__":
- ap=argparse.ArgumentParser(); ap.add_argument("--agent",choices=("claude","codex")); ap.add_argument("--timeout",type=int,default=120); ap.add_argument("--self-test",action="store_true"); ap.add_argument("--term-program",choices=("bboxy450-term","iTerm.app"),default="bboxy450-term"); args=ap.parse_args()
+ ap=argparse.ArgumentParser(); ap.add_argument("--agent",choices=("claude","codex")); ap.add_argument("--timeout",type=int,default=120); ap.add_argument("--self-test",action="store_true"); ap.add_argument("--verify",action="store_true"); ap.add_argument("--require-both",action="store_true"); ap.add_argument("--term-program",choices=("bboxy450-term","iTerm.app"),default="bboxy450-term"); args=ap.parse_args()
  if args.self_test: self_test()
+ elif args.verify: verify(args.require_both)
  elif args.agent: run(args.agent,args.timeout,args.term_program)
  else: ap.error("--agent or --self-test required")

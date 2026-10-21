@@ -44,13 +44,5 @@
     "model_notice",
     "question_notice",
     "trust_notice"
-  ],
-  "startup_control_words": [
-    "codex",
-    "codex",
-    "trust",
-    "continue",
-    "continue",
-    "esc"
   ]
 }

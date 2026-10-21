@@ -46,6 +46,13 @@ Each line is one Executor assignment with its own brief. Order within a stream i
 
 W2.2 needs W1.1. W3.1 needs W1.1. W3.4 needs W2.2. W2.3 needs task H captures (Rook). W4 needs Nyx's identity spec. Everything else is parallel.
 
+## Defaults applied 2026-10-21 (operator said start building; overridable)
+
+- Crate names `bbt-core`, `bbt-mux`, `bbt-render`, `bbt-ui-model`, `bbt-lab`, app `bboxy450-term`: all free on crates.io, workspace scaffolded.
+- Plain cargo now; weavie + Nix when Nix is installed.
+- Renderer architecture and the automated render-test harness: [[renderer]]. The harness is step one of the renderer.
+- Priority cuts assumed: Claude, Codex, zsh in v0.1; single daemon process speaking the supervisor protocol internally; local root key only; config.toml read-mostly; undo-close and mute kept; Rust lab from week one; byte ring in.
+
 ## Open decisions blocking assignment
 
 - **Vocabulary:** space vs cohort (see [[ux-pick]] header). Blocks `ui-model` naming.

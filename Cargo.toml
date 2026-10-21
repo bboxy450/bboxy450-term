@@ -1,0 +1,24 @@
+[workspace]
+resolver = "3"
+members = [
+  "crates/bbt-core",
+  "crates/bbt-mux",
+  "crates/bbt-render",
+  "crates/bbt-ui-model",
+  "crates/bbt-lab",
+  "crates/bboxy450-term",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/bboxy450/bboxy450-term"
+authors = ["Boxy <bboxy450@gmail.com>"]
+rust-version = "1.99"
+
+[workspace.dependencies]
+bbt-core = { path = "crates/bbt-core" }
+bbt-mux = { path = "crates/bbt-mux" }
+bbt-render = { path = "crates/bbt-render" }
+bbt-ui-model = { path = "crates/bbt-ui-model" }
