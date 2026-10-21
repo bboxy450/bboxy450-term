@@ -92,7 +92,18 @@
   .pane .term .lines { white-space: pre; overflow: hidden; }
 
   /* --- launcher: the panel --- */
-  .spot-back { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) var(--back-dim), transparent); backdrop-filter: blur(var(--back-blur)) saturate(1.15); display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; }
+  .spot-back { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) var(--back-dim), transparent); backdrop-filter: blur(var(--back-blur)) saturate(1.15); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 9vh; gap: 14px; }
+  /* split banner: the real layout, large, new cell breathing */
+  .spot-banner { width: min(760px, 92vw); display: flex; align-items: center; gap: 22px; padding: 16px 22px; border-radius: var(--r-panel); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: var(--sh-float), 0 0 0 1px var(--hair), inset 0 1px 0 var(--hi); animation: spotIn var(--appear-ms) var(--ease); }
+  .spot-banner .mg.big { --mg-w: 168px; --mg-h: 104px; gap: 3px; background: var(--hair); border-radius: var(--r-tile); flex: none; }
+  .spot-banner .mg.big .cell { background: color-mix(in srgb, var(--fg) 14%, transparent); color: var(--fg-dim); font-size: 11px; }
+  .spot-banner .mg.big .cell.focus { background: var(--accent); color: #fff; font-weight: 600; animation: cellBreathe 1.2s ease-in-out infinite; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent); }
+  .spot-banner .tab-strip { display: flex; gap: 4px; padding: 4px; border-radius: var(--r-tile); background: var(--hair); flex: none; max-width: 300px; overflow: hidden; }
+  .spot-banner .tab-strip .tcell { padding: 6px 10px; border-radius: 6px; background: color-mix(in srgb, var(--fg) 14%, transparent); color: var(--fg-dim); font-size: 11px; white-space: nowrap; }
+  .spot-banner .tab-strip .tcell.new { background: var(--accent); color: #fff; font-weight: 600; animation: cellBreathe 1.2s ease-in-out infinite; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent); }
+  .spot-banner .txt .big { font-size: 26px; font-weight: 600; letter-spacing: -.01em; line-height: 1.1; }
+  .spot-banner .txt .of { margin-top: 6px; font-size: var(--t-subtitle); color: var(--fg-dim); }
+  .spot-banner .txt .of b { font-weight: 600; }
   .spot-back .picker { width: min(760px, 92vw); border-radius: var(--r-panel); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: var(--sh-float), 0 0 0 1px var(--hair), inset 0 1px 0 var(--hi); animation: spotIn var(--appear-ms) var(--ease); overflow: hidden; }
   @keyframes spotIn { from { transform: translateY(-8px) scale(.985); opacity: 0; } to { transform: none; opacity: 1; } }
   .spot-back .picker .inrow { display: flex; align-items: center; border-bottom: 1px solid var(--hair); padding-right: 20px; gap: 12px; }

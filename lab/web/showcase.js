@@ -142,7 +142,20 @@
     // show the split before it happens: light the target half of the focused pane and draw it in the launcher
     const anchorEl = preset && anchor ? main.querySelector('.pane[data-key="' + anchor + '"]') : null;
     if (anchorEl) anchorEl.classList.add('will-' + preset);
-    const pk = C.picker({ placeholder: ph, actions, items, preview: preset || null, onClose: closeSpotlight, onPick: (it, name, mods) => {
+    // banner above the panel: the real pane layout, large, with the new cell lit; nothing subtle about it
+    if (preset && anchorSeat && stageTree) {
+      const ghost = { key: '__new', name: 'new seat', state: 'idle' };
+      const previewTree = replaceNode(stageTree, anchorSeat, { dir: preset === 'right' ? 'v' : 'h', ratio: 0.5, a: anchorSeat, b: ghost });
+      const grid = C.miniGrid(previewTree, '__new', true);
+      back.append(el('div', { class: 'spot-banner' }, grid, el('div', { class: 'txt' }, el('div', { class: 'big' }, preset === 'right' ? 'Split right' : 'Split down'), el('div', { class: 'of' }, 'of ', el('b', { style: 'color:' + anchorSeat.color }, anchorSeat.name), ' · the new seat lands in the lit cell'))));
+    } else if (!preset) {
+      // ⌘T: a new tab. The banner shows the swarm's tabs as a strip with the new one lit at the end.
+      const strip = el('div', { class: 'tab-strip' });
+      for (const t of sp.tabs) strip.append(el('span', { class: 'tcell' }, t.name));
+      strip.append(el('span', { class: 'tcell new' }, 'new tab'));
+      back.append(el('div', { class: 'spot-banner' }, strip, el('div', { class: 'txt' }, el('div', { class: 'big' }, 'New tab'), el('div', { class: 'of' }, 'in ', el('b', { style: 'color:' + sp.color }, sp.name), ' · the new seat gets a tab of its own · or type a name to go somewhere'))));
+    }
+    const pk = C.picker({ placeholder: ph, actions, items, onClose: closeSpotlight, onPick: (it, name, mods) => {
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
       if (it.swarm) { closeSpotlight(); jumpSpace(it.swarm); return; }
       const seat = { key: 'n' + Date.now().toString(36), name: it.harness === 'zsh' ? 'zsh' : name, harness: it.harness, role: C.DEFAULT_ROLE[it.harness], title: it.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15 };
