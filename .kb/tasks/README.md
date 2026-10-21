@@ -18,5 +18,10 @@
 | W1.1 | [[2026-10-21-w1-1-term-core-fork]] fork alacritty_terminal + vte into bbt-core | Nyx DONE, verified: 0e2342c signed, 117 tests, API as specced | DONE |
 | I2 | identity.md rewrite on the GPG root | Nyx DONE, accepted | DONE |
 | W3.1 | [[2026-10-21-w3-1-renderer-harness]] headless render harness, smoke, first text | Nyx Copperwing <EXECUTOR> | ASSIGNED |
+| W2.1 | [[2026-10-21-w2-1-mux-supervisor]] supervisor, PTYs, lease protocol | free Executor | OPEN |
+| W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | free Executor after W2.1 | OPEN |
+| W2.3 | [[2026-10-21-w2-3-adapters-claude-codex-zsh]] adapters: Claude, Codex, zsh | free Executor after W2.1 | OPEN |
+| W3.2 | GPU GUI component library | brief after `specs/gui-components.md` lands | PENDING SPEC |
+| W4.1 | Transport trait on quinn, loopback impl, provider traits | brief after `specs/networking.md` lands | PENDING SPEC |
 
 Rule: redundant passes write `-exec.md` next to the subagent's file. The Oracle converges both into `specs/`. Claim by replying on `#bboxy450-term` with `Name <EXECUTOR> CLAIM <Id>`. Finish one, claim the next.
