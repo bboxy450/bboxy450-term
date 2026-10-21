@@ -266,4 +266,6 @@ Catalogue total: 36 tools. Workers: eleven.
 | `graph_read` | `graph: execution \| communication \| task \| markdown \| artifact \| messaging \| provenance, swarm_id?, filter?` | The named graph from the index as nodes and weighted edges, bounded; `execution` is who has what and blocked on what, `communication` is who may talk to whom (the policy the Oracle sets). | O; E C for `task` and `markdown` scoped to their own items |
 | `graph_set_edge` | `op_id, graph: communication, from, to, channel: dm \| channel, allowed: bool` | The Oracle edits the communication graph; written to the swarm object and enforced as may-send-to in grants. | O |
 
-Catalogue total: 39 tools. `.bboxy/graph.md` is the hand-maintained ancestor of `graph_read execution` and `communication`; once the index exists the file is generated, not edited.
+| `find` | `query, kinds?: [markdown\|task\|artifact\|seat\|message], swarm_id?, limit?` | Hybrid lexical + semantic lookup over the in-memory index ([[storage]]); returns ranked items with the matching graph edges, scoped to the caller's grants. | O E C |
+
+Catalogue total: 40 tools. `.bboxy/graph.md` is the hand-maintained ancestor of `graph_read execution` and `communication`; once the index exists the file is generated, not edited.

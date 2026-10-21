@@ -14,6 +14,8 @@ Why not one central database: the supervisor already needs its own file for cras
 - `Blobs`: put by digest, get, list. Implementations: local content-addressed directory (now), `object_store` 0.14 over R2, S3, MinIO (later). Everything large goes here: rings beyond the hot window, lab PNGs, transcripts, binaries, PR diffs, zstd-compressed.
 - `Events`: one append-only `events.sqlite` per object, Ed25519-signed rows, hash-chained; the [[provenance]] activity log is written here first and projected to `.bboxy/log/*.jsonl`. This is what an enterprise tails.
 
+**In memory, with semantic lookup (operator, 2026-10-21).** The index object is the durable backing; the working set is in memory: the six graphs in `petgraph`, every markdown's frontmatter and body, seat cards, recent messages. Alongside it an embedding index: every markdown, task, artifact, message and seat card is embedded once on change by a local encoder (icq's pocket-encoder, the MiniLM-L3 q4 model the roadmap already names, 384-d, no network), vectors persisted with `sqlite-vec` in the index object and loaded into memory at start. Lookup is hybrid: lexical tiers first (the launcher's), semantic as the tie-breaker and as "related", reciprocal-rank fused. Any seat can ask in words: "the task about the byte ring", "who worked on transport", "notes that cite mosh". Rebuild from the SQLite objects is always possible; memory is a cache of the durable store, never the only copy.
+
 No ORM. Migrations: hand-rolled version table per object as icq does. Graph queries: `petgraph` in memory rebuilt from the index tables for ranking and paths; recursive CTEs only for simple ancestry. No CRDT: objects migrate, they do not merge. No graph database.
 
 ## Store everything, never delete

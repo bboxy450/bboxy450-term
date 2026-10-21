@@ -722,7 +722,7 @@
 
       if (cur === 'Harnesses' || needle) {
         // generic PTY adapter (harness-adapters R7): no hooks → operator handoff, never an inferred Enter; hooks → typed only after an idle hook
-        const submitHint = (wake, hooks) => wake !== 'pty' ? null : hooks ? 'types only after a hook says idle' : 'never submits on its own · your Enter sends';
+        const submitHint = (wake, hooks) => wake !== 'pty' ? null : hooks ? 'types after an idle hook' : 'never submits on its own';
         const hTile = h => {
           const v = SET.harness[h], d = SET_DEF.harness[h] || null, ch = k => !!d && v[k] !== d[k], rs = k => () => { v[k] = d[k]; emit('harness', h, v); draw(); }, set = k => x => { v[k] = x; emit('harness', h, v); draw(); };
           return el('div', { class: 's-card htile' },
