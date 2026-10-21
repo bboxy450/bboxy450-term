@@ -95,6 +95,25 @@
     const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [] };
     model.spaces.push(sp); editName = sp.key; jumpSpace(sp);
   }
+  // Placement: a seat goes into a swarm as a new tab, or splits a target pane on one of its four sides.
+  // A seat already in a tree is pulled out of it first (its old split collapses), so drag = move.
+  function detach(seat) {
+    for (const sp of model.spaces) for (const tab of sp.tabs) if (tab.seats.includes(seat)) { tab.seats = tab.seats.filter(x => x !== seat); tab.tree = prune(tab.tree, seat.key); if (!tab.seats.length) sp.tabs.splice(sp.tabs.indexOf(tab), 1); }
+  }
+  function placeSeat(seat, where, targetKey) {
+    const target = targetKey ? seats.find(x => x.key === targetKey) : null;
+    if (seat === target) return;
+    if (where === 'tab' || !target) { const sp = space(); detach(seat); sp.tabs.push({ name: seat.harness === 'zsh' ? 'shell' : seat.name.split(' ')[0].toLowerCase(), shortcut: sp.tabs.length < 9 ? '⌘' + (sp.tabs.length + 1) : '', tree: seat, seats: [seat] }); open.add(sp.key); }
+    else {
+      const hit = tabOf(target.key); if (!hit) return;
+      detach(seat);
+      const hit2 = tabOf(target.key); const tab = hit2.t;
+      const dir = (where === 'left' || where === 'right') ? 'v' : 'h', first = where === 'left' || where === 'top';
+      const node = { dir, ratio: 0.5, a: first ? seat : target, b: first ? target : seat };
+      tab.tree = replaceNode(tab.tree, target, node); tab.seats.push(seat); open.add(hit2.sp.key);
+    }
+    focused = seat.key; render(); locate(seat.key, 'both');
+  }
   // Spotlight launcher (operator): '+ new seat' or ⌘T opens a centred search over the window; Enter launches into the
   // swarm as a new tab and focuses it. The list is data (C.LAUNCH): harnesses and zsh now, browser / vnc / ssh later.
   let spot = null;
@@ -102,12 +121,13 @@
     closeSpotlight();
     sp = sp || space();
     const back = el('div', { class: 'spot-back', onclick: e => { if (e.target === back) closeSpotlight(); } });
-    const pk = C.picker({ placeholder: 'launch in ' + sp.name + ' · type to search', onClose: closeSpotlight, onPick: (it, name) => {
+    const anchor = focused;   // ⌘↵ splits right of the focused pane, ⌘⇧↵ below it, ↵ opens a new tab
+    const pk = C.picker({ placeholder: 'launch in ' + sp.name + ' · type to search', onClose: closeSpotlight, onPick: (it, name, mods) => {
       const seat = { key: 'n' + Date.now().toString(36), name: it.harness === 'zsh' ? 'zsh' : name, harness: it.harness, role: C.DEFAULT_ROLE[it.harness], title: it.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15 };
       Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
       seats.push(seat); startReplay(seat, seats.length - 1);
-      sp.tabs.push({ name: it.label.toLowerCase(), shortcut: sp.tabs.length < 9 ? '⌘' + (sp.tabs.length + 1) : '', tree: seat, seats: [seat] });
-      open.add(sp.key); closeSpotlight(); focused = seat.key; render(); locate(seat.key, 'both');
+      closeSpotlight();
+      if (mods && mods.meta && anchor) placeSeat(seat, mods.shift ? 'bottom' : 'right', anchor); else placeSeat(seat, 'tab');
     } });
     back.append(pk); document.body.append(back); spot = back; pk.focus();
   }
@@ -194,6 +214,31 @@
       if (n.classList.contains('pane')) { n.addEventListener('pointerenter', () => armHover(n.dataset.key)); n.addEventListener('pointerleave', disarmHover); }   // panes: dwell focus, brightness only; rows: never
     });
     sb.append(el('div', { class: 'stream-dock', id: 'stream' }));
+    // drag a seat row or a pane strip onto a pane: the hovered half tints, dropping splits there (left/right/top/bottom)
+    const sources = [...main.querySelectorAll('.seat-row[data-key]:not(.phantom)'), ...main.querySelectorAll('.pane[data-key] .strip')];
+    for (const src of sources) src.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || e.target.closest('.close, .undo, button, input')) return;
+      const key = src.dataset.key || src.closest('[data-key]').dataset.key, seat = seats.find(x => x.key === key); if (!seat) return;
+      const x0 = e.clientX, y0 = e.clientY; let dragging = false, ghost = null, zone = null, overPane = null;
+      const zoneOf = (pane, ev) => { const r = pane.getBoundingClientRect(); const fx = (ev.clientX - r.left) / r.width, fy = (ev.clientY - r.top) / r.height; const dl = fx, dr = 1 - fx, dt = fy, db = 1 - fy; const m = Math.min(dl, dr, dt, db); return m === dl ? 'left' : m === dr ? 'right' : m === dt ? 'top' : 'bottom'; };
+      const clearZone = () => { if (overPane) { overPane.classList.remove('drop-left', 'drop-right', 'drop-top', 'drop-bottom'); overPane = null; zone = null; } };
+      const move = ev => {
+        if (!dragging) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return; dragging = true; document.body.classList.add('dragging'); ghost = el('div', { class: 'drag-ghost' }, seat.name); document.body.append(ghost); }
+        ghost.style.transform = 'translate(' + (ev.clientX + 12) + 'px,' + (ev.clientY + 12) + 'px)';
+        ghost.style.setProperty('--seat', seat.color);
+        const under = document.elementFromPoint(ev.clientX, ev.clientY), pane = under && under.closest('.pane[data-key]');
+        if (pane !== overPane) clearZone();
+        if (pane && pane.dataset.key !== key) { overPane = pane; const z = zoneOf(pane, ev); if (z !== zone) { pane.classList.remove('drop-left', 'drop-right', 'drop-top', 'drop-bottom'); pane.classList.add('drop-' + z); zone = z; } }
+      };
+      const up = () => {
+        removeEventListener('pointermove', move); removeEventListener('pointerup', up);
+        if (!dragging) return;
+        document.body.classList.remove('dragging'); if (ghost) ghost.remove();
+        const target = overPane && overPane.dataset.key, z = zone; clearZone();
+        if (target && z) placeSeat(seat, z, target);
+      };
+      addEventListener('pointermove', move); addEventListener('pointerup', up);
+    });
     // sidebar width: drag the right edge; persisted
     sb.style.width = (Lab.store.get('showcase.sbw') || T.sidebar.width_compact) + 'px';
     sb.append(el('div', { class: 'sb-resize', onpointerdown: e => {

@@ -13,6 +13,13 @@
   .seat-row.bounce { animation: rowBounce 520ms var(--ease) !important; outline: 2px solid var(--seat); outline-offset: 0; }
   @keyframes rowBounce { 0% { transform: scale(1); outline-offset: 0; outline-color: transparent; } 35% { transform: scale(1.045); outline-offset: 3px; outline-color: var(--seat); } 70% { transform: scale(0.99); outline-offset: 1px; } 100% { transform: scale(1); outline-offset: 0; outline-color: transparent; } }
   body.resizing, body.resizing * { cursor: inherit !important; user-select: none; }
+  /* drag to split: ghost label follows the pointer; the hovered half of a pane tints */
+  body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
+  .drag-ghost { position: fixed; left: 0; top: 0; z-index: 20; pointer-events: none; padding: 4px 10px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); box-shadow: 0 0 0 1px var(--hair), var(--sh-pill); color: var(--seat); font-size: var(--t-row); font-weight: 600; backdrop-filter: blur(10px); }
+  .pane { position: relative; }
+  .pane::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--sel); opacity: 0; transition: opacity var(--hover-ms); z-index: 3; }
+  .pane.drop-left::after { opacity: 1; right: 50%; } .pane.drop-right::after { opacity: 1; left: 50%; }
+  .pane.drop-top::after { opacity: 1; bottom: 50%; } .pane.drop-bottom::after { opacity: 1; top: 50%; }
 
   /* --- title bar: panel material, hairline below --- */
   .titlebar { border: 0; border-bottom: 1px solid var(--hair); border-radius: 0; background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: inset 0 1px 0 var(--hi); flex: none; height: 38px; padding: 0 14px; gap: 10px; font-size: var(--t-body); }

@@ -1,6 +1,6 @@
 # UX prototype spec — bboxy450-term sidebar and panes
 
-Status: DECIDED by the operator in direct review, 2026-10-21. Milestone tag `ux-prototype-v1` (commit b7538ed). Source of truth for look, interaction and purpose of every element in the lab showcase (`lab/web/showcase.html`). Reasoning per rule: [[ux-flow]]. Earlier Oracle picks: [[ux-pick]]. Vocabulary: [[vision]] (seat, tab, split, shadow). **Swarm** is the UI word for what vision calls a space; the operator renamed it from swarm on 2026-10-21.
+Status: DECIDED by the operator in direct review, 2026-10-21. Milestone tag `ux-prototype-v1` (commit b7538ed). Source of truth for look, interaction and purpose of every element in the lab showcase (`lab/web/showcase.html`). Reasoning per rule: [[ux-flow]]. Earlier Oracle picks: [[ux-pick]]. Vocabulary: [[vision]] (seat, tab, split, shadow). **Swarm** is the canonical unit in [[vision]], decided by the operator on 2026-10-21.
 
 Written from the code, not from memory: `showcase.js`, `components.js`, `lab.css`, `design/tokens.toml`.
 
@@ -23,11 +23,11 @@ The sidebar sits on its own ground (`color.*.sidebar`): lighter than the window 
 
 ### 3.1 Swarm block (the car)
 - **Name**: double-click the band to rename in place; Enter or blur commits, Escape cancels. A new swarm is born as `swarm N` with its name field already open.
-A swarm (space) is a rounded body (radius 11, surface colour) in the finish language of the 2023 Range Rover rear: flush, nothing protrudes, no chevrons, no left bars, no hairlines.
+A swarm is a rounded body (radius 11, surface colour) in the finish language of the 2023 Range Rover rear: flush, nothing protrudes, no chevrons, no left bars, no hairlines.
 - **Band**: a thin (22 px) gloss band set into the top of the body, in the swarm colour, with the swarm name in wide-tracked uppercase (10 px, .22 em), the seat count, and on the right a colour swatch.
 - **Bumper**: a 6 px strip along the bottom of the body in the swarm colour (3 px when shut). No accent line anywhere.
 - **Colour**: one per swarm, random from its key (36 hues × 2 lightness bands), user-changeable by clicking the swatch. Hover lightens the band's own colour; it never turns white or grey.
-- **Open and shut**: every swarm's band is always visible. Clicking a band opens or shuts the block, nothing else. A shut block is a thin tab: band only, with the roll-up of its seats' state glyphs (worst first, max 6) and a waiting badge. Several blocks may be open. Blocks sit 8 px apart (`layout.cohort_gap`).
+- **Open and shut**: every swarm's band is always visible. Clicking a band opens or shuts the block, nothing else. A shut block is a thin tab: band only, with the roll-up of its seats' state glyphs (worst first, max 6) and a waiting badge. Several blocks may be open. Blocks sit 8 px apart (retired-vocabulary token name: `layout.cohort_gap`).
 - **Unfocused**: the swarm holding the focused seat is full contrast; every other swarm's band and rows desaturate and fade with the pane `[dim]` tokens, the body washes toward grey, the bumper keeps its colour.
 - **Below the blocks**: a big body-coloured button `+ new swarm` (44 px). A swarm is a world: its own seats, tabs, shadows and stream. A new swarm starts with one zsh seat.
 
@@ -37,7 +37,7 @@ Rows at cozy density (24 px, 12.5 px text, 14 px icons: compact's footprint with
 - **Seat row**: harness icon in a small coloured tile · character name in the seat colour · role mark (♔ oracle, ♟ executor, ♝ creativity) · title (hidden at compact density) · ⌘N · state glyph. Rows never reorder. The focused row has a quiet gloss band and no bar.
 - **`+ new seat ⌘T`**: last seat row of every open swarm, like Arc's New Tab inside the space. It never moves with focus.
 - **Closed strip**: a seat in grace after close (see 5.3): struck name, grey icon, countdown, `undo ⌘Z`.
-- **SHADOWS**: a group of other people's harnesses in this swarm's channels (spec term: phantom seats). Grey name, desaturated icon, state glyph as published, grey breathing glow when active. No pane, no logs. Clicking one filters the stream to that participant; it never focuses or ripples.
+- **SHADOWS**: a group of other people's harnesses in this swarm's channels (published remote participants). Grey name, desaturated icon, state glyph as published, grey breathing glow when active. No pane, no logs. Clicking one filters the stream to that participant; it never focuses or ripples.
 
 ### 3.3 Stream dock
 Above the footer, hidden until the first message. Shows the last four messages of the current swarm: role rail (gold oracle, blue executor, dashed violet creativity, grey unsigned), parsed `<ROLE>` token, text, time, unread dot. A foreign Oracle gets no priority chip. Filter chip `from <name> × all` when a shadow is selected.
@@ -89,7 +89,13 @@ The red dot closes the seat into a 60 s grace state: the pane leaves the split (
 ### 5.4 Launcher
 "+ new seat" or ⌘T opens a centred Spotlight-style launcher over the blurred window: a large search field, rows grouped under section labels (Harnesses, Shells; later Browser, Remote) each with icon, name and a kind tag, prefix filter, ↑↓ and Enter, Escape or a click outside closes. The footer shows the rolled character name with a reroll and the key hints. Enter launches the seat as a new tab in that swarm, focuses and locates it. Launchables are data rows.
 
-### 5.5 Messages
+### 5.5 Splits
+Two ways, same result.
+- **Launcher keys**: ↵ new tab in the swarm; ⌘↵ split to the right of the focused pane; ⌘⇧↵ split below it. The footer pill names them.
+- **Drag and drop**: drag a seat row from the sidebar, or a pane by its strip, onto another pane. The hovered half of the target (left, right, top, bottom) tints with the selection tint; dropping splits there at 50/50. A dragged seat moves: its old split collapses into the sibling. Phantoms cannot be dragged.
+Either way the placed seat gets focus and the locate signal. Ratios are then adjusted by dragging the gutter (section 2).
+
+### 5.6 Messages
 Unread shows as a dot on the seat row in the highest-priority unread role colour; focusing or clicking the seat clears it. A shadow's message pulses its row once (700 ms) and lands in the stream dock. No ripple for messages.
 
 ## 6. Signal semantics (one meaning per signal)
@@ -107,7 +113,7 @@ Unread shows as a dot on the seat row in the highest-priority unread role colour
 `design/style.json` is the visual style: the Raycast material (frosted panels, hairlines, one radius scale, one type scale, selection as a tint, tiles, badges, pills, one motion curve) with the swarm band and bumper layered on top. Every surface in the showcase is drawn from its values through CSS variables.
 
 Tokens (single source: `design/tokens.toml`)
-Colour (dark and light sets, state and role colours, seat colour hash), density (touch / comfortable / compact), radius, `layout.gutter`, `layout.cohort_gap`, sidebar widths, strip height, `[glow]` pane and row budgets, `[dim]`, motion. The web lab consumes `tokens.js`, generated by `lab/web/gen-tokens.py`; the Rust build will include the same file.
+Colour (dark and light sets, state and role colours, seat colour hash), density (touch / cozy / comfortable / compact), radius, `layout.gutter`, the retired-vocabulary token name `layout.cohort_gap`, sidebar widths, strip height, `[glow]` pane and row budgets, `[dim]`, motion. The web lab consumes `tokens.js`, generated by `lab/web/gen-tokens.py`; the Rust build will include the same file.
 
 ## 8. Demo-only (not product)
 Keys 1-4 (state of the focused seat), M (message arrives), P (shadow speaks), the log replay with its state following, `?scene=15`, `?gutter=`. No legend in the window; the list lives on the lab index.

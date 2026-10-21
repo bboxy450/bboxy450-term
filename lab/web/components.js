@@ -317,7 +317,7 @@
     const foot = el('div', { class: 'foot' });
     function nameFor(seed) { return rollName(rng('roll' + seed)); }
     const matches = () => items0.filter(it => it.label.toLowerCase().startsWith(q.toLowerCase()) || it.id.startsWith(q.toLowerCase()));
-    const pick = it => { if (it && opts.onPick) opts.onPick(it, nameFor(seed)); };
+    const pick = (it, ev) => { if (it && opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey) }); };
     function draw() {
       list.innerHTML = '';
       const items = matches();
@@ -325,7 +325,7 @@
       let lastSec = null;
       items.forEach((it, i) => {
         if (it.section && it.section !== lastSec) { list.append(el('div', { class: 'sec' }, it.section)); lastSec = it.section; }
-        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : ''), onclick: () => pick(it), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
+        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : ''), onclick: e => pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
         const label = el('span', { class: 'lbl' }); const L = it.label, m = q && L.toLowerCase().startsWith(q.toLowerCase()) ? q.length : 0;
         if (m) label.append(el('span', { class: 'm' }, L.slice(0, m)), L.slice(m)); else label.textContent = L;
         o.append(label, el('span', { class: 'sub' }, it.sub || ''), el('span', { class: 'kind' }, it.kind || it.hint || ''), el('span', { class: 'num' }, String(i + 1)));
@@ -333,17 +333,17 @@
       });
       const nm = nameFor(seed);
       foot.innerHTML = '';
-      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }), title: 'seat colour' }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); }, title: 'reroll name' }, '↻'), el('span', { class: 'pill' }, el('span', {}, 'Launch'), el('kbd', {}, '↵'), el('span', { class: 'sep' }), el('span', {}, 'Reroll'), el('kbd', {}, '⌘R')));
+      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }), title: 'seat colour' }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); }, title: 'reroll name' }, '↻'), el('span', { class: 'pill' }, el('span', {}, 'New tab'), el('kbd', {}, '↵'), el('span', { class: 'sep' }), el('span', {}, 'Split right'), el('kbd', {}, '⌘↵'), el('span', { class: 'sep' }), el('span', {}, 'Split down'), el('kbd', {}, '⌘⇧↵'), el('span', { class: 'sep' }), el('span', {}, 'Reroll'), el('kbd', {}, '⌘R')));
     }
     input.addEventListener('input', () => { q = input.value; sel = 0; draw(); });
     input.addEventListener('keydown', e => {
       const n = matches().length;
       if (e.key === 'ArrowDown') { e.preventDefault(); sel = (sel + 1) % Math.max(n, 1); draw(); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + n - 1) % Math.max(n, 1); draw(); }
-      else if (e.key === 'Enter') { e.preventDefault(); pick(matches()[sel]); }
+      else if (e.key === 'Enter') { e.preventDefault(); pick(matches()[sel], e); }
       else if (e.key === 'Escape') { if (opts.onClose) opts.onClose(); }
       else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'r') { e.preventDefault(); seed++; draw(); }
-      else if (/^[1-9]$/.test(e.key) && !q) { e.preventDefault(); pick(matches()[+e.key - 1]); }
+      else if (/^[1-9]$/.test(e.key) && !q) { e.preventDefault(); pick(matches()[+e.key - 1], e); }
       e.stopPropagation();
     });
     draw();
