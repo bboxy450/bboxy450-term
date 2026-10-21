@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>seat row · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+const base = i => ({ key: 'row' + i, name: ['Vesper Greywind', 'Nyx Copperwing', 'Lumen Foxglove', 'Rook Ashwhisker'][i % 4], harness: ['claude', 'codex', 'claude', 'codex'][i % 4], role: ['oracle', 'executor', 'creativity', 'executor'][i % 4], title: ['gpu research', 'messaging spec', 'ux divergence', 'harness hooks'][i % 4] });
+Lab.page({ title: 'seat row', note: 'Icon · name in seat colour · role mark · title · ⌘N · glyph. Row carries the border glow at reduced radius so it breathes with its pane. Compact density hides the title. Rows never reorder on state change.',
+  states: ['active', 'idle', 'waiting', 'errored', 'focused × state', 'unread badge', 'subtitle opt-in', 'zsh seat', 'long names'],
+  render(s, body) {
+    const col = el('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:300px' });
+    if (C.STATES.includes(s)) { for (let i = 0; i < 4; i++) col.append(C.seatRow({ ...base(i), state: s }, { shortcut: '⌘' + (i + 1) })); }
+    if (s === 'focused × state') { C.STATES.forEach((st, i) => col.append(C.seatRow({ ...base(i), state: st }, { focused: true, shortcut: '⌘' + (i + 1) }))); }
+    if (s === 'unread badge') { col.append(C.seatRow({ ...base(0), state: 'idle' }, { unread: 3, unreadRole: 'oracle' }), C.seatRow({ ...base(1), state: 'active' }, { unread: 12, unreadRole: 'executor' }), C.seatRow({ ...base(2), state: 'idle' }, { unread: '99+', unreadRole: 'creativity' })); }
+    if (s === 'subtitle opt-in') { col.append(C.seatRow({ ...base(1), state: 'active' }, { subtitle: 'cargo build --release · 14s' })); col.style.setProperty('--row-h', '40px'); }
+    if (s === 'zsh seat') { col.append(C.seatRow({ key: 'z1', name: 'zsh', harness: 'zsh', role: null, title: '~/mydev', state: 'idle' }, { shortcut: '⌘9' })); }
+    if (s === 'long names') { col.append(C.seatRow({ ...base(0), name: 'Mireille Bellweather-Lockridge', title: 'a title that is far too long to fit in the row at all', state: 'active' }, { shortcut: '⌘1' })); }
+    body.append(col);
+  } });
+</script></body></html>

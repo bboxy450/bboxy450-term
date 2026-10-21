@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tab row · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+const r = C.rng('tabs');
+const seats = n => Array.from({ length: n }, (_, i) => C.makeSeat(r, i + n * 10));
+const mk = (n, name) => { const ss = seats(n); return { name, shortcut: '⌘' + n, tree: C.makeTree(r, ss), seats: ss }; };
+Lab.page({ title: 'tab row', note: 'Caret · tab name · rolled-up glyphs worst-first (max ' + TOKENS.sidebar.collapse_glyphs + ', then …) · ⌘N · mini-grid. Click a row to expand its seats. Expanded tabs show seat rows and drop the roll-up.',
+  states: ['1 seat collapsed', '3 seats collapsed', '8 seats collapsed', 'expanded', 'expanded with focus'],
+  render(s, body) {
+    const wrap = el('div', { style: 'max-width:300px' });
+    let tab, opts = {};
+    if (s === '1 seat collapsed') tab = mk(1, 'idle shell');
+    if (s === '3 seats collapsed') tab = mk(3, 'gpu research');
+    if (s === '8 seats collapsed') tab = mk(8, 'parse logs');
+    if (s.startsWith('expanded')) { tab = mk(3, 'messaging'); opts.expanded = true; if (s.endsWith('focus')) opts.focusedKey = tab.seats[1].key; }
+    const draw = () => { wrap.innerHTML = ''; wrap.append(C.tabRow(tab, { ...opts, onToggle: () => { opts.expanded = !opts.expanded; draw(); } })); };
+    draw(); body.append(wrap);
+  } });
+</script></body></html>

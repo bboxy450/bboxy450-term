@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sidebar · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+Lab.page({ title: 'sidebar', wide: true, note: 'Pill stack. 10 seats open by default; 100 and 1000 collapse by space then tab with rolled-up state and the footer count. Click headers to expand. Phone reading: the same sidebar as a bottom sheet. Toggle density in the top bar.',
+  states: ['10 seats', '100 seats', '1000 seats', 'phone sheet'],
+  render(s, body) {
+    if (s === 'phone sheet') {
+      const model = C.makeModel(10, 'phone');
+      const focused = model.spaces[0].tabs[0].seats[0];
+      const frame = el('div', { class: 'sb-frame phone' });
+      frame.append(el('div', { class: 'stage', style: 'display:block' }, C.pane({ ...focused }, { focused: true, height: 240 })), C.sidebar(model, { openSpaces: [model.spaces[0].key], focusedKey: focused.key }));
+      body.append(frame); return;
+    }
+    const n = parseInt(s), model = C.makeModel(n, 'sb' + n);
+    const open = n <= 10 ? model.spaces.map(x => x.key) : [model.spaces[0].key];
+    const openTabs = n <= 10 ? model.spaces.flatMap(sp => sp.tabs.map(t => sp.key + '/' + t.name)) : [];
+    const focused = model.spaces[0].tabs[0].seats[0];
+    const frame = el('div', { class: 'sb-frame' });
+    const stage = el('div', { class: 'stage', style: 'grid-template-columns:1fr 1fr' });
+    for (const seat of model.spaces[0].tabs[0].seats.slice(0, 2)) stage.append(C.pane(seat, { focused: seat.key === focused.key, unfocused: seat.key !== focused.key }));
+    frame.append(C.sidebar(model, { openSpaces: open, openTabs, focusedKey: focused.key }), stage);
+    body.append(frame);
+  } });
+</script></body></html>

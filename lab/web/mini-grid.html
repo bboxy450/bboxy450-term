@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mini grid · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+const L = (k, st) => ({ key: k, name: k, state: st || 'idle' });
+const trees = {
+  'single': L('a'),
+  'V': { dir: 'v', a: L('a'), b: L('b') },
+  'H': { dir: 'h', a: L('a'), b: L('b') },
+  'V(a, H(b,c))': { dir: 'v', a: L('a'), b: { dir: 'h', a: L('b'), b: L('c') } },
+  'H(V(a,b), c)': { dir: 'h', a: { dir: 'v', a: L('a'), b: L('b') }, b: L('c') },
+  'depth 3': { dir: 'v', a: { dir: 'h', a: L('a'), b: { dir: 'v', a: L('b'), b: L('c') } }, b: { dir: 'h', a: L('d'), b: L('e') } },
+  'focused cell': { dir: 'v', a: L('a'), b: { dir: 'h', a: L('b'), b: L('c') } },
+  'waiting + errored cells': { dir: 'v', a: L('a', 'waiting'), b: { dir: 'h', a: L('b'), b: L('c', 'errored') } },
+};
+Lab.page({ title: 'mini grid', checker: true, note: 'The tab\'s split tree as a small grid beside the tab row. V and H nest. Focused cell is accent; waiting and errored cells carry their state colour. The large version is the phone home screen.',
+  states: Object.keys(trees),
+  render(s, body) {
+    const focus = s === 'focused cell' ? 'b' : null;
+    body.append(el('div', { style: 'display:flex;gap:24px;align-items:center' }, C.miniGrid(trees[s], focus), el('div', { style: '--mg-w:48px;--mg-h:32px' }, C.miniGrid(trees[s], focus)), C.miniGrid(trees[s], focus, true)));
+  } });
+</script></body></html>

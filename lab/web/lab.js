@@ -24,7 +24,10 @@
     set('--sb-w', T.sidebar.width + 'px'); set('--sb-w-compact', T.sidebar.width_compact + 'px');
     set('--mg-w', T.sidebar.minigrid_w + 'px'); set('--mg-h', T.sidebar.minigrid_h + 'px');
     set('--strip-h', T.strip.height + 'px'); set('--strip-b-idle', T.strip.border_idle + 'px'); set('--strip-b-active', T.strip.border_active + 'px');
-    set('--glow-r', T.glow.active_radius + 'px'); set('--glow-a', T.glow.active_alpha);
+    const g = T.glow;
+    set('--glow-pane-r', g.pane_radius + 'px'); set('--glow-row-r', g.row_radius + 'px'); set('--glow-idle-a', g.idle_alpha);
+    set('--glow-active-min', g.active_alpha_min); set('--glow-active-max', g.active_alpha_max); set('--glow-active-ms', g.active_pulse_ms + 'ms');
+    set('--glow-wait-min', g.waiting_alpha_min); set('--glow-wait-max', g.waiting_alpha_max); set('--glow-err-a', g.errored_alpha); set('--glow-boost', g.focused_boost);
     set('--pulse-ms', T.motion.pulse_ms + 'ms'); set('--ripple-ms', T.motion.ripple_ms + 'ms'); set('--hover-ms', T.motion.hover_ms + 'ms'); set('--vignette', T.motion.vignette_alpha);
     set('--font-chrome', T.font.chrome); set('--font-mono', T.font.mono);
     document.documentElement.className = 'theme-' + prefs.theme + ' density-' + prefs.density;
@@ -61,10 +64,10 @@
       seg(['touch', 'comfortable', 'compact'], prefs.density, v => { prefs.density = v; page(spec); }),
       seg(['dark', 'light'], prefs.theme, v => { prefs.theme = v; page(spec); }),
     );
-    const strip = el('div', { class: 'strip' });
+    const strip = el('div', { class: 'state-strip' });
     const names = ['all', ...spec.states];
     for (const s of names) strip.append(el('button', { class: 'chip' + (s === current ? ' on' : ''), onclick: () => { current = s; localStorage.setItem('lab.state.' + spec.title, s); page(spec); } }, s));
-    const main = el('div', { class: 'lab-main' + (current === 'all' ? '' : ' single') });
+    const main = el('div', { class: 'lab-main' + (current === 'all' && !spec.wide ? '' : ' single') });
     const ctx = { theme: prefs.theme, density: prefs.density, tokens: T, el };
     const draw = (s) => {
       const body = el('div', { class: 'body' });

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tokens · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const T = window.TOKENS, el = Lab.el;
+Lab.page({ title: 'tokens', note: 'Every value on this page comes from <code>design/tokens.toml</code> through <code>gen-tokens.py</code>. Nothing here is typed by hand.',
+  states: ['palette', 'state + role', 'seat colours', 'density', 'sizes + motion'],
+  render(s, body, ctx) {
+    const sw = (name, c) => el('div', { class: 'sw' }, el('div', { class: 'c', style: 'background:' + c }), el('div', { class: 'tr t' }, el('b', {}, name), c));
+    if (s === 'palette') { const g = el('div', { class: 'swatches' }); for (const [k, v] of Object.entries(T.color[ctx.theme])) g.append(sw(k, v)); body.append(g); }
+    if (s === 'state + role') { const g = el('div', { class: 'swatches' }); for (const [k, v] of Object.entries(T.color.state)) g.append(sw('state.' + k, v)); for (const [k, v] of Object.entries(T.color.role)) g.append(sw('role.' + k, v)); body.append(g); }
+    if (s === 'seat colours') { const g = el('div', { class: 'swatches' }); for (let i = 0; i < 24; i++) { const key = 'k' + C.hash32('seat' + i).toString(16); g.append(sw(key, C.seatColor(key))); } body.append(el('p', { class: 'lab-note', style: 'padding:0 0 10px' }, 'hash(seat key) → one of ' + T.seat_color.hue_steps + ' hues, S ' + T.seat_color.saturation + '%, L ' + (ctx.theme === 'light' ? T.seat_color.lightness_light : T.seat_color.lightness_dark) + '%'), g); }
+    if (s === 'density') { const t = el('table', { class: 'tok' }, el('tr', {}, el('th', {}, 'key'), ...Object.keys(T.density).map(d => el('th', {}, d)))); for (const k of Object.keys(T.density.touch)) t.append(el('tr', {}, el('td', {}, k), ...Object.keys(T.density).map(d => el('td', {}, T.density[d][k])))); body.append(t); }
+    if (s === 'sizes + motion') { const t = el('table', { class: 'tok' }, el('tr', {}, el('th', {}, 'group'), el('th', {}, 'key'), el('th', {}, 'value'))); for (const g of ['radius', 'sidebar', 'strip', 'glow', 'motion']) for (const [k, v] of Object.entries(T[g])) t.append(el('tr', {}, el('td', {}, g), el('td', {}, k), el('td', {}, v))); body.append(t); }
+  } });
+</script></body></html>

@@ -100,8 +100,21 @@ border_idle = 1
 border_active = 2
 
 [glow]
-active_radius = 6
-active_alpha = 0.55
+# Border glow spec (.kb/ux-pick.md): particle glow in the seat colour, four readings, one shader.
+pane_radius = 14              # px, blur radius at the pane border
+row_radius = 6                # px, same glow on the sidebar row, reduced
+idle_alpha = 0.12             # idle / done: very mild, static
+active_alpha_min = 0.25       # active: pulsates between min and max
+active_alpha_max = 0.70
+active_pulse_ms = 1800        # breathing rate for active
+waiting_alpha_min = 0.25      # waiting: pulsates amber at motion.pulse_ms (1 Hz)
+waiting_alpha_max = 0.80
+errored_alpha = 0.45          # errored: static, red tint
+focused_boost = 1.6           # focused multiplies alpha at every state (clamped to 1)
+particles_idle = 6            # emitter count per pane, scales with activity
+particles_active = 40
+particle_speed = 18           # px per second along the border
+particle_size = 2.2           # px
 
 [motion]
 pulse_ms = 1000               # waiting-on-input, 1 Hz

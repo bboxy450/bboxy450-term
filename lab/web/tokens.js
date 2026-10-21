@@ -72,8 +72,20 @@ window.TOKENS = {
     "mono": "ui-monospace, 'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace"
   },
   "glow": {
-    "active_alpha": 0.55,
-    "active_radius": 6
+    "active_alpha_max": 0.7,
+    "active_alpha_min": 0.25,
+    "active_pulse_ms": 1800,
+    "errored_alpha": 0.45,
+    "focused_boost": 1.6,
+    "idle_alpha": 0.12,
+    "pane_radius": 14,
+    "particle_size": 2.2,
+    "particle_speed": 18,
+    "particles_active": 40,
+    "particles_idle": 6,
+    "row_radius": 6,
+    "waiting_alpha_max": 0.8,
+    "waiting_alpha_min": 0.25
   },
   "meta": {
     "brand_tilt_deg": -12,

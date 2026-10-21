@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>state glyph · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+Lab.page({ title: 'state glyph', checker: true, note: 'Set A from the pick: ● active (seat colour), ○ idle (dim), ◐ waiting (amber, 1 Hz pulse), ✕ errored (red). Shown at the three density sizes and in a row context.',
+  states: ['active', 'idle', 'waiting', 'errored', 'all four in a row'],
+  render(s, body) {
+    const seat = { key: 'demo' };
+    if (s === 'all four in a row') { const r = el('div', { style: 'display:flex;gap:18px;align-items:center;font-size:20px' }); for (const st of C.STATES) r.append(C.glyph(st, seat)); body.append(r); return; }
+    const row = el('div', { style: 'display:flex;gap:28px;align-items:center' });
+    for (const [d, px] of [['touch', 16], ['comfortable', 12], ['compact', 10]]) row.append(el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:6px;--glyph:' + px + 'px' }, C.glyph(s, seat), el('small', { style: 'color:var(--fg-dim);font-size:10px' }, d + ' ' + px)));
+    body.append(row);
+  } });
+</script></body></html>

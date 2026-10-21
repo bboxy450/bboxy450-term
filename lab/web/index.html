@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+</head><body>
+<div class="index">
+  <h1><span class="hicon" style="--icon:28px;color:var(--accent)" id="mark"></span> bboxy450-term · component lab</h1>
+  <p>Web lab, option c stage one. Every page has a state strip, a density toggle (touch / comfortable / compact) and a theme toggle. Values come from <code>design/tokens.toml</code>; run <code>python3 lab/web/gen-tokens.py</code> after editing it. Pick table: <code>.kb/ux-pick.md</code>.</p>
+  <ol>
+    <li><a href="tokens.html">tokens</a><small>palette, state and role colours, seat colour hash, density table</small></li>
+    <li><a href="glyph.html">state glyph</a><small>● ○ ◐ ✕ at three sizes</small></li>
+    <li><a href="harness-icon.html">harness icon</a><small>claude codex pi omp zsh, sidebar fox, ears</small></li>
+    <li><a href="seat-row.html">seat row</a><small>states, focus, unread, subtitle, overflow</small></li>
+    <li><a href="mini-grid.html">mini grid</a><small>V, H, nested, focused, state cells, phone size</small></li>
+    <li><a href="tab-row.html">tab row</a><small>collapsed roll-up, expanded seats</small></li>
+    <li><a href="space-header.html">space header</a><small>pill, count, roll-up, waiting badge</small></li>
+    <li><a href="sidebar.html">sidebar</a><small>10 / 100 / 1000 seats, phone sheet</small></li>
+    <li><a href="title-strip.html">title strip + border</a><small>strip, glow spec, particle emitter, vignette</small></li>
+    <li><a href="picker.html">⌘T picker</a><small>prefix filter, roles, name reveal</small></li>
+    <li><a href="message-row.html">message row</a><small>role + priority proposal, stream, ripple</small></li>
+  </ol>
+  <p id="foot"></p>
+</div>
+<script>
+  Lab.applyTokens();
+  document.getElementById('mark').innerHTML = C.ICON_SVG.sidebarfox;
+  document.getElementById('foot').textContent = 'tokens v' + TOKENS.meta.version + ' · theme ' + Lab.prefs.theme + ' · density ' + Lab.prefs.density;
+</script>
+</body></html>

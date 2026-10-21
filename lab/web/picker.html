@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⌘T picker · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+Lab.page({ title: '⌘T picker', checker: true, note: 'Vertical, keyboard-first. Type a prefix to filter (cl, co, pi, om, z). ↑↓ moves, Enter picks. Role beside each harness comes from settings defaults. zsh last, below a divider. Footer reveals the rolled character name and its colour; ↻ rerolls. Live: type in it.',
+  states: ['open', 'typed "c"', 'typed "co"', 'typed "z"', 'no match', 'rerolled'],
+  render(s, body) {
+    const q = { 'typed "c"': 'c', 'typed "co"': 'co', 'typed "z"': 'z', 'no match': 'x' }[s] || '';
+    body.append(C.picker({ query: q, seed: s === 'rerolled' ? 7 : 1 }));
+  } });
+</script></body></html>

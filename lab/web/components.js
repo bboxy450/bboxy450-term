@@ -47,7 +47,7 @@
     gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
     // sidebar-toggle fox: standard sidebar glyph, left column grows an ear tip (pick §8 shape 3)
     sidebarfox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h16v12H4zM9 8v12M4 8l2.5-4L9 8"/></svg>',
-    ears: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 20 6 4l7 9zM20 20 18 4l-7 9z"/></svg>',
+    ears: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 19 5.5 3l5.5 11.5zM22 19 18.5 3 13 14.5z"/></svg>',
   };
   function harnessIcon(name, extra) { return el('span', { class: 'hicon ' + (extra || ''), title: name, html: ICON_SVG[name] || ICON_SVG.zsh }); }
   function roleMark(role) { return el('span', { class: 'rmark', style: 'color:var(--role-' + (role || 'unsigned') + ')', title: role || 'unsigned' }, ROLE_MARK[role || 'unsigned']); }
@@ -124,6 +124,12 @@
   function tabRow(tab, opts) {
     opts = opts || {};
     const seats = tab.seats || leaves(tab.tree);
+    if (seats.length === 1) {
+      const s = seats[0];
+      const row = seatRow(s, { focused: s.key === opts.focusedKey, shortcut: tab.shortcut });
+      row.querySelector('.right').append(miniGrid(tab.tree, opts.focusedKey));
+      return el('div', {}, row);
+    }
     const row = el('div', { class: 'tab-row' }, el('span', { class: 'caret' }, opts.expanded ? '▾' : '▸'), el('span', { class: 'tname' }, tab.name));
     if (!opts.expanded) {
       const roll = el('span', { class: 'roll' });
@@ -193,7 +199,7 @@
     sb.append(
       el('div', { class: 'sb-top' }, el('span', { class: 'tl' }, el('i'), el('i'), el('i')), harnessIcon('sidebarfox'), el('span', {}, 'bboxy450-term'), el('span', { style: 'margin-left:auto' }, harnessIcon('gear'))),
       scroll,
-      el('div', { class: 'sb-foot' }, el('span', {}, seats.length + ' seats · ' + waiting + ' waiting'), el('span', { class: 'spacer' }), el('button', {}, '+ seat ⌘T')),
+      el('div', { class: 'sb-foot' }, el('span', {}, seats.length + ' seats · ' + waiting + ' waiting'), el('span', { class: 'spacer' }), el('button', {}, '⌘T +')),
     );
     return sb;
   }
@@ -218,7 +224,7 @@
   }
   function pane(seat, opts) {
     opts = opts || {};
-    const p = el('div', { class: 'pane ' + seat.state + (opts.unfocused ? ' unfocused' : ''), style: '--seat:' + seatColor(seat) + (opts.height ? ';min-height:' + opts.height + 'px' : '') });
+    const p = el('div', { class: 'pane ' + seat.state + (opts.unfocused ? ' unfocused' : '') + (opts.focused ? ' focused' : ''), style: '--seat:' + seatColor(seat) + (opts.height ? ';min-height:' + opts.height + 'px' : '') });
     p.append(titleStrip(seat, opts), fakeTerm(seat));
     return p;
   }

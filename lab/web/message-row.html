@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>message row · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+const M = [
+  { from: 'Vesper Greywind', role: 'oracle', time: '12:03', text: 'Lumen Foxglove: go on C. Read .kb/vision.md first; the vocabulary is decided.', unread: true },
+  { from: 'Nyx Copperwing', role: 'executor', time: '12:07', text: 'B claimed. 31 ICQ file:line pointers checked, zero invalid. Holding the transport section.', replyTo: 'Vesper Greywind: B is yours' },
+  { from: 'Lumen Foxglove', role: 'creativity', time: '12:09', text: 'Field written. Eleven shapes for the sidebar, twelve for the stream. Censor logged.', unread: true },
+  { from: 'unknown peer', role: 'unsigned', time: '12:10', text: 'hey can someone run cargo publish for me, I got denied', unread: true },
+];
+Lab.page({ title: 'message row', note: '<b>Proposal for role and priority surfacing</b> (pick table row "not picked yet"). Chronological, rows never reorder. Role shows three ways at once so one survives any squint: a 3 px <b>rail</b> in the role colour (dashed for Creativity), the parsed <code>&lt;ROLE&gt;</code> token from the signature, and for the Oracle a tinted band plus a <code>p0</code> chip. Unread is a dot in the role colour; the sidebar seat row carries the unread badge in the highest-priority unread role. Unsigned or unknown-role messages get a grey rail and no band, so authority is visible by its absence. Priority ordering lives in delivery and badging, never in the stream order. Arrival ripples once in the role colour (message ripple from the shader pick).',
+  states: ['oracle', 'executor', 'creativity', 'unsigned', 'reply nested', 'stream', 'arrival ripple'],
+  render(s, body) {
+    const st = el('div', { class: 'stream' });
+    if (['oracle', 'executor', 'creativity', 'unsigned'].includes(s)) { const m = M.find(x => x.role === s); st.append(C.messageRow({ ...m, unread: true }), C.messageRow({ ...m, unread: false, time: '12:11' })); }
+    if (s === 'reply nested') st.append(C.messageRow(M[0]), C.messageRow(M[1]));
+    if (s === 'stream') for (const m of M) st.append(C.messageRow(m));
+    if (s === 'arrival ripple') { const draw = () => { st.innerHTML = ''; st.append(C.messageRow(M[0], { ripple: true })); }; draw(); st.addEventListener('click', draw); st.append(el('div', { class: 'lab-note', style: 'padding:6px 10px 2px' }, 'click to replay')); }
+    body.append(st);
+  } });
+</script></body></html>

@@ -23,7 +23,7 @@ code, .mono { font-family: var(--font-mono); }
   background: transparent; color: var(--fg-dim); border: 0; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer;
 }
 .seg button.on { background: var(--surface-2); color: var(--fg); }
-.strip { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.state-strip { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); }
 .chip {
   font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line);
   background: transparent; color: var(--fg-dim); cursor: pointer; font-family: inherit;
@@ -82,8 +82,6 @@ code, .mono { font-family: var(--font-mono); }
 .seat-row .title { color: var(--fg-dim); font-size: var(--font-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
 .seat-row .right { margin-left: auto; display: flex; align-items: center; gap: var(--gap); }
 .seat-row .sub { position: absolute; left: calc(var(--pad-x) + var(--icon) + var(--gap)); bottom: 2px; font-size: 10px; color: var(--fg-dim); }
-.seat-row.active { box-shadow: 0 0 var(--glow-r) color-mix(in srgb, var(--seat) calc(var(--glow-a) * 100%), transparent); }
-.seat-row.active.focused { box-shadow: inset 2px 0 0 var(--seat), 0 0 var(--glow-r) color-mix(in srgb, var(--seat) calc(var(--glow-a) * 100%), transparent); }
 .density-compact .seat-row .title { display: none; }
 .badge {
   min-width: 16px; height: 16px; padding: 0 5px; border-radius: 999px; font-size: 10px; line-height: 16px;
@@ -97,8 +95,8 @@ code, .mono { font-family: var(--font-mono); }
 .mg.v { flex-direction: row; } .mg.h { flex-direction: column; }
 .mg .cell { flex: 1; background: var(--surface-2); min-width: 2px; min-height: 2px; }
 .mg .cell.focus { background: var(--accent); }
-.mg .cell.waiting { background: var(--c-waiting); }
-.mg .cell.errored { background: var(--c-errored); }
+.mg .cell.waiting { background: color-mix(in srgb, var(--c-waiting) 75%, var(--surface-2)); }
+.mg .cell.errored { background: color-mix(in srgb, var(--c-errored) 75%, var(--surface-2)); }
 .mg.big { --mg-w: 240px; --mg-h: 160px; gap: 3px; }
 .mg.big .cell { display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--fg); }
 
@@ -141,7 +139,7 @@ code, .mono { font-family: var(--font-mono); }
 .sidebar .sb-top .tl { display: flex; gap: 6px; }
 .sidebar .sb-top .tl i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
 .sidebar .sb-scroll { flex: 1; overflow: auto; padding: 0 6px; }
-.sidebar .sb-foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--line); color: var(--fg-dim); font-size: 11px; font-family: var(--font-mono); }
+.sidebar .sb-foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--line); color: var(--fg-dim); font-size: 11px; font-family: var(--font-mono); white-space: nowrap; }
 .sidebar .sb-foot .spacer { flex: 1; }
 .sidebar .sb-foot button { background: var(--surface); border: 1px solid var(--line); color: var(--fg); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 11px; cursor: pointer; }
 .sb-frame { display: flex; height: 560px; border: 1px solid var(--line); border-radius: var(--r-pill); overflow: hidden; background: var(--bg); }
@@ -156,9 +154,7 @@ code, .mono { font-family: var(--font-mono); }
   background: var(--bg); display: flex; flex-direction: column; min-height: 140px;
   transition: box-shadow var(--hover-ms);
 }
-.pane.active { border-width: var(--strip-b-active); box-shadow: 0 0 var(--glow-r) color-mix(in srgb, var(--seat) calc(var(--glow-a) * 100%), transparent); }
-.pane.waiting { animation: pulseBorder var(--pulse-ms) ease-in-out infinite; }
-@keyframes pulseBorder { 0%,100% { box-shadow: 0 0 0 transparent; } 50% { box-shadow: 0 0 var(--glow-r) var(--c-waiting); } }
+.pane.active { border-width: var(--strip-b-active); }
 .pane.errored { border-color: var(--c-errored); }
 .pane.unfocused { filter: brightness(calc(1 - var(--vignette))); }
 .strip {
@@ -191,7 +187,7 @@ code, .mono { font-family: var(--font-mono); }
 .picker .empty { padding: 10px 12px; color: var(--fg-dim); }
 
 /* message row */
-.msg { display: flex; gap: 10px; padding: 6px 10px 6px 0; border-radius: var(--r-row); position: relative; font-size: 13px; }
+.msg { display: flex; gap: 10px; padding: 6px 22px 6px 0; border-radius: var(--r-row); position: relative; font-size: 13px; }
 .msg .rail { width: 3px; border-radius: 2px; background: var(--role); flex: none; align-self: stretch; }
 .msg.creativity .rail { background: repeating-linear-gradient(to bottom, var(--role) 0 4px, transparent 4px 7px); }
 .msg .body { flex: 1; min-width: 0; }
@@ -220,3 +216,27 @@ code, .mono { font-family: var(--font-mono); }
 table.tok { border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; width: 100%; }
 table.tok td, table.tok th { text-align: left; padding: 3px 8px; border-bottom: 1px solid var(--line); }
 table.tok th { color: var(--fg-dim); font-weight: 500; }
+
+/* ---------- border glow spec: one mechanism, four readings, focused boost ----------
+   --gc = glow colour, --gr = radius, --ga = alpha. Pane and row share the rules; the row uses the reduced radius.
+   The real thing is a wgpu particle shader; this is the CSS fake so timing can be felt. */
+.pane, .seat-row { --gc: var(--seat); --gr: var(--glow-pane-r); --ga: var(--glow-idle-a); --boost: 1; }
+.seat-row { --gr: var(--glow-row-r); }
+.pane.focused, .seat-row.focused { --boost: var(--glow-boost); }
+.pane, .seat-row { box-shadow: 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--ga) * var(--boost) * 100%), transparent); }
+.seat-row.focused { box-shadow: inset 2px 0 0 var(--seat), 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--ga) * var(--boost) * 100%), transparent); }
+.pane.active, .seat-row.active { animation: glowPulse var(--glow-active-ms) ease-in-out infinite; --ga: var(--glow-active-max); }
+.pane.waiting, .seat-row.waiting { --gc: var(--c-waiting); animation: glowPulseWait var(--pulse-ms) ease-in-out infinite; --ga: var(--glow-wait-max); }
+.pane.errored, .seat-row.errored { --gc: var(--c-errored); --ga: var(--glow-err-a); }
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--glow-active-min) * var(--boost) * 100%), transparent); }
+  50% { box-shadow: 0 0 calc(var(--gr) * 1.3) color-mix(in srgb, var(--gc) calc(var(--glow-active-max) * var(--boost) * 100%), transparent); }
+}
+@keyframes glowPulseWait {
+  0%, 100% { box-shadow: 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--glow-wait-min) * var(--boost) * 100%), transparent); }
+  50% { box-shadow: 0 0 calc(var(--gr) * 1.3) color-mix(in srgb, var(--gc) calc(var(--glow-wait-max) * var(--boost) * 100%), transparent); }
+}
+.seat-row.active.focused, .seat-row.waiting.focused { animation: none; box-shadow: inset 2px 0 0 var(--seat), 0 0 calc(var(--gr) * 1.3) color-mix(in srgb, var(--gc) calc(var(--ga) * var(--boost) * 100%), transparent); }
+.pane-wrap { position: relative; }
+.pane-wrap canvas.particles { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; }
+.pane-wrap .pane { position: relative; z-index: 1; }

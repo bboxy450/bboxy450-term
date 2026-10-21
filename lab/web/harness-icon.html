@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>harness icon · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+Lab.page({ title: 'harness icon', checker: true, note: 'Monochrome marks on currentColor. Claude ✳, Codex hexagon, pi, omp ring, zsh prompt. Plus the two chrome marks from the pick: the sidebar-toggle fox and the ear pair.',
+  states: ['claude', 'codex', 'pi', 'omp', 'zsh', 'gear', 'sidebarfox', 'ears'],
+  render(s, body) {
+    const row = el('div', { style: 'display:flex;gap:28px;align-items:end' });
+    for (const px of [12, 16, 20, 32, 64]) row.append(el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:6px;--icon:' + px + 'px' }, C.harnessIcon(s), el('small', { style: 'color:var(--fg-dim);font-size:10px' }, px)));
+    row.append(el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:6px;--icon:32px;color:var(--accent)' }, C.harnessIcon(s), el('small', { style: 'color:var(--fg-dim);font-size:10px' }, 'tinted')));
+    body.append(row);
+  } });
+</script></body></html>

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>space header · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+const model = C.makeModel(120, 'spaces');
+Lab.page({ title: 'space header', note: 'Space = vertical pill in the space colour (left bar). Header: caret · name · seat count · rolled-up glyphs · waiting badge. Collapsed is the 1000-seat reading; expanded shows tab rows.',
+  states: ['collapsed small', 'collapsed large', 'collapsed with waiting', 'expanded'],
+  render(s, body) {
+    const wrap = el('div', { style: 'max-width:300px' });
+    const sp = s === 'collapsed small' ? model.spaces[0] : model.spaces[1];
+    const space = { ...sp, tabs: sp.tabs.map(t => ({ ...t, seats: t.seats.map(x => ({ ...x })) })) };
+    if (s === 'collapsed with waiting') { space.tabs[0].seats[0].state = 'waiting'; space.tabs[1].seats[0].state = 'errored'; }
+    const pill = el('div', { class: 'space', style: '--space:' + C.seatColor({ key: space.key }) });
+    pill.append(C.spaceHeader(space, { expanded: s === 'expanded' }));
+    if (s === 'expanded') { const b = el('div', { class: 'space-body' }); for (const t of space.tabs.slice(0, 4)) b.append(C.tabRow(t, {})); pill.append(b); }
+    wrap.append(pill); body.append(wrap);
+  } });
+</script></body></html>
