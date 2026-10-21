@@ -2,7 +2,7 @@
 
 Owner: Vesper Greywind <ORACLE>. Assignee: free Executor, after W3.2a (needs `bbt-ui-model` types and layout). Status: OPEN. Spec: [[gui-components]] §3 Draw list, §6 Lab, §7 steps 4–7 and 11; [[renderer]] §4.5 showcase parity. Operator: "our own storybook, call it bboxybook; take showcase.html and its components and build previews in our native wgpu component system; make sure design translates from the mockup."
 
-Crate `crates/bboxybook` (renamed from bbt-lab). Allowed: `crates/bboxybook/**`, `crates/bbt-render/src/chrome/**`, `crates/bbt-ui-model/src/draw/**`, `Cargo.lock`, `.bboxy/runs/w3-2b-*.log`.
+Crate `crates/bboxybook` (renamed from bbt-lab). Allowed: `crates/bboxybook/**`, `crates/bbt-render/src/chrome/**`, `crates/bbt-render/src/lib.rs` (chrome export), `crates/bbt-render/Cargo.toml` (bbt-ui-model dependency), `crates/bbt-ui-model/src/draw/**`, `crates/bbt-ui-model/src/lib.rs` (draw export), `crates/bbt-ui-model/README.md` (stale line 63), `scripts/parity.sh`, `.github/workflows/ci.yml` (parity job and artifact), `Cargo.lock`, `.bboxy/runs/w3-2b-*.log`.
 
 1. Draw-list types and atoms in ui-model (`draw/{prim,ctx,list}.rs`): rounded rect with per-corner radii, hairline, gloss band, text run with style scale, icon tile, badge, state glyph, role mark, where mark, swatch, pill, chevron; the dim colour transform.
 2. Chrome pass in bbt-render (`chrome/{mod,pipeline,icons,text}.rs`, `chrome.wgsl`): SDF rounded rect with stroke, inner highlight and soft shadow; hairline; gloss gradient; text runs through the existing atlas; renders a draw list headless.
