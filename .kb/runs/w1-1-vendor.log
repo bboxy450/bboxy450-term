@@ -1,0 +1,5 @@
+alacritty: 542147067dd016fc5f49120ef0ba605a98a4e3a7
+vte 0.15.0: 3b3da71c34cc1256c7e20981cf03f8eb95e08ffc
+Initial normalizer interrupted (130); repeated using an optimized lexical masker and a corrected no-std field removal.
+Excluded tty,event_loop,thread,vi_mode,selection,term/search.
+Removed selection/vi tests: scroll_display_page_up, scroll_display_page_down, simple_selection_works, semantic_selection_works, line_selection_works, block_selection_works, clearing_viewport_with_vi_mode_keeps_history_position, clearing_scrollback_sets_vi_cursor_into_viewport, vi_cursor_keep_pos_on_scrollback_buffer

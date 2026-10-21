@@ -1,0 +1,155 @@
+    Updating crates.io index
+     Locking 27 packages to highest Rust 1.99 compatible versions
+      Adding arrayvec v0.7.8
+      Adding base64 v0.22.1 (available: v0.23.1)
+      Adding bitflags v2.13.2
+      Adding cfg-if v1.0.5
+      Adding cursor-icon v1.2.0
+      Adding itoa v1.0.18
+      Adding libc v0.2.191
+      Adding lock_api v0.4.14
+      Adding log v0.4.34
+      Adding memchr v2.8.3
+      Adding parking_lot v0.12.5 (available: v0.13.0)
+      Adding parking_lot_core v0.9.12
+      Adding proc-macro2 v1.0.107
+      Adding quote v1.0.47
+      Adding redox_syscall v0.5.18
+      Adding scopeguard v1.2.0
+      Adding serde v1.0.229
+      Adding serde-big-array v0.5.1
+      Adding serde_core v1.0.229
+      Adding serde_derive v1.0.229
+      Adding serde_json v1.0.154
+      Adding smallvec v1.16.3
+      Adding syn v3.0.9
+      Adding unicode-ident v1.0.27
+      Adding unicode-width v0.2.2
+      Adding windows-link v0.2.1
+      Adding zmij v1.0.23
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling serde_core v1.0.229
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling serde v1.0.229
+   Compiling parking_lot_core v0.9.12
+   Compiling smallvec v1.16.3
+   Compiling scopeguard v1.2.0
+   Compiling cfg-if v1.0.5
+   Compiling zmij v1.0.23
+   Compiling lock_api v0.4.14
+   Compiling memchr v2.8.3
+   Compiling serde_json v1.0.154
+   Compiling log v0.4.34
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling unicode-width v0.2.2
+   Compiling itoa v1.0.18
+   Compiling syn v3.0.9
+   Compiling parking_lot v0.12.5
+   Compiling bitflags v2.13.2
+   Compiling serde_derive v1.0.229
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-core)
+error[E0468]: an `extern crate` loading macros must be at the crate root
+   --> crates/bbt-core/src/vendor/vte/mod.rs:816:1
+    |
+816 | extern crate std;
+    | ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Side`
+  --> crates/bbt-core/src/vendor/alacritty/term/mod.rs:17:68
+   |
+17 | use crate::index::{self, Boundary, Column, Direction, Line, Point, Side};
+   |                                                                    ^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unexpected `cfg` condition value: `std`
+   --> crates/bbt-core/src/vendor/vte/mod.rs:814:21
+    |
+814 | #[cfg(all(test, not(feature = "std")))]
+    |                     ^^^^^^^^^^^^^^^ help: remove the condition
+    |
+    = note: no expected values for `feature`
+    = help: consider adding `std` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unused import: `std::mem`
+    --> crates/bbt-core/src/vendor/alacritty/term/mod.rs:2327:9
+     |
+2327 |     use std::mem;
+     |         ^^^^^^^^
+
+warning: unused import: `Side`
+    --> crates/bbt-core/src/vendor/alacritty/term/mod.rs:2331:39
+     |
+2331 |     use crate::index::{Column, Point, Side};
+     |                                       ^^^^
+
+warning: unused import: `Flags`
+    --> crates/bbt-core/src/vendor/alacritty/term/mod.rs:2332:35
+     |
+2332 |     use crate::term::cell::{Cell, Flags};
+     |                                   ^^^^^
+
+error[E0624]: method `mark_fully_damaged` is private
+   --> crates/bbt-core/src/lib.rs:113:26
+    |
+113 |         checkpoint.model.mark_fully_damaged();
+    |                          ^^^^^^^^^^^^^^^^^^ private method
+    |
+   ::: crates/bbt-core/src/vendor/alacritty/term/mod.rs:489:5
+    |
+489 |     fn mark_fully_damaged(&mut self) {
+    |     -------------------------------- private method defined here
+
+error[E0282]: type annotations needed
+    --> crates/bbt-core/src/vendor/vte/mod.rs:1159:17
+     |
+1159 |                 assert_eq!(intermediates, &[]);
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0283]: type annotations needed
+    --> crates/bbt-core/src/vendor/vte/mod.rs:1159:17
+     |
+1159 |                 assert_eq!(intermediates, &[]);
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+     |
+     = note: multiple `impl`s satisfying `u8: PartialEq<_>` found in the following crates: `core`, `serde_json`:
+             - impl PartialEq for u8;
+             - impl PartialEq<Value> for u8;
+     = note: required for `std::vec::Vec<u8>` to implement `PartialEq<[_; 0]>`
+     = note: 1 redundant requirement hidden
+     = note: required for `&std::vec::Vec<u8>` to implement `PartialEq<&[_; 0]>`
+
+error[E0282]: type annotations needed
+    --> crates/bbt-core/src/vendor/vte/mod.rs:1287:17
+     |
+1287 |                 assert_eq!(intermediates, &[]);
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0283]: type annotations needed
+    --> crates/bbt-core/src/vendor/vte/mod.rs:1287:17
+     |
+1287 |                 assert_eq!(intermediates, &[]);
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+     |
+     = note: multiple `impl`s satisfying `u8: PartialEq<_>` found in the following crates: `core`, `serde_json`:
+             - impl PartialEq for u8;
+             - impl PartialEq<Value> for u8;
+     = note: required for `std::vec::Vec<u8>` to implement `PartialEq<[_; 0]>`
+     = note: 1 redundant requirement hidden
+     = note: required for `&std::vec::Vec<u8>` to implement `PartialEq<&[_; 0]>`
+
+For more information about this error, try `rustc --explain E0624`.
+warning: `bbt-core` (lib) generated 2 warnings
+error: could not compile `bbt-core` (lib) due to 1 previous error; 2 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+Some errors have detailed explanations: E0282, E0283, E0468, E0624.
+For more information about an error, try `rustc --explain E0282`.
+warning: `bbt-core` (lib test) generated 5 warnings (2 duplicates)
+error: could not compile `bbt-core` (lib test) due to 6 previous errors; 5 warnings emitted

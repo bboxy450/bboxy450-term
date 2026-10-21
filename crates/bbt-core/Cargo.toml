@@ -2,10 +2,23 @@
 name = "bbt-core"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license = "Apache-2.0"
 repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
-description = "bboxy450-term: bbt-core"
+description = "Forked terminal model and parser with resumable checkpoints"
 
 [dependencies]
+arrayvec = { version = "0.7.2", features = ["serde"] }
+base64 = "0.22"
+bitflags = { version = "2.4.1", features = ["serde"] }
+cursor-icon = "1.0"
+log = "0.4"
+memchr = "2.7"
+parking_lot = "0.12"
+serde = { version = "1", features = ["derive", "rc"] }
+serde-big-array = "0.5.1"
+unicode-width = "0.2"
+
+[dev-dependencies]
+serde_json = "1"

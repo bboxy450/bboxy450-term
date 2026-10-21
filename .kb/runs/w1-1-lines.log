@@ -1,0 +1,33 @@
+{
+  "definition": "Exact-line SequenceMatcher accounting over all original Rust files; cut includes omitted modules and replaced lines; added includes rustfmt changes. Tests remain included.",
+  "families": [
+    {
+      "family": "alacritty",
+      "original_lines": 11728,
+      "kept_equal_lines": 6080,
+      "cut_lines": 5648,
+      "added_vendor_lines": 629,
+      "upstream_files": 23,
+      "retained_files": 12
+    },
+    {
+      "family": "vte",
+      "original_lines": 4144,
+      "kept_equal_lines": 3845,
+      "cut_lines": 299,
+      "added_vendor_lines": 362,
+      "upstream_files": 3,
+      "retained_files": 3
+    }
+  ],
+  "new_rust_lines_outside_vendor_sources": 328,
+  "new_rust_files": [
+    "crates/bbt-core/src/lib.rs",
+    "crates/bbt-core/src/vendor/mod.rs",
+    "crates/bbt-core/tests/checkpoint.rs"
+  ],
+  "total_kept_lines": 9925,
+  "total_cut_lines": 5947,
+  "total_added_lines": 1319,
+  "final_rust_lines": 11244
+}

@@ -1,0 +1,173 @@
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.88s
+     Running unittests src/lib.rs (target/debug/deps/bbt_core-69710dd330b15b70)
+
+running 108 tests
+test vendor::alacritty::grid::storage::tests::rotate ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate_wrap_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::indexing ... ok
+test vendor::alacritty::grid::storage::tests::shrink_then_grow ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning ... ok
+test vendor::alacritty::grid::storage::tests::with_capacity ... ok
+test vendor::alacritty::grid::storage::tests::grow_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::initialize ... ok
+test vendor::alacritty::grid::storage::tests::grow_after_zero ... ok
+test vendor::alacritty::grid::tests::accurate_size_hint ... ok
+test vendor::alacritty::grid::tests::grow_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::scroll_down ... ok
+test vendor::alacritty::grid::tests::grow_reflow_multiline ... ok
+test vendor::alacritty::grid::tests::grow_reflow ... ok
+test vendor::alacritty::grid::tests::scroll_up ... ok
+test vendor::alacritty::grid::storage::tests::indexing_above_inner_len - should panic ... ok
+test vendor::alacritty::grid::tests::shrink_reflow ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::scroll_down_with_history ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_twice ... ok
+test vendor::alacritty::grid::tests::test_iter ... ok
+test vendor::alacritty::index::tests::add ... ok
+test vendor::alacritty::index::tests::add_clamp ... ok
+test vendor::alacritty::index::tests::add_grid_clamp ... ok
+test vendor::alacritty::index::tests::add_none_clamp ... ok
+test vendor::alacritty::index::tests::add_wrap ... ok
+test vendor::alacritty::index::tests::location_ordering ... ok
+test vendor::alacritty::index::tests::sub ... ok
+test vendor::alacritty::index::tests::sub_clamp ... ok
+test vendor::alacritty::index::tests::sub_grid_clamp ... ok
+test vendor::alacritty::index::tests::sub_none_clamp ... ok
+test vendor::alacritty::index::tests::sub_wrap ... ok
+test vendor::alacritty::term::cell::tests::cell_size_is_below_cap ... ok
+test vendor::alacritty::term::cell::tests::line_length_works ... ok
+test vendor::alacritty::term::cell::tests::line_length_works_with_wrapline ... ok
+test vendor::alacritty::term::tests::damage_cursor_movements ... ok
+test vendor::alacritty::term::tests::input_line_drawing_character ... ok
+test vendor::alacritty::term::tests::parse_cargo_version ... ok
+test vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset ... ok
+test vendor::alacritty::term::tests::clearing_viewport_keeps_history_position ... ok
+test vendor::alacritty::term::tests::clear_saved_lines ... ok
+test vendor::vte::ansi::tests::contrast ... ok
+test vendor::vte::ansi::tests::mixed_sync_escape ... ok
+test vendor::vte::ansi::tests::parse_control_attribute ... ok
+test vendor::alacritty::term::tests::damage_public_usage ... ok
+test vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing ... ok
+test vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke ... ok
+test vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors ... ok
+test vendor::alacritty::term::tests::window_title ... ok
+test vendor::vte::ansi::tests::parse_invalid_number ... ok
+test vendor::vte::ansi::tests::parse_invalid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_number_too_large ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_color ... ok
+test vendor::vte::ansi::tests::parse_osc4_set_color ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_csi ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_esc ... ok
+test vendor::vte::ansi::tests::parse_truecolor_attr ... ok
+test vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_valid_number ... ok
+test vendor::vte::ansi::tests::parse_valid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_zsh_startup ... ok
+test vendor::vte::ansi::tests::partial_sync_updates ... ok
+test vendor::vte::ansi::tests::sync_bsu_with_esu ... ok
+test vendor::vte::tests::c1s ... ok
+test vendor::vte::tests::csi_reset ... ok
+test vendor::vte::tests::csi_subparameters ... ok
+test vendor::vte::tests::esc_reset ... ok
+test vendor::vte::tests::dcs_reset ... ok
+test vendor::vte::tests::esc_reset_intermediates ... ok
+test vendor::vte::tests::exceed_max_buffer_size ... ok
+test vendor::vte::tests::execute_anywhere ... ok
+test vendor::vte::tests::intermediate_reset_on_dcs_exit ... ok
+test vendor::vte::tests::invalid_utf8 ... ok
+test vendor::vte::tests::osc_bell_terminated ... ok
+test vendor::vte::tests::osc_c0_st_terminated ... ok
+test vendor::vte::tests::osc_containing_string_terminator ... ok
+test vendor::vte::tests::params_buffer_filled_with_subparam ... ok
+test vendor::vte::tests::parse_csi_max_params ... ok
+test vendor::vte::tests::parse_csi_params_ignore_long_params ... ok
+test vendor::vte::tests::parse_csi_params_leading_semicolon ... ok
+test vendor::vte::tests::parse_csi_params_trailing_semicolon ... ok
+test vendor::vte::tests::parse_dcs ... ok
+test vendor::vte::tests::parse_empty_osc ... ok
+test vendor::vte::tests::parse_dcs_max_params ... ok
+test vendor::vte::tests::parse_long_csi_param ... ok
+test vendor::vte::tests::parse_osc ... ok
+test vendor::vte::tests::parse_osc_max_params ... ok
+test vendor::vte::tests::parse_osc_with_utf8_arguments ... ok
+test vendor::vte::tests::partial_invalid_utf8 ... ok
+test vendor::vte::tests::partial_invalid_utf8_split ... ok
+test vendor::vte::tests::partial_utf8 ... ok
+test vendor::vte::tests::partial_utf8_into_esc ... ok
+test vendor::vte::tests::partial_utf8_separating_utf8 ... ok
+test vendor::vte::tests::unicode ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos ... ok
+test vendor::alacritty::term::tests::full_damage ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos ... ok
+test vendor::alacritty::term::tests::grid_serde ... ok
+test vendor::vte::ansi::tests::sync_bursts_buffer ... ok
+
+test result: ok. 108 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/checkpoint.rs (target/debug/deps/checkpoint-8b0e7ef77571ca58)
+
+running 7 tests
+test osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st ... ok
+test viewport_only_drops_existing_history_even_while_the_primary_is_inactive ... ok
+test saved_cursor_and_inactive_primary_screen_survive_checkpoint ... ok
+test synchronized_output_buffer_and_preceding_character_survive_checkpoint ... ok
+test incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook ... ok
+test checkpoint_retains_an_incomplete_csi_and_utf8_codepoint ... ok
+test red_foreground_survives_4096_bytes_and_a_durable_checkpoint ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+   Doc-tests bbt_core
+
+running 3 tests
+test crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2384) ... FAILED
+test crates/bbt-core/src/vendor/vte/mod.rs - vendor::vte::Parser<OSC_RAW_BUF_SIZE>::params (line 80) ... FAILED
+test crates/bbt-core/src/lib.rs - (line 3) ... ok
+
+failures:
+
+---- crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2384) stdout ----
+error[E0433]: cannot find module or crate `alacritty_terminal` in this scope
+    --> crates/bbt-core/src/vendor/alacritty/term/mod.rs:2385:5
+     |
+2385 | use alacritty_terminal::term::test::mock_term;
+     |     ^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `alacritty_terminal`
+     |
+     = help: if you wanted to use a crate named `alacritty_terminal`, use `cargo add alacritty_terminal` to add it to your `Cargo.toml`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.
+Couldn't compile the test.
+---- crates/bbt-core/src/vendor/vte/mod.rs - vendor::vte::Parser<OSC_RAW_BUF_SIZE>::params (line 80) stdout ----
+error[E0433]: cannot find module or crate `vte` in this scope
+  --> crates/bbt-core/src/vendor/vte/mod.rs:81:13
+   |
+81 | let mut p = vte::Parser::<64>::new_with_size();
+   |             ^^^ use of unresolved module or unlinked crate `vte`
+   |
+   = help: if you wanted to use a crate named `vte`, use `cargo add vte` to add it to your `Cargo.toml`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.
+Couldn't compile the test.
+
+failures:
+    crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2384)
+    crates/bbt-core/src/vendor/vte/mod.rs - vendor::vte::Parser<OSC_RAW_BUF_SIZE>::params (line 80)
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+all doctests ran in 0.28s; merged doctests compilation took 0.06s
+error: doctest failed, to rerun pass `-p bbt-core --doc`

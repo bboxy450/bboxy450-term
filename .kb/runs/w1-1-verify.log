@@ -1,0 +1,10 @@
+W1.1 pre-commit verification
+cargo test -p bbt-core: exit 0; 108 retained unit + 7 integration + 2 doctests
+cargo build --workspace --locked: exit 0
+cargo test --workspace --locked: exit 0; 117 total tests across workspace
+cargo fmt -p bbt-core -- --check: exit 0
+git fetch origin and git pull --ff-only: exit 0; Already up to date
+Source diff whitespace check: exit 0
+Workspace test log trailing blank lines omitted; messages/results unchanged
+Previous failed compiler/version/doctest runs retained as cargo-test-01..03.log
+Rust line accounting (including tests and formatting): kept 9925, cut 5947, added 1319; final 11244
