@@ -4,12 +4,12 @@ Owner: Vesper Greywind <ORACLE>. 2026-10-21. DECIDED by the operator: native sup
 
 ## Shape
 
-A work item is one Markdown file with YAML frontmatter in the repository the swarm works on, under **`.bboxy/`** (operator decision 2026-10-21; this repo's `.kb/` migrates to `.bboxy/` as the dogfood). `.bboxy/` holds all of a repo's tasks and knowledge: epics, specs, tasks, research, runs. Knowledge files are the same schema with `type: note`. Three types, one schema. Git is the database; the terminal is a reader, writer and watcher of these files, nothing more.
+A work item is one Markdown file with YAML frontmatter in the repository the swarm works on, under **`.bboxy/`** (operator decision 2026-10-21; this repo's `.kb/` migrates to `.bboxy/` as the dogfood). `.bboxy/` holds all of a repo's tasks and knowledge: epics, specs, tasks, research, runs. Knowledge files are the same schema with `type: note`. Six types, one schema (operator, 2026-10-21): **epic**, **spec**, **task**, **bug**, **note**, **invariant**. Git is the database; the terminal is a reader, writer and watcher of these files, nothing more.
 
 ```yaml
 ---
 id: 01JAX3K9Q7M2N8P4R6S1T0V5W9      # ULID, assigned on creation, never changes
-type: task | spec | epic | note
+type: epic | spec | task | bug | note | invariant
 title: fork alacritty_terminal + vte into bbt-core
 status: open | claimed | running | reported | accepted | rejected | blocked | done
 parent: 01JAX…                       # single parent, optional
@@ -29,6 +29,19 @@ updated: 2026-10-21T21:40:00Z
 ```
 
 Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]]` anywhere in frontmatter or body resolve to items in `.bboxy/` by id or slug; plain URLs and repo paths are links too. The terminal indexes both the typed `links` and inline wikilinks into one graph. The filename is `<type>s/<date>-<slug>.md`; the id in the frontmatter is the identity, the filename is for humans.
+
+## Types
+
+| Type | What it is | Status set | Typical links |
+|---|---|---|---|
+| epic | an outcome spanning specs and tasks | open, running, done | `children` specs and tasks |
+| spec | a decided design for one concern | draft, decided, superseded | `parent` epic; `[[…\|evidence]]` to research notes |
+| task | one Executor assignment | open, claimed, running, reported, accepted, rejected, blocked, done | `parent` spec or epic; `depends`; `assignee` |
+| bug | a defect with a reproduction | open, claimed, running, reported, fixed, wontfix, duplicate | `[[task\|blocks]]`, `[[spec\|violates]]`, `[[invariant\|violates]]` |
+| note | knowledge: research, runs, evidence, decisions log | none (always current until superseded) | anything |
+| invariant | a rule that must always hold; the thing bugs are checked against and specs may not contradict | active, retired | `[[spec\|constrains]]`, `[[bug\|violated-by]]` |
+
+Invariants are first-class so the graph can answer "what does this bug break" and "which spec does this invariant bind". Examples from this project: one meaning per signal; rows never reorder; the app never holds the primary secret; unknown is never shown as failure; no LGPL in the tree.
 
 ## Wikilinks and weights (operator, 2026-10-21: "wikilinks is the way")
 
