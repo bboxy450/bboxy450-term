@@ -13,21 +13,33 @@ impl DeviceContext {
             return Err("W3.1 requires macOS and the Metal backend".into());
         }
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::METAL, ..wgpu::InstanceDescriptor::new_without_display_handle()
+            backends: wgpu::Backends::METAL,
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
-        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            force_fallback_adapter: false,
-            compatible_surface: None,
-            apply_limit_buckets: false,
-        }).await.map_err(|e| RenderError(format!("Metal adapter: {e}")))?;
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                force_fallback_adapter: false,
+                compatible_surface: None,
+                apply_limit_buckets: false,
+            })
+            .await
+            .map_err(|e| RenderError(format!("Metal adapter: {e}")))?;
         let adapter_info = adapter.get_info();
         if adapter_info.backend != wgpu::Backend::Metal {
             return Err(format!("expected Metal, got {:?}", adapter_info.backend).into());
         }
-        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("bbt-render headless Metal"), ..Default::default()
-        }).await.map_err(|e| RenderError(format!("Metal device: {e}")))?;
-        Ok(Self { device, queue, adapter_info })
+        let (device, queue) = adapter
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("bbt-render headless Metal"),
+                ..Default::default()
+            })
+            .await
+            .map_err(|e| RenderError(format!("Metal device: {e}")))?;
+        Ok(Self {
+            device,
+            queue,
+            adapter_info,
+        })
     }
 }

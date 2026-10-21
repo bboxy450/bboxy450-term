@@ -1,0 +1,27 @@
+$ cargo build --workspace --locked
+   Compiling bitflags v2.13.2
+   Compiling serde_derive v1.0.229
+   Compiling dispatch2 v0.3.1
+   Compiling wgpu-types v30.0.1
+   Compiling png v0.18.1
+   Compiling objc2-core-foundation v0.3.2
+   Compiling serde v1.0.229
+   Compiling objc2-foundation v0.3.2
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling naga v30.0.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-core)
+   Compiling objc2-metal v0.3.2
+   Compiling objc2-core-graphics v0.3.2
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.56s
+
+exit_status: 0

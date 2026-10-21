@@ -22,6 +22,10 @@ impl InstanceData {
         4 => Unorm8x4, 5 => Unorm8x4, 6 => Uint32
     ];
     pub fn layout() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout { array_stride: 32, step_mode: wgpu::VertexStepMode::Instance, attributes: &Self::ATTRIBUTES }
+        wgpu::VertexBufferLayout {
+            array_stride: 32,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &Self::ATTRIBUTES,
+        }
     }
 }
