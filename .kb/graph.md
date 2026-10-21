@@ -9,10 +9,10 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Agent | Role | Harness | Now | Blocked on |
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
-| Lumen Foxglove | Creativity | Claude Code | lab passes under the operator's direct review; design system | nothing |
+| Lumen Foxglove | Creativity | Claude Code | lab passes under the operator's direct review; design system v11 (task rows, epic groups built) | nothing |
 | Nyx Copperwing | Executor | Codex | **W2.1 mux supervisor + PTY + lease** | nothing |
 | Rook Ashwhisker | Executor | Codex | idle | in-session authorization from the operator |
-| subagent gui-spec | Oracle instrument | Claude | drafting `specs/gui-components.md` | nothing |
+| subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
 | operator | operator | human | lab review with Lumen | Codex trust for the fixture dir; Rook's pane |
 
@@ -22,13 +22,14 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 specs (done): messaging, subagent-detection, mux-daemon, harness-adapters,
               mcp-control-plane, terminal-core, identity, renderer, ux-prototype(v2),
               work-items (epics/specs/tasks as md+frontmatter)
-specs (drafting): gui-components ──▶ W3.2 brief
-specs (done +1): networking ✔ ──▶ W4.1 brief ✔ [OPEN]
+specs (done +2): gui-components ✔ ──▶ W3.2a brief ✔ [OPEN]; networking ✔ ──▶ W4.1 brief ✔ [OPEN]
 
 W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
    ├──▶ W3.1 renderer harness ✔ (Nyx, fcc8eca, 5 tests, 48 PNGs, CI green on macos-15)
-   │       └──▶ W3.2 GUI components [PENDING SPEC]
-   │               └──▶ W3.3 glow/locate/dim fx
+   │       └──▶ W3.2a ui-model: tokens, model, layout [OPEN, no dependency]
+   │               └──▶ W3.2b chrome pass + modules + lab
+   │                       └──▶ W3.2c input, launcher, signals→fx
+   │                               └──▶ W3.3 glow/locate/dim fx
    │                       └──▶ W3.4 app: window, sidebar, stage, launcher, GUI client
    └──▶ W1.2 byte ring [OPEN, after W2.1]
 
@@ -52,10 +53,10 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 | State | Items |
 |---|---|
 | RUNNING | W2.1 (Nyx); gui-components spec; networking spec; lab passes (Lumen) |
-| OPEN, claimable now | W4.1 |
+| OPEN, claimable now | W4.1, W3.2a |
 | OPEN, after W2.1 | W1.2, W2.3 |
-| PENDING SPEC | W3.2 |
-| NOT YET BRIEFED | W2.2, W2.4, W2.5 (incl. task_delegate), W3.3, W3.4 |
+| PENDING SPEC | none |
+| NOT YET BRIEFED | W2.2, W2.4, W2.5 (incl. task_delegate), W3.2b, W3.2c, W3.3, W3.4 |
 | PARTIAL | H Codex capture (operator trust) |
 | REDUNDANT, optional | Rook's `-exec` passes on A and H |
 

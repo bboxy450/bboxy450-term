@@ -21,7 +21,9 @@
 | W2.1 | [[2026-10-21-w2-1-mux-supervisor]] supervisor, PTYs, lease protocol | Nyx Copperwing <EXECUTOR> | ASSIGNED |
 | W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | free Executor after W2.1 | OPEN |
 | W2.3 | [[2026-10-21-w2-3-adapters-claude-codex-zsh]] adapters: Claude, Codex, zsh | free Executor after W2.1 | OPEN |
-| W3.2 | GPU GUI component library | brief after `specs/gui-components.md` lands | PENDING SPEC |
+| W3.2a | [[2026-10-21-w3-2a-ui-model]] ui-model: tokens, model types, layout engine | free Executor | OPEN |
+| W3.2b | chrome pass + sidebar/stage modules + lab (gui-components §7 steps 4–7, 11) | after W3.2a | NOT YET BRIEFED |
+| W3.2c | input/focus, launcher, signals→fx (§7 steps 8–10) | after W3.2b | NOT YET BRIEFED |
 | W4.1 | [[2026-10-21-w4-1-transport-trait]] Transport trait, loopback, quinn endpoint auth | free Executor | OPEN |
 
 Rule: redundant passes write `-exec.md` next to the subagent's file. The Oracle converges both into `specs/`. Claim by replying on `#bboxy450-term` with `Name <EXECUTOR> CLAIM <Id>`. Finish one, claim the next.
