@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 21,
+  "version": 22,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -339,7 +339,7 @@
       "purpose": "scrollback was evicted here",
       "source": "ring eviction",
       "anatomy": "a hairline across the pane body with a centred caption built from the supplied retained range (\"retained from <range>\" or \"earlier output unavailable\"); never an invented line count",
-      "status": "drawn, not built"
+      "status": "built: at the top of the retained output in the pane body, two hairlines around a mono caption, \"earlier output evicted · retained from <range.from>\" or \"earlier output unavailable\"; the tooltip may add the supplied record id; gapMarker() in components.js, pane.html?state=gap · retained"
     },
     "stop_action": {
       "purpose": "interrupt the seat",

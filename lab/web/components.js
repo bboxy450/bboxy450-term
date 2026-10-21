@@ -456,7 +456,14 @@
       waiting: 'Allow Bash(git push)?\n  <b>› Yes</b>\n    No\n<span class="cur"></span>',
       errored: 'error[E0599]: no method named `glow`\n  --> src/sidebar.rs:88:14\n<b>$</b> <span class="cur"></span>',
     };
-    return el('div', { class: 'term', html: lines[seat.state] });
+    const t = el('div', { class: 'term', html: lines[seat.state] });
+    if (seat.gap) t.prepend(gapMarker(seat.gap));
+    return t;
+  }
+  // scrollback gap (mux ReadRecords → Gap): the caption comes only from the supplied retained range; never an invented line count
+  function gapMarker(range) {
+    const cap = range && range.from ? 'earlier output evicted · retained from ' + range.from : 'earlier output unavailable';
+    return el('div', { class: 'gap-mark', title: cap + (range && range.of ? ' · ' + range.of : '') }, el('i'), el('span', {}, cap), el('i'));
   }
   function titleStrip(seat, opts) {
     opts = opts || {};
@@ -813,5 +820,5 @@
     return root;
   }
 
-  window.C = { subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

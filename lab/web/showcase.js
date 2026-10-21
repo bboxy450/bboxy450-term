@@ -94,6 +94,7 @@
   // running subagents nest under their seat (Claude via OSC 7501 id/title, Codex via subagent hooks); ended ones leave the sidebar
   seats[0].subagents = [{ id: 'a1', description: 'Explore render goldens', state: 'active', detail: 'Grep · bbt-render' }, { id: 'a2', description: 'Review W3.2a diff', state: 'waiting', kind: 'permission', detail: 'Bash · cargo test' }];
   seats[1].subagents = [{ id: 'c1', description: 'worker: ring checksum', state: 'active' }];
+  seats[3].gap = { from: '09:14:07' };  // a long-running cloud seat whose ring evicted its oldest output
   // subscriptions and external events (events.md): auto-subscriptions follow delegation; external arrives from webhooks, CI, cloud, cron
   model.spaces[0].subscriptions = [
     { seat: 'Vesper Greywind', color: '#FFC53D', patterns: [{ pattern: 'task/*', auto: true, why: 'the Oracle follows every task it delegated' }, { pattern: 'seat/*/state' }, { pattern: 'doc/specs/**' }] },

@@ -149,7 +149,7 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 3 | delivery evidence | messaging | BUILT: tick ladder after the time on message rows (· ✓ ✓✓ ✓✓ ✓✓✓); queued dims its second tick; acknowledged in accent; unknown is ✓ then a dashed hollow ring, never red, never a failure |
 | 4 | held count | mute | BUILT: muted row shows an amber "held N"; unmute releases only eligible items and the stream line counts them; blocked items stay as a dashed "held N" with id and reason |
 | 5 | reconnect | mux state streams | stale frame dimmed under a "reconnecting…" pill; "restarted" chip on generation change |
-| 6 | scrollback gap | ring eviction | hairline with a caption from the supplied retained range; never an invented count |
+| 6 | scrollback gap | ring eviction | BUILT: hairline with a centred caption, "earlier output evicted · retained from <from>" or "earlier output unavailable"; never an invented count |
 | 7 | pending row | MCP mutation status | dashed row with spinner until applied; rejected shows the reason |
 | 8 | audit lines | Oracle audit log | DECIDED: a projection of the audit log, swarm-member scope; centred stream lines |
 | 9 | interrupt | seat_interrupt | stop glyph in the strip (Oracle/operator), red bar sweep |

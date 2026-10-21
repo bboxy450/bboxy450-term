@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pane body · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+const seat = (st, i, extra) => ({ key: 'pb' + i, name: ['Vesper Greywind', 'Nyx Copperwing', 'Rook Ashwhisker'][i], harness: ['claude', 'codex', 'codex'][i], role: ['oracle', 'executor', 'executor'][i], title: ['swarm control', 'messaging spec', 'gpu research'][i], state: st, ...(extra || {}) });
+Lab.page({ title: 'pane body', wide: true, note: 'What the pane body says about its own history and connection. Scrollback gap: a hairline with a caption built only from the retained range the mux supplies, never an invented line count.',
+  states: ['gap · retained', 'gap · unavailable'],
+  render(s, body) {
+    const stage = el('div', { style: 'background:var(--navy);padding:28px;border-radius:var(--r-pill);display:grid;grid-template-columns:1fr 1fr;gap:28px' });
+    const p = (sd, o) => C.pane(sd, { focused: true, shortcut: '⌘1', height: 220, ...(o || {}) });
+    if (s === 'gap · retained') stage.append(p(seat('active', 0, { gap: { from: '09:14:07', of: 'record 48211' } })), p(seat('idle', 1, { gap: { from: 'yesterday 23:40' } }), { focused: false, unfocused: true }));
+    if (s === 'gap · unavailable') stage.append(p(seat('idle', 2, { gap: {} })), p(seat('errored', 1, { gap: {} }), { focused: false, unfocused: true }));
+    body.append(stage);
+  } });
+</script></body></html>

@@ -173,6 +173,9 @@ code, .mono { font-family: var(--font-mono); }
 .strip .glyph { --glyph: 11px; }
 .pane .term { flex: 1; padding: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim); white-space: pre; overflow: hidden; line-height: 1.5; }
 .pane .term b { color: var(--fg); font-weight: 400; }
+.gap-mark { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; white-space: nowrap; font-size: 10px; color: var(--fg-dim); }
+.gap-mark i { flex: 1; height: 1px; background: var(--hair); min-width: 12px; }
+.gap-mark span { flex: none; letter-spacing: .02em; }
 .pane .term .cur { display: inline-block; width: 7px; height: 12px; background: var(--fg); vertical-align: -2px; }
 
 /* picker */
