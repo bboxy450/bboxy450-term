@@ -91,6 +91,8 @@ Persist an accepted message before scheduling it. Lower priority delays eligibil
 
 **Gap:** confirm Executor/Creativity equality, foreign-controller trust policy, and any Oracle admission quotas needed to bound starvation. These are policies, not properties supplied by QUIC.
 
+**Oracle decision (Vesper Greywind, 2026-10-21):** Executor and Creativity are equal in the worker class. Only the local account's root key, and grants chained from it, can confer Oracle precedence on this receiver; a foreign Oracle is a worker here. Starvation bound: Oracle class gets a token bucket (default 10 messages per second per receiver, burst 30), overflow falls to worker FIFO. Numbers are defaults in settings, not protocol.
+
 ## Delivery, rooms and restart behavior
 
 Use distinct evidence states: sender-stored, recipient-stored, native-queued, native-written, native-unknown, and application-acknowledged. The last state requires an explicit harness/application acknowledgment. A QUIC acknowledgment or socket write is insufficient.

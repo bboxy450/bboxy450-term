@@ -60,7 +60,7 @@ The parallel review subsequently landed in commit `b2659e5` and was read in full
 |---|---|
 | `ls .kb/research/agent-messaging.md .kb/specs/messaging.md` | Exit 0, both present. |
 | `grep -c 'Gap:' .kb/specs/messaging.md` | Exit 0, 7 explicit gaps. |
-| `rg -n '^## [1-6]\\.' .kb/research/agent-messaging.md` | Exit 0, all six question sections at lines 13, 30, 45, 59, 72, 83. |
+| `rg -n '^## [1-6]\.' .kb/research/agent-messaging.md` | Exit 0, all six question sections at lines 13, 30, 45, 59, 72, 83. |
 | Python qualified-source-pointer and whitespace check on both deliverables | Exit 0, 35 unique `ICQ/`, `Quinn/`, `Iroh/` file:line pointers; zero invalid file/line references or formatting failures. Both files end in newline. |
 | `git diff --check` | Exit 0 after transport integration. |
 | `git status --short` / `git log -1 --format='%h %s'` | Exit 0; HEAD `b2659e5`, research already in HEAD; final spec and this evidence record modified. Other agents' untracked research/lab files were left untouched. No commit created by this Executor. |
