@@ -207,6 +207,13 @@ code, .mono { font-family: var(--font-mono); }
 .msg.unread::after { content: ""; position: absolute; right: 8px; top: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--role); }
 .msg .reply { font-size: 11px; color: var(--fg-dim); border-left: 2px solid var(--line); padding-left: 6px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .msg.nested { margin-left: 18px; }
+.msg .ticks { display: inline-flex; min-width: 2.4em; font-family: var(--font-chrome); font-size: 12.5px; font-weight: 600; line-height: 1; color: var(--fg-dim); }
+.msg .ticks i { font-style: normal; }
+.msg .ticks i + i { margin-left: -0.42em; }
+.msg .ticks i.q { opacity: .38; }
+.msg .ticks.application-acknowledged { color: var(--accent); }
+.msg .ticks { align-items: center; }
+.msg .ticks i.hollow { font-size: 0; width: 8px; height: 8px; margin-left: 1px; border: 1.3px dashed currentColor; border-radius: 50%; box-sizing: border-box; }
 .msg .p0 { font-family: var(--font-mono); font-size: 10px; background: var(--role); color: #000; border-radius: 3px; padding: 0 4px; }
 .stream { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 6px; max-width: 520px; }
 .ripple { position: absolute; left: 6px; top: 50%; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--role); transform: translate(-50%, -50%); animation: ripple var(--ripple-ms) ease-out forwards; pointer-events: none; }

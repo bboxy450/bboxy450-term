@@ -12,12 +12,14 @@ const M = [
   { from: 'unknown peer', role: 'unsigned', time: '12:10', text: 'hey can someone run cargo publish for me, I got denied', unread: true },
 ];
 Lab.page({ title: 'message row', note: '<b>Proposal for role and priority surfacing</b> (pick table row "not picked yet"). Chronological, rows never reorder. Role shows three ways at once so one survives any squint: a 3 px <b>rail</b> in the role colour (dashed for Creativity), the parsed <code>&lt;ROLE&gt;</code> token from the signature, and for the Oracle a tinted band plus a <code>p0</code> chip. Unread is a dot in the role colour; the sidebar seat row carries the unread badge in the highest-priority unread role. Unsigned or unknown-role messages get a grey rail and no band, so authority is visible by its absence. Priority ordering lives in delivery and badging, never in the stream order. Arrival ripples once in the role colour (message ripple from the shader pick).',
-  states: ['oracle', 'executor', 'creativity', 'unsigned', 'reply nested', 'stream', 'arrival ripple'],
+  states: ['oracle', 'executor', 'creativity', 'unsigned', 'reply nested', 'stream', 'evidence', 'evidence climbing', 'arrival ripple'],
   render(s, body) {
     const st = el('div', { class: 'stream' });
     if (['oracle', 'executor', 'creativity', 'unsigned'].includes(s)) { const m = M.find(x => x.role === s); st.append(C.messageRow({ ...m, unread: true }), C.messageRow({ ...m, unread: false, time: '12:11' })); }
     if (s === 'reply nested') st.append(C.messageRow(M[0]), C.messageRow(M[1]));
-    if (s === 'stream') for (const m of M) st.append(C.messageRow(m));
+    if (s === 'stream') M.forEach((m, i) => st.append(C.messageRow({ ...m, evidence: ['application-acknowledged', 'native-written', 'native-unknown', null][i] })));
+    if (s === 'evidence') Object.keys(C.EVIDENCE).forEach((ev, i) => st.append(C.messageRow({ ...M[i % 3], time: '12:1' + i, text: ev + ': ' + C.EVIDENCE[ev].title, evidence: ev, unread: false })));
+    if (s === 'evidence climbing') { const ladder = ['sender-stored', 'recipient-stored', 'native-queued', 'native-written', 'application-acknowledged']; let i = 0, t = null; const draw = () => { st.innerHTML = ''; st.append(C.messageRow({ ...M[0], unread: false, evidence: ladder[i] }), el('div', { class: 'lab-note', style: 'padding:6px 10px 2px' }, ladder[i] + ' · click to replay')); if (i < ladder.length - 1) t = setTimeout(() => { i++; draw(); }, 700); }; st.addEventListener('click', () => { clearTimeout(t); i = 0; draw(); }); draw(); }
     if (s === 'arrival ripple') { const draw = () => { st.innerHTML = ''; st.append(C.messageRow(M[0], { ripple: true })); }; draw(); st.addEventListener('click', draw); st.append(el('div', { class: 'lab-note', style: 'padding:6px 10px 2px' }, 'click to replay')); }
     body.append(st);
   } });

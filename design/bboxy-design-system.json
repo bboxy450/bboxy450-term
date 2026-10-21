@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 18,
+  "version": 19,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -209,7 +209,7 @@
       "means": "how far a message got",
       "source": "messaging.md: sender-stored, recipient-stored, native-queued, native-written, native-unknown, application-acknowledged",
       "drawing": "a tick ladder at the right of a message row: ·  ✓  ✓✓  ✓✓✓ for stored → written → acknowledged; unknown is a distinct hollow mark, never red, never a failure",
-      "status": "drawn, not built"
+      "status": "built: after the time on the row head; sender-stored ·, recipient-stored ✓, native-queued ✓✓ with the second tick at 38%, native-written ✓✓, application-acknowledged ✓✓✓ in accent, native-unknown ✓ then a dashed hollow ring (fg-dim, never red); the tooltip spells the state; tickLadder() in components.js, message-row.html?state=evidence"
     },
     "held_count": {
       "means": "swarm traffic held while muted",
@@ -356,7 +356,7 @@
     "tick_ladder": {
       "purpose": "delivery evidence on a message",
       "anatomy": "see signals.delivery_evidence",
-      "status": "drawn, not built"
+      "status": "built (see signals.delivery_evidence)"
     },
     "where_mark": {
       "purpose": "where the seat runs",

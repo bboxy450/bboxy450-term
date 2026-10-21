@@ -146,7 +146,7 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 |---|---|---|---|
 | 1 | state grade | harness-adapters §3 | BUILT: reported solid, shim ringed, inferred dashed at 72%; inferred glows at half; grade from the harness record's state source |
 | 2 | waiting kinds | OSC 7501 | BUILT: ◐ with a tiny kind mark (⚿ permission, ? question, ⚷ auth); the strip title spells it |
-| 3 | delivery evidence | messaging | tick ladder on message rows; unknown is a hollow mark, never a failure |
+| 3 | delivery evidence | messaging | BUILT: tick ladder after the time on message rows (· ✓ ✓✓ ✓✓ ✓✓✓); queued dims its second tick; acknowledged in accent; unknown is ✓ then a dashed hollow ring, never red, never a failure |
 | 4 | held count | mute | muted row shows "held N" |
 | 5 | reconnect | mux state streams | stale frame dimmed under a "reconnecting…" pill; "restarted" chip on generation change |
 | 6 | scrollback gap | ring eviction | hairline with a caption from the supplied retained range; never an invented count |

@@ -549,6 +549,20 @@
   }
 
   // message row: proposal for role/priority surfacing (see page note)
+  // delivery evidence (messaging.md): six states, one ladder; unknown is its own hollow mark, never red, never a failure
+  const EVIDENCE = {
+    'sender-stored': { ticks: '·', title: 'in your outbox · not at the recipient yet' },
+    'recipient-stored': { ticks: '✓', title: "in the recipient's inbox" },
+    'native-queued': { ticks: '✓✓', dim: 1, title: "queued in the recipient's harness" },
+    'native-written': { ticks: '✓✓', title: "written into the recipient's harness" },
+    'application-acknowledged': { ticks: '✓✓✓', title: 'acknowledged by the harness' },
+    'native-unknown': { ticks: '✓◌', title: 'in the inbox · write outcome unknown · never resent on its own' },
+  };
+  function tickLadder(state) {
+    const e = EVIDENCE[state]; if (!e) return null;
+    const marks = [...e.ticks].map((t, i) => el('i', { class: (t === '◌' ? 'hollow' : '') + (e.dim && i === 1 ? ' q' : '') }, t));
+    return el('span', { class: 'ticks ' + state, title: state + ' · ' + e.title }, ...marks);
+  }
   function messageRow(m, opts) {
     opts = opts || {};
     if (m.presence) return el('div', { class: 'msg presence' }, el('span', { class: 'ptext' }, m.text), el('span', { class: 'time' }, m.time || ''));
@@ -557,6 +571,7 @@
     const head = el('div', { class: 'head' }, el('span', { class: 'who' }, m.from), el('span', { class: 'role' }, '<' + role.toUpperCase() + '>'));
     if (role === 'oracle' && !m.foreign) head.append(el('span', { class: 'p0' }, 'p0'));  // a foreign Oracle ranks as a worker here
     head.append(el('span', { class: 'time' }, m.time || ''));
+    if (m.evidence) head.append(tickLadder(m.evidence));
     const body = el('div', { class: 'body' }, head);
     if (m.replyTo) body.append(el('div', { class: 'reply' }, '↩ ' + m.replyTo));
     body.append(el('div', { class: 'text' }, m.text));
@@ -780,5 +795,5 @@
     return root;
   }
 
-  window.C = { subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
