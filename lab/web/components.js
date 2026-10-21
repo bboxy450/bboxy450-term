@@ -65,12 +65,13 @@
     // 100x110 box. Ears tall and set wide, cheeks flare, chin comes to a point: a fox, not a cat.
     const head = `<g transform="rotate(${tilt} 50 56)">
       <path fill="${navy}" d="M16 84 Q50 110 84 84 L92 110 L8 110 Z"/>
-      <path fill="${fill}" d="M12 2 L38 36 Q50 31 62 36 L88 2 L96 46 C104 68 80 86 50 100 C20 86 -4 68 4 46 Z"/>
+      <path fill="${fill}" d="M12 2 L38 36 Q50 31 62 36 L88 2 L96 46 C102 64 86 78 64 86 L50 104 L36 86 C14 78 -2 64 4 46 Z"/>
+      <path fill="${navy}" d="M43 88 Q50 83 57 88 L50 97 Z"/>
       <path fill="${navy}" d="M17 17 L30 35 L14 39 Z M83 17 L70 35 L86 39 Z"/>
       <path fill="${navy}" d="M38 46 L42 33 L47 41 L53 29 L59 40 L66 35 L64 48 Q52 42 38 50 Z"/>
       ${opts.face ? `<path fill="${c.fg}" d="M38 66 Q50 60 62 66 Q60 84 50 90 Q40 84 38 66 Z"/><ellipse cx="50" cy="70" rx="4.5" ry="3.5" fill="${navy}"/>` : ''}
     </g>`;
-    const ears = `<g transform="rotate(${tilt} 50 55)"><path fill="${fill}" d="M8 102 L24 6 L50 72 L76 6 L92 102 Q50 86 8 102 Z"/><path fill="${navy}" d="M25 30 L38 66 L20 78 Z M75 30 L62 66 L80 78 Z"/></g>`;
+    const ears = `<g transform="rotate(${tilt} 50 55)"><path fill="${fill}" d="M8 102 L24 6 L50 72 L76 6 L92 102 L50 90 Z"/><path fill="${navy}" d="M42 98 L50 90 L58 98 L50 108 Z"/><path fill="${navy}" d="M25 30 L38 66 L20 78 Z M75 30 L62 66 L80 78 Z"/></g>`;
     return `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">${opts.ears ? ears : head}</svg>`;
   }
   function logo(px, opts) { opts = opts || {}; const ears = opts.ears != null ? opts.ears : px < 32; return el('span', { class: 'logo', style: 'width:' + px + 'px;height:' + px + 'px;display:inline-block', html: logoSvg({ ...opts, ears }) }); }
