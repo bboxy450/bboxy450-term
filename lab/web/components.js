@@ -313,49 +313,66 @@
   ];
   function picker(opts) {
     opts = opts || {};
-    let q = opts.query || '', sel = 0, seed = opts.seed || 1;
+    // Nested choices: an item may carry `children` (array or function). Right / Enter dives in, Left / Backspace on an
+    // empty field climbs out, and typing flattens: "goto nyx" or "codex split" filters straight into the sublist.
+    let q = opts.query || '', sel = 0, seed = opts.seed || 1, stack = [];
     const items0 = opts.items || LAUNCH;
     const box = el('div', { class: 'picker' });
     const input = el('input', { placeholder: opts.placeholder || 'new seat · type to filter', value: q });
+    const crumbs = el('span', { class: 'crumbs' });
     const list = el('div');
     const foot = el('div', { class: 'foot' });
     function nameFor(seed) { return rollName(rng('roll' + seed)); }
-    const matches = () => { const qq = q.toLowerCase(); return items0.filter(it => !qq || it.label.toLowerCase().startsWith(qq) || it.id.startsWith(qq) || it.label.toLowerCase().split(' ').some(w => w.startsWith(qq)) || (it.sub || '').toLowerCase().includes(qq)); };
-    const pick = (it, ev) => { if (it && opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }); };
+    const kids = it => typeof it.children === 'function' ? it.children() : (it.children || []);
+    const norm = s => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const aliasOf = it => [it.label, ...(it.aliases || [])].map(norm);
+    // where are we: the explicit stack, plus a virtual descent typed as "<parent> <rest>"
+    function scope() {
+      let level = stack.length ? kids(stack[stack.length - 1]) : items0, qq = norm(q), virt = null;
+      for (const it of level) if (it.children) for (const a of aliasOf(it)) if (qq.startsWith(a + ' ') || (qq === a && false)) { virt = it; qq = qq.slice(a.length + 1); level = kids(it); break; }
+      return { level, qq, virt };
+    }
+    const hit = (it, qq) => !qq || aliasOf(it).some(a => a.startsWith(qq)) || norm(it.label).split(' ').some(w => w.startsWith(qq)) || norm(it.sub).includes(qq) || (it.id || '').startsWith(qq);
+    const matches = () => { const s = scope(); return s.level.filter(it => hit(it, s.qq)); };
+    const path = () => { const s = scope(); return s.virt ? [...stack, s.virt] : stack; };
+    const dive = it => { stack = [...path(), it]; q = ''; input.value = ''; sel = 0; draw(); };
+    const climb = () => { if (!stack.length) return; stack = stack.slice(0, -1); q = ''; input.value = ''; sel = 0; draw(); };
+    const pick = (it, ev) => { if (!it) return; if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
     function draw() {
-      list.innerHTML = '';
+      list.innerHTML = ''; crumbs.innerHTML = '';
+      for (const c of path()) crumbs.append(el('span', { class: 'crumb' }, c.label));
       const items = matches();
       if (!items.length) list.append(el('div', { class: 'empty' }, 'nothing matches "' + q + '"'));
       let lastSec = null;
       items.forEach((it, i) => {
         if (it.section && it.section !== lastSec) { list.append(el('div', { class: 'sec' }, it.section)); lastSec = it.section; }
-        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : ''), onclick: e => pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
-        const label = el('span', { class: 'lbl' }); const L = it.label, m = q && L.toLowerCase().startsWith(q.toLowerCase()) ? q.length : 0;
+        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : '') + (it.children ? ' parent' : ''), onclick: e => pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
+        const label = el('span', { class: 'lbl' }); const L = it.label, qq = scope().qq, m = qq && norm(L).startsWith(qq) ? qq.length : 0;
         if (m) label.append(el('span', { class: 'm' }, L.slice(0, m)), L.slice(m)); else label.textContent = L;
-        o.append(label, el('span', { class: 'sub' }, it.sub || ''), el('span', { class: 'kind' }, it.kind || it.hint || ''), el('span', { class: 'num' }, String(i + 1)));
+        o.append(label, el('span', { class: 'sub' }, it.sub || ''), el('span', { class: 'kind' }, it.kind || it.hint || ''));
+        o.append(it.children ? el('span', { class: 'chev', title: '→ opens' }, '›') : el('span', { class: 'num' }, String(i + 1)));
         list.append(o);
       });
       const nm = nameFor(seed);
       foot.innerHTML = '';
-      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }), title: 'seat colour' }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); }, title: 'reroll name' }, '↻'), (() => { const pill = el('span', { class: 'pill' }); const acts = opts.actions || [['New tab', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']]; acts.forEach(([l, kb], i) => { if (i) pill.append(el('span', { class: 'sep' })); pill.append(el('span', {}, l), el('kbd', {}, kb)); }); return pill; })());
+      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }), title: 'seat colour' }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); }, title: 'reroll name' }, '↻'), (() => { const pill = el('span', { class: 'pill' }); const acts = (typeof opts.actions === 'function' ? opts.actions(path()) : opts.actions) || [['Open', '↵'], ['Into', '→'], ['Back', '←'], ['Reroll', '⌘R']]; acts.forEach(([l, kb], i) => { if (i) pill.append(el('span', { class: 'sep' })); pill.append(el('span', {}, l), el('kbd', {}, kb)); }); return pill; })());
     }
     input.addEventListener('input', () => { q = input.value; sel = 0; draw(); });
     input.addEventListener('keydown', e => {
-      const n = matches().length;
+      const n = matches().length, cur = matches()[sel];
       if (e.key === 'ArrowDown') { e.preventDefault(); sel = (sel + 1) % Math.max(n, 1); draw(); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + n - 1) % Math.max(n, 1); draw(); }
-      else if (e.key === 'Enter') { e.preventDefault(); pick(matches()[sel], e); }
-      else if (e.key === 'Escape') { if (opts.onClose) opts.onClose(); }
+      else if (e.key === 'ArrowRight') { if (cur && cur.children) { e.preventDefault(); dive(cur); } }
+      else if (e.key === 'ArrowLeft') { if (!q && stack.length) { e.preventDefault(); climb(); } }
+      else if (e.key === 'Backspace' && !q && stack.length) { e.preventDefault(); climb(); }
+      else if (e.key === 'Enter') { e.preventDefault(); pick(cur, e); }
+      else if (e.key === 'Escape') { if (stack.length) climb(); else if (opts.onClose) opts.onClose(); }
       else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'r') { e.preventDefault(); seed++; draw(); }
       else if (/^[1-9]$/.test(e.key) && !q) { e.preventDefault(); pick(matches()[+e.key - 1], e); }
       e.stopPropagation();
     });
     draw();
-    const inrow = el('div', { class: 'inrow' }, input);
-    if (opts.preview) {   // split preview: the existing pane and the new one, lit
-      const pv = el('span', { class: 'split-preview ' + opts.preview, title: 'where the new seat lands' }, el('i', { class: 'old' }), el('i', { class: 'new' }));
-      inrow.append(pv);
-    }
+    const inrow = el('div', { class: 'inrow' }, crumbs, input);
     box.append(inrow, list, foot);
     box.focus = () => input.focus();
     return box;

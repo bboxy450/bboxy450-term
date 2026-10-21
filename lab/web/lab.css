@@ -437,3 +437,11 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .strip .mute.on { color: #FFE08A; }
 .msg.presence { justify-content: center; gap: 8px; color: var(--fg-dim); font-size: 10.5px; font-family: var(--font-mono); padding: 3px 8px; }
 .msg.presence .time { margin-left: 0; }
+
+.picker .crumbs { display: flex; gap: 4px; padding-left: 10px; }
+.picker .crumbs:empty { display: none; }
+.picker .crumb { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--fg) 9%, transparent); font-size: 11px; }
+.picker .crumb::after { content: ' ›'; color: var(--fg-dim); }
+.picker .inrow { display: flex; align-items: center; }
+.picker .inrow input { flex: 1; min-width: 0; }
+.picker .opt .chev { margin-left: 4px; color: var(--fg-dim); }

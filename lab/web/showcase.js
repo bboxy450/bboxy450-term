@@ -134,34 +134,28 @@
     const anchor = focused, anchorSeat = seats.find(x => x.key === anchor);   // ⌘↵ splits right of the focused pane, ⌘⇧↵ below it, ↵ opens a new tab
     const ph = preset && anchorSeat ? 'split ' + (preset === 'right' ? 'right of ' : 'below ') + anchorSeat.name + ' · pick a harness' : 'launch or go to · type to search';
     const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : [['Launch / go', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']];
-    // ⌘T also goes places: every seat and every swarm is a row; typing filters across launch and go-to
+    // rows with sublists: each launchable → placements; 'Go to' → every seat and swarm. 'goto <name>' types straight in.
     const tileOf = h => (C.LAUNCH.find(l => l.harness === h) || {}).tile || '#374151';
-    const goSeats = seats.map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Go to', seat: x }; });
-    const goSwarms = model.spaces.map(x => ({ id: 'swarm:' + x.key, label: x.name, sub: x.tabs.reduce((n, t) => n + t.seats.length, 0) + ' seats', harness: 'sidebarfoxopen', kind: 'Swarm', tile: x.color, section: 'Go to', swarm: x }));
-    const items = preset ? C.LAUNCH : [...C.LAUNCH, ...goSeats, ...goSwarms];
-    // show the split before it happens: light the target half of the focused pane and draw it in the launcher
-    const anchorEl = preset && anchor ? main.querySelector('.pane[data-key="' + anchor + '"]') : null;
-    if (anchorEl) anchorEl.classList.add('will-' + preset);
-    // banner above the panel: the real pane layout, large, with the new cell lit; nothing subtle about it
-    if (preset && anchorSeat && stageTree) {
-      const ghost = { key: '__new', name: 'new seat', state: 'idle' };
-      const previewTree = replaceNode(stageTree, anchorSeat, { dir: preset === 'right' ? 'v' : 'h', ratio: 0.5, a: anchorSeat, b: ghost });
-      const grid = C.miniGrid(previewTree, '__new', true);
-      back.append(el('div', { class: 'spot-banner' }, grid, el('div', { class: 'txt' }, el('div', { class: 'big' }, preset === 'right' ? 'Split right' : 'Split down'), el('div', { class: 'of' }, 'of ', el('b', { style: 'color:' + anchorSeat.color }, anchorSeat.name), ' · the new seat lands in the lit cell'))));
-    } else if (!preset) {
-      // ⌘T: a new tab. The banner shows the swarm's tabs as a strip with the new one lit at the end.
-      const strip = el('div', { class: 'tab-strip' });
-      for (const t of sp.tabs) strip.append(el('span', { class: 'tcell' }, t.name));
-      strip.append(el('span', { class: 'tcell new' }, 'new tab'));
-      back.append(el('div', { class: 'spot-banner' }, strip, el('div', { class: 'txt' }, el('div', { class: 'big' }, 'New tab'), el('div', { class: 'of' }, 'in ', el('b', { style: 'color:' + sp.color }, sp.name), ' · the new seat gets a tab of its own · or type a name to go somewhere'))));
-    }
-    const pk = C.picker({ placeholder: ph, actions, items, onClose: closeSpotlight, onPick: (it, name, mods) => {
+    const goSeats = () => seats.map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Seats', seat: x }; });
+    const goSwarms = () => model.spaces.map(x => ({ id: 'swarm:' + x.key, label: x.name, sub: x.tabs.reduce((n, t) => n + t.seats.length, 0) + ' seats', harness: 'sidebarfoxopen', kind: 'Swarm', tile: x.color, section: 'Swarms', swarm: x }));
+    const placements = l => [
+      { id: l.id + ':tab', label: 'New tab', sub: 'in ' + sp.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'tab', launch: l },
+      ...(anchorSeat ? [{ id: l.id + ':right', label: 'Split right', sub: 'of ' + anchorSeat.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'right', launch: l },
+                        { id: l.id + ':bottom', label: 'Split down', sub: 'of ' + anchorSeat.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'bottom', launch: l }] : []),
+    ];
+    const launchRows = C.LAUNCH.map(l => ({ ...l, enterPicks: true, children: () => placements(l), aliases: [l.harness] }));
+    const goRow = { id: 'goto', label: 'Go to', aliases: ['goto', 'go', 'jump'], sub: 'a seat or a swarm', harness: 'sidebarfoxopen', kind: 'Navigate', tile: '#6B7190', section: 'Navigate', children: () => [...goSeats(), ...goSwarms()] };
+    const items = [...launchRows, goRow];
+    const acts = p => (p.length && p[p.length - 1].id === 'goto') ? [['Go', '↵'], ['Back', '←']] : (p.length ? [['Place', '↵'], ['Back', '←']] : (preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['Placements', '→'], ['New tab instead', '⌥↵']] : [['New tab', '↵'], ['Placements', '→'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵']]));
+    const pk = C.picker({ placeholder: ph, actions: acts, items, onClose: closeSpotlight, onPick: (it, name, mods, path) => {
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
       if (it.swarm) { closeSpotlight(); jumpSpace(it.swarm); return; }
-      const seat = { key: 'n' + Date.now().toString(36), name: it.harness === 'zsh' ? 'zsh' : name, harness: it.harness, role: C.DEFAULT_ROLE[it.harness], title: it.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15 };
+      const l = it.launch || it;
+      const seat = { key: 'n' + Date.now().toString(36), name: l.harness === 'zsh' ? 'zsh' : name, harness: l.harness, role: C.DEFAULT_ROLE[l.harness], title: l.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15 };
       Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
       seats.push(seat); startReplay(seat, seats.length - 1);
       closeSpotlight();
+      if (it.place) { if (it.place === 'tab' || !anchor) placeSeat(seat, 'tab'); else placeSeat(seat, it.place, anchor); return; }
       if (preset && anchor && !(mods && mods.alt)) placeSeat(seat, preset, anchor);
       else if (mods && mods.meta && anchor) placeSeat(seat, mods.shift ? 'bottom' : 'right', anchor); else placeSeat(seat, 'tab');
     } });

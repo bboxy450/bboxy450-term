@@ -106,7 +106,12 @@
   .spot-banner .txt .of b { font-weight: 600; }
   .spot-back .picker { width: min(760px, 92vw); border-radius: var(--r-panel); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: var(--sh-float), 0 0 0 1px var(--hair), inset 0 1px 0 var(--hi); animation: spotIn var(--appear-ms) var(--ease); overflow: hidden; }
   @keyframes spotIn { from { transform: translateY(-8px) scale(.985); opacity: 0; } to { transform: none; opacity: 1; } }
-  .spot-back .picker .inrow { display: flex; align-items: center; border-bottom: 1px solid var(--hair); padding-right: 20px; gap: 12px; }
+  .spot-back .picker .inrow { display: flex; align-items: center; border-bottom: 1px solid var(--hair); padding: 0 20px 0 0; gap: 0; }
+  .spot-back .picker .crumbs { display: flex; gap: 6px; padding-left: 20px; }
+  .spot-back .picker .crumbs:empty { display: none; }
+  .spot-back .picker .crumb { padding: 4px 10px; border-radius: var(--r-badge); background: var(--sel); font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .spot-back .picker .crumb::after { content: ' ›'; color: var(--fg-dim); }
+  .spot-back .picker .opt .chev { width: 24px; text-align: center; color: var(--fg-dim); font-size: 18px; flex: none; }
   .spot-back .picker input { font-size: var(--t-input); padding: 20px 24px 18px; border-bottom: 0; font-weight: 400; flex: 1; min-width: 0; }
   /* split preview: two cells, the new one lit and breathing */
   .split-preview { display: inline-grid; gap: 3px; width: 44px; height: 30px; padding: 3px; border-radius: var(--r-badge); background: var(--badge); flex: none; }
