@@ -114,6 +114,8 @@ Unread shows as a dot on the seat row in the highest-priority unread role colour
 
 ## 7. Style and tokens
 
+`design/bboxy-design-system.json` is the structured design system: foundations, signals, elements, modules (the launcher modal as its own module with its full keyboard and nesting rules), interactions and gaps. It references the two value files below.
+
 `design/style.json` is the visual style: the Raycast material (frosted panels, hairlines, one radius scale, one type scale, selection as a tint, tiles, badges, pills, one motion curve) with the swarm band and bumper layered on top. Every surface in the showcase is drawn from its values through CSS variables.
 
 Tokens (single source: `design/tokens.toml`)
