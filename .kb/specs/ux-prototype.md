@@ -127,3 +127,27 @@ Keys 1-4 (state of the focused seat), M (message arrives), P (shadow speaks), th
 ## 9. Gaps
 - Remote owned seats versus shadows: owned seats over ssh look like local seats; not shown in the lab.
 - Settings as a tab and the toolbar icon exist as lab pages but are not wired into the showcase.
+
+## 10. From the specs (drawn, not built)
+
+Seventeen implications the other specs place on the UI, recorded by the Oracle on 2026-10-21 and drawn into `design/bboxy-design-system.json` (status "drawn, not built"). Each is one lab pass.
+
+| # | element or signal | source | drawing |
+|---|---|---|---|
+| 1 | state grade | harness-adapters §3 | reported solid, shim ringed, inferred hollow/dashed; inferred glows at half |
+| 2 | waiting kinds | OSC 7501 | permission / question / auth variants of ◐, amber; strip names the kind |
+| 3 | delivery evidence | messaging | tick ladder on message rows; unknown is a hollow mark, never a failure |
+| 4 | held count | mute | muted row shows "held N" |
+| 5 | reconnect | mux state streams | stale frame dimmed under a "reconnecting…" pill; "restarted" chip on generation change |
+| 6 | scrollback gap | ring eviction | hairline with "… N lines not retained" |
+| 7 | pending row | MCP mutation status | dashed row with spinner until applied; rejected shows the reason |
+| 8 | audit lines | Oracle audit log | centred stream lines: Oracle spawned / closed / interrupted X |
+| 9 | interrupt | seat_interrupt | stop glyph in the strip (Oracle/operator), red bar sweep |
+| 10 | spawn cap | per swarm | launch rows dim, banner says cap reached; Go to still works |
+| 11 | purge | GUI only | the one confirm modal, typed seat name |
+| 12 | sockets | seats are sockets | row menu "copy socket path"; listener count on the row |
+| 13 | first run | identity v0.1 | root key + 24-word paper recovery shown once; enrollment and Google deferred |
+| 14 | settings | config.toml | settings tab read-mostly |
+| 15 | role and permissions | per seat | row menu, Oracle/operator |
+| 16 | shadows | global messaging | module kept, deferred |
+| 17 | nested subagent rows | 7501 / hooks | optional per harness |
