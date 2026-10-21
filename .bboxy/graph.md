@@ -38,7 +38,7 @@ W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
 
 W2.1 supervisor + PTY + lease ✔ (Nyx, f6cab17, 12 tests, 50-seat poller)
    ├──▶ W1.2 byte ring [OPEN, claimable]
-   ├──▶ W2.2 logic: seat registry, state streams Snapshot/Delta/Applied
+   ├──▶ W2.2 logic: store traits, registry, event bus, .bboxy index, state streams [OPEN, claimable]
    │       └──▶ W3.4 app GUI client
    └──▶ W2.3 adapters Claude/Codex/zsh [OPEN, claimable]
            ├── needs: osc7501-claude.bin ✔, osc7501-codex.bin ✘ (operator trust)
@@ -56,10 +56,10 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 | State | Items |
 |---|---|
 | RUNNING | W3.2a (Nyx); lab passes (Lumen) |
-| OPEN, claimable now | W4.1, W1.2, W2.3 |
+| OPEN, claimable now | W4.1, W1.2, W2.3, W2.2 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
-| NOT YET BRIEFED | W2.2 (logic + event bus + .bboxy index), W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |
+| NOT YET BRIEFED | W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |
 | PARTIAL | H Codex capture (operator trust) |
 | REDUNDANT, optional | Rook's `-exec` passes on A and H |
 
