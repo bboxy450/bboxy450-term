@@ -20,6 +20,12 @@
 ● Bash(cargo run --release -- 80 24 10000 fill)
   ⎿  rss_kb=20504 cells=24 term=1728
 
+● Bash(git push origin main)
+
+  Allow Bash(git push origin main)?
+  › Yes
+    No
+
 ● Write(.kb/research/gpu-terminals-rust.md)
   ⎿  Wrote 212 lines
 
