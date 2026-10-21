@@ -5,6 +5,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --workspace
       - run: cargo test --workspace
@@ -12,7 +14,10 @@ jobs:
         id: parity
         shell: bash
         run: |
-          if git diff-tree --no-commit-id --name-only -r HEAD | rg '^(crates/(bboxybook|bbt-ui-model|bbt-render)/|lab/web/|design/|scripts/parity.sh)'; then
+          parity_base="$(python3 -c 'import json,os; e=json.load(open(os.environ["GITHUB_EVENT_PATH"])); print(e.get("pull_request",{}).get("base",{}).get("sha") or e.get("before") or "")')"
+          if [ -z "$parity_base" ] || [ "$parity_base" = "0000000000000000000000000000000000000000" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$parity_base" HEAD | rg '^(crates/(bboxybook|bbt-ui-model|bbt-render)/|lab/web/|design/|scripts/parity.sh)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Web and native component parity

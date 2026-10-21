@@ -7,6 +7,13 @@ import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 const root=process.cwd(),out=path.resolve(process.argv[2]||'target/parity');
 const manifest=JSON.parse(await fs.readFile(process.argv[3]||path.join(out,'requested.json'),'utf8'));
+// Baseline components use the exact review tag. New built design entries are
+// supplemental HEAD previews and are identified separately in capture.json.
+const baseline=path.join(out,'reference-v2');
+for(const file of execFileSync('git',['ls-tree','-r','--name-only','ux-prototype-v2','--','lab/web'],{encoding:'utf8'}).trim().split('\n')){
+  if(!file.startsWith('lab/web/')||file.includes('..'))throw Error('invalid reference path');
+  const dest=path.join(baseline,file);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,execFileSync('git',['show',`ux-prototype-v2:${file}`],{maxBuffer:16*1024*1024}));
+}
 const candidates=[process.env.CHROME,'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome','/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].filter(Boolean);
 let binary;for(const p of candidates){try{await fs.access(p);binary=p;break;}catch{}}
 await fs.mkdir(out,{recursive:true});
@@ -34,9 +41,10 @@ try{
     try{
       await cdp.call('Emulation.setDeviceMetricsOverride',{width:c.component.startsWith('showcase')?1440:1280,height:c.component.startsWith('showcase')?868:960,deviceScaleFactor:1,mobile:false});
       await cdp.call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:c.theme}]});
-      const page=c.page==='@component'?'seat-row.html':c.page;const url=new URL(pathToFileURL(path.join(root,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
+      const page=c.page==='@component'?'seat-row.html':c.page;const reference=c.page==='@component'?root:baseline;const url=new URL(pathToFileURL(path.join(reference,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
       url.searchParams.set('state',c.page==='@component'?'idle':c.state);url.searchParams.set('density',c.density);url.searchParams.set('theme',c.theme);
-      await cdp.call('Page.navigate',{url:url.href});
+      const init=await cdp.call('Page.addScriptToEvaluateOnNewDocument',{source:`try{localStorage.setItem('lab.theme',${JSON.stringify(c.theme)});localStorage.setItem('lab.density',${JSON.stringify(c.density)});localStorage.setItem('showcase.theme',${JSON.stringify(c.theme)});}catch{}`});
+      await cdp.call('Page.navigate',{url:url.href});await cdp.call('Page.removeScriptToEvaluateOnNewDocument',{identifier:init.identifier});
       let ready=false;for(let j=0;j<80;j++){try{ready=await cdp.eval(`document.readyState==='complete' && !!window.C && !!document.querySelector(${JSON.stringify(c.selector)})`);}catch{}if(ready)break;await pause(25);}
       if(!ready)throw Error('lab page never became ready');
       await cdp.eval(`Lab.prefs.theme=${JSON.stringify(c.theme)};Lab.prefs.density=${JSON.stringify(c.density)};Lab.applyTokens();document.documentElement.style.setProperty('scroll-behavior','auto');`);
@@ -54,7 +62,7 @@ try{
   }
   const hashes={};for(const name of ['components.js','lab.css','lab.js','tokens.js','showcase.js','showcase.html'])hashes[name]=createHash('sha256').update(await fs.readFile(path.join(root,'lab/web',name))).digest('hex');
   await fs.writeFile(path.join(out,'cases.json'),JSON.stringify(captured,null,2));
-  await fs.writeFile(path.join(out,'capture.json'),JSON.stringify({status:failures.length?'partial':'captured',revision:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),browser:version.Browser,profile:'isolated ephemeral profile',deviceScaleFactor:1,freeze:'CSS animation playback paused; no transcript normalization; original web page content retained',webHashes:hashes,cases:manifest.length,failures},null,2));
+  await fs.writeFile(path.join(out,'capture.json'),JSON.stringify({status:failures.length?'partial':'captured',baseline:execFileSync('git',['rev-parse','ux-prototype-v2^{commit}'],{encoding:'utf8'}).trim(),supplementalReference:'@component entries use current HEAD lab components',revision:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),browser:version.Browser,profile:'isolated ephemeral profile',deviceScaleFactor:1,freeze:'CSS animation playback paused; no transcript normalization; original web page content retained',supplementalWebHashes:hashes,cases:manifest.length,failures},null,2));
   console.log(`web: ${captured.length-failures.length}/${manifest.length} captured; ${failures.length} failures`);
 }finally{if(ws)ws.close();browser.kill('SIGTERM');await Promise.race([new Promise(r=>browser.once('exit',r)),pause(2000)]);if(browser.exitCode===null)browser.kill('SIGKILL');await fs.rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:100});}
 if(failures.length)process.exitCode=1;

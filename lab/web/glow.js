@@ -22,6 +22,8 @@
     function spawn() { const c = conf(); parts = Array.from({ length: c.n }, () => ({ u: Math.random(), r: 0.5 + Math.random(), tw: Math.random() * 1000, life: 0.4 + Math.random() * 0.6 })); }
     function frame(ts) {
       if (!cv.isConnected) return;
+      // reconnecting: the glow freezes on its last frame (reconnect_overlay)
+      if (wrap.querySelector('.pane.stale')) { last = ts; requestAnimationFrame(frame); return; }
       const dt = last ? (ts - last) / 1000 : 0; last = ts;
       const c = conf(); if (parts.length !== c.n) spawn();
       resize();

@@ -1,0 +1,25 @@
+
+running 3 tests
+test chrome::diff::tests::tolerance_is_not_an_exact_byte_comparison ... ok
+test chrome::text::tests::coretext_shapes_unicode_and_ellipsizes_at_the_given_width ... ok
+test chrome::tests::sdf_rounding_stroke_and_clip_survive_gpu_readback ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.28s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.62s
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-5f5f1adcf68ffbd3)
+     Running tests/smoke.rs (target/debug/deps/smoke-81f814d7c15a49ba)
+     Running tests/variants.rs (target/debug/deps/variants-30c637c6fee5f634)
+
+exit_status: 0

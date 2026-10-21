@@ -1,0 +1,19 @@
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+error[E0271]: type mismatch resolving `<i32 as Mul>::Output == usize`
+   --> crates/bbt-render/src/chrome/mod.rs:438:99
+    |
+438 |         let image=renderer.render_to_rgba(&list,64,64,1.0).unwrap();let pixel=|x,y|&image[(y*64+x)*4..(y*64+x)*4+4];
+    |                                                                                                   ^ expected `usize`, found `i32`
+
+error[E0271]: type mismatch resolving `<i32 as Add>::Output == usize`
+   --> crates/bbt-render/src/chrome/mod.rs:438:113
+    |
+438 |         let image=renderer.render_to_rgba(&list,64,64,1.0).unwrap();let pixel=|x,y|&image[(y*64+x)*4..(y*64+x)*4+4];
+    |                                                                                                                 ^ expected `usize`, found `i32`
+
+For more information about this error, try `rustc --explain E0271`.
+error: could not compile `bbt-render` (lib test) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+exit_status: 101

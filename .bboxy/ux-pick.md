@@ -50,6 +50,7 @@ One signal per meaning. One meaning per signal. Nothing animates without a cause
 | **Focus brightness** (glow and strip brighter) | "this seat has keyboard focus" | focus is here | hover |
 | **Unfocused dim** (pane content and strip greyed out, like iTerm2: `runs/ref-iterm-unfocused-dim.png`) | "this seat does not have focus" | every pane without focus, stronger than the 10% vignette; operator wants it clearly grey | the focused pane |
 | **State glyph** (● ○ ◐ ✕) | the seat's state | state change; waiting pulses with the glow | anything else |
+| **Room message ladder** (decided 2026-10-21) | the weakest recipient's delivery state | one ladder per message row = the minimum over recipients; per-state counts in the tooltip; per-recipient only in the detail view | anything else |
 | **Unread dot** on a row (role colour) | "a message for this seat is unread" | message arrival | anything else, no ripple for messages |
 | **Muted mark** on a row | "this seat is out of the cohort stream, operator is working with it solo" | mute; cleared on unmute; both post a one-line presence notice to the cohort stream | anything else |
 | **Hover** | "the pointer is here" | pointer over row or pane: subtle highlight only | no glow change, no ripple |

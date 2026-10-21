@@ -173,6 +173,16 @@ code, .mono { font-family: var(--font-mono); }
 .strip .glyph { --glyph: 11px; }
 .pane .term { flex: 1; padding: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim); white-space: pre; overflow: hidden; line-height: 1.5; }
 .pane .term b { color: var(--fg); font-weight: 400; }
+.pane { position: relative; }
+.pane.stale .term, .pane.stale .strip { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); }
+.pane.stale, .pane.stale * { animation-play-state: paused !important; }
+.pane .reconnect { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px; font-size: var(--t-caption, 11px); color: var(--fg); background: color-mix(in srgb, var(--surface) var(--mat-alpha, 85%), transparent); backdrop-filter: blur(var(--mat-blur, 20px)); border: 1px solid var(--hair, var(--line)); box-shadow: var(--sh-pill, none); white-space: nowrap; transition: opacity var(--appear-ms, 200ms) var(--ease, ease); }
+.pane .reconnect.out { opacity: 0; transition-duration: .6s; transition-delay: .3s; }
+.pane .reconnect .spin { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--fg) 25%, transparent); border-top-color: var(--fg); animation: spin .9s linear infinite; animation-play-state: running !important; }
+.pane .reconnect.out .spin { display: none; }
+/* spin keyframes defined above */
+.seat-row .restarted { font-size: 9.5px; line-height: 14px; padding: 0 5px; border-radius: 5px; white-space: nowrap; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); animation: restarted-out 4s var(--ease, ease) forwards; }
+@keyframes restarted-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 .gap-mark { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; white-space: nowrap; font-size: 10px; color: var(--fg-dim); }
 .gap-mark i { flex: 1; height: 1px; background: var(--hair); min-width: 12px; }
 .gap-mark span { flex: none; letter-spacing: .02em; }

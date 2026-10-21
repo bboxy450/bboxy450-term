@@ -156,6 +156,8 @@
     if (seat.muted) { row.classList.add('muted'); row.append(el('span', { class: 'mutemark', title: 'muted: 1:1 with the operator' }, harnessIcon('muted'))); }
     row.append(el('span', { class: 'title' }, seat.title || ''));
     const right = el('span', { class: 'right' });
+    // process generation changed (mux state streams): one-shot chip, the stream line follows after 4 s
+    if (seat.restarted) right.append(el('span', { class: 'restarted', title: 'process generation changed' + (seat.generation ? ' · now ' + seat.generation : '') }, 'restarted'));
     // held work (messaging.md swarm mute): muted → everything waits; after unmute only items still blocked by current authority stay, with reason and original id
     const held = seat.held || [];
     if (held.length) {
@@ -481,6 +483,8 @@
     opts = opts || {};
     const p = el('div', { class: 'pane ' + seat.state + (opts.unfocused ? ' unfocused' : '') + (opts.focused ? ' focused' : ''), style: '--seat:' + seatColor(seat) + (opts.height ? ';min-height:' + opts.height + 'px' : '') });
     p.append(titleStrip(seat, opts), fakeTerm(seat));
+    // the GUI lost the daemon: keep the stale frame, dim it, freeze the glow, centred pill; never blank, never modal
+    if (opts.reconnecting || opts.reconnected) { if (opts.reconnecting) p.classList.add('stale'); p.append(el('div', { class: 'reconnect' + (opts.reconnected ? ' out' : '') }, el('i', { class: 'spin' }), opts.reconnected ? 'reconnected' : 'reconnecting…')); }
     p.dataset.key = seat.key;
     return syncPulse(p, seat.state);
   }
