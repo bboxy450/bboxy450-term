@@ -5,7 +5,7 @@ members = [
   "crates/bbt-mux",
   "crates/bbt-render",
   "crates/bbt-ui-model",
-  "crates/bbt-lab",
+  "crates/bboxybook",
   "crates/bboxy450-term",
 ]
 

@@ -22,7 +22,7 @@
 | W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | free Executor | OPEN (claimable) |
 | W2.3 | [[2026-10-21-w2-3-adapters-claude-codex-zsh]] adapters: Claude, Codex, zsh | free Executor | OPEN (claimable) |
 | W3.2a | [[2026-10-21-w3-2a-ui-model]] ui-model: tokens, model types, layout engine | Nyx Copperwing <EXECUTOR> | ASSIGNED |
-| W3.2b | chrome pass + sidebar/stage modules + lab (gui-components §7 steps 4–7, 11) | after W3.2a | NOT YET BRIEFED |
+| W3.2b | [[2026-10-21-w3-2b-bboxybook]] bboxybook: draw atoms, chrome pass, modules, native storybook with parity | after W3.2a | OPEN (briefed) |
 | W3.2c | input/focus, launcher, signals→fx (§7 steps 8–10) | after W3.2b | NOT YET BRIEFED |
 | W4.1 | [[2026-10-21-w4-1-transport-trait]] Transport trait, loopback, quinn endpoint auth | free Executor | OPEN |
 

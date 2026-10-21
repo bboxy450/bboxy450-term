@@ -30,7 +30,7 @@ specs (done +2): gui-components ✔ ──▶ W3.2a brief ✔ [OPEN]; networking
 W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
    ├──▶ W3.1 renderer harness ✔ (Nyx, fcc8eca, 5 tests, 48 PNGs, CI green on macos-15)
    │       └──▶ W3.2a ui-model: tokens, model, layout [Nyx, RUNNING]
-   │               └──▶ W3.2b chrome pass + modules + lab
+   │               └──▶ W3.2b bboxybook: atoms, chrome pass, modules, parity [briefed]
    │                       └──▶ W3.2c input, launcher, signals→fx
    │                               └──▶ W3.3 glow/locate/dim fx
    │                       └──▶ W3.4 app: window, sidebar, stage, launcher, GUI client
