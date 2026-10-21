@@ -45,7 +45,7 @@
       set('--badge', 'color-mix(in srgb, var(--fg-dim) ' + S.tint.badge_alpha * 100 + '%, transparent)'); set('--badge-sel', 'color-mix(in srgb, var(--fg-dim) ' + S.tint.badge_selected_alpha * 100 + '%, transparent)');
       for (const [k, v] of Object.entries(S.type)) if (typeof v === 'number') set('--t-' + k, v + 'px');
       set('--sh-float', S.shadow.floating); set('--sh-pill', S.shadow.pill); set('--appear-ms', S.motion.appear_ms + 'ms'); set('--ease', S.motion.ease);
-      set('--grid', S.spacing.grid + 'px'); set('--row-mx', S.spacing.row_margin_x + 'px'); set('--row-px', S.spacing.row_pad_x + 'px');
+      set('--grid', S.spacing.grid + 'px'); set('--row-mx', S.spacing.row_margin_x + 'px'); set('--row-px', S.spacing.row_pad_x + 'px'); set('--title-bar-h', S.spacing.title_bar + 'px'); set('--band-h', S.spacing.band + 'px');
     }
     document.documentElement.className = 'theme-' + prefs.theme + ' density-' + prefs.density;
   }

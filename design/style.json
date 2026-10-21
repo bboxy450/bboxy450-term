@@ -57,7 +57,9 @@
     "row_height_panel": 46,
     "row_height_sidebar": 24,
     "section_pad_top": 12,
-    "section_pad_bottom": 6
+    "section_pad_bottom": 6,
+    "title_bar": 38,
+    "band": 24
   },
   "tint": {
     "selection_alpha": 0.09,

@@ -208,6 +208,7 @@ window.STYLE = {
     "swarm_block": "Range Rover 2023 rear: band set into a rounded body, bumper carries the colour"
   },
   "spacing": {
+    "band": 24,
     "grid": 8,
     "panel_pad_x": 24,
     "row_gap": 12,
@@ -216,7 +217,8 @@ window.STYLE = {
     "row_margin_x": 10,
     "row_pad_x": 14,
     "section_pad_bottom": 6,
-    "section_pad_top": 12
+    "section_pad_top": 12,
+    "title_bar": 38
   },
   "tint": {
     "badge_alpha": 0.18,
