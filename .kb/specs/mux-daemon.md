@@ -27,13 +27,25 @@ The GUI can disappear without changing either daemon role. The logic can disappe
 | Component | Owns | Failure behavior |
 |---|---|---|
 | Supervisor | PTY masters, child identity, sole PTY read/write path, observed event order, ring/commit files, accepted input IDs, active logic lease | Continues bounded capture while logic restarts. Never spawns a second copy just because logic reconnects. |
-| Logic | Viewport VTE/parser, semantic row index/checkpoint production, seat registry, permissions, native harness adapters, messaging storage/scheduling, MCP, remote links | Reattaches, restores a checkpoint and replays ordered records. All readiness and GUI caches are revalidated. |
+| Logic | Viewport VTE/parser, semantic row index/checkpoint production, seat registry and per-seat sockets/event bus, permissions, native harness adapters, messaging storage/scheduling, MCP, remote links | Reattaches, restores a checkpoint and replays ordered records. All readiness and GUI caches are revalidated. |
 | GUI | GPU chrome/grid rendering, local presentation/selection/cache, subscriptions and operator input | Reconnects for snapshots and lazy history. It is not the durable seat owner or an independent VTE authority. |
 | Remote supervisor/logic | Same ownership on the remote host | Network loss leaves remote processes running. Reconnect authenticates the device and reconciles seat/process generations. |
 
 Supervisor has no public network listener, font/GPU stack, model protocol or room scheduler. Keep its local protocol and storage code small because every seat depends on it. Logic requests operations through that protocol; it does not get an independent master-fd reader/writer that could race the supervisor.
 
 One supervisor serves a user's machine namespace. Its private socket/state files are owner-restricted and outside the repository. Logic authenticates over a local capability established at startup, never a secret in an argv or a peer-supplied seat name. This is local admission, not a same-UID adversarial sandbox; [[messaging]] retains that threat-model gap.
+
+## Seat sockets and event bus
+
+Per [[vision]] “Seats are sockets”, logic exposes an owner-restricted Unix socket for every owned seat. Logic owns the listener, connection admission and event publication; the supervisor still owns the PTY, ring and sole read/write path. The seat socket is distinct from the supervisor's private control socket. Authorized discovery returns the current endpoint and its durable seat ID/process generation; a pathname or environment label alone grants no authority.
+
+A connection registers its authenticated actor/capability and target seat/process generation before input or subscription. Recheck current grants and generations before each effect, using the same broker as [[mcp-control-plane]]. Reconnection to replacement logic requires a fresh authenticated attachment to the supervisor-verified live generation; process replacement rejects old bindings. Reusing a durable seat ID never authorizes a write to its replacement process.
+
+Use versioned, length-framed request, event and receipt messages with negotiated bounds, validating lengths before allocation. Input requests carry stable operation/input IDs and expected generation; literal text, keys and submit intent pass through [[harness-adapters]]' native path or input guard and the supervisor's writer lease. Scripts, MCP and the GUI use this same admission/dispatch path. A socket write/acceptance is not proof of harness consumption; return the existing delivery evidence and query ambiguous operations by their original IDs.
+
+The return stream carries bounded output records, decoded 7501/hook observations and normalized activity/metadata/evidence changes, with seat/process identity, observation provenance and a publication cursor. Preserve a supervisor capture sequence where one exists; publication order does not turn an off-PTY observation into a PTY-ordered record. Use the reliable subscriptions, snapshots, applied acknowledgments and explicit gaps defined below. A slow subscriber cannot require an unbounded queue or stall input behind unlimited history; reconnect invalidates stale baselines and requests a current snapshot/retained range. Never publish inherited credentials or whole hook JSON as events.
+
+MCP is one client of this event bus, not an independent input or state authority. HTTP is an optional adapter to the same authorized messages, not required for the first local prototype and not an unauthenticated network listener. Socket wire limits/encoding remain part of the framing implementation gap; the shared event model will be checked against the Oracle's pending kittens research, without assuming an uninspected kittens API.
 
 ## Durable seat identity and launch mapping
 
@@ -209,6 +221,7 @@ These are implementation acceptance criteria, not tests passed by this document:
 - Kill the supervisor: supported harnesses resume with the same durable seat/session mapping and a new process generation; unsupported/missing mappings report their limitation honestly.
 - Verify owned remote bootstrap retries, SSH fallback and permission checks; shadow presence never yields screen access, a writer lease or a spawned pane.
 - Close then crash logic: the original child captures during grace, expiry still runs, and a matching undo races expiry without duplicate children. A closed seat is never automatically relaunched by open-seat recovery.
+- Attach through a seat socket, then replace logic or its harness process: stale bindings cannot write to the new generation; event subscribers recover a snapshot or explicit gap. MCP and direct socket clients produce the same guarded input/evidence, with bounded queues under a stalled reader.
 
 Original E document verification on 2026-10-21: `ls .kb/specs/mux-daemon.md` and section count returned 0 with ten level-two sections before the M lifecycle addendum; structure/source-pointer/whitespace validation returned 0; `git diff --check` returned 0. These checked the document, not the future implementation. No runtime tests were added or run for this convergence.
 

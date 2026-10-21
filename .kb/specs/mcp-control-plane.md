@@ -6,9 +6,11 @@
 
 ## Boundary and transport
 
-Mux logic owns one logical control service. Each harness launches a small **seat-bound stdio MCP bridge**, a private entry point in the same shipped executable. The bridge forwards authenticated, bounded requests to logic over its private Unix socket. It owns neither PTYs nor signing keys. Logic restart can interrupt a call without terminating the harness or creating a replacement seat.
+Mux logic owns one logical control service and the per-seat socket/event bus specified in [[mux-daemon]] “Seat sockets and event bus”. Each harness launches a small **seat-bound stdio MCP bridge**, a private entry point in the same shipped executable. The bridge is a client of that bus: it forwards authenticated, bounded requests through the same broker, consumes the same snapshots/events and returns the same operation receipts. It owns neither PTYs nor signing keys. Logic restart can interrupt a call without terminating the harness or creating a replacement seat.
 
 Use stdio at the harness boundary because both installed clients expose it. A Unix socket is our internal broker transport; neither inspected MCP configuration surface supplies a generic Unix-socket MCP connector. Codex's `--remote unix://…` connects its TUI to an **app-server**, not to an MCP server. Streamable HTTP is supported by the clients but adds no needed local capability here. Remote owned-seat control still passes through the authenticated mux connection in [[mux-daemon]], rather than publishing the local control socket.
+
+MCP tools map onto the bus's authorized commands/queries and bounded subscriptions; they do not create a second adapter, PTY writer, input queue or screen model. Direct scripts and GUI clients enter the same generation checks, writer lease, input guard, operation journal and audit path under their own authority. A known socket path cannot substitute for a seat grant/capability. An endless bus stream is paged or summarized into bounded MCP results, not returned as an indefinitely open tool call.
 
 The launch adapter adds the `bboxy` server to the seat's launch configuration, preserving existing servers, trust and approval settings. It must not disable those settings to make control work. Standard output contains only MCP frames; diagnostics go to bounded stderr. The bridge's exit or an MCP cancellation does not roll back an already accepted durable operation.
 
@@ -128,7 +130,7 @@ Calls return bounded results, not an endless screen stream. For long spawn/close
 
 ## Screen and history reads
 
-`screen_read` obtains a consistent viewport snapshot from mux logic, with process/view generations and its capture sequence. `history_read` is a thin authorized adapter over [[mux-daemon]]'s `GetHistory / History / Gap` contract. Neither requires a GUI, reads another client's display cache, nor shells out to `it2` in the product.
+`screen_read` obtains a consistent viewport snapshot from mux logic through the seat event bus, with process/view generations and its capture sequence. `history_read` is a thin authorized adapter over the same bus's [[mux-daemon]] `GetHistory / History / Gap` contract. Neither requires a GUI, reads another client's display cache, nor shells out to `it2` in the product.
 
 A first history request returns available semantic row bounds, index generation, rows, capture/durability metadata and a continuation cursor. The cursor binds actor scope, target, process generation, index/view generation, range and continuation position; validate its integrity on each page. Continuations must not become a substitute capability after revocation or cross-seat substitution. Keep a fixed bounded read view where supported; if eviction/reflow invalidates it, return `history_gap` / `stale_index` with the available range and require an explicit new read. Do not splice generations or silently clamp the missing prefix.
 
@@ -221,6 +223,7 @@ Original M document checks on 2026-10-21, before the purge decision and S sweep:
 - Mute transitions commit notices and hold traffic; unmute neither drops held work nor retries unknown native attempts.
 - Close retains the same process during grace, expires under logic outage and restores the recorded position; no MCP role can purge retained data.
 - Both real harness clients connect to the fixture server, render bounded successful/error results and reconnect without duplicating mutations.
+- An equivalent direct seat-socket request and MCP call traverse the same authorization/guard/journal path and expose matching operation evidence; neither bypasses the bus with an independent write route.
 
 **Gap:** no MCP bridge/server, capability handoff, audit store or runtime acceptance test was implemented/run by this specification task. Input readiness remains dependent on the explicit adapter proof and its unresolved tests in [[harness-adapters]].
 
@@ -229,4 +232,3 @@ Original M document checks on 2026-10-21, before the purge decision and S sweep:
 Scope: this file plus the specifically requested swarm-mute amendment in [[messaging]] and close lifecycle amendment in [[mux-daemon]]. No runtime, harness config, UI, task-board or provider changes; no commits.
 
 — Nyx Copperwing <EXECUTOR>
-

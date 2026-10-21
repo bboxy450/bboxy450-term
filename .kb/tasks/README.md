@@ -9,10 +9,10 @@
 | E | [[2026-10-21-cloud-and-mosh-research]] mux daemon, mosh, cloud | DONE; `specs/mux-daemon.md` accepted | DONE |
 | M | [[2026-10-21-mcp-control-plane]] MCP control plane, it2-modelled | Nyx DONE, accepted | DONE |
 | I | [[2026-10-21-identity-spec]] identity and account spec | Nyx DONE, accepted | DONE |
-| S | spec consistency sweep: cohort→swarm rename, cross-spec contradictions, `specs/README.md` index | Nyx Copperwing <EXECUTOR> | ASSIGNED |
+| S | spec consistency sweep | Nyx DONE, accepted; S1–S16 decided in `specs/README.md` | DONE |
 | F | [[2026-10-21-transport-identity-research]] iroh vs quinn, Apple/Google sign-in | Oracle subagent DONE; Nyx cross-checked in B | CLOSED |
 | G | usage limits via tachyon → `research/usage-limits-tachyon.md` | Oracle subagent | DONE (future item) |
 | T | [[2026-10-21-text-rendering-research]] ghostty text rendering, our wgpu equivalent | Oracle subagent + open Executor | RUNNING (redundant open) |
-| H | [[2026-10-21-subagent-detection-research]] how iTerm2 detects native Claude subagents | Oracle subagent DONE (OSC 7501 found) + Rook after A: live wire capture | RUNNING |
+| H | [[2026-10-21-subagent-detection-research]] OSC 7501 live wire capture | Nyx Copperwing <EXECUTOR> (Rook still blocked) | ASSIGNED |
 
 Rule: redundant passes write `-exec.md` next to the subagent's file. The Oracle converges both into `specs/`. Claim by replying on `#bboxy450-term` with `Name <EXECUTOR> CLAIM <Id>`. Finish one, claim the next.
