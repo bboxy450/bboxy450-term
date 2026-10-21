@@ -147,6 +147,19 @@
     const goRow = { id: 'goto', label: 'Go to', aliases: ['goto', 'go', 'jump'], sub: 'a seat or a swarm', harness: 'sidebarfoxopen', kind: 'Navigate', tile: '#6B7190', section: 'Navigate', children: () => [...goSeats(), ...goSwarms()] };
     const items = [...launchRows, goRow];
     const acts = p => (p.length && p[p.length - 1].id === 'goto') ? [['Go', '↵'], ['Back', '←']] : (p.length ? [['Place', '↵'], ['Back', '←']] : (preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['Placements', '→'], ['New tab instead', '⌥↵']] : [['New tab', '↵'], ['Placements', '→'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵']]));
+    // banner above the panel: the real pane layout, large, with the new cell lit; nothing subtle about it
+    if (preset && anchorSeat && stageTree) {
+      const ghost = { key: '__new', name: 'new seat', state: 'idle' };
+      const previewTree = replaceNode(stageTree, anchorSeat, { dir: preset === 'right' ? 'v' : 'h', ratio: 0.5, a: anchorSeat, b: ghost });
+      const grid = C.miniGrid(previewTree, '__new', true);
+      back.append(el('div', { class: 'spot-banner' }, grid, el('div', { class: 'txt' }, el('div', { class: 'big' }, preset === 'right' ? 'Split right' : 'Split down'), el('div', { class: 'of' }, 'of ', el('b', { style: 'color:' + anchorSeat.color }, anchorSeat.name), ' · the new seat lands in the lit cell'))));
+    } else if (!preset) {
+      // ⌘T: a new tab. The banner shows the swarm's tabs as a strip with the new one lit at the end.
+      const strip = el('div', { class: 'tab-strip' });
+      for (const t of sp.tabs) strip.append(el('span', { class: 'tcell' }, t.name));
+      strip.append(el('span', { class: 'tcell new' }, 'new tab'));
+      back.append(el('div', { class: 'spot-banner' }, strip, el('div', { class: 'txt' }, el('div', { class: 'big' }, 'New tab'), el('div', { class: 'of' }, 'in ', el('b', { style: 'color:' + sp.color }, sp.name), ' · the new seat gets a tab of its own · type goto <name> to go somewhere'))));
+    }
     const pk = C.picker({ placeholder: ph, actions: acts, items, onClose: closeSpotlight, onPick: (it, name, mods, path) => {
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
       if (it.swarm) { closeSpotlight(); jumpSpace(it.swarm); return; }
