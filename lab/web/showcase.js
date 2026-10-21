@@ -12,7 +12,7 @@
   const mq = matchMedia('(prefers-color-scheme: dark)');
   let themeMode = Lab.store.get('showcase.theme') || 'auto';
   const theme = () => themeMode === 'auto' ? (mq.matches ? 'dark' : 'light') : themeMode;
-  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = 'cozy'; Lab.applyTokens(); document.documentElement.style.setProperty('--gutter', GUTTER + 'px'); }
+  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = typeof density === 'string' ? density : 'cozy'; Lab.applyTokens(); if (!document.documentElement.style.getPropertyValue('--gutter')) document.documentElement.style.setProperty('--gutter', GUTTER + 'px'); }
   mq.addEventListener('change', () => { if (themeMode === 'auto') { applyTheme(); render(); } });
   applyTheme();
 
@@ -123,6 +123,16 @@
     render();
   }
   addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f) toggleMute(f); } });
+  // Appearance settings apply live: density, theme and gutter re-render the window; glow toggles the shader canvas.
+  let density = 'cozy';
+  function applySetting(section, key, value) {
+    if (section !== 'appearance') return;
+    if (key === 'density') { density = value; }
+    if (key === 'theme') { themeMode = value; Lab.store.set('showcase.theme', value); drawThemeBtn(); }
+    if (key === 'gutter') { document.documentElement.style.setProperty('--gutter', value + 'px'); }
+    if (key === 'glow') { document.getElementById('glow').style.display = value ? '' : 'none'; }
+    const keep = settingsSeat.section; applyTheme(); settingsSeat.section = keep; render();
+  }
   // Settings open as a tab in the current swarm (⌘, or the Settings row in the launcher); closing it removes the tab, no grace.
   const settingsSeat = { key: 'settings', name: 'Settings', harness: 'gear', role: null, title: 'config.toml', state: 'idle', settings: true, section: 'Account' };
   Object.defineProperty(settingsSeat, 'color', { get() { return T.color[theme()].accent_soft; }, enumerable: true });
@@ -263,7 +273,7 @@
   app.append(titlebar, main);
   let rects = [];
   function splitDom(t) {
-    if (t.key && t.settings) { const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘,', onClose: closeSettings }), C.settingsPage({ section: t.section })); p.dataset.key = t.key; return p; }
+    if (t.key && t.settings) { const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘,', onClose: closeSettings }), C.settingsPage({ section: t.section, onChange: (sec, k, v) => { if (sec === 'appearance') settingsSeat.section = 'Appearance'; applySetting(sec, k, v); } })); p.dataset.key = t.key; return p; }
     if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute });
     const A = splitDom(t.a), B = splitDom(t.b);
     A.style.flex = t.ratio || 0.5; B.style.flex = 1 - (t.ratio || 0.5);

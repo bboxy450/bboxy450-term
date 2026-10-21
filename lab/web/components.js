@@ -415,72 +415,215 @@
   }
 
   // ---------- settings: data-driven page, left nav + cards, read-mostly (config.toml), diff-from-default marks ----------
+  const LT = h => (LAUNCH.find(l => l.harness === h) || {}).tile || '#374151';
   const SET_DEF = {
-    account: { name: 'Boxy', email: 'bboxy450@gmail.com', fingerprint: '844E CC05 87DE 7AB0', devices: [['this Mac', 'enrolled · root custodian'], ['rig', 'enrolled · 2026-10-19']] },
-    cloud: [['Hetzner', 'eu-2 · Falkenstein', true], ['Fly', 'us-1 · Ashburn', true], ['Lambda', 'gpu-a · A100', false]],
-    machines: [['rig', 'feral@rig.local', 'M2 Ultra · key ~/.ssh/id_ed25519'], ['alpha', 'feral@alpha.tail', 'Linux x86 · key ~/.ssh/id_ed25519'], ['studio', 'feral@studio.local', 'M1 Max · key ~/.ssh/id_ed25519']],
-    roles: { oracle: { prompt: 'You are the Oracle. Supervise, verify, never implement. Sign every message Name <ORACLE>.', send: 'all channels · all DMs' }, executor: { prompt: 'You are an Executor. Do the assigned work, report evidence, never expand scope.', send: 'own swarm · operator DM' }, creativity: { prompt: 'You are Creativity. Diverge before converging; return a field, not a pick.', send: 'own swarm · operator DM' } },
-    harness: { claude: { role: 'oracle', wake: 'socket', hooks: true }, codex: { role: 'executor', wake: 'hook', hooks: true }, pi: { role: 'executor', wake: 'pty', hooks: false }, omp: { role: 'executor', wake: 'pty', hooks: false } },
+    account: {
+      name: 'Boxy', handle: 'bboxy450', email: 'bboxy450@gmail.com',
+      fingerprint: '9B07E849480C68328CA20684844ECC0587DE7AB0', algo: 'ed25519', keyState: 'unlocked · gpg-agent cache',
+      trust: ['root key', 'device subkeys', 'seat keys'],
+      devices: [['this Mac', 'root custodian', '2026-10-12'], ['rig', 'enrolled', '2026-10-19']],
+      sign: { commits: true, messages: true, seatCommits: false },
+    },
+    cloud: [['Hetzner', 'eu-2 · Falkenstein', true, '#D50C2D'], ['Fly', 'us-1 · Ashburn', true, '#7B3FE4'], ['Lambda', 'gpu-a · A100', false, '#2563EB']],
+    machines: [['rig', 'feral@rig.local', 'M2 Ultra · 64 GB', '~/.ssh/id_ed25519', true], ['alpha', 'feral@alpha.tail', 'Linux x86 · 128 GB', '~/.ssh/id_ed25519', true], ['studio', 'feral@studio.local', 'M1 Max · 32 GB', '~/.ssh/id_ed25519', false]],
+    // roles: built-ins are editable, not deletable; custom roles carry custom:true. cls = priority class (delivery order and badging)
+    roles: {
+      oracle: { prompt: 'You are the Oracle. Supervise, verify, never implement. Sign every message Name <ORACLE>.', send: 'all channels · all DMs', color: 'var(--role-oracle)', mark: '♔', cls: 'oracle' },
+      executor: { prompt: 'You are an Executor. Do the assigned work, report evidence, never expand scope.', send: 'own swarm · operator DM', color: 'var(--role-executor)', mark: '♟', cls: 'worker' },
+      creativity: { prompt: 'You are Creativity. Diverge before converging; return a field, not a pick.', send: 'own swarm · operator DM', color: 'var(--role-creativity)', mark: '♝', cls: 'worker' },
+    },
+    // harnesses: built-ins carry command/tile/icon; custom ones run through the PTY adapter
+    harness: {
+      claude: { role: 'oracle', wake: 'socket', hooks: true, command: 'claude', tile: LT('claude'), icon: 'claude', stateFrom: 'osc7501' },
+      codex: { role: 'executor', wake: 'hook', hooks: true, command: 'codex', tile: LT('codex'), icon: 'codex', stateFrom: 'hooks' },
+      pi: { role: 'executor', wake: 'pty', hooks: false, command: 'pi', tile: LT('pi'), icon: 'pi', stateFrom: 'output cadence' },
+      omp: { role: 'executor', wake: 'pty', hooks: false, command: 'omp', tile: LT('omp'), icon: 'omp', stateFrom: 'output cadence' },
+    },
     appearance: { theme: 'auto', density: 'cozy', gutter: 2, glow: true, subtitle: false },
-    shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab']],
+    shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab'], ['Focus previous pane', '⇧Tab']],
   };
   const SET = JSON.parse(JSON.stringify(SET_DEF));
   SET.roles.creativity.prompt += ' Name the Censor when it fires.'; SET.harness.pi.role = 'creativity';
+  // settingsPage({ section, onChange }) — onChange(section, key, value): 'appearance' per value; 'roles' / 'harness' with the record, null on delete
   function settingsPage(opts) {
     opts = opts || {};
+    const emit = (s, k, v) => { if (opts.onChange) opts.onChange(s, k, v); };
     const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Shortcuts'];
-    let cur = opts.section || 'Account';
+    const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Appearance: 'sun', Shortcuts: 'keys' };
+    const SENDS = ['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], WAKES = ['socket', 'hook', 'mcp', 'pty'], STATE_FROM = ['osc7501', 'hooks', 'output cadence'];
+    const MARKS = ['♔', '♟', '♝', '♜', '♞', '♚'], ICONS = ['claude', 'codex', 'pi', 'omp', 'zsh'];
+    const HUES = [0, 30, 55, 95, 160, 190, 215, 250, 285, 325], hue = i => 'hsl(' + HUES[((i % HUES.length) + HUES.length) % HUES.length] + ' 85% 64%)';
+    // marks the settings page alone needs; everything else comes from ICON_SVG
+    const SVG = {
+      roles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M5 19h14M5.5 16 3.5 7l5 3.5L12 5l3.5 5.5 5-3.5-2 9z"/></svg>',
+      keys: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7.5 14h9"/></svg>',
+      search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15.5 15.5 20 20"/></svg>',
+      copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/></svg>',
+      link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></svg>',
+      open: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>',
+    };
+    const icon = name => ICON_SVG[name] ? harnessIcon(name) : el('span', { class: 'hicon', html: SVG[name] || '' });
+    let cur = opts.section || 'Account', draftRole = null, draftHarness = null;
     const root = el('div', { class: 'settings' });
     const nav = el('div', { class: 's-nav' });
-    const q = el('input', { class: 's-q', placeholder: 'search settings' });
+    const q = el('input', { class: 's-q', placeholder: 'Search settings', type: 'search' });
     const main = el('div', { class: 's-main' });
-    const row = (label, hint, control, changed, onReset) => el('div', { class: 's-row' + (changed ? ' changed' : '') }, el('div', { class: 'lbl' }, label, hint ? el('small', {}, hint) : null), el('div', { class: 'ctl' }, control), el('div', { class: 'diff' }, changed ? [el('i', { title: 'differs from config.toml default' }), el('button', { onclick: onReset }, 'reset')] : null));
+    // the one rule: a value that differs from config.toml gets the accent dot and a reset
+    const diff = (changed, onReset) => changed ? el('span', { class: 'diff' }, el('i', { title: 'differs from config.toml default' }), el('button', { onclick: onReset }, 'reset')) : null;
+    const row = (label, hint, control, changed, onReset) => el('div', { class: 's-row' + (changed ? ' changed' : '') }, el('div', { class: 'lbl' }, label, hint ? el('small', {}, hint) : null), el('div', { class: 'ctl' }, control), diff(changed, onReset));
     const select = (optsArr, val, on) => { const s = el('select', { onchange: e => on && on(e.target.value) }); for (const o of optsArr) s.append(el('option', { value: o, ...(o === val ? { selected: '' } : {}) }, o)); return s; };
-    const toggle = (on, cb) => el('span', { class: 'toggle' + (on ? ' on' : ''), onclick: () => cb && cb(!on) });
-    const card = (title, kids, extra) => el('div', { class: 's-card' }, title ? el('div', { class: 's-card-h' }, el('span', {}, title), extra || null) : null, ...kids);
-    const btn = (label, icon, primary) => el('button', { class: 's-btn' + (primary ? ' primary' : '') }, icon ? harnessIcon(icon) : null, label);
+    const toggle = (on, cb) => el('span', { class: 'toggle' + (on ? ' on' : ''), role: 'switch', 'aria-checked': String(on), onclick: () => cb && cb(!on) });
+    const card = (title, kids, extra, cls) => el('div', { class: 's-card' + (cls ? ' ' + cls : '') }, title ? el('div', { class: 's-card-h' }, el('span', { class: 't' }, title), extra || null) : null, ...kids);
+    const btn = (label, iconName, kind) => el('button', { class: 's-btn' + (kind ? ' ' + kind : '') }, iconName ? icon(iconName) : null, label);
+    const dot = (on, title) => el('i', { class: 'sdot' + (on ? ' on' : ''), title: title || (on ? 'connected' : 'not connected') });
+    const group = (label, hint) => el('div', { class: 's-group' }, label, hint ? el('small', {}, hint) : null);
+    const note = text => el('div', { class: 's-note' }, text);
+    const chip = (text, cls) => el('span', { class: 'chip ' + (cls || '') }, text);
+    const field = (label, control, hint, extra) => el('div', { class: 'fl' }, el('label', {}, el('span', {}, label, hint ? el('small', {}, hint) : null), extra || null), control);
+    const text = (val, ph, on, mono) => el('input', { type: 'text', class: mono ? 'mono' : '', value: val || '', placeholder: ph || '', spellcheck: 'false', oninput: e => on(e.target.value) });
+    const swatch = (color, on) => el('button', { class: 'swatch', style: 'background:' + color, title: 'click cycles the colour', onclick: on });
+    const seg = (optsArr, val, on) => el('div', { class: 'segc' }, ...optsArr.map(o => el('button', { class: o === val ? 'on' : '', onclick: () => on(o) }, o)));
+    const roleNames = () => Object.keys(SET.roles);
     const draw = () => {
-      nav.innerHTML = ''; for (const s of sections) nav.append(el('div', { class: 's-navi' + (s === cur ? ' on' : ''), onclick: () => { cur = s; draw(); } }, s));
+      nav.innerHTML = '';
+      for (const s of sections) nav.append(el('div', { class: 's-navi' + (s === cur ? ' on' : ''), onclick: () => { cur = s; draw(); } }, icon(NAV_ICON[s]), el('span', {}, s)));
       main.innerHTML = '';
       const needle = q.value.toLowerCase();
       const add = (title, node) => { if (!needle || node.textContent.toLowerCase().includes(needle)) main.append(node); };
+
       if (cur === 'Account' || needle) {
-        const a = SET.account;
-        add('Account', card('Account', [
-          el('div', { class: 'passport' }, logo(56, { square: true }), el('div', {}, el('div', { class: 'pname' }, a.name, el('span', { class: 'pill-ok' }, 'signed in · root key on this Mac')), el('div', { class: 'fp' }, harnessIcon('key'), 'ed25519 ' + a.fingerprint), el('div', { class: 'fp' }, a.email)), el('div', { class: 'acts' }, btn('Sign in with Google', 'google'), btn('Show paper recovery', 'key'))),
-          row('Devices', 'enrolled under the root key', el('div', { class: 'list' }, ...a.devices.map(([n, d]) => el('div', { class: 'li' }, el('b', {}, n), el('span', {}, d))), btn('+ enroll a device')), false),
-          el('div', { class: 's-note' }, 'Google sign-in binds this account to a provider for cloud; the root key stays the identity. Device enrollment is a one-use ticket approved from a custodian device. Both ship with cloud.'),
+        const a = SET.account, d = SET_DEF.account;
+        const trust = el('div', { class: 'trust' }, el('span', { class: 'k' }, 'trust path'));
+        a.trust.forEach((t, i) => { if (i) trust.append(el('span', { class: 'arrow' }, '→')); trust.append(chip(t)); });
+        add('Account', card(null, [
+          el('div', { class: 'hero' },
+            logo(72, { square: true }),
+            el('div', { class: 'hero-b' },
+              el('div', { class: 'hname' }, el('span', { class: 'n' }, a.name), el('span', { class: 'pill-ok' }, el('i'), 'signed in')),
+              el('div', { class: 'fp', title: 'primary key fingerprint' }, ...a.fingerprint.match(/.{4}/g).map(g => el('span', {}, g))),
+              el('div', { class: 'chips' },
+                el('span', { class: 'chip mono' }, icon('key'), a.algo + ' · signing'),
+                el('span', { class: 'chip' }, dot(true, 'unlocked by pinentry'), a.keyState),
+                el('button', { class: 'chip cact', title: 'copy the full 40-hex fingerprint' }, icon('copy'), 'copy fingerprint')),
+              el('div', { class: 'uid' }, a.name + ' (' + a.handle + ') <' + a.email + '>'),
+              trust,
+              el('div', { class: 'held' }, el('span', {}, 'root key held by gpg-agent · never exported'), el('button', { class: 'chip cact' }, icon('open'), 'open in gpg')),
+              el('div', { class: 'acts' },
+                el('div', { class: 'act' }, btn('Show paper recovery', 'key', 'primary'), el('small', {}, 'restores identity only · seats, history and grants are not recovered')),
+                el('div', { class: 'act' }, btn('Link Google for cloud', 'link', 'link'), el('small', {}, 'binds a provider for cloud seats · the key stays the identity'))))),
+          group('Devices · subkeys', 'revoke is local · peers learn on next contact'),
+          el('div', { class: 'subkeys' },
+            ...a.devices.map(([n, s, when]) => el('div', { class: 'sk' },
+              el('div', { class: 'skh' }, el('b', {}, n), dot(true, s)),
+              el('div', { class: 'skm' }, 'subkey · ed25519'),
+              el('div', { class: 'sks' }, s + ' · ' + when),
+              el('button', { class: 'revoke', title: 'revoked here · peers learn on next contact' }, 'revoke'))),
+            el('button', { class: 'sk add' }, el('b', {}, '+ enroll a device'), el('span', {}, 'request if primary is elsewhere'), el('small', {}, 'primary not available here → produces a signed request'))),
+        ], null, 'account'));
+        add('Account', note('Device enrollment is a one-use ticket approved from a custodian device. Google binds this account to a provider for cloud; the root key stays the identity. Both ship with cloud.'));
+        add('Account', card('Signatures', [
+          row('Sign commits as this key', 'git author and committer · Boxy <' + a.email + '>', toggle(a.sign.commits, x => { a.sign.commits = x; draw(); }), a.sign.commits !== d.sign.commits, () => { a.sign.commits = d.sign.commits; draw(); }),
+          row('Sign messages and presence with the seat\'s leaf key', 'chain verifies to this key', toggle(a.sign.messages, x => { a.sign.messages = x; draw(); }), a.sign.messages !== d.sign.messages, () => { a.sign.messages = d.sign.messages; draw(); }),
+          row('Seats sign commits with their own keys', 'assumed, not decided', toggle(a.sign.seatCommits, x => { a.sign.seatCommits = x; draw(); }), a.sign.seatCommits !== d.sign.seatCommits, () => { a.sign.seatCommits = d.sign.seatCommits; draw(); }),
         ]));
       }
-      if (cur === 'Cloud' || needle) add('Cloud', card('Cloud', SET.cloud.map(([p, r, on], i) => row(p, r, toggle(on, v => { SET.cloud[i][2] = v; draw(); }), on !== SET_DEF.cloud[i][2], () => { SET.cloud[i][2] = SET_DEF.cloud[i][2]; draw(); })), btn('+ connect a provider')));
-      if (cur === 'Machines' || needle) add('Machines', card('SSH machines', [...SET.machines.map(([h, u, d]) => row(h, d, el('code', {}, u), false)), el('div', { class: 's-note' }, 'Read from ~/.ssh/config. Machines appear under SSH in the launcher.')], btn('+ add a machine')));
-      if (cur === 'Roles' || needle) for (const r of ['oracle', 'executor', 'creativity']) {
-        const v = SET.roles[r], d = SET_DEF.roles[r];
-        add('Roles', card(r, [
-          row('Default system prompt', 'fed to the harness at launch', el('textarea', { html: v.prompt, oninput: e => { v.prompt = e.target.value; } }), v.prompt !== d.prompt, () => { v.prompt = d.prompt; draw(); }),
-          row('May send to', 'terminal-enforced', select(['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], v.send, x => { v.send = x; draw(); }), v.send !== d.send, () => { v.send = d.send; draw(); }),
-        ], el('span', { class: 'rmark', style: 'color:var(--role-' + r + ')' }, ROLE_MARK[r])));
+
+      if (cur === 'Cloud' || needle) add('Cloud', card('Cloud providers', [
+        el('div', { class: 'tiles' },
+          ...SET.cloud.map(([p, r, on, col], i) => { const ch = on !== SET_DEF.cloud[i][2]; return el('div', { class: 'ptile' + (ch ? ' changed' : '') },
+            el('div', { class: 'ph' }, el('span', { class: 'tile', style: 'background:' + col }, p[0]), el('div', { class: 'pt' }, el('b', {}, p), el('small', {}, r)), dot(on)),
+            el('div', { class: 'pf' }, el('span', {}, on ? 'connected' : 'not connected'), diff(ch, () => { SET.cloud[i][2] = SET_DEF.cloud[i][2]; draw(); }), toggle(on, v => { SET.cloud[i][2] = v; draw(); }))); }),
+          el('button', { class: 'ptile add' }, '+ connect a provider')),
+        note('Regions appear under Cloud in the launcher. Credentials live in the keychain, never in config.toml.'),
+      ]));
+
+      if (cur === 'Machines' || needle) add('Machines', card('SSH machines', [
+        ...SET.machines.map(([h, u, hw, k, up]) => el('div', { class: 'mrow' }, dot(up, up ? 'reachable' : 'unreachable'), el('div', { class: 'mt' }, el('b', {}, h), el('code', {}, u)), el('span', { class: 'hw' }, hw), el('span', { class: 'kbd' }, k))),
+        el('button', { class: 'mrow add' }, '+ add a machine'),
+        note('Read from ~/.ssh/config. Machines appear under SSH in the launcher.'),
+      ]));
+
+      if (cur === 'Roles' || needle) {
+        const roleCard = r => {
+          const v = SET.roles[r], d = SET_DEF.roles[r] || null, chP = !!d && v.prompt !== d.prompt, chS = !!d && v.send !== d.send, chC = !!d && v.cls !== d.cls;
+          const head = el('div', { class: 'band' }, el('span', { class: 'rmark' }, v.mark), el('span', { class: 'rn' }, r), v.custom ? el('button', { class: 'del', onclick: () => { delete SET.roles[r]; emit('roles', r, null); draw(); } }, 'delete') : chip('built-in', 'bi'));
+          return el('div', { class: 's-card role', style: '--role:' + v.color }, head, el('div', { class: 'rb' },
+            el('div', { class: 'fl' + (chP ? ' changed' : '') }, el('label', {}, el('span', {}, 'Default system prompt'), diff(chP, () => { v.prompt = d.prompt; emit('roles', r, v); draw(); })), el('textarea', { html: v.prompt, spellcheck: 'false', oninput: e => { v.prompt = e.target.value; emit('roles', r, v); } })),
+            el('div', { class: 'fl' + (chS ? ' changed' : '') }, el('label', {}, el('span', {}, 'May send to', el('small', {}, 'terminal-enforced')), diff(chS, () => { v.send = d.send; emit('roles', r, v); draw(); })), select(SENDS, v.send, x => { v.send = x; emit('roles', r, v); draw(); })),
+            el('div', { class: 'fl' + (chC ? ' changed' : '') }, el('label', {}, el('span', {}, 'Priority class', el('small', {}, 'delivery order and badging follow the class')), diff(chC, () => { v.cls = d.cls; emit('roles', r, v); draw(); })), seg(['oracle class', 'worker class'], v.cls + ' class', x => { v.cls = x.split(' ')[0]; emit('roles', r, v); draw(); }), el('small', { class: 'cap' }, 'changing class re-issues this role\'s seat grants'))));
+        };
+        const newRole = () => {
+          if (!draftRole) return el('button', { class: 's-card role add', onclick: () => { draftRole = { name: '', ci: 4, mark: '♜', prompt: '', send: SENDS[1], cls: 'worker' }; draw(); } }, el('b', {}, '+ new role'), el('span', {}, 'your own mark, colour and prompt'));
+          const dr = draftRole, ok = () => dr.name.trim() && !SET.roles[dr.name.trim()];
+          return el('div', { class: 's-card role editing', style: '--role:' + hue(dr.ci) },
+            el('div', { class: 'band' }, swatch(hue(dr.ci), () => { dr.ci++; draw(); }), el('input', { type: 'text', class: 'rn', placeholder: 'role name', value: dr.name, spellcheck: 'false', oninput: e => { dr.name = e.target.value; } }), chip('new', 'bi')),
+            el('div', { class: 'rb' },
+              field('Mark', el('div', { class: 'marks' }, ...MARKS.map(m => el('button', { class: m === dr.mark ? 'on' : '', onclick: () => { dr.mark = m; draw(); } }, m)))),
+              field('Default system prompt', el('textarea', { placeholder: 'You are …', spellcheck: 'false', oninput: e => { dr.prompt = e.target.value; } }, dr.prompt)),
+              field('May send to', select(SENDS, dr.send, x => { dr.send = x; }), 'terminal-enforced'),
+              field('Priority class', seg(['oracle class', 'worker class'], dr.cls + ' class', x => { dr.cls = x.split(' ')[0]; draw(); }), 'delivery order and badging follow the class'),
+              el('div', { class: 'facts' }, btn('Add role', null, 'primary'), btn('Cancel', null, 'ghost'))));
+        };
+        const grid = el('div', { class: 'roles' }, ...roleNames().map(roleCard), newRole());
+        const acts = grid.querySelector('.facts'); if (acts) { const dr = draftRole; acts.children[0].addEventListener('click', () => { const name = dr.name.trim(); if (!name || SET.roles[name]) { grid.querySelector('input.rn').focus(); return; } const rec = { prompt: dr.prompt, send: dr.send, color: hue(dr.ci), mark: dr.mark, cls: dr.cls, custom: true }; SET.roles[name] = rec; draftRole = null; emit('roles', name, rec); draw(); }); acts.children[1].addEventListener('click', () => { draftRole = null; draw(); }); }
+        add('Roles', grid);
       }
-      if (cur === 'Harnesses' || needle) for (const h of Object.keys(SET.harness)) {
-        const v = SET.harness[h], d = SET_DEF.harness[h];
-        add('Harnesses', card(h, [
-          row('Default role', null, select(['oracle', 'executor', 'creativity'], v.role, x => { v.role = x; draw(); }), v.role !== d.role, () => { v.role = d.role; draw(); }),
-          row('Wake method', null, select(['socket', 'hook', 'mcp', 'pty'], v.wake, x => { v.wake = x; draw(); }), v.wake !== d.wake, () => { v.wake = d.wake; draw(); }),
-          row('Hooks', 'state from harness hooks', toggle(v.hooks, x => { v.hooks = x; draw(); }), v.hooks !== d.hooks, () => { v.hooks = d.hooks; draw(); }),
-        ], el('span', { class: 'tile', style: 'background:' + ((LAUNCH.find(l => l.harness === h) || {}).tile || '#374151') }, harnessIcon(h))));
+
+      if (cur === 'Harnesses' || needle) {
+        const hTile = h => {
+          const v = SET.harness[h], d = SET_DEF.harness[h] || null, ch = k => !!d && v[k] !== d[k], rs = k => () => { v[k] = d[k]; emit('harness', h, v); draw(); }, set = k => x => { v[k] = x; emit('harness', h, v); draw(); };
+          return el('div', { class: 's-card htile' },
+            el('div', { class: 'hh' }, el('span', { class: 'tile', style: 'background:' + v.tile }, harnessIcon(v.icon || h)), el('div', { class: 'ht' }, el('b', {}, (LAUNCH.find(l => l.harness === h) || {}).label || h), el('code', {}, v.command || h)),
+              v.custom ? el('button', { class: 'del', onclick: () => { delete SET.harness[h]; emit('harness', h, null); draw(); } }, 'delete') : chip('built-in', 'bi')),
+            row('Default role', null, select(roleNames(), v.role, set('role')), ch('role'), rs('role')),
+            row('Wake', null, select(WAKES, v.wake, set('wake')), ch('wake'), rs('wake')),
+            row('State from', null, select(STATE_FROM, v.stateFrom, set('stateFrom')), ch('stateFrom'), rs('stateFrom')),
+            row('Hooks', 'state from harness hooks', toggle(v.hooks, set('hooks')), ch('hooks'), rs('hooks')));
+        };
+        const newHarness = () => {
+          if (!draftHarness) return el('button', { class: 's-card htile add', onclick: () => { draftHarness = { name: '', command: '', ci: 7, icon: 'zsh', role: 'executor', wake: 'pty', stateFrom: 'output cadence', hooks: false }; draw(); } }, el('b', {}, '+ new harness'), el('span', {}, 'any command that talks in a terminal'));
+          const dh = draftHarness;
+          return el('div', { class: 's-card htile editing' },
+            el('div', { class: 'hh' }, swatch(hue(dh.ci), () => { dh.ci++; draw(); }), el('div', { class: 'ht' }, text(dh.name, 'harness name', x => { dh.name = x; }), text(dh.command, 'aider --model …', x => { dh.command = x; }, true)), chip('new', 'bi')),
+            field('Icon', el('div', { class: 'marks icons' }, ...ICONS.map(i => el('button', { class: i === dh.icon ? 'on' : '', style: i === dh.icon ? 'background:' + hue(dh.ci) : '', onclick: () => { dh.icon = i; draw(); } }, harnessIcon(i))))),
+            row('Default role', null, select(roleNames(), dh.role, x => { dh.role = x; })),
+            row('Wake', null, select(WAKES, dh.wake, x => { dh.wake = x; })),
+            row('State from', null, select(STATE_FROM, dh.stateFrom, x => { dh.stateFrom = x; })),
+            row('Hooks', null, toggle(dh.hooks, x => { dh.hooks = x; draw(); })),
+            el('div', { class: 's-note' }, 'unknown harnesses run through the PTY adapter: input is typed, state is inferred'),
+            el('div', { class: 'facts' }, btn('Add harness', null, 'primary'), btn('Cancel', null, 'ghost')));
+        };
+        const grid = el('div', { class: 'htiles' }, ...Object.keys(SET.harness).map(hTile), newHarness());
+        const acts = grid.querySelector('.facts'); if (acts) { const dh = draftHarness; acts.children[0].addEventListener('click', () => { const name = dh.name.trim(); if (!name || SET.harness[name]) { grid.querySelector('.editing input').focus(); return; } const rec = { role: dh.role, wake: dh.wake, hooks: dh.hooks, command: dh.command, tile: hue(dh.ci), icon: dh.icon, custom: true, stateFrom: dh.stateFrom }; SET.harness[name] = rec; draftHarness = null; emit('harness', name, rec); draw(); }); acts.children[1].addEventListener('click', () => { draftHarness = null; draw(); }); }
+        add('Harnesses', grid);
       }
-      if (cur === 'Appearance' || needle) { const v = SET.appearance, d = SET_DEF.appearance; add('Appearance', card('Appearance', [
-        row('Theme', null, select(['auto', 'dark', 'light'], v.theme, x => { v.theme = x; draw(); }), v.theme !== d.theme, () => { v.theme = d.theme; draw(); }),
-        row('Density', null, select(['touch', 'comfortable', 'cozy', 'compact'], v.density, x => { v.density = x; draw(); }), v.density !== d.density, () => { v.density = d.density; draw(); }),
-        row('Gutter', 'px between panes', select(['2', '4'], String(v.gutter), x => { v.gutter = +x; draw(); }), v.gutter !== d.gutter, () => { v.gutter = d.gutter; draw(); }),
-        row('Border glow', 'particles in the seat colour', toggle(v.glow, x => { v.glow = x; draw(); }), v.glow !== d.glow, () => { v.glow = d.glow; draw(); }),
-        row('Last-output subtitle', 'second line on seat rows', toggle(v.subtitle, x => { v.subtitle = x; draw(); }), v.subtitle !== d.subtitle, () => { v.subtitle = d.subtitle; draw(); }),
-      ])); }
-      if (cur === 'Shortcuts' || needle) add('Shortcuts', card('Shortcuts', SET.shortcuts.map(([l, kb]) => row(l, null, el('span', { class: 'kbd' }, kb), false))));
-      if (!main.children.length) main.append(el('div', { class: 's-note' }, 'nothing matches "' + q.value + '"'));
+
+      if (cur === 'Appearance' || needle) {
+        const v = SET.appearance, d = SET_DEF.appearance, C = T.color, setA = k => x => { v[k] = x; emit('appearance', k, x); draw(); }, rsA = k => () => { v[k] = d[k]; emit('appearance', k, d[k]); draw(); };
+        // theme swatches are little windows drawn in the real theme colours (tokens, not guesses)
+        const win = t => { const c = C[t === 'light' ? 'light' : 'dark'], l = C.light; return el('span', { class: 'win', style: 'background:' + c.bg },
+          el('i', { class: 'tb', style: 'background:' + c.surface }), el('i', { class: 'sb', style: 'background:' + c.sidebar }), el('i', { class: 'pn', style: 'background:' + c.surface_2 }),
+          t === 'auto' ? el('i', { class: 'half', style: 'background:' + l.bg }, el('i', { class: 'tb', style: 'background:' + l.surface }), el('i', { class: 'pn', style: 'background:' + l.surface_2 })) : null); };
+        const themes = el('div', { class: 'thumbs' }, ...['auto', 'dark', 'light'].map(t => el('button', { class: 'thumb' + (v.theme === t ? ' on' : ''), onclick: () => setA('theme')(t) }, win(t), el('span', { class: 'cap' }, t))));
+        // density previews at the real row heights from tokens, so the choice is visible before it applies
+        const dens = el('div', { class: 'thumbs' }, ...['touch', 'comfortable', 'cozy', 'compact'].map(k => { const dd = T.density[k], n = Math.floor(100 / dd.row_h);
+          return el('button', { class: 'thumb' + (v.density === k ? ' on' : ''), onclick: () => setA('density')(k) },
+            el('span', { class: 'win rows' }, ...Array.from({ length: n }, (_, i) => el('i', { class: 'r' + (i === 1 ? ' on' : ''), style: 'height:' + dd.row_h + 'px;padding:0 ' + Math.round(dd.pad_x / 2) + 'px;gap:' + dd.gap + 'px' }, el('i', { class: 't', style: 'width:' + dd.icon + 'px;height:' + dd.icon + 'px' }), el('i', { class: 'b' }), el('i', { class: 'g', style: 'width:' + dd.glyph / 2 + 'px;height:' + dd.glyph / 2 + 'px' })))),
+            el('span', { class: 'cap' }, k, el('small', {}, dd.row_h + ' px'))); }));
+        add('Appearance', card('Appearance', [
+          row('Theme', 'starts from the OS', themes, v.theme !== d.theme, rsA('theme')),
+          row('Density', 'row height on the map', dens, v.density !== d.density, rsA('density')),
+          row('Gutter', 'between panes', seg(['2 px', '4 px'], v.gutter + ' px', x => setA('gutter')(parseInt(x, 10))), v.gutter !== d.gutter, rsA('gutter')),
+          row('Border glow', 'particles in the seat colour', toggle(v.glow, setA('glow')), v.glow !== d.glow, rsA('glow')),
+          row('Last-output subtitle', 'second line on seat rows', toggle(v.subtitle, setA('subtitle')), v.subtitle !== d.subtitle, rsA('subtitle')),
+        ]));
+      }
+
+      if (cur === 'Shortcuts' || needle) add('Shortcuts', card('Shortcuts', [el('div', { class: 'keys' }, ...SET.shortcuts.map(([l, k]) => el('div', { class: 'kr' }, el('span', {}, l), el('span', { class: 'kbd' }, k))))]));
+      if (!main.children.length) main.append(note('nothing matches "' + q.value + '"'));
     };
     q.addEventListener('input', draw); draw();
-    root.append(el('div', { class: 's-side' }, q, nav), main);
+    root.append(el('div', { class: 's-side' }, el('div', { class: 's-qwrap' }, icon('search'), q), nav, el('div', { class: 's-src' }, '~/.config/bboxy/config.toml')), main);
     return root;
   }
 

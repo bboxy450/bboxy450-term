@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 7,
+  "version": 8,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -572,7 +572,7 @@
         "closing the tab needs no grace",
         "Google sign-in and device enrollment are real buttons with deferred flows (cloud)"
       ],
-      "status": "built",
+      "status": "built (designer pass 2026-10-21): hero, subkeys, signatures, provider tiles, machine rows, role cards with class, harness tiles, appearance previews; appearance applies live",
       "identity_rules": [
         "the app never holds or exports the primary secret: no create-root-key, no export; point at gpg",
         "device enrollment copes with the primary being elsewhere: it produces a signed request, it never pretends",

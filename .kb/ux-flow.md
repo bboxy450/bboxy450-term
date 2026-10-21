@@ -168,3 +168,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Appearance settings apply live
 **Rule:** density, theme and gutter chosen in Settings › Appearance apply to the window at once; the density control previews its four row heights before you pick. **Why:** the operator wants density as a real setting, not a lab toggle. **Where:** `settingsPage({ onChange })` → showcase applies tokens and re-renders.
+
+### Settings, second pass (designer agent)
+**Rule:** the settings tab is the hero of identity: the GPG key block with the portrait beside it, subkeys, signatures; roles and harnesses as cards and tiles users can add to; appearance previews that apply live. Verified by rendering every section in both themes. **Where:** `settingsPage()` in `components.js`, settings block in `lab.css`, `applySetting` in `showcase.js`.
