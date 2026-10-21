@@ -95,15 +95,33 @@
     const sp = { name: 'space ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [] };
     model.spaces.push(sp); jumpSpace(sp);
   }
-  // Close kills the seat: its leaf collapses into the sibling, the row leaves the sidebar, focus moves to the first pane.
+  // Close is reversible (operator): the seat enters a 60 s grace state. The pane leaves the split, the row becomes a
+  // closed strip with undo, ⌘Z restores it in place with its split position. After the window it is terminated.
+  const GRACE_MS = 60000;
   function prune(t, key) { if (t.key) return t.key === key ? null : t; const a = prune(t.a, key), b = prune(t.b, key); if (!a) return b; if (!b) return a; return { ...t, a, b }; }
+  function parentOf(t, key, parent) { if (t.key) return t.key === key ? parent : null; return parentOf(t.a, key, t) || parentOf(t.b, key, t); }
+  function replaceNode(t, target, repl) { if (t === target) return repl; if (t.key) return t; return { ...t, a: replaceNode(t.a, target, repl), b: replaceNode(t.b, target, repl) }; }
   function closeSeat(seat) {
-    for (const sp of model.spaces) for (const tab of sp.tabs) { if (tab.seats.includes(seat)) { tab.seats = tab.seats.filter(x => x !== seat); tab.tree = prune(tab.tree, seat.key) || tab.seats[0]; } }
-    for (const sp of model.spaces) sp.tabs = sp.tabs.filter(t => t.seats.length);
-    seats.splice(seats.indexOf(seat), 1); clearTimeout(seat.replay && seat.replay.timer);
-    if (focused === seat.key) { const t = space().tabs[0]; focused = t ? t.seats[0].key : null; }
+    const hit = tabOf(seat.key); if (!hit) return;
+    const { sp, t: tab } = hit;
+    const parent = parentOf(tab.tree, seat.key, null);
+    const rec = { seat, sp, tab, tabIndex: sp.tabs.indexOf(tab), sibling: parent ? (parent.a === seat ? parent.b : parent.a) : null, side: parent ? (parent.a === seat ? 'a' : 'b') : null, dir: parent && parent.dir, ratio: parent && parent.ratio, at: performance.now() };
+    tab.seats = tab.seats.filter(x => x !== seat); tab.tree = prune(tab.tree, seat.key);
+    if (!tab.seats.length) sp.tabs.splice(rec.tabIndex, 1);
+    sp.closed = sp.closed || []; sp.closed.push(rec);
+    rec.timer = setTimeout(() => { sp.closed = sp.closed.filter(r => r !== rec); seats.splice(seats.indexOf(seat), 1); clearTimeout(seat.replay && seat.replay.timer); if (focused === seat.key) focused = null; render(); }, GRACE_MS);
+    if (focused === seat.key) { const t2 = sp.tabs[0]; focused = t2 ? t2.seats[0].key : null; }
     render();
   }
+  function undoClose(rec) {
+    clearTimeout(rec.timer); rec.sp.closed = rec.sp.closed.filter(r => r !== rec);
+    const { seat, sp, tab } = rec;
+    if (!sp.tabs.includes(tab)) { tab.seats = [seat]; tab.tree = seat; sp.tabs.splice(Math.min(rec.tabIndex, sp.tabs.length), 0, tab); }
+    else { tab.seats.push(seat); const node = { dir: rec.dir, ratio: rec.ratio, a: rec.side === 'a' ? seat : rec.sibling, b: rec.side === 'b' ? seat : rec.sibling }; tab.tree = replaceNode(tab.tree, rec.sibling, node); }
+    focused = seat.key; render();
+  }
+  addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { const sp = model.spaces.find(x => x.closed && x.closed.length); if (sp) { e.preventDefault(); undoClose(sp.closed[sp.closed.length - 1]); } } });
+  setInterval(() => { for (const sp of model.spaces) for (const r of (sp.closed || [])) { const n = main.querySelector('[data-closed="' + r.seat.key + '"] .left'); if (n) n.textContent = Math.max(0, Math.ceil((GRACE_MS - (performance.now() - r.at)) / 1000)) + 's'; } }, 500);
 
   // State change without a full render: swap glyphs and classes in place so replay text and scroll survive.
   function setState(seat, st) {
@@ -145,7 +163,7 @@
     stageTree = stageOf(); stageKeys = stageTree ? C.leaves(stageTree).map(s => s.key) : [];
     if (focused && !stageKeys.includes(focused) && !phantoms.some(p => p.key === focused)) focused = stageKeys[0] || null;
     const sb = C.sidebar(model, { openSpaces: [...open], openTabs: model.spaces.flatMap(s => s.tabs.map(t => s.key + '/' + t.name)), focusedKey: focused, currentSpace: space().key,
-      onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: () => {},
+      onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: () => {}, onUndo: undoClose,
       onColor: sp => { const hues = [0, 30, 50, 90, 150, 190, 220, 260, 300, 330]; sp.hueI = ((sp.hueI == null ? -1 : sp.hueI) + 1) % hues.length; sp.color = 'hsl(' + hues[sp.hueI] + ' 70% ' + (theme() === 'light' ? 42 : 58) + '%)'; render(); } });
     const stage = el('div', { class: 'stage' }, (() => { if (!stageTree) return el('div'); const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
     main.append(sb, stage);

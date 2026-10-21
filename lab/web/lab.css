@@ -375,3 +375,11 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .space.closed { padding-bottom: 0; border-bottom-width: 3px; cursor: pointer; }
 .space.closed .space-head { margin-bottom: 0; }
 .space.closed:hover .space-head { filter: brightness(1.08); }
+
+/* closed seat in grace: a collapsed strip with undo; the process is still alive underneath */
+.tab-row.closed-strip { color: var(--fg-dim); background: color-mix(in srgb, var(--fg-dim) 10%, transparent); border-radius: 4px; }
+.tab-row.closed-strip .x { width: 12px; text-align: center; color: var(--c-errored); font-weight: 700; }
+.tab-row.closed-strip .hicon { opacity: .5; filter: saturate(0); }
+.tab-row.closed-strip .tname { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--fg-dim) 60%, transparent); }
+.tab-row.closed-strip .undo { background: transparent; border: 1px solid var(--line); color: var(--fg); border-radius: 999px; font: inherit; font-size: 9px; letter-spacing: .08em; padding: 0 7px; cursor: pointer; }
+.tab-row.closed-strip .undo:hover { background: var(--surface-2); }

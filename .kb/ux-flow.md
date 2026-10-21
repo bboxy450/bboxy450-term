@@ -75,3 +75,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Locate is directional
 **Rule:** clicking a row rings its pane (circle from the pane centre). Clicking a pane bounces its row: a quick scale and a border in the seat colour around the row item, no ring. Keyboard focus does both. Nothing locates itself. **Why:** the circle should point to the thing you did not click. **Where:** `locate(key, where)` and `.seat-row.bounce` in the showcase.
+
+### Closing a seat is reversible (operator decision, also in vision)
+**Rule:** close puts the seat in a 60 s grace state: the pane leaves the split, the row becomes a collapsed closed strip in its cohort (struck name, countdown, undo). Undo or ⌘Z restores it in place with its split position and refocuses it. After the window the seat is gone. No confirm dialog; the undo window is the confirmation. **Where:** `closeSeat` / `undoClose` in `showcase.js`, `.closed-strip` in `components.js`; the mux and MCP specs carry the process side.
