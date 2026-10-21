@@ -13,7 +13,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Nyx Copperwing | Executor | Codex | **W2.1 mux supervisor + PTY + lease** | nothing |
 | Rook Ashwhisker | Executor | Codex | idle | in-session authorization from the operator |
 | subagent gui-spec | Oracle instrument | Claude | drafting `specs/gui-components.md` | nothing |
-| subagent net-spec | Oracle instrument | Claude | drafting `specs/networking.md` | nothing |
+| subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
 | operator | operator | human | lab review with Lumen | Codex trust for the fixture dir; Rook's pane |
 
 ## Graph
@@ -23,7 +23,7 @@ specs (done): messaging, subagent-detection, mux-daemon, harness-adapters,
               mcp-control-plane, terminal-core, identity, renderer, ux-prototype(v2),
               work-items (epics/specs/tasks as md+frontmatter)
 specs (drafting): gui-components ──▶ W3.2 brief
-                  networking     ──▶ W4.1 brief
+specs (done +1): networking ✔ ──▶ W4.1 brief ✔ [OPEN]
 
 W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
    ├──▶ W3.1 renderer harness ✔ (Nyx, fcc8eca, 5 tests, 48 PNGs, CI green on macos-15)
@@ -41,7 +41,7 @@ W2.1 supervisor + PTY + lease [Nyx, RUNNING]
            └──▶ W2.4 local messaging on loopback (Transport trait from W4.1)
                    └──▶ W2.5 MCP server + seat sockets
 
-W4.1 Transport trait on quinn + loopback + provider traits [PENDING SPEC]
+W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
    └──▶ phase 2 cloud: SshProvider bootstrap, remote supervisor
            └──▶ phase 2b private cross-instance messaging (punch, relay)
                    └──▶ phase 3 global pubsub, DHT, phantoms (iroh re-eval here)
@@ -52,9 +52,9 @@ W4.1 Transport trait on quinn + loopback + provider traits [PENDING SPEC]
 | State | Items |
 |---|---|
 | RUNNING | W2.1 (Nyx); gui-components spec; networking spec; lab passes (Lumen) |
-| OPEN, claimable now | none until W3.2/W4.1 specs land |
+| OPEN, claimable now | W4.1 |
 | OPEN, after W2.1 | W1.2, W2.3 |
-| PENDING SPEC | W3.2, W4.1 |
+| PENDING SPEC | W3.2 |
 | NOT YET BRIEFED | W2.2, W2.4, W2.5 (incl. task_delegate), W3.3, W3.4 |
 | PARTIAL | H Codex capture (operator trust) |
 | REDUNDANT, optional | Rook's `-exec` passes on A and H |

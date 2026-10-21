@@ -22,6 +22,6 @@
 | W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | free Executor after W2.1 | OPEN |
 | W2.3 | [[2026-10-21-w2-3-adapters-claude-codex-zsh]] adapters: Claude, Codex, zsh | free Executor after W2.1 | OPEN |
 | W3.2 | GPU GUI component library | brief after `specs/gui-components.md` lands | PENDING SPEC |
-| W4.1 | Transport trait on quinn, loopback impl, provider traits | brief after `specs/networking.md` lands | PENDING SPEC |
+| W4.1 | [[2026-10-21-w4-1-transport-trait]] Transport trait, loopback, quinn endpoint auth | free Executor | OPEN |
 
 Rule: redundant passes write `-exec.md` next to the subagent's file. The Oracle converges both into `specs/`. Claim by replying on `#bboxy450-term` with `Name <EXECUTOR> CLAIM <Id>`. Finish one, claim the next.
