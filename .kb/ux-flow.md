@@ -159,3 +159,9 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### What the Account screen must not promise (Oracle, GPG root)
 **Rule:** nine constraints, now in the design system under settings_tab.identity_rules: no create/export of the root; enrollment handles "primary elsewhere" with a signed request; unlock is pinentry, never our password field; "revoked here, peers learn on next contact"; recovery restores identity only; full 40-hex fingerprint, never a short id; "signed by Boxy" means the chain verifies; Google is a link, not a sign-in; per-seat commit signing switchable, default off. **Where:** `design/bboxy-design-system.json` v6; the Account hero follows them.
+
+### Users define their own roles
+**Rule:** Settings › Roles has a "+ new role" card: name, colour, mark, default system prompt, may-send-to, and a priority class (oracle class / worker class) because delivery order and badging follow the class, not the name. Built-ins are editable, not deletable, chipped "built-in". Harness default-role selects list custom roles. **Where:** `settingsPage()` Roles (designer pass); class semantics routed to the Oracle for messaging/MCP.
+
+### Users add their own harnesses
+**Rule:** Settings › Harnesses has a "+ new harness" tile: name, command, tile colour, icon, default role, wake method (default pty), state source (default output cadence), hooks. Built-ins are chipped "built-in". A user-added harness runs through the generic PTY adapter and shows in the launcher. **Where:** `settingsPage()` Harnesses (designer pass); adapter semantics routed to the Oracle.
