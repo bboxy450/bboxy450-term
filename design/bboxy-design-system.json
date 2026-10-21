@@ -7,8 +7,8 @@
     "tokens": "design/tokens.toml",
     "style": "design/style.json",
     "lab": "lab/web/showcase.html",
-    "spec": ".kb/specs/ux-prototype.md",
-    "reasoning": ".kb/ux-flow.md"
+    "spec": ".bboxy/specs/ux-prototype.md",
+    "reasoning": ".bboxy/ux-flow.md"
   },
   "principles": [
     "every pixel is precious: no outer padding, 2 px gutters, chrome takes no space it does not use",

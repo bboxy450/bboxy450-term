@@ -420,7 +420,7 @@
     if (where === 'pane' || where === 'both') { const col = C.hslToRgb(f.color); for (const R of rects) if (R.key === key && R.pane) ripple(R.x + R.w / 2, R.y + R.h / 2, col); }
     if (where === 'row' || where === 'both') { const row = main.querySelector('.seat-row[data-key="' + key + '"]'); if (row) { row.classList.remove('bounce'); void row.offsetWidth; row.classList.add('bounce'); row.addEventListener('animationend', () => row.classList.remove('bounce'), { once: true }); } }
   }
-  // Signal semantics (.kb/ux-pick.md): focus = brightness only. The locate ripple fires only with opts.locate,
+  // Signal semantics (.bboxy/ux-pick.md): focus = brightness only. The locate ripple fires only with opts.locate,
   // which click and keyboard pass and dwell does not. Timers and messages never ripple.
   function setFocus(key, opts) {
     opts = opts || {};
