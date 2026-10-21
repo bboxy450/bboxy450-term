@@ -64,6 +64,7 @@ Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection combine
 ## Working rules (operator, 2026-10-21)
 
 - **One concern at a time.** Layout first, then style, then behaviour, then performance. A brief names one concern.
+- **The operator reviews each UX element by hand** before the next one is briefed. The Oracle does not open, close or reopen the preview; it tells the operator the file changed and leaves the window alone. Feedback comes from touching it.
 - **Do not optimise pre-emptively.** 120 fps is the eventual target; nobody measures or tunes for it until layout and style are nailed.
 
 ## Future (RECORDED, not v0.1)
