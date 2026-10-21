@@ -195,3 +195,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Subscriptions are visible, external events have their lane
 **Rule:** the Graph tab shows what each seat listens to (pattern chips, AUTO where delegation subscribed it); the stream dock ends with a collapsible external lane (github, ci, cloud, cron, webhook chips). **Why:** events.md, the spine. **Where:** `subscriptionsCard`, `externalLane` in `components.js`; key E in the demo; design system v17.
+
+### A custom harness says it never submits on its own
+**Rule:** on a custom or draft harness tile with wake pty, the Wake row's subtext spells what the input guard will do: hooks off → "never submits on its own" (messages wait for the operator's Enter), hooks on → "types after an idle hook". It changes live with the Hooks toggle. **Why:** harness-adapters R7: a hookless harness gets operator handoff, never an inferred Enter; the operator should know that before adding one. **Where:** `submitHint` in `settingsPage()` in `components.js`; lab state `settings.html?state=new harness`; design system v18. Lab pages now also take `?theme=` and `?density=` so `scripts/parity.sh` can drive every state headless.
