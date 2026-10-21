@@ -13,9 +13,10 @@
   function seatColor(seatOrKey) {
     const seat = typeof seatOrKey === 'string' ? { key: seatOrKey } : seatOrKey;
     if (seat.color) return seat.color;
-    const sc = T.seat_color;
-    const hue = Math.floor((hash32(seat.key) % sc.hue_steps) * (360 / sc.hue_steps));
-    const light = window.Lab.prefs.theme === 'light' ? sc.lightness_light : sc.lightness_dark;
+    const sc = T.seat_color, h = hash32(seat.key);
+    const hue = Math.floor((h % sc.hue_steps) * (360 / sc.hue_steps));
+    const bands = window.Lab.prefs.theme === 'light' ? sc.bands_light : sc.bands_dark;
+    const light = bands[Math.floor(h / sc.hue_steps) % bands.length];
     return `hsl(${hue} ${sc.saturation}% ${light}%)`;
   }
 
@@ -91,6 +92,14 @@
     return seats.slice().sort((a, b) => order[a.state] - order[b.state]);
   }
 
+  // Pulse phase lock: CSS animations start when applied, so rows and panes created at different times would drift.
+  // A negative delay aligned to performance.now() puts every pulsing element on one global clock (glow.js uses the same clock).
+  function syncPulse(node, state) {
+    const ms = state === 'waiting' ? T.motion.pulse_ms : state === 'active' ? T.glow.active_pulse_ms : 0;
+    if (ms) node.style.animationDelay = (-(performance.now() % ms)) + 'ms';
+    return node;
+  }
+
   // ---------- molecules ----------
   function seatRow(seat, opts) {
     opts = opts || {};
@@ -104,7 +113,7 @@
     right.append(glyph(seat.state, seat));
     row.append(right);
     if (opts.subtitle) row.append(el('span', { class: 'sub' }, opts.subtitle));
-    return row;
+    return syncPulse(row, seat.state);
   }
 
   function miniGrid(tree, focusedKey, big) {
@@ -126,9 +135,7 @@
     const seats = tab.seats || leaves(tab.tree);
     if (seats.length === 1) {
       const s = seats[0];
-      const row = seatRow(s, { focused: s.key === opts.focusedKey, shortcut: tab.shortcut });
-      row.querySelector('.right').append(miniGrid(tab.tree, opts.focusedKey));
-      return el('div', {}, row);
+      return el('div', {}, seatRow(s, { focused: s.key === opts.focusedKey, shortcut: tab.shortcut }));
     }
     const row = el('div', { class: 'tab-row' }, el('span', { class: 'caret' }, opts.expanded ? '▾' : '▸'), el('span', { class: 'tname' }, tab.name));
     if (!opts.expanded) {
@@ -226,7 +233,7 @@
     opts = opts || {};
     const p = el('div', { class: 'pane ' + seat.state + (opts.unfocused ? ' unfocused' : '') + (opts.focused ? ' focused' : ''), style: '--seat:' + seatColor(seat) + (opts.height ? ';min-height:' + opts.height + 'px' : '') });
     p.append(titleStrip(seat, opts), fakeTerm(seat));
-    return p;
+    return syncPulse(p, seat.state);
   }
 
   // ⌘T picker: vertical, keyboard-first, typed prefix, name reveal with reroll
@@ -275,5 +282,5 @@
     return row;
   }
 
-  window.C = { hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

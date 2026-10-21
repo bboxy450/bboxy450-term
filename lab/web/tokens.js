@@ -83,7 +83,7 @@ window.TOKENS = {
     "particle_speed": 18,
     "particles_active": 40,
     "particles_idle": 6,
-    "row_radius": 6,
+    "row_radius": 8,
     "waiting_alpha_max": 0.8,
     "waiting_alpha_min": 0.25
   },
@@ -104,9 +104,15 @@ window.TOKENS = {
     "row": 6
   },
   "seat_color": {
-    "hue_steps": 24,
-    "lightness_dark": 62,
-    "lightness_light": 46,
+    "bands_dark": [
+      62,
+      48
+    ],
+    "bands_light": [
+      46,
+      36
+    ],
+    "hue_steps": 36,
     "saturation": 72
   },
   "sidebar": {

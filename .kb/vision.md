@@ -72,6 +72,22 @@ Everything above that is not marked Future. Private GitHub repo `bboxy450/bboxy4
 
 Work splits into: terminal core (PTY, VTE, grid), renderer (wgpu), frontend chrome (sidebar, tabs, splits, settings), mux daemon (seat persistence, recovery), messaging (transport, identity, rooms, priority), MCP server (Oracle control plane), harness adapters (launch, role prompt, wake, state detection). Task files per area follow the research.
 
+## Stack (DECIDED by the operator, 2026-10-21)
+
+| Layer | Decision |
+|---|---|
+| Terminal model | **Fork `alacritty_terminal`** into this monorepo as our own subcrate and maintain it. The operator reads alacritty as abandoned; bundling the upstream crate is a dependency on a dead project. The fork gets our viewport-grid plus byte-ring memory model. Task A reports its last-release date for the record. |
+| PTY | **`portable-pty`** (from wezterm). |
+| wezterm mux | **Read only.** Design reference, no code reuse. |
+| Chrome and renderer | **Raw wgpu.** Our own retained UI, invested in and polished over time. No gpui, no iced. A **dedicated renderer subagent** builds it under an architecture the Oracle writes. |
+| Text rendering | **The sexiest text possible.** Study what ghostty does and take it. Research: `tasks/2026-10-21-text-rendering-research.md`. |
+| Terminal protocol baseline | **Full 24-bit colour** plus everything listed: OSC 8 hyperlinks, OSC 52 clipboard, bracketed paste, mode 2026 synchronized output, Kitty keyboard protocol. Images deferred. |
+| Repo shape | **Monorepo managed by Nix** using the operator's **`weavie`** crate (crates.io 0.2.0, github.com/bboxy450/weavie: Rust graph-repo workspaces from Nix inputs and isolated Git worktrees). We improve weavie as we use it. |
+| Binaries | **One binary, two modes**: GUI and `--daemon`. |
+| macOS floor | **Aggressive.** Support roughly the last four years: floor is **macOS 14 Sonoma**, raised every autumn. Metal and wgpu features from that floor are fair game. |
+
+Defaults not yet contested (ASSUMED): grayscale antialiasing, ligatures on with system font fallback, render on change with the glow shader as the only continuous animator, 10k lines or 4 MB scrollback per seat.
+
 ## Rendering and prototyping (DECIDED)
 
 - **Everything is GPU-rendered**, chrome included, not only the terminal grid. Shaders are a first-class UI tool: glow, blur, state animation, seat identity effects. The GUI toolkit choice in Task A must allow custom shaders and share the wgpu device with the terminal surfaces.
