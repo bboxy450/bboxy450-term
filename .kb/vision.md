@@ -39,10 +39,10 @@ Index: [[README]] · tasks in `tasks/` · research in `research/` · specs in `s
 
 ## Messaging (DECIDED)
 
-- **Rebuild, not reuse.** Take the design of the `icq` crate, its daemon and its NAT puncher as the blueprint. Build on `quinn`. `iroh` only if it is open source under a license we accept and we trust the maintainers (research question).
+- **Rebuild, not reuse.** Take the design of the `icq` crate, its daemon and its NAT puncher as the blueprint. **Build on `quinn`.** DECIDED 2026-10-21 after [[transport-and-identity]]: iroh is MIT/Apache and its relays and DNS are self-hostable, but iroh 1.x runs on `noq`, n0's fork of quinn, so adopting it means a second QUIC stack owned by one VC-funded company. Reversible if the messaging layer only sees `connect(key) -> Connection`.
 - Transport: direct QUIC → simultaneous NAT punch → end-to-end encrypted relay fallback. Local and cross-machine, cross-network.
 - Global `#channels`, private groups, DMs, group DMs.
-- **Identity = key.** Same key, same user. Day one: a key plus an email. Apple and Google sign-in are wanted if cheap enough to add now (research question); otherwise a later login layer on top of the key.
+- **Identity = key.** Same key, same user. Day one: a key plus an email. **Google sign-in in v0.1**: loopback PKCE, about a week, no server; the ID-token nonce is a hash of the public key so the email claim is bound to the key. **Apple sign-in deferred**: Apple does not allow the native flow for Developer ID (non-App-Store) macOS apps, and the web flow needs a hosted HTTPS callback on a verified domain. Revisit when we have a domain or an App Store build. Source: [[transport-and-identity]].
 - Message priority derives from the sender's terminal-assigned role. Oracle outranks everything else. Priority orders delivery and badging. Nothing is dropped.
 - **Waking a harness:** `icq` already taps Claude, Codex, pi and omp sockets or channels. Reuse those touch points. **Fallback for any harness: type into its PTY and press Enter.** The terminal owns the PTY, so it must watch for interactive input state before injecting.
 - Every seat gets a generated character name (fantasy, sci-fi, furry pools) and its own key. **Gap:** whether seats sign git commits with their own key, and how that relates to the operator's signing key.

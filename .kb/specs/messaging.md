@@ -12,6 +12,18 @@ The cost is ownership of six boundaries: traversal/helper operations; account/de
 
 Linking ICQ preserves its storage and scheduler coupling and unconditional settlement dependencies. Fronting its daemon can sort a UI but cannot add trusted fields to its signed v2 envelope or replace its internal native-delivery order. Its 64-identity cap also conflicts with the 1000-seat target (`ICQ/src/store.rs:233`). These are concrete reasons for the chosen boundary, beyond preference for a rewrite.
 
+## Transport: decided baseline
+
+Use Quinn with our own bounded direct dial, coordinated simultaneous UDP punch, then an end-to-end encrypted relay fallback. Model the ladder on `ICQ/src/runtime.rs:824`, `src/rendezvous.rs:851` and `src/rendezvous/relay.rs:383`, whose mechanisms are recorded in [[agent-messaging]]. A reachable common helper supplies signed rendezvous observations and carries opaque inner QUIC packets when direct traversal fails. For UDP-blocked networks, support an authenticated TLS/WebSocket helper carrier; merely having a relay address does not establish reachability.
+
+The network connection authenticates the remote mux device's delegated key, bound to the actual TLS session; each message separately proves its author seat and role grant. Share bounded connections between device pairs across seats instead of forcing one network connection per seat. Local seats take the same admission/signature/queue path without a network round trip. Use a new ALPN and discovery namespace: this design does not claim ICQ wire interoperability.
+
+Own the contact/discovery records and helper operation as part of this service. Public channels may use namespaced DHT discovery with signed contact records; never publish private group capabilities as public discovery names. A helper carries no application execution authority and is not an offline mailbox. Persist messages through path changes, relay expiry and reconnect, then retry the same message IDs. Port ICQ's authentication and bounding properties, not its eight-circuit or 64-identity limits unchanged. Export per-stage outcomes and backpressure so capacity exhaustion cannot masquerade as successful delivery.
+
+**Conditional alternative:** Iroh remains eligible only if its license, maintainer review, self-hosted relay deployment and discovery configuration pass the operator's requirements, including operation with no n0 infrastructure dependency. Local 1.3.0 declares MIT OR Apache-2.0 and uses noq (`Iroh/Cargo.toml.orig:7`, `:44`); the [project documents a self-hostable relay](https://github.com/n0-computer/iroh#repository-structure). Its [documented default](https://docs.rs/iroh/1.4.0/iroh/#connection-establishment) normally establishes via a home relay before upgrading direct. Verify direct-first policy and independence in a deployment test rather than assuming that disabling a public relay is sufficient. This is a conditional option, not the selected baseline.
+
+**Gap:** no self-hosted Iroh independence/traversal test or maintainer trust review was performed. [[transport-and-identity]] was not present when this section was written; the Oracle explicitly removed that dependency and requested this Quinn baseline. Review that evidence when it lands without reopening the rest of this spec.
+
 ## Service boundary
 
 The persistent mux service owns seat IDs, harness-session mappings, message storage, signing and delivery attempts. The GUI subscribes to its events and renders them; closing the GUI must not terminate message ownership. This is a messaging requirement on the mux, not an implementation of the separate mux task.

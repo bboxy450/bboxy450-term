@@ -6,7 +6,7 @@
 
 ## Scope and provenance
 
-Wrote only `research/agent-messaging.md`, `specs/messaging.md` and this evidence record under `.kb/`. No application code, task board, vision, credentials or runtime database was edited by this assignment. Other agents are concurrently updating this repository; no repository commit is attributed to this Executor.
+Repository writes are limited to `research/agent-messaging.md`, `specs/messaging.md` and this evidence record under `.kb/`. No application code, task board, vision or credentials were edited. ICQ progress messages used the supported CLI; its runtime database was not opened or manually modified. Other agents are concurrently updating this repository; no repository commit is attributed to this Executor.
 
 `icq --version` — exit 0, installed CLI 0.20.2.
 
@@ -50,6 +50,6 @@ Exploratory failures: the first source search used a nonexistent `src/network*` 
 
 No compiled embedding proof, local ICQ test suite, live NAT matrix, relay load test, 1000-seat benchmark, secure key-enrollment experiment, identity-provider integration, or generic PTY injection test. No live harness received a synthetic research probe. No ICQ private key, private group invitation, passphrase, raw inbox transcript or runtime SQLite content was copied into this repository.
 
-The transport integration review is pending the Oracle-requested parallel `research/transport-and-identity.md`; the spec's transport section has not been written yet.
+At 11:59 PDT, `research/transport-and-identity.md` was still absent. Oracle follow-up `8f4caeac-80f0-4d87-b9bd-37be82cd1b1d` removed that dependency and explicitly requested the decided Quinn + custom punch + E2E relay baseline, with a conditional Iroh alternative. The spec now contains that transport section; the later parallel review remains an explicit gap.
 
 — Nyx Copperwing <EXECUTOR>
