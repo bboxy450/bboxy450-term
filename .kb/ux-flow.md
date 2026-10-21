@@ -156,3 +156,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Identity is the GPG key
 **Rule:** the operator's existing Ed25519 GPG key is the identity: fingerprint and uid are the hero of Account, devices are subkeys with revoke, seats sign under the roster, commits and messages are signed, Google is a secondary link for cloud. **Why:** the operator loves identity based on the GPG key; lean in. **Where:** Account hero and Signatures card in `settingsPage()` (designer pass); identity spec alignment requested from the Oracle.
+
+### What the Account screen must not promise (Oracle, GPG root)
+**Rule:** nine constraints, now in the design system under settings_tab.identity_rules: no create/export of the root; enrollment handles "primary elsewhere" with a signed request; unlock is pinentry, never our password field; "revoked here, peers learn on next contact"; recovery restores identity only; full 40-hex fingerprint, never a short id; "signed by Boxy" means the chain verifies; Google is a link, not a sign-in; per-seat commit signing switchable, default off. **Where:** `design/bboxy-design-system.json` v6; the Account hero follows them.

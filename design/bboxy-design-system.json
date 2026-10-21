@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 5,
+  "version": 6,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -572,7 +572,19 @@
         "closing the tab needs no grace",
         "Google sign-in and device enrollment are real buttons with deferred flows (cloud)"
       ],
-      "status": "built"
+      "status": "built",
+      "identity_rules": [
+        "the app never holds or exports the primary secret: no create-root-key, no export; point at gpg",
+        "device enrollment copes with the primary being elsewhere: it produces a signed request, it never pretends",
+        "unlock is pinentry and the gpg-agent cache; no password field of ours, no remember-password",
+        "revocation wording: revoked here, peers learn on next contact; never revoked everywhere",
+        "recovery restores identity only; seats, history and grants are not recovered by the key",
+        "the fingerprint is the full 40 hex grouped in 4s; a short id is never the identity",
+        "messages and presence are signed by leaf keys; signed by Boxy means the chain verifies to Boxy's key",
+        "Google is a link for cloud, drawn as a link, never a sign-in",
+        "per-seat commit signing is assumed, not decided: switchable, default off"
+      ],
+      "account": "hero: portrait beside the key block; full fingerprint large in mono; ed25519 · signing chip; unlocked · gpg-agent cache; uid line; copy fingerprint; trust path root → device subkeys → seat keys; subkey cards per device with revoke; Signatures card; Link Google for cloud as a link; paper recovery with the identity-only caption"
     },
     "nested_subagent_rows": {
       "purpose": "a harness's subagents under its seat row",
