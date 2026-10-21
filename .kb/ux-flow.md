@@ -135,3 +135,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### The specs' implications are drawn before they are built
 **Rule:** the Oracle's seventeen UI implications (state grade, waiting kinds, delivery ticks, held count, reconnect, gap marker, pending rows, audit lines, interrupt, spawn cap, purge, sockets, first run, settings, role menu, shadows deferred, nested subagent rows) live in the design system with status "drawn, not built", and in spec section 10. One lab pass each, in the order the operator chooses. **Where:** `design/bboxy-design-system.json` v2, `.kb/specs/ux-prototype.md` §10.
+
+### Where a seat runs is a prefix, and the launcher knows remote
+**Rule:** cloud seats get a cloud glyph and ssh seats a server glyph before the harness tile on rows and strips; local seats get nothing. In the launcher, SSH and Cloud are parent rows under Remote: → or typing opens the harnesses, one more level opens the placements; "ssh codex" and "cloud claude" type straight through. The launched seat carries where and host. **Where:** `.where` in `components.js`, `remoteRows` in `showcase.js`.

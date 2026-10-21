@@ -445,3 +445,8 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .picker .inrow { display: flex; align-items: center; }
 .picker .inrow input { flex: 1; min-width: 0; }
 .picker .opt .chev { margin-left: 4px; color: var(--fg-dim); }
+
+/* where a seat runs: cloud or ssh get a prefix mark; local gets nothing */
+.seat-row .where { --icon: 12px; color: var(--fg-dim); display: inline-flex; flex: none; margin-right: -2px; }
+.seat-row .where.cloud { color: var(--accent-soft); }
+.strip .where { --icon: 12px; opacity: .85; display: inline-flex; }

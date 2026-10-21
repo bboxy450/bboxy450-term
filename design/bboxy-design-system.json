@@ -351,6 +351,11 @@
       "purpose": "delivery evidence on a message",
       "anatomy": "see signals.delivery_evidence",
       "status": "drawn, not built"
+    },
+    "where_mark": {
+      "purpose": "where the seat runs",
+      "anatomy": "a prefix before the harness tile on rows and strips: cloud glyph for cloud seats, server glyph for ssh seats, nothing for local; tooltip names the host",
+      "status": "built"
     }
   },
   "modules": {
@@ -582,7 +587,8 @@
       "placement": "New tab / Split right / Split down under a launchable",
       "goto": "a parent row opening to every seat and swarm",
       "seat": "name · swarm · title; Enter focuses with locate",
-      "swarm": "name · seat count in the swarm colour; Enter opens and jumps"
+      "swarm": "name · seat count in the swarm colour; Enter opens and jumps",
+      "remote": "SSH and Cloud parent rows under Remote; each opens to the harnesses, each harness to its placements; the launched seat carries where + host"
     },
     "keyboard": {
       "↑↓": "move, wrapping",
@@ -600,7 +606,7 @@
     },
     "typing": {
       "filter": "label prefix, any word, subtitle, id",
-      "flatten": "\"<parent> <rest>\" filters inside the parent: goto nyx, go nyx, codex split",
+      "flatten": "\"<parent> <rest>\" filters inside the parent: goto nyx, go nyx, codex split, ssh codex, cloud claude",
       "aliases": {
         "Go to": [
           "goto",
@@ -639,9 +645,9 @@
     "purge": "GUI-only modal, typed seat name"
   },
   "gaps": [
-    "owned remote seats (ssh) look like local seats; not shown",
     "settings page and toolbar icon exist as lab pages, not wired into the showcase",
     "the lab cannot warp the OS pointer; native only",
-    "17 spec implications are drawn in this file with status \"drawn, not built\"; each is one lab pass"
+    "17 spec implications are drawn in this file with status \"drawn, not built\"; each is one lab pass",
+    "remote hosts are fixed demo values (rig, eu-2); a host picker is the next level of the SSH / Cloud rows"
   ]
 }

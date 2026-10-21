@@ -25,8 +25,8 @@
     mk(0, 'Vesper Greywind', 'claude', 'oracle', 'swarm control', 'active'),
     mk(1, 'Nyx Copperwing', 'codex', 'executor', 'messaging spec', 'active'),
     mk(2, 'Lumen Foxglove', 'claude', 'creativity', 'ux lab', 'idle'),
-    mk(3, 'Rook Ashwhisker', 'codex', 'executor', 'gpu research', 'waiting'),
-    mk(4, 'Sable Quill', 'codex', 'executor', 'harness hooks', 'idle'),
+    Object.assign(mk(3, 'Rook Ashwhisker', 'codex', 'executor', 'gpu research', 'waiting'), { where: 'cloud', host: 'eu-2' }),
+    Object.assign(mk(4, 'Sable Quill', 'codex', 'executor', 'harness hooks', 'idle'), { where: 'ssh', host: 'rig' }),
     mk(5, 'Pip Hollow', 'pi', 'executor', 'relay bench', 'errored'),
     mk(6, 'Marrow Finch', 'omp', 'executor', 'parse logs', 'idle'),
     mk(7, 'zsh', 'zsh', null, '~/mydev', 'idle'),
@@ -35,7 +35,7 @@
     mk(10, 'Ilka Thistle', 'pi', 'executor', 'relay bench', 'active'),
     mk(11, 'Dax Riven', 'codex', 'executor', 'mux daemon', 'idle'),
     mk(12, 'Wren Starling', 'omp', 'executor', 'tokens', 'waiting'),
-    mk(13, 'Halcyon Moss', 'codex', 'executor', 'ssh rig', 'idle'),
+    Object.assign(mk(13, 'Halcyon Moss', 'codex', 'executor', 'ssh rig', 'idle'), { where: 'ssh', host: 'rig' }),
     mk(14, 'Juniper Vale', 'claude', 'executor', 'parse logs', 'active'),
   ];
   const seats = BASE.slice(0, SCENE === 15 ? 15 : 8);
@@ -144,8 +144,11 @@
                         { id: l.id + ':bottom', label: 'Split down', sub: 'of ' + anchorSeat.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'bottom', launch: l }] : []),
     ];
     const launchRows = C.LAUNCH.map(l => ({ ...l, enterPicks: true, children: () => placements(l), aliases: [l.harness] }));
+    // remote: SSH ▸ harness ▸ placement, Cloud ▸ harness ▸ placement. 'ssh codex' and 'cloud claude' type straight through.
+    const remoteRow = (id, label, where, host, tile) => ({ id, label, aliases: [where], sub: 'run a harness ' + (where === 'cloud' ? 'in the cloud · ' : 'over ssh · ') + host, harness: where, kind: 'Remote', tile, section: 'Remote', children: () => C.LAUNCH.map(l => ({ ...l, id: where + ':' + l.id, sub: l.sub + ' · ' + host, enterPicks: true, aliases: [l.harness], where, host, children: () => placements(l).map(pl => ({ ...pl, where, host })) })) });
+    const remoteRows = [remoteRow('ssh', 'SSH', 'ssh', 'rig', '#374151'), remoteRow('cloud', 'Cloud', 'cloud', 'eu-2', '#2E6BFF')];
     const goRow = { id: 'goto', label: 'Go to', aliases: ['goto', 'go', 'jump'], sub: 'a seat or a swarm', harness: 'sidebarfoxopen', kind: 'Navigate', tile: '#6B7190', section: 'Navigate', children: () => [...goSeats(), ...goSwarms()] };
-    const items = [...launchRows, goRow];
+    const items = [...launchRows, ...remoteRows, goRow];
     const acts = p => (p.length && p[p.length - 1].id === 'goto') ? [['Go', '↵'], ['Back', '←']] : (p.length ? [['Place', '↵'], ['Back', '←']] : (preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['Placements', '→'], ['New tab instead', '⌥↵']] : [['New tab', '↵'], ['Placements', '→'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵']]));
     // banner above the panel: the real pane layout, large, with the new cell lit; nothing subtle about it
     if (preset && anchorSeat && stageTree) {
@@ -173,7 +176,8 @@
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
       if (it.swarm) { closeSpotlight(); jumpSpace(it.swarm); return; }
       const l = it.launch || it;
-      const seat = { key: 'n' + Date.now().toString(36), name: l.harness === 'zsh' ? 'zsh' : name, harness: l.harness, role: C.DEFAULT_ROLE[l.harness], title: l.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15 };
+      const where = it.where || (path.find(x => x.where) || {}).where || 'local', host = it.host || (path.find(x => x.host) || {}).host;
+      const seat = { key: 'n' + Date.now().toString(36), name: l.harness === 'zsh' ? 'zsh' : name, harness: l.harness, role: C.DEFAULT_ROLE[l.harness], title: l.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15, where, host };
       Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
       seats.push(seat); startReplay(seat, seats.length - 1);
       closeSpotlight();
