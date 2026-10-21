@@ -27,6 +27,7 @@ One signal per meaning. One meaning per signal. Nothing animates without a cause
 | **Locate ripple** (ring from row ↔ pane corner, seat colour) | "this row is that pane" | an explicit focus change by click or keyboard, both directions; clicking a row whose seat is already visible | mouse dwell, timers, message arrival, state change |
 | **Border glow** (particles, seat colour) | the seat's **state** | continuously: idle mild static, active breathing, waiting amber pulse, errored red static | anything else |
 | **Focus brightness** (glow and strip brighter) | "this seat has keyboard focus" | focus is here | hover |
+| **Unfocused dim** (pane content and strip greyed out, like iTerm2: `runs/ref-iterm-unfocused-dim.png`) | "this seat does not have focus" | every pane without focus, stronger than the 10% vignette; operator wants it clearly grey | the focused pane |
 | **State glyph** (● ○ ◐ ✕) | the seat's state | state change; waiting pulses with the glow | anything else |
 | **Unread dot** on a row (role colour) | "a message for this seat is unread" | message arrival | anything else, no ripple for messages |
 | **Hover** | "the pointer is here" | pointer over row or pane: subtle highlight only | no glow change, no ripple |

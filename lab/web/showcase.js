@@ -115,7 +115,7 @@
       const top = row.offsetTop - sc.offsetTop, bottom = top + row.offsetHeight;
       if (top < sc.scrollTop || bottom > sc.scrollTop + sc.clientHeight) { sc.scrollTop = top - sc.clientHeight / 2; measure(); }
     }
-    if (opts.locate) { const col = C.hslToRgb(f.color); for (const R of rects) if (R.key === key) ripple(R.pane ? R.x + 8 : R.x + 10, R.pane ? R.y + 8 : R.y + R.h / 2, col); }
+    if (opts.locate) { const col = C.hslToRgb(f.color); for (const R of rects) if (R.key === key) ripple(R.pane ? R.x + R.w / 2 : R.x + 10, R.pane ? R.y + R.h / 2 : R.y + R.h / 2, col); }  // pane: centre; row: left edge
     if (changed) { main.querySelectorAll('.seat-row[data-key="' + key + '"]').forEach(n => { if (f.unread) { f.unread = 0; render(); } }); }
   }
   // Focus follows the mouse after a short dwell. Typing holds focus: a keydown within the last second blocks hover focus.
