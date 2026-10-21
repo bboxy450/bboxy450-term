@@ -40,6 +40,10 @@
     mk(14, 'Juniper Vale', 'claude', 'executor', 'parse logs', 'active'),
   ];
   const seats = BASE.slice(0, SCENE === 15 ? 15 : 8);
+  // grade follows the harness record's state source (Settings › Harnesses): osc7501 → reported, hooks → shim, output cadence → inferred
+  const GRADE_OF = { osc7501: 'reported', hooks: 'shim', 'output cadence': 'inferred' };
+  const gradeFor = h => { const rec = C.SET.harness[h]; return rec ? (GRADE_OF[rec.stateFrom] || (rec.hooks ? 'shim' : 'inferred')) : 'inferred'; };
+  for (const s of seats) Object.defineProperty(s, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
   // seat colour through the operator-override path, per theme
   Object.defineProperty(Object.prototype, '__noop', { value: 0, configurable: true }); delete Object.prototype.__noop;
   for (const s of seats) Object.defineProperty(s, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
@@ -92,6 +96,7 @@
     spaceN++;
     const z = { key: 'z' + spaceN, name: 'zsh', harness: 'zsh', role: null, title: '~', state: 'idle', pal: (spaceN + 6) % 15 };
     Object.defineProperty(z, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
+    Object.defineProperty(z, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
     seats.push(z); startReplay(z, seats.length - 1);
     const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [] };
     model.spaces.push(sp); editName = sp.key; jumpSpace(sp);
@@ -158,7 +163,7 @@
     const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : [['Launch / go', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']];
     // rows with sublists: each launchable → placements; 'Go to' → every seat and swarm. 'goto <name>' types straight in.
     const tileOf = h => (C.LAUNCH.find(l => l.harness === h) || {}).tile || '#374151';
-    const goSeats = () => seats.map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || '') + (x.where && x.where !== 'local' ? ' · ' + x.where + (x.host ? ' ' + x.host : '') : ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Seats', seat: x, tags: [x.harness, x.where || 'local', x.host || '', x.role || '', x.state, t ? t.sp.name : '', x.muted ? 'muted' : ''].filter(Boolean) }; });
+    const goSeats = () => seats.map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || '') + (x.where && x.where !== 'local' ? ' · ' + x.where + (x.host ? ' ' + x.host : '') : ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Seats', seat: x, tags: [x.harness, x.where || 'local', x.host || '', x.role || '', x.state, x.grade || '', x.state === 'waiting' ? (x.waitKind || 'question') : '', t ? t.sp.name : '', x.muted ? 'muted' : ''].filter(Boolean) }; });
     const goSwarms = () => model.spaces.map(x => ({ id: 'swarm:' + x.key, label: x.name, sub: x.tabs.reduce((n, t) => n + t.seats.length, 0) + ' seats', harness: 'sidebarfoxopen', kind: 'Swarm', tile: x.color, section: 'Swarms', swarm: x, tags: ['swarm'] }));
     const placements = l => [
       { id: l.id + ':tab', label: 'New tab', sub: 'in ' + sp.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'tab', launch: l },
@@ -208,6 +213,7 @@
       const where = it.where || (path.find(x => x.where) || {}).where || 'local', host = it.host || (path.find(x => x.host) || {}).host;
       const seat = { key: 'n' + Date.now().toString(36), name: l.harness === 'zsh' ? 'zsh' : name, harness: l.harness, role: C.DEFAULT_ROLE[l.harness], title: l.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15, where, host };
       Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
+      Object.defineProperty(seat, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
       seats.push(seat); startReplay(seat, seats.length - 1);
       closeSpotlight();
       if (it.place) { if (it.place === 'tab' || !anchor) placeSeat(seat, 'tab'); else placeSeat(seat, it.place, anchor); return; }
@@ -523,7 +529,7 @@
       const rad = (R.pane ? G.pane_radius : G.row_radius) * dpr;
       const parts = R.pane ? (s.state === 'active' ? G.particles_active : G.particles_idle * 2) : (s.state === 'active' ? G.row_particles_active : 0);
       parBuf.set([STATE_IDX[s.state], rad, C.hash32(s.key) % 1000, parts], n * 4);
-      mulBuf[n] = R.pane ? 1 : (s.state === 'idle' && !G.row_idle ? 0 : G.row_alpha);
+      mulBuf[n] = (R.pane ? 1 : (s.state === 'idle' && !G.row_idle ? 0 : G.row_alpha)) * (s.grade === 'inferred' ? 0.5 : 1);
       n++;
     }
     gl.uniform3fv(U.uBg, C.hslToRgb(T.color[th].bg)); gl.uniform1f(U.uLight, th === 'light' ? 1 : 0);
@@ -545,7 +551,7 @@
     if (e.metaKey || e.ctrlKey || e.altKey || spot) return;
     const f = seats.find(s => s.key === focused); if (!f || f.settings) return;
     const st = { '1': 'idle', '2': 'active', '3': 'waiting', '4': 'errored' }[e.key];
-    if (st) { setState(f, st); if (st === 'active' && f.replay && f.replay.waiting) { f.replay.waiting = false; schedule(f, 200); } }
+    if (st) { if (st === 'waiting' && f.state === 'waiting') { const ks = ['permission', 'question', 'auth']; f.waitKind = ks[(ks.indexOf(f.waitKind || 'question') + 1) % 3]; render(); return; } setState(f, st); if (st === 'active' && f.replay && f.replay.waiting) { f.replay.waiting = false; schedule(f, 200); } }
     else if (e.key === 'm' || e.key === 'M') {
       // a message arrives for the next seat in order, from a sender role that cycles; unread dot only, no ripple
       const s = seats[msgN % seats.length], role = ['executor', 'oracle', 'creativity'][msgN % 3]; msgN++;
@@ -616,7 +622,7 @@
     setState(seat, 'active');
     const line = rp.lines[rp.idx++]; emit(seat, line); rp.burst--;
     if (rp.burst === 0) {                                 // burst ended
-      if (/Allow|\?\s*$/.test(line)) { rp.waiting = true; setState(seat, 'waiting'); return; }
+      if (/Allow|\?\s*$/.test(line)) { seat.waitKind = /Allow/.test(line) ? 'permission' : /auth|login|token|password/i.test(line) ? 'auth' : 'question'; rp.waiting = true; setState(seat, 'waiting'); return; }
       return schedule(seat, 400 + rnd() * 1600);
     }
     schedule(seat, 30 + rnd() * 90);

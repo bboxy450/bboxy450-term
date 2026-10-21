@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 8,
+  "version": 9,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -197,13 +197,13 @@
       "means": "how sure the state is",
       "source": "harness-adapters §3: reported | shim | inferred",
       "drawing": "reported = solid glyph; shim = solid with a thin ring; inferred = hollow or dashed glyph; the glow follows the glyph (inferred glows at half alpha)",
-      "status": "drawn, not built"
+      "status": "built: grade comes from the harness record's state source (osc7501 → reported, hooks → shim, output cadence → inferred); inferred glows at half"
     },
     "waiting_kind": {
       "means": "what the seat waits for",
       "source": "OSC 7501: permission | question | auth",
       "drawing": "three variants of ◐: permission = ◐ with a key dot, question = ◐ with a ?, auth = ◐ with a lock; amber for all; the strip subtitle names the kind",
-      "status": "drawn, not built"
+      "status": "built: kind from the pane's prompt (Allow → permission, auth/login/token → auth, ? → question); strip title spells it; key 3 cycles it in the demo"
     },
     "delivery_evidence": {
       "means": "how far a message got",
@@ -719,5 +719,9 @@
     "the lab cannot warp the OS pointer; native only",
     "17 spec implications are drawn in this file with status \"drawn, not built\"; each is one lab pass",
     "machine and region lists are demo values; the real app reads ~/.ssh/config and the cloud account"
-  ]
+  ],
+  "milestones": {
+    "ux-prototype-v1": "b7538ed · first operator review",
+    "ux-prototype-v2": "implementation starting point: settings, launcher nesting, splits, remote, mute, grace close, glyph family, design system v9"
+  }
 }

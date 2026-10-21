@@ -40,9 +40,17 @@
   const TITLES = ['gpu research', 'messaging spec', 'ux divergence', 'harness hooks', 'mux daemon', 'cargo test', 'review PR 14', 'ssh rig', 'parse logs', 'idle shell', 'tokens', 'relay bench'];
 
   // ---------- atoms ----------
+  // State glyph family: the glyph is the state; its grade (reported | shim | inferred) is drawn as solid / ringed / dashed;
+  // a waiting seat carries its kind (permission | question | auth) as a tiny mark. Grade comes from the harness record.
+  const GRADE_TITLE = { reported: 'reported by the harness', shim: 'via hooks (shim)', inferred: 'inferred from output' };
+  const KIND_MARK = { permission: '⚿', question: '?', auth: '⚷' };
   function glyph(state, seat) {
-    const color = state === 'active' ? seatColor(seat || { key: 'x' }) : state === 'idle' ? 'var(--c-idle)' : state === 'waiting' ? 'var(--c-waiting)' : 'var(--c-errored)';
-    return el('span', { class: 'glyph ' + state, style: 'color:' + color, title: state }, GLYPH[state]);
+    seat = seat || { key: 'x' };
+    const color = state === 'active' ? seatColor(seat) : state === 'idle' ? 'var(--c-idle)' : state === 'waiting' ? 'var(--c-waiting)' : 'var(--c-errored)';
+    const grade = seat.grade || 'reported', kind = state === 'waiting' ? (seat.waitKind || 'question') : null;
+    const g = el('span', { class: 'glyph ' + state + ' g-' + grade + (kind ? ' k-' + kind : ''), style: 'color:' + color, title: state + (kind ? ' · ' + kind : '') + ' · ' + GRADE_TITLE[grade] }, GLYPH[state]);
+    if (kind) g.append(el('i', { class: 'kind' }, KIND_MARK[kind]));
+    return g;
   }
 
   const ICON_SVG = {
@@ -295,7 +303,7 @@
     if (seat.where && seat.where !== 'local') s.append(el('span', { class: 'where', title: seat.where + (seat.host ? ' · ' + seat.host : '') }, harnessIcon(seat.where)));
     s.append(harnessIcon(seat.harness), el('span', { class: 'name' }, seat.name));
     if (seat.role) s.append(roleMark(seat.role));
-    s.append(el('span', { class: 'title' }, seat.title || ''));
+    s.append(el('span', { class: 'title' }, (seat.title || '') + (seat.state === 'waiting' ? ' · waiting for ' + (seat.waitKind || 'an answer') : '')));
     if (opts.shortcut) s.append(kbd(opts.shortcut));
     if (opts.onMute) s.append(el('span', { class: 'mute' + (seat.muted ? ' on' : ''), title: seat.muted ? 'unmute (⌘M)' : 'mute: 1:1 with the operator (⌘M)', onclick: e => { e.stopPropagation(); opts.onMute(seat); } }, harnessIcon(seat.muted ? 'muted' : 'unmuted')));
     s.append(glyph(seat.state, seat));
@@ -627,5 +635,5 @@
     return root;
   }
 
-  window.C = { settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

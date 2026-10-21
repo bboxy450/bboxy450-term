@@ -1,6 +1,6 @@
 # UX prototype spec — bboxy450-term sidebar and panes
 
-Status: DECIDED by the operator in direct review, 2026-10-21. Milestone tag `ux-prototype-v1` (commit b7538ed). Source of truth for look, interaction and purpose of every element in the lab showcase (`lab/web/showcase.html`). Reasoning per rule: [[ux-flow]]. Earlier Oracle picks: [[ux-pick]]. Vocabulary: [[vision]] (seat, tab, split, shadow). **Swarm** is the canonical unit in [[vision]], decided by the operator on 2026-10-21.
+Status: DECIDED by the operator in direct review, 2026-10-21. Milestones: `ux-prototype-v1` (b7538ed, first review) and `ux-prototype-v2` (the implementation starting point; the lab is the parity target for the renderer harness). Source of truth for look, interaction and purpose of every element in the lab showcase (`lab/web/showcase.html`). Reasoning per rule: [[ux-flow]]. Earlier Oracle picks: [[ux-pick]]. Vocabulary: [[vision]] (seat, tab, split, shadow). **Swarm** is the canonical unit in [[vision]], decided by the operator on 2026-10-21.
 
 Written from the code, not from memory: `showcase.js`, `components.js`, `lab.css`, `design/tokens.toml`.
 
@@ -138,8 +138,8 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 
 | # | element or signal | source | drawing |
 |---|---|---|---|
-| 1 | state grade | harness-adapters §3 | reported solid, shim ringed, inferred hollow/dashed; inferred glows at half |
-| 2 | waiting kinds | OSC 7501 | permission / question / auth variants of ◐, amber; strip names the kind |
+| 1 | state grade | harness-adapters §3 | BUILT: reported solid, shim ringed, inferred dashed at 72%; inferred glows at half; grade from the harness record's state source |
+| 2 | waiting kinds | OSC 7501 | BUILT: ◐ with a tiny kind mark (⚿ permission, ? question, ⚷ auth); the strip title spells it |
 | 3 | delivery evidence | messaging | tick ladder on message rows; unknown is a hollow mark, never a failure |
 | 4 | held count | mute | muted row shows "held N" |
 | 5 | reconnect | mux state streams | stale frame dimmed under a "reconnecting…" pill; "restarted" chip on generation change |

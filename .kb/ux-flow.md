@@ -171,3 +171,9 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Settings, second pass (designer agent)
 **Rule:** the settings tab is the hero of identity: the GPG key block with the portrait beside it, subkeys, signatures; roles and harnesses as cards and tiles users can add to; appearance previews that apply live. Verified by rendering every section in both themes. **Where:** `settingsPage()` in `components.js`, settings block in `lab.css`, `applySetting` in `showcase.js`.
+
+### The state glyph has a grade and waiting has a kind
+**Rule:** the glyph's grade shows how the state is known: reported solid, shim ringed, inferred dashed and lighter (and glowing at half); the grade comes from the harness record's state source in Settings. A waiting glyph carries its kind as a tiny mark (permission, question, auth) read from the prompt in the pane; the strip spells it. **Where:** `glyph()` in `components.js`, `gradeFor` and the replay in `showcase.js`.
+
+### ux-prototype-v2 is the implementation starting point
+**Rule:** the operator declared the showcase ready; tagged `ux-prototype-v2`. The lab stays the parity target and keeps improving; implementation reads the spec, the design system and the lab. **Where:** git tag, design system `milestones`.
