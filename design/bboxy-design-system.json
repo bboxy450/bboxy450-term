@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 12,
+  "version": 13,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -362,6 +362,18 @@
       "purpose": "where the seat runs",
       "anatomy": "a prefix before the harness tile on rows and strips: cloud glyph for cloud seats, server glyph for ssh seats, nothing for local; tooltip names the host",
       "status": "built"
+    },
+    "bug_row": {
+      "purpose": "a bug work item under its seat or in the tree",
+      "source": "work-items.md item type bug",
+      "anatomy": "task row anatomy with a red bug glyph (⬣) instead of the status glyph and a \"breaks <invariant>\" link when a violates link exists",
+      "status": "drawn, not built"
+    },
+    "invariant_chip": {
+      "purpose": "name the invariant a spec or task binds, or a bug breaks",
+      "source": "work-items.md item type invariant; typed links violates / constrains",
+      "anatomy": "a small outlined chip \"inv · <title>\" on spec and task lines (constrains) and a red one on bug lines (violates); in the graph tree an invariant is its own line with the items it binds beneath",
+      "status": "drawn, not built"
     }
   },
   "modules": {
@@ -627,6 +639,20 @@
         "shut by default once accepted; open while work is live",
         "blocked shows its dependency",
         "never deletes an item: done and rejected are states"
+      ],
+      "status": "built"
+    },
+    "graph_tab": {
+      "purpose": "who is on what, and the work tree, generated from seats and work items",
+      "opens_from": [
+        "⌘G",
+        "Graph row in the launcher (aliases who, status, board)"
+      ],
+      "anatomy": "Agents card: seat (tile · name in seat colour · state glyph) · role · now (live task with its status glyph, or the seat state and waiting kind) · blocked on; Graph card: epics with done/total, then ├─ └─ branches of specs and tasks with status glyph, kind chip, title, assignee, and ◀ waits on X for dependencies",
+      "rules": [
+        "read-only projection of the same data the dock and the rows use",
+        "the Oracle's graph.md is the hand-kept version of this; the terminal generates it from frontmatter",
+        "rows link to seats (click focuses later)"
       ],
       "status": "built"
     }

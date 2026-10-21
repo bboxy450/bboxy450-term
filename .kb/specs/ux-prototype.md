@@ -106,7 +106,10 @@ Either way the placed seat gets focus and the locate signal. Ratios are then adj
 ### 5.8 Work items
 Tasks, specs and epics are Markdown files with frontmatter (see [[work-items]]); the terminal draws them. A task delegated to a seat is a row under that seat: status glyph (open ○, claimed ◔, running ◑, reported ◕, accepted ●, done ✓, rejected ✕, blocked ⊘), title, "waits on X" when blocked, an accept pill when reported (Oracle/operator), the status chip. An epic is a collapsible group in the stream dock: EPIC chip, title, done/total, then its specs and tasks as lines with status glyph, kind chip, title and assignee. Delegation, every status change and acceptance also write a line in the stream. Demo: T delegates to the focused seat and walks the status.
 
-### 5.9 Messages
+### 5.9 Graph
+⌘G or the Graph launcher row opens a Graph tab in the current swarm: an Agents card (seat, role, what it is on now with its task status, what blocks it) and the work tree (epics with done/total, branches of specs and tasks with status glyph, kind, title, assignee and dependencies). It is a projection of the same data the dock and the rows use; the hand-kept `.kb/graph.md` is its ancestor. Bug rows (red bug glyph, "breaks <invariant>") and invariant chips (on the lines they constrain, red on the bugs that violate them) are drawn in the design system for the next pass.
+
+### 5.10 Messages
 Unread shows as a dot on the seat row in the highest-priority unread role colour; focusing or clicking the seat clears it. A shadow's message pulses its row once (700 ms) and lands in the stream dock. No ripple for messages.
 
 ## 6. Signal semantics (one meaning per signal)

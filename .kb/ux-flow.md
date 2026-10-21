@@ -183,3 +183,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Tasks under seats, epics in the dock
 **Rule:** a delegated task is a row under its seat with the frontmatter status as glyph and chip, an accept pill when reported, and "waits on X" when blocked; an epic is a collapsible group in the stream dock with its specs and tasks; every delegation and status change is a stream line. **Why:** task_delegate and work-items.md, operator decisions. **Where:** `taskRow`, `epicGroup` in `components.js`; `delegateTask`, `acceptTask`, demo epics in `showcase.js`.
+
+### The graph is a tab
+**Rule:** ⌘G or Graph in the launcher opens a Graph tab: Agents (seat · role · now · blocked on) and the work tree (epics → specs and tasks with status, assignee, dependencies), generated from the same data as the rows and the dock. **Why:** the operator loves the Oracle's graph.md; the terminal should draw it live. Bug rows and invariant chips drawn for the next pass. **Where:** `graphPage()` in `components.js`, `openGraph` in `showcase.js`; design system v13.
