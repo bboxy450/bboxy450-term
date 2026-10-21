@@ -257,3 +257,13 @@ Catalogue total: 32 tools. Workers now have seven: the four from before plus `ta
 | `artifact_get` | `artifact_id` | Record plus provenance chain. | O E C |
 
 Catalogue total: 36 tools. Workers: eleven.
+
+## Orientation tools (operator decision 2026-10-21: "each agent can look up what its job is, what it is working on and what is next; the Oracle looks up who has what")
+
+| Tool | Parameters | Mechanism | Roles |
+|---|---|---|---|
+| `orient` | none | The caller's own card from the execution graph: name, role {name,class}, swarm, where, current task (status, path, verify command), next tasks in its queue (claimed or assigned to it, ordered by `depends_on`), what it is blocked on, its subscriptions, who it may message (its edges in the communication graph), its unread count, its open artifacts. One call, one answer, enough to resume cold. | O E C |
+| `graph_read` | `graph: execution \| communication \| task \| markdown \| artifact \| messaging \| provenance, swarm_id?, filter?` | The named graph from the index as nodes and weighted edges, bounded; `execution` is who has what and blocked on what, `communication` is who may talk to whom (the policy the Oracle sets). | O; E C for `task` and `markdown` scoped to their own items |
+| `graph_set_edge` | `op_id, graph: communication, from, to, channel: dm \| channel, allowed: bool` | The Oracle edits the communication graph; written to the swarm object and enforced as may-send-to in grants. | O |
+
+Catalogue total: 39 tools. `.bboxy/graph.md` is the hand-maintained ancestor of `graph_read execution` and `communication`; once the index exists the file is generated, not edited.

@@ -88,7 +88,7 @@ everyone ──(#bboxy450-term)──▶ everyone   claims, one-line landed repo
 everyone ──(#bboxy450-crates)──▶ everyone  crate release announcements only
 ```
 
-The Oracle maintains this section; `graph.md` is the authority until the mux's messaging graph exists ([[work-items]] graphs), at which point this section becomes a policy the mux enforces per swarm (may-send-to in the role grants).
+The Oracle maintains this section and, in the real terminal, edits it with `graph_set_edge` ([[mcp-control-plane]] Orientation tools); any seat calls `orient` to learn its job, current task and what is next; the Oracle calls `graph_read execution` to see who has what. `graph.md` is the authority until the mux's index exists ([[work-items]] graphs), at which point this section becomes a policy the mux enforces per swarm (may-send-to in the role grants).
 
 ## Messaging rule (operator, 2026-10-21)
 

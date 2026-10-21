@@ -614,7 +614,7 @@
       open: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>',
     };
     const icon = name => ICON_SVG[name] ? harnessIcon(name) : el('span', { class: 'hicon', html: SVG[name] || '' });
-    let cur = opts.section || 'Account', draftRole = null, draftHarness = null;
+    let cur = opts.section || 'Account', draftRole = null, draftHarness = opts.draftHarness || null;
     const root = el('div', { class: 'settings' });
     const nav = el('div', { class: 's-nav' });
     const q = el('input', { class: 's-q', placeholder: 'Search settings', type: 'search' });
