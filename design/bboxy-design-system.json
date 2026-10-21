@@ -588,7 +588,7 @@
       "goto": "a parent row opening to every seat and swarm",
       "seat": "name · swarm · title; Enter focuses with locate",
       "swarm": "name · seat count in the swarm colour; Enter opens and jumps",
-      "remote": "SSH and Cloud parent rows under Remote; each opens to the harnesses, each harness to its placements; the launched seat carries where + host"
+      "remote": "SSH ▸ machine (from ~/.ssh/config) ▸ harness ▸ placement; Cloud ▸ region ▸ harness ▸ placement; the launched seat carries where + host"
     },
     "keyboard": {
       "↑↓": "move, wrapping",
@@ -606,7 +606,7 @@
     },
     "typing": {
       "filter": "label prefix, any word, subtitle, id",
-      "flatten": "\"<parent> <rest>\" filters inside the parent: goto nyx, go nyx, codex split, ssh codex, cloud claude",
+      "flatten": "\"<parent> <rest>\" filters inside the parent: goto nyx, go nyx, codex split, ssh codex, cloud claude, ssh rig codex",
       "aliases": {
         "Go to": [
           "goto",
@@ -648,6 +648,6 @@
     "settings page and toolbar icon exist as lab pages, not wired into the showcase",
     "the lab cannot warp the OS pointer; native only",
     "17 spec implications are drawn in this file with status \"drawn, not built\"; each is one lab pass",
-    "remote hosts are fixed demo values (rig, eu-2); a host picker is the next level of the SSH / Cloud rows"
+    "machine and region lists are demo values; the real app reads ~/.ssh/config and the cloud account"
   ]
 }

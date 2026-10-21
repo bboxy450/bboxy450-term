@@ -145,8 +145,13 @@
     ];
     const launchRows = C.LAUNCH.map(l => ({ ...l, enterPicks: true, children: () => placements(l), aliases: [l.harness] }));
     // remote: SSH ▸ harness ▸ placement, Cloud ▸ harness ▸ placement. 'ssh codex' and 'cloud claude' type straight through.
-    const remoteRow = (id, label, where, host, tile) => ({ id, label, aliases: [where], sub: 'run a harness ' + (where === 'cloud' ? 'in the cloud · ' : 'over ssh · ') + host, harness: where, kind: 'Remote', tile, section: 'Remote', children: () => C.LAUNCH.map(l => ({ ...l, id: where + ':' + l.id, sub: l.sub + ' · ' + host, enterPicks: true, aliases: [l.harness], where, host, children: () => placements(l).map(pl => ({ ...pl, where, host })) })) });
-    const remoteRows = [remoteRow('ssh', 'SSH', 'ssh', 'rig', '#374151'), remoteRow('cloud', 'Cloud', 'cloud', 'eu-2', '#2E6BFF')];
+    // SSH ▸ machine ▸ harness ▸ placement; Cloud ▸ region ▸ harness ▸ placement. Machines come from ~/.ssh/config in the
+    // real app; here a demo list. 'ssh rig codex' types straight through all three levels.
+    const HOSTS = { ssh: [['rig', 'rig.local · M2 Ultra'], ['alpha', 'alpha.tail · Linux x86'], ['studio', 'studio.local · M1 Max']], cloud: [['eu-2', 'Hetzner · Falkenstein'], ['us-1', 'Fly · Ashburn'], ['gpu-a', 'Lambda · A100']] };
+    const harnessesAt = (where, host) => C.LAUNCH.map(l => ({ ...l, id: where + ':' + host + ':' + l.id, sub: l.sub + ' · ' + host, enterPicks: true, aliases: [l.harness], where, host, children: () => placements(l).map(pl => ({ ...pl, where, host })) }));
+    const remoteRow = (id, label, where, tile) => ({ id, label, aliases: [where], sub: where === 'cloud' ? 'pick a region, then a harness' : 'pick a machine, then a harness', harness: where, kind: 'Remote', tile, section: 'Remote',
+      children: () => HOSTS[where].map(([host, desc]) => ({ id: where + ':' + host, label: host, sub: desc, harness: where, kind: where === 'cloud' ? 'Region' : 'Machine', tile, where, host, children: () => harnessesAt(where, host) })) });
+    const remoteRows = [remoteRow('ssh', 'SSH', 'ssh', '#374151'), remoteRow('cloud', 'Cloud', 'cloud', '#2E6BFF')];
     const goRow = { id: 'goto', label: 'Go to', aliases: ['goto', 'go', 'jump'], sub: 'a seat or a swarm', harness: 'sidebarfoxopen', kind: 'Navigate', tile: '#6B7190', section: 'Navigate', children: () => [...goSeats(), ...goSwarms()] };
     const items = [...launchRows, ...remoteRows, goRow];
     const acts = p => (p.length && p[p.length - 1].id === 'goto') ? [['Go', '↵'], ['Back', '←']] : (p.length ? [['Place', '↵'], ['Back', '←']] : (preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['Placements', '→'], ['New tab instead', '⌥↵']] : [['New tab', '↵'], ['Placements', '→'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵']]));

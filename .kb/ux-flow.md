@@ -138,3 +138,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Where a seat runs is a prefix, and the launcher knows remote
 **Rule:** cloud seats get a cloud glyph and ssh seats a server glyph before the harness tile on rows and strips; local seats get nothing. In the launcher, SSH and Cloud are parent rows under Remote: → or typing opens the harnesses, one more level opens the placements; "ssh codex" and "cloud claude" type straight through. The launched seat carries where and host. **Where:** `.where` in `components.js`, `remoteRows` in `showcase.js`.
+
+### SSH picks the machine first
+**Rule:** SSH ▸ machine ▸ harness ▸ placement, Cloud ▸ region ▸ harness ▸ placement. Machines come from `~/.ssh/config` in the real app. "ssh rig codex" types through all three levels. **Where:** `HOSTS`, `remoteRow` in `showcase.js`.
