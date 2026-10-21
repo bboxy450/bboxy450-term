@@ -207,6 +207,7 @@
         if (it.assignee) line.append(el('span', { class: 'eass' }, '· ' + it.assignee));
         if (it.waits) line.append(el('span', { class: 'g-dep' }, '◀ waits on ' + it.waits));
         pre.append(line);
+        for (const a of (it.artifacts || [])) pre.append(el('div', { class: 'g-art' }, el('span', { class: 'g-branch' }, (last ? '   ' : '│  ') + '└─'), el('span', { class: 'aglyph' }, ART_GLYPH[a.kind] || '▢'), el('span', { class: 'ekind' }, a.kind || 'file'), el('span', { class: 'g-title' }, a.ref), a.responsible ? el('span', { class: 'achip', style: 'color:' + (a.responsibleColor || 'var(--fg)') + ';border-color:' + (a.responsibleColor || 'var(--line)') }, a.responsible.split(' ')[0]) : null));
       });
     }
     tree.append(pre);
@@ -228,6 +229,19 @@
       g.append(line);
     }
     return g;
+  }
+
+  // Artifact row: a leaf of the provenance graph under its task. Kind glyph · ref · short digest · responsible-seat chip (artifact_claim).
+  const ART_GLYPH = { markdown: '▤', pr: '⎇', binary: '▣', file: '▢', image: '▧', release: '◆' };
+  function artifactRow(art, opts) {
+    opts = opts || {};
+    const row = el('div', { class: 'art-row', title: (art.kind || 'file') + ' · ' + art.ref + (art.digest ? ' · ' + art.digest : '') + (art.produced_by ? ' · produced by ' + art.produced_by : '') });
+    row.append(el('span', { class: 'aglyph' }, ART_GLYPH[art.kind] || '▢'), el('span', { class: 'akind' }, art.kind || 'file'), el('span', { class: 'aref' }, art.ref));
+    const right = el('span', { class: 'right' });
+    if (art.digest) right.append(el('span', { class: 'adigest' }, art.digest.slice(0, 7)));
+    if (art.responsible) right.append(el('span', { class: 'achip', style: 'color:' + (art.responsibleColor || 'var(--fg)') + ';border-color:' + (art.responsibleColor || 'var(--line)'), title: 'responsible: ' + art.responsible + ' (artifact_claim)' }, art.responsible.split(' ')[0]));
+    row.append(right);
+    return row;
   }
 
   function miniGrid(tree, focusedKey, big) {
@@ -252,7 +266,7 @@
     if (seats.length === 1) {
       const s = seats[0];
       const w = el('div', {}, seatRow(s, { focused: s.key === opts.focusedKey, shortcut: tab.shortcut }));
-      for (const t of (s.tasks || [])) w.append(taskRow(t, s, { onAccept: opts.onAccept }));
+      for (const t of (s.tasks || [])) { w.append(taskRow(t, s, { onAccept: opts.onAccept })); for (const a of (t.artifacts || [])) w.append(artifactRow(a)); }
       return w;
     }
     const row = el('div', { class: 'tab-row' }, el('span', { class: 'caret' }, opts.expanded ? '▾' : '▸'), el('span', { class: 'tname' }, tab.name));
@@ -271,7 +285,7 @@
     const wrap = el('div', {}, row);
     if (opts.expanded) {
       const body = el('div', { class: 'tab-body' });
-      for (const s of seats) { body.append(seatRow(s, { focused: s.key === opts.focusedKey })); for (const t of (s.tasks || [])) body.append(taskRow(t, s, { onAccept: opts.onAccept })); }
+      for (const s of seats) { body.append(seatRow(s, { focused: s.key === opts.focusedKey })); for (const t of (s.tasks || [])) { body.append(taskRow(t, s, { onAccept: opts.onAccept })); for (const a of (t.artifacts || [])) body.append(artifactRow(a)); } }
       wrap.append(body);
     }
     return wrap;
@@ -701,5 +715,5 @@
     return root;
   }
 
-  window.C = { graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

@@ -87,7 +87,7 @@
   model.spaces[0].epics.push(
     { id: 'e1', title: 'W3 renderer', open: true, items: [
       { id: 's1', type: 'spec', title: 'renderer.md', state: 'accepted' },
-      { id: 'w31', type: 'task', title: 'W3.1 renderer harness', state: 'reported', assignee: 'Nyx Copperwing' },
+      { id: 'w31', type: 'task', title: 'W3.1 renderer harness', state: 'reported', assignee: 'Nyx Copperwing', artifacts: [{ kind: 'pr', ref: 'bboxy450-term#14', digest: 'fcc8eca', produced_by: 'Nyx Copperwing', responsible: 'Nyx Copperwing', responsibleColor: '#FF4FA3' }, { kind: 'image', ref: 'target/render/smoke/jetbrains-mono-16px-2x-dark.png', digest: '9b1c2e4', produced_by: 'CI' }] },
       { id: 'w32', type: 'task', title: 'W3.2 GUI component library', state: 'blocked', waits: 'W3.1' },
       { id: 'w33', type: 'task', title: 'W3.3 showcase parity', state: 'open' } ] },
     { id: 'e2', title: 'W1 term core', open: false, items: [
@@ -158,7 +158,10 @@
     const open_ = seat.tasks.find(t => !['accepted', 'rejected', 'reassigned'].includes(t.state));
     if (open_) {
       const next = { open: 'claimed', claimed: 'running', running: 'reported', reported: 'reported' }[open_.state];
-      if (next !== open_.state) { open_.state = next; streamLine(sp, seat.name + ' ' + next + ' · ' + open_.title); }
+      if (next !== open_.state) {
+        open_.state = next; streamLine(sp, seat.name + ' ' + next + ' · ' + open_.title);
+        if (next === 'reported') { open_.artifacts = open_.artifacts || []; open_.artifacts.push({ kind: 'markdown', ref: '.bboxy/runs/' + open_.title.replace(/\s+/g, '-') + '-report.md', digest: C.hash32(open_.title + seat.key).toString(16).padStart(8, '0'), produced_by: seat.name, responsible: seat.name, responsibleColor: seat.color }); streamLine(sp, seat.name + ' claimed · ' + open_.artifacts[0].ref); }
+      }
     } else {
       const task = { id: 't' + (++taskN), title: TASK_TITLES[taskN % TASK_TITLES.length], state: 'claimed', from: 'Vesper Greywind', assignee: seat.name };
       seat.tasks.push(task); sp.epics[0].items.push(task); streamLine(sp, 'Oracle delegated · ' + task.title + ' → ' + seat.name);

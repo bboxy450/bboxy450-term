@@ -15,6 +15,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
 | subagent provenance | Oracle instrument | Claude | researching provenance and document systems → `research/provenance-and-documents.md` | nothing |
+| subagent state-backend | Oracle instrument | Claude | researching sqlite vs alternatives → `research/state-backend.md` | nothing |
 | operator | operator | human | lab review with Lumen | Codex trust for the fixture dir; Rook's pane |
 
 ## Graph

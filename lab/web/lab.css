@@ -733,3 +733,16 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .g-item.running .tglyph { color: var(--accent); } .g-item.reported .tglyph { color: var(--c-waiting); }
 .g-item.accepted .tglyph, .g-item.done .tglyph { color: #2EE6A8; } .g-item.rejected .tglyph, .g-item.blocked .tglyph { color: var(--c-errored); }
 .g-item .g-dep { color: var(--c-errored); font-size: 11px; }
+
+/* artifact row: a provenance leaf under its task; responsible-seat chip in the seat colour */
+.art-row { display: flex; align-items: center; gap: 6px; height: calc(var(--row-h) - 6px); padding: 0 var(--pad-x) 0 calc(var(--pad-x) + 36px); font-size: var(--font-small); color: var(--fg-dim); border-radius: var(--r-row, 6px); }
+.art-row:hover { background: var(--sel-hover, var(--surface-2)); }
+.art-row .aglyph, .g-art .aglyph { font-family: var(--font-mono); width: 12px; text-align: center; color: var(--fg-dim); flex: none; }
+.art-row .akind { font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; background: var(--badge, var(--surface-2)); border-radius: 4px; padding: 0 4px; }
+.art-row .aref { color: var(--fg); font-family: var(--font-mono); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.art-row .right { display: flex; align-items: center; gap: 6px; flex: none; }
+.art-row .adigest { font-family: var(--font-mono); font-size: 9px; color: var(--fg-dim); }
+.achip { font-size: 9.5px; font-weight: 600; border: 1px solid; border-radius: 999px; padding: 0 6px; line-height: 14px; white-space: nowrap; }
+.g-art { display: flex; align-items: center; gap: 8px; padding-left: 8px; color: var(--fg-dim); }
+.g-art .g-branch { color: var(--line); white-space: pre; }
+.g-art .g-title { color: var(--fg); font-family: var(--font-mono); font-size: 11px; }
