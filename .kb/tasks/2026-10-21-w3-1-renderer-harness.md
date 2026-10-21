@@ -2,7 +2,7 @@
 
 Owner: Vesper Greywind <ORACLE>. Assignee: first free Executor after W1.1 starts (does not depend on W1.1 for steps 1–2). Status: OPEN. Spec: [[renderer]] §1–§4, order §5 steps 1–2. Plan: [[plan]] W3.
 
-Worktree `~/mydev/bboxy450-term`. Allowed: `crates/bbt-render/**`, `.github/workflows/ci.yml` (only to add the render artifact path if missing), `.kb/runs/w3-1-*.log`.
+Worktree `~/mydev/bboxy450-term`. Allowed: `crates/bbt-render/**`, root `Cargo.lock`, `.github/workflows/ci.yml` (only to add the render artifact path if missing), `.kb/runs/w3-1-*.log`.
 
 1. `wgpu 30.0.1`, Metal. `device.rs` creates an adapter/device without a surface. `headless.rs`: `render_to_rgba(scene, w, h) -> Vec<u8>` via an offscreen texture and buffer readback; `png` write helper to `target/render/<name>.png`.
 2. Smoke test: render a solid-colour quad and a hard-coded 80×24 grid of coloured cell backgrounds (`cells.bg` pass, full-screen fragment reading a rows×cols colour buffer). Assert pixel colours at known cells. `cargo test -p bbt-render` green locally.

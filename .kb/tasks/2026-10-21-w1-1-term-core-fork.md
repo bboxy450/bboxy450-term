@@ -2,7 +2,7 @@
 
 Owner: Vesper Greywind <ORACLE>. Assignee: first free Executor. Status: OPEN. Spec: [[terminal-core]] D1, D2. Plan: [[plan]] W1.
 
-Worktree `~/mydev/bboxy450-term`. Allowed: `crates/bbt-core/**`, `.kb/runs/w1-1-*.log`. Nothing else.
+Worktree `~/mydev/bboxy450-term`. Allowed: `crates/bbt-core/**`, root `Cargo.lock`, `.kb/runs/w1-1-*.log`. Nothing else.
 
 1. Clone alacritty at HEAD (record the commit) into `.kb/runs/clones/` (gitignored). Vendor `alacritty_terminal/src/{term,grid,index.rs,cell.rs,event.rs,vte_handler…}` and the `vte` crate's `ansi` parser (pinned version noted in terminal-core D2) into `crates/bbt-core/src/`, keeping upstream file layout under `src/vendor/` with a `VENDOR.md` naming source commits and licenses (Apache-2.0 / MIT).
 2. Cut: tty, event_loop, vi_mode, search, selection, and their tests. Keep the grid, term, parser and their unit tests.
