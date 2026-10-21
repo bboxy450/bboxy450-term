@@ -10,7 +10,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
 | Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | lab passes under the operator's direct review; first: custom-harness tile subtext, then the design-system drawn-not-built queue | nothing |
-| Nyx Copperwing | Executor | Codex | **W3.2a ui-model: tokens, model, layout** | nothing |
+| Nyx Copperwing | Executor | Codex | **W3.2b bboxybook: draw atoms, chrome pass, modules, parity loop** | nothing |
 | Rook Ashwhisker | Executor | Codex | idle | in-session authorization from the operator |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
@@ -29,8 +29,8 @@ specs (done +2): gui-components ✔ ──▶ W3.2a brief ✔ [OPEN]; networking
 
 W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
    ├──▶ W3.1 renderer harness ✔ (Nyx, fcc8eca, 5 tests, 48 PNGs, CI green on macos-15)
-   │       └──▶ W3.2a ui-model: tokens, model, layout [Nyx, RUNNING]
-   │               └──▶ W3.2b bboxybook: atoms, chrome pass, modules, parity [briefed]
+   │       └──▶ W3.2a ui-model ✔ (Nyx, 28 tests, zero runtime deps, scene-15 layout matches v2 blob)
+   │               └──▶ W3.2b bboxybook: atoms, chrome pass, modules, parity [Nyx, RUNNING]
    │                       └──▶ W3.2c input, launcher, signals→fx
    │                               └──▶ W3.3 glow/locate/dim fx
    │                       └──▶ W3.4 app: window, sidebar, stage, launcher, GUI client
@@ -55,7 +55,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 | State | Items |
 |---|---|
-| RUNNING | W3.2a (Nyx); lab passes (Lumen) |
+| RUNNING | W3.2b (Nyx); lab passes (Wren) |
 | OPEN, claimable now | W4.1, W1.2, W2.3, W2.2 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
@@ -65,7 +65,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 ## Done
 
-W1.1, W3.1, W2.1, A, B, C, D, E, F, G, H(Claude), I, I2, M, S, T, kittens, weavie, iTerm plugin, UX prototype v1 and v2.
+W1.1, W3.1, W2.1, W3.2a, A, B, C, D, E, F, G, H(Claude), I, I2, M, S, T, kittens, weavie, iTerm plugin, UX prototype v1 and v2.
 
 ## Communication graph (Oracle-controlled; operator 2026-10-21: "you control the communication graph")
 
