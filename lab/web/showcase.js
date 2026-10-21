@@ -9,10 +9,11 @@
   const GUTTER = q.has('gutter') ? Math.max(0, +q.get('gutter')) : T.layout.gutter;
 
   // ---------- theme: auto (prefers-color-scheme) | dark | light ----------
+  let density = 'cozy';   // live from Settings › Appearance
   const mq = matchMedia('(prefers-color-scheme: dark)');
   let themeMode = Lab.store.get('showcase.theme') || 'auto';
   const theme = () => themeMode === 'auto' ? (mq.matches ? 'dark' : 'light') : themeMode;
-  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = typeof density === 'string' ? density : 'cozy'; Lab.applyTokens(); if (!document.documentElement.style.getPropertyValue('--gutter')) document.documentElement.style.setProperty('--gutter', GUTTER + 'px'); }
+  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = density; Lab.applyTokens(); if (!document.documentElement.style.getPropertyValue('--gutter')) document.documentElement.style.setProperty('--gutter', GUTTER + 'px'); }
   mq.addEventListener('change', () => { if (themeMode === 'auto') { applyTheme(); render(); } });
   applyTheme();
 
@@ -124,7 +125,6 @@
   }
   addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f) toggleMute(f); } });
   // Appearance settings apply live: density, theme and gutter re-render the window; glow toggles the shader canvas.
-  let density = 'cozy';
   function applySetting(section, key, value) {
     if (section !== 'appearance') return;
     if (key === 'density') { density = value; }
