@@ -20,7 +20,8 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 
 ```
 specs (done): messaging, subagent-detection, mux-daemon, harness-adapters,
-              mcp-control-plane, terminal-core, identity, renderer, ux-prototype(v2)
+              mcp-control-plane, terminal-core, identity, renderer, ux-prototype(v2),
+              work-items (epics/specs/tasks as md+frontmatter)
 specs (drafting): gui-components ──▶ W3.2 brief
                   networking     ──▶ W4.1 brief
 
