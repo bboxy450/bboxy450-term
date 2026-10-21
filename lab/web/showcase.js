@@ -118,7 +118,9 @@
   }
   function render() {
     main.innerHTML = '';
-    const sb = C.sidebar(model, { openSpaces: model.spaces.map(s => s.key), openTabs: model.spaces.flatMap(s => s.tabs.map(t => s.key + '/' + t.name)), focusedKey: focused });
+    const sb = C.sidebar(model, { openSpaces: model.spaces.map(s => s.key), openTabs: model.spaces.flatMap(s => s.tabs.map(t => s.key + '/' + t.name)), focusedKey: focused,
+      onNewSpace: () => { const n = model.spaces.length + 1; model.spaces.push({ name: 'space ' + n, key: 'space-new-' + n, tabs: [] }); render(); const b = main.querySelector('[data-space="space-new-' + n + '"]'); if (b) b.scrollIntoView({ block: 'nearest' }); },
+      onNewSeat: () => {} });
     const stage = el('div', { class: 'stage' }, (() => { const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
     main.append(sb, stage);
     main.querySelectorAll('[data-key]').forEach(n => {

@@ -352,3 +352,15 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .sidebar .sb-foot button:hover { background: linear-gradient(180deg, #262c52 0%, #141833 100%); }
 .sb-frame { border-radius: 0; }
 .sb-frame.phone { border-radius: 28px; }
+
+/* footer, Arc style (operator 2026-10-21): quiet row, archive · space dots · plus */
+.sidebar .sb-foot { background: none; box-shadow: none; border-radius: 0; height: 30px; padding: 0 8px; justify-content: center; gap: 0; text-transform: none; letter-spacing: 0; color: var(--fg-dim); }
+.sidebar .sb-foot .fbtn { --icon: 15px; color: var(--fg-dim); display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; font-size: 17px; line-height: 1; }
+.sidebar .sb-foot .fbtn:hover { background: var(--surface-2); color: var(--fg); }
+.sidebar .sb-foot .dots { flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; }
+.sidebar .sb-foot .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--line); display: block; cursor: pointer; transition: transform var(--hover-ms); }
+.sidebar .sb-foot .dots i:hover { transform: scale(1.4); background: var(--fg-dim); }
+.sidebar .sb-foot .dots i.on { width: 7px; height: 7px; background: var(--fg); }
+.tab-row.newseat { color: var(--fg-dim); cursor: pointer; }
+.tab-row.newseat .plus { width: 12px; text-align: center; font-size: 13px; }
+.tab-row.newseat:hover { color: var(--fg); background: var(--surface-2); }

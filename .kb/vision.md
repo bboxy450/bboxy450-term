@@ -50,7 +50,7 @@ Index: [[README]] · tasks in `tasks/` · research in `research/` · specs in `s
 
 ## Harness touch points (DECIDED, mechanism found)
 
-Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection combines PTY output cadence with harness hooks; hooks win when present. Research: `tasks/2026-10-21-harness-touchpoints-research.md`.
+Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection: OSC 7501 reports are the primary grade, hooks are the secondary shim grade, PTY cadence is a negative-only check (see [[harness-adapters]] §0 R1). Research: `tasks/2026-10-21-harness-touchpoints-research.md`.
 
 **Primary state channel (found 2026-10-21, [[iterm-harness-plugin]], spec [[subagent-detection]]):** Claude Code (since 2.1.295) and Codex (0.163) emit **OSC 7501, the Program Status Protocol**, on their own PTY once the terminal answers the probe `ESC]7501;?ESC\`. Wire form: `ESC]7501;state=<idle|working|blocked|done|error|clear>:app=<name>[:id=<agent id>][:kind=permission|question|auth][:progress=N][:title=<base64>][:msg=<base64>]ESC\`. Each running Claude subagent is its own report with `id=` and `title=` the Agent tool description; that is how iTerm2 nests subagent rows under a seat. Codex also emits OSC 21337 status. Because we own the PTY, we answer the probe and parse the stream: zero install, no hooks needed for the baseline. Hooks (`bboxy-hook` shim via a per-launch settings overlay writing a namespaced OSC 7502 to `/dev/tty`, seat id from `BBOXY_SEAT_ID`) add the events 7501 lacks. Unix socket fallback, PTY heuristic for unknown harnesses.
 

@@ -56,6 +56,7 @@
     // sidebar-toggle fox: standard sidebar glyph, left column grows an ear tip (pick §8 shape 3). open = sidebar shown (column filled)
     sidebarfox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M9.5 8v12"/><path d="M3.2 8.5 3.8 2.2 8.6 7.6Z" fill="currentColor" stroke="none"/></svg>',
     sidebarfoxopen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 8h6.5v12H3z" fill="currentColor" stroke="none"/><path d="M3.2 8.5 3.8 2.2 8.6 7.6Z" fill="currentColor" stroke="none"/></svg>',
+    archive: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7h18v3H3zM5 10v9h14v-9M10 14h4"/></svg>',
     ears: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 19 5.5 3l5.5 11.5zM22 19 18.5 3 13 14.5z"/></svg>',
   };
   // Logo: head silhouette, flat two-tone (electric fill, navy ear interiors + hair tuft + hood collar), tilted 12° CCW. Ears-only below 32 px.
@@ -74,7 +75,9 @@
     const ears = `<g transform="rotate(${tilt} 50 55)"><path fill="${fill}" d="M8 102 L24 6 L50 72 L76 6 L92 102 L50 90 Z"/><path fill="${navy}" d="M42 98 L50 90 L58 98 L50 108 Z"/><path fill="${navy}" d="M25 30 L38 66 L20 78 Z M75 30 L62 66 L80 78 Z"/></g>`;
     return `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">${opts.ears ? ears : head}</svg>`;
   }
-  function logo(px, opts) { opts = opts || {}; const ears = opts.ears != null ? opts.ears : px < 32; return el('span', { class: 'logo', style: 'width:' + px + 'px;height:' + px + 'px;display:inline-block', html: logoSvg({ ...opts, ears }) }); }
+  // Logo = the operator's identity portrait (lab/web/bboxy.png, from ~/.agents/identity/bboxy.png). The SVG mark stays only for the logo page.
+  function logo(px, opts) { opts = opts || {}; if (opts.svg) { const ears = opts.ears != null ? opts.ears : px < 32; return el('span', { class: 'logo', style: 'width:' + px + 'px;height:' + px + 'px;display:inline-block', html: logoSvg({ ...opts, ears }) }); }
+    return el('img', { class: 'logo', src: 'bboxy.png', alt: 'bboxy', style: 'width:' + px + 'px;height:' + px + 'px;border-radius:' + (opts.square ? '22%' : '50%') + ';display:inline-block;object-fit:cover' }); }
 
   function harnessIcon(name, extra) { return el('span', { class: 'hicon ' + (extra || ''), title: name, html: ICON_SVG[name] || ICON_SVG.zsh }); }
   function roleMark(role) { return el('span', { class: 'rmark', style: 'color:var(--role-' + (role || 'unsigned') + ')', title: role || 'unsigned' }, ROLE_MARK[role || 'unsigned']); }
@@ -210,7 +213,7 @@
 
   function spacePill(space, st) {
     const expanded = st.openSpaces.has(space.key);
-    const pill = el('div', { class: 'space', style: '--space:' + seatColor({ key: space.key }) });
+    const pill = el('div', { class: 'space', style: '--space:' + seatColor({ key: space.key }), 'data-space': space.key });
     pill.append(spaceHeader(space, { expanded, onToggle: () => { expanded ? st.openSpaces.delete(space.key) : st.openSpaces.add(space.key); st.rerender(); } }));
     if (expanded) {
       const body = el('div', { class: 'space-body' });
@@ -219,6 +222,7 @@
         const open = st.openTabs.has(tkey) || (tab.seats || leaves(tab.tree)).length === 1 && st.autoOpenSingles;
         body.append(tabRow(tab, { expanded: open, focusedKey: st.focusedKey, onToggle: () => { st.openTabs.has(tkey) ? st.openTabs.delete(tkey) : st.openTabs.add(tkey); st.rerender(); } }));
       }
+      if (st.currentSpace === space.key) body.append(el('div', { class: 'tab-row newseat', onclick: () => st.onNewSeat && st.onNewSeat(space) }, el('span', { class: 'plus' }, '+'), el('span', { class: 'tname' }, 'new seat'), el('span', { class: 'right' }, kbd('⌘T'))));
       if (space.participants && space.participants.length) {
         body.append(el('div', { class: 'tab-row participants' }, el('span', { class: 'caret' }, '·'), el('span', { class: 'tname' }, 'participants'), el('span', { class: 'right' }, el('span', { class: 'kbd' }, space.participants.length))));
         for (const ph of space.participants) { const row = seatRow(ph, {}); row.classList.add('phantom'); body.append(row); }
@@ -232,16 +236,22 @@
     opts = opts || {};
     const seats = model.spaces.flatMap(s => s.tabs.flatMap(t => t.seats || leaves(t.tree)));
     const waiting = seats.filter(s => s.state === 'waiting').length;
-    const st = { openSpaces: new Set(opts.openSpaces || []), openTabs: new Set(opts.openTabs || []), focusedKey: opts.focusedKey || seats[0].key, autoOpenSingles: seats.length <= 40 };
+    const st = { openSpaces: new Set(opts.openSpaces || []), openTabs: new Set(opts.openTabs || []), focusedKey: opts.focusedKey || seats[0].key, autoOpenSingles: seats.length <= 40, onNewSeat: opts.onNewSeat };
+    const owner = model.spaces.find(sp => sp.tabs.some(t => (t.seats || leaves(t.tree)).some(s => s.key === st.focusedKey)));
+    st.currentSpace = owner ? owner.key : (model.spaces[0] && model.spaces[0].key);
     const sb = el('div', { class: 'sidebar' });
     const scroll = el('div', { class: 'sb-scroll' });
     st.rerender = () => { scroll.innerHTML = ''; for (const s of model.spaces) scroll.append(spacePill(s, st)); };
     st.rerender();
+    // footer, Arc style: archive · one dot per space (current filled, in its colour) · plus creates a space
+    const dots = el('span', { class: 'dots' });
+    for (const sp of model.spaces) dots.append(el('i', { class: sp.key === st.currentSpace ? 'on' : '', title: sp.name, style: sp.key === st.currentSpace ? 'background:' + seatColor({ key: sp.key }) : '', onclick: () => { const b = scroll.querySelector('[data-space="' + sp.key + '"]'); if (b) scroll.scrollTo({ top: b.offsetTop - scroll.offsetTop - 4, behavior: 'smooth' }); } }));
     sb.append(
       el('div', { class: 'sb-top' }, harnessIcon('sidebarfox'), el('span', {}, 'bboxy450-term'), el('span', { style: 'margin-left:auto' }, harnessIcon('gear'))),
       scroll,
-      el('div', { class: 'sb-foot' }, el('span', {}, seats.length + ' seats · ' + waiting + ' waiting'), el('span', { class: 'spacer' }), el('button', {}, '⌘T +')),
+      el('div', { class: 'sb-foot' }, el('span', { class: 'fbtn', title: 'archive' }, harnessIcon('archive')), dots, el('span', { class: 'fbtn plus', title: 'new space', onclick: () => opts.onNewSpace && opts.onNewSpace() }, '+')),
     );
+    sb.seatCount = seats.length; sb.waitingCount = waiting;
     return sb;
   }
 
