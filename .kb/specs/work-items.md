@@ -30,6 +30,29 @@ updated: 2026-10-21T21:40:00Z
 
 Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]]` anywhere in frontmatter or body resolve to items in `.bboxy/` by id or slug; plain URLs and repo paths are links too. The terminal indexes both the typed `links` and inline wikilinks into one graph. The filename is `<type>s/<date>-<slug>.md`; the id in the frontmatter is the identity, the filename is for humans.
 
+## Wikilinks and weights (operator, 2026-10-21: "wikilinks is the way")
+
+Wikilinks are the link primitive everywhere: frontmatter, body, messages. Syntax, three forms:
+
+| Form | Meaning |
+|---|---|
+| `[[slug]]` | link, relation `ref`, weight 1 |
+| `[[slug\|rel]]` | typed link: `spec`, `evidence`, `parent`, `child`, `depends`, `blocks`, `see` |
+| `[[slug\|rel\|w]]` | typed and weighted, `w` a positive number; higher = stronger |
+
+`slug` resolves to an item id or filename slug in `.bboxy/`, or to a seat (`seat:nyx-copperwing`), a swarm, or a URL in angle brackets. The `links:` frontmatter list is the same thing in YAML for tools that prefer it; the terminal merges both. Weight defaults: `parent`/`child` 3, `depends`/`blocks` 2, everything else 1, unless written.
+
+## The graphs the terminal builds
+
+All from the same index; none hand-maintained once the index exists.
+
+| Graph | Nodes | Edges and weights | Used for |
+|---|---|---|---|
+| **slug graph** | every `.bboxy/` item and note | every wikilink, weighted as above | navigation, "related", search ranking, the launcher's Go to |
+| **task graph** | epics, specs, tasks | `parent`/`child`, `depends`/`blocks` | ordering, what is blocked, what is claimable |
+| **execution graph** | seats × tasks | `assignee`, `delegated_by`, status, live seat state | the sidebar's task rows, the Oracle's view of who is on what, this repo's `graph.md` generated |
+| **messaging graph** | seats, swarms, channels | who messaged whom; weight = count decayed by recency; role class on the edge | stream filters, "who is talking to whom", starvation and silence detection |
+
 ## What the terminal does with them
 
 | Action | Mechanism |
