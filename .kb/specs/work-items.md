@@ -35,7 +35,7 @@ Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]
 | Action | Mechanism |
 |---|---|
 | Index | Watch `.bboxy/**/*.md`, parse frontmatter, build the graph (parent, depends_on). Invalid frontmatter = shown as broken, never silently skipped. |
-| Delegate | `task_delegate{task: path}` reads the file, sets `assignee`, `status: claimed`, `updated`, commits nothing (the file change is the operator's or the seat's to commit), injects the role header plus the body into the seat. |
+| Delegate | `task_delegate{task: path, seat}` does exactly two things, in this order: (1) rewrites the item's frontmatter to `assignee: seat:<id>` and `status: claimed`, so the file itself names the one seat responsible; (2) sends the seat one message, oracle-class, that reads `ROLE: <role>. Execute this: <path>` followed by the body, through the adapter like any message, with the same evidence states. One responsible seat per task at a time; reassigning rewrites `assignee` and sends the new seat the same message, and the old seat a one-line release. Commits nothing. |
 | Track | Seat events move `status` (`running` on first activity, `reported` when the seat's report lands on the stream with the task id); the Oracle or operator sets `accepted`/`rejected` via `task_accept`. Every transition rewrites the frontmatter only. |
 | Show | A task is a row under its seat in the sidebar with its status glyph; an epic is a collapsible group in the stream dock with its specs and tasks; `blocked` shows what it waits on. |
 | Graph | `.kb/graph.md`-style view generated from frontmatter, not hand-maintained once this exists. |
