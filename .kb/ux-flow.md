@@ -165,3 +165,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Users add their own harnesses
 **Rule:** Settings › Harnesses has a "+ new harness" tile: name, command, tile colour, icon, default role, wake method (default pty), state source (default output cadence), hooks. Built-ins are chipped "built-in". A user-added harness runs through the generic PTY adapter and shows in the launcher. **Where:** `settingsPage()` Harnesses (designer pass); adapter semantics routed to the Oracle.
+
+### Appearance settings apply live
+**Rule:** density, theme and gutter chosen in Settings › Appearance apply to the window at once; the density control previews its four row heights before you pick. **Why:** the operator wants density as a real setting, not a lab toggle. **Where:** `settingsPage({ onChange })` → showcase applies tokens and re-renders.
