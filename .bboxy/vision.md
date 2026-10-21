@@ -78,6 +78,22 @@ Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection: OSC 75
 - **Memory model at 1000 seats**: an `alacritty_terminal` grid with 10k scrollback measured 15–20 MB per seat, so 1000 seats would be 15–20 GB. Not viable. The daemon keeps a viewport-sized grid per seat plus a bounded raw-byte scrollback ring with a monotonic cursor; scrollback lines are re-parsed lazily on demand. Hidden seats send the GUI only a state bit for the sidebar.
 - Target scale: swarms of **1000 agents**. Some local, some remote over ssh, some in the user's chosen cloud. The sidebar, the mux and the messaging layer must be designed for that count from the start.
 
+## The composability test (operator, 2026-10-21)
+
+Something like Karpathy's **autoresearch** must be natively possible with no new feature: an agent loop that proposes an experiment, runs it, measures, keeps what improved, logs everything, and iterates. A harness told "glue everything together" should be able to build it out of the primitives alone, with bboxy450-term as the glue:
+
+| autoresearch needs | bboxy primitive |
+|---|---|
+| a hypothesis and its plan | a task markdown with `derived_from` the previous result |
+| running it | `task_delegate` to a seat, or spawn+delegate under the cap |
+| the result | an artifact claimed by the seat, with digest and `for: [[task]]`; a note markdown with the measurement |
+| "did it improve" | an invariant markdown naming the metric and direction; the Oracle seat subscribed to `artifact/*` for the experiment |
+| the next iteration | an event wakes the Oracle seat, which writes the next task; the markdown graph is the lineage |
+| the record | the provenance log: every run, every input, every key, chained |
+| scaling out | seats local, ssh, cloud; same bus, same grants |
+
+If a loop like this needs a feature we do not have, the primitives are wrong, not the loop. This is the test every spec is held to. Note: the operator's own `paperhands` is an autoresearch system; it should run inside bboxy450-term as a swarm without special support.
+
 ## Working rules (operator, 2026-10-21)
 
 - **One concern at a time.** Layout first, then style, then behaviour, then performance. A brief names one concern.

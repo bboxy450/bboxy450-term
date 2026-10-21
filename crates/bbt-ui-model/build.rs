@@ -70,6 +70,8 @@ impl Generator {
             // Reflection is compiled only in tests: it reads the generated
             // fields themselves, rather than comparing a copied JSON string.
             out.push_str(&format!("#[cfg(test)] impl super::Visit for {name} {{ fn visit(&self, path: &str, out: &mut std::collections::BTreeMap<String, super::Scalar>) {{\n"));
+            let keys = fields.iter().map(|(field, _)| format!("String::from({field:?})")).collect::<Vec<_>>().join(",");
+            out.push_str(&format!("out.insert(path.into(), super::Scalar::ObjectKeys(vec![{keys}]));\n"));
             for (field, _) in fields {
                 out.push_str(&format!("super::Visit::visit(&self.{}, &format!(\"{{}}.{field}\", path), out);\n", ident(field)));
             }

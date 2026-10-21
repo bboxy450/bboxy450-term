@@ -29,7 +29,7 @@ impl Density {
 
 #[cfg(test)]
 #[derive(Debug, PartialEq)]
-enum Scalar { Bool(bool), Number(f64), Text(String), ArrayLength(usize) }
+enum Scalar { Bool(bool), Number(f64), Text(String), ArrayLength(usize), ObjectKeys(Vec<String>) }
 
 #[cfg(test)]
 trait Visit { fn visit(&self, path: &str, out: &mut std::collections::BTreeMap<String, Scalar>); }
@@ -54,7 +54,10 @@ mod tests {
 
     fn flatten(v: &serde_json::Value, path: &str, out: &mut BTreeMap<String, Scalar>) {
         match v {
-            serde_json::Value::Object(map) => for (key, value) in map { flatten(value, &format!("{path}.{key}"), out); },
+            serde_json::Value::Object(map) => {
+                out.insert(path.into(), Scalar::ObjectKeys(map.keys().cloned().collect()));
+                for (key, value) in map { flatten(value, &format!("{path}.{key}"), out); }
+            },
             serde_json::Value::Array(array) => {
                 out.insert(path.into(), Scalar::ArrayLength(array.len()));
                 for (i, value) in array.iter().enumerate() { flatten(value, &format!("{path}[{i}]"), out); }
@@ -80,7 +83,7 @@ mod tests {
         TOKENS.visit("TOKENS", &mut actual);
         STYLE.visit("STYLE", &mut actual);
         assert_eq!(actual, expected, "regenerate the web tokens if design sources changed");
-        eprintln!("{} web-exported token leaves/array lengths match generated Rust fields", actual.len());
+        eprintln!("{} web-exported token paths (object keys, arrays and scalar values) match generated Rust fields", actual.len());
     }
 
     #[test]

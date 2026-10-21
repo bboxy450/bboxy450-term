@@ -33,6 +33,20 @@ pub struct Launcher {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurgeModal { pub seat: SeatId, pub typed: TextField }
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Strip { pub seat: SeatId }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PaneBody { Terminal, Settings(SettingsTab) }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pane { pub seat: SeatId, pub strip: Strip, pub body: PaneBody }
+#[derive(Debug, Clone, PartialEq)]
+pub struct MiniGrid { pub tree: SplitNode, pub focused: Option<SeatId>, pub big: bool }
+#[derive(Debug, Clone, PartialEq)]
+pub enum Banner { Split(SplitNode), NewTab(Vec<TabId>) }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StreamDock { pub items: Vec<StreamItem>, pub filter: Option<ShadowId> }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MatchTier { Prefix, Facets, Subtitle, Fuzzy, Semantic }
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Overlay { Launcher(Launcher), Purge(PurgeModal) }
 #[derive(Debug, Clone, PartialEq)]
 pub struct Window {
