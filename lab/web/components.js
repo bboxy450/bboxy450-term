@@ -63,6 +63,8 @@
     unmuted: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
     cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M7 18a4 4 0 0 1-.6-7.95A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/></svg>',
     ssh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/></svg>',
+    key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11 20 2M16 6l2 2M13 9l2 2"/></svg>',
+    google: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 12.2c0-.7-.1-1.3-.2-1.9H12v3.7h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"/><path d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path d="M6.4 14a6 6 0 0 1 0-3.9V7.5H3.1a10 10 0 0 0 0 9z"/><path d="M12 6c1.5 0 2.8.5 3.8 1.5l2.8-2.8A10 10 0 0 0 3.1 7.5l3.3 2.6C7.2 7.8 9.4 6 12 6z"/></svg>',
     ears: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 19 5.5 3l5.5 11.5zM22 19 18.5 3 13 14.5z"/></svg>',
   };
   // Logo: head silhouette, flat two-tone (electric fill, navy ear interiors + hair tuft + hood collar), tilted 12° CCW. Ears-only below 32 px.
@@ -412,5 +414,75 @@
     return row;
   }
 
-  window.C = { LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  // ---------- settings: data-driven page, left nav + cards, read-mostly (config.toml), diff-from-default marks ----------
+  const SET_DEF = {
+    account: { name: 'Boxy', email: 'bboxy450@gmail.com', fingerprint: '844E CC05 87DE 7AB0', devices: [['this Mac', 'enrolled · root custodian'], ['rig', 'enrolled · 2026-10-19']] },
+    cloud: [['Hetzner', 'eu-2 · Falkenstein', true], ['Fly', 'us-1 · Ashburn', true], ['Lambda', 'gpu-a · A100', false]],
+    machines: [['rig', 'feral@rig.local', 'M2 Ultra · key ~/.ssh/id_ed25519'], ['alpha', 'feral@alpha.tail', 'Linux x86 · key ~/.ssh/id_ed25519'], ['studio', 'feral@studio.local', 'M1 Max · key ~/.ssh/id_ed25519']],
+    roles: { oracle: { prompt: 'You are the Oracle. Supervise, verify, never implement. Sign every message Name <ORACLE>.', send: 'all channels · all DMs' }, executor: { prompt: 'You are an Executor. Do the assigned work, report evidence, never expand scope.', send: 'own swarm · operator DM' }, creativity: { prompt: 'You are Creativity. Diverge before converging; return a field, not a pick.', send: 'own swarm · operator DM' } },
+    harness: { claude: { role: 'oracle', wake: 'socket', hooks: true }, codex: { role: 'executor', wake: 'hook', hooks: true }, pi: { role: 'executor', wake: 'pty', hooks: false }, omp: { role: 'executor', wake: 'pty', hooks: false } },
+    appearance: { theme: 'auto', density: 'cozy', gutter: 2, glow: true, subtitle: false },
+    shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab']],
+  };
+  const SET = JSON.parse(JSON.stringify(SET_DEF));
+  SET.roles.creativity.prompt += ' Name the Censor when it fires.'; SET.harness.pi.role = 'creativity';
+  function settingsPage(opts) {
+    opts = opts || {};
+    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Shortcuts'];
+    let cur = opts.section || 'Account';
+    const root = el('div', { class: 'settings' });
+    const nav = el('div', { class: 's-nav' });
+    const q = el('input', { class: 's-q', placeholder: 'search settings' });
+    const main = el('div', { class: 's-main' });
+    const row = (label, hint, control, changed, onReset) => el('div', { class: 's-row' + (changed ? ' changed' : '') }, el('div', { class: 'lbl' }, label, hint ? el('small', {}, hint) : null), el('div', { class: 'ctl' }, control), el('div', { class: 'diff' }, changed ? [el('i', { title: 'differs from config.toml default' }), el('button', { onclick: onReset }, 'reset')] : null));
+    const select = (optsArr, val, on) => { const s = el('select', { onchange: e => on && on(e.target.value) }); for (const o of optsArr) s.append(el('option', { value: o, ...(o === val ? { selected: '' } : {}) }, o)); return s; };
+    const toggle = (on, cb) => el('span', { class: 'toggle' + (on ? ' on' : ''), onclick: () => cb && cb(!on) });
+    const card = (title, kids, extra) => el('div', { class: 's-card' }, title ? el('div', { class: 's-card-h' }, el('span', {}, title), extra || null) : null, ...kids);
+    const btn = (label, icon, primary) => el('button', { class: 's-btn' + (primary ? ' primary' : '') }, icon ? harnessIcon(icon) : null, label);
+    const draw = () => {
+      nav.innerHTML = ''; for (const s of sections) nav.append(el('div', { class: 's-navi' + (s === cur ? ' on' : ''), onclick: () => { cur = s; draw(); } }, s));
+      main.innerHTML = '';
+      const needle = q.value.toLowerCase();
+      const add = (title, node) => { if (!needle || node.textContent.toLowerCase().includes(needle)) main.append(node); };
+      if (cur === 'Account' || needle) {
+        const a = SET.account;
+        add('Account', card('Account', [
+          el('div', { class: 'passport' }, logo(56, { square: true }), el('div', {}, el('div', { class: 'pname' }, a.name, el('span', { class: 'pill-ok' }, 'signed in · root key on this Mac')), el('div', { class: 'fp' }, harnessIcon('key'), 'ed25519 ' + a.fingerprint), el('div', { class: 'fp' }, a.email)), el('div', { class: 'acts' }, btn('Sign in with Google', 'google'), btn('Show paper recovery', 'key'))),
+          row('Devices', 'enrolled under the root key', el('div', { class: 'list' }, ...a.devices.map(([n, d]) => el('div', { class: 'li' }, el('b', {}, n), el('span', {}, d))), btn('+ enroll a device')), false),
+          el('div', { class: 's-note' }, 'Google sign-in binds this account to a provider for cloud; the root key stays the identity. Device enrollment is a one-use ticket approved from a custodian device. Both ship with cloud.'),
+        ]));
+      }
+      if (cur === 'Cloud' || needle) add('Cloud', card('Cloud', SET.cloud.map(([p, r, on], i) => row(p, r, toggle(on, v => { SET.cloud[i][2] = v; draw(); }), on !== SET_DEF.cloud[i][2], () => { SET.cloud[i][2] = SET_DEF.cloud[i][2]; draw(); })), btn('+ connect a provider')));
+      if (cur === 'Machines' || needle) add('Machines', card('SSH machines', [...SET.machines.map(([h, u, d]) => row(h, d, el('code', {}, u), false)), el('div', { class: 's-note' }, 'Read from ~/.ssh/config. Machines appear under SSH in the launcher.')], btn('+ add a machine')));
+      if (cur === 'Roles' || needle) for (const r of ['oracle', 'executor', 'creativity']) {
+        const v = SET.roles[r], d = SET_DEF.roles[r];
+        add('Roles', card(r, [
+          row('Default system prompt', 'fed to the harness at launch', el('textarea', { html: v.prompt, oninput: e => { v.prompt = e.target.value; } }), v.prompt !== d.prompt, () => { v.prompt = d.prompt; draw(); }),
+          row('May send to', 'terminal-enforced', select(['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], v.send, x => { v.send = x; draw(); }), v.send !== d.send, () => { v.send = d.send; draw(); }),
+        ], el('span', { class: 'rmark', style: 'color:var(--role-' + r + ')' }, ROLE_MARK[r])));
+      }
+      if (cur === 'Harnesses' || needle) for (const h of Object.keys(SET.harness)) {
+        const v = SET.harness[h], d = SET_DEF.harness[h];
+        add('Harnesses', card(h, [
+          row('Default role', null, select(['oracle', 'executor', 'creativity'], v.role, x => { v.role = x; draw(); }), v.role !== d.role, () => { v.role = d.role; draw(); }),
+          row('Wake method', null, select(['socket', 'hook', 'mcp', 'pty'], v.wake, x => { v.wake = x; draw(); }), v.wake !== d.wake, () => { v.wake = d.wake; draw(); }),
+          row('Hooks', 'state from harness hooks', toggle(v.hooks, x => { v.hooks = x; draw(); }), v.hooks !== d.hooks, () => { v.hooks = d.hooks; draw(); }),
+        ], el('span', { class: 'tile', style: 'background:' + ((LAUNCH.find(l => l.harness === h) || {}).tile || '#374151') }, harnessIcon(h))));
+      }
+      if (cur === 'Appearance' || needle) { const v = SET.appearance, d = SET_DEF.appearance; add('Appearance', card('Appearance', [
+        row('Theme', null, select(['auto', 'dark', 'light'], v.theme, x => { v.theme = x; draw(); }), v.theme !== d.theme, () => { v.theme = d.theme; draw(); }),
+        row('Density', null, select(['touch', 'comfortable', 'cozy', 'compact'], v.density, x => { v.density = x; draw(); }), v.density !== d.density, () => { v.density = d.density; draw(); }),
+        row('Gutter', 'px between panes', select(['2', '4'], String(v.gutter), x => { v.gutter = +x; draw(); }), v.gutter !== d.gutter, () => { v.gutter = d.gutter; draw(); }),
+        row('Border glow', 'particles in the seat colour', toggle(v.glow, x => { v.glow = x; draw(); }), v.glow !== d.glow, () => { v.glow = d.glow; draw(); }),
+        row('Last-output subtitle', 'second line on seat rows', toggle(v.subtitle, x => { v.subtitle = x; draw(); }), v.subtitle !== d.subtitle, () => { v.subtitle = d.subtitle; draw(); }),
+      ])); }
+      if (cur === 'Shortcuts' || needle) add('Shortcuts', card('Shortcuts', SET.shortcuts.map(([l, kb]) => row(l, null, el('span', { class: 'kbd' }, kb), false))));
+      if (!main.children.length) main.append(el('div', { class: 's-note' }, 'nothing matches "' + q.value + '"'));
+    };
+    q.addEventListener('input', draw); draw();
+    root.append(el('div', { class: 's-side' }, q, nav), main);
+    return root;
+  }
+
+  window.C = { settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

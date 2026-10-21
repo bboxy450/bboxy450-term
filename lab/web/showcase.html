@@ -15,7 +15,7 @@
   body.resizing, body.resizing * { cursor: inherit !important; user-select: none; }
   /* drag to split: ghost label follows the pointer; the hovered half of a pane tints */
   body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
-  .drag-ghost { position: fixed; left: 0; top: 0; z-index: 20; pointer-events: none; padding: 4px 10px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); box-shadow: 0 0 0 1px var(--hair), var(--sh-pill); color: var(--seat); font-size: var(--t-row); font-weight: 600; backdrop-filter: blur(10px); }
+  .drag-ghost { position: fixed; left: 0; top: 0; z-index: 20; pointer-events: none; padding: 4px 10px; border-radius: var(--r-round); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); box-shadow: 0 0 0 1px var(--hair), var(--sh-pill); color: var(--seat); font-size: var(--t-row); font-weight: 600; backdrop-filter: blur(10px); }
   .pane { position: relative; }
   .pane::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--sel); opacity: 0; transition: opacity var(--hover-ms); z-index: 3; }
   .pane.drop-left::after { opacity: 1; right: 50%; } .pane.drop-right::after { opacity: 1; left: 50%; }
@@ -59,7 +59,7 @@
   .tab-row.participants .kbd { background: transparent; }
   .tab-row.newseat { border-radius: var(--r-row); }
   .tab-row.closed-strip { background: var(--sel-hover); border-radius: var(--r-row); }
-  .tab-row.closed-strip .undo { border: 1px solid var(--hair); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); border-radius: var(--r-pill); font-size: 10px; }
+  .tab-row.closed-strip .undo { border: 1px solid var(--hair); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); border-radius: var(--r-round); font-size: 10px; }
 
   /* --- new swarm: a card-shaped button --- */
   .new-cohort { height: 40px; margin: var(--cohort-gap) 0; border-radius: var(--r-card); background: color-mix(in srgb, var(--surface) var(--card-alpha), transparent); box-shadow: 0 0 0 1px var(--hair); color: var(--fg-dim); font-size: var(--t-row); font-weight: 500; }
@@ -74,7 +74,7 @@
   .stream-dock .msg.unread::after { width: 5px; height: 5px; top: 7px; right: 4px; }
   .stream-dock .filter { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--fg-dim); padding: 0 0 4px 6px; font-family: var(--font-mono); }
   .stream-dock .filter b { color: var(--fg); font-weight: 500; }
-  .stream-dock .filter button { background: transparent; border: 1px solid var(--hair); color: var(--fg-dim); border-radius: var(--r-pill); font: inherit; font-size: 10px; padding: 0 6px; cursor: pointer; }
+  .stream-dock .filter button { background: transparent; border: 1px solid var(--hair); color: var(--fg-dim); border-radius: var(--r-round); font: inherit; font-size: 10px; padding: 0 6px; cursor: pointer; }
 
   /* --- stage: split tree, gutters are dividers --- */
   .stage { flex: 1; padding: 0; background: transparent; min-width: 0; }
@@ -88,6 +88,9 @@
   .split.h > .divider::after { top: -4px; bottom: -4px; }
   .stage .pane { background: var(--bg); min-height: 0; min-width: 0; border-radius: 0; }
   .pane .strip .kbd { background: rgba(0,0,0,.22); color: rgba(255,255,255,.85); }
+  .pane.settings-pane { display: flex; flex-direction: column; }
+  .pane.settings-pane .settings { flex: 1; min-height: 0; }
+  .pane.settings-pane.unfocused .settings { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); }
   .pane .term { font-size: 12px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
   .pane .term .lines { white-space: pre; overflow: hidden; }
 
@@ -145,7 +148,7 @@
   .spot-back .picker .foot .sw { width: 12px; height: 12px; }
   .spot-back .picker .foot .nm { font-weight: var(--t-weight_name, 600); font-size: 14px; }
   .spot-back .picker .foot button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--hair); background: transparent; color: var(--fg); font-size: 14px; padding: 0; margin: 0; }
-  .spot-back .picker .foot .pill { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--surface) 85%, transparent); box-shadow: 0 0 0 1px var(--hair), var(--sh-pill); font-size: var(--t-body); color: var(--fg); }
+  .spot-back .picker .foot .pill { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--r-round); background: color-mix(in srgb, var(--surface) 85%, transparent); box-shadow: 0 0 0 1px var(--hair), var(--sh-pill); font-size: var(--t-body); color: var(--fg); }
   .spot-back .picker .foot .pill kbd { font-family: var(--font-mono); font-size: 11px; background: var(--badge); border-radius: 5px; padding: 2px 6px; }
   .spot-back .picker .foot .pill .sep { width: 1px; height: 16px; background: var(--hair); }
 </style>

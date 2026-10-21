@@ -35,7 +35,7 @@
     set('--font-chrome', T.font.chrome); set('--font-mono', T.font.mono);
     // style.json → CSS vars: one radius scale, one material, one type scale, one tint
     const S = window.STYLE; if (S) {
-      for (const [k, v] of Object.entries(S.radius)) set('--r-' + k, v + 'px');
+      for (const [k, v] of Object.entries(S.radius)) set('--r-' + (k === 'pill' ? 'round' : k), v + 'px');   // --r-pill (12) stays the lab chrome's card radius; --r-round is the 999 pill
       set('--mat-alpha', S.material.panel_alpha * 100 + '%'); set('--card-alpha', S.material.card_alpha * 100 + '%'); set('--mat-blur', S.material.panel_blur_px + 'px'); set('--mat-sat', S.material.panel_saturate);
       set('--back-dim', S.material.backdrop_dim_alpha * 100 + '%'); set('--back-blur', S.material.backdrop_blur_px + 'px');
       set('--hair', 'color-mix(in srgb, var(--line) ' + S.material.hairline_alpha * 100 + '%, transparent)'); set('--hi', 'rgba(255,255,255,' + S.material.inner_highlight_alpha + ')');

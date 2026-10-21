@@ -97,10 +97,13 @@ Two ways, same result.
 - **Drag and drop**: drag a seat row from the sidebar, or a pane by its strip, onto another pane. The hovered half of the target (left, right, top, bottom) tints with the selection tint; dropping splits there at 50/50. A dragged seat moves: its old split collapses into the sibling. Phantoms cannot be dragged.
 Either way the placed seat gets focus and the locate signal. Ratios are then adjusted by dragging the gutter (section 2).
 
-### 5.6 Mute
+### 5.6 Settings
+⌘, or the Settings row in the launcher opens settings as a tab in the current swarm: a pane with a strip, a left nav with search, and cards in the card material. Sections: Account (portrait, name, signed-in state, ed25519 fingerprint, email, Sign in with Google, paper recovery, enrolled devices), Cloud providers with a connect toggle, SSH machines from `~/.ssh/config`, Roles with their default system prompt and may-send-to, Harnesses (default role, wake method, hooks), Appearance, Shortcuts. Read-mostly from `config.toml`: a changed row shows the accent dot and a reset. Closing the tab needs no grace.
+
+### 5.7 Mute
 ⌘M or the speaker icon in the pane strip toggles mute on the focused seat. A muted seat works one to one with the operator: its row stays in place with an amber muted mark and a dimmed name; its messages to the swarm are held; the swarm stream shows a centred presence notice on mute and again on unmute. No other signal changes.
 
-### 5.7 Messages
+### 5.8 Messages
 Unread shows as a dot on the seat row in the highest-priority unread role colour; focusing or clicking the seat clears it. A shadow's message pulses its row once (700 ms) and lands in the stream dock. No ripple for messages.
 
 ## 6. Signal semantics (one meaning per signal)
@@ -127,7 +130,7 @@ Keys 1-4 (state of the focused seat), M (message arrives), P (shadow speaks), th
 
 ## 9. Gaps
 - Remote owned seats versus shadows: owned seats over ssh look like local seats; not shown in the lab.
-- Settings as a tab and the toolbar icon exist as lab pages but are not wired into the showcase.
+- The toolbar icon exists as a lab page only.
 
 ## 10. From the specs (drawn, not built)
 

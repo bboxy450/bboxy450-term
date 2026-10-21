@@ -147,3 +147,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Jev orders as well as matches
 **Rule:** with an empty field the launcher's Suggestions are the three rows closest to the context vector (focused seat, swarm, last picks, last messages); with a query Jev breaks ties inside a tier; habit counts order placements; nothing reorders within 300 ms of a keystroke or re-numbers reachable rows. **Where:** design system v4 `modal.matching.jev.ordering`.
+
+### Settings are a tab, in the same material
+**Rule:** ⌘, or Settings in the launcher opens a settings tab in the current swarm: left nav with search, cards. Account carries sign-in (Google, deferred to cloud), the root key, devices; Cloud carries providers; Machines carries ssh hosts; Roles carry default system prompts and send permissions; Harnesses, Appearance, Shortcuts follow. Read-mostly from config.toml, changed rows dotted with reset. **Why:** the operator asked for settings with login, cloud, ssh machines, roles and their default prompts. **Where:** `settingsPage()` in `components.js`, `openSettings` in `showcase.js`, `.settings` in `lab.css`.

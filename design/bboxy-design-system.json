@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 4,
+  "version": 5,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -552,10 +552,27 @@
       "status": "drawn, not built"
     },
     "settings_tab": {
-      "purpose": "settings v0.1",
-      "source": "settings read config.toml",
-      "anatomy": "the lab settings page, read-mostly: values shown, edit opens the file; harness cards stay",
-      "status": "lab page exists, read-mostly rule new"
+      "purpose": "settings, as a tab in the current swarm",
+      "opens_from": [
+        "⌘,",
+        "Settings row in the launcher (with a section sublist)"
+      ],
+      "anatomy": "pane with a strip (gear, Settings, config.toml, ⌘,) · left nav (search + sections) · cards in the card material",
+      "sections": {
+        "Account": "portrait · name · signed-in pill · ed25519 fingerprint · email · Sign in with Google · Show paper recovery · enrolled devices · enroll a device",
+        "Cloud": "provider rows with region and a connect toggle",
+        "Machines": "ssh hosts from ~/.ssh/config with user@host and key",
+        "Roles": "one card per role: default system prompt (textarea), may-send-to (terminal-enforced)",
+        "Harnesses": "one card per harness: default role, wake method, hooks",
+        "Appearance": "theme, density, gutter, glow, subtitle",
+        "Shortcuts": "the key table"
+      },
+      "rules": [
+        "read-mostly: values come from config.toml; a changed row shows the accent dot and a reset",
+        "closing the tab needs no grace",
+        "Google sign-in and device enrollment are real buttons with deferred flows (cloud)"
+      ],
+      "status": "built"
     },
     "nested_subagent_rows": {
       "purpose": "a harness's subagents under its seat row",
