@@ -333,13 +333,19 @@
     const aliasOf = it => [it.label, ...(it.aliases || [])].map(norm);
     // where are we: the explicit stack, plus a virtual descent typed as "<parent> <rest>"
     function scope() {
-      let level = stack.length ? kids(stack[stack.length - 1]) : items0, qq = norm(q), virt = null;
-      for (const it of level) if (it.children) for (const a of aliasOf(it)) if (qq.startsWith(a + ' ') || (qq === a && false)) { virt = it; qq = qq.slice(a.length + 1); level = kids(it); break; }
+      // descend as many levels as the typed words name parents: "ssh alpha cl" → SSH ▸ alpha, query "cl"
+      let level = stack.length ? kids(stack[stack.length - 1]) : items0, qq = norm(q); const virt = [];
+      for (let guard = 0; guard < 8; guard++) {
+        let found = null;
+        for (const it of level) { if (!it.children) continue; for (const a of aliasOf(it)) if (qq.startsWith(a + ' ')) { found = it; qq = qq.slice(a.length + 1); break; } if (found) break; }
+        if (!found) break;
+        virt.push(found); level = kids(found);
+      }
       return { level, qq, virt };
     }
     const hit = (it, qq) => !qq || aliasOf(it).some(a => a.startsWith(qq)) || norm(it.label).split(' ').some(w => w.startsWith(qq)) || norm(it.sub).includes(qq) || (it.id || '').startsWith(qq);
     const matches = () => { const s = scope(); return s.level.filter(it => hit(it, s.qq)); };
-    const path = () => { const s = scope(); return s.virt ? [...stack, s.virt] : stack; };
+    const path = () => [...stack, ...scope().virt];
     const dive = it => { stack = [...path(), it]; q = ''; input.value = ''; sel = 0; draw(); };
     const climb = () => { if (!stack.length) return; stack = stack.slice(0, -1); q = ''; input.value = ''; sel = 0; draw(); };
     const pick = (it, ev) => { if (!it) return; if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
