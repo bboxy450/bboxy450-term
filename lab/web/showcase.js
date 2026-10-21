@@ -138,6 +138,26 @@
     if (key === 'glow') { document.getElementById('glow').style.display = value ? '' : 'none'; }
     const keep = settingsSeat.section; applyTheme(); settingsSeat.section = keep; render();
   }
+  // Tasks (operator: task_delegate): a durable task bound to a seat; a row under the seat and a line in the stream.
+  // Key T delegates a demo task to the focused seat; T again walks it: assigned → acknowledged → running → reported; accept via the pill.
+  const TASK_TITLES = ['gpu research spec', 'relay bench on eu-2', 'review PR 14', 'fix glyphon atlas growth', 'write harness adapter'];
+  let taskN = 0;
+  function streamLine(sp, text) { sp.stream.push({ presence: true, text, time: new Date().toTimeString().slice(0, 5) }); }
+  function delegateTask(seat) {
+    const sp = (tabOf(seat.key) || {}).sp || space();
+    seat.tasks = seat.tasks || [];
+    const open_ = seat.tasks.find(t => !['accepted', 'rejected', 'reassigned'].includes(t.state));
+    if (open_) {
+      const next = { assigned: 'acknowledged', acknowledged: 'running', running: 'reported', reported: 'reported' }[open_.state];
+      if (next !== open_.state) { open_.state = next; streamLine(sp, seat.name + ' ' + next + ' · ' + open_.title); }
+    } else {
+      const task = { id: 't' + (++taskN), title: TASK_TITLES[taskN % TASK_TITLES.length], state: 'assigned', from: 'Vesper Greywind' };
+      seat.tasks.push(task); streamLine(sp, 'Oracle delegated · ' + task.title + ' → ' + seat.name);
+    }
+    render();
+  }
+  function acceptTask(task, seat) { task.state = 'accepted'; const sp = (tabOf(seat.key) || {}).sp || space(); streamLine(sp, 'Oracle accepted · ' + task.title + ' from ' + seat.name); render(); }
+  addEventListener('keydown', e => { if ((e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !spot) { const f = seats.find(x => x.key === focused); if (f && !f.settings) delegateTask(f); } });
   // Settings open as a tab in the current swarm (⌘, or the Settings row in the launcher); closing it removes the tab, no grace.
   const settingsSeat = { key: 'settings', name: 'Settings', harness: 'gear', role: null, title: 'config.toml', state: 'idle', settings: true, section: 'Account' };
   Object.defineProperty(settingsSeat, 'color', { get() { return T.color[theme()].accent_soft; }, enumerable: true });
@@ -163,7 +183,7 @@
     const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : [['Launch / go', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']];
     // rows with sublists: each launchable → placements; 'Go to' → every seat and swarm. 'goto <name>' types straight in.
     const tileOf = h => (C.LAUNCH.find(l => l.harness === h) || {}).tile || '#374151';
-    const goSeats = () => seats.map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || '') + (x.where && x.where !== 'local' ? ' · ' + x.where + (x.host ? ' ' + x.host : '') : ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Seats', seat: x, tags: [x.harness, x.where || 'local', x.host || '', x.role || '', x.state, x.grade || '', x.state === 'waiting' ? (x.waitKind || 'question') : '', t ? t.sp.name : '', x.muted ? 'muted' : ''].filter(Boolean) }; });
+    const goSeats = () => seats.map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || '') + (x.where && x.where !== 'local' ? ' · ' + x.where + (x.host ? ' ' + x.host : '') : ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Seats', seat: x, tags: [x.harness, x.where || 'local', x.host || '', x.role || '', x.state, x.grade || '', x.state === 'waiting' ? (x.waitKind || 'question') : '', t ? t.sp.name : '', x.muted ? 'muted' : '', ...((x.tasks || []).map(t => t.title))].filter(Boolean) }; });
     const goSwarms = () => model.spaces.map(x => ({ id: 'swarm:' + x.key, label: x.name, sub: x.tabs.reduce((n, t) => n + t.seats.length, 0) + ' seats', harness: 'sidebarfoxopen', kind: 'Swarm', tile: x.color, section: 'Swarms', swarm: x, tags: ['swarm'] }));
     const placements = l => [
       { id: l.id + ':tab', label: 'New tab', sub: 'in ' + sp.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'tab', launch: l },
@@ -300,7 +320,7 @@
     if (focused && !stageKeys.includes(focused) && !phantoms.some(p => p.key === focused)) focused = stageKeys[0] || null;
     const birth = editName; editName = null;
     const sb = C.sidebar(model, { openSpaces: [...open], openTabs: model.spaces.flatMap(s => s.tabs.map(t => s.key + '/' + t.name)), focusedKey: focused, currentSpace: space().key,
-      onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: sp => openSpotlight(sp), onUndo: undoClose, onRename: () => render(), editName: birth,
+      onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: sp => openSpotlight(sp), onUndo: undoClose, onAccept: acceptTask, onRename: () => render(), editName: birth,
       onColor: sp => { const hues = [0, 30, 50, 90, 150, 190, 220, 260, 300, 330]; sp.hueI = ((sp.hueI == null ? -1 : sp.hueI) + 1) % hues.length; sp.color = 'hsl(' + hues[sp.hueI] + ' 70% ' + (theme() === 'light' ? 42 : 58) + '%)'; render(); } });
     const stage = el('div', { class: 'stage' }, (() => { if (!stageTree) return el('div'); const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
     main.append(sb, stage);
