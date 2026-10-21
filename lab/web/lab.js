@@ -2,11 +2,13 @@
 // Pages call Lab.page({ title, note, states, render }). render(stateName, container, ctx) draws one state.
 (function () {
   const T = window.TOKENS;
+  // storage that never throws (private windows, blocked site data)
+  const store = { get(k) { try { return window.localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { window.localStorage.setItem(k, v); } catch {} } };
   const prefs = {
-    get theme() { return localStorage.getItem('lab.theme') || 'dark'; },
-    set theme(v) { localStorage.setItem('lab.theme', v); },
-    get density() { return localStorage.getItem('lab.density') || 'comfortable'; },
-    set density(v) { localStorage.setItem('lab.density', v); },
+    get theme() { return store.get('lab.theme') || 'dark'; },
+    set theme(v) { store.set('lab.theme', v); },
+    get density() { return store.get('lab.density') || 'comfortable'; },
+    set density(v) { store.set('lab.density', v); },
   };
 
   function applyTokens() {
@@ -55,7 +57,7 @@
 
   function page(spec) {
     applyTokens();
-    let current = new URLSearchParams(location.search).get('state') || localStorage.getItem('lab.state.' + spec.title) || 'all';
+    let current = new URLSearchParams(location.search).get('state') || store.get('lab.state.' + spec.title) || 'all';
     const root = document.body;
     root.innerHTML = '';
     const top = el('div', { class: 'lab-top' },
@@ -67,7 +69,7 @@
     );
     const strip = el('div', { class: 'state-strip' });
     const names = ['all', ...spec.states];
-    for (const s of names) strip.append(el('button', { class: 'chip' + (s === current ? ' on' : ''), onclick: () => { current = s; localStorage.setItem('lab.state.' + spec.title, s); history.replaceState(null, '', s === 'all' ? location.pathname : '?state=' + encodeURIComponent(s)); page(spec); } }, s));
+    for (const s of names) strip.append(el('button', { class: 'chip' + (s === current ? ' on' : ''), onclick: () => { current = s; store.set('lab.state.' + spec.title, s); history.replaceState(null, '', s === 'all' ? location.pathname : '?state=' + encodeURIComponent(s)); page(spec); } }, s));
     const main = el('div', { class: 'lab-main' + (current === 'all' && !spec.wide ? '' : ' single') });
     const ctx = { theme: prefs.theme, density: prefs.density, tokens: T, el };
     const draw = (s) => {
@@ -82,5 +84,5 @@
     root.append(main);
   }
 
-  window.Lab = { page, el, applyTokens, prefs, T };
+  window.Lab = { page, el, applyTokens, prefs, T, store };
 })();

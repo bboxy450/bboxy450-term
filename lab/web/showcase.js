@@ -10,7 +10,7 @@
 
   // ---------- theme: auto (prefers-color-scheme) | dark | light ----------
   const mq = matchMedia('(prefers-color-scheme: dark)');
-  let themeMode = localStorage.getItem('showcase.theme') || 'auto';
+  let themeMode = Lab.store.get('showcase.theme') || 'auto';
   const theme = () => themeMode === 'auto' ? (mq.matches ? 'dark' : 'light') : themeMode;
   function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = 'cozy'; Lab.applyTokens(); document.documentElement.style.setProperty('--gutter', GUTTER + 'px'); }
   mq.addEventListener('change', () => { if (themeMode === 'auto') { applyTheme(); render(); } });
@@ -137,10 +137,10 @@
   // ---------- DOM ----------
   const app = document.getElementById('app');
   // one icon: sun in dark mode, moon in light mode; a click flips. The OS preference only sets the start.
-  const themeBtn = el('span', { class: 'tbtn theme', title: 'toggle light / dark', onclick: () => { themeMode = theme() === 'dark' ? 'light' : 'dark'; localStorage.setItem('showcase.theme', themeMode); applyTheme(); drawThemeBtn(); render(); } });
+  const themeBtn = el('span', { class: 'tbtn theme', title: 'toggle light / dark', onclick: () => { themeMode = theme() === 'dark' ? 'light' : 'dark'; Lab.store.set('showcase.theme', themeMode); applyTheme(); drawThemeBtn(); render(); } });
   function drawThemeBtn() { themeBtn.innerHTML = ''; themeBtn.append(C.harnessIcon(theme() === 'dark' ? 'sun' : 'moon')); }
   drawThemeBtn();
-  const titlebar = el('div', { class: 'titlebar' }, el('span', { class: 'win' }, el('i'), el('i'), el('i')), el('span', { class: 'tbtn on' }, C.harnessIcon('sidebarfoxopen')), C.logo(18, { ears: false }), el('span', { class: 'ttl' }, 'bboxy450-term'), el('span', { id: 'crumb' }), el('span', { class: 'spacer' }), themeBtn, el('span', { class: 'tbtn' }, C.harnessIcon('gear')));
+  const titlebar = el('div', { class: 'titlebar' }, el('span', { class: 'win' }, el('i'), el('i'), el('i')), el('span', { class: 'tbtn on' }, C.harnessIcon('sidebarfoxopen')), C.logo(18, { ears: false }), el('span', { class: 'ttl' }, 'bboxy450-term'), el('span', { id: 'crumb' }), el('span', { class: 'spacer' }), themeBtn);
   const main = el('div', { id: 'main' });
   app.append(titlebar, main);
   let rects = [];
@@ -177,10 +177,10 @@
     });
     sb.append(el('div', { class: 'stream-dock', id: 'stream' }));
     // sidebar width: drag the right edge; persisted
-    sb.style.width = (localStorage.getItem('showcase.sbw') || T.sidebar.width_compact) + 'px';
+    sb.style.width = (Lab.store.get('showcase.sbw') || T.sidebar.width_compact) + 'px';
     sb.append(el('div', { class: 'sb-resize', onpointerdown: e => {
       e.preventDefault(); const hnd = e.currentTarget; hnd.setPointerCapture(e.pointerId); document.body.classList.add('resizing'); document.body.style.cursor = 'col-resize';
-      const move = ev => { const w = Math.min(520, Math.max(160, ev.clientX - sb.getBoundingClientRect().left)); sb.style.width = w + 'px'; localStorage.setItem('showcase.sbw', w); measure(); };
+      const move = ev => { const w = Math.min(520, Math.max(160, ev.clientX - sb.getBoundingClientRect().left)); sb.style.width = w + 'px'; Lab.store.set('showcase.sbw', w); measure(); };
       const up = () => { hnd.removeEventListener('pointermove', move); hnd.removeEventListener('pointerup', up); document.body.classList.remove('resizing'); document.body.style.cursor = ''; measure(); };
       hnd.addEventListener('pointermove', move); hnd.addEventListener('pointerup', up);
     } }));
