@@ -67,6 +67,10 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 W1.1, W3.1, W2.1, A, B, C, D, E, F, G, H(Claude), I, I2, M, S, T, kittens, weavie, iTerm plugin, UX prototype v1 and v2.
 
+## Messaging rule (operator, 2026-10-21)
+
+DMs over the channel. One-to-one traffic (briefs, handoffs, reviews, corrections, questions to one agent) goes by `icq dm <key>`. The channel `#bboxy450-term` carries only what everyone must see: claims, one-line landed reports, decisions, presence. Keys: Oracle 726afa3b…a18f4a, Nyx 6b4e9bf6…30d1, Rook bfae37c6…b87fa, Creativity 22c0e081…4b57.
+
 ## Rules for this file
 
 One line per change. The Oracle edits it; Executors report on `#bboxy450-term` and the Oracle moves the line. A claim without an entry here is not a claim.
