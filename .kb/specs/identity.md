@@ -144,7 +144,7 @@ Decided record shape, with symbolic values rather than live credentials:
 }
 ```
 
-The root-signed record remains valid until rotation/revocation under the operator's decision, with yearly rebinding scheduled. Its lifetime is **not** an extension of the provider JWT's `exp`: a live login token must not be accepted after expiration ([JWT expiry, RFC 7519 `4.1.4](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4)). Preserve “bound at time” evidence separately from a fresh provider-verification result. A first-time verifier needs actual trusted provider proof, not a sender-supplied JWK or the hash alone.
+The root-signed record remains valid until rotation/revocation under the operator's decision, with yearly rebinding scheduled. Its lifetime is **not** an extension of the provider JWT's `exp`: a live login token must not be accepted after expiration ([JWT expiry, RFC 7519, section 4.1.4](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4)). Preserve “bound at time” evidence separately from a fresh provider-verification result. A first-time verifier needs actual trusted provider proof, not a sender-supplied JWK or the hash alone.
 
 The yearly job can mark rebinding due in the background. A fresh nonce/browser authorization and root user-presence operation may need the operator; do not substitute a refresh-token result that lacks this attempt's nonce. Device enrollment and paper recovery continue to use keys, not the Google account.
 

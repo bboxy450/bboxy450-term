@@ -8,7 +8,7 @@ Status: PROPOSED. Facts cited as `research §N` point into [[iterm-harness-plugi
 
 ## 0. Decision in one paragraph
 
-Two channels, both on the seat's own PTY, no env lookup, no socket round-trip for the common path. **Primary: OSC 7501**, the Program Status Protocol Claude Code (≥2.1.295) and Codex (≥0.163) already speak when the terminal answers the probe `ESC]7501;?ESC\` — it carries the main agent and every running subagent with `id`, `state`, `title`. **Secondary: a hook shim the terminal installs** that writes its own OSC (`OSC 7502`, our namespace) to `/dev/tty`, for harnesses whose 7501 is absent or stale and to catch events 7501 does not carry (tool detail, permission detail, session boundaries). A unix socket is the fallback only when `/dev/tty` is not ours (ssh, tmux, cloud). Unknown harnesses get a PTY heuristic. iTerm2's `it2`-over-websocket hop is dropped.
+Two channels, both on the seat's own PTY, no env lookup, no socket round-trip for the common path. **Primary: OSC 7501**, the Program Status Protocol Claude Code (≥2.1.295) and Codex (≥0.163) already speak when the terminal answers the probe `ESC]7501;?ESC\` — Claude carries its main agent and running subagents with `id`, `state`, `title`; the evidenced Codex 0.163 report covers only its main row (harness-adapters R9). **Secondary: a hook shim the terminal installs** that writes its own OSC (`OSC 7502`, our namespace) to `/dev/tty`, for harnesses whose 7501 is absent or stale and to catch events 7501 does not carry (tool detail, permission detail, session boundaries). A unix socket is the fallback only when `/dev/tty` is not ours (ssh, tmux, cloud). Unknown harnesses get a PTY heuristic. iTerm2's `it2`-over-websocket hop is dropped.
 
 ## (a) Seat state model
 
@@ -43,7 +43,7 @@ Rules:
 
 - Sidebar state words map from the wire: `working→active`, `blocked→waiting`, `idle→idle`, `error→errored`, `done→idle` with `detail` = last message (a seat is not "done", its turn is). [[ux-sidebar]] §2: a state change never moves a row.
 - A subagent row stays listed for 30 s after `ended_at` with state `done`/`errored`, then collapses into the seat's count. iTerm2 drops it on `state=clear:id=` immediately and lists at most four; we keep order and show all, collapsing past 8 into `+N` (1000-seat budget, [[ux-sidebar]] §8).
-- Space and tab roll-ups: `waiting` count bubbles up; `active` subagents count toward the seat's activity glyph.
+- Swarm and tab roll-ups: `waiting` count bubbles up; `active` subagents count toward the seat's activity glyph.
 - `status_source=reported` outranks `shim` outranks `inferred`. A lower source never overwrites a higher one younger than 5 s.
 
 ## (b) Ingestion channels
@@ -97,15 +97,15 @@ The shim never writes to stdout (Claude Code would parse it) and never blocks (t
 
 ### b.3 Hook shim — Codex
 
-Codex hooks: `~/.codex/hooks.json` events `session_start session_end user_prompt_submit pre_tool_use post_tool_use stop subagent_start subagent_stop pre_compact post_compact` (research §1: trust records in `config.toml:148-178` name exactly this set). Codex requires each hook to be trusted (`hooks.state.<path>:<event>:<i>:<j>.trusted_hash`), so the terminal writes its hooks file **and** the matching trust hash, or launches Codex with a `--config hooks=…` override. **Gap:** whether Codex accepts a per-launch hooks file path; the Codex docs must be checked before implementation. Same shim binary with `--agent codex` (iTerm2 precedent, research §3), same OSC 7502. Codex already speaks 7501/21337, so the shim is only for detail text and session boundaries.
+Codex hooks: `~/.codex/hooks.json` events `session_start session_end user_prompt_submit pre_tool_use post_tool_use stop subagent_start subagent_stop pre_compact post_compact` (research §1: trust records in `config.toml:148-178` name exactly this set). Codex requires each hook to be trusted (`hooks.state.<path>:<event>:<i>:<j>.trusted_hash`), so the terminal writes its hooks file **and** the matching trust hash, or launches Codex with a `--config hooks=…` override. **Gap:** whether Codex accepts a per-launch hooks file path; the Codex docs must be checked before implementation. Same shim binary with `--agent codex` (iTerm2 precedent, research §3), same OSC 7502. Codex already speaks 7501/21337 for its main row; the shim also supplies subagent lifecycle events, detail text and session boundaries (harness-adapters R9).
 
 ### b.4 Socket fallback
 
 `$XDG_RUNTIME_DIR/bboxy450/mux.sock` (unix, `SOCK_STREAM`, newline-delimited JSON `{seat, ev, d}`), same payload as 7502. Used when `/dev/tty` is not a tty or the write fails. Socket path is injected as `BBOXY_SOCK`. The mux daemon owns the socket, not the GUI, so it keeps receiving through a GUI restart.
 
-### b.5 Unknown harness — PTY heuristic (inferred)
+### b.5 Zsh and unknown harness — PTY heuristic (inferred)
 
-For pi, omp, zsh, anything without 7501 or a shim: `active` while bytes arrive on the PTY and the cursor is not at a prompt; `idle` after 2 s quiet with a shell prompt detected via OSC 133 (A/B/C/D, Claude Code emits it: research §7 `SEMANTIC_PROMPT`); `waiting` when the last output ends with a `?`/`[y/N]`/`(Y/n)` line or a cursor-position report with raw mode on and no bytes for 10 s; `errored` on OSC 133 D with non-zero exit. Marked `status_source=inferred` and drawn with a hollow glyph.
+Pi and omp use the reported extension channels in [[harness-adapters]] §2b (R6); their title/progress hints remain inferred. Zsh gets the terminal-installed OSC 133 integration there; Claude OSC 133 emission is not relied upon (R5). Unknown-harness display heuristics are owned by [[harness-adapters]] §5, retain `status_source=inferred` and never establish composer readiness.
 
 ## (c) Seat identity for hook processes
 
@@ -135,10 +135,10 @@ Seat row (`shim` events unless marked `7501`):
 | `Notification agent_needs_input` / `elicitation_*` | waiting | question | message | true |
 | `Notification idle_prompt` | idle | none | keep | false |
 | `Stop` | idle (active if any subagent active) | none | last_message | false |
-| `StopFailure` | errored | none | error | false |
+| `StopFailure` | errored | auth for authentication_failed / oauth_org_not_allowed / cloud_credential_error, otherwise none | error | false |
 | `SessionEnd` | idle, harness_session_id kept | none | reason | false |
-| 7501 `state=working` | active | none | msg | — |
-| 7501 `state=blocked kind=k` | waiting | k | msg | — |
+| 7501 `state=working` | active | none | msg | true |
+| 7501 `state=blocked kind=k` | waiting | k | msg | true |
 | 7501 `state=done` | idle | none | msg | false |
 | 7501 `state=error` | errored | none | msg | false |
 | 7501 `state=idle`/`clear` | idle | none | keep | false |
@@ -161,10 +161,10 @@ Subagent row:
 
 ## (e) Terminal restart
 
-- The mux daemon (separate process, [[vision]] Persistence) owns PTYs, the socket and the seat table. The GUI is a client. GUI crash: PTYs and hook streams keep flowing into the daemon's ring buffer per seat; on reattach the GUI replays the last known `Seat`+`Subagent` snapshot and the tail.
-- Daemon restart: seat ids are durable (ULID in the seat table on disk, with `harness_session_id` and the harness's resume command: `claude --resume <session_id>`, Codex `resume <thread>`). The relaunched harness gets the **same `BBOXY_SEAT_ID`** in env, so every hook that fires after resume lands on the same row. Rows reappear with `status_source=shim` until the first 7501 report (Claude Code re-probes at start, so 7501 resumes by itself).
-- Hooks firing while nothing listens: `bboxy-hook` writes to `/dev/tty` — the PTY master is gone, write fails, it tries the socket, fails, exits 0 in <50 ms. No queueing, no file spool: the next event after reattach carries full state (7501 is idempotent, hooks are frequent).
-- `SessionStart source=resume` resets `subagents` to empty, then the 7501 batch repopulates running ones.
+- The GUI reattaches to mux logic for snapshots/history without launching a harness. The supervisor owns PTY masters and rings; logic owns adapters, the hook socket and derived state, per [[mux-daemon]] “Ownership and failure boundaries”.
+- Logic restart retains the same supervisor-owned children. Replacement logic restores a checkpoint and replays captured records; PTY hook output remains captured subject to the ring's existing backpressure. Off-PTY socket delivery can be unavailable; it has no hook spool.
+- Supervisor/host restart is the new-process fallback: recover committed history, resume supported harness session IDs under the same durable seat ID and a new process generation, and revalidate every attachment/readiness proof. Closed seats follow the mux close lifecycle instead of automatic open-seat resume.
+- `SessionStart source=resume` clears prior subagent rows; live adapter observations rebuild them (7501 task reports for Claude, hook events for Codex). Historical display provenance is not a fresh readiness indication. Recovery and off-PTY resynchronization limits follow [[mux-daemon]] and [[harness-adapters]].
 
 ## (f) What iTerm2 does that we skip, and why
 
@@ -186,6 +186,6 @@ Subagent row:
 ## Open
 
 - **Gap:** Codex per-launch hooks injection and trust hash (b.3).
-- **Gap:** pi and omp: do they emit OSC 7501/9;4/133? Unchecked; falls to b.5 until [[harness-touchpoints]] says otherwise.
+- Pi/omp observation routing is resolved by [[harness-adapters]] R6 and §2b; their remaining runtime/event gaps stay in that spec.
 - **Gap:** exact iTerm2 7501 reply bytes beyond the `?` echo (research §7). Claude Code's matcher accepts the echo; verify against Claude Code 2.1.304 in the first prototype by watching `--debug=terminal` for `probe: OSC 7501 reply`.
 - **Gap:** whether the parent `Stop.background_tasks[]` lists in-process subagents with `type` = `local_agent` or similar; counted as running by iTerm2 (research §3) but the item schema in docs shows only `shell`. Capture one payload in the prototype.

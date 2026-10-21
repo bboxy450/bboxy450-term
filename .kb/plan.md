@@ -36,7 +36,7 @@ Each line is one Executor assignment with its own brief. Order within a stream i
 
 **W3 renderer + app (frontend).**
 1. Renderer skeleton: wgpu on Metal, one Device shared, cell instancing with the lifted layout, grayscale atlas via CoreText-backed rasterization, WGSL. Verify: renders a term-core grid at 120 Hz vsync in a winit window.
-2. Chrome primitives: rounded rects, hairlines, text runs, the cohort block, pane strips; tokens from `design/tokens.toml` via `include_str!`. Verify: `lab` shows the sidebar at 10 and 15 seats matching the web lab screenshots.
+2. Chrome primitives: rounded rects, hairlines, text runs, the cohort block, pane strips; tokens from `design/tokens.toml` and the visual style from `design/style.json` (Raycast material: frosted panels, hairlines, radius and type scales, one motion curve) via `include_str!`. Verify: `lab` shows the sidebar at 10 and 15 seats matching the web lab screenshots.
 3. Glow and locate shaders: border particle glow with the four readings, directional locate ripple, dim for unfocused. Verify: side by side with the web showcase.
 4. App: borderless window, sidebar/stage layout from `ui-model`, drag-resize gutters, ⌘T picker, close dot with grace strip and ⌘Z, GUI client of the state stream. Verify: full loop, Claude seat live in a pane with state and subagent rows.
 

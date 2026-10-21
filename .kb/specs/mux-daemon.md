@@ -6,7 +6,7 @@
 
 ## Scope and decisions
 
-The mux preserves seats across GUI and mux-logic crashes. A small per-machine supervisor owns PTY masters and bounded byte history; a restartable logic process owns VTE models, messaging, MCP and scheduling. The GUI receives state and owns rendering. This implements the process split and checkpoint decisions in `../vision.md:61`; reasons and measured limits are in [[cloud-and-mosh-exec]].
+The mux preserves seats across GUI and mux-logic crashes. A small per-machine supervisor owns PTY masters and bounded byte history; a restartable logic process owns VTE models, messaging, MCP and scheduling. The GUI receives state and owns rendering. This implements [[vision]] “Persistence and scale”; reasons and measured limits are in [[cloud-and-mosh-exec]].
 
 Ship one executable with GUI and `--daemon` public modes. Supervisor and logic are private process roles behind daemon mode, not separately distributed agent binaries. macOS 14 is the initial platform. Remote/cloud seats use the same daemon architecture; cloud provisioning and cross-harness migration remain future work under [[roadmap]].
 
@@ -62,13 +62,13 @@ The close lifecycle below constrains this recovery rule: a deliberately closed s
 
 For a plain shell or a harness without a usable resume mapping, create the configured new session only under its declared restart policy and expose the recovery limitation. Do not claim restoration of shell variables, a foreground command or a conversation whose session ID was never persisted.
 
-Phantoms from [[ux-pick]] are published remote participants, not owned remote seats. They have no PTY, pane, screen/scrollback permission or resume mapping. Their owner's signed presence/roster supplies the allowed identity/state metadata through [[messaging]]. Showing a phantom must never grant remote control or trigger remote bootstrap.
+Shadows from [[ux-prototype]] are published remote participants, not owned remote seats. They have no PTY, pane, screen/scrollback permission or resume mapping. Their owner's signed presence/roster supplies the allowed identity/state metadata through [[messaging]]. Showing a shadow must never grant remote control or trigger remote bootstrap.
 
 ## Reversible close lifecycle
 
 The operator's undo-close decision in [[vision]] adds `open → closed_grace → closed_retained`. These are lifecycle values, not extra harness activity states. Mute policy is also independent; closing does not silently mute or unmute a seat.
 
-`CloseSeat` durably records the close operation/lifecycle revision, process generation, bounded expiry (default 60 seconds, operator setting), and a restoration handle containing the original space/tab/split position and ratios. The GUI collapses the seat into the closed strip with an undo action. The supervisor retains the same PTY master and child; ring capture continues subject to its existing bounded backpressure rules. A closed-grace live/starting process still consumes the cohort/machine spawn cap.
+`CloseSeat` durably records the close operation/lifecycle revision, process generation, bounded expiry (default 60 seconds, operator setting), and a restoration handle containing the original swarm/tab/split position and ratios. The GUI collapses the seat into the closed strip with an undo action. The supervisor retains the same PTY master and child; ring capture continues subject to its existing bounded backpressure rules. A closed-grace live/starting process still consumes the swarm/machine spawn cap.
 
 The supervisor owns the expiry, so logic/GUI loss cannot leave the child running indefinitely past grace. Persist restart-safe expiry information and use a monotonic deadline while that supervisor lives; replaying a request never starts a fresh grace window. On expiry, terminate only the recorded child/process generation, record its actual exit, commit retained history and enter `closed_retained`. Retain the ring/checkpoints and harness-session mapping for a later explicitly requested resume. Do not claim termination completed before its receipt.
 
@@ -76,7 +76,9 @@ The supervisor owns the expiry, so logic/GUI loss cannot leave the child running
 
 After supervisor death, the PTY's old process is not preserved. Do not auto-resume a closed-grace/closed-retained seat as part of general open-seat recovery; report the changed process state. Uncertain/passed expiry never receives a fresh 60 seconds on recovery. After grace, reopening uses the adapter's explicit session-resume/new-generation policy and retained history, not an assertion that undo preserved a live process.
 
-**Gap:** termination escalation and conflicting-layout restoration need implementation rules/tests. The addendum names a purge tool without specifying whether it finalizes grace, deletes retained data, or both; [[mcp-control-plane]] leaves purge unavailable until an explicit operator policy defines that destructive scope.
+**Gap:** termination escalation and conflicting-layout restoration need implementation rules/tests.
+
+Purge follows the operator-only GUI decision in [[mcp-control-plane]]: skip grace, terminate, delete the ring/checkpoints, and require the typed seat name. No MCP role can purge.
 
 ## Supervisor ↔ logic protocol
 
@@ -153,7 +155,7 @@ Use bounded reliable framed streams initially, with the same message semantics o
 | `Applied` | Last successfully applied view generation/sequence. It acknowledges state application, not packet receipt, rendering speed, storage durability or model consumption. |
 | `GetHistory / History / Gap` | Semantic row ranges with index generation, or explicitly typed byte cursors; bounded response and retained/truncated range. |
 | `Input / InputStatus` | Current writer/process lease and stable input ID, with evidence from the native adapter or supervisor. Preserve the distinctions in [[messaging]]. |
-| `SeatState / Presence` | Owned-seat state or explicitly separate published phantom metadata. Visibility never changes access authority. |
+| `SeatState / Presence` | Owned-seat state or explicitly separate published shadow metadata. Visibility never changes access authority. |
 
 Keep a bounded acknowledged baseline and one pending merged update per subscribed view. If the baseline is unavailable, send a fresh snapshot. Keep control/input and bulk history out of one shared ordered byte queue; separate per-seat render streams prevent one seat's stream ordering from blocking unrelated streams, while connection-wide congestion/resource limits still apply.
 
@@ -169,12 +171,12 @@ Bootstrap steps:
 
 1. Probe the supported remote OS/architecture through fixed commands. Select and verify an exact compatible release locally; upload to a user-owned versioned location, stage it and atomically install. Fail on unsupported targets or incomplete verification.
 2. Start/discover the same executable's daemon mode under a private per-user lock. A versioned bounded handshake returns the remote device public identity, daemon versions and bootstrap request ID. Diagnostics/banners are not accepted as that handshake.
-3. Authorize and pin the remote device using [[messaging]]'s account→device→seat grant model through the verified SSH session. Private owner keys stay local. Enrollment and seat creation are idempotent requests; a repeated bootstrap does not create a duplicate daemon or harness.
+3. Authorize and pin the remote device using [[identity]]'s account→device→seat grants and root-custodian approval through the verified SSH session. Private owner keys stay local. Enrollment and seat creation are idempotent requests; a repeated bootstrap does not create a duplicate daemon or harness.
 4. Detach standard descriptors and establish the host's intended persistent user-service lifecycle. An SSH logout and a VM shutdown are different failures; logout/session-manager policy must not accidentally terminate the supervisor.
 5. Connect through our Quinn direct/punch/E2E-relay transport, modelled on published ICQ 0.20.2 rather than the old `icq-connect` repo. Keep an authenticated SSH stdio proxy as the connectivity fallback. A VM's outbound connection alone does not prove reachability to a NATed laptop.
 6. Reconcile seat/process/view generations and applied/history cursors; resume/snapshot existing seats. Network reconnection does not itself authorize a launch or update.
 
-Fly, Hetzner, EC2 and GCP bootstrap hooks are documented in [[cloud-and-mosh-exec]]. Provider provisioning, service installation policy, UDP/firewall setup, cost controls and host lifecycle automation are future integrations; they do not change the seat protocol. Owned remote seats have screen/history permissions. Other people's published phantoms do not.
+Fly, Hetzner, EC2 and GCP bootstrap hooks are documented in [[cloud-and-mosh-exec]]. Provider provisioning, service installation policy, UDP/firewall setup, cost controls and host lifecycle automation are future integrations; they do not change the seat protocol. Owned remote seats have screen/history permissions. Other people's published shadows do not.
 
 ## Measured facts and budget assumptions
 
@@ -205,7 +207,7 @@ These are implementation acceptance criteria, not tests passed by this document:
 - Reconnect viewers with dropped/duplicate/stale frames and replaced processes: exact baseline/generation rules lead to a correct snapshot, not mixed screen state.
 - Retry a completed input ID after logic restart and simulate an ambiguous partial write/owner failure: no duplicate PTY submission, explicit unknown outcomes, no automatic Enter replay.
 - Kill the supervisor: supported harnesses resume with the same durable seat/session mapping and a new process generation; unsupported/missing mappings report their limitation honestly.
-- Verify owned remote bootstrap retries, SSH fallback and permission checks; phantom presence never yields screen access, a writer lease or a spawned pane.
+- Verify owned remote bootstrap retries, SSH fallback and permission checks; shadow presence never yields screen access, a writer lease or a spawned pane.
 - Close then crash logic: the original child captures during grace, expiry still runs, and a matching undo races expiry without duplicate children. A closed seat is never automatically relaunched by open-seat recovery.
 
 Original E document verification on 2026-10-21: `ls .kb/specs/mux-daemon.md` and section count returned 0 with ten level-two sections before the M lifecycle addendum; structure/source-pointer/whitespace validation returned 0; `git diff --check` returned 0. These checked the document, not the future implementation. No runtime tests were added or run for this convergence.

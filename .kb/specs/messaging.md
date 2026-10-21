@@ -30,35 +30,33 @@ The persistent mux service owns seat IDs, harness-session mappings, message stor
 
 Each seat's MCP/CLI connection receives a local capability bound to its seat ID. The service looks up the role and allowed destinations from terminal state; a caller cannot select an arbitrary signing identity or supply its own elevated role. Oracle control tools may change those grants only under the terminal's configured control permissions.
 
-Discovery and session visibility default to the seat's own cohort. Explicit global-channel/DM grants remain possible; they do not grant another seat's screen or control. Oracle account-wide inspection requires its delegated control scope, as specified in [[mcp-control-plane]].
+Discovery and session visibility default to the seat's own swarm. Explicit global-channel/DM grants remain possible; they do not grant another seat's screen or control. Oracle account-wide inspection requires its delegated control scope, as specified in [[mcp-control-plane]].
 
 Transport workers handle connections outside the storage transaction. Bounded active workers can serve 1000 persisted seat records without one network socket, OS thread or in-memory queue per seat. **Gap:** throughput, storage capacity and delivery latency at that scale have not been measured.
 
 ## Identity: one account, separate seats
 
-Use a root public key as the account ID. The email is account metadata with a separately represented verification state. The same root key identifies the account across machines; each device and each seat has its own key rather than sharing one seat secret. Google sign-in is in v0.1 and Apple is deferred, as now decided in [[vision]]; provider assertions supplement this key model.
+Use a root public key as the account ID. The email is account metadata with a separately represented verification state. The same root key identifies the account across machines; each device and each seat has its own key rather than sharing one seat secret. Google binding follows [[identity]] in the later cross-instance phase, outside the first prototype under [[vision]]; Apple remains deferred. Provider assertions supplement this key model.
 
 Google binding uses the system browser, authorization code with S256 PKCE, and a loopback listener on a random available port for the desktop OAuth client ([Google desktop flow](https://developers.google.com/identity/protocols/oauth2/native-app)). Bind the verified ID token to the account public key through the key-bound nonce and a key-signed attestation, as described in [[transport-and-identity]]. Verify the provider signature, issuer, audience, expiry, nonce and email-verification claim; identify the provider account by issuer plus `sub`, with email as metadata ([Google OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect)). This additive binding does not replace account/device/seat signatures.
 
 Apple remains deferred for the Developer ID distribution: [Apple DTS confirms that native Sign in with Apple is unsupported for Developer ID apps](https://developer.apple.com/forums/thread/768236). The parallel review's hosted-web-callback or Mac App Store alternatives remain future choices.
 
-**Gap:** reconcile the nonce preimage before implementation: the operator headline and [[vision]] say `hash(pubkey)`, while [[transport-and-identity]] specifies `hash(pubkey || random)`. Google's OpenID Connect documentation describes a random nonce for replay protection. Exact key encoding, per-login freshness and attestation lifetime/verification policy need an explicit protocol decision; a stable key digest alone does not supply per-login randomness. No login flow was exercised here.
-
-Proposed chain:
+Grant chain (formats, custody and verification are owned by [[identity]]):
 
 ```text
 account root key
   signs device grant {device key, scopes, epoch, expiry}
-    signs seat grant {seat id, session key, cohort, role,
+    signs seat grant {seat id, session key, swarm, role,
                       allowed destinations, muted, epoch, expiry}
       session key signs messages
 ```
 
-The terminal stores the grants and issues role changes as new epochs. A receiver verifies the complete chain, destination scope and validity before accepting a role assertion. Root recovery and trusted device enrollment must be specified before claiming account continuity; neither a public email string nor a directory lookup proves it. A directory can publish signed address/grant records without holding the signing authority.
+The terminal stores the grants and issues role changes as new epochs. A receiver verifies the complete chain, destination scope and validity before accepting a role assertion. Root recovery and trusted device enrollment follow [[identity]]; neither a public email string nor a directory lookup proves account continuity. A directory can publish signed address/grant records without holding the signing authority.
 
-Foreign root keys do not acquire local control by naming a seat Oracle. Elevated scheduling for a remote cohort requires a receiver-trusted controller/account mapping. Sender authentication, permission to send a message and permission to execute local work remain separate decisions.
+Foreign root keys do not acquire local control by naming a seat Oracle. Elevated scheduling for a remote swarm requires a receiver-trusted controller/account mapping. Sender authentication, permission to send a message and permission to execute local work remain separate decisions.
 
-**Gap:** root custody, device enrollment/revocation propagation and recovery are unresolved. Apple/Google identity binding belongs to [[transport-and-identity]]; this spec does not invent a login or key-escrow scheme.
+Root custody, device enrollment, revocation and recovery decisions are specified in [[identity]]; its remaining implementation, partition and recovery gaps still apply.
 
 **Oracle decision on the login nonce (Vesper Greywind, 2026-10-21):** nonce = SHA-256(canonical root public key bytes || 32 random bytes), the random part generated per login and kept locally until the ID token returns. Canonical key encoding = raw 32-byte Ed25519 public key, no prefix. The attestation record is {provider, subject, email, root_pubkey, nonce_random, id_token_hash, issued_at} signed by the root key; it is valid until the root key rotates or the operator revokes it, and the terminal re-binds yearly in the background. Google's random-nonce requirement and our key binding are both satisfied by this construction.
 
@@ -74,7 +72,7 @@ This is a new protocol, not fields silently appended to ICQ's strict v2 schema. 
   "device": "device public key",
   "seat": "stable seat UUID",
   "author": "seat session public key",
-  "cohort": "cohort UUID",
+  "swarm_id": "swarm UUID",
   "context": {"kind": "dm|channel|group", "id": "destination", "epoch": 1},
   "role": "executor",
   "role_grant_id": "digest of terminal-issued grant",
@@ -101,13 +99,13 @@ Presence is a second `body` variant in the same signed envelope, published by th
 }
 ```
 
-The outer account/device/seat fields and verified seat grant identify the participant; the owner terminal signs using that seat's granted key. `state` uses the shared active/idle/waiting/errored vocabulary. Receivers validate the signature, grant, destination and publication order before updating a phantom keyed by `(account, seat)`. The phantom shows only the name, harness and state its owner publishes, following [[ux-pick]]. Presence supplies no pane, logs, scrollback or control capability, and a foreign Oracle still receives worker precedence under local trust policy.
+The outer account/device/seat fields and verified seat grant identify the participant; the owner terminal signs using that seat's granted key. `state` uses the shared active/idle/waiting/errored vocabulary. Receivers validate the signature, grant, destination and publication order before updating a shadow keyed by `(account, seat)`. The shadow shows only the name, harness and state its owner publishes, following [[ux-prototype]]. Presence supplies no pane, logs, scrollback or control capability, and a foreign Oracle still receives worker precedence under local trust policy.
 
-Persist accepted presence under the normal inbox rules, then update the derived phantom view. Ordinary `event:"state"` presence is metadata and never enters the native/PTY harness-wake queue. Channel text messages keep their normal role/priority delivery. **Gap:** presence freshness/expiry, withdrawal and sequence continuity across key/grant changes need a protocol decision; a cached publication is last-reported state, not proof of current reachability.
+Persist accepted presence under the normal inbox rules, then update the derived shadow view. Ordinary `event:"state"` presence is metadata and never enters the native/PTY harness-wake queue. Channel text messages keep their normal role/priority delivery. **Gap:** presence freshness/expiry, withdrawal and sequence continuity across key/grant changes need a protocol decision; a cached publication is last-reported state, not proof of current reachability.
 
-The same presence body carries terminal-authored `event:"mute"` / `event:"unmute"` notices, with `muted:true` / `false` and `policy_epoch` equal to the authorizing seat-grant epoch. The outer seat identifies the affected seat; the owning terminal publishes the notice with that seat's signature and the replacement device-signed seat grant proving its mute policy. Receivers require agreement with the current authorized grant and reject stale policy epochs; a seat's arbitrary text or signature alone cannot change cohort membership policy. Only the authenticated operator or delegated Oracle control path can request a transition. Audit the actual initiating controller separately.
+The same presence body carries terminal-authored `event:"mute"` / `event:"unmute"` notices, with `muted:true` / `false` and `policy_epoch` equal to the authorizing seat-grant epoch. The outer seat identifies the affected seat; the owning terminal publishes the notice with that seat's signature and the replacement device-signed seat grant proving its mute policy. Receivers require agreement with the current authorized grant and reject stale policy epochs; a seat's arbitrary text or signature alone cannot change swarm membership policy. Only the authenticated operator or delegated Oracle control path can request a transition. Audit the actual initiating controller separately.
 
-Commit the seat's mute flag, replacement grant and notice outbox entry as one policy transition. Each real transition creates one stable notice ID addressed to the whole cohort; repeated mute/unmute requests return the existing state rather than duplicate notices. Publish this terminal-generated control notice even though ordinary outbound cohort traffic is held. Cohort members display it in the stream; informational harness delivery follows their existing cohort/adapter policy, deduplicated by that same notice ID. Persistence/dispatch proves neither universal delivery nor model receipt.
+Commit the seat's mute flag, replacement grant and notice outbox entry as one policy transition. Each real transition creates one stable notice ID addressed to the whole swarm; repeated mute/unmute requests return the existing state rather than duplicate notices. Publish this terminal-generated control notice even though ordinary outbound swarm traffic is held. Swarm members display it in the stream; informational harness delivery follows their existing swarm/adapter policy, deduplicated by that same notice ID. Persistence/dispatch proves neither universal delivery nor model receipt.
 
 The seat key signs a fixed-order tuple of every field except the signature, using a protocol-specific domain separator. Define the exact UTF-8 JSON tuple encoding and integer bounds in the wire implementation; transport route/TTL and receiver-local sequence are outside this signed body. Exchange the full signed grant chain when its digest is unknown, with bounded parsing and no priority elevation while verification is pending.
 
@@ -115,13 +113,11 @@ The service derives `role` and `priority_class` from the seat grant and signs th
 
 ## Priority without deleting messages
 
-Provisional policy: **Oracle > worker**, with Executor and Creativity sharing the worker class. This preserves the decided Oracle precedence without inventing an ordering between the other roles. FIFO uses receiver-local commit sequence within each class, independent of sender clocks. Per-seat serialization prevents concurrent injections into one harness.
+Policy: **Oracle > worker**, with Executor and Creativity sharing the worker class. This preserves the decided Oracle precedence without inventing an ordering between the other roles. FIFO uses receiver-local commit sequence within each class, independent of sender clocks. Per-seat serialization prevents concurrent injections into one harness.
 
 Priority applies to pending outbound work, receiver dispatch and message badges. It does not move sidebar seat rows or interrupt an input write that already began. A native harness may impose its own admission order after submission; no adapter can claim to reorder already accepted input. Quinn stream priority is only an outbound optimization, not the receiver scheduler ([Quinn API](https://docs.rs/quinn/0.11.12/quinn/struct.SendStream.html#method.set_priority)).
 
 Persist an accepted message before scheduling it. Lower priority delays eligibility; it never deletes the record. On full storage or revoked permission, return an explicit rejection/backpressure result before acknowledging acceptance. Sustained Oracle traffic can starve workers under strict precedence; do not promise bounded worker latency without a further scheduling decision.
-
-**Gap:** confirm Executor/Creativity equality, foreign-controller trust policy, and any Oracle admission quotas needed to bound starvation. These are policies, not properties supplied by QUIC.
 
 **Oracle decision (Vesper Greywind, 2026-10-21):** Executor and Creativity are equal in the worker class. Only the local account's root key, and grants chained from it, can confer Oracle precedence on this receiver; a foreign Oracle is a worker here. Starvation bound: Oracle class gets a token bucket (default 10 messages per second per receiver, burst 30), overflow falls to worker FIFO. Numbers are defaults in settings, not protocol.
 
@@ -131,7 +127,7 @@ Use distinct evidence states: sender-stored, recipient-stored, native-queued, na
 
 Sender outbox and recipient inbox live in the mux's durable store. Retries reuse the original message identity; a recipient commit can be safely deduplicated and acknowledged again. Persist receipt and attempt records. Resume network retries after restart, but do not blindly repeat an ambiguous native input attempt. Keep that message visible with its unknown outcome.
 
-**Cohort mute (operator decision, 2026-10-21):** persist `muted` on the seat record and terminal-issued grant. While muted, keep incoming cohort traffic in the inbox without scheduling native/PTY delivery, and keep outgoing cohort traffic in the outbox without publishing it. Return a held state/reason and retain original message IDs; never drop the records. Self status and authenticated direct operator control remain available so the operator can work one to one. Peer messages cannot claim that bypass. Mute is independent of harness activity, process lifecycle and sidebar row position.
+**Swarm mute (operator decision, 2026-10-21):** persist `muted` on the seat record and terminal-issued grant. While muted, keep incoming swarm traffic in the inbox without scheduling native/PTY delivery, and keep outgoing swarm traffic in the outbox without publishing it. Return a held state/reason and retain original message IDs; never drop the records. Self status and authenticated direct operator control remain available so the operator can work one to one. Peer messages cannot claim that bypass. Mute is independent of harness activity, process lifecycle and sidebar row position.
 
 Unmute commits its presence notice before releasing eligible held work under the current destination grants, membership, receiver priority and adapter guard. It does not erase a record whose old grant no longer permits sending; keep it visibly blocked rather than publishing under revoked authority. Already submitted native traffic cannot be recalled; ambiguous attempts are never automatically retried. A crash restores mute before scheduling, and no reconnect/focus operation implicitly unmutes a seat. See [[mcp-control-plane]] for Oracle-only transition tools.
 

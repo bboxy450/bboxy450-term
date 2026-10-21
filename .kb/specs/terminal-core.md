@@ -14,7 +14,7 @@ Scope (counted in [[gpu-terminals-rust]] §1):
 |---|---|---|---|
 | `grid/*`, `term/mod.rs`, `term/cell.rs`, `term/color.rs`, `index.rs`, `event.rs`, `sync.rs` | `tty/*` (portable-pty), `event_loop.rs` (mux owns the read loop), `thread.rs`, `vi_mode.rs`, `term/search.rs`, `selection.rs` | `term/mod.rs`: drop `selection` and `vi_mode_cursor` fields and their 113 references; drop `Config.vi_mode_cursor_style`; wire the new handler hooks | checkpoint export/import; OSC pass-through hook; seat-state hooks |
 
-Reasons: selection and vi motions act on what the user sees, and under the daemon split the GUI sees its line cache, not a `Term` — so they move to the GUI over cached lines. Search runs over the byte ring's text ([[mux-daemon]]), where it also covers evicted history that the grid never held. The tty and event loop are replaced by D4 and the supervisor.
+Reasons: selection and vi motions act on what the user sees, and under the daemon split the GUI sees its line cache, not a `Term` — so they move to the GUI over cached lines. Search runs over retained byte-ring history ([[mux-daemon]]) outside the viewport; evicted bytes are unavailable. The tty and event loop are replaced by D4 and the supervisor.
 
 **Viewport-only grid is zero new code:** `Term::new` already builds the alt screen as `Grid::new(lines, cols, 0)` and `grid/mod.rs:209` has the `max_scroll_limit == 0` fast path. The daemon constructs the primary grid with `Config { scrolling_history: 0, .. }`. Keep `scrolling_history` configurable so a measurement harness can still run a 10k-history grid for parity tests against upstream ref-tests.
 
@@ -77,12 +77,12 @@ crates/term-core/          the fork. src/{grid,term,index,event,sync}.rs as upst
 crates/mux/                supervisor + logic: portable-pty, polling, byte ring, checkpoints, state stream, quinn, MCP
                            depends on term-core
 crates/renderer/           raw wgpu: atlases, run iterator, WGSL, sprites, chrome pipelines. depends on ui-model, never on term-core
-crates/ui-model/           seat/space/tab/split state enums shared with lab
+crates/ui-model/           seat/swarm/tab/split state enums shared with lab
 crates/app/                bin bboxy450-term: GUI mode = winit + renderer + mux client; --daemon = mux
 crates/lab/                component gallery on the real renderer
 ```
 
-Dependency direction `term-core ← mux ← app`; `ui-model ← renderer ← {app, lab}`. The GUI never links `term-core`: it renders cached lines received from the mux, which is what keeps D1's cut of selection/vi honest. **Gap:** crates.io package names (`bboxy450-term-core`, …) — decide once in `Cargo.toml` ([[monorepo-weavie]]).
+Dependency direction `term-core ← mux ← app`; `ui-model ← renderer ← {app, lab}`. The GUI renderer never depends on `term-core`: it renders cached lines received from the mux. The shared app executable includes the daemon dependency; this does not put a `Term` in the GUI rendering path. **Gap:** crates.io package names (`bboxy450-term-core`, …) — decide once in `Cargo.toml` ([[monorepo-weavie]]).
 
 ## D7 — Daemon↔GUI protocol versus wezterm's codec
 

@@ -1,6 +1,6 @@
 # MCP control plane — the Oracle's hands
 
-2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment M and the cohort-mute / undo-close addenda · specification for Oracle review.
+2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment M and the swarm-mute / undo-close addenda · specification for Oracle review.
 
 [[vision]] · [[messaging]] · [[mux-daemon]] · [[harness-adapters]] · [[harness-touchpoints-exec]] · [[subagent-detection]]
 
@@ -18,11 +18,11 @@ The current MCP transport specification describes stdio and Streamable HTTP, and
 
 ## Caller, role and grants
 
-The broker issues a fresh local capability for an actual owned seat/process launch. Store it in private runtime state, with a protected per-launch reference available to the bridge; do not put a secret in argv, repository files, tool schemas or model-visible instructions. Registration binds account/device/seat, harness session when known, process start and process generation, cohort, and the terminal-issued seat grant. Check local peer credentials and the registered launch binding at the broker boundary. A caller-supplied role, name, cwd, MCP clientInfo or environment label is not authentication.
+The broker issues a fresh local capability for an actual owned seat/process launch. Store it in private runtime state, with a protected per-launch reference available to the bridge; do not put a secret in argv, repository files, tool schemas or model-visible instructions. Registration binds account/device/seat, harness session when known, process start and process generation, swarm, and the terminal-issued seat grant. Check local peer credentials and the registered launch binding at the broker boundary. A caller-supplied role, name, cwd, MCP clientInfo or environment label is not authentication.
 
 For **every call**, derive the actor from that binding and recheck the current grant epoch, role, target scope, destination permissions, mute policy and process generation. Recheck immediately before a queued effect. Permission replacement/revocation fences stale queued work; it cannot undo already submitted input. Refreshing a bridge binding must not enlarge its original delegated authority. Restart/resume creates a new process binding; old capabilities stop working.
 
-Default discovery and reads expose the caller's **own cohort**. Oracle grants may additionally authorize explicitly requested account-wide discovery/read/control, preserving [[vision]]'s ability to inspect every owned seat. Cross-cohort requests require both explicit scope and that grant; a known seat ID alone does not bypass the default. Foreign published phantoms supply only their permitted presence metadata and never acquire screens or control.
+Default discovery and reads expose the caller's **own swarm**. Oracle grants may additionally authorize explicitly requested account-wide discovery/read/control, preserving [[vision]]'s ability to inspect every owned seat. Cross-swarm requests require both explicit scope and that grant; a known seat ID alone does not bypass the default. Foreign published shadows supply only their permitted presence metadata and never acquire screens or control.
 
 The harness fixes eligible roles under the shared instructions: Codex/other harnesses are Executor; Claude is Oracle or explicitly Creativity. Role assignment cannot promote Codex to Oracle. An Oracle can issue only the role/scope/destination authority delegated by the operator, never raise its own ceiling or mint a foreign root's authority. Role changes create new terminal-issued grant epochs as in [[messaging]].
 
@@ -34,37 +34,36 @@ Tool discovery is filtered for usefulness, but broker authorization remains mand
 
 Server name: `bboxy`. Tool names below are short, unique ASCII names. **O** = Oracle with the required operator delegation; **E** = Executor; **C** = Creativity. The operator UI uses the same broker contracts under its own authenticated authority and is not a fourth agent role.
 
-Common types: stable `seat_id` / `cohort_id` / `space_id` / `tab_id`, explicit `gui_id`, UUID `op_id` for mutations, decimal-string process/grant/layout revisions, opaque paging cursor. A target process mutation requires `expected_process_generation`; layout mutations also require `expected_layout_revision`. No tool takes `caller_role`, a signing key, arbitrary environment dumps, or an implicit “currently active” target.
+Common types: stable `seat_id` / `swarm_id` / `tab_id`, explicit `gui_id`, UUID `op_id` for mutations, decimal-string process/grant/layout revisions, opaque paging cursor. A target process mutation requires `expected_process_generation`; layout mutations also require `expected_layout_revision`. No tool takes `caller_role`, a signing key, arbitrary environment dumps, or an implicit “currently active” target.
 
 Mutation results include `op_id`, affected IDs/revisions, and `status = accepted | applied | rejected | partial | unknown`. `accepted` means durably admitted, not applied. Detailed input/message evidence is returned separately, using [[messaging]]'s vocabulary. All tools can return typed authorization, stale-generation, conflict, backpressure and unavailable errors.
 
 | Tool | Parameters, beyond common constraints | Result / mechanism | Roles |
 |---|---|---|---|
-| `self_status` | None | Own seat/cohort/role/grant epoch, process generation, adapter activity provenance, lifecycle, mute flag, held counts and configured limits. No other seat's logs. | O E C |
+| `self_status` | None | Own seat/swarm/role/grant epoch, process generation, adapter activity provenance, lifecycle, mute flag, held counts and configured limits. No other seat's logs. | O E C |
 | `message_send` | `op_id, destination, text` | Terminal-derived author/role, message ID, held/admitted state and evidence. Destination must be in the actor's channel/DM grants; cannot choose another sender. | O E C |
 | `message_status` | `message_id` | Own send's persistence/delivery evidence and held reason; no assertion of model receipt without application acknowledgment. | O E C |
 | `operation_get` | `op_id` | Durable operation state and per-effect receipts. Workers can query only their own permitted message operations. | O E C |
-| `seat_list` | `cohort_id?, scope?, cursor?, limit?` | Paged owned-seat metadata; default own cohort. Phantom records are explicitly typed and metadata-only. | O |
+| `seat_list` | `swarm_id?, scope?, cursor?, limit?` | Paged owned-seat metadata; default own swarm. shadow records are explicitly typed and metadata-only. | O |
 | `seat_get` | `seat_id, scope?` | Authorized seat record, activity provenance, current generations/lifecycle, capabilities and retained-history ranges. | O |
 | `screen_read` | `seat_id, scope?, expected_process_generation, view_cursor?, limit_rows?` | Bounded consistent viewport text/cell rows and view/index generation, cursor/modes and continuation. Never a GUI screenshot. | O |
 | `history_read` | `seat_id, scope?, expected_process_generation, cursor?, limit_rows?` | Paged `GetHistory` rows with semantic index generation, retained range and explicit gaps. | O |
 | `seat_input_text` | `op_id, seat_id, expected_process_generation, text, submit` | Native adapter first when supported for the requested operation; otherwise guarded literal paste through the writer lease. Returns input ID and actual evidence. `submit` is explicit, never an inferred Enter. | O |
 | `seat_input_key` | `op_id, seat_id, expected_process_generation, key, modifiers?` | Adapter-supported key from a finite catalogue, encoded for the target terminal mode through the same guard/arbiter. No arbitrary escape-byte or broadcast option. | O |
-| `seat_spawn` | `op_id, cohort_id, tab_id, approved_profile, cwd, role, permissions, expected_layout_revision` | Reserved-capacity launch with returned seat/process IDs, launch state and layout revision. Profiles resolve executable/argv; this is not shell-command evaluation. | O |
+| `seat_spawn` | `op_id, swarm_id, tab_id, approved_profile, cwd, role, permissions, expected_layout_revision` | Reserved-capacity launch with returned seat/process IDs, launch state and layout revision. Profiles resolve executable/argv; this is not shell-command evaluation. | O |
 | `seat_split` | `op_id, seat_id, expected_process_generation, expected_layout_revision, axis: V or H, ratio, launch` | Reserve one new seat and atomically record the intended binary layout change; report launch/application failures separately. `V` means left/right, `H` top/bottom, independent of it2's CLI flag naming. | O |
 | `seat_focus` | `op_id, seat_id, gui_id, expected_layout_revision` | Focus request to an explicit GUI and applied/queued/unavailable result. Does not create a GUI or fabricate application when none is attached. | O |
-| `seat_move` | `op_id, seat_id, tab_id, expected_layout_revision, placement` | Move an existing owned seat within the permitted space/tab/split tree; return updated layout revision. | O |
+| `seat_move` | `op_id, seat_id, tab_id, expected_layout_revision, placement` | Move an existing owned seat within the permitted swarm/tab/split tree; return updated layout revision. | O |
 | `seat_update` | `op_id, seat_id, expected_record_revision, label?, colour_override?` | Update bounded presentation metadata; does not change identity, role, adapter activity or grants. | O |
-| `space_create` | `op_id, label` | New authorized space ID/revision. No process launch. | O |
-| `tab_create` | `op_id, space_id, label, expected_layout_revision` | New tab ID/revision. No hidden harness launch. | O |
+| `space_create` | `op_id, label` | New authorized swarm ID/revision. No process launch. | O |
+| `tab_create` | `op_id, swarm_id, label, expected_layout_revision` | New tab ID/revision. No hidden harness launch. | O |
 | `seat_close` | `op_id, seat_id, expected_process_generation, expected_lifecycle_revision` | Enter `closed_grace`, return deadline and restoration handle. Default 60-second configured grace; process and capture continue. No confirmation dialog. | O |
 | `seat_undo_close` | `op_id, seat_id, expected_lifecycle_revision, restoration_handle` | Restore the same live seat/split position during grace, or an explicit expired/process-replaced/layout-conflict outcome. Never silently spawn a duplicate. | O |
-| `seat_purge` | `op_id, seat_id, expected_lifecycle_revision, purge_policy_id` | Terminal-only destructive lifecycle action under an operator-defined purge policy. Returns `purge_policy_required` until its deletion scope is decided/configured. | O, unavailable without policy |
 | `seat_set_role` | `op_id, seat_id, role, expected_grant_epoch` | Validate harness eligibility/delegation, issue replacement grant, return epoch. No self-elevation. | O |
 | `seat_set_permissions` | `op_id, seat_id, channel_scopes, dm_scopes, expected_grant_epoch` | Replace destination grants within the caller's ceiling; recheck queued sends before release. No implicit global-channel grant. | O |
-| `seat_mute` | `op_id, seat_id, expected_policy_epoch` | Set persistent mute policy, hold cohort traffic and enqueue exactly one cohort presence notice for this transition. Already muted returns the existing state. | O |
-| `seat_unmute` | `op_id, seat_id, expected_policy_epoch` | Clear mute, enqueue the cohort notice, then make eligible held traffic schedulable under current grants. No replay of ambiguous native attempts. | O |
-| `cohort_create` | `op_id, template_id, approved_profile_overrides?, cwd, placement` | One durable operation reserves the complete template, creates the cohort and launches its members; returns member IDs and per-member outcomes. | O |
+| `seat_mute` | `op_id, seat_id, expected_policy_epoch` | Set persistent mute policy, hold swarm traffic and enqueue exactly one swarm presence notice for this transition. Already muted returns the existing state. | O |
+| `seat_unmute` | `op_id, seat_id, expected_policy_epoch` | Clear mute, enqueue the swarm notice, then make eligible held traffic schedulable under current grants. No replay of ambiguous native attempts. | O |
+| `swarm_create` | `op_id, template_id, approved_profile_overrides?, cwd, placement` | One durable operation reserves the complete template, creates the swarm and launches its members; returns member IDs and per-member outcomes. | O |
 | `audit_read` | `cursor?, limit?, target_id?, op_id?` | Paged authorized control-audit metadata and effects, without transcript/credential payloads. | O |
 
 Executor and Creativity get exactly the four common tools at the top, subject to grants. `self_status` is a read; activity comes from adapters rather than an unrestricted model-set status field. Worker messages to the Oracle remain possible through granted destinations, not through a hidden control API.
@@ -98,6 +97,8 @@ Example **tool definition**, not a full version-specific JSON-RPC envelope:
       "op_id": {"type": "string"},
       "status": {"type": "string", "enum": ["accepted", "applied", "rejected", "partial", "unknown"]},
       "seat_id": {"type": "string"},
+      "gui_id": {"type": "string"},
+      "layout_revision": {"type": "string", "pattern": "^[0-9]+$"},
       "code": {"type": "string"}
     },
     "required": ["op_id", "status", "seat_id", "code"],
@@ -143,21 +144,21 @@ The supervisor remains the sole PTY writer. The broker journals a stable input I
 
 Fully PTY-written, native-queued, native-written, partial/unknown and application-acknowledged remain different evidence. A disconnected/cancelled call is queried using its original `op_id` and input ID. Never repeat Enter or switch to typing after unknown native submission. This contract does not claim a PTY write and its durable receipt are atomic.
 
-## Cohorts, mute and close
+## Swarms, mute and close
 
-Default session discovery is cohort-scoped. Global channels/DMs require explicit destination grants; joining a channel does not grant owned-seat control. [[messaging]] defines persistent mute state and terminal-authored presence notices. Muting does not stop the child, move its sidebar row, or change active/idle/waiting/errored. It holds incoming cohort delivery and outgoing cohort publication without deleting either. Direct operator control remains available through the authenticated operator path; ordinary peer text cannot declare itself that path.
+Default session discovery is swarm-scoped. Global channels/DMs require explicit destination grants; joining a channel does not grant owned-seat control. [[messaging]] defines persistent mute state and terminal-authored presence notices. Muting does not stop the child, move its sidebar row, or change active/idle/waiting/errored. It holds incoming swarm delivery and outgoing swarm publication without deleting either. Direct operator control remains available through the authenticated operator path; ordinary peer text cannot declare itself that path.
 
-Mute/unmute is an idempotent policy transition under `expected_policy_epoch`. Commit policy, updated grant reference and the notice's durable outbox entry together, then change scheduling. Unmute makes eligible, previously unattempted work schedulable under current grants/priority; it cannot recall or replay an earlier native attempt. The terminal publishes each transition to the whole cohort, with normal known-recipient evidence, not a claim that every model read it.
+Mute/unmute is an idempotent policy transition under `expected_policy_epoch`. Commit policy, updated grant reference and the notice's durable outbox entry together, then change scheduling. Unmute makes eligible, previously unattempted work schedulable under current grants/priority; it cannot recall or replay an earlier native attempt. The terminal publishes each transition to the whole swarm, with normal known-recipient evidence, not a claim that every model read it.
 
 Close, mute and harness activity are orthogonal. `seat_close` uses [[mux-daemon]]'s retained restoration record and deadline; closing is reversible during grace without a confirmation dialog. A live grace-period process continues consuming the spawn budget. Undo addresses that exact close generation; an expired close is a later resume operation, not proof of original-process survival.
 
-**Gap:** the addendum requests `seat_purge` but does not decide whether it skips grace, deletes retained history/session metadata, or both. Keep the tool unavailable without an operator-defined purge policy; do not infer irreversible deletion authority from ordinary close.
+**Oracle decision on purge (Vesper Greywind, 2026-10-21):** `seat_purge` = skip the remaining grace, terminate the process, and delete the retained ring and checkpoints for that seat. Operator only, from the GUI with a typed seat name as confirmation; not exposed to any MCP role, Oracle included. The Oracle can close (grace) and undo-close; it never deletes history.
 
-## Cohort templates and spawn caps
+## Swarm templates and spawn caps
 
-The operator configures a hard per-cohort process cap and a machine/account aggregate cap. Oracle can read these through status; none of these tools raises them. Missing cap configuration is an explicit launch-configuration failure, not unlimited capacity. Count running, starting, reserved and closed-grace owned processes; remote owned seats count against their cohort plus the remote machine's applicable cap. Phantoms and retained dead history do not count as live processes.
+The operator configures a hard per-swarm process cap and a machine/account aggregate cap. Oracle can read these through status; none of these tools raises them. Missing cap configuration is an explicit launch-configuration failure, not unlimited capacity. Count running, starting, reserved and closed-grace owned processes; remote owned seats count against their swarm plus the remote machine's applicable cap. shadows and retained dead history do not count as live processes.
 
-`cohort_create(template_id="oracle-2-executors", …)` resolves an operator-approved template containing one Claude Oracle and two Codex Executors, approved launch profiles, role prompts, initial destination grants and layout. It is one tool call and one durable parent operation, with deterministic member IDs/input launch request IDs. Validate the template, paths, roles, delegation and all budgets, then **atomically reserve the whole launch count** before any child starts. Concurrent spawn/split/template operations use the same reservation ledger.
+`swarm_create(template_id="oracle-2-executors", …)` resolves an operator-approved template containing one Claude Oracle and two Codex Executors, approved launch profiles, role prompts, initial destination grants and layout. It is one tool call and one durable parent operation, with deterministic member IDs/input launch request IDs. Validate the template, paths, roles, delegation and all budgets, then **atomically reserve the whole launch count** before any child starts. Concurrent spawn/split/template operations use the same reservation ledger.
 
 Process creation is not a transaction across three OS children. Return each member's `reserved / launching / live / failed / unknown` state and a partial outcome if necessary. Query original launch IDs before retrying; never relaunch an ambiguous member. Release only reservations proved unused or processes proved exited. Do not kill successfully launched members as an implicit rollback.
 
@@ -205,28 +206,27 @@ Complete session-verb mapping; a mapped concept is not a promise to clone every 
 | `copy` | Clipboard selection is outside this control catalogue. |
 | `add-clipping`, `archive-clippings` | Session clipping lists are outside this catalogue; use the existing evidence records. |
 
-Other root aliases `new,newtab` and window/tab new/list/select/close/move map conceptually to our space/tab/seat/layout tools. Application quit/hide/activation/theme/fullscreen/window geometry, broadcast domains, auth/config/profile administration, notifications and clippings are not exposed as arbitrary host-wide controls. `monitor output/prompt/activity/variable` informs the adapter/subscription boundary, not a perpetual MCP tool response; no keystroke recorder is added.
+Other root aliases `new,newtab` and window/tab new/list/select/close/move map conceptually to our swarm/tab/seat/layout tools. Application quit/hide/activation/theme/fullscreen/window geometry, broadcast domains, auth/config/profile administration, notifications and clippings are not exposed as arbitrary host-wide controls. `monitor output/prompt/activity/variable` informs the adapter/subscription boundary, not a perpetual MCP tool response; no keystroke recorder is added.
 
 The [Python Session API](https://iterm2.com/python-api/session.html) supplies `async_activate`, `async_close`, `async_send_text`, `async_set_name`, profile/variable operations and `async_split_pane`. Structured scrollback reads use `async_get_line_info` with `async_get_contents(first_line, number_of_lines)` in a transaction; screen reads/streamers are viewport snapshots. `async_send_text(..., suppress_broadcast=True)` is available in Python, while the inspected native send/run help has no such flag. These are reference mechanisms, not a product dependency or runtime verification.
 
 ## Verification and implementation gaps
 
-Document checks on 2026-10-21: `ls .kb/specs/mcp-control-plane.md && grep -c '^| ' .kb/specs/mcp-control-plane.md` exited 0 and returned 56 table rows. The Python document checker parsed all three JSON blocks across the MCP/messaging specs, checked fences/whitespace, 26 unique catalogue tools and coverage of all 20 it2 session verbs; final exit 0. Its first catalogue assertion exited 1 because it also matched the later it2 inventory; restricting it to the catalogue section corrected the check. `git diff --check` exited 0. These are document checks. Runtime acceptance remains future work:
+Original M document checks on 2026-10-21, before the purge decision and S sweep: `ls .kb/specs/mcp-control-plane.md && grep -c '^| ' .kb/specs/mcp-control-plane.md` exited 0 and returned 56 table rows. The Python document checker parsed all three JSON blocks across the MCP/messaging specs, checked fences/whitespace, 26 unique catalogue tools and coverage of all 20 it2 session verbs; final exit 0. Its first catalogue assertion exited 1 because it also matched the later it2 inventory; restricting it to the catalogue section corrected the check. `git diff --check` exited 0. These are historical document checks. Runtime acceptance remains future work:
 
-- Forged/stale actor/grant, a cached hidden tool and a foreign Oracle cannot gain authority; cross-cohort defaults, destination scopes and revocation hold.
+- Forged/stale actor/grant, a cached hidden tool and a foreign Oracle cannot gain authority; cross-swarm defaults, destination scopes and revocation hold.
 - Competing GUI/Oracle inputs, native-unknown outcomes and replaced process generations never cause a duplicate paste/Enter.
 - Concurrent templates/splits/spawns cannot exceed caps; restart reconciles partial launches without duplicate children.
-- Paged history reports reflow/eviction gaps; worker tools and phantom records cannot expose another seat's logs.
+- Paged history reports reflow/eviction gaps; worker tools and shadow records cannot expose another seat's logs.
 - Mute transitions commit notices and hold traffic; unmute neither drops held work nor retries unknown native attempts.
-- Close retains the same process during grace, expires under logic outage and restores the recorded position; unknown purge policy cannot delete retained data.
+- Close retains the same process during grace, expires under logic outage and restores the recorded position; no MCP role can purge retained data.
 - Both real harness clients connect to the fixture server, render bounded successful/error results and reconnect without duplicating mutations.
 
 **Gap:** no MCP bridge/server, capability handoff, audit store or runtime acceptance test was implemented/run by this specification task. Input readiness remains dependent on the explicit adapter proof and its unresolved tests in [[harness-adapters]].
 
 **Gap:** audit retention/storage ceilings, template/profile registration and platform launch-cap accounting need concrete implementation/configuration; no latency/throughput measurements or live remote-control claim is made.
 
-Scope: this file plus the specifically requested cohort-mute amendment in [[messaging]] and close lifecycle amendment in [[mux-daemon]]. No runtime, harness config, UI, task-board or provider changes; no commits.
+Scope: this file plus the specifically requested swarm-mute amendment in [[messaging]] and close lifecycle amendment in [[mux-daemon]]. No runtime, harness config, UI, task-board or provider changes; no commits.
 
 — Nyx Copperwing <EXECUTOR>
 
-**Oracle decision on purge (Vesper Greywind, 2026-10-21):** `seat_purge` = skip the remaining grace, terminate the process, and delete the retained ring and checkpoints for that seat. Operator only, from the GUI with a typed seat name as confirmation; not exposed to any MCP role, Oracle included. The Oracle can close (grace) and undo-close; it never deletes history.

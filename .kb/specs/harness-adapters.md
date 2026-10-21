@@ -4,28 +4,28 @@
 
 [[vision]] · [[harness-touchpoints]] · [[harness-touchpoints-exec]] · [[iterm-harness-plugin]] · [[subagent-detection]] · [[messaging]] · [[mux-daemon]]
 
-Source tags used in every cell: **HT §n** = [[harness-touchpoints]] section n (Oracle subagent pass, local binaries + icq source, `(memory)` where marked there). **HTE «name»** = [[harness-touchpoints-exec]] section (Nyx Copperwing, installed artifacts + primary docs, no runtime test). **IHP §n** = [[iterm-harness-plugin]]. **SD (x)** = [[subagent-detection]]. **MSG** = [[messaging]] "Harness delivery and PTY fallback" and the evidence-state list at its line 106. **MUX** = [[mux-daemon]]. Where HT and HTE disagree the reconciliation is written out in place and collected in §0.
+Source tags used in every cell: **HT §n** = [[harness-touchpoints]] section n (Oracle subagent pass, local binaries + icq source, `(memory)` where marked there). **HTE «name»** = [[harness-touchpoints-exec]] section (Nyx Copperwing, installed artifacts + primary docs, no runtime test). **IHP §n** = [[iterm-harness-plugin]]. **SD (x)** = [[subagent-detection]]. **MSG** = [[messaging]] "Harness delivery and PTY fallback" and its "Delivery, rooms and restart behavior" evidence-state list. **MUX** = [[mux-daemon]]. Where HT and HTE disagree the reconciliation is written out in place and collected in §0.
 
 ## 0. Reconciliations
 
 | # | HT said | HTE / other said | Spec decision |
 |---|---|---|---|
-| R1 | Hooks are the state channel; "hooks win when present" (HT §1.2, [[vision]] line 52) | OSC 7501 is primary, hooks secondary (HTE «Primary PTY observation», SD (b), [[vision]] line 54) | 7501 is `reported` grade and wins. Hooks are `shim` grade. "Hooks win" means hooks beat PTY cadence heuristics, nothing more. |
+| R1 | Hooks are the state channel; "hooks win when present" (HT §1.2) | OSC 7501 is primary, hooks secondary (HTE «Primary PTY observation», SD (b), [[vision]] “Harness touch points”) | 7501 is `reported` grade and wins. Hooks are `shim` grade. "Hooks win" means hooks beat PTY cadence heuristics, nothing more. |
 | R2 | Codex has no system-prompt flag; role goes through `AGENTS.md`, a profile `model_instructions_file` (memory), or the first user message (HT §2.1) | `-c developer_instructions=…` is the documented additive surface; `model_instructions_file` replaces instructions and is a different operation; an initial user prompt is not system instructions (HTE «Codex CLI») | Role prompt = `-c developer_instructions=<text>` plus the machine's `AGENTS.md`. Never the first user message. `model_instructions_file` not used. Key name on 0.163 still unverified locally (§6). |
 | R3 | Codex hook events = 10 names found in binary and trust records; no Notification/PermissionRequest (HT §2.2) | Official docs list permission, interrupt and subagent events too (HTE «Codex CLI») | Bind the 10 verified names. Parse permission/interrupt events if they arrive; do not depend on them. Gap. |
 | R4 | `Notification idle_prompt` → waiting-on-input (HT §1.2 table) | cc-status maps it to idle (IHP §4); SD (d) idle; it arrives about a minute after the turn, conditional on user absence (HTE «Claude Code») | `idle_prompt` → idle, `turn_open=false`. Never a `waiting_kind`. Its absence proves nothing. |
 | R5 | No `ESC ] 133` literal in Claude; none of the four harnesses emit OSC 7/133/633 (HT §1.5, §6) | SD (b.5) says "Claude Code emits it" | Not relied upon. OSC 133 comes only from the zsh seat's terminal-installed shell integration (§5). Runtime-composed emission by Claude stays a Gap. |
 | R6 | pi and omp have extension lifecycle events; omp's title carries state (HT §3.2, §4.2) | SD (b.5) lumps pi/omp with zsh/unknown under the PTY heuristic; HTE confirms no 7501/21337 in pi/omp (HTE «Primary PTY observation») | pi and omp get their own adapter: a terminal-installed extension is their `reported` channel, omp's title is an `inferred` hint. The heuristic is for zsh and unknown only. |
-| R7 | Composite rule: "at rest" + idle hook within the last few seconds → inject (HT §6 conclusion) | Quiescence and tty flags are negative checks only; a hookless harness gets operator handoff, no automatic submission (HTE «Interactive-input guard» 3, 5; MSG; MUX line 82) | HTE wins. HT's composite stays as the negative gate and as the `inferred` display state. It never grants typing. |
+| R7 | Composite rule: "at rest" + idle hook within the last few seconds → inject (HT §6 conclusion) | Quiescence and tty flags are negative checks only; a hookless harness gets operator handoff, no automatic submission (HTE «Interactive-input guard» 3, 5; MSG; MUX «Supervisor ↔ logic protocol») | HTE wins. HT's composite stays as the negative gate and as the `inferred` display state. It never grants typing. |
 | R8 | **Gap:** is `agent_settled` exposed to extensions (HT §3.2, Open gaps) | `Pi/dist/core/extensions/types.d.ts:761` defines `agent_settled` in the extension event types (HTE «Pi 1.0.0») | Resolved: exposed. pi idle = `agent_settled`, not `agent_end`. |
-| R9 | Codex emits 7501 (HT via [[vision]] line 54) | Codex 0.163 reports one state for itself: no `id=`, `title=`, `kind=` adjacent to 7501 (IHP §7); no Codex task-ID encoder found (HTE «Primary PTY observation») | Codex subagent rows come from hooks `subagent_start`/`subagent_stop` only. 7501 gives the main row. |
+| R9 | Codex emits 7501 (HT via [[vision]] “Harness touch points”) | Codex 0.163 reports one state for itself: no `id=`, `title=`, `kind=` adjacent to 7501 (IHP §7); no Codex task-ID encoder found (HTE «Primary PTY observation») | Codex subagent rows come from hooks `subagent_start`/`subagent_stop` only. 7501 gives the main row. |
 | R10 | `Stop` → idle (HT §1.2) | `Stop` is a turn boundary, not a certificate that stdin belongs to the composer (HTE «Claude Code») | Both. Display state and composer readiness are two predicates (§3, §5). `Stop` sets the first, never the second. |
-| R11 | icq receipts `Written` / `Queued` / `Dispatched` (HT §5) | Six evidence states: sender-stored, recipient-stored, native-queued, native-written, native-unknown, application-acknowledged (MSG line 106) | Adapter `wake()` returns a MSG evidence state. Mapping in §1 and §2. |
-| R12 | `SessionEnd` → `exited` seat state (HT §1.2) | Seat states are exactly active, idle, waiting-on-input, errored ([[vision]]); process generation is mux state (MUX line 54) | Process liveness is a mux field on the seat record, not a seat state. `SessionEnd` → idle with `harness_session_id` kept (SD (d)). |
+| R11 | icq receipts `Written` / `Queued` / `Dispatched` (HT §5) | Six evidence states: sender-stored, recipient-stored, native-queued, native-written, native-unknown, application-acknowledged (MSG «Delivery, rooms and restart behavior») | Adapter `wake()` returns a MSG evidence state. Mapping in §1 and §2. |
+| R12 | `SessionEnd` → `exited` seat state (HT §1.2) | Seat states are exactly active, idle, waiting, errored ([[vision]]); process generation is mux state (MUX «Durable seat identity and launch mapping») | Process liveness is a mux field on the seat record, not a seat state. `SessionEnd` → idle with `harness_session_id` kept (SD (d)). |
 
 ## 1. Adapter trait
 
-Rust-shaped. One `impl` per harness. The mux logic process owns the instances (MUX line 30: "native harness adapters" live in logic, not the supervisor).
+Rust-shaped. One `impl` per harness. The mux logic process owns the instances (MUX «Ownership and failure boundaries»: "native harness adapters" live in logic, not the supervisor).
 
 ```rust
 pub enum Harness { Claude, Codex, Pi, Omp, Zsh, Unknown }
@@ -35,7 +35,7 @@ pub enum Role { Oracle, Executor, Creativity }
 pub struct LaunchPlan {
     pub command: portable_pty::CommandBuilder,     // argv + cwd
     pub env: Vec<(String, String)>,                // BBOXY_SEAT_ID, BBOXY_SOCK, BBOXY_ROLE, TERM_PROGRAM…  (SD (c))
-    pub overlay_files: Vec<TempFile>,              // 0600 settings/mcp/extension files, per seat, deleted on close
+    pub overlay_files: Vec<TempFile>,              // 0600 settings/mcp/extension files, per seat, retained during close grace and deleted after process exit
     pub harness_session_id: Option<String>,        // chosen up front when the harness allows (Claude --session-id, pi --session-id)
     pub answer_osc_probes: bool,                   // always true: ESC]7501;?ESC\ is echoed on every seat (SD (b.1))
 }
@@ -56,12 +56,12 @@ pub enum NativeKind { ClaudeSessionsFile, ClaudeMessagingSocket, CodexAppServer,
 pub enum Grade { Reported, Shim, Inferred }      // SD (a): reported > shim > inferred
 
 /// A normalized observation. `at` is the supervisor record sequence for PTY-ordered channels,
-/// wall-clock for off-PTY ones (MUX line 99: record sequences order non-output events).
+/// wall-clock for off-PTY ones (MUX «Supervisor ↔ logic protocol»: record sequences order non-output events).
 pub struct Observation {
     pub channel: ObserveChannel,
     pub grade: Grade,
     pub at: Seq,
-    pub process_generation: u64,                   // MUX line 54: PIDs are never identity
+    pub process_generation: u64,                   // MUX «Durable seat identity and launch mapping»: PIDs are never identity
     pub kind: ObservationKind,
 }
 pub enum ObservationKind {
@@ -84,7 +84,7 @@ pub struct Attachment {
     pub endpoint: Endpoint,                        // ClaudeSocket(path) | CodexAppServer(sock, thread_id) | ExtensionStream(conn) | None
 }
 
-/// MSG line 106 evidence states, verbatim names.
+/// MSG «Delivery, rooms and restart behavior» evidence states, verbatim names.
 pub enum Evidence {
     SenderStored, RecipientStored, NativeQueued, NativeWritten, NativeUnknown, ApplicationAcknowledged,
 }
@@ -118,7 +118,7 @@ pub trait HarnessAdapter: Send + Sync {
     /// Composer-readiness for the PTY fallback (§5). Display state is an input, never the answer.
     fn input_guard(&self, seat: &SeatRecord, arbiter: &InputArbiterView) -> Readiness;
 
-    /// Supported resume command for a dead process generation (MUX line 58), e.g. `claude --resume <id>`.
+    /// Supported resume command for a dead process generation (MUX «Durable seat identity and launch mapping»), e.g. `claude --resume <id>`.
     fn resume_command(&self, seat: &SeatRecord) -> Option<LaunchPlan>;
 }
 
@@ -137,7 +137,7 @@ pub enum Readiness {
 4. If eligible, render the peer message as literal data, retain original signed bytes separately, respect the advertised paste mode, serialize the paste/submit sequence, and journal a stable delivery ID before writing. A possible partial write remains unknown; terminal bytes alone are not a durable exactly-once delivery mechanism.
 5. For a hookless harness with no explicit ready handshake, leave automatic submission pending for operator handoff. Do not fabricate certainty from a blinking cursor. This is the consequence of the proof gap, not a tested implementation.
 
-`input_guard` implements 1 and 3; `wake` implements 2; the supervisor `WriteInput` path (MUX line 73) implements 4; `Readiness::OperatorHandoff` implements 5.
+`input_guard` implements 1 and 3; `wake` implements 2; the supervisor `WriteInput` path (MUX «Supervisor ↔ logic protocol») implements 4; `Readiness::OperatorHandoff` implements 5.
 
 ### Wake evidence mapping (R11)
 
@@ -149,9 +149,9 @@ pub enum Readiness {
 | Codex `turn/started` on that thread after our queue id drained (`thread/queue/changed`) | `application-acknowledged` | HT §2.4 notification list; correlation rule is a Gap |
 | pi/omp extension: `sendUserMessage` returned on our stream | `native-written` | icq `Dispatched` = "native callback invoked, not queue acceptance" — HT §3.3 |
 | pi/omp extension: our message id seen in `input`/`before_agent_start` | `application-acknowledged` | HT §3.2 event list; exact event is a Gap |
-| Any adapter: socket error, timeout after write, generation changed mid-call | `native-unknown`; never retried automatically | MSG line 108, MUX line 80 |
-| PTY fallback: supervisor receipt "fully PTY-written" | `native-written` | MUX line 73 |
-| PTY fallback: receipt "partial/unknown" | `native-unknown` | MSG «Harness delivery»; MUX line 80 |
+| Any adapter: socket error, timeout after write, generation changed mid-call | `native-unknown`; never retried automatically | MSG «Delivery, rooms and restart behavior», MUX «Supervisor ↔ logic protocol» |
+| PTY fallback: supervisor receipt "fully PTY-written" | `native-written` | MUX «Supervisor ↔ logic protocol» |
+| PTY fallback: receipt "partial/unknown" | `native-unknown` | MSG «Harness delivery»; MUX «Supervisor ↔ logic protocol» |
 | Guard not satisfied | stays `recipient-stored` | MSG «Harness delivery»: "No ready-state evidence means keep the message queued" |
 
 ## 2. Per-harness table
@@ -160,7 +160,7 @@ pub enum Readiness {
 
 | Harness | Role prompt at launch | Other launch flags | Wake (native) | Priority mapping |
 |---|---|---|---|---|
-| **Claude Code** 2.1.304 | `--append-system-prompt <text>` (keeps default prompt; `--system-prompt` replaces) — HT §1.1, HTE «Claude Code». Snapshot default `on`: the prompt is frozen across `--resume` until compaction (HT §1.1, HTE). Second channel that also works on resume: SessionStart hook `additionalContext` — HT §1.2 (memory). | `--settings <0600 file>` overlay: `hooks.*` → `bboxy-hook`, `crossSessionInbound:"accept"`, `statusLine` optional — HT §1.1, SD (b.2). `--mcp-config <file>` + `--allowedTools mcp__bboxy__*` — HT §1.1. `--session-id <uuid>` minted by the mux, `--name <character name>` — HT §1.1. Resume: `claude --resume <uuid>`. **Never `--bare`**: no hooks, no socket — HT §1.1. | Unix socket `/tmp/cc-socks/<pid>.sock` (path also in `~/.claude/sessions/<pid>.json.messagingSocketPath`), newline JSON: optional `{"type":"auth","token":…}` then `{"type":"user","uuid","msg_id","priority":"next","message":{"role":"user","content":TEXT}}` — HT §1.4; icq omits `auth` (same-uid attribution) — HT §1.4, HTE «Claude Code». Requires effective `crossSessionInbound: accept` — HT §1.4. | `Next`→`"next"` (default, icq precedent), `Later`→`"later"`, `Now`→`"now"` (interrupts the running turn, help text — HT §1.4). `now` only on an explicit Oracle interrupt tool call, never automatic (MSG line 96). |
+| **Claude Code** 2.1.304 | `--append-system-prompt <text>` (keeps default prompt; `--system-prompt` replaces) — HT §1.1, HTE «Claude Code». Snapshot default `on`: the prompt is frozen across `--resume` until compaction (HT §1.1, HTE). Second channel that also works on resume: SessionStart hook `additionalContext` — HT §1.2 (memory). | `--settings <0600 file>` overlay: `hooks.*` → `bboxy-hook`, `crossSessionInbound:"accept"`, `statusLine` optional — HT §1.1, SD (b.2). `--mcp-config <file>` + `--allowedTools mcp__bboxy__*` — HT §1.1. `--session-id <uuid>` minted by the mux, `--name <character name>` — HT §1.1. Resume: `claude --resume <uuid>`. **Never `--bare`**: no hooks, no socket — HT §1.1. | Unix socket `/tmp/cc-socks/<pid>.sock` (path also in `~/.claude/sessions/<pid>.json.messagingSocketPath`), newline JSON: optional `{"type":"auth","token":…}` then `{"type":"user","uuid","msg_id","priority":"next","message":{"role":"user","content":TEXT}}` — HT §1.4; icq omits `auth` (same-uid attribution) — HT §1.4, HTE «Claude Code». Requires effective `crossSessionInbound: accept` — HT §1.4. | `Next`→`"next"` (default, icq precedent), `Later`→`"later"`, `Now`→`"now"` (interrupts the running turn, help text — HT §1.4). `now` only on an explicit Oracle interrupt tool call, never automatic (MSG «Priority without deleting messages»). |
 | **Codex CLI** 0.163.0 | `-c developer_instructions="<text>"` additive — HTE «Codex CLI» (docs; R2). `AGENTS.md` at `~/.codex/AGENTS.md → ~/.agents/AGENTS.md` carries shared instructions — HT §2.1. | `-c mcp_servers.bboxy.command=…` etc. — HT §2.1 (icq `src/launch.rs:78-97`). `-C <cwd>`. Hooks: `~/.codex/hooks.json` is home-level; per-launch attempt = inline `-c hooks.…` tables + `--dangerously-bypass-hook-trust` — HT §2.1, HTE «Codex CLI» ("hooks.json or inline tables"); Gap. `-c notify=["bboxy-hook","--agent","codex-notify"]` for `approval-requested`/`agent-turn-complete` — HT §2.3. `-c 'tui.terminal_title=[…]'` — HT §2.5. Resume: `codex resume <thread-id>` — HT §2.1. Preferred future shape: terminal-owned `codex app-server --listen unix://…` + TUI `--remote unix://…` — HT §2.1; Gap. | App-server over `~/.codex/app-server-control/app-server-control.sock` (or the socket the TUI holds, `lsof -U`): `initialize{experimentalApi:true}` → `initialized` → `thread/read{threadId}` (status `idle\|active`) → `thread/queue/add{threadId, clientUserMessageId, input:[{type:"text",text}]}` → `queuedSubmission` — HT §2.4, HTE «Codex CLI». CLI equivalent `codex queue --thread <UUID\|name> --message <text>` — HT §2.4, HTE. Thread id from `CODEX_THREAD_ID` via the shim's SessionStart `session_id`, or `thread/started` — HT §2.1, §2.4. | `Next`/`Later` → `thread/queue/add` (mux orders before submission; the queue has no priority field — HT §2.4). `Now` → `turn/steer` (method exists in binary — HT §2.4); not automatic. |
 | **pi** 1.0.0 | `--append-system-prompt <text\|file>` (repeatable) — HT §3.1, HTE «Pi 1.0.0». Extension `before_agent_start` can append prompt sections — HT §7 matrix, HTE (`types.d.ts:693`). | `-e <path to bboxy extension>` per launch — HT §3.1. `--session-id <id>`, `-n <name>` — HT §3.1. Seat tools via the extension's `pi.registerTool` instead of MCP (home-level `~/.pi/agent/mcp.json` must not be edited) — HT §3.1, §3.3. `AGENTS.md` read by default — HT §3.1. | Terminal-installed extension connects **out** to `BBOXY_SOCK` on `session_start` with `{seat, session_id, generation}`; mux pushes `{op:"dispatch", message_id, text, deliver_as}`; extension calls `pi.sendUserMessage(text, {deliverAs, expandPromptTemplates:false})` — API HT §3.1 (`types.d.ts:1215-1223`), icq pattern HT §3.3 (`bridge.mjs:55`) with the socket direction reversed (§4). | `Next`→`followUp`, `Later`→`nextTurn`, `Now`→`steer` — `deliverAs` values HT §3.1. `steer` not automatic. |
 | **omp** 18.4.12 | `--append-system-prompt`, `--system-prompt-template <handlebars>` — HT §4.1, HTE «OMP 18.4.12». | `-e` or `--hook <file>` (alias for an extension) — HT §4.1. `--config <overlay.yml>` repeatable — HT §4.1. `-n` name. Keep title on (no `--no-title`, `tui.titleState` default) because the title carries state — HT §4.1, §4.2. `--from-claude`/`--from-codex` reserved for the harness-switching future — HT §4.1. | Same extension, omp entry point; identity/generation refreshed on `session_switch`/`session_branch`/`session_tree` — HT §4.2, HTE «OMP». Use omp's own `FollowUpOptions` type for `expandPromptTemplates` (`SendUserMessageOptions` at `:418` lacks it) — HTE «OMP» Gap. | Same as pi — `sendUserMessage` delivery choices HTE (`agent-session-types.d.ts:418`). |
@@ -180,7 +180,7 @@ pub enum Readiness {
 
 ## 3. State machine
 
-Vocabulary: seat `state ∈ active | idle | waiting-on-input | errored` ([[vision]]; `waiting` below is shorthand), `waiting_kind ∈ permission | question | auth | none`, `turn_open`, `detail`, `status_source ∈ reported | shim | inferred`, `subagents: Vec<Subagent>` in start order, never resorted — SD (a). Wire → sidebar: `working→active`, `blocked→waiting`, `idle→idle`, `done→idle` with `detail=last message`, `error→errored` — SD (a).
+Vocabulary: seat `state ∈ active | idle | waiting | errored` (SD (a); canonical value `waiting`), `waiting_kind ∈ permission | question | auth | none`, `turn_open`, `detail`, `status_source ∈ reported | shim | inferred`, `subagents: Vec<Subagent>` in start order, never resorted — SD (a). Wire → sidebar: `working→active`, `blocked→waiting`, `idle→idle`, `done→idle` with `detail=last message`, `error→errored` — SD (a).
 
 ### 3a. Events → seat state
 
@@ -222,7 +222,7 @@ Vocabulary: seat `state ∈ active | idle | waiting-on-input | errored` ([[visio
 | OSC 21337 `status=Working\|Waiting\|Idle` (inferred) | active / waiting / idle | none | `detail=` | — | IHP §6 |
 | zsh OSC 133 `C` / `B` / `D;n≠0` (reported) | active / idle / errored until next `B` | none | command / "" / exit code | — | HT §6 |
 | PTY heuristic: bytes flowing / quiet 2 s at prompt / `?`-`[y/N]` line + raw + quiet 10 s (inferred) | active / idle / waiting(question) | — | keep | — | SD (b.5), HT §6 |
-| Process exit (supervisor) | errored if exit ≠ 0, else idle; mux marks the process generation dead | none | exit code | false | HT §6, MUX line 119 |
+| Process exit (supervisor) | errored if exit ≠ 0, else idle; mux marks the process generation dead | none | exit code | false | HT §6, MUX «Restart and reattachment» |
 
 ### 3b. Nested subagent rows
 
@@ -238,7 +238,7 @@ Vocabulary: seat `state ∈ active | idle | waiting-on-input | errored` ([[visio
 | 7501 `state=clear:id=X` | done if not already, `ended_at` | SD (d) |
 | parent shim `Stop{background_tasks[]}` | listed agent with `status ∉ running` → done; active row absent from the list → done | SD (d), IHP §3 |
 | Codex hooks `subagent_start`/`subagent_stop{session_id?}` | create active / done; no description (Gap) | HT §2.2, R9 |
-| `SessionStart source=resume` | clear all rows; next 7501 batch repopulates running ones | SD (e) |
+| `SessionStart source=resume` | clear all rows; live adapter observations rebuild them (7501 task reports for Claude, hook events for Codex) | SD (e) |
 
 Rows stay 30 s after `ended_at`, then collapse into the count; show all, collapsing past 8 into `+N` — SD (a).
 
@@ -246,9 +246,9 @@ Rows stay 30 s after `ended_at`, then collapse into the count; show all, collaps
 
 1. **Grade.** `reported` > `shim` > `inferred`. A lower grade never overwrites a higher-grade value younger than 5 s — SD (a). Within `reported`, the PTY-ordered channel (7501) wins over off-PTY channels (sessions file, app-server, extension stream) for the same instant, because PTY order is total with the harness's own output (SD (b.2) reason 3) and the sessions file is a coarser three-value projection of the same state machine (HT §1.4 `Uio` sub-kinds).
 2. **Waiting is sticky.** Once any channel sets `waiting`, only a resolving event clears it: 7501 non-blocked report, `PostToolUse` or `PreToolUse` for the same `tool_use_id`, `serverRequest/resolved`, `ui_prompt_end`/approval resolved, `UserPromptSubmit`, or process exit. Quiescence never clears it. Reason: Enter during a dialog answers the dialog — HT §6 conclusion.
-3. **Generation.** An observation whose `process_generation` is not the live one is dropped. On resume the row shows `shim` grade until the first 7501 report — SD (e), MUX line 54.
+3. **Generation.** An observation whose `process_generation` is not the live one is dropped. Recovered display values retain historical provenance; only live observations establish a current grade — SD (e), MUX «Durable seat identity and launch mapping».
 4. **Subagents.** 7501 `id=` reports are authoritative for existence and state; the shim supplies descriptions before 7501 has them and `agent_type`; `Stop.background_tasks[]` reconciles stragglers — SD (d). A row seen by 7501 is never deleted by a shim event, only marked done.
-5. **Exit beats all.** Supervisor EOF/SIGCHLD overrides every channel; stale off-PTY readers (sessions file for a dead pid) are ignored — MUX line 119.
+5. **Exit beats all.** Supervisor EOF/SIGCHLD overrides every channel; stale off-PTY readers (sessions file for a dead pid) are ignored — MUX «Restart and reattachment».
 6. **Display ≠ readiness.** Nothing in 3a–3c produces a `ReadyToken`. That is §5 — R10, HTE «Primary PTY observation» ("An observed idle, done, clear, or blocked report is not permission to type").
 
 ## 4. The shim, seat identity, OSC 7502, socket fallback
@@ -280,19 +280,19 @@ Parser rules as for 7501: both terminators, both introducers, discard over 4 KiB
 
 **Why the PTY and not a socket for the common path**: the byte lands on the fd already mapped to `seat_id` (no env lookup, pid walk or cookie — IHP §2/§6 needed four hops); it survives ssh because the remote hook's tty flows back to our pane; ordering with harness output is total; one parser for 7501 and 7502 — SD (b.2). Precedent that hook processes can open `/dev/tty`: `cc-status` writes its OSC 9;4 ring there — IHP §5.
 
-**Socket fallback** `BBOXY_SOCK`: `$XDG_RUNTIME_DIR/bboxy450/mux.sock`, or the mux's private state directory on macOS where `XDG_RUNTIME_DIR` is unset (MUX line 86: runtime files live in private application state directories). `SOCK_STREAM`, newline JSON `{seat, ev, d}` with the same `d` payload — SD (b.4). Used when `isatty(/dev/tty)` fails, `BBOXY_SEAT_ID` is unset, or the tty write fails — SD (b.2). Owned by the mux logic process so it keeps receiving through a GUI restart — SD (b.4); on a logic restart the supervisor keeps PTYs but the socket listener returns with logic (MUX line 118). Hooks firing while nothing listens fail both writes and exit 0 in <50 ms; no spool — the next event carries full state and 7501 is idempotent — SD (e).
+**Socket fallback** `BBOXY_SOCK`: `$XDG_RUNTIME_DIR/bboxy450/mux.sock`, or the mux's private state directory on macOS where `XDG_RUNTIME_DIR` is unset (MUX «Ring records, checkpoints and eviction»: runtime files live in private application state directories). `SOCK_STREAM`, newline JSON `{seat, ev, d}` with the same `d` payload — SD (b.4). Used when `isatty(/dev/tty)` fails, `BBOXY_SEAT_ID` is unset, or the tty write fails — SD (b.2). Owned by the mux logic process so it keeps receiving through a GUI restart — SD (b.4); on a logic restart the supervisor keeps PTYs and captures PTY hook output subject to bounded backpressure; the socket listener returns with logic (MUX «Restart and reattachment»). If both routes are unavailable, hooks exit 0 in <50 ms with no spool. Off-PTY state resynchronization remains a Gap; a later hook delta is not promised to contain full state — SD (e).
 
 **pi/omp extension**: the same `BBOXY_SOCK`, long-lived connection, opened by the extension on `session_start` and reopened on omp `session_switch`/`session_branch`/`session_tree` with a bumped generation; closed on `session_before_switch|fork|tree|shutdown` — pattern HT §3.3 (`host.mjs:38-76`), direction reversed so the mux never discovers `$TMPDIR/icq-h-*` style sockets. Frames up: `{seat, session_id, generation, ev, d}` for every lifecycle event in 2b. Frames down: `{op:"dispatch", message_id, text, deliver_as}` → `sendUserMessage`; reply `{message_id, state:"dispatched"|"rejected", reason?}`. Dedup by `message_id` on the extension side — HT §3.3 (`bridge.mjs:48-57`).
 
 **Codex shim install**: per-launch inline `-c hooks.<Event>=[…]` plus `--dangerously-bypass-hook-trust`, or a terminal-written `hooks.json` with computed `hooks.state.*.trusted_hash` in a profile — HT §2.1, §2.2, SD (b.3). Gap until exercised.
 
-**Credentials**: the shim inherits `CLAUDE_CODE_MESSAGING_TOKEN` (HT §1.1). It is never put into 7502, a record or a log (MUX line 56). If Claude's `auth` frame turns out to be required (HT §1.4 Gap), the shim forwards the token once over `BBOXY_SOCK` on `SessionStart` and the mux keeps it in memory only.
+**Credentials**: the shim inherits `CLAUDE_CODE_MESSAGING_TOKEN` (HT §1.1). It is never put into 7502, a record or a log (MUX «Durable seat identity and launch mapping»). If Claude's `auth` frame turns out to be required (HT §1.4 Gap), the shim forwards the token once over `BBOXY_SOCK` on `SessionStart` and the mux keeps it in memory only.
 
 ## 5. PTY fallback
 
 The PTY is the last resort and the only path for zsh. Everything here is gated by the guard contract in §1. Display state from §3 is an input, never the proof.
 
-**Order of attempts** for a message to a seat (MSG «Harness delivery»): native `wake()` → if `NativeUnknown`, stop and show the message with its unknown outcome (guard 2, MSG line 108) → if native is unavailable (no attachment for the live generation), evaluate `input_guard` → `Ready` → supervisor `WriteInput` with a stable input id (MUX line 73) → `NotReady` → stays `recipient-stored`, row badge → `OperatorHandoff` → row badge with a paste affordance; the operator's keystroke is the submission.
+**Order of attempts** for a message to a seat (MSG «Harness delivery»): native `wake()` → if `NativeUnknown`, stop and show the message with its unknown outcome (guard 2, MSG «Delivery, rooms and restart behavior») → if native is unavailable (no attachment for the live generation), evaluate `input_guard` → `Ready` → supervisor `WriteInput` with a stable input id (MUX «Supervisor ↔ logic protocol») → `NotReady` → stays `recipient-stored`, row badge → `OperatorHandoff` → row badge with a paste affordance; the operator's keystroke is the submission.
 
 **Readiness per harness** (`input_guard`):
 
@@ -302,7 +302,7 @@ The PTY is the last resort and the only path for zsh. Everything here is gated b
 | zsh | OSC 133 `B` seen after the last `C`/`D` from our integration (prompt is accepting input — HT §6); `tcgetpgrp(slave) == shell pid`; termios `ICANON` and `ECHO` set (HT §6: line mode = shell or `read` prompt) | password prompt pattern: `ECHO` off (HTE: raw editors and password prompts both disable echo) → NotReady; operator draft since `B`; generation mismatch | `Ready` |
 | unknown | none exists | — | `OperatorHandoff` always (guard 5) |
 
-**Write sequence** (guard 4): journal `{input_id, seat, generation, message_id}` → if mode 2004 is on, `ESC[200~` + literal text + `ESC[201~`, else literal text with CR/LF normalized to CR → one `CR` → supervisor receipt. Full receipt → `native-written`; partial/unknown → `native-unknown`, never an automatic second Enter (MSG «Harness delivery», MUX line 185). Operator keystrokes and injected input are serialized through the arbiter; a write that began is not interrupted by a higher-priority message (MSG line 96).
+**Write sequence** (guard 4): journal `{input_id, seat, generation, message_id}` → if mode 2004 is on, `ESC[200~` + literal text + `ESC[201~`, else literal text with CR/LF normalized to CR → one `CR` → supervisor receipt. Full receipt → `native-written`; partial/unknown → `native-unknown`, never an automatic second Enter (MSG «Harness delivery», MUX «Supervisor ↔ logic protocol»). Operator keystrokes and injected input are serialized through the arbiter; a write that began is not interrupted by a higher-priority message (MSG «Priority without deleting messages»).
 
 **Hazard the gate exists for**: typing into a busy Claude/Codex/pi/omp TUI is buffered by their editors, but Enter during a permission dialog answers the dialog — HT §6 conclusion. Hence rule 2 in §3c and the `turn_open=false` requirement.
 
@@ -333,7 +333,7 @@ The PTY is the last resort and the only path for zsh. Everything here is gated b
 - **Gap:** pi/omp subagent or task events for nested rows — neither pass found any.
 - **Gap:** zsh seat shell integration via `ZDOTDIR` overlay is a spec decision with no research behind it; interaction with the user's own prompt hooks untested — this spec.
 - **Gap:** `Stop.background_tasks[]` item `type` for in-process subagents — SD Open.
-- **Gap:** check/write race between a ready indication and the tty write without a consumable handshake; user-draft preservation, modal transitions, process replacement, partial writes — HTE «Interactive-input guard», MSG «Harness delivery», MUX line 185.
+- **Gap:** check/write race between a ready indication and the tty write without a consumable handshake; user-draft preservation, modal transitions, process replacement, partial writes — HTE «Interactive-input guard», MSG «Harness delivery», MUX «Supervisor ↔ logic protocol».
 - **Gap:** every runtime transition/injection claim in both passes is unexercised; this spec is a convergence of static evidence, not a compatibility certification — HTE «Verification and provenance ledger», HT Open gaps.
 
 Links: [[vision]] [[harness-touchpoints]] [[harness-touchpoints-exec]] [[subagent-detection]] [[messaging]] [[mux-daemon]]
