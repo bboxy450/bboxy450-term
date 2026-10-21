@@ -78,9 +78,16 @@ Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection: OSC 75
 - **Usage limits.** Tap Claude and Codex account usage limits. Reference implementation: `tachyon` by Gonzih (the operator's other identity). Recorded in [[roadmap]].
 - MCP tool for an agent to request the operator's attention.
 
-## v0.1 scope (DECIDED)
+## v0.1 scope (DECIDED, cut down by the operator 2026-10-21: less is more)
 
-Everything above that is not marked Future. Private GitHub repo `bboxy450/bboxy450-term` for now. Crates published under bboxy450.
+**Ship first:** rendering (the priority), the visual style as prototyped in [[ux-prototype]], local messaging between seats on one machine, the MCP control plane, harness visibility (seat state and subagent rows). Everything designed with cloud as a coming fact, so no local-only shortcuts in the mux or messaging boundaries.
+
+**Then, in order:**
+1. **Cloud**: remote seats, supervisor bootstrap on a VM, reconnect. Built "in between", after rendering is solid.
+2. **Private account-based messaging** between the operator's own instances, local and cloud (device grants, direct QUIC, punch and relay).
+3. **Global messaging**: public channels, phantoms, iroh-class rendezvous at scale.
+
+**Postponed out of the first prototype:** global messaging and phantoms, Google binding (not needed until instances talk across machines), Linux and mobile. Private GitHub repo `bboxy450/bboxy450-term` for now. Crates published under bboxy450.
 
 Work splits into: terminal core (PTY, VTE, grid), renderer (wgpu), frontend chrome (sidebar, tabs, splits, settings), mux daemon (seat persistence, recovery), messaging (transport, identity, rooms, priority), MCP server (Oracle control plane), harness adapters (launch, role prompt, wake, state detection). Task files per area follow the research.
 

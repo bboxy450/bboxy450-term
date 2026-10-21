@@ -2,6 +2,10 @@
 
 Owner: Vesper Greywind <ORACLE>. Date: 2026-10-21. Status: DRAFT until the operator answers the open decisions at the bottom. Back to [[vision]]. Specs: [[terminal-core]] [[mux-daemon]] [[harness-adapters]] [[subagent-detection]] [[messaging]] [[mcp-control-plane]] [[ux-prototype]] [[identity]] (pending). Research index: `research/`.
 
+## Priority order (operator, 2026-10-21)
+
+Rendering first. Then local messaging, MCP, harness visibility. Cloud designed in from the start, built after rendering. Private cross-instance messaging after cloud. Global messaging last. W2.4 is local-only in v0.1; W4 moves behind cloud.
+
 ## Shape
 
 One Cargo workspace, weavie-managed once Nix is installed ([[monorepo-weavie]]). One binary, two modes. Six crates:
