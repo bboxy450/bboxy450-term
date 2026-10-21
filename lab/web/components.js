@@ -298,32 +298,54 @@
   }
 
   // ⌘T picker: vertical, keyboard-first, typed prefix, name reveal with reroll
+  // Launchables: harnesses and zsh today; browser tab, vnc and ssh later. Rows are data, the picker does not care.
+  const LAUNCH = [
+    { id: 'claude', label: 'Claude Code', harness: 'claude', hint: 'oracle', section: 'Harnesses' },
+    { id: 'codex', label: 'Codex', harness: 'codex', hint: 'executor', section: 'Harnesses' },
+    { id: 'pi', label: 'pi', harness: 'pi', hint: 'executor', section: 'Harnesses' },
+    { id: 'omp', label: 'omp', harness: 'omp', hint: 'executor', section: 'Harnesses' },
+    { id: 'zsh', label: 'zsh', harness: 'zsh', hint: 'shell', section: 'Shells' },
+  ];
   function picker(opts) {
     opts = opts || {};
     let q = opts.query || '', sel = 0, seed = opts.seed || 1;
+    const items0 = opts.items || LAUNCH;
     const box = el('div', { class: 'picker' });
-    const input = el('input', { placeholder: 'new seat · type to filter', value: q });
+    const input = el('input', { placeholder: opts.placeholder || 'new seat · type to filter', value: q });
     const list = el('div');
     const foot = el('div', { class: 'foot' });
     function nameFor(seed) { return rollName(rng('roll' + seed)); }
+    const matches = () => items0.filter(it => it.label.toLowerCase().startsWith(q.toLowerCase()) || it.id.startsWith(q.toLowerCase()));
+    const pick = it => { if (it && opts.onPick) opts.onPick(it, nameFor(seed)); };
     function draw() {
       list.innerHTML = '';
-      const items = HARNESSES.filter(h => h.startsWith(q.toLowerCase()));
-      if (!items.length) list.append(el('div', { class: 'empty' }, 'no harness matches "' + q + '"'));
-      items.forEach((h, i) => {
-        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : '') + (h === 'zsh' ? ' zsh' : '') }, harnessIcon(h));
-        const label = el('span'); if (q) label.append(el('span', { class: 'm' }, h.slice(0, q.length)), h.slice(q.length)); else label.textContent = h;
-        o.append(label, el('span', { class: 'role' }, DEFAULT_ROLE[h] || 'no role'));
+      const items = matches();
+      if (!items.length) list.append(el('div', { class: 'empty' }, 'nothing matches "' + q + '"'));
+      let lastSec = null;
+      items.forEach((it, i) => {
+        if (it.section && it.section !== lastSec) { list.append(el('div', { class: 'sec' }, it.section)); lastSec = it.section; }
+        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : ''), onclick: () => pick(it), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, harnessIcon(it.harness));
+        const label = el('span'); const L = it.label, m = q && L.toLowerCase().startsWith(q.toLowerCase()) ? q.length : 0;
+        if (m) label.append(el('span', { class: 'm' }, L.slice(0, m)), L.slice(m)); else label.textContent = L;
+        o.append(label, el('span', { class: 'role tag' }, it.hint || ''));
         list.append(o);
       });
       const nm = nameFor(seed);
       foot.innerHTML = '';
-      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }) }), el('span', {}, 'name '), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); } }, '↻ reroll'));
+      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }) }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); } }, '↻'), el('span', { class: 'hints' }, el('kbd', {}, '↵'), ' launch ', el('kbd', {}, '↑↓'), ' move ', el('kbd', {}, 'esc'), ' close'));
     }
     input.addEventListener('input', () => { q = input.value; sel = 0; draw(); });
-    input.addEventListener('keydown', e => { const n = HARNESSES.filter(h => h.startsWith(q.toLowerCase())).length; if (e.key === 'ArrowDown') { sel = (sel + 1) % n; draw(); } if (e.key === 'ArrowUp') { sel = (sel + n - 1) % n; draw(); } });
+    input.addEventListener('keydown', e => {
+      const n = matches().length;
+      if (e.key === 'ArrowDown') { e.preventDefault(); sel = (sel + 1) % Math.max(n, 1); draw(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + n - 1) % Math.max(n, 1); draw(); }
+      else if (e.key === 'Enter') { e.preventDefault(); pick(matches()[sel]); }
+      else if (e.key === 'Escape') { if (opts.onClose) opts.onClose(); }
+      e.stopPropagation();
+    });
     draw();
     box.append(input, list, foot);
+    box.focus = () => input.focus();
     return box;
   }
 
@@ -343,5 +365,5 @@
     return row;
   }
 
-  window.C = { hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { LAUNCH, hslToRgb, logo, logoSvg, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

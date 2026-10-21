@@ -95,6 +95,24 @@
     const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [] };
     model.spaces.push(sp); editName = sp.key; jumpSpace(sp);
   }
+  // Spotlight launcher (operator): '+ new seat' or ⌘T opens a centred search over the window; Enter launches into the
+  // swarm as a new tab and focuses it. The list is data (C.LAUNCH): harnesses and zsh now, browser / vnc / ssh later.
+  let spot = null;
+  function openSpotlight(sp) {
+    closeSpotlight();
+    sp = sp || space();
+    const back = el('div', { class: 'spot-back', onclick: e => { if (e.target === back) closeSpotlight(); } });
+    const pk = C.picker({ placeholder: 'launch in ' + sp.name + ' · type to search', onClose: closeSpotlight, onPick: (it, name) => {
+      const seat = { key: 'n' + Date.now().toString(36), name: it.harness === 'zsh' ? 'zsh' : name, harness: it.harness, role: C.DEFAULT_ROLE[it.harness], title: it.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15 };
+      Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
+      seats.push(seat); startReplay(seat, seats.length - 1);
+      sp.tabs.push({ name: it.label.toLowerCase(), shortcut: sp.tabs.length < 9 ? '⌘' + (sp.tabs.length + 1) : '', tree: seat, seats: [seat] });
+      open.add(sp.key); closeSpotlight(); focused = seat.key; render(); locate(seat.key, 'both');
+    } });
+    back.append(pk); document.body.append(back); spot = back; pk.focus();
+  }
+  function closeSpotlight() { if (spot) { spot.remove(); spot = null; } }
+  addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 't') { e.preventDefault(); openSpotlight(); } else if (e.key === 'Escape' && spot) closeSpotlight(); });
   // Close is reversible (operator): the seat enters a 60 s grace state. The pane leaves the split, the row becomes a
   // closed strip with undo, ⌘Z restores it in place with its split position. After the window it is terminated.
   const GRACE_MS = 60000;
@@ -165,7 +183,7 @@
     if (focused && !stageKeys.includes(focused) && !phantoms.some(p => p.key === focused)) focused = stageKeys[0] || null;
     const birth = editName; editName = null;
     const sb = C.sidebar(model, { openSpaces: [...open], openTabs: model.spaces.flatMap(s => s.tabs.map(t => s.key + '/' + t.name)), focusedKey: focused, currentSpace: space().key,
-      onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: () => {}, onUndo: undoClose, onRename: () => render(), editName: birth,
+      onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: sp => openSpotlight(sp), onUndo: undoClose, onRename: () => render(), editName: birth,
       onColor: sp => { const hues = [0, 30, 50, 90, 150, 190, 220, 260, 300, 330]; sp.hueI = ((sp.hueI == null ? -1 : sp.hueI) + 1) % hues.length; sp.color = 'hsl(' + hues[sp.hueI] + ' 70% ' + (theme() === 'light' ? 42 : 58) + '%)'; render(); } });
     const stage = el('div', { class: 'stage' }, (() => { if (!stageTree) return el('div'); const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
     main.append(sb, stage);
@@ -366,8 +384,8 @@
   const ROLE_RANK = { oracle: 0, executor: 1, creativity: 2, unsigned: 3 };
   let msgN = 0;
   addEventListener('keydown', e => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    const f = seats.find(s => s.key === focused);
+    if (e.metaKey || e.ctrlKey || e.altKey || spot) return;
+    const f = seats.find(s => s.key === focused); if (!f) return;
     const st = { '1': 'idle', '2': 'active', '3': 'waiting', '4': 'errored' }[e.key];
     if (st) { setState(f, st); if (st === 'active' && f.replay && f.replay.waiting) { f.replay.waiting = false; schedule(f, 200); } }
     else if (e.key === 'm' || e.key === 'M') {
@@ -393,7 +411,7 @@
   const PHRASES = ['relay bench green on eu-2, 41 ms p50', 'claiming the glyphon atlas question', 'B spec amended, envelope has presence now', 'who owns the ssh bootstrap doc?', 'pushed fixtures, four files'];
   let phN = 0;
   addEventListener('keydown', e => {
-    if (e.key !== 'p' && e.key !== 'P') return;
+    if ((e.key !== 'p' && e.key !== 'P') || spot) return;
     const phs = space().participants; if (!phs.length) return;
     const ph = phs[phN % phs.length], text = PHRASES[phN % PHRASES.length]; phN++;
     ph.pulseT = performance.now();                                        // row pulses once

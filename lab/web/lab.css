@@ -408,3 +408,13 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 
 /* swarm rename in place */
 .space-head .sname-edit { background: rgba(0,0,0,.25); border: 0; outline: 0; color: #fff; font: inherit; letter-spacing: inherit; text-transform: inherit; width: 120px; padding: 1px 6px; border-radius: 3px; }
+
+/* launcher, Raycast reading: sections, kind tags, key hints */
+.picker .sec { font-size: 10px; font-weight: 600; letter-spacing: .06em; color: var(--fg-dim); padding: 8px 12px 2px; }
+.picker .opt .tag { background: color-mix(in srgb, var(--fg-dim) 14%, transparent); border-radius: 4px; padding: 1px 7px; font-size: 10px; letter-spacing: .04em; color: var(--fg-dim); }
+.picker .opt.sel .tag { background: rgba(255,255,255,.18); color: #fff; }
+.picker .opt.sel { background: color-mix(in srgb, var(--accent) 28%, var(--surface)); color: var(--fg); border-radius: 8px; margin: 0 6px; padding-left: 12px; padding-right: 12px; }
+.picker .opt { margin: 0 6px; border-radius: 8px; }
+.picker .foot .hints { margin-left: auto; display: flex; align-items: center; gap: 4px; color: var(--fg-dim); font-size: 11px; }
+.picker .foot kbd { font-family: var(--font-mono); font-size: 10px; background: color-mix(in srgb, var(--fg-dim) 14%, transparent); border-radius: 4px; padding: 1px 5px; color: var(--fg); }
+.picker .foot button { margin-left: 0; }

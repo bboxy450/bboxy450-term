@@ -86,7 +86,10 @@ The ripple says where the thing you did not click is.
 ### 5.3 Close (reversible)
 The red dot closes the seat into a 60 s grace state: the pane leaves the split (sibling takes its place), the row becomes a closed strip with undo and countdown, focus moves to the first remaining pane. `undo` or ⌘Z restores it in its exact split position and refocuses it. After the window the seat is gone. No confirm dialog; the undo window is the confirmation. The process keeps running during grace (mux spec).
 
-### 5.4 Messages
+### 5.4 Launcher
+"+ new seat" or ⌘T opens a centred Spotlight-style launcher over the blurred window: a large search field, rows grouped under section labels (Harnesses, Shells; later Browser, Remote) each with icon, name and a kind tag, prefix filter, ↑↓ and Enter, Escape or a click outside closes. The footer shows the rolled character name with a reroll and the key hints. Enter launches the seat as a new tab in that swarm, focuses and locates it. Launchables are data rows.
+
+### 5.5 Messages
 Unread shows as a dot on the seat row in the highest-priority unread role colour; focusing or clicking the seat clears it. A shadow's message pulses its row once (700 ms) and lands in the stream dock. No ripple for messages.
 
 ## 6. Signal semantics (one meaning per signal)
@@ -108,4 +111,4 @@ Keys 1-4 (state of the focused seat), M (message arrives), P (shadow speaks), th
 ## 9. Gaps
 - Mute / unmute of a seat with presence notices (operator decision in [[vision]]) has no UI yet.
 - Remote owned seats versus shadows: owned seats over ssh look like local seats; not shown in the lab.
-- Settings as a tab, the ⌘T picker and the toolbar icon exist as lab pages but are not wired into the showcase.
+- Settings as a tab and the toolbar icon exist as lab pages but are not wired into the showcase.

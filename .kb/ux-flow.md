@@ -102,3 +102,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### No sidebar footer
 **Rule:** the sidebar has no bottom row. No archive, no plus. The big "+ new swarm" button under the blocks is the one way to create a swarm. **Where:** `components.js` sidebar; the stream dock now sits at the very bottom.
+
+### Launching a seat is a Spotlight / Raycast moment
+**Rule:** "+ new seat" or ⌘T opens a centred launcher over a blurred window: big search field, rows grouped under small section labels (Harnesses, Shells; later Browser, Remote) with an icon, a name and a kind tag on the right, prefix filter, ↑↓ and Enter, Escape closes, the rolled character name with a reroll and the key hints in the footer. Enter launches the seat as a new tab in that swarm, focuses it and locates it. The list is data so new launchables (browser tab, vnc, ssh) are rows, not new UI. **Why:** operator asked for Spotlight; Raycast is the reference for the row anatomy. **Where:** `C.LAUNCH` and `picker()` in `components.js`, `openSpotlight()` in `showcase.js`.
