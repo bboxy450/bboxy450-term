@@ -67,6 +67,11 @@ window.TOKENS = {
       "tab_h": 40
     }
   },
+  "dim": {
+    "opacity": 0.55,
+    "saturate": 0.15,
+    "wash": 0.08
+  },
   "font": {
     "chrome": "ui-sans-serif, -apple-system, 'Inter', 'Segoe UI', system-ui, sans-serif",
     "mono": "ui-monospace, 'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace"
@@ -97,8 +102,7 @@ window.TOKENS = {
   "motion": {
     "hover_ms": 120,
     "pulse_ms": 1000,
-    "ripple_ms": 400,
-    "vignette_alpha": 0.1
+    "ripple_ms": 400
   },
   "radius": {
     "chip": 4,

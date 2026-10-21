@@ -28,7 +28,8 @@
     set('--glow-pane-r', g.pane_radius + 'px'); set('--glow-row-r', g.row_radius + 'px'); set('--glow-idle-a', g.idle_alpha);
     set('--glow-active-min', g.active_alpha_min); set('--glow-active-max', g.active_alpha_max); set('--glow-active-ms', g.active_pulse_ms + 'ms');
     set('--glow-wait-min', g.waiting_alpha_min); set('--glow-wait-max', g.waiting_alpha_max); set('--glow-err-a', g.errored_alpha); set('--glow-boost', g.focused_boost);
-    set('--pulse-ms', T.motion.pulse_ms + 'ms'); set('--ripple-ms', T.motion.ripple_ms + 'ms'); set('--hover-ms', T.motion.hover_ms + 'ms'); set('--vignette', T.motion.vignette_alpha);
+    set('--pulse-ms', T.motion.pulse_ms + 'ms'); set('--ripple-ms', T.motion.ripple_ms + 'ms'); set('--hover-ms', T.motion.hover_ms + 'ms');
+    set('--dim-sat', T.dim.saturate); set('--dim-opacity', T.dim.opacity); set('--dim-wash', T.dim.wash * 100 + '%');
     set('--font-chrome', T.font.chrome); set('--font-mono', T.font.mono);
     document.documentElement.className = 'theme-' + prefs.theme + ' density-' + prefs.density;
   }

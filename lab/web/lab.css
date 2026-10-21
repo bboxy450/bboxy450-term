@@ -156,7 +156,9 @@ code, .mono { font-family: var(--font-mono); }
 }
 .pane.active { border-width: var(--strip-b-active); }
 .pane.errored { border-color: var(--c-errored); }
-.pane.unfocused { filter: brightness(calc(1 - var(--vignette))); }
+/* unfocused: strip and content go grey, border keeps the seat colour (the shader glow does too) */
+.pane.unfocused { background: color-mix(in srgb, var(--bg) calc(100% - var(--dim-wash)), var(--fg-dim)); }
+.pane.unfocused .strip, .pane.unfocused .term { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); transition: opacity var(--hover-ms), filter var(--hover-ms); }
 .strip {
   height: var(--strip-h); display: flex; align-items: center; gap: 8px; padding: 0 8px;
   background: var(--seat); color: #fff; font-size: 11px; flex: none; overflow: hidden;

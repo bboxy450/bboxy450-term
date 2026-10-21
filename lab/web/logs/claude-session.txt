@@ -1,0 +1,30 @@
+> research gpu terminal emulators in rust and write the spec
+
+● I'll start with the terminal model crates, then the renderers.
+
+● Bash(ls ~/.cargo/registry/src/*/ | grep -E 'alacritty|wezterm|vte')
+  ⎿  alacritty_terminal-0.25.1
+     vte-0.15.0
+     wezterm-term-0.1.0
+
+● Read(alacritty_terminal-0.25.1/src/term/mod.rs)
+  ⎿  Read 2103 lines
+
+● Grep(pattern: "pub struct Grid", path: "alacritty_terminal-0.25.1/src/grid")
+  ⎿  Found 1 file
+     src/grid/mod.rs:118: pub struct Grid<T> {
+
+● The grid stores every scrollback row at full width, 24 bytes per cell.
+  At 10k lines that is ~19 MB per seat. Measuring to confirm.
+
+● Bash(cargo run --release -- 80 24 10000 fill)
+  ⎿  rss_kb=20504 cells=24 term=1728
+
+● Write(.kb/research/gpu-terminals-rust.md)
+  ⎿  Wrote 212 lines
+
+● Measured 20.5 MB per seat with a filled 10k scrollback. Writing the
+  memory-model section of the spec now.
+
+● Agent(Research glyphon atlas growth)
+  ⎿  Running…

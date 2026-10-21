@@ -119,8 +119,14 @@ particles_active = 40
 particle_speed = 18           # px per second along the border
 particle_size = 2.2           # px
 
+[dim]
+# Unfocused panes grey out like iTerm2 (ux-pick, 2026-10-21). Content and strip desaturate and fade; the border and
+# the glow keep the seat colour so identity survives.
+saturate = 0.15               # 1 = full colour, 0 = grey; applied to strip and content of unfocused panes
+opacity = 0.55                # content and strip opacity on unfocused panes
+wash = 0.08                   # how much fg_dim is mixed into the unfocused pane background
+
 [motion]
 pulse_ms = 1000               # waiting-on-input, 1 Hz
 ripple_ms = 400
 hover_ms = 120
-vignette_alpha = 0.10

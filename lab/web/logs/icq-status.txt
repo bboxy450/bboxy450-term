@@ -1,0 +1,54 @@
+advertised:
+  -
+    203.0.113.7:52808
+bound: 0.0.0.0:52808
+dht:
+  bound: 0.0.0.0:62744
+  firewalled: true
+  public: 203.0.113.7:62744
+  server: true
+identities: 23
+mapped: 203.0.113.7:52808
+pid: 24670
+publication:
+  error: 0
+  published: 23
+  total: 23
+  unknown: 0
+reachability: unproven
+session_summary:
+  attachments: 15
+  liveness: untested
+  processes: 15
+  registrations: 18
+transport_ready: true
+
+Next:
+* icq --human id - Inspect the selected key; without --as, register this exact session and possibly create its persistent key.
+* icq --human inbox --help - Choose bounded inbox reading when native delivery is unavailable.
+items:
+  -
+    context:
+      kind: channel
+      value: #bboxy450-channel
+    name: #bboxy450-channel
+    peers:
+    wake: true
+  -
+    context:
+      kind: channel
+      value: #bboxy450-crates
+    name: #bboxy450-crates
+    peers:
+    wake: false
+  -
+    context:
+      kind: channel
+      value: #bboxy450-term
+    name: #bboxy450-term
+    peers:
+    wake: true
+
+Next:
+* icq --human channels - Inspect current room memberships.
+* icq --human inbox --wait 20 - Read received room messages and direct replies.

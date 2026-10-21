@@ -1,0 +1,83 @@
+commit 355e853926799ac55e2d7dc5b91f44f76becf01f
+Author: Boxy <bboxy450@gmail.com>
+Date:   Wed Oct 21 12:31:06 2026 -0700
+
+    kb: unfocused panes dim like iTerm2
+
+ .kb/runs/ref-iterm-unfocused-dim.png | Bin 0 -> 143809 bytes
+ .kb/ux-pick.md                       |   1 +
+ lab/web/showcase.js                  |   2 +-
+ 3 files changed, 2 insertions(+), 1 deletion(-)
+
+commit 9496f11e3f5839fb283a86f7ad5767f10c0c53eb
+Author: Boxy <bboxy450@gmail.com>
+Date:   Wed Oct 21 12:30:35 2026 -0700
+
+    kb: pane ripple originates at pane centre
+
+ .kb/ux-pick.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 86e21c43510b808e44706b0bd7274ca046401bc4
+Author: Boxy <bboxy450@gmail.com>
+Date:   Wed Oct 21 12:29:31 2026 -0700
+
+    kb: ghostty text rendering research; harness touch points final
+
+ lab/web/showcase.js | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+commit f5e461db405938f1a1fac35a08a41172fc50bcff
+Author: Boxy <bboxy450@gmail.com>
+Date:   Wed Oct 21 12:29:05 2026 -0700
+
+    kb: checkpoint rule
+
+ .kb/research/harness-touchpoints.md |  2 ++
+ .kb/research/text-rendering.md      | 40 +++++++++++++--------------
+ .kb/vision.md                       |  2 +-
+ lab/web/components.js               |  3 ++-
+ lab/web/showcase.js                 | 54 +++++++++++++++++++++----------------
+ 5 files changed, 56 insertions(+), 45 deletions(-)
+
+commit acd125a7a9001d03c11c9b8440ff3094e7aebf57
+Author: Boxy <bboxy450@gmail.com>
+Date:   Wed Oct 21 12:27:28 2026 -0700
+
+    kb: operator reviews previews by hand
+
+ .kb/vision.md | 1 +
+ 1 file changed, 1 insertion(+)
+
+commit 363c073c54182e0421f0f0660f767cd3e847c855
+Author: Boxy <bboxy450@gmail.com>
+Date:   Wed Oct 21 12:27:17 2026 -0700
+
+    lab: layout pass (gutter token); kb: harness touch points (subagent)
+
+ .kb/research/text-rendering.md | 274 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 274 insertions(+)
+
+commit 1f5d702820e2cf86a42042dc6de5a0459dbec5db
+Author: Boxy <bboxy450@gmail.com>
+Date:   Wed Oct 21 12:27:06 2026 -0700
+
+    kb: visual signal semantics decided
+
+ .kb/research/harness-touchpoints.md |  2 +-
+ .kb/ux-pick.md                      | 15 +++++++++++++++
+ design/tokens.toml                  |  3 +++
+ lab/web/showcase.html               | 13 ++++++++-----
+ lab/web/showcase.js                 | 16 ++++++++++------
+ lab/web/tokens.js                   |  3 +++
+ 6 files changed, 40 insertions(+), 12 deletions(-)
+
+commit 4aa3a7e32d6982baed981088592cdc524056b454
+Author: Boxy <bboxy450@gmail.com>
+Date:   Wed Oct 21 12:25:45 2026 -0700
+
+    lab: L4 showcase (auto theme, dwell focus, 15-seat scene, locate ripple); working rules
+
+ .kb/research/harness-touchpoints.md | 261 ++++++++++++++++++++++++++++++++++++
+ .kb/vision.md                       |   5 +
+ 2 files changed, 266 insertions(+)
