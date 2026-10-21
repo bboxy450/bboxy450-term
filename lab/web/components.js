@@ -317,7 +317,7 @@
     const foot = el('div', { class: 'foot' });
     function nameFor(seed) { return rollName(rng('roll' + seed)); }
     const matches = () => items0.filter(it => it.label.toLowerCase().startsWith(q.toLowerCase()) || it.id.startsWith(q.toLowerCase()));
-    const pick = (it, ev) => { if (it && opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey) }); };
+    const pick = (it, ev) => { if (it && opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }); };
     function draw() {
       list.innerHTML = '';
       const items = matches();
@@ -333,7 +333,7 @@
       });
       const nm = nameFor(seed);
       foot.innerHTML = '';
-      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }), title: 'seat colour' }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); }, title: 'reroll name' }, '↻'), el('span', { class: 'pill' }, el('span', {}, 'New tab'), el('kbd', {}, '↵'), el('span', { class: 'sep' }), el('span', {}, 'Split right'), el('kbd', {}, '⌘↵'), el('span', { class: 'sep' }), el('span', {}, 'Split down'), el('kbd', {}, '⌘⇧↵'), el('span', { class: 'sep' }), el('span', {}, 'Reroll'), el('kbd', {}, '⌘R')));
+      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }), title: 'seat colour' }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); }, title: 'reroll name' }, '↻'), (() => { const pill = el('span', { class: 'pill' }); const acts = opts.actions || [['New tab', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']]; acts.forEach(([l, kb], i) => { if (i) pill.append(el('span', { class: 'sep' })); pill.append(el('span', {}, l), el('kbd', {}, kb)); }); return pill; })());
     }
     input.addEventListener('input', () => { q = input.value; sel = 0; draw(); });
     input.addEventListener('keydown', e => {

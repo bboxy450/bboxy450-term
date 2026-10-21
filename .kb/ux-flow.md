@@ -111,3 +111,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Splits: from the launcher by key, or by dragging onto a pane
 **Rule:** in the launcher, ↵ opens the seat as a new tab, ⌘↵ splits to the right of the focused pane, ⌘⇧↵ splits below it; the action pill names all three. By drag: pull a seat row from the sidebar or a pane by its strip onto another pane; the hovered half (left, right, top, bottom) tints, dropping splits there at 50/50. A dragged seat is moved: its old split collapses. The new or moved seat gets focus and the locate signal. **Why:** the operator asked where splits live; keyboard in the launcher and drag on the panes are the two natural places. **Where:** `placeSeat()` and the drag code in `showcase.js`, pill in `picker()`.
+
+### ⌘D and ⌘⇧D split like iTerm, then ask which harness
+**Rule:** ⌘D opens the launcher preset to "split right of <focused seat>", ⌘⇧D to "split below"; the placeholder names the placement, ↵ launches the chosen harness there, ⌥↵ opens a tab instead, and the pill shows the preset actions. ⌘T remains "new tab", with ⌘↵ / ⌘⇧↵ as the split variants. **Why:** iTerm muscle memory. **Where:** `openSpotlight(sp, preset)` in `showcase.js`, `actions` in `picker()`.

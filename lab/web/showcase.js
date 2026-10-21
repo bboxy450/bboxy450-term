@@ -117,22 +117,31 @@
   // Spotlight launcher (operator): '+ new seat' or ⌘T opens a centred search over the window; Enter launches into the
   // swarm as a new tab and focuses it. The list is data (C.LAUNCH): harnesses and zsh now, browser / vnc / ssh later.
   let spot = null;
-  function openSpotlight(sp) {
+  // preset: 'right' (⌘D) or 'bottom' (⌘⇧D) presets the placement, iTerm style; the launcher then asks which harness
+  function openSpotlight(sp, preset) {
     closeSpotlight();
     sp = sp || space();
     const back = el('div', { class: 'spot-back', onclick: e => { if (e.target === back) closeSpotlight(); } });
-    const anchor = focused;   // ⌘↵ splits right of the focused pane, ⌘⇧↵ below it, ↵ opens a new tab
-    const pk = C.picker({ placeholder: 'launch in ' + sp.name + ' · type to search', onClose: closeSpotlight, onPick: (it, name, mods) => {
+    const anchor = focused, anchorSeat = seats.find(x => x.key === anchor);   // ⌘↵ splits right of the focused pane, ⌘⇧↵ below it, ↵ opens a new tab
+    const ph = preset && anchorSeat ? 'split ' + (preset === 'right' ? 'right of ' : 'below ') + anchorSeat.name + ' · pick a harness' : 'launch in ' + sp.name + ' · type to search';
+    const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : undefined;
+    const pk = C.picker({ placeholder: ph, actions, onClose: closeSpotlight, onPick: (it, name, mods) => {
       const seat = { key: 'n' + Date.now().toString(36), name: it.harness === 'zsh' ? 'zsh' : name, harness: it.harness, role: C.DEFAULT_ROLE[it.harness], title: it.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15 };
       Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
       seats.push(seat); startReplay(seat, seats.length - 1);
       closeSpotlight();
-      if (mods && mods.meta && anchor) placeSeat(seat, mods.shift ? 'bottom' : 'right', anchor); else placeSeat(seat, 'tab');
+      if (preset && anchor && !(mods && mods.alt)) placeSeat(seat, preset, anchor);
+      else if (mods && mods.meta && anchor) placeSeat(seat, mods.shift ? 'bottom' : 'right', anchor); else placeSeat(seat, 'tab');
     } });
     back.append(pk); document.body.append(back); spot = back; pk.focus();
   }
   function closeSpotlight() { if (spot) { spot.remove(); spot = null; } }
-  addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 't') { e.preventDefault(); openSpotlight(); } else if (e.key === 'Escape' && spot) closeSpotlight(); });
+  addEventListener('keydown', e => {
+    const mod = e.metaKey || e.ctrlKey, kk = e.key.toLowerCase();
+    if (mod && kk === 't') { e.preventDefault(); openSpotlight(); }
+    else if (mod && kk === 'd') { e.preventDefault(); openSpotlight(null, e.shiftKey ? 'bottom' : 'right'); }   // iTerm: ⌘D side by side, ⌘⇧D stacked
+    else if (e.key === 'Escape' && spot) closeSpotlight();
+  });
   // Close is reversible (operator): the seat enters a 60 s grace state. The pane leaves the split, the row becomes a
   // closed strip with undo, ⌘Z restores it in place with its split position. After the window it is terminated.
   const GRACE_MS = 60000;

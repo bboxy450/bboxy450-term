@@ -91,7 +91,7 @@ The red dot closes the seat into a 60 s grace state: the pane leaves the split (
 
 ### 5.5 Splits
 Two ways, same result.
-- **Launcher keys**: ↵ new tab in the swarm; ⌘↵ split to the right of the focused pane; ⌘⇧↵ split below it. The footer pill names them.
+- **Launcher keys**: ⌘T opens the launcher for a new tab; inside it ↵ new tab, ⌘↵ split right of the focused pane, ⌘⇧↵ split below. ⌘D and ⌘⇧D (iTerm) open the launcher already preset to split right or below of the focused seat: the placeholder names the placement, ↵ launches there, ⌥↵ makes a tab instead. The footer pill names the active actions.
 - **Drag and drop**: drag a seat row from the sidebar, or a pane by its strip, onto another pane. The hovered half of the target (left, right, top, bottom) tints with the selection tint; dropping splits there at 50/50. A dragged seat moves: its old split collapses into the sibling. Phantoms cannot be dragged.
 Either way the placed seat gets focus and the locate signal. Ratios are then adjusted by dragging the gutter (section 2).
 
