@@ -219,6 +219,10 @@
         const open = st.openTabs.has(tkey) || (tab.seats || leaves(tab.tree)).length === 1 && st.autoOpenSingles;
         body.append(tabRow(tab, { expanded: open, focusedKey: st.focusedKey, onToggle: () => { st.openTabs.has(tkey) ? st.openTabs.delete(tkey) : st.openTabs.add(tkey); st.rerender(); } }));
       }
+      if (space.participants && space.participants.length) {
+        body.append(el('div', { class: 'tab-row participants' }, el('span', { class: 'caret' }, '·'), el('span', { class: 'tname' }, 'participants'), el('span', { class: 'right' }, el('span', { class: 'kbd' }, space.participants.length))));
+        for (const ph of space.participants) { const row = seatRow(ph, {}); row.classList.add('phantom'); body.append(row); }
+      }
       pill.append(body);
     }
     return pill;
@@ -303,7 +307,7 @@
     const role = m.role || 'unsigned';
     const row = el('div', { class: 'msg ' + role + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: '--role:var(--role-' + role + ')' });
     const head = el('div', { class: 'head' }, el('span', { class: 'who' }, m.from), el('span', { class: 'role' }, '<' + role.toUpperCase() + '>'));
-    if (role === 'oracle') head.append(el('span', { class: 'p0' }, 'p0'));
+    if (role === 'oracle' && !m.foreign) head.append(el('span', { class: 'p0' }, 'p0'));  // a foreign Oracle ranks as a worker here
     head.append(el('span', { class: 'time' }, m.time || ''));
     const body = el('div', { class: 'body' }, head);
     if (m.replyTo) body.append(el('div', { class: 'reply' }, '↩ ' + m.replyTo));

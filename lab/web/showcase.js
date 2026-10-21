@@ -65,6 +65,17 @@
       ] },
     ] };
   }
+  // Phantoms (ux-pick 'Phantom seats'): other people's harnesses in the cohort's channels. Grey, present, no pane.
+  const GREY = { dark: '#8A90B0', light: '#6B7190' };
+  const phantoms = [
+    { key: 'ph0', name: 'Kestrel Nine', harness: 'claude', role: 'oracle', title: '', state: 'active', phantom: true, owner: 'mara' },
+    { key: 'ph1', name: 'Orrin Slate', harness: 'codex', role: 'executor', title: '', state: 'idle', phantom: true, owner: 'mara' },
+    { key: 'ph2', name: 'Ione Marsh', harness: 'pi', role: 'executor', title: '', state: 'waiting', phantom: true, owner: 'dov' },
+  ];
+  for (const ph of phantoms) Object.defineProperty(ph, 'color', { get() { return GREY[theme()]; }, enumerable: true });
+  model.spaces[0].participants = phantoms;
+  const everyone = [...seats, ...phantoms];
+  const stream = []; let streamFilter = null;
   const stageKeys = C.leaves(stageTree).map(s => s.key);
   let focused = stageKeys[0];
 
@@ -100,10 +111,14 @@
     const stage = el('div', { class: 'stage' }, (() => { const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
     main.append(sb, stage);
     main.querySelectorAll('[data-key]').forEach(n => {
+      const ph = phantoms.find(x => x.key === n.dataset.key);
+      if (ph) { n.addEventListener('click', () => { streamFilter = streamFilter === ph.key ? null : ph.key; drawStream(); }); return; }  // no focus, no ripple
       n.addEventListener('click', () => { const s = seats.find(x => x.key === n.dataset.key); s.unread = 0; setFocus(n.dataset.key, { locate: true }); });
       n.addEventListener('pointerenter', () => armHover(n.dataset.key));
       n.addEventListener('pointerleave', disarmHover);
     });
+    sb.insertBefore(el('div', { class: 'stream-dock', id: 'stream' }), sb.querySelector('.sb-foot'));
+    drawStream();
     setFocus(focused, { force: true });
     for (const seat of seats) paintTerm(seat);
     measure();
@@ -141,7 +156,7 @@
   function measure() {
     rects = [];
     main.querySelectorAll('[data-key]').forEach(n => {
-      const s = seats.find(x => x.key === n.dataset.key); if (!s) return;
+      const s = everyone.find(x => x.key === n.dataset.key); if (!s) return;
       const b = n.getBoundingClientRect();
       rects.push({ key: s.key, seat: s, pane: n.classList.contains('pane'), x: b.left, y: b.top, w: b.width, h: b.height });
     });
@@ -150,7 +165,7 @@
   // ---------- WebGL2 ----------
   const cv = document.getElementById('glow');
   const gl = cv.getContext('webgl2', { antialias: false, alpha: true, premultipliedAlpha: true });
-  if (!gl) { document.getElementById('hint').textContent = 'WebGL2 unavailable'; render(); return; }
+  if (!gl) { render(); return; }
   const MAXR = 40, MAXRIP = 6;
   const vs = `#version 300 es
     const vec2 q[3] = vec2[3](vec2(-1.,-1.), vec2(3.,-1.), vec2(-1.,3.));
@@ -252,7 +267,8 @@
       if (n >= MAXR) break;
       const s = R.seat, rgb = C.hslToRgb(s.color);
       rectBuf.set([R.x * dpr, R.y * dpr, R.w * dpr, R.h * dpr], n * 4);
-      colBuf.set([rgb[0], rgb[1], rgb[2], s.key === focused ? 1 : 0], n * 4);
+      const pulse = s.pulseT ? Math.max(0, 1 - (now - s.pulseT) / 700) : 0;  // phantom message: one pulse, 700 ms, through the brightness channel
+      colBuf.set([rgb[0], rgb[1], rgb[2], s.key === focused ? 1 : pulse], n * 4);
       const rad = (R.pane ? G.pane_radius : G.row_radius) * dpr;
       const parts = R.pane ? (s.state === 'active' ? G.particles_active : G.particles_idle * 2) : (s.state === 'active' ? 12 : 4);
       parBuf.set([STATE_IDX[s.state], rad, C.hash32(s.key) % 1000, parts], n * 4);
@@ -269,7 +285,6 @@
     frames++; if (now - fpsT > 1000) { fps = frames; window.__fps = { fps, avgMs: +(ftAcc / frames).toFixed(2), maxMs: +ftMax.toFixed(1), rects: rects.length, scene: SCENE }; frames = 0; ftAcc = 0; ftMax = 0; fpsT = now; }
     requestAnimationFrame(frame);
   }
-  function hint() { document.getElementById('hint').innerHTML = '<b>1</b> idle · <b>2</b> active / resume · <b>3</b> waiting · <b>4</b> errored (focused seat) · <b>M</b> message arrives · <b>Tab</b> focus next · click row or pane = locate · gutter ' + GUTTER + ' <a href="?scene=' + SCENE + '&gutter=2">2</a> <a href="?scene=' + SCENE + '&gutter=4">4</a> · <a href="?scene=' + (SCENE === 15 ? 3 : 15) + '&gutter=' + GUTTER + '">scene ' + (SCENE === 15 ? 3 : 15) + '</a>'; }
 
   // ---------- cause and effect: no timers. Keys change one thing at a time. ----------
   const ROLE_RANK = { oracle: 0, executor: 1, creativity: 2, unsigned: 3 };
@@ -288,7 +303,25 @@
     }
     else if (e.key === 'Tab') { e.preventDefault(); const i = stageKeys.indexOf(focused); setFocus(stageKeys[(i + (e.shiftKey ? -1 : 1) + stageKeys.length) % stageKeys.length], { locate: true }); }
   });
-  hint();
+
+  // ---------- stream dock: messages land here; clicking a phantom filters to that participant ----------
+  function drawStream() {
+    const dock = document.getElementById('stream'); if (!dock) return;
+    dock.innerHTML = '';
+    const items = stream.filter(m => !streamFilter || m.fromKey === streamFilter).slice(-4);
+    if (streamFilter) { const ph = phantoms.find(p => p.key === streamFilter); dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
+    for (const m of items) dock.append(C.messageRow(m));
+    dock.style.display = stream.length ? '' : 'none';
+  }
+  const PHRASES = ['relay bench green on eu-2, 41 ms p50', 'claiming the glyphon atlas question', 'B spec amended, envelope has presence now', 'who owns the ssh bootstrap doc?', 'pushed fixtures, four files'];
+  let phN = 0;
+  addEventListener('keydown', e => {
+    if (e.key !== 'p' && e.key !== 'P') return;
+    const ph = phantoms[phN % phantoms.length], text = PHRASES[phN % PHRASES.length]; phN++;
+    ph.pulseT = performance.now();                                        // row pulses once
+    stream.push({ from: ph.name, fromKey: ph.key, role: ph.role, foreign: true, text, time: new Date().toTimeString().slice(0, 5), unread: true });
+    drawStream();
+  });
 
   // ---------- live log replay ----------
   // Each seat replays one fixture line by line: bursts of 1-6 lines at 30-120 ms, pauses of 0.4-2 s between bursts,
