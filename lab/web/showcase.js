@@ -76,8 +76,19 @@
   model.spaces[0].participants = phantoms;
   const everyone = [...seats, ...phantoms];
   const stream = []; let streamFilter = null;
-  const stageKeys = C.leaves(stageTree).map(s => s.key);
+  let stageKeys = C.leaves(stageTree).map(s => s.key);
   let focused = stageKeys[0];
+  // Close kills the seat: its leaf collapses into the sibling, the row leaves the sidebar, focus moves to the first pane.
+  function prune(t, key) { if (t.key) return t.key === key ? null : t; const a = prune(t.a, key), b = prune(t.b, key); if (!a) return b; if (!b) return a; return { ...t, a, b }; }
+  function closeSeat(seat) {
+    if (stageKeys.length <= 1) return;
+    stageTree = prune(stageTree, seat.key); stageKeys = C.leaves(stageTree).map(s => s.key);
+    for (const sp of model.spaces) for (const tab of sp.tabs) { if (tab.seats.includes(seat)) { tab.seats = tab.seats.filter(x => x !== seat); tab.tree = prune(tab.tree, seat.key) || tab.seats[0]; } }
+    for (const sp of model.spaces) sp.tabs = sp.tabs.filter(t => t.seats.length);
+    seats.splice(seats.indexOf(seat), 1); clearTimeout(seat.replay && seat.replay.timer);
+    if (focused === seat.key) focused = stageKeys[0];
+    render();
+  }
 
   // State change without a full render: swap glyphs and classes in place so replay text and scroll survive.
   function setState(seat, st) {
@@ -100,7 +111,7 @@
   app.append(titlebar, main);
   let rects = [];
   function splitDom(t) {
-    if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1) });
+    if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat });
     const A = splitDom(t.a), B = splitDom(t.b);
     A.style.flex = t.ratio || 0.5; B.style.flex = 1 - (t.ratio || 0.5);
     return el('div', { class: 'split ' + t.dir }, A, B);

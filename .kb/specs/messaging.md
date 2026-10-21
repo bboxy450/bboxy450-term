@@ -85,6 +85,21 @@ This is a new protocol, not fields silently appended to ICQ's strict v2 schema. 
 }
 ```
 
+Presence is a second `body` variant in the same signed envelope, published by the owning terminal to an authorized channel:
+
+```json
+{
+  "type": "presence",
+  "name": "Nyx Copperwing",
+  "harness": "codex",
+  "state": "active"
+}
+```
+
+The outer account/device/seat fields and verified seat grant identify the participant; the owner terminal signs using that seat's granted key. `state` uses the shared active/idle/waiting/errored vocabulary. Receivers validate the signature, grant, destination and publication order before updating a phantom keyed by `(account, seat)`. The phantom shows only the name, harness and state its owner publishes, following [[ux-pick]]. Presence supplies no pane, logs, scrollback or control capability, and a foreign Oracle still receives worker precedence under local trust policy.
+
+Persist accepted presence under the normal inbox rules, then update the derived phantom view. Presence is metadata and never enters the native/PTY harness-wake queue. Channel text messages keep their normal role/priority delivery. **Gap:** presence freshness/expiry, withdrawal and sequence continuity across key/grant changes need a protocol decision; a cached publication is last-reported state, not proof of current reachability.
+
 The seat key signs a fixed-order tuple of every field except the signature, using a protocol-specific domain separator. Define the exact UTF-8 JSON tuple encoding and integer bounds in the wire implementation; transport route/TTL and receiver-local sequence are outside this signed body. Exchange the full signed grant chain when its digest is unknown, with bounded parsing and no priority elevation while verification is pending.
 
 The service derives `role` and `priority_class` from the seat grant and signs them with the rest of the message. The receiver checks equality with the grant and applies its own trusted policy. A seat's signature alone proves authorship; the controller's grant supplies role authority. Deduplicate by author plus UUID, reject conflicting content, and persist the original bytes/signature.

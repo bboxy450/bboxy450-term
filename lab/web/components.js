@@ -238,7 +238,7 @@
     st.rerender = () => { scroll.innerHTML = ''; for (const s of model.spaces) scroll.append(spacePill(s, st)); };
     st.rerender();
     sb.append(
-      el('div', { class: 'sb-top' }, el('span', { class: 'tl' }, el('i'), el('i'), el('i')), harnessIcon('sidebarfox'), el('span', {}, 'bboxy450-term'), el('span', { style: 'margin-left:auto' }, harnessIcon('gear'))),
+      el('div', { class: 'sb-top' }, harnessIcon('sidebarfox'), el('span', {}, 'bboxy450-term'), el('span', { style: 'margin-left:auto' }, harnessIcon('gear'))),
       scroll,
       el('div', { class: 'sb-foot' }, el('span', {}, seats.length + ' seats · ' + waiting + ' waiting'), el('span', { class: 'spacer' }), el('button', {}, '⌘T +')),
     );
@@ -256,7 +256,7 @@
   }
   function titleStrip(seat, opts) {
     opts = opts || {};
-    const s = el('div', { class: 'strip', style: 'background:' + seatColor(seat) }, harnessIcon(seat.harness), el('span', { class: 'name' }, seat.name));
+    const s = el('div', { class: 'strip', style: 'background:' + seatColor(seat) }, el('span', { class: 'close', title: 'close seat', onclick: e => { e.stopPropagation(); if (opts.onClose) opts.onClose(seat); } }), harnessIcon(seat.harness), el('span', { class: 'name' }, seat.name));
     if (seat.role) s.append(roleMark(seat.role));
     s.append(el('span', { class: 'title' }, seat.title || ''));
     if (opts.shortcut) s.append(kbd(opts.shortcut));
