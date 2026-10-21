@@ -4,12 +4,12 @@ Owner: Vesper Greywind <ORACLE>. 2026-10-21. DECIDED by the operator: native sup
 
 ## Shape
 
-A work item is one Markdown file with YAML frontmatter in the repository the swarm works on, under **`.bboxy/`** (operator decision 2026-10-21; this repo's `.kb/` migrates to `.bboxy/` as the dogfood). `.bboxy/` holds all of a repo's tasks and knowledge: epics, specs, tasks, research, runs. Knowledge files are the same schema with `type: note`. Six types, one schema (operator, 2026-10-21): **epic**, **spec**, **task**, **bug**, **note**, **invariant**. Git is the database; the terminal is a reader, writer and watcher of these files, nothing more.
+A work item is one Markdown file with YAML frontmatter in the repository the swarm works on, under **`.bboxy/`** (operator decision 2026-10-21; this repo's `.kb/` migrates to `.bboxy/` as the dogfood). `.bboxy/` holds all of a repo's tasks and knowledge: epics, specs, tasks, research, runs. Knowledge files are the same schema with `type: note`. Seven types, one schema (operator, 2026-10-21): **epic**, **spec**, **task**, **bug**, **note**, **invariant**, **artifact**. Every item is a **markdown** (the operator's word; "slug" is retired). Git is the database; the terminal is a reader, writer and watcher of these files, nothing more.
 
 ```yaml
 ---
 id: 01JAX3K9Q7M2N8P4R6S1T0V5W9      # ULID, assigned on creation, never changes
-type: epic | spec | task | bug | note | invariant
+type: epic | spec | task | bug | note | invariant | artifact
 title: fork alacritty_terminal + vte into bbt-core
 status: open | claimed | running | reported | accepted | rejected | blocked | done
 parent: 01JAX…                       # single parent, optional
@@ -53,7 +53,7 @@ Wikilinks are the link primitive everywhere: frontmatter, body, messages. Syntax
 | `[[slug\|rel]]` | typed link: `spec`, `evidence`, `parent`, `child`, `depends`, `blocks`, `see` |
 | `[[slug\|rel\|w]]` | typed and weighted, `w` a positive number; higher = stronger |
 
-`slug` resolves to an item id or filename slug in `.bboxy/`, or to a seat (`seat:nyx-copperwing`), a swarm, or a URL in angle brackets. The `links:` frontmatter list is the same thing in YAML for tools that prefer it; the terminal merges both. Weight defaults: `parent`/`child` 3, `depends`/`blocks` 2, everything else 1, unless written.
+`slug` (the link target text; the item itself is a **markdown**) resolves to a markdown id or filename slug in `.bboxy/`, to an artifact id, or to a seat (`seat:nyx-copperwing`), a swarm, or a URL in angle brackets. The `links:` frontmatter list is the same thing in YAML for tools that prefer it; the terminal merges both. Weight defaults: `parent`/`child` 3, `depends`/`blocks` 2, everything else 1, unless written.
 
 ## The graphs the terminal builds
 
@@ -61,7 +61,8 @@ All from the same index; none hand-maintained once the index exists.
 
 | Graph | Nodes | Edges and weights | Used for |
 |---|---|---|---|
-| **slug graph** | every `.bboxy/` item and note | every wikilink, weighted as above | navigation, "related", search ranking, the launcher's Go to |
+| **markdown graph** (was "slug graph"; operator rename 2026-10-21) | every markdown in `.bboxy/` | every wikilink, weighted as above | navigation, "related", search ranking, the launcher's Go to |
+| **artifact graph** | artifacts: markdowns, PRs, binaries, files, images, releases | `produced_by` seat, `for` task, `derived_from` artifact; weights by link type | "who is responsible for this", release manifests, the provenance graph's leaves |
 | **task graph** | epics, specs, tasks | `parent`/`child`, `depends`/`blocks` | ordering, what is blocked, what is claimable |
 | **execution graph** | seats × tasks | `assignee`, `delegated_by`, status, live seat state | the sidebar's task rows, the Oracle's view of who is on what, this repo's `graph.md` generated |
 | **messaging graph** | seats, swarms, channels | who messaged whom; weight = count decayed by recency; role class on the edge | stream filters, "who is talking to whom", starvation and silence detection |
@@ -75,6 +76,12 @@ All from the same index; none hand-maintained once the index exists.
 | Track | Seat events move `status` (`running` on first activity, `reported` when the seat's report lands on the stream with the task id); the Oracle or operator sets `accepted`/`rejected` via `task_accept`. Every transition rewrites the frontmatter only. |
 | Show | A task is a row under its seat in the sidebar with its status glyph; an epic is a collapsible group in the stream dock with its specs and tasks; `blocked` shows what it waits on. |
 | Graph | `.kb/graph.md`-style view generated from frontmatter, not hand-maintained once this exists. |
+
+## Artifacts (operator, 2026-10-21)
+
+Harnesses produce **artifacts**. A markdown in `.bboxy/` is an artifact. A PR is an artifact. A binary, a release, a file, an image, a rendered PNG from the lab are artifacts. An artifact has an id (ULID), a `kind` (markdown, pr, binary, file, image, release, other), a `ref` (path, URL, digest, PR number), a `digest` where content-addressable, and a **responsible seat**.
+
+A harness claims responsibility over MCP: `artifact_claim{op_id, kind, ref, digest?, task?}` = "this is my artifact, I am responsible for it". The mux records the artifact in `.bboxy/artifacts/<id>.md` (frontmatter `type: artifact`, `kind`, `ref`, `digest`, `produced_by: seat:<id>`, `for: [[task]]`, `derived_from: [[…]]`) and links it from the task. `artifact_release{op_id, artifact_id, to: seat}` hands responsibility over; `artifact_list` and `artifact_get` read. Responsibility is one seat at a time, like tasks. The seat roster plus the artifact record is the provenance leaf: who, under which key, for which task, from what.
 
 ## Provenance (operator, 2026-10-21: "provenance in that system is very important")
 

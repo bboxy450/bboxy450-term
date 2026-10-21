@@ -246,3 +246,14 @@ Scope: this file plus the specifically requested swarm-mute amendment in [[messa
 | `task_report` | `op_id, task_path, summary, commit?, verify_result?` | The responsible seat's report: `status: reported`, `task.report` to `delegated_by`, sidebar notice on the delegating seat. | E C for own task; O |
 
 Catalogue total: 32 tools. Workers now have seven: the four from before plus `task_status`, `task_list`, `task_report` on their own tasks.
+
+## Artifact tools (operator decision 2026-10-21, see [[work-items]] Artifacts)
+
+| Tool | Parameters | Mechanism | Roles |
+|---|---|---|---|
+| `artifact_claim` | `op_id, kind, ref, digest?, task?` | Write `.bboxy/artifacts/<ulid>.md` with `produced_by` = caller seat, link from the task; the caller becomes responsible. | O E C |
+| `artifact_release` | `op_id, artifact_id, to` | Hand responsibility to another seat; both seats get a notice. | O; E C for own artifacts |
+| `artifact_list` | `swarm_id?, kind?, produced_by?, task?` | Index query. | O E C |
+| `artifact_get` | `artifact_id` | Record plus provenance chain. | O E C |
+
+Catalogue total: 36 tools. Workers: eleven.
