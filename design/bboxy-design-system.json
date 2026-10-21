@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 9,
+  "version": 10,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -213,25 +213,31 @@
     },
     "held_count": {
       "means": "swarm traffic held while muted",
-      "drawing": "muted row shows a small \"held N\" badge after the muted mark; unmute clears it",
+      "drawing": "muted row shows a small \"held N\" badge; on unmute only still-authorised eligible items release, the rest stay with their reason and original ids, so the badge may not reach zero at once",
       "status": "drawn, not built"
     },
     "restarted_notice": {
       "means": "the seat process generation changed",
       "source": "mux-daemon state streams",
       "drawing": "one-shot \"restarted\" chip on the row for 4 s, then a stream line",
-      "status": "drawn, not built"
+      "status": "decided (one-shot notice), drawn, not built"
     },
     "pending_row": {
       "means": "the Oracle is spawning this seat",
       "source": "MCP mutation status accepted | applied | rejected | unknown",
-      "drawing": "a dashed-outline row with a rolled name and a spinner glyph until applied; rejected shows the reason in a closed-strip-like row; unknown stays dashed",
+      "drawing": "a dashed-outline row with a rolled name and a spinner glyph until applied; rejected shows the reason in a closed-strip-like row; partial and unknown stay dashed with the outcome spelled; never turned into a failure, never an automatic second paste or Enter",
       "status": "drawn, not built"
     },
     "interrupt_signal": {
-      "means": "the Oracle or operator stopped the seat",
-      "source": "seat_interrupt",
-      "drawing": "a brief red bar sweep across the strip, then the state glyph; stream line \"interrupted by …\"",
+      "means": "an interrupt was sent",
+      "source": "seat_interrupt → adapter Now/steer; permission belongs to the caller",
+      "drawing": "one-shot \"interrupt sent\" notice on the row and strip; not a promise that the seat stopped; the operator may interrupt any seat they are allowed to act on",
+      "status": "decided, drawn, not built"
+    },
+    "authority": {
+      "means": "this seat's signing authority is not good",
+      "source": "identity.md: expired | revoked | forked",
+      "drawing": "a small struck-key mark after the name and a muted strip subtitle naming the cause; controls that need the seat's signature are disabled with the same reason; independent of the state glyph",
       "status": "drawn, not built"
     }
   },
@@ -332,7 +338,7 @@
     "gap_marker": {
       "purpose": "scrollback was evicted here",
       "source": "ring eviction",
-      "anatomy": "a hairline across the pane body with a centred caption \"… N lines not retained\"",
+      "anatomy": "a hairline across the pane body with a centred caption built from the supplied retained range (\"retained from <range>\" or \"earlier output unavailable\"); never an invented line count",
       "status": "drawn, not built"
     },
     "stop_action": {
@@ -345,7 +351,7 @@
       "purpose": "external clients on the seat socket",
       "source": "seats are sockets",
       "anatomy": "a tiny plug glyph with a count at the row's right when > 0",
-      "status": "drawn, not built"
+      "status": "decided (broker telemetry, counts only, no identities), drawn, not built"
     },
     "tick_ladder": {
       "purpose": "delivery evidence on a message",
@@ -431,9 +437,10 @@
       "purpose": "a seat in grace after close",
       "anatomy": "× · grey tile · struck name · countdown · undo ⌘Z",
       "rules": [
-        "60 s",
-        "undo or ⌘Z restores in place with its split position",
-        "no confirm dialog"
+        "60 s grace",
+        "undo or ⌘Z restores in place with its split position; undo may come back expired, process-replaced or layout-conflict and says so",
+        "no confirm dialog",
+        "after the window only the live pane is gone: retained history survives; archive / resume UX is an open pick"
       ]
     },
     "shadows_group": {
@@ -517,13 +524,14 @@
       "purpose": "per-seat actions that are not worth a strip icon",
       "anatomy": "right-click or ⌘-click a row: Assign role ▸, Permissions ▸, Copy socket path, Mute/Unmute, Interrupt, Close",
       "rules": [
-        "Oracle/operator only for role, permissions, interrupt"
+        "Oracle/operator only for role, permissions, interrupt",
+        "interrupt permission belongs to the acting caller, not the target"
       ],
       "status": "drawn, not built"
     },
     "launcher_cap_notice": {
       "purpose": "spawn cap per swarm reached",
-      "anatomy": "launch rows dim and the banner subtitle reads \"swarm at its cap (N) · close or raise the cap\"; Go to still works",
+      "anatomy": "launch rows dim and the banner subtitle names which cap (swarm, machine or account; reserved, starting and grace processes count); template launches may land partial or unknown and say so; reconnect never respawns",
       "status": "drawn, not built"
     },
     "purge_modal": {
@@ -539,15 +547,15 @@
       "purpose": "the Oracle's actions in the open",
       "source": "Oracle audit log as a stream kind",
       "anatomy": "centred lines in the swarm stream like presence notices: \"Oracle spawned X\", \"Oracle closed X\", \"Oracle interrupted X\"",
-      "status": "drawn, not built"
+      "status": "decided: a projection of the audit log scoped to swarm members; drawn, not built"
     },
     "first_run": {
-      "purpose": "identity v0.1",
-      "source": "identity spec",
-      "anatomy": "one screen in the launcher material: create the root key, show the 24-word paper recovery once with a typed confirmation, then the window",
+      "purpose": "identity bootstrap",
+      "source": "identity.md §bootstrap (I2 accepted)",
+      "anatomy": "one screen in the launcher material: the secret keys found in the GnuPG keyring (uid, full fingerprint, expiry, algorithm); select one; pin it by signing the bootstrap record through gpg-agent (pinentry, never our field); then the window. No key is created, no words are shown as a root; if no key exists the screen points at gpg to make one.",
       "deferred": [
-        "device enrollment",
-        "Google binding"
+        "device enrollment flows",
+        "Google linking"
       ],
       "status": "drawn, not built"
     },
@@ -582,9 +590,11 @@
         "the fingerprint is the full 40 hex grouped in 4s; a short id is never the identity",
         "messages and presence are signed by leaf keys; signed by Boxy means the chain verifies to Boxy's key",
         "Google is a link for cloud, drawn as a link, never a sign-in",
-        "per-seat commit signing is assumed, not decided: switchable, default off"
+        "per-seat commit signing is assumed, not decided: switchable, default off",
+        "devices and seats are certified leaf keys, not subkeys",
+        "expired, revoked or forked authority blocks controls and messages on its own axis, apart from seat state"
       ],
-      "account": "hero: portrait beside the key block; full fingerprint large in mono; ed25519 · signing chip; unlocked · gpg-agent cache; uid line; copy fingerprint; trust path root → device subkeys → seat keys; subkey cards per device with revoke; Signatures card; Link Google for cloud as a link; paper recovery with the identity-only caption",
+      "account": "hero: portrait beside the key block; full fingerprint large in mono; ed25519 · signing chip; unlocked · gpg-agent cache; uid line; copy fingerprint; trust path GPG primary → certified device key → certified seat key; primary held by gpg-agent · pinned from your keyring · never exported; device cards are certified leaf keys with revoke (local; peers learn on next contact); enroll card produces a signed request when the primary is elsewhere; Signatures card; Link Google for cloud as a link; paper recovery = the GPG paperkey fallback with the identity-only caption",
       "roles": "per account, assigned per seat in any swarm; built-in oracle / executor / creativity chipped built-in, editable, not deletable; + new role card: name, colour, mark, default system prompt, may-send-to, priority class (oracle | worker) editable on every card with the caption \"changing class re-issues this role's seat grants\"; receivers trust the signed class, never the name",
       "harnesses": "built-in tiles chipped built-in; + new harness tile: name, command, tile colour, icon, default role (built-in + custom), wake method (default pty), state source (default output cadence), hooks; user-added harnesses run through the generic PTY adapter and appear in the launcher",
       "appearance": "theme as window thumbnails, density as four row previews at real heights, gutter segmented 2 / 4, glow and subtitle toggles; all apply live"
@@ -723,5 +733,6 @@
   "milestones": {
     "ux-prototype-v1": "b7538ed · first operator review",
     "ux-prototype-v2": "implementation starting point: settings, launcher nesting, splits, remote, mute, grace close, glyph family, design system v9"
-  }
+  },
+  "mcp_note": "worker-class seats have four MCP tools (self_status, message_send, message_status, operation_get); seeing or steering other seats needs delegated oracle-class authority; the UI draws nothing that implies more"
 }

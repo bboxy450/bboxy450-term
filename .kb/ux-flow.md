@@ -177,3 +177,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### ux-prototype-v2 is the implementation starting point
 **Rule:** the operator declared the showcase ready; tagged `ux-prototype-v2`. The lab stays the parity target and keeps improving; implementation reads the spec, the design system and the lab. **Where:** git tag, design system `milestones`.
+
+### Identity corrections from I2, and twelve implications folded
+**Rule:** the trust path is GPG primary → certified device key → certified seat key (leaf certificates, not subkeys); first run selects and pins an existing primary and signs the bootstrap through gpg-agent, never creates a root or shows words as one; authority (expired, revoked, forked) is its own signal apart from state; held counts release only eligible items; pending, partial and unknown outcomes are spelled, never failures, never an automatic second paste; grace expiry removes only the live pane; caps cover swarm, machine and account; gap captions come from the supplied range; audit lines, listener counts and the interrupt / restarted notices are decided. **Where:** design system v10, spec §10, Account hero strings.

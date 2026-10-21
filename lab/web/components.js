@@ -428,7 +428,7 @@
     account: {
       name: 'Boxy', handle: 'bboxy450', email: 'bboxy450@gmail.com',
       fingerprint: '9B07E849480C68328CA20684844ECC0587DE7AB0', algo: 'ed25519', keyState: 'unlocked · gpg-agent cache',
-      trust: ['root key', 'device subkeys', 'seat keys'],
+      trust: ['GPG primary', 'certified device key', 'certified seat key'],
       devices: [['this Mac', 'root custodian', '2026-10-12'], ['rig', 'enrolled', '2026-10-19']],
       sign: { commits: true, messages: true, seatCommits: false },
     },
@@ -515,20 +515,20 @@
                 el('button', { class: 'chip cact', title: 'copy the full 40-hex fingerprint' }, icon('copy'), 'copy fingerprint')),
               el('div', { class: 'uid' }, a.name + ' (' + a.handle + ') <' + a.email + '>'),
               trust,
-              el('div', { class: 'held' }, el('span', {}, 'root key held by gpg-agent · never exported'), el('button', { class: 'chip cact' }, icon('open'), 'open in gpg')),
+              el('div', { class: 'held' }, el('span', {}, 'primary held by gpg-agent · pinned from your keyring · never exported'), el('button', { class: 'chip cact' }, icon('open'), 'open in gpg')),
               el('div', { class: 'acts' },
                 el('div', { class: 'act' }, btn('Show paper recovery', 'key', 'primary'), el('small', {}, 'restores identity only · seats, history and grants are not recovered')),
                 el('div', { class: 'act' }, btn('Link Google for cloud', 'link', 'link'), el('small', {}, 'binds a provider for cloud seats · the key stays the identity'))))),
-          group('Devices · subkeys', 'revoke is local · peers learn on next contact'),
+          group('Devices · certified leaf keys', 'revoke is local · peers learn on next contact'),
           el('div', { class: 'subkeys' },
             ...a.devices.map(([n, s, when]) => el('div', { class: 'sk' },
               el('div', { class: 'skh' }, el('b', {}, n), dot(true, s)),
-              el('div', { class: 'skm' }, 'subkey · ed25519'),
+              el('div', { class: 'skm' }, 'device cert · ed25519'),
               el('div', { class: 'sks' }, s + ' · ' + when),
               el('button', { class: 'revoke', title: 'revoked here · peers learn on next contact' }, 'revoke'))),
             el('button', { class: 'sk add' }, el('b', {}, '+ enroll a device'), el('span', {}, 'request if primary is elsewhere'), el('small', {}, 'primary not available here → produces a signed request'))),
         ], null, 'account'));
-        add('Account', note('Device enrollment is a one-use ticket approved from a custodian device. Google binds this account to a provider for cloud; the root key stays the identity. Both ship with cloud.'));
+        add('Account', note('Devices and seats are leaf keys certified by your GPG primary; enrollment is a one-use ticket signed where the primary lives. Expired, revoked or forked authority blocks controls on its own, apart from seat state. Google is a later link for cloud; the primary stays the identity.'));
         add('Account', card('Signatures', [
           row('Sign commits as this key', 'git author and committer · Boxy <' + a.email + '>', toggle(a.sign.commits, x => { a.sign.commits = x; draw(); }), a.sign.commits !== d.sign.commits, () => { a.sign.commits = d.sign.commits; draw(); }),
           row('Sign messages and presence with the seat\'s leaf key', 'chain verifies to this key', toggle(a.sign.messages, x => { a.sign.messages = x; draw(); }), a.sign.messages !== d.sign.messages, () => { a.sign.messages = d.sign.messages; draw(); }),
