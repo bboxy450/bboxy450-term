@@ -68,9 +68,9 @@ window.TOKENS = {
     }
   },
   "dim": {
-    "opacity": 0.55,
-    "saturate": 0.15,
-    "wash": 0.08
+    "opacity": 0.45,
+    "saturate": 0.1,
+    "wash": 0.28
   },
   "font": {
     "chrome": "ui-sans-serif, -apple-system, 'Inter', 'Segoe UI', system-ui, sans-serif",
