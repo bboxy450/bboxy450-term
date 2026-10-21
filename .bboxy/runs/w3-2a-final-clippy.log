@@ -1,0 +1,5 @@
+$ cargo clippy -p bbt-ui-model --all-targets --locked -- -D warnings
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.31s
+
+exit_status=0

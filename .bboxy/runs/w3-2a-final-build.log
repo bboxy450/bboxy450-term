@@ -1,0 +1,6 @@
+$ cargo build --workspace --locked
+   Compiling serde_json v1.0.154
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.32s
+
+exit_status=0

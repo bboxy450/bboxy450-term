@@ -247,7 +247,18 @@ fn expired_replaced_and_conflicting_undo_do_not_mutate_the_model() {
         EditError::LayoutConflict
     );
     assert_eq!(closed.window.sidebar.swarms[0].closed.len(), 1);
-    let retained = expire_close(&closed, seat(2), now + grace).unwrap();
+    let mut retained = expire_close(&closed, seat(2), now + grace).unwrap();
+    assert!(matches!(
+        retained.seats[&seat(2)].lifecycle,
+        Lifecycle::ClosedGrace { .. }
+    ));
+    assert_eq!(
+        undo(&retained, seat(2), now + grace).unwrap_err(),
+        EditError::Expired
+    );
+    retained
+        .apply(Update::SeatClosedByDaemon { seat: seat(2) })
+        .unwrap();
     assert_eq!(
         retained.seats[&seat(2)].lifecycle,
         Lifecycle::ClosedRetained
@@ -295,6 +306,16 @@ fn mux_updates_do_not_locate_or_steal_focus() {
             .tree
             .contains(seat(2))
     );
+}
+
+#[test]
+fn settings_closes_directly_without_harness_grace() {
+    let mut model = fixture();
+    model.seats.get_mut(&seat(4)).unwrap().settings = true;
+    let closed = close(&model, seat(4), Instant::now(), Duration::from_secs(60)).unwrap();
+    assert!(!closed.seats.contains_key(&seat(4)));
+    assert!(closed.window.sidebar.swarms[0].closed.is_empty());
+    assert_eq!(closed.window.sidebar.swarms[0].tabs.len(), 1);
 }
 
 #[test]

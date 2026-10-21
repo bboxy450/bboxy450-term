@@ -242,7 +242,8 @@ impl Model {
         Ok(())
     }
 
-    /// Authoritative mux data never emits Locate or changes navigation focus.
+    /// Mux data never emits Locate. Activity/messages preserve focus; removing
+    /// the focused seat chooses a surviving fallback without a locate signal.
     pub fn apply(&mut self, update: Update) -> Result<(), EditError> {
         match update {
             Update::SeatActivity {
@@ -394,6 +395,13 @@ pub fn close(
     if record.lifecycle != Lifecycle::Open {
         return Err(EditError::NotOpen);
     }
+    // Settings is a local view, not a live harness: the lab closes it directly.
+    if record.settings {
+        let mut next = model.clone();
+        detach_inner(&mut next, seat);
+        next.seats.remove(&seat);
+        return Ok(next);
+    }
     let (si, ti) = model.tab_of(seat).ok_or(EditError::MissingTab)?;
     let tab = &model.window.sidebar.swarms[si].tabs[ti];
     let until = now.checked_add(grace).ok_or(EditError::InvalidDeadline)?;
@@ -430,7 +438,15 @@ pub fn undo(model: &Model, seat: SeatId, now: Instant) -> Result<Model, EditErro
                 .position(|c| c.seat == seat)
                 .map(|ci| (si, ci))
         })
-        .ok_or(EditError::NotClosed)?;
+        .ok_or_else(|| {
+            if model.seats.get(&seat).is_some_and(
+                |s| matches!(s.lifecycle, Lifecycle::ClosedGrace { until } if now >= until),
+            ) {
+                EditError::Expired
+            } else {
+                EditError::NotClosed
+            }
+        })?;
     let closed = &model.window.sidebar.swarms[si].closed[ci];
     if now >= closed.until {
         return Err(EditError::Expired);
@@ -504,9 +520,7 @@ pub fn expire_close(model: &Model, seat: SeatId, now: Instant) -> Result<Model, 
         return Err(EditError::NotClosed);
     }
     closed.0.closed.remove(closed.1);
-    next.seats
-        .get_mut(&seat)
-        .ok_or(EditError::MissingSeat)?
-        .lifecycle = Lifecycle::ClosedRetained;
+    // Expiring undo cannot prove the child terminated. Wait for the mux's
+    // SeatClosedByDaemon update before claiming ClosedRetained.
     Ok(next)
 }

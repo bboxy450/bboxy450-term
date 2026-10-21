@@ -9,7 +9,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Agent | Role | Harness | Now | Blocked on |
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
-| Lumen Foxglove | Creativity | Claude Code | lab passes under the operator's direct review; design system v11 (task rows, epic groups built) | nothing |
+| Creativity (new session, key 22c0e081…, name pending; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | onboarding; then lab passes under the operator's direct review; design system v17 | nothing |
 | Nyx Copperwing | Executor | Codex | **W3.2a ui-model: tokens, model, layout** | nothing |
 | Rook Ashwhisker | Executor | Codex | idle | in-session authorization from the operator |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |

@@ -1,0 +1,268 @@
+$ cargo test --workspace --locked
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 108 tests
+test vendor::alacritty::grid::storage::tests::shrink_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate ... ok
+test vendor::alacritty::grid::storage::tests::rotate_wrap_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::indexing ... ok
+test vendor::alacritty::grid::storage::tests::shrink_then_grow ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines ... ok
+test vendor::alacritty::grid::storage::tests::grow_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::with_capacity ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning ... ok
+test vendor::alacritty::grid::storage::tests::grow_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::initialize ... ok
+test vendor::alacritty::grid::tests::accurate_size_hint ... ok
+test vendor::alacritty::grid::tests::grow_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::grow_reflow ... ok
+test vendor::alacritty::grid::tests::scroll_down ... ok
+test vendor::alacritty::grid::tests::shrink_reflow ... ok
+test vendor::alacritty::grid::tests::scroll_up ... ok
+test vendor::alacritty::grid::tests::grow_reflow_multiline ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line ... ok
+test vendor::alacritty::grid::storage::tests::indexing_above_inner_len - should panic ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_twice ... ok
+test vendor::alacritty::grid::tests::scroll_down_with_history ... ok
+test vendor::alacritty::index::tests::add ... ok
+test vendor::alacritty::index::tests::add_clamp ... ok
+test vendor::alacritty::index::tests::add_grid_clamp ... ok
+test vendor::alacritty::grid::tests::test_iter ... ok
+test vendor::alacritty::index::tests::add_none_clamp ... ok
+test vendor::alacritty::index::tests::location_ordering ... ok
+test vendor::alacritty::index::tests::add_wrap ... ok
+test vendor::alacritty::index::tests::sub ... ok
+test vendor::alacritty::index::tests::sub_clamp ... ok
+test vendor::alacritty::index::tests::sub_grid_clamp ... ok
+test vendor::alacritty::index::tests::sub_none_clamp ... ok
+test vendor::alacritty::index::tests::sub_wrap ... ok
+test vendor::alacritty::term::cell::tests::cell_size_is_below_cap ... ok
+test vendor::alacritty::term::cell::tests::line_length_works ... ok
+test vendor::alacritty::term::cell::tests::line_length_works_with_wrapline ... ok
+test vendor::alacritty::term::tests::damage_cursor_movements ... ok
+test vendor::alacritty::term::tests::input_line_drawing_character ... ok
+test vendor::alacritty::term::tests::parse_cargo_version ... ok
+test vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset ... ok
+test vendor::alacritty::term::tests::clearing_viewport_keeps_history_position ... ok
+test vendor::alacritty::term::tests::clear_saved_lines ... ok
+test vendor::vte::ansi::tests::contrast ... ok
+test vendor::vte::ansi::tests::parse_control_attribute ... ok
+test vendor::vte::ansi::tests::mixed_sync_escape ... ok
+test vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke ... ok
+test vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing ... ok
+test vendor::alacritty::term::tests::damage_public_usage ... ok
+test vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_invalid_number ... ok
+test vendor::alacritty::term::tests::window_title ... ok
+test vendor::vte::ansi::tests::parse_invalid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_number_too_large ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon ... ok
+test vendor::vte::ansi::tests::parse_osc4_set_color ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_color ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_csi ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_esc ... ok
+test vendor::vte::ansi::tests::parse_truecolor_attr ... ok
+test vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_valid_number ... ok
+test vendor::vte::ansi::tests::parse_valid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_zsh_startup ... ok
+test vendor::vte::ansi::tests::partial_sync_updates ... ok
+test vendor::vte::ansi::tests::sync_bsu_with_esu ... ok
+test vendor::vte::tests::c1s ... ok
+test vendor::vte::tests::csi_reset ... ok
+test vendor::vte::tests::csi_subparameters ... ok
+test vendor::vte::tests::dcs_reset ... ok
+test vendor::vte::tests::esc_reset ... ok
+test vendor::vte::tests::esc_reset_intermediates ... ok
+test vendor::vte::tests::execute_anywhere ... ok
+test vendor::vte::tests::intermediate_reset_on_dcs_exit ... ok
+test vendor::vte::tests::exceed_max_buffer_size ... ok
+test vendor::vte::tests::invalid_utf8 ... ok
+test vendor::vte::tests::osc_bell_terminated ... ok
+test vendor::vte::tests::osc_c0_st_terminated ... ok
+test vendor::vte::tests::osc_containing_string_terminator ... ok
+test vendor::vte::tests::params_buffer_filled_with_subparam ... ok
+test vendor::vte::tests::parse_csi_max_params ... ok
+test vendor::vte::tests::parse_csi_params_leading_semicolon ... ok
+test vendor::vte::tests::parse_csi_params_ignore_long_params ... ok
+test vendor::vte::tests::parse_csi_params_trailing_semicolon ... ok
+test vendor::vte::tests::parse_dcs ... ok
+test vendor::vte::tests::parse_dcs_max_params ... ok
+test vendor::vte::tests::parse_empty_osc ... ok
+test vendor::vte::tests::parse_long_csi_param ... ok
+test vendor::vte::tests::parse_osc ... ok
+test vendor::vte::tests::parse_osc_max_params ... ok
+test vendor::vte::tests::parse_osc_with_utf8_arguments ... ok
+test vendor::vte::tests::partial_invalid_utf8 ... ok
+test vendor::vte::tests::partial_invalid_utf8_split ... ok
+test vendor::vte::tests::partial_utf8 ... ok
+test vendor::vte::tests::partial_utf8_into_esc ... ok
+test vendor::vte::tests::partial_utf8_separating_utf8 ... ok
+test vendor::vte::tests::unicode ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos ... ok
+test vendor::alacritty::term::tests::full_damage ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos ... ok
+test vendor::alacritty::term::tests::grid_serde ... ok
+test vendor::vte::ansi::tests::sync_bursts_buffer ... ok
+
+test result: ok. 108 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 7 tests
+test osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st ... ok
+test viewport_only_drops_existing_history_even_while_the_primary_is_inactive ... ok
+test saved_cursor_and_inactive_primary_screen_survive_checkpoint ... ok
+test incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook ... ok
+test synchronized_output_buffer_and_preceding_character_survive_checkpoint ... ok
+test checkpoint_retains_an_incomplete_csi_and_utf8_codepoint ... ok
+test red_foreground_survives_4096_bytes_and_a_durable_checkpoint ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+
+running 2 tests
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+test validation_rejects_stale_and_oversized_input ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+test natural_exit_follows_all_final_output ... ok
+test fifty_seats_share_one_supervisor_poller ... ok
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+test two_seats_interleave_without_cross_talk ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+
+
+running 1 test
+test atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test asymmetric_glyph_is_upright ... ok
+test metal_quad_and_80_by_24_cell_backgrounds ... ok
+test coretext_ink_lands_only_in_expected_ascii_cells ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+
+running 1 test
+test generate_smoke_font_size_scale_theme_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.41s
+
+
+running 3 tests
+test tokens::tests::density_and_theme_are_views_of_the_constants ... ok
+test model::ids::tests::canonical_ulid_round_trip_and_overflow ... ok
+test tokens::tests::every_exported_web_token_matches_generated_fields ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+test phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame ... ok
+test compact_and_touch_use_their_token_heights_and_scroll_stays_local ... ok
+test row_box_allocates_fixed_measured_fill_and_weighted_flex ... ok
+test invalid_lengths_and_zero_flex_weights_stay_finite ... ok
+test sidebar_at_a_thousand_seats_only_allocates_the_visible_rows ... ok
+test text_shrinks_before_flex_and_column_boxes_share_the_policy ... ok
+test split_ratio_clamps_and_tiny_bounds_never_produce_negative_sizes ... ok
+test the_same_split_solver_supports_minigrid_and_banner_scales ... ok
+test sidebar_skips_closed_cards_outside_the_scroll_window ... ok
+test scene_fifteen_matches_the_tagged_lab_ratios_and_two_pixel_gutters ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 15 tests
+test duplicate_and_mismatched_tree_ids_are_rejected ... ok
+test new_tab_uses_caller_id_and_preserves_the_remaining_order ... ok
+test mux_updates_do_not_locate_or_steal_focus ... ok
+test expired_replaced_and_conflicting_undo_do_not_mutate_the_model ... ok
+test prune_parent_and_replacement_match_lab_tree_algebra ... ok
+test move_within_one_split_recomputes_the_target_after_pruning ... ok
+test open_harness_role_class_and_color_override_are_preserved ... ok
+test cross_swarm_move_is_an_explicit_error_per_grant_contract ... ok
+test reverse_undo_restores_multiple_closed_seats ... ok
+test close_and_undo_restore_the_exact_split_and_ratio ... ok
+test detach_removes_empty_tabs_without_touching_other_seats ... ok
+test settings_closes_directly_without_harness_grace ... ok
+test undo_keeps_a_sibling_subtrees_intervening_resize ... ok
+test placement_on_all_four_sides_is_half_and_collapses_the_source ... ok
+test undo_restores_a_removed_tab_at_its_original_index ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2384) ... ok
+test crates/bbt-core/src/lib.rs - (line 3) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.37s; merged doctests compilation took 0.17s
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling aho-corasick v1.1.5
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling regex-automata v0.4.18
+   Compiling regex v1.13.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.88s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-349ef96e6f702b63)
+     Running unittests src/main.rs (target/debug/deps/bboxybook-8bb0c1e72246a628)
+     Running unittests src/lib.rs (target/debug/deps/bbt_core-d420a0247f2c4456)
+     Running tests/checkpoint.rs (target/debug/deps/checkpoint-6049c8f947eed383)
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-279b5616119e359b)
+     Running tests/supervisor.rs (target/debug/deps/supervisor-300adf61a8b09186)
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-c144404a381ca994)
+     Running tests/smoke.rs (target/debug/deps/smoke-49a90d2c882e7759)
+     Running tests/variants.rs (target/debug/deps/variants-dd3620b44c4addcc)
+     Running unittests src/lib.rs (target/debug/deps/bbt_ui_model-14da2b49c3f67f7f)
+     Running tests/layout.rs (target/debug/deps/layout-e88fa5d1b7f5c014)
+     Running tests/model.rs (target/debug/deps/model-db28b148df3c31b5)
+   Doc-tests bbt_core
+   Doc-tests bbt_mux
+   Doc-tests bbt_render
+   Doc-tests bbt_ui_model
+
+exit_status=0

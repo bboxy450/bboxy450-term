@@ -1,0 +1,60 @@
+$ cargo test -p bbt-ui-model --locked -- --nocapture
+
+running 3 tests
+test tokens::tests::density_and_theme_are_views_of_the_constants ... ok
+test model::ids::tests::canonical_ulid_round_trip_and_overflow ... ok
+test tokens::tests::every_exported_web_token_matches_generated_fields ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 10 tests
+test phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame ... ok
+test invalid_lengths_and_zero_flex_weights_stay_finite ... ok
+test compact_and_touch_use_their_token_heights_and_scroll_stays_local ... ok
+test split_ratio_clamps_and_tiny_bounds_never_produce_negative_sizes ... ok
+test the_same_split_solver_supports_minigrid_and_banner_scales ... ok
+test text_shrinks_before_flex_and_column_boxes_share_the_policy ... ok
+test row_box_allocates_fixed_measured_fill_and_weighted_flex ... ok
+test sidebar_at_a_thousand_seats_only_allocates_the_visible_rows ... ok
+test sidebar_skips_closed_cards_outside_the_scroll_window ... ok
+test scene_fifteen_matches_the_tagged_lab_ratios_and_two_pixel_gutters ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 15 tests
+test open_harness_role_class_and_color_override_are_preserved ... ok
+test mux_updates_do_not_locate_or_steal_focus ... ok
+test detach_removes_empty_tabs_without_touching_other_seats ... ok
+test new_tab_uses_caller_id_and_preserves_the_remaining_order ... ok
+test cross_swarm_move_is_an_explicit_error_per_grant_contract ... ok
+test duplicate_and_mismatched_tree_ids_are_rejected ... ok
+test move_within_one_split_recomputes_the_target_after_pruning ... ok
+test expired_replaced_and_conflicting_undo_do_not_mutate_the_model ... ok
+test close_and_undo_restore_the_exact_split_and_ratio ... ok
+test placement_on_all_four_sides_is_half_and_collapses_the_source ... ok
+test prune_parent_and_replacement_match_lab_tree_algebra ... ok
+test reverse_undo_restores_multiple_closed_seats ... ok
+test settings_closes_directly_without_harness_grace ... ok
+test undo_restores_a_removed_tab_at_its_original_index ... ok
+test undo_keeps_a_sibling_subtrees_intervening_resize ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.04s
+     Running unittests src/lib.rs (target/debug/deps/bbt_ui_model-11b3daa13bd1e005)
+210 web-exported token paths (object keys, arrays and scalar values) match generated Rust fields
+     Running tests/layout.rs (target/debug/deps/layout-fec93cbb62a73a5d)
+1000 seat rows: only 10 row rectangles allocated for a 240px viewport
+15 tagged-lab pane rectangles and 14 two-pixel gutters match the independent decimal fixture
+     Running tests/model.rs (target/debug/deps/model-d233d2f1ea9437f5)
+   Doc-tests bbt_ui_model
+
+exit_status=0
