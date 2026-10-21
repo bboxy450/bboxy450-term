@@ -46,6 +46,7 @@ One signal per meaning. One meaning per signal. Nothing animates without a cause
 | **Unfocused dim** (pane content and strip greyed out, like iTerm2: `runs/ref-iterm-unfocused-dim.png`) | "this seat does not have focus" | every pane without focus, stronger than the 10% vignette; operator wants it clearly grey | the focused pane |
 | **State glyph** (● ○ ◐ ✕) | the seat's state | state change; waiting pulses with the glow | anything else |
 | **Unread dot** on a row (role colour) | "a message for this seat is unread" | message arrival | anything else, no ripple for messages |
+| **Muted mark** on a row | "this seat is out of the cohort stream, operator is working with it solo" | mute; cleared on unmute; both post a one-line presence notice to the cohort stream | anything else |
 | **Hover** | "the pointer is here" | pointer over row or pane: subtle highlight only | no glow change, no ripple |
 
 Mouse-dwell focus stays, but it only changes focus brightness; the ripple needs a click or a key. Demo pages do not randomise states on a timer; a demo exposes keys (1 idle, 2 active, 3 waiting, 4 errored on the focused seat; M = message arrives) so one thing changes at a time and the operator sees cause and effect.
