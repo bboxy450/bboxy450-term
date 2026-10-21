@@ -70,6 +70,11 @@ Everything above that is not marked Future. Private GitHub repo `bboxy450/bboxy4
 
 Work splits into: terminal core (PTY, VTE, grid), renderer (wgpu), frontend chrome (sidebar, tabs, splits, settings), mux daemon (seat persistence, recovery), messaging (transport, identity, rooms, priority), MCP server (Oracle control plane), harness adapters (launch, role prompt, wake, state detection). Task files per area follow the research.
 
+## Rendering and prototyping (DECIDED)
+
+- **Everything is GPU-rendered**, chrome included, not only the terminal grid. Shaders are a first-class UI tool: glow, blur, state animation, seat identity effects. The GUI toolkit choice in Task A must allow custom shaders and share the wgpu device with the terminal surfaces.
+- **Storybook-style component lab** before Rust. Every UI element (sidebar row, split mini-grid, state glyph, harness picker, settings, toolbar icon, message badges) is prototyped and iterated in isolation, with all its states, then built in Rust against that reference. The lab is also where the Rust components get mirrored later so the two never drift. **Gap:** lab medium: web (fastest iteration, Lumen builds it) versus a Rust storybook binary on the real renderer. Likely both, web first.
+
 ## Process
 
 1. Research everything, written to `.kb/research/`, linked with wikilinks, pushed to GitHub.

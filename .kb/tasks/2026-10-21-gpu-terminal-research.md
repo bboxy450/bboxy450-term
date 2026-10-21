@@ -27,6 +27,7 @@ Candidates (add any you find):
 2. Which **GPU text rendering** path is viable: glyph atlas on wgpu (`glyphon`/`sugarloaf`), or roll our own? Measure: ligatures, emoji, fallback fonts, HiDPI, subpixel.
 3. **Multiplexing**: what does wezterm's mux give us for tabs/panes/splits, and can it be reused without the Lua layer?
 4. **Embedding a GUI chrome** (sidebar, tab bar) alongside GPU terminal surfaces: which GUI toolkit shares a `wgpu` device and surface cleanly? Zed's `gpui` is the strongest reference for "editor-grade GPU UI in Rust" — assess its usability outside Zed.
+4b. **Shaders in chrome.** The operator wants the whole UI GPU-rendered with custom shaders (glow, blur, animated state). For each GUI toolkit candidate: can we inject a custom wgpu render pass or shader into a widget, and does it share the wgpu device/surface with the terminal grid? Note `vello`, `iced` custom shader widgets, `egui` paint callbacks, `gpui` render primitives. Also: does any candidate offer a storybook-style component gallery pattern.
 5. Licensing of each candidate (MIT/Apache/GPL). Flag anything that constrains us.
 6. Maintenance health: last release, commit cadence, open-issue trend, bus factor.
 7. macOS Metal path specifics (via wgpu), and Linux Wayland/X11 if cheap to note.
