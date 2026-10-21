@@ -61,6 +61,11 @@ Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection combine
 - **Memory model at 1000 seats**: an `alacritty_terminal` grid with 10k scrollback measured 15–20 MB per seat, so 1000 seats would be 15–20 GB. Not viable. The daemon keeps a viewport-sized grid per seat plus a bounded raw-byte scrollback ring with a monotonic cursor; scrollback lines are re-parsed lazily on demand. Hidden seats send the GUI only a state bit for the sidebar.
 - Target scale: swarms of **1000 agents**. Some local, some remote over ssh, some in the user's chosen cloud. The sidebar, the mux and the messaging layer must be designed for that count from the start.
 
+## Working rules (operator, 2026-10-21)
+
+- **One concern at a time.** Layout first, then style, then behaviour, then performance. A brief names one concern.
+- **Do not optimise pre-emptively.** 120 fps is the eventual target; nobody measures or tunes for it until layout and style are nailed.
+
 ## Future (RECORDED, not v0.1)
 
 - **Cloud harnesses.** Run a harness transparently in a cloud of the user's choice. Reconnect like **mosh**: state-sync, roaming, resumable. Reuse the messaging transport. All tied to the user account. Research: `tasks/2026-10-21-cloud-and-mosh-research.md`.
