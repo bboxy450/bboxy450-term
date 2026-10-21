@@ -160,4 +160,4 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 14 | settings | config.toml | settings tab read-mostly |
 | 15 | role and permissions | per seat | row menu, Oracle/operator |
 | 16 | shadows | global messaging | module kept, deferred |
-| 17 | nested subagent rows | 7501 / hooks | optional per harness |
+| 17 | nested subagent rows | 7501 / hooks | BUILT: running only, under the seat before its tasks, glyph in the seat colour with the source grade; past 8 collapses to +N running |

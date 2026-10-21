@@ -692,6 +692,12 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .strip .glyph .kind { background: transparent; color: #fff; }
 
 /* task row: a delegated task under its seat */
+.sa-row { display: flex; align-items: center; gap: 6px; height: calc(var(--row-h) - 6px); padding: 0 var(--pad-x) 0 calc(var(--pad-x) + 8px); font-size: var(--font-small); color: var(--fg-dim); min-width: 0; }
+.sa-row .branch { width: 10px; height: 50%; align-self: flex-start; border-left: 1px solid var(--hair); border-bottom: 1px solid var(--hair); border-bottom-left-radius: 4px; flex: none; margin-left: 4px; }
+.sa-row .glyph { transform: scale(.8); }
+.sa-row .sdesc { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.sa-row .sdetail { font-family: var(--font-mono); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.sa-row.more .sdesc { color: var(--fg-dim); font-family: var(--font-mono); font-size: 10px; }
 .task-row { display: flex; align-items: center; gap: 6px; height: calc(var(--row-h) - 4px); padding: 0 var(--pad-x) 0 calc(var(--pad-x) + 22px); font-size: var(--font-small); color: var(--fg-dim); border-radius: var(--r-row, 6px); }
 .task-row:hover { background: var(--sel-hover, var(--surface-2)); }
 .task-row .tglyph { font-family: var(--font-mono); width: 12px; text-align: center; flex: none; }

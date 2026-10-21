@@ -91,6 +91,9 @@
     { time: '13:52', seat: 'Nyx Copperwing', seatColor: '#FF4FA3', event: 'claimed', kind: 'pr', ref: 'bboxy450-term#14', grade: 'reported' },
     { time: '14:03', seat: 'Rook Ashwhisker', seatColor: '#2EE6A8', event: 'modified', kind: 'markdown', ref: '.bboxy/research/gpu-terminals-rust.md', grade: 'inferred' });
   seats[1].touched = 2; seats[3].touched = 1;
+  // running subagents nest under their seat (Claude via OSC 7501 id/title, Codex via subagent hooks); ended ones leave the sidebar
+  seats[0].subagents = [{ id: 'a1', description: 'Explore render goldens', state: 'active', detail: 'Grep · bbt-render' }, { id: 'a2', description: 'Review W3.2a diff', state: 'waiting', kind: 'permission', detail: 'Bash · cargo test' }];
+  seats[1].subagents = [{ id: 'c1', description: 'worker: ring checksum', state: 'active' }];
   // subscriptions and external events (events.md): auto-subscriptions follow delegation; external arrives from webhooks, CI, cloud, cron
   model.spaces[0].subscriptions = [
     { seat: 'Vesper Greywind', color: '#FFC53D', patterns: [{ pattern: 'task/*', auto: true, why: 'the Oracle follows every task it delegated' }, { pattern: 'seat/*/state' }, { pattern: 'doc/specs/**' }] },

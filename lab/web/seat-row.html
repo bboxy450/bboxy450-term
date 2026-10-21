@@ -7,7 +7,7 @@
 const el = Lab.el;
 const base = i => ({ key: 'row' + i, name: ['Vesper Greywind', 'Nyx Copperwing', 'Lumen Foxglove', 'Rook Ashwhisker'][i % 4], harness: ['claude', 'codex', 'claude', 'codex'][i % 4], role: ['oracle', 'executor', 'creativity', 'executor'][i % 4], title: ['gpu research', 'messaging spec', 'ux divergence', 'harness hooks'][i % 4] });
 Lab.page({ title: 'seat row', note: 'Icon · name in seat colour · role mark · title · ⌘N · glyph. Row carries the border glow at reduced radius so it breathes with its pane. Compact density hides the title. Rows never reorder on state change.',
-  states: ['active', 'idle', 'waiting', 'errored', 'focused × state', 'unread badge', 'subtitle opt-in', 'zsh seat', 'long names', 'muted · held', 'unmuted · still held'],
+  states: ['active', 'idle', 'waiting', 'errored', 'focused × state', 'unread badge', 'subtitle opt-in', 'zsh seat', 'long names', 'muted · held', 'unmuted · still held', 'subagents · claude', 'subagents · codex', 'subagents · 12'],
   render(s, body) {
     const col = el('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:300px' });
     if (C.STATES.includes(s)) { for (let i = 0; i < 4; i++) col.append(C.seatRow({ ...base(i), state: s }, { shortcut: '⌘' + (i + 1) })); }
@@ -19,6 +19,11 @@ Lab.page({ title: 'seat row', note: 'Icon · name in seat colour · role mark ·
     const H = (n, blockedAt) => Array.from({ length: n }, (_, i) => ({ id: 'msg-01JB' + (7 + i) + 'Q', dir: i % 3 ? 'in' : 'out', blocked: blockedAt.includes(i) ? 'sent under grant epoch 3 · the current grant no longer permits #swarm' : null }));
     if (s === 'muted · held') { col.append(C.seatRow({ ...base(1), state: 'active', muted: true, held: H(4, [0]) }, { shortcut: '⌘2' }), C.seatRow({ ...base(3), state: 'idle', muted: true, held: H(17, []) }, { shortcut: '⌘4' }), C.seatRow({ ...base(2), state: 'idle', muted: true }, { shortcut: '⌘3' })); }
     if (s === 'unmuted · still held') { col.append(C.seatRow({ ...base(1), state: 'active', held: H(1, [0]) }, { shortcut: '⌘2' }), el('div', { class: 'lab-note', style: 'padding:4px 2px' }, 'released 3 of 4 on unmute; one stays blocked with its reason and original id (hover)')); }
+    const SUB = ['Explore render goldens', 'Review W3.2a diff', 'Map the 7501 parser', 'Find ring eviction tests', 'Audit token parity', 'Check glyph atlas growth', 'Scan hooks.json trust', 'Read the lease protocol', 'Diff showcase vs bboxybook', 'Measure sidebar at 1000', 'Trace OSC 133 marks', 'Draft W3.3 brief'];
+    const subs = (n, w) => SUB.slice(0, n).map((d, i) => ({ id: 's' + i, description: d, state: i === w ? 'waiting' : 'active', kind: i === w ? 'permission' : null, detail: i < 2 ? ['Grep · bbt-render', 'Bash · cargo test'][i] : null }));
+    if (s === 'subagents · claude') { const p = { ...base(0), state: 'active', subagents: [...subs(3, 1), { id: 'x', description: 'finished one', state: 'idle' }] }; col.append(C.seatRow(p, { shortcut: '⌘1' }), ...C.subagentRows(p), el('div', { class: 'lab-note', style: 'padding:4px 2px' }, 'running only: active and waiting; a finished subagent leaves the sidebar')); }
+    if (s === 'subagents · codex') { const p = { ...base(1), state: 'active', subagents: [{ id: 'c', description: 'worker: ring checksum', state: 'active' }] }; col.append(C.seatRow(p, { shortcut: '⌘2' }), ...C.subagentRows(p), el('div', { class: 'lab-note', style: 'padding:4px 2px' }, 'from hooks, so the glyph is ringed (shim grade)')); }
+    if (s === 'subagents · 12') { const p = { ...base(0), state: 'active', subagents: subs(12, -1) }; col.append(C.seatRow(p, { shortcut: '⌘1' }), ...C.subagentRows(p)); }
     body.append(col);
   } });
 </script></body></html>

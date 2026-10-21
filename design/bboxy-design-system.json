@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 20,
+  "version": 21,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -643,7 +643,7 @@
       "purpose": "a harness's subagents under its seat row",
       "source": "OSC 7501 (Claude) / hooks (Codex)",
       "anatomy": "optional per harness: indented rows with description and working/idle glyph; absent when the harness gives nothing",
-      "status": "drawn, not built"
+      "status": "built: running only (active, waiting) under the seat row and before its tasks; branch hairline, glyph in the parent seat colour, description, mono detail; grade from the source (7501 reported for Claude, hooks shim for Codex); waiting carries its kind mark; past 8 shows 7 and +N running; ended subagents leave; subagentRows() in components.js, seat-row.html?state=subagents · claude"
     },
     "task_row": {
       "purpose": "a delegated work item under its seat",
