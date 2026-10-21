@@ -746,3 +746,16 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .g-art { display: flex; align-items: center; gap: 8px; padding-left: 8px; color: var(--fg-dim); }
 .g-art .g-branch { color: var(--line); white-space: pre; }
 .g-art .g-title { color: var(--fg); font-family: var(--font-mono); font-size: 11px; }
+
+/* artifacts touched by a seat, and the artifact history in the graph */
+.seat-row .touched { display: inline-flex; align-items: center; gap: 2px; font-family: var(--font-mono); font-size: 9.5px; color: var(--fg-dim); background: var(--badge, var(--surface-2)); border-radius: 5px; padding: 0 5px; line-height: 14px; }
+.seat-row .touched .hicon { --icon: 10px; }
+.g-hist { display: grid; grid-template-columns: 44px 1.1fr 72px 14px 2.2fr 70px; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--hair, var(--line)); font-size: 11.5px; }
+.g-hist:last-child { border-bottom: 0; }
+.g-hist .htime { font-family: var(--font-mono); font-size: 10px; color: var(--fg-dim); }
+.g-hist .hseat { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-hist .hev { font-family: var(--font-mono); font-size: 10px; color: var(--fg-dim); }
+.g-hist .hev.claimed { color: #2EE6A8; } .g-hist .hev.created { color: var(--accent); }
+.g-hist .href { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-hist .hgrade { font-family: var(--font-mono); font-size: 9.5px; text-align: right; color: var(--fg-dim); }
+.g-hist .hgrade.reported { color: var(--fg); }

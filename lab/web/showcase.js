@@ -83,7 +83,14 @@
   let streamFilter = null;
   // A space is a cohort: its own seats, participants and stream. One shows at a time; the footer dots switch.
   const open = new Set([model.spaces[0].key]);   // which cohort blocks are open: band click toggles, focus never touches it
-  for (const sp of model.spaces) { sp.participants = sp.participants || []; sp.stream = []; sp.epics = []; }
+  for (const sp of model.spaces) { sp.participants = sp.participants || []; sp.stream = []; sp.epics = []; sp.history = []; }
+  const now = () => new Date().toTimeString().slice(0, 5);
+  model.spaces[0].history.push(
+    { time: '13:40', seat: 'Nyx Copperwing', seatColor: '#FF4FA3', event: 'created', kind: 'pr', ref: 'bboxy450-term#14', grade: 'reported' },
+    { time: '13:41', seat: 'CI', event: 'created', kind: 'image', ref: 'target/render/smoke/jetbrains-mono-16px-2x-dark.png', grade: 'reported' },
+    { time: '13:52', seat: 'Nyx Copperwing', seatColor: '#FF4FA3', event: 'claimed', kind: 'pr', ref: 'bboxy450-term#14', grade: 'reported' },
+    { time: '14:03', seat: 'Rook Ashwhisker', seatColor: '#2EE6A8', event: 'modified', kind: 'markdown', ref: '.bboxy/research/gpu-terminals-rust.md', grade: 'inferred' });
+  seats[1].touched = 2; seats[3].touched = 1;
   model.spaces[0].epics.push(
     { id: 'e1', title: 'W3 renderer', open: true, items: [
       { id: 's1', type: 'spec', title: 'renderer.md', state: 'accepted' },
@@ -107,7 +114,7 @@
     Object.defineProperty(z, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
     Object.defineProperty(z, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
     seats.push(z); startReplay(z, seats.length - 1);
-    const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [], epics: [{ id: 'e' + spaceN, title: 'swarm ' + spaceN, open: true, items: [] }] };
+    const sp = { name: 'swarm ' + spaceN, key: 'space-' + spaceN, tabs: [{ name: 'shell', shortcut: '⌘1', tree: z, seats: [z] }], participants: [], stream: [], history: [], epics: [{ id: 'e' + spaceN, title: 'swarm ' + spaceN, open: true, items: [] }] };
     model.spaces.push(sp); editName = sp.key; jumpSpace(sp);
   }
   // Placement: a seat goes into a swarm as a new tab, or splits a target pane on one of its four sides.
@@ -160,7 +167,7 @@
       const next = { open: 'claimed', claimed: 'running', running: 'reported', reported: 'reported' }[open_.state];
       if (next !== open_.state) {
         open_.state = next; streamLine(sp, seat.name + ' ' + next + ' · ' + open_.title);
-        if (next === 'reported') { open_.artifacts = open_.artifacts || []; open_.artifacts.push({ kind: 'markdown', ref: '.bboxy/runs/' + open_.title.replace(/\s+/g, '-') + '-report.md', digest: C.hash32(open_.title + seat.key).toString(16).padStart(8, '0'), produced_by: seat.name, responsible: seat.name, responsibleColor: seat.color }); streamLine(sp, seat.name + ' claimed · ' + open_.artifacts[0].ref); }
+        if (next === 'reported') { open_.artifacts = open_.artifacts || []; const art = { kind: 'markdown', ref: '.bboxy/runs/' + open_.title.replace(/\s+/g, '-') + '-report.md', digest: C.hash32(open_.title + seat.key).toString(16).padStart(8, '0'), produced_by: seat.name, responsible: seat.name, responsibleColor: seat.color }; open_.artifacts.push(art); seat.touched = (seat.touched || 0) + 1; sp.history.push({ time: now(), seat: seat.name, seatColor: seat.color, event: 'created', kind: art.kind, ref: art.ref, grade: seat.grade === 'inferred' ? 'inferred' : 'reported' }, { time: now(), seat: seat.name, seatColor: seat.color, event: 'claimed', kind: art.kind, ref: art.ref, grade: 'reported' }); streamLine(sp, seat.name + ' claimed · ' + art.ref); }
       }
     } else {
       const task = { id: 't' + (++taskN), title: TASK_TITLES[taskN % TASK_TITLES.length], state: 'claimed', from: 'Vesper Greywind', assignee: seat.name };
@@ -319,7 +326,7 @@
   app.append(titlebar, main);
   let rects = [];
   function splitDom(t) {
-    if (t.key && t.graph) { const sp = space(); const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘G', onClose: closeGraph }), C.graphPage({ seats: seats.filter(x => !x.settings && !x.graph && (tabOf(x.key) || {}).sp === sp), epics: sp.epics, swarm: sp.name })); p.dataset.key = t.key; return p; }
+    if (t.key && t.graph) { const sp = space(); const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘G', onClose: closeGraph }), C.graphPage({ seats: seats.filter(x => !x.settings && !x.graph && (tabOf(x.key) || {}).sp === sp), epics: sp.epics, swarm: sp.name, history: sp.history })); p.dataset.key = t.key; return p; }
     if (t.key && t.settings) { const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘,', onClose: closeSettings }), C.settingsPage({ section: t.section, onChange: (sec, k, v) => { if (sec === 'appearance') settingsSeat.section = 'Appearance'; applySetting(sec, k, v); } })); p.dataset.key = t.key; return p; }
     if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute });
     const A = splitDom(t.a), B = splitDom(t.b);
