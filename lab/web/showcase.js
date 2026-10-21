@@ -156,10 +156,17 @@
     } else if (!preset) {
       // ⌘T: a new tab. The banner shows the swarm's tabs as a strip with the new one lit at the end.
       // drawn the way the sidebar draws it: a mini swarm block, band on top, tab rows stacked, the new row lit
+      // the real rows, as the sidebar draws them: tab rows with their seats, then the lit new row at the insertion point
+      const rows = [];
+      for (const t of sp.tabs) {
+        if (t.seats.length === 1) rows.push({ txt: t.seats[0].name, color: t.seats[0].color, seat: true });
+        else { rows.push({ txt: t.name }); for (const x of t.seats) rows.push({ txt: x.name, color: x.color, seat: true, indent: true }); }
+      }
       const strip = el('div', { class: 'tab-stack', style: '--space:' + sp.color }, el('span', { class: 'tband' }, sp.name));
-      for (const t of sp.tabs.slice(0, 4)) strip.append(el('span', { class: 'tcell' }, t.name));
-      if (sp.tabs.length > 4) strip.append(el('span', { class: 'tcell more' }, '… ' + (sp.tabs.length - 4) + ' more'));
-      strip.append(el('span', { class: 'tcell new' }, '+ new tab'));
+      const MAX = 7, shown = rows.length > MAX ? [rows[0], { more: rows.length - MAX + 1 }, ...rows.slice(-(MAX - 2))] : rows;
+      for (const r of shown) strip.append(r.more ? el('span', { class: 'tcell more' }, '… ' + r.more + ' more') : el('span', { class: 'tcell' + (r.indent ? ' indent' : '') + (r.seat ? ' seatrow' : ''), style: r.color ? 'color:' + r.color : '' }, r.txt));
+      strip.append(el('span', { class: 'tcell new' }, '+ new seat · here'));
+      strip.append(el('span', { class: 'tcell ghost' }, '+ new seat'));
       back.append(el('div', { class: 'spot-banner' }, strip, el('div', { class: 'txt' }, el('div', { class: 'big' }, 'New tab'), el('div', { class: 'of' }, 'in ', el('b', { style: 'color:' + sp.color }, sp.name), ' · the new seat gets a tab of its own · type goto <name> to go somewhere'))));
     }
     const pk = C.picker({ placeholder: ph, actions: acts, items, onClose: closeSpotlight, onPick: (it, name, mods, path) => {

@@ -98,10 +98,13 @@
   .spot-banner .mg.big { --mg-w: 168px; --mg-h: 104px; gap: 3px; background: var(--hair); border-radius: var(--r-tile); flex: none; }
   .spot-banner .mg.big .cell { background: color-mix(in srgb, var(--fg) 14%, transparent); color: var(--fg-dim); font-size: 11px; }
   .spot-banner .mg.big .cell.focus { background: var(--accent); color: #fff; font-weight: 600; animation: cellBreathe 1.2s ease-in-out infinite; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent); }
-  .spot-banner .tab-stack { display: flex; flex-direction: column; gap: 3px; width: 168px; padding: 4px; border-radius: var(--r-tile); background: color-mix(in srgb, var(--surface) 80%, transparent); box-shadow: 0 0 0 1px var(--hair); border-bottom: 3px solid var(--space); flex: none; }
+  .spot-banner .tab-stack { display: flex; flex-direction: column; gap: 2px; width: 200px; padding: 4px; border-radius: var(--r-tile); background: color-mix(in srgb, var(--surface) 80%, transparent); box-shadow: 0 0 0 1px var(--hair); border-bottom: 3px solid var(--space); flex: none; }
   .spot-banner .tab-stack .tband { height: 18px; line-height: 18px; border-radius: 4px; background: var(--space); color: #fff; font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; padding: 0 8px; }
   .spot-banner .tab-stack .tcell { padding: 4px 8px; border-radius: 5px; color: var(--fg-dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .spot-banner .tab-stack .tcell.more { font-size: 10px; }
+  .spot-banner .tab-stack .tcell.indent { padding-left: 18px; }
+  .spot-banner .tab-stack .tcell.seatrow { font-weight: 600; }
+  .spot-banner .tab-stack .tcell.ghost { opacity: .45; }
   .spot-banner .tab-stack .tcell.new { background: var(--accent); color: #fff; font-weight: 600; animation: cellBreathe 1.2s ease-in-out infinite; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent); }
   .spot-banner .txt .big { font-size: 26px; font-weight: 600; letter-spacing: -.01em; line-height: 1.1; }
   .spot-banner .txt .of { margin-top: 6px; font-size: var(--t-subtitle); color: var(--fg-dim); }
