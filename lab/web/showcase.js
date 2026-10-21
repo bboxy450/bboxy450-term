@@ -89,16 +89,20 @@
     const stage = el('div', { class: 'stage' }, (() => { const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
     main.append(sb, stage);
     main.querySelectorAll('[data-key]').forEach(n => {
-      n.addEventListener('click', () => setFocus(n.dataset.key));
+      n.addEventListener('click', () => { const s = seats.find(x => x.key === n.dataset.key); s.unread = 0; setFocus(n.dataset.key, { locate: true }); });
       n.addEventListener('pointerenter', () => armHover(n.dataset.key));
       n.addEventListener('pointerleave', disarmHover);
     });
-    setFocus(focused, true);
+    setFocus(focused, { force: true });
     measure();
   }
   // Focus change touches classes only: no re-render, no re-measure (rows never move).
-  function setFocus(key, force) {
-    if (key === focused && !force) return;
+  // Signal semantics (.kb/ux-pick.md): focus = brightness only. The locate ripple fires only with opts.locate,
+  // which click and keyboard pass and dwell does not. Timers and messages never ripple.
+  function setFocus(key, opts) {
+    opts = opts || {};
+    if (key === focused && !opts.force && !opts.locate) return;
+    const changed = key !== focused;
     focused = key;
     main.querySelectorAll('.seat-row[data-key]').forEach(n => n.classList.toggle('focused', n.dataset.key === key));
     main.querySelectorAll('.pane[data-key]').forEach(n => { const f = n.dataset.key === key; n.classList.toggle('focused', f); n.classList.toggle('unfocused', !f); });
@@ -111,13 +115,14 @@
       const top = row.offsetTop - sc.offsetTop, bottom = top + row.offsetHeight;
       if (top < sc.scrollTop || bottom > sc.scrollTop + sc.clientHeight) { sc.scrollTop = top - sc.clientHeight / 2; measure(); }
     }
-    if (!force) { const col = C.hslToRgb(f.color); for (const R of rects) if (R.key === key) ripple(R.pane ? R.x + 8 : R.x + 10, R.pane ? R.y + 8 : R.y + R.h / 2, col); }
+    if (opts.locate) { const col = C.hslToRgb(f.color); for (const R of rects) if (R.key === key) ripple(R.pane ? R.x + 8 : R.x + 10, R.pane ? R.y + 8 : R.y + R.h / 2, col); }
+    if (changed) { main.querySelectorAll('.seat-row[data-key="' + key + '"]').forEach(n => { if (f.unread) { f.unread = 0; render(); } }); }
   }
   // Focus follows the mouse after a short dwell. Typing holds focus: a keydown within the last second blocks hover focus.
   let hoverT = null, lastKey = 0, lastMove = 0;
   addEventListener('keydown', () => { lastKey = performance.now(); });
   addEventListener('pointermove', () => { lastMove = performance.now(); }, { passive: true });
-  function armHover(key) { disarmHover(); hoverT = setTimeout(() => { if (performance.now() - lastKey > 1000 && performance.now() - lastMove < 2000) setFocus(key); }, 150); }
+  function armHover(key) { disarmHover(); hoverT = setTimeout(() => { if (performance.now() - lastKey > 1000 && performance.now() - lastMove < 2000) setFocus(key); }, 150);  // no locate: dwell only brightens }
   function disarmHover() { if (hoverT) { clearTimeout(hoverT); hoverT = null; } }
   // Rect measurement happens once per render and on resize, never per frame: no layout thrash.
   function measure() {
@@ -248,26 +253,29 @@
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     if (lastNow) { const ft = now - lastNow; ftAcc += ft; ftMax = Math.max(ftMax, ft); } lastNow = now;
-    frames++; if (now - fpsT > 1000) { fps = frames; window.__fps = { fps, avgMs: +(ftAcc / frames).toFixed(2), maxMs: +ftMax.toFixed(1), rects: rects.length, scene: SCENE }; frames = 0; ftAcc = 0; ftMax = 0; fpsT = now; hint(); }
+    frames++; if (now - fpsT > 1000) { fps = frames; window.__fps = { fps, avgMs: +(ftAcc / frames).toFixed(2), maxMs: +ftMax.toFixed(1), rects: rects.length, scene: SCENE }; frames = 0; ftAcc = 0; ftMax = 0; fpsT = now; }
     requestAnimationFrame(frame);
   }
-  function hint() { const f = window.__fps || {}; document.getElementById('hint').innerHTML = '<b>' + fps + '</b> fps · ' + (f.avgMs || '–') + ' ms avg · ' + (f.maxMs || '–') + ' ms max · ' + rects.length + ' rects · scene ' + SCENE + ' · gutter ' + GUTTER + ' · <a href="?scene=' + SCENE + '&gutter=2">2</a> <a href="?scene=' + SCENE + '&gutter=4">4</a> · <a href="?scene=' + (SCENE === 15 ? 3 : 15) + '&gutter=' + GUTTER + '">scene ' + (SCENE === 15 ? 3 : 15) + '</a>'; }
+  function hint() { document.getElementById('hint').innerHTML = '<b>1</b> idle · <b>2</b> active · <b>3</b> waiting · <b>4</b> errored (focused seat) · <b>M</b> message arrives · <b>Tab</b> focus next · click row or pane = locate · gutter ' + GUTTER + ' <a href="?scene=' + SCENE + '&gutter=2">2</a> <a href="?scene=' + SCENE + '&gutter=4">4</a> · <a href="?scene=' + (SCENE === 15 ? 3 : 15) + '&gutter=' + GUTTER + '">scene ' + (SCENE === 15 ? 3 : 15) + '</a>'; }
 
-  // ---------- life ----------
-  const CYCLE = { idle: 'active', active: 'waiting', waiting: 'active', errored: 'idle' };
-  let tick = 0;
-  setInterval(() => {
-    tick++;
-    const s = seats[Math.floor(r() * seats.length)];
-    s.state = tick % 5 === 0 ? 'errored' : CYCLE[s.state];
-    render();
-    if (tick % 2 === 0 && performance.now() - lastMove > 3000) setFocus(stageKeys[Math.floor(r() * stageKeys.length)]);
-  }, 4000);
-  setInterval(() => {
-    const s = seats[Math.floor(r() * seats.length)];
-    const role = s.role || 'unsigned', col = C.hslToRgb(T.color.role[role]);
-    for (const R of rects) if (R.key === s.key) ripple(R.pane ? R.x + 8 : R.x + 10, R.pane ? R.y + 8 : R.y + R.h / 2, col);
-  }, 2600);
+  // ---------- cause and effect: no timers. Keys change one thing at a time. ----------
+  const ROLE_RANK = { oracle: 0, executor: 1, creativity: 2, unsigned: 3 };
+  let msgN = 0;
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const f = seats.find(s => s.key === focused);
+    const st = { '1': 'idle', '2': 'active', '3': 'waiting', '4': 'errored' }[e.key];
+    if (st) { f.state = st; render(); }
+    else if (e.key === 'm' || e.key === 'M') {
+      // a message arrives for the next seat in order, from a sender role that cycles; unread dot only, no ripple
+      const s = seats[msgN % seats.length], role = ['executor', 'oracle', 'creativity'][msgN % 3]; msgN++;
+      s.unread = (s.unread || 0) + 1;
+      if (!s.unreadRole || ROLE_RANK[role] < ROLE_RANK[s.unreadRole]) s.unreadRole = role;
+      render();
+    }
+    else if (e.key === 'Tab') { e.preventDefault(); const i = stageKeys.indexOf(focused); setFocus(stageKeys[(i + (e.shiftKey ? -1 : 1) + stageKeys.length) % stageKeys.length], { locate: true }); }
+  });
+  hint();
 
   render(); resize(); requestAnimationFrame(frame);
 })();

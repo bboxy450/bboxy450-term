@@ -134,7 +134,8 @@
     if (seat.role) row.append(roleMark(seat.role));
     row.append(el('span', { class: 'title' }, seat.title || ''));
     const right = el('span', { class: 'right' });
-    if (opts.unread) right.append(el('span', { class: 'badge', style: 'background:var(--role-' + (opts.unreadRole || 'executor') + ')' }, opts.unread));
+    const unread = opts.unread != null ? opts.unread : seat.unread, unreadRole = opts.unreadRole || seat.unreadRole || 'executor';
+    if (unread) right.append(el('span', { class: 'badge', style: 'background:var(--role-' + unreadRole + ')' }, unread));
     if (opts.shortcut) right.append(kbd(opts.shortcut));
     right.append(glyph(seat.state, seat));
     row.append(right);
