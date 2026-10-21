@@ -14,7 +14,7 @@ impl Gallery {
         let adapter=pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions{compatible_surface:Some(&surface),..Default::default()}))?;
         let caps=surface.get_capabilities(&adapter);let format=*caps.formats.iter().find(|f|f.is_srgb()).ok_or("no sRGB surface")?;
         let info=adapter.get_info();let(device,queue)=pollster::block_on(adapter.request_device(&Default::default()))?;
-        let size=window.inner_size();let config=wgpu::SurfaceConfiguration{usage:wgpu::TextureUsages::RENDER_ATTACHMENT,format,width:size.width.max(1),height:size.height.max(1),present_mode:wgpu::PresentMode::Fifo,desired_maximum_frame_latency:2,alpha_mode:caps.alpha_modes[0],view_formats:vec![]};surface.configure(&device,&config);
+        let size=window.inner_size();let config=wgpu::SurfaceConfiguration{usage:wgpu::TextureUsages::RENDER_ATTACHMENT,format,width:size.width.max(1),height:size.height.max(1),present_mode:wgpu::PresentMode::Fifo,desired_maximum_frame_latency:2,alpha_mode:caps.alpha_modes[0],view_formats:vec![],color_space:wgpu::SurfaceColorSpace::Srgb};surface.configure(&device,&config);
         self.renderer=Some(ChromeRenderer::with_context(DeviceContext{device,queue,adapter_info:info},crate::images()?)?);self.surface=Some(surface);self.config=Some(config);self.window=Some(window);Ok(())
     }
     fn paint(&mut self)->Result<()> {
@@ -32,8 +32,8 @@ impl Gallery {
         let bounds=Rect::new(left+16.0,(y+strip_h*0.6).max(100.0),(w-left-32.0).max(1.0),(h-y-strip_h*0.6-16.0).max(1.0));
         list.clip(bounds,[0.0;4]);for yy in(0..bounds.h as u32).step_by(16){for xx in(0..bounds.w as u32).step_by(16){let c=if(xx/16+yy/16)%2==0{ctx.theme.palette().surface}else{ctx.theme.palette().surface_2};list.rect(Rect::new(bounds.x+xx as f32,bounds.y+yy as f32,16.0,16.0),0.0,Color::hex(c));}}
         crate::modules::draw(&entry.id,&entry.states[self.state],bounds,&ctx,&mut list)?;list.unclip();
-        let surface=self.surface.as_ref().unwrap();let frame=match surface.get_current_texture(){Ok(v)=>v,Err(wgpu::SurfaceError::Lost|wgpu::SurfaceError::Outdated)=>{surface.configure(&self.renderer.as_ref().unwrap().context.device,config);return Ok(());},Err(e)=>return Err(e.into())};
-        let target=frame.texture.create_view(&Default::default());let renderer=self.renderer.as_mut().unwrap();let mut encoder=renderer.context.device.create_command_encoder(&Default::default());renderer.draw(&list,config.width,config.height,scale,&target,config.format,&mut encoder)?;renderer.context.queue.submit([encoder.finish()]);frame.present();Ok(())
+        let surface=self.surface.as_ref().unwrap();let frame=match surface.get_current_texture(){wgpu::CurrentSurfaceTexture::Success(v)|wgpu::CurrentSurfaceTexture::Suboptimal(v)=>v,wgpu::CurrentSurfaceTexture::Lost|wgpu::CurrentSurfaceTexture::Outdated=>{surface.configure(&self.renderer.as_ref().unwrap().context.device,config);return Ok(());},wgpu::CurrentSurfaceTexture::Timeout|wgpu::CurrentSurfaceTexture::Occluded=>return Ok(()),wgpu::CurrentSurfaceTexture::Validation=>return Err("surface validation error".into())};
+        let target=frame.texture.create_view(&Default::default());let renderer=self.renderer.as_mut().unwrap();let mut encoder=renderer.context.device.create_command_encoder(&Default::default());renderer.draw(&list,config.width,config.height,scale,&target,config.format,&mut encoder)?;renderer.context.queue.submit([encoder.finish()]);renderer.context.queue.present(frame);Ok(())
     }
     fn cycle(&mut self,up:bool){if up{self.selected=self.selected.saturating_sub(1);}else{self.selected=(self.selected+1).min(self.entries.len()-1);}self.state=0;}
 }

@@ -32,7 +32,7 @@ try{
   for(let i=0;i<manifest.length;i++){
     const c={...manifest[i]};const relative=`${c.component}/${c.slug}-${c.density}-${c.theme}.png`;cdp.errors=[];
     try{
-      await cdp.call('Emulation.setDeviceMetricsOverride',{width:c.component.startsWith('showcase')?1440:1280,height:960,deviceScaleFactor:1,mobile:false});
+      await cdp.call('Emulation.setDeviceMetricsOverride',{width:c.component.startsWith('showcase')?1440:1280,height:c.component.startsWith('showcase')?868:960,deviceScaleFactor:1,mobile:false});
       await cdp.call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:c.theme}]});
       const page=c.page==='@component'?'seat-row.html':c.page;const url=new URL(pathToFileURL(path.join(root,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
       url.searchParams.set('state',c.page==='@component'?'idle':c.state);url.searchParams.set('density',c.density);url.searchParams.set('theme',c.theme);

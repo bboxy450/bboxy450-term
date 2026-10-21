@@ -1,0 +1,11 @@
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+error[E0599]: no method named `present` found for struct `wgpu::SurfaceTexture` in the current scope
+  --> crates/bboxybook/src/window.rs:36:342
+   |
+36 | ...queue.submit([encoder.finish()]);frame.present();Ok(())
+   |                                           ^^^^^^^ method not found in `wgpu::SurfaceTexture`
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `bboxybook` (lib) due to 1 previous error
+
+exit_status: 101

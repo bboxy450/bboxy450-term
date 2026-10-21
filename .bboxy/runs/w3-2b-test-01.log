@@ -1,0 +1,80 @@
+
+running 2 tests
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.10s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling syn v3.0.9
+   Compiling polycool v0.4.0
+   Compiling objc-sys v0.3.5
+   Compiling aho-corasick v1.1.5
+   Compiling png v0.18.1
+   Compiling roxmltree v0.21.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling foreign-types-shared v0.3.1
+   Compiling bitflags v1.3.2
+   Compiling dispatch v0.2.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling tracing-core v0.1.36
+   Compiling objc2 v0.5.3
+   Compiling core-foundation v0.9.4
+   Compiling kurbo v0.13.1
+   Compiling pin-project-lite v0.2.17
+   Compiling smol_str v0.2.2
+   Compiling core-graphics-types v0.1.3
+   Compiling tracing v0.1.44
+   Compiling dpi v0.1.2
+   Compiling tiny-skia v0.12.0
+   Compiling regex-automata v0.4.18
+   Compiling block2 v0.5.1
+   Compiling objc2-foundation v0.2.2
+   Compiling svgtypes v0.16.1
+   Compiling usvg v0.48.1
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling foreign-types-macros v0.2.4
+   Compiling serde_derive v1.0.229
+   Compiling resvg v0.48.1
+   Compiling foreign-types v0.5.0
+   Compiling regex v1.13.1
+   Compiling core-graphics v0.23.2
+   Compiling bytemuck v1.25.2
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling thiserror v2.0.21
+   Compiling naga-types v30.0.1
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling objc2-app-kit v0.2.2
+   Compiling serde v1.0.229
+   Compiling winit v0.30.13
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 14.10s
+     Running unittests src/lib.rs (target/debug/deps/bboxybook-01903734f6189108)
+     Running unittests src/main.rs (target/debug/deps/bboxybook-92ab75ce31ee3880)
+     Running tests/render.rs (target/debug/deps/render-1f7ec37c82f250dd)
+53 registered component previews rendered on AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+   Doc-tests bboxybook
+
+exit_status: 0

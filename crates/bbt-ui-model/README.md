@@ -60,10 +60,10 @@ Lab differences and remaining behaviour:
   shadow interactions, unread-priority decisions and task/graph/artifact rows
   are data shells/references only. Nine untyped modules and six signals listed
   in the spec remain deferred. No native bboxybook previews in this brief.
-- `style.json` still lacks title-bar/band height tokens; bumper and some other
-  chrome dimensions likewise remain CSS text. `CardChrome` requires the caller
-  to supply those dimensions; this scope did not edit design sources or invent
-  token keys. Shadow-group header and footer/dock chrome are caller composition.
+- `style.json` now supplies `spacing.title_bar` and `spacing.band` (Wren,
+  f63e37b). Bumper and some other chrome dimensions remain CSS text. W3.2a
+  `CardChrome` accepts caller metrics; bboxybook composes the new style tokens.
+  Shadow-group header and footer/dock chrome remain caller composition.
 - Unlike the old JS's silent failed sibling replacement, undo rejects a layout
   conflict. Cross-swarm placement is rejected per the current grant contract;
   the old lab permitted it. Grace expiry retains the seat and waits for mux

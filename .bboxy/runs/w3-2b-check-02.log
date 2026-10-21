@@ -1,0 +1,130 @@
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+error[E0433]: cannot find `SurfaceError` in `wgpu`
+  --> crates/bboxybook/src/window.rs:35:117
+   |
+35 | ..._current_texture(){Ok(v)=>v,Err(wgpu::SurfaceError::Lost|wgpu::SurfaceError::Outdated)=>{surface.configure(&self.renderer.as_ref(...
+   |                                          ^^^^^^^^^^^^ could not find `SurfaceError` in `wgpu`
+
+error[E0433]: cannot find `SurfaceError` in `wgpu`
+  --> crates/bboxybook/src/window.rs:35:142
+   |
+35 | ...>v,Err(wgpu::SurfaceError::Lost|wgpu::SurfaceError::Outdated)=>{surface.configure(&self.renderer.as_ref().unwrap().context.device...
+   |                                          ^^^^^^^^^^^^ could not find `SurfaceError` in `wgpu`
+
+error[E0599]: no method named `as_u128` found for struct `bbt_ui_model::SeatId` in the current scope
+  --> crates/bboxybook/src/modules.rs:29:71
+   |
+29 |     out.clip(r,[0.0;4]);let d=ctx.density.tokens();let color=col(s.id.as_u128().saturating_sub(1) as usize,ctx);
+   |                                                                       ^^^^^^^ method not found in `bbt_ui_model::SeatId`
+
+error[E0599]: no method named `as_u128` found for struct `bbt_ui_model::SeatId` in the current scope
+  --> crates/bboxybook/src/modules.rs:56:64
+   |
+56 |     for(id,rect)in solve_split(tree,r,1.0).panes{let s=seat(id.as_u128() as usize-1);let c=if Some(id)==focused{ctx.theme.palette()....
+   |                                                                ^^^^^^^ method not found in `bbt_ui_model::SeatId`
+
+error[E0599]: no method named `as_u128` found for struct `bbt_ui_model::SeatId` in the current scope
+  --> crates/bboxybook/src/modules.rs:69:105
+   |
+69 | ...numerate(){StateGlyph{activity:seat(id.as_u128() as usize-1).activity,grade:Grade::Reported,color:col(i,ctx)}.draw(Rect::new(r.ri...
+   |                                           ^^^^^^^ method not found in `bbt_ui_model::SeatId`
+
+error[E0599]: no method named `as_u128` found for struct `bbt_ui_model::SeatId` in the current scope
+  --> crates/bboxybook/src/modules.rs:87:67
+   |
+87 |     let ctx=if focused{*ctx}else{ctx.dimmed()};let color=col(s.id.as_u128() as usize-1,&ctx);out.rect(r,0.0,ctx.color(color));out.cl...
+   |                                                                   ^^^^^^^ method not found in `bbt_ui_model::SeatId`
+
+error[E0599]: no method named `as_u128` found for struct `bbt_ui_model::SeatId` in the current scope
+  --> crates/bboxybook/src/modules.rs:97:102
+   |
+97 |     let color=match s.activity{Activity::Errored=>Color::hex(TOKENS.color.state.errored),_=>col(s.id.as_u128() as usize-1,ctx)};
+   |                                                                                                      ^^^^^^^ method not found in `bbt_ui_model::SeatId`
+
+error[E0599]: no method named `as_u128` found for struct `bbt_ui_model::SeatId` in the current scope
+   --> crates/bboxybook/src/modules.rs:104:380
+    |
+104 | ...out.gutter as f32).panes{pane(&seat(id.as_u128() as usize-1),rect,id==sid(0),ctx,out);}}
+    |                                           ^^^^^^^ method not found in `bbt_ui_model::SeatId`
+
+error[E0308]: arguments to this function are incorrect
+   --> crates/bboxybook/src/parity.rs:7:221
+    |
+  7 | ...arent().unwrap())?;bbt_render::write_png(&path,case.width,case.height,&rgba)?;if(i+1)%100==0{println!("rendered {}/{}",i+1,cases...
+    |                       ^^^^^^^^^^^^^^^^^^^^^       ----------             ----- expected `u32`, found `&Vec<u8>`
+    |                                                   |
+    |                                                   expected `&[u8]`, found `u32`
+    |
+note: function defined here
+   --> crates/bbt-render/src/headless.rs:408:8
+    |
+408 | pub fn write_png(path: impl AsRef<Path>, rgba: &[u8], width: u32, height: u32) -> Result<()> {
+    |        ^^^^^^^^^
+help: swap these arguments
+    |
+  7 -     for(i,case)in cases.iter().enumerate(){let list=gallery::draw(case)?;let rgba=renderer.render_to_rgba(&list,case.width,case.height,1.0)?;let path=out.join(case.relative());fs::create_dir_all(path.parent().unwrap())?;bbt_render::write_png(&path,case.width,case.height,&rgba)?;if(i+1)%100==0{println!("rendered {}/{}",i+1,cases.len());}}
+  7 +     for(i,case)in cases.iter().enumerate(){let list=gallery::draw(case)?;let rgba=renderer.render_to_rgba(&list,case.width,case.height,1.0)?;let path=out.join(case.relative());fs::create_dir_all(path.parent().unwrap())?;bbt_render::write_png(&path, &rgba, case.height, case.width)?;if(i+1)%100==0{println!("rendered {}/{}",i+1,cases.len());}}
+    |
+
+error[E0308]: arguments to this function are incorrect
+   --> crates/bboxybook/src/parity.rs:21:99
+    |
+ 21 | ...dest.parent().unwrap())?;bbt_render::write_png(&dest,w,h,&result.rgba)?;row.diff=Some(format!("diff/{rel}"));
+    |                             ^^^^^^^^^^^^^^^^^^^^^       -   ------------ expected `u32`, found `&Vec<u8>`
+    |                                                         |
+    |                                                         expected `&[u8]`, found `u32`
+    |
+note: function defined here
+   --> crates/bbt-render/src/headless.rs:408:8
+    |
+408 | pub fn write_png(path: impl AsRef<Path>, rgba: &[u8], width: u32, height: u32) -> Result<()> {
+    |        ^^^^^^^^^
+help: swap these arguments
+    |
+ 21 -                 let dest=root.join("diff").join(&rel);fs::create_dir_all(dest.parent().unwrap())?;bbt_render::write_png(&dest,w,h,&result.rgba)?;row.diff=Some(format!("diff/{rel}"));
+ 21 +                 let dest=root.join("diff").join(&rel);fs::create_dir_all(dest.parent().unwrap())?;bbt_render::write_png(&dest, &result.rgba, h, w)?;row.diff=Some(format!("diff/{rel}"));
+    |
+
+error[E0063]: missing field `color_space` in initializer of `wgpu::wgpu_types::SurfaceConfiguration<Vec<TextureFormat>>`
+  --> crates/bboxybook/src/window.rs:17:49
+   |
+17 | ...   let size=window.inner_size();let config=wgpu::SurfaceConfiguration{usage:wgpu::TextureUsages::RENDER_ATTACHMENT,format,width:s...
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `color_space`
+
+error[E0308]: mismatched types
+  --> crates/bboxybook/src/window.rs:35:98
+   |
+35 | ...();let frame=match surface.get_current_texture(){Ok(v)=>v,Err(wgpu::SurfaceError::Lost|wgpu::SurfaceError::Outdated)=>{surface.co...
+   |                       ----------------------------- ^^^^^ expected `CurrentSurfaceTexture`, found `Result<_, _>`
+   |                       |
+   |                       this expression has type `CurrentSurfaceTexture`
+   |
+   = note: expected enum `CurrentSurfaceTexture`
+              found enum `std::result::Result<_, _>`
+
+error[E0308]: mismatched types
+  --> crates/bboxybook/src/window.rs:35:107
+   |
+35 | ... frame=match surface.get_current_texture(){Ok(v)=>v,Err(wgpu::SurfaceError::Lost|wgpu::SurfaceError::Outdated)=>{surface.configur...
+   |                 -----------------------------          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `CurrentSurfaceTexture`, found `Result<_, _>`
+   |                 |
+   |                 this expression has type `CurrentSurfaceTexture`
+   |
+   = note: expected enum `CurrentSurfaceTexture`
+              found enum `std::result::Result<_, _>`
+
+error[E0308]: mismatched types
+  --> crates/bboxybook/src/window.rs:35:258
+   |
+35 | ...ch surface.get_current_texture(){Ok(v)=>v,Err(wgpu::SurfaceError::Lost|wgpu::SurfaceError::Outdated)=>{surface.configure(&self.renderer.as_ref().unwrap().context.device,config);return Ok(());},Err(e)=>r...
+   |       ----------------------------- this expression has type `CurrentSurfaceTexture`                                                                                                                ^^^^^^ expected `CurrentSurfaceTexture`, found `Result<_, _>`
+   |
+   = note: expected enum `CurrentSurfaceTexture`
+              found enum `std::result::Result<_, _>`
+
+Some errors have detailed explanations: E0063, E0308, E0433, E0599.
+For more information about an error, try `rustc --explain E0063`.
+error: could not compile `bboxybook` (lib) due to 14 previous errors
+
+exit_status: 101

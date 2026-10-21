@@ -4,7 +4,7 @@ use std::{path::Path,fs,fmt::Write};
 pub fn render(out:&Path,cases:&[Case])->Result<usize>{
     let mut renderer=ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}",renderer.context.adapter_info);
-    for(i,case)in cases.iter().enumerate(){let list=gallery::draw(case)?;let rgba=renderer.render_to_rgba(&list,case.width,case.height,1.0)?;let path=out.join(case.relative());fs::create_dir_all(path.parent().unwrap())?;bbt_render::write_png(&path,case.width,case.height,&rgba)?;if(i+1)%100==0{println!("rendered {}/{}",i+1,cases.len());}}
+    for(i,case)in cases.iter().enumerate(){let list=gallery::draw(case)?;let rgba=renderer.render_to_rgba(&list,case.width,case.height,1.0)?;let path=out.join(case.relative());fs::create_dir_all(path.parent().unwrap())?;bbt_render::write_png(&path,&rgba,case.width,case.height)?;if(i+1)%100==0{println!("rendered {}/{}",i+1,cases.len());}}
     fs::create_dir_all(out)?;fs::write(out.join("manifest.json"),serde_json::to_vec_pretty(cases)?)?;
     println!("rendered {} PNGs to {}",cases.len(),out.display());Ok(cases.len())
 }
@@ -18,7 +18,7 @@ pub fn compare(root:&Path,cases:&[Case])->Result<()> {
             let(w,h,a)=crate::read_png(&web)?;let(nw,nh,b)=crate::read_png(&native)?;
             if(w,h)!=(nw,nh){row.status=format!("size mismatch: web {w}×{h}, native {nw}×{nh}");}else{
                 let result=diff::compare(&a,&b)?;row.score=result.changed_fraction;row.error=result.mean_error;row.status=if row.score>diff::CHANGED_BUDGET{"review"}else{"within tolerance"}.into();
-                let dest=root.join("diff").join(&rel);fs::create_dir_all(dest.parent().unwrap())?;bbt_render::write_png(&dest,w,h,&result.rgba)?;row.diff=Some(format!("diff/{rel}"));
+                let dest=root.join("diff").join(&rel);fs::create_dir_all(dest.parent().unwrap())?;bbt_render::write_png(&dest,&result.rgba,w,h)?;row.diff=Some(format!("diff/{rel}"));
             }
         }rows.push(row);
     }

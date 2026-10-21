@@ -22,7 +22,7 @@ pub fn rasterize(text:&str,style:TextStyle,max_width:Option<f32>,scale:f32)->Res
     let attrs=CFDictionary::from_slices(&keys,&values);
     let make=|s:&str|->Result<CFRetained<CTLine>> {
         let string=CFString::from_str(s);
-        let attributed=unsafe { CFAttributedString::new(None,Some(&string),Some(&attrs)) }.ok_or("CoreText attributed string")?;
+        let attributed=unsafe { CFAttributedString::new(None,Some(&string),Some(attrs.as_opaque())) }.ok_or("CoreText attributed string")?;
         Ok(unsafe { CTLine::with_attributed_string(&attributed) })
     };
     let measure=|line:&CTLine| unsafe { line.typographic_bounds(ptr::null_mut(),ptr::null_mut(),ptr::null_mut()) as f32 };
@@ -32,7 +32,7 @@ pub fn rasterize(text:&str,style:TextStyle,max_width:Option<f32>,scale:f32)->Res
         let limit=limit.max(0.0)*scale;
         if measure(&line)>limit {
             let chars:Vec<char>=value.chars().collect();let mut lo=0;let mut hi=chars.len();
-            while lo<hi {let mid=(lo+hi).div_ceil(2);let trial:String=chars[..mid].iter().chain(std::iter::once(&'…')).collect();if measure(&make(&trial)?)<=limit {lo=mid;}else{hi=mid-1;}}
+            while lo<hi {let mid=(lo+hi).div_ceil(2);let trial:String=chars[..mid].iter().chain(std::iter::once(&'…')).collect();let trial_line=make(&trial)?;if measure(&trial_line)<=limit {lo=mid;}else{hi=mid-1;}}
             value=chars[..lo].iter().chain(std::iter::once(&'…')).collect();line=make(&value)?;
             if measure(&line)>limit {line=make("")?;}
         }
@@ -54,3 +54,13 @@ pub fn rasterize(text:&str,style:TextStyle,max_width:Option<f32>,scale:f32)->Res
 }
 #[cfg(not(target_os="macos"))]
 pub fn rasterize(_: &str,_:TextStyle,_:Option<f32>,_:f32)->Result<LineMask>{Err("chrome text currently requires CoreText".into())}
+
+#[cfg(all(test,target_os="macos"))]
+mod tests {
+    use super::*;
+    #[test]fn coretext_shapes_unicode_and_ellipsizes_at_the_given_width(){
+        let style=TextStyle::default();let wide=rasterize("WWW",style,None,1.0).unwrap();let narrow=rasterize("iii",style,None,1.0).unwrap();assert!(wide.advance>narrow.advance*2.0);
+        let unicode=rasterize("♔ Claude ⌘1 · 許可 ⚿",style,None,1.0).unwrap();assert!(unicode.mask.iter().any(|v|*v>0));
+        let clipped=rasterize("Mireille Bellweather-Lockridge",style,Some(45.0),1.0).unwrap();assert!(clipped.advance<=45.01);
+    }
+}

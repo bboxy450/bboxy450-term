@@ -26,7 +26,7 @@ fn icon(out:&mut DrawList,r:Rect,name:&str,color:Color){out.push(Prim::Icon{rect
 fn panel(out:&mut DrawList,r:Rect,ctx:&DrawCtx){out.push(Prim::Rect{rect:r,radii:[STYLE.radius.card as f32;4],fill:ctx.ground(Color::hex(ctx.theme.palette().surface)).alpha(STYLE.material.card_alpha as f32),stroke:Some((1.0,ctx.hairline())),inner_highlight:None,shadow:None});}
 
 pub fn seat_row(s:&Seat,r:Rect,focused:bool,shortcut:Option<usize>,ctx:&DrawCtx,out:&mut DrawList){
-    out.clip(r,[0.0;4]);let d=ctx.density.tokens();let color=col(s.id.as_u128().saturating_sub(1) as usize,ctx);
+    out.clip(r,[0.0;4]);let d=ctx.density.tokens();let color=col(s.id.0.0.saturating_sub(1) as usize,ctx);
     if focused{out.rect(r,STYLE.radius.row as f32,ctx.color(Color::hex(ctx.theme.palette().fg).alpha(STYLE.tint.selection_alpha as f32)));}
     let mut x=r.x+d.pad_x as f32;let cy=r.y+r.h*0.5;let gap=d.gap as f32;
     if s.where_!=Where::Local {WhereMark(&s.where_).draw(Rect::new(x,cy-6.0,12.0,12.0),ctx,out);x+=12.0+gap;}
@@ -53,7 +53,7 @@ pub fn tree15()->SplitNode {
 fn tree3()->SplitNode{split(Axis::Row,0.6,SplitNode::Leaf(sid(0)),split(Axis::Column,0.5,SplitNode::Leaf(sid(1)),SplitNode::Leaf(sid(3))))}
 pub fn mini_grid(tree:&SplitNode,r:Rect,focused:Option<SeatId>,ctx:&DrawCtx,out:&mut DrawList){
     out.clip(r,[TOKENS.radius.grid as f32;4]);
-    for(id,rect)in solve_split(tree,r,1.0).panes{let s=seat(id.as_u128() as usize-1);let c=if Some(id)==focused{ctx.theme.palette().accent}else{match s.activity{Activity::Waiting(_)=>TOKENS.color.state.waiting,Activity::Errored=>TOKENS.color.state.errored,_=>ctx.theme.palette().line}};out.rect(rect,1.0,ctx.color(Color::hex(c)));}out.unclip();
+    for(id,rect)in solve_split(tree,r,1.0).panes{let s=seat(id.0.0 as usize-1);let c=if Some(id)==focused{ctx.theme.palette().accent}else{match s.activity{Activity::Waiting(_)=>TOKENS.color.state.waiting,Activity::Errored=>TOKENS.color.state.errored,_=>ctx.theme.palette().line}};out.rect(rect,1.0,ctx.color(Color::hex(c)));}out.unclip();
 }
 fn band(name:&str,count:usize,r:Rect,color:Color,ctx:&DrawCtx,out:&mut DrawList){
     out.push(Prim::Gloss{rect:r,radii:[STYLE.radius.tile as f32;4],color:ctx.color(color)});
@@ -66,7 +66,7 @@ fn closed_strip(r:Rect,ctx:&DrawCtx,out:&mut DrawList){out.rect(r,STYLE.radius.r
 fn tab_row(tree:&SplitNode,name:&str,r:Rect,expanded:bool,ctx:&DrawCtx,out:&mut DrawList){
     text(out,Rect::new(r.x+8.0,r.y+3.0,r.w-72.0,r.h),name,ctx.density.tokens().font_small as f32,ctx.muted(),400);
     mini_grid(tree,Rect::new(r.right()-32.0,r.y+(r.h-16.0)*0.5,24.0,16.0),if expanded{Some(sid(0))}else{None},ctx,out);
-    if !expanded {for(i,id)in tree.leaves().into_iter().take(6).enumerate(){StateGlyph{activity:seat(id.as_u128() as usize-1).activity,grade:Grade::Reported,color:col(i,ctx)}.draw(Rect::new(r.right()-105.0+i as f32*10.0,r.y+6.0,8.0,8.0),ctx,out);}}
+    if !expanded {for(i,id)in tree.leaves().into_iter().take(6).enumerate(){StateGlyph{activity:seat(id.0.0 as usize-1).activity,grade:Grade::Reported,color:col(i,ctx)}.draw(Rect::new(r.right()-105.0+i as f32*10.0,r.y+6.0,8.0,8.0),ctx,out);}}
 }
 fn card(r:Rect,name:&str,indices:&[usize],open:bool,focused:bool,ctx:&DrawCtx,out:&mut DrawList){
     let dim=if focused{*ctx}else{ctx.dimmed()};let color=col(if name=="winnow"{4}else{0},ctx);panel(out,r,&dim);out.clip(r,[STYLE.radius.card as f32;4]);
@@ -84,7 +84,7 @@ fn sidebar(r:Rect,count:usize,ctx:&DrawCtx,out:&mut DrawList){
 }
 fn close_dot(r:Rect,hover:bool,ctx:&DrawCtx,out:&mut DrawList){out.rect(r,r.h,ctx.color(Color::hex("#FF5F57")));if hover{out.line([r.x+3.0,r.y+3.0],[r.right()-3.0,r.bottom()-3.0],1.0,Color::BLACK.alpha(0.6));out.line([r.right()-3.0,r.y+3.0],[r.x+3.0,r.bottom()-3.0],1.0,Color::BLACK.alpha(0.6));}}
 fn strip(s:&Seat,r:Rect,focused:bool,ctx:&DrawCtx,out:&mut DrawList){
-    let ctx=if focused{*ctx}else{ctx.dimmed()};let color=col(s.id.as_u128() as usize-1,&ctx);out.rect(r,0.0,ctx.color(color));out.clip(r,[0.0;4]);close_dot(Rect::new(r.x+6.0,r.y+5.0,12.0,12.0),false,&ctx,out);let mut x=r.x+25.0;
+    let ctx=if focused{*ctx}else{ctx.dimmed()};let color=col(s.id.0.0 as usize-1,&ctx);out.rect(r,0.0,ctx.color(color));out.clip(r,[0.0;4]);close_dot(Rect::new(r.x+6.0,r.y+5.0,12.0,12.0),false,&ctx,out);let mut x=r.x+25.0;
     if s.where_!=Where::Local{WhereMark(&s.where_).draw(Rect::new(x,r.y+5.0,12.0,12.0),&ctx,out);x+=17.0;}
     icon(out,Rect::new(x,r.y+5.0,13.0,13.0),&s.harness.0,ctx.color(Color::BLACK.alpha(0.8)));x+=18.0;
     let name_w=(s.name.len() as f32*5.6).min((r.w-150.0).max(12.0));text(out,Rect::new(x,r.y+3.0,name_w,16.0),s.name.as_str(),11.0,ctx.color(Color::BLACK.alpha(0.9)),600);x+=name_w+5.0;
@@ -94,14 +94,14 @@ fn strip(s:&Seat,r:Rect,focused:bool,ctx:&DrawCtx,out:&mut DrawList){
     Badge{label:"⌘1",selected:false,mono:true}.draw(Rect::new(r.right()-72.0,r.y+3.0,28.0,16.0),&ctx,out);icon(out,Rect::new(r.right()-37.0,r.y+5.0,12.0,12.0),if s.muted{"muted"}else{"unmuted"},ctx.color(Color::BLACK.alpha(0.65)));StateGlyph{activity:s.activity,grade:s.grade,color}.draw(Rect::new(r.right()-18.0,r.y+5.0,11.0,11.0),&ctx,out);out.unclip();
 }
 fn pane(s:&Seat,r:Rect,focused:bool,ctx:&DrawCtx,out:&mut DrawList){
-    let color=match s.activity{Activity::Errored=>Color::hex(TOKENS.color.state.errored),_=>col(s.id.as_u128() as usize-1,ctx)};
+    let color=match s.activity{Activity::Errored=>Color::hex(TOKENS.color.state.errored),_=>col(s.id.0.0 as usize-1,ctx)};
     let dim=if focused{*ctx}else{ctx.dimmed()};out.rect(r,0.0,dim.ground(Color::hex(ctx.theme.palette().bg)));
     let b=if s.activity==Activity::Active{TOKENS.strip.border_active}else{TOKENS.strip.border_idle} as f32;
     out.push(Prim::Rect{rect:r,radii:[0.0;4],fill:Color::TRANSPARENT,stroke:Some((b,ctx.identity(color))),inner_highlight:None,shadow:None});
     strip(s,Rect::new(r.x+b,r.y+b,(r.w-2.0*b).max(0.0),TOKENS.strip.height as f32),focused,ctx,out);
 }
 fn titlebar(r:Rect,ctx:&DrawCtx,out:&mut DrawList){out.rect(r,0.0,Color::hex(ctx.theme.palette().surface).alpha(STYLE.material.panel_alpha as f32));out.line([r.x,r.bottom()-0.5],[r.right(),r.bottom()-0.5],1.0,ctx.hairline());icon(out,Rect::new(r.x+14.0,r.y+10.0,18.0,18.0),"sidebarfoxopen",ctx.fg());out.push(Prim::Image{rect:Rect::new(r.x+42.0,r.y+10.0,18.0,18.0),image:"bboxy".into(),radius:9.0});text(out,Rect::new(r.x+70.0,r.y+10.0,240.0,20.0),"bboxy450-term",STYLE.r#type.body as f32,ctx.fg(),500);text(out,Rect::new(r.x+320.0,r.y+11.0,300.0,18.0),"swarm  /  Vesper Greywind",11.0,ctx.muted(),400);icon(out,Rect::new(r.right()-34.0,r.y+10.0,18.0,18.0),if ctx.theme==Theme::Dark{"sun"}else{"moon"},ctx.muted());}
-fn showcase(r:Rect,n:usize,ctx:&DrawCtx,out:&mut DrawList){let h=STYLE.spacing.title_bar as f32;titlebar(Rect::new(r.x,r.y,r.w,h),ctx,out);let w=TOKENS.sidebar.width as f32;sidebar(Rect::new(r.x,r.y+h,w,r.h-h),n,ctx,out);let tree=if n==15{tree15()}else{tree3()};for(id,rect)in solve_split(&tree,Rect::new(r.x+w,r.y+h,r.w-w,r.h-h),TOKENS.layout.gutter as f32).panes{pane(&seat(id.as_u128() as usize-1),rect,id==sid(0),ctx,out);}}
+fn showcase(r:Rect,n:usize,ctx:&DrawCtx,out:&mut DrawList){let h=STYLE.spacing.title_bar as f32;titlebar(Rect::new(r.x,r.y,r.w,h),ctx,out);let w=TOKENS.sidebar.width as f32;sidebar(Rect::new(r.x,r.y+h,w,r.h-h),n,ctx,out);let tree=if n==15{tree15()}else{tree3()};for(id,rect)in solve_split(&tree,Rect::new(r.x+w,r.y+h,r.w-w,r.h-h),TOKENS.layout.gutter as f32).panes{pane(&seat(id.0.0 as usize-1),rect,id==sid(0),ctx,out);}}
 
 fn message(r:Rect,role:&str,ctx:&DrawCtx,out:&mut DrawList){let color=Color::hex(match role{"oracle"=>TOKENS.color.role.oracle,"creativity"=>TOKENS.color.role.creativity,"unsigned"=>TOKENS.color.role.unsigned,_=>TOKENS.color.role.executor});if role=="oracle"{out.rect(r,4.0,color.alpha(0.07));}out.rect(Rect::new(r.x,r.y+4.0,3.0,r.h-8.0),1.0,color);text(out,Rect::new(r.x+13.0,r.y+3.0,r.w-100.0,15.0),format!("{} <{}>",if role=="oracle"{NAMES[0]}else{NAMES[1]},role.to_uppercase()),11.0,color,600);text(out,Rect::new(r.x+13.0,r.y+21.0,r.w-30.0,18.0),"B claimed. File:line pointers checked. Report is ready.",12.0,ctx.fg(),400);text(out,Rect::new(r.right()-44.0,r.y+3.0,40.0,15.0),"12:07",10.0,ctx.muted(),400);out.rect(Rect::new(r.right()-8.0,r.y+9.0,5.0,5.0),5.0,color);}
 fn info_card(r:Rect,title:&str,rows:&[&str],ctx:&DrawCtx,out:&mut DrawList){panel(out,r,ctx);text(out,Rect::new(r.x+16.0,r.y+12.0,r.w-32.0,24.0),title,16.0,ctx.fg(),500);for(i,row)in rows.iter().enumerate(){let y=r.y+48.0+i as f32*30.0;if y+24.0>r.bottom(){break;}text(out,Rect::new(r.x+16.0,y,r.w-32.0,25.0),*row,12.0,ctx.muted(),400);}}
