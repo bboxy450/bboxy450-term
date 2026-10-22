@@ -234,3 +234,17 @@ materials in the Spotlight and compact presentations. `launcher_banner::Banner`
 composes MiniGrid with a placement caption; its text uses contiguous styled runs
 so inline spacing and baselines survive. The caller owns overlay placement,
 input, navigation mutations, launching and name generation.
+
+## L7 StreamDock
+
+`stream_dock::StreamDock` composes public message, presence, audit, channel-tab,
+epic, external-event and participant-filter entries in supplied order. Message
+rows preserve delivery evidence, unread marks and subagent targets independently;
+a held ended-agent target has no delivery ladder or implicit reroute. A foreign
+Oracle has no p0 chip. Role rails and priority marks do not reorder the stream.
+
+The same retained composition covers standalone messages and the sidebar dock.
+Flow wraps centred presence and rejected notices; Text centres audit lines.
+Epics use supplied expansion/status, and the external lane shows the newest five
+events first. The caller owns scrolling, selection/mute actions, scheduling,
+subscriptions, message routing and animation. No command is sent by this module.

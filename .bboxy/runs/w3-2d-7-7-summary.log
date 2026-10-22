@@ -1,0 +1,110 @@
+W3.2d.7.7 — StreamDock and message-row compositions
+Prerequisites accepted separately: italic cfa6328, Flow/alignment 3147921.
+Current reference: 41f17803c2542bfeab9d453e2db00f7fa77157ed; v2 stays historical.
+
+Mechanism / acceptance evidence:
+crates/bbt-ui/src/modules/stream_dock.rs:12 — typed presentation records for
+  messages, presence, audit, epics/tasks, external events, tabs and filters.
+crates/bbt-ui/src/modules/stream_dock.rs:321 — Message composes L6 primitives;
+  role rail, priority, unread and evidence are independent. Chronology stays
+  supplied order. Foreign Oracle has no p0. Ended-agent targets retain held
+  wording and suppress the delivery ladder. Creativity/via-main use true italic.
+crates/bbt-ui/src/modules/stream_dock.rs:242 — all six delivery-evidence marks;
+  native-queued has a dim second tick; unknown is a grey dashed hollow ring.
+crates/bbt-ui/src/modules/stream_dock.rs:206 — transparent chips retain their
+  underlying tint, their declared line-height includes border sizing, and
+  compressed text fills/clips inside the capsule instead of covering its peers.
+crates/bbt-ui/src/modules/stream_dock.rs:833 — unread slots preserve natural
+  dot width (5px dock, 7px standalone). No cross-axis stretching into a pill.
+crates/bbt-ui/src/modules/stream_dock.rs:874 — expansion/status/count from input;
+  external lane is newest five first; no scheduling or delivery actions.
+crates/bbt-ui/src/modules/stream_dock.rs:1119 — entry composition and frame.
+crates/bboxybook/src/streams.rs:47 — 12 dock + 13 message states x 4 densities
+  x 2 themes = 200 current; another 80 separately named historical cases.
+crates/bboxybook/src/streams.rs:103 — only public records + outer fixture frames
+  enter native layout. Child DOM positions and fonts do not place native nodes.
+crates/bboxybook/src/streams.rs:160 — native/web rect and baseline diagnostics.
+crates/bboxybook/src/streams.rs:211 — old painter delegates to composition;
+  the hand-painted message() implementation is deleted from modules.rs.
+crates/bboxybook/capture-inputs.js:186 — unknown is a border, not a zero-size font;
+  text-only flex-button baselines use actual text ranges, not centred markers;
+  CSS unread pseudo-elements are now required geometry diagnostics.
+crates/bboxybook/capture.mjs:73 — historical stream_dock-v2 alias preserved.
+crates/bbt-ui/tests/streams.rs — six behavior checks: ordering/trust/evidence,
+  ended target, expansion/external bounds, reflow, transparent chips/unknown,
+  round unread dots and clipped compressed text. bboxybook has three host checks,
+  including mutation of child diagnostics proving they do not feed layout.
+
+Verification and actual exits:
+BBOXYBOOK_GALLERY=streams BBOXYBOOK_REFERENCE_HEAD=41f1780 PARITY_OUT=target/bboxybook/streams/final scripts/parity.sh
+  First attempt: 24 historical alias captures failed; native stopped (exit143).
+  Alias fixed. Second attempt: web280/280, zero failures; serial native was
+  deliberately stopped (exit143) to run four disjoint complete render batches.
+  No claim that the interrupted script itself passed. Its complete matrix,
+  renderer and comparator are retained; no cases, thresholds or goldens changed.
+  Pre-inspection full continuation: all4 render jobs exit0; compare exit0;
+  current160/200 within policy,40 pixel reviews; all geometry passed.
+  Visual review caught unread pills and overflowing compressed chips despite
+  that geometry pass. Both fixed at the module composition; pseudo-element
+  diagnostics and a focused regression now cover them.
+BBOXYBOOK_REFERENCE_HEAD=41f1780 node crates/bboxybook/capture.mjs target/bboxybook/streams/reviewed target/bboxybook/streams/reviewed/requested.json
+  exit0: all280 captures, zero browser exceptions/failures. Every web PNG is
+  byte-identical to the pre-inspection capture, so the reference did not move.
+Four immutable optimized CLI render jobs on disjoint70-case manifests
+  exit0 each; actual argv/status in streams/reviewed-jobs/status.json.
+python3 target/bboxybook/streams/finish-reviewed.py
+  exit0: combines all280 images/layouts and runs the unchanged comparator.
+  Comparator exit0. Final current168/200 within policy;32 pixel reviews;
+  all200 geometry records complete/pass. 6,376 rect pairs and3,512 baselines;
+  max rect0.06207275390625px; max baseline0.0078125px.
+  Historical80:48 within policy,8 pixel reviews,24 geometry reviews; diagnostic.
+  New unread pseudo-element records are included in these final totals.
+cargo test -p bbt-render -p bbt-ui -p bboxybook --locked
+  exit0,140 passed; reviewed/debug-tests.log.
+cargo test -p bbt-render -p bbt-ui -p bboxybook --release --locked
+  exit0,140 passed; reviewed/release-tests.log.
+cargo clippy -p bbt-render -p bbt-ui -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+  exit0, same two previous exclusions; reviewed/clippy.log.
+cargo build -p bboxybook --release --locked — exit0.
+node --check crates/bboxybook/capture.mjs — exit0.
+node --check crates/bboxybook/capture-inputs.js — exit0.
+git diff --check — exit0.
+
+Final gallery: target/bboxybook/streams/reviewed/index.html
+Machine summary: target/bboxybook/streams/reviewed-summary.json
+Source/binary hashes: reviewed/source-state.json; unchanged during replay.
+Images inspected: reviewed/inspected.png (five representative web/native/diff
+  triplets, including all four remaining review families), plus the dot/ellipsis
+  spot check at reviewed/spot-fix/inspected.png. Final spot unread rect exactly
+  [512,31,7,7] on both renderers. Earlier dock/Flow triplets inspected too.
+
+Ten worst CURRENT triplets (web/, native/, diff/ under the final gallery):
+  message-row/reply-from-a-subagent-comfortable-light.png — 3.003325%
+  message-row/reply-from-a-subagent-compact-light.png — 3.003325%
+  message-row/reply-from-a-subagent-cozy-light.png — 3.003325%
+  message-row/reply-from-a-subagent-touch-light.png — 3.003325%
+  message-row/reply-from-a-subagent-comfortable-dark.png — 2.991860%
+  message-row/reply-from-a-subagent-compact-dark.png — 2.991860%
+  message-row/reply-from-a-subagent-cozy-dark.png — 2.991860%
+  message-row/reply-from-a-subagent-touch-dark.png — 2.991860%
+  stream/rejected-progress-comfortable-dark.png — 2.844827%
+  stream/rejected-progress-compact-dark.png — 2.844827%
+
+Remaining pixel reviews: reply-from-a-subagent, unsigned, to-a-subagent,
+  rejected-progress (eight variants each), worst3.0033%. Text masks, chip/rim
+  antialiasing and the existing dashed-border kernel remain visible. Pixel
+  location alone does not prove every cause; no new per-module text tuning.
+Known unimplemented details: Creativity's repeating rail fill remains solid;
+  muted channel text lacks line-through (opacity/icon retained). These need
+  shared fill/text-decoration support, not hand-painted module primitives.
+  Animation/input controllers, the optional arrival-ripple effect, scroll
+  integration and rich wikilink message bodies are not claimed by this static
+  presentation pass. The evidence-climbing fixture is frozen at sender-stored.
+  Real window interaction, macOS14, Linux/mobile and hosted CI not checked.
+  No terminal-grid path, shader, raster budget or reference golden was changed.
+
+Worktree: other agents' core/mux/runtime/Cargo.lock changes were left untouched.
+  Tests ran before the newer R1 changes on origin were integrated; those new
+  global runtime/lint changes and concurrent W2.2 edits are not re-verified here.
+  Own generated-output cleanup is recorded in w3-2d-7-7-cleanup.log; accepted
+  7.6b/italic/Flow galleries retained. No browser of the operator was opened.

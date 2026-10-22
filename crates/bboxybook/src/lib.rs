@@ -10,6 +10,7 @@ pub mod panes;
 pub mod parity;
 pub mod seat_rows;
 pub mod styles;
+pub mod streams;
 pub mod swarms;
 pub mod tabs;
 pub mod title_bars;

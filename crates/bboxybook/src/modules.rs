@@ -367,47 +367,6 @@ fn showcase(r: Rect, n: usize, ctx: &DrawCtx, out: &mut DrawList) {
     }
 }
 
-fn message(r: Rect, role: &str, ctx: &DrawCtx, out: &mut DrawList) {
-    let color = Color::hex(match role {
-        "oracle" => TOKENS.color.role.oracle,
-        "creativity" => TOKENS.color.role.creativity,
-        "unsigned" => TOKENS.color.role.unsigned,
-        _ => TOKENS.color.role.executor,
-    });
-    if role == "oracle" {
-        out.rect(r, 4.0, color.alpha(0.07));
-    }
-    out.rect(Rect::new(r.x, r.y + 4.0, 3.0, r.h - 8.0), 1.0, color);
-    text(
-        out,
-        Rect::new(r.x + 13.0, r.y + 3.0, r.w - 100.0, 15.0),
-        format!(
-            "{} <{}>",
-            if role == "oracle" { NAMES[0] } else { NAMES[1] },
-            role.to_uppercase()
-        ),
-        11.0,
-        color,
-        600,
-    );
-    text(
-        out,
-        Rect::new(r.x + 13.0, r.y + 21.0, r.w - 30.0, 18.0),
-        "B claimed. File:line pointers checked. Report is ready.",
-        12.0,
-        ctx.fg(),
-        400,
-    );
-    text(
-        out,
-        Rect::new(r.right() - 44.0, r.y + 3.0, 40.0, 15.0),
-        "12:07",
-        10.0,
-        ctx.muted(),
-        400,
-    );
-    out.rect(Rect::new(r.right() - 8.0, r.y + 9.0, 5.0, 5.0), 5.0, color);
-}
 fn info_card(r: Rect, title: &str, rows: &[&str], ctx: &DrawCtx, out: &mut DrawList) {
     panel(out, r, ctx);
     text(
@@ -840,21 +799,7 @@ pub fn draw(id: &str, state: &str, r: Rect, ctx: &DrawCtx, out: &mut DrawList) -
                 500,
             );
         }
-        "message-row" | "stream_dock" => {
-            let count = if state == "stream" { 4 } else { 2 };
-            for i in 0..count {
-                message(
-                    Rect::new(r.x, r.y + i as f32 * 60.0, r.w.min(700.0), 54.0),
-                    if state == "stream" {
-                        ["oracle", "executor", "creativity", "unsigned"][i]
-                    } else {
-                        state
-                    },
-                    ctx,
-                    out,
-                );
-            }
-        }
+        "message-row" | "stream_dock" => crate::streams::paint_legacy(r,state,ctx,out),
         "launcher" => launcher(r, state, ctx, out),
         "settings_tab" => settings(r, state, ctx, out),
         "logo" => {

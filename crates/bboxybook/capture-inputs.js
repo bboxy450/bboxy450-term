@@ -18,6 +18,11 @@
     let glow;
     Object.defineProperty(window,'Glow',{configurable:true,get:()=>glow,set(value){glow=value;const attach=value.attach;value.attach=function(wrap,seat,opts){const seed=randomIndex;const cv=attach(wrap,seat,opts);glows.push({wrap,cv,seed,activity:seat.state,focused:!!opts?.focused,time_ms:450});return cv;};}});
   }
+  if (window.bboxyStreamFixture) {
+    const timeout=window.setTimeout.bind(window);
+    // The evidence-climbing demo starts at sender-stored; freeze its 700ms timer.
+    window.setTimeout=(fn,delay,...args)=>delay===700?0:timeout(fn,delay,...args);
+  }
   let ui;
   Object.defineProperty(window,'UI',{configurable:true,get:()=>ui,set(value){
     ui=value;const original=value.material;
@@ -37,7 +42,7 @@
       components = value;
       for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
         'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard',
-      'externalLane', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker']) {
+      'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker']) {
         const original = value[name];
         if (typeof original !== 'function') continue;
         value[name] = function (...args) {
@@ -152,6 +157,57 @@
       }
       return diagnostics;
     };
+    if(window.bboxyStreamFixture){
+      const frames=[...root.querySelectorAll('.stream,.stream-dock')].filter(n=>!n.parentElement.closest('.stream,.stream-dock')).map(node=>{
+        const dock=node.classList.contains('stream-dock'),framed=!dock||!node.parentElement.matches('.body'),frame=dock&&framed?node.parentElement:node;
+        const list=calls.filter(c=>['messageRow','epicGroup','externalLane','streamTabs'].includes(c.name)&&c.node?.isConnected&&node.contains(c.node));
+        const entries=list.map(c=>{
+          if(c.name==='messageRow')return {node:c.node,kind:'message',data:c.args[0],show_channel:c.args[1]?.showCh};
+          if(c.name==='epicGroup')return {node:c.node,kind:'epic',data:c.args[0]};
+          if(c.name==='externalLane')return {node:c.node,kind:'external',events:c.args[0],open:c.args[1]?.open!==false};
+          return {node:c.node,kind:'tabs',channels:c.args[0],selected:c.args[1]?.sel||'all'};
+        });
+        for(const n of node.querySelectorAll('.filter'))entries.push({node:n,kind:'filter',name:n.querySelector('b').textContent});
+        for(const n of node.querySelectorAll('.lab-note')){const css=getComputedStyle(n);entries.push({node:n,kind:'note',text:n.textContent,padding:[css.paddingTop,css.paddingRight,css.paddingBottom,css.paddingLeft].map(parseFloat)});}
+        entries.sort((a,b)=>a.node.compareDocumentPosition(b.node)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
+        const diagnostics=[{key:'frame',rect:bounds(frame)}];
+        if(dock)diagnostics.push({key:'dock',rect:bounds(node)});
+        for(let i=0;i<entries.length;i++){
+          const entry=entries[i],key='e'+i;
+          const all=parts(entry.node,key);
+          // Audit lines use one styled inline text flow, not positioned children.
+          // Chip and tick content is captured as its semantic box plus text range.
+          const drop=p=>p.key.endsWith('/ripple')||p.key.includes('/aline/')||p.key.includes('/rj-t/');
+          const array=all.filter(p=>!drop(p));
+          for(const p of array){
+            const n=entry.node;
+            if(p.key.endsWith('/aline'))Object.assign(p,textDiag(n.querySelector('.aline')),{key:p.key});
+            if(p.key.endsWith('/rj-t'))Object.assign(p,textDiag(n.querySelector('.rj-t')),{key:p.key});
+            // The unknown mark is a CSS border with font-size:0, not a glyph.
+            if(p.key.endsWith('/hollow')){p.kind='box';delete p.font_diagnostics;delete p.value;}
+            // A zero-size marker becomes a separate flex item in a text-only
+            // channel button. Read its real anonymous text range instead.
+            const tab=/\/ch-tab(\d*)$/.exec(p.key);
+            if(tab&&p.kind==='text'){
+              const node=n.children[Number(tab[1]||0)],range=document.createRange();
+              range.selectNodeContents(node.firstChild);
+              p.font_diagnostics.baseline=range.getBoundingClientRect().y-node.getBoundingClientRect().y+p.font_diagnostics.ascent;
+              p.font_diagnostics.source='inline-flex-text-range';
+            }
+          }
+          diagnostics.push(...array);
+          if(entry.node.classList.contains('unread')){
+            const css=getComputedStyle(entry.node,'::after'),r=bounds(entry.node),w=parseFloat(css.width),h=parseFloat(css.height);
+            if(!Number.isFinite(w+h))throw Error('Unread mark dimensions missing');
+            diagnostics.push({key:key+'/unread-dot',kind:'box',rect:{x:r.x+r.w-parseFloat(css.right)-w,y:r.y+parseFloat(css.top),w,h}});
+          }
+        }
+        frame.dataset.bboxyStream='';
+        return {host:bounds(frame),view:{dock,framed,entries:entries.map(({node,...e})=>e)},parts:diagnostics};
+      });
+      if(!frames.length)throw Error('Stream frame missing');
+      return JSON.parse(JSON.stringify({version:1,layer:'streams',frames},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
+    }
     if(window.bboxyLauncherFixture){
       const call=calls.find(c=>c.name==='picker'&&c.node?.isConnected&&root.contains(c.node));
       if(!call)throw Error('Launcher constructor missing');

@@ -505,3 +505,32 @@ The 48 historical cases are diagnostic (24 within policy, 24 unproven geometry).
 The merged review is `target/bboxybook/launchers/final/index.html`; its capture
 metadata records the eight recaptured empty-result variants after lab fix
 `8636a28`. No review budget or golden changed.
+
+## L7 StreamDock (W3.2d.7.7)
+
+`cargo run -p bboxybook --locked -- streams` renders 200 current cases: twelve
+stream states and thirteen message-row states, across four densities and both
+themes. Another 80 v2 cases have separate historical names and policy.
+
+For the scripted comparison, run:
+
+```sh
+BBOXYBOOK_GALLERY=streams BBOXYBOOK_REFERENCE_HEAD=41f1780 PARITY_OUT=target/bboxybook/streams/reviewed scripts/parity.sh
+```
+
+The host captures constructor inputs and outer frames. Child DOM geometry and
+baselines are diagnostics; native layout consumes no child positions or CSS
+fonts. Audit styled text stays one inline flow. The unknown-delivery mark is a
+border, not a zero-size glyph. Text-only flex buttons use text-range baselines,
+since a zero-size marker would become a centred flex item. The evidence-climbing
+fixture is frozen at sender-stored; CSS animation playback is paused.
+
+The backdrop is shared fixture context. Click handlers, backend delivery,
+scrolling and animation controllers are not exercised by this static matrix.
+
+The reviewed matrix has 168/200 current cases within policy and 32 pixel reviews;
+all 200 geometry records pass (6,376 rect pairs, 3,512 baselines; maxima 0.063px
+and 0.008px). The 80 historical cases are diagnostic. The handoff continued the
+script's capture as four disjoint render batches and the unchanged comparator;
+the interrupted serial script is not reported as a passing command. Evidence
+and known gaps: `.bboxy/runs/w3-2d-7-7-summary.log`.

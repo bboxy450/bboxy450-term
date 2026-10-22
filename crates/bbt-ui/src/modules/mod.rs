@@ -6,6 +6,7 @@ pub mod pane;
 pub mod seat_row;
 pub mod sidebar;
 pub mod strip;
+pub mod stream_dock;
 pub mod swarm_card;
 pub mod tab_row;
 pub mod title_bar;

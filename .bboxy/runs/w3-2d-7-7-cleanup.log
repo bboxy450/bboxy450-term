@@ -1,0 +1,29 @@
+Own superseded render outputs reclaimed, per Oracle DM1137815d.
+Volume had already recovered from ENOSPC before this cleanup; this log does not attribute that earlier recovery to us.
+{
+  "time": "2026-10-22T08:30:58.678762-07:00",
+  "authorization_message": "1137815d-1016-454a-97e8-85d18bc2c466",
+  "free_bytes_before": 83992432640,
+  "free_bytes_after": 84383961088,
+  "removed": [
+    {
+      "path": "target/parity-iteration-1",
+      "logical_bytes": 88604376
+    },
+    {
+      "path": "target/parity-w3-2c-step0",
+      "logical_bytes": 118712302
+    },
+    {
+      "path": "target/parity-w3-2c-step1",
+      "logical_bytes": 79721764
+    },
+    {
+      "path": "target/parity-w3-2c-step2",
+      "logical_bytes": 62516001
+    }
+  ],
+  "kept": "accepted 7.6b text-raster, italic, flow galleries and current StreamDock evidence; other repositories untouched"
+}
+Command: Python shutil.rmtree on the four exact verified, non-symlink target directories — exit0.
+Earlier task-only incremental compiler cache cleanup is recorded in target/bboxybook/flow/compiler-cache-reclaim.json and the signed Flow evidence.
