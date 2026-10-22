@@ -44,6 +44,18 @@ flowchart TB
 
 **Local-dev stays as the explicit no-primary state.** With no primary pinned, logic keeps `LocalSeatKeys` and the identity card shows "unsigned, local only"; a receiver with a pinned root refuses `local-dev` envelopes. Nothing silently downgrades: the issuer kind is in every envelope.
 
+## 2b. The issuer transition (2026-10-22, from ID1b)
+
+`messaging/issuer` pins one issuer and refuses a change; today's seats sign `local-dev`. The cutover is **one way, one time, journaled**:
+
+1. When bootstrap (§3) verifies and commits, logic writes `identity/issuer` = `{kind: gpg-root, key: <root>, cutover_epoch: <account_epoch>, at: <ts>}` to the account object in the same transaction as the head. Before that line exists, the issuer is `local-dev`.
+2. **Nothing is rewritten.** Every stored envelope keeps its issuer kind and verifies forever against the issuer state that was current at its sequence; a mixed thread shows each message's issuer, and the UI marks `local-dev` ones as unsigned-identity.
+3. **Seats keep their generation's key.** A seat running at the cutover keeps signing `local-dev` until its next generation; the identity card says "N seats still local-dev, restart to sign with the chain". Seats launched after the cutover sign `gpg-root`. No re-keying mid-turn.
+4. **Receivers.** Verification is historical (step 2); acceptance for delivery is current policy: a receiver with a pinned root admits a `local-dev` envelope only if its sender sequence precedes that sender's cutover, and refuses newer ones with the reason named. Local-only receivers with no pinned root keep admitting `local-dev`.
+5. **Reverse is an identity reset**, never automatic: unpinning the root is an explicit operator action that starts a new `local-dev` epoch in the journal; old `gpg-root` envelopes stay verifiable. The journal never goes backwards.
+
+`SeatKeys::finalize` (no-op default, approved by the Oracle) lets the chain set `device` and the `SeatGrant` reference in `mint` with wire fields unchanged.
+
 ## 3. Bootstrap, the first device
 
 ```mermaid
