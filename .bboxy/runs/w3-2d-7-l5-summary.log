@@ -1,0 +1,38 @@
+ROLE: EXECUTOR — Nyx Copperwing
+L5 atom geometry follow-up to accepted 7.3b (f2961ab; pulled acceptance 081189e).
+Assignment f2ef79eb: add independent atom snapshots before 7.4. Extension 07eb87df: add mono:true to the waiting-kind painter after the snapshots proved the 1px mismatch.
+
+Evidence:
+crates/bboxybook/capture-inputs.js:233 — separate temporary inline probes for the main symbol and waiting-kind text; record kind background bounds; restore DOM before screenshot.
+crates/bboxybook/src/atoms.rs:222 — render and snapshot share the same native atom painter.
+crates/bboxybook/src/atoms.rs:321 — derive child text frames/advances/baselines from emitted primitives and CoreText; browser child geometry is diagnostic only. Outer atom slots remain caller-owned API bounds.
+crates/bboxybook/src/atoms.rs:406 — regression test mutates browser child diagnostics without moving native geometry, then changes caller slot height and checks native reflow.
+crates/bboxybook/src/parity.rs:66 — include atom snapshots in layouts.json; report the actual L5 evidence scope.
+crates/bbt-ui/src/atoms.rs:151 — waiting-kind text inherits the same monospace choice as CSS. No L1 shader changes.
+crates/bboxybook/README.md — document the slot/child geometry boundary.
+
+Before: 56 glyph cases were geometry-unproven. Initial snapshots left 32 waiting-related glyph cases at review geometry: every annotation baseline +1px, e.g. waiting-cozy-dark native 17 vs web 16; all 112 PNGs still byte-identical.
+After the approved mono correction: 56/56 glyph cases within policy; 0 geometry-unproven, 0 geometry failures. All 112 snapshots complete: 1,104 rectangles (including caller slots), 328 independently measured text baselines. Max rect error 0.0153751373px; baseline error 0px.
+Icons: 56/56 retain their existing strict pixel-only reviews; highest 0.647787%, accepted per-size rasterisation/AA residue. Raw results remain in the report.
+Only 32 waiting-related native images changed; all 56 icon and 24 other glyph images remain byte-identical. All 112 web reference images remain byte-identical.
+
+Galleries:
+final: target/bboxybook/atoms-geometry-final/index.html
+before font correction: target/bboxybook/atoms-geometry/index.html
+reference: 759fddebe72be745c4d84656b0984b5140a9712b, isolated Chrome 156 at 1x.
+
+Commands/results:
+BBOXYBOOK_REFERENCE_HEAD=759fdde node crates/bboxybook/capture.mjs target/bboxybook/atoms-geometry target/bboxybook/atoms-geometry/requested.json — exit 0, 112/112, 0 failures.
+cargo build -p bboxybook --locked — exit 0.
+bboxybook render --out target/bboxybook/atoms-geometry-final/native --manifest .../cases.json — exit 0, 112 PNGs on Apple M4/Metal; snapshots written.
+bboxybook compare --out target/bboxybook/atoms-geometry-final --manifest .../cases.json --web-root ../atoms-geometry/web — exit 0; 56 glyph cases pass, 56 unchanged icon pixel reviews.
+cargo test -p bbt-ui -p bboxybook --locked — exit 0, 74 tests.
+cargo clippy -p bbt-ui -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0 (existing exceptions).
+fmt, node capture-inputs.js syntax, diff check — exit 0 each, static.log.
+
+Visual inspection: final web/native waiting-kinds-permission-question-auth-cozy-dark pair. Geometry snapshots provide the exact conformance measurements for these tiny annotations.
+
+Not checked / unchanged gaps:
+No new geometry claim for the seven native-only atom previews without web fixtures. Icon vector rasterisation remains the separate L1 item. No 2x, Linux/Safari, input, live animation or FPS check; no operator browser actions.
+Higher-layer matrices were not rerendered after the L5 font correction; their caller geometry is unchanged, but their waiting-label pixels will change on the next module pass.
+7.4 code untouched. No dependencies or Cargo.lock changes. Scoped signed commit and worktree state are reported in the ICQ handoff.

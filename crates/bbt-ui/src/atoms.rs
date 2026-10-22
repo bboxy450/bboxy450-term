@@ -148,6 +148,7 @@ impl Atom for Glyph {
             let style = TextStyle {
                 scale: TypeScale::Custom(7.),
                 weight: 700,
+                mono: true,
                 ..Default::default()
             };
             let w = ctx.width(text, style) + 2.;

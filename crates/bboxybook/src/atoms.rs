@@ -219,6 +219,54 @@ fn number(v: &serde_json::Value, key: &str) -> Result<f32> {
         .map(|x| x as f32)
         .ok_or_else(|| format!("invalid atom fixture {key}").into())
 }
+fn paint_atom(
+    atom: &serde_json::Value,
+    rect: Rect,
+    draw: DrawCtx,
+    foreground: &mut DrawList,
+) -> Result<()> {
+    let ctx = draw_context(draw, &Metrics);
+    let rgba: Vec<f32> = serde_json::from_value(atom["color"].clone())?;
+    let rgba: [f32; 4] = rgba.try_into().map_err(|_| "invalid atom colour")?;
+    if atom["kind"] == "icon" {
+        atoms::Icon {
+            name: atom["name"].as_str().ok_or("icon name missing")?,
+            color: Color(rgba),
+        }
+        .paint(rect, &ctx, foreground);
+    } else if atom["kind"] == "glyph" {
+        let activity = match atom["activity"].as_str() {
+            Some("active") => Activity::Active,
+            Some("idle") => Activity::Idle,
+            Some("errored") => Activity::Errored,
+            Some("waiting") => Activity::Waiting(match atom["wait_kind"].as_str() {
+                Some("permission") => WaitKind::Permission,
+                Some("auth") => WaitKind::Auth,
+                Some("question") => WaitKind::Question,
+                _ => return Err("waiting kind missing".into()),
+            }),
+            _ => return Err("unknown glyph state".into()),
+        };
+        let grade = match atom["grade"].as_str() {
+            Some("reported") => Grade::Reported,
+            Some("shim") => Grade::Shim,
+            Some("inferred") => Grade::Inferred,
+            _ => return Err("glyph grade missing".into()),
+        };
+        // Identity is shared data; the atom owns state colours, grade and kind geometry.
+        let c = SeatColor::Derived.resolve("demo", draw.theme);
+        let seat_color = Color::hsl(c.hue, c.saturation / 100., c.lightness / 100.);
+        atoms::Glyph {
+            activity,
+            grade,
+            seat_color,
+        }
+        .paint(rect, &ctx, foreground);
+    } else {
+        return Err("unknown captured atom kind".into());
+    }
+    Ok(())
+}
 pub fn render_case(renderer: &mut ChromeRenderer, case: &Case) -> Result<Vec<u8>> {
     let fix = case.fixture.as_ref().ok_or("missing atom fixture")?;
     let bg = &fix["backdrop"];
@@ -228,7 +276,6 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &Case) -> Result<Vec<u8>
     let x = number(&bg["crop"], "x")?;
     let y = number(&bg["crop"], "y")?;
     let draw = DrawCtx::new(gallery::theme(&case.theme), gallery::density(&case.density));
-    let ctx = draw_context(draw, &Metrics);
     let mut foreground = DrawList::default();
     let records = fix["atoms"]
         .as_array()
@@ -242,45 +289,7 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &Case) -> Result<Vec<u8>
             number(r, "w")?,
             number(r, "h")?,
         );
-        let rgba: Vec<f32> = serde_json::from_value(atom["color"].clone())?;
-        let rgba: [f32; 4] = rgba.try_into().map_err(|_| "invalid atom colour")?;
-        if atom["kind"] == "icon" {
-            atoms::Icon {
-                name: atom["name"].as_str().ok_or("icon name missing")?,
-                color: Color(rgba),
-            }
-            .paint(rect, &ctx, &mut foreground);
-        } else if atom["kind"] == "glyph" {
-            let activity = match atom["activity"].as_str() {
-                Some("active") => Activity::Active,
-                Some("idle") => Activity::Idle,
-                Some("errored") => Activity::Errored,
-                Some("waiting") => Activity::Waiting(match atom["wait_kind"].as_str() {
-                    Some("permission") => WaitKind::Permission,
-                    Some("auth") => WaitKind::Auth,
-                    Some("question") => WaitKind::Question,
-                    _ => return Err("waiting kind missing".into()),
-                }),
-                _ => return Err("unknown glyph state".into()),
-            };
-            let grade = match atom["grade"].as_str() {
-                Some("reported") => Grade::Reported,
-                Some("shim") => Grade::Shim,
-                Some("inferred") => Grade::Inferred,
-                _ => return Err("glyph grade missing".into()),
-            };
-            // Identity is shared data; the atom owns state colours, grade and kind geometry.
-            let c = SeatColor::Derived.resolve("demo", draw.theme);
-            let seat_color = Color::hsl(c.hue, c.saturation / 100., c.lightness / 100.);
-            atoms::Glyph {
-                activity,
-                grade,
-                seat_color,
-            }
-            .paint(rect, &ctx, &mut foreground);
-        } else {
-            return Err("unknown captured atom kind".into());
-        }
+        paint_atom(atom, rect, draw, &mut foreground)?;
     }
     let image = materials::render_composed_to_rgba(
         renderer,
@@ -305,4 +314,128 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &Case) -> Result<Vec<u8>
         cropped.extend_from_slice(&image[start..start + case.width as usize * 4]);
     }
     Ok(cropped)
+}
+
+/// Atom slots are caller-owned fixture bounds. Child text positions, advances
+/// and baselines come from the same emitted primitives and fonts as paint.
+pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
+    use bbt_ui_model::draw::Prim;
+    use serde_json::{Value, json};
+    let mut snapshots = vec![];
+    for case in cases
+        .iter()
+        .filter(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "atoms"))
+    {
+        let f = case.fixture.as_ref().ok_or("missing atom fixture")?;
+        let draw = DrawCtx::new(gallery::theme(&case.theme), gallery::density(&case.density));
+        let records = f["atoms"].as_array().ok_or("missing atom records")?;
+        let web_rect = |v: &Value| -> Result<Value> {
+            Ok(json!([
+                number(v, "x")?,
+                number(v, "y")?,
+                number(v, "w")?,
+                number(v, "h")?
+            ]))
+        };
+        let mut children = vec![];
+        for (index, atom) in records.iter().enumerate() {
+            let r = &atom["rect"];
+            let rect = Rect::new(
+                number(r, "x")?,
+                number(r, "y")?,
+                number(r, "w")?,
+                number(r, "h")?,
+            );
+            let mut list = DrawList::default();
+            paint_atom(atom, rect, draw, &mut list)?;
+            let mut parts = vec![];
+            let mut text_index = 0;
+            for prim in &list.primitives {
+                match prim {
+                    Prim::Text {
+                        origin,
+                        text,
+                        style,
+                        max_width,
+                        ..
+                    } => {
+                        let diagnostic = &atom[if text_index == 0 { "text" } else { "kind_text" }];
+                        let key = if text_index == 0 {
+                            "symbol"
+                        } else {
+                            "waiting-kind-text"
+                        };
+                        let mask =
+                            bbt_render::chrome::text::rasterize(text, *style, *max_width, 1.)?;
+                        let metrics = bbt_render::chrome::text::rasterize("Hg", *style, None, 1.)?;
+                        // The glyph and kind use CSS line-height:1. The painter
+                        // centres its 1.4em primitive in that same logical line.
+                        let height = (style.pixels() * 64.).floor() / 64.;
+                        let y = origin[1] + (style.pixels() * 1.4 - height) * 0.5;
+                        let baseline = metrics.ascent.round()
+                            + ((height - metrics.ascent.round() - metrics.descent.round()) * 0.5)
+                                .floor();
+                        parts.push(json!({"key":key,"kind":"text",
+                            "native":[origin[0],y,mask.advance,height],
+                            "web":web_rect(&diagnostic["rect"])?,
+                            "baseline":{"native":y+baseline,"web":number(&diagnostic["rect"],"y")?
+                                + number(&diagnostic["font_diagnostics"],"baseline")?},"children":[]}));
+                        text_index += 1;
+                    }
+                    Prim::Rect { rect, fill, .. } if fill.0[3] > 0. => {
+                        parts.push(json!({"key":"waiting-kind-box","kind":"box",
+                            "native":[rect.x,rect.y,rect.w,rect.h],"web":web_rect(&atom["kind_rect"])?,"children":[]}));
+                    }
+                    _ => {}
+                }
+            }
+            children.push(json!({"key":format!("atom{index}"),"kind":"box",
+                "native":[rect.x,rect.y,rect.w,rect.h],"web":web_rect(r)?,"children":parts}));
+        }
+        snapshots.push(json!({"key":case.relative(),"scope":"caller-owned atom slots; child glyph/kind geometry independently measured",
+            "tree":{"kind":"box","native":[0,0,case.width,case.height],"web":[0,0,case.width,case.height],"children":children}}));
+    }
+    Ok(snapshots)
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod geometry_tests {
+    use super::*;
+    use serde_json::json;
+    #[test]
+    fn glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics() -> Result<()> {
+        let mut case = cases()
+            .into_iter()
+            .find(|c| {
+                c.component == "glyph"
+                    && c.state == "waiting"
+                    && c.density == "cozy"
+                    && c.theme == "dark"
+            })
+            .unwrap();
+        let diagnostic =
+            json!({"rect":{"x":999,"y":998,"w":1,"h":1},"font_diagnostics":{"baseline":99}});
+        case.fixture = Some(
+            json!({"layer":"atoms","atoms":[{"kind":"glyph","activity":"waiting","grade":"reported","wait_kind":"question","color":[1,0.5,0,1],"rect":{"x":10,"y":20,"w":12,"h":12},"text":diagnostic,"kind_text":diagnostic,"kind_rect":{"x":900,"y":901,"w":1,"h":1}}]}),
+        );
+        let first = snapshots(&[case.clone()])?;
+        let parts = &first[0]["tree"]["children"][0]["children"];
+        assert!(parts[0]["native"][0].as_f64().unwrap() < 30.);
+        assert!(parts[0]["native"][2].as_f64().unwrap() > 5.);
+        assert!(parts[0]["baseline"]["native"].as_f64().unwrap() < 50.);
+        assert_eq!(parts[0]["web"][0], 999.);
+        case.fixture.as_mut().unwrap()["atoms"][0]["text"]["rect"]["x"] = json!(-500);
+        let changed = snapshots(&[case.clone()])?;
+        assert_eq!(
+            parts[0]["native"],
+            changed[0]["tree"]["children"][0]["children"][0]["native"]
+        );
+        case.fixture.as_mut().unwrap()["atoms"][0]["rect"]["h"] = json!(16);
+        let resized = snapshots(&[case])?;
+        assert_eq!(
+            resized[0]["tree"]["children"][0]["children"][0]["native"][3],
+            16.
+        );
+        Ok(())
+    }
 }

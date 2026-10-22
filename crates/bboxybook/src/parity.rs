@@ -62,6 +62,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     }
     let mut snapshots = crate::components::snapshots(cases)?;
     snapshots.extend(crate::styles::snapshots(cases)?);
+    snapshots.extend(crate::atoms::snapshots(cases)?);
     snapshots.extend(crate::seat_rows::snapshots(cases)?);
     snapshots.extend(crate::tabs::snapshots(cases)?);
     snapshots.extend(crate::swarms::snapshots(cases)?);
@@ -138,6 +139,8 @@ impl CasePolicy {
                 "TabRow and MiniGrid compositions, including expanded SeatRows"
             } else if f.is_some_and(|f| f["layer"] == "seat-row") {
                 "SeatRow/subagent/task/artifact content; row-menu overlays excluded"
+            } else if f.is_some_and(|f| f["layer"] == "atoms") {
+                "L5 Glyph/Icon in caller-owned slots; child text geometry independently measured"
             } else if surface_only {
                 "container surfaces only; module children hidden"
             } else {
@@ -357,6 +360,11 @@ pub fn compare_paths(
         .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "swarms"))
     {
         "L7 SwarmCard and Sidebar compositions. Public constructor data and external flow/viewport bounds are shared. Child DOM rectangles and fonts are diagnostic only. Current space-header/sidebar pages use committed HEAD; band/sidebar-v2 retain ux-prototype-v2. Pane previews remain shared web context and are not claimed as native module content. layouts.json checks every exported part and baseline."
+    } else if cases
+        .iter()
+        .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "atoms"))
+    {
+        "L5 Glyph/Icon atoms in caller-owned slots. Child text and waiting-kind bounds/baselines come from the same emitted native primitives and CoreText metrics as paint; browser rectangles and inline-baseline probes are independent diagnostics."
     } else if component_layer {
         "L6 retained components. Public constructor inputs and external host origin/width are shared. Child DOM rectangles and first-line baselines are diagnostics only; native layout uses the shared solver and CoreText metrics."
     } else if cases.iter().all(|c| c.component == "materials") {

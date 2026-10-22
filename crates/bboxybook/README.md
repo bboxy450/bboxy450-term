@@ -287,6 +287,12 @@ grade, waiting kind and identity are data. Native atoms own their colour rules,
 rings, marks and tint. CSS pulse is fixed at its initial phase. The legacy
 module previews and their coverage registry are untouched.
 
+`layouts.json` records atom geometry too. Outer rectangles are the caller-owned
+slots; symbol advances, waiting-kind box/text positions and baselines derive
+from the exact native draw primitives and CoreText font metrics. Browser child
+rectangles and inline baselines remain diagnostics. Capture probes the main
+symbol and its annotation separately without changing the reference image.
+
 The separate native-only previews establish rendering/coverage for Hairline,
 Badge, Chip, Pill, Swatch, Spinner and Checkerboard; they do not claim CSS parity
 for those seven atoms. No L6 widgets or module composition are built here. The

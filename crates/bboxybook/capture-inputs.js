@@ -225,8 +225,16 @@
     const glowFor=node=>{const g=glows.find(g=>g.wrap.contains(node));return g?{seed:g.seed,activity:g.activity,focused:g.focused,time_ms:g.time_ms,canvas:bounds(g.cv)}:null;};
     const atoms=window.bboxyAtomFixture?[...root.querySelectorAll('.glyph,.hicon')].map(node=>{
       const css=getComputedStyle(node),glyph=node.classList.contains('glyph');
-      return {kind:glyph?'glyph':'icon',rect:bounds(node),color:color(css.color,node),opacity:Number(css.opacity),
+      const result={kind:glyph?'glyph':'icon',rect:bounds(node),color:color(css.color,node),opacity:Number(css.opacity),
         ...(glyph?{activity:['active','idle','waiting','errored'].find(x=>node.classList.contains(x)),grade:['reported','shim','inferred'].find(x=>node.classList.contains('g-'+x)),wait_kind:['permission','question','auth'].find(x=>node.classList.contains('k-'+x))}:{name:node.title})};
+      if(glyph){
+        const main=[...node.childNodes].find(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim());
+        if(!main)throw Error('glyph text is missing');
+        result.text=rawTextDiag(main);
+        const mark=node.querySelector(':scope > .kind');
+        if(mark){result.kind_rect=bounds(mark);result.kind_text=rawTextDiag(mark.firstChild);}
+      }
+      return result;
     }):[];
     const squares=[...root.querySelectorAll('.ui-sq')].map((node,index)=>{const input=materials[index];const css=getComputedStyle(node);return {...input,glow:glowFor(node),rect:bounds(node),radii:radii(css),color:color(input.params.color||'var(--accent)',node),tint:color(input.params.tint==='none (Style fill)'?'transparent':input.params.tint||'transparent',node)};});
     const boxes=styles.filter(c=>c.node.isConnected&&root.contains(c.node)).map(({style,node})=>{
