@@ -185,12 +185,15 @@ How the terminal encourages it, not just documents it:
 4. The messaging graph surfaces noise: a seat whose stream-message share exceeds a threshold shows a hint on its row for the Oracle.
 5. The communication graph's may-send-to grants default workers to {delegator, own subagents, peers on an explicit edge}, stream only for the chunk kinds above.
 
-## Attention budget per role (operator, 2026-10-21)
+## Attention budget per role (operator, 2026-10-21; Architect added the same day)
+
+**Architect** designs the system and writes the specs: the high-level picture, zoomed out. **Oracle** decomposes specs into epics and epics into tasks, delegates, tracks state, verifies. **Executors** build. **Creativity** designs the experience. Expensive models go where the picture is drawn, not where it is tracked.
 
 Model and effort follow what each role spends attention on:
 
 | Role | Model / effort | Receives | Never receives |
 |---|---|---|---|
+| Architect | the most capable model (Claude Fable class), high effort, zoomed out | the operator's vision, research summaries, the Oracle's escalations of design-level gaps | task traffic, progress, per-pass reports |
 | Oracle | cheaper model, low reasoning effort; its job is tracking state, routing, verifying, deciding small things fast | every report (batched DMs), every chunk, every escalation | raw progress chatter |
 | Executor | higher effort | its brief, its delegator's DMs, explicit-edge peer DMs | the swarm stream (subscribed only to its own task docs and to chunk/decision kinds) |
 | Creativity | highest model and effort | the operator's taste notes and the Oracle's design-relevant decisions, batched | everything else |

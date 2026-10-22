@@ -31,7 +31,7 @@ Index: [[README]] · tasks in `tasks/` · research in `research/` · specs in `s
 
 ## Roles and control (DECIDED)
 
-- Default roles live in settings: Codex → Executor, Claude → Oracle. Overridable per seat.
+- Built-in roles: **Architect** (designs the system and specs; most capable model, e.g. Claude Fable), **Oracle** (specs → epics → tasks, delegation, state, verification; cheaper model, low effort), **Executor** (builds; higher effort), **Creativity** (designs the experience; highest model and effort). Default role per harness lives in settings: Codex → Executor, Claude → Oracle; Architect and Creativity are assigned per seat. Overridable per seat.
 - **Custom roles (operator via the lab, 2026-10-21).** Users define roles in settings. Built-in Oracle, Executor, Creativity stay, editable not deletable. A role = name, colour, mark, default system prompt, may-send-to, and a **priority class**: oracle-class or worker-class. Delivery order, badging, MCP gating and the receiver trust policy derive from the class; colours and marks from the name. Oracle decisions: roles are **per account** (defined once, assigned per seat in any swarm); the **class may change** later, and a change re-signs the affected seat grants with a new epoch, so a receiver never trusts a name, only the signed class in the grant.
 - Each role has a system prompt the terminal feeds into the harness at launch (hook, flag, or MCP, whichever the harness supports).
 - The terminal runs an **MCP server**, modelled on iTerm2's `it2` binary. The Oracle seat gets the full tool set: list seats, read any seat's screen and scrollback, send text or keystrokes, create seats, split, focus, close, assign roles, set permissions, message. The Oracle sets up its own cohort.

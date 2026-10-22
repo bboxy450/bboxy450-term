@@ -95,7 +95,7 @@ The Oracle maintains this section and, in the real terminal, edits it with `grap
 
 ## Attention budget (operator, 2026-10-21)
 
-Oracle: cheaper model, low effort, absorbs all updates, tracks state. Executors: higher effort, minimal messages. Creativity: highest model and effort, near-zero messaging. Workers get only their brief, DMs addressed to them, and batched decisions that touch their work. See [[messaging]] Attention budget.
+Architect (new role, most capable model): designs the system and writes specs, zoomed out; seat not yet started, the current Oracle session has been doing it. Oracle: cheaper model, low effort, absorbs all updates, tracks state. Executors: higher effort, minimal messages. Creativity: highest model and effort, near-zero messaging. Workers get only their brief, DMs addressed to them, and batched decisions that touch their work. See [[messaging]] Attention budget.
 
 ## Messaging rule (operator, 2026-10-21, tightened)
 
