@@ -29,6 +29,7 @@
 | W4.1 | [[2026-10-21-w4-1-transport-trait]] Transport trait, loopback, quinn endpoint auth | — | DEFERRED (cockpit first) |
 | W2.2 | [[2026-10-21-w2-2-logic-bus-index]] logic: store traits, registry, event bus, .bboxy index, state streams | Rook Ashwhisker <EXECUTOR> | DONE ✔ 4988ac3 (merged 8484e0a) |
 | C | [[2026-10-22-c-cockpit]] cockpit: F1–F5 fidelity backlog → R3 → C1 live seats (Sable); 7.9 → 7.10 → W3.2c → L8 → L9 (Nyx); W1.2c → W2.4 messaging → W2.5 MCP + tasks → W2.5b seat wiring (MCP, hooks, skill per seat) → W2.6 provenance/events → D1 dummy ssh/cloud (Rook); lab refs (Wren) | cohort | RUNNING |
+| T1–T2 | [[2026-10-22-t-terminal-fidelity]] bboxy-firehose heavy-output fixture (Rook, after W1.2c); terminal render fidelity in live panes (Sable, after C1) | Rook / Sable | QUEUED |
 | O1–O6 | [[2026-10-22-o-open-source]] publish bboxy450-rt, -ui-core, -render, -ui, -book ([[open-source]]) | deferred: publish at a plateau, velocity first | DEFERRED |
 | R1–R5 | [[2026-10-22-r-runtime]] runtime: async IO off the UI thread, 120 Hz ([[runtime]]) | Sable Embertail <EXECUTOR> | R1 ✔ 29d5e62; R2 ✔ be604d4; R2b ✔ 82c821b; R4 ✔ 18e0593 (budget open); R4b RUNNING |
 | W3.2d | [[2026-10-21-w3-2d-component-library]] bbt-ui layer cake: d.1 materials → d.7+ modules | Nyx Copperwing <EXECUTOR>, from d.1 | ASSIGNED |
