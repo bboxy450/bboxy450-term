@@ -57,6 +57,14 @@ pub fn check(root: &Path) -> Result<Vec<serde_json::Value>> {
     for path in inputs(root)? {
         let source = fs::read_to_string(root.join(&path))?;
         let doc = bbt_doc::parse(&source);
+        if let Some(error) = &doc.frontmatter.error {
+            return Err(format!(
+                "{}:{}: invalid YAML frontmatter: {error}",
+                path.display(),
+                doc.frontmatter.error_line.unwrap_or(1)
+            )
+            .into());
+        }
         for theme in [ui::Theme::Dark, ui::Theme::Light] {
             let ctx = ui::Context::new(theme, ui::Density::Cozy);
             let e = doc.modal_element(&path.to_string_lossy(), false, [1246., 900.], ctx, &metrics);

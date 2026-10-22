@@ -39,15 +39,21 @@ fn frontmatter(source: &str) -> (Frontmatter, usize) {
             } else {
                 serde_yaml::from_str::<BTreeMap<String, serde_yaml::Value>>(raw)
             };
-            let (fields, error) = match value {
-                Ok(fields) => (fields, None),
-                Err(error) => (BTreeMap::new(), Some(error.to_string())),
+            let (fields, error, error_line) = match value {
+                Ok(fields) => (fields, None, None),
+                Err(error) => {
+                    // YAML starts on Markdown line two; BOM and CRLF do not
+                    // add lines. Preserve the location before stringifying it.
+                    let line = error.location().map_or(2, |loc| loc.line() + 1);
+                    (BTreeMap::new(), Some(error.to_string()), Some(line))
+                }
             };
             return (
                 Frontmatter {
                     fields,
                     source: raw.into(),
                     error,
+                    error_line,
                 },
                 cursor + line.len(),
             );
@@ -57,6 +63,7 @@ fn frontmatter(source: &str) -> (Frontmatter, usize) {
     (
         Frontmatter {
             error: Some("unterminated YAML frontmatter · shown as source".into()),
+            error_line: Some(1),
             ..Default::default()
         },
         bom,

@@ -108,3 +108,40 @@ fn malformed_metadata_and_html_remain_visible_source() {
     let html = parse("<script>do_not_run()</script>\n");
     assert!(matches!(&html.blocks[0].kind, BlockKind::Html(s) if s.contains("do_not_run()")));
 }
+
+#[test]
+fn metadata_errors_use_markdown_lines_including_delimiter_bom_and_crlf() {
+    for (bom, newline) in [("", "\n"), ("\u{feff}", "\r\n")] {
+        let source = format!(
+            "{bom}---{newline}id: fox{newline}type: spec{newline}title: live seats: cockpit{newline}---{newline}Kept body."
+        );
+        let doc = parse(&source);
+        assert!(doc.frontmatter.error.is_some());
+        assert_eq!(doc.frontmatter.error_line, Some(4));
+        assert_eq!(doc.source, source);
+        assert!(
+            matches!(&doc.blocks[0].kind, BlockKind::Paragraph(p) if Inline::plain_text(p)=="Kept body.")
+        );
+        let serialized = serde_json::to_string(&doc.frontmatter).unwrap();
+        assert_eq!(
+            serde_json::from_str::<bbt_doc::Frontmatter>(&serialized).unwrap(),
+            doc.frontmatter
+        );
+    }
+    assert_eq!(
+        parse("---\ntitle: never closed").frontmatter.error_line,
+        Some(1)
+    );
+    assert_eq!(
+        parse("---\ntitle: Fox\n---\nBody").frontmatter.error_line,
+        None
+    );
+    // Older serialized records have no location field.
+    let old = r#"{"fields":{},"source":"","error":null}"#;
+    assert_eq!(
+        serde_json::from_str::<bbt_doc::Frontmatter>(old)
+            .unwrap()
+            .error_line,
+        None
+    );
+}

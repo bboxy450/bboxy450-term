@@ -17,6 +17,7 @@ references retain their alt text and destination without loading images.
 
 ```sh
 cargo test -p bbt-doc --locked
+cargo test -p bbt-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact --nocapture
 cargo run -p bboxybook -- documents --repository --out target/bbt-doc
 ```
 
@@ -24,3 +25,7 @@ The corpus gallery enumerates tracked `.bboxy` Markdown, lays out every file
 with real font metrics in both themes, and renders top/middle/end viewports.
 Its `report.json` records natural heights and unclipped horizontal overflow;
 `index.html` opens the native images.
+
+The corpus test reads every Markdown file under the real `.bboxy/` and fails
+malformed or unclosed YAML with `path:line` from the same parser used by the
+reader. The reader still shows broken metadata and the document body as source.

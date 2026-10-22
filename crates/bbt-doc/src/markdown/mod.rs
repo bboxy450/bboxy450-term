@@ -11,6 +11,9 @@ pub struct Frontmatter {
     pub fields: BTreeMap<String, serde_yaml::Value>,
     pub source: String,
     pub error: Option<String>,
+    /// One-based line in the original Markdown, including its opening delimiter.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_line: Option<usize>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
