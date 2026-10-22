@@ -8,5 +8,5 @@ sh scripts/layering.sh
 cargo build --workspace --locked
 cargo test --workspace --locked
 sh scripts/ui-lint.sh
-if [ "${1:-}" = "--parity" ]; then sh scripts/parity.sh; fi
+sh scripts/invariants.sh "${1:-}"
 echo "ci-local: all gates passed"
