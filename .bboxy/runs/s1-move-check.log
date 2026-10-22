@@ -15,3 +15,4 @@ crates/bbt-mux/tests/storage_bus_index.rs byte-identical — held
 crates/bbt-mux/tests/ui_guard.rs byte-identical — held
 supervisor client/trait bodies unchanged — held
 lock adds only workspace package bbt-supervisor; no dependency version changes — held
+logic body unchanged except client extraction/re-export and unused import removal — held

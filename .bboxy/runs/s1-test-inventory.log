@@ -1,0 +1,11 @@
+Baseline ba677d3: cargo test --workspace --locked -- --list — exit 0
+Signed clean candidate 9cd9ee17591e9a5396750a2f19a701d5831815f6: ci-local.sh — exit 0
+Test inventory: 417 before / 417 after; identical multiset of names, 0 missing, 0 added.
+Harness-only suffix " - should panic" normalized for the existing indexing_above_inner_len test.
+Results: 413 passed, 0 failed, 4 unchanged ignored cases.
+Ignored cases:
+external_logic_fixture — ignored, subprocess fixture, invoked by the hard-kill acceptance test
+ring_capture_throughput_with_logic_running_and_stopped — ignored, cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+file_descriptors_at_200_live_seats_and_sqlite_objects — ignored, finite 200-live-seat descriptor measurement
+recursive_cte_vs_petgraph_and_thousand_subscriber_fanout — ignored, finite synthetic 10k-document / 100k-link measurement
+Supervisor integration test file is byte-identical after bbt_mux -> bbt_supervisor import substitution; all remaining mux integration test files byte-identical.

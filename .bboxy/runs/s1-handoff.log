@@ -1,0 +1,55 @@
+S1 — supervisor crate extraction
+ROLE: EXECUTOR — Rook Ashwhisker
+
+Source candidate: 9cd9ee17591e9a5396750a2f19a701d5831815f6
+Base: a9ab5c157498a436c2088fbc3d9a84c085fe5f95 (origin/main when signed).
+Author/committer: Boxy <bboxy450@gmail.com>; source signature verified, key 9B07E849480C68328CA20684844ECC0587DE7AB0.
+Branch/worktree: rook-s1-supervisor, /Users/feral/mydev/bboxy450-term-rook.
+Scope: S1 DM 5711fea0; bbt-rt feature amendment DM 432f8c8e.
+
+Mechanisms / file pointers:
+- crates/bbt-supervisor/src/lib.rs:13 — lower crate owns protocol, clients, PTY supervisor, ring/writer, shared blob/error/time/digest primitives.
+- crates/bbt-supervisor/src/supervisor.rs:58 and :282 — identical mio PTY actor, admission, leases, input receipt/final guard and lifecycle mechanisms.
+- crates/bbt-supervisor/src/ring/writer.rs:73 — identical dedicated capture writer/queue; ring.rs:394 retains identical capture/recovery/history behavior.
+- crates/bbt-supervisor/src/client.rs:11 and :29 — SupervisorConnection and SocketSupervisor moved unchanged from logic.
+- crates/bbt-supervisor/Cargo.toml:13 — bbt-rt default-features=false; no Tokio in the standalone normal dependency tree.
+- crates/bbt-rt/Cargo.toml:11 and src/lib.rs:31/:50 — default runtime feature gates Tokio/commands/queues; the single std UI-thread registry and guards are unchanged.
+- crates/bbt-mux/src/lib.rs:24, logic.rs:29, store/mod.rs:8, streams.rs:258 — compatibility re-exports preserve existing paths; logic/store/bus/index/adapters/messaging stay in mux.
+- crates/bbt-supervisor/src/protocol.rs:88/:355 — only visibility changes: LaunchSpec::validate and Event::sequence cross the new crate boundary.
+- scripts/layering.sh:7 — supervisor before mux; app entry points unchanged.
+
+Mechanical audit:
+- git diff -M identifies protocol 98%, ring 99%, PTY tests 99%; actor, writer, codec and blobs 100% identical moves.
+- s1-move-check.log verifies moved bodies, all remaining mux test bodies, client bodies and unchanged logic after extracting the client/re-export/imports.
+- Existing PTY integration tests moved by path; only bbt_mux -> bbt_supervisor imports changed.
+- Ring tests remain unchanged in mux because they compare replay with the mux viewport projection.
+- Cargo.lock adds only bbt-supervisor; no existing dependency versions changed.
+
+Actual clean verification (s1-clean-ci.log and s1-clean-features.log):
+- Clean detached /tmp/rook-s1-ci at signed 9cd9ee1, own CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term/target/w2-4-ci.
+- sh scripts/ci-local.sh — exit 0 at 9cd9ee17591e9a5396750a2f19a701d5831815f6.
+- Layering held; workspace build/test and UI IO lint passed; clean before and after.
+- 417 baseline test names/counts preserved exactly (s1-test-inventory.log): 413 passed, zero failed, same four ignored. One existing harness suffix ' - should panic' normalized for name comparison.
+- Supervisor: 3 moved unit + 10 moved PTY integration tests pass; mux: 54 pass + 4 retained ignored; combined 67 pass as before.
+- cargo tree -p bbt-supervisor -e normal — exit 0, no tokio.
+- cargo build/test -p bbt-rt --locked — exit 0 (1 unit + 8 runtime integration).
+- cargo build/test -p bbt-rt --locked --no-default-features — exit 0 (1 unit; runtime integration requires runtime).
+- cargo build -p bbt-supervisor --locked — exit 0, standalone feature set.
+- cargo fmt -p bbt-mux -p bbt-supervisor -p bbt-rt -- --check — exit 0.
+- cargo clippy -p bbt-mux -p bbt-supervisor -p bbt-rt --all-targets --locked -- -D warnings — exit 0.
+- Full UI lint retains three pre-existing renderer suggestions as warnings; no disallowed IO error.
+
+Disclosed intermediate failures:
+- Initial move script exit 1: over-strict line-count assertion for HistoryGap; checked its source and continued the mechanical move.
+- Initial check exit 101: retained hook still uses mio; LaunchSpec::validate and Event::sequence needed public visibility. Corrected; s1-check-02.log final exit 0.
+
+Not checked / unchanged scope:
+- No new behavior, protocol, binary entry-point/bootstrap, standalone service packaging, remote or identity work.
+- No new performance, 1000-seat, power-loss or cross-platform claim; existing explicit release performance/descriptor/graph measurements remain ignored in the standard gate.
+- No parity run: no lab/design/UI/renderer source changed by S1.
+
+Disk/worktree disposition:
+- Deleted our private CI target immediately after the gate, per disk rule (available volume space 15 GiB before -> 26 GiB after).
+- Removed the clean /tmp/rook-s1-ci worktree normally.
+- Shared main and all peers' in-flight files left untouched. No push or merge by Executor.
+- Final evidence-only commit follows 9cd9ee1; code, manifests, lock and layering script are identical to the tested source.
