@@ -389,3 +389,26 @@ Hand-off to W3.3 (glow, ripple, dim shaders) needs steps 5, 7 and 10; to W3.4 (a
 - **Gap:** the row menu, interrupt, role and permission actions have no input path yet; they arrive with their modules.
 
 Links: [[vision]] [[renderer]] [[ux-prototype]] [[plan]]
+
+## 2b. The component library (operator, 2026-10-21, from reading the parity diffs)
+
+"We need our own wgpu-based component library: tables, blocks, divs, buttons that we can later style; style with shaders and sizing." The module code in bboxybook grew as hand-drawn compositions; the diffs show it. The fix is a generic layer between the draw list and the modules, the same way the lab's CSS sits between its HTML and the pixels.
+
+**Crate `bbt-ui`** (new; ui-model keeps the pure model, bbt-ui owns components; renderer owns passes). Every component is retained, laid out by the engine in §2, draws into the §3 list, and is styled by a `Style` struct resolved from tokens plus overrides:
+
+| Component | Props | Style surface |
+|---|---|---|
+| `Box` (the div) | children, direction row/column, size fixed/flex/fill, padding, gap, clip, scroll | background (solid, gradient, **material**: flat, gloss, frosted, glow), border width/colour, per-corner radius, shadow, dim, opacity |
+| `Text` | runs, wrap, ellipsis, selectable | type scale step, weight, colour, tracking, mono/proportional |
+| `Button` | label, icon, kind primary/ghost/danger, shortcut hint, enabled | all of Box + pressed/hover/focus materials |
+| `Table` | columns (fixed/flex/fill), rows (virtualised), header, selection, sort | row height per density, zebra, hairlines, selection band |
+| `List` | items (virtualised), selection, nested | row height, indent, selection band |
+| `Input` | value, placeholder, prefix icon, validation | Box + caret/selection colours |
+| `Chip`, `Badge`, `Pill`, `Glyph`, `Icon`, `Image`, `Hairline`, `Divider`, `Spinner`, `Checkerboard` | as in §3 atoms | tokens |
+| `Stack`, `Spacer`, `ScrollView`, `Overlay`, `Modal` | layout and layering | material, blur radius |
+
+**Styling.** `Style` is data: a tokens reference plus overrides, serialisable, so bboxybook can show a component across styles the way the lab shows states. Materials are shaders: `flat` (solid), `gloss` (the band's gradient and highlight), `frosted` (backdrop blur, [[renderer]] fx), `glow` (particle border, state-driven). A component picks a material by name; sizing comes from density tokens; nothing is drawn ad hoc inside a module. Modules (`SeatRow`, `SwarmCard`, `Launcher`, …) become compositions of these components only.
+
+**Parity rule.** Each lab element maps to one component or composition; the lab's CSS class is the component's name in `bboxy-design-system.json`, so the diff for a seat row is the diff of `Box + Icon + Text + Glyph + Badge`, and a fix in `Box`'s hairline fixes every row at once.
+
+Build: W3.2d after W3.2c, re-basing the existing modules onto the library with parity re-runs between steps; no module keeps hand-drawn primitives after it.

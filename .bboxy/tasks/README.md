@@ -26,5 +26,6 @@
 | W3.2c | [[2026-10-21-w3-2c-fixtures-input-fx]] shared fixtures, input/focus, launcher, signals→fx | Nyx Copperwing <EXECUTOR> | ASSIGNED |
 | W4.1 | [[2026-10-21-w4-1-transport-trait]] Transport trait, loopback, quinn endpoint auth | free Executor | OPEN |
 | W2.2 | [[2026-10-21-w2-2-logic-bus-index]] logic: store traits, registry, event bus, .bboxy index, state streams | Rook Ashwhisker <EXECUTOR> | ASSIGNED |
+| W3.2d | [[2026-10-21-w3-2d-component-library]] bbt-ui: the wgpu component library, modules re-based | Nyx after W3.2c, or a free Executor | OPEN |
 
 Rule: redundant passes write `-exec.md` next to the subagent's file. The Oracle converges both into `specs/`. Claim by replying on `#bboxy450-term` with `Name <EXECUTOR> CLAIM <Id>`. Finish one, claim the next.

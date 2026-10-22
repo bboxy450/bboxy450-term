@@ -33,6 +33,7 @@ W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
    │       └──▶ W3.2a ui-model ✔ (Nyx, 28 tests, zero runtime deps, scene-15 layout matches v2 blob)
    │               └──▶ W3.2b bboxybook ✔ checkpoint (Nyx, ef6c7ff, 56 previews, 1,664 pairs, index.html)
    │                       └──▶ W3.2c fixtures alignment, input, launcher, signals→fx [Nyx, RUNNING]
+   │                               └──▶ W3.2d bbt-ui component library, modules re-based [OPEN, briefed]
    │                               └──▶ W3.3 glow/locate/dim fx
    │                       └──▶ W3.4 app: window, sidebar, stage, launcher, GUI client
    └──▶ W1.2 byte ring [OPEN, after W2.1]
@@ -57,7 +58,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 | State | Items |
 |---|---|
 | RUNNING | W3.2c (Nyx); W2.2 (Rook); UX lab run (Wren) |
-| OPEN, claimable now | W4.1, W1.2, W2.3 |
+| OPEN, claimable now | W4.1, W1.2, W2.3, W3.2d (skeleton may start in parallel) |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
 | NOT YET BRIEFED | W3.3 fx (merged into W3.2c step 3), W3.5 bbt-doc markdown viewer + Mermaid engine ([[document-viewer]]), W2.7 code indexer (tree-sitter code graph, code_search, code_graph), W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |
