@@ -89,8 +89,31 @@ pub enum GuiAction { ListSeats, Watch { seat: SeatId, view: View }, Unwatch { se
     Applied { seat: SeatId, view: View, sequence: u64 }, Input { seat: SeatId, id: Ulid, bytes: Vec<u8> },
     Resize { seat: SeatId, cols: u16, rows: u16 }, Spawn { spec: SpawnSpec }, ScheduleClose { seat: SeatId },
     UndoClose { seat: SeatId, close_id: Ulid }, GetHistory { seat: SeatId, from: u64, to: u64 } }
-pub enum GuiReply { Seats(Vec<SeatRecord>), Update { seat: SeatId, update: Update }, State { seat: SeatId, record: SeatRecord },
-    Ok { op: Ulid }, Error { op: Ulid, reason: String }, History { seat: SeatId, rows: Vec<Row> } }
+pub enum GuiReply { Seats(Vec<GuiSeat>), Update { seat: SeatId, update: Update }, Seat(GuiSeat),
+    Ok { op: Ulid }, Error { op: Ulid, reason: String }, History { seat: SeatId, rows: Vec<(u64, Row)> } }
+
+// Portable seat state (2026-10-22, from C1a). bbt-proto depends on bbt-ui-model (ids and these enums)
+// and bbt-core (Cell), both below it in the layering order; the mux types never cross the socket.
+pub use bbt_ui_model::model::{Activity, Grade, WaitKind, Where, Lifecycle, Role, RoleClass, SeatId, SwarmId};
+pub type Row = Vec<bbt_core::Cell>;
+pub struct GuiSeat { pub record: SeatRecord, pub state: SeatState }
+pub struct SeatState {
+    pub generation: u64,
+    pub process: ProcessStatus,
+    pub activity: Activity,            // from adapters::observe::State + WaitingKind
+    pub grade: Grade,                  // from adapters::observe::Grade, same three names
+    pub title: String,                 // Screen.title, else Status.detail, else the harness name
+    pub detail: Option<String>,        // Status.detail verbatim
+    pub turn_open: bool,
+    pub observed_ms: u64,
+    pub subagents: Vec<SubagentRow>,   // running ones only (specs/README S8)
+}
+pub struct SubagentRow { pub id: String, pub title: String, pub activity: Activity, pub grade: Grade }
+pub enum ProcessStatus { Running { pid: u32 }, Exited { status: i32 }, ClosedGrace { until_ms: u64 }, Retained }
+pub struct SpawnSpec {
+    pub swarm: SwarmId, pub harness_kind: String, pub name: Option<String>, pub role: Option<String>,
+    pub cwd: String, pub location: Where, pub resume: Option<String>,   // harness session id to resume
+}
 
 // crates/bboxy450-term/src/grids.rs (C1b)
 pub struct Grids { /* Replica per watched seat, Arc<Screen> per seat */ }
@@ -108,9 +131,11 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model;   
 pub fn draw_pane(screen: &Screen, rect: Rect, ctx: &mut DrawCtx);              // cells pipeline, ASCII today
 ```
 
+Mapping, in logic and nowhere else: `observe::State` to `Activity` by name, with `Waiting` carrying the `WaitingKind` (`Permission`, `Question`; `Auth` when the 7501 `kind=auth` report lands in observe); `observe::Grade` by name; a subagent becomes a `SubagentRow` only while its state is `Active` or `Waiting`; `ProcessStatus` comes from the registry's lifecycle and the supervisor's exit report, never from the adapter. `GuiReply::Seat` replaces the earlier `State` reply and carries the whole `GuiSeat`, so the sidebar never needs a second fetch.
+
 The IO loop (C1a), per `GuiReply`:
 1. `Update{seat, update}` → `grids.apply` → if `Some`, `model = build(..)`, `latest.publish(Arc::new(model))`, mark dirty → then send `Applied{seat, view, sequence}` with the update's own view and sequence. Never ack before publishing.
-2. `Seats` and `State` → `build` and publish; no ack.
+2. `Seats` and `Seat` → `build` and publish; no ack.
 3. On `UiMsg::Watched(panes)` → `grids.set_watched` → send each action.
 4. On `UiMsg::Input` and `UiMsg::Resize` → send; replies `Ok`/`Error` are logged, never block.
 
