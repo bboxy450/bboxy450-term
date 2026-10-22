@@ -41,7 +41,7 @@
   // ---------- L3 Style: tokens + overrides, data you can print ----------
   const R = S.radius;
   const STYLES = {
-    card: { material: 'flat', fill: 'var(--surface)', radius: R.card, border: 'hairline', padding: [S.spacing.s6, S.spacing.s7], text: 'body' },
+    card: { material: 'flat', fill: 'material.card_alpha', radius: R.card, border: 'hairline outside', padding: [S.spacing.s6, S.spacing.s7], text: 'body' },
     row: { material: 'flat', fill: 'transparent', radius: R.row, height: 'density.row_h', padding: [0, 'density.pad_x'], text: 'row', selection: 'tint.selection_alpha' },
     band: { material: 'gloss', fill: 'swarm colour', radius: T.radius.chip, height: T.strip.height, padding: [0, 'density.pad_x'], text: 'small · 600 · tracked .22em · uppercase · on_accent' },
     pill: { material: 'flat', fill: 'tint.badge_alpha', radius: R.pill, padding: [0, S.spacing.s3], text: 'tiny' },
@@ -56,12 +56,14 @@
   const resolve = v => typeof v === 'number' ? px(v) : v === 'density.row_h' ? 'var(--row-h)' : v === 'density.pad_x' ? 'var(--pad-x)' : v;
   function styleCss(st, swarm) {
     const css = {};
-    const fill = { 'var(--surface)': 'var(--surface)', transparent: 'transparent', 'tint.badge_alpha': 'var(--badge)', 'var(--bg)': 'var(--bg)', accent: 'var(--accent)', 'seat colour': swarm || 'var(--accent)', 'swarm colour': swarm || 'var(--accent)', 'material.panel_alpha': null }[st.fill];
+    const fill = { 'var(--surface)': 'var(--surface)', transparent: 'transparent', 'tint.badge_alpha': 'var(--badge)', 'var(--bg)': 'var(--bg)', accent: 'var(--accent)', 'seat colour': swarm || 'var(--accent)', 'swarm colour': swarm || 'var(--accent)', 'material.panel_alpha': null, 'material.card_alpha': null }[st.fill];
     if (st.material === 'gloss') Object.assign(css, material('gloss', { color: swarm || 'var(--accent)' }).css);
     else { if (st.material === 'frosted' || st.material === 'glow') Object.assign(css, material(st.material, { color: swarm || 'var(--accent)' }).css); if (fill) css.background = fill; }
+    if (st.fill === 'material.card_alpha') css.background = `color-mix(in srgb, var(--surface) ${S.material.card_alpha * 100}%, transparent)`;
     if (st.fill === 'material.panel_alpha') css.background = `color-mix(in srgb, var(--surface) ${S.material.panel_alpha * 100}%, transparent)`;
     css.borderRadius = px(st.radius);
     if (st.border === 'hairline') css.border = 'var(--hair-w) solid var(--hair, var(--line))';
+    if (st.border === 'hairline outside') css.boxShadow = `0 0 0 ${S.material.hairline_px}px var(--hair, var(--line))`;
     if (st.border === 'hairline ring') css.boxShadow = `0 0 0 ${S.material.hairline_px}px var(--hair, var(--line)), inset 0 1px 0 rgba(255,255,255,${S.material.inner_highlight_alpha})`;
     if (st.border === 'seat 1.5px') css.border = '1.5px solid ' + (swarm || 'var(--accent)');
     if (st.shadow) css.boxShadow = (css.boxShadow ? css.boxShadow + ', ' : '') + 'var(--sh-float)';

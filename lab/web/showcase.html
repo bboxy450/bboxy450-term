@@ -9,7 +9,7 @@
   #app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; }
   #main { flex: 1; display: flex; min-height: 0; }
   /* the shader is the only glow: kill the CSS fakes */
-  .sidebar, .space, .pane, .seat-row { box-shadow: none !important; animation: none !important; }
+  .sidebar, .pane, .seat-row { box-shadow: none !important; animation: none !important; }
   .seat-row.bounce { animation: rowBounce 520ms var(--ease) !important; outline: 2px solid var(--seat); outline-offset: 0; }
   @keyframes rowBounce { 0% { transform: scale(1); outline-offset: 0; outline-color: transparent; } 35% { transform: scale(1.045); outline-offset: 3px; outline-color: var(--seat); } 70% { transform: scale(0.99); outline-offset: 1px; } 100% { transform: scale(1); outline-offset: 0; outline-color: transparent; } }
   /* drag to split: ghost label follows the pointer; the hovered half of a pane tints */
@@ -25,10 +25,7 @@
   .sidebar .sb-scroll { padding: var(--grid) calc(var(--grid) - 2px) 0 calc(var(--grid) - 2px); }
   .sb-resize { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 3; }
 
-  /* --- swarm block: card material, band set in, bumper carries the colour --- */
-  .space { background: color-mix(in srgb, var(--surface) var(--card-alpha), transparent); border-radius: var(--r-card); box-shadow: 0 0 0 1px var(--hair) !important; padding: 4px 4px 0; margin: 0 0 var(--cohort-gap); border-bottom: 4px solid var(--space); }
-  .space.closed { border-bottom-width: 3px; }
-  .space.unfocused { background: color-mix(in srgb, color-mix(in srgb, var(--surface) calc(100% - var(--dim-wash)), var(--fg-dim)) var(--card-alpha), transparent); }
+  /* --- swarm block: body is the card Style (lab.css .space); band set in, bumper carries the colour --- */
   .space-head { height: var(--band-h); border-radius: var(--r-tile); padding: 0 12px; font-size: 10.5px; letter-spacing: .16em; }
   .space-head .swatch { width: 10px; height: 10px; }
   .space-body { padding: 2px 0 4px; }
@@ -52,7 +49,7 @@
   .tab-row.closed-strip .undo { border: 1px solid var(--hair); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); border-radius: var(--r-round); font-size: 10px; }
 
   /* --- new swarm: a card-shaped button --- */
-  .new-cohort { height: 40px; margin: var(--cohort-gap) 0; border-radius: var(--r-card); background: color-mix(in srgb, var(--surface) var(--card-alpha), transparent); box-shadow: 0 0 0 1px var(--hair); color: var(--fg-dim); font-size: var(--t-row); font-weight: 500; }
+  .new-cohort { height: 40px; color: var(--fg-dim); font-size: var(--t-row); font-weight: 500; }
   .new-cohort:hover { background: color-mix(in srgb, var(--surface) 95%, var(--fg)); color: var(--fg); }
 
   /* --- stream dock: rows of the same anatomy --- */

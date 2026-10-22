@@ -566,10 +566,11 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .tab-row.participants:hover { background: transparent; }
 
 /* ---------- finish: the block is the car (Range Rover 2023 rear, operator 2026-10-21) ----------
+   Body = the card Style (style.json components.card): surface at card_alpha, radius.card, outside hairline ring.
    A space is a rounded body. The dark gloss wordmark band is set into the top. Rows sit on the body with no
    hairlines. The bottom is the bumper: a dark strip carrying the tail light, a thin line in the space colour. */
 .space {
-  background: var(--surface); border: 0; border-radius: 11px; margin: 0 0 var(--cohort-gap); overflow: hidden; position: relative;
+  background: color-mix(in srgb, var(--surface) var(--card-alpha), transparent); border: 0; border-radius: var(--r-card); box-shadow: 0 0 0 var(--hair-w) var(--hair); margin: 0 0 var(--cohort-gap); overflow: hidden; position: relative;
   padding: 5px 5px 0; border-bottom: 6px solid var(--space);
 }
 .space-head {
@@ -620,7 +621,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .tab-row.newseat:hover { color: var(--fg); background: var(--surface-2); }
 
 /* big body-coloured button under the cohort block: creates a cohort */
-.new-cohort { height: 44px; margin: var(--cohort-gap) 0; border-radius: 11px; background: var(--surface); color: var(--fg-dim); display: flex; align-items: center; justify-content: center; gap: var(--s4); font-size: var(--t-section); letter-spacing: .06em; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); transition: background var(--hover-ms), color var(--hover-ms); }
+.new-cohort { height: 44px; margin: var(--cohort-gap) 0; border-radius: var(--r-card); background: color-mix(in srgb, var(--surface) var(--card-alpha), transparent); box-shadow: 0 0 0 var(--hair-w) var(--hair); color: var(--fg-dim); display: flex; align-items: center; justify-content: center; gap: var(--s4); font-size: var(--t-section); letter-spacing: .06em; cursor: pointer; transition: background var(--hover-ms), color var(--hover-ms); }
 .new-cohort .plus { font-size: 18px; line-height: 1; }
 .new-cohort:hover { background: var(--surface-2); color: var(--fg); }
 
@@ -698,7 +699,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 
 /* unfocused swarm on the left dims exactly like an unfocused pane on the right: band and rows fade and desaturate,
    the bumper keeps the swarm colour as the pane border keeps the seat colour */
-.space.unfocused { background: color-mix(in srgb, var(--surface) calc(100% - var(--dim-wash)), var(--fg-dim)); }
+.space.unfocused { background: color-mix(in srgb, color-mix(in srgb, var(--surface) calc(100% - var(--dim-wash)), var(--fg-dim)) var(--card-alpha), transparent); }
 .space.unfocused .space-head, .space.unfocused .space-body { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); transition: opacity var(--hover-ms), filter var(--hover-ms); }
 .space.unfocused:hover .space-head, .space.unfocused:hover .space-body { opacity: calc(var(--dim-opacity) + 0.2); }
 

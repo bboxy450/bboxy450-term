@@ -95,7 +95,7 @@
   },
   "components": {
     "panel": "frosted surface at panel_alpha with panel_blur, radius.panel, hairline ring, shadow.floating, inner top highlight",
-    "card": "frosted surface at card_alpha, radius.card, hairline ring, no shadow (the swarm block body)",
+    "card": "flat surface at card_alpha, radius.card, outside hairline ring (material.hairline_px, hair), no inner highlight, no shadow: the swarm block body, the new-swarm button and Box card",
     "row": "radius.row, margin row_margin_x, selection tint on select, hover tint on hover, tile · title · subtitle · kind · badge",
     "tile": "radius.tile square in the harness colour, white glyph inside",
     "badge": "radius.badge square, badge_alpha tint, mono digits (⌘N, numbers)",

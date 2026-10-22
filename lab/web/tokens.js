@@ -187,7 +187,7 @@ window.STYLE = {
     "badge": "radius.badge square, badge_alpha tint, mono digits (\u2318N, numbers)",
     "band": "swarm colour gloss band set into the card top, tracked uppercase 10.5px",
     "bumper": "4px strip of swarm colour along the card bottom, 3px when shut",
-    "card": "frosted surface at card_alpha, radius.card, hairline ring, no shadow (the swarm block body)",
+    "card": "flat surface at card_alpha, radius.card, outside hairline ring (material.hairline_px, hair), no inner highlight, no shadow: the swarm block body, the new-swarm button and Box card",
     "panel": "frosted surface at panel_alpha with panel_blur, radius.panel, hairline ring, shadow.floating, inner top highlight",
     "pill": "radius.pill, panel material, shadow.pill; floating actions with kbd hints",
     "row": "radius.row, margin row_margin_x, selection tint on select, hover tint on hover, tile \u00b7 title \u00b7 subtitle \u00b7 kind \u00b7 badge",
