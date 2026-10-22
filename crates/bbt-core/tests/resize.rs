@@ -1,0 +1,18 @@
+use bbt_core::{Dimensions, Term};
+
+#[test]
+fn resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes() {
+    let mut term = Term::new(20, 4, 16);
+    term.advance(b"\x1b[?2004h\x1b[31mhello resize\r\nsecond row");
+    let modes = *term.mode();
+    for (cols, rows) in [(6, 2), (30, 8)] {
+        term.resize(cols, rows);
+        assert_eq!(term.grid().columns(), cols);
+        assert_eq!(term.grid().screen_lines(), rows);
+        assert_eq!(*term.mode(), modes);
+        let cursor = term.grid().cursor.point;
+        assert!(cursor.line.0 >= 0 && cursor.line.0 < rows as i32);
+        assert!(cursor.column.0 < cols);
+        assert!(term.grid().display_iter().any(|cell| cell.cell.c != ' '));
+    }
+}

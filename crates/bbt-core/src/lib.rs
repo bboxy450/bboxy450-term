@@ -96,6 +96,14 @@ impl Term {
         self.model.grid()
     }
 
+    /// Apply an ordered viewport resize while preserving parser and model state.
+    pub fn resize(&mut self, cols: usize, rows: usize) {
+        assert!(cols >= term::MIN_COLUMNS);
+        assert!(rows >= term::MIN_SCREEN_LINES);
+        self.model.resize(Size { cols, rows });
+        self.collect_events();
+    }
+
     /// Drop retained history and keep both screens at history size zero.
     pub fn viewport_only(&mut self) {
         self.model.viewport_only();
