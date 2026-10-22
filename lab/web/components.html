@@ -8,6 +8,8 @@ const el = Lab.el;
 // L6 (gui-components.md §2c): Box, Text, Stack, Button, List, Table, Input, Overlay, Modal — each across the four densities and
 // both themes, built only from ui.js (the component_layers vocabulary in the design system).
 const DENS = ['touch', 'comfortable', 'cozy', 'compact'];
+// wrapping cases keep one full-grid column as their host even when ?density= deep-links a single cell, so a lone capture still wraps
+const COLUMN_HOST = new Set(['flow', 'text-align']);
 const DEMO = {
   box: () => UI.Stack({ gap: 8 }, UI.Box('card', UI.Text('card', { step: 'body' })), UI.Box({ ...UI.STYLES.row }, UI.Text('row', { step: 'row' })), UI.Box({ ...UI.STYLES.band, swarm: TOKENS.color.role.oracle }, UI.Text('BAND', UI.textOpts(UI.STYLES.band)))),
   text: () => UI.Stack({ gap: 2 }, ...UI.STEPS.slice(0, 12).map(s => UI.Stack({ dir: 'row', gap: 8, align: 'baseline' }, UI.Text(s, { step: 'micro', mono: true, dim: true }), UI.Text('Vesper Greywind', { step: s })))),
@@ -31,7 +33,7 @@ const DEMO = {
 Lab.page({ title: 'components', wide: true, note: 'L6 components, the web reference for the bbt-ui components gallery: Box, Text (the type scale micro to title), Stack, Flow (a wrapping Stack: justify, cross align, row and column gap), Text align (start, center, end, wrapped), Button (primary, ghost, danger × idle, hover, pressed, focus, disabled), List (selection band, virtualised), Table (header, zebra, selection), Input (empty, value, focus, invalid), Overlay and Modal. Every case across the four densities (columns) and both themes (rows), built only from ui.js.',
   states: Object.keys(DEMO),
   render(s, body) {
-    const grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:repeat(' + UI.densities().length + ', minmax(0, 1fr));overflow-x:auto' });
+    const grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:repeat(' + (COLUMN_HOST.has(s) ? DENS.length : UI.densities().length) + ', minmax(0, 1fr));overflow-x:auto' });
     for (const theme of UI.themes()) for (const d of UI.densities()) grid.append(UI.themeScope(theme, UI.densityScope(d, UI.Text(theme + ' · ' + d, { step: 'micro', mono: true, dim: true }), el('div', { style: 'margin-top:8px' }, DEMO[s]()))));
     body.append(grid);
   } });
