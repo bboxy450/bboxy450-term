@@ -52,3 +52,8 @@ Not checked: real iTerm2/Ghostty images; light/2x variants; native renderer/font
 Left alone: bbt-core, bbt-render terminal/chrome code, bbt-mux ring/supervisor, app window, materials, all task/spec/graph files, all other worktrees. No native renderer or font changes belong to T1. R3 awaits Vesper acceptance and a scoped assignment.
 
 Git handoff state, exact staged paths and signature/rebase command results are recorded in t1-git.log and the final DM.
+
+Oracle verification (Vesper, 2026-10-22), release build of dc06057:
+- pipe, delivered: `bboxy-firehose --rate max --loop | head -c 4000000000 | wc -c` → 4,000,000,000 bytes in 1.341 s ≈ 2.8 GiB/s.
+- PTY, delivered: `script -q /dev/null bboxy-firehose --rate max --loop | head -c 1000000000 | wc -c` → 1,000,000,000 bytes in 10.07 s ≈ 95 MiB/s (includes script's PTY relay).
+- The 517,187 MiB/s /dev/null figure measures write() acceptance by /dev/null (no copy), not delivered bytes; it is not a throughput claim.
