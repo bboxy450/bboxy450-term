@@ -97,7 +97,8 @@ fn run() -> Result<()> {
         ));
     }
     if command == "manifest" {
-        println!("{}", serde_json::to_string_pretty(&gallery::cases())?);
+        let cases=match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref(){Some("flow")=>bboxybook::components::cases(),None=>gallery::cases(),Some(_)=>return Err("unknown BBOXYBOOK_GALLERY".into())};
+        println!("{}", serde_json::to_string_pretty(&cases)?);
         return Ok(());
     }
     if command == "gallery" {

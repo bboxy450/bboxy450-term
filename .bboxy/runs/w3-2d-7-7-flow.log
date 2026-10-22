@@ -1,0 +1,61 @@
+W3.2d.7.7 prerequisite — L6 Flow and Text alignment
+Oracle authorization: da61acfa-164a-426a-8e6b-bc65450b0aa4.
+Reference handoff: 1911a490-83e7-4ca9-bb3c-b05afd8285f6.
+
+Mechanism:
+crates/bbt-ui/src/components.rs — retained Flow packs children in source order,
+  with wrap, main justification, cross alignment and independent row/column
+  gaps, then delegates each row to the existing Stack allocator. No grid.
+  Text.align defaults to Start and offsets each wrapped line independently;
+  collapsible trailing whitespace does not enter the alignment width.
+crates/bbt-ui/tests/flow.rs — four focused regressions: wrapping/baselines/gaps,
+  nowrap/space-between/exact fit, multiline alignment, fitting Stack equivalence.
+crates/bboxybook/src/components.rs — public web Stack options map to Flow;
+  Text alignment maps to the retained Text. No browser child positions consumed.
+crates/bboxybook/capture-exercises.mjs — acceptance witnesses only: Flow must
+  exercise row counts [2,2,1], and the centred caption must span multiple lines.
+  Missing witnesses fail capture; they never become native layout input.
+
+Reference correction:
+5579278 rendered a deep-linked case at full width; the first 40-case comparison
+  passed but did not exercise wrapping. That run is retained as flow/first and
+  is not acceptance evidence for wrapping. Wren corrected the host width in
+  41f17803c2542bfeab9d453e2db00f7fa77157ed. All eight new Flow cases now show
+  [2,2,1] rows, and all eight text-align cases show a wrapped centred caption.
+  Existing box/text/stack hosts retain their original widths.
+
+BBOXYBOOK_GALLERY=flow BBOXYBOOK_REFERENCE_HEAD=41f1780 PARITY_OUT=target/bboxybook/flow/final scripts/parity.sh
+  exit0: 40/40 web captures, zero failures; 0/40 need review.
+  Max rect error 0.0283203125px; max baseline error 0.0078125px.
+  Web/native/diff triplets inspected: components/flow-cozy-dark and
+  components/text-align-cozy-dark; flow/final-inspected.png.
+
+Default regression:
+Eight disjoint immutable optimized-CLI render jobs; final argv/exits are in
+  flow/regression/status.json, all exit0. The original launch-1 render hit
+  ENOSPC; its retry alone completed after identical generated images were
+  consolidated and rebuildable bbt-ui/bboxybook incremental caches reclaimed.
+  Source, original accepted artifacts and rendered evidence were retained.
+python3 target/bboxybook/flow/finish-regression.py — exit0.
+  All 1488 default PNGs byte-identical to accepted italic support; 1096 current,
+  392 historical; reviews 81 -> 81, zero new. All 1048 required geometry cases
+  pass, max rect 0.5px, baseline 0.0078125px. An independent crosscheck against
+  accepted 7.6b originals also matched all 1488 PNGs.
+  Machine evidence: flow/regression-summary.json and
+  flow/accepted-baseline-crosscheck.json. Gallery: flow/index.html.
+
+Isolated support checks (StreamDock references/tests parked by exact path/hash):
+cargo test -p bbt-render -p bbt-ui -p bboxybook --locked
+  exit0, 131 passed; flow/isolated-tests.log.
+cargo test -p bbt-render -p bbt-ui -p bboxybook --release --locked
+  exit0, 131 passed; flow/isolated-release.log.
+cargo clippy -p bbt-render -p bbt-ui -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+  exit0, same two prior exclusions; flow/isolated-clippy.log.
+node --check crates/bboxybook/capture.mjs — exit0.
+node --check crates/bboxybook/capture-exercises.mjs — exit0.
+git diff --check — exit0.
+
+Limits: measured on macOS27/M4/Metal and Chrome156 at 1x. macOS14, Linux/mobile,
+  hosted CI and interactive input were not checked. No rendering shader, font
+  path, dependency, acceptance budget, golden or terminal cell path changed.
+StreamDock is separate uncommitted work and is excluded from this commit.

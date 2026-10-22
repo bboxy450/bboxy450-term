@@ -6,6 +6,7 @@ import {spawn,execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 import vm from 'node:vm';
+import {captureExercises} from './capture-exercises.mjs';
 const root=process.cwd(),out=path.resolve(process.argv[2]||'target/parity');
 const manifest=JSON.parse(await fs.readFile(process.argv[3]||path.join(out,'requested.json'),'utf8'));
 // Baseline components use the exact review tag. New built design entries are
@@ -83,6 +84,7 @@ try{
       c.fixture=await cdp.eval(`bboxyCaptureInputs(${JSON.stringify(c.selector)})`);
       // Preserve reference identity when captured fixtures become the next manifest.
       c.fixture.reference=reference===baseline?'baseline':'current';
+      captureExercises(c);
       if(surfaceLayer){
         const context=await cdp.call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{...rect,scale:1}});
         const file=path.join(out,'context',relative);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,Buffer.from(context.data,'base64'));

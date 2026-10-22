@@ -44,7 +44,7 @@ impl c::Measure for Metrics {
 
 pub fn cases() -> Vec<Case> {
     let mut out = vec![];
-    for state in ["box", "text", "stack"] {
+    for state in ["box", "text", "stack", "flow", "text-align"] {
         for density in gallery::DENSITIES {
             for theme in gallery::THEMES {
                 out.push(Case {
@@ -103,31 +103,66 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
                     Some(_) => return Err("unsupported component Text colour".into()),
                 }
             });
-            c::Element::Text(c::Text::new(
-                v["value"].as_str().ok_or("component text missing")?,
-                s,
-            ))
+            let mut text = c::Text::new(v["value"].as_str().ok_or("component text missing")?, s);
+            text.align = match o["align"].as_str() {
+                None | Some("start") => c::Alignment::Start,
+                Some("center") => c::Alignment::Center,
+                Some("end") => c::Alignment::End,
+                _ => return Err("unsupported Text alignment".into()),
+            };
+            c::Element::Text(text)
         }
         "spacer" => c::Element::Spacer,
         "stack" => {
             let o = &v["options"];
-            c::Element::Stack(c::Stack {
-                direction: if o["dir"] == "row" {
-                    Axis::Row
-                } else {
-                    Axis::Column
-                },
-                gap: ui::Length::Px(o["gap"].as_f64().unwrap_or(ctx.density.tokens().gap) as f32),
-                align: match o["align"].as_str() {
-                    None | Some("stretch") => c::Alignment::Stretch,
-                    Some("start") | Some("flex-start") => c::Alignment::Start,
-                    Some("end") | Some("flex-end") => c::Alignment::End,
-                    Some("center") => c::Alignment::Center,
-                    Some("baseline") => c::Alignment::Baseline,
-                    _ => return Err("unsupported component alignment".into()),
-                },
-                children: items(&v["children"], ctx)?,
-            })
+            let direction = if o["dir"] == "row" {
+                Axis::Row
+            } else {
+                Axis::Column
+            };
+            let gap = o["gap"].as_f64().unwrap_or(ctx.density.tokens().gap) as f32;
+            let row_gap = ui::Length::Px(o["rowGap"].as_f64().unwrap_or(f64::from(gap)) as f32);
+            let column_gap =
+                ui::Length::Px(o["columnGap"].as_f64().unwrap_or(f64::from(gap)) as f32);
+            let align = match o["align"].as_str() {
+                None | Some("stretch") => c::Alignment::Stretch,
+                Some("start") | Some("flex-start") => c::Alignment::Start,
+                Some("end") | Some("flex-end") => c::Alignment::End,
+                Some("center") => c::Alignment::Center,
+                Some("baseline") => c::Alignment::Baseline,
+                _ => return Err("unsupported component alignment".into()),
+            };
+            let justify = match o["justify"].as_str() {
+                None | Some("start") => c::Justify::Start,
+                Some("center") => c::Justify::Center,
+                Some("space-between") => c::Justify::SpaceBetween,
+                _ => return Err("unsupported Flow justification".into()),
+            };
+            let children = items(&v["children"], ctx)?;
+            if direction == Axis::Row && (o["wrap"] == true || justify != c::Justify::Start) {
+                c::Element::Flow(c::Flow {
+                    children,
+                    wrap: o["wrap"] == true,
+                    justify,
+                    align,
+                    row_gap,
+                    column_gap,
+                })
+            } else {
+                if direction == Axis::Column && justify != c::Justify::Start {
+                    return Err("column justification is outside the Flow row contract".into());
+                }
+                c::Element::Stack(c::Stack {
+                    children,
+                    direction,
+                    gap: if direction == Axis::Row {
+                        column_gap
+                    } else {
+                        row_gap
+                    },
+                    align,
+                })
+            }
         }
         "box" => {
             let input = &v["style"];

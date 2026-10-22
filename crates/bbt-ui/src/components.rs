@@ -34,6 +34,12 @@ pub enum Alignment {
     Stretch,
     Baseline,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Justify {
+    Start,
+    Center,
+    SpaceBetween,
+}
 #[derive(Debug, Clone)]
 pub struct TextRun {
     pub value: String,
@@ -49,6 +55,8 @@ pub struct Text {
     pub selectable: bool,
     /// Single inline span: expose its font box, retaining its line box for flow.
     pub inline: bool,
+    /// Per-line placement within the text's own assigned box.
+    pub align: Alignment,
 }
 impl Text {
     pub fn new(value: impl Into<String>, style: crate::style::Text) -> Self {
@@ -62,6 +70,7 @@ impl Text {
             max_lines: None,
             selectable: true,
             inline: false,
+            align: Alignment::Start,
         }
     }
 }
@@ -105,6 +114,28 @@ pub struct Stack {
     pub gap: Length,
     pub align: Alignment,
     pub children: Vec<Item>,
+}
+/// A wrapping row of existing children, with no grid or positioning API.
+#[derive(Debug, Clone)]
+pub struct Flow {
+    pub children: Vec<Item>,
+    pub wrap: bool,
+    pub justify: Justify,
+    pub align: Alignment,
+    pub row_gap: Length,
+    pub column_gap: Length,
+}
+impl Flow {
+    pub fn new(children: Vec<Item>) -> Self {
+        Self {
+            children,
+            wrap: true,
+            justify: Justify::Start,
+            align: Alignment::Stretch,
+            row_gap: Length::Spacing(4),
+            column_gap: Length::Spacing(4),
+        }
+    }
 }
 #[derive(Debug, Clone)]
 pub struct ScrollView {
@@ -182,6 +213,7 @@ pub enum Element {
     Box(Box),
     Text(Text),
     Stack(Stack),
+    Flow(Flow),
     ScrollView(ScrollView),
     Overlay(Overlay),
     Spacer,
@@ -295,6 +327,12 @@ fn text_lines(
     ctx: Context,
     m: &dyn Measure,
 ) -> crate::style::Result<(Vec<PositionedRun>, [f32; 2], f32)> {
+    if !matches!(
+        text.align,
+        Alignment::Start | Alignment::Center | Alignment::End
+    ) {
+        return Err("text alignment must be start, center or end");
+    }
     if text.max_lines == Some(0) {
         return Err("text line limit must be positive");
     }
@@ -303,7 +341,35 @@ fn text_lines(
     let (mut start, mut first) = (0, None);
     let (mut line_number, mut clamped) = (1, false);
     let finish_line = |placed: &mut [PositionedRun], start: usize, y: f32, above: f32| {
+        // CSS alignment ignores collapsible spaces at the end of each line.
+        let mut right = placed[start..]
+            .iter()
+            .map(|r| r.rect.right())
+            .fold(0., f32::max);
+        if text.align != Alignment::Start {
+            for run in placed[start..].iter().rev() {
+                let trimmed = run.text.trim_end_matches(' ');
+                if trimmed.len() != run.text.len() {
+                    right -=
+                        m.width(&run.text, &font(&run.style)) - m.width(trimmed, &font(&run.style));
+                }
+                if !trimmed.is_empty() {
+                    break;
+                }
+            }
+        }
+        let extra = if width.is_finite() {
+            (width - right).max(0.)
+        } else {
+            0.
+        };
+        let dx = match text.align {
+            Alignment::Center => extra * 0.5,
+            Alignment::End => extra,
+            _ => 0.,
+        };
         for run in &mut placed[start..] {
+            run.rect.x += dx;
             run.rect.y = y + above - baseline(&run.style, m);
         }
     };
@@ -518,7 +584,10 @@ impl Element {
             Self::Layers { base, .. } => base.natural(width, ctx, m),
             Self::Glyph { size, .. } => Ok(([*size; 2], *size)),
             Self::Text(t) => {
-                let (_, size, base) = text_lines(t, width, ctx, m)?;
+                let (_, mut size, base) = text_lines(t, width, ctx, m)?;
+                if t.align != Alignment::Start && t.wrap && width.is_finite() {
+                    size[0] = size[0].max(text_lines(t, f32::INFINITY, ctx, m)?.1[0].min(width));
+                }
                 Ok((size, base))
             }
             Self::Spacer => Ok(([0., 0.], 0.)),
@@ -549,6 +618,10 @@ impl Element {
                     (child[1] + p.top + p.bottom).max(o.min_height.resolve(ctx.density)?),
                 );
                 Ok(([width, h], h))
+            }
+            Self::Flow(f) => {
+                let (size, base, _) = flow_layout(f, Rect::new(0., 0., width, 0.), ctx, m)?;
+                Ok((size, base))
             }
             Self::Stack(s) => {
                 let (size, data) = child_measure(
@@ -726,6 +799,7 @@ impl Element {
                 },
                 vec![],
             ),
+            Self::Flow(f) => (LayoutKind::Stack, flow_layout(f, rect, ctx, m)?.2),
             Self::Stack(s) => (
                 LayoutKind::Stack,
                 layout_children(
@@ -917,6 +991,131 @@ fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
         scale_layout(child, pivot, scale);
     }
 }
+// Flow only packs rows. The existing row allocator still owns shrink/grow,
+// text reflow and cross alignment inside each row.
+fn flow_layout(
+    f: &Flow,
+    bounds: Rect,
+    ctx: Context,
+    m: &dyn Measure,
+) -> crate::style::Result<([f32; 2], f32, Vec<Layout>)> {
+    let column_gap = f.column_gap.resolve(ctx.density)?;
+    let row_gap = f.row_gap.resolve(ctx.density)?;
+    let mut data = Vec::new();
+    for child in &f.children {
+        let (size, _) = child.element.natural(f32::INFINITY, ctx, m)?;
+        let min = child.element.natural(0., ctx, m)?.0[0];
+        let basis = match child.extent {
+            Extent::Fixed(n) => n,
+            Extent::Content { min, max, .. } => {
+                size[0].clamp(min, max.unwrap_or(f32::MAX).max(min))
+            }
+            _ => size[0],
+        };
+        data.push((child.clone(), basis, min));
+    }
+    let width = if bounds.w.is_finite() {
+        bounds.w.max(0.)
+    } else {
+        data.iter().map(|(_, w, _)| *w).sum::<f32>()
+            + column_gap * data.len().saturating_sub(1) as f32
+    };
+    let mut rows: Vec<Vec<Item>> = vec![];
+    let mut used = 0.;
+    for (child, basis, min) in data {
+        let hypothetical = if f.wrap {
+            basis.min(width.max(min))
+        } else {
+            basis
+        };
+        let next =
+            used + if rows.last().is_some_and(|r| !r.is_empty()) {
+                column_gap
+            } else {
+                0.
+            } + hypothetical;
+        if rows.is_empty()
+            || (f.wrap && next > width + 0.001 && rows.last().is_some_and(|r| !r.is_empty()))
+        {
+            rows.push(vec![]);
+            used = 0.;
+        }
+        if !rows.last().unwrap().is_empty() {
+            used += column_gap;
+        }
+        used += hypothetical;
+        rows.last_mut().unwrap().push(child);
+    }
+    let mut output = vec![];
+    let mut y = bounds.y;
+    let mut widest = 0f32;
+    let mut first = None;
+    for mut row in rows {
+        let max_content = row
+            .iter()
+            .map(|c| {
+                c.element
+                    .natural(f32::INFINITY, ctx, m)
+                    .map(|(s, _)| match c.extent {
+                        Extent::Fixed(n) => n,
+                        _ => s[0],
+                    })
+            })
+            .collect::<crate::style::Result<Vec<_>>>()?
+            .iter()
+            .sum::<f32>()
+            + column_gap * row.len().saturating_sub(1) as f32;
+        // A fitting row takes the exact existing Stack allocation path. Only
+        // actual shortages need CSS min-content shrinking.
+        if max_content > width + 0.001 {
+            for child in &mut row {
+                if matches!(child.extent, Extent::Auto) {
+                    child.extent = Extent::MinContent;
+                }
+            }
+        }
+        let (_, metrics) = child_measure(&row, Axis::Row, column_gap, f.align, width, ctx, m)?;
+        let above = metrics.iter().map(|(_, b)| *b).fold(0., f32::max);
+        let height = if f.align == Alignment::Baseline {
+            above + metrics.iter().map(|(s, b)| s[1] - b).fold(0., f32::max)
+        } else {
+            metrics.iter().map(|(s, _)| s[1]).fold(0., f32::max)
+        };
+        let mut rects = allocate_children(
+            &row,
+            &metrics,
+            Axis::Row,
+            column_gap,
+            f.align,
+            Rect::new(bounds.x, y, width, height),
+            ctx,
+            m,
+        )?;
+        let used = rects.iter().map(|r| r.w).sum::<f32>()
+            + column_gap * rects.len().saturating_sub(1) as f32;
+        widest = widest.max(used);
+        let free = (width - used).max(0.);
+        let (offset, extra_gap) = match f.justify {
+            Justify::Start => (0., 0.),
+            Justify::Center => (free * 0.5, 0.),
+            Justify::SpaceBetween if rects.len() > 1 => (0., free / (rects.len() - 1) as f32),
+            Justify::SpaceBetween => (0., 0.),
+        };
+        for (i, ((child, r), (_, base))) in row.iter().zip(&mut rects).zip(&metrics).enumerate() {
+            r.x += offset + extra_gap * i as f32;
+            if f.align == Alignment::Baseline {
+                r.y += above - base;
+            }
+            let layout = child.element.layout_in(*r, ctx, m)?;
+            first.get_or_insert(layout.rect.y - bounds.y + layout.baseline);
+            output.push(layout);
+        }
+        y += height + row_gap;
+    }
+    let height = (y - bounds.y - if output.is_empty() { 0. } else { row_gap }).max(0.);
+    Ok(([widest, height], first.unwrap_or(0.), output))
+}
+
 #[allow(clippy::too_many_arguments)] // Same solver inputs plus explicit CSS cross-overflow policy.
 fn layout_children(
     children: &[Item],

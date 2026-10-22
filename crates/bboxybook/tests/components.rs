@@ -149,14 +149,14 @@ fn retained_scroll_content_moves_but_never_paints_outside_the_viewport() {
 #[test]
 fn component_cases_are_canonical_and_box_gallery_covers_materials_and_radii() {
     let cases = components::cases();
-    assert_eq!(cases.len(), 24);
+    assert_eq!(cases.len(), 40);
     assert_eq!(
         cases
             .iter()
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        24
+        40
     );
     assert!(
         cases
