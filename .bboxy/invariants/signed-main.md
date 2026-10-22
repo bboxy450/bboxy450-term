@@ -3,7 +3,7 @@ id: 01M5JQE3ZY6KYN1P0NA2M75X0E
 type: invariant
 title: every commit on main carries a good signature
 status: active
-check: test "$(git log --format=%G? origin/main | grep -vc '^G$')" = 0
+check: test "$(git log --format='%G?' origin/main | grep -c .)" -gt 0 && test "$(git log --format='%G?' origin/main | grep -vc '^G$')" = 0
 cost: an unsigned commit breaks the chain from artifact to key; releases inherit the gap
 links:
   - { to: "[[provenance]]", rel: constrains }
@@ -18,9 +18,10 @@ signature (`%G?` = `G`) from the machine key `844ECC0587DE7AB0`. The provenance
 chain is signed commits → signed tags → detached signatures on published crates
 ([[provenance]], [[open-source]] §3); the first link is this one.
 
-**Check.** `test "$(git log --format=%G? origin/main | grep -vc '^G$')" = 0`
+**Check.** `test "$(git log --format='%G?' origin/main | grep -c .)" -gt 0 && test "$(git log --format='%G?' origin/main | grep -vc '^G$')" = 0`
 after `git fetch origin main` — exit 0 held, exit 1 at least one commit unsigned
-or with a bad signature; list them with
+or with a bad signature. The format is quoted because `?` globs in zsh; the
+first clause refuses an empty log, so the check never passes on nothing; list them with
 `git log --format='%h %G? %an %s' origin/main | awk '$2!="G"'`.
 
 **Cost of a violation.** An unsigned commit on main is an artifact nobody can
