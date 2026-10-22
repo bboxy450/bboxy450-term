@@ -14,7 +14,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Rook Ashwhisker | Executor | Codex | **W2.4 local messaging**; W1.2c ✔ (01d5ea4 merged 097ec3b: shared writer thread, 128 MiB at 54–57 MiB/s, max write 12.8 ms, p99 4.7 ms, 0 full-queue episodes); W2.3 ✔ (a00e53e+3de2ae1 merged d60ee06: Claude/Codex/zsh adapters, guarded native delivery, quiet hook shim warm ~5 ms, 11 adapter tests); W1.2b ✔ (b12dfcb: logic stopped, 20 MiB writer completes, cold replay no gap; W1.2c latency ≤50 ms / ≥30 MiB/s queued); W1.2 ✔ (c69fe4c: CRC ring, checkpoints, cold archival, paginated history, 37 tests); W2.2 ✔ (4988ac3 merged: SQLite store/blobs/events, registry, bus on the R1 handle, .bboxy index, seat streams; hard-killed logic reattaches same zsh PID and screen; 155 tests on merge); resize ✔ ffe2fae; vendor lint scope ✔ ae0855d | nothing |
 | Corvin Duskmantle | Architect | Claude | zoom-out design: (a) specs/architecture.md system map from the code, (b) C1 app↔logic seam, (c) O2 public/private split, (d) W2.5/W2.5b MCP and seat wiring, (e) D1 Provider trait, (f) 1000-seat risks; writes specs, the Oracle briefs Executors | nothing |
 | Aster Cinderwing | Executor | Codex | **T1 bboxy-firehose**, then R3, T3 fonts ∥ T2 terminal fidelity, R5; worktree ~/mydev/bboxy450-term-exec4 (branch exec4); owns terminal rendering and terminal fonts | nothing |
-| Sable Embertail | Executor | Codex | R1 ✔ (29d5e62), R2 ✔ (be604d4: native window, 15 seats, idle 0 frames, meter; release encode 33 ms/frame); R2b ✔ (82c821b: 87% of encode = 16 MiB icon atlas + glyph atlas re-uploaded every pass; fix → Nyx); R4 ✔ impl (18e0593: native display link, idle 0 frames/callbacks; 75 Hz budget FAIL: GPU 19 ms, 13.4 ms = full-screen frosted blur for a 38 px bar); **R4b bounded blur + glow early-out** in worktree ~/mydev/bboxy450-term-exec3 (branch exec3), then F1–F5 fidelity backlog, C1 live seats | nothing |
+| Sable Embertail | Executor | Codex | R1 ✔ (29d5e62), R2 ✔ (be604d4: native window, 15 seats, idle 0 frames, meter; release encode 33 ms/frame); R2b ✔ (82c821b: 87% of encode = 16 MiB icon atlas + glyph atlas re-uploaded every pass; fix → Nyx); R4 ✔ impl (18e0593: native display link, idle 0 frames/callbacks; 75 Hz budget FAIL: GPU 19 ms, 13.4 ms = full-screen frosted blur for a 38 px bar); R4b ✔ (6f67402: GPU 19.2→8.9 ms, 75 Hz 0 late, 1808/1808 identical; 8.33 ms gap → R4c queued); **F1 per-size icon raster** in worktree ~/mydev/bboxy450-term-exec3 (branch exec3), then F1–F5 fidelity backlog, C1 live seats | nothing |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
 | subagent provenance | Oracle instrument | Claude | done → `research/provenance-and-documents.md`, decided in `specs/provenance.md` | — |
@@ -68,7 +68,7 @@ W4.1 Transport trait + loopback + quinn auth [DEFERRED: cockpit first]
 
 | State | Items |
 |---|---|
-| RUNNING | 7.9 Settings (Nyx); W2.4 local messaging (Rook); R4b GPU blur/glow (Sable) |
+| RUNNING | 7.9 Settings (Nyx); W2.4 local messaging (Rook); F1 icons (Sable) |
 | OPEN, claimable now | W2.3 (W4.1 queued for Sable; W1.2 → Rook) |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |

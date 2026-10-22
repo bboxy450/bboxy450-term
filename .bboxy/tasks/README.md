@@ -32,7 +32,7 @@
 | W2.4 | [[2026-10-22-w2-4-local-messaging]] local messaging: envelopes, channel tree, priority, harness delivery | Rook Ashwhisker <EXECUTOR> | RUNNING |
 | T1–T3 | [[2026-10-22-t-terminal-fidelity]] firehose → R3 → fonts ∥ fidelity → R5 | Aster Cinderwing <EXECUTOR> (exec4) | T1 RUNNING |
 | O1–O6 | [[2026-10-22-o-open-source]] publish bboxy450-rt, -ui-core, -render, -ui, -book ([[open-source]]) | deferred: publish at a plateau, velocity first | DEFERRED |
-| R1–R5 | [[2026-10-22-r-runtime]] runtime: async IO off the UI thread, 120 Hz ([[runtime]]) | Sable Embertail <EXECUTOR> | R1 ✔ 29d5e62; R2 ✔ be604d4; R2b ✔ 82c821b; R4 ✔ 18e0593 (budget open); R4b RUNNING |
+| R1–R5 | [[2026-10-22-r-runtime]] runtime: async IO off the UI thread, 120 Hz ([[runtime]]) | Sable Embertail <EXECUTOR> | R1 ✔ 29d5e62; R2 ✔ be604d4; R2b ✔ 82c821b; R4 ✔ 18e0593; R4b ✔ 6f67402; F1 RUNNING; R4c (GPU ≤8.33) queued |
 | W3.2d | [[2026-10-21-w3-2d-component-library]] bbt-ui layer cake: d.1 materials → d.7+ modules | Nyx Copperwing <EXECUTOR>, from d.1 | ASSIGNED |
 
 Rule: redundant passes write `-exec.md` next to the subagent's file. The Oracle converges both into `specs/`. Claim by replying on `#bboxy450-term` with `Name <EXECUTOR> CLAIM <Id>`. Finish one, claim the next.
