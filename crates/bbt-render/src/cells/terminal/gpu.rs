@@ -673,6 +673,8 @@ mod tests {
     fn prepared_frame_encodes_pane_offsets_clips_and_survives_atlas_growth() {
         fn send_sync<T: Send + Sync>() {}
         send_sync::<PreparedGrid>();
+        fn send<T: Send>() {}
+        send::<TerminalRenderer>();
         let context = pollster::block_on(DeviceContext::new()).unwrap();
         let mut renderer = TerminalRenderer::new(&context, Options::default()).unwrap();
         let grid = Grid {
@@ -802,6 +804,49 @@ mod tests {
                 let i = (y * stride + x * 4) as usize;
                 assert_eq!(&mapped[i..i + 4], expected, "pane pixel {x},{y}");
             }
+        }
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn immutable_fonts_move_to_worker_with_identical_rasterization() {
+        let cases = [("F", 1), ("e\u{301}", 1), ("中", 2), ("👩\u{200d}💻", 2)];
+        for scale in [1, 2] {
+            let fonts = Fonts::new(
+                &crate::FontConfig {
+                    scale,
+                    ..Default::default()
+                },
+                None,
+                false,
+            )
+            .unwrap();
+            let capture = move |fonts: &Fonts| {
+                let mut images = Vec::new();
+                for (text, span) in cases {
+                    for (bold, italic) in
+                        [(false, false), (true, false), (false, true), (true, true)]
+                    {
+                        let glyph = fonts.rasterize(text, bold, italic, span).unwrap().unwrap();
+                        images.push((
+                            glyph.width,
+                            glyph.height,
+                            glyph.left,
+                            glyph.top,
+                            glyph.format,
+                            glyph.pixels,
+                            glyph.faces,
+                        ));
+                    }
+                }
+                images
+            };
+            let caller = capture(&fonts);
+            let worker = std::thread::spawn(move || capture(&fonts)).join().unwrap();
+            assert_eq!(
+                caller, worker,
+                "font rasterization changed after moving threads at {scale}x"
+            );
         }
     }
 

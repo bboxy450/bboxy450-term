@@ -21,6 +21,32 @@ pub struct Fonts {
     thicken: bool,
 }
 
+// SAFETY: Fonts stores only immutable CTFont handles plus plain metrics/scalars.
+// Apple permits font objects across operations, work queues and threads:
+// https://developer.apple.com/documentation/coretext
+// CTLine, CTRun and CGContext are call-local in rasterize and are never stored.
+// The exhaustive guard below forces review when any stored field changes.
+unsafe impl Send for Fonts {}
+
+const _: fn(Fonts) = |fonts| {
+    // No `..`: adding a field must fail here until its thread safety is audited.
+    let Fonts {
+        faces,
+        symbols,
+        cjk,
+        emoji,
+        metrics,
+        scale,
+        thicken,
+    } = fonts;
+    let _: [CFRetained<CTFont>; 4] = faces;
+    let _: CFRetained<CTFont> = symbols;
+    let _: CFRetained<CTFont> = cjk;
+    let _: CFRetained<CTFont> = emoji;
+    fn assert_send<T: Send>(_: T) {}
+    assert_send((metrics, scale, thicken));
+};
+
 fn named(name: &str, size: f64) -> CFRetained<CTFont> {
     // SAFETY: a retained string, positive validated size and identity transform.
     unsafe { CTFont::with_name(&CFString::from_str(name), size, ptr::null()) }
