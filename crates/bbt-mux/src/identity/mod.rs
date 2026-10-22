@@ -1,15 +1,22 @@
-//! Operator-only identity bootstrap. No seat, MCP or logic entry point is wired here.
+//! Identity bootstrap, public proofs and seat signing on logic/IO workers.
+//! Primary signing remains confined to explicit operator bootstrap operations.
 //!
 //! Primary secrets stay in gpg-agent. Only public certificates and verified
 //! authority records reach the account object; device seeds stay in Keychain.
 
 mod agent;
 mod certificate;
+mod chain;
 mod journal;
 mod keychain;
+mod seats;
+mod transition;
 
+pub use chain::{ChainSeatKeys, seat_keys};
 pub use journal::{AccountHead, Bootstrap, BootstrapOutcome, DeviceGrant, DeviceIdentity, Signed};
 pub use keychain::{Custody, DeviceKeyStore, KeychainDeviceKeys};
+pub use seats::{KeyStatus, RosterEntry, SeatGrant, SeatProof, SeatRoster};
+pub use transition::{IssuerState, reset_identity};
 
 use std::fmt;
 

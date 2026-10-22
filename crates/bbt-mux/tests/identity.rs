@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods)] // Disposable keyring/account/Keychain fixtures run on IO test threads.
 //! Disposable interoperability/custody checks. Every GnuPG command has an
 //! explicit throwaway homedir; these tests never query the operator keyring.
 use std::{
@@ -418,5 +419,547 @@ fn identity_keychain_device_local_item_and_cleanup() {
     println!(
         "Keychain tier {:?}: isolated item created, read, attributes checked and deleted",
         store.custody()
+    );
+}
+
+// ID1b uses shared, memory-only test custody. Only public proofs reach SQLite.
+#[derive(Default)]
+struct SharedKeys(std::sync::Mutex<BTreeMap<Ulid, SigningKey>>);
+impl DeviceKeyStore for SharedKeys {
+    fn custody(&self) -> Custody {
+        Custody::Memory
+    }
+    fn load(&self, id: Ulid) -> bbt_mux::identity::Result<Option<SigningKey>> {
+        Ok(self.0.lock().unwrap().get(&id).cloned())
+    }
+    fn create(&self, id: Ulid, key: &SigningKey) -> bbt_mux::identity::Result<()> {
+        let mut keys = self.0.lock().unwrap();
+        if keys.contains_key(&id) {
+            return Err(PendingReason::JournalConflict);
+        }
+        keys.insert(id, key.clone());
+        Ok(())
+    }
+}
+struct SeatFixture {
+    root: Fixture,
+    _directory: TempDir,
+    account: SqliteStore,
+    custody: std::sync::Arc<SharedKeys>,
+    registry: bbt_mux::registry::Registry,
+    chain: std::sync::Arc<bbt_mux::identity::ChainSeatKeys>,
+    messaging: bbt_mux::messaging::Messaging,
+    clock: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    seat: bbt_mux::registry::SeatRecord,
+    peer: bbt_mux::registry::SeatRecord,
+    prior: Option<bbt_mux::messaging::wire::Envelope>,
+}
+impl SeatFixture {
+    fn new(cutover: bool) -> Self {
+        use bbt_mux::{
+            identity::ChainSeatKeys,
+            messaging::{Messaging, keys::LocalSeatKeys, wire::SendRequest},
+            registry::{Registry, SeatRecord},
+        };
+        use std::sync::{
+            Arc,
+            atomic::{AtomicU64, Ordering},
+        };
+        let root = Fixture::new();
+        let directory = tempfile::Builder::new()
+            .prefix("id1b-")
+            .tempdir_in("/tmp")
+            .unwrap();
+        let account = SqliteStore::open(&directory.path().join("account")).unwrap();
+        let registry = Registry::new(account.clone());
+        let time = now();
+        let clock = Arc::new(AtomicU64::new(time));
+        let custody = Arc::new(SharedKeys::default());
+        let swarm = Ulid::new();
+        let mut seat = SeatRecord::new(Ulid::new(), swarm, "Kestrel fixture", "codex");
+        seat.location = bbt_mux::registry::Location::Ssh {
+            host: "private-host.invalid".into(),
+        };
+        let peer = SeatRecord::new(Ulid::new(), swarm, "Peer fixture", "zsh");
+        let prior = if cutover {
+            registry.insert(&seat).unwrap();
+            registry.insert(&peer).unwrap();
+            let mut local = Messaging::open(
+                directory.path(),
+                Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[42; 32]))),
+            )
+            .unwrap();
+            Some(
+                local
+                    .send(
+                        seat.id,
+                        1,
+                        SendRequest::text(format!("seats/{}/inbox", peer.id), "before cutover"),
+                        time * 1000,
+                    )
+                    .unwrap()
+                    .envelope,
+            )
+        } else {
+            None
+        };
+        assert!(matches!(
+            root.bootstrap.run(&account, custody.as_ref(), time),
+            BootstrapOutcome::Certified(_)
+        ));
+        if !cutover {
+            registry.insert(&seat).unwrap();
+            registry.insert(&peer).unwrap();
+        }
+        let clock_copy = clock.clone();
+        let chain = Arc::new(
+            ChainSeatKeys::with_clock(
+                account.clone(),
+                custody.clone(),
+                &root.bootstrap.fingerprint,
+                SigningKey::from_bytes(&[42; 32]),
+                Arc::new(move || clock_copy.load(Ordering::Relaxed)),
+            )
+            .unwrap(),
+        );
+        let messaging = Messaging::open(directory.path(), chain.clone()).unwrap();
+        Self {
+            root,
+            _directory: directory,
+            account,
+            custody,
+            registry,
+            chain,
+            messaging,
+            clock,
+            seat,
+            peer,
+            prior,
+        }
+    }
+    fn time(&self) -> u64 {
+        self.clock.load(std::sync::atomic::Ordering::Relaxed)
+    }
+    fn send(&mut self, text: &str) -> bbt_mux::messaging::ledger::StoredMessage {
+        self.messaging
+            .send(
+                self.seat.id,
+                self.seat.generation,
+                bbt_mux::messaging::wire::SendRequest::text(
+                    format!("seats/{}/inbox", self.peer.id),
+                    text,
+                ),
+                self.time() * 1000,
+            )
+            .unwrap()
+    }
+}
+#[test]
+fn identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs() {
+    use bbt_mux::messaging::{keys::SeatKeys, wire::IssuerKind};
+    let mut f = SeatFixture::new(false);
+    let message = f.send("root-certified seat").envelope;
+    assert_eq!(message.issuer_kind, IssuerKind::GpgRoot);
+    assert_ne!(message.device, message.issuer);
+    f.chain.verify(&message).unwrap();
+    let proof = f.chain.proof(&message.role_grant_id).unwrap();
+    assert_eq!(proof.grant.payload.role, f.seat.role);
+    assert_eq!(proof.grant.payload.destinations, [message.context.clone()]);
+    assert_eq!(
+        proof.grant.payload.expires_at - proof.grant.payload.not_before,
+        24 * 3600
+    );
+    let leaf = f.chain.leaf(f.seat.id, 1).unwrap();
+    assert_eq!(
+        leaf.to_bytes(),
+        f.chain.leaf(f.seat.id, 1).unwrap().to_bytes()
+    );
+    assert_ne!(
+        leaf.to_bytes(),
+        f.chain.leaf(f.seat.id, 2).unwrap().to_bytes()
+    );
+    let mut body = message.clone();
+    body.body = bbt_mux::messaging::wire::Body::Text {
+        text: "tampered".into(),
+    };
+    assert!(f.chain.verify(&body).is_err());
+    let mut wrong = message.clone();
+    wrong.device = "11".repeat(32);
+    wrong.sign(&leaf).unwrap();
+    assert!(
+        f.chain
+            .verify(&wrong)
+            .unwrap_err()
+            .to_string()
+            .contains("wrong device")
+    );
+    wrong = message.clone();
+    wrong.issuer = "11".repeat(32);
+    wrong.account = wrong.issuer.clone();
+    wrong.sign(&leaf).unwrap();
+    assert!(
+        f.chain
+            .verify(&wrong)
+            .unwrap_err()
+            .to_string()
+            .contains("foreign root")
+    );
+    wrong = message.clone();
+    wrong.role_epoch = 2;
+    wrong.sign(&leaf).unwrap();
+    assert!(
+        f.chain
+            .verify(&wrong)
+            .unwrap_err()
+            .to_string()
+            .contains("stale grant_epoch")
+    );
+    assert_eq!(f.chain.revoke_seat(f.seat.id).unwrap(), 2);
+    assert_eq!(f.chain.revoke_seat(f.seat.id).unwrap(), 3);
+    assert!(
+        f.chain
+            .verify(&message)
+            .unwrap_err()
+            .to_string()
+            .contains("revoked grant_epoch")
+    );
+    f.chain.verify_history(&message).unwrap();
+    f.clock
+        .store(f.time() + 24 * 3600, std::sync::atomic::Ordering::Relaxed);
+    assert!(
+        f.chain
+            .verify(&message)
+            .unwrap_err()
+            .to_string()
+            .contains("expired SeatGrant")
+    );
+    println!(
+        "ID1b: gpg-root envelope verified; tamper, wrong device, foreign root, stale/revoked grant and expiry rejected"
+    );
+}
+#[test]
+fn identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history() {
+    use bbt_mux::messaging::keys::SeatKeys;
+    let mut f = SeatFixture::new(false);
+    let old = f.send("first").envelope;
+    let old_key = f.chain.leaf(f.seat.id, 1).unwrap();
+    let stop = Command::new("gpgconf")
+        .arg("--homedir")
+        .arg(f.root.home.path())
+        .args(["--kill", "gpg-agent"])
+        .env("GNUPGHOME", f.root.home.path())
+        .status()
+        .unwrap();
+    assert!(stop.success());
+    f.clock
+        .store(f.time() + 12 * 3600, std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(
+        f.chain.renew_due().unwrap(),
+        1,
+        "idle seat renews before another send"
+    );
+    let renewed = f.send("renew at half-life").envelope;
+    assert_ne!(old.role_grant_id, renewed.role_grant_id);
+    assert_eq!(old.author, renewed.author);
+    let proof = f.chain.proof(&renewed.role_grant_id).unwrap();
+    assert_eq!(
+        proof.grant.payload.previous_grant_id,
+        Some(old.role_grant_id.clone())
+    );
+    f.chain.verify(&renewed).unwrap();
+    f.seat.generation = 2;
+    f.registry
+        .update(f.seat.id, |r| {
+            r.generation = 2;
+            Ok(())
+        })
+        .unwrap();
+    let next = f.send("new process generation").envelope;
+    assert_ne!(old.author, next.author);
+    assert!(
+        f.chain
+            .verify(&old)
+            .unwrap_err()
+            .to_string()
+            .contains("stale key_epoch")
+    );
+    f.chain.verify_history(&old).unwrap();
+    let roster = f.chain.roster().unwrap().unwrap();
+    assert_eq!(roster.payload.entries.len(), 2);
+    assert!(
+        roster
+            .payload
+            .entries
+            .iter()
+            .any(|e| e.status == bbt_mux::identity::KeyStatus::Retired)
+    );
+    assert!(roster.payload.previous_roster_id.is_some());
+    let public = serde_json::to_string(&roster).unwrap();
+    assert!(!public.contains("private-host.invalid"));
+    assert!(!public.contains("seats/"));
+    assert!(!public.contains(&f.seat.swarm.to_string()));
+    fn files(path: &Path) -> Vec<Vec<u8>> {
+        fs::read_dir(path)
+            .unwrap()
+            .flat_map(|e| {
+                let p = e.unwrap().path();
+                if p.is_dir() {
+                    files(&p)
+                } else {
+                    vec![fs::read(p).unwrap()]
+                }
+            })
+            .collect()
+    }
+    for bytes in files(f._directory.path()) {
+        assert!(!bytes.windows(32).any(|b| b == old_key.to_bytes()));
+    }
+    println!(
+        "ID1b: half-life renewal after primary agent stopped; generation key rotated; signed roster/history retained without private scope or seed"
+    );
+}
+#[test]
+fn identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences() {
+    use bbt_mux::messaging::{
+        keys::{LocalSeatKeys, SeatKeys},
+        wire::IssuerKind,
+    };
+    let mut f = SeatFixture::new(true);
+    let old = f.prior.clone().unwrap();
+    let current = f.send("same running generation").envelope;
+    assert_eq!(current.issuer_kind, IssuerKind::LocalDev);
+    assert_eq!(current.author, old.author);
+    f.chain.verify(&old).unwrap();
+    f.chain.verify(&current).unwrap();
+    assert_eq!(f.chain.still_local().unwrap(), 2);
+    f.seat.generation = 2;
+    f.registry
+        .update(f.seat.id, |r| {
+            r.generation = 2;
+            Ok(())
+        })
+        .unwrap();
+    let mut late_before_first_chain = current.clone();
+    late_before_first_chain.sender_sequence += 1;
+    late_before_first_chain
+        .sign(
+            &LocalSeatKeys::new(SigningKey::from_bytes(&[42; 32]))
+                .leaf(f.seat.id, 1)
+                .unwrap(),
+        )
+        .unwrap();
+    assert!(
+        f.chain
+            .verify(&late_before_first_chain)
+            .unwrap_err()
+            .to_string()
+            .contains("after cutover")
+    );
+    let next = f.send("new generation uses chain").envelope;
+    assert_eq!(next.issuer_kind, IssuerKind::GpgRoot);
+    f.chain.verify(&next).unwrap();
+    assert_eq!(f.chain.still_local().unwrap(), 1);
+    f.chain.verify_history(&old).unwrap();
+    f.chain.verify(&current).unwrap();
+    let mut late = current.clone();
+    late.sender_sequence += 1;
+    late.sign(
+        &LocalSeatKeys::new(SigningKey::from_bytes(&[42; 32]))
+            .leaf(f.seat.id, 1)
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(
+        f.chain
+            .verify(&late)
+            .unwrap_err()
+            .to_string()
+            .contains("after cutover")
+    );
+    println!(
+        "ID1b cutover: live generation kept its local key; next generation gpg-root; pre-fence local history verified, newer local sequence refused"
+    );
+}
+#[test]
+fn identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history() {
+    use bbt_mux::{
+        identity::{ChainSeatKeys, reset_identity},
+        messaging::{
+            keys::{LocalSeatKeys, SeatKeys},
+            wire::IssuerKind,
+        },
+    };
+    let mut f = SeatFixture::new(false);
+    let old = f.send("gpg history").envelope;
+    let saved = f.account.get("identity/issuer").unwrap().unwrap();
+    let local = LocalSeatKeys::new(SigningKey::from_bytes(&[43; 32]));
+    let reset = reset_identity(&f.account, &local, f.time()).unwrap();
+    assert_eq!(
+        reset.previous,
+        Some(bbt_mux::store::digest(
+            &f.account.get("identity/issuer-history/1").unwrap().unwrap()
+        ))
+    );
+    assert_eq!(reset.cutover_epoch, "2");
+    assert_eq!(reset.kind, IssuerKind::LocalDev);
+    assert!(reset.previous.is_some());
+    f.chain.verify_history(&old).unwrap();
+    assert!(
+        f.chain
+            .verify(&old)
+            .unwrap_err()
+            .to_string()
+            .contains("identity reset")
+    );
+    assert!(matches!(
+        f.root
+            .bootstrap
+            .run(&f.account, f.custody.as_ref(), f.time()),
+        BootstrapOutcome::Certified(_)
+    ));
+    let state: bbt_mux::identity::IssuerState =
+        serde_json::from_slice(&f.account.get("identity/issuer").unwrap().unwrap()).unwrap();
+    assert_eq!(state.cutover_epoch, "2");
+    assert_eq!(state.kind, IssuerKind::LocalDev);
+    let second = reset_identity(&f.account, &local, f.time()).unwrap();
+    assert_eq!(second.cutover_epoch, "3");
+    // Reset permits a new local generation even after the old device expires
+    // and its secret is lost; old GPG attribution needs public proofs only.
+    f.custody.0.lock().unwrap().clear();
+    let future = f.time() + 40 * 24 * 3600;
+    let historical = std::sync::Arc::new(
+        ChainSeatKeys::with_clock(
+            f.account.clone(),
+            f.custody.clone(),
+            &f.root.bootstrap.fingerprint,
+            SigningKey::from_bytes(&[43; 32]),
+            std::sync::Arc::new(move || future),
+        )
+        .unwrap(),
+    );
+    historical.verify_history(&old).unwrap();
+    f.registry
+        .update(f.seat.id, |r| {
+            r.generation = 2;
+            Ok(())
+        })
+        .unwrap();
+    let mut local_messaging =
+        bbt_mux::messaging::Messaging::open(f._directory.path(), historical.clone()).unwrap();
+    let new_local = local_messaging
+        .send(
+            f.seat.id,
+            2,
+            bbt_mux::messaging::wire::SendRequest::text(
+                format!("seats/{}/inbox", f.peer.id),
+                "new reset epoch",
+            ),
+            future * 1000,
+        )
+        .unwrap();
+    assert_eq!(new_local.envelope.issuer_kind, IssuerKind::LocalDev);
+    historical.verify(&new_local.envelope).unwrap();
+    f.account.put("identity/issuer", &saved).unwrap();
+    let reopened = ChainSeatKeys::open(
+        f.account.clone(),
+        f.custody.clone(),
+        &f.root.bootstrap.fingerprint,
+        SigningKey::from_bytes(&[43; 32]),
+    );
+    assert!(reopened.err().unwrap().to_string().contains("rollback"));
+    println!(
+        "ID1b reset: explicit local-dev epochs 2/3; old root history retained; bootstrap retry does not undo reset; rollback rejected"
+    );
+}
+#[test]
+fn identity_device_without_root_certification_is_refused_before_seat_issuance() {
+    use base64::Engine;
+    use pgp::ser::Serialize;
+    let f = SeatFixture::new(false);
+    let head: Signed<AccountHead> =
+        serde_json::from_slice(&f.account.get("identity/head").unwrap().unwrap()).unwrap();
+    let id = head.payload.active_devices[0].device_id;
+    let path = format!("identity/device/{id}");
+    let mut identity: bbt_mux::identity::DeviceIdentity =
+        serde_json::from_slice(&f.account.get(&path).unwrap().unwrap()).unwrap();
+    let cert = identity.public_device_certificate().unwrap();
+    let mut cert = SignedPublicKey::from_bytes(cert.as_slice()).unwrap();
+    cert.details.users[0].signatures.truncate(1);
+    identity.device_certificate =
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(cert.to_bytes().unwrap());
+    f.account
+        .put(&path, &serde_json::to_vec(&identity).unwrap())
+        .unwrap();
+    assert!(
+        bbt_mux::identity::ChainSeatKeys::open(
+            f.account.clone(),
+            f.custody.clone(),
+            &f.root.bootstrap.fingerprint,
+            SigningKey::from_bytes(&[42; 32])
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts() {
+    use bbt_mux::{
+        adapters::{Evidence, WakeOutcome},
+        messaging::wire::SendRequest,
+    };
+    let mut f = SeatFixture::new(false);
+    let first = f.send("parent");
+    let mut request = SendRequest::text(format!("seats/{}/inbox", f.peer.id), "reply");
+    request.reply_to = Some(first.envelope.id);
+    let reply = f
+        .messaging
+        .send(f.seat.id, 1, request.clone(), f.time() * 1000)
+        .unwrap();
+    assert_eq!(reply.envelope.thread_id, first.envelope.thread_id);
+    assert_eq!(
+        f.messaging
+            .send(f.seat.id, 1, request.clone(), f.time() * 1000)
+            .unwrap(),
+        reply
+    );
+    request.text.push_str(" changed");
+    assert!(
+        f.messaging
+            .send(f.seat.id, 1, request, f.time() * 1000)
+            .is_err()
+    );
+    assert_eq!(
+        f.messaging.receipts(f.seat.id, first.envelope.id).unwrap()[0].evidence,
+        Evidence::RecipientStored
+    );
+    f.messaging.ready(f.time() * 1000).unwrap();
+    let work = f
+        .messaging
+        .prepare(f.peer.swarm, f.peer.id, f.time() * 1000)
+        .unwrap()
+        .unwrap();
+    assert_eq!(work.messages[0].envelope.id, first.envelope.id);
+    f.messaging
+        .acknowledge(f.peer.id, first.envelope.id, None, f.time() * 1000)
+        .unwrap();
+    f.messaging
+        .finish(
+            f.peer.swarm,
+            &work,
+            &WakeOutcome {
+                evidence: Evidence::NativeWritten,
+                note: "fixture".into(),
+                native_id: None,
+            },
+            f.time() * 1000,
+            false,
+        )
+        .unwrap();
+    assert_eq!(
+        f.messaging.receipts(f.seat.id, first.envelope.id).unwrap()[0].evidence,
+        Evidence::ApplicationAcknowledged
+    );
+    println!(
+        "ID1b messaging seam: real chain provider preserved persist-before-dispatch, retry, thread, receipt and ack contracts"
     );
 }

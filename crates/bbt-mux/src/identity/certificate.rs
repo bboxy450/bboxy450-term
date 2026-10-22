@@ -223,6 +223,118 @@ pub(crate) fn verify_device(root: &Root, bytes: &[u8], expected: &[u8; 32]) -> R
     }
     Ok(())
 }
+
+/// Certify a fresh, in-memory seat key without involving the primary agent.
+pub(crate) fn certify_seat(
+    device: &[u8],
+    device_key: &SigningKey,
+    seat_key: &SigningKey,
+    seat: ulid::Ulid,
+    key_epoch: u64,
+    created: u32,
+) -> Result<Vec<u8>> {
+    let device = parse(device)?;
+    if raw(&device.primary_key)? != device_key.verifying_key() {
+        return Err(E::InvalidProof);
+    }
+    let public = proof(PublicKey::from_inner(proof(PubKeyInner::new(
+        KeyVersion::V4,
+        PublicKeyAlgorithm::EdDSALegacy,
+        Timestamp::from_secs(created),
+        None,
+        PublicParams::EdDSALegacy(EddsaLegacyPublicParams::Ed25519 {
+            key: proof(seat_key.verifying_key().as_bytes().as_slice().try_into())?,
+        }),
+    ))?))?;
+    let uid = proof(UserId::from_str(
+        PacketHeaderVersion::New,
+        format!("bboxy450-term seat {seat} key {key_epoch}"),
+    ))?;
+    let own = Adapter::new(public.clone(), |digest: &[u8]| {
+        Ok(seat_key.sign(digest).to_bytes())
+    });
+    let issuer = Adapter::new(device.primary_key.clone(), |digest: &[u8]| {
+        Ok(device_key.sign(digest).to_bytes())
+    });
+    let own_sig = proof(config(&own, created)?.sign_certification_third_party(
+        &own,
+        &Password::empty(),
+        &public,
+        Tag::UserId,
+        &uid,
+    ))?;
+    let issuer_sig = proof(config(&issuer, created)?.sign_certification_third_party(
+        &issuer,
+        &Password::empty(),
+        &public,
+        Tag::UserId,
+        &uid,
+    ))?;
+    proof(own_sig.verify_certification(&public, Tag::UserId, &uid))?;
+    proof(issuer_sig.verify_third_party_certification(
+        &public,
+        &device.primary_key,
+        Tag::UserId,
+        &uid,
+    ))?;
+    proof(
+        SignedPublicKey::new(
+            public,
+            SignedKeyDetails::new(
+                vec![],
+                vec![],
+                vec![SignedUser::new(uid, vec![own_sig, issuer_sig])],
+                vec![],
+            ),
+            vec![],
+        )
+        .to_bytes(),
+    )
+}
+
+pub(crate) fn verify_seat(
+    device: &[u8],
+    certificate: &[u8],
+    expected: &[u8; 32],
+    seat: ulid::Ulid,
+    key_epoch: u64,
+    now: u64,
+) -> Result<()> {
+    let device = parse(device)?;
+    let cert = parse(certificate)?;
+    if raw(&cert.primary_key)?.to_bytes() != *expected
+        || cert.details.users.len() != 1
+        || !cert.details.revocation_signatures.is_empty()
+    {
+        return Err(E::InvalidProof);
+    }
+    let user = &cert.details.users[0];
+    if user.id.id() != format!("bboxy450-term seat {seat} key {key_epoch}").as_bytes() {
+        return Err(E::InvalidProof);
+    }
+    let current = |s: &pgp::packet::Signature| {
+        s.is_certification()
+            && allowed_hash(s.hash_alg())
+            && s.created().is_some_and(|t| u64::from(t.as_secs()) <= now)
+    };
+    if !user.signatures.iter().any(|s| {
+        current(s)
+            && s.verify_certification(&cert.primary_key, Tag::UserId, &user.id)
+                .is_ok()
+    }) || !user.signatures.iter().any(|s| {
+        current(s)
+            && s.verify_third_party_certification(
+                &cert.primary_key,
+                &device.primary_key,
+                Tag::UserId,
+                &user.id,
+            )
+            .is_ok()
+    }) {
+        return Err(E::InvalidProof);
+    }
+    Ok(())
+}
 fn allowed_hash(hash: Option<HashAlgorithm>) -> bool {
     matches!(
         hash,

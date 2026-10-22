@@ -497,7 +497,7 @@ impl Worker {
             .create(&endpoint_root)?;
         let messaging = crate::messaging::Messaging::open(
             &config.run_dir,
-            Arc::new(crate::messaging::keys::LocalSeatKeys::new(key)),
+            crate::identity::seat_keys(&config.run_dir, key, handle.clone())?,
         )?;
         let mut worker = Self {
             connection,
