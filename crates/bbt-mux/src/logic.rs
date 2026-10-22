@@ -18,6 +18,7 @@ use ulid::Ulid;
 
 use crate::bus::{Broker, BusHandle};
 use crate::index::{FileWatch, Index};
+use crate::provider::{Connections, HostId, LocalProvider, Provider};
 use crate::registry::{Lifecycle, Position, Registry, SeatRecord};
 use crate::store::{
     Blobs, Result, Store, blobs::LocalBlobs, events::Draft, invalid, now_ms, object_dir,
@@ -452,7 +453,7 @@ impl Logic {
         let bus_key = SigningKey::from_bytes(&seed);
         seed.fill(0);
         Self::start_inner(
-            connection,
+            vec![Box::new(LocalProvider::new(connection))],
             config,
             bus_key,
             IdentityMode::Custodied(store),
@@ -467,8 +468,22 @@ impl Logic {
         key: SigningKey,
         handle: &tokio::runtime::Handle,
     ) -> Result<Self> {
+        Self::start_with_providers(
+            vec![Box::new(LocalProvider::new(connection))],
+            config,
+            key,
+            handle,
+        )
+    }
+    /// IO/bootstrap seam for providers. Local callers keep their admitted link.
+    pub fn start_with_providers(
+        providers: Vec<Box<dyn Provider>>,
+        config: LogicConfig,
+        key: SigningKey,
+        handle: &tokio::runtime::Handle,
+    ) -> Result<Self> {
         Self::start_inner(
-            connection,
+            providers,
             config,
             key.clone(),
             IdentityMode::Explicit(Box::new(key)),
@@ -476,7 +491,7 @@ impl Logic {
         )
     }
     fn start_inner(
-        connection: impl SupervisorConnection + 'static,
+        providers: Vec<Box<dyn Provider>>,
         config: LogicConfig,
         key: SigningKey,
         identity: IdentityMode,
@@ -531,7 +546,7 @@ impl Logic {
             .name("bbt-logic".into())
             .spawn(move || {
                 let mut worker = match Worker::open(
-                    Box::new(connection),
+                    providers,
                     config,
                     bus,
                     runtime,
@@ -633,7 +648,7 @@ struct Delivery {
     relayed: bool,
 }
 struct Worker {
-    connection: Box<dyn SupervisorConnection>,
+    connections: Connections,
     config: LogicConfig,
     registry: Registry,
     index: Index,
@@ -656,7 +671,7 @@ struct Worker {
 }
 impl Worker {
     fn open(
-        connection: Box<dyn SupervisorConnection>,
+        providers: Vec<Box<dyn Provider>>,
         config: LogicConfig,
         bus: BusHandle,
         handle: tokio::runtime::Handle,
@@ -664,6 +679,7 @@ impl Worker {
         identity: crate::identity::IdentityRuntime,
         bus_window: Option<Ulid>,
     ) -> Result<Self> {
+        let connections = Connections::open(providers)?;
         let registry = Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
         let index = Index::open(
             &config.repository,
@@ -697,7 +713,7 @@ impl Worker {
             capability,
         )?;
         let mut worker = Self {
-            connection,
+            connections,
             config,
             registry,
             index,
@@ -718,8 +734,10 @@ impl Worker {
             deliveries: tokio::task::JoinSet::new(),
             control_journals: BTreeMap::new(),
         };
-        if let Reply::Seats { seats } = worker.connection.request(Action::ListOwnedSeats)? {
-            for info in seats {
+        for (host, info) in worker.connections.owned_seats()? {
+            // Several fixture links can wrap one local supervisor. Recover a
+            // seat only through the link selected by its durable location.
+            if worker.host_for_seat(info.seat)? == host {
                 worker.attach(info, false)?;
             }
         }
@@ -732,13 +750,27 @@ impl Worker {
         worker.refresh_identity()?;
         Ok(worker)
     }
+    fn host_for_seat(&self, seat: Ulid) -> Result<HostId> {
+        match self.registry.get(seat) {
+            Ok(record) => Ok(HostId::from(&record.location)),
+            // Preserve the existing recovery of supervisor-owned local seats
+            // predating registry metadata. Other storage failures propagate.
+            Err(error) if error.to_string() == "unknown seat" => Ok(HostId::Local),
+            Err(error) => Err(error),
+        }
+    }
+    fn request_for_seat(&mut self, seat: Ulid, action: Action) -> Result<Reply> {
+        let host = self.host_for_seat(seat)?;
+        // The registry read/lease has ended before a potentially long request.
+        self.connections.request(&host, action)
+    }
     fn control_actor(
         &mut self,
         id: Ulid,
         generation: u64,
     ) -> Result<(crate::mcp::Actor, SeatRecord)> {
         self.snapshot(id, generation)?;
-        let Reply::Seats { seats } = self.connection.request(Action::ListOwnedSeats)? else {
+        let Reply::Seats { seats } = self.request_for_seat(id, Action::ListOwnedSeats)? else {
             return Err(invalid("supervisor ownership unavailable"));
         };
         if !seats
@@ -908,12 +940,15 @@ impl Worker {
     fn attach(&mut self, info: SeatInfo, live_start: bool) -> Result<()> {
         check_size(info.size.cols as usize, info.size.rows as usize)?;
         let directory = object_dir(&self.config.run_dir, &format!("seat-{}", info.seat))?;
-        let reply = self.connection.request(Action::AttachRing {
-            seat: info.seat,
-            generation: info.generation,
-            directory: directory.join(format!("ring-{}", info.generation)),
-            settings: self.config.ring.clone(),
-        })?;
+        let reply = self.request_for_seat(
+            info.seat,
+            Action::AttachRing {
+                seat: info.seat,
+                generation: info.generation,
+                directory: directory.join(format!("ring-{}", info.generation)),
+                settings: self.config.ring.clone(),
+            },
+        )?;
         let Reply::Attached {
             attachment,
             first_available_sequence,
@@ -1089,11 +1124,14 @@ impl Worker {
             } else if record.lifecycle == Lifecycle::ClosedGrace
                 && let Some(close) = record.close
             {
-                self.connection.request(Action::ScheduleClose {
-                    attachment,
-                    close_id: close.operation,
-                    deadline_ms: close.deadline_ms,
-                })?;
+                self.request_for_seat(
+                    info.seat,
+                    Action::ScheduleClose {
+                        attachment,
+                        close_id: close.operation,
+                        deadline_ms: close.deadline_ms,
+                    },
+                )?;
             }
         }
         Ok(())
@@ -1208,7 +1246,8 @@ impl Worker {
             Err(_) => self.registry.insert(&record)?,
         }
         self.messaging.sync_seat(&record)?;
-        let Reply::Spawned { info } = self.connection.request(Action::Spawn { spec })? else {
+        let Reply::Spawned { info } = self.request_for_seat(record.id, Action::Spawn { spec })?
+        else {
             return Err(invalid("spawn reply mismatch"));
         };
         if self
@@ -1443,11 +1482,14 @@ impl Worker {
             let Some((input_id, bytes)) = self.views[&id].replies.front().cloned() else {
                 return Ok(());
             };
-            match self.connection.request(Action::Input {
-                attachment: self.attachments[&id].clone(),
-                input_id,
-                bytes,
-            }) {
+            match self.request_for_seat(
+                id,
+                Action::Input {
+                    attachment: self.attachments[&id].clone(),
+                    input_id,
+                    bytes,
+                },
+            ) {
                 Ok(Reply::Input { receipt }) if receipt.state != crate::InputState::Pending => {
                     self.views.get_mut(&id).unwrap().replies.pop_front();
                 }
@@ -1650,9 +1692,13 @@ impl Worker {
             .get(&seat)
             .ok_or_else(|| invalid("recipient has no writer lease"))?
             .clone();
-        let context = match self.connection.request(Action::InputContext {
-            attachment: attachment.clone(),
-        }) {
+        let host = self.host_for_seat(seat)?;
+        let context = match self.connections.request(
+            &host,
+            Action::InputContext {
+                attachment: attachment.clone(),
+            },
+        ) {
             Ok(Reply::InputContext { context }) => context,
             _ => {
                 return Ok(pending(
@@ -1660,6 +1706,7 @@ impl Worker {
                 ));
             }
         };
+        let connections = &mut self.connections;
         let view = self.views.get_mut(&seat).unwrap();
         let now = now_ms();
         if !context.settled
@@ -1693,18 +1740,25 @@ impl Worker {
         };
         let directory = object_dir(&self.config.run_dir, &format!("seat-{seat}"))?;
         let journal = SqliteStore::open(&directory)?;
-        view.adapter
-            .submit_pty(&arbiter, now, work.id, text, &journal, |bytes| {
-                match self.connection.request(Action::GuardedInput {
+        view.adapter.submit_pty(
+            &arbiter,
+            now,
+            work.id,
+            text,
+            &journal,
+            |bytes| match connections.request(
+                &host,
+                Action::GuardedInput {
                     attachment,
                     input_id: work.id,
                     bytes,
                     expected: context,
-                })? {
-                    Reply::Input { receipt } => Ok(receipt),
-                    _ => Err(invalid("guarded input result unknown")),
-                }
-            })
+                },
+            )? {
+                Reply::Input { receipt } => Ok(receipt),
+                _ => Err(invalid("guarded input result unknown")),
+            },
+        )
     }
     fn publish_adapter(&self, id: Ulid, status: crate::adapters::Status) -> Result<()> {
         self.publish(
@@ -1870,21 +1924,22 @@ impl Worker {
         )?;
         self.gui_seat(info.seat)
     }
-    fn capture_request(&mut self, _seat: Ulid, action: Action) -> Result<Reply> {
+    fn capture_request(&mut self, seat: Ulid, action: Action) -> Result<Reply> {
         debug_assert!(matches!(
             action,
             Action::RingRecovery { .. }
                 | Action::ReadRing { .. }
                 | Action::PublishCheckpoint { .. }
         ));
-        retry_capture(|| self.connection.request(action.clone()))
+        retry_capture(|| self.request_for_seat(seat, action.clone()))
     }
     fn run(&mut self, mut commands: mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
         let mut adapters_at = Instant::now();
         let mut messages_at = Instant::now();
         let mut identity_at = Instant::now();
-        let mut pending_event = None;
+        let mut providers_at = Instant::now();
+        let mut pending_events = BTreeMap::new();
         while !stop.load(Ordering::Acquire) {
             for _ in 0..32 {
                 let Ok(command) = commands.try_recv() else {
@@ -1915,11 +1970,14 @@ impl Worker {
                                 .get(&id)
                                 .ok_or_else(|| invalid("seat not attached"))?
                                 .clone();
-                            match self.connection.request(Action::Input {
-                                attachment,
-                                input_id,
-                                bytes,
-                            })? {
+                            match self.request_for_seat(
+                                id,
+                                Action::Input {
+                                    attachment,
+                                    input_id,
+                                    bytes,
+                                },
+                            )? {
                                 Reply::Input { receipt } => Ok(receipt),
                                 _ => Err(invalid("input receipt mismatch")),
                             }
@@ -1942,10 +2000,7 @@ impl Worker {
                             size.cols = cols.clamp(2, 512);
                             size.rows = rows.clamp(1, 256).min(32768 / size.cols);
                             check_size(size.cols as usize, size.rows as usize)?;
-                            match self
-                                .connection
-                                .request(Action::Resize { attachment, size })?
-                            {
+                            match self.request_for_seat(id, Action::Resize { attachment, size })? {
                                 Reply::Resized { .. } => Ok(()),
                                 _ => Err(invalid("resize receipt mismatch")),
                             }
@@ -2109,11 +2164,14 @@ impl Worker {
                                 .get(&id)
                                 .ok_or_else(|| invalid("seat not attached"))?
                                 .clone();
-                            self.connection.request(Action::ScheduleClose {
-                                attachment,
-                                close_id: close.operation,
-                                deadline_ms: close.deadline_ms,
-                            })?;
+                            self.request_for_seat(
+                                id,
+                                Action::ScheduleClose {
+                                    attachment,
+                                    close_id: close.operation,
+                                    deadline_ms: close.deadline_ms,
+                                },
+                            )?;
                             Ok(())
                         })();
                         let _ = reply.send(result);
@@ -2137,10 +2195,13 @@ impl Worker {
                                 .ok_or_else(|| invalid("seat not attached"))?
                                 .clone();
                             let accepted_at = now_ms();
-                            self.connection.request(Action::UndoClose {
-                                attachment,
-                                close_id: close.operation,
-                            })?;
+                            self.request_for_seat(
+                                id,
+                                Action::UndoClose {
+                                    attachment,
+                                    close_id: close.operation,
+                                },
+                            )?;
                             self.registry.undo(
                                 id,
                                 generation,
@@ -2153,20 +2214,34 @@ impl Worker {
                     }
                 }
             }
-            if pending_event.is_none() {
-                pending_event = self.connection.receive(Duration::from_millis(10))?;
-            }
-            if let Some(event) = pending_event.take() {
-                match self.event(event.clone()) {
-                    Ok(true) => {}
-                    Ok(false) => pending_event = Some(event),
-                    Err(error) if is_capture_busy(&error) => {
-                        // A rejected recovery read exhausted its retry. Keep
-                        // the event and serve commands before another attempt.
-                        pending_event = Some(event);
+            for host in self.connections.host_ids() {
+                let event = match pending_events.remove(&host) {
+                    Some(event) => Some(event),
+                    None => self.connections.receive_from(&host)?,
+                };
+                if let Some(event) = event {
+                    if self.host_for_seat(event.seat())? != host {
+                        continue;
                     }
-                    Err(error) => return Err(error),
+                    match self.event(event.clone()) {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            // One page applied; retain the live event and cursor
+                            // while commands and other hosts get their turn.
+                            pending_events.insert(host, event);
+                        }
+                        Err(error) if is_capture_busy(&error) => {
+                            pending_events.insert(host, event);
+                        }
+                        Err(error) => return Err(error),
+                    }
                 }
+            }
+            if providers_at.elapsed() >= Duration::from_millis(200) {
+                // LocalProvider emits no state events. D1b/c add the scripted
+                // host-state consumer; no network work or provider thread here.
+                let _ = self.connections.poll();
+                providers_at = Instant::now();
             }
             if adapters_at.elapsed() >= Duration::from_millis(200) {
                 self.refresh_adapters()?;

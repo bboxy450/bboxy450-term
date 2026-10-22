@@ -142,7 +142,7 @@ impl Connections {
             .ok_or_else(|| invalid("unknown supervisor host"))?
             .request(action)
     }
-    fn ordered_hosts(&self) -> Vec<HostId> {
+    pub fn host_ids(&self) -> Vec<HostId> {
         let mut hosts: Vec<_> = self
             .links
             .keys()
@@ -155,7 +155,7 @@ impl Connections {
     }
     pub fn owned_seats(&mut self) -> Result<Vec<(HostId, SeatInfo)>> {
         let mut owned = Vec::new();
-        for host in self.ordered_hosts() {
+        for host in self.host_ids() {
             if let Reply::Seats { seats } = self.request(&host, Action::ListOwnedSeats)? {
                 owned.extend(seats.into_iter().map(|seat| (host.clone(), seat)));
             }
@@ -166,17 +166,23 @@ impl Connections {
     /// links each get a nonblocking turn, so an idle remote cannot add a wait.
     pub fn receive(&mut self) -> Result<Vec<(HostId, Event)>> {
         let mut events = Vec::new();
-        for host in self.ordered_hosts() {
-            let wait = if host == HostId::Local {
-                Duration::from_millis(10)
-            } else {
-                Duration::ZERO
-            };
-            if let Some(event) = self.links.get_mut(&host).unwrap().receive(wait)? {
+        for host in self.host_ids() {
+            if let Some(event) = self.receive_from(&host)? {
                 events.push((host, event));
             }
         }
         Ok(events)
+    }
+    pub fn receive_from(&mut self, host: &HostId) -> Result<Option<Event>> {
+        let wait = if *host == HostId::Local {
+            Duration::from_millis(10)
+        } else {
+            Duration::ZERO
+        };
+        self.links
+            .get_mut(host)
+            .ok_or_else(|| invalid("unknown supervisor host"))?
+            .receive(wait)
     }
     pub fn poll(&mut self) -> Vec<ProviderEvent> {
         self.providers
