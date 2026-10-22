@@ -94,6 +94,12 @@ Something like Karpathy's **autoresearch** must be natively possible with no new
 
 If a loop like this needs a feature we do not have, the primitives are wrong, not the loop. This is the test every spec is held to. Note: the operator's own `paperhands` is an autoresearch system; it should run inside bboxy450-term as a swarm without special support.
 
+## The visual foundation outranks everything (operator, 2026-10-22)
+
+"Visual parity and visual fidelity and our visual component library and GPU renderers: top priority. With that we can build anything we want down the line."
+
+The renderer (`bbt-render`), the component library (`bbt-ui`, `bbt-ui-model`) and the web↔native parity loop are the foundation every other feature stands on. When work competes, fidelity and the library win: renderer and library work gets the first free Executor, parity residue is a real backlog and never "good enough", and a feature that needs a missing primitive waits for the primitive to be built properly at its own layer.
+
 ## Cockpit first (operator, 2026-10-22: the current direction)
 
 "Priority right now is a working terminal, with harnesses, local messaging, local tasks, a local provenance system and local events. That's it, but a sexy, sexy UI. Then we start designing ssh and cloud, gpg keys for auth. We build the cockpit, then expand into cloud providers and ways to branch out, but not yet. We can have dummy ssh support and dummy cloud support, as if it works without it actually working, so we have everything in the UI."
