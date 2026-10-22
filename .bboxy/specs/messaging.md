@@ -193,12 +193,12 @@ Model and effort follow what each role spends attention on:
 
 | Role | Model / effort | Receives | Never receives |
 |---|---|---|---|
-| Architect | the most capable model (Claude Fable class), high effort, zoomed out | the operator's vision, research summaries, the Oracle's escalations of design-level gaps | task traffic, progress, per-pass reports |
+| Architect | the most capable model (Claude Fable class), high effort, zoomed out; **oracle-class** | the operator's vision, research summaries, the Oracle's escalations of design-level gaps, invariant violations and drift reports | task traffic, progress, per-pass reports |
 | Oracle | cheaper model, low reasoning effort; its job is tracking state, routing, verifying, deciding small things fast | every report (batched DMs), every chunk, every escalation | raw progress chatter |
 | Executor | higher effort | its brief, its delegator's DMs, explicit-edge peer DMs | the swarm stream (subscribed only to its own task docs and to chunk/decision kinds) |
 | Creativity | highest model and effort | the operator's taste notes and the Oracle's design-relevant decisions, batched | everything else |
 
-Defaults are per-role settings (model, effort, subscriptions) injected at launch; the operator overrides per seat. The goal is little to no messaging distraction for workers: wake events reach a worker only for its own task, a DM addressed to it, or an Oracle-class interrupt. Everything else waits in its inbox until the seat is idle, and the Oracle absorbs the rest.
+The Architect's halts and decisions go out as `kind: decision` at oracle-class priority, so they dequeue ahead of worker traffic; Creativity stays worker-class (Oracle decision above). Defaults are per-role settings (model, effort, subscriptions) injected at launch; the operator overrides per seat. The goal is little to no messaging distraction for workers: wake events reach a worker only for its own task, a DM addressed to it, or an Oracle-class interrupt. Everything else waits in its inbox until the seat is idle, and the Oracle absorbs the rest.
 
 ## Subchannels and subgroups (operator, 2026-10-21) — superseded in detail by [[channel-tree]]
 

@@ -22,7 +22,10 @@ links:                               # typed outbound links, any target
 assignee: seat:01JAX… | name:Nyx Copperwing | none
 role: executor | oracle | creativity  # role header the delegate carries
 allowed_paths: [crates/bbt-core/**, Cargo.lock]
-verify: cargo test -p bbt-core --locked
+verify: cargo test -p bbt-core --locked   # task: the hard gate; exit 0 is the only acceptance
+review: boundary fidelity against [[gui-components]] §2c   # task, optional: judgement, advises, never blocks
+check: sh scripts/layering.sh            # invariant: the command; exit 0 means held
+cost: an upward edge welds a library to the product   # invariant: one line
 created: 2026-10-21T19:04:00Z
 updated: 2026-10-21T21:40:00Z
 ---
@@ -38,10 +41,11 @@ Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]
 | spec | a decided design for one concern | draft, decided, superseded | `parent` epic; `[[…\|evidence]]` to research notes |
 | task | one Executor assignment | open, claimed, running, reported, accepted, rejected, blocked, done | `parent` spec or epic; `depends`; `assignee` |
 | bug | a defect with a reproduction | open, claimed, running, reported, fixed, wontfix, duplicate | `[[task\|blocks]]`, `[[spec\|violates]]`, `[[invariant\|violates]]` |
-| note | knowledge: research, runs, evidence, decisions log | none (always current until superseded) | anything |
-| invariant | a rule that must always hold; the thing bugs are checked against and specs may not contradict | active, retired | `[[spec\|constrains]]`, `[[bug\|violated-by]]` |
+| note | knowledge: research, runs, runbooks, evidence | none (always current until superseded) | anything |
+| invariant | a property that holds before and after every change, **with the command that checks it**; the thing bugs are checked against and specs may not contradict. No command, no invariant: then it is a preference and lives in a note | active, retired | `[[spec\|constrains]]`, `[[bug\|violated-by]]` |
+| decision | a numbered record of alternatives, choice, reason and date, written when the decision is made ([[2026-10-22-architecture-round-1]] is the first) | proposed, decided, superseded | `[[spec\|changes]]`, `[[invariant\|creates]]` |
 
-Invariants are first-class so the graph can answer "what does this bug break" and "which spec does this invariant bind". Examples from this project: one meaning per signal; rows never reorder; the app never holds the primary secret; unknown is never shown as failure; no LGPL in the tree.
+Invariants are first-class so the graph can answer "what does this bug break" and "which spec does this invariant bind". An invariant carries four things (Architect, 2026-10-22): the **property**, the **check** command, the exit status that means **held**, and the **cost** of a violation; `check` and `cost` are frontmatter fields (schema above). Recorded in `.bboxy/invariants/` with its index: every crate depends only on crates below it (`scripts/layering.sh`); the UI thread never waits on IO (`scripts/ui-lint.sh`); L7 modules draw only through components; every commit on main is signed. Still preferences until they get a command: one meaning per signal; rows never reorder; the app never holds the primary secret; unknown is never shown as failure; no LGPL in the tree.
 
 ## Wikilinks and weights (operator, 2026-10-21: "wikilinks is the way")
 
@@ -105,6 +109,10 @@ Every item and every status transition records who did it, from what, and under 
 - The terminal never deletes a work item. `done` and `rejected` are states.
 - Frontmatter is the contract; the body is prose. A seat may edit the body of its own task; only Oracle-class or the operator edit `status`, `assignee`, `allowed_paths`.
 - No database, no sidecar JSON. If git has it, the terminal has it.
+- **The spec signs off, not the agent** (Architect, 2026-10-22). An Executor's report moves a task to `reported`, never further. `accepted` requires the task's `verify` command recorded at exit 0 and evidence against each acceptance line of its spec; `task_accept` refuses otherwise and names the missing line.
+- **Hard gates and judgement are separate instruments.** `verify` is deterministic and blocks. `review` is judgement (boundary fidelity, semantic drift, stale assumptions): it advises and escalates in the report, never blocks silently and never substitutes for `verify`.
+- **An invariant violation halts the work that broke it.** The task goes `blocked` with `[[invariant|violates]]`; the halt names the invariant, the evidence and what clears it, posted as a `decision`-kind message by the Architect or the Oracle. Nothing ships over a violated invariant.
+- **Decisions are recorded when made**, as `type: decision`, with alternatives, choice, reason and date. A decision nobody can find is a rumour.
 
 ## Dogfood
 

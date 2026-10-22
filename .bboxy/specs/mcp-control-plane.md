@@ -241,7 +241,7 @@ Scope: this file plus the specifically requested swarm-mute amendment in [[messa
 | `task_reassign` | `op_id, task_path, seat_id` | Rewrite `assignee`; `task.release` to the old seat, `task.delegate` to the new. | O |
 | `task_status` | `task_path \| task_id` | Frontmatter plus the delivery evidence of the last task message. | O; E C for own tasks |
 | `task_list` | `swarm_id?, status?, assignee?` | Index query over `.bboxy/`. | O; E C for own tasks |
-| `task_accept` | `op_id, task_path` | `status: accepted`, `task.accept` to the seat. | O |
+| `task_accept` | `op_id, task_path` | Refused unless the task's `verify` result is recorded at exit 0 and each acceptance line of its spec has evidence ([[work-items]] Rules: the spec signs off); otherwise `status: accepted`, `task.accept` to the seat. | O |
 | `task_reject` | `op_id, task_path, reason` | `status: rejected`, `task.reject` to the seat. | O |
 | `task_report` | `op_id, task_path, summary, commit?, verify_result?` | The responsible seat's report: `status: reported`, `task.report` to `delegated_by`, sidebar notice on the delegating seat. | E C for own task; O |
 

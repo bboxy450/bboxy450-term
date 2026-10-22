@@ -50,7 +50,7 @@ flowchart LR
 | `message_send`, `message_list`, `message_receipts`, `message_ack` | `messaging::api::Request::{Send, List, Receipts, Acknowledge}` | O E C within grants |
 | `ch_ls`, `ch_subscribe`, `ch_unsubscribe`, `ch_link`, `ch_pause`, `ch_grant` | `Request::{Ls, Subscribe, Unsubscribe, Link, Pause, Grant}` | O; E C for ls, subscribe, unsubscribe |
 | `seat_mute`, `seat_unmute` | `Request::Mute` | O |
-| `task_delegate`, `task_reassign`, `task_accept`, `task_reject` | frontmatter rewrite in the task file, then a `Body::Task{event}` message to the seat (`M/messaging/wire.rs:46`) so W2.4 delivery evidence applies | O |
+| `task_delegate`, `task_reassign`, `task_accept`, `task_reject` | frontmatter rewrite in the task file, then a `Body::Task{event}` message to the seat (`M/messaging/wire.rs:46`) so W2.4 delivery evidence applies. `task_accept` is refused unless `verify_result` is recorded at exit 0 ([[work-items]] Rules) | O |
 | `task_status`, `task_list` | index | O; E C own tasks |
 | `task_report` | frontmatter `status: reported`, evidence block appended, `Body::Task{event: report}` to `delegated_by` | E C own task; O |
 | `artifact_claim` | write `.bboxy/artifacts/<ulid>.md`, link from the task | O E C |
