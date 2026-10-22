@@ -1,0 +1,23 @@
+$ cargo test -p bbt-mux --locked --test logic ring_seals_twenty -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.07s
+     Running tests/logic.rs (target/debug/deps/logic-a1cdc57bfbf5b00f)
+
+running 1 test
+writer progress 5.278002834s: 11886600 captured bytes, hot 3240, paused false
+20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":320,"elapsed_s":9.284271999989867,"max_write_s":0.5593818750057835}
+
+thread 'ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap' (6447120) panicked at crates/bbt-mux/tests/logic.rs:649:6:
+called `Result::unwrap()` on an `Err` value: Timeout
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... FAILED
+
+failures:
+
+failures:
+    ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 9 filtered out; finished in 40.22s
+
+error: test failed, to rerun pass `-p bbt-mux --test logic`
+exit=101

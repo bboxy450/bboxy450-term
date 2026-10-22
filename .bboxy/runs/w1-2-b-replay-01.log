@@ -1,0 +1,27 @@
+COMMAND: cargo test -p bbt-mux --locked --test logic ring_ -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.76s
+     Running tests/logic.rs (target/debug/deps/logic-a1cdc57bfbf5b00f)
+
+running 3 tests
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+writer progress 5.015374625s: 9701384 captured bytes, hot 1877040, paused false
+writer progress 10.15136425s: 19808264 captured bytes, hot 1080, paused false
+20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":320,"elapsed_s":10.557891291973649,"max_write_s":0.343943040992599}
+cold replay 2.433484709s: 4208640 bytes, reads 1.68232951s, checkpoint writes 0ns
+cold replay 3.930400709s: 8401920 bytes, reads 2.805178346s, checkpoint writes 0ns
+cold replay 5.378642375s: 12595200 bytes, reads 3.872390512s, checkpoint writes 0ns
+cold replay 6.92963825s: 16788480 bytes, reads 5.028666887s, checkpoint writes 0ns
+cold replay 7.958576625s: 20971540 bytes, reads 5.698061892s, checkpoint writes 0ns
+20 MiB cold replay startup: 8.054787459s
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+cold replay 13.164820042s: 25180188 bytes, reads 7.467306102s, checkpoint writes 71.745125ms
+cold replay 17.569750334s: 29373468 bytes, reads 8.561437514s, checkpoint writes 71.745125ms
+cold replay 21.992188084s: 33566748 bytes, reads 9.671776894s, checkpoint writes 71.745125ms
+cold replay 26.421406375s: 37760028 bytes, reads 10.792907776s, checkpoint writes 71.745125ms
+cold replay 30.398959625s: 41943088 bytes, reads 11.470387064s, checkpoint writes 71.745125ms
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 43.51s
+
+exit 0

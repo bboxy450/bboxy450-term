@@ -1,0 +1,116 @@
+COMMAND: cargo test -p bbt-mux --locked -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.78s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-fdbcd46df699825d)
+
+running 2 tests
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/logic.rs (target/debug/deps/logic-a1cdc57bfbf5b00f)
+
+running 10 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+test a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+writer progress 5.031190875s: 10614792 captured bytes, hot 2840400, paused false
+writer progress 10.036374167s: 20628488 captured bytes, hot 866160, paused false
+20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":320,"elapsed_s":10.15664524998283,"max_write_s":0.4553150839929003}
+cold replay 2.943805708s: 4208640 bytes, reads 2.149453156s, checkpoint writes 0ns
+cold replay 4.629049958s: 8401920 bytes, reads 3.4634127s, checkpoint writes 0ns
+cold replay 6.489591333s: 12595200 bytes, reads 4.898718911s, checkpoint writes 0ns
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+cold replay 8.186437666s: 16788480 bytes, reads 6.222458625s, checkpoint writes 0ns
+cold replay 9.224938625s: 20971540 bytes, reads 6.895830262s, checkpoint writes 0ns
+20 MiB cold replay startup: 9.326282833s
+cold replay 14.435079375s: 25180188 bytes, reads 8.66288272s, checkpoint writes 72.815708ms
+cold replay 18.832653375s: 29373468 bytes, reads 9.747261013s, checkpoint writes 72.815708ms
+cold replay 23.422927041s: 33566748 bytes, reads 11.026769427s, checkpoint writes 72.815708ms
+cold replay 27.944593458s: 37760028 bytes, reads 12.257273374s, checkpoint writes 72.815708ms
+cold replay 32.231296875s: 41943088 bytes, reads 13.240295778s, checkpoint writes 72.815708ms
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 9 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 47.10s
+
+     Running tests/measurements.rs (target/debug/deps/measurements-6fa4aafd147f8f3f)
+
+running 2 tests
+test file_descriptors_at_200_live_seats_and_sqlite_objects ... ignored, finite 200-live-seat descriptor measurement
+test recursive_cte_vs_petgraph_and_thousand_subscriber_fanout ... ignored, finite synthetic 10k-document / 100k-link measurement
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ring.rs (target/debug/deps/ring-e07e6c8880d4606f)
+
+running 9 tests
+test ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation ... ok
+test ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor ... ok
+test ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes ... ok
+test ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay ... ok
+test ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell ... ok
+test ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again ... ok
+test ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects ... ok
+test ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index ... ok
+test ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.22s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-990b08fda7a00ae0)
+
+running 9 tests
+test grammar_matches_tokens_and_rejects_mid_path_tail_wildcards ... ok
+test registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart ... ok
+test request_reply_has_no_responders_and_fanout_is_not_replayed ... ok
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+test index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite ... ok
+test explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work ... ok
+test independent_streams_latest_snapshots_queue_gaps_and_nonretained_output ... ok
+test sqlite_objects_blobs_and_alarms_round_trip_across_reopen ... ok
+test mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.69s
+
+     Running tests/supervisor.rs (target/debug/deps/supervisor-fae4211d29f6d08a)
+
+running 10 tests
+test validation_rejects_stale_and_oversized_input ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test natural_exit_follows_all_final_output ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+slow subscriber: complete 4 MiB + TAIL recovered with contiguous record sequences
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+50 distinct PTY seats echoed under one Supervisor / one mio::Poll
+test two_seats_interleave_without_cross_talk ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+blocked write: 1022 of 65536 bytes, PartialUnknown retained across logic replacement
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+test fifty_seats_share_one_supervisor_poller ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.13s
+
+     Running tests/ui_guard.rs (target/debug/deps/ui_guard-a183fa5ac1f017b7)
+
+running 1 test
+
+thread 'ui_thread_is_rejected_before_creating_a_database_directory' (6467559) panicked at crates/bbt-mux/src/store/sqlite.rs:27:9:
+blocking IO on the UI thread
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ui_thread_is_rejected_before_creating_a_database_directory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_mux
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+exit 0

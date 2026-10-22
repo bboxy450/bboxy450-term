@@ -74,8 +74,12 @@ output interval (64 KiB) and idle delay (200 ms). Checkpoints also follow resize
 exit and at most 256 new capture records, bounding index publication for tiny
 writes. Startup admits a private ring for the seat generation before capture,
 then commits its initial checkpoint. Capture continues while logic is absent.
-If there is no safe checkpoint boundary, PTY reads pause; a reserved checkpoint
-budget lets catching-up logic publish replacements and resume capture.
+W1.2b decouples capture from checkpoint progress. At the hot cap the supervisor
+seals the complete CRC-framed file into a content-addressed cold blob and starts
+a new bounded hot file. It never waits for logic or a new checkpoint to keep
+reading. A full notification queue retains only the latest event; logic hydrates
+the skipped capture sequences on resume. The ring-less W2.1 primitive still has
+its original bounded queue behavior; production logic configures the ring.
 
 A record has a fixed 56-byte little-endian header: magic/version/kind, payload
 length, capture sequence, process generation, seat ULID, byte start and CRC32C
@@ -88,25 +92,50 @@ length, cursor, byte offset, generation and checksum are validated before replay
 Records are capped at 1 MiB; checkpoints at 128 KiB compressed / 16 MiB decoded;
 viewport dimensions and logical index entries are bounded too.
 
-Append order is complete record → `sync_all` → CRC-protected committed marker
-→ marker/directory sync. The independently valid previous marker remains.
-Compaction writes a new file first and publishes its marker before retiring
+Capture writes complete records and exposes `captured_sequence` separately from
+the durable `committed_sequence`. Output group commits occur after 64 KiB or on
+the next supervisor tick after 20 ms; resize, exit, checkpoint, sealing and
+supervisor shutdown flush immediately. A flush orders data `sync_all` before the
+CRC-protected marker and marker/directory sync. Capture-owner death may discard
+the uncommitted group; logic restart while the supervisor lives does not.
+The independently valid previous marker remains. Rotation writes a new file
+first and publishes its marker before retiring
 anything. Recovery rejects uncommitted or torn suffixes, falls back to the
 previous valid boundary and reports the recovered cursor; suffix bytes go to
 cold storage before truncation. Invalid committed data without a valid previous
 boundary is an error, never a blank recovered screen. Strict media/power-loss
 ordering (`F_FULLFSYNC`) and real power-cut testing are not claimed.
 
-Eviction starts with a complete checkpoint and retains at least the newest two
-checkpoints plus every later capture record; older checkpoints remain while
-budget permits. `capacity_bytes` bounds the current hot file including encoded
-checkpoint/index records. The previous boundary may pin one additional file of
-at most that budget (plus one temporary file during compaction). Retired and
-orphaned owned log files are compressed into content-addressed cold blobs with
-a `cold.jsonl` digest reference before removal from the hot namespace. Cold
-retention follows never-delete and is outside the hot budget. Record metadata
-and the logical index are bounded by the hot record count, not a 1000-seat memory
-or throughput promise. Ring files stay under private runtime state, never Git.
+The hot budget includes all encoded records. Sealed uncheckpointed segments use
+the exact same framing. A content-addressed descriptor links each segment to its
+predecessor and records capture/byte bounds, identity and data digest; the
+committed marker references only that durable chain head. Payload and descriptor
+are synced before publishing the new hot-file boundary. An orphan descriptor
+cannot enter a committed chain accidentally. The newest two checkpoint blob
+references remain independently reachable even when their framing is cold.
+
+Recovery validates the descriptor chain, then hydrates and validates segments on
+demand through the same CRC reader as hot records. One decoded segment is cached
+(up to the configured hot-file size); no output-sized memory queue is created.
+History pages can span hot and cold without a synthetic eviction gap. Bootstrap
+and sequence-jump recovery coalesce intermediate checkpoint writes into one at
+the recovered tail; ordinary live output retains its configured checkpoint
+interval. Repeating an interrupted replay remains safe because sealed raw bytes
+stay retained. A genuine
+missing/out-of-range capture prefix still has an explicit gap. Pre-W1.2b archived
+prefixes without a committed descriptor chain remain outside that guaranteed
+range. Logical row metadata may be unavailable when not in the currently loaded
+checkpoint/segment index; raw records are still replayable.
+
+`capacity_bytes` bounds the active hot file, not retained cold storage. The
+previous boundary can pin another hot file of that size, plus a temporary file
+while rotating. Cold storage follows never-delete, with no total-cold ceiling in
+this version. Introducing such a ceiling must record a durable gap and continue
+draining the PTY; it cannot pause the agent. Physical storage failures/power loss
+remain outside the validation claimed here. Sealed descriptors grow with history;
+only one segment's bytes and bounded hot/checkpoint indexes are cached. Files stay
+in private runtime state, never Git. Legacy orphan hot files are preserved into
+cold storage before retirement.
 
 The semantic index maps capture sequences to cumulative **logical hard-line**
 ranges: parser-observed LF/VT/FF and IND/NEL escape operations, excluding bytes
@@ -181,8 +210,9 @@ wrong/stale baselines are rejected atomically. Resize changes view generation
 and requires a snapshot. `GetHistory{from,to}` uses inclusive generation-bound
 capture sequences and returns a bounded `History` page with records, optional
 logical-row metadata, a next cursor and an explicit gap plus the supplied hot
-retained range when requested history was evicted. Cold history retrieval and
-rendering arbitrary historical rows are later integrations. Native OSC cwd/status observation, hooks,
+retained range when requested history is unavailable. Sealed cold segments are
+hydrated here; rendering arbitrary historical rows remains a later integration.
+Native OSC cwd/status observation, hooks,
 terminal query replies and renderer/GUI wiring remain integration work.
 
 ## Verification and measurements
@@ -192,11 +222,14 @@ replay/redelivery/gaps, registry undo, graph recovery, watcher-to-bus task event
 provenance signatures, real seat sockets and W2.1 PTY/lease/backpressure tests.
 The subprocess fixture hard-kills logic, reattaches through the supervisor
 socket and verifies the same live zsh PID and exact screen. W1.2 adds red-SGR
-restore, incomplete parser checkpoints, torn suffix/CRC rejection, checkpoint
-boundary eviction, 10k-line history roundtrip and cell-for-cell replay checks.
-The live ring test fills a bounded ring while logic is absent, then proves
-checkpoint publication unblocks capture and restores the final red tail without
-a capture gap. A separate test verifies idle checkpoint/index publication. The viewport test
+restore, incomplete parser checkpoints, torn suffix/CRC rejection, hot rollover
+with cold history, 10k-line history roundtrip and cell-for-cell replay checks.
+The W1.2b live test completes a 20 MiB writer while logic is stopped and a
+notification queue is unread, logs total/max write latency before restart, then
+checks the complete output digest and red tail after cold replay without a gap.
+Another test stalls a live logic receiver and verifies sequence-jump catch-up.
+Group-commit recovery and rejection of corrupt sealed payloads are covered too.
+Idle checkpoint/index publication is also tested. The viewport test
 also checks a metadata-only palette/cursor delta and flattened wire format.
 
 Run the two finite measurements explicitly:

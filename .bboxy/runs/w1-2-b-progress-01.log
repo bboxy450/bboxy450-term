@@ -1,0 +1,34 @@
+$ cargo test -p bbt-mux --locked --test logic ring_seals_twenty -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.49s
+     Running tests/logic.rs (target/debug/deps/logic-a1cdc57bfbf5b00f)
+
+running 1 test
+writer progress 5.047158209s: 450568 captured bytes, hot 477663, paused false
+writer progress 10.045533084s: 897032 captured bytes, hot 948543, paused false
+writer progress 15.054657667s: 1376264 captured bytes, hot 1453983, paused false
+writer progress 20.023023875s: 1847304 captured bytes, hot 1950783, paused false
+writer progress 25.044836209s: 2318344 captured bytes, hot 2447583, paused false
+writer progress 30.061930375s: 2789384 captured bytes, hot 2944383, paused false
+writer progress 35.027468125s: 3256328 captured bytes, hot 3436863, paused false
+writer progress 40.036375042s: 3719176 captured bytes, hot 3925023, paused false
+writer progress 45.048672667s: 4173832 captured bytes, hot 225720, paused false
+writer progress 50.0708975s: 4718600 captured bytes, hot 800280, paused false
+writer progress 55.048441584s: 5353480 captured bytes, hot 1469880, paused false
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap has been running for over 60 seconds
+writer progress 60.044905042s: 5812232 captured bytes, hot 1953720, paused false
+
+thread 'ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap' (6433541) panicked at crates/bbt-mux/tests/logic.rs:612:9:
+writer blocked while logic was down
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... FAILED
+
+failures:
+
+failures:
+    ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 9 filtered out; finished in 61.82s
+
+error: test failed, to rerun pass `-p bbt-mux --test logic`
+exit=101

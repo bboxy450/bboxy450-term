@@ -29,6 +29,7 @@ fn output(ring: &mut Ring, live: &mut Playback, bytes: &[u8]) {
         bytes: bytes.to_vec(),
     };
     ring.append_event(&event).unwrap();
+    ring.flush().unwrap();
     live.apply(&event).unwrap();
 }
 fn screen(live: &Playback) -> Screen {
@@ -126,7 +127,67 @@ fn ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again() {
 }
 
 #[test]
-fn ring_eviction_keeps_a_checkpoint_boundary_two_checkpoints_and_cold_bytes() {
+fn ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor() {
+    let temp = tempfile::tempdir().unwrap();
+    let (mut ring, live) = fixture(temp.path(), Settings::default());
+    let event = Event::Output {
+        seat: live.seat,
+        generation: 1,
+        seq: 1,
+        bytes: b"captured, not yet committed".to_vec(),
+    };
+    ring.append_event(&event).unwrap();
+    assert_eq!(ring.status().captured_sequence, 1);
+    assert_eq!(ring.status().committed_sequence, 0);
+    assert_eq!(ring.history(1, 1).unwrap().records[0].event, event);
+    // Simulate capture-owner death before the next group commit. Whole records
+    // past the marker are still uncommitted; neither CRC nor visibility is acks.
+    drop(ring);
+    let mut ring = Ring::open(temp.path(), live.seat, 1, 0, Settings::default()).unwrap();
+    assert_eq!(ring.status().captured_sequence, 0);
+    assert_eq!(ring.status().committed_sequence, 0);
+    assert!(ring.status().recovery_notice.is_some());
+    assert!(ring.history(1, 1).unwrap().gap.is_some());
+    ring.append_event(&event).unwrap();
+    ring.flush().unwrap();
+    assert_eq!(ring.status().committed_sequence, 1);
+    drop(ring);
+    let ring = Ring::open(temp.path(), live.seat, 1, 0, Settings::default()).unwrap();
+    assert_eq!(ring.status().committed_sequence, 1);
+    assert!(ring.history(1, 1).unwrap().gap.is_none());
+}
+
+#[test]
+fn ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay() {
+    use bbt_mux::store::{Blobs, blobs::LocalBlobs};
+    let temp = tempfile::tempdir().unwrap();
+    let settings = Settings {
+        capacity_bytes: 4096,
+        checkpoint_bytes: 512,
+        idle_ms: 25,
+    };
+    let (mut ring, mut live) = fixture(temp.path(), settings.clone());
+    output(&mut ring, &mut live, &[b'x'; 3000]);
+    output(&mut ring, &mut live, &[b'y'; 3000]);
+    let marker = std::fs::read(temp.path().join("committed")).unwrap();
+    let marker: serde_json::Value = serde_json::from_slice(&marker[..marker.len() - 4]).unwrap();
+    let blobs = LocalBlobs::open(temp.path()).unwrap();
+    let descriptor: serde_json::Value =
+        serde_json::from_slice(&blobs.get(marker["sealed_head"].as_str().unwrap()).unwrap())
+            .unwrap();
+    drop(ring);
+    let path = temp
+        .path()
+        .join("blobs")
+        .join(format!("{}.zst", descriptor["data"].as_str().unwrap()));
+    std::fs::write(path, b"damaged cold payload").unwrap();
+    let ring = Ring::open(temp.path(), live.seat, 1, 0, settings).unwrap();
+    assert!(ring.history(1, live.sequence).is_err());
+    assert!(ring.replay().is_err());
+}
+
+#[test]
+fn ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references() {
     let temp = tempfile::tempdir().unwrap();
     let settings = Settings {
         capacity_bytes: 32 * 1024,
@@ -146,26 +207,14 @@ fn ring_eviction_keeps_a_checkpoint_boundary_two_checkpoints_and_cold_bytes() {
         assert!(ring.status().hot_bytes <= settings.capacity_bytes);
     }
     output(&mut ring, &mut live, b"tail after checkpoint");
-    assert!(ring.status().first_sequence > 1);
+    assert_eq!(ring.status().first_sequence, 1);
     let page = ring.history(1, live.sequence).unwrap();
-    assert!(page.gap.is_some());
-    assert_eq!(
-        page.gap.unwrap().retained_from,
-        Some(ring.status().first_sequence)
-    );
+    assert!(page.gap.is_none());
     assert_eq!(screen(&ring.replay().unwrap()), screen(&live));
-    let raw = std::fs::read(data(temp.path())).unwrap();
-    assert_eq!(u16::from_le_bytes(raw[6..8].try_into().unwrap()), 4);
-    let mut offset = 0;
-    let mut checkpoints = 0;
-    while offset < raw.len() {
-        if u16::from_le_bytes(raw[offset + 6..offset + 8].try_into().unwrap()) == 4 {
-            checkpoints += 1;
-        }
-        offset +=
-            56 + u32::from_le_bytes(raw[offset + 8..offset + 12].try_into().unwrap()) as usize;
-    }
-    assert!(checkpoints >= 2);
+    let marker = std::fs::read(temp.path().join("committed")).unwrap();
+    let marker: serde_json::Value = serde_json::from_slice(&marker[..marker.len() - 4]).unwrap();
+    assert_eq!(marker["checkpoints"].as_array().unwrap().len(), 2);
+    assert!(marker["sealed_head"].is_string());
     use bbt_mux::store::{Blobs, blobs::LocalBlobs};
     assert!(
         !LocalBlobs::open(temp.path())

@@ -1,0 +1,46 @@
+W1.2b — capture remains live without logic checkpoints
+Rook Ashwhisker <EXECUTOR>; 2026-10-22; macOS native debug build.
+Assignment: Oracle DM 879bb5d2-ca00-4412-b634-3027836e357a.
+Scope: crates/bbt-mux/** and .bboxy/runs/w1-2-*.log. Cargo.lock unchanged.
+
+Mechanisms / acceptance pointers
+crates/bbt-mux/src/ring.rs:614 — seal_hot commits and preserves the complete CRC-framed segment in content-addressed blobs, then publishes the new hot boundary and linked descriptor head before retiring files. No checkpoint is required to rotate.
+crates/bbt-mux/src/ring.rs:666 — one-segment hydration cache; content digest, length, identity, framing, CRC and sequence validation reuse the hot reader. Committed descriptor chains define the retained prefix.
+crates/bbt-mux/src/ring.rs:700 — checkpoints can cover an earlier retained cold cursor; newest two blob references survive hot rotation.
+crates/bbt-mux/src/ring.rs:795 — 64 KiB / 20 ms output group commit; control, checkpoint, sealing and supervisor shutdown flush. captured_sequence and committed_sequence are distinct. Data sync precedes the marker; capture-owner death may discard an uncommitted group.
+crates/bbt-mux/src/ring.rs:955 — bounded history pages span sealed segments and hot records; no fabricated rollover gap; genuine unavailable prefixes retain the explicit gap contract.
+crates/bbt-mux/src/supervisor.rs:1124 — full/detached logic notifications no longer gate ring-backed PTY reads. One latest notification remains; the legacy ring-less primitive retains its earlier queue backpressure.
+crates/bbt-mux/src/logic.rs:516 — startup replays through the captured cursor; intermediate historical checkpoints coalesce to the recovered tail.
+crates/bbt-mux/src/logic.rs:701 — verified-generation sequence jumps hydrate omitted records before applying the latest live event, without replaying terminal effects.
+crates/bbt-mux/tests/logic.rs:561 — stop logic, attach an unread notification queue, write 20 MiB, verify completion/latency BEFORE restart, restore the red tail without a gap, compare every raw byte by SHA-256, and retain the same child PID.
+crates/bbt-mux/tests/logic.rs:753 — stall a live receiver while 5 MiB flows; coalesced notifications recover to the tail with no gap.
+crates/bbt-mux/tests/ring.rs:130 — complete but uncommitted records are visible as captured, not durable; reopening rejects the suffix and explicitly reports the missing range; flush makes the retry durable.
+crates/bbt-mux/tests/ring.rs:161 — corrupt sealed payload cannot masquerade as complete history/replay.
+crates/bbt-mux/tests/ring.rs:190 — hot rollover, cold history, two reachable checkpoints and reopen/replay round-trip.
+
+Actual final acceptance measurements (w1-2-b-final-mux-test.log)
+Writer: 20,971,520 requested bytes in 320 os.write calls, 10.15664524998283 s total; maximum individual write 0.4553150839929003 s. Completed before Logic::start was called. This establishes no logic/checkpoint-dependent stall; storage/scheduler latency is not zero.
+Cold replay startup: 9.326282833 s. Full raw history: 20,971,548 bytes including BEFORE + CRLF + red RING-TAIL + reset + CRLF. SHA-256 assertion matches independently calculated fixture digest 77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb. Red foreground, no gap and unchanged PID asserted.
+ReplayTrace cumulative counters continue through the subsequent complete-history digest read; lines above 20 MiB are the second read pass, not duplicate captured bytes.
+
+Commands / exact results
+cargo test -p bbt-mux --locked ring -- --nocapture — exit 0, w1-2-b-ring-final.log (9 ring tests + 3 logic ring tests + one matching storage test).
+cargo test -p bbt-mux --locked -- --nocapture — exit 0, w1-2-b-final-mux-test.log: 40 passed, 3 ignored. One ignored subprocess fixture is invoked by the passing hard-kill test; two ignored finite W2.2 measurements were not repeated.
+cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit 0, w1-2-b-final-mux-clippy.log.
+cargo fmt -p bbt-mux -- --check — exit 0, w1-2-b-final-fmt.log.
+cargo build --workspace --locked — exit 0, w1-2-b-final-workspace-build.log.
+git diff --check -- crates/bbt-mux Cargo.lock — exit 0 before staging.
+
+Failures / corrections (all retained)
+w1-2-b-ring-01.log — exit 101: first cold-sealing implementation timed out on the 20 MiB writer and live catch-up tests.
+w1-2-b-progress-01.log — exit 101: capture advanced past the hot cap, but per-record sync gave about 90 KiB/s (5.8 MiB / 60 s). Replaced per-record output sync with bounded group commit and explicit captured/durable cursors.
+w1-2-b-progress-02.log — exit 101: writer completed, but historical replay hit the 30 s startup timeout.
+w1-2-b-progress-03.log — exit 101: tracing isolated checkpoint sync cost (14.53 s of 23.17 s at 12 MiB). Coalesced intermediate replay checkpoints; startup timeout was not enlarged.
+w1-2-b-replay-01.log — exit 0 after that correction; writer 10.56 s, max write 0.344 s, cold startup 8.05 s. The final suite above reran the final source.
+w1-2-b-final-clippy.log — exit 101 for the broader bbt-core + bbt-mux all-target run: five disallowed Mutex::lock calls in existing crates/bbt-core/tests/checkpoint.rs:57,64,86,92,95. Core fixtures are outside W1.2b scope; untouched. Mux all-target lint passes separately.
+
+Limits / deliberately untouched
+No total cold-byte quota is introduced (never-delete). A future quota must stop capture with a durable explicit gap and continue draining the PTY; it cannot pause the agent. Cold descriptor metadata grows with retained history; only one decoded segment is cached.
+Real disk-full/media faults, strict power-cut ordering/F_FULLFSYNC, multi-minute/1000-seat sustained throughput, supervisor-death process survival, Linux and macOS 14 were not tested. Uncommitted group loss on capture-owner death is explicit; logic restart while that supervisor lives retains captured data.
+Pre-W1.2b orphan archives without committed descriptor chains remain outside the guaranteed prefix. Logical row metadata can be unavailable outside loaded checkpoint/segment indexes; raw history remains readable.
+No new runtime, dependencies, Cargo.lock change, GUI/render changes, adapter work, user configuration or secrets. Shared peer changes remain untouched. Own signed commit and scope/signature checks are reported in the ICQ handoff rather than self-referencing this log.

@@ -503,20 +503,21 @@ impl Worker {
                     first_available_sequence - 1
                 ));
             }
-            state.sequence = status.committed_sequence;
+            state.sequence = first_available_sequence - 1;
+            state.byte_end = status.byte_start;
             self.connection.request(Action::PublishCheckpoint {
                 attachment: attachment.clone(),
                 checkpoint: state.saved().encode()?,
             })?;
             state
         };
-        let mut checkpoint_bytes = state.byte_end;
-        let mut checkpoint_sequence = state.sequence;
-        while state.sequence < status.committed_sequence {
+        let checkpoint_bytes = state.byte_end;
+        let checkpoint_sequence = state.sequence;
+        while state.sequence < status.captured_sequence {
             let Reply::RingHistory { history } = self.connection.request(Action::ReadRing {
                 attachment: attachment.clone(),
                 from: state.sequence + 1,
-                to: status.committed_sequence,
+                to: status.captured_sequence,
             })?
             else {
                 return Err(invalid("ring replay reply mismatch"));
@@ -527,18 +528,8 @@ impl Worker {
             for record in history.records {
                 state.apply(&record.event)?;
             }
-            if state.byte_end.saturating_sub(checkpoint_bytes) >= self.config.ring.checkpoint_bytes
-                || state.sequence.saturating_sub(checkpoint_sequence) >= 256
-            {
-                self.connection.request(Action::PublishCheckpoint {
-                    attachment: attachment.clone(),
-                    checkpoint: state.saved().encode()?,
-                })?;
-                checkpoint_bytes = state.byte_end;
-                checkpoint_sequence = state.sequence;
-            }
         }
-        if state.sequence != status.committed_sequence {
+        if state.sequence != status.captured_sequence {
             return Err(invalid("ring recovery cursor mismatch"));
         }
         self.attachments.insert(info.seat, attachment.clone());
@@ -552,6 +543,9 @@ impl Worker {
                 changed_at: Instant::now(),
             },
         );
+        // Historical frames have no live effects or visible intermediate state.
+        // Cold capture no longer needs checkpoint progress to keep reading, so
+        // publish one recovered tail instead of syncing every replay page.
         self.save(info.seat)?;
         self.endpoints.remove(&info.seat);
         let path = self.endpoint_root.join(format!("{}.sock", info.seat));
@@ -707,17 +701,21 @@ impl Worker {
     fn event(&mut self, event: Event) -> Result<()> {
         let id = event.seat();
         let seq = event.sequence().unwrap();
-        let Some(view) = self.views.get_mut(&id) else {
-            return Ok(());
-        };
         let generation = match &event {
             Event::Output { generation, .. }
             | Event::Resized { generation, .. }
             | Event::Exited { generation, .. } => *generation,
         };
+        let Some(view) = self.views.get(&id) else {
+            return Ok(());
+        };
         if view.generation != generation || seq <= view.sequence {
             return Ok(());
         }
+        if seq > view.sequence + 1 {
+            self.catch_up(id, seq - 1)?;
+        }
+        let view = self.views.get_mut(&id).unwrap();
         view.state.apply(&event)?;
         view.changed_at = Instant::now();
         if let Event::Resized { size, .. } = &event {
@@ -748,6 +746,26 @@ impl Worker {
         draft.generation = Some(generation);
         self.publish(&format!("seat-{id}"), draft)?;
         Ok(())
+    }
+    fn catch_up(&mut self, id: Ulid, through: u64) -> Result<()> {
+        loop {
+            let current = &self.views[&id];
+            if current.sequence >= through {
+                return self.save(id);
+            }
+            let history = self.history(id, current.generation, current.sequence + 1, through)?;
+            if history.gap.is_some() || history.records.is_empty() {
+                return Err(invalid("capture recovery gap"));
+            }
+            let view = self.views.get_mut(&id).unwrap();
+            for record in history.records {
+                if matches!(record.event, Event::Resized { .. }) {
+                    view.view_generation = Ulid::new();
+                }
+                view.state.apply(&record.event)?;
+            }
+            view.changed_at = Instant::now();
+        }
     }
     fn run(&mut self, mut commands: mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();

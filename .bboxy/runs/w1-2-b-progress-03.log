@@ -1,0 +1,26 @@
+COMMAND: cargo test -p bbt-mux --locked --test logic ring_seals_twenty -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.60s
+     Running tests/logic.rs (target/debug/deps/logic-a1cdc57bfbf5b00f)
+
+running 1 test
+writer progress 5.0363095s: 14783496 captured bytes, hot 3058560, paused false
+20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":320,"elapsed_s":7.520695374987554,"max_write_s":0.29537870798958465}
+cold replay 7.67131625s: 4208640 bytes, reads 1.642835253s, checkpoint writes 4.362333711s
+cold replay 15.465661875s: 8401920 bytes, reads 2.795460079s, checkpoint writes 9.446097339s
+cold replay 23.165614709s: 12595200 bytes, reads 3.88325637s, checkpoint writes 14.532211004s
+
+thread 'ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap' (6458032) panicked at crates/bbt-mux/tests/logic.rs:696:6:
+called `Result::unwrap()` on an `Err` value: Timeout
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... FAILED
+
+failures:
+
+failures:
+    ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 9 filtered out; finished in 38.48s
+
+error: test failed, to rerun pass `-p bbt-mux --test logic`
+exit 101

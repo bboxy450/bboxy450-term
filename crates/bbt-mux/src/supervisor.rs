@@ -340,7 +340,7 @@ impl Actor {
             self.flush_sockets();
             let ready = self.seats.values().any(|seat| {
                 seat.read_ready
-                    && seat.pending_event.is_none()
+                    && (seat.ring.is_some() || seat.pending_event.is_none())
                     && seat
                         .ring
                         .as_ref()
@@ -472,7 +472,7 @@ impl Actor {
                         settings,
                     )
                     .map_err(pty_error)?;
-                    if ring.status().committed_sequence != seat.next_seq - 1 {
+                    if ring.status().captured_sequence != seat.next_seq - 1 {
                         return Err(Failure::new(
                             FailureCode::StaleGeneration,
                             "retained ring is from an earlier supervisor/process; resume needs a new generation",
@@ -1121,14 +1121,15 @@ impl Seat {
         }
         self.write_pending();
         self.publish_pending(actor);
-        // One pending output chunk per seat bounds capture without a ring. A
-        // stalled/detached logic applies kernel PTY backpressure, not silent loss.
+        // A configured ring keeps capturing independently of logic delivery.
+        // One latest notification survives a full queue; skipped sequences are
+        // hydrated by logic. The legacy ring-less path retains its old bound.
         for _ in 0..4 {
             if let Some(ring) = self.ring.as_mut() {
                 ring.prepare_capture().map_err(io::Error::other)?;
             }
             if !self.read_ready
-                || self.pending_event.is_some()
+                || (self.ring.is_none() && self.pending_event.is_some())
                 || self
                     .ring
                     .as_ref()
@@ -1169,7 +1170,7 @@ impl Seat {
         }
         if let Some(status) = self.exited.clone()
             && !self.read_ready
-            && self.pending_event.is_none()
+            && (self.ring.is_some() || self.pending_event.is_none())
             && !self.exit_published
             && self
                 .ring
@@ -1185,6 +1186,9 @@ impl Seat {
             })?;
             self.exit_published = true;
             self.publish_pending(actor);
+        }
+        if let Some(ring) = self.ring.as_mut() {
+            ring.flush_due().map_err(io::Error::other)?;
         }
         if self.eof || self.exit_published {
             if self.registered {
@@ -1208,6 +1212,9 @@ impl Seat {
 
 impl Drop for Seat {
     fn drop(&mut self) {
+        if let Some(ring) = self.ring.as_mut() {
+            let _ = ring.flush();
+        }
         if self.exited.is_none() {
             let _ = signal(self.pid, libc::SIGKILL);
             let _ = self.child.wait();

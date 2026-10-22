@@ -1,0 +1,73 @@
+COMMAND: cargo test -p bbt-mux --locked ring -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.11s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-fdbcd46df699825d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/logic.rs (target/debug/deps/logic-a1cdc57bfbf5b00f)
+
+running 3 tests
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+writer progress 5.025552709s: 9107464 captured bytes, hot 1250640, paused false
+writer progress 10.022402292s: 19399688 captured bytes, hot 3748680, paused false
+20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":320,"elapsed_s":11.00608191700303,"max_write_s":0.41282549998140894}
+cold replay 2.888711583s: 4208640 bytes, reads 2.124777833s, checkpoint writes 0ns
+cold replay 4.568230291s: 8401920 bytes, reads 3.397843501s, checkpoint writes 0ns
+cold replay 6.286274125s: 12595200 bytes, reads 4.700053377s, checkpoint writes 0ns
+cold replay 8.109010125s: 16788480 bytes, reads 6.13398967s, checkpoint writes 0ns
+cold replay 9.246969083s: 20971540 bytes, reads 6.863333557s, checkpoint writes 0ns
+20 MiB cold replay startup: 9.343903416s
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+cold replay 14.434221916s: 25180188 bytes, reads 8.582363421s, checkpoint writes 70.880667ms
+cold replay 18.982958125s: 29373468 bytes, reads 9.814181871s, checkpoint writes 70.880667ms
+cold replay 23.457994791s: 33566748 bytes, reads 10.966275419s, checkpoint writes 70.880667ms
+cold replay 27.959167875s: 37760028 bytes, reads 12.139342114s, checkpoint writes 70.880667ms
+cold replay 31.984807375s: 41943088 bytes, reads 12.847936489s, checkpoint writes 70.880667ms
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 45.57s
+
+     Running tests/measurements.rs (target/debug/deps/measurements-6fa4aafd147f8f3f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/ring.rs (target/debug/deps/ring-e07e6c8880d4606f)
+
+running 9 tests
+test ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation ... ok
+test ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor ... ok
+test ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes ... ok
+test ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay ... ok
+test ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell ... ok
+test ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again ... ok
+test ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects ... ok
+test ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index ... ok
+test ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.17s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-990b08fda7a00ae0)
+
+running 1 test
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.01s
+
+     Running tests/supervisor.rs (target/debug/deps/supervisor-fae4211d29f6d08a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+     Running tests/ui_guard.rs (target/debug/deps/ui_guard-a183fa5ac1f017b7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+exit 0

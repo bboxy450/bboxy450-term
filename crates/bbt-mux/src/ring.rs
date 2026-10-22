@@ -1,6 +1,7 @@
 //! Supervisor-owned, CRC32C framed capture with atomic committed boundaries.
 //! Logical hard-line indexes are produced by logic, never guessed by capture.
 
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -294,6 +295,7 @@ pub struct Status {
     pub generation: u64,
     pub first_sequence: u64,
     pub committed_sequence: u64,
+    pub captured_sequence: u64,
     pub byte_start: u64,
     pub byte_end: u64,
     pub hot_bytes: u64,
@@ -325,6 +327,38 @@ struct Boundary {
     byte_start: u64,
     byte_end: u64,
     settings: Settings,
+    #[serde(default)]
+    sealed_head: Option<String>,
+    #[serde(default)]
+    origin_base: Option<u64>,
+    #[serde(default)]
+    origin_byte_start: Option<u64>,
+    #[serde(default)]
+    checkpoints: Vec<CheckpointRef>,
+}
+#[derive(Clone, Serialize, Deserialize)]
+struct CheckpointRef {
+    sequence: u64,
+    digest: String,
+}
+#[derive(Clone, Serialize, Deserialize)]
+struct Sealed {
+    previous: Option<String>,
+    data: String,
+    file: String,
+    seat: Ulid,
+    generation: u64,
+    base: u64,
+    sequence: u64,
+    byte_start: u64,
+    byte_end: u64,
+    length: u64,
+}
+struct Hydrated {
+    digest: String,
+    bytes: Vec<u8>,
+    entries: Vec<Entry>,
+    rows: std::collections::BTreeMap<u64, RowPoint>,
 }
 #[derive(Clone)]
 struct Entry {
@@ -341,6 +375,10 @@ pub struct Ring {
     entries: Vec<Entry>,
     index: std::collections::BTreeMap<u64, RowPoint>,
     notice: Option<String>,
+    sealed: Vec<Sealed>,
+    hydrated: RefCell<Option<Hydrated>>,
+    durable: Boundary,
+    last_commit: std::time::Instant,
 }
 impl Ring {
     pub fn open(
@@ -386,10 +424,14 @@ impl Ring {
                             };
                             let mut ring = Self {
                                 root: root.into(),
+                                durable: boundary.clone(),
+                                last_commit: std::time::Instant::now(),
                                 boundary,
                                 entries,
                                 index: Default::default(),
                                 notice,
+                                sealed: Vec::new(),
+                                hydrated: RefCell::new(None),
                             };
                             // Never append over a rejected suffix. Retain it in cold blobs first.
                             if actual > ring.boundary.length {
@@ -403,6 +445,7 @@ impl Ring {
                                 // independently valid previous boundary.
                                 ring.write_marker("committed", &ring.boundary)?;
                             }
+                            ring.load_sealed()?;
                             ring.rebuild_index()?;
                             ring.retire_orphans()?;
                             return Ok(ring);
@@ -433,13 +476,21 @@ impl Ring {
             byte_start: 0,
             byte_end: 0,
             settings,
+            sealed_head: None,
+            origin_base: Some(base),
+            origin_byte_start: Some(0),
+            checkpoints: Vec::new(),
         };
         let ring = Self {
             root: root.into(),
+            durable: boundary.clone(),
+            last_commit: std::time::Instant::now(),
             boundary,
             entries: Vec::new(),
             index: Default::default(),
             notice: None,
+            sealed: Vec::new(),
+            hydrated: RefCell::new(None),
         };
         File::create(ring.data_path())?.sync_all()?;
         ring.publish_boundary(&ring.boundary)?;
@@ -457,48 +508,65 @@ impl Ring {
     pub fn status(&self) -> Status {
         Status {
             generation: self.boundary.generation,
-            first_sequence: self.boundary.base + 1,
-            committed_sequence: self.boundary.sequence,
-            byte_start: self.boundary.byte_start,
+            first_sequence: self.first_base() + 1,
+            committed_sequence: self.durable.sequence,
+            captured_sequence: self.boundary.sequence,
+            byte_start: self
+                .boundary
+                .origin_byte_start
+                .unwrap_or(self.boundary.byte_start),
             byte_end: self.boundary.byte_end,
             hot_bytes: self.boundary.length,
-            paused: !self.can_capture(),
+            paused: false,
             recovery_notice: self.notice.clone(),
         }
     }
+    fn first_base(&self) -> u64 {
+        self.boundary.origin_base.unwrap_or(self.boundary.base)
+    }
     pub fn can_capture(&self) -> bool {
-        self.capture_capacity() > 0
+        true
     }
     pub fn capture_capacity(&self) -> usize {
-        if !self.entries.iter().any(|e| e.kind == 4) {
-            return 0;
-        }
-        self.boundary
-            .settings
-            .capacity_bytes
-            .saturating_sub(self.boundary.length + HEADER as u64 + self.checkpoint_reserve())
-            .min(OUTPUT_CHUNK_BYTES as u64) as usize
+        OUTPUT_CHUNK_BYTES.min(self.boundary.settings.capacity_bytes as usize - HEADER)
     }
     pub fn can_control(&self) -> bool {
-        self.boundary.length + 512 <= self.boundary.settings.capacity_bytes
-    }
-    fn checkpoint_reserve(&self) -> u64 {
-        (MAX_CHECKPOINT as u64 + HEADER as u64 + 512).min(self.boundary.settings.capacity_bytes / 4)
+        true
     }
     pub fn prepare_capture(&mut self) -> Result<()> {
-        let reserve = OUTPUT_CHUNK_BYTES as u64 + HEADER as u64 + self.checkpoint_reserve();
-        if self.boundary.length + reserve > self.boundary.settings.capacity_bytes {
-            self.compact_for(
-                &[],
-                0,
-                self.boundary.sequence,
-                self.boundary.byte_end,
-                reserve,
-            )?;
+        if self.boundary.length + (HEADER + self.capture_capacity()) as u64
+            > self.boundary.settings.capacity_bytes
+        {
+            self.seal_hot()?;
         }
         Ok(())
     }
+    fn checkpoint_refs(&self) -> Result<Vec<CheckpointRef>> {
+        if !self.boundary.checkpoints.is_empty() {
+            return Ok(self.boundary.checkpoints.clone());
+        }
+        let mut refs = Vec::new();
+        for entry in self.entries.iter().filter(|e| e.kind == 4).rev().take(2) {
+            refs.push(CheckpointRef {
+                sequence: entry.sequence,
+                digest: LocalBlobs::open(&self.root)?.put(&self.payload(entry)?)?,
+            });
+        }
+        refs.reverse();
+        Ok(refs)
+    }
     pub fn latest_checkpoint(&self) -> Result<Option<Vec<u8>>> {
+        if let Some(reference) = self.boundary.checkpoints.last() {
+            let bytes = LocalBlobs::open(&self.root)?.get(&reference.digest)?;
+            let saved = Saved::decode(&bytes)?;
+            if saved.sequence != reference.sequence
+                || saved.seat != self.boundary.seat
+                || saved.generation != self.boundary.generation
+            {
+                return Err(invalid("checkpoint reference identity mismatch"));
+            }
+            return Ok(Some(bytes));
+        }
         self.entries
             .iter()
             .rev()
@@ -506,22 +574,146 @@ impl Ring {
             .map(|e| self.payload(e))
             .transpose()
     }
+    fn load_sealed(&mut self) -> Result<()> {
+        let blobs = LocalBlobs::open(&self.root)?;
+        let mut head = self.boundary.sealed_head.clone();
+        let mut expected = self.boundary.base;
+        let mut byte_end = self.boundary.byte_start;
+        self.sealed.clear();
+        let mut seen = std::collections::BTreeSet::new();
+        while let Some(digest) = head {
+            if !seen.insert(digest.clone()) {
+                return Err(invalid("cyclic sealed segment chain"));
+            }
+            let bytes = blobs.get(&digest)?;
+            if bytes.len() > 4096 {
+                return Err(invalid("oversized sealed descriptor"));
+            }
+            let segment: Sealed = serde_json::from_slice(&bytes)?;
+            if segment.seat != self.boundary.seat
+                || segment.generation != self.boundary.generation
+                || segment.sequence != expected
+                || segment.byte_end != byte_end
+                || segment.base > segment.sequence
+                || segment.length > self.boundary.settings.capacity_bytes
+                || segment.byte_start > segment.byte_end
+            {
+                return Err(invalid("sealed segment continuity mismatch"));
+            }
+            head = segment.previous.clone();
+            expected = segment.base;
+            byte_end = segment.byte_start;
+            self.sealed.push(segment);
+        }
+        if expected != self.first_base() {
+            return Err(invalid("sealed origin mismatch"));
+        }
+        self.sealed.reverse();
+        Ok(())
+    }
+    fn seal_hot(&mut self) -> Result<()> {
+        if self.boundary.length == 0 {
+            return Ok(());
+        }
+        self.flush()?;
+        let raw = std::fs::read(self.data_path())?;
+        if raw.len() as u64 != self.boundary.length {
+            return Err(invalid("cannot seal an uncommitted tail"));
+        }
+        let blobs = LocalBlobs::open(&self.root)?;
+        let data = blobs.put(&raw)?;
+        let segment = Sealed {
+            previous: self.boundary.sealed_head.clone(),
+            data,
+            file: self.boundary.file.clone(),
+            seat: self.boundary.seat,
+            generation: self.boundary.generation,
+            base: self.boundary.base,
+            sequence: self.boundary.sequence,
+            byte_start: self.boundary.byte_start,
+            byte_end: self.boundary.byte_end,
+            length: self.boundary.length,
+        };
+        let digest = blobs.put(&serde_json::to_vec(&segment)?)?;
+        let mut next = self.boundary.clone();
+        next.origin_base = Some(self.first_base());
+        next.origin_byte_start = Some(
+            self.boundary
+                .origin_byte_start
+                .unwrap_or(self.boundary.byte_start),
+        );
+        next.sealed_head = Some(digest);
+        next.checkpoints = self.checkpoint_refs()?;
+        next.file = format!("data-{}.log", Ulid::new());
+        next.length = 0;
+        next.base = next.sequence;
+        next.byte_start = next.byte_end;
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(self.root.join(&next.file))?
+            .sync_all()?;
+        self.publish_boundary(&next)?;
+        self.durable = next.clone();
+        self.last_commit = std::time::Instant::now();
+        self.boundary = next;
+        self.entries.clear();
+        self.sealed.push(segment);
+        self.rebuild_index()?;
+        self.retire_orphans()?;
+        Ok(())
+    }
+    fn hydrate(&self, segment: &Sealed) -> Result<()> {
+        if self
+            .hydrated
+            .borrow()
+            .as_ref()
+            .is_some_and(|h| h.digest == segment.data)
+        {
+            return Ok(());
+        }
+        let bytes = LocalBlobs::open(&self.root)?.get(&segment.data)?;
+        if bytes.len() as u64 != segment.length {
+            return Err(invalid("sealed segment length mismatch"));
+        }
+        let mut b = self.boundary.clone();
+        b.length = segment.length;
+        b.base = segment.base;
+        b.sequence = segment.sequence;
+        b.byte_start = segment.byte_start;
+        b.byte_end = segment.byte_end;
+        let entries = scan_reader(&mut std::io::Cursor::new(&bytes), &b)?;
+        let mut rows = std::collections::BTreeMap::new();
+        for e in entries.iter().filter(|e| e.kind == 4) {
+            for point in Saved::decode(&bytes[e.start as usize + HEADER..e.end as usize])?.index {
+                rows.insert(point.sequence, point);
+            }
+        }
+        *self.hydrated.borrow_mut() = Some(Hydrated {
+            digest: segment.data.clone(),
+            bytes,
+            entries,
+            rows,
+        });
+        Ok(())
+    }
     pub fn checkpoint(&mut self, bytes: Vec<u8>) -> Result<()> {
         let saved = Saved::decode(&bytes)?;
         if saved.seat != self.boundary.seat
             || saved.generation != self.boundary.generation
             || saved.sequence > self.boundary.sequence
-            || saved.sequence < self.boundary.base
+            || saved.sequence < self.first_base()
             || saved.byte_end != self.byte_end_at(saved.sequence)?
         {
             return Err(invalid("checkpoint does not cover a captured cursor"));
         }
-        if let Some(old) = self.entries.iter().rev().find(|e| e.kind == 4) {
-            if saved.sequence < old.sequence {
+        if let Some(old) = self.latest_checkpoint()? {
+            let old_sequence = Saved::decode(&old)?.sequence;
+            if saved.sequence < old_sequence {
                 return Err(invalid("stale checkpoint"));
             }
-            if saved.sequence == old.sequence {
-                if self.payload(old)? == bytes {
+            if saved.sequence == old_sequence {
+                if old == bytes {
                     return Ok(());
                 }
                 return Err(invalid("checkpoint cursor reused with different state"));
@@ -562,24 +754,29 @@ impl Ring {
             return Err(invalid("record exceeds ring capacity"));
         }
         if self.boundary.length + bytes.len() as u64 > self.boundary.settings.capacity_bytes {
-            if !self.compact_for(&bytes, kind, sequence, byte_start, 0)? {
-                return Err(invalid("ring full: awaiting a newer committed checkpoint"));
-            }
-            return Ok(());
+            self.seal_hot()?;
         }
         let start = self.boundary.length;
         let mut file = OpenOptions::new().append(true).open(self.data_path())?;
         file.write_all(&bytes)?;
-        file.sync_all()?;
         let mut next = self.boundary.clone();
         next.length += bytes.len() as u64;
+        if kind == 4 {
+            next.checkpoints = self.checkpoint_refs()?;
+            next.checkpoints.push(CheckpointRef {
+                sequence,
+                digest: LocalBlobs::open(&self.root)?.put(payload)?,
+            });
+            if next.checkpoints.len() > 2 {
+                next.checkpoints.remove(0);
+            }
+        }
         if kind != 4 {
             next.sequence = sequence;
         }
         if kind == 1 {
             next.byte_end += payload.len() as u64;
         }
-        self.publish_boundary(&next)?;
         self.boundary = next;
         self.entries.push(Entry {
             start,
@@ -588,91 +785,34 @@ impl Ring {
             sequence,
             byte_start,
         });
+        if kind != 1 || self.boundary.length.saturating_sub(self.durable.length) >= 64 * 1024 {
+            self.flush()?;
+        }
+        Ok(())
+    }
+    /// Captured and durable cursors are distinct. Commit at 64 KiB, 20 ms idle,
+    /// control/checkpoint publication, sealing and supervisor shutdown.
+    pub fn flush(&mut self) -> Result<()> {
+        bbt_rt::assert_not_ui_thread();
+        if self.boundary.file == self.durable.file && self.boundary.length == self.durable.length {
+            return Ok(());
+        }
+        let file = OpenOptions::new().write(true).open(self.data_path())?;
+        if file.metadata()?.len() != self.boundary.length {
+            return Err(invalid("untracked/torn capture suffix before commit"));
+        }
+        file.sync_all()?;
+        self.publish_boundary(&self.boundary)?;
+        self.durable = self.boundary.clone();
+        self.last_commit = std::time::Instant::now();
         self.retire_orphans()?;
         Ok(())
     }
-    fn compact_for(
-        &mut self,
-        new: &[u8],
-        kind: u16,
-        sequence: u64,
-        byte_start: u64,
-        reserve: u64,
-    ) -> Result<bool> {
-        let mut records = self
-            .entries
-            .iter()
-            .map(|e| Ok((e.clone(), self.raw(e)?)))
-            .collect::<Result<Vec<_>>>()?;
-        if !new.is_empty() {
-            records.push((
-                Entry {
-                    start: 0,
-                    end: new.len() as u64,
-                    kind,
-                    sequence,
-                    byte_start,
-                },
-                new.to_vec(),
-            ));
+    pub fn flush_due(&mut self) -> Result<()> {
+        if self.last_commit.elapsed() >= std::time::Duration::from_millis(20) {
+            self.flush()?;
         }
-        let checkpoints: Vec<_> = records
-            .iter()
-            .filter(|(e, _)| e.kind == 4)
-            .map(|(e, _)| e.sequence)
-            .collect();
-        if checkpoints.len() < 2 {
-            return Ok(false);
-        }
-        for &base in &checkpoints[..checkpoints.len() - 1] {
-            let mut selected = Vec::new();
-            let Some(first) = records
-                .iter()
-                .find(|(e, _)| e.kind == 4 && e.sequence == base)
-            else {
-                continue;
-            };
-            selected.push(first.clone());
-            selected.extend(
-                records
-                    .iter()
-                    .filter(|(e, _)| {
-                        (e.kind != 4 && e.sequence > base) || (e.kind == 4 && e.sequence > base)
-                    })
-                    .cloned(),
-            );
-            let size: usize = selected.iter().map(|(_, raw)| raw.len()).sum();
-            if size as u64 + reserve > self.boundary.settings.capacity_bytes {
-                continue;
-            }
-            let saved = Saved::decode(&selected[0].1[HEADER..])?;
-            let mut next = self.boundary.clone();
-            next.file = format!("data-{}.log", Ulid::new());
-            next.base = base;
-            next.byte_start = saved.byte_end;
-            next.length = size as u64;
-            if kind != 4 {
-                next.sequence = sequence;
-            }
-            if kind == 1 {
-                next.byte_end += (new.len() - HEADER) as u64;
-            }
-            let mut file = OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(self.root.join(&next.file))?;
-            for (_, raw) in &selected {
-                file.write_all(raw)?;
-            }
-            file.sync_all()?;
-            self.publish_boundary(&next)?;
-            self.boundary = next;
-            self.entries = scan(&self.root, &self.boundary)?;
-            self.rebuild_index()?;
-            self.retire_orphans()?;
-            return Ok(true);
-        }
-        Ok(false)
+        Ok(())
     }
     fn write_marker(&self, name: &str, boundary: &Boundary) -> Result<()> {
         let bytes = serde_json::to_vec(boundary)?;
@@ -737,7 +877,9 @@ impl Ring {
                 && name != self.boundary.file
                 && previous.as_ref().is_none_or(|p| p.file != name)
             {
-                self.archive(&name)?;
+                if !self.sealed.iter().any(|s| s.file == name) {
+                    self.archive(&name)?;
+                }
                 std::fs::remove_file(entry.path())?;
             }
         }
@@ -755,26 +897,55 @@ impl Ring {
         Ok(self.raw(entry)?[HEADER..].to_vec())
     }
     fn byte_end_at(&self, seq: u64) -> Result<u64> {
-        if seq == self.boundary.base {
-            return Ok(self.boundary.byte_start);
+        if seq == self.first_base() {
+            return Ok(self
+                .boundary
+                .origin_byte_start
+                .unwrap_or(self.boundary.byte_start));
         }
-        let entry = self
+        if seq > self.boundary.base {
+            let e = self
+                .entries
+                .iter()
+                .find(|e| e.kind != 4 && e.sequence == seq)
+                .ok_or_else(|| invalid("checkpoint cursor missing"))?;
+            return Ok(e.byte_start
+                + if e.kind == 1 {
+                    e.end - e.start - HEADER as u64
+                } else {
+                    0
+                });
+        }
+        let segment = self
+            .sealed
+            .iter()
+            .find(|s| seq > s.base && seq <= s.sequence)
+            .ok_or_else(|| invalid("checkpoint cold cursor missing"))?;
+        self.hydrate(segment)?;
+        let cached = self.hydrated.borrow();
+        let cached = cached.as_ref().unwrap();
+        let e = cached
             .entries
             .iter()
             .find(|e| e.kind != 4 && e.sequence == seq)
-            .ok_or_else(|| invalid("checkpoint cursor not retained"))?;
-        Ok(entry.byte_start
-            + if entry.kind == 1 {
-                entry.end - entry.start - HEADER as u64
+            .ok_or_else(|| invalid("sealed checkpoint cursor missing"))?;
+        Ok(e.byte_start
+            + if e.kind == 1 {
+                e.end - e.start - HEADER as u64
             } else {
                 0
             })
     }
     fn rebuild_index(&mut self) -> Result<()> {
         self.index.clear();
+        if let Some(bytes) = self.latest_checkpoint()? {
+            for point in Saved::decode(&bytes)?.index {
+                self.index.insert(point.sequence, point);
+            }
+        }
         for entry in self.entries.iter().filter(|e| e.kind == 4) {
             for point in Saved::decode(&self.payload(entry)?)?.index {
-                if point.sequence > self.boundary.base {
+                if point.sequence > self.first_base() {
                     self.index.insert(point.sequence, point);
                 }
             }
@@ -785,37 +956,82 @@ impl Ring {
         if from > to {
             return Err(invalid("invalid history range"));
         }
-        let first = self.boundary.base + 1;
+        let first = self.first_base() + 1;
         let last = self.boundary.sequence;
-        let gap = (from < first || to > last).then(||HistoryGap { requested_from: from,requested_to:to,
-            retained_from: (first<=last).then_some(first),retained_to:(first<=last).then_some(last),
-            reason:"requested capture range outside the hot checkpoint window (older bytes retained in cold blobs)".into() });
+        let gap = (from < first || to > last).then(|| HistoryGap {
+            requested_from: from,
+            requested_to: to,
+            retained_from: (first <= last).then_some(first),
+            retained_to: (first <= last).then_some(last),
+            reason: "requested capture range outside committed hot+cold history".into(),
+        });
         let mut records = Vec::new();
-        let mut bytes = 0;
+        let mut size = 0;
         let mut next = None;
-        for entry in self
-            .entries
+        for segment in self
+            .sealed
             .iter()
-            .filter(|e| e.kind != 4 && e.sequence >= from && e.sequence <= to)
+            .filter(|s| s.sequence >= from && s.base < to)
         {
-            let event = decode_event(
-                entry.kind,
-                self.boundary.seat,
-                self.boundary.generation,
-                entry.sequence,
-                &self.payload(entry)?,
-            )?;
-            let record = IndexedEvent {
-                event,
-                row: self.index.get(&entry.sequence).cloned(),
-            };
-            let size = serde_json::to_vec(&record)?.len();
-            if !records.is_empty() && bytes + size > PAGE_BYTES {
-                next = Some(entry.sequence);
+            self.hydrate(segment)?;
+            let cache = self.hydrated.borrow();
+            let cache = cache.as_ref().unwrap();
+            for entry in cache
+                .entries
+                .iter()
+                .filter(|e| e.kind != 4 && e.sequence >= from && e.sequence <= to)
+            {
+                let payload = &cache.bytes[entry.start as usize + HEADER..entry.end as usize];
+                let record = IndexedEvent {
+                    event: decode_event(
+                        entry.kind,
+                        self.boundary.seat,
+                        self.boundary.generation,
+                        entry.sequence,
+                        payload,
+                    )?,
+                    row: self
+                        .index
+                        .get(&entry.sequence)
+                        .or_else(|| cache.rows.get(&entry.sequence))
+                        .cloned(),
+                };
+                let bytes = serde_json::to_vec(&record)?.len();
+                if !records.is_empty() && size + bytes > PAGE_BYTES {
+                    next = Some(entry.sequence);
+                    break;
+                }
+                records.push(record);
+                size += bytes;
+            }
+            if next.is_some() {
                 break;
             }
-            records.push(record);
-            bytes += size;
+        }
+        if next.is_none() {
+            for entry in self
+                .entries
+                .iter()
+                .filter(|e| e.kind != 4 && e.sequence >= from && e.sequence <= to)
+            {
+                let record = IndexedEvent {
+                    event: decode_event(
+                        entry.kind,
+                        self.boundary.seat,
+                        self.boundary.generation,
+                        entry.sequence,
+                        &self.payload(entry)?,
+                    )?,
+                    row: self.index.get(&entry.sequence).cloned(),
+                };
+                let bytes = serde_json::to_vec(&record)?.len();
+                if !records.is_empty() && size + bytes > PAGE_BYTES {
+                    next = Some(entry.sequence);
+                    break;
+                }
+                records.push(record);
+                size += bytes;
+            }
         }
         Ok(History {
             status: self.status(),
@@ -920,6 +1136,9 @@ fn scan(root: &Path, b: &Boundary) -> Result<Vec<Entry>> {
     if file.metadata()?.len() < b.length {
         return Err(invalid("torn committed suffix"));
     }
+    scan_reader(&mut file, b)
+}
+fn scan_reader(file: &mut impl Read, b: &Boundary) -> Result<Vec<Entry>> {
     let mut entries = Vec::new();
     let (mut offset, mut seq, mut bytes) = (0, b.base, b.byte_start);
     while offset < b.length {
@@ -938,7 +1157,7 @@ fn scan(root: &Path, b: &Boundary) -> Result<Vec<Entry>> {
             || generation != b.generation
             || h[28..44] != b.seat.to_bytes()
             || (kind != 4 && (cursor != seq + 1 || start != bytes))
-            || (kind == 4 && (cursor < b.base || cursor > seq))
+            || (kind == 4 && cursor > seq)
         {
             return Err(invalid("invalid ring header/sequence/generation/length"));
         }

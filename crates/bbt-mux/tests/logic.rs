@@ -512,34 +512,41 @@ fn external_logic_fixture() {
     }
 }
 
-#[test]
-fn ring_full_during_logic_absence_backpressures_then_replays_the_red_tail_without_a_gap() {
-    use bbt_mux::ring::Saved;
-    let temp = tempfile::tempdir().unwrap();
-    let runtime = runtime();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
-    let mut config = fixture(temp.path());
-    config.ring.capacity_bytes = 256 * 1024;
-    config.ring.checkpoint_bytes = 32 * 1024;
-    let logic = Logic::start(
-        supervisor.connect().unwrap(),
-        config.clone(),
-        SigningKey::from_bytes(&[26; 32]),
-        runtime.handle(),
-    )
-    .unwrap();
-    let gate = temp.path().join("gate");
-    let mut spec = LaunchSpec::new("/bin/zsh", temp.path());
+fn ring_writer(root: &Path, bytes: usize) -> LaunchSpec {
+    let mut spec = LaunchSpec::new("python3", root);
+    spec.env.insert(
+        "BBOXY_TEST_GATE".into(),
+        root.join("gate").to_string_lossy().to_string(),
+    );
+    spec.env.insert(
+        "BBOXY_TEST_STATS".into(),
+        root.join("writer.json").to_string_lossy().to_string(),
+    );
     spec.env
-        .insert("BBOXY_TEST_GATE".into(), gate.to_string_lossy().to_string());
-    spec.args=vec!["-f".into(),"-c".into(),r#"printf 'BEFORE\n'; while [[ ! -f "$BBOXY_TEST_GATE" ]]; do sleep 0.02; done; printf '\033[31m'; p=${(l:1024::x:)}; for i in {1..640}; do printf '%s' "$p"; done; printf '\nAFTER-TAIL\n'; read -r ignored"#.into()];
-    let seat = spec.seat;
-    let info = runtime
-        .block_on(logic.client.spawn(
-            SeatRecord::new(seat, Ulid::new(), "ring fixture", "zsh"),
-            spec,
-        ))
-        .unwrap();
+        .insert("BBOXY_TEST_BYTES".into(), bytes.to_string());
+    spec.args = vec![
+        "-c".into(),
+        r#"
+import os, time, json
+os.write(1, b'BEFORE\n')
+while not os.path.exists(os.environ['BBOXY_TEST_GATE']): time.sleep(0.005)
+remaining=int(os.environ['BBOXY_TEST_BYTES']); total=remaining
+chunk=b'x'*65536; max_write=0.0; calls=0; started=time.perf_counter()
+while remaining:
+    before=time.perf_counter(); n=os.write(1, chunk[:min(remaining,len(chunk))])
+    max_write=max(max_write,time.perf_counter()-before); remaining-=n; calls+=1
+os.write(1,b'\x1b[31mRING-TAIL\x1b[0m\n')
+stats={'bytes':total,'elapsed_s':time.perf_counter()-started,'max_write_s':max_write,'calls':calls}
+path=os.environ['BBOXY_TEST_STATS']
+with open(path+'.tmp','w') as f: json.dump(stats,f)
+os.replace(path+'.tmp',path)
+while True: time.sleep(0.1)
+"#
+        .into(),
+    ];
+    spec
+}
+fn wait_for_prefix(runtime: &tokio::runtime::Runtime, logic: &Logic, seat: Ulid) {
     let until = Instant::now() + Duration::from_secs(5);
     loop {
         let snapshot = runtime.block_on(logic.client.snapshot(seat, 1)).unwrap();
@@ -549,76 +556,154 @@ fn ring_full_during_logic_absence_backpressures_then_replays_the_red_tail_withou
         assert!(Instant::now() < until);
         std::thread::sleep(Duration::from_millis(10));
     }
+}
+#[test]
+fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap()
+ {
+    use sha2::{Digest, Sha256};
+    let temp = tempfile::tempdir().unwrap();
+    let runtime = runtime();
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let config = fixture(temp.path());
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        config.clone(),
+        SigningKey::from_bytes(&[26; 32]),
+        runtime.handle(),
+    )
+    .unwrap();
+    let size = 20 * 1024 * 1024;
+    let spec = ring_writer(temp.path(), size);
+    let seat = spec.seat;
+    let info = runtime
+        .block_on(logic.client.spawn(
+            SeatRecord::new(seat, Ulid::new(), "ring writer", "python"),
+            spec,
+        ))
+        .unwrap();
+    wait_for_prefix(&runtime, &logic, seat);
     logic.shutdown().unwrap();
-    std::fs::write(&gate, b"go").unwrap();
-    let root = config.run_dir.join(format!("seat-{seat}/ring-1"));
-    let until = Instant::now() + Duration::from_secs(10);
-    loop {
-        let length = std::fs::read(root.join("committed"))
-            .ok()
-            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b[..b.len() - 4]).ok())
-            .and_then(|v| v["length"].as_u64())
-            .unwrap_or(0);
-        if length >= config.ring.capacity_bytes * 3 / 4 - 256 {
-            break;
+    // An admitted but completely unread logic queue must not stall PTY capture.
+    let stalled = supervisor.connect().unwrap();
+    let attachment = stalled.attach(seat, 1).unwrap();
+    std::fs::write(temp.path().join("gate"), b"go").unwrap();
+    let started = Instant::now();
+    let mut next_trace = Duration::from_secs(5);
+    let until = Instant::now() + Duration::from_secs(60);
+    while !temp.path().join("writer.json").exists() {
+        if started.elapsed() >= next_trace {
+            let Reply::RingRecovery { status, .. } = stalled
+                .request(Action::RingRecovery {
+                    attachment: attachment.clone(),
+                })
+                .unwrap()
+            else {
+                panic!()
+            };
+            println!(
+                "writer progress {:?}: {} captured bytes, hot {}, paused {}",
+                started.elapsed(),
+                status.byte_end,
+                status.hot_bytes,
+                status.paused
+            );
+            next_trace += Duration::from_secs(5);
         }
         assert!(
             Instant::now() < until,
-            "supervisor did not capture while logic was absent"
+            "writer blocked while logic was down"
         );
         std::thread::sleep(Duration::from_millis(20));
     }
-    let client = supervisor.connect().unwrap();
-    let attachment = client.attach(seat, 1).unwrap();
-    let Reply::RingRecovery { status, checkpoint } = client
-        .request(Action::RingRecovery {
-            attachment: attachment.clone(),
-        })
-        .unwrap()
-    else {
-        panic!()
-    };
-    assert!(status.paused);
-    assert!(status.hot_bytes <= config.ring.capacity_bytes);
-    let saved = Saved::decode(&checkpoint.unwrap()).unwrap();
-    assert!(status.committed_sequence > saved.sequence);
-    let Reply::RingHistory { history } = client
-        .request(Action::ReadRing {
-            attachment,
-            from: saved.sequence + 1,
-            to: status.committed_sequence,
-        })
-        .unwrap()
-    else {
-        panic!()
-    };
-    assert!(history.records.iter().any(|r| r.row.is_none()));
+    let stats: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(temp.path().join("writer.json")).unwrap()).unwrap();
+    println!("20 MiB writer completed BEFORE logic restart: {stats}");
+    assert_eq!(stats["bytes"], size);
+    assert!(stats["max_write_s"].as_f64().unwrap() < 2.0);
+    let raw_size = size + 8 + b"\x1b[31mRING-TAIL\x1b[0m\r\n".len();
+    let until = Instant::now() + Duration::from_secs(5);
+    loop {
+        let Reply::RingRecovery { status, .. } = stalled
+            .request(Action::RingRecovery {
+                attachment: attachment.clone(),
+            })
+            .unwrap()
+        else {
+            panic!()
+        };
+        assert!(!status.paused);
+        assert!(status.hot_bytes <= config.ring.capacity_bytes);
+        if status.byte_end == raw_size as u64 {
+            break;
+        }
+        assert!(Instant::now() < until, "final capture bytes unavailable");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let restart = Instant::now();
+    struct ReplayTrace {
+        client: bbt_mux::Client,
+        started: Instant,
+        next_trace: usize,
+        bytes: usize,
+        reads: Duration,
+        checkpoints: Duration,
+    }
+    impl bbt_mux::logic::SupervisorConnection for ReplayTrace {
+        fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
+            let checkpoint = matches!(action, Action::PublishCheckpoint { .. });
+            let started = Instant::now();
+            let reply = self.client.request(action)?;
+            if checkpoint {
+                self.checkpoints += started.elapsed();
+            }
+            if let Reply::RingHistory { history } = &reply {
+                self.reads += started.elapsed();
+                for record in &history.records {
+                    if let bbt_mux::Event::Output { bytes, .. } = &record.event {
+                        self.bytes += bytes.len();
+                    }
+                }
+                if self.bytes >= self.next_trace {
+                    println!(
+                        "cold replay {:?}: {} bytes, reads {:?}, checkpoint writes {:?}",
+                        self.started.elapsed(),
+                        self.bytes,
+                        self.reads,
+                        self.checkpoints
+                    );
+                    self.next_trace += 4 * 1024 * 1024;
+                }
+            }
+            Ok(reply)
+        }
+        fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<bbt_mux::Event>> {
+            bbt_mux::logic::SupervisorConnection::receive(&mut self.client, timeout)
+        }
+    }
     let logic = Logic::start(
-        client,
+        ReplayTrace {
+            client: stalled,
+            started: restart,
+            next_trace: 4 * 1024 * 1024,
+            bytes: 0,
+            reads: Duration::ZERO,
+            checkpoints: Duration::ZERO,
+        },
         config,
         SigningKey::from_bytes(&[26; 32]),
         runtime.handle(),
     )
     .unwrap();
-    let until = Instant::now() + Duration::from_secs(20);
-    let snapshot = loop {
-        let snapshot = runtime.block_on(logic.client.snapshot(seat, 1)).unwrap();
-        let text: String = snapshot
-            .screen
-            .cells
-            .iter()
-            .flatten()
-            .map(|c| c.c)
-            .collect();
-        if text.contains("AFTER-TAIL") {
-            break snapshot;
-        }
-        assert!(
-            Instant::now() < until,
-            "capture failed to resume after checkpoint publication"
-        );
-        std::thread::sleep(Duration::from_millis(20));
-    };
+    println!("20 MiB cold replay startup: {:?}", restart.elapsed());
+    let snapshot = runtime.block_on(logic.client.snapshot(seat, 1)).unwrap();
+    let text: String = snapshot
+        .screen
+        .cells
+        .iter()
+        .flatten()
+        .map(|c| c.c)
+        .collect();
+    assert!(text.contains("RING-TAIL"));
     assert!(snapshot.screen.gap.is_none());
     assert!(
         snapshot
@@ -626,13 +711,32 @@ fn ring_full_during_logic_absence_backpressures_then_replays_the_red_tail_withou
             .cells
             .iter()
             .flatten()
-            .any(|c| c.c == 'A' && c.fg == bbt_core::Color::Named(bbt_core::NamedColor::Red))
+            .any(|c| c.c == 'R' && c.fg == bbt_core::Color::Named(bbt_core::NamedColor::Red))
     );
-    let history = runtime
-        .block_on(logic.client.history(seat, 1, 1, snapshot.sequence))
-        .unwrap();
-    assert!(history.gap.is_some()); // Old hot history was safely evicted, not a capture loss.
-    assert!(history.status.byte_end >= 655360);
+    let mut hash = Sha256::new();
+    let mut count = 0;
+    let mut from = 1;
+    while from <= snapshot.sequence {
+        let page = runtime
+            .block_on(logic.client.history(seat, 1, from, snapshot.sequence))
+            .unwrap();
+        assert!(page.gap.is_none());
+        for record in page.records {
+            if let bbt_mux::Event::Output { bytes, .. } = record.event {
+                count += bytes.len();
+                hash.update(bytes);
+            }
+        }
+        from = page.next.unwrap_or(snapshot.sequence + 1);
+    }
+    let mut expected = Sha256::new();
+    expected.update(b"BEFORE\r\n");
+    for _ in 0..320 {
+        expected.update([b'x'; 65536]);
+    }
+    expected.update(b"\x1b[31mRING-TAIL\x1b[0m\r\n");
+    assert_eq!(count, raw_size);
+    assert_eq!(hash.finalize(), expected.finalize());
     logic.shutdown().unwrap();
     let Reply::Seats { seats } = supervisor
         .connect()
@@ -643,6 +747,72 @@ fn ring_full_during_logic_absence_backpressures_then_replays_the_red_tail_withou
         panic!()
     };
     assert_eq!(seats[0].pid, info.pid);
+}
+
+#[test]
+fn ring_live_logic_catches_up_coalesced_notifications_after_a_stall() {
+    struct Delayed {
+        client: bbt_mux::Client,
+        pause: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    }
+    impl bbt_mux::logic::SupervisorConnection for Delayed {
+        fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
+            Ok(self.client.request(action)?)
+        }
+        fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<bbt_mux::Event>> {
+            if self.pause.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                std::thread::sleep(Duration::from_millis(750));
+            }
+            match self.client.recv_timeout(timeout) {
+                Ok(e) => Ok(Some(e)),
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Ok(None),
+                Err(e) => Err(e.into()),
+            }
+        }
+    }
+    let temp = tempfile::tempdir().unwrap();
+    let runtime = runtime();
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let pause = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let logic = Logic::start(
+        Delayed {
+            client: supervisor.connect().unwrap(),
+            pause: pause.clone(),
+        },
+        fixture(temp.path()),
+        SigningKey::from_bytes(&[28; 32]),
+        runtime.handle(),
+    )
+    .unwrap();
+    let spec = ring_writer(temp.path(), 5 * 1024 * 1024);
+    let seat = spec.seat;
+    runtime
+        .block_on(logic.client.spawn(
+            SeatRecord::new(seat, Ulid::new(), "stalled logic", "python"),
+            spec,
+        ))
+        .unwrap();
+    wait_for_prefix(&runtime, &logic, seat);
+    pause.store(true, std::sync::atomic::Ordering::SeqCst);
+    std::fs::write(temp.path().join("gate"), b"go").unwrap();
+    let until = Instant::now() + Duration::from_secs(30);
+    loop {
+        let snapshot = runtime.block_on(logic.client.snapshot(seat, 1)).unwrap();
+        let text: String = snapshot
+            .screen
+            .cells
+            .iter()
+            .flatten()
+            .map(|c| c.c)
+            .collect();
+        if text.contains("RING-TAIL") {
+            assert!(snapshot.screen.gap.is_none());
+            break;
+        }
+        assert!(Instant::now() < until, "live logic failed to catch up");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    logic.shutdown().unwrap();
 }
 
 #[test]
