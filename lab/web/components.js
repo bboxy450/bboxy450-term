@@ -637,6 +637,43 @@
     });
     return panel;
   }
+  // First run (identity.md bootstrap, I2): select and pin an existing GPG primary; sign through gpg-agent (pinentry, never our
+  // field); then create this device's key, certified by the primary, and account head epoch 1. Never create a root, never show
+  // words as a root. No key: point at gpg. Primary elsewhere: a signed enrollment request, awaiting the primary's signature.
+  const fp4 = f => f.match(/.{4}/g).join(' ');
+  function firstRun(st, opts) {
+    opts = opts || {};
+    const keys = opts.keys || [
+      { uid: 'Boxy (bboxy450) <bboxy450@gmail.com>', fp: '9B07E849480C68328CA20684844ECC0587DE7AB0', algo: 'ed25519', created: '2026-03-02', expires: 'never', where: 'secret key here · gpg-agent' },
+      { uid: 'Boxy (work laptop) <boxy@example.com>', fp: '3C51A9E0D4F2B78811C6E0A9D27F4B13E5C08A66', algo: 'rsa4096', created: '2019-08-14', expires: '2027-08-14', where: 'secret key here · gpg-agent', note: 'RSA primaries are not supported yet (identity.md gap)' },
+    ];
+    let sel = opts.selected || 0;
+    const panel = el('div', { class: 'first-run', role: 'dialog', 'aria-label': 'first run' });
+    const head = (t, sub) => el('div', { class: 'fr-head' }, logo(40, { square: true }), el('div', {}, el('div', { class: 'fr-title' }, t), el('div', { class: 'fr-sub' }, sub)));
+    const steps = n => el('ol', { class: 'fr-steps' }, ...['Pin your GPG primary', 'Certify this Mac’s device key', 'Write account head, epoch 1'].map((t, i) => el('li', { class: i < n ? 'done' : i === n ? 'now' : '' }, el('i', {}, i < n ? '✓' : String(i + 1)), t)));
+    const keyRow = (k, i) => el('label', { class: 'fr-key' + (i === sel ? ' on' : '') + (k.note ? ' unsupported' : ''), onclick: () => { if (k.note) return; sel = i; panel.replaceWith(firstRun(st, { ...opts, selected: i })); } },
+      el('span', { class: 'radio' }), el('div', { class: 'fr-k' }, el('b', {}, k.uid), el('code', { class: 'fr-fp' }, fp4(k.fp)), el('span', { class: 'fr-meta' }, k.algo + ' · created ' + k.created + ' · expires ' + k.expires + ' · ' + k.where), k.note ? el('span', { class: 'fr-note' }, k.note) : null));
+    const btn = (t, cls, on) => el('button', { class: 'fr-btn ' + (cls || ''), onclick: on || null }, t);
+    if (st === 'keys found') panel.append(head('Who are you?', 'bboxy450-term uses the GPG key you already sign with. Pick it; nothing new is created.'), steps(0),
+      el('div', { class: 'fr-keys' }, ...keys.map(keyRow)),
+      el('div', { class: 'fr-acts' }, el('span', { class: 'fr-hint' }, 'Pinning signs one bootstrap record through gpg-agent. If the key is locked, pinentry asks in its own window.'), btn('Pin this key', 'primary', () => opts.onPin && opts.onPin(keys[sel]))));
+    if (st === 'signing') panel.append(head('Signing with your key', 'gpg-agent has the request. If pinentry is open, answer it there; this window never asks for your passphrase.'), steps(0),
+      el('div', { class: 'fr-wait' }, el('i', { class: 'spin' }), el('div', {}, el('b', {}, 'Waiting for gpg-agent'), el('code', { class: 'fr-fp' }, fp4(keys[0].fp)))), el('div', { class: 'fr-acts' }, btn('Cancel', 'ghost')));
+    if (st === 'pinned') panel.append(head('You are Boxy', 'Pinned. This Mac now has its own device key, certified by your primary.'), steps(3),
+      el('div', { class: 'fr-done' }, el('div', {}, el('span', { class: 'k' }, 'primary'), el('code', { class: 'fr-fp' }, fp4(keys[0].fp))), el('div', {}, el('span', { class: 'k' }, 'uid'), el('span', {}, keys[0].uid)), el('div', {}, el('span', { class: 'k' }, 'device'), el('span', {}, 'this Mac · certified leaf key · epoch 1'))),
+      el('div', { class: 'fr-acts' }, el('span', { class: 'fr-hint' }, 'Google can be linked later for cloud; it is a link, never a sign-in.'), btn('Open the window', 'primary', () => opts.onDone && opts.onDone())));
+    if (st === 'no secret key') panel.append(head('No signing key found', 'There is no secret key in your GnuPG keyring. Make one with gpg, then come back; bboxy450-term will not create a root for you.'), steps(0),
+      el('pre', { class: 'fr-cmd' }, "gpg --quick-generate-key 'Your Name <you@example.com>' ed25519 sign never"),
+      el('div', { class: 'fr-acts' }, el('span', { class: 'fr-hint' }, 'Back it up the way you back up any GPG key. Recovery restores identity only.'), btn('Look again', 'primary')));
+    if (st === 'primary unavailable') panel.append(head('Your primary is not on this Mac', 'The keyring has the public certificate for Boxy but not the secret key: it lives on another machine or a card.'), steps(0),
+      el('div', { class: 'fr-keys' }, el('div', { class: 'fr-key on' }, el('span', { class: 'radio' }), el('div', { class: 'fr-k' }, el('b', {}, keys[0].uid), el('code', { class: 'fr-fp' }, fp4(keys[0].fp)), el('span', { class: 'fr-meta' }, 'ed25519 · public certificate only · secret key elsewhere')))),
+      el('div', { class: 'fr-acts' }, el('span', { class: 'fr-hint' }, 'This Mac makes a signed enrollment request; sign it wherever your primary lives.'), btn('Insert the card and look again', 'ghost'), btn('Make an enrollment request', 'primary', () => opts.onRequest && opts.onRequest())));
+    if (st === 'enrollment awaiting signature') panel.append(head('Waiting for your primary', 'This Mac made its device key and an enrollment request. Sign the request where your primary lives; nothing here pretends it is signed.'), steps(1),
+      el('div', { class: 'fr-done' }, el('div', {}, el('span', { class: 'k' }, 'request'), el('code', {}, '~/Library/Application Support/bboxy450-term/enroll-2026-10-21.req')), el('div', {}, el('span', { class: 'k' }, 'digest'), el('code', {}, 'sha256 4be1 77c0 9d2a 61f3')), el('div', {}, el('span', { class: 'k' }, 'for'), el('code', { class: 'fr-fp' }, fp4(keys[0].fp)))),
+      el('pre', { class: 'fr-cmd' }, 'bboxy450-term enroll sign enroll-2026-10-21.req   # where the primary is'),
+      el('div', { class: 'fr-acts' }, el('span', { class: 'fr-hint' }, 'Until it is signed this Mac runs local seats only; account messaging waits.'), btn('Continue with local seats', 'ghost', () => opts.onDone && opts.onDone()), btn('Import the signed request', 'primary')));
+    return panel;
+  }
   // Provenance card: created_by / updated_by, weighted derived_from, the signed digest pair, and the hash-chained activity log
   function provenanceCard(prov) {
     const card = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Provenance · ' + (prov.items || []).length + ' items · log ' + (prov.log || []).length)));
@@ -1236,5 +1273,5 @@
     return root;
   }
 
-  window.C = { invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 43,
+  "version": 44,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -637,7 +637,8 @@
         "device enrollment flows",
         "Google linking"
       ],
-      "status": "drawn, not built"
+      "status": "built: firstRun(state) in components.js, launcher material: Who are you? (keyring secret keys with uid, full fingerprint in fours, algorithm, created, expiry, where; unsupported RSA primaries dimmed with the identity.md gap), three steps (pin primary, certify this device, account head epoch 1), Pin this key; signing (waiting for gpg-agent, pinentry in its own window, never our field); pinned (You are Boxy; primary, uid, device); no secret key (the gpg command, nothing created for you); first-run.html",
+      "states_built": "primary unavailable (public certificate only: make an enrollment request, or insert the card and look again); enrollment awaiting signature (request path and digest, the sign command for where the primary is, local seats only until signed, import the signed request)"
     },
     "settings_tab": {
       "purpose": "settings, as a tab in the current swarm",

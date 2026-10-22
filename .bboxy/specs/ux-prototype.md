@@ -156,7 +156,7 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 10 | spawn cap | per swarm | BUILT: amber banner names the cap (swarm, machine or account) and what counts; launch rows dim and refuse; Go to, Graph and Settings stay live |
 | 11 | purge | GUI only | BUILT: the one confirm modal from row menu Purge…; typed seat name; "terminates now and moves its history to cold storage · nothing is lost" |
 | 12 | sockets | seats are sockets | row menu "copy socket path" (pass 9); listener count BUILT: plug glyph + count at the row's right when > 0, counts only |
-| 13 | first run | identity (I2) | select and pin an existing GPG primary from the keyring, sign the bootstrap via gpg-agent; never create a root, never show words as a root; enrollment and Google deferred |
+| 13 | first run | identity (I2) | BUILT: select and pin an existing GPG primary (full fingerprint), sign via gpg-agent with pinentry in its own window; no key points at gpg; primary elsewhere makes a signed enrollment request that waits; never creates a root or shows words |
 | 14 | settings | config.toml | settings tab read-mostly |
 | 15 | role and permissions | per seat | BUILT: row menu (right-click, ⌘-click, long-press, ⇧F10): focus, splits, role ▸, permissions ▸, interrupt for steer callers, mute, copy socket path, close |
 | 16 | shadows | global messaging | module kept, deferred |

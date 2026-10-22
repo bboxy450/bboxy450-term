@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>first run · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+</head><body><script>
+const el = Lab.el;
+Lab.page({ title: 'first run', wide: true, note: 'Identity bootstrap (identity.md, I2). One screen in the launcher material over the empty window. The keyring’s secret keys with uid, the full 40-hex fingerprint grouped in fours, algorithm and expiry; pick one and pin it by signing through gpg-agent (pinentry asks in its own window, never here). Nothing is created as a root and no words are shown. No key: point at gpg. Primary elsewhere: a signed enrollment request that waits for the primary.',
+  states: ['keys found', 'signing', 'pinned', 'no secret key', 'primary unavailable', 'enrollment awaiting signature'],
+  render(s, body) {
+    const stage = el('div', { style: 'background:var(--navy);padding:40px 20px;border-radius:var(--r-pill);display:flex;justify-content:center;min-height:440px;align-items:flex-start' });
+    const go = st => { stage.innerHTML = ''; stage.append(C.firstRun(st, { onPin: () => go('signing'), onRequest: () => go('enrollment awaiting signature'), onDone: () => {} })); if (st === 'signing') setTimeout(() => stage.isConnected && go('pinned'), 1800); };
+    go(s); body.append(stage);
+  } });
+</script></body></html>
