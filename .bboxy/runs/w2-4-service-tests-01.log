@@ -1,0 +1,21 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+error[E0599]: no variant, associated function, or constant named `Working` found for enum `State` in the current scope
+   --> crates/bbt-mux/tests/messaging.rs:416:57
+    |
+416 |         .set_mute(Actor::Operator, f.b.id, true, State::Working, 1000)
+    |                                                         ^^^^^^^ variant, associated function, or constant not found in `State`
+
+error[E0599]: no variant, associated function, or constant named `Working` found for enum `State` in the current scope
+   --> crates/bbt-mux/tests/messaging.rs:433:31
+    |
+433 |                 state: State::Working,
+    |                               ^^^^^^^ variant, associated function, or constant not found in `State`
+
+error[E0599]: no variant, associated function, or constant named `Working` found for enum `State` in the current scope
+   --> crates/bbt-mux/tests/messaging.rs:462:58
+    |
+462 |         .set_mute(Actor::Operator, f.b.id, false, State::Working, 3000)
+    |                                                          ^^^^^^^ variant, associated function, or constant not found in `State`
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `bbt-mux` (test "messaging") due to 3 previous errors

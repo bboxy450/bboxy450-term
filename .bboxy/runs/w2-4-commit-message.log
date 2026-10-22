@@ -1,0 +1,10 @@
+Implement durable local seat messaging
+
+Sign generation-bound local-dev envelopes behind SeatKeys. Persist channel-tree
+routes, inbox/outbox, mute policy and delivery attempts before native/guarded
+PTY effects. Preserve FIFO, 4:1 fairness, token-bucket overflow and ambiguous
+outcomes; expose the same scoped API through LogicClient and seat sockets.
+
+Validation: 67 mux tests, including 15 messaging acceptance tests; strict mux
+clippy, workspace build and scoped formatting pass. Shared-source CI races are
+recorded in the evidence; the required clean-commit CI is run after this commit.

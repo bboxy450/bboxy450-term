@@ -182,6 +182,15 @@ pub enum Action {
         input_id: Ulid,
         bytes: Vec<u8>,
     },
+    InputContext {
+        attachment: Attachment,
+    },
+    GuardedInput {
+        attachment: Attachment,
+        input_id: Ulid,
+        bytes: Vec<u8>,
+        expected: InputContext,
+    },
     InputStatus {
         seat: Ulid,
         generation: u64,
@@ -248,6 +257,20 @@ pub struct InputReceipt {
     pub bytes_total: usize,
 }
 
+/// Supervisor-owned facts, sampled again immediately before guarded admission.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InputContext {
+    pub epoch: u64,
+    pub last_input_ms: u64,
+    pub sequence: u64,
+    pub draft: bool,
+    pub foreground_pid: Option<u32>,
+    pub canonical: bool,
+    pub echo: bool,
+    pub settled: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Reply {
@@ -269,6 +292,9 @@ pub enum Reply {
     },
     Input {
         receipt: InputReceipt,
+    },
+    InputContext {
+        context: InputContext,
     },
     RingRecovery {
         status: crate::ring::Status,

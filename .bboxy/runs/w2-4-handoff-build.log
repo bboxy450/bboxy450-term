@@ -1,0 +1,7 @@
+$ cargo build --workspace --locked
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.97s
+
+exit_status=0

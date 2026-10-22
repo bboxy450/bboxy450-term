@@ -1,0 +1,28 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.49s
+     Running tests/messaging.rs (target/debug/deps/messaging-1b36e13ba165b15a)
+
+running 7 tests
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... FAILED
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+
+failures:
+
+---- mute_holds_both_directions_reopens_and_releases_only_under_current_grants stdout ----
+
+thread 'mute_holds_both_directions_reopens_and_releases_only_under_current_grants' (7058035) panicked at crates/bbt-mux/tests/messaging.rs:465:35:
+called `Option::unwrap()` on a `None` value
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    mute_holds_both_directions_reopens_and_releases_only_under_current_grants
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.99s
+
+error: test failed, to rerun pass `-p bbt-mux --test messaging`

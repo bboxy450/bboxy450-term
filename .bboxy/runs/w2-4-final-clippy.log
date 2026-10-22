@@ -1,0 +1,25 @@
+$ cargo clippy -p bbt-mux --all-targets --locked -- -D warnings
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-rt)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+error: this function has too many arguments (8/7)
+   --> crates/bbt-mux/src/messaging/service.rs:745:1
+    |
+745 | / fn mint(
+746 | |     tx: &rusqlite::Transaction<'_>,
+747 | |     keys: &dyn SeatKeys,
+748 | |     record: &SeatRecord,
+...   |
+753 | |     operator_direct: bool,
+754 | | ) -> Result<Envelope> {
+    | |_____________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#too_many_arguments
+    = note: `-D clippy::too-many-arguments` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
+
+error: could not compile `bbt-mux` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bbt-mux` (lib test) due to 1 previous error
+
+exit_status=101

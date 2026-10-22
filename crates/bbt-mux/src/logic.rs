@@ -148,6 +148,19 @@ pub struct LogicConfig {
 }
 
 enum Command {
+    Messaging(
+        Ulid,
+        u64,
+        crate::messaging::api::Request,
+        bool,
+        oneshot::Sender<Result<crate::messaging::api::Response>>,
+    ),
+    DeliveryEndpoint(
+        Ulid,
+        u64,
+        crate::adapters::Endpoint,
+        oneshot::Sender<Result<()>>,
+    ),
     Launch(
         Box<SeatRecord>,
         HarnessRecord,
@@ -200,6 +213,55 @@ pub struct LogicClient {
     pub bus: BusHandle,
 }
 impl LogicClient {
+    /// Admitted seat identity; the broker derives its class from the registry.
+    pub async fn messaging(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        request: crate::messaging::api::Request,
+    ) -> Result<crate::messaging::api::Response> {
+        self.message_request(seat, generation, request, false).await
+    }
+    /// Trusted in-process GUI composer. This is never a seat socket operation.
+    pub async fn messaging_operator(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        request: crate::messaging::api::Request,
+    ) -> Result<crate::messaging::api::Response> {
+        self.message_request(seat, generation, request, true).await
+    }
+    async fn message_request(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        request: crate::messaging::api::Request,
+        operator: bool,
+    ) -> Result<crate::messaging::api::Response> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::Messaging(seat, generation, request, operator, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await
+            .map_err(|_| invalid("message operation outcome unknown; query original message ID"))?
+    }
+    /// Trusted discovery/fixture seam. Native delivery still checks process
+    /// start and native session on every attempt. Peers cannot set this path.
+    pub async fn bind_delivery_endpoint(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        endpoint: crate::adapters::Endpoint,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::DeliveryEndpoint(seat, generation, endpoint, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
+
     pub async fn spawn_harness(
         &self,
         record: SeatRecord,
@@ -369,14 +431,20 @@ impl Logic {
         let thread = std::thread::Builder::new()
             .name("bbt-logic".into())
             .spawn(move || {
-                let mut worker =
-                    match Worker::open(Box::new(connection), config, bus, runtime, worker_client) {
-                        Ok(worker) => worker,
-                        Err(error) => {
-                            let _ = ready_tx.send(Err(error.to_string()));
-                            return Err(error);
-                        }
-                    };
+                let mut worker = match Worker::open(
+                    Box::new(connection),
+                    config,
+                    bus,
+                    runtime,
+                    worker_client,
+                    key,
+                ) {
+                    Ok(worker) => worker,
+                    Err(error) => {
+                        let _ = ready_tx.send(Err(error.to_string()));
+                        return Err(error);
+                    }
+                };
                 let _ = ready_tx.send(Ok(()));
                 let result = worker.run(rx, stopping);
                 let _ = worker.handle.block_on(worker.bus.shutdown());
@@ -425,6 +493,7 @@ struct LegacySaved {
 }
 struct ViewState {
     adapter: Session,
+    delivery_endpoint: crate::adapters::Endpoint,
     tap: OscTap,
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
@@ -455,6 +524,12 @@ impl std::ops::DerefMut for ViewState {
     }
 }
 
+struct Delivery {
+    swarm: Ulid,
+    work: crate::messaging::ledger::Work,
+    outcome: crate::adapters::WakeOutcome,
+    relayed: bool,
+}
 struct Worker {
     connection: Box<dyn SupervisorConnection>,
     config: LogicConfig,
@@ -468,6 +543,8 @@ struct Worker {
     client: LogicClient,
     endpoints: BTreeMap<Ulid, (EndpointInfo, crate::seat_socket::SeatEndpoint)>,
     endpoint_root: PathBuf,
+    messaging: crate::messaging::Messaging,
+    deliveries: tokio::task::JoinSet<Delivery>,
 }
 impl Worker {
     fn open(
@@ -476,6 +553,7 @@ impl Worker {
         bus: BusHandle,
         handle: tokio::runtime::Handle,
         client: LogicClient,
+        key: SigningKey,
     ) -> Result<Self> {
         let registry = Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
         let index = Index::open(
@@ -495,6 +573,10 @@ impl Worker {
         std::fs::DirBuilder::new()
             .mode(0o700)
             .create(&endpoint_root)?;
+        let messaging = crate::messaging::Messaging::open(
+            &config.run_dir,
+            Arc::new(crate::messaging::keys::LocalSeatKeys::new(key)),
+        )?;
         let mut worker = Self {
             connection,
             config,
@@ -508,6 +590,8 @@ impl Worker {
             client,
             endpoints: BTreeMap::new(),
             endpoint_root,
+            messaging,
+            deliveries: tokio::task::JoinSet::new(),
         };
         if let Reply::Seats { seats } = worker.connection.request(Action::ListOwnedSeats)? {
             for info in seats {
@@ -682,6 +766,7 @@ impl Worker {
             info.seat,
             ViewState {
                 adapter,
+                delivery_endpoint: crate::adapters::Endpoint::None,
                 tap,
                 replies,
                 native_reader: None,
@@ -830,6 +915,7 @@ impl Worker {
             Ok(_) => (),
             Err(_) => self.registry.insert(&record)?,
         }
+        self.messaging.sync_seat(&record)?;
         let Reply::Spawned { info } = self.connection.request(Action::Spawn { spec })? else {
             return Err(invalid("spawn reply mismatch"));
         };
@@ -1070,6 +1156,10 @@ impl Worker {
                             &view.adapter.binding,
                         ) {
                             Ok(file) => {
+                                if let Some(path) = &file.messaging_socket_path {
+                                    view.delivery_endpoint =
+                                        crate::adapters::Endpoint::Claude { path: path.clone() };
+                                }
                                 let _ = view.adapter.observe_claude_session(
                                     &file,
                                     view.state.sequence,
@@ -1095,6 +1185,11 @@ impl Worker {
                     if let Some(root) = root {
                         let path = root.join("app-server-control/app-server-control.sock");
                         let session = view.adapter.binding.session.clone();
+                        view.delivery_endpoint = crate::adapters::Endpoint::Codex {
+                            path: path.clone(),
+                            thread: session.clone(),
+                            turn: None,
+                        };
                         let thread = session.clone();
                         let generation = view.generation;
                         let client = self.client.clone();
@@ -1120,6 +1215,175 @@ impl Worker {
         }
         Ok(())
     }
+    fn pump_messages(&mut self) -> Result<()> {
+        use crate::adapters::{Evidence, Priority, WakeMethod, WakeOutcome};
+        while let Some(result) = self.deliveries.try_join_next() {
+            let delivery = result.map_err(|_| {
+                invalid("delivery task lost; restart to mark the journaled attempt unknown")
+            })?;
+            self.messaging.finish(
+                delivery.swarm,
+                &delivery.work,
+                &delivery.outcome,
+                now_ms(),
+                delivery.relayed,
+            )?;
+        }
+        let targets = self.messaging.ready(now_ms())?;
+        // Stable durable outbox records publish before native/PTY effects. A
+        // publish followed by a crash is deduplicated by its original bus id.
+        for (stream, draft) in self.messaging.events()? {
+            let id = draft.id;
+            self.publish(&stream, draft)?;
+            self.messaging.event_sent(&stream, id)?;
+        }
+        for (swarm, seat) in targets {
+            if self.deliveries.len() >= 32 {
+                break;
+            }
+            let Some(view) = self
+                .views
+                .get(&seat)
+                .filter(|v| v.adapter.status.source != "exit")
+            else {
+                continue;
+            };
+            let Some(work) = self.messaging.prepare(swarm, seat, now_ms())? else {
+                continue;
+            };
+            let mut text = work.text();
+            let relayed = if let Some(agent) = &work.agent {
+                if !view.adapter.status.subagents.iter().any(|a| &a.id == agent) {
+                    self.messaging.finish(swarm,&work,&WakeOutcome{evidence:Evidence::RecipientStored,native_id:None,note:"held: target subagent ended or is not currently reported; never redirect".into()},now_ms(),false)?;
+                    continue;
+                }
+                text =
+                    format!("Target subagent {agent}; relay via main to this target only.\n{text}");
+                true
+            } else {
+                false
+            };
+            match view.adapter.record.wake_method {
+                WakeMethod::ClaudeSocket | WakeMethod::CodexRpc => {
+                    let binding = view.adapter.binding.clone();
+                    let endpoint = view.delivery_endpoint.clone();
+                    let priority = if work.messages.iter().all(|m| m.envelope.priority > 0) {
+                        Priority::Later
+                    } else {
+                        Priority::Next
+                    };
+                    self.deliveries.spawn_on(
+                        async move {
+                            let outcome = crate::adapters::native::wake(
+                                &binding, &endpoint, work.id, &text, priority, false,
+                            )
+                            .await;
+                            Delivery {
+                                swarm,
+                                work,
+                                outcome,
+                                relayed,
+                            }
+                        },
+                        &self.handle,
+                    );
+                }
+                WakeMethod::Pty => {
+                    let outcome = self.deliver_pty(seat, &work, &text)?;
+                    self.messaging
+                        .finish(swarm, &work, &outcome, now_ms(), relayed)?;
+                }
+                WakeMethod::Operator => {
+                    self.messaging.finish(
+                        swarm,
+                        &work,
+                        &WakeOutcome {
+                            evidence: Evidence::RecipientStored,
+                            native_id: None,
+                            note: "pending for operator: harness has no autonomous input path"
+                                .into(),
+                        },
+                        now_ms(),
+                        false,
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
+    fn deliver_pty(
+        &mut self,
+        seat: Ulid,
+        work: &crate::messaging::ledger::Work,
+        text: &str,
+    ) -> Result<crate::adapters::WakeOutcome> {
+        use crate::adapters::{ArbiterView, Evidence, WakeOutcome};
+        let pending = |note: &str| WakeOutcome {
+            evidence: Evidence::RecipientStored,
+            native_id: None,
+            note: note.into(),
+        };
+        let attachment = self
+            .attachments
+            .get(&seat)
+            .ok_or_else(|| invalid("recipient has no writer lease"))?
+            .clone();
+        let context = match self.connection.request(Action::InputContext {
+            attachment: attachment.clone(),
+        }) {
+            Ok(Reply::InputContext { context }) => context,
+            _ => {
+                return Ok(pending(
+                    "pending for operator: live PTY arbiter unavailable",
+                ));
+            }
+        };
+        let view = self.views.get_mut(&seat).unwrap();
+        let now = now_ms();
+        if !context.settled
+            || context.sequence != view.state.sequence
+            || view
+                .adapter
+                .proof
+                .as_ref()
+                .is_none_or(|p| p.observed_ms <= context.last_input_ms)
+            || now.saturating_sub(context.last_input_ms) < 500
+        {
+            return Ok(pending(
+                "pending for operator: fresh readiness after the last input and a caught-up PTY are required",
+            ));
+        }
+        let arbiter = ArbiterView {
+            binding: view.adapter.binding.clone(),
+            operator_epoch: context.epoch,
+            foreground_pid: context.foreground_pid,
+            operator_draft: context.draft,
+            active_tool: view.adapter.status.turn_open,
+            sync_pending: view.state.term.sync_pending(),
+            screen_switch_pending: view.changed_at.elapsed() < Duration::from_millis(50),
+            canonical: context.canonical,
+            echo: context.echo,
+            bracketed_paste: view
+                .state
+                .term
+                .mode()
+                .contains(bbt_core::term::TermMode::BRACKETED_PASTE),
+        };
+        let directory = object_dir(&self.config.run_dir, &format!("seat-{seat}"))?;
+        let journal = SqliteStore::open(&directory)?;
+        view.adapter
+            .submit_pty(&arbiter, now, work.id, text, &journal, |bytes| {
+                match self.connection.request(Action::GuardedInput {
+                    attachment,
+                    input_id: work.id,
+                    bytes,
+                    expected: context,
+                })? {
+                    Reply::Input { receipt } => Ok(receipt),
+                    _ => Err(invalid("guarded input result unknown")),
+                }
+            })
+    }
     fn publish_adapter(&self, id: Ulid, status: crate::adapters::Status) -> Result<()> {
         self.publish(
             &format!("seat-{id}"),
@@ -1133,12 +1397,55 @@ impl Worker {
     fn run(&mut self, mut commands: mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
         let mut adapters_at = Instant::now();
+        let mut messages_at = Instant::now();
         while !stop.load(Ordering::Acquire) {
             for _ in 0..32 {
                 let Ok(command) = commands.try_recv() else {
                     break;
                 };
                 match command {
+                    Command::Messaging(id, generation, request, operator, reply) => {
+                        let result = (|| {
+                            self.snapshot(id, generation)?;
+                            let state = match &request {
+                                crate::messaging::api::Request::Mute { seat, .. } => {
+                                    self.views.get(seat).map(|v| v.adapter.status.state)
+                                }
+                                _ => None,
+                            };
+                            self.messaging.request(
+                                id,
+                                generation,
+                                request,
+                                operator,
+                                state,
+                                now_ms(),
+                            )
+                        })();
+                        let _ = reply.send(result);
+                    }
+                    Command::DeliveryEndpoint(id, generation, endpoint, reply) => {
+                        let result = (|| {
+                            let view = self
+                                .views
+                                .get_mut(&id)
+                                .filter(|v| v.generation == generation)
+                                .ok_or_else(|| invalid("stale delivery generation"))?;
+                            match (&endpoint, view.adapter.record.kind.as_str()) {
+                                (crate::adapters::Endpoint::Claude { .. }, "claude")
+                                | (crate::adapters::Endpoint::Codex { .. }, "codex")
+                                | (crate::adapters::Endpoint::None, _) => {}
+                                _ => {
+                                    return Err(invalid(
+                                        "native endpoint does not match harness kind",
+                                    ));
+                                }
+                            }
+                            view.delivery_endpoint = endpoint;
+                            Ok(())
+                        })();
+                        let _ = reply.send(result);
+                    }
                     Command::Launch(record, harness, options, reply) => {
                         let result = self.launch(*record, harness, options);
                         let _ = reply.send(result);
@@ -1291,6 +1598,10 @@ impl Worker {
             if adapters_at.elapsed() >= Duration::from_millis(200) {
                 self.refresh_adapters()?;
                 adapters_at = Instant::now();
+            }
+            if messages_at.elapsed() >= Duration::from_millis(100) {
+                self.pump_messages()?;
+                messages_at = Instant::now();
             }
             let idle: Vec<_> = self
                 .views

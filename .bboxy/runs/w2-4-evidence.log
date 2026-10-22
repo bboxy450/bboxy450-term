@@ -1,0 +1,112 @@
+W2.4 — local messaging
+Executor: Rook Ashwhisker. Worktree: /Users/feral/mydev/bboxy450-term.
+Date: 2026-10-22. Brief: .bboxy/tasks/2026-10-22-w2-4-local-messaging.md.
+
+Decisions applied:
+- Vesper cde984bd-19b1-4216-92b8-de7c1bb16166: supplied broker key is a
+  local development issuer, not GPG. SeatKeys is the custody seam. HKDF-SHA256
+  info = bboxy450/seat-leaf/v1 || 16-byte ULID || generation BE64.
+- Same decision: S15's 4 Oracle : 1 worker fairness remains, plus 10/s burst 30.
+- Existing messaging spec: authenticated direct operator control remains usable
+  during mute; peer sends cannot claim this exception. Local issued-grant digest
+  binds the origin without adding a peer-controlled bypass flag.
+- Dependency slice signed separately in 0150ee0bb95561dbbce42bef14760271effb9839:
+  hkdf =0.12.4 + hmac 0.12.1, no existing package upgrades. Lock coordination
+  released to Nyx. Root Cargo.lock thereafter includes other agents' changes.
+
+Files / mechanisms:
+- src/messaging/{keys,wire}: generation-bound local leaf signatures, explicit
+  issuer_kind, fixed tuple/domain, bounded typed bodies, canonical counters.
+- src/messaging/tree: per-swarm SQLite rows plus memory projection; closest
+  explicit ACL replaces inheritance, [] revokes; cycle-safe folder bridges,
+  sink dedup, retained arrival paths, explicit count/byte rejection and outbox.
+- src/messaging/ledger: immutable signed messages + recipient records before
+  scheduling, receipt history, journaled attempts, per-receiver FIFO/token bucket,
+  4:1 fairness, bounded contiguous batching, pagination and crash-unknown recovery.
+- src/messaging/{api,service}: scoped client API, current grants/mute on release,
+  atomic mute policy/notice/controller intent, typed metadata-only notices.
+- src/logic: broker on existing R1 handle, async native dispatch (max 32 tasks,
+  one in-flight per recipient), same path for native discovery and the client.
+- src/seat_socket: capability+generation-bound Messaging action; no supplied role,
+  issuer, signing key, operator privilege or native endpoint setter in peer JSON.
+- src/protocol + supervisor + adapters/guard: live input context and actor-side
+  final fence; input epoch, draft, foreground group, termios and capture cursor;
+  a delayed first write is fenced again. Ambiguous/partial writes never retype.
+- README describes custody, wire, bounds, ordering, mute and deliberate limits.
+
+Acceptance evidence (all paths under crates/bbt-mux):
+1. Signed fields / forged class / issuer / counters / HKDF identity:
+   tests/messaging.rs:48; src/messaging/wire.rs:151,194; keys.rs:30,43.
+2. #bboxy/** nested fan-out, one record per sink, bridge and cycle, arrival paths:
+   tests/messaging.rs:100; src/messaging/tree.rs:407.
+3. Filters/rate/own-subscription grants and named-folder write refusal:
+   tests/messaging.rs:192; actual Oracle sink batching at :523.
+4. Store before scheduling, reply retry idempotence, ack-completion race and
+   crash-unknown with no resubmission: tests/messaging.rs:360;
+   src/messaging/ledger.rs:135,332,481,629.
+5. Oracle precedence, FIFO and burst overflow: tests/messaging.rs:496;
+   batching cannot jump an earlier route: :1038.
+6. Held inbound/outbound survives reopen, revoked grants keep residue and
+   eligible work releases with original IDs: tests/messaging.rs:412.
+   Authenticated GUI one-to-one exception, never a peer-supplied flag: :1078.
+7. Two actual PTY fixture seats, capability seat socket -> broker -> owned
+   native Claude fixture socket -> native-written: tests/messaging.rs:607.
+   No model or real harness session was used. Receiver/model acceptance remains
+   unproven; application-acknowledged is produced only by explicit recipient ack.
+8. Ambiguous partial PTY receipt stays native-unknown after reopen: :775.
+   Real PTY stale draft/epoch admits no bytes: :840. Fresh foreground evidence
+   succeeds and replaced evidence refuses: :958.
+9. Per-recipient cursor keeps all sinks and unsubscribe is durable: :907.
+   Excess arrival paths reject rather than hide an unpaused route: :1134.
+
+Verification (authoritative latest logs are w2-4-acceptance-*.log):
+- cargo test -p bbt-mux --locked — exit 0; 67 passed, 0 failed, 4 existing
+  ignored measurement/subprocess fixtures. Includes 15 messaging tests.
+- cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit 0.
+- cargo fmt -p bbt-mux -- --check — exit 0.
+- bash scripts/layering.sh — exit 0 after fast-forwarding Corvin c0f13f3.
+- sh scripts/ui-lint.sh — exit 0, with warnings in peer-owned document module.
+- Earlier complete workspace builds passed (w2-4-verified-build.log); latest
+  acceptance workspace build stopped in a peer edit at chrome/paths.rs:513,
+  missing fn. First sh scripts/ci-local.sh exited 101 at the same parse error.
+  Nyx notified by DM 0400ffa6-494a-40d3-b298-019829e05585. Final rerun below.
+
+Failures retained, not hidden:
+- Initial ledger check: unsupported SQLite usize/u64 conversions; corrected.
+- Service compile: match-arm semicolons; corrected.
+- Initial tests: wrong fixture State::Working name and borrowed Client::input
+  arguments; corrected. Mute test exposed inherited ACL revocation, fixed by
+  nearest explicit rights. All appear in w2-4-*-01/02 logs.
+- Early clippy type-complexity/collapsible-if/argument-count findings corrected.
+- Stale layering script omitted bboxy-firehose; Oracle's existing fix fetched.
+
+Not checked / scope deliberately left:
+- No real Claude/Codex model consumption or inbound-policy admission test, no
+  networking, cross-account, GPG/Keychain enrollment or GUI composer wiring.
+- No 1000-seat messaging throughput/disk-failure/power-cut test, no Linux or
+  macOS 14 test. Existing ring performance and parser behavior were not changed.
+- Guard and partial-write fixtures prove the exercised paths; arbitrary live
+  harness/session races and multiple concurrent logic-owner fault injection
+  are unproven. Metadata presence never claims a model ack.
+- Native subagent-specific channels are unavailable; known live targets can
+  relay via main, ended/unreported targets remain held. No model relay claimed.
+- Initial identity is explicitly local-dev; full certification/revocation and
+  adversarial same-UID isolation are outside this local prototype seam.
+- No unrelated UI/lab/source/config files changed or staged by this Executor.
+
+Final verification continuation:
+- Latest focused suite: w2-4-handoff-messaging.log — exit 0, 15 tests.
+- Latest strict clippy / workspace build / formatting:
+  w2-4-handoff-{clippy,build,fmt}.log — each exit 0.
+- Shared-source CI run 02 passed runtime/integration tests, then rustdoc saw an
+  unavailable peer document_modal export. A standalone doc recheck rebuilt the
+  dependency and passed (w2-4-peer-doc-recheck.log, exit 0).
+- Shared-source CI run 03 reported missing bbt_mux::messaging and GuardedInput
+  despite current lib.rs:19 and protocol.rs:188 defining them. Not accepted as
+  a proof of the source. Separate target alone did not freeze shared sources.
+- Vesper d73e593f-5b3b-487e-ac01-ac1a86353e0b / channel 93c51a66 introduced
+  the clean-commit worktree gate. Own superseded shared-source isolated-target
+  CI was stopped (-15), not represented as a pass. No peer process was killed.
+- A fast-forward to origin was refused: local b2e95f2 lab commit and remote
+  4e0a191 CI-rule commit diverged. Neither side was reset, rebased or merged.
+  Source is signed first; the clean-worktree result follows in a separate log.

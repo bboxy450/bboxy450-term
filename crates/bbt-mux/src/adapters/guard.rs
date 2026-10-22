@@ -124,6 +124,28 @@ impl Session {
                     note: "fully PTY-written; consumption unverified".into(),
                 }
             }
+            Err(error)
+                if error.downcast_ref::<crate::Failure>().is_some_and(|f| {
+                    matches!(
+                        f.code,
+                        crate::FailureCode::Busy
+                            | crate::FailureCode::StaleLease
+                            | crate::FailureCode::StaleWriter
+                            | crate::FailureCode::StaleGeneration
+                            | crate::FailureCode::Invalid
+                            | crate::FailureCode::Limit
+                            | crate::FailureCode::Exited
+                            | crate::FailureCode::Unauthorized
+                            | crate::FailureCode::NotFound
+                    )
+                }) =>
+            {
+                WakeOutcome {
+                    evidence: Evidence::RecipientStored,
+                    native_id: None,
+                    note: format!("supervisor refused before mutation: {error}"),
+                }
+            }
             _ => pending,
         };
         self.record_outcome(id, &result);

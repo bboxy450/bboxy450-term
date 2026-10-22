@@ -22,6 +22,7 @@ The UI uses bounded asynchronous `LogicClient` messages.
 | `registry` | Account-owned ULID seat records, signed-role shape, location, mute, harness session and task references, close revisions and exact restore positions. |
 | `index` | FSEvents/inotify invalidation, Markdown/YAML parsing, weighted wikilinks, SQLite mirror and durable event outbox, five petgraph projections. |
 | `bus` | One bounded router over per-object event streams, consumer policies, replay, coalescing, explicit acknowledgments and request/reply. |
+| `messaging` | Signed local envelopes, SQLite channel tree and inbox/outbox, current-grant release, receiver scheduling, evidence receipts and adapter delivery. |
 | `streams`, `seat_socket` | Acknowledged snapshot/delta baselines, generation validation, bounded NDJSON admission and explicit unavailable-history ranges. |
 
 ## Supervisor and input boundary
@@ -38,8 +39,8 @@ replacement increments the generation. Output, resize and exit share the
 supervisor's ordered per-seat cursor. Low-level input IDs retain digest/receipt
 state across logic replacement. An in-flight write completes or becomes
 `PartialUnknown`; it is never automatically replayed. The lease proves neither
-composer readiness nor application acknowledgment. Seat observation sockets
-expose no input operation: adapters and the guarded common writer are W2.3/W2.5.
+composer readiness nor application acknowledgment. Seat sockets expose semantic
+messaging requests through the common broker, without a raw-input operation.
 
 The supervisor's optional Unix listener uses a private owned 0700 parent, 0600
 socket and a random admission capability. Frames are capped at 1 MiB before
@@ -373,3 +374,91 @@ Not validated: real power loss, supervisor restart, native harness input or
 state integrations, cloud/SSH, account grants, production key custody, 1000
 running seats, macOS 14/Linux/mobile, hosted CI or renderer parity. No user
 keys, credentials, harness trust settings or model transcripts were accessed.
+
+## Local messaging (W2.4)
+
+`LogicClient::messaging(seat, generation, request)` and seat-socket
+`Action::Messaging` share `messaging::api::{Request, Response}`: send, paginated
+inbox/outbox/thread/channel reads, receipts, explicit application acknowledgments,
+tree listing, subscription/link edits, grants and mute. The socket capability
+and current generation select the caller; neither role nor signing key is a
+request field. Workers can edit only their own subscription links. Controllers
+are limited to their swarm. The GUI's in-process `messaging_operator` method is
+privileged and is deliberately absent from the seat socket. Native endpoint
+binding is another trusted host/discovery method, never a peer operation.
+
+**Custody seam:** `SeatKeys` supplies issuer, generation-bound leaf and signature
+verification. `LocalSeatKeys` uses the already-supplied broker signing key as a
+**local development issuer**, not an OpenPGP primary. HKDF-SHA256 derives a seed
+with no salt and info `bboxy450/seat-leaf/v1 || ULID.to_bytes() || generation_be64`.
+No new secret is persisted. Only public issued-grant records and the pinned issuer
+are stored in the account object. Envelopes explicitly say `issuer_kind=local-dev`;
+`gpg-root` is reserved and rejected by this provider. Full GPG certificates,
+revocation/expiry and Keychain custody remain the identity implementation's job.
+A different issuer cannot silently reopen the old local account. This seam is
+not a claim that local development grants implement the complete GPG chain.
+
+Wire v1 signs every field except the signature as two fixed-order JSON tuples
+(the order is in `wire::Envelope::signing_bytes`), prefixed by
+`bboxy450/message/v1\0` and the tuple's u64 big-endian byte length. ULIDs emit
+canonical strings; counters are canonical decimal strings, timestamp seconds
+are bounded to exact JSON integers, signature is unpadded base64url. Names,
+text, wikilink attachments and the complete envelope are bounded. Signed class
+must match the issued role; a subsequent demotion never retains Oracle priority.
+Delivery text labels peer content as data granting no local execution permission.
+
+Each swarm stores `(path, kind, target, filter, rate, paused, grants)` rows and an
+in-memory routing projection. A terminal `*` visits direct sinks; `**` descends
+folders and folder bridges. Active-path cycle detection terminates link loops;
+multiple arrival paths are retained but each `(message, seat, agent)` has only
+one delivery. The closest explicit seat ACL replaces inherited rights (`[]`
+revokes); every denial names the folder and missing right. Controller edits and
+receipt transitions enter a durable bus outbox in the same transaction as the
+state change. Stable draft IDs make publish/restart replay idempotent. Removed
+subscriptions are not recreated by bootstrap. Resolution is capped at 16,384
+nodes, 65,536 visits, 64 link depth/arrival paths and 4096 sinks per message.
+
+Signed envelopes, inbox records and sender/recipient receipts commit before
+scheduling or any native write. Receiver-local FIFO queues prioritize the
+verified Oracle class, with a 10/s, burst-30 token bucket; excess joins worker
+FIFO, and a waiting worker gets a dispatch after four Oracle messages. These
+are current local defaults. Rate-controlled links wait for their window and
+batch at most 16 messages / 40 KiB of content. There is at most one in-flight
+attempt per receiving seat and 32 asynchronous native tasks on the supplied
+runtime. An attempt is durably journaled before effects. Restart turns an
+unfinished attempt into `native-unknown` and never automatically resubmits it.
+Already queued/written/unknown work is not replayed. Explicit recipient ack is
+the only producer of `application-acknowledged`; a late native completion cannot
+regress it. A known rejection before mutation stays `recipient-stored` with a
+retry delay; no ambiguous native attempt falls back to a paste.
+
+Authenticated GUI direct control can still reach a muted seat one to one; its
+terminal-issued grant digest binds that origin. Peer requests have no such flag
+and cannot claim the exception.
+
+Mute commits the record, policy epoch, initiating controller and stable signed
+notice intent atomically in the account object. The swarm outbox recovers that
+intent after a crash. Notices are metadata and do not wake a harness. Inbound
+and outbound held work keeps original IDs/signatures across restart; release
+revalidates the sender, current role, same-swarm target, path ACL, filters and
+pause flags. Revoked or removed routes remain held with a reason. Unmute does
+not promise held count becomes zero, and cannot recall an in-flight native write.
+
+PTY fallback obtains supervisor-owned foreground-group/termios/input-epoch,
+draft and output-cursor facts. It additionally requires the adapter's fresh
+positive readiness after the last input, a caught-up screen, no pending dialog,
+tool, synchronized output or draft, and the W2.3 single-use token. The actor
+rechecks the full context immediately before admission, and again before a
+blocked first write. Raw input changes the epoch; draft editing is tracked
+conservatively (backspace does not guess that a draft became empty). A prefix or
+uncertain write remains unknown. Custom hookless harnesses remain pending for
+operator handoff. Known active subagent targets can be explicitly relayed via
+main; an ended/unreported target is held, never redirected. Native subagent
+addressing and model consumption are not claimed.
+
+Pages are capped at 128 items / 512 KiB; tree pages use path cursors, message
+pages local commit sequence, receipt pages receiver-local row cursors. Channel
+reads remain restricted to messages in the caller's inbox/outbox (or an Oracle's
+swarm view with channel read permission); joining later does not reveal an old
+private inbox. This pass provides the local client/broker path, not the composer
+UI, MCP tools, networking, external identity enrollment or multi-account routing.

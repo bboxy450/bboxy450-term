@@ -1,0 +1,3 @@
+$ git diff --check -- crates/bbt-mux
+
+exit_status=0

@@ -16,6 +16,7 @@ pub mod adapters;
 pub mod bus;
 pub mod index;
 pub mod logic;
+pub mod messaging;
 pub mod protocol;
 pub mod registry;
 pub mod ring;

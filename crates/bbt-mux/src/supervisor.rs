@@ -640,7 +640,41 @@ impl Actor {
                 let timeout = self.config.write_timeout;
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
-                let receipt = seat.accept_input(input_id, bytes, timeout)?;
+                let receipt = seat.accept_input(input_id, bytes, timeout, false)?;
+                Ok(Reply::Input { receipt })
+            }
+            Action::InputContext { attachment } => {
+                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
+                seat.check_writer(client, &attachment)?;
+                seat.check_live()?;
+                seat.flush_output().map_err(pty_error)?;
+                Ok(Reply::InputContext {
+                    context: seat.input_context(),
+                })
+            }
+            Action::GuardedInput {
+                attachment,
+                input_id,
+                bytes,
+                expected,
+            } => {
+                let timeout = self.config.write_timeout;
+                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
+                seat.check_writer(client, &attachment)?;
+                seat.check_live()?;
+                seat.flush_output().map_err(pty_error)?;
+                if !seat.inputs.contains_key(&input_id)
+                    && (seat.input_context() != expected
+                        || !expected.settled
+                        || expected.draft
+                        || expected.foreground_pid != Some(seat.pid))
+                {
+                    return Err(Failure::new(
+                        FailureCode::Busy,
+                        "guard changed before PTY write; no mutation",
+                    ));
+                }
+                let receipt = seat.accept_input(input_id, bytes, timeout, true)?;
                 Ok(Reply::Input { receipt })
             }
             Action::InputStatus {
@@ -956,6 +990,7 @@ struct PendingWrite {
     id: Ulid,
     bytes: Vec<u8>,
     deadline: Instant,
+    guard: Option<crate::protocol::InputContext>,
 }
 
 struct Seat {
@@ -977,6 +1012,9 @@ struct Seat {
     output_since: Option<Instant>,
     pending_write: Option<PendingWrite>,
     inputs: HashMap<Ulid, StoredInput>,
+    input_epoch: u64,
+    last_input_ms: u64,
+    operator_draft: bool,
     exited: Option<ExitInfo>,
     exit_published: bool,
     terminate_at: Option<Instant>,
@@ -1030,6 +1068,9 @@ impl Seat {
             output_since: None,
             pending_write: None,
             inputs: HashMap::new(),
+            input_epoch: 0,
+            last_input_ms: 0,
+            operator_draft: false,
             exited: None,
             exit_published: false,
             terminate_at: None,
@@ -1085,6 +1126,7 @@ impl Seat {
         id: Ulid,
         bytes: Vec<u8>,
         timeout: Duration,
+        guarded: bool,
     ) -> Result<InputReceipt, Failure> {
         if id == Ulid::nil() || bytes.is_empty() || bytes.len() > MAX_INPUT_BYTES {
             return Err(Failure::new(
@@ -1121,21 +1163,66 @@ impl Seat {
             bytes_written: 0,
             bytes_total: bytes.len(),
         };
+        // The one protocol-only response cannot be a human draft. Every other
+        // write fences a previously observed composer indication.
+        if bytes != b"\x1b]7501;?\x07" && bytes != b"\x1b]7501;?\x1b\\" {
+            self.input_epoch = self
+                .input_epoch
+                .checked_add(1)
+                .ok_or_else(|| Failure::new(FailureCode::Limit, "input epoch exhausted"))?;
+            self.last_input_ms = crate::store::now_ms();
+            self.operator_draft = !matches!(bytes.last(), Some(b'\r' | b'\n' | 3));
+        }
         self.inputs.insert(id, StoredInput { digest, receipt });
+        let guard = guarded.then(|| self.input_context());
         self.pending_write = Some(PendingWrite {
             id,
             bytes,
             deadline: Instant::now() + timeout,
+            guard,
         });
         self.write_ready = true;
         self.write_pending();
         Ok(self.inputs[&id].receipt.clone())
     }
 
+    fn input_context(&self) -> crate::protocol::InputContext {
+        let mut attrs = std::mem::MaybeUninit::<libc::termios>::uninit();
+        // SAFETY: this actor owns the PTY master; tcgetattr initializes attrs
+        // only on success and tcgetpgrp takes no pointer.
+        let valid = unsafe { libc::tcgetattr(self.fd, attrs.as_mut_ptr()) } == 0;
+        let flags = if valid {
+            unsafe { attrs.assume_init() }.c_lflag
+        } else {
+            0
+        };
+        let group = unsafe { libc::tcgetpgrp(self.fd) };
+        crate::protocol::InputContext {
+            epoch: self.input_epoch,
+            last_input_ms: self.last_input_ms,
+            sequence: self.next_seq - 1,
+            draft: self.operator_draft,
+            foreground_pid: u32::try_from(group).ok().filter(|p| *p > 0),
+            canonical: valid && flags & libc::ICANON != 0,
+            echo: valid && flags & libc::ECHO != 0,
+            settled: self.output.is_empty() && !self.read_ready && self.pending_event.is_none(),
+        }
+    }
+
     fn write_pending(&mut self) {
         let Some(pending) = self.pending_write.as_ref() else {
             return;
         };
+        if pending
+            .guard
+            .as_ref()
+            .is_some_and(|g| g != &self.input_context())
+            && self.inputs[&pending.id].receipt.bytes_written == 0
+        {
+            self.inputs.get_mut(&pending.id).unwrap().receipt.state = InputState::PartialUnknown;
+            self.pending_write = None;
+            return;
+        }
         let stored = self.inputs.get_mut(&pending.id).unwrap();
         if self.exited.is_some() || self.eof || Instant::now() >= pending.deadline {
             stored.receipt.state = InputState::PartialUnknown;

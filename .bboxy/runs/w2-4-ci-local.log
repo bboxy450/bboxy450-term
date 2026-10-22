@@ -1,0 +1,17 @@
+$ sh scripts/ci-local.sh
+layering: held
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+error: missing `fn` for function definition
+   --> crates/bbt-render/src/chrome/paths.rs:513:5
+    |
+513 |     fn_unrepresentable_pattern_cannot_cycle_through_zero_length_phases() {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: add `fn` here to parse `fn_unrepresentable_pattern_cannot_cycle_through_zero_length_phases` as a function
+    |
+513 |     fn fn_unrepresentable_pattern_cannot_cycle_through_zero_length_phases() {
+    |     ++
+
+error: could not compile `bbt-render` (lib) due to 1 previous error
+
+exit_status=101

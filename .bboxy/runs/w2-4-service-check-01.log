@@ -1,0 +1,30 @@
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+error: `match` arm body without braces
+   --> crates/bbt-mux/src/messaging/service.rs:166:115
+    |
+166 | ...Err(e)=>self.swarm(swarm_id)?.ledger.hold_out(message.sequence,&e.to_string())?;}
+    |          --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this statement is not surrounded by a body
+    |          |
+    |          while parsing the `match` arm starting here
+    |
+help: replace `;` with `,` to end a `match` arm expression
+    |
+166 -                 match routes {Ok(routes)=>self.swarm(swarm_id)?.ledger.release_out(&message,&routes,now)?,Err(e)=>self.swarm(swarm_id)?.ledger.hold_out(message.sequence,&e.to_string())?;}
+166 +                 match routes {Ok(routes)=>self.swarm(swarm_id)?.ledger.release_out(&message,&routes,now)?,Err(e)=>self.swarm(swarm_id)?.ledger.hold_out(message.sequence,&e.to_string())?,}
+    |
+
+error: `match` arm body without braces
+   --> crates/bbt-mux/src/messaging/service.rs:184:154
+    |
+184 | ...ss)?,Err(e)=>self.swarm(swarm_id)?.ledger.update_policy(receipt.clone(),None,Some(e.to_string()),Class::Worker)?;}
+    |               --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this statement is not surrounded by a body
+    |               |
+    |               while parsing the `match` arm starting here
+    |
+help: replace `;` with `,` to end a `match` arm expression
+    |
+184 -                     match resolved {Ok((route,class,held))=>self.swarm(swarm_id)?.ledger.update_policy(receipt.clone(),Some(&route),held,class)?,Err(e)=>self.swarm(swarm_id)?.ledger.update_policy(receipt.clone(),None,Some(e.to_string()),Class::Worker)?;}
+184 +                     match resolved {Ok((route,class,held))=>self.swarm(swarm_id)?.ledger.update_policy(receipt.clone(),Some(&route),held,class)?,Err(e)=>self.swarm(swarm_id)?.ledger.update_policy(receipt.clone(),None,Some(e.to_string()),Class::Worker)?,}
+    |
+
+error: could not compile `bbt-mux` (lib) due to 2 previous errors

@@ -1,0 +1,152 @@
+$ sh scripts/ci-local.sh
+layering: held
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxy450-term)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 20.00s
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxy450-term)
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+error[E0433]: cannot find `messaging` in `bbt_mux`
+ --> crates/bbt-mux/tests/messaging.rs:3:14
+  |
+3 | use bbt_mux::messaging::{
+  |              ^^^^^^^^^ could not find `messaging` in `bbt_mux`
+
+error[E0433]: cannot find `messaging` in `bbt_mux`
+   --> crates/bbt-mux/tests/messaging.rs:612:9
+    |
+612 |         messaging::api::{Request as Api, Response},
+    |         ^^^^^^^^^ could not find `messaging` in `bbt_mux`
+
+error[E0433]: cannot find `messaging` in `bbt_mux`
+   --> crates/bbt-mux/tests/messaging.rs:908:18
+    |
+908 |     use bbt_mux::messaging::{
+    |                  ^^^^^^^^^ could not find `messaging` in `bbt_mux`
+
+error[E0433]: cannot find `messaging` in `bbt_mux`
+    --> crates/bbt-mux/tests/messaging.rs:1079:18
+     |
+1079 |     use bbt_mux::messaging::api::{Request, Response};
+     |                  ^^^^^^^^^ could not find `messaging` in `bbt_mux`
+
+error[E0432]: unresolved import `bbt_mux::messaging`
+   --> crates/bbt-mux/tests/messaging.rs:271:5
+    |
+271 |     messaging::Messaging,
+    |     ^^^^^^^^^ could not find `messaging` in `bbt_mux`
+
+error[E0433]: cannot find `messaging` in `bbt_mux`
+   --> crates/bbt-mux/tests/messaging.rs:326:19
+    |
+326 |     ) -> bbt_mux::messaging::ledger::StoredMessage {
+    |                   ^^^^^^^^^ could not find `messaging` in `bbt_mux`
+
+error[E0433]: cannot find `messaging` in `bbt_mux`
+   --> crates/bbt-mux/tests/messaging.rs:336:46
+    |
+336 |     fn take(&mut self, now: u64) -> bbt_mux::messaging::ledger::Work {
+    |                                              ^^^^^^^^^ could not find `messaging` in `bbt_mux`
+
+error[E0433]: cannot find `messaging` in `bbt_mux`
+   --> crates/bbt-mux/tests/messaging.rs:343:42
+    |
+343 |     fn finish(&mut self, work: &bbt_mux::messaging::ledger::Work, evidence: Evidence, now: u64) {
+    |                                          ^^^^^^^^^ could not find `messaging` in `bbt_mux`
+
+error[E0599]: no method named `bind_delivery_endpoint` found for struct `LogicClient` in the current scope
+   --> crates/bbt-mux/tests/messaging.rs:666:30
+    |
+666 |     rt.block_on(logic.client.bind_delivery_endpoint(
+    |                 -------------^^^^^^^^^^^^^^^^^^^^^^ method not found in `LogicClient`
+
+error[E0599]: no variant named `Messaging` found for enum `bbt_mux::seat_socket::Action`
+   --> crates/bbt-mux/tests/messaging.rs:688:51
+    |
+688 |             action: bbt_mux::seat_socket::Action::Messaging {
+    |                                                   ^^^^^^^^^ variant not found in `bbt_mux::seat_socket::Action`
+
+error[E0599]: no method named `messaging` found for struct `LogicClient` in the current scope
+   --> crates/bbt-mux/tests/messaging.rs:719:36
+    |
+719 |             .block_on(logic.client.messaging(
+    |                       -------------^^^^^^^^^ method not found in `LogicClient`
+
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+error[E0599]: no method named `messaging` found for struct `LogicClient` in the current scope
+   --> crates/bbt-mux/tests/messaging.rs:744:34
+    |
+744 |         rt.block_on(logic.client.messaging(
+    |                     -------------^^^^^^^^^ method not found in `LogicClient`
+
+error[E0599]: no method named `messaging` found for struct `LogicClient` in the current scope
+   --> crates/bbt-mux/tests/messaging.rs:757:34
+    |
+757 |         rt.block_on(logic.client.messaging(
+    |                     -------------^^^^^^^^^ method not found in `LogicClient`
+
+error[E0599]: no variant named `InputContext` found for enum `bbt_mux::Action`
+   --> crates/bbt-mux/tests/messaging.rs:860:26
+    |
+860 |         .request(Action::InputContext {
+    |                          ^^^^^^^^^^^^ variant not found in `bbt_mux::Action`
+
+error[E0599]: no variant named `InputContext` found for enum `bbt_mux::Reply`
+   --> crates/bbt-mux/tests/messaging.rs:859:16
+    |
+859 |     let Reply::InputContext { context: before } = client
+    |                ^^^^^^^^^^^^ variant not found in `bbt_mux::Reply`
+
+error[E0599]: no variant named `GuardedInput` found for enum `bbt_mux::Action`
+   --> crates/bbt-mux/tests/messaging.rs:872:26
+    |
+872 |         .request(Action::GuardedInput {
+    |                          ^^^^^^^^^^^^ variant not found in `bbt_mux::Action`
+
+error[E0599]: no variant named `InputContext` found for enum `bbt_mux::Action`
+   --> crates/bbt-mux/tests/messaging.rs:882:26
+    |
+882 |         .request(Action::InputContext {
+    |                          ^^^^^^^^^^^^ variant not found in `bbt_mux::Action`
+
+error[E0599]: no variant named `InputContext` found for enum `bbt_mux::Reply`
+   --> crates/bbt-mux/tests/messaging.rs:881:16
+    |
+881 |     let Reply::InputContext { context: after } = client
+    |                ^^^^^^^^^^^^ variant not found in `bbt_mux::Reply`
+
+error[E0599]: no variant named `InputContext` found for enum `bbt_mux::Action`
+   --> crates/bbt-mux/tests/messaging.rs:983:30
+    |
+983 |             .request(Action::InputContext {
+    |                              ^^^^^^^^^^^^ variant not found in `bbt_mux::Action`
+
+error[E0599]: no variant named `InputContext` found for enum `bbt_mux::Reply`
+   --> crates/bbt-mux/tests/messaging.rs:982:20
+    |
+982 |         let Reply::InputContext { context } = client
+    |                    ^^^^^^^^^^^^ variant not found in `bbt_mux::Reply`
+
+error[E0599]: no variant named `GuardedInput` found for enum `bbt_mux::Action`
+    --> crates/bbt-mux/tests/messaging.rs:1001:30
+     |
+1001 |             .request(Action::GuardedInput {
+     |                              ^^^^^^^^^^^^ variant not found in `bbt_mux::Action`
+
+error[E0599]: no variant named `GuardedInput` found for enum `bbt_mux::Action`
+    --> crates/bbt-mux/tests/messaging.rs:1011:26
+     |
+1011 |         .request(Action::GuardedInput {
+     |                          ^^^^^^^^^^^^ variant not found in `bbt_mux::Action`
+
+Some errors have detailed explanations: E0432, E0433, E0599.
+For more information about an error, try `rustc --explain E0432`.
+error: could not compile `bbt-mux` (test "messaging") due to 22 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+exit_status=101

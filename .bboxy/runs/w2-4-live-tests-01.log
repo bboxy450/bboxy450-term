@@ -1,0 +1,31 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+error[E0308]: arguments to this method are incorrect
+   --> crates/bbt-mux/tests/messaging.rs:860:10
+    |
+860 |         .input(attachment.clone(), Ulid::new(), b"a user draft".to_vec())
+    |          ^^^^^ ------------------ expected `&Attachment`, found `Attachment`
+    |
+note: expected `&[u8]`, found `Vec<u8>`
+   --> crates/bbt-mux/tests/messaging.rs:860:49
+    |
+860 |         .input(attachment.clone(), Ulid::new(), b"a user draft".to_vec())
+    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: expected reference `&[u8]`
+                  found struct `Vec<u8>`
+note: method defined here
+   --> crates/bbt-mux/src/supervisor.rs:212:12
+    |
+212 |     pub fn input(
+    |            ^^^^^
+help: consider borrowing here
+    |
+860 |         .input(&attachment.clone(), Ulid::new(), b"a user draft".to_vec())
+    |                +
+help: try removing the method call
+    |
+860 -         .input(attachment.clone(), Ulid::new(), b"a user draft".to_vec())
+860 +         .input(attachment.clone(), Ulid::new(), b"a user draft")
+    |
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `bbt-mux` (test "messaging") due to 1 previous error
