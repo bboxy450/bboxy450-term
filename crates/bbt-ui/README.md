@@ -64,7 +64,9 @@ The host implements `components::Measure` (width plus ascent/descent) and calls
 height comes from content. Rows and columns allocate through the existing
 `bbt-ui-model::layout::solve_box`. Shrunk text is remeasured for wrapping, mixed
 font sizes share baselines, and line boxes use the CSS 1/64 px unit. No DOM child
-rectangle enters native layout.
+rectangle enters native layout. Intrinsic flow includes an explicit
+`Content.min`. Wrapping permits 0.001px of floating-point subtraction error;
+a real CSS 1/64px shortage still wraps.
 
 `components::paint(layout, context)` emits an ordered `Paint` plan: draw lists,
 shadow underlays and named material surfaces. The host executes it on the L1/L2

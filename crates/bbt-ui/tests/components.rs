@@ -21,6 +21,53 @@ fn context() -> Context {
 }
 
 #[test]
+fn intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero() {
+    let mut style = Style::new(Preset::Card);
+    style.overrides.padding = Some([Length::Px(0.); 4]);
+    style.overrides.border = Some(bbt_ui::Border {
+        width: Length::Px(0.),
+        paint: bbt_ui::Paint::solid(bbt_ui::Color::Transparent),
+        outside: false,
+    });
+    let mut swatch = style.clone();
+    swatch.overrides.width = Some(Length::Px(10.));
+    swatch.overrides.height = Some(Length::Px(10.));
+    let child = c::Item {
+        element: c::Element::Box(c::Box::new(swatch, vec![])),
+        extent: c::Extent::Content {
+            grow: 0.,
+            shrink: 1.,
+            min: 2.,
+            max: None,
+            max_fraction: None,
+        },
+    };
+    let parent = c::Element::Box(c::Box::new(style, vec![child]));
+    let (size, _) = parent.natural(0., context(), &Metrics).unwrap();
+    assert_eq!(size[0], 2.);
+    let layout = parent
+        .layout(Rect::new(0., 0., 0., 0.), context(), &Metrics)
+        .unwrap();
+    assert_eq!(layout.children[0].rect.w, 2.);
+}
+
+#[test]
+fn natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps() {
+    let mut text = c::Text::new("one two", Default::default());
+    text.wrap = true;
+    let element = c::Element::Text(text);
+    let (full, _) = element.natural(f32::INFINITY, context(), &Metrics).unwrap();
+    let (roundoff, _) = element
+        .natural(full[0] - 0.0001, context(), &Metrics)
+        .unwrap();
+    assert_eq!(roundoff[1], full[1]);
+    let (short, _) = element
+        .natural(full[0] - 1. / 64., context(), &Metrics)
+        .unwrap();
+    assert!(short[1] > full[1]);
+}
+
+#[test]
 fn image_has_square_intrinsics_a_baseline_and_validated_asset_geometry() {
     let make = |asset: &str, size, radius| c::Element::Image {
         asset: asset.into(),

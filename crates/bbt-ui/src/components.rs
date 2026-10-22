@@ -328,7 +328,9 @@ fn text_lines(
             // Collapsible trailing spaces do not push a fitting word to the
             // next CSS line. Their advance still separates the next word.
             let ink_width = m.width(value.trim_end_matches(' '), &font(&s));
-            if text.wrap && x > 0. && x + ink_width > width {
+            // Layout subtracts parent insets from measured advances. Ignore
+            // float roundoff far below CSS's 1/64px unit, not real shortages.
+            if text.wrap && x > 0. && x + ink_width > width + 0.001 {
                 if text.max_lines == Some(line_number) {
                     // CSS line-clamp fills the last line with a partial final
                     // word before ellipsizing, rather than dropping that word.
@@ -452,6 +454,7 @@ fn child_measure(
         .zip(&data)
         .map(|(c, (size, _))| match c.extent {
             Extent::Fixed(n) => n,
+            Extent::Content { min, .. } => size[usize::from(axis == Axis::Column)].max(min),
             _ => size[usize::from(axis == Axis::Column)],
         })
         .sum();

@@ -1,0 +1,118 @@
+ROLE: EXECUTOR — Nyx Copperwing
+L6 support for 7.6, approved Oracle DM 4749280a-b734-4fda-bd8e-ce1eb765feb8.
+
+Mechanism: child_measure intrinsic main contribution includes Content.min even when a zero-width min-content query reports a smaller natural width. text_lines ignores <=0.001px of subtraction error in its wrap threshold, below the CSS 1/64px unit. Real shortages still wrap. No layout rounding or paint policy changed.
+
+Cause proof (each isolated, source restored afterward):
+- Reverting the min contribution alone: focused intrinsic-flow test exits 101 (computed 0 instead of declared 2px).
+- Reverting the epsilon alone: focused wrapping test exits 101.
+- Real CoreText Launcher machine fixture initially wraps Max in studio.local · M1 Max; a temporary epsilon-only patch makes it pass (exit0), then was restored before the approved fix. The fixture stays in the Launcher WIP, separate from this support commit.
+
+Verification:
+- cargo test -p bbt-ui --test components --locked — exit0, 12 passed, including both focused tests.
+- cargo test -p bboxybook --test launchers --locked — exit0, CoreText machine fixture passes.
+- cargo build -p bboxybook --locked — exit0.
+- bboxybook render lower default manifest — exit0, 328 PNGs; byte comparison to accepted 7.4b = 328/328 identical (materials32, Style112, components72, glyph56, harness-icon56).
+- scoped all-target Clippy, existing two allowances — exit0.
+- scoped fmt --check and git diff --check — exit0.
+
+No new default image, renderer/model/dependency change, window/input work, FPS measure or alternate backend check. No push/merge/rebase. Launcher module, its new capture code and CT fixture/test remain uncommitted.
+
+Green focused tests:
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.58s
+     Running tests/components.rs (target/debug/deps/components-78a664c413ce71eb)
+
+running 12 tests
+test natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps ... ok
+test mixed_text_runs_align_baselines_and_keep_selection_metadata ... ok
+test nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms ... ok
+test image_has_square_intrinsics_a_baseline_and_validated_asset_geometry ... ok
+test a_retained_box_keeps_its_own_glow_state_until_after_its_content ... ok
+test intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero ... ok
+test box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout ... ok
+test mixed_type_rows_share_a_baseline ... ok
+test a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height ... ok
+test column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine ... ok
+test wrapping_and_ellipsis_use_the_allocated_width ... ok
+test scroll_offset_clamps_and_every_child_draw_is_clipped ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+CoreText WIP proof:
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.40s
+     Running tests/launchers.rs (target/debug/deps/launchers-b93eb94d40fee3f9)
+
+running 1 test
+test a_machine_subtitle_with_room_stays_on_one_line ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.77s
+
+
+Clippy:
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.56s
+
+Default render:
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/328
+rendered 200/328
+rendered 300/328
+native/web layout snapshots: target/bboxybook/launchers/l6-defaults/layouts.json
+rendered 328 PNGs to target/bboxybook/launchers/l6-defaults
+
+Red min test:
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.07s
+     Running tests/components.rs (target/debug/deps/components-78a664c413ce71eb)
+
+running 1 test
+test intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero ... FAILED
+
+failures:
+
+---- intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero stdout ----
+
+thread 'intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero' (5730286) panicked at crates/bbt-ui/tests/components.rs:47:5:
+assertion `left == right` failed
+  left: 0.0
+ right: 2.0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p bbt-ui --test components`
+
+Red epsilon test:
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.89s
+     Running tests/components.rs (target/debug/deps/components-78a664c413ce71eb)
+
+running 1 test
+test natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps ... FAILED
+
+failures:
+
+---- natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps stdout ----
+
+thread 'natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps' (5730540) panicked at crates/bbt-ui/tests/components.rs:63:5:
+assertion `left == right` failed
+  left: 35.09375
+ right: 17.546875
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p bbt-ui --test components`
