@@ -147,6 +147,22 @@ struct Instance {
     clip_range: [u32; 4],
 }
 impl Surface {
+    /// Physical backdrop texels sampled by this surface, clipped to the target.
+    /// Frosted surfaces include the Gaussian's 3-sigma support and one texel for
+    /// fractional edge coverage/filtering. Other materials do not sample it.
+    pub fn backdrop_region(&self, scale: f32, width: u32, height: u32) -> Result<Option<[u32; 4]>> {
+        if !matches!(self.material, Material::Frosted(_)) {
+            return Ok(None);
+        }
+        if width == 0 || height == 0 || !scale.is_finite() || !(0.5..=4.).contains(&scale) {
+            return Err("invalid material frame".into());
+        }
+        Ok(blur_region(
+            &self.instance(scale, width, height)?,
+            width,
+            height,
+        ))
+    }
     fn instance(&self, scale: f32, width: u32, height: u32) -> Result<Instance> {
         let physical = [
             self.rect.x * scale,
@@ -245,6 +261,18 @@ impl Surface {
         }
         Ok(i)
     }
+}
+
+fn blur_region(instance: &Instance, width: u32, height: u32) -> Option<[u32; 4]> {
+    // Use the unsnapped border box used by mirror_box, not the rounded paint
+    // rectangle. ceil(3*sigma) matches the shader's last Gaussian tap.
+    let support = (instance.p0[1] * 3.).ceil() + 1.;
+    let [x, y, w, h] = instance.p2;
+    let left = (x - support).floor().clamp(0., width as f32) as u32;
+    let top = (y - support).floor().clamp(0., height as f32) as u32;
+    let right = (x + w + support).ceil().clamp(0., width as f32) as u32;
+    let bottom = (y + h + support).ceil().clamp(0., height as f32) as u32;
+    (right > left && bottom > top).then_some([left, top, right - left, bottom - top])
 }
 pub struct Frame<'a> {
     pub target: ChromeTarget<'a>,
@@ -535,6 +563,12 @@ impl Pass {
                 filtered.push(None);
                 continue;
             }
+            let Some([left, top, width, height]) =
+                blur_region(&instances[index], target.width, target.height)
+            else {
+                filtered.push(None);
+                continue;
+            };
             let texture = || {
                 context.device.create_texture(&wgpu::TextureDescriptor {
                     label: Some("frosted sRGB-value intermediate"),
@@ -576,6 +610,9 @@ impl Pass {
                 });
                 blur.set_pipeline(&self.blur[axis]);
                 blur.set_bind_group(0, source, &[]);
+                // Keep the original full-target coordinates and sampling math;
+                // only omit fragments that the frosted element cannot use.
+                blur.set_scissor_rect(left, top, width, height);
                 blur.draw(0..3, index as u32..index as u32 + 1);
             }
             filtered.push(Some(bind_backdrop(&y)));
@@ -801,6 +838,51 @@ pub fn render_layered_to_rgba(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn backdrop_copy_covers_fractional_support_and_clips_offscreen_edges() {
+        let surface = Surface {
+            rect: Rect::new(8.25, -4.5, 30.2, 12.25),
+            radii: [0.; 4],
+            clips: vec![],
+            material: Material::Frosted(Frosted {
+                tint: Color::WHITE,
+                blur_radius: 2.5,
+                saturation: 1.,
+            }),
+        };
+        assert_eq!(
+            surface.backdrop_region(2., 200, 100).unwrap(),
+            Some([0, 0, 93, 32])
+        );
+        let outside = Surface {
+            rect: Rect::new(-100., -100., 1., 1.),
+            ..surface.clone()
+        };
+        assert_eq!(outside.backdrop_region(1., 200, 100).unwrap(), None);
+        let flat = Surface {
+            material: Material::Flat(Color::WHITE),
+            ..surface.clone()
+        };
+        assert_eq!(flat.backdrop_region(1., 200, 100).unwrap(), None);
+        assert!(surface.backdrop_region(f32::NAN, 200, 100).is_err());
+    }
+    #[test]
+    fn zero_blur_still_samples_the_backdrop_and_fractional_edge_texels() {
+        let surface = Surface {
+            rect: Rect::new(3.75, 4.25, 8.5, 7.25),
+            radii: [0.; 4],
+            clips: vec![],
+            material: Material::Frosted(Frosted {
+                tint: Color::WHITE,
+                blur_radius: 0.,
+                saturation: 1.,
+            }),
+        };
+        assert_eq!(
+            surface.backdrop_region(1., 64, 64).unwrap(),
+            Some([2, 3, 12, 10])
+        );
+    }
     #[test]
     fn nonfinite_and_negative_material_parameters_are_rejected() {
         let s = Surface {

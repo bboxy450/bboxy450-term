@@ -1,0 +1,28 @@
+R4b — bounded exact material work
+Source baseline: accepted18e0593. Scoped files: materials.rs, materials.wgsl, app gpu.rs (Oracle3228 extension).
+Implementation: keep all original Gaussian sampling, full-size RGBA16Float intermediates and coordinate transforms. Scissor both Gaussian draws to the physical unsnapped element rect plus ceil(3sigma), with one texel of filtering/AA guard. Reuse that region for the app copy; materials that do not sample backdrop request no copy.
+Glow proof: d<=-0.5 makes the outer-halo knockout exactly0. Particle centres lie on the physical rectangular perimeter plus at most3*scale axis jitter; their radius is below1.5*particle_size plus0.5 coverage. Returning transparent only deeper than that reach plus one conservative pixel leaves all contributing fragments unchanged. No sampling/quality approximation.
+Tests: 3 material-region/validation unit tests PASS; 3 existing GPU material tests PASS (mirror bounds, blend/alpha and material pixels). App check/release build0. Scoped all-target Clippy0 with only existing map_entry/chunks_exact warnings disabled; policy lint0, exact-file rustfmt check0, diff check0.
+Image acceptance: before4 replay exits0, 1808 images identical to accepted cache; after4 replay exits0, all1808 PNGs byte-identical to private before baseline,0 changed,0 missing. No golden or review budget changed.
+Additional caller proof: deterministic --smoke --capture, meter off/frozen450ms/update20, before and after app binaries exit0 and exact PNG SHA256 5cd39ab392efbf8fad8a34cab1c3a967941ed6f87df970a752ffd2e0c6755abc.
+Visual QA: inspected actual frosted-light and glow-dark material PNGs and the native app capture; no missing composition. All render/trace artifacts local in target/r4b.
+Cadence: 74.945Hz on75Hz Dell S3222HN;0/224 late intervals, CPU p50/p99 3.241/4.015ms;10.002s idle0frames0callbacks.
+Matched Metal System Trace: before279 complete frames/16740 encoders, after411/18084. GPU active mean19.172735 ->8.912887ms (-53.51%). Blur13.510889 ->3.418783ms; copies0.797409 ->0.014565ms and17->1 per frame. Glow3.693734 ->3.723074ms; no independent timing win claimed for the combined run.
+Remaining budget: GPU active p50/p99 9.050414/10.352540ms; paired conservative CPU+GPU p50/p99 11.766/14.252ms, max14.601ms,225/225 over8.333ms. No120Hz claim. Cold first frame58.520ms remains visible in cadence log; it is outside the animation budget samples.
+No further performance changes:8.333ms residue is an Oracle decision per assignment. No downsampling, fewer taps/particles, colour/mask changes, geometry changes, model/IO/mux work or release prep. Latest queue3253/3258: F1–F5 fidelity then C1; R3 belongs to exec4; await specific next brief.
+Evidence: r4b-commands.log (commands and replay statuses), r4b-profile.log (matched tracing/method/table), r4b-cadence.log, r4b-app-pixels.log. Geometry/CSS parity not replayed by image-only regression; shadow timing remains fused with chrome. GPU frequency not forced, scale inferred1.0, one incomplete before trace frame excluded.
+crates/bbt-render/src/chrome/materials.rs sha256 49f83c05c8b410b6118ef6cdeeb49bcf529a5789a8319356a4b8c585bdb0c5b6
+crates/bbt-render/src/chrome/materials.wgsl sha256 acc86f63e14cc192789aa3fa5b83419dc9456c2ed6d42aac34de1b631bf94014
+crates/bboxy450-term/src/gpu.rs sha256 93e301416f9fe8c33c5a297795ac869c898b05246bb18d637248160b480a3b2f
+target/r4b/before-status.json sha256 2b731f9107503f22ecb83ecece01c6f636c6699f960ae6d9dddf37d4c344dece
+target/r4b/after-status.json sha256 5fcfcbf7d3fbb8bf38de5fe2aa803e2e774e698b1d5c5696a2de9595032b6173
+target/r4b/before-hashes-0.json sha256 15847d2904f4667545a0abe4e338cdc016aa03950afdc5eb55caff5e7e0f03e5
+target/r4b/before-hashes-1.json sha256 31222ebf9de7194eb4eec1b0c1a7b7a04af9a04db4e86439eb9f7f167d2e2d22
+target/r4b/before-hashes-2.json sha256 0d10c75e4ae78ec6c59cf2d7d77a0ae2253e278f9030877897664678b04ecd3b
+target/r4b/before-hashes-3.json sha256 1fe1d53ddc29f4679f58fad86b53f2c94f6db49fd61f19bc7da60c205a50d2e7
+target/r4b/after-hashes-0.json sha256 15847d2904f4667545a0abe4e338cdc016aa03950afdc5eb55caff5e7e0f03e5
+target/r4b/after-hashes-1.json sha256 31222ebf9de7194eb4eec1b0c1a7b7a04af9a04db4e86439eb9f7f167d2e2d22
+target/r4b/after-hashes-2.json sha256 0d10c75e4ae78ec6c59cf2d7d77a0ae2253e278f9030877897664678b04ecd3b
+target/r4b/after-hashes-3.json sha256 1fe1d53ddc29f4679f58fad86b53f2c94f6db49fd61f19bc7da60c205a50d2e7
+
+Handoff rebase: main3c3b8b9 includes adapters/graph work; scoped3 source file digests unchanged. Numeric style tokens unchanged (HUD description only). Post-rebase material unit3/3, GPU material3/3, app3/3 and scoped all-target clippy all exit0. Pixel/trace measurements are pinned to18e0593 + the same scoped diff; not rerun or relabelled after unrelated upstream additions.
