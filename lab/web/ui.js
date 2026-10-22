@@ -26,12 +26,15 @@
     // the swarm band: top lifted toward white, bottom toward black, a 1 px inner highlight and a bottom shade (lab .space-head)
     gloss: o => { const p = { color: o.color, top_white: o.top_white ?? 0.12, bottom_black: o.bottom_black ?? 0.18, highlight: o.highlight ?? 0.18, bottom_shade: o.bottom_shade ?? 0.25 };
       return { params: p, css: { background: `linear-gradient(180deg, ${mix(p.color, '#fff', p.top_white * 100)} 0%, ${p.color} 55%, ${mix(p.color, '#000', p.bottom_black * 100)} 100%)`, boxShadow: `inset 0 1px 0 rgba(255,255,255,${p.highlight}), inset 0 -1px 0 rgba(0,0,0,${p.bottom_shade})` } }; },
-    // backdrop blur + material alpha + hairline ring + inner highlight (launcher, menus, modals, title bar)
-    frosted: o => { const p = { tint: o.tint || `color-mix(in srgb, var(--surface) ${S.material.panel_alpha * 100}%, transparent)`, blur_radius: o.blur_radius ?? S.material.panel_blur_px, saturation: o.saturation ?? S.material.panel_saturate };
-      return { params: p, css: { background: p.tint, backdropFilter: `blur(${p.blur_radius}px) saturate(${p.saturation})`, webkitBackdropFilter: `blur(${p.blur_radius}px) saturate(${p.saturation})`, boxShadow: `0 0 0 ${S.material.hairline_px}px var(--hair, var(--line)), inset 0 1px 0 rgba(255,255,255,${S.material.inner_highlight_alpha})` } }; },
-    // state-driven particle border; the particles come from glow.js (the same emitter the panes use)
+    // L2 is effects only (Oracle, decided): fill and border belong to Style/Box. frosted = blur and saturate what is behind;
+    // the panel tint and the hairline ring are the modal Style's fill and border (styleCss), not the material.
+    frosted: o => { const p = { tint: o.tint || 'none (Style fill)', blur_radius: o.blur_radius ?? S.material.panel_blur_px, saturation: o.saturation ?? S.material.panel_saturate };
+      const css = { backdropFilter: `blur(${p.blur_radius}px) saturate(${p.saturation})`, webkitBackdropFilter: `blur(${p.blur_radius}px) saturate(${p.saturation})` }; if (o.tint) css.background = o.tint;
+      return { params: p, css }; },
+    // glow = the state-driven particle border (glow.js, the pane emitter) and its soft halo; the surface and the 1.5 px seat border
+    // are the pane-glow Style's fill and border
     glow: o => { const g = T.glow, p = { color: o.color, activity: o.activity || 'active', radius: g.pane_radius, particles: g.particles_active ?? g.particles, speed: g.particle_speed, particle_size: g.particle_size, idle_alpha: g.idle_alpha, active_alpha: [g.active_alpha_min, g.active_alpha_max], focused_boost: g.focused_boost };
-      return { params: p, css: { background: 'var(--surface)', boxShadow: `0 0 ${g.pane_radius}px color-mix(in srgb, ${p.color} 45%, transparent)`, border: `1.5px solid ${p.color}` }, glow: p }; },
+      return { params: p, css: { boxShadow: `0 0 ${g.pane_radius}px color-mix(in srgb, ${p.color} 45%, transparent)` }, glow: p }; },
   };
   function material(name, opts) { return MATERIAL[name](opts || {}); }
 
@@ -48,16 +51,19 @@
     input: { material: 'flat', fill: 'var(--bg)', radius: R.row, border: 'hairline', padding: [S.spacing.s4, S.spacing.s5], text: 'body', focus: 'accent ring' },
     'button-primary': { material: 'flat', fill: 'accent', radius: R.pill, padding: [S.spacing.s3, S.spacing.s8], text: 'row · 600 · on_accent' },
     'button-ghost': { material: 'flat', fill: 'transparent', radius: R.pill, border: 'hairline', padding: [S.spacing.s3, S.spacing.s8], text: 'row' },
+    'pane-glow': { material: 'glow', fill: 'var(--surface)', radius: R.row, border: 'seat 1.5px', padding: [S.spacing.s6, S.spacing.s7], text: 'body' },
   };
   const resolve = v => typeof v === 'number' ? px(v) : v === 'density.row_h' ? 'var(--row-h)' : v === 'density.pad_x' ? 'var(--pad-x)' : v;
   function styleCss(st, swarm) {
     const css = {};
     const fill = { 'var(--surface)': 'var(--surface)', transparent: 'transparent', 'tint.badge_alpha': 'var(--badge)', 'var(--bg)': 'var(--bg)', accent: 'var(--accent)', 'seat colour': swarm || 'var(--accent)', 'swarm colour': swarm || 'var(--accent)', 'material.panel_alpha': null }[st.fill];
     if (st.material === 'gloss') Object.assign(css, material('gloss', { color: swarm || 'var(--accent)' }).css);
-    else if (st.material === 'frosted') Object.assign(css, material('frosted').css);
-    else if (fill) css.background = fill;
+    else { if (st.material === 'frosted' || st.material === 'glow') Object.assign(css, material(st.material, { color: swarm || 'var(--accent)' }).css); if (fill) css.background = fill; }
+    if (st.fill === 'material.panel_alpha') css.background = `color-mix(in srgb, var(--surface) ${S.material.panel_alpha * 100}%, transparent)`;
     css.borderRadius = px(st.radius);
     if (st.border === 'hairline') css.border = 'var(--hair-w) solid var(--hair, var(--line))';
+    if (st.border === 'hairline ring') css.boxShadow = `0 0 0 ${S.material.hairline_px}px var(--hair, var(--line)), inset 0 1px 0 rgba(255,255,255,${S.material.inner_highlight_alpha})`;
+    if (st.border === 'seat 1.5px') css.border = '1.5px solid ' + (swarm || 'var(--accent)');
     if (st.shadow) css.boxShadow = (css.boxShadow ? css.boxShadow + ', ' : '') + 'var(--sh-float)';
     if (st.height) css.height = resolve(st.height);
     if (st.padding) css.padding = st.padding.map(resolve).join(' ');
