@@ -52,9 +52,13 @@ temporary Chrome profile, a 1x device scale and paused CSS animation playback.
 Original demo text/FX remain in reference shots; native pane bodies are blank.
 No screenshot is substituted for native component implementation.
 
-Comparison uses `bbt_render::chrome::diff`: tolerance 8 per RGBA channel and a
-0.1% changed-pixel budget, the renderer spec's tolerance alternative to DSSIM.
-The score ranks review, not acceptance, and never updates a golden. Read the
+Comparison uses `bbt_render::chrome::diff` with tolerance 8 per RGBA channel.
+`parity::CasePolicy` supplies each case's gate: native text requires every rect
+and Text baseline within 0.5 px plus a 2% changed-pixel budget; pixel-only cases
+keep 0.1%. The report prints the policy, geometry and status for every case and
+writes the same fields in `report.json`. Missing/incomplete geometry is unproven,
+never a pass under a looser pixel threshold. Review remains manual; the loop
+never updates a golden. Read the
 triplet before changing code. The first loop found an inverted checkerboard;
 after correcting its phase and the toolbar fixture, the same light open-toggle
 case improved from 99.99% changed to 0.98%. The images were inspected.
@@ -276,3 +280,9 @@ component backdrop retains common diagnostic labels and outer chrome.
 This is L6 verification, not a module rebase or app input pass. Scroll offsets
 are explicit; selection is metadata. Materials currently intersect ancestor
 clips as rectangles; rounded clips are retained for ordinary draw lists.
+
+L6 rendering writes `layouts.json` beside its native PNGs before comparison,
+including first-line Text baselines in the same coordinate system as the rects.
+The report copies that file for inspection. Legacy Style/module and glyph cases
+without those snapshots remain explicitly unproven under the text policy. CSS
+diagnostic labels shared in an L2 backdrop do not make a material-only case text.

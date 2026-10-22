@@ -334,14 +334,28 @@ fn snapshot(
         .zip(reference_children)
         .map(|(n, w)| snapshot(n, w, crop, worst))
         .collect::<Result<Vec<_>>>()?;
-    Ok(json!({"kind":reference["kind"],"native":native,"web":web,"children":children}))
+    let baseline = matches!(layout.kind, c::LayoutKind::Text { .. }).then(|| {
+        json!({
+            "native":layout.rect.y-crop[1]+layout.baseline,
+            "web":reference["font_diagnostics"]["baseline"].as_f64().map(|b| b+f64::from(web[1]))
+        })
+    });
+    Ok(
+        json!({"kind":reference["kind"],"native":native,"web":web,"baseline":baseline,"children":children}),
+    )
 }
 pub fn render(out: &Path) -> Result<()> {
     render_native_gallery(&out.join("gallery"))?;
     crate::materials::render_gallery(out, &cases())?;
-    let cases: Vec<Case> = serde_json::from_slice(&fs::read(out.join("cases.json"))?)?;
+    Ok(())
+}
+pub fn write_snapshots(out: &Path, cases: &[Case]) -> Result<()> {
     let mut records = vec![];
-    for case in &cases {
+    for case in cases.iter().filter(|c| {
+        c.fixture
+            .as_ref()
+            .is_some_and(|f| f["layer"] == "components")
+    }) {
         let fix = case.fixture.as_ref().unwrap();
         let crop = &fix["backdrop"]["crop"];
         let mut worst = 0.;
@@ -352,6 +366,9 @@ pub fn render(out: &Path) -> Result<()> {
             &mut worst,
         )?;
         records.push(json!({"key":case.relative(),"max_geometry_error":worst,"tree":tree}));
+    }
+    if records.is_empty() {
+        return Ok(());
     }
     fs::write(
         out.join("layouts.json"),

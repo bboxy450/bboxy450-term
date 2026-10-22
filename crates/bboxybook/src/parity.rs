@@ -33,6 +33,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     }
     fs::create_dir_all(out)?;
     fs::write(out.join("manifest.json"), serde_json::to_vec_pretty(cases)?)?;
+    crate::components::write_snapshots(out, cases)?;
     println!("rendered {} PNGs to {}", cases.len(), out.display());
     Ok(cases.len())
 }
@@ -45,31 +46,178 @@ fn escape(s: &str) -> String {
 pub fn compare(root: &Path, cases: &[Case]) -> Result<()> {
     compare_paths(root, cases, "web", "native")
 }
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+pub struct CasePolicy {
+    pub text: bool,
+    pub channel_tolerance: u8,
+    pub changed_pixel_budget: f64,
+    pub geometry_tolerance_px: Option<f64>,
+}
+impl CasePolicy {
+    pub fn for_case(case: &Case) -> Result<Self> {
+        fn contains_text(v: &serde_json::Value) -> bool {
+            v["kind"] == "text"
+                || v["children"]
+                    .as_array()
+                    .is_some_and(|a| a.iter().any(contains_text))
+        }
+        let f = case.fixture.as_ref();
+        let text = if case.component == "materials" {
+            false
+        } else if case.component == "style" {
+            true
+        } else if f.is_some_and(|f| f["layer"] == "components") {
+            contains_text(&f.unwrap()["component"]["tree"])
+        } else if f.is_some_and(|f| f["layer"] == "atoms") {
+            f.unwrap()["atoms"]
+                .as_array()
+                .is_some_and(|a| a.iter().any(|a| a["kind"] == "glyph"))
+        } else {
+            gallery::draw(case)?
+                .primitives
+                .iter()
+                .any(|p| matches!(p, bbt_ui_model::draw::Prim::Text { .. }))
+        };
+        Ok(Self {
+            text,
+            channel_tolerance: diff::CHANNEL_TOLERANCE,
+            changed_pixel_budget: if text { 0.02 } else { diff::CHANGED_BUDGET },
+            geometry_tolerance_px: text.then_some(0.5),
+        })
+    }
+    fn label(self) -> String {
+        if self.text {
+            "text: 2% + rect/baseline ≤0.5px".into()
+        } else {
+            "pixels: 0.1%".into()
+        }
+    }
+    fn status(self, score: f64, geometry: Option<&Geometry>) -> &'static str {
+        if let Some(limit) = self.geometry_tolerance_px {
+            let Some(g) = geometry.filter(|g| g.complete && g.rects > 0 && g.baselines > 0) else {
+                return "unproven geometry";
+            };
+            if g.max_rect_error > limit || g.max_baseline_error > limit {
+                return "review geometry";
+            }
+        }
+        if score > self.changed_pixel_budget {
+            "review pixels"
+        } else {
+            "within policy"
+        }
+    }
+}
+#[derive(Debug, Default, Clone, serde::Serialize)]
+struct Geometry {
+    complete: bool,
+    rects: usize,
+    baselines: usize,
+    max_rect_error: f64,
+    max_baseline_error: f64,
+}
+impl Geometry {
+    fn from_tree(tree: &serde_json::Value) -> Self {
+        fn visit(v: &serde_json::Value, g: &mut Geometry) {
+            let pair = v["native"].as_array().zip(v["web"].as_array());
+            if let Some((n, w)) = pair.filter(|(n, w)| n.len() == 4 && w.len() == 4) {
+                g.rects += 1;
+                for (n, w) in n.iter().zip(w) {
+                    if let Some((n, w)) = n
+                        .as_f64()
+                        .zip(w.as_f64())
+                        .filter(|(n, w)| n.is_finite() && w.is_finite())
+                    {
+                        g.max_rect_error = g.max_rect_error.max((n - w).abs());
+                    } else {
+                        g.complete = false;
+                    }
+                }
+            } else {
+                g.complete = false;
+            }
+            if v["kind"] == "text" {
+                if let Some((n, w)) = v["baseline"]["native"]
+                    .as_f64()
+                    .zip(v["baseline"]["web"].as_f64())
+                    .filter(|(n, w)| n.is_finite() && w.is_finite())
+                {
+                    g.baselines += 1;
+                    g.max_baseline_error = g.max_baseline_error.max((n - w).abs());
+                } else {
+                    g.complete = false;
+                }
+            }
+            if let Some(children) = v["children"].as_array() {
+                for child in children {
+                    visit(child, g);
+                }
+            }
+        }
+        let mut g = Self {
+            complete: true,
+            ..Default::default()
+        };
+        visit(tree, &mut g);
+        g
+    }
+    fn label(&self) -> String {
+        if self.complete {
+            format!(
+                "rect {:.3}px / baseline {:.3}px ({} / {})",
+                self.max_rect_error, self.max_baseline_error, self.rects, self.baselines
+            )
+        } else {
+            "incomplete".into()
+        }
+    }
+}
 pub fn compare_paths(
     root: &Path,
     cases: &[Case],
     web_prefix: &str,
     native_prefix: &str,
 ) -> Result<()> {
-    // A relative reference containing `..` still needs this directory to exist
-    // when the OS traverses it, including on the first gallery run.
     fs::create_dir_all(root)?;
+    let layout_path = root.join(native_prefix).join("layouts.json");
+    let layout_path = if layout_path.exists() {
+        Some(layout_path)
+    } else {
+        let p = root.join("layouts.json");
+        p.exists().then_some(p)
+    };
+    let layouts: Vec<serde_json::Value> = if let Some(p) = &layout_path {
+        serde_json::from_slice(&fs::read(p)?)?
+    } else {
+        vec![]
+    };
+    if let Some(p) = layout_path.filter(|p| *p != root.join("layouts.json")) {
+        fs::copy(p, root.join("layouts.json"))?;
+    }
     struct Row {
         case: Case,
+        policy: CasePolicy,
+        geometry: Option<Geometry>,
         score: f64,
         error: f64,
         status: String,
         diff: Option<String>,
     }
-    let mut rows = Vec::new();
+    let mut rows = vec![];
     for case in cases {
         let rel = case.relative();
         let web = root.join(web_prefix).join(&rel);
         let native = root.join(native_prefix).join(&rel);
+        let geometry = layouts
+            .iter()
+            .find(|v| v["key"] == rel)
+            .map(|v| Geometry::from_tree(&v["tree"]));
         let mut row = Row {
             case: case.clone(),
-            score: 1.0,
-            error: 1.0,
+            policy: CasePolicy::for_case(case)?,
+            geometry,
+            score: 1.,
+            error: 1.,
             status: String::new(),
             diff: None,
         };
@@ -86,12 +234,7 @@ pub fn compare_paths(
                 let result = diff::compare(&a, &b)?;
                 row.score = result.changed_fraction;
                 row.error = result.mean_error;
-                row.status = if row.score > diff::CHANGED_BUDGET {
-                    "review"
-                } else {
-                    "within tolerance"
-                }
-                .into();
+                row.status = row.policy.status(row.score, row.geometry.as_ref()).into();
                 let dest = root.join("diff").join(&rel);
                 fs::create_dir_all(dest.parent().unwrap())?;
                 bbt_render::write_png(&dest, &result.rgba, w, h)?;
@@ -101,108 +244,103 @@ pub fn compare_paths(
         rows.push(row);
     }
     rows.sort_by(|a, b| {
-        b.score
-            .total_cmp(&a.score)
+        (b.status != "within policy")
+            .cmp(&(a.status != "within policy"))
+            .then(b.score.total_cmp(&a.score))
             .then(b.error.total_cmp(&a.error))
             .then(a.case.relative().cmp(&b.case.relative()))
     });
-    fs::create_dir_all(root)?;
-    let review = rows
-        .iter()
-        .filter(|r| r.score > diff::CHANGED_BUDGET)
-        .count();
-    let material_layer = cases.iter().all(|c| c.component == "materials");
-    let style_layer = cases.iter().all(|c| c.component == "style");
-    let atom_layer = cases
-        .iter()
-        .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "atoms"));
+    let review = rows.iter().filter(|r| r.status != "within policy").count();
     let component_layer = cases.iter().all(|c| {
         c.fixture
             .as_ref()
             .is_some_and(|f| f["layer"] == "components")
     });
     let sources = if component_layer {
-        "L6 retained Box/Text/Stack from bbt-ui. Captured public UI constructor inputs are shared; child DOM rectangles are diagnostics only (layouts.json), never layout inputs. The captured CSS backdrop, diagnostic labels and external root origin/width are common fixtures. Native components compute child geometry, baselines and height through the shared solver, resolve Style, then emit an ordered draw/material plan. This isolates L6 composition from legacy modules and input controllers. Canonical key: components/<state>-<density>-<theme>."
-    } else if atom_layer {
-        "L5 stateless atom painters from bbt-ui. Current committed lab glyph/harness-icon pages are the reference (revision in capture.json). CSS outer placement, checker backdrop and diagnostic labels are common fixtures; glyphs/icons are hidden in that backdrop and painted natively. Native atoms own state colours, grade rings, waiting-kind marks and icon tint. CSS pulse is fixed at 0ms. This isolates L5 painting, not L6 layout or module composition. Canonical key: <page>/<state>-<density>-<theme>."
-    } else if material_layer {
-        "L2 named material shaders. The captured CSS backdrop, diagnostic text and outer square rectangles are common fixtures; only the four material surfaces are painted natively. This isolates L2 and does not assess native text/layout. Canonical key: materials/<state>-<density>-<theme>. L2/L3 captures use a seeded counter-hash random stream and fixed 450ms animation clock; the native emitter consumes the same seed and phase. Remaining canvas/SDF edge rasterisation differences are ranked below. See capture.json for the exact policy."
-    } else if style_layer {
-        "L3 Style, resolved from compile-time tokens plus serialisable overrides (styles.json). The CSS backdrop/diagnostic labels and external box origin/width are common fixtures; native code resolves height/padding and paints material, fill, border, shadow and text. This is a low-level review fixture, not an L6 component/layout or legacy module rebase. Chrome/fx composite in sRGB; text uses corrected linear coverage. Glow's random stream and 450ms clock are shared with the web capture. Remaining text-mask/border/particle AA differences are ranked below. Canonical key: style/<state>-<density>-<theme>."
+        "L6 retained components. Public constructor inputs and external host origin/width are shared. Child DOM rectangles and first-line baselines are diagnostics only; native layout uses the shared solver and CoreText metrics."
+    } else if cases.iter().all(|c| c.component == "materials") {
+        "L2 effect-only materials. CSS backdrop and diagnostic labels are common fixtures; native paints material surfaces. No native text is compared."
+    } else if cases.iter().all(|c| c.component == "style") {
+        "L3 Style paints material, fill, border, shadow and text. Geometry snapshots are required by the text policy; absent measurements remain unproven."
     } else {
-        "Pinned design baseline `ux-prototype-v2`; current lab/design revision recorded in capture.json. Post-v2 components are explicit fixture previews. Native terminal bodies are blank; glow, blur, cursor animation and input controllers are later briefs."
+        "Pinned base ux-prototype-v2; supplemental committed lab revision and capture policy in capture.json. Legacy text cases without geometry are unproven, regardless of their pixel score."
     };
+    let policy = "Per-case policy: channel tolerance 8; text-bearing cases require every rect and Text baseline within 0.5px plus ≤2% changed pixels; pixel-only cases keep ≤0.1%. Missing geometry never passes. The policy gates evidence, not human acceptance.";
     let mut md = format!(
-        "# bboxybook parity\n\n{} cases; {} require review. Policy: channel tolerance {}, changed-pixel budget {:.1}%. Scores rank image review, not acceptance.\n\nSources: {}\n\n| Component / state / density / theme | Changed | Mean error | Status | Web | Native | Diff |\n|---|---:|---:|---:|---|---|---|\n",
+        "# bboxybook parity\n\n{} cases; {} require review. {}\n\nSources: {}\n\n| Case | Policy | Geometry | Changed | Mean error | Status | Web | Native | Diff |\n|---|---|---|---:|---:|---|---|---|---|\n",
         rows.len(),
         review,
-        diff::CHANNEL_TOLERANCE,
-        diff::CHANGED_BUDGET * 100.0,
-        sources,
+        policy,
+        sources
     );
-    let mut html = String::from(
-        "<!doctype html><meta charset=utf-8><title>bboxybook parity</title><style>body{background:#10121c;color:#eee;font:14px system-ui;margin:24px}a{color:#9bc3ff}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #383c55;text-align:left}img{max-width:100%;height:auto}article{margin:24px 0;padding:12px;background:#1a1d2b}section{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}h3{font-size:14px}figure{margin:0}figcaption{margin:6px 0;color:#aab}</style><h1>bboxybook parity</h1>",
+    let mut html = format!(
+        "<!doctype html><meta charset=utf-8><title>bboxybook parity</title><style>body{{background:#10121c;color:#eee;font:14px system-ui;margin:24px}}a{{color:#9bc3ff}}table{{width:100%;border-collapse:collapse}}td,th{{padding:8px;border-bottom:1px solid #383c55;text-align:left}}img{{max-width:100%;height:auto}}article{{margin:24px 0;padding:12px;background:#1a1d2b}}section{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}}h3{{font-size:14px}}figure{{margin:0}}figcaption{{margin:6px 0;color:#aab}}</style><h1>bboxybook parity</h1><p>{}</p><p>{}</p><p>{} cases · {} require review · review cases first, then worst pixels. <a href=report.md>Report</a> · <a href=report.json>Per-case policy/results JSON</a></p>",
+        escape(policy),
+        escape(sources),
+        rows.len(),
+        review
     );
-    if material_layer || style_layer || atom_layer || component_layer {
-        write!(html, "<p>{}</p>", escape(sources))?;
-    }
     if component_layer {
-        write!(
-            html,
-            "<p><a href=layouts.json>Child layout snapshots</a> · <a href=gallery/index.html>Box materials/radii, Text and ScrollView gallery</a></p>"
-        )?;
+        html.push_str("<p><a href=layouts.json>Rects and baselines</a></p>");
+        if root.join("gallery/index.html").exists() {
+            html.push_str("<p><a href=gallery/index.html>Native gallery</a></p>");
+        }
     }
-    if style_layer {
-        write!(
-            html,
-            "<p><a href=styles.json>Serialised Style records and resolved values</a></p>"
-        )?;
+    if cases.iter().all(|c| c.component == "style") && root.join("styles.json").exists() {
+        html.push_str("<p><a href=styles.json>Style records</a></p>");
     }
-    write!(
-        html,
-        "<p>{} cases · {} require review · worst first. <a href=report.md>Iteration report</a>. Missing references are unproven. Tolerance {} / changed budget {:.1}%.</p><table><tr><th>Case</th><th>Changed</th><th>Mean error</th><th>Status</th></tr>",
-        rows.len(),
-        review,
-        diff::CHANNEL_TOLERANCE,
-        diff::CHANGED_BUDGET * 100.0
-    )?;
+    html.push_str("<table><tr><th>Case</th><th>Policy</th><th>Geometry</th><th>Changed</th><th>Mean error</th><th>Status</th></tr>");
     for (i, row) in rows.iter().enumerate() {
         let key = row.case.relative();
+        let geometry = row
+            .geometry
+            .as_ref()
+            .map(Geometry::label)
+            .unwrap_or_else(|| {
+                if row.policy.text {
+                    "missing".into()
+                } else {
+                    "not required".into()
+                }
+            });
         write!(
             html,
-            "<tr><td><a href='#case-{i}'>{}</a></td><td>{:.2}%</td><td>{:.4}</td><td>{}</td></tr>",
+            "<tr><td><a href='#case-{i}'>{}</a></td><td>{}</td><td>{}</td><td>{:.2}%</td><td>{:.4}</td><td>{}</td></tr>",
             escape(&key),
-            row.score * 100.0,
+            escape(&row.policy.label()),
+            escape(&geometry),
+            row.score * 100.,
             row.error,
             escape(&row.status)
         )?;
-        if row.score > diff::CHANGED_BUDGET {
-            writeln!(
-                md,
-                "| {} | {:.2}% | {:.4} | {} | [web]({}/{}) | [native]({}/{}) | {} |",
-                key,
-                row.score * 100.0,
-                row.error,
-                row.status,
-                web_prefix,
-                key,
-                native_prefix,
-                key,
-                row.diff
-                    .as_ref()
-                    .map(|s| format!("[diff]({s})"))
-                    .unwrap_or_else(|| "—".into())
-            )?;
-        }
+        writeln!(
+            md,
+            "| {} | {} | {} | {:.2}% | {:.4} | {} | [web]({}/{}) | [native]({}/{}) | {} |",
+            key,
+            row.policy.label(),
+            geometry,
+            row.score * 100.,
+            row.error,
+            row.status,
+            web_prefix,
+            key,
+            native_prefix,
+            key,
+            row.diff
+                .as_ref()
+                .map(|s| format!("[diff]({s})"))
+                .unwrap_or_else(|| "—".into())
+        )?;
     }
     html.push_str("</table>");
     for (i, row) in rows.iter().enumerate() {
         let key = row.case.relative();
         write!(
             html,
-            "<article id='case-{i}'><h3>{} · {:.2}% · {}</h3><section>",
+            "<article id='case-{i}'><h3>{} · {:.2}% · {} · {}</h3><section>",
             escape(&key),
-            row.score * 100.0,
+            row.score * 100.,
+            escape(&row.policy.label()),
             escape(&row.status)
         )?;
         for (label, path) in [
@@ -223,6 +361,11 @@ pub fn compare_paths(
         }
         html.push_str("</section></article>");
     }
+    let records:Vec<_>=rows.iter().map(|r|serde_json::json!({"key":r.case.relative(),"policy":r.policy,"geometry":r.geometry,"changed_fraction":r.score,"mean_error":r.error,"status":r.status})).collect();
+    fs::write(
+        root.join("report.json"),
+        serde_json::to_vec_pretty(&records)?,
+    )?;
     fs::write(root.join("index.html"), html)?;
     fs::write(root.join("report.md"), md)?;
     println!(
@@ -244,7 +387,7 @@ mod tests {
             .as_nanos();
         let temp =
             std::env::temp_dir().join(format!("bboxybook-report-{}-{suffix}", std::process::id()));
-        let mut case = gallery::cases().remove(0);
+        let mut case = crate::materials::cases().remove(0);
         case.width = 1;
         case.height = 1;
         let image = temp.join("images").join(case.relative());
@@ -256,6 +399,75 @@ mod tests {
         assert!(
             fs::read_to_string(report.join("report.md"))?.contains("1 cases; 0 require review")
         );
+        fs::remove_dir_all(temp)?;
+        Ok(())
+    }
+
+    #[test]
+    fn text_policy_requires_rects_and_baselines_even_when_pixels_pass() {
+        let p = CasePolicy {
+            text: true,
+            channel_tolerance: 8,
+            changed_pixel_budget: 0.02,
+            geometry_tolerance_px: Some(0.5),
+        };
+        let tree = serde_json::json!({"kind":"text","native":[0.,0.,100.,20.],"web":[0.,0.,100.5,20.],"baseline":{"native":15.,"web":15.5},"children":[]});
+        let g = Geometry::from_tree(&tree);
+        assert_eq!(p.status(0.02, Some(&g)), "within policy");
+        assert_eq!(p.status(0.02001, Some(&g)), "review pixels");
+        assert_eq!(p.status(0., None), "unproven geometry");
+        let mut bad = tree.clone();
+        bad["baseline"]["web"] = serde_json::json!(15.501);
+        assert_eq!(
+            p.status(0.01, Some(&Geometry::from_tree(&bad))),
+            "review geometry"
+        );
+        bad["baseline"] = serde_json::Value::Null;
+        assert_eq!(
+            p.status(0., Some(&Geometry::from_tree(&bad))),
+            "unproven geometry"
+        );
+    }
+
+    #[test]
+    fn one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry() -> Result<()> {
+        let temp = std::env::temp_dir().join(format!(
+            "bboxybook-policy-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        ));
+        let mut text = crate::components::cases().remove(0);
+        text.fixture =
+            Some(serde_json::json!({"layer":"components","component":{"tree":{"kind":"text"}}}));
+        let pixel = crate::materials::cases().remove(0);
+        for case in [&text, &pixel] {
+            for (folder, changed) in [("web", false), ("native", true)] {
+                let path = temp.join(folder).join(case.relative());
+                fs::create_dir_all(path.parent().unwrap())?;
+                let mut bytes = [0, 0, 0, 255].repeat(100);
+                if changed {
+                    bytes[0..4].copy_from_slice(&[255; 4]);
+                }
+                bbt_render::write_png(&path, &bytes, 100, 1)?;
+            }
+        }
+        fs::write(
+            temp.join("native/layouts.json"),
+            serde_json::to_vec(
+                &serde_json::json!([{"key":text.relative(),"tree":{"kind":"text","native":[0,0,100,1],"web":[0,0,100,1],"baseline":{"native":1,"web":1},"children":[]}}]),
+            )?,
+        )?;
+        compare_paths(&temp, &[text, pixel], "web", "native")?;
+        let rows: serde_json::Value = serde_json::from_slice(&fs::read(temp.join("report.json"))?)?;
+        let rows = rows.as_array().unwrap();
+        assert!(rows.iter().any(|r| r["policy"]["text"] == true
+            && r["policy"]["changed_pixel_budget"] == 0.02
+            && r["status"] == "within policy"));
+        assert!(rows.iter().any(|r| r["policy"]["text"] == false
+            && r["policy"]["changed_pixel_budget"] == 0.001
+            && r["status"] == "review pixels"));
+        assert!(fs::read_to_string(temp.join("report.md"))?.contains("2% + rect/baseline"));
         fs::remove_dir_all(temp)?;
         Ok(())
     }

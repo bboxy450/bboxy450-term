@@ -1,0 +1,19 @@
+W3.2d.1e diagnostic — do not attribute the Card mismatch to fractional fill coverage.
+2026-10-21; Nyx Copperwing <EXECUTOR>. Isolated headless Chrome, no operator browser.
+Command: node target/bboxybook/fraction-diagnostic/probe.mjs target/bboxybook/fraction-diagnostic target/bboxybook/fraction-diagnostic/requested.json — exit 0, 1/1 captured, zero failures.
+Probe script uses the same capture harness plus integer full-page captures and two exact CSS rectangles.
+Computed Card style: {"before": {"class": "ui-box s-card", "shadow": "color(srgb 0.164706 0.184314 0.333333 / 0.7) 0px 0px 0px 1px", "border": "1px solid color(srgb 0.164706 0.184314 0.333333 / 0.7)"}, "afterShadow": "none", "rect": {"x": 55, "y": 292.78125, "width": 1170, "height": 43.546875, "top": 292.78125, "right": 1225, "bottom": 336.328125, "left": 55}}
+lab/web/ui.js Box adds s-card; lab/web/lab.css:331 Settings .s-card contributes the extra outside shadow.
+Only the s-card class was removed for the second diagnostic screenshot; x/y/w/h unchanged.
+full-visible: x640 rows291..295 = [(11, 11, 16), (33, 36, 64), (35, 39, 72), (18, 20, 42), (18, 20, 42)]
+card-no-collision: x640 rows291..295 = [(11, 11, 16), (11, 11, 16), (35, 39, 72), (18, 20, 42), (18, 20, 42)]
+CSS flat white rect left4 top65.59 width32 height10: x20 rows64..67 = [(11, 11, 16), (11, 11, 16), (255, 255, 255), (255, 255, 255)]
+Chrome snaps this flat fill to row66; the existing blending.rs snapping assertion is supported by this independent probe.
+Prototype removed rounding in chrome/mod.rs + materials.rs, and passed a synthetic 1x/2x fractional area GPU test. It failed the existing CSS snapping assertion and regressed frozen-reference parity.
+New-policy component review count 0/24 -> 5/24; worst Box 2.96%. Material review 8/32 -> 24/32. Style raw 0.1% pixel count 56/88 -> 64/88; all 88 Style cases remain unproven under new policy because they lack geometry snapshots.
+Actual matrix commands/results: .bboxy/runs/w3-2d-1e-{before,after}.log. Initial failed suite output: .bboxy/runs/w3-2d-1e-verified-tests.log.
+Prototype was parked with an exact reverse patch (no git stash, no peer paths), then its two code artifacts below were discarded on Oracle instruction:
+  target/bboxybook/fraction-diagnostic/fractional-prototype.patch
+  target/bboxybook/fraction-diagnostic/fractional_edges-prototype.rs
+Oracle DM e877c165-d863-420a-9e1f-830ba6ac266d and Wren design-correction DM 67d17eff-ed33-44e3-9bd1-166ea015e431, recipient-stored only.
+Decision received: Oracle DM d7717240-384f-4a91-8ad7-74e9ae3d6042, seq2988. Fractional-fill rule withdrawn; keep measured CSS snapping and the existing blending regression. Discard coverage prototype; Wren fixes the CSS collision. No renderer prototype committed.

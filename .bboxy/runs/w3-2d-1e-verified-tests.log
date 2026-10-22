@@ -1,0 +1,52 @@
+$ cargo test -p bbt-ui -p bboxybook -p bbt-render --locked
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.14s
+     Running unittests src/lib.rs (target/debug/deps/bboxybook-6c4afde729aca74a)
+
+running 6 tests
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+     Running unittests src/main.rs (target/debug/deps/bboxybook-701c59dc4d209b0f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (target/debug/deps/atoms-34f12f3d58c848f5)
+
+running 1 test
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.25s
+
+     Running tests/blending.rs (target/debug/deps/blending-47ec7fd494a27ac7)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... FAILED
+
+failures:
+
+---- chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage stdout ----
+
+thread 'chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage' (4844953) panicked at crates/bboxybook/tests/blending.rs:46:5:
+assertion `left == right` failed
+  left: [183, 183, 183, 255]
+ right: [255, 255, 255, 255]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+error: test failed, to rerun pass `-p bboxybook --test blending`
+exit_status=101

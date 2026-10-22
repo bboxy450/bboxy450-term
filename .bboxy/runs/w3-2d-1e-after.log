@@ -1,0 +1,22 @@
+$ target/debug/bboxybook render --manifest target/bboxybook/components/cases.json --out target/bboxybook/d1e-after/components/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/d1e-after/components/native/layouts.json
+rendered 24 PNGs to target/bboxybook/d1e-after/components/native
+exit_status=0
+$ target/debug/bboxybook compare --manifest target/bboxybook/components/cases.json --out target/bboxybook/d1e-after/components --web-root /Users/feral/mydev/bboxy450-term/target/bboxybook/components/web --native-root native
+parity: 24 cases, 5 review; target/bboxybook/d1e-after/components/index.html
+exit_status=0
+$ target/debug/bboxybook render --manifest target/bboxybook/d1b-edges/materials/cases.json --out target/bboxybook/d1e-after/materials/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 32 PNGs to target/bboxybook/d1e-after/materials/native
+exit_status=0
+$ target/debug/bboxybook compare --manifest target/bboxybook/d1b-edges/materials/cases.json --out target/bboxybook/d1e-after/materials --web-root /Users/feral/mydev/bboxy450-term/target/bboxybook/d1b-edges/materials/web --native-root native
+parity: 32 cases, 24 review; target/bboxybook/d1e-after/materials/index.html
+exit_status=0
+$ target/debug/bboxybook render --manifest target/bboxybook/d1b-edges/style/cases.json --out target/bboxybook/d1e-after/style/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 88 PNGs to target/bboxybook/d1e-after/style/native
+exit_status=0
+$ target/debug/bboxybook compare --manifest target/bboxybook/d1b-edges/style/cases.json --out target/bboxybook/d1e-after/style --web-root /Users/feral/mydev/bboxy450-term/target/bboxybook/d1b-edges/style/web --native-root native
+parity: 88 cases, 88 review; target/bboxybook/d1e-after/style/index.html
+exit_status=0

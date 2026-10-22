@@ -66,7 +66,7 @@
       if(call.kind==='text'){
         result.value=call.args[0];result.options=call.args[1]||{};
         const css=getComputedStyle(node),cv=document.createElement('canvas'),ctx=cv.getContext('2d');ctx.font=css.font;
-        const tm=ctx.measureText(node.innerText),marker=document.createElement('span');marker.style.cssText='display:inline-block;width:0;height:0;padding:0;margin:0;border:0;line-height:0';node.append(marker);
+        const tm=ctx.measureText(node.innerText),marker=document.createElement('span');marker.style.cssText='display:inline-block;width:0;height:0;padding:0;margin:0;border:0;line-height:0';node.prepend(marker);
         result.font_diagnostics={font:css.font,ascent:tm.fontBoundingBoxAscent,descent:tm.fontBoundingBoxDescent,baseline:marker.getBoundingClientRect().y-node.getBoundingClientRect().y};marker.remove();
       }
       else if(call.kind==='box'){result.style=call.style;result.children=call.children.map(exportUi);}
