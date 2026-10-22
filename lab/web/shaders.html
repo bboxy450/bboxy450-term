@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>shaders · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="ui.js"></script>
+</head><body><script>
+const el = Lab.el, T = window.TOKENS;
+// Border-effect playground (exploration before the native lock-in). Rule under test: every glowing box owns a fixed effect
+// LANE of L px just outside its edge; content never moves into it and the effect never leaves it, so an effect coming or
+// going cannot move a single pixel of layout. Each candidate is a GLSL ES 3 fragment body written to port line-for-line to WGSL.
+// URL: ?state=<candidate>|compare  &activity=idle|active|waiting|errored  &lane=2..10  &t=<ms, freezes time>  &lanes=1 (outline)
+document.body.classList.add('live');   // the running app: the shader replaces every CSS glow fake
+const Q = new URLSearchParams(location.search);
+const ACT = ['idle', 'active', 'waiting', 'errored'];
+let activity = ACT.includes(Q.get('activity')) ? Q.get('activity') : 'active';
+let lane = Math.min(10, Math.max(2, +(Q.get('lane') || 4)));
+const frozen = Q.has('t') ? +Q.get('t') : null, showLanes = Q.get('lanes') === '1';
+
+// Shared prelude: u in [0,1] runs across the lane (0 = pane edge, 1 = lane edge); s is the arc coordinate (px, clockwise from
+// the top-left); P the perimeter; t seconds already scaled by the activity's speed; amp the activity's amplitude.
+const PRELUDE = `#version 300 es
+precision highp float;
+uniform vec2 uRes; uniform float uTime, uK, uL, uRad, uAct, uFocus; uniform vec4 uRect; uniform vec3 uCol;
+out vec4 o;
+const float TAU = 6.2831853;
+float sdBox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
+// arc length along the rounded rectangle, clockwise from the start of the top edge; continuous through the corners
+// (lane pixels beyond a corner take the corner arc's angle), so travelling effects never seam
+float perimLen(vec2 hs, float r){ r = max(r, .001); vec2 b = hs - r; return 4.*(b.x + b.y) + TAU*r; }
+float perim(vec2 q, vec2 hs, float r){ r = max(r, .001); vec2 b = hs - r; float sx = 2.*b.x, sy = 2.*b.y, a = .25*TAU*r;
+  if (abs(q.x) <= b.x) return q.y < 0. ? q.x + b.x : sx + 2.*a + sy + (b.x - q.x);
+  if (abs(q.y) <= b.y) return q.x > 0. ? sx + a + (q.y + b.y) : 2.*sx + 3.*a + sy + (b.y - q.y);
+  vec2 v;
+  if (q.x > 0. && q.y < 0.) { v = q - vec2(b.x, -b.y); return sx + r*atan(v.x, -v.y); }
+  if (q.x > 0.)             { v = q - vec2(b.x, b.y);  return sx + a + sy + r*atan(v.y, v.x); }
+  if (q.y > 0.)             { v = q - vec2(-b.x, b.y); return 2.*sx + 2.*a + sy + r*atan(-v.x, v.y); }
+  v = q - vec2(-b.x, -b.y); return 2.*sx + 3.*a + 2.*sy + r*atan(-v.y, -v.x); }
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f*f*(3. - 2.*f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
+float fbm(vec2 p){ float a = .5, v = 0.; for (int i = 0; i < 4; i++){ v += a*vnoise(p); p *= 2.03; a *= .5; } return v; }
+`;
+const MAIN = `
+void main(){
+  vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uK;
+  vec2 c = uRect.xy + uRect.zw*.5, hs = uRect.zw*.5, q = p - c;
+  float d = sdBox(q, hs, uRad);
+  float inLane = smoothstep(0., .6, d) * (1. - smoothstep(uL - .6, uL, d));   // the effect lives only in [0, L] outside
+  if (inLane <= 0.) { o = vec4(0); return; }
+  float s = perim(q, hs, uRad), P = perimLen(hs, uRad), u = clamp(d / uL, 0., 1.);
+  float spd = uAct < .5 ? .35 : uAct < 1.5 ? 1. : uAct < 2.5 ? .6 : 0.;
+  float amp = uAct < .5 ? .32 : uAct < 1.5 ? 1. : uAct < 2.5 ? .9 : .65;
+  float t = uTime * .001 * spd;
+  float I = fx(u, s, P, t, amp) * inLane * mix(1., 1.3, uFocus);
+  if (uAct > 1.5 && uAct < 2.5) I *= .6 + .4*(.5 - .5*cos(uTime / 1600. * TAU));   // waiting breathes on top
+  I = clamp(I, 0., 1.);
+  o = vec4(uCol * I, I);
+}`;
+const FX = {
+  ribbon: { name: 'A · ribbon', say: 'one soft band whose distance from the edge travels as a single long sine', body: `
+    float c0 = .45 + .26*sin(TAU*(s/150. - t*.35));
+    return amp * exp(-pow((u - c0) / .24, 2.));` },
+  swell: { name: 'B · swell', say: 'the band hugs the edge; brightness crests roll along it like a slow swell', body: `
+    float crest = .5 + .5*sin(TAU*(s/230. - t*.28));
+    return amp * exp(-u*2.4) * (.22 + .78*crest*crest);` },
+  tide: { name: 'C · tide', say: 'the ribbon displaced by three incommensurate sines: organic, never visibly repeating', body: `
+    float c0 = .44 + .15*sin(TAU*(s/190. - t*.31)) + .08*sin(TAU*(s/71. + t*.47) + 1.3) + .04*sin(TAU*(s/31. - t*.83) + 2.1);
+    float w = .22 + .05*sin(TAU*(s/260. + t*.2));
+    return amp * exp(-pow((u - c0) / w, 2.));` },
+  aurora: { name: 'D · aurora', say: 'fbm noise flowing along the perimeter: curtains that drift and dissolve', body: `
+    float n = fbm(vec2(s/80. - t*.55, u*1.4 + t*.12));
+    return amp * smoothstep(.28, .75, n) * exp(-u*1.3) * 1.15;` },
+  orbit: { name: 'E · orbit', say: 'two soft comets circle with fading tails over a faint base line', body: `
+    float g = 0.;
+    for (int i = 0; i < 2; i++) { float head = fract(t*.06 + float(i)*.5) * P;
+      float behind = fract((head - s) / P) * P, ahead = fract((s - head) / P) * P;
+      g += exp(-pow(min(behind, ahead) / 28., 2.)) + .55*exp(-behind / (P*.12)) * smoothstep(0., 30., behind) * (1. - smoothstep(P*.3, P*.5, behind)); }
+    return amp * (g * exp(-u*1.7) + .14*exp(-u*2.6));` },
+  interference: { name: 'F · interference', say: 'two counter-travelling waves; standing nodes drift slowly round the box', body: `
+    float a = sin(TAU*(s/130. - t*.38)) + sin(TAU*(s/130. + t*.38) + 1.);
+    float c0 = .45 + .13*a;
+    return amp * exp(-pow((u - c0) / .23, 2.)) * (.45 + .3*abs(a));` },
+  caustics: { name: 'G · caustics', say: 'a faint water-light network in the lane, the lightest touch', body: `
+    vec2 z = vec2(s/38., u*2.2); float k = 0.;
+    for (int i = 0; i < 3; i++) { z += .55*vec2(sin(z.y*1.7 + t*.9), cos(z.x*1.3 - t*.7)); k += 1. / (1. + 18.*abs(sin(z.x)*cos(z.y))); }
+    return amp * k * .3 * exp(-u*1.1);` },
+  silk: { name: 'I · silk', say: 'tide\u2019s thin moving core over swell\u2019s faint rolling bloom: the line moves, the light travels', body: `
+    float c0 = .40 + .14*sin(TAU*(s/190. - t*.31)) + .07*sin(TAU*(s/73. + t*.43) + 1.3);
+    float core = exp(-pow((u - c0) / .16, 2.));
+    float crest = .5 + .5*sin(TAU*(s/260. - t*.22));
+    float bloom = exp(-u*2.2) * (.15 + .55*crest*crest);
+    return amp * (core*(.55 + .45*crest) + bloom);` },
+  breathe: { name: 'H · breathe (control)', say: 'today’s uniform breathing glow, confined to the lane: the baseline to beat', body: `
+    return amp * exp(-u*2.) * (.55 + .45*(.5 - .5*cos(t*TAU/1.8)));` },
+};
+const program = (gl, body) => {
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  const p = gl.createProgram();
+  gl.attachShader(p, sh(gl.VERTEX_SHADER, '#version 300 es\nconst vec2 v[3]=vec2[3](vec2(-1,-1),vec2(3,-1),vec2(-1,3));void main(){gl_Position=vec4(v[gl_VertexID],0,1);}'));
+  gl.attachShader(p, sh(gl.FRAGMENT_SHADER, PRELUDE + 'float fx(float u, float s, float P, float t, float amp){' + body + '\n}' + MAIN));
+  gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); return p;
+};
+const seat = { key: 'sx0', name: 'Vesper Greywind', harness: 'claude', role: 'oracle', title: 'swarm control', state: 'active' };
+const live = [];
+// one card: the stage reserves the lane on every side; the pane sits inset by exactly L; the canvas covers the whole stage
+function card(key, W, H, split) {
+  const f = FX[key], stage = el('div', { class: 'sx-stage', style: `width:${W}px;height:${H}px;--lane:${lane}px` });
+  const s = { ...seat, state: activity === 'errored' ? 'errored' : activity === 'waiting' ? 'waiting' : activity === 'idle' ? 'idle' : 'active' };
+  const panes = [];
+  // split: two panes, the gutter between them IS one lane (L px), shared by both effects; outer edges keep their own lane
+  for (let i = 0; i < (split ? 2 : 1); i++) { const pane = C.pane(i ? { ...s, key: 'sx1', name: 'Nyx Copperwing', harness: 'codex', role: 'executor', title: '7.10' } : s, { focused: !i, unfocused: !!i, shortcut: '⌘' + (i + 1) });
+    pane.classList.add('sx-pane'); if (split) { const w = (W - 3 * lane) / 2; pane.style.cssText = `inset:${lane}px auto ${lane}px ${lane + i * (w + lane)}px;width:${w}px`; } stage.append(pane); panes.push(pane); }
+  const cv = el('canvas', { class: 'sx-fx' }); stage.append(cv);
+  if (showLanes) stage.append(el('div', { class: 'sx-lane' }));
+  const gl = cv.getContext('webgl2', { premultipliedAlpha: true, alpha: true });
+  if (!gl) { stage.append(el('div', { class: 'lab-note', style: 'position:absolute;inset:auto 0 0 0' }, 'no WebGL2 here: the effect cannot run')); return el('div', { class: 'sx-card' }, stage, el('b', {}, f.name), el('span', {}, f.say)); }
+  const prog = program(gl, f.body), U = n => gl.getUniformLocation(prog, n);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  live.push({ cv, gl, prog, U, panes, stage });
+  return el('div', { class: 'sx-card' }, stage, el('b', {}, f.name), el('span', {}, f.say));
+}
+function draw(now) {
+  const time = frozen != null ? frozen : now, dark = Lab.prefs.theme !== 'light';
+  for (const L of live.filter(x => x.cv.isConnected)) {
+    const k = Math.min(devicePixelRatio, 2), r = L.stage.getBoundingClientRect();
+    if (L.cv.width !== Math.round(r.width * k)) { L.cv.width = Math.round(r.width * k); L.cv.height = Math.round(r.height * k); }
+    const { gl, U } = L; gl.viewport(0, 0, L.cv.width, L.cv.height); gl.useProgram(L.prog);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    L.panes.forEach((pane, i) => { const pr = pane.getBoundingClientRect();
+      const col = activity === 'waiting' ? C.hslToRgb(T.color.state.waiting) : activity === 'errored' ? C.hslToRgb(T.color.state.errored) : C.hslToRgb(C.seatColor(i ? { key: 'sx1' } : seat));
+      gl.uniform2f(U('uRes'), L.cv.width, L.cv.height); gl.uniform1f(U('uTime'), time + i * 1700); gl.uniform1f(U('uK'), k); gl.uniform1f(U('uL'), lane);
+      gl.uniform1f(U('uRad'), parseFloat(getComputedStyle(pane).borderTopLeftRadius) || 0); gl.uniform1f(U('uAct'), ACT.indexOf(activity)); gl.uniform1f(U('uFocus'), i ? 0 : 1);
+      gl.uniform4f(U('uRect'), pr.left - r.left, pr.top - r.top, pr.width, pr.height); gl.uniform3fv(U('uCol'), col);
+      gl.drawArrays(gl.TRIANGLES, 0, 3); });
+  }
+  if (frozen == null) requestAnimationFrame(draw);
+}
+const ctl = () => el('div', { class: 'sx-ctl' },
+  el('span', {}, 'activity'), ...ACT.map(a => el('button', { class: 'chip' + (a === activity ? ' on' : ''), onclick: () => { Q.set('activity', a); location.search = Q; } }, a)),
+  el('span', {}, 'lane ' + lane + ' px'), ...[2, 3, 4, 6, 8].map(n => el('button', { class: 'chip' + (n === lane ? ' on' : ''), onclick: () => { Q.set('lane', n); location.search = Q; } }, String(n))),
+  el('button', { class: 'chip' + (showLanes ? ' on' : ''), onclick: () => { showLanes ? Q.delete('lanes') : Q.set('lanes', '1'); location.search = Q; } }, 'show lane'));
+Lab.page({ title: 'shaders', wide: true, note: 'Border-effect playground, exploration before the native lock-in. Every glowing box owns a fixed lane of L px just outside its edge: content never enters it and the effect never leaves it, so an effect arriving or leaving moves nothing (the pane border here is a constant 1 px; activity lives in the shader, never in geometry). Eight candidates, GLSL written to port 1:1 to WGSL. ?activity= ?lane= ?t= (freeze) ?lanes=1.',
+  states: ['compare', 'split · shared lane', ...Object.keys(FX)],
+  render(s, body) {
+    body.append(ctl());
+    if (s === 'split · shared lane') { body.append(el('div', { class: 'sx-grid one' }, card(FX[Q.get('fx')] ? Q.get('fx') : 'silk', 760, 300, true))); requestAnimationFrame(draw); return; }
+    if (s === 'compare' || s === 'all') body.append(el('div', { class: 'sx-grid' }, ...Object.keys(FX).map(k => card(k, 300, 190))));
+    else if (live.filter(x => x.cv.isConnected).length >= 8) body.append(el('div', { class: 'lab-note' }, 'open this candidate alone (WebGL context budget)'));
+    else body.append(el('div', { class: 'sx-grid one' }, card(s, 620, 380)));
+    requestAnimationFrame(draw);
+  } });
+</script></body></html>

@@ -1516,3 +1516,16 @@ details[open] > summary::before { transform: rotate(90deg); }
 .ui-checker { background-color: var(--bg); background-image: linear-gradient(45deg, color-mix(in srgb, var(--fg) 14%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--fg) 14%, transparent) 75%), linear-gradient(45deg, color-mix(in srgb, var(--fg) 14%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--fg) 14%, transparent) 75%); background-size: 12px 12px; background-position: 0 0, 6px 6px; border-radius: 4px; }
 .ef-rows { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .ef-rows .ui-box { flex: none; }
+
+/* ---------- shaders.html: border-effect playground. The stage reserves the lane; the pane is inset by exactly L ---------- */
+.sx-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-bottom: var(--s6); font-size: var(--t-caption); color: var(--fg-dim); }
+.sx-ctl span { margin-left: var(--s4); }
+.sx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--s8); }
+.sx-grid.one { grid-template-columns: 1fr; }
+.sx-card { display: flex; flex-direction: column; gap: var(--s2); }
+.sx-card b { font-size: var(--t-row); color: var(--fg); }
+.sx-card span { font-size: var(--t-caption); color: var(--fg-dim); }
+.sx-stage { position: relative; background: var(--bg); max-width: 100%; }
+.sx-stage .sx-pane { position: absolute; inset: var(--lane); min-height: 0; border-width: var(--strip-b-idle); }   /* constant border: no twitch */
+.sx-stage .sx-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sx-stage .sx-lane { position: absolute; inset: 0; pointer-events: none; outline: 1px dashed color-mix(in srgb, var(--fg) 35%, transparent); outline-offset: -1px; }
