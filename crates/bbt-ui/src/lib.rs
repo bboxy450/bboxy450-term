@@ -1,5 +1,6 @@
-//! L3: serialisable token references plus explicit overrides.
-//! No renderer, layout, component, window or input ownership at this layer.
+//! L3 token-resolved Style and L5 stateless atom painters.
+//! No renderer, layout tree, window, clock or input ownership.
+pub mod atoms;
 pub mod style;
 pub use bbt_ui_model::{Density, Theme};
 pub use style::*;

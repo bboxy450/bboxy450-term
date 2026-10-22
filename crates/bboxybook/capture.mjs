@@ -56,13 +56,13 @@ try{
   const adapter=await fs.readFile(path.join(root,'crates/bboxybook/web-fixtures.js'),'utf8');
   const captureInputs=await fs.readFile(path.join(root,'crates/bboxybook/capture-inputs.js'),'utf8');
   for(let i=0;i<manifest.length;i++){
-    const c={...manifest[i]};const relative=`${c.component}/${c.slug}-${c.density}-${c.theme}.png`;cdp.errors=[];
+    const c={...manifest[i]};const atomLayer=c.fixture?.layer==='atoms';const relative=`${c.component}/${c.slug}-${c.density}-${c.theme}.png`;cdp.errors=[];
     try{
       await cdp.call('Emulation.setDeviceMetricsOverride',{width:c.component.startsWith('showcase')?1440:1280,height:c.component.startsWith('showcase')?868:960,deviceScaleFactor:1,mobile:false});
       await cdp.call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:c.theme}]});
-      const page=c.page==='@component'?'seat-row.html':c.page;const reference=['materials','style'].includes(c.component)||c.page==='@component'||(c.component==='settings_tab'&&c.state==='new harness')?supplemental:baseline;const url=new URL(pathToFileURL(path.join(reference,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
+      const page=c.page==='@component'?'seat-row.html':c.page;const reference=atomLayer||['materials','style'].includes(c.component)||c.page==='@component'||(c.component==='settings_tab'&&c.state==='new harness')?supplemental:baseline;const url=new URL(pathToFileURL(path.join(reference,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
       url.searchParams.set('state',c.page==='@component'?'idle':c.state);url.searchParams.set('density',c.density);url.searchParams.set('theme',c.theme);
-      const init=await cdp.call('Page.addScriptToEvaluateOnNewDocument',{source:`window.bboxyLayerFixture=${JSON.stringify(['materials','style'].includes(c.component))};window.FIX=${JSON.stringify(sharedFixtures)};${captureInputs}\ntry{localStorage.setItem('lab.theme',${JSON.stringify(c.theme)});localStorage.setItem('lab.density',${JSON.stringify(c.density)});localStorage.setItem('showcase.theme',${JSON.stringify(c.theme)});}catch{}`});
+      const init=await cdp.call('Page.addScriptToEvaluateOnNewDocument',{source:`window.bboxyAtomFixture=${JSON.stringify(atomLayer)};window.bboxyLayerFixture=${JSON.stringify(['materials','style'].includes(c.component))};window.FIX=${JSON.stringify(sharedFixtures)};${captureInputs}\ntry{localStorage.setItem('lab.theme',${JSON.stringify(c.theme)});localStorage.setItem('lab.density',${JSON.stringify(c.density)});localStorage.setItem('showcase.theme',${JSON.stringify(c.theme)});}catch{}`});
       await cdp.call('Page.navigate',{url:url.href});await cdp.call('Page.removeScriptToEvaluateOnNewDocument',{identifier:init.identifier});
       let ready=false;for(let j=0;j<80;j++){try{ready=await cdp.eval(`document.readyState==='complete' && !!window.C && !!document.querySelector(${JSON.stringify(c.selector)})`);}catch{}if(ready)break;await pause(25);}
       if(!ready)throw Error('lab page never became ready');
@@ -72,6 +72,7 @@ try{
       if(c.checker)await cdp.eval(`document.querySelector('.card')?.classList.add('checker')`);
       await cdp.eval(`document.fonts.ready`);
       if(['materials','style'].includes(c.component))await cdp.eval(`bboxyFreezeLayer()`);
+      if(atomLayer)await cdp.eval(`document.getAnimations().forEach(a=>{a.pause();a.currentTime=0})`);
       await cdp.eval(`(()=>{const s=document.createElement('style');s.textContent='*,*::before,*::after{animation-play-state:paused!important;transition:none!important;caret-color:transparent!important}';document.head.append(s);})()`);
       const rect=await cdp.eval(`(()=>{const n=document.querySelector(${JSON.stringify(c.selector)});const r=n.getBoundingClientRect();return {x:r.x+scrollX,y:r.y+scrollY,width:Math.ceil(r.width),height:Math.ceil(r.height)};})()`);
       if(!rect.width||!rect.height||rect.width>8192||rect.height>8192)throw Error(`unsupported capture bounds ${JSON.stringify(rect)}`);
@@ -79,9 +80,9 @@ try{
       c.fixture=await cdp.eval(`bboxyCaptureInputs(${JSON.stringify(c.selector)})`);
       const shot=await cdp.call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{...rect,scale:1}});
       const dest=path.join(out,'web',relative);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,Buffer.from(shot.data,'base64'));
-      if(['materials','style'].includes(c.component)){
+      if(atomLayer||['materials','style'].includes(c.component)){
         const full=await cdp.eval(`({width:Math.ceil(document.documentElement.clientWidth),height:Math.ceil(Math.max(document.documentElement.scrollHeight,innerHeight))})`);
-        await cdp.eval(`(()=>{const s=document.createElement('style');s.textContent='.ui-sq,.ui-box,.ui-scope .pane-wrap{visibility:hidden!important}';document.head.append(s);})()`);
+        await cdp.eval(`(()=>{const s=document.createElement('style');s.textContent=${JSON.stringify(atomLayer?'.glyph,.hicon{visibility:hidden!important}':'.ui-sq,.ui-box,.ui-scope .pane-wrap{visibility:hidden!important}')};document.head.append(s);})()`);
         const backdrop=await cdp.call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,...full,scale:1}});
         const file=path.join(out,'backdrops',relative);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,Buffer.from(backdrop.data,'base64'));
         c.fixture.backdrop={path:file,...full,crop:rect};
@@ -92,7 +93,7 @@ try{
   }
   const hashes={};for(const name of ['components.js','lab.css','lab.js','tokens.js','showcase.js','showcase.html','fixtures.js','ui.js','materials.html','style.html'])hashes[name]=createHash('sha256').update(await fs.readFile(path.join(supplemental,'lab/web',name))).digest('hex');
   await fs.writeFile(path.join(out,'cases.json'),JSON.stringify(captured,null,2));
-  await fs.writeFile(path.join(out,'capture.json'),JSON.stringify({status:failures.length?'partial':'captured',baseline:execFileSync('git',['rev-parse','ux-prototype-v2^{commit}'],{encoding:'utf8'}).trim(),supplementalReference:'@component entries and settings_tab/new harness use frozen committed HEAD lab components',revision:head,browser:version.Browser,profile:'isolated ephemeral profile',deviceScaleFactor:1,freeze:'CSS animation playback paused; L2/L3 canvas rAF clock fixed at 450ms with seeded counter-hash Math.random; no transcript normalization; original web content retained',supplementalWebHashes:hashes,cases:manifest.length,failures},null,2));
+  await fs.writeFile(path.join(out,'capture.json'),JSON.stringify({status:failures.length?'partial':'captured',baseline:execFileSync('git',['rev-parse','ux-prototype-v2^{commit}'],{encoding:'utf8'}).trim(),supplementalReference:'@component entries and settings_tab/new harness use frozen committed HEAD lab components',revision:head,browser:version.Browser,profile:'isolated ephemeral profile',deviceScaleFactor:1,freeze:'CSS animation playback paused; L2/L3 canvas rAF clock fixed at 450ms with seeded counter-hash Math.random; L5 glyph CSS pulse fixed at 0ms; no transcript normalization; original web content retained',supplementalWebHashes:hashes,cases:manifest.length,failures},null,2));
   console.log(`web: ${captured.length-failures.length}/${manifest.length} captured; ${failures.length} failures`);
 }finally{if(ws)ws.close();browser.kill('SIGTERM');await Promise.race([new Promise(r=>browser.once('exit',r)),pause(2000)]);if(browser.exitCode===null)browser.kill('SIGKILL');await fs.rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:100});}
 if(failures.length)process.exitCode=1;

@@ -1,0 +1,52 @@
+W3.2d.3 — L5 atoms handoff
+observed_at=2026-10-21T19:58:02.390625-07:00
+base_head=2b7e47a0a5c0b56c3c3c6b7cac73b527f91ebf21
+
+Scope: nine stateless bbt-ui atom painters, isolated native gallery and glyph/icon parity. No L6 components, module rebases, input, clocks, dependencies, design edits or L1 shader changes.
+
+Acceptance evidence:
+crates/bbt-ui/src/atoms.rs:9 — AtomCtx injects DrawCtx, TextMeasure and scale; the library owns no font selection, GPU, layout tree or timer.
+crates/bbt-ui/src/atoms.rs:43 — Atom::paint emits the shared draw list. Hairline, Glyph, Icon, Badge, Chip, Pill, Swatch, Spinner and Checkerboard implemented.
+crates/bbt-ui/src/atoms.rs:77 — activity, grade and waiting kind compose independently; state colour and ring/mark geometry are atom-owned.
+crates/bbt-ui/src/atoms.rs:244 — Pill reuses the L3 shadow token resolver; no copied shadow dimensions.
+crates/bbt-ui/tests/atoms.rs — state/grade/kind independence, one-physical-pixel hairline at 1/2/3x, explicit repeatable spinner phase, logical icon name/tint, dim applied once to waiting mark.
+crates/bboxybook/src/atoms.rs — nine painters x four densities x two themes = 72 native previews; 112 canonical page/state/density/theme reference cases.
+crates/bboxybook/capture-inputs.js:59 — L5-only atom records with bounds, identity, activity/grade/kind and tint; no screenshot is used as a native glyph/icon.
+crates/bboxybook/capture.mjs — current committed lab references for L5, pulse fixed at 0 ms; .glyph/.hicon hidden in the shared diagnostic/checker backdrop.
+
+Commands/results:
+.bboxy/runs/w3-2d-atoms-before.log — node checks + web capture 112/112, legacy render 112/112, compare exit 0; 112/112 over tolerance.
+.bboxy/runs/w3-2d-atoms-first.log — first L5 render 112/112 + compare exit 0; 103/112 over tolerance.
+.bboxy/runs/w3-2d-atoms-gallery.log — cargo run -p bboxybook --locked -- atoms exit 0; 72 previews + fresh 112/112 references + native render + compare. Final 103/112 over tolerance (glyph 47/56, harness-icon 56/56).
+.bboxy/runs/w3-2d-atoms-verified-tests.log — cargo test -p bbt-ui -p bboxybook --locked exit 0: 7 + 13 = 20 passed. fmt check, node checks and git diff --check exit 0. All-target Clippy exit 0 with the two documented pre-existing exceptions (map_entry, chunks_exact_to_as_chunks).
+Reference byte comparison — all 112 before/after web PNGs identical (0 mismatches); no tolerance/golden change.
+
+Review:
+target/bboxybook/atoms/index.html
+target/bboxybook/atoms/parity/index.html
+Inspected all nine cozy previews in dark and light (target/bboxybook/atoms/nine-atoms-review.png), plus glyph grade/waiting and Claude/Codex icon pairs, including a 4x detail view of small/64px icons.
+Worst changed fraction: 4.09% legacy -> 1.55% L5. Per-channel tolerance 8 and changed-pixel budget 0.1%, unchanged.
+
+Reference metadata: {"browser": "Chrome/156.0.8078.48", "cases": 112, "deviceScaleFactor": 1, "failures": [], "freeze": "CSS animation playback paused; L2/L3 canvas rAF clock fixed at 450ms with seeded counter-hash Math.random; L5 glyph CSS pulse fixed at 0ms; no transcript normalization; original web content retained", "revision": "2b7e47a0a5c0b56c3c3c6b7cac73b527f91ebf21"}
+
+Ten worst triplets (each key has web/native/diff beneath the parity index):
+| glyph/grades-reported-shim-inferred-touch-light.png | 1.55% | 0.0015 | review | [web](web/glyph/grades-reported-shim-inferred-touch-light.png) | [native](native/glyph/grades-reported-shim-inferred-touch-light.png) | [diff](diff/glyph/grades-reported-shim-inferred-touch-light.png) |
+| glyph/grades-reported-shim-inferred-touch-dark.png | 1.49% | 0.0017 | review | [web](web/glyph/grades-reported-shim-inferred-touch-dark.png) | [native](native/glyph/grades-reported-shim-inferred-touch-dark.png) | [diff](diff/glyph/grades-reported-shim-inferred-touch-dark.png) |
+| glyph/grades-reported-shim-inferred-comfortable-light.png | 1.11% | 0.0008 | review | [web](web/glyph/grades-reported-shim-inferred-comfortable-light.png) | [native](native/glyph/grades-reported-shim-inferred-comfortable-light.png) | [diff](diff/glyph/grades-reported-shim-inferred-comfortable-light.png) |
+| glyph/grades-reported-shim-inferred-comfortable-dark.png | 1.09% | 0.0010 | review | [web](web/glyph/grades-reported-shim-inferred-comfortable-dark.png) | [native](native/glyph/grades-reported-shim-inferred-comfortable-dark.png) | [diff](diff/glyph/grades-reported-shim-inferred-comfortable-dark.png) |
+| glyph/grades-reported-shim-inferred-cozy-dark.png | 0.92% | 0.0007 | review | [web](web/glyph/grades-reported-shim-inferred-cozy-dark.png) | [native](native/glyph/grades-reported-shim-inferred-cozy-dark.png) | [diff](diff/glyph/grades-reported-shim-inferred-cozy-dark.png) |
+| glyph/grades-reported-shim-inferred-cozy-light.png | 0.90% | 0.0006 | review | [web](web/glyph/grades-reported-shim-inferred-cozy-light.png) | [native](native/glyph/grades-reported-shim-inferred-cozy-light.png) | [diff](diff/glyph/grades-reported-shim-inferred-cozy-light.png) |
+| glyph/grades-reported-shim-inferred-compact-light.png | 0.73% | 0.0005 | review | [web](web/glyph/grades-reported-shim-inferred-compact-light.png) | [native](native/glyph/grades-reported-shim-inferred-compact-light.png) | [diff](diff/glyph/grades-reported-shim-inferred-compact-light.png) |
+| glyph/grades-reported-shim-inferred-compact-dark.png | 0.65% | 0.0005 | review | [web](web/glyph/grades-reported-shim-inferred-compact-dark.png) | [native](native/glyph/grades-reported-shim-inferred-compact-dark.png) | [diff](diff/glyph/grades-reported-shim-inferred-compact-dark.png) |
+| harness-icon/claude-comfortable-light.png | 0.51% | 0.0007 | review | [web](web/harness-icon/claude-comfortable-light.png) | [native](native/harness-icon/claude-comfortable-light.png) | [diff](diff/harness-icon/claude-comfortable-light.png) |
+| harness-icon/claude-compact-light.png | 0.51% | 0.0007 | review | [web](web/harness-icon/claude-compact-light.png) | [native](native/harness-icon/claude-compact-light.png) | [diff](diff/harness-icon/claude-compact-light.png) |
+
+Gaps / next assigned concern:
+Font masks, circle outlines/dashes and small-icon nearest atlas sampling remain over tolerance. The 64px atlas is sampled by textureLoad in chrome.wgsl; terminal cells and L1 shaders are untouched here.
+Captured lab grades case has inferred waiting opacity 1 while other inferred states are 0.72. Oracle decision f91b40a1-ba19-4a68-9708-f6a460475730: grade multiplies pulse, native 0.72 is correct; Wren fixes lab.css. This frozen L5 capture predates that correction.
+Same Oracle decision assigns d.1c after d.3: linear icon-atlas filtering at L1; terminal cell sampling stays nearest. It will use the corrected lab reference when available.
+Seven non-glyph/icon atoms have native previews and rendering tests, not a claimed web parity score. Shared outer placement/backdrop/diagnostic labels isolate atom painting; this is not L6 layout verification.
+Not run: full legacy 1,664-case parity, hosted CI, Linux/mobile/macOS14, performance/FPS, native window or app input tests. No new window/input code is in scope.
+PNG/index outputs under target/ are local review artifacts, not committed. Scoped source and logs are committed for Oracle review.
+
+— Nyx Copperwing <EXECUTOR>

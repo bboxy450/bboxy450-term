@@ -8,7 +8,9 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     let mut renderer = ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}", renderer.context.adapter_info);
     for (i, case) in cases.iter().enumerate() {
-        let rgba = if case.component == "materials" {
+        let rgba = if case.fixture.as_ref().is_some_and(|f| f["layer"] == "atoms") {
+            crate::atoms::render_case(&mut renderer, case)?
+        } else if case.component == "materials" {
             crate::materials::render_case(&mut renderer, case)?
         } else if case.component == "style" {
             crate::styles::render_case(&mut renderer, case)?
@@ -105,7 +107,12 @@ pub fn compare_paths(
         .count();
     let material_layer = cases.iter().all(|c| c.component == "materials");
     let style_layer = cases.iter().all(|c| c.component == "style");
-    let sources = if material_layer {
+    let atom_layer = cases
+        .iter()
+        .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "atoms"));
+    let sources = if atom_layer {
+        "L5 stateless atom painters from bbt-ui. Current committed lab glyph/harness-icon pages are the reference (revision in capture.json). CSS outer placement, checker backdrop and diagnostic labels are common fixtures; glyphs/icons are hidden in that backdrop and painted natively. Native atoms own state colours, grade rings, waiting-kind marks and icon tint. CSS pulse is fixed at 0ms. This isolates L5 painting, not L6 layout or module composition. Canonical key: <page>/<state>-<density>-<theme>."
+    } else if material_layer {
         "L2 named material shaders. The captured CSS backdrop, diagnostic text and outer square rectangles are common fixtures; only the four material surfaces are painted natively. This isolates L2 and does not assess native text/layout. Canonical key: materials/<state>-<density>-<theme>. L2/L3 captures use a seeded counter-hash random stream and fixed 450ms animation clock; the native emitter consumes the same seed and phase. Remaining canvas/SDF edge rasterisation differences are ranked below. See capture.json for the exact policy."
     } else if style_layer {
         "L3 Style, resolved from compile-time tokens plus serialisable overrides (styles.json). The CSS backdrop/diagnostic labels and external box origin/width are common fixtures; native code resolves height/padding and paints material, fill, border, shadow and text. This is a low-level review fixture, not an L6 component/layout or legacy module rebase. Chrome/fx composite in sRGB; text uses corrected linear coverage. Glow's random stream and 450ms clock are shared with the web capture. Remaining text-mask/border/particle AA differences are ranked below. Canonical key: style/<state>-<density>-<theme>."
@@ -123,7 +130,7 @@ pub fn compare_paths(
     let mut html = String::from(
         "<!doctype html><meta charset=utf-8><title>bboxybook parity</title><style>body{background:#10121c;color:#eee;font:14px system-ui;margin:24px}a{color:#9bc3ff}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #383c55;text-align:left}img{max-width:100%;height:auto}article{margin:24px 0;padding:12px;background:#1a1d2b}section{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}h3{font-size:14px}figure{margin:0}figcaption{margin:6px 0;color:#aab}</style><h1>bboxybook parity</h1>",
     );
-    if material_layer || style_layer {
+    if material_layer || style_layer || atom_layer {
         write!(html, "<p>{}</p>", escape(sources))?;
     }
     if style_layer {

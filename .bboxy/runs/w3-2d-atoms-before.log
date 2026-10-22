@@ -1,0 +1,16 @@
+command: node --check crates/bboxybook/capture.mjs
+exit_status=0
+command: node --check crates/bboxybook/capture-inputs.js
+exit_status=0
+command: node crates/bboxybook/capture.mjs target/bboxybook/atoms-before target/bboxybook/atoms-before/requested.json
+captured 100/112
+web: 112/112 captured; 0 failures
+exit_status=0
+command: target/debug/bboxybook render --manifest target/bboxybook/atoms-before/cases.json --out target/bboxybook/atoms-before/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/112
+rendered 112 PNGs to target/bboxybook/atoms-before/native
+exit_status=0
+command: target/debug/bboxybook compare --manifest target/bboxybook/atoms-before/cases.json --out target/bboxybook/atoms-before
+parity: 112 cases, 112 review; target/bboxybook/atoms-before/index.html
+exit_status=0

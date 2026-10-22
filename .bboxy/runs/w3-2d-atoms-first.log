@@ -1,0 +1,8 @@
+command: target/debug/bboxybook render --manifest target/bboxybook/atoms-first/cases.json --out target/bboxybook/atoms-first/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/112
+rendered 112 PNGs to target/bboxybook/atoms-first/native
+exit_status=0
+command: target/debug/bboxybook compare --manifest target/bboxybook/atoms-first/cases.json --out target/bboxybook/atoms-first
+parity: 112 cases, 103 review; target/bboxybook/atoms-first/index.html
+exit_status=0

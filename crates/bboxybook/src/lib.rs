@@ -1,3 +1,4 @@
+pub mod atoms;
 pub mod fixtures;
 pub mod gallery;
 pub mod materials;

@@ -212,3 +212,30 @@ rasterisation (about 0.2%). Style's remaining text-mask/edge differences are
 listed separately, not hidden by a threshold or golden update. Exact phase and
 random state are fixtures; the web emitter code/design is not rewritten.
 `w3-2d-1b-*` logs record each before/after phase and reference revision.
+
+
+## L5 atoms (W3.2d.3)
+
+```sh
+cargo run -p bboxybook --locked -- atoms
+```
+
+`target/bboxybook/atoms/index.html` shows all nine `bbt-ui` atom painters across
+four densities and two themes (72 native previews). Its linked
+`parity/index.html` pairs the native Glyph and Icon with all seven states of
+each current committed lab page (112 pairs), using canonical keys such as
+`glyph/active-cozy-dark` and `harness-icon/codex-cozy-dark`.
+
+The L5 comparison shares only the web's outer placement, diagnostic labels and
+checker backdrop. The capture hides `.glyph` and `.hicon` before saving that
+backdrop; native code paints those elements through `bbt-ui::atoms`. Activity,
+grade, waiting kind and identity are data. Native atoms own their colour rules,
+rings, marks and tint. CSS pulse is fixed at its initial phase. The legacy
+module previews and their coverage registry are untouched.
+
+The separate native-only previews establish rendering/coverage for Hairline,
+Badge, Chip, Pill, Swatch, Spinner and Checkerboard; they do not claim CSS parity
+for those seven atoms. No L6 widgets or module composition are built here. The
+font-mask/outline AA and nearest-sampled icon atlas remain visible in the L5
+comparison, with unchanged thresholds. GPU text and asset ownership remain in
+L1; this pass does not change its shaders.

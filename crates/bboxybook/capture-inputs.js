@@ -56,13 +56,18 @@
     const bounds=node=>{const r=node.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,w:r.width,h:r.height};};
     const radii=css=>[css.borderTopLeftRadius,css.borderTopRightRadius,css.borderBottomRightRadius,css.borderBottomLeftRadius].map(parseFloat);
     const glowFor=node=>{const g=glows.find(g=>g.wrap.contains(node));return g?{seed:g.seed,activity:g.activity,focused:g.focused,time_ms:g.time_ms,canvas:bounds(g.cv)}:null;};
+    const atoms=window.bboxyAtomFixture?[...root.querySelectorAll('.glyph,.hicon')].map(node=>{
+      const css=getComputedStyle(node),glyph=node.classList.contains('glyph');
+      return {kind:glyph?'glyph':'icon',rect:bounds(node),color:color(css.color,node),opacity:Number(css.opacity),
+        ...(glyph?{activity:['active','idle','waiting','errored'].find(x=>node.classList.contains(x)),grade:['reported','shim','inferred'].find(x=>node.classList.contains('g-'+x)),wait_kind:['permission','question','auth'].find(x=>node.classList.contains('k-'+x))}:{name:node.title})};
+    }):[];
     const squares=[...root.querySelectorAll('.ui-sq')].map((node,index)=>{const input=materials[index];const css=getComputedStyle(node);return {...input,glow:glowFor(node),rect:bounds(node),radii:radii(css),color:color(input.params.color||'var(--accent)',node),tint:color(input.params.tint==='none (Style fill)'?'transparent':input.params.tint||'transparent',node)};});
     const boxes=styles.filter(c=>c.node.isConnected&&root.contains(c.node)).map(({style,node})=>{
       const css=getComputedStyle(node),text=node.querySelector('.ui-text'),tc=getComputedStyle(text);
       return {style,glow:glowFor(node),rect:bounds(node),computed:{fill:color(css.backgroundColor,node),radii:radii(css),padding:[css.paddingTop,css.paddingRight,css.paddingBottom,css.paddingLeft].map(parseFloat),border_width:parseFloat(css.borderTopWidth)},
         text:{value:text.innerText,rect:bounds(text),size:parseFloat(tc.fontSize),color:color(tc.color,text),weight:Number(tc.fontWeight)}};
     });
-    return JSON.parse(JSON.stringify({ version: 1, calls: serialized, materials:squares, styles:boxes }, (key, value) => {
+    return JSON.parse(JSON.stringify({ version: 1, layer:window.bboxyAtomFixture?'atoms':undefined, atoms, calls: serialized, materials:squares, styles:boxes }, (key, value) => {
       if (typeof value === 'function') return { $callback: true };
       if (value instanceof Node) return undefined;
       if (value instanceof Set) return [...value];

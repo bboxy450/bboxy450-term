@@ -628,7 +628,7 @@ fn defaults(p: Preset) -> Base {
     b
 }
 
-fn resolve_shadow(token: Shadow) -> Result<Option<ResolvedShadow>> {
+pub(crate) fn resolve_shadow(token: Shadow) -> Result<Option<ResolvedShadow>> {
     // These are compile-time design strings; parse their CSS data, never copy
     // their numeric values into a second source of truth.
     let source = match token {
