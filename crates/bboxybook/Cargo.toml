@@ -10,6 +10,7 @@ description = "bboxy450-term: bboxybook"
 
 [dependencies]
 bbt-ui-model = { path = "../bbt-ui-model" }
+bbt-ui = { path = "../bbt-ui" }
 bbt-render = { path = "../bbt-render" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

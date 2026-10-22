@@ -1,0 +1,6 @@
+{
+  "cases": 88,
+  "style_reference": "e925655535990b4a137d7c8233b76d08e9da87fc",
+  "policy": "metrics: 0.01 px, box height: 0.02 px (CSS subpixel quantisation); colours: 1/255 premultiplied RGBA (8-bit canvas readback)",
+  "mismatches": []
+}

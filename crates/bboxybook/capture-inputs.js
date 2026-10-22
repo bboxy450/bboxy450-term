@@ -4,8 +4,14 @@
 (() => {
   const calls = [];
   const materials = [];
+  const styles = [];
   let ui;
-  Object.defineProperty(window,'UI',{configurable:true,get:()=>ui,set(value){ui=value;const original=value.material;value.material=function(name,options){const result=original(name,options);materials.push({kind:name,params:result.params});return result;};}});
+  Object.defineProperty(window,'UI',{configurable:true,get:()=>ui,set(value){
+    ui=value;const original=value.material;
+    value.material=function(name,options){const result=original(name,options);materials.push({kind:name,params:result.params});return result;};
+    const box=value.Box;
+    value.Box=function(style,...children){const node=box(style,...children);styles.push({style,node});return node;};
+  }});
   let components;
   Object.defineProperty(window, 'C', {
     configurable: true,
@@ -35,8 +41,15 @@
         rect: { x: r.x - origin.x, y: r.y - origin.y, w: r.width, h: r.height } };
     });
     const color=(value,node)=>{const probe=document.createElement('span');probe.style.color=value;node.append(probe);const c=getComputedStyle(probe).color;probe.remove();const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');ctx.fillStyle=c;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].map(c=>c/255);};
-    const squares=[...root.querySelectorAll('.ui-sq')].map((node,index)=>{const input=materials[index];const r=node.getBoundingClientRect();const css=getComputedStyle(node);return {...input,rect:{x:r.x-origin.x,y:r.y-origin.y,w:r.width,h:r.height},radii:[css.borderTopLeftRadius,css.borderTopRightRadius,css.borderBottomRightRadius,css.borderBottomLeftRadius].map(parseFloat),color:color(input.params.color||'var(--accent)',node),tint:color(input.params.tint||'var(--surface)',node)};});
-    return JSON.parse(JSON.stringify({ version: 1, calls: serialized, materials:squares }, (key, value) => {
+    const bounds=node=>{const r=node.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,w:r.width,h:r.height};};
+    const radii=css=>[css.borderTopLeftRadius,css.borderTopRightRadius,css.borderBottomRightRadius,css.borderBottomLeftRadius].map(parseFloat);
+    const squares=[...root.querySelectorAll('.ui-sq')].map((node,index)=>{const input=materials[index];const css=getComputedStyle(node);return {...input,rect:bounds(node),radii:radii(css),color:color(input.params.color||'var(--accent)',node),tint:color(input.params.tint==='none (Style fill)'?'transparent':input.params.tint||'transparent',node)};});
+    const boxes=styles.filter(c=>c.node.isConnected&&root.contains(c.node)).map(({style,node})=>{
+      const css=getComputedStyle(node),text=node.querySelector('.ui-text'),tc=getComputedStyle(text);
+      return {style,rect:bounds(node),computed:{fill:color(css.backgroundColor,node),radii:radii(css),padding:[css.paddingTop,css.paddingRight,css.paddingBottom,css.paddingLeft].map(parseFloat),border_width:parseFloat(css.borderTopWidth)},
+        text:{value:text.innerText,rect:bounds(text),size:parseFloat(tc.fontSize),color:color(tc.color,text),weight:Number(tc.fontWeight)}};
+    });
+    return JSON.parse(JSON.stringify({ version: 1, calls: serialized, materials:squares, styles:boxes }, (key, value) => {
       if (typeof value === 'function') return { $callback: true };
       if (value instanceof Node) return undefined;
       if (value instanceof Set) return [...value];

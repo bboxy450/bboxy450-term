@@ -10,6 +10,8 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     for (i, case) in cases.iter().enumerate() {
         let rgba = if case.component == "materials" {
             crate::materials::render_case(&mut renderer, case)?
+        } else if case.component == "style" {
+            crate::styles::render_case(&mut renderer, case)?
         } else {
             let list = gallery::draw(case)?;
             renderer.render_to_rgba(&list, case.width, case.height, 1.0)?
@@ -102,8 +104,11 @@ pub fn compare_paths(
         .filter(|r| r.score > diff::CHANGED_BUDGET)
         .count();
     let material_layer = cases.iter().all(|c| c.component == "materials");
+    let style_layer = cases.iter().all(|c| c.component == "style");
     let sources = if material_layer {
         "L2 named material shaders. The captured CSS backdrop, diagnostic text and outer square rectangles are common fixtures; only the four material surfaces are painted natively. This isolates L2 and does not assess native text/layout. Canonical key: materials/<state>-<density>-<theme>. Glow is a fixed native frame versus the web emitter; exact particle/phase parity is unproven."
+    } else if style_layer {
+        "L3 Style, resolved from compile-time tokens plus serialisable overrides (styles.json). The CSS backdrop/diagnostic labels and external box origin/width are common fixtures; native code resolves height/padding and paints material, fill, border, shadow and text. This is a low-level review fixture, not an L6 component/layout or legacy module rebase. Glow/frosted differences carried from L2 remain open; the shadow kernel, text rasterisation, border AA and compositing also differ from CSS. Canonical key: style/<state>-<density>-<theme>."
     } else {
         "Pinned design baseline `ux-prototype-v2`; current lab/design revision recorded in capture.json. Post-v2 components are explicit fixture previews. Native terminal bodies are blank; glow, blur, cursor animation and input controllers are later briefs."
     };
@@ -118,8 +123,14 @@ pub fn compare_paths(
     let mut html = String::from(
         "<!doctype html><meta charset=utf-8><title>bboxybook parity</title><style>body{background:#10121c;color:#eee;font:14px system-ui;margin:24px}a{color:#9bc3ff}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #383c55;text-align:left}img{max-width:100%;height:auto}article{margin:24px 0;padding:12px;background:#1a1d2b}section{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}h3{font-size:14px}figure{margin:0}figcaption{margin:6px 0;color:#aab}</style><h1>bboxybook parity</h1>",
     );
-    if material_layer {
+    if material_layer || style_layer {
         write!(html, "<p>{}</p>", escape(sources))?;
+    }
+    if style_layer {
+        write!(
+            html,
+            "<p><a href=styles.json>Serialised Style records and resolved values</a></p>"
+        )?;
     }
     write!(
         html,

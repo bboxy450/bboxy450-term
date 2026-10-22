@@ -1,0 +1,57 @@
+[
+  {
+    "command": [
+      "cargo",
+      "fmt",
+      "-p",
+      "bbt-ui",
+      "-p",
+      "bboxybook",
+      "-p",
+      "bbt-render",
+      "--check"
+    ],
+    "exit_status": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "node",
+      "--check",
+      "crates/bboxybook/capture-inputs.js"
+    ],
+    "exit_status": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "node",
+      "--check",
+      "crates/bboxybook/capture.mjs"
+    ],
+    "exit_status": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "cargo",
+      "tree",
+      "-p",
+      "bbt-ui",
+      "--edges",
+      "normal",
+      "--locked"
+    ],
+    "exit_status": 0,
+    "output": "bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)\n\u251c\u2500\u2500 bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)\n\u2514\u2500\u2500 serde v1.0.229\n    \u251c\u2500\u2500 serde_core v1.0.229\n    \u2514\u2500\u2500 serde_derive v1.0.229 (proc-macro)\n        \u251c\u2500\u2500 proc-macro2 v1.0.107\n        \u2502   \u2514\u2500\u2500 unicode-ident v1.0.27\n        \u251c\u2500\u2500 quote v1.0.47\n        \u2502   \u2514\u2500\u2500 proc-macro2 v1.0.107 (*)\n        \u2514\u2500\u2500 syn v3.0.9\n            \u251c\u2500\u2500 proc-macro2 v1.0.107 (*)\n            \u251c\u2500\u2500 quote v1.0.47 (*)\n            \u2514\u2500\u2500 unicode-ident v1.0.27\n"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_status": 0,
+    "output": ""
+  }
+]

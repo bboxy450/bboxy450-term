@@ -51,6 +51,29 @@ impl ChromeRenderer {
         target: ChromeTarget<'_>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<()> {
+        self.draw_with_load(
+            list,
+            target,
+            encoder,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        )
+    }
+    /// Paint an ordered foreground over a material pass on the same target/device.
+    pub fn draw_overlay(
+        &mut self,
+        list: &DrawList,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<()> {
+        self.draw_with_load(list, target, encoder, wgpu::LoadOp::Load)
+    }
+    fn draw_with_load(
+        &mut self,
+        list: &DrawList,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+        load: wgpu::LoadOp<wgpu::Color>,
+    ) -> Result<()> {
         let ChromeTarget {
             width,
             height,
@@ -292,7 +315,7 @@ impl ChromeRenderer {
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    load,
                     store: wgpu::StoreOp::Store,
                 },
             })],

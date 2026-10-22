@@ -1,0 +1,39 @@
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+error: expected expression, found `as`
+  --> crates/bbt-ui/src/style.rs:34:165
+   |
+34 | ...9,10=>s.s10,_=>return Err("unknown spacing token") } as f32,
+   |                                                         ^^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+34 |             Self::Spacing(n) => (match n {1=>s.s1,2=>s.s2,3=>s.s3,4=>s.s4,5=>s.s5,6=>s.s6,7=>s.s7,8=>s.s8,9=>s.s9,10=>s.s10,_=>return Err("unknown spacing token") }) as f32,
+   |                                 +                                                                                                                                   +
+
+error: expected expression, found `as`
+  --> crates/bbt-ui/src/style.rs:35:243
+   |
+35 | ...dius::Mark=>r.mark,Radius::Chip=>TOKENS.radius.chip} as f32,
+   |                                                         ^^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+35 |             Self::Radius(n) => (match n {Radius::Panel=>r.panel,Radius::Card=>r.card,Radius::Row=>r.row,Radius::Tile=>r.tile,Radius::Badge=>r.badge,Radius::Pill=>r.pill,Radius::Tag=>r.tag,Radius::Mark=>r.mark,Radius::Chip=>TOKENS.radius.chip}) as f32,
+   |                                +                                                                                                                                                                                                                  +
+
+error: expected expression, found `as`
+  --> crates/bbt-ui/src/style.rs:85:318
+   |
+85 | ...=>t.title,Self::Input=>t.input,Self::Badge=>t.badge} as f32
+   |                                                         ^^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+85 |         (match self {Self::Micro=>t.micro,Self::Tiny=>t.tiny,Self::Small=>t.small,Self::Note=>t.note,Self::Caption=>t.caption,Self::Label=>t.label,Self::Section=>t.section,Self::Row=>t.row,Self::Body=>t.body,Self::Kind=>t.kind,Self::Subtitle=>t.subtitle,Self::Title=>t.title,Self::Input=>t.input,Self::Badge=>t.badge}) as f32
+   |         +                                                                                                                                                                                                                                                                                                                    +
+
+error: could not compile `bbt-ui` (lib) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+exit_status=101

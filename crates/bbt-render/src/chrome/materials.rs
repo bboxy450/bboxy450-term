@@ -535,6 +535,25 @@ pub struct Scene<'a> {
     pub theme: Theme,
 }
 pub fn render_to_rgba(renderer: &mut ChromeRenderer, scene: Scene<'_>) -> Result<Vec<u8>> {
+    render_composed_to_rgba(renderer, scene, &DrawList::default())
+}
+/// Gallery composition helper: L2 is effect-only; Style-owned fill, border and
+/// text are a caller-supplied foreground, painted on the same device/target.
+pub fn render_composed_to_rgba(
+    renderer: &mut ChromeRenderer,
+    scene: Scene<'_>,
+    foreground: &DrawList,
+) -> Result<Vec<u8>> {
+    render_layered_to_rgba(renderer, scene, &DrawList::default(), foreground)
+}
+/// The underlay is painted to the destination, never into the sampled backdrop.
+/// A Style shadow therefore cannot feed back into its own backdrop blur.
+pub fn render_layered_to_rgba(
+    renderer: &mut ChromeRenderer,
+    scene: Scene<'_>,
+    underlay: &DrawList,
+    foreground: &DrawList,
+) -> Result<Vec<u8>> {
     let Scene {
         backdrop,
         items,
@@ -634,6 +653,19 @@ pub fn render_to_rgba(renderer: &mut ChromeRenderer, scene: Scene<'_>) -> Result
             depth_or_array_layers: 1,
         },
     );
+    if !underlay.primitives.is_empty() {
+        renderer.draw_overlay(
+            underlay,
+            ChromeTarget {
+                width,
+                height,
+                scale,
+                view: &view,
+                format,
+            },
+            &mut encoder,
+        )?;
+    }
     let pass = Pass::new(&renderer.context.device, format);
     pass.draw(
         &renderer.context,
@@ -652,6 +684,19 @@ pub fn render_to_rgba(renderer: &mut ChromeRenderer, scene: Scene<'_>) -> Result
             theme,
         },
     )?;
+    if !foreground.primitives.is_empty() {
+        renderer.draw_overlay(
+            foreground,
+            ChromeTarget {
+                width,
+                height,
+                scale,
+                view: &view,
+                format,
+            },
+            &mut encoder,
+        )?;
+    }
     renderer.readback(&texture, encoder, width, height)
 }
 

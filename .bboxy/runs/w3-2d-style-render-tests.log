@@ -1,0 +1,42 @@
+command: cargo test -p bbt-render --locked
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.07s
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-5f5f1adcf68ffbd3)
+
+running 5 tests
+test chrome::diff::tests::tolerance_is_not_an_exact_byte_comparison ... ok
+test atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks ... ok
+test chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected ... ok
+test chrome::text::tests::coretext_shapes_unicode_and_ellipsizes_at_the_given_width ... ok
+test chrome::tests::sdf_rounding_stroke_and_clip_survive_gpu_readback ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s
+
+     Running tests/smoke.rs (target/debug/deps/smoke-81f814d7c15a49ba)
+
+running 3 tests
+test asymmetric_glyph_is_upright ... ok
+test metal_quad_and_80_by_24_cell_backgrounds ... ok
+test coretext_ink_lands_only_in_expected_ascii_cells ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/variants.rs (target/debug/deps/variants-30c637c6fee5f634)
+
+running 1 test
+test generate_smoke_font_size_scale_theme_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.04s
+
+   Doc-tests bbt_render
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit_status=0

@@ -149,7 +149,36 @@ active/waiting frames. This layer does not establish CSS pixel parity, desktop
 blur support or performance. No higher component layer consumes it yet.
 
 
-The paired L2 run currently has 28/32 over tolerance. Edge AA/compositing,
-frosted ring/highlight and colour, and glow strength/particles remain visible.
-The web glow reference also supplies a surface fill and 1.5px border; the
-provider is effect-only. Ownership of those two parts awaits the layer review.
+The L2 provider is effect-only. The revised web reference (3afef72) also
+separates glow's fill/border and frosted's tint/ring into Style. The refreshed
+matrix at `target/bboxybook/materials-effect-only/index.html` is 28/32 over
+tolerance: edge AA/compositing, frosted colour/filtering and glow
+strength/particles remain open. Their shaders were not tuned in L3.
+
+## L3 Style
+
+```sh
+cargo run -p bboxybook --locked -- styles
+```
+
+This writes `target/bboxybook/style/index.html`, with 88 canonical pairs:
+the original ten styles plus the explicit filled `pane-glow` Style, each
+across four densities and two themes. Keys are `style/<state>-<density>-<theme>`.
+`styles.json` records the actual serialised token references/overrides and
+resolved numeric values. `bbt-ui` has no renderer dependency; it uses the
+existing compile-time tokens, with late theme/density/identity resolution.
+
+The native review fixture draws the same low-level box for every Style.
+Only its external origin/width and the CSS diagnostic backdrop are shared;
+height, padding, fill, border, shadow and text resolve through Style. Shadows
+are destination underlays, kept out of the material's sampled backdrop.
+Fill/border/text are separate foregrounds; the effect-only glow is last.
+The [CSS shadow contract](https://www.w3.org/TR/css-backgrounds-3/#shadow-blur)
+maps its blur radius to half that value as Gaussian sigma. The existing SDF
+shadow approximation still differs from CSS's blurred box mask.
+
+This is an isolated L3 gallery, not the retained L6 Box/Text widget or a module
+rebase. Legacy previews retain their v22 coverage registry. L2 glow/frosted,
+shadow-kernel, border AA, text-mask and colour/compositing gaps remain visible
+in the report. Full group dim/opacity behaviour is deferred to components;
+L3 stores and resolves those fields. No new input, layout or focus work lands.

@@ -1,0 +1,48 @@
+W3.2d.2 L3 Style evidence
+Time: 2026-10-21T19:01:39.581090-07:00
+Worktree: /Users/feral/mydev/bboxy450-term
+Scope: L3 Style data + low-level review fixture only. No L5/L6 widgets or module/input/focus/launcher/fx rebase.
+bbt-ui: Preset token reference + typed overrides, serde round trip, late theme/density/seat/swarm resolution; renderer-free normal dependency tree.
+88 cases = 11 styles (ten original plus Style-owned pane-glow) x four densities x two themes.
+Gallery: target/bboxybook/style/index.html; styles.json carries symbolic and resolved records.
+Common fixture: CSS backdrop/diagnostic text + external box origin/width. Native height/padding/material/fill/border/shadow/text resolve through Style.
+Web Style reference: e925655535990b4a137d7c8233b76d08e9da87fc (Wren corrected the button text step after a 13 vs 12.5px mismatch was reported).
+Style: 88/88 web captures, zero script errors, 88 native PNGs and 88 diffs; 76/88 over tolerance, 12 within.
+Initial Style run: 72/88 over on 3afef72. Final uses the corrected web text and independently resolved native height; counts are not a same-reference shader-tuning comparison.
+L2 refreshed reference: 3afef72e90df9c97fb93ed79257af4c5054db19b. 32/32 captured, zero errors, 32 native and diff PNGs; 28/32 over, four within.
+L2 gallery: target/bboxybook/materials-effect-only/index.html. Corrected none-tint capture adapter and standalone tint/fill fixtures; no L2 shader tuning.
+Style contract: all 88 cases match radii/padding/text metrics at 0.01px, computed height at 0.02px CSS subpixel quantisation, colours at 1/255 premultiplied RGBA (8-bit canvas); zero mismatches. See web-contract-final.log.
+Required cargo test -p bbt-ui -p bboxybook --locked: exit 0, 11 tests (book 8 + bbt-ui 3).
+Renderer regression cargo test -p bbt-render --locked: exit 0, nine tests.
+Compile-time token parity targeted test: exit 0, one test; 256 exported web token paths match generated Rust fields.
+Clippy: exit 0 with only pre-existing W3.1 map_entry and chunks_exact_to_as_chunks diagnostics allowed.
+fmt / node syntax / dependency tree / git diff --check: exact commands and exits in other-checks.log.
+Inspected paired images: final modal light, band dark, row touch dark; pane-glow dark, button-primary dark; refreshed frosted dark and glow dark.
+Open gaps: L2 glow strength/emitter/phase and frosted filter/colour; L1 SDF shadow approximation; linear-light native alpha vs CSS sRGB blending (visible row fill); text-mask and border-AA differences. No tolerance changes or golden updates.
+No group dim/opacity rendering is established here; fields serialise/resolve, components will own group application.
+Not checked: full 1664-case legacy rerun, hosted CI, Linux/mobile/macOS14, live performance. No FPS measured. No operator browser opened/reloaded.
+No lab/design files edited by Nyx. Wren references are committed upstream.
+
+Ten worst style triplets (under that gallery web/native/diff):
+| style/modal-comfortable-light.png | 22.35% | 0.0162 | review | [web](web/style/modal-comfortable-light.png) | [native](native/style/modal-comfortable-light.png) | [diff](diff/style/modal-comfortable-light.png) |
+| style/modal-compact-light.png | 22.35% | 0.0162 | review | [web](web/style/modal-compact-light.png) | [native](native/style/modal-compact-light.png) | [diff](diff/style/modal-compact-light.png) |
+| style/modal-cozy-light.png | 22.35% | 0.0162 | review | [web](web/style/modal-cozy-light.png) | [native](native/style/modal-cozy-light.png) | [diff](diff/style/modal-cozy-light.png) |
+| style/modal-touch-light.png | 22.35% | 0.0162 | review | [web](web/style/modal-touch-light.png) | [native](native/style/modal-touch-light.png) | [diff](diff/style/modal-touch-light.png) |
+| style/pane-glow-touch-dark.png | 15.73% | 0.0220 | review | [web](web/style/pane-glow-touch-dark.png) | [native](native/style/pane-glow-touch-dark.png) | [diff](diff/style/pane-glow-touch-dark.png) |
+| style/pane-glow-comfortable-dark.png | 15.73% | 0.0220 | review | [web](web/style/pane-glow-comfortable-dark.png) | [native](native/style/pane-glow-comfortable-dark.png) | [diff](diff/style/pane-glow-comfortable-dark.png) |
+| style/pane-glow-compact-dark.png | 15.73% | 0.0220 | review | [web](web/style/pane-glow-compact-dark.png) | [native](native/style/pane-glow-compact-dark.png) | [diff](diff/style/pane-glow-compact-dark.png) |
+| style/pane-glow-cozy-dark.png | 15.73% | 0.0220 | review | [web](web/style/pane-glow-cozy-dark.png) | [native](native/style/pane-glow-cozy-dark.png) | [diff](diff/style/pane-glow-cozy-dark.png) |
+| style/pane-glow-comfortable-light.png | 10.27% | 0.0071 | review | [web](web/style/pane-glow-comfortable-light.png) | [native](native/style/pane-glow-comfortable-light.png) | [diff](diff/style/pane-glow-comfortable-light.png) |
+| style/pane-glow-cozy-light.png | 10.27% | 0.0071 | review | [web](web/style/pane-glow-cozy-light.png) | [native](native/style/pane-glow-cozy-light.png) | [diff](diff/style/pane-glow-cozy-light.png) |
+
+Ten worst materials-effect-only triplets (under that gallery web/native/diff):
+| materials/glow-cozy-dark.png | 19.24% | 0.0328 | review | [web](web/materials/glow-cozy-dark.png) | [native](native/materials/glow-cozy-dark.png) | [diff](diff/materials/glow-cozy-dark.png) |
+| materials/glow-comfortable-dark.png | 19.24% | 0.0328 | review | [web](web/materials/glow-comfortable-dark.png) | [native](native/materials/glow-comfortable-dark.png) | [diff](diff/materials/glow-comfortable-dark.png) |
+| materials/glow-touch-dark.png | 19.24% | 0.0328 | review | [web](web/materials/glow-touch-dark.png) | [native](native/materials/glow-touch-dark.png) | [diff](diff/materials/glow-touch-dark.png) |
+| materials/glow-compact-dark.png | 19.24% | 0.0328 | review | [web](web/materials/glow-compact-dark.png) | [native](native/materials/glow-compact-dark.png) | [diff](diff/materials/glow-compact-dark.png) |
+| materials/glow-cozy-light.png | 14.95% | 0.0129 | review | [web](web/materials/glow-cozy-light.png) | [native](native/materials/glow-cozy-light.png) | [diff](diff/materials/glow-cozy-light.png) |
+| materials/glow-comfortable-light.png | 14.95% | 0.0129 | review | [web](web/materials/glow-comfortable-light.png) | [native](native/materials/glow-comfortable-light.png) | [diff](diff/materials/glow-comfortable-light.png) |
+| materials/glow-compact-light.png | 14.95% | 0.0129 | review | [web](web/materials/glow-compact-light.png) | [native](native/materials/glow-compact-light.png) | [diff](diff/materials/glow-compact-light.png) |
+| materials/glow-touch-light.png | 14.95% | 0.0129 | review | [web](web/materials/glow-touch-light.png) | [native](native/materials/glow-touch-light.png) | [diff](diff/materials/glow-touch-light.png) |
+| materials/frosted-comfortable-dark.png | 3.65% | 0.0015 | review | [web](web/materials/frosted-comfortable-dark.png) | [native](native/materials/frosted-comfortable-dark.png) | [diff](diff/materials/frosted-comfortable-dark.png) |
+| materials/frosted-compact-dark.png | 3.65% | 0.0015 | review | [web](web/materials/frosted-compact-dark.png) | [native](native/materials/frosted-compact-dark.png) | [diff](diff/materials/frosted-compact-dark.png) |

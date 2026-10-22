@@ -21,7 +21,7 @@ pub fn material(kind: Kind, theme: Theme) -> Material {
             bottom_shade: 0.25,
         }),
         Kind::Frosted => Material::Frosted(Frosted {
-            tint: Color::hex(p.surface).alpha(STYLE.material.panel_alpha as f32),
+            tint: Color::TRANSPARENT,
             blur_radius: STYLE.material.panel_blur_px as f32,
             saturation: STYLE.material.panel_saturate as f32,
         }),
@@ -79,12 +79,6 @@ pub fn backdrop(kind: Kind, theme: Theme) -> DrawList {
             },
             Color::hex(p.fg),
         );
-    } else if kind == Kind::Glow {
-        list.rect(
-            Rect::new(64., 64., 192., 192.),
-            STYLE.radius.card as f32,
-            Color::hex(p.surface),
-        );
     }
     list
 }
@@ -97,10 +91,13 @@ pub fn surface(kind: Kind, theme: Theme) -> Surface {
     }
 }
 pub fn render(out: &Path) -> Result<()> {
+    render_gallery(out, &cases())
+}
+pub(crate) fn render_gallery(out: &Path, requested: &[crate::gallery::Case]) -> Result<()> {
     fs::create_dir_all(out)?;
     fs::write(
         out.join("requested.json"),
-        serde_json::to_vec_pretty(&cases())?,
+        serde_json::to_vec_pretty(requested)?,
     )?;
     let status = std::process::Command::new("node")
         .arg("crates/bboxybook/capture.mjs")
@@ -108,11 +105,11 @@ pub fn render(out: &Path) -> Result<()> {
         .arg(out.join("requested.json"))
         .status()?;
     if !status.success() {
-        return Err("materials web capture failed; inspect capture.json".into());
+        return Err("layer web capture failed; inspect capture.json".into());
     }
     let capture: serde_json::Value = serde_json::from_slice(&fs::read(out.join("capture.json"))?)?;
     if capture["status"] != "captured" {
-        return Err("materials references unproven: Chromium required for this gallery".into());
+        return Err("layer references unproven: Chromium required for this gallery".into());
     }
     let cases: Vec<crate::gallery::Case> =
         serde_json::from_slice(&fs::read(out.join("cases.json"))?)?;

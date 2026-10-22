@@ -1,0 +1,16 @@
+[package]
+name = "bbt-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "bboxy450-term: token-resolved UI styles and components"
+
+[dependencies]
+bbt-ui-model = { path = "../bbt-ui-model" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"

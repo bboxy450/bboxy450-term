@@ -3,6 +3,7 @@ pub mod gallery;
 pub mod materials;
 pub mod modules;
 pub mod parity;
+pub mod styles;
 pub mod window;
 use bbt_render::chrome::icons::Image;
 use std::{io::Cursor, path::Path};

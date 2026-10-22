@@ -60,7 +60,7 @@ try{
     try{
       await cdp.call('Emulation.setDeviceMetricsOverride',{width:c.component.startsWith('showcase')?1440:1280,height:c.component.startsWith('showcase')?868:960,deviceScaleFactor:1,mobile:false});
       await cdp.call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:c.theme}]});
-      const page=c.page==='@component'?'seat-row.html':c.page;const reference=c.component==='materials'||c.page==='@component'||(c.component==='settings_tab'&&c.state==='new harness')?supplemental:baseline;const url=new URL(pathToFileURL(path.join(reference,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
+      const page=c.page==='@component'?'seat-row.html':c.page;const reference=['materials','style'].includes(c.component)||c.page==='@component'||(c.component==='settings_tab'&&c.state==='new harness')?supplemental:baseline;const url=new URL(pathToFileURL(path.join(reference,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
       url.searchParams.set('state',c.page==='@component'?'idle':c.state);url.searchParams.set('density',c.density);url.searchParams.set('theme',c.theme);
       const init=await cdp.call('Page.addScriptToEvaluateOnNewDocument',{source:`window.FIX=${JSON.stringify(sharedFixtures)};${captureInputs}\ntry{localStorage.setItem('lab.theme',${JSON.stringify(c.theme)});localStorage.setItem('lab.density',${JSON.stringify(c.density)});localStorage.setItem('showcase.theme',${JSON.stringify(c.theme)});}catch{}`});
       await cdp.call('Page.navigate',{url:url.href});await cdp.call('Page.removeScriptToEvaluateOnNewDocument',{identifier:init.identifier});
@@ -78,9 +78,9 @@ try{
       c.fixture=await cdp.eval(`bboxyCaptureInputs(${JSON.stringify(c.selector)})`);
       const shot=await cdp.call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{...rect,scale:1}});
       const dest=path.join(out,'web',relative);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,Buffer.from(shot.data,'base64'));
-      if(c.component==='materials'){
+      if(['materials','style'].includes(c.component)){
         const full=await cdp.eval(`({width:Math.ceil(document.documentElement.clientWidth),height:Math.ceil(Math.max(document.documentElement.scrollHeight,innerHeight))})`);
-        await cdp.eval(`(()=>{const s=document.createElement('style');s.textContent='.ui-sq,.ui-scope .pane-wrap{visibility:hidden!important}';document.head.append(s);})()`);
+        await cdp.eval(`(()=>{const s=document.createElement('style');s.textContent='.ui-sq,.ui-box,.ui-scope .pane-wrap{visibility:hidden!important}';document.head.append(s);})()`);
         const backdrop=await cdp.call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,...full,scale:1}});
         const file=path.join(out,'backdrops',relative);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,Buffer.from(backdrop.data,'base64'));
         c.fixture.backdrop={path:file,...full,crop:rect};
@@ -89,7 +89,7 @@ try{
     }catch(error){failures.push({case:relative,error:String(error)});captured.push(c);console.error(relative,String(error));}
     if((i+1)%100===0)console.log(`captured ${i+1}/${manifest.length}`);
   }
-  const hashes={};for(const name of ['components.js','lab.css','lab.js','tokens.js','showcase.js','showcase.html','fixtures.js'])hashes[name]=createHash('sha256').update(await fs.readFile(path.join(supplemental,'lab/web',name))).digest('hex');
+  const hashes={};for(const name of ['components.js','lab.css','lab.js','tokens.js','showcase.js','showcase.html','fixtures.js','ui.js','materials.html','style.html'])hashes[name]=createHash('sha256').update(await fs.readFile(path.join(supplemental,'lab/web',name))).digest('hex');
   await fs.writeFile(path.join(out,'cases.json'),JSON.stringify(captured,null,2));
   await fs.writeFile(path.join(out,'capture.json'),JSON.stringify({status:failures.length?'partial':'captured',baseline:execFileSync('git',['rev-parse','ux-prototype-v2^{commit}'],{encoding:'utf8'}).trim(),supplementalReference:'@component entries and settings_tab/new harness use frozen committed HEAD lab components',revision:head,browser:version.Browser,profile:'isolated ephemeral profile',deviceScaleFactor:1,freeze:'CSS animation playback paused; no transcript normalization; original web page content retained',supplementalWebHashes:hashes,cases:manifest.length,failures},null,2));
   console.log(`web: ${captured.length-failures.length}/${manifest.length} captured; ${failures.length} failures`);

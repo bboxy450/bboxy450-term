@@ -125,6 +125,7 @@ name = "bboxybook"
 version = "0.0.1"
 dependencies = [
  "bbt-render",
+ "bbt-ui",
  "bbt-ui-model",
  "png",
  "pollster",
@@ -179,6 +180,15 @@ dependencies = [
  "png",
  "pollster",
  "wgpu",
+]
+
+[[package]]
+name = "bbt-ui"
+version = "0.0.1"
+dependencies = [
+ "bbt-ui-model",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

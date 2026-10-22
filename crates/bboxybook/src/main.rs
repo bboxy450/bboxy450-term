@@ -20,6 +20,11 @@ fn run() -> Result<()> {
             value(&args, "--out").unwrap_or_else(|| "target/bboxybook/materials".into()),
         ));
     }
+    if command == "styles" {
+        return bboxybook::styles::render(&PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/style".into()),
+        ));
+    }
     if command == "manifest" {
         println!("{}", serde_json::to_string_pretty(&gallery::cases())?);
         return Ok(());

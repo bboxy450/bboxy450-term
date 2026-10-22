@@ -1,0 +1,82 @@
+command: cargo test -p bbt-ui -p bboxybook --locked
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.40s
+     Running unittests src/lib.rs (target/debug/deps/bboxybook-6c4afde729aca74a)
+
+running 4 tests
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running unittests src/main.rs (target/debug/deps/bboxybook-701c59dc4d209b0f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (target/debug/deps/fixtures-f66eb948fb795ea4)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+     Running tests/materials.rs (target/debug/deps/materials-1acabb7063ba1e6c)
+
+running 1 test
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s
+
+     Running tests/render.rs (target/debug/deps/render-3fd38a730ca1c05c)
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.66s
+
+     Running tests/styles.rs (target/debug/deps/styles-bb9122d56b904ac5)
+
+running 1 test
+test style_matrix_is_canonical_and_every_preset_renders_on_the_native_device ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.93s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_ui-0f487eb44796eba8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/style.rs (target/debug/deps/style-79804fd8355301fe)
+
+running 3 tests
+test malformed_override_data_fails_instead_of_silently_changing_the_style ... ok
+test token_references_and_nontrivial_overrides_round_trip_and_resolve_late ... ok
+test presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxybook
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit_status=0
