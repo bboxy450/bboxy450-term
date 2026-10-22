@@ -110,3 +110,9 @@ Final verification continuation:
 - A fast-forward to origin was refused: local b2e95f2 lab commit and remote
   4e0a191 CI-rule commit diverged. Neither side was reset, rebased or merged.
   Source is signed first; the clean-worktree result follows in a separate log.
+
+Authoritative clean result:
+Validated cb75c36b6c70420c3814418cbaea6fd1341815f5 in /tmp/rook-ci.
+sh scripts/ci-local.sh exit 0 (413 workspace tests, 0 failed, 4 ignored).
+Strict mux all-target clippy exit 0. See w2-4-clean-ci.log and
+w2-4-clean-handoff.log. This evidence-only commit changes no source.

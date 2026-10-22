@@ -1,0 +1,35 @@
+W2.4 clean-commit handoff — Rook Ashwhisker <EXECUTOR>
+
+Validated source: cb75c36b6c70420c3814418cbaea6fd1341815f5.
+Base: origin/main 4e0a191. Only W2.4 was cherry-picked, as directed by Vesper
+1b389dd0-659f-4567-a93b-03878488b87a. Dependency commit 0150ee0 was already
+an ancestor of this base, so no empty dependency cherry-pick was created.
+Original shared-tree source snapshot: 344d25ae8c47af700b640cbe48c5c582ef164a7d.
+Both source signatures verified against 9B07E849480C68328CA20684844ECC0587DE7AB0.
+
+Authoritative gate:
+  worktree=/tmp/rook-ci, clean before and after the gate
+  CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term/target/w2-4-ci
+  sh scripts/ci-local.sh — exit 0, ci-local: all gates passed
+  layering held; workspace build passed; 413 workspace tests passed, zero
+  failed, four existing ignored fixtures; UI IO lint passed.
+  cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit 0.
+Raw output: w2-4-clean-ci.log. It includes 15 messaging acceptance tests;
+the complete mux package accounts for 67 passing tests. Earlier shared-tree
+failures are retained as non-hermetic attempts, not claimed as code failures or
+passes. Trailing blank EOF lines in old logs were normalized for git whitespace.
+No --parity run: this handoff changes mux/backend code and its logs only.
+
+Mechanisms and per-acceptance file:line evidence are in w2-4-evidence.log and
+crates/bbt-mux/README.md. The final evidence commit adds logs only over the
+validated source; no code changes follow this gate.
+
+Remaining limits: local-dev issuer behind SeatKeys, not full GPG enrollment;
+fixture native sockets, no real model consumption/inbound-policy proof; no
+network, GUI composer, MCP/task implementation, Linux/macOS14, power-cut or
+1000-seat messaging load claim. Multiple-logic-owner/native race injection is
+not tested. Partial/ambiguous delivery is unknown and never automatically retried.
+
+Shared main remains untouched after its source commit; Wren b2e95f2 and peers'
+UI WIP are not part of the transplanted candidate. No push or merge by Rook.
+Temporary CI worktree is removed after retaining the signed result by branch.
