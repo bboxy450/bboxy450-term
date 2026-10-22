@@ -35,6 +35,13 @@ use serde::{Deserialize, Serialize};
 
 mod params;
 
+// Vendored upstream: style lints are not fixed in the imported source.
+#[allow(
+    clippy::empty_line_after_doc_comments,
+    clippy::useless_borrows_in_formatting,
+    clippy::manual_is_multiple_of,
+    clippy::collapsible_if
+)]
 pub mod ansi;
 pub use params::{Params, ParamsIter};
 
