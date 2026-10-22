@@ -8,7 +8,13 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     let mut renderer = ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}", renderer.context.adapter_info);
     for (i, case) in cases.iter().enumerate() {
-        let rgba = if case.fixture.as_ref().is_some_and(|f| f["layer"] == "atoms") {
+        let rgba = if case
+            .fixture
+            .as_ref()
+            .is_some_and(|f| f["layer"] == "components")
+        {
+            crate::components::render_case(&mut renderer, case)?
+        } else if case.fixture.as_ref().is_some_and(|f| f["layer"] == "atoms") {
             crate::atoms::render_case(&mut renderer, case)?
         } else if case.component == "materials" {
             crate::materials::render_case(&mut renderer, case)?
@@ -110,7 +116,14 @@ pub fn compare_paths(
     let atom_layer = cases
         .iter()
         .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "atoms"));
-    let sources = if atom_layer {
+    let component_layer = cases.iter().all(|c| {
+        c.fixture
+            .as_ref()
+            .is_some_and(|f| f["layer"] == "components")
+    });
+    let sources = if component_layer {
+        "L6 retained Box/Text/Stack from bbt-ui. Captured public UI constructor inputs are shared; child DOM rectangles are diagnostics only (layouts.json), never layout inputs. The captured CSS backdrop, diagnostic labels and external root origin/width are common fixtures. Native components compute child geometry, baselines and height through the shared solver, resolve Style, then emit an ordered draw/material plan. This isolates L6 composition from legacy modules and input controllers. Canonical key: components/<state>-<density>-<theme>."
+    } else if atom_layer {
         "L5 stateless atom painters from bbt-ui. Current committed lab glyph/harness-icon pages are the reference (revision in capture.json). CSS outer placement, checker backdrop and diagnostic labels are common fixtures; glyphs/icons are hidden in that backdrop and painted natively. Native atoms own state colours, grade rings, waiting-kind marks and icon tint. CSS pulse is fixed at 0ms. This isolates L5 painting, not L6 layout or module composition. Canonical key: <page>/<state>-<density>-<theme>."
     } else if material_layer {
         "L2 named material shaders. The captured CSS backdrop, diagnostic text and outer square rectangles are common fixtures; only the four material surfaces are painted natively. This isolates L2 and does not assess native text/layout. Canonical key: materials/<state>-<density>-<theme>. L2/L3 captures use a seeded counter-hash random stream and fixed 450ms animation clock; the native emitter consumes the same seed and phase. Remaining canvas/SDF edge rasterisation differences are ranked below. See capture.json for the exact policy."
@@ -130,8 +143,14 @@ pub fn compare_paths(
     let mut html = String::from(
         "<!doctype html><meta charset=utf-8><title>bboxybook parity</title><style>body{background:#10121c;color:#eee;font:14px system-ui;margin:24px}a{color:#9bc3ff}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #383c55;text-align:left}img{max-width:100%;height:auto}article{margin:24px 0;padding:12px;background:#1a1d2b}section{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}h3{font-size:14px}figure{margin:0}figcaption{margin:6px 0;color:#aab}</style><h1>bboxybook parity</h1>",
     );
-    if material_layer || style_layer || atom_layer {
+    if material_layer || style_layer || atom_layer || component_layer {
         write!(html, "<p>{}</p>", escape(sources))?;
+    }
+    if component_layer {
+        write!(
+            html,
+            "<p><a href=layouts.json>Child layout snapshots</a> · <a href=gallery/index.html>Box materials/radii, Text and ScrollView gallery</a></p>"
+        )?;
     }
     if style_layer {
         write!(

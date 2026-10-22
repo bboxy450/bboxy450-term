@@ -257,3 +257,22 @@ colouring a filtered edge. Text masks and terminal cell sampling are unchanged.
 The GPU regression in `tests/icon_filter.rs` checks half-blue interpolation
 beside transparent red, alpha preservation on the fixture, and no green bleed
 from a neighbouring asset. This pass makes no performance claim.
+
+## L6 retained components (W3.2d.4)
+
+`cargo run -p bboxybook --locked -- components` renders the Box/Text/Stack web
+references plus a 64-image native gallery of Box materials/radii, ScrollView
+offsets and wrapped/ellipsized Text. Open
+`target/bboxybook/components/index.html`; the gallery and `layouts.json` are
+linked there. Canonical keys are `components/<state>-<density>-<theme>`.
+
+The capture hook records public `UI.Box/Text/Stack/Spacer` constructor inputs
+and the external host width/origin. Native components consume those inputs,
+compute their child layout with the shared engine and emit ordered Style/
+material/draw-list operations. Child DOM rectangles and browser font metrics
+are diagnostic data only; native font metrics come from CoreText. The hidden
+component backdrop retains common diagnostic labels and outer chrome.
+
+This is L6 verification, not a module rebase or app input pass. Scroll offsets
+are explicit; selection is metadata. Materials currently intersect ancestor
+clips as rectangles; rounded clips are retained for ordinary draw lists.

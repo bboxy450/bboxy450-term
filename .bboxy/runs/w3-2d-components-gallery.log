@@ -1,0 +1,18 @@
+$ target/debug/bboxybook components --out target/bboxybook/components
+native L6 gallery: 64 PNGs; target/bboxybook/components/gallery/index.html
+web: 24/24 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 24 PNGs to target/bboxybook/components/native
+parity: 24 cases, 24 review; target/bboxybook/components/index.html
+native/web layout snapshots: target/bboxybook/components/layouts.json
+exit_status=0
+
+Final run after snapshot child-count validation and lint fixes:
+$ target/debug/bboxybook components --out target/bboxybook/components
+native L6 gallery: 64 PNGs; target/bboxybook/components/gallery/index.html
+web: 24/24 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 24 PNGs to target/bboxybook/components/native
+parity: 24 cases, 24 review; target/bboxybook/components/index.html
+native/web layout snapshots: target/bboxybook/components/layouts.json
+exit_status=0

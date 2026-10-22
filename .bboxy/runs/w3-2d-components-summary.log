@@ -1,0 +1,60 @@
+W3.2d.4 — L6 Box, Text, Stack, ScrollView
+Role: Nyx Copperwing <EXECUTOR>. Worktree: /Users/feral/mydev/bboxy450-term.
+Scope: bbt-ui components; bboxybook capture/host/gallery; logical CoreText metrics only.
+Separate L1 kerning fix: ef1267ccbfe4d9dca5d938696b6cfeb631e972b8.
+No module rebase, Button/List/Table/Input, app focus/input or specification changes.
+
+Verification:
+cargo test -p bbt-ui -p bboxybook -p bbt-render --locked — 39 passed, exit 0.
+cargo fmt -p bbt-ui -p bboxybook -p bbt-render -- --check — exit 0.
+cargo clippy -p bbt-ui -p bboxybook -p bbt-render --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0; only the two pre-existing exceptions.
+node --check crates/bboxybook/{capture-inputs.js,capture.mjs} — each exit 0.
+cargo tree -p bbt-ui --edges normal --locked — no renderer/GPU/window dependency.
+target/debug/bboxybook components --out target/bboxybook/components — exit 0; 64 native previews, 24/24 web captures, zero failures, 24 native pairs, 24 shape-validated child-layout snapshots.
+Actual command output: .bboxy/runs/w3-2d-components-{verified-tests,gallery}.log.
+
+Review paths:
+target/bboxybook/components/index.html — 24 web/native/diff triplets, worst first.
+target/bboxybook/components/gallery/index.html — materials/radii + scroll offsets + wrapped/ellipsized Text.
+target/bboxybook/components/layouts.json — native and web child rectangles (diagnostics only).
+target/bboxybook/components/review.png — inspected triplets: Box cozy dark, Text cozy dark, Stack cozy light.
+Committed lab reference: ef1267ccbfe4d9dca5d938696b6cfeb631e972b8; isolated headless Chrome/156.0.8078.48; 1x scale.
+
+Acceptance evidence:
+Layout allocates through ui-model::layout::solve_box; host width/origin only. Child DOM bounds and browser font metrics never feed native layout.
+Native snapshots reject mismatched child counts. Tests prove flex spacer allocation, baseline alignment, mixed Text runs, reflow after shrinking, wrapping/ellipsis, clamped scroll offset and balanced clipping.
+GPU test reads every pixel outside the viewport: scrolling real rows changes only the viewport, and top/end images differ.
+Box gallery: 4 materials × 4 densities × 2 themes = 32 images, each with radii 0/6/12/20. Plus 24 scroll and 8 Text images = 64.
+
+Parity: 24/24 over tolerance before -> 24/24 after. No count improvement claimed.
+Worst changed fraction: 1.84% -> 1.67%; unchanged channel tolerance 8 and changed-pixel budget 0.1%.
+box maximum child geometry error: 0.461620 -> 0.461620 logical px.
+text maximum child geometry error: 1.446777 -> 0.014893 logical px.
+stack maximum child geometry error: 0.034378 -> 0.025391 logical px.
+Web reference PNG bytes identical: 24/24. Geometry improvement did not change the reference.
+
+Residuals at their owning layer:
+L1 fractional paint bounds: Card y=65.59375 in both layout trees, native snaps its top paint to row 66 while CSS covers rows 65/66; e.g. x623 row65 web RGB33,36,64, native11,11,16 (background). Do not compensate in L6 geometry.
+L1 text-mask/coverage differences remain visible across the type scale. Tracked BAND advance differs by 0.461620 px; untracked Text snapshot max is 0.014893 px.
+L6 limits: selection is metadata until the input controller; wrapping is word-based without hyphenation, unbreakable words can overflow. Native draw lists retain rounded clip chains, but material surfaces intersect ancestor clips as rectangles. Opacity/dim use existing per-colour transforms rather than isolated CSS group opacity.
+Not checked: Linux text backend, wheel/selection interaction, rounded material/group-opacity CSS parity, full legacy module parity matrix. No FPS measured, no operator browser opened/reloaded.
+
+Ten worst triplets (paths relative to target/bboxybook/components; web/, native/, diff/):
+components/text-comfortable-light.png | 1.67% | 0.0029 | review
+components/text-compact-light.png | 1.67% | 0.0029 | review
+components/text-cozy-light.png | 1.67% | 0.0029 | review
+components/text-touch-light.png | 1.67% | 0.0029 | review
+components/text-comfortable-dark.png | 1.58% | 0.0031 | review
+components/text-compact-dark.png | 1.58% | 0.0031 | review
+components/text-cozy-dark.png | 1.58% | 0.0031 | review
+components/text-touch-dark.png | 1.58% | 0.0031 | review
+components/box-compact-dark.png | 1.15% | 0.0014 | review
+components/box-compact-light.png | 1.13% | 0.0010 | review
+
+Source pointers:
+crates/bbt-ui/src/components.rs:354 — root layout supplies host width and computes its own height.
+crates/bbt-ui/src/components.rs:413 — ScrollView clamps offset and translates content.
+crates/bbt-ui/tests/components.rs:169 — a shrunk row remeasures wrapped Text before choosing height.
+crates/bboxybook/src/components.rs:165 — native layout reads public constructor inputs and root x/y/w, no child rectangles.
+crates/bbt-render/src/chrome/mod.rs:94 — pre-existing paint rectangle pixel snapping is the residual fractional-edge mechanism (not edited in d.4).
+crates/bboxybook/tests/components.rs:11 — GPU viewport readback test.

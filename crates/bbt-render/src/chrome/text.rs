@@ -7,6 +7,9 @@ pub struct LineMask {
     pub width: u32,
     pub height: u32,
     pub advance: f32,
+    /// Logical font metrics for baseline layout; the bitmap/render path is unchanged.
+    pub ascent: f32,
+    pub descent: f32,
     pub mask: Vec<u8>,
 }
 
@@ -139,6 +142,8 @@ pub fn rasterize(
         width,
         height,
         advance: advance / scale,
+        ascent: ascent as f32 / scale,
+        descent: descent as f32 / scale,
         mask,
     })
 }

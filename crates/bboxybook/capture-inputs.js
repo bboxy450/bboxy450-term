@@ -6,6 +6,7 @@
   const materials = [];
   const styles = [];
   const glows = [];
+  const uiNodes = new WeakMap();
   if (window.bboxyLayerFixture) {
     let randomIndex=12345;
     const random=()=>{let x=randomIndex++>>>0;x=Math.imul(x^(x>>>16),0x7feb352d);x=Math.imul(x^(x>>>15),0x846ca68b);x=(x^(x>>>16))>>>0;return (x>>>8)/16777216;};
@@ -21,8 +22,12 @@
   Object.defineProperty(window,'UI',{configurable:true,get:()=>ui,set(value){
     ui=value;const original=value.material;
     value.material=function(name,options){const result=original(name,options);materials.push({kind:name,params:result.params});return result;};
+    for (const name of ['Text','Stack','Spacer']) {
+      const original=value[name];
+      value[name]=function(...args){const node=original(...args);uiNodes.set(node,{kind:name.toLowerCase(),args});return node;};
+    }
     const box=value.Box;
-    value.Box=function(style,...children){const node=box(style,...children);styles.push({style,node});return node;};
+    value.Box=function(style,...children){const node=box(style,...children);styles.push({style,node});uiNodes.set(node,{kind:"box",style,children});return node;};
   }});
   let components;
   Object.defineProperty(window, 'C', {
@@ -55,6 +60,25 @@
     const color=(value,node)=>{const probe=document.createElement('span');probe.style.color=value;node.append(probe);const c=getComputedStyle(probe).color;probe.remove();const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');ctx.fillStyle=c;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].map(c=>c/255);};
     const bounds=node=>{const r=node.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,w:r.width,h:r.height};};
     const radii=css=>[css.borderTopLeftRadius,css.borderTopRightRadius,css.borderBottomRightRadius,css.borderBottomLeftRadius].map(parseFloat);
+    const exportUi=node=>{
+      const call=uiNodes.get(node);if(!call)throw Error('unrecorded UI component');
+      const result={kind:call.kind,rect:bounds(node)};
+      if(call.kind==='text'){
+        result.value=call.args[0];result.options=call.args[1]||{};
+        const css=getComputedStyle(node),cv=document.createElement('canvas'),ctx=cv.getContext('2d');ctx.font=css.font;
+        const tm=ctx.measureText(node.innerText),marker=document.createElement('span');marker.style.cssText='display:inline-block;width:0;height:0;padding:0;margin:0;border:0;line-height:0';node.append(marker);
+        result.font_diagnostics={font:css.font,ascent:tm.fontBoundingBoxAscent,descent:tm.fontBoundingBoxDescent,baseline:marker.getBoundingClientRect().y-node.getBoundingClientRect().y};marker.remove();
+      }
+      else if(call.kind==='box'){result.style=call.style;result.children=call.children.map(exportUi);}
+      else if(call.kind==='stack'){result.options=call.args[0]||{};result.children=call.args.slice(1).map(exportUi);}
+      return result;
+    };
+    let component;
+    if(window.bboxyComponentFixture){
+      const demo=root.querySelector('.ui-scope[data-density] > div[style*="margin-top"]')?.firstElementChild;
+      if(!demo)throw Error('missing single component demo');
+      demo.dataset.bboxyCaptureDemo='';component={tree:exportUi(demo),host:bounds(demo)};
+    }
     const glowFor=node=>{const g=glows.find(g=>g.wrap.contains(node));return g?{seed:g.seed,activity:g.activity,focused:g.focused,time_ms:g.time_ms,canvas:bounds(g.cv)}:null;};
     const atoms=window.bboxyAtomFixture?[...root.querySelectorAll('.glyph,.hicon')].map(node=>{
       const css=getComputedStyle(node),glyph=node.classList.contains('glyph');
@@ -67,7 +91,7 @@
       return {style,glow:glowFor(node),rect:bounds(node),computed:{fill:color(css.backgroundColor,node),radii:radii(css),padding:[css.paddingTop,css.paddingRight,css.paddingBottom,css.paddingLeft].map(parseFloat),border_width:parseFloat(css.borderTopWidth)},
         text:{value:text.innerText,rect:bounds(text),size:parseFloat(tc.fontSize),color:color(tc.color,text),weight:Number(tc.fontWeight)}};
     });
-    return JSON.parse(JSON.stringify({ version: 1, layer:window.bboxyAtomFixture?'atoms':undefined, atoms, calls: serialized, materials:squares, styles:boxes }, (key, value) => {
+    return JSON.parse(JSON.stringify({ version: 1, layer:window.bboxyAtomFixture?'atoms':window.bboxyComponentFixture?'components':undefined, component, atoms, calls: serialized, materials:squares, styles:boxes }, (key, value) => {
       if (typeof value === 'function') return { $callback: true };
       if (value instanceof Node) return undefined;
       if (value instanceof Set) return [...value];
