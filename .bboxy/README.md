@@ -9,6 +9,7 @@ Repository-local records. Markdown only. No secrets, no raw transcripts.
 | `vision.md` | What we are building and why. Oracle-owned. |
 | `graph.md` | **Execution graph: who is working on what, dependencies, state.** Oracle-maintained, updated on every claim/handoff/accept/block. |
 | `plan.md` | Workstreams and crate split. |
+| `runbook-web-to-native.md` | **The runbook for the web → native loop**: lab, design system, tokens, ui-model, bboxybook, parity script, CI, roles, commands, how to read the report, how to add a component. |
 | `ux-sidebar.md`, `ux-pick.md`, `ux-flow.md` | UX constraints, the Oracle's selection history, and the operator's running rule log. |
 | `specs/ux-prototype.md` | **The current UX state**, distilled from the lab code at tag `ux-prototype-v1`. Supersedes `ux-pick.md` wherever they differ. |
 | `tasks/` | One file per assignment: `YYYY-MM-DD-slug.md`. Scope, allowed files, acceptance checks, evidence. |
