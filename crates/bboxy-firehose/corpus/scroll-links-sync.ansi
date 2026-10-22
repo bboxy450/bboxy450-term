@@ -1,0 +1,18 @@
+[1mScroll region, links and synchronized output[0m
+Pinned header: outside rows 4–10
+[12;1HPinned footer: outside rows 4–10[4;10r[4;1H[38;5;41mregion event 01: synthetic tool finished[0m
+[38;5;42mregion event 02: synthetic tool finished[0m
+[38;5;43mregion event 03: synthetic tool finished[0m
+[38;5;44mregion event 04: synthetic tool finished[0m
+[38;5;45mregion event 05: synthetic tool finished[0m
+[38;5;46mregion event 06: synthetic tool finished[0m
+[38;5;47mregion event 07: synthetic tool finished[0m
+[38;5;48mregion event 08: synthetic tool finished[0m
+[38;5;49mregion event 09: synthetic tool finished[0m
+[38;5;50mregion event 10: synthetic tool finished[0m
+[38;5;51mregion event 11: synthetic tool finished[0m
+[38;5;52mregion event 12: synthetic tool finished[0m
+[r[14;1H]8;id=t1-docs;https://example.invalid/fixture\[4mSynthetic source link[0m]8;;\
+[?2026h[16;1HAtomic frame: [assembling][16;1HAtomic frame: [1;32m[committed][0m[?2026l
+]7501;state=working:app=fixture:id=synthetic\]7501;state=done:app=fixture:id=synthetic\]7501;state=clear:id=synthetic\
+BEL and ST terminators are both covered by the capture scenes.

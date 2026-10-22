@@ -1,0 +1,18 @@
+[1;38;2;217;119;87mClaude Code / synthetic session 0017[0m
+[2mAll paths, messages and tool results in this scene are invented.[0m
+
+[35m❯[0m Explain the damaged-row publication path.
+
+[1m⏺ Read[0m(src/parser_pool.rs)
+  [2m└─ 64 lines read[0m
+[1m⏺ Search[0m(pattern: "publish_damage", path: "src")
+  [2m└─ Found 3 matches[0m
+
+[1m⏺ Agent[0m(Verify wide-character bounds)
+  ├─ [36mRead[0m tests/wide_cells.rs
+  ├─ [36mBash[0m cargo test wide_cells
+  └─ [32mDone[0m (4 tests passed)
+
+[3mThe parser owns its shard; the UI copies published rows.[0m
+[38;5;245mNo lock is held while encoding a frame.[0m
+[32m✓[0m Review complete · 0 pending tool calls

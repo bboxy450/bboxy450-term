@@ -1,0 +1,333 @@
+# T1 command ledger
+
+Commands executed by Aster Cinderwing in exec4, except two initial read-only commands in the main worktree as marked. Exit statuses are actual tool/process results. A compound command's status is the shell status; successful && chains imply each constituent returned zero. Final validation logs record constituent commands separately.
+ICQ payloads and transient profile-write boilerplate are omitted to keep raw coordination transcripts out of Git. No credentials are included. Preview commands were inspected before mutations. Source edits used apply_patch; those are tool operations, not shell processes.
+
+1. exit_status=0 cwd=main (read only)
+pwd
+
+2. exit_status=0
+cat /Users/feral/.agents/skills/icq/SKILL.md /Users/feral/.agents/skills/substrate/SKILL.md /Users/feral/.agents/skills/edge-boy/SKILL.md
+
+3. exit_status=0
+date '+%Y-%m-%d %H:%M:%S %Z'
+
+4. exit_status=0
+icq --help
+
+5. exit_status=0
+cat /Users/feral/.agents/skills/substrate/references/01_operator_frame.md /Users/feral/.agents/skills/substrate/references/02_substrate_toolkit.md /Users/feral/.agents/skills/substrate/references/03_voice_register.md
+
+6. exit_status=0 cwd=main (read only)
+git status --short --branch && git worktree list && rg --files -g AGENTS.md -g '!target' . /Users/feral/mydev 2>/dev/null
+
+7. exit_status=0
+icq --dry-run start
+
+8. exit_status=0
+icq profile --help && icq profile set --help && icq join --help && icq dm --help && icq inbox --help
+
+9. exit_status=0
+git status --short --branch && git log -5 --format='%h %s' && for f in /AGENTS.md /Users/AGENTS.md /Users/feral/AGENTS.md /Users/feral/mydev/AGENTS.md /Users/feral/mydev/bboxy450-term-exec4/AGENTS.md; do if test -f "$f"; then cat "$f"; fi; done
+
+10. exit_status=0
+cat /Users/feral/.agents/skills/substrate/references/02_substrate_toolkit.md
+
+11. exit_status=0
+icq start
+
+12. exit_status=0
+icq --dry-run join '#bboxy450-term'
+
+13. exit_status=0
+icq --dry-run join '#bboxy450-crates' --no-wake
+
+14. exit_status=0
+icq --dry-run profile set --file <(printf '%s\n' '{"name":"Aster Cinderwing <EXECUTOR>","role":"EXECUTOR"}')
+
+15. exit_status=0
+icq --dry-run dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+16. exit_status=0
+icq join '#bboxy450-term'
+
+17. exit_status=0
+icq join '#bboxy450-crates' --no-wake
+
+18. exit_status=1
+icq profile set --file <(printf '%s\n' '{"name":"Aster Cinderwing <EXECUTOR>","role":"EXECUTOR"}')
+
+19. exit_status=0
+icq dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+20. exit_status=0
+git fetch origin && git -c rebase.autoStash=false rebase origin/main
+
+21. exit_status=1
+python3 [write temporary .bboxy/runs/t1-icq-profile.log JSON]; icq --dry-run profile set --file .bboxy/runs/t1-icq-profile.log
+
+22. exit_status=0
+icq --dry-run profile set --file /Users/feral/mydev/bboxy450-term-exec4/.bboxy/runs/t1-icq-profile.log
+
+23. exit_status=0
+icq profile set --file /Users/feral/mydev/bboxy450-term-exec4/.bboxy/runs/t1-icq-profile.log && python3 [unlink temporary profile log]
+
+24. exit_status=0
+cat .bboxy/vision.md .bboxy/graph.md .bboxy/tasks/README.md .bboxy/tasks/2026-10-22-t-terminal-fidelity.md .bboxy/specs/renderer.md .bboxy/specs/runtime.md
+
+25. exit_status=0
+sed -n '210,380p' .bboxy/vision.md && cat .bboxy/graph.md .bboxy/tasks/README.md
+
+26. exit_status=0
+cat Cargo.toml && rg --files --hidden -g AGENTS.md -g '*osc7501*' -g '!target' -g '!vendor' . && git log -1 --format='%H %s' && git config --show-origin --get-regexp 'user\.(name|email|signingkey)|commit\.gpgsign|tag\.gpgsign'
+
+27. exit_status=0
+icq inbox --after 0 --limit 30
+
+28. exit_status=0
+cat /Users/feral/.agents/skills/it2/SKILL.md /Users/feral/.agents/skills/synced/08a1cf3b-109b-4808-b76e-23a64a2cd2f3_d6008890-49fa-4f6a-b119-fd7e4e4c99f9/computer-use/SKILL.md
+
+29. exit_status=0
+icq send --help
+
+30. exit_status=0
+tail -65 .bboxy/vision.md && cat crates/bbt-core/Cargo.toml && rg -n 'pub fn|struct|Processor|screen|display_iter' crates/bbt-core/src/lib.rs crates/bbt-core/tests/*.rs | head -100
+
+31. exit_status=0
+python3 - <<'PY'
+from pathlib import Path
+import re
+for p in sorted(Path('.bboxy/runs').glob('osc7501-*.bin')):
+    b=p.read_bytes()
+    osc=re.findall(rb'\x1b\]7501;[^\x07\x1b]*(?:\x07|\x1b\\)',b)
+    print(f'{p}: total_bytes={len(b)} status_sequences={len(osc)} status_bytes={sum(map(len,osc))}')
+PY
+
+32. exit_status=0
+icq --dry-run send '#bboxy450-term' 'Aster Cinderwing <EXECUTOR> CLAIM T1 bboxy-firehose'
+
+33. exit_status=0
+icq --dry-run dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+34. exit_status=0
+icq send '#bboxy450-term' 'Aster Cinderwing <EXECUTOR> CLAIM T1 bboxy-firehose'
+
+35. exit_status=0
+icq dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+36. exit_status=1
+sed -n '1,220p' crates/bbt-core/src/lib.rs && sed -n '1,230p' crates/bbt-core/src/term/cell.rs && sed -n '1,120p' crates/bbt-core/tests/checkpoint.rs
+
+37. exit_status=0
+python3 - <<'PY'
+from pathlib import Path
+for name in ['osc7501-claude.bin','osc7501-claude-preflight.bin']:
+    print(name, repr(Path('.bboxy/runs',name).read_bytes()))
+PY
+
+38. exit_status=0
+/Applications/iTerm.app/Contents/Resources/utilities/it2 --help && /Applications/iTerm.app/Contents/Resources/utilities/it2 session --help && /Applications/iTerm.app/Contents/Resources/utilities/it2 session list --json
+
+39. exit_status=0
+icq --dry-run dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+40. exit_status=0
+rg --files crates/bbt-core/src | rg 'cell.rs|grid/mod.rs' && sed -n '1,245p' crates/bbt-core/src/vendor/alacritty/term/cell.rs && sed -n '1,100p' crates/bbt-core/tests/checkpoint.rs
+
+41. exit_status=0
+icq inbox --after 3273 --limit 20
+
+42. exit_status=0
+icq dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+43. exit_status=101 session=62002
+python3 crates/bboxy-firehose/corpus/generate.py && cargo test -p bboxy-firehose --test corpus -- --nocapture
+
+44. exit_status=1
+test -d /Applications/Ghostty.app && /Applications/Ghostty.app/Contents/MacOS/ghostty --version
+
+45. exit_status=0
+icq --dry-run dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+46. exit_status=0 session=82469
+cargo fmt -p bboxy-firehose && cargo test -p bboxy-firehose
+
+47. exit_status=0
+icq dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+48. exit_status=0
+icq inbox --after 3297 --limit 20
+
+49. exit_status=101 session=23098
+cargo fmt -p bboxy-firehose && cargo test -p bboxy-firehose && cargo clippy -p bboxy-firehose --all-targets -- -D warnings
+
+50. exit_status=1
+cat crates/bboxybook/package.json && sed -n '1,185p' crates/bboxybook/capture.mjs && cat crates/bboxybook/.gitignore && rg -n 'font|monospace|terminal' crates/bbt-render/src/cells/mod.rs crates/bbt-render/src/text/mod.rs crates/bbt-render/tests/*.rs | head -65
+
+51. exit_status=0
+icq --dry-run dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+52. exit_status=0
+cargo build --release -p bboxy-firehose
+
+53. exit_status=0
+icq dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+54. exit_status=0
+sed -n '1,175p' crates/bboxybook/capture.mjs && rg --files --hidden -g package.json -g '*lock*' -g '*font*' -g '.gitignore' -g '!target' -g '!node_modules' . | head -65 && rg -n 'font|monospace' crates/bbt-render/src/text crates/bbt-render/tests | head -60
+
+55. exit_status=0
+python3 crates/bboxy-firehose/tests/throughput.py
+
+56. exit_status=0 session=99562
+npm view @xterm/xterm version && npm view playwright version
+
+57. exit_status=0
+rg -n 'struct FontConfig|impl Default for FontConfig|family:|size:' crates/bbt-render/src/text/mod.rs crates/bbt-render/src/lib.rs crates/bbt-render/tests/variants.rs && cat .gitignore
+
+58. exit_status=0
+icq inbox --after 3299 --limit 20
+
+59. exit_status=101 session=15288
+cargo fmt -p bboxy-firehose && cargo clippy -p bboxy-firehose --all-targets -- -D warnings
+
+60. exit_status=0 session=40113
+npm install --prefix crates/bboxy-firehose/reference --package-lock-only --ignore-scripts --no-audit --no-fund && npm pack @xterm/xterm@6.0.0 --pack-destination crates/bboxy-firehose/reference --json
+
+61. exit_status=0 session=3237
+python3 - <<'PY'
+from pathlib import Path
+import hashlib,json
+base=Path('crates/bboxy-firehose/reference/vendor')
+report={'package':'@xterm/xterm','version':'6.0.0','source':'https://registry.npmjs.org/@xterm/xterm/-/xterm-6.0.0.tgz','integrity':'sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==','sha256':{name:hashlib.sha256((base/name).read_bytes()).hexdigest() for name in ['xterm.js','xterm.css','LICENSE']}}
+(base/'provenance.json').write_text(json.dumps(report,indent=2)+'\n')
+PY
+node crates/bboxy-firehose/reference/capture.mjs
+
+62. exit_status=0
+icq --dry-run dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+63. exit_status=0
+sed -n '1,130p' crates/bbt-render/src/lib.rs && cat crates/bboxy-firehose/reference/package-lock.json && git diff --stat && git diff -- Cargo.lock
+
+64. exit_status=1
+cargo fmt -p bboxy-firehose && cargo test -p bboxy-firehose && cargo clippy -p bboxy-firehose --all-targets -- -D warnings
+
+65. exit_status=0
+icq dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+66. exit_status=0
+python3 - <<'PY'
+from pathlib import Path
+import json
+r=json.loads(Path('crates/bboxy-firehose/reference/evidence/report-dark-1x.json').read_text())
+u=next(s for s in r['scenes'] if s['name']=='unicode')
+print(json.dumps({'differingCells':u['differingCells'],'firstDifferences':u['firstDifferences']},ensure_ascii=False,indent=2))
+PY
+
+67. exit_status=0
+npm view @xterm/addon-unicode11 version
+
+68. exit_status=0 session=69540
+cargo fmt -p bboxy-firehose && cargo test -p bboxy-firehose && cargo clippy -p bboxy-firehose --all-targets -- -D warnings
+
+69. exit_status=0
+npm install --prefix crates/bboxy-firehose/reference --package-lock-only --ignore-scripts --no-audit --no-fund && python3 - <<'PY'
+from pathlib import Path
+import hashlib,json,subprocess,tarfile
+base=Path('crates/bboxy-firehose/reference')
+result=subprocess.run(['npm','pack','@xterm/addon-unicode11@0.9.0','--pack-destination',str(base),'--json'],capture_output=True,text=True,check=True)
+info=json.loads(result.stdout)[0]
+print(json.dumps({k:info[k] for k in ['name','version','filename','integrity']}))
+print([f['path'] for f in info['files'] if f['path'].startswith('lib/') or f['path']=='LICENSE'])
+with tarfile.open(base/info['filename']) as archive:
+    for name,out in [('package/lib/addon-unicode11.js','addon-unicode11.js'),('package/LICENSE','unicode11-LICENSE')]:
+        (base/'vendor'/out).write_bytes(archive.extractfile(name).read())
+p=base/'vendor/provenance.json'
+r=json.loads(p.read_text())
+r['unicodeAddon']={'package':info['name'],'version':info['version'],'integrity':info['integrity']}
+for name in ['addon-unicode11.js','unicode11-LICENSE']:
+    r['sha256'][name]=hashlib.sha256((base/'vendor'/name).read_bytes()).hexdigest()
+p.write_text(json.dumps(r,indent=2)+'\n')
+PY
+
+70. exit_status=0
+icq --dry-run dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+71. exit_status=0 session=11965
+node crates/bboxy-firehose/reference/capture.mjs --strict
+
+72. exit_status=0 session=93283
+cargo build --release -p bboxy-firehose && python3 crates/bboxy-firehose/tests/throughput.py
+
+73. exit_status=0
+icq dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+74. exit_status=101
+python3 crates/bboxy-firehose/corpus/generate.py && cargo test -p bboxy-firehose --test corpus frozen_semantic_screens -- --nocapture
+
+75. exit_status=0
+icq --dry-run dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+76. exit_status=0
+icq dm 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a [coordination payload omitted]
+
+77. exit_status=0 session=45369
+cargo fmt -p bboxy-firehose && python3 - <<'PY'
+from pathlib import Path
+import shlex,subprocess,sys
+commands=[['cargo','fmt','--check','-p','bboxy-firehose'],['cargo','test','-p','bboxy-firehose'],['cargo','clippy','-p','bboxy-firehose','--all-targets','--','-D','warnings'],['cargo','build','--release','-p','bboxy-firehose'],['git','diff','--check']]
+failed=False
+with Path('.bboxy/runs/t1-validation.log').open('w') as log:
+    for command in commands:
+        result=subprocess.run(command,capture_output=True,text=True)
+        heading=f'$ {shlex.join(command)}\n'
+        log.write(heading+result.stdout+result.stderr+f'exit_status={result.returncode}\n\n')
+        log.flush()
+        print(heading+result.stdout+result.stderr+f'exit_status={result.returncode}',flush=True)
+        failed |= result.returncode != 0
+sys.exit(int(failed))
+PY
+
+78. exit_status=0
+git status --short --branch && git diff --numstat && rg --files --hidden crates/bboxy-firehose -g '!*.tgz' -g '!node_modules' && nl -ba crates/bboxy-firehose/src/main.rs && nl -ba crates/bboxy-firehose/src/lib.rs && nl -ba crates/bboxy-firehose/src/options.rs
+
+79. exit_status=0
+date '+%Y-%m-%d %H:%M:%S %Z' && icq inbox --after 3310 --limit 20
+
+80. exit_status=0 session=31977
+python3 - <<'PY'
+from pathlib import Path
+import subprocess,sys
+command=['node','crates/bboxy-firehose/reference/capture.mjs','--strict']
+r=subprocess.run(command,capture_output=True,text=True)
+Path('.bboxy/runs/t1-reference.log').write_text('$ '+' '.join(command)+'\n'+r.stdout+r.stderr+f'exit_status={r.returncode}\n')
+print(r.stdout+r.stderr+f'exit_status={r.returncode}')
+sys.exit(r.returncode)
+PY
+
+81. exit_status=0 session=65960
+python3 - <<'PY'
+from pathlib import Path
+import subprocess,sys
+command=['python3','crates/bboxy-firehose/tests/throughput.py']
+r=subprocess.run(command,capture_output=True,text=True)
+Path('.bboxy/runs/t1-throughput.log').write_text('$ '+' '.join(command)+'\n'+r.stdout+r.stderr+f'exit_status={r.returncode}\n')
+print(r.stdout+r.stderr+f'exit_status={r.returncode}')
+sys.exit(r.returncode)
+PY
+
+82. exit_status=1
+python3 [extract xterm.js, xterm.css, LICENSE from xterm-xterm-6.0.0.tgz; inspect typings]
+Note: vendor extraction completed; typings substring inspection failed; next reference capture succeeded
+
+83. exit_status=0
+git log --oneline HEAD..origin/main && git log --format='%h %s' HEAD..origin/main -- Cargo.toml Cargo.lock crates/bbt-core && nl -ba crates/bboxy-firehose/reference/capture.mjs && nl -ba crates/bboxy-firehose/tests/corpus.rs && du -h crates/bboxy-firehose/reference/evidence && stat -f '%z bytes' target/release/bboxy-firehose
+
+Native reference discovery (non-shell tools): cua.getApp('Ghostty') -> Invalid app; cua.getState() -> no Ghostty in enabled inventory; cua.getApp('com.googlecode.iterm2') -> 'Computer Use is not allowed to use the app ... for safety reasons.' No UI bypass was attempted. Oracle authorized local headless xterm reference instead.
+
+Images read with view_image: codex-dark-1x.png, claude-dark-1x.png, palette-dark-1x.png, unicode-dark-1x.png, progress-dark-1x.png, alternate-dark-1x.png, scroll-links-sync-dark-1x.png, osc7501-claude-dark-1x.png, osc7501-preflight-dark-1x.png, osc7501-codex-dark-1x.png, progress-intermediate-dark-1x.png, alternate-intermediate-dark-1x.png. Corrected osc7501-preflight-dark-1x.png was read again after removing its inaccurate done-state caption.
+
+Web API verification: https://xtermjs.org/docs/api/terminal/classes/terminal/ and https://github.com/xtermjs/xterm.js . Actual implementation was checked against the pinned package and local bboxybook capture source.
+
+After this ledger is frozen, staging, commit, rebase, signature verification and handoff commands are recorded in t1-git.log and the final ICQ handoff.

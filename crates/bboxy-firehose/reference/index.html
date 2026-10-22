@@ -1,0 +1,58 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; font-src 'self' file:">
+<link rel="stylesheet" href="vendor/xterm.css">
+<style>
+  html, body { margin: 0; padding: 0; background: #0f141d; }
+  #terminal { display: inline-block; padding: 16px; }
+  .xterm-viewport { overflow: hidden !important; }
+</style>
+<div id="terminal"></div>
+<script src="vendor/xterm.js"></script>
+<script src="vendor/addon-unicode11.js"></script>
+<script>
+let terminal;
+window.openFixture = async (light) => {
+  terminal?.dispose();
+  document.querySelector('#terminal').replaceChildren();
+  const background = light ? '#f2f4f8' : '#0f141d';
+  document.body.style.background = background;
+  terminal = new Terminal({
+    cols: 80, rows: 24, scrollback: 0, fontFamily: 'Menlo', fontSize: 13,
+    lineHeight: 1, letterSpacing: 0, cursorBlink: false,
+    allowProposedApi: true, minimumContrastRatio: 1,
+    theme: {background, foreground: light ? '#171f2b' : '#e8edf7',
+      cursor: light ? '#171f2b' : '#e8edf7'},
+  });
+  terminal.loadAddon(new Unicode11Addon.Unicode11Addon());
+  terminal.unicode.activeVersion = '11';
+  terminal.open(document.querySelector('#terminal'));
+  terminal.blur();
+  await document.fonts.ready;
+};
+window.feedFixture = (base64) => new Promise(resolve => {
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  terminal.write(bytes, () => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+});
+window.fixtureGrid = () => {
+  const buffer = terminal.buffer.active, cells = [], lines = [];
+  const colour = (cell, fg) => {
+    if (fg ? cell.isFgDefault() : cell.isBgDefault()) return ['default'];
+    return [fg ? (cell.isFgRGB() ? 'rgb' : 'palette') : (cell.isBgRGB() ? 'rgb' : 'palette'),
+      fg ? cell.getFgColor() : cell.getBgColor()];
+  };
+  for (let y = 0; y < 24; y++) {
+    const line = buffer.getLine(y);
+    lines.push(line.translateToString(true));
+    for (let x = 0; x < 80; x++) {
+      const cell = line.getCell(x), width = cell.getWidth();
+      cells.push([width === 0 ? '' : (cell.getChars() || ' '), width,
+        colour(cell, true), colour(cell, false), !!cell.isBold(), !!cell.isDim(),
+        !!cell.isItalic(), !!cell.isInverse(), !!cell.isUnderline(), !!cell.isStrikethrough()]);
+    }
+  }
+  const r = document.querySelector('#terminal').getBoundingClientRect();
+  return {cursor: [buffer.cursorY, buffer.cursorX], cells, lines,
+    buffer: buffer.type, width: Math.ceil(r.width), height: Math.ceil(r.height)};
+};
+</script>

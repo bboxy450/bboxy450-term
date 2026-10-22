@@ -66,6 +66,14 @@ fn random(index:u32)->f32 {
 @fragment fn glow(v:Vertex)->@location(0) vec4f {
     let i=items[v.index];let mask=clip_mask(v);if mask<=0.0 {discard;}
     let d=rounded_sdf(v.point,i.rect,i.radii);if d>i.p2.w*4.0+1.0 {discard;}
+    let n=u32(i.p4.z);
+    // Halo strength is exactly zero inside its knockout. Particle centres lie
+    // on the unsnapped rectangular perimeter; each axis jitters by at most
+    // 3*scale, with radius below 1.5*size plus 0.5 coverage. The extra pixel is
+    // conservative for fractional coordinates and edge arithmetic.
+    let reach=1.5*i.p5.x+3.0*view.w+1.5;
+    let inward=min(v.point-i.p1.xy,i.p1.xy+i.p1.zw-v.point);
+    if d<=-0.5&&(n==0u||all(inward>vec2f(reach))) {return vec4f(0);}
     let state=u32(i.p2.x);let animated=state==1u||state==2u;let time=select(0.0,view.z,animated);
     var alpha=i.p3.x;
     if state==1u {alpha=mix(i.p3.y,i.p3.z,0.5-0.5*cos(time*6.2831853/max(i.p5.y,1.0)));}
@@ -74,7 +82,7 @@ fn random(index:u32)->f32 {
     alpha=min(1.0,alpha*mix(1.0,i.p2.z,i.p2.y));
     // CSS's fixed 45% outer halo; fill and border are not part of this effect.
     var strength=gaussian_box(v.point,i.rect,i.radii,i.p2.w*0.5)*clamp(0.5+d,0.0,1.0)*i.p0.z;
-    let n=u32(i.p4.z);let perimeter=2.0*(i.p1.z+i.p1.w);var speed=0.5;
+    let perimeter=2.0*(i.p1.z+i.p1.w);var speed=0.5;
     if state==1u {speed=1.0;}if state==2u {speed=0.6;}if state==3u {speed=0.2;}
     for(var p=0u;p<48u;p++) {
         if p>=n {break;}
