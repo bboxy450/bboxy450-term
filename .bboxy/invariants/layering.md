@@ -13,7 +13,7 @@ updated: 2026-10-22T19:02:24Z
 # Crate layering
 
 **Property.** Every workspace crate depends only on crates earlier in the order
-`bbt-rt bbt-core bbt-ui-model bbt-render bbt-ui bboxybook bbt-mux bboxy450-term`.
+`bbt-rt bbt-core bboxy-firehose bbt-ui-model bbt-render bbt-ui bboxybook bbt-mux bboxy450-term`.
 Any prefix of that order builds and publishes without the rest. A new crate gets
 its place in the order in the commit that adds it.
 
