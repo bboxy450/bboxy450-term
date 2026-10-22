@@ -527,10 +527,10 @@ mod tests {
         let mut grids = Grids::new();
         let mut record = SeatRecord::new(Ulid::new(), Ulid::new(), "first", "zsh");
         let id = install(&mut grids, &record, &bbt_core::Term::new(8, 2, 0));
-        let mut first = build(&[record.clone()], &grids, &Model::default());
+        let mut first = build(std::slice::from_ref(&record), &grids, &Model::default());
         first.ui.window.sidebar.open.clear();
         record.name = "renamed".into();
-        let mut next = build(&[record.clone()], &grids, &first);
+        let mut next = build(std::slice::from_ref(&record), &grids, &first);
         assert!(Arc::ptr_eq(&first.screens[&id], &next.screens[&id]));
         assert_eq!(first.ui.window.stage, next.ui.window.stage);
         assert!(next.ui.window.sidebar.open.is_empty());
@@ -584,6 +584,10 @@ mod tests {
 
     #[test]
     #[cfg(target_os = "macos")]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "offline Metal regression: initialize a headless device on the test worker"
+    )]
     fn worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy() {
         fn send<T: Send>() {}
         send::<PanePreparer>();
@@ -592,7 +596,7 @@ mod tests {
         let record = SeatRecord::new(Ulid::new(), Ulid::new(), "zsh", "zsh");
         let mut grids = Grids::new();
         let id = install(&mut grids, &record, &bbt_core::Term::new(8, 2, 0));
-        let mut first = build(&[record.clone()], &grids, &Model::default());
+        let mut first = build(std::slice::from_ref(&record), &grids, &Model::default());
         preparer.prepare(&mut first).unwrap();
         let mut next = build(&[record], &grids, &first);
         preparer.prepare(&mut next).unwrap();
