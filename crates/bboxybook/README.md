@@ -544,3 +544,10 @@ target/release/bboxybook replay-images --manifest cases.json --out target/image-
 This renders every supplied case and writes `image-replay.json`, explicitly
 marking geometry as not replayed. Use it for exact before/after PNG checks;
 `render` and `compare` retain the full geometry and parity requirements.
+
+Vector paths: `bboxybook paths --out target/bboxybook/paths` pairs the 48
+`paths.html` cases (cubic/dashed/weights, 1x/2x, density and theme). Public
+`UI.Path` constructor records drive L6 Path; SVG internals are never imported.
+The renderer retains lyon geometry and composites each stroke once, with analytic
+pixel coverage. Per renderer §4.4a, paths use 0.5% pixels plus exact centreline
+bounds and segment endpoints; other case policies are unchanged.

@@ -27,7 +27,7 @@
   Object.defineProperty(window,'UI',{configurable:true,get:()=>ui,set(value){
     ui=value;const original=value.material;
     value.material=function(name,options){const result=original(name,options);materials.push({kind:name,params:result.params});return result;};
-    for (const name of ['Text','Stack','Spacer','Button','List','Table','Input','Overlay','Modal']) {
+    for (const name of ['Path','Text','Stack','Spacer','Button','List','Table','Input','Overlay','Modal']) {
       const original=value[name];
       value[name]=function(...args){const node=original(...args);uiNodes.set(node,{kind:name.toLowerCase(),args});return node;};
     }
@@ -349,6 +349,29 @@
       const parents=[...new Set(selected.map(c=>c.node.parentElement))];
       const groups=parents.map(parent=>({host:bounds(parent),gap:parseFloat(parent.style.gap)||0,row_height:parseFloat(getComputedStyle(parent).getPropertyValue('--row-h')),rows:selected.filter(c=>c.node.parentElement===parent).map(c=>{c.node.dataset.bboxySeatRow='';return {kind:c.name,args:c.args,index:c.index,rect:bounds(c.node),parts:parts(c.node)};})}));
       return JSON.parse(JSON.stringify({version:1,layer:'seat-row',scope:'SeatRow and nested subagent/task/artifact rows; notes are shared context, row-menu overlays hidden on both sides',groups},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
+    }
+    // Derived only from the public Path record, never SVG getBBox/path APIs.
+    const pathGeometry=(o,scale)=>{
+      let lo=[Infinity,Infinity],hi=[-Infinity,-Infinity],at=[0,0],endpoints=[];
+      const include=p=>p.forEach((n,j)=>{lo[j]=Math.min(lo[j],n);hi[j]=Math.max(hi[j],n)});
+      for(const p of o.points){
+        if(p.move||p.line){at=(p.move||p.line).map(n=>n*scale);include(at);endpoints.push(at);continue;}
+        const c=p.cubic.map(p=>p.map(n=>n*scale));
+        for(let j=0;j<2;j++){
+          const [p0,p1,p2,p3]=[at[j],c[0][j],c[1][j],c[2][j]],a=-p0+3*p1-3*p2+p3,b=2*(p0-2*p1+p2),d=p1-p0,disc=b*b-4*a*d;
+          const roots=Math.abs(a)<1e-12?[Math.abs(b)>1e-12?-d/b:-1]:disc>=0?[(-b+Math.sqrt(disc))/(2*a),(-b-Math.sqrt(disc))/(2*a)]:[];
+          for(const t of roots)if(t>0&&t<1){const u=1-t;include([0,1].map(k=>u*u*u*at[k]+3*u*u*t*c[0][k]+3*u*t*t*c[1][k]+t*t*t*c[2][k]));}
+        }
+        include(c[2]);endpoints.push(c[2]);at=c[2];
+      }
+      return {bounds:endpoints.length?[lo[0],lo[1],hi[0]-lo[0],hi[1]-lo[1]]:[0,0,0,0],endpoints};
+    };
+    if(window.bboxyPathFixture){
+      const paths=[...root.querySelectorAll('.ui-path')].map(node=>{
+        const call=uiNodes.get(node);if(!call||call.kind!=='path')throw Error('unrecorded public Path');
+        node.dataset.bboxyPath='';const scale=Number(node.closest('.path-host').dataset.scale);return {options:call.args[0],geometry:pathGeometry(call.args[0],scale),host:bounds(node),scale};
+      });
+      return {version:1,layer:'paths',paths};
     }
     let component;
     if(window.bboxyComponentFixture){

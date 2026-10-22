@@ -4,6 +4,7 @@ pub mod diff;
 pub mod group;
 pub mod icons;
 pub mod materials;
+mod paths;
 pub mod pipeline;
 pub mod text;
 use crate::{
@@ -39,6 +40,7 @@ pub struct ChromeRenderer {
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_depth: usize,
+    paths: paths::Renderer,
 }
 impl ChromeRenderer {
     #[allow(
@@ -77,6 +79,7 @@ impl ChromeRenderer {
             pipelines: HashMap::new(),
             group_pipelines: HashMap::new(),
             group_depth: 0,
+            paths: paths::Renderer::default(),
         })
     }
     pub fn draw(
@@ -112,7 +115,7 @@ impl ChromeRenderer {
         if !list
             .primitives
             .iter()
-            .any(|p| matches!(p, Prim::Group { .. }))
+            .any(|p| matches!(p, Prim::Group { .. } | Prim::Path { .. }))
         {
             return self.draw_flat_with_load(list, target, encoder, load);
         }
@@ -195,6 +198,39 @@ impl ChromeRenderer {
                     primitives: clips.clone(),
                     ..Default::default()
                 };
+            } else if matches!(primitive, Prim::Path { .. }) {
+                for _ in &clips {
+                    batch.unclip();
+                }
+                self.draw_flat_with_load(
+                    &batch,
+                    ChromeTarget {
+                        width,
+                        height,
+                        scale,
+                        view,
+                        format,
+                    },
+                    encoder,
+                    wgpu::LoadOp::Load,
+                )?;
+                self.paths.draw(
+                    &self.context.device,
+                    ChromeTarget {
+                        width,
+                        height,
+                        scale,
+                        view,
+                        format,
+                    },
+                    encoder,
+                    primitive,
+                    &clips,
+                )?;
+                batch = DrawList {
+                    primitives: clips.clone(),
+                    ..Default::default()
+                };
             } else {
                 match primitive {
                     Prim::Clip { .. } => clips.push(primitive.clone()),
@@ -272,8 +308,8 @@ impl ChromeRenderer {
         for prim in &list.primitives {
             let clip = *clips.last().unwrap();
             match prim {
-                Prim::Group { .. } => {
-                    unreachable!("isolated groups split before the instance pass")
+                Prim::Group { .. } | Prim::Path { .. } => {
+                    unreachable!("groups and paths split before the instance pass")
                 }
                 Prim::Clip { rect, radii } => {
                     let x = rect.x.max(clip.0.x);

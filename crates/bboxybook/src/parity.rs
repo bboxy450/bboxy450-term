@@ -9,7 +9,9 @@ pub fn replay_images(out: &Path, cases: &[Case]) -> Result<usize> {
     let mut renderer = ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}", renderer.context.adapter_info);
     for (i, case) in cases.iter().enumerate() {
-        let rgba = if case.fixture.as_ref().is_some_and(|f|f["layer"]=="streams") {
+        let rgba = if case.fixture.as_ref().is_some_and(|f|f["layer"]=="paths") {
+            crate::paths::render_case(&mut renderer,case)?
+        } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="streams") {
             crate::streams::render_case(&mut renderer, case)?
         } else if case
             .fixture
@@ -92,6 +94,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     snapshots.extend(crate::title_bars::snapshots(cases)?);
     snapshots.extend(crate::launchers::snapshots(cases)?);
     snapshots.extend(crate::streams::snapshots(cases)?);
+    snapshots.extend(crate::paths::snapshots(cases)?);
     if !snapshots.is_empty() {
         fs::write(
             out.join("layouts.json"),
@@ -133,7 +136,8 @@ impl CasePolicy {
         }
         let f = case.fixture.as_ref();
         let surface_only = f.is_some_and(|f| f["layer"] == "floating-surfaces");
-        let text = if case.component == "materials" || surface_only {
+        let vector = f.is_some_and(|f| f["layer"] == "paths");
+        let text = if case.component == "materials" || surface_only || vector {
             false
         } else if case.component == "style"
             || f.is_some_and(|f| {
@@ -160,9 +164,11 @@ impl CasePolicy {
             historical: f.is_some_and(|f| f["reference"] == "baseline"),
             text,
             channel_tolerance: diff::CHANNEL_TOLERANCE,
-            changed_pixel_budget: if text { 0.02 } else { diff::CHANGED_BUDGET },
-            geometry_tolerance_px: text.then_some(0.5),
-            scope: if f.is_some_and(|f|f["layer"]=="streams") {
+            changed_pixel_budget: if vector { 0.005 } else if text { 0.02 } else { diff::CHANGED_BUDGET },
+            geometry_tolerance_px: if vector { Some(0.) } else { text.then_some(0.5) },
+            scope: if vector {
+                "L6 Path strokes in caller-owned slots; public points tessellated natively; 1x/2x"
+            } else if f.is_some_and(|f|f["layer"]=="streams") {
                 "StreamDock/message rows; public entries, independent native geometry; demo backdrop shared"
             } else if f.is_some_and(|f| f["layer"] == "launchers") {
                 "Launcher/picker and placement banner; enclosing backdrop remains shared context"
@@ -191,7 +197,9 @@ impl CasePolicy {
         } else {
             ""
         };
-        let label = if self.text {
+        let label = if !self.text && self.geometry_tolerance_px == Some(0.) {
+            "vector: 0.5% + exact bounds/endpoints".into()
+        } else if self.text {
             "text: 2% + rect/baseline ≤0.5px".into()
         } else {
             format!("{scope}pixels: 0.1%")
@@ -204,7 +212,7 @@ impl CasePolicy {
     }
     fn status(self, score: f64, geometry: Option<&Geometry>) -> &'static str {
         if let Some(limit) = self.geometry_tolerance_px {
-            let Some(g) = geometry.filter(|g| g.complete && g.rects > 0 && g.baselines > 0) else {
+            let Some(g) = geometry.filter(|g| g.complete && g.rects > 0 && (!self.text || g.baselines > 0)) else {
                 return "unproven geometry";
             };
             if g.max_rect_error > limit || g.max_baseline_error > limit {
@@ -428,7 +436,7 @@ pub fn compare_paths(
     } else {
         "Pinned base ux-prototype-v2; supplemental committed lab revision and capture policy in capture.json. Legacy text cases without geometry are unproven, regardless of their pixel score."
     };
-    let policy = "Per-case policy: channel tolerance 8; text-bearing cases require every rect and Text baseline within 0.5px plus ≤2% changed pixels; pixel-only cases keep ≤0.1%. Missing geometry never passes. The policy gates evidence, not human acceptance. Frozen v2 cases are labelled historical diagnostics; raw results remain visible and do not gate the current design.";
+    let policy = "Per-case policy: channel tolerance 8; text-bearing cases require every rect and Text baseline within 0.5px plus ≤2% changed pixels; vector paths require exact public-input bounds/endpoints plus ≤0.5%; other pixel-only cases keep ≤0.1%. Missing geometry never passes. The policy gates evidence, not human acceptance. Frozen v2 cases are labelled historical diagnostics; raw results remain visible and do not gate the current design.";
     let mut md = format!(
         "# bboxybook parity\n\n{} cases; {} require review. {}\n\nSources: {}\n\n| Case | Policy | Geometry | Changed | Mean error | Status | Web | Native | Diff |\n|---|---|---|---:|---:|---|---|---|---|\n",
         rows.len(),
@@ -662,6 +670,20 @@ mod tests {
             p.status(0., Some(&Geometry::from_tree(&bad))),
             "unproven geometry"
         );
+    }
+
+    #[test]
+    fn vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets() -> Result<()> {
+        let p=CasePolicy::for_case(&crate::paths::cases()[0])?;
+        assert!(!p.text);assert_eq!(p.changed_pixel_budget,0.005);assert_eq!(p.geometry_tolerance_px,Some(0.));
+        let mut tree=serde_json::json!({"kind":"box","native":[4.,8.,232.,64.],"web":[4.,8.,232.,64.],"children":[]});
+        assert_eq!(p.status(0.005,Some(&Geometry::from_tree(&tree))),"within policy");
+        assert_eq!(p.status(0.005001,Some(&Geometry::from_tree(&tree))),"review pixels");
+        tree["native"][0]=serde_json::json!(4.000001);
+        assert_eq!(p.status(0.,Some(&Geometry::from_tree(&tree))),"review geometry");
+        assert_eq!(p.status(0.,None),"unproven geometry");
+        assert_eq!(CasePolicy::for_case(&crate::materials::cases()[0])?.changed_pixel_budget,0.001);
+        Ok(())
     }
 
     #[test]

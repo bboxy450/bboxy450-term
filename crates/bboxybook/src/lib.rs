@@ -9,6 +9,7 @@ pub mod modules;
 pub mod overlays;
 pub mod panes;
 pub mod parity;
+pub mod paths;
 pub mod seat_rows;
 pub mod styles;
 pub mod streams;

@@ -16,6 +16,9 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("gallery");
+    if command == "paths" {
+        return bboxybook::paths::render(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/bboxybook/paths".into())));
+    }
     if command == "streams" {
         return bboxybook::streams::render(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/bboxybook/streams".into())));
     }
@@ -101,7 +104,7 @@ fn run() -> Result<()> {
         ));
     }
     if command == "manifest" {
-        let cases=match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref(){Some("flow")=>bboxybook::components::cases(),Some("streams")=>{let mut c=bboxybook::streams::cases();c.extend(bboxybook::streams::legacy_cases());c},None=>gallery::cases(),Some(_)=>return Err("unknown BBOXYBOOK_GALLERY".into())};
+        let cases=match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref(){Some("paths")=>bboxybook::paths::cases(),Some("flow")=>bboxybook::components::cases(),Some("streams")=>{let mut c=bboxybook::streams::cases();c.extend(bboxybook::streams::legacy_cases());c},None=>gallery::cases(),Some(_)=>return Err("unknown BBOXYBOOK_GALLERY".into())};
         println!("{}", serde_json::to_string_pretty(&cases)?);
         return Ok(());
     }
@@ -151,7 +154,7 @@ fn run() -> Result<()> {
         },
         "compare"=>parity::compare_paths(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/parity".into())),&cases,&value(&args,"--web-root").unwrap_or_else(||"web".into()),&value(&args,"--native-root").unwrap_or_else(||"native".into()))?,
         "sidebar"|"showcase"=>{let component=if command=="showcase"{format!("showcase-{}",value(&args,"--scene").unwrap_or_else(||"3".into()))}else{"sidebar".into()};cases.retain(|c|c.component==component);parity::render(&PathBuf::from("target/bboxybook"),&cases)?;},
-        _=>return Err("usage: bboxybook [gallery | streams | launchers | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | styles | manifest | replay-images --manifest JSON --out DIR | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
+        _=>return Err("usage: bboxybook [gallery | paths | streams | launchers | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | styles | manifest | replay-images --manifest JSON --out DIR | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
     }
     Ok(())
 }

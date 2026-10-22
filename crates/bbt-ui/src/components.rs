@@ -1,10 +1,22 @@
 //! L6 retained Box, Text, Stack and ScrollView. Layout is pure; paint is ordered
 //! draw-list/material data. The host supplies fonts, a viewport and scroll offsets.
 use crate::{Context, Length, Material, ResolvedStyle, ResolvedText, Style};
+pub use bbt_ui_model::draw::{LineCap, LineJoin, PathCommand, PathStroke};
 use bbt_ui_model::{
     draw::{Color, DrawCtx, DrawList, Prim, TextStyle, TypeScale},
     layout::{self, Align, Axis, Insets, Rect, Size, TextMeasure, TextStyle as MeasureStyle},
 };
+
+/// A stroke-only retained vector. Viewport size participates in layout;
+/// the stroke may overflow it, like the lab's public UI.Path constructor.
+#[derive(Debug, Clone)]
+pub struct Path {
+    pub size: [f32; 2],
+    pub points: std::sync::Arc<[PathCommand]>,
+    pub stroke: PathStroke,
+    pub paint: crate::Paint,
+    pub opacity: f32,
+}
 
 pub trait Measure: TextMeasure {
     fn font_metrics(&self, style: &MeasureStyle) -> [f32; 2];
@@ -237,6 +249,7 @@ pub enum Element {
         size: Length,
         radius: Length,
     },
+    Path(Path),
 }
 #[derive(Debug, Clone)]
 pub struct Placed {
@@ -296,6 +309,12 @@ pub enum LayoutKind {
     Image {
         asset: String,
         radius: f32,
+    },
+    Path {
+        points: std::sync::Arc<[PathCommand]>,
+        stroke: PathStroke,
+        color: [f32; 4],
+        scale: f32,
     },
 }
 #[derive(Debug, Clone)]
@@ -609,6 +628,16 @@ impl Element {
                 Ok((size, base))
             }
             Self::Spacer => Ok(([0., 0.], 0.)),
+            Self::Path(p) => {
+                p.stroke.validate(&p.points)?;
+                if p.size.iter().any(|n| !n.is_finite() || *n < 0.)
+                    || !p.opacity.is_finite()
+                    || !(0. ..=1.).contains(&p.opacity)
+                {
+                    return Err("invalid path viewport or opacity");
+                }
+                Ok((p.size, p.size[1]))
+            }
             Self::Icon { size, .. } => {
                 let s = size.resolve(ctx.density)?;
                 Ok(([s, s], s))
@@ -808,6 +837,15 @@ impl Element {
                 )
             }
             Self::Spacer => (LayoutKind::Spacer, vec![]),
+            Self::Path(p) => (
+                LayoutKind::Path {
+                    points: p.points.clone(),
+                    stroke: p.stroke.clone(),
+                    color: Color(p.paint.resolve(ctx)?).alpha(p.opacity).0,
+                    scale: 1.,
+                },
+                vec![],
+            ),
             Self::Icon { name, paint, .. } => (
                 LayoutKind::Icon {
                     name: name.clone(),
@@ -985,6 +1023,9 @@ fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
     node.rect = rect(node.rect);
     node.baseline *= scale;
     match &mut node.kind {
+        LayoutKind::Path {
+            scale: path_scale, ..
+        } => *path_scale *= scale,
         LayoutKind::Image { radius, .. } => *radius *= scale,
         LayoutKind::Box { style, .. } => {
             style.radii = style.radii.map(|r| r * scale);
@@ -1736,6 +1777,22 @@ fn paint_contents(
                 rect: node.rect,
                 image: asset.as_str().into(),
                 radius: *radius,
+            });
+            finish(list, clips, out);
+        }
+        LayoutKind::Path {
+            points,
+            stroke,
+            color: rgba,
+            scale,
+        } => {
+            let mut list = list_with_clips(clips);
+            list.push(Prim::Path {
+                origin: [node.rect.x, node.rect.y],
+                scale: *scale,
+                points: points.clone(),
+                stroke: stroke.clone(),
+                color: color(*rgba, draw, opacity),
             });
             finish(list, clips, out);
         }

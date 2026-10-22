@@ -1,0 +1,74 @@
+7.8 support — retained vector paths
+Authorization: 9672c660 (paths), ca2ead18 (measured vector policy).
+Reference: lab commit 4141a78; renderer.md §4.4a. No lab reference edits.
+
+Mechanism / files:
+bbt-ui-model/src/draw/path.rs — Move/Line/Cubic, stroke width/dash/cap/join,
+validation, independent cubic-extrema bounds and endpoints; std only.
+draw/prim.rs and list.rs — retained Path command, transform and validation.
+bbt-ui/src/components.rs — L6 Path viewport, points, stroke, paint and opacity;
+layout and group scaling preserve the record, paint emits Prim::Path.
+bbt-render/src/chrome/paths.rs — lyon_tessellation =1.0.22, CPU stroke tessellation
+and nonzero union to remove internal overlap edges; cached device-owned edge
+buffers, keyed by shape/stroke, reused across paint/translation/scale changes.
+paths.wgsl — analytic polygon area in each pixel (clamped edge integral), one
+sRGB source-over operation per stroke. Supports regular/zero-length round dashes,
+widths, caps and joins; clips, groups and ordered foreground remain in force.
+chrome/mod.rs — split Path at its ordered position, preserving enclosing clips;
+non-Path galleries keep the existing renderer branch. Terminal cells untouched.
+Lyon crates are MIT OR Apache-2.0; float_next_after 1.0.0 MIT. Cargo.lock adds
+only those four packages and the bbt-render edge; foreign mux dependencies are
+not staged. The lock write was coordinated with Rook (0bd02fae, cc8d0354).
+
+bboxybook/src/paths.rs — public UI.Path constructor records in caller-owned
+slots; no SVG path internals or browser child positions feed tessellation.
+capture-inputs.js computes web geometry independently from the public commands;
+native snapshots read the retained draw commands and use model path_geometry.
+capture.mjs identifies current paths, captures their shared enclosing backdrop,
+and hashes paths.html. main/lib/parity dispatch the gallery and exact geometry.
+README documents bboxybook paths and its policy.
+
+Measurements / acceptance:
+Initial SDF ramp: 48/48 over the old 0.1% budget, worst 1.3364%.
+Measured SVG viewport-origin snapping reduced the worst to 0.2852%; analytic
+area coverage retained thin strokes/corners, worst 0.2857716120%.
+The 1.5px Skia stroke and cap/curve AA residue is logged, not tuned away.
+Oracle ca2ead18 decided paths: 0.5% pixels + image read + exact public-input
+bounds/endpoints; text and other non-text budgets unchanged. Policy unit test
+rejects missing geometry and even 0.000001px error. Cubic test proves the true
+interior extremum (7.5), not the control-hull bound (10).
+
+BBOXYBOOK_GALLERY=paths BBOXYBOOK_REFERENCE_HEAD=4141a78 \
+ PARITY_OUT=target/bboxybook/graphs/paths/reviewed scripts/parity.sh
+  exit 0; web 48/48, zero capture errors; native 48; 0 reviews under decided
+  vector policy; 768 geometry records exact, max error 0.0. All four densities,
+  both themes, cubic/dashed/weights at 1x and 2x. Index: reviewed/index.html.
+Image read: weights-1x-cozy-dark web/native/diff, cubic-1x-cozy-dark native,
+dashed-2x-cozy-dark web/native/diff. Same shapes and cadence; edge AA residue.
+
+python3 target/bboxybook/graphs/paths/regress.py
+  exit 0; four disjoint CLI image-replay jobs exit 0; 1,808/1,808 PNG SHA-256
+  matches, changed=[], missing=[]; zero new reviews on existing galleries.
+  Raw commands, manifests, status: paths/regression/{part-*.json,status.json}.
+  Replay binary predates the geometry/policy-only additions, which are exercised
+  separately by the final parity script; no subsequent renderer paint change.
+
+cargo test -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook --locked
+cargo test -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook --release --locked
+  each exit 0, 192 passed in the shared working tree (includes eight pending
+  GraphTab tests outside this support commit). debug-final.log/release-final.log.
+Tests cover exact geometry and invalid input, viewport preservation, retained
+GPU geometry, clip/order/alpha, zero-length round dashes and translucent crossing.
+cargo clippy -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook \
+ --all-targets --locked -- -D warnings -A clippy::map_entry \
+ -A clippy::chunks_exact_to_as_chunks
+  exit 0; clippy-final.log. scripts/ui-lint.sh exit 0; ui-lint.log (non-gating
+  map-entry/chunks suggestions remain). node --check capture-inputs.js and
+  capture.mjs exit 0. git diff --check exit 0.
+
+All referenced relative logs are under target/bboxybook/graphs/paths/.
+Initial test compile needed explicit usize indices; one expected blend channel
+was corrected from 127 to measured/rounded 128. Final required runs pass.
+Not checked: hosted CI, non-Metal backends, path performance in the live app,
+all possible SVG features (only the approved three commands/stroke contract).
+GraphTab and foreign mux/app work remain outside this commit. No push.

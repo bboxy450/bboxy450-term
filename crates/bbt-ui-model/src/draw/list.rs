@@ -55,6 +55,21 @@ impl DrawList {
         let mut depth = 0usize;
         for p in primitives {
             match p {
+                Prim::Path {
+                    origin,
+                    scale,
+                    points,
+                    stroke,
+                    color,
+                } => {
+                    stroke.validate(points)?;
+                    if origin.iter().chain(color.0.iter()).any(|n| !n.is_finite())
+                        || !scale.is_finite()
+                        || *scale <= 0.
+                    {
+                        return Err("invalid path transform or colour");
+                    }
+                }
                 Prim::Group {
                     primitives,
                     opacity,

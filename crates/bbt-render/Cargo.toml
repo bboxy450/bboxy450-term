@@ -11,6 +11,7 @@ description = "bboxy450-term: bbt-render"
 [dependencies]
 bbt-ui-model = { path = "../bbt-ui-model" }
 bytemuck = { version = "1.25", features = ["derive"] }
+lyon_tessellation = "=1.0.22"
 png = "0.18"
 pollster = "0.4"
 wgpu = { version = "=30.0.1", default-features = false, features = ["std", "metal", "wgsl"] }

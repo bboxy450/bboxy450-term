@@ -136,6 +136,14 @@ impl TextStyle {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Prim {
+    /// Stroke-only vector path; the renderer caches tessellation of this record.
+    Path {
+        origin: Pt,
+        scale: f32,
+        points: Arc<[super::PathCommand]>,
+        stroke: super::PathStroke,
+        color: Color,
+    },
     /// Isolated children: render at full strength, then filter/composite once.
     /// Child clips are balanced locally; an outer clip still bounds the group.
     Group {

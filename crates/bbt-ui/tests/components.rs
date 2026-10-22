@@ -21,6 +21,61 @@ fn context() -> Context {
 }
 
 #[test]
+fn path_uses_declared_viewport_and_keeps_its_retained_stroke() {
+    let element = c::Element::Path(c::Path {
+        size: [80., 20.],
+        points: vec![
+            c::PathCommand::Move([2., 10.]),
+            c::PathCommand::Cubic([[20., 0.], [60., 20.], [78., 10.]]),
+        ]
+        .into(),
+        stroke: c::PathStroke {
+            width: 1.5,
+            cap: c::LineCap::Round,
+            ..Default::default()
+        },
+        paint: Paint::solid(Color::Accent),
+        opacity: 0.4,
+    });
+    let layout = element
+        .layout(Rect::new(3., 7., 80., 0.), context(), &Metrics)
+        .unwrap();
+    assert_eq!(layout.rect, Rect::new(3., 7., 80., 20.));
+    let ops = c::paint(&layout, context());
+    let [c::Paint::Draw(list)] = ops.as_slice() else {
+        panic!("path draw")
+    };
+    let [
+        Prim::Path {
+            origin,
+            points,
+            stroke,
+            color,
+            scale,
+        },
+    ] = list.primitives.as_slice()
+    else {
+        panic!("retained path")
+    };
+    assert_eq!(*origin, [3., 7.]);
+    assert_eq!(*scale, 1.);
+    assert_eq!(points.len(), 2);
+    assert_eq!(stroke.width, 1.5);
+    assert!((color.0[3] - 0.4).abs() < 1e-6);
+    assert!(
+        c::Element::Path(c::Path {
+            size: [-1., 0.],
+            points: vec![].into(),
+            stroke: Default::default(),
+            paint: Paint::solid(Color::Accent),
+            opacity: 1.
+        })
+        .natural(20., context(), &Metrics)
+        .is_err()
+    );
+}
+
+#[test]
 fn intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero() {
     let mut style = Style::new(Preset::Card);
     style.overrides.padding = Some([Length::Px(0.); 4]);
