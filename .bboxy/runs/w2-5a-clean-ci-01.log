@@ -1,0 +1,146 @@
+UTC: 2026-10-22T21:49:38Z
+SHA: ab028a14ec3563bd908883ca9851430b7f531124
+WORKTREE: /tmp/rook-w2-5a-ci
+CARGO_TARGET_DIR: /Users/feral/mydev/bboxy450-term/target/w2-5a-ci
+SOURCE_STATUS_BEFORE: clean
+COMMAND: sh scripts/ci-local.sh
+layering: held
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-ui-model)
+   Compiling bbt-core v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-core)
+   Compiling bbt-rt v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-rt)
+   Compiling bboxybook v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bboxy450-term)
+   Compiling bboxy-firehose v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bboxy-firehose)
+   Compiling bbt-mermaid v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-mermaid)
+   Compiling bbt-render v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-render)
+   Compiling bbt-ui v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-ui)
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-mux)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 15.80s
+   Compiling regex-syntax v0.8.11
+   Compiling aho-corasick v1.1.5
+   Compiling bbt-render v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-render)
+   Compiling bbt-mermaid v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-mermaid)
+   Compiling bboxy-firehose v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bboxy-firehose)
+   Compiling bbt-mux v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-mux)
+   Compiling regex-automata v0.4.18
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-supervisor)
+   Compiling bbt-rt v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-rt)
+   Compiling bbt-core v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-core)
+   Compiling bbt-ui v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-ui)
+   Compiling regex v1.13.1
+   Compiling bboxybook v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bboxy450-term)
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/rook-w2-5a-ci/crates/bbt-ui-model)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 32.42s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/bboxy_firehose-4d572713e29990dc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/bboxy_firehose-863d40ec3f1f4f83)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/cli-e8c1c0ae3a66cc63)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.89s
+
+     Running tests/corpus.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/corpus-f2307595509209c5)
+
+running 3 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/bboxy450_term-19bdeb7c40925832)
+
+running 3 tests
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/bboxybook-0ca7bfef418f8c14)
+
+running 10 tests
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 39.23s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/bboxybook-73535e16e3abf1f3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/atoms-d91c26dca0246f1e)
+
+running 3 tests
+test icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage ... ok
+test icon_size_gallery_renders_at_one_and_two_device_pixels_per_point ... ok
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s
+
+     Running tests/blending.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/blending-f7e862cc5f309986)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+     Running tests/clipping.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/clipping-80f92ee5b9765852)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... FAILED
+
+failures:
+
+---- every_material_obeys_each_rounded_ancestor_at_one_and_two_x stdout ----
+
+thread 'every_material_obeys_each_rounded_ancestor_at_one_and_two_x' (8248740) panicked at crates/bboxybook/tests/clipping.rs:111:89:
+called `Result::unwrap()` on an `Err` value: RenderError("No space left on device (os error 28)")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    every_material_obeys_each_rounded_ancestor_at_one_and_two_x
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.40s
+
+error: test failed, to rerun pass `-p bboxybook --test clipping`
+
+EXIT: 101
+SOURCE_STATUS_AFTER: clean
+PRIVATE_TARGET_REMOVED: true
+ALLOCATED_BYTES_REMOVED: 8919339008

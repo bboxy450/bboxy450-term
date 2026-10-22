@@ -20,4 +20,3 @@ test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_it
 test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
 
 test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.42s
-
