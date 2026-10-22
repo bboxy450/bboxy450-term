@@ -105,7 +105,7 @@ Architect (new role, most capable model): designs the system and writes specs, z
 
 ## Morale (operator, 2026-10-21)
 
-The Oracle reminds the cohort now and then, by DM, that we got this: the native app will match the web prototypes. Do it at milestones (a layer accepted, a parity drop), never as noise.
+The Oracle reminds the cohort now and then, by DM, that we got this: the native app will match the web prototypes. Do it at milestones (a layer accepted, a parity drop, a measured speedup), never as noise. Operator, 2026-10-22: **"WE GOT THIS, WE ARE INEVITABLE in this effort!"** Relay it with the concrete milestone that earned it (first relayed with: vector paths, 7× renderer speedup 33 → 4.9 ms, the live native window, seats surviving a hard kill).
 
 ## Messaging rule (operator, 2026-10-21, tightened)
 
