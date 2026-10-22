@@ -2,7 +2,7 @@
 //! on borders, clusters hold their members, everything inside the size, and
 //! the layout is deterministic.
 
-#![allow(clippy::disallowed_methods)] // a dev tool reading fixture files, not UI code
+#![allow(clippy::disallowed_methods, reason = "dev tool and test fixture IO, not the UI thread")]
 
 use bbt_mermaid::{Geometry, Kind, MonoMeasure, Point, Rect, Shape, Style, layout, parse, render};
 use std::path::Path;

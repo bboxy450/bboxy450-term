@@ -178,7 +178,7 @@ impl Ledger {
     }
     pub fn held_out(&self, after: u64) -> Result<Vec<StoredMessage>> {
         let db = self.store.connection()?;
-        let mut query=db.prepare("SELECT seq,envelope,held_out FROM msg_messages WHERE held_out IS NOT NULL AND seq>?1 ORDER BY seq LIMIT 256")?;
+        let mut query=db.prepare_cached("SELECT seq,envelope,held_out FROM msg_messages WHERE held_out IS NOT NULL AND seq>?1 ORDER BY seq LIMIT 256")?;
         let rows = query.query_map([sqlint(after)?], |r| {
             Ok((
                 u64_at(r, 0)?,
@@ -225,7 +225,7 @@ impl Ledger {
     }
     pub fn receipts(&self, message: Ulid) -> Result<Vec<Receipt>> {
         let db = self.store.connection()?;
-        let mut query=db.prepare("SELECT d.data FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 ORDER BY recipient,agent")?;
+        let mut query=db.prepare_cached("SELECT d.data FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 ORDER BY recipient,agent")?;
         query
             .query_map([message.to_string()], |r| r.get::<_, Vec<u8>>(0))?
             .map(|r| Ok(serde_json::from_slice(&r?)?))
@@ -238,7 +238,7 @@ impl Ledger {
         agent: Option<&str>,
     ) -> Result<Vec<ReceiptEvent>> {
         let db = self.store.connection()?;
-        let mut query=db.prepare("SELECT r.data FROM msg_receipts r JOIN msg_messages m ON m.seq=r.message WHERE m.id=?1 AND r.recipient=?2 AND r.agent=?3 ORDER BY r.seq")?;
+        let mut query=db.prepare_cached("SELECT r.data FROM msg_receipts r JOIN msg_messages m ON m.seq=r.message WHERE m.id=?1 AND r.recipient=?2 AND r.agent=?3 ORDER BY r.seq")?;
         query
             .query_map(
                 params![
@@ -262,7 +262,7 @@ impl Ledger {
             return Err(invalid("receipt page limit must be 1..128"));
         }
         let db = self.store.connection()?;
-        let mut q=db.prepare("SELECT d.rowid,d.data FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 AND (?2 IS NULL OR d.recipient=?2) AND d.rowid>?3 ORDER BY d.rowid")?;
+        let mut q=db.prepare_cached("SELECT d.rowid,d.data FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 AND (?2 IS NULL OR d.recipient=?2) AND d.rowid>?3 ORDER BY d.rowid")?;
         let mut rows = q.query(params![
             message.to_string(),
             recipient.map(|s| s.to_string()),
@@ -284,9 +284,22 @@ impl Ledger {
         }
         Ok(Page { items, next })
     }
+    /// Pending deliveries as stored bytes, for callers that skip unchanged rows
+    /// before decoding.
+    pub(crate) fn pending_raw(&self, after: u64, limit: usize) -> Result<Vec<(u64, Vec<u8>)>> {
+        let db = self.store.connection()?;
+        let mut query=db.prepare_cached("SELECT d.rowid,d.data FROM msg_deliveries d WHERE d.evidence='recipient-stored' AND d.rowid>?1 ORDER BY d.rowid LIMIT ?2")?;
+        query
+            .query_map(
+                params![sqlint(after)?, i64::try_from(limit.min(4096))?],
+                |r| Ok((u64_at(r, 0)?, r.get::<_, Vec<u8>>(1)?)),
+            )?
+            .map(|r| Ok(r?))
+            .collect()
+    }
     pub fn pending(&self, after: u64, limit: usize) -> Result<Vec<(u64, Receipt)>> {
         let db = self.store.connection()?;
-        let mut query=db.prepare("SELECT d.rowid,d.data FROM msg_deliveries d WHERE d.evidence='recipient-stored' AND d.rowid>?1 ORDER BY d.rowid LIMIT ?2")?;
+        let mut query=db.prepare_cached("SELECT d.rowid,d.data FROM msg_deliveries d WHERE d.evidence='recipient-stored' AND d.rowid>?1 ORDER BY d.rowid LIMIT ?2")?;
         query
             .query_map(
                 params![sqlint(after)?, i64::try_from(limit.min(4096))?],
@@ -322,7 +335,7 @@ impl Ledger {
     }
     pub fn targets(&self, now: u64) -> Result<Vec<Ulid>> {
         let db = self.store.connection()?;
-        let mut q=db.prepare("SELECT DISTINCT recipient FROM msg_deliveries WHERE evidence='recipient-stored' AND held IS NULL AND eligible_ms<=?1 ORDER BY recipient LIMIT 1024")?;
+        let mut q=db.prepare_cached("SELECT DISTINCT recipient FROM msg_deliveries WHERE evidence='recipient-stored' AND held IS NULL AND eligible_ms<=?1 ORDER BY recipient LIMIT 1024")?;
         q.query_map([sqlint(now)?], |r| r.get::<_, String>(0))?
             .map(|r| Ok(r?.parse()?))
             .collect()
@@ -402,7 +415,7 @@ impl Ledger {
             } else {
                 0
             };
-            let mut q=tx.prepare("SELECT data FROM msg_deliveries WHERE recipient=?1 AND evidence='recipient-stored' AND held IS NULL AND eligible_ms<=?2 AND (?3=-1 OR class=?3) AND (message>?4 OR (message=?4 AND agent>?5)) AND attempt IS NULL ORDER BY message,agent LIMIT ?6")?;
+            let mut q=tx.prepare_cached("SELECT data FROM msg_deliveries WHERE recipient=?1 AND evidence='recipient-stored' AND held IS NULL AND eligible_ms<=?2 AND (?3=-1 OR class=?3) AND (message>?4 OR (message=?4 AND agent>?5)) AND attempt IS NULL ORDER BY message,agent LIMIT ?6")?;
             for row in q.query_map(
                 params![
                     recipient.to_string(),
@@ -571,7 +584,7 @@ impl Ledger {
             return Err(invalid("message page limit must be 1..128"));
         }
         let db = self.store.connection()?;
-        let mut q=db.prepare("SELECT seq,envelope,held_out FROM msg_messages m WHERE seq>?1 AND (?2 IS NULL OR sender=?2 OR EXISTS(SELECT 1 FROM msg_deliveries d WHERE d.message=m.seq AND d.recipient=?2)) ORDER BY seq")?;
+        let mut q=db.prepare_cached("SELECT seq,envelope,held_out FROM msg_messages m WHERE seq>?1 AND (?2 IS NULL OR sender=?2 OR EXISTS(SELECT 1 FROM msg_deliveries d WHERE d.message=m.seq AND d.recipient=?2)) ORDER BY seq")?;
         let mut rows = q.query(params![sqlint(after)?, actor.map(|s| s.to_string())])?;
         let mut items = Vec::new();
         let mut bytes = 0;
@@ -616,8 +629,9 @@ impl Ledger {
     }
     pub fn bus_outbox(&self) -> Result<Vec<Draft>> {
         let db = self.store.connection()?;
-        let mut q =
-            db.prepare("SELECT draft FROM msg_bus_outbox WHERE sent=0 ORDER BY rowid LIMIT 128")?;
+        let mut q = db.prepare_cached(
+            "SELECT draft FROM msg_bus_outbox WHERE sent=0 ORDER BY rowid LIMIT 128",
+        )?;
         q.query_map([], |r| r.get::<_, Vec<u8>>(0))?
             .map(|r| Ok(serde_json::from_slice(&r?)?))
             .collect()
@@ -635,7 +649,7 @@ impl Ledger {
     fn recover(&self) -> Result<()> {
         let works = {
             let db = self.store.connection()?;
-            let mut q = db.prepare(
+            let mut q = db.prepare_cached(
                 "SELECT data FROM msg_attempts WHERE outcome IS NULL ORDER BY rowid LIMIT 1024",
             )?;
             q.query_map([], |r| r.get::<_, Vec<u8>>(0))?
