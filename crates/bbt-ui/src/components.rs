@@ -94,11 +94,49 @@ pub struct ScrollView {
     pub content: std::boxed::Box<Element>,
 }
 #[derive(Debug, Clone)]
+pub struct Overlay {
+    pub content: std::boxed::Box<Element>,
+    pub style: std::boxed::Box<Style>,
+    pub min_height: Length,
+    pub horizontal: Alignment,
+    pub vertical: Alignment,
+    pub clip: bool,
+}
+impl Overlay {
+    pub fn new(content: Element) -> Self {
+        let mut style = Style::new(crate::Preset::Card);
+        style.overrides.material = Some(Material::Frosted);
+        style.overrides.blur = Some(crate::Blur {
+            radius: Length::Px(bbt_ui_model::STYLE.material.backdrop_blur_px as f32),
+            saturation: 1.,
+        });
+        style.overrides.fill = Some(crate::Paint {
+            color: crate::Color::Background,
+            alpha: crate::Alpha::Value(bbt_ui_model::STYLE.material.backdrop_dim_alpha as f32),
+        });
+        style.overrides.border = Some(crate::Border {
+            width: Length::Px(0.),
+            paint: crate::Paint::solid(crate::Color::Transparent),
+            outside: false,
+        });
+        style.overrides.padding = Some([Length::Px(0.); 4]);
+        Self {
+            content: std::boxed::Box::new(content),
+            style: std::boxed::Box::new(style),
+            min_height: Length::Px(220.),
+            horizontal: Alignment::Center,
+            vertical: Alignment::Center,
+            clip: true,
+        }
+    }
+}
+#[derive(Debug, Clone)]
 pub enum Element {
     Box(Box),
     Text(Text),
     Stack(Stack),
     ScrollView(ScrollView),
+    Overlay(Overlay),
     Spacer,
     Icon {
         name: String,
@@ -343,6 +381,17 @@ impl Element {
                 Ok(([s, s], s))
             }
             Self::ScrollView(s) => Ok((s.viewport, s.viewport[1])),
+            Self::Overlay(o) => {
+                let s = o.style.resolve(ctx)?;
+                let p = inset(&s);
+                let (child, _) = o
+                    .content
+                    .natural((width - p.left - p.right).max(0.), ctx, m)?;
+                let h = s.height.unwrap_or(
+                    (child[1] + p.top + p.bottom).max(o.min_height.resolve(ctx.density)?),
+                );
+                Ok(([width, h], h))
+            }
             Self::Stack(s) => {
                 let (size, data) = child_measure(
                     &s.children,
@@ -363,6 +412,7 @@ impl Element {
             Self::Box(b) => {
                 let s = b.style.resolve(ctx)?;
                 let p = inset(&s);
+                let width = s.width.map_or(width, |w| w.min(width));
                 let (mut content, data) = child_measure(
                     &b.children,
                     b.direction,
@@ -384,7 +434,14 @@ impl Element {
                     base = above;
                 }
                 let h = s.height.unwrap_or(content[1] + p.top + p.bottom);
-                Ok(([content[0] + p.left + p.right, h], p.top + base))
+                Ok((
+                    [
+                        s.width
+                            .map_or(content[0] + p.left + p.right, |w| w.min(width)),
+                        h,
+                    ],
+                    p.top + base,
+                ))
             }
         }
     }
@@ -464,6 +521,43 @@ impl Element {
                         clip: b.clip,
                     },
                     children,
+                )
+            }
+            Self::Overlay(o) => {
+                let s = o.style.resolve(ctx)?;
+                let inner = rect.inset(inset(&s));
+                let (natural, _) = o.content.natural(inner.w, ctx, m)?;
+                let w = if o.horizontal == Alignment::Stretch {
+                    inner.w
+                } else {
+                    natural[0].min(inner.w)
+                };
+                let h = if o.vertical == Alignment::Stretch {
+                    inner.h
+                } else {
+                    natural[1]
+                };
+                let offset = |align, free: f32| match align {
+                    Alignment::Center => free * 0.5,
+                    Alignment::End => free,
+                    _ => 0.,
+                };
+                let child = o.content.layout_in(
+                    Rect::new(
+                        inner.x + offset(o.horizontal, inner.w - w),
+                        inner.y + offset(o.vertical, inner.h - h),
+                        w,
+                        h,
+                    ),
+                    ctx,
+                    m,
+                )?;
+                (
+                    LayoutKind::Box {
+                        style: std::boxed::Box::new(s),
+                        clip: o.clip,
+                    },
+                    vec![child],
                 )
             }
             Self::ScrollView(s) => {
@@ -678,6 +772,7 @@ pub enum Paint {
         radii: [f32; 4],
         kind: Material,
         color: Color,
+        blur: Option<crate::ResolvedBlur>,
         clips: Vec<Clip>,
     },
 }
@@ -757,6 +852,7 @@ fn paint_node(
                     radii: s.radii,
                     kind: s.material,
                     color: color(s.fill, draw, opacity),
+                    blur: s.blur,
                     clips: clips.to_vec(),
                 });
             }
@@ -883,6 +979,7 @@ fn paint_node(
                     radii: s.radii,
                     kind: s.material,
                     color: color(s.fill, draw, opacity),
+                    blur: s.blur,
                     clips: clips.to_vec(),
                 });
             }

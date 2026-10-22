@@ -1,0 +1,14 @@
+$ target/debug/bboxybook render --manifest target/bboxybook/overlays/cases.json --out target/bboxybook/overlays-aligned/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/overlays-aligned/native/layouts.json
+rendered 32 PNGs to target/bboxybook/overlays-aligned/native
+
+exit_status=0
+$ target/debug/bboxybook compare --manifest target/bboxybook/overlays/cases.json --out target/bboxybook/overlays-aligned --web-root /Users/feral/mydev/bboxy450-term/target/bboxybook/overlays/web --native-root native
+parity: 32 cases, 16 review; target/bboxybook/overlays-aligned/index.html
+
+exit_status=0
+$ target/debug/bboxybook overlays --native-only --out target/bboxybook/overlays/gallery
+native floating gallery: 8 PNGs; target/bboxybook/overlays/gallery/index.html
+
+exit_status=0

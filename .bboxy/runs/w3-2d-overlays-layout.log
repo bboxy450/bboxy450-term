@@ -1,0 +1,8 @@
+$ target/debug/bboxybook overlays --out target/bboxybook/overlays-layout
+web: 16/16 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/overlays-layout/native/layouts.json
+rendered 16 PNGs to target/bboxybook/overlays-layout/native
+parity: 16 cases, 0 review; target/bboxybook/overlays-layout/index.html
+
+exit_status=0

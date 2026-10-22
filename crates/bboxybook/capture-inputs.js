@@ -22,7 +22,7 @@
   Object.defineProperty(window,'UI',{configurable:true,get:()=>ui,set(value){
     ui=value;const original=value.material;
     value.material=function(name,options){const result=original(name,options);materials.push({kind:name,params:result.params});return result;};
-    for (const name of ['Text','Stack','Spacer','Button','List','Table','Input']) {
+    for (const name of ['Text','Stack','Spacer','Button','List','Table','Input','Overlay','Modal']) {
       const original=value[name];
       value[name]=function(...args){const node=original(...args);uiNodes.set(node,{kind:name.toLowerCase(),args});return node;};
     }
@@ -51,6 +51,12 @@
   window.bboxyCaptureInputs = selector => {
     const root = document.querySelector(selector);
     const origin = root.getBoundingClientRect();
+    if(window.bboxySurfaceFixture){
+      const kind=window.bboxySurfaceFixture,panel=root.querySelector(kind==='launcher'?'.spot-back .picker':'.doc-modal'),host=panel.parentElement;
+      const rect=n=>{const r=n.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,w:r.width,h:r.height};};
+      host.dataset.bboxySurfaceHost='';panel.dataset.bboxySurfacePanel='';
+      return {version:1,layer:'floating-surfaces',scope:'container surfaces only; module children hidden',floating:{kind,host:rect(host),panel:rect(panel),slot_height:panel.getBoundingClientRect().height,viewport_width:innerWidth}};
+    }
     const serialized = calls.filter(c => c.node?.isConnected && root.contains(c.node)).map(c => {
       const r = c.node.getBoundingClientRect();
       return { name: c.name, args: c.args,
@@ -95,6 +101,12 @@
       if(call.kind==='text')Object.assign(result,textDiag(node),{value:call.args[0],options:call.args[1]||{}});
       else if(call.kind==='box'){result.style=call.style;result.children=call.children.map(exportUi);}
       else if(call.kind==='stack'){result.options=call.args[0]||{};result.children=call.args.slice(1).map(exportUi);}
+      else if(call.kind==='overlay'){result.children=call.args.map(exportUi);}
+      else if(call.kind==='modal'){
+        result.title=call.args[0];result.body=exportUi(call.args[1]);result.actions=(call.args[2]||[]).map(exportUi);
+        const column=node.firstElementChild,actions=column.lastElementChild;
+        result.children=[{kind:'stack',rect:bounds(column),children:[textDiag(column.firstElementChild),result.body,{kind:'stack',rect:bounds(actions),children:[diag(actions.firstElementChild),...result.actions]}]}];
+      }
       else if(call.kind==='button'){
         result.label=call.args[0];result.options=call.args[1]||{};
         result.children=[...node.childNodes].filter(n=>n.nodeType!==Node.TEXT_NODE||n.textContent).map(diag);

@@ -14,6 +14,12 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
             .is_some_and(|f| f["layer"] == "components")
         {
             crate::components::render_case(&mut renderer, case)?
+        } else if case
+            .fixture
+            .as_ref()
+            .is_some_and(|f| f["layer"] == "floating-surfaces")
+        {
+            crate::overlays::render_surface_case(&mut renderer, case)?
         } else if case.fixture.as_ref().is_some_and(|f| f["layer"] == "atoms") {
             crate::atoms::render_case(&mut renderer, case)?
         } else if case.component == "materials" {
@@ -33,6 +39,13 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     }
     fs::create_dir_all(out)?;
     fs::write(out.join("manifest.json"), serde_json::to_vec_pretty(cases)?)?;
+    let surfaces = crate::overlays::surface_snapshots(cases)?;
+    if !surfaces.is_empty() {
+        fs::write(
+            out.join("surface-layouts.json"),
+            serde_json::to_vec_pretty(&surfaces)?,
+        )?;
+    }
     let mut snapshots = crate::components::snapshots(cases)?;
     snapshots.extend(crate::styles::snapshots(cases)?);
     if !snapshots.is_empty() {
@@ -63,6 +76,7 @@ pub struct CasePolicy {
     pub channel_tolerance: u8,
     pub changed_pixel_budget: f64,
     pub geometry_tolerance_px: Option<f64>,
+    pub scope: &'static str,
 }
 impl CasePolicy {
     pub fn for_case(case: &Case) -> Result<Self> {
@@ -73,7 +87,8 @@ impl CasePolicy {
                     .is_some_and(|a| a.iter().any(contains_text))
         }
         let f = case.fixture.as_ref();
-        let text = if case.component == "materials" {
+        let surface_only = f.is_some_and(|f| f["layer"] == "floating-surfaces");
+        let text = if case.component == "materials" || surface_only {
             false
         } else if case.component == "style" {
             true
@@ -94,13 +109,23 @@ impl CasePolicy {
             channel_tolerance: diff::CHANNEL_TOLERANCE,
             changed_pixel_budget: if text { 0.02 } else { diff::CHANGED_BUDGET },
             geometry_tolerance_px: text.then_some(0.5),
+            scope: if surface_only {
+                "container surfaces only; module children hidden"
+            } else {
+                "native component content"
+            },
         })
     }
     fn label(self) -> String {
+        let scope = if self.scope.starts_with("container") {
+            "surfaces only · "
+        } else {
+            ""
+        };
         if self.text {
             "text: 2% + rect/baseline ≤0.5px".into()
         } else {
-            "pixels: 0.1%".into()
+            format!("{scope}pixels: 0.1%")
         }
     }
     fn status(self, score: f64, geometry: Option<&Geometry>) -> &'static str {
@@ -190,6 +215,10 @@ pub fn compare_paths(
     native_prefix: &str,
 ) -> Result<()> {
     fs::create_dir_all(root)?;
+    let surface_path = root.join(native_prefix).join("surface-layouts.json");
+    if surface_path.exists() {
+        fs::write(root.join("surface-layouts.json"), fs::read(&surface_path)?)?;
+    }
     let layout_path = root.join(native_prefix).join("layouts.json");
     let layout_path = if layout_path.exists() {
         Some(layout_path)
@@ -267,7 +296,13 @@ pub fn compare_paths(
             .as_ref()
             .is_some_and(|f| f["layer"] == "components")
     });
-    let sources = if component_layer {
+    let sources = if cases.iter().any(|c| {
+        c.fixture
+            .as_ref()
+            .is_some_and(|f| f["layer"] == "floating-surfaces")
+    }) {
+        "L6 floating components plus explicitly marked surface-only launcher/document shells. Module children are hidden; the unrendered content is an external fixed-height slot. Full web context is retained in context/. Native computes shell position, width, fill, blur, shadow and border. surface-layouts.json records independent rectangle diagnostics; module contents are not claimed as implemented."
+    } else if component_layer {
         "L6 retained components. Public constructor inputs and external host origin/width are shared. Child DOM rectangles and first-line baselines are diagnostics only; native layout uses the shared solver and CoreText metrics."
     } else if cases.iter().all(|c| c.component == "materials") {
         "L2 effect-only materials. CSS backdrop and diagnostic labels are common fixtures; native paints material surfaces. No native text is compared."
@@ -370,7 +405,22 @@ pub fn compare_paths(
                 )?;
             }
         }
-        html.push_str("</section></article>");
+        html.push_str("</section>");
+        if row.policy.scope.starts_with("container") {
+            let context = Path::new(web_prefix)
+                .parent()
+                .unwrap_or(Path::new(""))
+                .join("context")
+                .join(&key);
+            if root.join(&context).exists() {
+                write!(
+                    html,
+                    "<p><a href='{}'>Full web module context (reference only)</a></p>",
+                    escape(&context.to_string_lossy())
+                )?;
+            }
+        }
+        html.push_str("</article>");
     }
     let records:Vec<_>=rows.iter().map(|r|serde_json::json!({"key":r.case.relative(),"policy":r.policy,"geometry":r.geometry,"changed_fraction":r.score,"mean_error":r.error,"status":r.status})).collect();
     fs::write(
@@ -421,6 +471,7 @@ mod tests {
             channel_tolerance: 8,
             changed_pixel_budget: 0.02,
             geometry_tolerance_px: Some(0.5),
+            scope: "native component content",
         };
         let tree = serde_json::json!({"kind":"text","native":[0.,0.,100.,20.],"web":[0.,0.,100.5,20.],"baseline":{"native":15.,"web":15.5},"children":[]});
         let g = Geometry::from_tree(&tree);

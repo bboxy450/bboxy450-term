@@ -1,0 +1,53 @@
+$ target/debug/bboxybook overlays --out target/bboxybook/overlays-first
+components/modal-touch-dark.png Error: Uncaught: TypeError: Cannot read properties of undefined (reading 'children')
+    at exportUi (<anonymous>:101:36)
+    at Array.map (<anonymous>)
+    at exportUi (<anonymous>:98:64)
+    at window.bboxyCaptureInputs (<anonymous>:124:56)
+    at <anonymous>:1:1
+components/modal-touch-light.png Error: Uncaught: TypeError: Cannot read properties of undefined (reading 'children')
+    at exportUi (<anonymous>:101:36)
+    at Array.map (<anonymous>)
+    at exportUi (<anonymous>:98:64)
+    at window.bboxyCaptureInputs (<anonymous>:124:56)
+    at <anonymous>:1:1
+components/modal-comfortable-dark.png Error: Uncaught: TypeError: Cannot read properties of undefined (reading 'children')
+    at exportUi (<anonymous>:101:36)
+    at Array.map (<anonymous>)
+    at exportUi (<anonymous>:98:64)
+    at window.bboxyCaptureInputs (<anonymous>:124:56)
+    at <anonymous>:1:1
+components/modal-comfortable-light.png Error: Uncaught: TypeError: Cannot read properties of undefined (reading 'children')
+    at exportUi (<anonymous>:101:36)
+    at Array.map (<anonymous>)
+    at exportUi (<anonymous>:98:64)
+    at window.bboxyCaptureInputs (<anonymous>:124:56)
+    at <anonymous>:1:1
+components/modal-cozy-dark.png Error: Uncaught: TypeError: Cannot read properties of undefined (reading 'children')
+    at exportUi (<anonymous>:101:36)
+    at Array.map (<anonymous>)
+    at exportUi (<anonymous>:98:64)
+    at window.bboxyCaptureInputs (<anonymous>:124:56)
+    at <anonymous>:1:1
+components/modal-cozy-light.png Error: Uncaught: TypeError: Cannot read properties of undefined (reading 'children')
+    at exportUi (<anonymous>:101:36)
+    at Array.map (<anonymous>)
+    at exportUi (<anonymous>:98:64)
+    at window.bboxyCaptureInputs (<anonymous>:124:56)
+    at <anonymous>:1:1
+components/modal-compact-dark.png Error: Uncaught: TypeError: Cannot read properties of undefined (reading 'children')
+    at exportUi (<anonymous>:101:36)
+    at Array.map (<anonymous>)
+    at exportUi (<anonymous>:98:64)
+    at window.bboxyCaptureInputs (<anonymous>:124:56)
+    at <anonymous>:1:1
+components/modal-compact-light.png Error: Uncaught: TypeError: Cannot read properties of undefined (reading 'children')
+    at exportUi (<anonymous>:101:36)
+    at Array.map (<anonymous>)
+    at exportUi (<anonymous>:98:64)
+    at window.bboxyCaptureInputs (<anonymous>:124:56)
+    at <anonymous>:1:1
+web: 8/16 captured; 8 failures
+bboxybook: layer web capture failed; inspect capture.json
+
+exit_status=1

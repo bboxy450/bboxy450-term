@@ -311,6 +311,7 @@ impl Default for Dim {
 #[serde(default, deny_unknown_fields)]
 pub struct Overrides {
     pub material: Option<Material>,
+    pub blur: Option<Blur>,
     pub fill: Option<Paint>,
     pub radii: Option<[Length; 4]>,
     pub border: Option<Border>,
@@ -320,6 +321,7 @@ pub struct Overrides {
     pub rings: Option<Vec<Border>>,
     pub shadow: Option<Shadow>,
     pub height: Option<Length>,
+    pub width: Option<Length>,
     pub padding: Option<[Length; 4]>,
     pub text: Option<Text>,
     pub opacity: Option<f32>,
@@ -400,6 +402,16 @@ impl Style {
         };
         Ok(ResolvedStyle {
             material: base.material,
+            blur: o
+                .blur
+                .map(|b| b.resolve(ctx.density))
+                .transpose()?
+                .or_else(|| {
+                    (base.material == Material::Frosted).then_some(ResolvedBlur {
+                        radius: DESIGN.material.panel_blur_px as f32,
+                        saturation: DESIGN.material.panel_saturate as f32,
+                    })
+                }),
             fill: fill.resolve(ctx)?,
             radii,
             border,
@@ -419,6 +431,7 @@ impl Style {
                 .collect::<Result<Vec<_>>>()?,
             shadow: resolve_shadow(base.shadow)?,
             height: base.height.map(|n| n.resolve(ctx.density)).transpose()?,
+            width: o.width.map(|n| n.resolve(ctx.density)).transpose()?,
             padding,
             text: ResolvedText {
                 size: base.text.step.pixels(),
@@ -493,9 +506,36 @@ pub struct ResolvedText {
     pub mono: bool,
     pub uppercase: bool,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Blur {
+    pub radius: Length,
+    pub saturation: f32,
+}
+impl Blur {
+    fn resolve(self, density: Density) -> Result<ResolvedBlur> {
+        if !self.saturation.is_finite() || !(0. ..=4.).contains(&self.saturation) {
+            return Err("invalid backdrop saturation");
+        }
+        let radius = self.radius.resolve(density)?;
+        if radius > 256. {
+            return Err("invalid backdrop blur radius");
+        }
+        Ok(ResolvedBlur {
+            radius,
+            saturation: self.saturation,
+        })
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ResolvedBlur {
+    pub radius: f32,
+    pub saturation: f32,
+}
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ResolvedStyle {
     pub material: Material,
+    pub blur: Option<ResolvedBlur>,
     pub fill: [f32; 4],
     pub radii: [f32; 4],
     pub border: Option<ResolvedBorder>,
@@ -503,6 +543,7 @@ pub struct ResolvedStyle {
     pub rings: Vec<ResolvedBorder>,
     pub shadow: Option<ResolvedShadow>,
     pub height: Option<f32>,
+    pub width: Option<f32>,
     pub padding: [f32; 4],
     pub text: ResolvedText,
     pub opacity: f32,

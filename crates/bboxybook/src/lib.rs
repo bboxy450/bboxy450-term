@@ -4,6 +4,7 @@ pub mod fixtures;
 pub mod gallery;
 pub mod materials;
 pub mod modules;
+pub mod overlays;
 pub mod parity;
 pub mod styles;
 pub mod widgets;
