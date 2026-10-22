@@ -412,3 +412,22 @@ Links: [[vision]] [[renderer]] [[ux-prototype]] [[plan]]
 **Parity rule.** Each lab element maps to one component or composition; the lab's CSS class is the component's name in `bboxy-design-system.json`, so the diff for a seat row is the diff of `Box + Icon + Text + Glyph + Badge`, and a fix in `Box`'s hairline fixes every row at once.
 
 Build: W3.2d after W3.2c, re-basing the existing modules onto the library with parity re-runs between steps; no module keeps hand-drawn primitives after it.
+
+## 2c. The layer cake (operator, 2026-10-21: "we are building from scratch, so it is a layer cake of abstractions; we need more layers of granularity in the development process")
+
+Every layer is visible on its own in bboxybook and verified before the layer above it is touched. No brief spans two layers.
+
+| Layer | What | Verified by |
+|---|---|---|
+| L0 device | wgpu device, surface, headless readback | smoke render |
+| L1 passes | cells.bg, cells.text, cells.deco, chrome (SDF rects, hairlines, gloss, text runs, icons), fx (glow, ripple, dim, frosted) | per-pass golden PNGs |
+| L2 materials | `flat`, `gloss`, `frosted`, `glow` as named shaders with parameters | a materials gallery: one square per material × theme |
+| L3 tokens + Style | compile-time tokens; `Style` = tokens + overrides, serialisable | token parity test; a Style gallery (same Box, ten styles) |
+| L4 layout | row/column solver, split tree, virtual lists, sheet | layout snapshot tests against the lab's measured rects |
+| L5 atoms | Hairline, Glyph, Icon, Badge, Chip, Pill, Swatch, Spinner, Checkerboard | atoms gallery × density × theme, parity against the lab's glyph and icon pages |
+| L6 components | Box, Text, Stack, ScrollView, Button, List, Table, Input, Overlay, Modal | components gallery across states and materials; parity against the lab element pages |
+| L7 modules | SeatRow, TabRow, MiniGrid, SwarmCard, Sidebar, Pane, Strip, TitleBar, Launcher, StreamDock, GraphTab, Settings, DocumentModal | module gallery; parity against the lab module pages |
+| L8 screens | showcase scenes 3 and 15, phone sheet, settings tab, first run | screen parity against showcase.html states |
+| L9 app | window, input, focus, drag, shortcuts, state-stream client | manual and synthetic-event tests |
+
+Rules: a layer's gallery exists before its code is used by the layer above; a diff at layer N is fixed at layer N, never papered over above it; briefs are one layer, one or two components, one verification each.
