@@ -573,14 +573,14 @@
   }
   function neighbourhood(doc) {
     const W = 260, H = 230, cx = W / 2, cy = H / 2 - 6, n = (doc.near || []).length, NS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('class', 'nbhd');
+    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('class', 'nbhd');
     const mk = (tag, a) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); svg.append(e); return e; };
     (doc.near || []).forEach((x, i) => {
       const t = -Math.PI / 2 + i * 2 * Math.PI / n, r = 78 - (x.w || 1) * 6, X = cx + Math.cos(t) * r, Y = cy + Math.sin(t) * r;
       mk('line', { x1: cx, y1: cy, x2: X, y2: Y, style: 'stroke:var(--fg-dim);stroke-opacity:.45;stroke-width:' + (0.8 + (x.w || 1) * 0.7) + (x.back ? ';stroke-dasharray:3 3' : '') });
       mk('circle', { cx: X, cy: Y, r: 5, style: 'fill:' + (DOC_HUE[x.type] || 'var(--fg-dim)') });
       const tx = mk('text', { x: X, y: Y + (Y < cy ? -9 : 15), 'text-anchor': 'middle', style: 'fill:var(--fg);font-size:9.5px;font-family:var(--font-mono)' }); tx.textContent = x.slug;
-      if (x.rel) { const tr = mk('text', { x: (cx + X) / 2, y: (cy + Y) / 2 - 3, 'text-anchor': 'middle', style: 'fill:var(--fg-dim);font-size:8px' }); tr.textContent = x.rel + (x.w > 1 ? ' ' + x.w : ''); }
+      if (x.rel) { const tr = mk('text', { x: (cx + X) / 2, y: (cy + Y) / 2 - 3, 'text-anchor': 'middle', style: 'fill:var(--fg-dim);font-size:var(--t-micro)' }); tr.textContent = x.rel + (x.w > 1 ? ' ' + x.w : ''); }
     });
     mk('circle', { cx, cy, r: 9, style: 'fill:' + (DOC_HUE[doc.type] || 'var(--accent)') + ';stroke:var(--bg);stroke-width:2' });
     return svg;
