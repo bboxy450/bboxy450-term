@@ -367,6 +367,39 @@
     return frag;
   }
 
+  // Event bus (events.md, Bus design): subject tokens coloured by root, the kind (last token) emphasised, seq per stream,
+  // tier mark (stored ● appended before delivery, fan-out ○ live only), request-reply pairs linked, gaps spelled.
+  const EV_ROOT = { seat: '#2EE6A8', doc: '#58A6FF', task: '#B07BFF', swarm: '#FFC53D', ext: '#FF7A45', mux: '#9AA3C7', inbox: '#E96BFF', artifact: '#4FD1C5', dm: '#FF4FA3', channel: '#F2D16B', cloud: '#58D7FF' };
+  const evTier = subj => /^inbox\//.test(subj) || /^seat\/[^/]+\/output$/.test(subj) ? 'fanout' : 'stored';
+  function subjectChip(subj) {
+    const t = subj.split('/'), root = t[0], c = EV_ROOT[root] || 'var(--fg-dim)';
+    const out = el('span', { class: 'subj', style: '--root:' + c });
+    t.forEach((tok, i) => { if (i) out.append(el('i', { class: 'sl' }, '/')); out.append(el('span', { class: i === 0 ? 'root' : i === t.length - 1 ? 'kind' : 'tok' }, tok)); });
+    return out;
+  }
+  function eventRow(ev) {
+    if (ev.gap) return el('div', { class: 'ev-gap' }, el('i'), el('span', {}, 'gap · seq ' + ev.gap[0] + '–' + ev.gap[1] + ' not delivered to ' + ev.consumer + ' · ' + (ev.why || 'queue_max reached') + ' · replay from ' + (ev.gap[1] + 1)), el('i'));
+    const tier = evTier(ev.subject);
+    const row = el('div', { class: 'ev-row ' + tier + (ev.pair ? ' pair' : '') + (ev.fresh ? ' fresh' : ''), 'data-pair': ev.pair || '' },
+      el('span', { class: 'ev-seq' }, tier === 'fanout' ? '—' : String(ev.seq)), el('span', { class: 'ev-ts' }, ev.ts),
+      el('span', { class: 'ev-tier', title: tier === 'fanout' ? 'fan-out: live consumers only, never appended' : 'stored: appended to events.sqlite before delivery' }, tier === 'fanout' ? '○' : '●'),
+      subjectChip(ev.subject),
+      el('span', { class: 'ev-src', style: ev.srcColor ? 'color:' + ev.srcColor : '' }, ev.source || ''),
+      el('span', { class: 'ev-pay' }, ev.payload || ''),
+      ev.reply_to ? el('span', { class: 'ev-rr', title: 'request: reply_to ' + ev.reply_to }, '⇢ ' + ev.reply_to.split('/').slice(-1)[0]) : ev.reply_of ? el('span', { class: 'ev-rr', title: 'reply to seq ' + ev.reply_of }, '⇠ #' + ev.reply_of) : null,
+      ev.coalesced ? el('span', { class: 'ev-co', title: 'latest-wins coalescing per subject' }, '×' + ev.coalesced) : null,
+      el('span', { class: 'ev-sig' + (ev.signer ? ' ok' : ''), title: ev.signer ? 'signed by ' + ev.signer : 'unsigned' }, ev.signer ? '✓' : '·'));
+    if (ev.pair) { row.addEventListener('pointerenter', () => row.parentElement && row.parentElement.querySelectorAll('[data-pair="' + ev.pair + '"]').forEach(r => r.classList.add('lit'))); row.addEventListener('pointerleave', () => row.parentElement && row.parentElement.querySelectorAll('.lit').forEach(r => r.classList.remove('lit'))); }
+    return row;
+  }
+  function consumerCard(c) {
+    const fill = Math.min(1, (c.pending || 0) / (c.queue_max || 1));
+    const kv = (k, v) => [el('span', { class: 'k' }, k), el('span', { class: 'v' }, v)];
+    return el('div', { class: 's-card cons ' + (c.state || 'live') },
+      el('div', { class: 's-card-h' }, el('span', {}, c.name ? c.name : 'ephemeral'), el('span', { class: 'cons-dur' }, c.name ? 'durable' : 'dies with its connection'), el('span', { class: 'cons-st ' + (c.state || 'live') }, c.state || 'live')),
+      el('div', { class: 'cons-grid' }, ...kv('filter', el('span', { class: 'pats' }, ...c.filter.map(f => el('code', {}, f)))), ...kv('start', c.start), ...kv('ack', c.ack + (c.ack === 'explicit' ? ' · ack_wait ' + (c.ack_wait || '30s') + ' · max_deliver ' + (c.max_deliver || 5) : '')),
+        ...kv('deliver', c.deliver), ...kv('cursor', el('code', {}, 'seq ' + c.cursor)), ...kv('pending', el('span', { class: 'qbar' }, el('span', { class: 'track' }, el('i', { style: 'width:' + Math.round(fill * 100) + '%' + (fill > .85 ? ';background:var(--c-waiting)' : '') })), el('b', {}, (c.pending || 0) + ' / ' + c.queue_max)))));
+  }
   // Document view (work-items.md): frontmatter as a header, Markdown body with annotated wikilinks, a provenance strip, and a right
   // rail with the item's neighbourhood in the markdown graph (weights as stroke). Broken frontmatter shows as broken, never skipped.
   const DOC_HUE = { epic: '#B07BFF', spec: '#58A6FF', task: '#2EE6A8', bug: '#FF6B6B', note: '#9AA3C7', invariant: '#F2C14E', artifact: '#4FD1C5' };
@@ -975,5 +1008,5 @@
     return root;
   }
 
-  window.C = { docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

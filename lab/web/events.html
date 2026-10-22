@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>events · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+</head><body><script>
+const el = Lab.el;
+const SEAT = { vesper: ['01JB0VESPER', 'Vesper Greywind', '#FFC53D'], nyx: ['01JB1NYX', 'Nyx Copperwing', '#FF4FA3'], rook: ['01JB2ROOK', 'Rook Ashwhisker', '#2EE6A8'] };
+let seq = 4180, t0 = 14 * 3600 + 22 * 60 + 5;
+const ts = () => { t0 += 1 + (seq % 3); const h = Math.floor(t0 / 3600), m = Math.floor(t0 / 60) % 60, s = t0 % 60; return [h, m, s].map(x => String(x).padStart(2, '0')).join(':'); };
+const ev = (subject, source, payload, extra) => ({ seq: C.evTier(subject) === 'fanout' ? null : ++seq, ts: ts(), subject, source: source ? SEAT[source] ? SEAT[source][1] : source : '', srcColor: source && SEAT[source] ? SEAT[source][2] : '', payload, signer: 'leaf ' + (source || 'mux'), ...(extra || {}) });
+const BASE = () => { seq = 4180; t0 = 14 * 3600 + 22 * 60 + 5; return [
+  ev('seat/01JB1NYX/state', 'nyx', 'working · W3.2b parity triplets', { coalesced: 4 }),
+  ev('doc/01JAX5N7/modified', 'nyx', 'frontmatter: status running · body digest 9c1e…'),
+  ev('task/01JAX5N7/running', 'mux', 'Nyx Copperwing · first activity'),
+  ev('swarm/term/stream/message', 'vesper', 'Rook: W2.2 is yours'),
+  ev('swarm/term/stream/receipt', 'mux', 'recipient-stored → native-written'),
+  ev('seat/01JB2ROOK/output', 'rook', '412 bytes', { signer: null }),
+  ev('artifact/01JB7GOLD/created', 'nyx', '.bboxy/runs/w3-2b-parity-01.log'),
+]; };
+const BURST = ['pr_opened · #31 bboxybook parity', 'check_run · macos-15 queued', 'check_run · macos-15 in_progress', 'review · requested from Boxy', 'push · 3 commits to w3-2b', 'check_run · macos-15 success', 'pr_merged · #29 ui-model', 'release · bbt-ui-model 0.1.0'];
+Lab.page({ title: 'events', wide: true, note: 'One bus over events.sqlite, NATS grammar: subject tokens coloured by root (seat, doc, task, swarm, ext, mux, inbox, artifact, dm), the kind is the last token, seq is per stream. ● stored: appended before delivery; ○ fan-out (inbox/>, seat/*/output): live consumers only, no seq. ⇢/⇠ link a request to its reply (hover either). Gaps are spelled with the replay point. Consumers: name (durable iff named), filter patterns, start, ack policy, deliver, cursor and pending against queue_max.',
+  states: ['idle', 'busy', 'slow-consumer gap', 'external burst', 'request-reply'],
+  render(s, body) {
+    const legend = el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:10px;font-size:11px;color:var(--fg-dim)' }, ...Object.entries(C.EV_ROOT).map(([k, c]) => el('span', {}, el('i', { style: 'display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:' + c }), k)), el('span', {}, '● stored'), el('span', {}, '○ fan-out'));
+    const stream = el('div', { class: 'ev-stream' });
+    const grid = el('div', { style: 'display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start' });
+    const cons = el('div', { style: 'display:flex;flex-direction:column;gap:10px' });
+    let rows = BASE(), consumers = [
+      { name: 'gui', filter: ['swarm/term/>', 'seat/*/state', 'task/>'], start: 'new', ack: 'none', deliver: 'gui · latest-wins per subject', cursor: 4187, pending: 0, queue_max: 512 },
+      { name: 'rook-wake', filter: ['task/01JB9W22/>', 'doc/path/.bboxy/specs/events.md'], start: 'last_per_subject', ack: 'explicit', deliver: 'wake · input guard', cursor: 4183, pending: 1, queue_max: 64 },
+      { filter: ['inbox/01JB0VESPER/>'], start: 'new', ack: 'none', deliver: 'socket', cursor: '—', pending: 0, queue_max: 128 },
+    ];
+    if (s === 'idle') { rows = rows.slice(0, 3); consumers[0].cursor = 4183; }
+    if (s === 'slow-consumer gap') { consumers[1] = { ...consumers[1], name: 'webhook-slack', filter: ['swarm/term/>', 'task/>'], deliver: 'webhook · signed POST', state: 'slow', pending: 61, queue_max: 64, cursor: 4177 }; rows = BASE(); rows = rows.filter(r => C.evTier(r.subject) === 'stored'); rows.forEach((r, i) => { r.seq = i < 3 ? 4139 + i : 4177 + i - 3; }); rows.splice(3, 0, { gap: [4142, 4176], consumer: 'webhook-slack', why: 'queue_max 64 reached, receiver slow' }); rows = rows.filter(r => r.gap || C.evTier(r.subject) === 'stored'); stream.append(el('div', { class: 'ev-gap', style: 'color:var(--fg-dim)' }, el('span', {}, 'as seen by consumer webhook-slack'), el('i'))); }
+    if (s === 'external burst') { for (const b of BURST) rows.push(ev('ext/github/' + b.split(' · ')[0], 'ext/github', b.split(' · ')[1], { signer: 'ingress github · payload sig verified' })); consumers[0].pending = 9; consumers.splice(1, 0, { name: 'oracle-ext', filter: ['ext/github/>', 'ext/ci/>'], start: 'new', ack: 'explicit', deliver: 'wake · Vesper Greywind', cursor: 4189, pending: 6, queue_max: 64 }); }
+    if (s === 'request-reply') { rows.push(ev('seat/01JB2ROOK/ctl/status', 'vesper', 'status? reply_to inbox/01JB0VESPER/n7f2', { reply_to: 'inbox/01JB0VESPER/n7f2', pair: 'a' })); const q = seq; rows.push(ev('inbox/01JB0VESPER/n7f2', 'rook', 'idle · W2.2 step 2 of 5', { reply_of: q, pair: 'a' })); rows.push(ev('seat/01JB9GONE/ctl/status', 'vesper', 'status? reply_to inbox/01JB0VESPER/p31c', { reply_to: 'inbox/01JB0VESPER/p31c', pair: 'b' })); const q2 = seq; rows.push(ev('inbox/01JB0VESPER/p31c', 'mux', 'no_responders · nothing subscribed to seat/01JB9GONE/ctl', { reply_of: q2, pair: 'b' })); }
+    for (const r of rows) stream.append(C.eventRow(r));
+    for (const c of consumers) cons.append(C.consumerCard(c));
+    grid.append(stream, cons); body.append(legend, grid);
+    if (s === 'busy') {
+      const MORE = [['seat/01JB1NYX/state', 'nyx', 'working'], ['doc/01JAX4B1/modified', 'vesper', 'links: +[[pubsub-nats]]'], ['task/01JB9W22/report', 'rook', 'step 2 done · 14 tests'], ['swarm/term/stream/message', 'rook', 'W2.2 step 2 green'], ['seat/01JB2ROOK/output', 'rook', '2.1 KB'], ['mux/generation_changed', 'mux', 'Nyx Copperwing gen 3 → 4'], ['dm/01JB2ROOK/message', 'vesper', 'go on step 3'], ['artifact/01JB7GOLD/claimed', 'nyx', 'for [[w3-2b-bboxybook]]']];
+      let k = 0; const tick = () => { if (!stream.isConnected) return; const [a, b, c] = MORE[k++ % MORE.length]; const r = C.eventRow({ ...ev(a, b, c), fresh: true }); stream.append(r); if (stream.children.length > 16) stream.firstChild.remove(); setTimeout(tick, 650); };
+      for (let i = 0; i < 6; i++) { const [a, b, c] = MORE[i]; stream.append(C.eventRow(ev(a, b, c))); }
+      setTimeout(tick, 650);
+    }
+  } });
+</script></body></html>

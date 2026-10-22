@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 31,
+  "version": 32,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -575,6 +575,16 @@
       "purpose": "spawn cap per swarm reached",
       "anatomy": "launch rows dim and the banner subtitle names which cap (swarm, machine or account; reserved, starting and grace processes count); template launches may land partial or unknown and say so; reconnect never respawns",
       "status": "built: amber banner atop the launcher list, \"Spawn cap reached · <scope> <name> · used of limit\" with what counts (running · starting · in grace) and the way out; launch rows dim to 38%, lose their number and refuse (the banner shakes); Go to, Graph, Settings stay live and the selection starts on the first live row; showcase caps a swarm at 8 and rejects Oracle spawns past it; picker opts.cap, picker.html?state=cap-swarm, cap-machine"
+    },
+    "event_stream": {
+      "purpose": "watch the bus (events.md Bus design)",
+      "anatomy": "rows: seq per stream (dash for fan-out), time, tier mark (● stored, ○ fan-out), subject with the root token in its hue (seat, doc, task, swarm, ext, mux, inbox, artifact, dm, channel, cloud) and the kind (last token) bold, source in seat colour, payload summary, request ⇢ nonce and reply ⇠ #seq (hover lights both), ×N latest-wins coalescing, signer tick; gap rows in amber with the consumer, the reason and the replay point; a stream can be viewed as one consumer",
+      "status": "built: eventRow(), subjectChip(), EV_ROOT, evTier() in components.js; events.html?state=idle|busy|slow-consumer-gap|external-burst|request-reply"
+    },
+    "consumer_card": {
+      "purpose": "one subscription on the bus",
+      "anatomy": "name (durable iff named) or ephemeral, live/slow/paused badge; filter patterns as code chips, start, ack (none, or explicit with ack_wait and max_deliver), deliver, cursor, pending bar against queue_max (amber past 85%)",
+      "status": "built: consumerCard() in components.js; events.html"
     },
     "document_view": {
       "purpose": "read one work item: epic, spec, task, bug, note, invariant or artifact (work-items.md)",
