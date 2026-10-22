@@ -328,8 +328,8 @@ are diagnostic data only; native font metrics come from CoreText. The hidden
 component backdrop retains common diagnostic labels and outer chrome.
 
 This is L6 verification, not a module rebase or app input pass. Scroll offsets
-are explicit; selection is metadata. Materials currently intersect ancestor
-clips as rectangles; rounded clips are retained for ordinary draw lists.
+are explicit; selection is metadata. Material surfaces and ordinary draw lists retain rounded ancestor clip
+chains.
 
 L6 rendering writes `layouts.json` beside its native PNGs before comparison,
 including first-line Text baselines in the same coordinate system as the rects.
@@ -352,3 +352,16 @@ Both old TabRow/MiniGrid hand painters now delegate to these retained
 compositions. Existing card hosts still own their separate seat body until
 the Sidebar/SwarmCard step. Expansion/focus flags are fixture data; input
 controllers and material-ancestor clipping are later assigned work.
+
+## Rounded material ancestors (W3.2d.7.0)
+
+The material pass keeps a variable-length chain of ancestor border boxes and
+per-corner radii. Flat, gloss, frosted and glow intersect every mask; a square
+inner clip cannot erase an outer rounded corner. Empty masks preserve the
+destination. Backdrop filtering still samples the original border-box image.
+
+`cargo test -p bboxybook --test clipping --locked` checks both independently
+excluded corners, retained Box-to-material propagation and per-surface ranges
+on Metal, then writes 16 native previews (four materials × theme × 1x/2x) to
+`target/bboxybook/clipping/index.html`. This gallery is a clipping check, not
+a claim of new web module parity. SwarmCard/Sidebar follow in 7.3.

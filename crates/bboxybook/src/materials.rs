@@ -87,7 +87,7 @@ pub fn surface(kind: Kind, theme: Theme) -> Surface {
     Surface {
         rect: Rect::new(64., 64., 192., 192.),
         radii: [STYLE.radius.card as f32; 4],
-        clip: None,
+        clips: vec![],
         material: material(kind, theme),
     }
 }
@@ -227,7 +227,7 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &crate::gallery::Case) -
                 radii[2].as_f64().unwrap_or(0.) as f32,
                 radii[3].as_f64().unwrap_or(0.) as f32,
             ],
-            clip: None,
+            clips: vec![],
             material,
         });
     }

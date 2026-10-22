@@ -1,14 +1,28 @@
-struct Instance {rect:vec4f,color:vec4f,radii:vec4f,p0:vec4f,p1:vec4f,p2:vec4f,p3:vec4f,p4:vec4f,p5:vec4f,clip:vec4f}
+struct Instance {rect:vec4f,color:vec4f,radii:vec4f,p0:vec4f,p1:vec4f,p2:vec4f,p3:vec4f,p4:vec4f,p5:vec4f,clip:vec4f,clip_range:vec4u}
 @group(0) @binding(0) var<uniform> view:vec4f;
 @group(0) @binding(1) var<storage,read> items:array<Instance>;
 @group(0) @binding(2) var backdrop:texture_2d<f32>;
 @group(0) @binding(3) var backdrop_sampler:sampler;
+struct AncestorClip {rect:vec4f,radii:vec4f}
+@group(0) @binding(4) var<storage,read> ancestor_clips:array<AncestorClip>;
 struct Vertex {@builtin(position) position:vec4f,@location(0) point:vec2f,@location(1) @interpolate(flat) index:u32}
 @vertex fn vs(@builtin(vertex_index) vertex:u32,@builtin(instance_index) index:u32)->Vertex {
     let corners=array<vec2f,6>(vec2f(0,0),vec2f(1,0),vec2f(0,1),vec2f(0,1),vec2f(1,0),vec2f(1,1));let i=items[index];let margin=i.p0.w+1.0;
     let p=i.rect.xy-vec2f(margin)+corners[vertex]*(i.rect.zw+vec2f(margin*2.0));return Vertex(vec4f(p.x/view.x*2.0-1.0,1.0-p.y/view.y*2.0,0,1),p,index);
 }
-fn coverage(v:Vertex)->f32 {let i=items[v.index];if any(v.point<i.clip.xy)||any(v.point>=i.clip.xy+i.clip.zw){discard;}return clamp(0.5-rounded_sdf(v.point,i.rect,i.radii),0.0,1.0);}
+fn clip_mask(v:Vertex)->f32 {
+    let i=items[v.index];
+    if any(v.point<i.clip.xy)||any(v.point>=i.clip.xy+i.clip.zw){return 0.0;}
+    var mask=1.0;
+    for(var n=0u;n<i.clip_range.y;n++) {
+        let c=ancestor_clips[i.clip_range.x+n];
+        if any(v.point<c.rect.xy)||any(v.point>=c.rect.xy+c.rect.zw){return 0.0;}
+        // Preserve the existing hard rectangular clip when no corner is rounded.
+        if any(c.radii>vec4f(0)) {mask=min(mask,clamp(0.5-rounded_sdf(v.point,c.rect,c.radii),0.0,1.0));}
+    }
+    return mask;
+}
+fn coverage(v:Vertex)->f32 {let mask=clip_mask(v);if mask<=0.0 {discard;}let i=items[v.index];return min(mask,clamp(0.5-rounded_sdf(v.point,i.rect,i.radii),0.0,1.0));}
 fn paint(c:vec4f,a:f32)->vec4f {let alpha=c.a*a;return vec4f(clamp(c.rgb,vec3f(0),vec3f(1))*alpha,alpha);}
 @fragment fn flat(v:Vertex)->@location(0) vec4f {return paint(items[v.index].color,coverage(v));}
 @fragment fn gloss(v:Vertex)->@location(0) vec4f {
@@ -50,7 +64,7 @@ fn random(index:u32)->f32 {
     return f32(x>>8u)/16777216.0;
 }
 @fragment fn glow(v:Vertex)->@location(0) vec4f {
-    let i=items[v.index];if any(v.point<i.clip.xy)||any(v.point>=i.clip.xy+i.clip.zw){discard;}
+    let i=items[v.index];let mask=clip_mask(v);if mask<=0.0 {discard;}
     let d=rounded_sdf(v.point,i.rect,i.radii);if d>i.p2.w*4.0+1.0 {discard;}
     let state=u32(i.p2.x);let animated=state==1u||state==2u;let time=select(0.0,view.z,animated);
     var alpha=i.p3.x;
@@ -73,6 +87,6 @@ fn random(index:u32)->f32 {
         let particle=alpha*(0.6+0.4*sin((time+tw)/300.0))*life*coverage;
         strength=particle+(1.0-particle)*strength;
     }
-    strength=clamp(strength*i.color.a,0.0,1.0);
+    strength=clamp(strength*i.color.a,0.0,1.0)*mask;
     return vec4f(i.color.rgb*strength,strength);
 }

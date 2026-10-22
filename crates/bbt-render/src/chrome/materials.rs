@@ -89,11 +89,46 @@ impl Material {
         }
     }
 }
+/// An ancestor's border box, in logical pixels; masks intersect in the shader.
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Clip {
+    pub rect: Rect,
+    pub radii: [f32; 4],
+}
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable, Default)]
+struct ClipInstance {
+    rect: [f32; 4],
+    radii: [f32; 4],
+}
+impl Clip {
+    fn physical(self, scale: f32) -> Result<ClipInstance> {
+        let data = ClipInstance {
+            rect: [
+                self.rect.x * scale,
+                self.rect.y * scale,
+                self.rect.w * scale,
+                self.rect.h * scale,
+            ],
+            radii: self.radii.map(|r| r * scale),
+        };
+        if bytemuck::cast_slice::<ClipInstance, f32>(&[data])
+            .iter()
+            .any(|v| !v.is_finite())
+            || self.rect.w < 0.
+            || self.rect.h < 0.
+            || self.radii.iter().any(|r| *r < 0.)
+        {
+            return Err("invalid material ancestor clip".into());
+        }
+        Ok(data)
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
 pub struct Surface {
     pub rect: Rect,
     pub radii: [f32; 4],
-    pub clip: Option<Rect>,
+    pub clips: Vec<Clip>,
     pub material: Material,
 }
 #[repr(C)]
@@ -109,9 +144,10 @@ struct Instance {
     p4: [f32; 4],
     p5: [f32; 4],
     clip: [f32; 4],
+    clip_range: [u32; 4],
 }
 impl Surface {
-    fn instance(self, scale: f32, width: u32, height: u32) -> Result<Instance> {
+    fn instance(&self, scale: f32, width: u32, height: u32) -> Result<Instance> {
         let physical = [
             self.rect.x * scale,
             self.rect.y * scale,
@@ -128,10 +164,7 @@ impl Surface {
                 (physical[1] + physical[3]).round() - y,
             ],
             radii: self.radii.map(|r| r * scale),
-            clip: self
-                .clip
-                .map(|r| [r.x * scale, r.y * scale, r.w * scale, r.h * scale])
-                .unwrap_or([0., 0., width as f32, height as f32]),
+            clip: [0., 0., width as f32, height as f32],
             ..Default::default()
         };
         match self.material {
@@ -268,6 +301,16 @@ impl Pass {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -397,10 +440,32 @@ impl Pass {
         if items.is_empty() {
             return Ok(());
         }
-        let instances: Vec<_> = items
+        let mut instances: Vec<_> = items
             .iter()
             .map(|s| s.instance(target.scale, target.width, target.height))
             .collect::<Result<_>>()?;
+        let mut clip_instances = Vec::new();
+        for (surface, instance) in items.iter().zip(&mut instances) {
+            instance.clip_range = [
+                clip_instances.len() as u32,
+                surface.clips.len() as u32,
+                0,
+                0,
+            ];
+            for clip in &surface.clips {
+                clip_instances.push(clip.physical(target.scale)?);
+            }
+        }
+        if clip_instances.is_empty() {
+            clip_instances.push(ClipInstance::default());
+        }
+        let clip_data = context
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("material ancestor clip chain"),
+                contents: bytemuck::cast_slice(&clip_instances),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
         let data = context
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -442,6 +507,10 @@ impl Pass {
                         wgpu::BindGroupEntry {
                             binding: 3,
                             resource: wgpu::BindingResource::Sampler(&self.sampler),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 4,
+                            resource: clip_data.as_entire_binding(),
                         },
                     ],
                 })
@@ -721,7 +790,7 @@ mod tests {
         let s = Surface {
             rect: Rect::new(0., 0., 10., 10.),
             radii: [1.; 4],
-            clip: None,
+            clips: vec![],
             material: Material::Frosted(Frosted {
                 tint: Color::WHITE,
                 blur_radius: f32::NAN,

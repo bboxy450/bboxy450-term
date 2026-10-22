@@ -1,0 +1,11 @@
+W3.2d.7.0 — Nyx Copperwing <EXECUTOR>
+
+Renderer material Surface now carries a variable-length rounded ancestor chain. The frame stores each surface's range into a shared storage buffer; flat/gloss/frosted coverage and glow intersect every mask. Empty clips preserve the destination. Backdrop filtering still samples the unclipped border-box backdrop.
+Host components::execute forwards each retained Clip without reducing its radii to a rectangle. Existing no-clip fixtures use an empty chain. No L1 text, shader blending or ordinary draw clipping changes.
+
+cargo check -p bboxybook --locked — exit 0.
+cargo test -p bboxybook --test clipping --locked — exit 0, 3 tests; 16 native previews at target/bboxybook/clipping/index.html. Tests prove both rounded ancestors independently exclude a corner inside the rectangular intersection, 1x and 2x, all four materials, two themes; retained Box propagation and separate surface ranges.
+cargo test -p bbt-ui -p bboxybook -p bbt-render --locked — exit 0, 74 tests.
+cargo clippy -p bbt-ui -p bboxybook -p bbt-render --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0 (same two existing exclusions).
+Visually inspected gloss-dark-1x.png and glow-light-2x.png in the native clipping gallery.
+No new web parity matrix in this infrastructure step; 7.3 will exercise the material mask in the module comparisons. No macOS 14, Linux/mobile, hosted CI or FPS checks.

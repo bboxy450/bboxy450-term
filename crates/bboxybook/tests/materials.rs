@@ -180,7 +180,7 @@ fn backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed() {
     let items = [Surface {
         rect,
         radii: [0.; 4],
-        clip: None,
+        clips: vec![],
         material: Material::Frosted(Frosted {
             tint: Color::TRANSPARENT,
             blur_radius: 16.,
@@ -221,7 +221,7 @@ fn source_over_glow_keeps_destination_alpha() {
     let items = [Surface {
         rect: Rect::new(20., 20., 40., 40.),
         radii: [6.; 4],
-        clip: None,
+        clips: vec![],
         material: gallery::material(Kind::Glow, Theme::Dark),
     }];
     let result = render_to_rgba(

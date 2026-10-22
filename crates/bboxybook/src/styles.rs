@@ -281,7 +281,7 @@ fn paint_box(
     let items = [Surface {
         rect,
         radii: s.radii,
-        clip: None,
+        clips: vec![],
         material: mat,
     }];
     let mut foreground = DrawList::default();
@@ -333,7 +333,7 @@ fn paint_box(
         let items = [Surface {
             rect,
             radii: s.radii,
-            clip: None,
+            clips: vec![],
             material: materials::Material::Glow(g),
         }];
         pixels = materials::render_to_rgba(renderer, scene(&pixels, size, &items, ctx.theme))?;

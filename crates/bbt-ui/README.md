@@ -77,8 +77,8 @@ with radii 0/6/12/20, three ScrollView offsets and mixed/wrapped/ellipsized text
 each across four densities and two themes.
 
 Limits: word wrapping has no hyphenation; an unbreakable word can overflow.
-Selection is metadata until input is assigned. Draw lists preserve rounded clip
-chains, while the current material host intersects ancestor clips as rectangles.
+Selection is metadata until input is assigned. Draw lists and the material host preserve complete rounded ancestor clip
+chains.
 Opacity/dim follow the existing per-colour transform, not isolated CSS group
 opacity. Those material/group cases are outside the paired d.4 references.
 

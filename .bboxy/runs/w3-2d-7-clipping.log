@@ -1,0 +1,10 @@
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.42s
+     Running tests/clipping.rs (target/debug/deps/clipping-a22464d21954b057)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.91s

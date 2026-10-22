@@ -194,18 +194,6 @@ fn validate_wrapping(layout: &c::Layout, reference: &Value) -> Result<()> {
     }
     Ok(())
 }
-fn clip_rect(clips: &[c::Clip]) -> Option<Rect> {
-    clips.iter().map(|c| c.rect).reduce(|a, b| {
-        let x = a.x.max(b.x);
-        let y = a.y.max(b.y);
-        Rect::new(
-            x,
-            y,
-            (a.right().min(b.right()) - x).max(0.),
-            (a.bottom().min(b.bottom()) - y).max(0.),
-        )
-    })
-}
 fn scene<'a>(
     pixels: &'a [u8],
     size: [u32; 2],
@@ -287,7 +275,13 @@ pub fn execute(
                 let items = [Surface {
                     rect,
                     radii,
-                    clip: clip_rect(&clips),
+                    clips: clips
+                        .into_iter()
+                        .map(|c| materials::Clip {
+                            rect: c.rect,
+                            radii: c.radii,
+                        })
+                        .collect(),
                     material,
                 }];
                 pixels = materials::render_layered_to_rgba(
