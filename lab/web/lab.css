@@ -59,8 +59,11 @@ code, .mono { font-family: var(--font-mono); }
   display: inline-block; width: var(--glyph); height: var(--glyph); line-height: var(--glyph);
   font-size: var(--glyph); text-align: center; font-family: var(--font-mono); flex: none;
 }
+/* grade and pulse compose (Oracle, decided): opacity = pulse × grade, so an inferred waiting glyph peaks at .72, not 1 */
+@property --pulse { syntax: '<number>'; inherits: false; initial-value: 1; }
+.glyph { opacity: calc(var(--pulse) * var(--grade-a, 1)); }
 .glyph.waiting { animation: pulse var(--pulse-ms) ease-in-out infinite; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes pulse { 0%, 100% { --pulse: 1; } 50% { --pulse: .35; } }
 
 /* harness icon */
 .hicon { width: var(--icon); height: var(--icon); flex: none; display: inline-block; vertical-align: middle; }
@@ -757,7 +760,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 /* state grade: reported solid · shim ringed · inferred dashed and lighter. waiting kind: a tiny mark at the corner */
 .glyph { position: relative; border-radius: 50%; }
 .glyph.g-shim { box-shadow: 0 0 0 var(--hair-w) color-mix(in srgb, currentColor 55%, transparent); }
-.glyph.g-inferred { opacity: .72; outline: var(--hair-w) dashed color-mix(in srgb, currentColor 70%, transparent); outline-offset: 1px; }
+.glyph.g-inferred { --grade-a: .72; outline: var(--hair-w) dashed color-mix(in srgb, currentColor 70%, transparent); outline-offset: 1px; }
 .glyph .kind { position: absolute; right: -6px; top: -5px; font-size: 7px; line-height: 1; font-style: normal; font-weight: 700; color: var(--c-waiting); background: var(--bg); border-radius: 50%; padding: 0 1px; }
 .strip .glyph .kind { background: transparent; color: var(--on-accent); }
 

@@ -303,3 +303,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Style cases take their text from the Style record
 **Rule:** on `style.html` each case's text is derived from its Style record's `text` field (step, 600 weight, mono, uppercase, on-accent) by `UI.textOpts()`, not from a hand-written map. The buttons now render at the declared `row` step (12.5 px) instead of `body`; every other case was already identical (verified by a per-case pixel diff and by reading each case's resolved text style). **Why:** Nyx's parity correction: native Style resolves the declared token. **Where:** `textOpts()` in `ui.js`, `style.html`.
+
+### The state grade and the waiting pulse multiply
+**Rule:** a glyph's opacity is the pulse times its grade: `opacity: calc(var(--pulse) * var(--grade-a))`, with the waiting pulse animating a registered `--pulse` number (1 to .35) and the inferred grade setting `--grade-a: .72`. An inferred waiting glyph now breathes between .25 and .72 instead of reaching 1; a reported waiting glyph still breathes .35 to 1; an inferred idle glyph stays at .72 (measured headless). **Why:** Oracle decision from Nyx's L5 parity: the pulse keyframes overrode the grade. **Where:** `.glyph`, `@property --pulse`, `@keyframes pulse`, `.glyph.g-inferred` in `lab.css`.
