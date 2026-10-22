@@ -78,6 +78,16 @@ pub fn element(
     measure: &dyn c::Measure,
     options: Options,
 ) -> c::Element {
+    element_with_key("mermaid", source, width, ctx, measure, options)
+}
+pub fn element_with_key(
+    key: &str,
+    source: &str,
+    width: f32,
+    ctx: ui::Context,
+    measure: &dyn c::Measure,
+    options: Options,
+) -> c::Element {
     let g = match geometry(source, ctx, measure) {
         Ok(g) => g,
         Err(error) => {
@@ -86,7 +96,7 @@ pub fn element(
                 error: Some(error.to_string()),
                 ..Default::default()
             }
-            .retained_element("mermaid", width, ctx, measure);
+            .retained_element(key, width, ctx, measure);
         }
     };
     let kind = match g.kind {
@@ -118,13 +128,17 @@ pub fn element(
         ..Default::default()
     }
     .retained_figure(
-        "mermaid",
+        key,
         width,
         ctx,
         Figure {
             kind,
             count,
-            canvas: &|| (canvas(&g, ctx, measure), [g.size.w, g.size.h]),
+            canvas: &|| {
+                let mut canvas = canvas(&g, ctx, measure);
+                c::namespace(&mut canvas, &format!("{key}/"));
+                (named(format!("{key}/canvas"), canvas), [g.size.w, g.size.h])
+            },
         },
     )
 }
@@ -206,6 +220,36 @@ fn path(
             fill,
             opacity: 1.,
         }),
+    )
+}
+fn node_path(
+    key: &str,
+    rect: mm::Rect,
+    canvas: mm::Size,
+    points: Vec<c::PathCommand>,
+    stroke: c::PathStroke,
+    paint: ui::Paint,
+    fill: Option<ui::Paint>,
+) -> c::Element {
+    // Keep the semantic node bounds while the vector uses canvas coordinates.
+    // Its world origin remains zero, preserving fractional path vertices.
+    named(
+        key,
+        c::Element::Layers {
+            base: Box::new(panel(
+                &format!("{key}/bounds"),
+                [rect.w, rect.h],
+                0.,
+                ui::Paint::solid(ui::Color::Transparent),
+                ui::Paint::solid(ui::Color::Transparent),
+                0.,
+            )),
+            overlays: vec![c::Placed {
+                content: path(format!("{key}/vector"), canvas, points, stroke, paint, fill),
+                left: -rect.x,
+                bottom: rect.h + rect.y - canvas.h,
+            }],
+        },
     )
 }
 fn polygon(points: &[[f32; 2]]) -> Vec<c::PathCommand> {
@@ -655,7 +699,7 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
             ctx,
         ));
         let stroke = paint(co, if node.classes.is_empty() { 0.7 } else { 1. });
-        let key = format!("node/{i}");
+        let key = format!("node{i}");
         match node.shape {
             mm::Shape::Start | mm::Shape::End | mm::Shape::Bar => {
                 let radius = if node.shape == mm::Shape::Bar {
@@ -713,8 +757,9 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
                 );
                 let x = r.x + r.w / 2.;
                 add(
-                    path(
+                    node_path(
                         &key,
+                        r,
                         size,
                         vec![
                             c::PathCommand::Move([x, r.y + 12.]),
@@ -729,15 +774,16 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
                         stroke,
                         None,
                     ),
-                    0.,
-                    0.,
+                    r.x,
+                    r.y,
                 );
             }
             mm::Shape::Cylinder => {
                 let (body, cap) = cylinder(r);
                 add(
-                    path(
+                    node_path(
                         &key,
+                        r,
                         size,
                         body,
                         c::PathStroke {
@@ -748,12 +794,13 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
                         stroke,
                         Some(fill),
                     ),
-                    0.,
-                    0.,
+                    r.x,
+                    r.y,
                 );
                 add(
-                    path(
-                        format!("{key}/cap"),
+                    node_path(
+                        &format!("{key}/cap"),
+                        r,
                         size,
                         cap,
                         c::PathStroke {
@@ -763,8 +810,8 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
                         stroke,
                         None,
                     ),
-                    0.,
-                    0.,
+                    r.x,
+                    r.y,
                 );
             }
             mm::Shape::Diamond
@@ -776,8 +823,9 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
             | mm::Shape::Trapezoid
             | mm::Shape::TrapezoidAlt => {
                 add(
-                    path(
+                    node_path(
                         &key,
+                        r,
                         size,
                         node_paths(node.shape, r),
                         c::PathStroke {
@@ -789,8 +837,8 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
                         stroke,
                         Some(fill),
                     ),
-                    0.,
-                    0.,
+                    r.x,
+                    r.y,
                 );
             }
             _ => {
@@ -896,7 +944,7 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
             add(
                 label(
                     l,
-                    &format!("{key}/label"),
+                    &format!("label{i}"),
                     if node.link.is_some() {
                         ui::Color::Accent
                     } else {

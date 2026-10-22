@@ -484,7 +484,8 @@ impl Render<'_> {
                     (
                         named(
                             key,
-                            crate::mermaid::element(
+                            crate::mermaid::element_with_key(
+                                key,
                                 text,
                                 self.width,
                                 self.ctx,
