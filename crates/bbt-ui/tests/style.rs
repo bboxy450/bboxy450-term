@@ -159,6 +159,7 @@ fn glow_state_round_trips_and_rejects_invalid_shader_inputs() {
             activity,
             inferred_multiplier: 0.5,
             seed: 12345,
+            ..Default::default()
         };
         style.overrides.glow = Some(input);
         let copy: Style = serde_json::from_slice(&serde_json::to_vec(&style).unwrap()).unwrap();
@@ -169,6 +170,19 @@ fn glow_state_round_trips_and_rejects_invalid_shader_inputs() {
             inferred_multiplier,
             ..Default::default()
         });
+        assert!(style.resolve(ctx).is_err());
+    }
+    for glow in [
+        Glow {
+            halo_alpha: Some(1.1),
+            ..Default::default()
+        },
+        Glow {
+            particles: Some(49),
+            ..Default::default()
+        },
+    ] {
+        style.overrides.glow = Some(glow);
         assert!(style.resolve(ctx).is_err());
     }
     style.overrides.glow = Some(Glow {

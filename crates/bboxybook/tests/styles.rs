@@ -23,6 +23,7 @@ fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
             activity,
             inferred_multiplier: 0.,
             seed: 123,
+            ..Default::default()
         });
         assert_eq!(
             styles::preview(&mut renderer, &style, ctx).unwrap(),
@@ -38,6 +39,16 @@ fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
         rendered.len(),
         4,
         "each state must reach the existing L2 effect"
+    );
+    style.overrides.glow = Some(Glow {
+        halo_alpha: Some(0.),
+        particles: Some(0),
+        ..Default::default()
+    });
+    assert_eq!(
+        styles::preview(&mut renderer, &style, ctx).unwrap(),
+        no_effect,
+        "independent halo/count inputs must reach L2"
     );
     style.overrides.glow = Some(Glow::default());
     let first = styles::preview(&mut renderer, &style, ctx).unwrap();

@@ -94,6 +94,8 @@ pub struct Glow {
     pub inferred_multiplier: f32,
     /// Kept exactly representable when passed to the shader's f32 uniform.
     pub seed: u32,
+    pub halo_alpha: Option<f32>,
+    pub particles: Option<u32>,
 }
 impl Default for Glow {
     fn default() -> Self {
@@ -101,12 +103,20 @@ impl Default for Glow {
             activity: GlowActivity::Active,
             inferred_multiplier: 1.,
             seed: 7,
+            halo_alpha: None,
+            particles: None,
         }
     }
 }
 impl Glow {
     fn validate(self) -> Result<Self> {
         unit(self.inferred_multiplier)?;
+        if let Some(alpha) = self.halo_alpha {
+            unit(alpha)?;
+        }
+        if self.particles.is_some_and(|n| n > 48) {
+            return Err("glow particle count exceeds shader capacity");
+        }
         if self.seed > 1 << 24 {
             return Err("glow seed exceeds exact shader integer range");
         }

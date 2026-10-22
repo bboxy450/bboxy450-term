@@ -1,0 +1,54 @@
+ROLE: EXECUTOR — Nyx Copperwing
+Approved L3 extension, Oracle c9b142a4.
+
+Glow gains optional halo_alpha and particles, defaults None. Resolution validates alpha 0..1 and count <=48; host forwards the existing L2 uniform inputs. No shader/tuning changes. GPU check sets both to zero and proves the underlying box/text remains exactly unchanged. UI invalid-data/round-trip checks pass.
+
+Commands: cargo test -p bbt-ui --test style --locked: 4 passed, exit 0. cargo test -p bboxybook --test styles --locked: 2 passed, exit 0. cargo build -p bboxybook --locked: exit 0. Render of the frozen 144-case default Style/material manifest: exit 0, 144/144 PNGs byte-identical to alignment-73b-final/native. Default review counts therefore remain Style 0/112, materials 8/32.
+
+The two test logs and render log follow. During testing, the tree also held uncommitted 7.4 Pane/capture/clock work. Only L3 state fields, their forwarding, compatibility initializers, tests and README are staged for this commit. No other L3 defaults changed. Existing two unused legacy functions emitted warnings during the first targeted test build; removed in the separate 7.4 working delta. No 2x/live-input/FPS/browser tests.
+
+COMMAND LOG ui-tests
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.68s
+     Running tests/style.rs (target/debug/deps/style-fe37ce660b2907a0)
+
+running 4 tests
+test malformed_override_data_fails_instead_of_silently_changing_the_style ... ok
+test glow_state_round_trips_and_rejects_invalid_shader_inputs ... ok
+test token_references_and_nontrivial_overrides_round_trip_and_resolve_late ... ok
+test presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+COMMAND LOG gpu-tests
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+warning: function `seat_color` is never used
+  --> crates/bboxybook/src/modules.rs:86:4
+   |
+86 | fn seat_color(s: &Seat, ctx: &DrawCtx) -> Color {
+   |    ^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `strip` is never used
+   --> crates/bboxybook/src/modules.rs:353:15
+    |
+353 | pub(crate) fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
+    |               ^^^^^
+
+warning: `bboxybook` (lib) generated 2 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.87s
+     Running tests/styles.rs (target/debug/deps/styles-bb9122d56b904ac5)
+
+running 2 tests
+test per_node_glow_drives_state_grade_and_seed_without_changing_the_box ... ok
+test style_matrix_is_canonical_and_every_preset_renders_on_the_native_device ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.85s
+
+COMMAND LOG render
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/144
+native/web layout snapshots: target/bboxybook/glow-controls/native/layouts.json
+rendered 144 PNGs to target/bboxybook/glow-controls/native

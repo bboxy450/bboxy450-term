@@ -321,6 +321,12 @@ pub(crate) fn configure_glow(g: &mut materials::Glow, ctx: ui::Context, state: O
             A::Waiting => idle * 2,
             A::Idle | A::Errored => idle,
         };
+        if let Some(alpha) = state.halo_alpha {
+            g.halo_alpha = alpha;
+        }
+        if let Some(n) = state.particles {
+            g.particles = n;
+        }
         g.seed = state.seed as f32;
         for color in [&mut g.color, &mut g.waiting, &mut g.errored] {
             *color = color.alpha(state.inferred_multiplier);

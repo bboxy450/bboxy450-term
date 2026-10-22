@@ -26,6 +26,7 @@ fn a_retained_box_keeps_its_own_glow_state_until_after_its_content() {
         activity: bbt_ui::GlowActivity::Waiting,
         inferred_multiplier: 0.5,
         seed: 42,
+        ..Default::default()
     };
     let mut s = Style::new(Preset::PaneGlow);
     s.overrides.glow = Some(state);

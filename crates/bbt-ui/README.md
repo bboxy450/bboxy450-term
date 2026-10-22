@@ -175,3 +175,6 @@ seed through resolved Style and the retained material operation. Its absence
 keeps the default gallery. The host maps state to the existing L2 effect and
 token particle counts; the multiplier affects idle, waiting and error colours
 as well as the seat colour. Fill, border and shader tuning are unchanged.
+
+Optional `Glow::halo_alpha` and `particles` forward existing L2 inputs; `None`
+keeps its defaults. This lets a Pane use its state halo without an emitter.
