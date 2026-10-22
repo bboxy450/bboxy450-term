@@ -26,7 +26,7 @@ A Mermaid subset parser and layout engine in Rust, rendering to our draw list (n
 | class, ER | later | layered |
 | gantt, pie, mindmap, timeline | later | special-cased |
 
-Rendering uses the chrome primitives (rounded rects, hairlines, text runs, arrowheads as a new primitive) in the seat's colours, with the tokens' type scale; diagrams scale to width and zoom with the document. The parser rejects unsupported syntax by rendering the raw block with a note, never a broken diagram.
+Rendering uses the chrome primitives (rounded rects, hairlines, text runs, arrowheads as a new primitive) in the seat's colours, with the tokens' type scale; diagrams draw at true size and scroll sideways when wider (renderer.md §4.4b, Wren ec7d8df figure card). The parser rejects unsupported syntax by rendering the raw block with a note, never a broken diagram.
 
 ## Crate layout
 
