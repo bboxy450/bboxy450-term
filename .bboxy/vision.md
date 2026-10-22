@@ -94,6 +94,15 @@ Something like Karpathy's **autoresearch** must be natively possible with no new
 
 If a loop like this needs a feature we do not have, the primitives are wrong, not the loop. This is the test every spec is held to. Note: the operator's own `paperhands` is an autoresearch system; it should run inside bboxy450-term as a swarm without special support.
 
+## Cockpit first (operator, 2026-10-22: the current direction)
+
+"Priority right now is a working terminal, with harnesses, local messaging, local tasks, a local provenance system and local events. That's it, but a sexy, sexy UI. Then we start designing ssh and cloud, gpg keys for auth. We build the cockpit, then expand into cloud providers and ways to branch out, but not yet. We can have dummy ssh support and dummy cloud support, as if it works without it actually working, so we have everything in the UI."
+
+What that means:
+- **Real now, all local:** terminal seats that run and render in panes; harness adapters (Claude, Codex, zsh) with status and subagents in the sidebar; local messaging (DMs, roles, priority, the channel tree) over the local bus; local tasks (`.bboxy` work items, delegate and report-back); local provenance (signed write intents, artifacts, the activity log); local events (the bus, visible in the UI); the MCP control plane on a local socket.
+- **Dummy now, real later:** ssh hosts and cloud providers exist in the UI and behave plausibly through a fake provider (remote-labelled seats backed by local PTYs, simulated latency and connect states). No real network transport, no quinn, no remote supervisor yet.
+- **Later:** real ssh and cloud, gpg-key auth across machines, private cross-instance messaging, global messaging.
+
 ## Working rules (operator, 2026-10-21)
 
 - **One concern at a time.** Layout first, then style, then behaviour, then performance. A brief names one concern.
