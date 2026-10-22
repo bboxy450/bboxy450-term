@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 27,
+  "version": 28,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -569,7 +569,7 @@
         "Oracle/operator only for role, permissions, interrupt",
         "interrupt permission belongs to the acting caller, not the target"
       ],
-      "status": "drawn, not built"
+      "status": "built: frosted panel headed by the seat; Focus, Split right, Split down | Assign role ▸ (roles with marks, check on current), Permissions ▸ (send scopes), Interrupt — steer callers only | Mute | Copy socket path with the path as a mono caption, flashes Copied | Close in red; opens on right-click, ⌘-click, 550 ms long-press, ⇧F10 on the focused seat; ↑↓ ↵ → ← esc; rowMenu() in components.js, seat-row.html?state=row-menu-operator, row-menu-role-flyout, row-menu-worker"
     },
     "launcher_cap_notice": {
       "purpose": "spawn cap per swarm reached",

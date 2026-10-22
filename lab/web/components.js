@@ -179,6 +179,63 @@
     if (run.length > 8) rows.push(el('div', { class: 'sa-row more', title: run.slice(7).map(a => a.description).join('\n') }, el('span', { class: 'branch' }), el('span', { class: 'sdesc' }, '+' + (run.length - 7) + ' running')));
     return rows;
   }
+  // row menu: right-click, ⌘-click, long-press or ⇧F10 on a seat row; never hover-only. Role, permissions and interrupt only for
+  // an oracle-class or operator caller (opts.steer); interrupt permission belongs to the caller, not the target.
+  const SEND_SCOPES = ['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'];
+  const socketPath = seat => '$TMPDIR/bboxy/seats/' + seat.key + '.sock';
+  function rowMenu(seat, opts) {
+    opts = opts || {};
+    const act = (a, v) => { opts.onAction && opts.onAction(a, seat, v); if (!/^copy/.test(a)) opts.onClose && opts.onClose(); };
+    const roles = opts.roles || ['oracle', 'executor', 'creativity'];
+    const items = [
+      { label: 'Focus', a: 'focus', k: '↩' },
+      { label: 'Split right', a: 'split-right', k: '⌘D' },
+      { label: 'Split down', a: 'split-down', k: '⌘⇧D' },
+      '-',
+      ...(opts.steer ? [
+        { label: 'Assign role', sub: roles.map(r => ({ label: r, a: 'role', v: r, on: seat.role === r, mark: ROLE_MARK[r] })) },
+        { label: 'Permissions', sub: SEND_SCOPES.map(x => ({ label: x, a: 'sends', v: x, on: (seat.sends || SEND_SCOPES[1]) === x })) },
+        { label: 'Interrupt', a: 'interrupt', k: '⌘.' },
+      ] : []),
+      { label: seat.muted ? 'Unmute' : 'Mute', a: 'mute', k: '⌘M' },
+      '-',
+      { label: 'Copy socket path', a: 'copy-socket', cap: socketPath(seat) },
+      '-',
+      { label: 'Close', a: 'close', k: '⌘W', danger: true },
+    ];
+    const menu = el('div', { class: 'row-menu', role: 'menu', tabindex: '-1' }, el('div', { class: 'rm-head' }, harnessIcon(seat.harness), el('b', { style: 'color:' + seatColor(seat) }, seat.name)));
+    const rows = [];
+    let sel = 0, flyout = null;
+    const closeFly = () => { if (flyout) { flyout.remove(); flyout = null; } };
+    const openFly = (it, row) => {
+      closeFly();
+      flyout = el('div', { class: 'row-menu fly', role: 'menu' }, ...it.sub.map(x => el('div', { class: 'rm-item' + (x.on ? ' on' : ''), role: 'menuitemradio', 'aria-checked': String(!!x.on), onclick: e => { e.stopPropagation(); act(x.a, x.v); } },
+        el('span', { class: 'chk' }, x.on ? '✓' : ''), x.mark ? el('span', { class: 'rmk' }, x.mark) : null, el('span', { class: 'lbl' }, x.label))));
+      flyout.style.top = row.offsetTop - 5 + 'px'; menu.append(flyout);
+    };
+    const paint = () => rows.forEach((r, i) => r.classList.toggle('sel', i === sel));
+    for (const it of items) {
+      if (it === '-') { menu.append(el('div', { class: 'rm-sep' })); continue; }
+      const row = el('div', { class: 'rm-item' + (it.danger ? ' danger' : ''), role: 'menuitem' },
+        el('span', { class: 'chk' }), el('span', { class: 'lbl' }, it.label, it.cap ? el('small', {}, it.cap) : null), it.sub ? el('span', { class: 'k' }, '▸') : it.k ? el('span', { class: 'k' }, it.k) : null);
+      const i = rows.length; rows.push(row);
+      row.addEventListener('pointerenter', () => { sel = i; paint(); it.sub ? openFly(it, row) : closeFly(); });
+      row.addEventListener('click', e => { e.stopPropagation(); if (it.sub) { openFly(it, row); return; }
+        if (it.a === 'copy-socket') { try { navigator.clipboard && navigator.clipboard.writeText(it.cap).catch(() => {}); } catch {} row.classList.add('copied'); row.querySelector('.lbl').firstChild.textContent = 'Copied socket path'; }
+        act(it.a); });
+      row._it = it; menu.append(row);
+    }
+    menu.addEventListener('keydown', e => {
+      const it = rows[sel] && rows[sel]._it;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length; paint(); closeFly(); }
+      else if (e.key === 'ArrowRight' && it && it.sub) { e.preventDefault(); openFly(it, rows[sel]); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); closeFly(); }
+      else if (e.key === 'Enter') { e.preventDefault(); rows[sel].click(); }
+      else if (e.key === 'Escape') { e.preventDefault(); opts.onClose && opts.onClose(); }
+    });
+    paint(); if (opts.openSub != null) { const r = rows.find(x => x._it.label === opts.openSub); if (r) requestAnimationFrame(() => openFly(r._it, r)); }
+    return menu;
+  }
   // pending row (MCP mutation status): a seat the Oracle is spawning. accepted → dashed with a spinner; partial and unknown stay
   // dashed with the outcome spelled; rejected looks like the closed strip with its reason. Never a failure, never an automatic retry.
   const PENDING_SAY = { accepted: 'spawning', partial: 'partial', unknown: 'unknown', rejected: 'rejected' };
@@ -829,5 +886,5 @@
     return root;
   }
 
-  window.C = { pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

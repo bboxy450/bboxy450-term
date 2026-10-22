@@ -185,6 +185,32 @@
   // sweep. It is a request: the seat's state changes only when the seat reports it. ⌘. interrupts the focused seat.
   function interruptSeat(seat) { if (seat.interruptSent) return; seat.interruptSent = Date.now(); render(); setTimeout(() => { seat.interruptSent = null; render(); }, 3000); }
   addEventListener('keydown', e => { if (e.metaKey && e.key === '.' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f && !f.settings && !f.graph) interruptSeat(f); } });
+  // Row menu: right-click, ⌘-click or long-press a seat row; ⇧F10 on the focused seat. Never hover-only. The operator steers.
+  let rmenu = null;
+  function closeRowMenu() { if (rmenu) { rmenu.remove(); rmenu = null; } }
+  function openRowMenu(seat, x, y) {
+    closeRowMenu();
+    rmenu = C.rowMenu(seat, { steer: true, roles: Object.keys(C.SET.roles), onClose: closeRowMenu, onAction: (a, sd, v) => {
+      const sp = (tabOf(sd.key) || {}).sp || space();
+      if (a === 'focus') setFocus(sd.key, { locate: 'both' });
+      else if (a === 'split-right' || a === 'split-down') { setFocus(sd.key); openSpotlight(null, a === 'split-right' ? 'right' : 'bottom'); }
+      else if (a === 'role') { sd.role = v; streamLine(sp, 'operator assigned ' + v + ' to ' + sd.name); render(); }
+      else if (a === 'sends') { sd.sends = v; streamLine(sp, sd.name + ' may send to ' + v); render(); }
+      else if (a === 'interrupt') interruptSeat(sd);
+      else if (a === 'mute') toggleMute(sd);
+      else if (a === 'close') closeSeat(sd);
+    } });
+    rmenu.style.position = 'fixed'; rmenu.style.left = Math.min(x, innerWidth - 250) + 'px'; rmenu.style.top = Math.min(y, innerHeight - 380) + 'px';
+    document.body.append(rmenu); rmenu.focus();
+  }
+  const rowSeat = t => { const r = t.closest && t.closest('.seat-row'); return r && seats.find(x => x.key === r.dataset.key); };
+  addEventListener('contextmenu', e => { const sd = rowSeat(e.target); if (!sd) return; e.preventDefault(); openRowMenu(sd, e.clientX, e.clientY); });
+  addEventListener('click', e => { if (rmenu && !rmenu.contains(e.target)) { closeRowMenu(); return; } if (!e.metaKey) return; const sd = rowSeat(e.target); if (sd) { e.preventDefault(); e.stopPropagation(); openRowMenu(sd, e.clientX, e.clientY); } }, true);
+  let lp = null;
+  addEventListener('pointerdown', e => { const sd = rowSeat(e.target); if (!sd || e.button !== 0) return; const x = e.clientX, y = e.clientY; lp = setTimeout(() => { lp = null; openRowMenu(sd, x, y); }, 550); });
+  addEventListener('pointerup', () => { if (lp) { clearTimeout(lp); lp = null; } });
+  addEventListener('pointermove', e => { if (lp && (Math.abs(e.movementX) + Math.abs(e.movementY)) > 4) { clearTimeout(lp); lp = null; } });
+  addEventListener('keydown', e => { if (e.shiftKey && e.key === 'F10' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); const r = f && document.querySelector('.seat-row[data-key="' + f.key + '"]'); if (r) { const b = r.getBoundingClientRect(); openRowMenu(f, b.left + 40, b.bottom + 2); } } });
   // O: the Oracle spawns a seat over MCP. A dashed pending row with a spinner until applied, then the seat takes a tab of its own.
   // Demo cycle: every fourth spawn is rejected (reason shown), every fifth ends unknown (spelled, not retried).
   let spawnN = 0;

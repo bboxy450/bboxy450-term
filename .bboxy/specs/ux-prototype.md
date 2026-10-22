@@ -158,6 +158,6 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 12 | sockets | seats are sockets | row menu "copy socket path" (pass 9); listener count BUILT: plug glyph + count at the row's right when > 0, counts only |
 | 13 | first run | identity (I2) | select and pin an existing GPG primary from the keyring, sign the bootstrap via gpg-agent; never create a root, never show words as a root; enrollment and Google deferred |
 | 14 | settings | config.toml | settings tab read-mostly |
-| 15 | role and permissions | per seat | row menu, Oracle/operator |
+| 15 | role and permissions | per seat | BUILT: row menu (right-click, ⌘-click, long-press, ⇧F10): focus, splits, role ▸, permissions ▸, interrupt for steer callers, mute, copy socket path, close |
 | 16 | shadows | global messaging | module kept, deferred |
 | 17 | nested subagent rows | 7501 / hooks | BUILT: running only, under the seat before its tasks, glyph in the seat colour with the source grade; past 8 collapses to +N running |
