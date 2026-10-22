@@ -1,0 +1,297 @@
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.90s
+     Running unittests src/lib.rs (target/debug/deps/bboxybook-6c4afde729aca74a)
+
+running 9 tests
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.83s
+
+     Running unittests src/main.rs (target/debug/deps/bboxybook-701c59dc4d209b0f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (target/debug/deps/atoms-34f12f3d58c848f5)
+
+running 1 test
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.63s
+
+     Running tests/blending.rs (target/debug/deps/blending-47ec7fd494a27ac7)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.86s
+
+     Running tests/clipping.rs (target/debug/deps/clipping-a22464d21954b057)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.12s
+
+     Running tests/components.rs (target/debug/deps/components-4b7985cc370decea)
+
+running 4 tests
+test component_cases_are_canonical_and_box_gallery_covers_materials_and_radii ... ok
+test a_retained_group_keeps_material_coverage_and_filters_the_completed_layer ... ok
+test retained_image_preserves_asset_colour_rounding_and_group_filtering ... ok
+test retained_scroll_content_moves_but_never_paints_outside_the_viewport ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.58s
+
+     Running tests/fixtures.rs (target/debug/deps/fixtures-f66eb948fb795ea4)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.35s
+
+     Running tests/icon_filter.rs (target/debug/deps/icon_filter-e66727a1778b7817)
+
+running 1 test
+test icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s
+
+     Running tests/materials.rs (target/debug/deps/materials-1acabb7063ba1e6c)
+
+running 3 tests
+test source_over_glow_keeps_destination_alpha ... ok
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.95s
+
+     Running tests/overlays.rs (target/debug/deps/overlays-94796f768c38ff16)
+
+running 2 tests
+test layer_matrix_distinguishes_full_primitives_from_module_surfaces ... ok
+test overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.42s
+
+     Running tests/panes.rs (target/debug/deps/panes-23f7a8c7ec3e630a)
+
+running 3 tests
+test legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted ... ok
+test pane_registry_pairs_every_current_and_historical_case_without_collisions ... ok
+test native_panes_ignore_child_web_bounds_and_font_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.25s
+
+     Running tests/render.rs (target/debug/deps/render-3fd38a730ca1c05c)
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.46s
+
+     Running tests/seat_rows.rs (target/debug/deps/seat_rows-826bf48bccffc1cd)
+
+running 2 tests
+test seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures ... ok
+test child_dom_rectangles_and_css_metrics_are_diagnostics_only ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.30s
+
+     Running tests/shadow.rs (target/debug/deps/shadow-f1765693db1b7989)
+
+running 1 test
+test css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.31s
+
+     Running tests/styles.rs (target/debug/deps/styles-bb9122d56b904ac5)
+
+running 2 tests
+test per_node_glow_drives_state_grade_and_seed_without_changing_the_box ... ok
+test style_matrix_is_canonical_and_every_preset_renders_on_the_native_device ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.22s
+
+     Running tests/swarms.rs (target/debug/deps/swarms-bd66c2d6e46401cf)
+
+running 3 tests
+test old_swarm_card_and_sidebar_hand_painters_are_gone ... ok
+test swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys ... ok
+test captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.34s
+
+     Running tests/tabs.rs (target/debug/deps/tabs-8c0ab50a9d070617)
+
+running 3 tests
+test old_module_and_json_painters_delegate_to_the_retained_compositions ... ok
+test all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions ... ok
+test tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.45s
+
+     Running tests/widgets.rs (target/debug/deps/widgets-82da281523cf5956)
+
+running 3 tests
+test control_matrix_has_canonical_keys_and_all_constructor_families ... ok
+test transparent_layout_border_does_not_cut_the_background_fill ... ok
+test thousand_row_views_clip_output_and_the_table_header_stays_fixed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.23s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_ui-0f487eb44796eba8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (target/debug/deps/atoms-0158669d332da8b4)
+
+running 5 tests
+test icons_keep_the_requested_logical_name_bounds_and_tint ... ok
+test a_waiting_kind_background_and_text_receive_dimming_once ... ok
+test hairline_is_one_physical_pixel_and_spinner_phase_is_explicit ... ok
+test kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice ... ok
+test glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloured ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/components.rs (target/debug/deps/components-a4b49b4172d93c56)
+
+running 10 tests
+test nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms ... ok
+test mixed_type_rows_share_a_baseline ... ok
+test box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout ... ok
+test image_has_square_intrinsics_a_baseline_and_validated_asset_geometry ... ok
+test a_retained_box_keeps_its_own_glow_state_until_after_its_content ... ok
+test mixed_text_runs_align_baselines_and_keep_selection_metadata ... ok
+test column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine ... ok
+test wrapping_and_ellipsis_use_the_allocated_width ... ok
+test a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height ... ok
+test scroll_offset_clamps_and_every_child_draw_is_clipped ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/overlays.rs (target/debug/deps/overlays-4cb9358445bc387d)
+
+running 2 tests
+test blur_parameters_round_trip_and_keep_the_backdrop_separate_from_foreground_fill ... ok
+test overlay_centres_the_panel_and_narrow_bounds_reflow_its_content ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/panes.rs (target/debug/deps/panes-3ddf267a55878417)
+
+running 2 tests
+test pane_height_is_content_or_minimum_and_an_unavailable_gap_never_invents_a_range ... ok
+test pane_preserves_history_content_and_capability_actions_while_disconnected ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/seat_rows.rs (target/debug/deps/seat_rows-a540ef1536587afa)
+
+running 6 tests
+test naturally_sized_text_is_not_truncated_by_float_subtraction ... ok
+test flex_max_violation_freezes_before_redistributing_remaining_space ... ok
+test subagents_filter_finished_work_and_overflow_after_seven ... ok
+test compact_artifact_row_preserves_natural_chip_height_outside_its_flow_slot ... ok
+test seat_identity_authority_and_activity_stay_independent_when_name_shrinks ... ok
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/style.rs (target/debug/deps/style-79804fd8355301fe)
+
+running 4 tests
+test malformed_override_data_fails_instead_of_silently_changing_the_style ... ok
+test token_references_and_nontrivial_overrides_round_trip_and_resolve_late ... ok
+test glow_state_round_trips_and_rejects_invalid_shader_inputs ... ok
+test presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/swarms.rs (target/debug/deps/swarms-359393d3b055fb99)
+
+running 6 tests
+test a_literal_hyphen_is_a_wrap_opportunity_and_min_content_survives_flex_shrink ... ok
+test caption_line_limit_preserves_two_lines_and_marks_truncated_content ... ok
+test css_filter_uses_luminance_saturation_and_preserves_layout ... ok
+test unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper ... ok
+test collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_material ... ok
+test sidebar_scroll_and_phone_handle_use_the_supplied_viewport_without_reordering_cards ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/tabs.rs (target/debug/deps/tabs-7349f10d9d4a6a01)
+
+running 6 tests
+test state_color_wins_over_focus_and_a_single_cell_keeps_the_grid_wrapper ... ok
+test grid_preserves_ratio_nested_axis_and_big_root_gap ... ok
+test single_seat_reduces_to_the_accepted_row_and_keeps_its_children ... ok
+test deeply_nested_grids_shrink_to_zero_but_their_cells_keep_the_two_pixel_minimum ... ok
+test collapsed_rollup_is_stable_worst_first_and_capped ... ok
+test expanded_tab_has_indented_seats_and_only_a_parent_shortcut ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/title_bars.rs (target/debug/deps/title_bars-a4bc109bd0b3c409)
+
+running 3 tests
+test old_titlebar_is_a_component_delegate ... ok
+test blur_filters_only_identity_and_dots_while_sidebar_state_changes_its_toggle ... ok
+test narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/widgets.rs (target/debug/deps/widgets-e8171999220b7221)
+
+running 4 tests
+test pressed_button_scales_visually_without_changing_its_flow_slot ... ok
+test side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout ... ok
+test empty_input_keeps_its_control_height_and_invalid_input_keeps_its_error_caption ... ok
+test list_and_table_allocate_only_visible_rows_and_keep_full_scroll_extent ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxybook
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+Additional host tests (command exit 0):
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.39s
+     Running tests/title_bars.rs (target/debug/deps/title_bars-4d56812a9a26aab6)
+
+running 2 tests
+test titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only ... ok
+test native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.57s
+
+
+Scoped clippy (command exit 0):
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.90s

@@ -8,7 +8,13 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     let mut renderer = ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}", renderer.context.adapter_info);
     for (i, case) in cases.iter().enumerate() {
-        let rgba = if case.fixture.as_ref().is_some_and(|f| f["layer"] == "panes") {
+        let rgba = if case
+            .fixture
+            .as_ref()
+            .is_some_and(|f| f["layer"] == "titlebars")
+        {
+            crate::title_bars::render_case(&mut renderer, case)?
+        } else if case.fixture.as_ref().is_some_and(|f| f["layer"] == "panes") {
             crate::panes::render_case(&mut renderer, case)?
         } else if case
             .fixture
@@ -69,6 +75,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     snapshots.extend(crate::tabs::snapshots(cases)?);
     snapshots.extend(crate::swarms::snapshots(cases)?);
     snapshots.extend(crate::panes::snapshots(cases)?);
+    snapshots.extend(crate::title_bars::snapshots(cases)?);
     if !snapshots.is_empty() {
         fs::write(
             out.join("layouts.json"),
@@ -116,7 +123,7 @@ impl CasePolicy {
             || f.is_some_and(|f| {
                 matches!(
                     f["layer"].as_str(),
-                    Some("seat-row" | "tabs" | "swarms" | "panes")
+                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars")
                 )
             })
         {
@@ -139,7 +146,9 @@ impl CasePolicy {
             channel_tolerance: diff::CHANNEL_TOLERANCE,
             changed_pixel_budget: if text { 0.02 } else { diff::CHANGED_BUDGET },
             geometry_tolerance_px: text.then_some(0.5),
-            scope: if f.is_some_and(|f| f["layer"] == "panes") {
+            scope: if f.is_some_and(|f| f["layer"] == "titlebars") {
+                "TitleBar composition; external rounded window and empty content remain shared context"
+            } else if f.is_some_and(|f| f["layer"] == "panes") {
                 "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context"
             } else if f.is_some_and(|f| f["layer"] == "swarms") {
                 "SwarmCard/Sidebar; pane previews retained as shared context"
@@ -363,6 +372,12 @@ pub fn compare_paths(
         .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "tabs"))
     {
         "L7 TabRow and MiniGrid retained compositions. Current lab states use committed HEAD; legacy states use ux-prototype-v2. Public constructor data, external parent bounds and grid viewport sizes are shared, never child geometry. Every part and text baseline is independently checked in layouts.json."
+    } else if cases.iter().all(|c| {
+        c.fixture
+            .as_ref()
+            .is_some_and(|f| f["layer"] == "titlebars")
+    }) {
+        "L7 TitleBar composition. Public title/crumb/sidebar/blurred inputs and parent bounds are shared. Native solves control slots, wrapping, ellipsis and text baselines from tokens and CoreText. Ancestor window clipping is external; empty content remains shared context. Current titlebar.html gates; title_bar v2 is historical only. Child DOM bounds are diagnostics, never layout inputs."
     } else if cases
         .iter()
         .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "panes"))

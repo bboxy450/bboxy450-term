@@ -11,6 +11,7 @@ pub mod seat_rows;
 pub mod styles;
 pub mod swarms;
 pub mod tabs;
+pub mod title_bars;
 pub mod widgets;
 pub mod window;
 use bbt_render::chrome::icons::Image;

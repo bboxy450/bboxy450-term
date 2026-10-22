@@ -206,3 +206,13 @@ L2. The fixture host supplies a frozen 0ms pose; it owns animation time, input,
 path resolution, process lifecycle and event handling. Current previews are
 `bboxybook panes` (136 current + 80 historical cases). The older DrawList-only
 gallery adapter composes chrome; full materials use the retained host executor.
+
+## L7 TitleBar
+
+`TitleBar` composes the window dots, sidebar toggle, circular identity image,
+title, shrinking crumb and theme toggle. The frosted panel Style supplies blur,
+fill, highlight and bottom hairline. Its height, spacing, radii and type resolve
+from the shared design. Narrow widths wrap the title at literal hyphens and
+ellipsize the crumb while control slots keep their size. An unfocused window
+filters only its portrait and dots, matching the lab. Action handling and
+window ownership remain with the caller.

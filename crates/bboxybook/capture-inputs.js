@@ -37,7 +37,7 @@
       components = value;
       for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
         'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard',
-      'externalLane', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow']) {
+      'externalLane', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar']) {
         const original = value[name];
         if (typeof original !== 'function') continue;
         value[name] = function (...args) {
@@ -152,6 +152,14 @@
       }
       return diagnostics;
     };
+    if(window.bboxyTitleBarFixture){
+      const call=calls.find(c=>c.name==='titleBar'&&c.node?.isConnected&&root.contains(c.node));
+      const node=call?.node||root.querySelector('.titlebar');if(!node)throw Error('TitleBar root missing');
+      node.dataset.bboxyTitlebar='';
+      const parent=node.parentElement,css=getComputedStyle(parent),r=parent.getBoundingClientRect();
+      const border=parseFloat(css.borderLeftWidth)||0;
+      return JSON.parse(JSON.stringify({version:1,layer:'titlebars',args:call?.args||[{title:'bboxy450-term',crumb:'swarm / Vesper Greywind',sidebarOpen:true}],host:bounds(node),ancestor_clip:css.overflow==='hidden'?{rect:{x:r.x-origin.x+border,y:r.y-origin.y+border,w:r.width-2*border,h:r.height-2*border},radii:radii(css).map(v=>Math.max(0,v-border))}:null,parts:parts(node,'bar')},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
+    }
     if(window.bboxyPaneFixture){
       const items=calls.filter(c=>c.name==='pane'&&c.node?.isConnected&&root.contains(c.node)).map(c=>{
         c.node.dataset.bboxyPane='';

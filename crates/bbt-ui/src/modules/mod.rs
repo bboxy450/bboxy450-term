@@ -6,3 +6,4 @@ pub mod sidebar;
 pub mod strip;
 pub mod swarm_card;
 pub mod tab_row;
+pub mod title_bar;

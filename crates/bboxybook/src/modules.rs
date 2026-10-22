@@ -347,55 +347,9 @@ pub(crate) fn pane(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut Dr
     crate::panes::paint_legacy_pane(s, r, focused, ctx, out)
 }
 pub(crate) fn titlebar(r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
-    out.rect(
-        r,
-        0.0,
-        Color::hex(ctx.theme.palette().surface).alpha(STYLE.material.panel_alpha as f32),
-    );
-    out.line(
-        [r.x, r.bottom() - 0.5],
-        [r.right(), r.bottom() - 0.5],
-        1.0,
-        ctx.hairline(),
-    );
-    icon(
-        out,
-        Rect::new(r.x + 14.0, r.y + 10.0, 18.0, 18.0),
-        "sidebarfoxopen",
-        ctx.fg(),
-    );
-    out.push(Prim::Image {
-        rect: Rect::new(r.x + 42.0, r.y + 10.0, 18.0, 18.0),
-        image: "bboxy".into(),
-        radius: 9.0,
-    });
-    text(
-        out,
-        Rect::new(r.x + 70.0, r.y + 10.0, 240.0, 20.0),
-        "bboxy450-term",
-        STYLE.r#type.body as f32,
-        ctx.fg(),
-        500,
-    );
-    text(
-        out,
-        Rect::new(r.x + 320.0, r.y + 11.0, 300.0, 18.0),
-        "swarm  /  Vesper Greywind",
-        11.0,
-        ctx.muted(),
-        400,
-    );
-    icon(
-        out,
-        Rect::new(r.right() - 34.0, r.y + 10.0, 18.0, 18.0),
-        if ctx.theme == Theme::Dark {
-            "sun"
-        } else {
-            "moon"
-        },
-        ctx.muted(),
-    );
+    crate::title_bars::paint_legacy(r, ctx, out)
 }
+
 fn showcase(r: Rect, n: usize, ctx: &DrawCtx, out: &mut DrawList) {
     let h = STYLE.spacing.title_bar as f32;
     titlebar(Rect::new(r.x, r.y, r.w, h), ctx, out);

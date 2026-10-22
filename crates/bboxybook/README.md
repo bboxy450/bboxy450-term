@@ -421,3 +421,24 @@ captures from 7.3b, L5 snapshots and 7.4. It includes historical v2 diagnostics,
 which remain labelled and do not gate current lab cases. See
 `target/bboxybook/group-opacity/regression/after/index.html` and its adjacent
 `report.md`; `before/index.html` records the same cases before this change.
+
+## L7 TitleBar (W3.2d.7.5)
+
+`cargo run -p bboxybook --locked -- title-bars` writes the current five-state
+matrix (40 cases) plus 24 historical v2 cases to
+`target/bboxybook/title-bars/index.html`. Constructor strings, sidebar/window
+state and parent bounds enter native layout. Child rectangles and baselines
+are independent diagnostics, not positioning inputs. The external window clip
+and blank content remain shared fixture context.
+
+The module uses retained L6 Image/Box/Text/Stack/Icon elements. The isolated
+host executes Frosted and all group filters; the old flat gallery delegates to
+the same composition with backdrop blur disabled because its DrawList cannot
+sample previous surfaces. It keeps the Style fill and other chrome. Input and
+window-control callbacks are not implemented in this module pass.
+
+The current matrix passes 40/40 under the existing text policy: maximum rect
+error 0.45px, baselines exact, worst changed fraction 1.208%. Historical cases
+keep the older geometry and are explicitly unproven/diagnostic, not a gate.
+Text/icon masks and corner-edge antialiasing remain visible in the triplets;
+the deferred L1 raster work is unchanged. See `.bboxy/runs/w3-2d-7-5-summary.log`.

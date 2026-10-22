@@ -1,0 +1,51 @@
+ROLE: EXECUTOR — Nyx Copperwing
+W3.2d.7.5 TitleBar
+
+Scope: bbt-ui and bboxybook only; no renderer, design, input/controller or model changes.
+Prerequisite L6 Image support is signed 362793a (approved separately).
+
+Evidence:
+- crates/bbt-ui/src/modules/title_bar.rs:7 — public title/crumb/sidebar/blurred data; element at :90 composes retained Boxes, Text, Stack, Image and Icon. Frosted panel Style supplies backdrop/filter/fill/highlight and a bottom-only hairline.
+- crates/bboxybook/src/title_bars.rs:68 — layout reads only constructor arguments and parent origin/width; no child DOM geometry/font enters native placement.
+- crates/bboxybook/src/title_bars.rs:134 — every current part and baseline gets an independent snapshot.
+- crates/bboxybook/src/modules.rs:349 — old titlebar painter delegates; 48 painting lines removed.
+- capture-inputs.js / capture.mjs — 5 current lab states plus 3 historical v2 states, four densities, both themes, external ancestor clip and blank-body backdrop.
+
+Commands / actual results:
+- cargo build -p bboxybook --locked — exit 0.
+- node crates/bboxybook/capture.mjs target/bboxybook/title-bars target/bboxybook/title-bars/requested.json — exit 0; 64 references captured, zero failures.
+- bboxybook render --out target/bboxybook/title-bars/native-initial --manifest .../cases.json — exit 0; 64 PNGs and native layouts on Apple M4 / Metal. Output renamed native; no module changes after render.
+- bboxybook compare --out target/bboxybook/title-bars --manifest .../cases.json — exit 0; 40/40 current within existing policy, 24 historical diagnostics. index.html/report.md/report.json beside it.
+- cargo test -p bbt-ui -p bboxybook --locked — exit 0; 91 passed, including all registered gallery renders and three new TitleBar UI checks.
+- cargo test -p bboxybook --test title_bars --locked — exit 0; 2 additional host tests (registry/policy + tampered child diagnostics have no layout effect). Added after the full command started.
+- scoped cargo clippy --all-targets --locked -- -D warnings with existing map_entry and chunks_exact_to_as_chunks allowances — exit 0.
+- cargo fmt -p bbt-ui -p bboxybook --check; git diff --check; node --check both capture files — all exit 0.
+- Image support lower-gallery check: 328/328 default PNGs byte-identical to accepted 7.4b (materials32 + Style112 + components72 + glyph56 + harness-icon56). No shared default path changed in TitleBar.
+
+Geometry: 40 complete current records, 560 rect pairs and 80 baselines. Worst rect error 0.449951px; every baseline exact. Narrow title wraps at the hyphen; crumb ellipsizes while control slots retain their dimensions.
+Worst current changed fraction = 1.207916% (long crumb light), within the existing 2% text policy. Non-text policy unchanged.
+
+Images inspected: web/native/diff for long-crumb cozy light+dark, narrow-window cozy light+dark, window-unfocused cozy dark and sidebar-closed cozy light. Local contact sheet inspected-triplets.png; original full images retained in web/native/diff.
+
+Ten worst current triplets (relative to web/, native/, diff/):
+1. titlebar/long-crumb-comfortable-light.png — 1.207916% changed, rect 0.449951px, baseline 0.000000px
+2. titlebar/long-crumb-compact-light.png — 1.207916% changed, rect 0.449951px, baseline 0.000000px
+3. titlebar/long-crumb-cozy-light.png — 1.207916% changed, rect 0.449951px, baseline 0.000000px
+4. titlebar/long-crumb-touch-light.png — 1.207916% changed, rect 0.449951px, baseline 0.000000px
+5. titlebar/long-crumb-comfortable-dark.png — 1.194201% changed, rect 0.449951px, baseline 0.000000px
+6. titlebar/long-crumb-compact-dark.png — 1.194201% changed, rect 0.449951px, baseline 0.000000px
+7. titlebar/long-crumb-cozy-dark.png — 1.194201% changed, rect 0.449951px, baseline 0.000000px
+8. titlebar/long-crumb-touch-dark.png — 1.194201% changed, rect 0.449951px, baseline 0.000000px
+9. titlebar/sidebar-closed-comfortable-light.png — 0.716216% changed, rect 0.449951px, baseline 0.000000px
+10. titlebar/sidebar-closed-compact-light.png — 0.716216% changed, rect 0.449951px, baseline 0.000000px
+
+Limits / deliberately untouched:
+- L1 text/icon mask and corner-edge antialiasing residue remains; no deferred raster tuning.
+- 24 v2 cases rerun and retained as historical diagnostics; geometry is unproven because the old fixture anatomy differs. They do not gate current design.
+- Old DrawList-only gallery adapter uses the retained composition but disables Frosted sampling; isolated TitleBar gallery runs the full L2 material pass. Input/window callbacks remain later work.
+- No live operator browser opened/reloaded; no native-window action test, alternate OS/backend or FPS measurements. No full 1,200-case rerender for this leaf module.
+- The first new UI assertion expected a literal ellipsis in retained runs (exit101). Retained text correctly keeps source content and delegates ellipsis to paint; corrected the test to check allocated width + ellipsis policy, then full checks passed.
+- Commit by exact paths; no push, merge, autostash or rebase. Oracle review is still required.
+
+Reference metadata:
+{"revision": "2ef1dbc4d13e8d5d1236d3cb05899938f636bc39", "supplementalReference": "Layer fixtures, @component entries and settings_tab/new harness use frozen committed HEAD lab components", "cases": 64, "failures": [], "status": "captured"}
