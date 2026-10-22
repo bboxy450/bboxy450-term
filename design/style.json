@@ -76,6 +76,8 @@
     "title_bar": 38,
     "band": 24,
     "new_swarm": 40,
+    "doc_measure": 576,
+    "empty_measure": 240,
     "s1": 2,
     "s2": 4,
     "s3": 6,

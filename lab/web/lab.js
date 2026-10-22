@@ -45,7 +45,7 @@
       set('--badge', 'color-mix(in srgb, var(--fg-dim) ' + S.tint.badge_alpha * 100 + '%, transparent)'); set('--badge-sel', 'color-mix(in srgb, var(--fg-dim) ' + S.tint.badge_selected_alpha * 100 + '%, transparent)');
       for (const [k, v] of Object.entries(S.type)) if (typeof v === 'number') set('--t-' + k, /^weight_/.test(k) ? v : v + 'px');   // weights are unitless: '600px' is an invalid font-weight
       set('--sh-float', S.shadow.floating); set('--sh-pill', S.shadow.pill); set('--appear-ms', S.motion.appear_ms + 'ms'); set('--ease', S.motion.ease);
-      set('--grid', S.spacing.grid + 'px'); for (const [k, v] of Object.entries(S.spacing)) if (/^s\d+$/.test(k)) set('--' + k, v + 'px'); set('--hair-w', S.material.hairline_px + 'px'); set('--row-mx', S.spacing.row_margin_x + 'px'); set('--row-px', S.spacing.row_pad_x + 'px'); set('--title-bar-h', S.spacing.title_bar + 'px'); set('--band-h', S.spacing.band + 'px'); set('--new-swarm-h', S.spacing.new_swarm + 'px');
+      set('--grid', S.spacing.grid + 'px'); for (const [k, v] of Object.entries(S.spacing)) if (/^s\d+$/.test(k)) set('--' + k, v + 'px'); set('--hair-w', S.material.hairline_px + 'px'); set('--row-mx', S.spacing.row_margin_x + 'px'); set('--row-px', S.spacing.row_pad_x + 'px'); set('--title-bar-h', S.spacing.title_bar + 'px'); set('--band-h', S.spacing.band + 'px'); set('--new-swarm-h', S.spacing.new_swarm + 'px'); set('--doc-measure', S.spacing.doc_measure + 'px'); set('--empty-measure', S.spacing.empty_measure + 'px');
     }
     document.documentElement.className = 'theme-' + prefs.theme + ' density-' + prefs.density;
   }

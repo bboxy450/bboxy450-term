@@ -244,6 +244,8 @@ window.STYLE = {
   },
   "spacing": {
     "band": 24,
+    "doc_measure": 576,
+    "empty_measure": 240,
     "grid": 8,
     "new_swarm": 40,
     "panel_pad_x": 24,

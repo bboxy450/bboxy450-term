@@ -905,7 +905,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .doc-fm .v { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); min-width: 0; align-items: center; }
 .doc-fm .v code { font-size: var(--t-note); color: var(--fg); }
 .doc-fm .seatchip { font-weight: 600; }
-.md { line-height: 1.6; max-width: 70ch; }
+.md { line-height: 1.6; max-width: var(--doc-measure); }  /* a pixel token, never ch: ch is the browser's font metric */
 .md h2, .md h3, .md h4 { font-size: 13.5px; margin: var(--s7) 0 var(--s2); }
 .md p { margin: var(--s2) 0 var(--s4); }
 .md ul { margin: var(--s2) 0 var(--s5); padding-left: var(--s9); }
@@ -1387,7 +1387,7 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 /* first launch: no seats yet; the stage says what to do, once, quietly */
 .empty-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s6); color: var(--fg-dim); text-align: center; }
 .empty-stage h2 { margin: 0; font-size: var(--t-subtitle); font-weight: 650; color: var(--fg); }
-.empty-stage p { margin: 0; max-width: 34ch; font-size: var(--t-caption); line-height: 1.5; }
+.empty-stage p { margin: 0; max-width: var(--empty-measure); font-size: var(--t-caption); line-height: 1.5; }
 .empty-stage .acts { display: flex; gap: var(--s4); }
 .empty-stage .keys { display: flex; gap: var(--s6); font-size: var(--t-caption); }
 .empty-stage .keys .kbd { margin-right: var(--s2); }
