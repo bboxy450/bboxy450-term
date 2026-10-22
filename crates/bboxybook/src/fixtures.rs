@@ -1,0 +1,792 @@
+//! JSON exported from the frozen web page's component inputs, including FIX
+//! from fixtures.js. Bounds describe the lab fixture, not component internals.
+use crate::{Result, gallery::Case, modules::*};
+use bbt_ui_model::{
+    draw::*,
+    layout::{Rect, solve_split},
+    *,
+};
+use serde::Deserialize;
+use serde_json::Value;
+use std::collections::BTreeMap;
+
+#[derive(Debug, Deserialize)]
+struct Capture {
+    version: u32,
+    calls: Vec<Call>,
+}
+#[derive(Debug, Deserialize)]
+struct Call {
+    name: String,
+    args: Vec<Value>,
+    rect: Bounds,
+    #[serde(default)]
+    header: f32,
+}
+#[derive(Debug, Deserialize)]
+struct Bounds {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+}
+impl Bounds {
+    fn rect(&self) -> Rect {
+        Rect::new(self.x, self.y, self.w, self.h)
+    }
+}
+fn s<'a>(v: &'a Value, key: &str) -> &'a str {
+    v[key].as_str().unwrap_or("")
+}
+fn array(v: &Value) -> &[Value] {
+    v.as_array().map(Vec::as_slice).unwrap_or(&[])
+}
+fn ident(v: &str) -> u128 {
+    v.bytes().fold(0xcbf29ce484222325u64, |h, b| {
+        (h ^ b as u64).wrapping_mul(0x100000001b3)
+    }) as u128
+}
+fn id(v: &Value) -> SeatId {
+    SeatId::from_u128(ident(s(v, "key")))
+}
+fn role(v: &Value) -> Option<Role> {
+    let name = v.as_str().or_else(|| v["name"].as_str())?;
+    Some(Role {
+        name: name.into(),
+        class: if v["class"] == "oracle" || name == "oracle" {
+            RoleClass::Oracle
+        } else {
+            RoleClass::Worker
+        },
+    })
+}
+fn color(v: &Value, theme: Theme) -> Hsl {
+    let c = s(v, "color");
+    if let Some(raw) = c.strip_prefix("hsl(") {
+        let nums: Vec<f32> = raw
+            .trim_end_matches(')')
+            .split_whitespace()
+            .filter_map(|n| n.trim_end_matches('%').parse().ok())
+            .collect();
+        if nums.len() == 3 {
+            return Hsl {
+                hue: nums[0],
+                saturation: nums[1],
+                lightness: nums[2],
+            };
+        }
+    }
+    if c.starts_with('#') {
+        let h = Color::hex(c).to_hsl();
+        return Hsl {
+            hue: h[0],
+            saturation: h[1] * 100.,
+            lightness: h[2] * 100.,
+        };
+    }
+    SeatColor::Derived.resolve(s(v, "key"), theme)
+}
+pub fn seat(v: &Value, swarm: SwarmId, theme: Theme) -> Seat {
+    let mut out = Seat::new(id(v), swarm, [0; 32], s(v, "name"), s(v, "harness"));
+    out.title = s(v, "title").into();
+    out.role = role(&v["role"]);
+    out.activity = match s(v, "state") {
+        "active" => Activity::Active,
+        "errored" => Activity::Errored,
+        "waiting" => Activity::Waiting(match s(v, "waitKind") {
+            "permission" => WaitKind::Permission,
+            "auth" => WaitKind::Auth,
+            _ => WaitKind::Question,
+        }),
+        _ => Activity::Idle,
+    };
+    out.grade = match s(v, "grade") {
+        "shim" => Grade::Shim,
+        "inferred" => Grade::Inferred,
+        _ => Grade::Reported,
+    };
+    out.where_ = match s(v, "where") {
+        "ssh" => Where::Ssh {
+            host: s(v, "host").into(),
+        },
+        "cloud" => Where::Cloud {
+            provider: s(v, "provider").into(),
+            host: s(v, "host").into(),
+        },
+        _ => Where::Local,
+    };
+    out.muted = v["muted"].as_bool().unwrap_or(false);
+    if let Some(n) = v["unread"].as_u64().filter(|n| *n > 0) {
+        out.unread = Some((
+            n as u32,
+            role(&v["unreadRole"]).unwrap_or(Role {
+                name: "executor".into(),
+                class: RoleClass::Worker,
+            }),
+        ));
+    }
+    out.color = SeatColor::Override(color(v, theme));
+    out
+}
+pub fn tree(v: &Value) -> Result<SplitNode> {
+    if !s(v, "key").is_empty() {
+        return Ok(SplitNode::Leaf(id(v)));
+    }
+    if v["dir"] != "v" && v["dir"] != "h" {
+        return Err("fixture has no split direction or seat key".into());
+    }
+    Ok(SplitNode::split(
+        if v["dir"] == "v" {
+            Axis::Row
+        } else {
+            Axis::Column
+        },
+        v["ratio"].as_f64().unwrap_or(0.5) as f32,
+        tree(&v["a"])?,
+        tree(&v["b"])?,
+    ))
+}
+fn leaves(v: &Value) -> Vec<&Value> {
+    if v["key"].is_string() {
+        vec![v]
+    } else {
+        [leaves(&v["a"]), leaves(&v["b"])].concat()
+    }
+}
+fn tab_seats(v: &Value) -> Vec<&Value> {
+    v["seats"]
+        .as_array()
+        .map(|a| a.iter().collect())
+        .unwrap_or_else(|| leaves(&v["tree"]))
+}
+fn contains(v: &Value, key: &str) -> bool {
+    array(v).iter().any(|v| v.as_str() == Some(key))
+}
+
+/// Conversion is strict about identity/tree ownership via Model::new. The web
+/// key is fixture identity only; it is never a credential or a real seat grant.
+pub fn model(data: &Value, opts: &Value, theme: Theme) -> Result<Model> {
+    let mut seats = BTreeMap::new();
+    let mut swarms = Vec::new();
+    for sp in array(&data["spaces"]) {
+        let swarm = SwarmId::from_u128(ident(s(sp, "key")));
+        let mut tabs = Vec::new();
+        for (n, t) in array(&sp["tabs"]).iter().enumerate() {
+            for value in tab_seats(t) {
+                seats.insert(id(value), seat(value, swarm, theme));
+            }
+            let mut tab = Tab::new(
+                TabId::from_u128(ident(&format!("{}/{n}", s(sp, "key")))),
+                s(t, "name"),
+                tree(&t["tree"])?,
+            );
+            tab.shortcut = s(t, "shortcut").trim_start_matches('⌘').parse().ok();
+            tab.expanded = contains(
+                &opts["openTabs"],
+                &format!("{}/{}", s(sp, "key"), s(t, "name")),
+            );
+            tabs.push(tab);
+        }
+        let mut out = Swarm::new(swarm, s(sp, "name"), tabs);
+        out.color = SeatColor::Override(color(sp, theme));
+        for ph in array(&sp["participants"]) {
+            let st = seat(ph, swarm, theme);
+            out.shadows.push(Shadow {
+                id: ShadowId::from_u128(ident(s(ph, "key"))),
+                name: st.name,
+                harness: st.harness,
+                role: st.role,
+                activity: st.activity,
+                grade: st.grade,
+                owner: s(ph, "owner").into(),
+            });
+        }
+        swarms.push(out);
+    }
+    let mut model = Model::new(swarms, seats.into_values().collect())?;
+    model.window.theme = theme;
+    model.window.sidebar.open = array(&data["spaces"])
+        .iter()
+        .filter(|sp| contains(&opts["openSpaces"], s(sp, "key")))
+        .map(|sp| SwarmId::from_u128(ident(s(sp, "key"))))
+        .collect();
+    let focused = SeatId::from_u128(ident(s(opts, "focusedKey")));
+    if let Some((si, ti)) = model.tab_of(focused) {
+        model.window.stage = Stage {
+            swarm: Some(model.window.sidebar.swarms[si].id),
+            tab: Some(model.window.sidebar.swarms[si].tabs[ti].id),
+            focused: Some(focused),
+        };
+    }
+    Ok(model)
+}
+fn mini(v: &Value, r: Rect, focus: &str, ctx: &DrawCtx, out: &mut DrawList) -> Result<()> {
+    let tree = tree(v)?;
+    let colors: BTreeMap<_, _> = leaves(v).into_iter().map(|v| (id(v), v)).collect();
+    out.clip(r, [TOKENS.radius.grid as f32; 4]);
+    out.rect(r, 0., ctx.color(Color::hex(ctx.theme.palette().line)));
+    for (id, rect) in solve_split(&tree, r, 1.).panes {
+        let v = colors[&id];
+        let c = if s(v, "key") == focus {
+            Color::hex(ctx.theme.palette().accent)
+        } else {
+            match s(v, "state") {
+                "waiting" => Color::hex(TOKENS.color.state.waiting)
+                    .mix(Color::hex(ctx.theme.palette().surface_2), 0.25),
+                "errored" => Color::hex(TOKENS.color.state.errored)
+                    .mix(Color::hex(ctx.theme.palette().surface_2), 0.25),
+                _ => Color::hex(ctx.theme.palette().surface_2),
+            }
+        };
+        out.rect(rect, 0., ctx.color(c));
+    }
+    out.unclip();
+    Ok(())
+}
+fn tab(
+    v: &Value,
+    r: Rect,
+    expanded: bool,
+    focused: &str,
+    ctx: &DrawCtx,
+    out: &mut DrawList,
+) -> Result<()> {
+    let seats = tab_seats(v);
+    let row = ctx.density.tokens().row_h as f32;
+    if seats.len() == 1 {
+        seat_row(
+            &seat(seats[0], SwarmId::from_u128(1), ctx.theme),
+            Rect::new(r.x, r.y, r.w, row),
+            s(seats[0], "key") == focused,
+            s(v, "shortcut").trim_start_matches('⌘').parse().ok(),
+            ctx,
+            out,
+        );
+        return Ok(());
+    }
+    let h = ctx.density.tokens().tab_h as f32;
+    text(
+        out,
+        Rect::new(
+            r.x + ctx.density.tokens().pad_x as f32,
+            r.y + (h - 14.) / 2.,
+            r.w - 86.,
+            14.,
+        ),
+        s(v, "name"),
+        ctx.density.tokens().font_small as f32,
+        ctx.muted(),
+        400,
+    );
+    mini(
+        &v["tree"],
+        Rect::new(r.right() - 32., r.y + (h - 16.) / 2., 24., 16.),
+        focused,
+        ctx,
+        out,
+    )?;
+    if !s(v, "shortcut").is_empty() {
+        Badge {
+            label: s(v, "shortcut"),
+            selected: false,
+            mono: true,
+        }
+        .draw(
+            Rect::new(r.right() - 68., r.y + (h - 16.) / 2., 28., 16.),
+            ctx,
+            out,
+        );
+    }
+    if expanded {
+        for (i, v) in seats.iter().enumerate() {
+            seat_row(
+                &seat(v, SwarmId::from_u128(1), ctx.theme),
+                Rect::new(
+                    r.x + ctx.density.tokens().pad_x as f32 + 2.,
+                    r.y + h + i as f32 * row,
+                    r.w - ctx.density.tokens().pad_x as f32 - 2.,
+                    row,
+                ),
+                s(v, "key") == focused,
+                None,
+                ctx,
+                out,
+            );
+        }
+    } else {
+        for (i, v) in seats.iter().take(6).enumerate() {
+            let st = seat(v, SwarmId::from_u128(1), ctx.theme);
+            StateGlyph {
+                activity: st.activity,
+                grade: st.grade,
+                color: ctx.fg(),
+            }
+            .draw(
+                Rect::new(
+                    r.right() - 134. + i as f32 * 10.,
+                    r.y + (h - 9.) / 2.,
+                    9.,
+                    9.,
+                ),
+                ctx,
+                out,
+            );
+        }
+    }
+    Ok(())
+}
+fn sidebar(call: &Call, ctx: &DrawCtx, out: &mut DrawList) -> Result<()> {
+    let data = call.args.first().ok_or("sidebar model missing")?;
+    let opts = call.args.get(1).unwrap_or(&Value::Null);
+    let _validated = model(data, opts, ctx.theme)?;
+    let r = call.rect.rect();
+    out.rect(r, 0., Color::hex(ctx.theme.palette().sidebar));
+    out.clip(r, [0.; 4]);
+    let header = call.header;
+    if header > 0. {
+        icon(
+            out,
+            Rect::new(r.x + 10., r.y + (header - 14.) / 2., 14., 14.),
+            "sidebarfox",
+            ctx.muted(),
+        );
+        text(
+            out,
+            Rect::new(r.x + 32., r.y + (header - 14.) / 2., r.w - 64., 14.),
+            "bboxy450-term",
+            12.,
+            ctx.muted(),
+            400,
+        );
+        icon(
+            out,
+            Rect::new(r.right() - 24., r.y + (header - 14.) / 2., 14., 14.),
+            "gear",
+            ctx.muted(),
+        );
+    }
+    let mut y = r.y + header;
+    let row = ctx.density.tokens().row_h as f32;
+    let th = ctx.density.tokens().tab_h as f32;
+    let owner = array(&data["spaces"]).iter().find(|sp| {
+        array(&sp["tabs"]).iter().any(|t| {
+            tab_seats(t)
+                .iter()
+                .any(|v| s(v, "key") == s(opts, "focusedKey"))
+        })
+    });
+    let current = opts["currentSpace"]
+        .as_str()
+        .or_else(|| owner.map(|sp| s(sp, "key")))
+        .unwrap_or("");
+    for sp in array(&data["spaces"]) {
+        let open = contains(&opts["openSpaces"], s(sp, "key"));
+        let dim = if current.is_empty() || s(sp, "key") == current {
+            *ctx
+        } else {
+            ctx.dimmed()
+        };
+        let count: usize = array(&sp["tabs"]).iter().map(|t| tab_seats(t).len()).sum();
+        let mut h = 4. + STYLE.spacing.band as f32 + if open { 3. + 4. + 4. + 6. + th } else { 3. };
+        if open {
+            for t in array(&sp["tabs"]) {
+                let n = tab_seats(t).len();
+                h += if n == 1 {
+                    row
+                } else {
+                    th + if contains(
+                        &opts["openTabs"],
+                        &format!("{}/{}", s(sp, "key"), s(t, "name")),
+                    ) {
+                        n as f32 * row
+                    } else {
+                        0.
+                    }
+                };
+            }
+            if !array(&sp["participants"]).is_empty() {
+                h += 6. + th + array(&sp["participants"]).len() as f32 * row;
+            }
+        }
+        let card = Rect::new(r.x + 6., y, r.w - 12., h);
+        let col = color(sp, ctx.theme);
+        let c = Color::hsl(col.hue, col.saturation / 100., col.lightness / 100.);
+        panel(out, card, &dim);
+        out.clip(card, [STYLE.radius.card as f32; 4]);
+        band(
+            s(sp, "name"),
+            count,
+            Rect::new(
+                card.x + 4.,
+                card.y + 4.,
+                card.w - 8.,
+                STYLE.spacing.band as f32,
+            ),
+            c,
+            &dim,
+            out,
+        );
+        if open {
+            let mut ty = card.y + 4. + STYLE.spacing.band as f32 + 3.;
+            for t in array(&sp["tabs"]) {
+                let expanded = contains(
+                    &opts["openTabs"],
+                    &format!("{}/{}", s(sp, "key"), s(t, "name")),
+                );
+                let n = tab_seats(t).len();
+                tab(
+                    t,
+                    Rect::new(card.x + 6., ty, card.w - 12., th),
+                    expanded,
+                    s(opts, "focusedKey"),
+                    &dim,
+                    out,
+                )?;
+                ty += if n == 1 {
+                    row
+                } else {
+                    th + if expanded { n as f32 * row } else { 0. }
+                };
+            }
+            new_seat(Rect::new(card.x + 6., ty + 6., card.w - 12., th), &dim, out);
+            ty += th + 6.;
+            if !array(&sp["participants"]).is_empty() {
+                text(
+                    out,
+                    Rect::new(card.x + 12., ty + 6., card.w - 24., th),
+                    "Shadows",
+                    11.,
+                    dim.muted(),
+                    600,
+                );
+                ty += 6. + th;
+                for ph in array(&sp["participants"]) {
+                    seat_row(
+                        &seat(ph, SwarmId::from_u128(1), ctx.theme),
+                        Rect::new(card.x + 6., ty, card.w - 12., row),
+                        false,
+                        None,
+                        &dim,
+                        out,
+                    );
+                    ty += row;
+                }
+            }
+        }
+        out.rect(
+            Rect::new(
+                card.x,
+                card.bottom() - if open { 4. } else { 3. },
+                card.w,
+                if open { 4. } else { 3. },
+            ),
+            0.,
+            ctx.identity(c),
+        );
+        out.unclip();
+        y += h + TOKENS.layout.cohort_gap as f32;
+    }
+    if opts.get("onNewSpace").is_some() {
+        panel(out, Rect::new(r.x + 6., y, r.w - 12., 40.), ctx);
+        text(
+            out,
+            Rect::new(r.x + 16., y + 10., r.w - 32., 20.),
+            "+  new swarm",
+            12.5,
+            ctx.muted(),
+            500,
+        );
+    }
+    out.unclip();
+    Ok(())
+}
+fn card(r: Rect, title: &str, rows: &[String], ctx: &DrawCtx, out: &mut DrawList) {
+    panel(out, r, ctx);
+    text(
+        out,
+        Rect::new(r.x + 16., r.y + 12., r.w - 32., 22.),
+        title,
+        16.,
+        ctx.fg(),
+        500,
+    );
+    for (i, line) in rows.iter().enumerate() {
+        let y = r.y + 46. + i as f32 * 26.;
+        if y + 20. <= r.bottom() {
+            text(
+                out,
+                Rect::new(r.x + 16., y, r.w - 32., 20.),
+                line.as_str(),
+                12.,
+                ctx.muted(),
+                400,
+            );
+        }
+    }
+}
+fn graph(v: &Value, r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
+    out.rect(r, 0., Color::hex(ctx.theme.palette().bg));
+    let mut y = r.y + 14.;
+    let x = r.x + 16.;
+    let w = r.w - 32.;
+    let agents: Vec<_> = array(&v["seats"])
+        .iter()
+        .map(|st| {
+            format!(
+                "{}   {}   {}",
+                st["name"].as_str().unwrap_or(""),
+                st["role"].as_str().unwrap_or(""),
+                array(&st["tasks"])
+                    .iter()
+                    .map(|t| format!("{} · {}", s(t, "title"), s(t, "state")))
+                    .collect::<Vec<_>>()
+                    .join(" · ")
+            )
+        })
+        .collect();
+    let h = 66. + agents.len() as f32 * 26.;
+    card(Rect::new(x, y, w, h), "Agents", &agents, ctx, out);
+    y += h + 14.;
+    let mut work = Vec::new();
+    for e in array(&v["epics"]) {
+        work.push(format!("EPIC  {}", s(e, "title")));
+        for t in array(&e["items"]) {
+            work.push(format!(
+                "    {}   {}   {}",
+                s(t, "state"),
+                s(t, "title"),
+                s(t, "assignee")
+            ));
+            for a in array(&t["artifacts"]) {
+                work.push(format!(
+                    "        {}   {}   {}",
+                    s(a, "kind"),
+                    s(a, "ref"),
+                    s(a, "digest")
+                ));
+            }
+        }
+    }
+    let h = 66. + work.len() as f32 * 26.;
+    card(Rect::new(x, y, w, h), "Work tree", &work, ctx, out);
+    y += h + 14.;
+    if !v["subscriptions"].is_null() {
+        let rows = subscriptions(&v["subscriptions"]);
+        let h = 66. + rows.len() as f32 * 26.;
+        card(Rect::new(x, y, w, h), "Subscriptions", &rows, ctx, out);
+        y += h + 14.;
+    }
+    if !v["provenance"].is_null() {
+        let rows = provenance(&v["provenance"]);
+        let h = 66. + rows.len() as f32 * 26.;
+        card(Rect::new(x, y, w, h), "Provenance", &rows, ctx, out);
+        y += h + 14.;
+    }
+    let rows: Vec<_> = array(&v["history"])
+        .iter()
+        .map(|a| {
+            format!(
+                "{}   {}   {}   {}   {}",
+                s(a, "time"),
+                s(a, "seat"),
+                s(a, "event"),
+                s(a, "ref"),
+                s(a, "grade")
+            )
+        })
+        .collect();
+    card(
+        Rect::new(x, y, w, 66. + rows.len() as f32 * 26.),
+        "Artifact history",
+        &rows,
+        ctx,
+        out,
+    );
+}
+fn subscriptions(v: &Value) -> Vec<String> {
+    array(v)
+        .iter()
+        .map(|r| {
+            format!(
+                "{}   {}",
+                s(r, "seat"),
+                array(&r["patterns"])
+                    .iter()
+                    .map(|p| format!(
+                        "{}{}",
+                        s(p, "pattern"),
+                        if p["auto"] == true { "  AUTO" } else { "" }
+                    ))
+                    .collect::<Vec<_>>()
+                    .join("   ")
+            )
+        })
+        .collect()
+}
+fn provenance(v: &Value) -> Vec<String> {
+    array(&v["items"])
+        .iter()
+        .flat_map(|i| {
+            [
+                format!(
+                    "{}  {}  created by {} · updated by {}",
+                    s(i, "type"),
+                    s(i, "title"),
+                    s(i, "created_by"),
+                    s(i, "updated_by")
+                ),
+                s(i, "derived_from").into(),
+                format!("{}  {}", s(&i["digest"], "content"), s(&i["digest"], "by")),
+            ]
+        })
+        .chain(array(&v["log"]).iter().map(|l| {
+            format!(
+                "{}   {}   {}{}",
+                s(l, "hash"),
+                s(l, "time"),
+                s(l, "text"),
+                if l["checkpoint"] == true {
+                    "signed daily checkpoint"
+                } else {
+                    ""
+                }
+            )
+        }))
+        .collect()
+}
+
+pub fn draw(case: &Case, ctx: &DrawCtx, out: &mut DrawList) -> Result<bool> {
+    let Some(value) = &case.fixture else {
+        return Ok(false);
+    };
+    let capture: Capture = serde_json::from_value(value.clone())?;
+    if capture.version != 1 {
+        return Err("unsupported web fixture version".into());
+    }
+    let mut handled = false;
+    if case.component == "sidebar" {
+        let phone = case.state == "phone sheet";
+        let frame = Rect::new(
+            if phone {
+                (case.width as f32 - 320.) / 2.
+            } else {
+                14.
+            },
+            14.,
+            if phone { 320. } else { case.width as f32 - 28. },
+            case.height as f32 - 28.,
+        );
+        out.push(Prim::Rect {
+            rect: frame,
+            radii: [if phone { 28. } else { 0. }; 4],
+            fill: Color::hex(ctx.theme.palette().navy),
+            stroke: Some((1., Color::hex(ctx.theme.palette().line))),
+            inner_highlight: None,
+            shadow: None,
+        });
+    }
+    if case.component.starts_with("showcase") {
+        titlebar(
+            Rect::new(0., 0., case.width as f32, STYLE.spacing.title_bar as f32),
+            ctx,
+            out,
+        );
+    }
+    let names: &[&str] = match case.component.as_str() {
+        "sidebar" | "showcase-3" | "showcase-15" => &["sidebar", "pane"],
+        "seat_row" => &["seatRow"],
+        "tab_row" => &["tabRow"],
+        "mini_grid" => &["miniGrid"],
+        "pane" | "title_strip" => &["pane", "seatRow"],
+        "graph_tab" => &["graphPage"],
+        "swarm_card" => &["sidebar"],
+        "provenance_card" => &["provenanceCard"],
+        "subscriptions_card" => &["subscriptionsCard"],
+        _ => &[],
+    };
+    let dim = if case.state == "unfocused" {
+        ctx.dimmed()
+    } else {
+        *ctx
+    };
+    for call in capture
+        .calls
+        .iter()
+        .filter(|c| names.contains(&c.name.as_str()))
+    {
+        let v = call.args.first().unwrap_or(&Value::Null);
+        let opts = call.args.get(1).unwrap_or(&Value::Null);
+        let r = call.rect.rect();
+        match call.name.as_str() {
+            "sidebar" => sidebar(call, &dim, out)?,
+            "pane" => pane(
+                &seat(v, SwarmId::from_u128(1), ctx.theme),
+                r,
+                opts["focused"] == true,
+                &dim,
+                out,
+            ),
+            "seatRow" => seat_row(
+                &seat(v, SwarmId::from_u128(1), ctx.theme),
+                r,
+                opts["focused"] == true,
+                s(opts, "shortcut").trim_start_matches('⌘').parse().ok(),
+                &dim,
+                out,
+            ),
+            "tabRow" => tab(
+                v,
+                r,
+                opts["expanded"] == true,
+                s(opts, "focusedKey"),
+                &dim,
+                out,
+            )?,
+            "miniGrid" => mini(
+                v,
+                r,
+                call.args.get(1).and_then(Value::as_str).unwrap_or(""),
+                &dim,
+                out,
+            )?,
+            "graphPage" => {
+                out.clip(r, [0.; 4]);
+                graph(v, r, &dim, out);
+                out.unclip();
+            }
+            "provenanceCard" => card(r, "Provenance", &provenance(v), &dim, out),
+            "subscriptionsCard" => card(r, "Subscriptions", &subscriptions(v), &dim, out),
+            _ => continue,
+        }
+        handled = true;
+    }
+    Ok(handled)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeSet;
+    #[test]
+    fn web_model_uses_real_keys_trees_ownership_and_observation_axes() {
+        let data = serde_json::json!({"spaces":[{"key":"space0","name":"term","tabs":[{"name":"gpu","tree":{"dir":"v","a":{"key":"a"},"b":{"key":"b"}},"seats":[{"key":"a","name":"Nyx","harness":"codex","state":"waiting","grade":"shim","waitKind":"auth","where":"ssh","host":"rig"},{"key":"b","name":"Rook","harness":"codex","state":"active"}]}]}]});
+        let opts =
+            serde_json::json!({"openSpaces":["space0"],"openTabs":["space0/gpu"],"focusedKey":"b"});
+        let m = model(&data, &opts, Theme::Dark).unwrap();
+        assert_eq!(m.seats.len(), 2);
+        assert_eq!(m.window.stage.focused, Some(SeatId::from_u128(ident("b"))));
+        let a = &m.seats[&SeatId::from_u128(ident("a"))];
+        assert_eq!(a.grade, Grade::Shim);
+        assert_eq!(a.activity, Activity::Waiting(WaitKind::Auth));
+        assert_eq!(a.where_, Where::Ssh { host: "rig".into() });
+        assert!(m.window.sidebar.swarms[0].tabs[0].expanded);
+        assert_eq!(
+            m.window.sidebar.swarms[0].tabs[0]
+                .tree
+                .leaves()
+                .into_iter()
+                .collect::<BTreeSet<_>>(),
+            m.seats.keys().copied().collect()
+        );
+    }
+}

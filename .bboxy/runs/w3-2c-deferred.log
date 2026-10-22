@@ -1,0 +1,7 @@
+Oracle reorder 875ca8b4-c5e8-401f-9e2f-4e30416076dc observed 2026-10-21 18:03 PDT.
+Stopped W3.2c steps 1-3. Draft source and its logs preserved locally in target/w3-2c-deferred/all-drafts.patch and untracked-drafts.tar.gz; neither is in Cargo or the commit.
+Patch SHA-256: 054383462c80694b742a30446b818bdd7bedda9e49a94d4f102af5b5e56a7b0c
+Archive SHA-256: d0a83695e4ffc089654710beb51f7c148e7afd04d3a2d36ff038fd3b86680a18
+Parking used no stash or index reset and restored no other agent files. Step-2 verification terminated; its partial output is not proof.
+
+Later git pull --ff-only triggered configured autostash 9371f28 and applied it cleanly. git diff --exit-code 9371f28 -- crates/bboxybook crates/bbt-ui-model scripts/parity.sh = 0. Future syncs use -c merge.autoStash=false -c rebase.autoStash=false.

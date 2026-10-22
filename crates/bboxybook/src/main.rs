@@ -42,7 +42,7 @@ fn run() -> Result<()> {
                 let shared=PathBuf::from("target/parity");
                 if shared.join("cases.json").exists() {
                     let reference:Vec<gallery::Case>=serde_json::from_str(&fs::read_to_string(shared.join("cases.json"))?)?;
-                    for case in &mut cases {if let Some(r)=reference.iter().find(|r|r.relative()==case.relative()){case.width=r.width;case.height=r.height;}}
+                    for case in &mut cases {if let Some(r)=reference.iter().find(|r|r.relative()==case.relative()){case.width=r.width;case.height=r.height;case.fixture=r.fixture.clone();}}
                     println!("Using existing target/parity web captures; scripts/parity.sh refreshes them.");
                     parity::render(&out,&cases)?;parity::compare_paths(&report,&cases,"../../parity/web","..")?;
                     if shared.join("capture.json").exists(){fs::copy(shared.join("capture.json"),report.join("capture.json"))?;}

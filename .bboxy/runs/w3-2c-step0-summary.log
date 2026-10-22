@@ -1,0 +1,16 @@
+W3.2c step 0: scripts/parity.sh exit 0
+1,664 web captures, 0 script exceptions; 1,664 native PNGs (Apple M4 Metal)
+1,398 over tolerance; 266 within (W3.2b: 1,406 / 258).
+Same inputs: captured C.sidebar gives term 3 / winnow 6 / ontology 1; C.pane frame is present with blank body. Graph/provenance/subscription inputs come from frozen fixtures.js JSON.
+Outer lab fixture rectangles are shared; each native component still lays out/draws its contents.
+Ten worst, one per component; triplets under web/, native/, diff/:
+graph_tab/unfocused-compact-dark.png: 93.76%
+launcher/typed-z-comfortable-light.png: 82.63%
+showcase-15/normal-compact-dark.png: 80.93%
+title_strip/row-pane-breathe-together-compact-dark.png: 80.73%
+settings_tab/cloud-compact-light.png: 76.85%
+tokens/seat-colours-comfortable-dark.png: 74.03%
+logo/identity-png-comfortable-light.png: 56.61%
+provenance_card/unfocused-comfortable-dark.png: 53.94%
+pane/unfocused-touch-light.png: 49.90%
+showcase-3/normal-compact-dark.png: 48.83%

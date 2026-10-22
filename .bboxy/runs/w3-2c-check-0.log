@@ -1,0 +1,36 @@
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+warning: unused import: `BTreeSet`
+ --> crates/bboxybook/src/fixtures.rs:7:34
+  |
+7 | use std::collections::{BTreeMap, BTreeSet};
+  |                                  ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0618]: expected function, found `&serde_json::Value`
+   --> crates/bboxybook/src/fixtures.rs:154:197
+    |
+ 16 | fn s<'a>(v:&'a Value,key:&str)->&'a str { v[key].as_str().unwrap_or("") }
+    | --------------------------------------- this function of the same name is available here, but it's shadowed by the local binding
+...
+154 |     let agents:Vec<_>=array(&v["seats"]).iter().map(|s| format!("{}   {}   {}",s["name"].as_str().unwrap_or(""),s["role"].as_str().unwrap_or(""),array(&s["tasks"]).iter().map(|t|format!("{} · {}",s(t,"title"),s(...
+    |                                                      -                                                                                                                                              ^-----------
+    |                                                      |                                                                                                                                              |
+    |                                                      `s` has type `&serde_json::Value`                                                                                                              call expression requires function
+
+error[E0618]: expected function, found `&serde_json::Value`
+   --> crates/bboxybook/src/fixtures.rs:154:210
+    |
+ 16 | fn s<'a>(v:&'a Value,key:&str)->&'a str { v[key].as_str().unwrap_or("") }
+    | --------------------------------------- this function of the same name is available here, but it's shadowed by the local binding
+...
+154 |     let agents:Vec<_>=array(&v["seats"]).iter().map(|s| format!("{}   {}   {}",s["name"].as_str().unwrap_or(""),s["role"].as_str().unwrap_or(""),array(&s["tasks"]).iter().map(|t|format!("{} · {}",s(t,"title"),s(t,"state")))....
+    |                                                      -                                                                                                                                                           ^-----------
+    |                                                      |                                                                                                                                                           |
+    |                                                      `s` has type `&serde_json::Value`                                                                                                                           call expression requires function
+
+For more information about this error, try `rustc --explain E0618`.
+warning: `bboxybook` (lib) generated 1 warning
+error: could not compile `bboxybook` (lib) due to 2 previous errors; 1 warning emitted

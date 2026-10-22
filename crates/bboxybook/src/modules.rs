@@ -169,7 +169,7 @@ fn seat(i: usize) -> Seat {
     }
     s
 }
-fn text(
+pub(crate) fn text(
     out: &mut DrawList,
     r: Rect,
     value: impl Into<std::sync::Arc<str>>,
@@ -188,14 +188,14 @@ fn text(
         color,
     );
 }
-fn icon(out: &mut DrawList, r: Rect, name: &str, color: Color) {
+pub(crate) fn icon(out: &mut DrawList, r: Rect, name: &str, color: Color) {
     out.push(Prim::Icon {
         rect: r,
         icon: name.into(),
         color,
     });
 }
-fn panel(out: &mut DrawList, r: Rect, ctx: &DrawCtx) {
+pub(crate) fn panel(out: &mut DrawList, r: Rect, ctx: &DrawCtx) {
     out.push(Prim::Rect {
         rect: r,
         radii: [STYLE.radius.card as f32; 4],
@@ -400,7 +400,14 @@ pub fn mini_grid(
     }
     out.unclip();
 }
-fn band(name: &str, count: usize, r: Rect, color: Color, ctx: &DrawCtx, out: &mut DrawList) {
+pub(crate) fn band(
+    name: &str,
+    count: usize,
+    r: Rect,
+    color: Color,
+    ctx: &DrawCtx,
+    out: &mut DrawList,
+) {
     out.push(Prim::Gloss {
         rect: r,
         radii: [STYLE.radius.tile as f32; 4],
@@ -437,7 +444,7 @@ fn band(name: &str, count: usize, r: Rect, color: Color, ctx: &DrawCtx, out: &mu
         out,
     );
 }
-fn new_seat(r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
+pub(crate) fn new_seat(r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
     text(
         out,
         Rect::new(r.x + 8.0, r.y + 3.0, r.w - 45.0, r.h),
@@ -718,7 +725,7 @@ fn close_dot(r: Rect, hover: bool, ctx: &DrawCtx, out: &mut DrawList) {
         );
     }
 }
-fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
+pub(crate) fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
     let ctx = if focused { *ctx } else { ctx.dimmed() };
     let color = seat_color(s, &ctx);
     out.rect(r, 0.0, ctx.color(color));
@@ -804,7 +811,7 @@ fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
     );
     out.unclip();
 }
-fn pane(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
+pub(crate) fn pane(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
     let color = match s.activity {
         Activity::Errored => Color::hex(TOKENS.color.state.errored),
         _ => seat_color(s, ctx),
@@ -837,7 +844,7 @@ fn pane(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
         out,
     );
 }
-fn titlebar(r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
+pub(crate) fn titlebar(r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
     out.rect(
         r,
         0.0,

@@ -51,10 +51,10 @@ function fixture(c) {
     case 'responsible_chip':node=el('span',{class:'achip',style:'color:'+b.color+';border-color:'+b.color},b.name);break;
     case 'touched_count':node=el('span',{class:'touched'},icon('archive'),'2 artifacts');break;
     case 'wikilink_chip':node=C.renderLinks('[[renderer]]{derives:0.8}');break;
-    case 'provenance_card':node=C.provenanceCard(prov);node.style.width='700px';break;
-    case 'subscriptions_card':node=C.subscriptionsCard(subs);node.style.width='700px';break;
-    case 'external_lane':node=C.externalLane(external,{open:true});node.style.width='700px';break;
-    case 'graph_tab':node=C.graphPage({swarm:'term',seats:[s,{...b,tasks:[task]}],epics:[epic],history:[{time:'13:40',seat:b.name,event:'created',kind:'markdown',ref:'renderer.md',grade:'reported'}],provenance:prov,subscriptions:subs});break;
+    case 'provenance_card':node=C.provenanceCard(window.FIX?.provenance||prov);node.style.width='700px';break;
+    case 'subscriptions_card':node=C.subscriptionsCard(window.FIX?.subscriptions||subs);node.style.width='700px';break;
+    case 'external_lane':node=C.externalLane(window.FIX?.external||external,{open:true});node.style.width='700px';break;
+    case 'graph_tab':node=C.graphPage({swarm:'term',seats:window.FIX?.seats||[s,{...b,tasks:[task]}],epics:window.FIX?.epics||[epic],history:window.FIX?.history||[{time:'13:40',seat:b.name,event:'created',kind:'markdown',ref:'renderer.md',grade:'reported'}],provenance:window.FIX?.provenance||prov,subscriptions:window.FIX?.subscriptions||subs});break;
     default:throw Error('No web capture fixture for '+c.component);
   }
   if(c.state==='unfocused'){node.style.filter='saturate('+TOKENS.dim.saturate+')';node.style.opacity=TOKENS.dim.opacity;}

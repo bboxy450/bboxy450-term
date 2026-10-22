@@ -63,6 +63,8 @@ pub struct Case {
     pub width: u32,
     pub height: u32,
     pub checker: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fixture: Option<serde_json::Value>,
 }
 impl Case {
     pub fn relative(&self) -> String {
@@ -365,6 +367,7 @@ pub fn cases() -> Vec<Case> {
                             modules::height(&e.id, &state, d)
                         },
                         checker: e.checker,
+                        fixture: None,
                     });
                 }
             }
@@ -405,7 +408,9 @@ pub fn draw(case: &Case) -> Result<DrawList> {
             (bounds.h - 28.0).max(1.0),
         )
     };
-    modules::draw(&case.component, &case.state, rect, &ctx, &mut list)?;
+    if !crate::fixtures::draw(case, &ctx, &mut list)? {
+        modules::draw(&case.component, &case.state, rect, &ctx, &mut list)?;
+    }
     list.validate()?;
     Ok(list)
 }

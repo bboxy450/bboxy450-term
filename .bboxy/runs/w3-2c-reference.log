@@ -1,0 +1,5 @@
+W3.2c reference horizon
+Base: ux-prototype-v2
+Supplemental committed HEAD: cbc70dd
+fixtures.js: JSON evaluated from that frozen checkout
+Component input arguments exported with each capture, including outer fixture rectangles. Native component interiors still use native draw/layout. Terminal bodies remain blank by the brief.

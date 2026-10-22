@@ -1,3 +1,4 @@
+pub mod fixtures;
 pub mod gallery;
 pub mod modules;
 pub mod parity;

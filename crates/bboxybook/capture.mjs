@@ -5,6 +5,7 @@ import os from 'node:os';
 import {spawn,execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
+import vm from 'node:vm';
 const root=process.cwd(),out=path.resolve(process.argv[2]||'target/parity');
 const manifest=JSON.parse(await fs.readFile(process.argv[3]||path.join(out,'requested.json'),'utf8'));
 // Baseline components use the exact review tag. New built design entries are
@@ -17,6 +18,12 @@ for(const [rev,destRoot] of [['ux-prototype-v2',baseline],[head,supplemental]]){
     const dest=path.join(destRoot,file);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,execFileSync('git',['show',`${rev}:${file}`],{maxBuffer:16*1024*1024}));
   }
 }
+// fixtures.js is data-only JS. Evaluate the frozen, committed file in an empty
+// context and export JSON; no secret/user/browser state enters a fixture.
+const fixtureSource=await fs.readFile(path.join(supplemental,'lab/web/fixtures.js'),'utf8');
+const fixtureContext={window:{}};vm.runInNewContext(fixtureSource,fixtureContext,{timeout:1000});
+const sharedFixtures=JSON.parse(JSON.stringify(fixtureContext.window.FIX));
+await fs.writeFile(path.join(out,'fixtures.json'),JSON.stringify(sharedFixtures,null,2));
 const candidates=process.env.CHROME?[process.env.CHROME]:['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome','/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'];
 let binary;for(const p of candidates){try{await fs.access(p);binary=p;break;}catch{}}
 await fs.mkdir(out,{recursive:true});
@@ -47,6 +54,7 @@ try{
   ws=new WebSocket(tabs.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise((r,j)=>{ws.addEventListener('open',r,{once:true});ws.addEventListener('error',j,{once:true});});
   const cdp=new CDP(ws);await cdp.call('Page.enable');await cdp.call('Runtime.enable');
   const adapter=await fs.readFile(path.join(root,'crates/bboxybook/web-fixtures.js'),'utf8');
+  const captureInputs=await fs.readFile(path.join(root,'crates/bboxybook/capture-inputs.js'),'utf8');
   for(let i=0;i<manifest.length;i++){
     const c={...manifest[i]};const relative=`${c.component}/${c.slug}-${c.density}-${c.theme}.png`;cdp.errors=[];
     try{
@@ -54,7 +62,7 @@ try{
       await cdp.call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:c.theme}]});
       const page=c.page==='@component'?'seat-row.html':c.page;const reference=c.page==='@component'||(c.component==='settings_tab'&&c.state==='new harness')?supplemental:baseline;const url=new URL(pathToFileURL(path.join(reference,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
       url.searchParams.set('state',c.page==='@component'?'idle':c.state);url.searchParams.set('density',c.density);url.searchParams.set('theme',c.theme);
-      const init=await cdp.call('Page.addScriptToEvaluateOnNewDocument',{source:`try{localStorage.setItem('lab.theme',${JSON.stringify(c.theme)});localStorage.setItem('lab.density',${JSON.stringify(c.density)});localStorage.setItem('showcase.theme',${JSON.stringify(c.theme)});}catch{}`});
+      const init=await cdp.call('Page.addScriptToEvaluateOnNewDocument',{source:`window.FIX=${JSON.stringify(sharedFixtures)};${captureInputs}\ntry{localStorage.setItem('lab.theme',${JSON.stringify(c.theme)});localStorage.setItem('lab.density',${JSON.stringify(c.density)});localStorage.setItem('showcase.theme',${JSON.stringify(c.theme)});}catch{}`});
       await cdp.call('Page.navigate',{url:url.href});await cdp.call('Page.removeScriptToEvaluateOnNewDocument',{identifier:init.identifier});
       let ready=false;for(let j=0;j<80;j++){try{ready=await cdp.eval(`document.readyState==='complete' && !!window.C && !!document.querySelector(${JSON.stringify(c.selector)})`);}catch{}if(ready)break;await pause(25);}
       if(!ready)throw Error('lab page never became ready');
@@ -67,13 +75,14 @@ try{
       const rect=await cdp.eval(`(()=>{const n=document.querySelector(${JSON.stringify(c.selector)});const r=n.getBoundingClientRect();return {x:r.x+scrollX,y:r.y+scrollY,width:Math.ceil(r.width),height:Math.ceil(r.height)};})()`);
       if(!rect.width||!rect.height||rect.width>8192||rect.height>8192)throw Error(`unsupported capture bounds ${JSON.stringify(rect)}`);
       if(cdp.errors.length)throw Error(`script exceptions: ${JSON.stringify(cdp.errors)}`);
+      c.fixture=await cdp.eval(`bboxyCaptureInputs(${JSON.stringify(c.selector)})`);
       const shot=await cdp.call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{...rect,scale:1}});
       const dest=path.join(out,'web',relative);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,Buffer.from(shot.data,'base64'));
       c.width=rect.width;c.height=rect.height;captured.push(c);
     }catch(error){failures.push({case:relative,error:String(error)});captured.push(c);console.error(relative,String(error));}
     if((i+1)%100===0)console.log(`captured ${i+1}/${manifest.length}`);
   }
-  const hashes={};for(const name of ['components.js','lab.css','lab.js','tokens.js','showcase.js','showcase.html'])hashes[name]=createHash('sha256').update(await fs.readFile(path.join(supplemental,'lab/web',name))).digest('hex');
+  const hashes={};for(const name of ['components.js','lab.css','lab.js','tokens.js','showcase.js','showcase.html','fixtures.js'])hashes[name]=createHash('sha256').update(await fs.readFile(path.join(supplemental,'lab/web',name))).digest('hex');
   await fs.writeFile(path.join(out,'cases.json'),JSON.stringify(captured,null,2));
   await fs.writeFile(path.join(out,'capture.json'),JSON.stringify({status:failures.length?'partial':'captured',baseline:execFileSync('git',['rev-parse','ux-prototype-v2^{commit}'],{encoding:'utf8'}).trim(),supplementalReference:'@component entries and settings_tab/new harness use frozen committed HEAD lab components',revision:head,browser:version.Browser,profile:'isolated ephemeral profile',deviceScaleFactor:1,freeze:'CSS animation playback paused; no transcript normalization; original web page content retained',supplementalWebHashes:hashes,cases:manifest.length,failures},null,2));
   console.log(`web: ${captured.length-failures.length}/${manifest.length} captured; ${failures.length} failures`);

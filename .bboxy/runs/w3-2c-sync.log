@@ -1,0 +1,3 @@
+git pull --ff-only — exit 0, eda128f fast-forward; configured autostash 9371f28 created and applied.
+Tracked scoped content versus autostash tree: git diff --exit-code 9371f28 -- crates/bboxybook crates/bbt-ui-model scripts/parity.sh — exit 0.
+Untracked scoped files remained present. No stash dropped manually; no reset.

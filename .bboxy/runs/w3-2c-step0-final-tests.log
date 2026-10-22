@@ -1,0 +1,93 @@
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.05s
+     Running unittests src/lib.rs (target/debug/deps/bboxybook-0da14ffccfe931a4)
+
+running 4 tests
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running unittests src/main.rs (target/debug/deps/bboxybook-23179301d0cd4d6e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (target/debug/deps/fixtures-11becef9c2212462)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/render.rs (target/debug/deps/render-03d00cefbcf13cdf)
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.45s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_ui_model-81d82ebdec40f7a3)
+
+running 5 tests
+test draw::atoms::tests::dim_desaturates_content_and_preserves_identity ... ok
+test tokens::tests::density_and_theme_are_views_of_the_constants ... ok
+test draw::atoms::tests::glyphs_encode_grade_and_wait_kind_and_clips_balance ... ok
+test model::ids::tests::canonical_ulid_round_trip_and_overflow ... ok
+test tokens::tests::every_exported_web_token_matches_generated_fields ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/layout.rs (target/debug/deps/layout-b404aea3dad24f05)
+
+running 10 tests
+test phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame ... ok
+test row_box_allocates_fixed_measured_fill_and_weighted_flex ... ok
+test invalid_lengths_and_zero_flex_weights_stay_finite ... ok
+test text_shrinks_before_flex_and_column_boxes_share_the_policy ... ok
+test split_ratio_clamps_and_tiny_bounds_never_produce_negative_sizes ... ok
+test the_same_split_solver_supports_minigrid_and_banner_scales ... ok
+test compact_and_touch_use_their_token_heights_and_scroll_stays_local ... ok
+test sidebar_at_a_thousand_seats_only_allocates_the_visible_rows ... ok
+test sidebar_skips_closed_cards_outside_the_scroll_window ... ok
+test scene_fifteen_matches_the_tagged_lab_ratios_and_two_pixel_gutters ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/model.rs (target/debug/deps/model-5a2833591d580c7b)
+
+running 15 tests
+test duplicate_and_mismatched_tree_ids_are_rejected ... ok
+test mux_updates_do_not_locate_or_steal_focus ... ok
+test open_harness_role_class_and_color_override_are_preserved ... ok
+test detach_removes_empty_tabs_without_touching_other_seats ... ok
+test new_tab_uses_caller_id_and_preserves_the_remaining_order ... ok
+test move_within_one_split_recomputes_the_target_after_pruning ... ok
+test cross_swarm_move_is_an_explicit_error_per_grant_contract ... ok
+test expired_replaced_and_conflicting_undo_do_not_mutate_the_model ... ok
+test close_and_undo_restore_the_exact_split_and_ratio ... ok
+test placement_on_all_four_sides_is_half_and_collapses_the_source ... ok
+test prune_parent_and_replacement_match_lab_tree_algebra ... ok
+test reverse_undo_restores_multiple_closed_seats ... ok
+test settings_closes_directly_without_harness_grace ... ok
+test undo_keeps_a_sibling_subtrees_intervening_resize ... ok
+test undo_restores_a_removed_tab_at_its_original_index ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxybook
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui_model
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
