@@ -598,16 +598,22 @@
     const path = () => [...stack, ...scope().virt];
     const dive = it => { stack = [...path(), it]; q = ''; input.value = ''; sel = 0; draw(); };
     const climb = () => { if (!stack.length) return; stack = stack.slice(0, -1); q = ''; input.value = ''; sel = 0; draw(); };
-    const pick = (it, ev) => { if (!it) return; if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
+    // spawn cap (launcher_cap_notice): launch rows dim and refuse; Go to, Graph and Settings keep working
+    const isNav = it => !!(it.seat || it.swarm || it.graphOpen || it.settingsOpen || it.section === 'Navigate' || it.section === 'Swarms' || it.kind === 'Navigate' || it.kind === 'Open');
+    const capped = it => !!opts.cap && !isNav(it);
+    const flashCap = () => { const b = list.querySelector('.capnote'); if (b) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); } };
+    const pick = (it, ev) => { if (!it) return; if (capped(it) && !it.children) return flashCap(); if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
     function draw() {
       list.innerHTML = ''; crumbs.innerHTML = '';
       for (const c of path()) crumbs.append(el('span', { class: 'crumb' }, c.label));
       const items = matches();
+      if (opts.cap && !draw.once) { draw.once = true; const k = items.findIndex(x => !capped(x)); if (k >= 0 && capped(items[sel] || {})) sel = k; }
+      if (opts.cap) { const c = opts.cap; list.append(el('div', { class: 'capnote', role: 'status' }, el('b', {}, 'Spawn cap reached · ' + c.scope + (c.name ? ' ' + c.name : '') + ' · ' + c.used + ' of ' + c.limit), el('small', {}, (c.counts || 'running, starting and grace processes count') + ' · close a seat or raise the cap in Settings · Go to still works'))); }
       if (!items.length) list.append(el('div', { class: 'empty' }, 'nothing matches "' + q + '"'));
       let lastSec = null;
       items.forEach((it, i) => {
         if (it.section && it.section !== lastSec) { list.append(el('div', { class: 'sec' }, it.section)); lastSec = it.section; }
-        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : '') + (it.children ? ' parent' : ''), onclick: e => pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
+        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : '') + (it.children ? ' parent' : '') + (capped(it) ? ' capped' : ''), onclick: e => pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
         const label = el('span', { class: 'lbl' }); const L = it.label, qq = scope().qq, m = qq && norm(L).startsWith(qq) ? qq.length : 0;
         if (m) label.append(el('span', { class: 'm' }, L.slice(0, m)), L.slice(m)); else label.textContent = L;
         o.append(label, el('span', { class: 'sub' }, it.sub || ''), el('span', { class: 'kind' }, it.kind || it.hint || ''));

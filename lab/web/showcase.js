@@ -211,6 +211,10 @@
   addEventListener('pointerup', () => { if (lp) { clearTimeout(lp); lp = null; } });
   addEventListener('pointermove', e => { if (lp && (Math.abs(e.movementX) + Math.abs(e.movementY)) > 4) { clearTimeout(lp); lp = null; } });
   addEventListener('keydown', e => { if (e.shiftKey && e.key === 'F10' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); const r = f && document.querySelector('.seat-row[data-key="' + f.key + '"]'); if (r) { const b = r.getBoundingClientRect(); openRowMenu(f, b.left + 40, b.bottom + 2); } } });
+  // Spawn cap per swarm (launcher_cap_notice): running, starting (pending) and grace (closed) seats all count; Go to still works.
+  const SWARM_CAP = 8;
+  function capOf(sp) { sp = sp || space(); const run = sp.tabs.reduce((n, t) => n + (t.seats || []).filter(x => !x.settings && !x.graph).length, 0), start = (sp.pending || []).filter(p => p.status === 'accepted').length, grace = (sp.closed || []).length, used = run + start + grace;
+    return used >= SWARM_CAP ? { scope: 'swarm', name: sp.name, used, limit: SWARM_CAP, counts: run + ' running · ' + start + ' starting · ' + grace + ' in grace' } : null; }
   // O: the Oracle spawns a seat over MCP. A dashed pending row with a spinner until applied, then the seat takes a tab of its own.
   // Demo cycle: every fourth spawn is rejected (reason shown), every fifth ends unknown (spelled, not retried).
   let spawnN = 0;
@@ -220,6 +224,7 @@
     const p = { op: C.hash32('op' + n).toString(16).slice(0, 8), name: C.rollName(C.rng('spawn' + n)), harness: h, by: 'Vesper Greywind', status: 'accepted' };
     sp.pending = sp.pending || []; sp.pending.push(p); open.add(sp.key); render();
     setTimeout(() => {
+      const c = capOf(sp); if (c && c.used > SWARM_CAP) { p.status = 'rejected'; p.reason = 'spawn cap for this swarm is ' + SWARM_CAP + ' (' + c.counts + ')'; render(); return; }
       if (n % 4 === 0) { p.status = 'rejected'; p.reason = 'spawn cap for this swarm is 8'; render(); return; }
       if (n % 5 === 0) { p.status = 'unknown'; render(); return; }
       sp.pending = sp.pending.filter(x => x !== p);
@@ -352,7 +357,7 @@
       strip.append(el('span', { class: 'tcell ghost' }, '+ new seat'));
       back.append(el('div', { class: 'spot-banner' }, strip, el('div', { class: 'txt' }, el('div', { class: 'big' }, 'New tab'), el('div', { class: 'of' }, 'in ', el('b', { style: 'color:' + sp.color }, sp.name), ' · the new seat gets a tab of its own · type goto <name> to go somewhere'))));
     }
-    const pk = C.picker({ placeholder: ph, actions: acts, items, onClose: closeSpotlight, onPick: (it, name, mods, path) => {
+    const pk = C.picker({ placeholder: ph, actions: acts, items, cap: capOf(sp), onClose: closeSpotlight, onPick: (it, name, mods, path) => {
       if (it.graphOpen) { closeSpotlight(); openGraph(); return; }
       if (it.settingsOpen) { closeSpotlight(); openSettings(it.section); return; }
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }

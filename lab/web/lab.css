@@ -192,6 +192,13 @@ code, .mono { font-family: var(--font-mono); }
 .picker { width: 300px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.45); font-size: 13px; }
 .picker input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; padding: 10px 12px; border-bottom: 1px solid var(--line); }
 .picker input::placeholder { color: var(--fg-dim); }
+.picker .capnote { margin: 6px 6px 4px; padding: 7px 10px; border-radius: var(--r-row, 6px); background: color-mix(in srgb, var(--c-waiting) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-waiting) 35%, transparent); display: flex; flex-direction: column; gap: 2px; }
+.picker .capnote b { font-weight: 600; font-size: 12px; color: var(--fg); }
+.picker .capnote small { font-size: 10.5px; color: var(--fg-dim); line-height: 1.35; }
+.picker .capnote.flash { animation: capflash .5s var(--ease, ease); }
+@keyframes capflash { 30% { background: color-mix(in srgb, var(--c-waiting) 30%, transparent); transform: translateX(-2px); } 60% { transform: translateX(2px); } }
+.picker .opt.capped { opacity: .38; }
+.picker .opt.capped .num { visibility: hidden; }
 .picker .opt { display: flex; align-items: center; gap: 10px; padding: 7px 12px; color: var(--fg); }
 .picker .opt .role { margin-left: auto; font-size: 11px; color: var(--fg-dim); font-family: var(--font-mono); }
 .picker .opt.sel { background: var(--accent); color: #fff; }

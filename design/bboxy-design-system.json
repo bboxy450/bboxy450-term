@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 28,
+  "version": 29,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -574,7 +574,7 @@
     "launcher_cap_notice": {
       "purpose": "spawn cap per swarm reached",
       "anatomy": "launch rows dim and the banner subtitle names which cap (swarm, machine or account; reserved, starting and grace processes count); template launches may land partial or unknown and say so; reconnect never respawns",
-      "status": "drawn, not built"
+      "status": "built: amber banner atop the launcher list, \"Spawn cap reached · <scope> <name> · used of limit\" with what counts (running · starting · in grace) and the way out; launch rows dim to 38%, lose their number and refuse (the banner shakes); Go to, Graph, Settings stay live and the selection starts on the first live row; showcase caps a swarm at 8 and rejects Oracle spawns past it; picker opts.cap, picker.html?state=cap-swarm, cap-machine"
     },
     "purge_modal": {
       "purpose": "skip grace, terminate, and move the seat's ring, checkpoints and events to cold storage (never delete)",

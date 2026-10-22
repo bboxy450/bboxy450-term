@@ -153,7 +153,7 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 7 | pending row | MCP mutation status | BUILT: dashed row with spinner until applied; partial and unknown stay dashed with the outcome spelled; rejected is a closed-strip row with the reason; dismiss, never an automatic retry |
 | 8 | audit lines | Oracle audit log | DECIDED: a projection of the audit log, swarm-member scope; centred stream lines |
 | 9 | interrupt | seat_interrupt | BUILT: square stop glyph before the mute toggle for Oracle/operator only (⌘.); one-shot red sweep and "interrupt sent" on strip and row; the state waits for the seat |
-| 10 | spawn cap | per swarm | launch rows dim, banner says cap reached; Go to still works |
+| 10 | spawn cap | per swarm | BUILT: amber banner names the cap (swarm, machine or account) and what counts; launch rows dim and refuse; Go to, Graph and Settings stay live |
 | 11 | purge | GUI only | the one confirm modal, typed seat name; moves history to cold storage, never deletes (storage.md) |
 | 12 | sockets | seats are sockets | row menu "copy socket path" (pass 9); listener count BUILT: plug glyph + count at the row's right when > 0, counts only |
 | 13 | first run | identity (I2) | select and pin an existing GPG primary from the keyring, sign the bootstrap via gpg-agent; never create a root, never show words as a root; enrollment and Google deferred |
