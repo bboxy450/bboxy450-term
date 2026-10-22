@@ -52,7 +52,7 @@ W2.1 supervisor + PTY + lease ✔ (Nyx, f6cab17, 12 tests, 50-seat poller)
 R1 bbt-rt runtime ✔ (Sable, 29d5e62) ──▶ R2 app shell + hitch meter ✔ (be604d4; release encode 33 ms/frame, R2b profile running) ──▶ R3 terminal data path ∥ R4 120 Hz display link ──▶ R5 stall test
    └── R2 replaces W3.4's window/loop part; R3 consumes W2.1
 
-O1 bboxy450-rt docs+publish [Sable after R4] ──▶ (after W3.2d.7.10) O2 split public/private ──▶ O3 ui-core ──▶ O4 render ──▶ O5 ui ──▶ O6 book
+O1 bboxy450-rt docs+publish [DEFERRED, velocity first] ──▶ (after W3.2d.7.10) O2 split public/private ──▶ O3 ui-core ──▶ O4 render ──▶ O5 ui ──▶ O6 book
 
 W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
    └──▶ phase 2 cloud: SshProvider bootstrap, remote supervisor

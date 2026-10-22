@@ -4,7 +4,7 @@ Owner: Vesper Greywind <ORACLE>. Spec: [[open-source]]. One step per Executor as
 
 ## O1 — `bboxy450-rt` ready to publish
 
-Assignee: Sable Embertail (after R4). Allowed: `crates/bbt-rt/**` → renamed `crates/bboxy450-rt/**`, every `Cargo.toml` that names it, `Cargo.lock`, `clippy.toml`, `scripts/ui-lint.sh`, `.bboxy/runs/o1-*.log`, LICENSE-MIT and LICENSE-APACHE at the repo root and in the crate.
+DEFERRED (operator, 2026-10-22: velocity first; release when ready, never inside the build loop). Assignee when picked up: the runtime's owner. Allowed: `crates/bbt-rt/**` → renamed `crates/bboxy450-rt/**`, every `Cargo.toml` that names it, `Cargo.lock`, `clippy.toml`, `scripts/ui-lint.sh`, `.bboxy/runs/o1-*.log`, LICENSE-MIT and LICENSE-APACHE at the repo root and in the crate.
 1. Rename the crate to `bboxy450-rt` (package and directory); update its users (app, mux if any). Library name `bboxy450_rt`.
 2. Docs to [[open-source]] §2. README as crate doc, all sections, `deny(missing_docs)`, a doctest per entry point, and `examples/streaming_command.rs` plus `examples/ui_wake.rs`.
 3. Cargo metadata: description, repository `https://github.com/bboxy450/bboxy450-rt`, documentation, keywords (`async`, `ui`, `runtime`, `tokio`, `gui`), categories, readme, `rust-version`.
