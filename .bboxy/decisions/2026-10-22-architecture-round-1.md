@@ -113,6 +113,15 @@ briefs Executors from the specs, never from this note.
     replies. Wikilinks resolve to documents in the viewer. Rejected: a
     browser-based viewer (not our shape); waiting for L9.
 
+15. **CI is local (operator, 2026-10-22).** No cloud CI for now. `sh
+    scripts/ci.sh` is the gate: layering, build, test, ui-lint, parity, in
+    that order, exit 0 is green. Whoever merges to main runs it in the merging
+    worktree and records `sh scripts/ci.sh — exit 0 at <commit>` in the kb;
+    that line is the CI evidence. The GitHub workflow stays in the tree and
+    does nothing until billing is restored. Found by the Architect: no cloud
+    run has started since 07:27 UTC today. Rejected: deleting the workflow;
+    paying for cloud runners now (velocity, cost).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → W2.5 and
