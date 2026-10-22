@@ -6,9 +6,9 @@ use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use bbt_mux::protocol::{MAX_INPUT_BYTES, VERSION};
-use bbt_mux::transport::{read_frame, write_frame};
-use bbt_mux::*;
+use bbt_supervisor::protocol::{MAX_INPUT_BYTES, VERSION};
+use bbt_supervisor::transport::{read_frame, write_frame};
+use bbt_supervisor::*;
 
 const DEADLINE: Duration = Duration::from_secs(15);
 

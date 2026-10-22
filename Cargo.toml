@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
   "crates/bbt-core",
+  "crates/bbt-supervisor",
   "crates/bbt-mux",
   "crates/bbt-rt",
   "crates/bbt-render",
@@ -22,6 +23,7 @@ rust-version = "1.99"
 
 [workspace.dependencies]
 bbt-core = { path = "crates/bbt-core" }
+bbt-supervisor = { path = "crates/bbt-supervisor" }
 bbt-mux = { path = "crates/bbt-mux" }
 bbt-render = { path = "crates/bbt-render" }
 bbt-ui-model = { path = "crates/bbt-ui-model" }

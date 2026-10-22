@@ -1,0 +1,79 @@
+    Checking bitflags v2.13.2
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+    Checking nix v0.28.0
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+    Checking notify-types v2.1.0
+    Checking rusqlite v0.40.2
+    Checking notify v8.2.0
+    Checking portable-pty v0.9.0
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+error[E0433]: cannot find module or crate `mio` in this scope
+   --> crates/bbt-mux/src/adapters/hook.rs:405:22
+    |
+405 |     let mut stream = mio::net::UnixStream::connect(std::path::Path::new(&path))?;
+    |                      ^^^ use of unresolved module or unlinked crate `mio`
+    |
+    = help: if you wanted to use a crate named `mio`, use `cargo add mio` to add it to your `Cargo.toml`
+help: consider importing this struct
+    |
+  3 + use std::os::unix::net::UnixStream;
+    |
+help: if you import `UnixStream`, refer to it directly
+    |
+405 -     let mut stream = mio::net::UnixStream::connect(std::path::Path::new(&path))?;
+405 +     let mut stream = UnixStream::connect(std::path::Path::new(&path))?;
+    |
+
+warning: unused import: `Write`
+ --> crates/bbt-mux/src/logic.rs:4:21
+  |
+4 | use std::io::{Read, Write};
+  |                     ^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Path`
+ --> crates/bbt-mux/src/logic.rs:5:17
+  |
+5 | use std::path::{Path, PathBuf};
+  |                 ^^^^
+
+warning: unused imports: `Client`, `Failure`, `Frame`, and `Message`
+  --> crates/bbt-mux/src/logic.rs:29:25
+   |
+29 |     Action, Attachment, Client, Event, Failure, Frame, LaunchSpec, Message, Reply, SeatInfo,
+   |                         ^^^^^^         ^^^^^^^  ^^^^^              ^^^^^^^
+
+error[E0624]: method `validate` is private
+   --> crates/bbt-mux/src/adapters/launch.rs:244:10
+    |
+244 |     spec.validate()?;
+    |          ^^^^^^^^ private method
+    |
+   ::: crates/bbt-supervisor/src/protocol.rs:88:5
+    |
+ 88 |     pub(crate) fn validate(&self) -> Result<(), Failure> {
+    |     ---------------------------------------------------- private method defined here
+
+error[E0624]: method `sequence` is private
+   --> crates/bbt-mux/src/logic.rs:909:25
+    |
+909 |         let seq = event.sequence().unwrap();
+    |                         ^^^^^^^^ private method
+    |
+   ::: crates/bbt-supervisor/src/protocol.rs:355:5
+    |
+355 |     pub(crate) fn sequence(&self) -> Option<u64> {
+    |     -------------------------------------------- private method defined here
+
+warning: unused import: `Read`
+ --> crates/bbt-mux/src/logic.rs:4:15
+  |
+4 | use std::io::{Read, Write};
+  |               ^^^^
+
+Some errors have detailed explanations: E0433, E0624.
+For more information about an error, try `rustc --explain E0433`.
+warning: `bbt-mux` (lib) generated 4 warnings
+error: could not compile `bbt-mux` (lib) due to 3 previous errors; 4 warnings emitted

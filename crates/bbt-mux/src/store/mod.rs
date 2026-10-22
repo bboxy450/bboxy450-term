@@ -1,35 +1,11 @@
 //! Per-object durable storage. Call these blocking APIs on a logic/IO worker.
 
-use std::io;
 use std::path::{Path, PathBuf};
 
-pub mod blobs;
 pub mod events;
 pub mod sqlite;
 
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
-pub type Result<T> = std::result::Result<T, Error>;
-
-pub fn invalid(message: impl Into<String>) -> Error {
-    io::Error::new(io::ErrorKind::InvalidData, message.into()).into()
-}
-
-pub fn now_ms() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis()
-        .try_into()
-        .unwrap_or(u64::MAX)
-}
-
-pub fn digest(bytes: &[u8]) -> String {
-    use sha2::{Digest, Sha256};
-    Sha256::digest(bytes)
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
-}
+pub use bbt_supervisor::store::{Blobs, Error, Result, blobs, digest, invalid, now_ms};
 
 pub fn object_dir(root: &Path, name: &str) -> Result<PathBuf> {
     bbt_rt::assert_not_ui_thread();
@@ -59,12 +35,6 @@ pub trait Store {
     ) -> Result<Vec<Vec<rusqlite::types::Value>>>;
     fn alarm(&self, key: &str, deadline_ms: u64) -> Result<()>;
     fn due_alarms(&self, now_ms: u64) -> Result<Vec<String>>;
-}
-
-pub trait Blobs {
-    fn put(&self, bytes: &[u8]) -> Result<String>;
-    fn get(&self, digest: &str) -> Result<Vec<u8>>;
-    fn list(&self) -> Result<Vec<String>>;
 }
 
 pub trait Events {

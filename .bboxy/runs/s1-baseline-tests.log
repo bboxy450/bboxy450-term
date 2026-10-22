@@ -1,0 +1,642 @@
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxybook)
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy-firehose)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 33.02s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bboxy_firehose-63c5829281f64361)
+0 tests, 0 benchmarks
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bboxy_firehose-f07c2bc56be153b7)
+0 tests, 0 benchmarks
+     Running tests/cli.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/cli-5d18ad80b1d7622f)
+a_closed_downstream_pipe_stops_an_infinite_flood_cleanly: test
+byte_and_line_rate_caps_keep_the_exact_stream: test
+interrupting_slow_playback_restores_modes_without_waiting_for_the_rate: test
+invalid_inputs_fail_before_emitting_ansi: test
+listing_and_checks_never_emit_terminal_control_bytes: test
+named_scene_and_bounded_loops_are_exact_bytes: test
+playback_needs_no_corpus_files_in_its_working_directory: test
+rates_have_explicit_units_and_cumulative_deadlines: test
+real_pacing_preserves_scene_bytes: test
+seed_is_reproducible_and_reorders_the_complete_corpus: test
+
+10 tests, 0 benchmarks
+     Running tests/corpus.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/corpus-376d7329b241110c)
+frozen_semantic_screens_survive_arbitrary_pty_chunking: test
+originals_are_control_only_and_embedded_verbatim: test
+scenes_exercise_real_grid_effects_and_leave_modes_balanced: test
+
+3 tests, 0 benchmarks
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bboxy450_term-bae42abe31f634be)
+budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored: test
+display_link::tests::clock_uses_target_time_and_excludes_paused_time: test
+display_link::tests::core_video_timestamp_matches_sdk_abi: test
+
+3 tests, 0 benchmarks
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bboxybook-5c4a5443ad2e6442)
+atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics: test
+fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes: test
+gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list: test
+gallery::tests::registry_covers_exactly_the_built_design_entries: test
+parity::tests::first_report_resolves_relative_reference_directories: test
+parity::tests::historical_diffs_stay_visible_without_gating_the_current_design: test
+parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry: test
+parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass: test
+parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets: test
+styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds: test
+
+10 tests, 0 benchmarks
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bboxybook-5d73f0ba6e5994bd)
+0 tests, 0 benchmarks
+     Running tests/atoms.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/atoms-3799e45394f3a87f)
+every_atom_renders_across_density_and_theme_and_references_have_canonical_keys: test
+
+1 test, 0 benchmarks
+     Running tests/blending.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/blending-8b97d2b51899a3a1)
+chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage: test
+
+1 test, 0 benchmarks
+     Running tests/clipping.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/clipping-dbaaf15ad7616563)
+different_surfaces_use_their_own_clip_ranges: test
+every_material_obeys_each_rounded_ancestor_at_one_and_two_x: test
+retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square: test
+
+3 tests, 0 benchmarks
+     Running tests/components.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/components-40afce5a172c54a0)
+a_retained_group_keeps_material_coverage_and_filters_the_completed_layer: test
+component_cases_are_canonical_and_box_gallery_covers_materials_and_radii: test
+retained_image_preserves_asset_colour_rounding_and_group_filtering: test
+retained_scroll_content_moves_but_never_paints_outside_the_viewport: test
+
+4 tests, 0 benchmarks
+     Running tests/fixtures.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/fixtures-efc647b1aaad9d0e)
+sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web: test
+
+1 test, 0 benchmarks
+     Running tests/graphs.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/graphs-93d1ae1e2bf123d6)
+channel_layout_never_consumes_browser_svg_diagnostics: test
+former_graph_and_provenance_hand_painters_are_removed: test
+graph_layout_is_driven_by_records_not_browser_child_positions: test
+graph_matrix_covers_each_live_card_and_the_empty_swarm: test
+
+4 tests, 0 benchmarks
+     Running tests/icon_filter.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/icon_filter-41e0a2d98d59171a)
+icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed: test
+
+1 test, 0 benchmarks
+     Running tests/launchers.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/launchers-68a2bd9c0be0261d)
+a_machine_subtitle_with_room_stays_on_one_line: test
+geometry_uses_constructor_values_instead_of_child_dom_diagnostics: test
+matrix_has_every_current_lab_state_and_separate_historical_keys: test
+
+3 tests, 0 benchmarks
+     Running tests/materials.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/materials-882895ecdc9e4664)
+backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed: test
+material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels: test
+source_over_glow_keeps_destination_alpha: test
+
+3 tests, 0 benchmarks
+     Running tests/overlays.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/overlays-35428580bc61985a)
+layer_matrix_distinguishes_full_primitives_from_module_surfaces: test
+overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels: test
+
+2 tests, 0 benchmarks
+     Running tests/panes.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/panes-f60aa3caf3325910)
+legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted: test
+native_panes_ignore_child_web_bounds_and_font_diagnostics: test
+pane_registry_pairs_every_current_and_historical_case_without_collisions: test
+
+3 tests, 0 benchmarks
+     Running tests/render.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/render-73b8a3d462475425)
+every_registered_component_renders_on_metal: test
+
+1 test, 0 benchmarks
+     Running tests/seat_rows.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/seat_rows-d12b31d50050a9b4)
+child_dom_rectangles_and_css_metrics_are_diagnostics_only: test
+seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures: test
+
+2 tests, 0 benchmarks
+     Running tests/settings.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/settings-bae1f4098675e1e4)
+placeholder_settings_hand_painter_is_removed: test
+settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme: test
+settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css: test
+
+3 tests, 0 benchmarks
+     Running tests/shadow.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/shadow-64ca22367ad80b35)
+css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box: test
+positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass: test
+
+2 tests, 0 benchmarks
+     Running tests/streams.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/streams-a54d481701f99426)
+old_stream_painter_is_deleted_in_favor_of_the_retained_composition: test
+stream_layout_consumes_public_entries_but_never_browser_child_diagnostics: test
+stream_matrix_covers_every_current_state_and_labels_legacy_cases: test
+
+3 tests, 0 benchmarks
+     Running tests/styles.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/styles-8cde09381af54672)
+per_node_glow_drives_state_grade_and_seed_without_changing_the_box: test
+style_matrix_is_canonical_and_every_preset_renders_on_the_native_device: test
+
+2 tests, 0 benchmarks
+     Running tests/swarms.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/swarms-95ec33b44af68109)
+captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout: test
+old_swarm_card_and_sidebar_hand_painters_are_gone: test
+swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys: test
+
+3 tests, 0 benchmarks
+     Running tests/tabs.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/tabs-4288b6103d03aea4)
+all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions: test
+old_module_and_json_painters_delegate_to_the_retained_compositions: test
+tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height: test
+
+3 tests, 0 benchmarks
+     Running tests/title_bars.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/title_bars-6c8a30d12f8e0446)
+native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics: test
+titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only: test
+
+2 tests, 0 benchmarks
+     Running tests/widgets.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/widgets-0909d7807064508e)
+control_matrix_has_canonical_keys_and_all_constructor_families: test
+thousand_row_views_clip_output_and_the_table_header_stays_fixed: test
+transparent_layout_border_does_not_cut_the_background_fill: test
+
+3 tests, 0 benchmarks
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bbt_core-b1e7a4d64f276b8e)
+vendor::alacritty::grid::storage::tests::grow_after_zero: test
+vendor::alacritty::grid::storage::tests::grow_before_zero: test
+vendor::alacritty::grid::storage::tests::indexing: test
+vendor::alacritty::grid::storage::tests::indexing_above_inner_len: test
+vendor::alacritty::grid::storage::tests::initialize: test
+vendor::alacritty::grid::storage::tests::rotate: test
+vendor::alacritty::grid::storage::tests::rotate_wrap_zero: test
+vendor::alacritty::grid::storage::tests::shrink_after_zero: test
+vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero: test
+vendor::alacritty::grid::storage::tests::shrink_before_zero: test
+vendor::alacritty::grid::storage::tests::shrink_then_grow: test
+vendor::alacritty::grid::storage::tests::truncate_invisible_lines: test
+vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning: test
+vendor::alacritty::grid::storage::tests::with_capacity: test
+vendor::alacritty::grid::tests::accurate_size_hint: test
+vendor::alacritty::grid::tests::grow_reflow: test
+vendor::alacritty::grid::tests::grow_reflow_disabled: test
+vendor::alacritty::grid::tests::grow_reflow_multiline: test
+vendor::alacritty::grid::tests::scroll_down: test
+vendor::alacritty::grid::tests::scroll_down_with_history: test
+vendor::alacritty::grid::tests::scroll_up: test
+vendor::alacritty::grid::tests::shrink_reflow: test
+vendor::alacritty::grid::tests::shrink_reflow_disabled: test
+vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line: test
+vendor::alacritty::grid::tests::shrink_reflow_twice: test
+vendor::alacritty::grid::tests::test_iter: test
+vendor::alacritty::index::tests::add: test
+vendor::alacritty::index::tests::add_clamp: test
+vendor::alacritty::index::tests::add_grid_clamp: test
+vendor::alacritty::index::tests::add_none_clamp: test
+vendor::alacritty::index::tests::add_wrap: test
+vendor::alacritty::index::tests::location_ordering: test
+vendor::alacritty::index::tests::sub: test
+vendor::alacritty::index::tests::sub_clamp: test
+vendor::alacritty::index::tests::sub_grid_clamp: test
+vendor::alacritty::index::tests::sub_none_clamp: test
+vendor::alacritty::index::tests::sub_wrap: test
+vendor::alacritty::term::cell::tests::cell_size_is_below_cap: test
+vendor::alacritty::term::cell::tests::line_length_works: test
+vendor::alacritty::term::cell::tests::line_length_works_with_wrapline: test
+vendor::alacritty::term::tests::clear_saved_lines: test
+vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset: test
+vendor::alacritty::term::tests::clearing_viewport_keeps_history_position: test
+vendor::alacritty::term::tests::damage_cursor_movements: test
+vendor::alacritty::term::tests::damage_public_usage: test
+vendor::alacritty::term::tests::full_damage: test
+vendor::alacritty::term::tests::grid_serde: test
+vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos: test
+vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos: test
+vendor::alacritty::term::tests::input_line_drawing_character: test
+vendor::alacritty::term::tests::parse_cargo_version: test
+vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos: test
+vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos: test
+vendor::alacritty::term::tests::window_title: test
+vendor::vte::ansi::tests::contrast: test
+vendor::vte::ansi::tests::mixed_sync_escape: test
+vendor::vte::ansi::tests::parse_control_attribute: test
+vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing: test
+vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke: test
+vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors: test
+vendor::vte::ansi::tests::parse_invalid_number: test
+vendor::vte::ansi::tests::parse_invalid_rgb_colors: test
+vendor::vte::ansi::tests::parse_number_too_large: test
+vendor::vte::ansi::tests::parse_osc104_reset_all_colors: test
+vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon: test
+vendor::vte::ansi::tests::parse_osc104_reset_color: test
+vendor::vte::ansi::tests::parse_osc4_set_color: test
+vendor::vte::ansi::tests::parse_terminal_identity_csi: test
+vendor::vte::ansi::tests::parse_terminal_identity_esc: test
+vendor::vte::ansi::tests::parse_truecolor_attr: test
+vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors: test
+vendor::vte::ansi::tests::parse_valid_number: test
+vendor::vte::ansi::tests::parse_valid_rgb_colors: test
+vendor::vte::ansi::tests::parse_zsh_startup: test
+vendor::vte::ansi::tests::partial_sync_updates: test
+vendor::vte::ansi::tests::sync_bsu_with_esu: test
+vendor::vte::ansi::tests::sync_bursts_buffer: test
+vendor::vte::tests::c1s: test
+vendor::vte::tests::csi_reset: test
+vendor::vte::tests::csi_subparameters: test
+vendor::vte::tests::dcs_reset: test
+vendor::vte::tests::esc_reset: test
+vendor::vte::tests::esc_reset_intermediates: test
+vendor::vte::tests::exceed_max_buffer_size: test
+vendor::vte::tests::execute_anywhere: test
+vendor::vte::tests::intermediate_reset_on_dcs_exit: test
+vendor::vte::tests::invalid_utf8: test
+vendor::vte::tests::osc_bell_terminated: test
+vendor::vte::tests::osc_c0_st_terminated: test
+vendor::vte::tests::osc_containing_string_terminator: test
+vendor::vte::tests::params_buffer_filled_with_subparam: test
+vendor::vte::tests::parse_csi_max_params: test
+vendor::vte::tests::parse_csi_params_ignore_long_params: test
+vendor::vte::tests::parse_csi_params_leading_semicolon: test
+vendor::vte::tests::parse_csi_params_trailing_semicolon: test
+vendor::vte::tests::parse_dcs: test
+vendor::vte::tests::parse_dcs_max_params: test
+vendor::vte::tests::parse_empty_osc: test
+vendor::vte::tests::parse_long_csi_param: test
+vendor::vte::tests::parse_osc: test
+vendor::vte::tests::parse_osc_max_params: test
+vendor::vte::tests::parse_osc_with_utf8_arguments: test
+vendor::vte::tests::partial_invalid_utf8: test
+vendor::vte::tests::partial_invalid_utf8_split: test
+vendor::vte::tests::partial_utf8: test
+vendor::vte::tests::partial_utf8_into_esc: test
+vendor::vte::tests::partial_utf8_separating_utf8: test
+vendor::vte::tests::unicode: test
+
+108 tests, 0 benchmarks
+     Running tests/checkpoint.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/checkpoint-f3842e28b9c3449a)
+checkpoint_retains_an_incomplete_csi_and_utf8_codepoint: test
+incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook: test
+osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st: test
+red_foreground_survives_4096_bytes_and_a_durable_checkpoint: test
+saved_cursor_and_inactive_primary_screen_survive_checkpoint: test
+synchronized_output_buffer_and_preceding_character_survive_checkpoint: test
+viewport_only_drops_existing_history_even_while_the_primary_is_inactive: test
+
+7 tests, 0 benchmarks
+     Running tests/resize.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/resize-981fdf4ee7fde031)
+resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes: test
+
+1 test, 0 benchmarks
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bbt_mux-7679af85466e4f4b)
+ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte: test
+transport::tests::fragmented_and_coalesced_frames_round_trip: test
+transport::tests::rejects_lengths_versions_and_truncated_payloads: test
+
+3 tests, 0 benchmarks
+     Running tests/adapters.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/adapters-b413e24e213e1584)
+adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows: test
+adapters_codex_native_readiness_and_hooks_only_subagents: test
+adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect: test
+adapters_custom_harness_cadence_and_reported_idle_never_create_readiness: test
+adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields: test
+adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it: test
+adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallback: test
+adapters_native_claude_socket_writes_priority_without_claiming_consumption: test
+adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping: test
+adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary: test
+adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reuse: test
+
+11 tests, 0 benchmarks
+     Running tests/logic.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/logic-c1e845a5ae1c136b)
+a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity: test
+external_logic_fixture: test
+hard_killed_separate_logic_process_recovers_the_same_zsh_view: test
+logic_reconnect_keeps_same_supervisor_child_and_exact_screen: test
+real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap: test
+ring_capture_throughput_with_logic_running_and_stopped: test
+ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold: test
+ring_live_logic_catches_up_coalesced_notifications_after_a_stall: test
+ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap: test
+supervisor_expires_grace_after_logic_stops_and_undo_preserves_process: test
+view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically: test
+
+11 tests, 0 benchmarks
+     Running tests/measurements.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/measurements-b19f899b8adcbfdb)
+file_descriptors_at_200_live_seats_and_sqlite_objects: test
+recursive_cte_vs_petgraph_and_thousand_subscriber_fanout: test
+
+2 tests, 0 benchmarks
+     Running tests/messaging.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/messaging-a00ae020eab6c7c2)
+ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger: test
+arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route: test
+batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo: test
+filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants: test
+live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt: test
+live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence: test
+mute_holds_both_directions_reopens_and_releases_only_under_current_grants: test
+muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception: test
+nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen: test
+oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects: test
+persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart: test
+priority_fifo_four_to_one_and_burst_overflow_are_receiver_local: test
+recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen: test
+signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters: test
+supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes: test
+
+15 tests, 0 benchmarks
+     Running tests/ring.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/ring-18f3db86c427fdc6)
+ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects: test
+ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay: test
+ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor: test
+ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references: test
+ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes: test
+ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell: test
+ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again: test
+ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation: test
+ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index: test
+
+9 tests, 0 benchmarks
+     Running tests/storage_bus_index.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/storage_bus_index-04b1688e8c1c1e59)
+explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work: test
+grammar_matches_tokens_and_rejects_mid_path_tail_wildcards: test
+independent_streams_latest_snapshots_queue_gaps_and_nonretained_output: test
+index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite: test
+mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes: test
+registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart: test
+request_reply_has_no_responders_and_fanout_is_not_replayed: test
+signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database: test
+sqlite_objects_blobs_and_alarms_round_trip_across_reopen: test
+
+9 tests, 0 benchmarks
+     Running tests/supervisor.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/supervisor-20fb39860e0e3dfe)
+blocked_write_survives_fencing_and_becomes_unknown_without_replay: test
+fifty_seats_share_one_supervisor_poller: test
+killed_child_reports_generation_and_fences_replacement: test
+logic_and_writer_replacement_preserve_child_and_deduplicate_input: test
+natural_exit_follows_all_final_output: test
+slow_reader_backpressures_and_recovers_the_complete_output: test
+two_seats_interleave_without_cross_talk: test
+unix_socket_auth_framing_and_live_pty: test
+validation_rejects_stale_and_oversized_input: test
+zsh_echo_cwd_environment_and_resize: test
+
+10 tests, 0 benchmarks
+     Running tests/ui_guard.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/ui_guard-d25b5eee74bac9c1)
+ui_thread_is_rejected_before_creating_a_database_directory: test
+
+1 test, 0 benchmarks
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bbt_render-163650dca9d2dd2d)
+atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks: test
+chrome::diff::tests::tolerance_is_not_an_exact_byte_comparison: test
+chrome::group::tests::css_saturation_unpremultiplies_before_filter_and_preserves_destination_alpha: test
+chrome::group::tests::empty_and_identity_groups_are_transparent_and_use_the_same_device_at_scale: test
+chrome::group::tests::isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing: test
+chrome::group::tests::outer_and_child_clips_survive_group_splits_and_do_not_leak_to_following_paint: test
+chrome::group::tests::overlapping_children_dim_once_and_nested_groups_keep_painter_order: test
+chrome::materials::tests::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges: test
+chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected: test
+chrome::materials::tests::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels: test
+chrome::paths::tests::cubic_dash_geometry_is_finite_and_invalid_input_is_rejected: test
+chrome::paths::tests::gpu_path_preserves_order_clip_alpha_and_retained_geometry: test
+chrome::paths::tests::zero_length_round_dashes_render_dots_and_crossings_composite_once: test
+chrome::tests::colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops: test
+chrome::tests::glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct: test
+chrome::tests::growth_in_a_later_group_preserves_the_earlier_encoded_texture: test
+chrome::tests::immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes: test
+chrome::tests::sdf_rounding_stroke_and_clip_survive_gpu_readback: test
+chrome::text::tests::coretext_shapes_unicode_and_ellipsizes_at_the_given_width: test
+chrome::text::tests::italic_uses_real_family_faces_and_keeps_exact_ui_weight: test
+chrome::text::tests::numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold: test
+chrome::text::tests::optical_size_and_logical_shaping_do_not_change_with_backing_scale: test
+chrome::text::tests::quarter_pixel_phases_change_coverage_without_changing_logical_metrics: test
+chrome::text::tests::ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face: test
+chrome::text::tests::zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied: test
+
+25 tests, 0 benchmarks
+     Running tests/chrome_x_height.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/chrome_x_height-728ded5616039f8c)
+coretext_x_height_uses_the_requested_logical_font_and_rejects_invalid_size: test
+
+1 test, 0 benchmarks
+     Running tests/smoke.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/smoke-1774f0de69d4fa7c)
+asymmetric_glyph_is_upright: test
+coretext_ink_lands_only_in_expected_ascii_cells: test
+metal_quad_and_80_by_24_cell_backgrounds: test
+
+3 tests, 0 benchmarks
+     Running tests/variants.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/variants-21de918204dd8b13)
+generate_smoke_font_size_scale_theme_matrix: test
+
+1 test, 0 benchmarks
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bbt_rt-eab0c02ee80ae97a)
+meter::tests::bounded_samples_keep_lifetime_count_and_phase_hitches: test
+
+1 test, 0 benchmarks
+     Running tests/runtime.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/runtime-2235f151066fd222)
+cancel_kills_the_process_group_including_a_grandchild: test
+command_argv_cwd_env_stderr_and_exit_are_observable: test
+hundred_megabyte_command_finishes_with_a_bounded_view: test
+latest_and_view_ring_replace_old_values: test
+million_messages_per_second_never_wait_for_a_consumer: test
+singleton_runtime_and_ui_thread_guard: test
+spawn_failure_and_early_cancel_always_complete: test
+ten_thousand_dirty_sets_wake_once_until_drained: test
+
+8 tests, 0 benchmarks
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bbt_ui-510ee6e26c267f61)
+0 tests, 0 benchmarks
+     Running tests/atoms.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/atoms-9d241e1776b4bb16)
+a_waiting_kind_background_and_text_receive_dimming_once: test
+glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloured: test
+hairline_is_one_physical_pixel_and_spinner_phase_is_explicit: test
+icons_keep_the_requested_logical_name_bounds_and_tint: test
+kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice: test
+
+5 tests, 0 benchmarks
+     Running tests/components.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/components-c8bf79bdbd3f1244)
+a_retained_box_keeps_its_own_glow_state_until_after_its_content: test
+a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height: test
+box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout: test
+column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine: test
+image_has_square_intrinsics_a_baseline_and_validated_asset_geometry: test
+inline_middle_uses_the_parent_x_height_without_moving_the_content_box: test
+intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero: test
+mixed_text_runs_align_baselines_and_keep_selection_metadata: test
+mixed_type_rows_share_a_baseline: test
+natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps: test
+nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms: test
+path_uses_declared_viewport_and_keeps_its_retained_stroke: test
+scroll_offset_clamps_and_every_child_draw_is_clipped: test
+wrapping_and_ellipsis_use_the_allocated_width: test
+
+14 tests, 0 benchmarks
+     Running tests/flow.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/flow-81e5a0bfd285d6d7)
+default_text_and_fitting_flow_keep_the_stack_geometry: test
+flow_wraps_in_source_order_with_independent_gaps_and_shared_row_baselines: test
+nowrap_space_between_and_exact_fit_do_not_create_extra_rows: test
+text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_spaces: test
+
+4 tests, 0 benchmarks
+     Running tests/graphs.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/graphs-f91a512f737671e3)
+annotated_links_preserve_source_identity_display_and_weight: test
+channels_compose_published_edges_at_true_size_and_scroll_in_the_viewport: test
+graph_projects_live_and_blocked_tasks_without_inferring_authority: test
+provenance_and_history_respect_signed_flags_and_bounded_reverse_order: test
+subscriptions_wrap_at_available_width_without_changing_patterns: test
+work_tree_counts_terminal_items_and_keeps_artifacts_and_invariants_as_leaves: test
+
+6 tests, 0 benchmarks
+     Running tests/italic.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/italic-ff2b158ccbf725fb)
+italic_is_backward_compatible_and_reaches_measurement_and_draw_records: test
+
+1 test, 0 benchmarks
+     Running tests/launchers.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/launchers-1518a1e7a162887b)
+cap_keeps_navigation_available_and_dims_completed_launch_row_groups: test
+compact_selection_is_twenty_eight_percent_accent_over_surface: test
+legacy_launcher_delegates_without_hand_painting: test
+lexical_tiers_are_stable_and_every_word_must_match: test
+typed_virtual_descent_and_explicit_paths_select_the_same_placement_level: test
+
+5 tests, 0 benchmarks
+     Running tests/overlays.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/overlays-2cf47c5b95d7a841)
+blur_parameters_round_trip_and_keep_the_backdrop_separate_from_foreground_fill: test
+overlay_centres_the_panel_and_narrow_bounds_reflow_its_content: test
+
+2 tests, 0 benchmarks
+     Running tests/panes.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/panes-c1c1d94dee4df60f)
+pane_height_is_content_or_minimum_and_an_unavailable_gap_never_invents_a_range: test
+pane_preserves_history_content_and_capability_actions_while_disconnected: test
+
+2 tests, 0 benchmarks
+     Running tests/seat_rows.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/seat_rows-ff686fcd10406650)
+compact_artifact_row_preserves_natural_chip_height_outside_its_flow_slot: test
+flex_max_violation_freezes_before_redistributing_remaining_space: test
+module_sources_and_legacy_adapter_cannot_hand_draw_rows: test
+naturally_sized_text_is_not_truncated_by_float_subtraction: test
+seat_identity_authority_and_activity_stay_independent_when_name_shrinks: test
+subagents_filter_finished_work_and_overflow_after_seven: test
+
+6 tests, 0 benchmarks
+     Running tests/settings.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/settings-8cb384d7e6a17c53)
+account_projects_the_pinned_identity_and_recovery_limits_without_actions: test
+custom_role_order_and_defaults_drive_the_changed_marker: test
+draft_harness_never_claims_an_inferred_ready_state_can_submit: test
+records_roundtrip_with_ordered_custom_harnesses_and_roles: test
+
+4 tests, 0 benchmarks
+     Running tests/streams.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/streams-c38867a77b3084df)
+chronology_foreign_authority_and_unknown_delivery_remain_independent: test
+collapsed_epics_and_bounded_newest_first_external_lane_use_model_state: test
+ended_subagent_holds_the_target_and_hides_the_delivery_ladder: test
+message_body_reflows_with_width_without_changing_the_model: test
+routed_chips_keep_the_oracle_tint_visible_and_unknown_is_a_dashed_hollow_mark: test
+unread_marks_stay_round_and_compressed_chips_clip_their_text: test
+
+6 tests, 0 benchmarks
+     Running tests/style.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/style-b80712629601a6d3)
+glow_state_round_trips_and_rejects_invalid_shader_inputs: test
+malformed_override_data_fails_instead_of_silently_changing_the_style: test
+positioned_shadow_round_trips_validates_and_preserves_custom_defaults: test
+presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border: test
+token_references_and_nontrivial_overrides_round_trip_and_resolve_late: test
+
+5 tests, 0 benchmarks
+     Running tests/swarms.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/swarms-3d42449c58e704bb)
+a_literal_hyphen_is_a_wrap_opportunity_and_min_content_survives_flex_shrink: test
+caption_line_limit_preserves_two_lines_and_marks_truncated_content: test
+collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_material: test
+css_filter_uses_luminance_saturation_and_preserves_layout: test
+sidebar_scroll_and_phone_handle_use_the_supplied_viewport_without_reordering_cards: test
+unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper: test
+
+6 tests, 0 benchmarks
+     Running tests/tabs.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/tabs-adcc6529c380b35f)
+collapsed_rollup_is_stable_worst_first_and_capped: test
+deeply_nested_grids_shrink_to_zero_but_their_cells_keep_the_two_pixel_minimum: test
+expanded_tab_has_indented_seats_and_only_a_parent_shortcut: test
+grid_preserves_ratio_nested_axis_and_big_root_gap: test
+single_seat_reduces_to_the_accepted_row_and_keeps_its_children: test
+state_color_wins_over_focus_and_a_single_cell_keeps_the_grid_wrapper: test
+
+6 tests, 0 benchmarks
+     Running tests/title_bars.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/title_bars-b60b59ff4b0c71e2)
+blur_filters_only_identity_and_dots_while_sidebar_state_changes_its_toggle: test
+narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls: test
+old_titlebar_is_a_component_delegate: test
+
+3 tests, 0 benchmarks
+     Running tests/widgets.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/widgets-b61050cc0687317e)
+empty_input_keeps_its_control_height_and_invalid_input_keeps_its_error_caption: test
+list_and_table_allocate_only_visible_rows_and_keep_full_scroll_extent: test
+pressed_button_scales_visually_without_changing_its_flow_slot: test
+side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout: test
+
+4 tests, 0 benchmarks
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/bbt_ui_model-14da2b49c3f67f7f)
+draw::atoms::tests::dim_desaturates_content_and_preserves_identity: test
+draw::atoms::tests::glyphs_encode_grade_and_wait_kind_and_clips_balance: test
+draw::list::tests::group_filters_and_clip_scopes_validate_recursively: test
+draw::path::tests::cubic_bounds_include_interior_extrema_not_control_hull: test
+model::ids::tests::canonical_ulid_round_trip_and_overflow: test
+tokens::tests::density_and_theme_are_views_of_the_constants: test
+tokens::tests::every_exported_web_token_matches_generated_fields: test
+
+7 tests, 0 benchmarks
+     Running tests/layout.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/layout-e88fa5d1b7f5c014)
+compact_and_touch_use_their_token_heights_and_scroll_stays_local: test
+invalid_lengths_and_zero_flex_weights_stay_finite: test
+phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame: test
+row_box_allocates_fixed_measured_fill_and_weighted_flex: test
+scene_fifteen_matches_the_tagged_lab_ratios_and_two_pixel_gutters: test
+sidebar_at_a_thousand_seats_only_allocates_the_visible_rows: test
+sidebar_skips_closed_cards_outside_the_scroll_window: test
+split_ratio_clamps_and_tiny_bounds_never_produce_negative_sizes: test
+text_shrinks_before_flex_and_column_boxes_share_the_policy: test
+the_same_split_solver_supports_minigrid_and_banner_scales: test
+
+10 tests, 0 benchmarks
+     Running tests/model.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/model-db28b148df3c31b5)
+close_and_undo_restore_the_exact_split_and_ratio: test
+cross_swarm_move_is_an_explicit_error_per_grant_contract: test
+detach_removes_empty_tabs_without_touching_other_seats: test
+duplicate_and_mismatched_tree_ids_are_rejected: test
+expired_replaced_and_conflicting_undo_do_not_mutate_the_model: test
+move_within_one_split_recomputes_the_target_after_pruning: test
+mux_updates_do_not_locate_or_steal_focus: test
+new_tab_uses_caller_id_and_preserves_the_remaining_order: test
+open_harness_role_class_and_color_override_are_preserved: test
+placement_on_all_four_sides_is_half_and_collapses_the_source: test
+prune_parent_and_replacement_match_lab_tree_algebra: test
+reverse_undo_restores_multiple_closed_seats: test
+settings_closes_directly_without_harness_grace: test
+undo_keeps_a_sibling_subtrees_intervening_resize: test
+undo_restores_a_removed_tab_at_its_original_index: test
+
+15 tests, 0 benchmarks
+     Running tests/showcase_overrides.rs (/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/deps/showcase_overrides-5fbae7b26f131381)
+showcase_sets_no_token_backed_property: test
+the_guard_catches_an_override: test
+
+2 tests, 0 benchmarks
+   Doc-tests bboxy_firehose
+0 tests, 0 benchmarks
+   Doc-tests bboxybook
+0 tests, 0 benchmarks
+   Doc-tests bbt_core
+crates/bbt-core/src/lib.rs - (line 3): test
+crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2384): test
+
+2 tests, 0 benchmarks
+all doctests ran in 0.34s; merged doctests compilation took 0.21s
+   Doc-tests bbt_mux
+0 tests, 0 benchmarks
+   Doc-tests bbt_render
+0 tests, 0 benchmarks
+   Doc-tests bbt_rt
+0 tests, 0 benchmarks
+   Doc-tests bbt_ui
+0 tests, 0 benchmarks
+   Doc-tests bbt_ui_model
+0 tests, 0 benchmarks

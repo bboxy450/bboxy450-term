@@ -1,4 +1,9 @@
-# bbt-mux — supervisor and restartable logic
+# bbt-mux — restartable logic
+
+S1 moves the existing supervisor, its protocol and clients, ring/writer and
+shared blob primitives into the lower `bbt-supervisor` crate. This crate keeps
+logic, SQLite objects, the bus, index, adapters and messaging. Supervisor paths
+are re-exported for existing callers; no PTY, capture or dispatch behavior changes.
 
 W2.1 owns PTYs; W2.2 adds durable objects, the seat registry, the repository
 index, the bus and generation-bound viewport sockets. W1.2 adds supervisor-owned
@@ -13,12 +18,12 @@ The UI uses bounded asynchronous `LogicClient` messages.
 
 | Module | Mechanism |
 |---|---|
-| `protocol`, `supervisor`, `transport` | One supervisor thread and one mio poller own PTY masters, children, resize, writer leases and close deadlines. Bounded u32-BE length/versioned JSON is the supervisor IPC. |
+| `protocol`, `supervisor`, `transport` | Compatibility re-exports from `bbt-supervisor`: one mio actor owns PTY masters, children, resize, writer leases and close deadlines; bounded u32-BE length/versioned JSON is the supervisor IPC. |
 | `logic` | One logic IO worker attaches owned children, restores terminal checkpoints, captures ordered output and hosts seat endpoints. A supplied runtime handle runs the bus and asynchronous sockets. |
 | `store/sqlite` | Per-object SQLite WAL/FULL databases, version 1, key/value, SQL and alarms. Connections are operation-scoped rather than held open for every object. |
-| `store/blobs` | SHA-256 addressed, zstd-compressed local blobs, fsynced temporary file and rename, digest verification and a 64 MiB decompression bound. |
+| `store/blobs` | Re-export of `bbt-supervisor`'s shared SHA-256/zstd local blobs, fsynced temporary file and rename, digest verification and a 64 MiB decompression bound. |
 | `store/events` | Immutable, Ed25519-signed, hash-chained event rows; permanent event-ID deduplication and conflict rejection; chain verification on reopen. |
-| `ring` | CRC32C framed capture, fsynced committed boundaries, checkpoint-aware hot retention, cold blobs, isolated replay and logical-row indexes. |
+| `ring` | Re-export of `bbt-supervisor`'s CRC32C capture, committed boundaries, checkpoint-aware hot retention, cold blobs, isolated replay and logical-row indexes. |
 | `registry` | Account-owned ULID seat records, signed-role shape, location, mute, harness session and task references, close revisions and exact restore positions. |
 | `index` | FSEvents/inotify invalidation, Markdown/YAML parsing, weighted wikilinks, SQLite mirror and durable event outbox, five petgraph projections. |
 | `bus` | One bounded router over per-object event streams, consumer policies, replay, coalescing, explicit acknowledgments and request/reply. |
