@@ -11,8 +11,8 @@ const RADII = [0, 6, 12, 20];
 Lab.page({ title: 'materials', wide: true, note: 'L2 materials, the web reference for the bbt-ui materials gallery: flat, gloss, frosted, glow, each in dark and light at radii 0, 6, 12 and 20, with the parameters printed under the native field names. Frosted sits over a wallpaper so the blur is visible; glow runs the same particle emitter as the panes.',
   states: ['flat', 'gloss', 'frosted', 'glow'],
   render(s, body) {
-    const grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:1fr 1fr' });
-    for (const theme of ['dark', 'light']) {
+    const grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:repeat(' + UI.themes().length + ', 1fr)' });
+    for (const theme of UI.themes()) {
       const row = UI.Stack({ dir: 'row', gap: 16, wrap: true, align: 'flex-end' });
       let params = null;
       for (const r of RADII) {

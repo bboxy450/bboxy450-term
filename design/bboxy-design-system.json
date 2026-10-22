@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 53,
+  "version": 54,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -1259,7 +1259,7 @@
       "style.html": "L3: states card | row | band | pill | chip | modal | strip | input | button-primary | button-ghost; one Box per Style, the Style record printed, dark and light",
       "components.html": "L6: states box | text | stack | button | list | table | input | overlay | modal; each × density (touch, comfortable, cozy, compact) × theme"
     },
-    "case_ids": "gallery id = page name, case = state slug (bboxybook entry(id, page, states) convention); proposed to Nyx, confirmation pending",
+    "case_ids": "decided (Oracle): <page>/<state slug>-<density>-<theme>, e.g. materials/gloss-cozy-dark; bboxybook ids follow it from W3.2d.1 and parity pairs by that key. The lab URL for a key is <page>.html?state=<slug>&density=<density>&theme=<theme>; with theme or density in the URL a gallery renders that single case (UI.themes(), UI.densities()), without them every combination side by side",
     "status": "built"
   }
 }

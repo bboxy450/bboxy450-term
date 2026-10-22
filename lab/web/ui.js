@@ -80,5 +80,10 @@
   function Overlay(...kids) { return el('div', { class: 'ui-overlay' }, ...kids); }
   function Modal(title, body, actions) { const m = Box('modal', Stack({ gap: S.spacing.s5 }, Text(title, { step: 'subtitle', weight: 650 }), body, Stack({ dir: 'row', gap: S.spacing.s3, align: 'center' }, Spacer(), ...(actions || [])))); m.classList.add('ui-modal'); return m; }
 
-  window.UI = { themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
+  // parity key (Oracle, decided): <page>/<state>-<density>-<theme>, e.g. materials/gloss-cozy-dark. With ?theme= or ?density= in the
+  // URL a gallery renders only that case, so one capture is one key; without them it shows every combination side by side.
+  const Q = new URLSearchParams(location.search);
+  const themes = () => Q.get('theme') && T.color[Q.get('theme')] ? [Q.get('theme')] : ['dark', 'light'];
+  const densities = () => Q.get('density') && T.density[Q.get('density')] ? [Q.get('density')] : ['touch', 'comfortable', 'cozy', 'compact'];
+  window.UI = { themes, densities, themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
 })();

@@ -22,8 +22,8 @@ const DEMO = {
 Lab.page({ title: 'components', wide: true, note: 'L6 components, the web reference for the bbt-ui components gallery: Box, Text (the type scale micro to title), Stack, Button (primary, ghost, danger × idle, hover, pressed, focus, disabled), List (selection band, virtualised), Table (header, zebra, selection), Input (empty, value, focus, invalid), Overlay and Modal. Every case across the four densities (columns) and both themes (rows), built only from ui.js.',
   states: Object.keys(DEMO),
   render(s, body) {
-    const grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:repeat(4, minmax(0, 1fr));overflow-x:auto' });
-    for (const theme of ['dark', 'light']) for (const d of DENS) grid.append(UI.themeScope(theme, UI.densityScope(d, UI.Text(theme + ' · ' + d, { step: 'micro', mono: true, dim: true }), el('div', { style: 'margin-top:8px' }, DEMO[s]()))));
+    const grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:repeat(' + UI.densities().length + ', minmax(0, 1fr));overflow-x:auto' });
+    for (const theme of UI.themes()) for (const d of UI.densities()) grid.append(UI.themeScope(theme, UI.densityScope(d, UI.Text(theme + ' · ' + d, { step: 'micro', mono: true, dim: true }), el('div', { style: 'margin-top:8px' }, DEMO[s]()))));
     body.append(grid);
   } });
 </script></body></html>
