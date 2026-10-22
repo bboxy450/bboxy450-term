@@ -3,5 +3,6 @@
 pub mod atoms;
 pub mod components;
 pub mod style;
+pub mod widgets;
 pub use bbt_ui_model::{Density, Theme};
 pub use style::*;

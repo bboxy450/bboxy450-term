@@ -22,7 +22,7 @@
   Object.defineProperty(window,'UI',{configurable:true,get:()=>ui,set(value){
     ui=value;const original=value.material;
     value.material=function(name,options){const result=original(name,options);materials.push({kind:name,params:result.params});return result;};
-    for (const name of ['Text','Stack','Spacer']) {
+    for (const name of ['Text','Stack','Spacer','Button','List','Table','Input']) {
       const original=value[name];
       value[name]=function(...args){const node=original(...args);uiNodes.set(node,{kind:name.toLowerCase(),args});return node;};
     }
@@ -60,20 +60,56 @@
     const color=(value,node)=>{const probe=document.createElement('span');probe.style.color=value;node.append(probe);const c=getComputedStyle(probe).color;probe.remove();const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');ctx.fillStyle=c;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].map(c=>c/255);};
     const bounds=node=>{const r=node.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,w:r.width,h:r.height};};
     const radii=css=>[css.borderTopLeftRadius,css.borderTopRightRadius,css.borderBottomRightRadius,css.borderBottomLeftRadius].map(parseFloat);
-    const fontDiagnostics=node=>{
+    const textDiag=node=>{
+      const result={kind:'text',value:node.innerText,rect:bounds(node)};
       const css=getComputedStyle(node),cv=document.createElement('canvas'),ctx=cv.getContext('2d');ctx.font=css.font;
       const tm=ctx.measureText(node.innerText),marker=document.createElement('span');marker.style.cssText='display:inline-block;width:0;height:0;padding:0;margin:0;border:0;line-height:0';node.prepend(marker);
-      const result={font:css.font,ascent:tm.fontBoundingBoxAscent,descent:tm.fontBoundingBoxDescent,baseline:marker.getBoundingClientRect().y-node.getBoundingClientRect().y};marker.remove();return result;
+      result.font_diagnostics={font:css.font,ascent:tm.fontBoundingBoxAscent,descent:tm.fontBoundingBoxDescent,baseline:marker.getBoundingClientRect().y-node.getBoundingClientRect().y,source:'inline-marker'};marker.remove();
+      return result;
+    };
+    const rawTextDiag=node=>{
+      const span=document.createElement('span'),parent=node.parentNode;span.style.cssText='font:inherit;line-height:inherit;padding:0;margin:0;border:0;display:inline-block';
+      parent.replaceChild(span,node);span.append(node);const result=textDiag(span);parent.replaceChild(node,span);return result;
+    };
+    const diag=node=>{
+      if(node.nodeType===Node.TEXT_NODE)return rawTextDiag(node);
+      if(node.classList.contains('ui-text'))return textDiag(node);
+      const kind=node.classList.contains('hicon')?'icon':node.classList.contains('ui-spacer')?'spacer':node.classList.contains('ui-badge')?'badge':'box';
+      return {kind,rect:bounds(node),children:kind==='badge'?[...node.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE&&n.textContent).map(rawTextDiag):[]};
+    };
+    const inputDiag=node=>{
+      const css=getComputedStyle(node),r=node.getBoundingClientRect(),mirror=document.createElement('div'),span=document.createElement('span');
+      mirror.style.cssText='position:fixed;pointer-events:none;opacity:0;box-sizing:border-box;border:0;margin:0;white-space:pre';
+      Object.assign(mirror.style,{left:r.x+'px',top:r.y+'px',width:r.width+'px',height:r.height+'px',padding:css.padding,font:css.font,lineHeight:css.lineHeight});
+      span.style.cssText='font:inherit;line-height:inherit;display:inline-block';span.textContent=node.value||node.placeholder;mirror.append(span);document.body.append(mirror);
+      const child=textDiag(span);child.font_diagnostics.source='input-css-font-probe';mirror.remove();
+      return {kind:'control',rect:bounds(node),children:[child]};
+    };
+    const group=nodes=>{
+      const rects=nodes.map(bounds),x=Math.min(...rects.map(r=>r.x)),y=Math.min(...rects.map(r=>r.y));
+      return {kind:'stack',rect:{x,y,w:Math.max(...rects.map(r=>r.x+r.w))-x,h:Math.max(...rects.map(r=>r.y+r.h))-y},children:nodes.map(n=>({kind:'box',rect:bounds(n),children:[textDiag(n.querySelector('.ui-text'))]}))};
     };
     const exportUi=node=>{
       const call=uiNodes.get(node);if(!call)throw Error('unrecorded UI component');
       const result={kind:call.kind,rect:bounds(node)};
-      if(call.kind==='text'){
-        result.value=call.args[0];result.options=call.args[1]||{};
-        result.font_diagnostics=fontDiagnostics(node);
-      }
+      if(call.kind==='text')Object.assign(result,textDiag(node),{value:call.args[0],options:call.args[1]||{}});
       else if(call.kind==='box'){result.style=call.style;result.children=call.children.map(exportUi);}
       else if(call.kind==='stack'){result.options=call.args[0]||{};result.children=call.args.slice(1).map(exportUi);}
+      else if(call.kind==='button'){
+        result.label=call.args[0];result.options=call.args[1]||{};
+        result.children=[...node.childNodes].filter(n=>n.nodeType!==Node.TEXT_NODE||n.textContent).map(diag);
+      }else if(call.kind==='list'){
+        result.items=call.args[0];result.options=call.args[1]||{};
+        result.children=[...node.children].map(row=>({kind:'box',rect:bounds(row),children:[...row.children].map(diag)}));
+      }else if(call.kind==='table'){
+        result.columns=call.args[0];result.rows=call.args[1];result.options=call.args[2]||{};
+        const cols=result.columns.length,cells=[...node.children];result.children=[];
+        for(let i=0;i<cells.length;i+=cols)result.children.push(group(cells.slice(i,i+cols)));
+      }else if(call.kind==='input'){
+        result.options=call.args[0]||{};const panel=node.querySelector('.ui-input');
+        result.children=[{kind:'box',rect:bounds(panel),children:[...panel.children].map(n=>n.tagName==='INPUT'?inputDiag(n):diag(n))}];
+        for(const child of node.children)if(child!==panel)result.children.push(textDiag(child));
+      }
       return result;
     };
     let component;
@@ -92,7 +128,7 @@
     const boxes=styles.filter(c=>c.node.isConnected&&root.contains(c.node)).map(({style,node})=>{
       const css=getComputedStyle(node),text=node.querySelector('.ui-text'),tc=getComputedStyle(text);
       return {style,glow:glowFor(node),rect:bounds(node),computed:{fill:color(css.backgroundColor,node),radii:radii(css),padding:[css.paddingTop,css.paddingRight,css.paddingBottom,css.paddingLeft].map(parseFloat),border_width:parseFloat(css.borderTopWidth)},
-        text:{value:text.innerText,rect:bounds(text),font_diagnostics:fontDiagnostics(text),size:parseFloat(tc.fontSize),color:color(tc.color,text),weight:Number(tc.fontWeight)}};
+        text:{value:text.innerText,rect:bounds(text),font_diagnostics:textDiag(text).font_diagnostics,size:parseFloat(tc.fontSize),color:color(tc.color,text),weight:Number(tc.fontWeight)}};
     });
     return JSON.parse(JSON.stringify({ version: 1, layer:window.bboxyAtomFixture?'atoms':window.bboxyComponentFixture?'components':undefined, component, atoms, calls: serialized, materials:squares, styles:boxes }, (key, value) => {
       if (typeof value === 'function') return { $callback: true };

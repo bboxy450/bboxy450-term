@@ -314,6 +314,10 @@ pub struct Overrides {
     pub fill: Option<Paint>,
     pub radii: Option<[Length; 4]>,
     pub border: Option<Border>,
+    /// Top, right, bottom, left. Table headers use a bottom rule only.
+    pub border_sides: Option<[bool; 4]>,
+    /// Ordered outline rings, independent of the box's layout border.
+    pub rings: Option<Vec<Border>>,
     pub shadow: Option<Shadow>,
     pub height: Option<Length>,
     pub padding: Option<[Length; 4]>,
@@ -399,6 +403,20 @@ impl Style {
             fill: fill.resolve(ctx)?,
             radii,
             border,
+            border_sides: o.border_sides.unwrap_or([true; 4]),
+            rings: o
+                .rings
+                .as_deref()
+                .unwrap_or(&[])
+                .iter()
+                .map(|b| {
+                    Ok(ResolvedBorder {
+                        width: b.width.resolve(ctx.density)?,
+                        color: b.paint.resolve(ctx)?,
+                        outside: b.outside,
+                    })
+                })
+                .collect::<Result<Vec<_>>>()?,
             shadow: resolve_shadow(base.shadow)?,
             height: base.height.map(|n| n.resolve(ctx.density)).transpose()?,
             padding,
@@ -481,6 +499,8 @@ pub struct ResolvedStyle {
     pub fill: [f32; 4],
     pub radii: [f32; 4],
     pub border: Option<ResolvedBorder>,
+    pub border_sides: [bool; 4],
+    pub rings: Vec<ResolvedBorder>,
     pub shadow: Option<ResolvedShadow>,
     pub height: Option<f32>,
     pub padding: [f32; 4],

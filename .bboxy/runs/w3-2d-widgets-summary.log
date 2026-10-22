@@ -1,0 +1,37 @@
+W3.2d.5 — L6 Button, List, Table, Input.
+Mechanism: renderer-free compositions of retained Box/Text/Stack/ScrollView/Icon; caller owns state and viewport.
+crates/bbt-ui/src/widgets.rs:92 — primary/ghost/danger Button state visuals, flow-preserving pressed transform.
+crates/bbt-ui/src/widgets.rs:211 — visible-row range and fixed spacers preserve total extent; List/Table allocate visible rows only.
+crates/bbt-ui/src/widgets.rs:389 — positive fractional Table columns, header outside scrolling body, zebra and selection.
+crates/bbt-ui/src/widgets.rs:522 — empty/value/focus/invalid Input with UA-height geometry and error caption.
+crates/bbt-ui/src/style.rs:318 — per-side borders and independent outline rings.
+crates/bbt-ui/src/components.rs:772 — transparent layout border does not remove fill coverage.
+crates/bboxybook/capture-inputs.js — public constructor args feed native controls; child DOM bounds are diagnostic only.
+Verification: cargo test -p bbt-ui -p bboxybook -p bbt-render --locked: 50 tests, exit 0; fmt, Clippy (two pre-existing exceptions), node --check, git diff --check: exit 0.
+Parity: target/bboxybook/widgets/index.html; native 1000-row supplements: target/bboxybook/widgets/gallery/index.html.
+32 fresh web captures, no failures. All rects/baselines pass the 0.5px policy. 24 pixel cases pass; 8 Button cases remain review under the unchanged 2% budget.
+button: 0/8 within policy; max rect 0.393433px; max baseline 0.000015px; max changed 2.291694%.
+list: 8/8 within policy; max rect 0.024170px; max baseline 0.000000px; max changed 0.573743%.
+table: 8/8 within policy; max rect 0.015430px; max baseline 0.000000px; max changed 1.900034%.
+input: 8/8 within policy; max rect 0.015625px; max baseline 0.000000px; max changed 0.415558%.
+Measured sequence: initial 24/32 review → line-height/inline layout 8/32 → numeric font weights 8/32 (geometry now passes) → transparent border fix 8/32, Button maximum pixels 2.937552% → 2.291694%.
+The remaining Button pixel residue is not declared fixed; CoreText masks, SDF edge coverage and per-colour rather than isolated group opacity remain candidate sources.
+Ten worst triplets (web/, native/, diff/ under target/bboxybook/widgets/):
+components/button-comfortable-dark.png: review pixels, changed 2.291694%, rect 0.393433px.
+components/button-compact-dark.png: review pixels, changed 2.291694%, rect 0.393433px.
+components/button-cozy-dark.png: review pixels, changed 2.291694%, rect 0.393433px.
+components/button-comfortable-light.png: review pixels, changed 2.225510%, rect 0.393433px.
+components/button-compact-light.png: review pixels, changed 2.225510%, rect 0.393433px.
+components/button-cozy-light.png: review pixels, changed 2.225510%, rect 0.393433px.
+components/button-touch-dark.png: review pixels, changed 2.137418%, rect 0.393433px.
+components/button-touch-light.png: review pixels, changed 2.085019%, rect 0.393433px.
+components/table-compact-light.png: within policy, changed 1.900034%, rect 0.015430px.
+components/table-compact-dark.png: within policy, changed 1.846280%, rect 0.015430px.
+48 native large-data images, each 1000 source rows; layout node counts 26..68. Cozy middle List extent 25998px, Table body 24000px. GPU tests prove clipping, different painted rows and fixed header.
+Inspected: Button dark triplet, Table middle cozy dark, List middle cozy light.
+Deliberately untouched: module rebases (SeatRow/Settings tables), app keyboard/focus/edit/scroll input, Overlay/Modal, design tokens, later renderer AA/group-opacity work.
+Limits: overflowing flex-wrap is explicitly rejected; Table supports text cells and fractional columns; control optional icon/key adornments have no paired web case; Input baseline uses an explicit input-css-font-probe; macOS/Metal only, no FPS or operator-browser operations.
+Latest-binary regression widgets: 8/32 review; all geometry complete. Gallery: target/bboxybook/widgets-regression/widgets/index.html.
+Latest-binary regression components: 0/24 review; all geometry complete. Gallery: target/bboxybook/widgets-regression/components/index.html.
+Latest-binary regression style: 0/88 review; all geometry complete. Gallery: target/bboxybook/widgets-regression/style/index.html.
+The latest binary reproduces all 32 native control PNGs byte-for-byte after optional adornment/API cleanup. Also inspected Table compact light web/native pair.

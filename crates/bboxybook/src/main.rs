@@ -15,6 +15,11 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("gallery");
+    if command == "widgets" {
+        return bboxybook::widgets::render(&PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/widgets".into()),
+        ));
+    }
     if command == "components" {
         return bboxybook::components::render(&PathBuf::from(
             value(&args, "--out").unwrap_or_else(|| "target/bboxybook/components".into()),
@@ -78,7 +83,7 @@ fn run() -> Result<()> {
         },
         "compare"=>parity::compare_paths(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/parity".into())),&cases,&value(&args,"--web-root").unwrap_or_else(||"web".into()),&value(&args,"--native-root").unwrap_or_else(||"native".into()))?,
         "sidebar"|"showcase"=>{let component=if command=="showcase"{format!("showcase-{}",value(&args,"--scene").unwrap_or_else(||"3".into()))}else{"sidebar".into()};cases.retain(|c|c.component==component);parity::render(&PathBuf::from("target/bboxybook"),&cases)?;},
-        _=>return Err("usage: bboxybook [gallery | components | atoms | materials | styles | manifest | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
+        _=>return Err("usage: bboxybook [gallery | components | widgets | atoms | materials | styles | manifest | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
     }
     Ok(())
 }

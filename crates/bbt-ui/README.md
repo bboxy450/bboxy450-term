@@ -81,3 +81,31 @@ Selection is metadata until input is assigned. Draw lists preserve rounded clip
 chains, while the current material host intersects ancestor clips as rectangles.
 Opacity/dim follow the existing per-colour transform, not isolated CSS group
 opacity. Those material/group cases are outside the paired d.4 references.
+
+## L6 Button, List, Table, Input
+
+`widgets` builds these controls from Box/Text/Stack/ScrollView and logical icons.
+Button supplies primary/ghost/danger and idle/hover/pressed/focus/disabled
+states. A pressed transform changes visual bounds while retaining its flow
+slot. Input supplies empty/value/focus/invalid visuals and an error caption;
+it does not own editing, validation or keyboard focus.
+
+List and Table take caller-owned rows, selection and an optional `Viewport`.
+Only rows intersecting that viewport become elements; fixed spacers preserve
+the complete scroll extent. Table's header stays outside the scrolling body.
+Columns have positive fractional weights and text cells. No autonomous scroll
+loop or sorting model is added. An empty input retains its control height.
+
+Style `border_sides` selects top/right/bottom/left layout borders; ordered
+`rings` paint outside without consuming layout space. Transparent borders
+reserve their inset while allowing the background to fill through the edge.
+Inline header labels share the inherited line-height strut and baseline.
+
+`cargo run -p bboxybook --locked -- widgets` writes 32 primitive comparisons
+against `components.html` (four controls × four densities × two themes),
+rect/baseline snapshots, and 48 native 1000-row previews at top/middle/end.
+The paired reference's list is a four-row sample; the large-data previews and
+GPU clipping/header checks independently exercise actual virtualization.
+SeatRow and Settings module rebases follow in their assigned layer. Overflowing
+wrapping control rows are explicitly rejected by the capture adapter until a
+flow-layout pass; no DOM child bounds are used to position native controls.

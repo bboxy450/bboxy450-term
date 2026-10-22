@@ -127,6 +127,29 @@ Strict all-target Clippy also reports pre-existing findings outside this brief:
 `bbt-render/tests/smoke.rs:15` (`chunks_exact_to_as_chunks`). The scoped lint
 verification excludes those two diagnostics explicitly; those files were not
 changed. See `.bboxy/runs/w3-2b-clippy-*.log` for actual command results.
+
+## L6 controls
+
+```sh
+cargo run -p bboxybook --locked -- widgets
+```
+
+This writes `target/bboxybook/widgets/index.html`: Button, List, Table and Input
+from `components.html`, each across four densities and two themes. Capture
+records public constructor inputs and diagnostic rectangles/baselines; the
+native side consumes those inputs and the external host origin/width only.
+Anonymous Button labels use an inline baseline marker. Input's otherwise
+opaque UA text baseline is measured by an invisible probe with the control's
+computed font and padding, identified as `input-css-font-probe` in the fixture.
+The renderer never consumes these diagnostic child measurements for layout.
+
+`target/bboxybook/widgets/gallery/index.html` contains 48 native supplements:
+1000-row List and Table at top/middle/end, selection at row 500, across every
+density/theme. `virtualized.json` records actual layout-node counts, full
+scroll extents and offsets. GPU tests check clipping, different rows at each
+offset, a fixed Table header and fill through a transparent layout border.
+Primitive layout and paint are covered here; input controllers and SeatRow/
+Settings module rebases remain in their later briefs.
 # L2 materials
 
 `cargo run -p bboxybook --locked -- materials` writes the 32 canonical cases and

@@ -35,6 +35,8 @@ pub struct Text {
     pub wrap: bool,
     pub ellipsis: bool,
     pub selectable: bool,
+    /// Single inline span: expose its font box, retaining its line box for flow.
+    pub inline: bool,
 }
 impl Text {
     pub fn new(value: impl Into<String>, style: crate::style::Text) -> Self {
@@ -46,27 +48,34 @@ impl Text {
             wrap: true,
             ellipsis: false,
             selectable: true,
+            inline: false,
         }
     }
 }
 #[derive(Debug, Clone)]
 pub struct Box {
-    pub style: Style,
+    pub style: std::boxed::Box<Style>,
     pub children: Vec<Item>,
     pub direction: Axis,
     pub gap: Length,
     pub align: Alignment,
     pub clip: bool,
+    /// Visual transform only; the unscaled box still occupies its flow slot.
+    pub scale: f32,
+    /// Inline formatting includes the Style text's inherited line-height strut.
+    pub inline: bool,
 }
 impl Box {
     pub fn new(style: Style, children: Vec<Item>) -> Self {
         Self {
-            style,
+            style: std::boxed::Box::new(style),
             children,
             direction: Axis::Row,
             gap: Length::Spacing(4),
             align: Alignment::Center,
             clip: false,
+            scale: 1.,
+            inline: false,
         }
     }
 }
@@ -91,6 +100,11 @@ pub enum Element {
     Stack(Stack),
     ScrollView(ScrollView),
     Spacer,
+    Icon {
+        name: String,
+        paint: crate::Paint,
+        size: Length,
+    },
 }
 #[derive(Debug, Clone)]
 pub struct Item {
@@ -115,7 +129,7 @@ pub struct PositionedRun {
 #[derive(Debug, Clone)]
 pub enum LayoutKind {
     Box {
-        style: ResolvedStyle,
+        style: std::boxed::Box<ResolvedStyle>,
         clip: bool,
     },
     Text {
@@ -129,6 +143,10 @@ pub enum LayoutKind {
         offset: [f32; 2],
     },
     Spacer,
+    Icon {
+        name: String,
+        color: [f32; 4],
+    },
 }
 #[derive(Debug, Clone)]
 pub struct Layout {
@@ -270,6 +288,14 @@ fn child_measure(
         }
     }
     let gaps = gap * children.len().saturating_sub(1) as f32;
+    let main: f32 = children
+        .iter()
+        .zip(&data)
+        .map(|(c, (size, _))| match c.extent {
+            Extent::Fixed(n) => n,
+            _ => size[usize::from(axis == Axis::Column)],
+        })
+        .sum();
     let size = if axis == Axis::Row {
         let h = if alignment == Alignment::Baseline {
             data.iter().map(|(_, b)| *b).fold(0., f32::max)
@@ -277,11 +303,11 @@ fn child_measure(
         } else {
             data.iter().map(|(s, _)| s[1]).fold(0., f32::max)
         };
-        [data.iter().map(|(s, _)| s[0]).sum::<f32>() + gaps, h]
+        [main + gaps, h]
     } else {
         [
             data.iter().map(|(s, _)| s[0]).fold(0., f32::max),
-            data.iter().map(|(s, _)| s[1]).sum::<f32>() + gaps,
+            main + gaps,
         ]
     };
     Ok((size, data))
@@ -293,10 +319,10 @@ fn inset(s: &ResolvedStyle) -> Insets {
         .filter(|b| !b.outside)
         .map_or(0., |b| b.width);
     Insets {
-        top: s.padding[0] + b,
-        right: s.padding[1] + b,
-        bottom: s.padding[2] + b,
-        left: s.padding[3] + b,
+        top: s.padding[0] + if s.border_sides[0] { b } else { 0. },
+        right: s.padding[1] + if s.border_sides[1] { b } else { 0. },
+        bottom: s.padding[2] + if s.border_sides[2] { b } else { 0. },
+        left: s.padding[3] + if s.border_sides[3] { b } else { 0. },
     }
 }
 impl Element {
@@ -312,6 +338,10 @@ impl Element {
                 Ok((size, base))
             }
             Self::Spacer => Ok(([0., 0.], 0.)),
+            Self::Icon { size, .. } => {
+                let s = size.resolve(ctx.density)?;
+                Ok(([s, s], s))
+            }
             Self::ScrollView(s) => Ok((s.viewport, s.viewport[1])),
             Self::Stack(s) => {
                 let (size, data) = child_measure(
@@ -333,7 +363,7 @@ impl Element {
             Self::Box(b) => {
                 let s = b.style.resolve(ctx)?;
                 let p = inset(&s);
-                let (content, data) = child_measure(
+                let (mut content, data) = child_measure(
                     &b.children,
                     b.direction,
                     b.gap.resolve(ctx.density)?,
@@ -342,11 +372,19 @@ impl Element {
                     ctx,
                     m,
                 )?;
+                let mut base = data.first().map_or(0., |(_, b)| *b);
+                if b.inline {
+                    let strut = baseline(&s.text, m);
+                    let above = data.iter().map(|(_, b)| *b).fold(strut, f32::max);
+                    let below = data
+                        .iter()
+                        .map(|(s, b)| s[1] - b)
+                        .fold(line_height(&s.text) - strut, f32::max);
+                    content[1] = above + below;
+                    base = above;
+                }
                 let h = s.height.unwrap_or(content[1] + p.top + p.bottom);
-                Ok((
-                    [content[0] + p.left + p.right, h],
-                    p.top + data.first().map_or(0., |(_, b)| *b),
-                ))
+                Ok(([content[0] + p.left + p.right, h], p.top + base))
             }
         }
     }
@@ -379,6 +417,13 @@ impl Element {
                 )
             }
             Self::Spacer => (LayoutKind::Spacer, vec![]),
+            Self::Icon { name, paint, .. } => (
+                LayoutKind::Icon {
+                    name: name.clone(),
+                    color: paint.resolve(ctx)?,
+                },
+                vec![],
+            ),
             Self::Stack(s) => (
                 LayoutKind::Stack,
                 layout_children(
@@ -393,7 +438,7 @@ impl Element {
             ),
             Self::Box(b) => {
                 let style = b.style.resolve(ctx)?;
-                let children = layout_children(
+                let mut children = layout_children(
                     &b.children,
                     b.direction,
                     b.gap.resolve(ctx.density)?,
@@ -402,9 +447,20 @@ impl Element {
                     ctx,
                     m,
                 )?;
+                if b.inline {
+                    let top = rect.inset(inset(&style)).y;
+                    let present = children
+                        .iter()
+                        .map(|c| c.rect.y + c.baseline)
+                        .fold(top, f32::max);
+                    let delta = (top + baseline(&style.text, m) - present).max(0.);
+                    for child in &mut children {
+                        translate_layout(child, delta);
+                    }
+                }
                 (
                     LayoutKind::Box {
-                        style,
+                        style: std::boxed::Box::new(style),
                         clip: b.clip,
                     },
                     children,
@@ -431,12 +487,90 @@ impl Element {
                 (LayoutKind::ScrollView { content, offset }, vec![child])
             }
         };
-        Ok(Layout {
+        let mut layout = Layout {
             rect,
             baseline: base,
             kind,
             children,
-        })
+        };
+        if let Self::Text(t) = self
+            && t.inline
+        {
+            if t.wrap {
+                return Err("inline Text requires a single nonwrapping line");
+            }
+            if let LayoutKind::Text { runs, .. } = &layout.kind
+                && let Some(run) = runs.first()
+            {
+                let [a, d] = m.font_metrics(&font(&run.style)).map(f32::round);
+                let leading = layout.baseline - a;
+                layout.rect.y += leading;
+                layout.rect.h = a + d;
+                layout.baseline = a;
+            }
+        }
+        if let Self::Box(b) = self {
+            if !b.scale.is_finite() || b.scale <= 0. {
+                return Err("invalid box scale");
+            }
+            if b.scale != 1. {
+                scale_layout(&mut layout, rect, b.scale);
+            }
+        }
+        Ok(layout)
+    }
+}
+fn translate_layout(node: &mut Layout, dy: f32) {
+    node.rect.y += dy;
+    if let LayoutKind::Text { runs, .. } = &mut node.kind {
+        for run in runs {
+            run.rect.y += dy;
+        }
+    }
+    for child in &mut node.children {
+        translate_layout(child, dy);
+    }
+}
+fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
+    let point = |x: f32, y: f32| {
+        [
+            pivot.x + pivot.w * 0.5 + (x - pivot.x - pivot.w * 0.5) * scale,
+            pivot.y + pivot.h * 0.5 + (y - pivot.y - pivot.h * 0.5) * scale,
+        ]
+    };
+    let rect = |r: Rect| {
+        let p = point(r.x, r.y);
+        Rect::new(p[0], p[1], r.w * scale, r.h * scale)
+    };
+    node.rect = rect(node.rect);
+    node.baseline *= scale;
+    match &mut node.kind {
+        LayoutKind::Box { style, .. } => {
+            style.radii = style.radii.map(|r| r * scale);
+            for border in style
+                .border
+                .iter_mut()
+                .chain(style.rings.iter_mut())
+                .chain(style.focus_ring.iter_mut())
+            {
+                border.width *= scale;
+            }
+            if let Some(shadow) = &mut style.shadow {
+                shadow.blur *= scale;
+                shadow.offset = shadow.offset.map(|v| v * scale);
+            }
+        }
+        LayoutKind::Text { runs, .. } => {
+            for run in runs {
+                run.rect = rect(run.rect);
+                run.style.size *= scale;
+                run.line_height *= scale;
+            }
+        }
+        _ => {}
+    }
+    for child in &mut node.children {
+        scale_layout(child, pivot, scale);
     }
 }
 fn layout_children(
@@ -632,7 +766,11 @@ fn paint_node(
             } else {
                 color(s.fill, draw, opacity)
             };
-            let (rect, radii, stroke) = if let Some(border) = &s.border {
+            let (rect, radii, stroke) = if let Some(border) = s
+                .border
+                .as_ref()
+                .filter(|b| s.border_sides == [true; 4] && b.color[3] > 0.)
+            {
                 if border.outside {
                     (
                         Rect::new(
@@ -655,7 +793,12 @@ fn paint_node(
                 (node.rect, s.radii, None)
             };
             // Outside ring and fill have different bounds.
-            if s.border.as_ref().is_some_and(|b| b.outside) {
+            // A transparent border consumes layout space, while CSS backgrounds
+            // still paint through it. It must not cut an empty stroke into fill.
+            if s.border
+                .as_ref()
+                .is_some_and(|b| b.outside && b.color[3] > 0.)
+            {
                 body.push(Prim::Rect {
                     rect: node.rect,
                     radii: s.radii,
@@ -679,6 +822,36 @@ fn paint_node(
                     fill,
                     stroke,
                     inner_highlight: s.inner_highlight.map(|c| color(c, draw, opacity)),
+                    shadow: None,
+                });
+            }
+            if let Some(b) = s.border.as_ref().filter(|_| s.border_sides != [true; 4]) {
+                let r = node.rect;
+                let w = b.width;
+                for (enabled, edge) in s.border_sides.into_iter().zip([
+                    Rect::new(r.x, r.y, r.w, w),
+                    Rect::new(r.right() - w, r.y, w, r.h),
+                    Rect::new(r.x, r.bottom() - w, r.w, w),
+                    Rect::new(r.x, r.y, w, r.h),
+                ]) {
+                    if enabled {
+                        body.rect(edge, 0., color(b.color, draw, opacity));
+                    }
+                }
+            }
+            for ring in &s.rings {
+                let w = if ring.outside { ring.width } else { 0. };
+                body.push(Prim::Rect {
+                    rect: Rect::new(
+                        node.rect.x - w,
+                        node.rect.y - w,
+                        node.rect.w + w * 2.,
+                        node.rect.h + w * 2.,
+                    ),
+                    radii: s.radii.map(|v| v + w),
+                    fill: Color::TRANSPARENT,
+                    stroke: Some((ring.width, color(ring.color, draw, opacity))),
+                    inner_highlight: None,
                     shadow: None,
                 });
             }
@@ -740,6 +913,15 @@ fn paint_node(
             rect: node.rect,
             radii: [0.; 4],
         }),
+        LayoutKind::Icon { name, color: rgba } => {
+            let mut list = list_with_clips(clips);
+            list.push(Prim::Icon {
+                rect: node.rect,
+                icon: name.as_str().into(),
+                color: color(*rgba, draw, opacity),
+            });
+            finish(list, clips, out);
+        }
         _ => {}
     }
     for child in &node.children {

@@ -109,9 +109,6 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
         "spacer" => c::Element::Spacer,
         "stack" => {
             let o = &v["options"];
-            if o["wrap"] == true {
-                return Err("wrapping flex stacks are outside d.4".into());
-            }
             c::Element::Stack(c::Stack {
                 direction: if o["dir"] == "row" {
                     Axis::Row
@@ -153,7 +150,7 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
             };
             c::Element::Box(c::Box::new(style, items(&v["children"], ctx)?))
         }
-        _ => return Err("unsupported L6 component".into()),
+        _ => return crate::widgets::element(v, ctx),
     })
 }
 fn num(v: &Value, k: &str) -> Result<f32> {
@@ -167,7 +164,7 @@ pub fn layout_case(case: &Case) -> Result<c::Layout> {
     let host = &fix["component"]["host"];
     let crop = &fix["backdrop"]["crop"];
     let root = element(&fix["component"]["tree"], context(case))?;
-    Ok(root.layout(
+    let layout = root.layout(
         Rect::new(
             num(host, "x")? + num(crop, "x")?,
             num(host, "y")? + num(crop, "y")?,
@@ -176,7 +173,25 @@ pub fn layout_case(case: &Case) -> Result<c::Layout> {
         ),
         context(case),
         &Metrics,
-    )?)
+    )?;
+    validate_wrapping(&layout, &fix["component"]["tree"])?;
+    Ok(layout)
+}
+fn validate_wrapping(layout: &c::Layout, reference: &Value) -> Result<()> {
+    if reference["options"]["wrap"] == true
+        && layout
+            .children
+            .iter()
+            .any(|c| c.rect.right() > layout.rect.right() + 0.01)
+    {
+        return Err("overflowing wrapping row needs a flow-layout pass".into());
+    }
+    if let Some(children) = reference["children"].as_array() {
+        for (n, r) in layout.children.iter().zip(children) {
+            validate_wrapping(n, r)?;
+        }
+    }
+    Ok(())
 }
 fn clip_rect(clips: &[c::Clip]) -> Option<Rect> {
     clips.iter().map(|c| c.rect).reduce(|a, b| {
