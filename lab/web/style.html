@@ -7,7 +7,7 @@
 const el = Lab.el;
 // L3 (gui-components.md §2c): one Box, ten Styles. A Style is data (tokens + overrides); the printed record is what serialises.
 const SWARM = TOKENS.color.role.oracle, SEAT = '#2EE6A8';
-const CONTENT = { card: 'Agents · term', row: 'Vesper Greywind', band: 'TERM  5', pill: 'held 4', chip: 'inv upright', modal: 'Purge seat', strip: 'Nyx Copperwing', input: 'type to filter', 'button-primary': 'Pin this key', 'button-ghost': 'Cancel', 'pane-glow': 'Nyx Copperwing · active', 'swarm-card': 'Agents · term', 'card-row': 'Vesper Greywind', 'new-swarm': '+ New swarm' };
+const CONTENT = { hud: '120 Hz · 8.33 ms', card: 'Agents · term', row: 'Vesper Greywind', band: 'TERM  5', pill: 'held 4', chip: 'inv upright', modal: 'Purge seat', strip: 'Nyx Copperwing', input: 'type to filter', 'button-primary': 'Pin this key', 'button-ghost': 'Cancel', 'pane-glow': 'Nyx Copperwing · active', 'swarm-card': 'Agents · term', 'card-row': 'Vesper Greywind', 'new-swarm': '+ New swarm' };
 Lab.page({ title: 'style', wide: true, note: 'L3 Style, the web reference for the bbt-ui Style gallery: the same Box drawn with ten Styles resolved from tokens. Each prints its Style record (material, fill, radius, border, height, padding, text), which is the serialisable data the native Style round-trips. Dark and light side by side.',
   states: Object.keys(UI.STYLES),
   render(s, body) {

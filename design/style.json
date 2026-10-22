@@ -104,7 +104,8 @@
     "section": "type.section at weight_section, muted, sentence case",
     "band": "swarm colour gloss band set into the card top: radius.tile, height spacing.band, padding 0 s6, note 600 tracked .16em uppercase",
     "bumper": "4px strip of swarm colour along the card bottom, 3px when shut",
-    "new_swarm": "card-shaped button under the swarm cards: the card Style at spacing.new_swarm high, row 500 fg-dim"
+    "new_swarm": "card-shaped button under the swarm cards: the card Style at spacing.new_swarm high, row 500 fg-dim",
+    "hud": "the panel Style at instrument size: frosted panel_alpha, radius.card, hairline ring, shadow.floating, padding s5 s6, micro mono; the perf overlay (Cmd+Opt+F)"
   },
   "motion": {
     "appear_ms": 160,

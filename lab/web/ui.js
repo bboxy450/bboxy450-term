@@ -51,6 +51,8 @@
     pill: { material: 'flat', fill: 'tint.badge_alpha', radius: R.pill, padding: [0, S.spacing.s3], text: 'tiny' },
     chip: { material: 'flat', fill: 'tint.badge_alpha', radius: R.tag, padding: [0, S.spacing.s2], text: 'micro · mono' },
     modal: { material: 'frosted', fill: 'material.panel_alpha', radius: R.panel, border: 'hairline ring', shadow: 'shadow.floating', padding: [S.spacing.s8, S.spacing.s9], text: 'body' },
+    // the panel at instrument size: the perf overlay (Cmd+Opt+F)
+    hud: { material: 'frosted', fill: 'material.panel_alpha', radius: R.card, border: 'hairline ring', shadow: 'shadow.floating', padding: [S.spacing.s5, S.spacing.s6], text: 'micro · mono' },
     strip: { material: 'flat', fill: 'seat colour', radius: 0, height: T.strip.height, padding: [0, S.spacing.s4], text: 'caption · 600 · on_accent' },
     input: { material: 'flat', fill: 'var(--bg)', radius: R.row, border: 'hairline', padding: [S.spacing.s4, S.spacing.s5], text: 'body', focus: 'accent ring' },
     'button-primary': { material: 'flat', fill: 'accent', radius: R.pill, padding: [S.spacing.s3, S.spacing.s8], text: 'row · 600 · on_accent' },

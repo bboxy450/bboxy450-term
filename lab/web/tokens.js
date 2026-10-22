@@ -188,6 +188,7 @@ window.STYLE = {
     "band": "swarm colour gloss band set into the card top: radius.tile, height spacing.band, padding 0 s6, note 600 tracked .16em uppercase",
     "bumper": "4px strip of swarm colour along the card bottom, 3px when shut",
     "card": "flat surface at card_alpha, radius.card, outside hairline ring (material.hairline_px, hair), no inner highlight, no shadow: the swarm block body (padding s2 s2 0, rows on a body padded s1 0 s2), the new-swarm button and Box card",
+    "hud": "the panel Style at instrument size: frosted panel_alpha, radius.card, hairline ring, shadow.floating, padding s5 s6, micro mono; the perf overlay (Cmd+Opt+F)",
     "new_swarm": "card-shaped button under the swarm cards: the card Style at spacing.new_swarm high, row 500 fg-dim",
     "panel": "frosted surface at panel_alpha with panel_blur, radius.panel, hairline ring, shadow.floating, inner top highlight",
     "pill": "radius.pill, panel material, shadow.pill; floating actions with kbd hints",

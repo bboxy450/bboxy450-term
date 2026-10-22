@@ -1331,3 +1331,62 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 .pane.settings-pane .settings { flex: 1; min-height: 0; min-width: 0; background: color-mix(in srgb, var(--surface) 35%, var(--bg)); }
 .pane.settings-pane.unfocused .settings { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); }
 .pane .term { font-size: var(--t-section); }
+
+/* ---------- perf overlay (⌘⌥F): the hud panel, components.js perfHud ---------- */
+.perf-hud { width: min-content; align-items: stretch; text-align: left; color: var(--fg); font-family: var(--font-mono); font-size: var(--t-micro); display: flex; flex-direction: column; gap: var(--s4); }
+.perf-head { display: flex; align-items: baseline; gap: var(--s4); }
+.perf-head b { font-family: var(--font-chrome); font-size: var(--t-subtitle); font-weight: 650; letter-spacing: -.01em; }
+.perf-head span { margin-left: auto; color: var(--fg-dim); }
+.perf-spark { position: relative; display: flex; align-items: flex-end; border-bottom: var(--hair-w) solid var(--hair, var(--line)); }
+.perf-bar { width: 2px; height: 100%; display: flex; flex-direction: column-reverse; overflow: hidden; }
+.perf-bar.idle::before { content: ''; height: 2px; background: color-mix(in srgb, var(--fg-dim) 35%, transparent); }
+.perf-budget { position: absolute; left: 0; }
+.perf-hud .ph-drain { background: color-mix(in srgb, var(--accent) 45%, var(--fg)); }
+.perf-hud .ph-layout { background: color-mix(in srgb, var(--accent) 75%, var(--fg)); }
+.perf-hud .ph-draw { background: var(--accent); }
+.perf-hud .ph-encode { background: color-mix(in srgb, var(--accent) 50%, var(--surface)); }
+.perf-hud .ph-present { background: color-mix(in srgb, var(--fg-dim) 24%, transparent); }
+.perf-hud .over, .perf-hud .perf-bar i.over { background: var(--c-waiting); animation: perf-flash .9s var(--ease, ease-out) 3; }
+@keyframes perf-flash { 0% { background: color-mix(in srgb, var(--c-waiting) 40%, #fff); } 100% { background: var(--c-waiting); } }
+.perf-legend { display: grid; gap: var(--s1); }
+.perf-ph { display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: var(--s3); padding: 0 var(--s2); border-radius: var(--r-tag); line-height: 16px; color: var(--fg-dim); }
+.perf-ph > i { width: 8px; height: 8px; border-radius: 2px; }
+.perf-ph b { color: var(--fg); font-weight: 500; }
+.perf-ph.over { background: color-mix(in srgb, var(--c-waiting) 22%, transparent); color: var(--fg); animation: perf-row .9s var(--ease, ease-out) 3; }
+.perf-ph.over > i { background: var(--c-waiting); }
+@keyframes perf-row { 0% { background: color-mix(in srgb, var(--c-waiting) 55%, transparent); } 100% { background: color-mix(in srgb, var(--c-waiting) 22%, transparent); } }
+.perf-foot { display: flex; flex-wrap: wrap; column-gap: var(--s4); row-gap: var(--s1); color: var(--fg-dim); }
+.perf-foot .hit { color: var(--c-waiting); }
+
+/* ---------- lifecycle: starting, exited, stale (components.js seatRow / pane / sidebar) ---------- */
+.seat-row .spin, .sb-stale .spin, .pane .boot .spin { width: 9px; height: 9px; flex: none; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--fg-dim) 30%, transparent); border-top-color: var(--fg); animation: spin .9s linear infinite; }
+.seat-row.life-starting .name, .seat-row.life-starting .title { opacity: .6; }
+.seat-row .exited { font-size: var(--t-tiny); line-height: 14px; padding: 0 5px; border-radius: var(--r-tag); color: var(--c-errored); background: color-mix(in srgb, var(--c-errored) 16%, transparent); }
+.sidebar.stale .sb-scroll { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); }
+.sidebar.stale, .sidebar.stale * { animation-play-state: paused !important; }
+.sidebar.stale .sb-stale .spin { animation-play-state: running !important; }
+.sb-stale { display: flex; align-items: center; gap: var(--s3); margin: var(--s4) var(--s3) 0; padding: var(--s3) var(--s4); border-radius: var(--r-row); font-size: var(--t-caption); color: var(--fg); background: color-mix(in srgb, var(--c-waiting) 14%, transparent); }
+.pane .term.boot { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: var(--s5); white-space: normal; }
+.pane .boot-head { display: flex; align-items: center; gap: var(--s4); font-family: var(--font-chrome); font-size: var(--t-row); font-weight: 600; color: var(--fg); }
+.pane .boot-head .spin { width: 12px; height: 12px; }
+.pane .boot-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); font-size: var(--t-caption); min-width: 220px; }
+.pane .boot-steps li { display: grid; grid-template-columns: 14px 1fr auto; gap: var(--s3); }
+.pane .boot-steps li.done .mk { color: var(--c-ok); }
+.pane .boot-steps li.now { color: var(--fg); }
+.pane .boot-steps .ms { color: var(--fg-dim); }
+.pane .exitbar { display: flex; align-items: center; gap: var(--s4); padding: var(--s4) var(--s5); border-top: var(--hair-w) solid var(--hair, var(--line)); font-size: var(--t-caption); color: var(--fg-dim); background: color-mix(in srgb, var(--c-errored) 9%, var(--surface)); }
+.pane .exitbar b { color: var(--fg); font-weight: 600; }
+.pane .exitbar .spacer { flex: 1; }
+.pane .exitbar button { font: inherit; font-weight: 600; white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: var(--s3); border-radius: var(--r-round); padding: var(--s2) var(--s6); cursor: pointer; border: var(--hair-w) solid transparent; }
+.pane .exitbar .bring { background: var(--accent); color: var(--on-accent); }
+.pane .exitbar .bring .kbd { color: inherit; opacity: .8; }
+.pane .exitbar .dismiss { background: transparent; color: var(--fg); border-color: var(--hair, var(--line)); font-weight: 500; }
+/* the lifecycle app frame draws the app as the showcase does: the title bar carries the name, so the sidebar top is hidden */
+.lc-app .sidebar .sb-top { display: none; }
+/* first launch: no seats yet; the stage says what to do, once, quietly */
+.empty-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s6); color: var(--fg-dim); text-align: center; }
+.empty-stage h2 { margin: 0; font-size: var(--t-subtitle); font-weight: 650; color: var(--fg); }
+.empty-stage p { margin: 0; max-width: 34ch; font-size: var(--t-caption); line-height: 1.5; }
+.empty-stage .acts { display: flex; gap: var(--s4); }
+.empty-stage .keys { display: flex; gap: var(--s6); font-size: var(--t-caption); }
+.empty-stage .keys .kbd { margin-right: var(--s2); }

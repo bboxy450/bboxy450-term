@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lifecycle · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="ui.js"></script><script src="glow.js"></script>
+</head><body><script>
+const el = Lab.el;
+document.documentElement.style.setProperty('--gutter', (TOKENS.layout.gutter || 2) + 'px');
+// App lifecycle the other pages assume away: first launch with nothing, a harness booting, a process that exited, the seat brought
+// back, and the GUI reconnecting to the logic process. Seats never vanish and panes are never blank: each state says what is true.
+const S = (i, extra) => ({ key: 'lc' + i, name: ['Vesper Greywind', 'Nyx Copperwing', 'Rook Ashwhisker', 'Wren Thistledown'][i], harness: ['claude', 'codex', 'codex', 'claude'][i], role: ['oracle', 'executor', 'executor', 'creativity'][i], title: ['swarm control', '7.7 GraphTab', 'R2 shell', 'ux lab'][i], state: ['active', 'active', 'waiting', 'idle'][i], ...(extra || {}) });
+const BOOT = { steps: [{ label: 'pty opened', done: true, ms: '4 ms' }, { label: 'exec codex', done: true, ms: '31 ms' }, { label: 'waiting for first output', ms: '1.2 s' }] };
+const CRASH = '<b>$ codex --task .bboxy/tasks/7.7.md</b>\n  reading crates/bbt-ui/src/graph.rs\n  editing 3 files\nthread \'main\' panicked at crates/bbt-ui/src/graph.rs:212:9:\nindex out of bounds: the len is 4 but the index is 4';
+const SEATS = {
+  'seat starting': () => [S(0), S(1, { life: 'starting', state: 'idle', title: 'starting…', boot: BOOT }), S(2), S(3)],
+  'seat exited': () => [S(0), S(1, { life: 'exited', state: 'errored', exit: { signal: 'SIGABRT', at: '14:02:31', gen: 3 }, term: CRASH }), S(2), S(3)],
+  'brought back': () => [S(0), S(1, { restarted: true, generation: 4, resumed: { gen: 4, cmd: 'codex resume 7f3a91c2' }, title: '7.7 GraphTab' }), S(2), S(3)],
+  'logic reconnecting': () => [S(0), S(1), S(2), S(3)],
+};
+function app(state) {
+  const frame = el('div', { class: 'lc-app', style: 'height:540px;border-radius:var(--r-pill);overflow:hidden;border:var(--hair-w) solid var(--hair);background:var(--bg);display:flex;flex-direction:column' });
+  const seats = SEATS[state] ? SEATS[state]() : [];
+  const focus = seats[1];
+  frame.append(C.titleBar({ sidebarOpen: true, crumb: focus ? 'term · ' + focus.name : '' }));
+  const main = el('div', { style: 'flex:1;display:flex;min-height:0' });
+  const tree = seats.length ? { dir: 'v', ratio: .5, a: seats[0], b: { dir: 'h', ratio: .55, a: seats[1], b: { dir: 'v', ratio: .5, a: seats[2], b: seats[3] } } } : null;
+  const model = { spaces: seats.length ? [{ key: 'term', name: 'term', tabs: [{ name: 'main', shortcut: '⌘1', tree, seats }] }] : [] };
+  const sb = C.sidebar(model, { openSpaces: ['term'], openTabs: ['term/main'], focusedKey: focus ? focus.key : 'none', onNewSpace: () => {}, stale: state === 'logic reconnecting' ? { asOf: '14:02:31' } : null });
+  sb.style.width = '280px'; sb.style.flex = 'none';
+  main.append(sb);
+  if (!seats.length) {
+    main.append(el('div', { class: 'empty-stage' }, C.logo(56), el('h2', {}, 'No seats yet'), el('p', {}, 'A seat is one harness or shell in its own pane. It keeps running through restarts and survives a hard kill.'),
+      el('div', { class: 'acts' }, UI.Button('New seat', { kind: 'primary', kbd: '⌘T' }), UI.Button('Settings', { kind: 'ghost', kbd: '⌘,' })),
+      el('div', { class: 'keys' }, el('span', {}, C.kbd('⌘↵'), 'split'), el('span', {}, C.kbd('⌘S'), 'sidebar'), el('span', {}, C.kbd('⌘⌥F'), 'perf'))));
+  } else {
+    const po = t => ({ focused: t.key === focus.key, unfocused: t.key !== focus.key, shortcut: '⌘' + (+t.key.slice(2) + 1), reconnecting: state === 'logic reconnecting', onBringBack: () => { location.search = '?state=brought-back'; } });
+    const v = C.splitView(tree, { paneOpts: po });
+    main.append(el('div', { class: 'stage tiled', style: 'flex:1;display:flex;min-width:0' }, (v.style.flex = '1', v)));
+  }
+  frame.append(main);
+  return frame;
+}
+Lab.page({ title: 'lifecycle', wide: true, note: 'App lifecycle. First launch: no seats, the stage says what a seat is and how to make one. Starting: the harness is booting; the row spins in place of its glyph and the pane lists the launch steps, never blank. Exited: the process died; the last screen stays readable as the evidence, with Bring back (same seat, name and colour, a new process generation) and Close. Brought back: the restarted chip and the resumed marker. Logic reconnecting: every seat stays visible with its last known state, dimmed and frozen, under one banner saying when that state was true.',
+  states: ['first launch', ...Object.keys(SEATS)],
+  render(s, body) { body.append(app(s)); } });
+</script></body></html>

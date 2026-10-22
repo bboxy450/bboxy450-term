@@ -134,7 +134,7 @@
   // ---------- molecules ----------
   function seatRow(seat, opts) {
     opts = opts || {};
-    const row = el('div', { class: 'seat-row ' + seat.state + (opts.focused ? ' focused' : ''), style: '--seat:' + seatColor(seat) });
+    const row = el('div', { class: 'seat-row ' + seat.state + (seat.life ? ' life-' + seat.life : '') + (opts.focused ? ' focused' : ''), style: '--seat:' + seatColor(seat) });
     const tileCol = (LAUNCH.find(l => l.harness === seat.harness) || {}).tile || 'var(--surface-2)';
     if (seat.where && seat.where !== 'local') row.append(el('span', { class: 'where ' + seat.where, title: seat.where === 'cloud' ? 'runs in the cloud' + (seat.host ? ' · ' + seat.host : '') : 'over ssh' + (seat.host ? ' · ' + seat.host : '') }, harnessIcon(seat.where)));
     row.append(el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(seat.harness)), el('span', { class: 'name', style: 'color:' + seatColor(seat) }, seat.name));
@@ -163,7 +163,9 @@
     const unread = opts.unread != null ? opts.unread : seat.unread, unreadRole = opts.unreadRole || seat.unreadRole || 'executor';
     if (unread) right.append(el('span', { class: 'badge', style: 'background:var(--role-' + unreadRole + ')' }, unread));
     if (opts.shortcut) right.append(kbd(opts.shortcut));
-    right.append(glyph(seat.state, seat));
+    // lifecycle (lifecycle.html): starting → a spinner stands in for the glyph; exited → the ✕ with an 'exited' chip carrying the reason
+    if (seat.life === 'exited') right.append(el('span', { class: 'exited', title: exitSay(seat.exit) }, 'exited'));
+    right.append(seat.life === 'starting' ? el('i', { class: 'spin', title: 'starting · ' + seat.harness }) : glyph(seat.state, seat));
     row.append(right);
     if (opts.subtitle) row.append(el('span', { class: 'sub' }, opts.subtitle));
     row.dataset.key = seat.key;
@@ -895,6 +897,8 @@
       el('div', { class: 'sb-top' }, harnessIcon('sidebarfox'), el('span', {}, 'bboxy450-term'), el('span', { style: 'margin-left:auto' }, harnessIcon('gear'))),
       scroll,
     );
+    // the logic process is reconnecting: rows stay, dimmed and frozen, under a banner naming when the states were last true
+    if (opts.stale) { sb.classList.add('stale'); sb.insertBefore(el('div', { class: 'sb-stale', role: 'status' }, el('i', { class: 'spin' }), el('span', {}, 'reconnecting to logic · states as of ' + opts.stale.asOf)), scroll); }
     sb.seatCount = seats.length; sb.waitingCount = waiting;
     return sb;
   }
@@ -937,14 +941,54 @@
     s.append(glyph(seat.state, seat));
     return s;
   }
+  // lifecycle: a seat whose harness is booting shows its launch steps (never a blank pane); a seat whose process exited keeps
+  // its last screen readable (the evidence) with a bar to bring it back: same name, colour and seat, a new process generation
+  const exitSay = x => (x && x.signal ? 'signal ' + x.signal : 'exit code ' + (x && x.code != null ? x.code : '?')) + (x && x.at ? ' · ' + x.at : '');
+  function bootView(seat) {
+    const label = (LAUNCH.find(l => l.harness === seat.harness) || { label: seat.harness }).label;
+    return el('div', { class: 'term boot' }, el('div', { class: 'boot-head' }, el('i', { class: 'spin' }), 'Starting ' + label),
+      el('ol', { class: 'boot-steps' }, ...((seat.boot && seat.boot.steps) || []).map(st => el('li', { class: st.done ? 'done' : 'now' }, el('span', { class: 'mk' }, st.done ? '✓' : '·'), el('span', { class: 'lbl' }, st.label), el('span', { class: 'ms' }, st.ms || '')))));
+  }
+  function exitBar(seat, opts) {
+    return el('div', { class: 'exitbar', role: 'status' }, glyph('errored', seat), el('span', { class: 'say' }, el('b', {}, 'Process exited'), ' · ' + exitSay(seat.exit) + (seat.exit && seat.exit.gen ? ' · generation ' + seat.exit.gen : '')),
+      el('span', { class: 'spacer' }), el('button', { class: 'bring', onclick: () => opts.onBringBack && opts.onBringBack(seat) }, 'Bring back', kbd('↵')), el('button', { class: 'dismiss', onclick: () => opts.onClose && opts.onClose(seat) }, 'Close'));
+  }
   function pane(seat, opts) {
     opts = opts || {};
     const p = el('div', { class: 'pane ' + seat.state + (opts.unfocused ? ' unfocused' : '') + (opts.focused ? ' focused' : ''), style: '--seat:' + seatColor(seat) + (opts.height ? ';min-height:' + opts.height + 'px' : '') });
-    p.append(titleStrip(seat, opts), fakeTerm(seat));
+    p.append(titleStrip(seat, opts), seat.life === 'starting' ? bootView(seat) : fakeTerm(seat));
+    if (seat.life === 'exited') { p.classList.add('exited'); p.append(exitBar(seat, opts)); }
     // the GUI lost the daemon: keep the stale frame, dim it, freeze the glow, centred pill; never blank, never modal
     if (opts.reconnecting || opts.reconnected) { if (opts.reconnecting) p.classList.add('stale'); p.append(el('div', { class: 'reconnect' + (opts.reconnected ? ' out' : '') }, el('i', { class: 'spin' }), opts.reconnected ? 'reconnected' : 'reconnecting…')); }
     p.dataset.key = seat.key;
     return syncPulse(p, seat.state);
+  }
+
+  // Perf overlay (⌘⌥F, runtime.md meter): the hud panel. A sparkline of the last 120 frames, each bar stacked by phase (drain,
+  // layout, draw, encode on the CPU, present wait above), a dashed budget line at the display interval, the phase legend doubling
+  // as the table. A hitch flashes the phase that overran, in the bar and in its legend row. Idle intervals draw as stubs, never
+  // as hitches (the meter does not count them). The record is the meter's own numbers; nothing here is measured from the DOM.
+  const PERF_PHASES = ['drain', 'layout', 'draw', 'encode', 'present'];
+  function perfHud(m, opts) {
+    opts = opts || {};
+    const W = 240, H = 44, k = H / (m.budget_ms * 1.5), ms = v => v.toFixed(2); // budget at two thirds; a hitch clips at the top
+    const spark = el('div', { class: 'perf-spark', style: 'width:' + W + 'px;height:' + H + 'px' });
+    for (const f of m.frames) {
+      const bar = el('div', { class: 'perf-bar' + (f.idle ? ' idle' : '') + (f.hitch ? ' hitch' : '') });
+      if (!f.idle) for (const ph of PERF_PHASES) bar.append(el('i', { class: 'ph-' + ph + (f.hitch === ph ? ' over' : ''), style: 'height:' + (f[ph] * k).toFixed(2) + 'px' }));
+      spark.append(bar);
+    }
+    const budget = window.UI.Path({ size: [W, 1], points: [{ move: [0, 0.5] }, { line: [W, 0.5] }], stroke: { width: 1, color: 'fg', opacity: 0.55, dash: [3, 2] } });
+    budget.classList.add('perf-budget'); budget.style.bottom = (m.budget_ms * k).toFixed(2) + 'px';
+    spark.append(budget);
+    const head = el('div', { class: 'perf-head' }, el('b', {}, m.idle ? 'idle' : m.hz + ' Hz'), el('span', {}, m.idle ? 'last frame ' + m.idle : ms(m.interval_ms) + ' ms · budget ' + ms(m.budget_ms)));
+    const last = m.frames[m.frames.length - 1] || {}, over = m.hitch && m.hitch.phase;
+    const legend = el('div', { class: 'perf-legend' }, ...PERF_PHASES.map(ph => el('div', { class: 'perf-ph' + (ph === over ? ' over' : '') }, el('i', { class: 'ph-' + ph }), el('span', {}, ph === 'present' ? 'present wait' : ph), el('b', {}, ms(ph === over ? m.hitch.ms : (m.phases[ph] != null ? m.phases[ph] : last[ph] || 0))))));
+    const foot = el('div', { class: 'perf-foot' }, el('span', {}, 'CPU p50 ' + ms(m.cpu.p50) + ' · p99 ' + ms(m.cpu.p99) + ' ms'), el('span', {}, 'GPU ' + ms(m.gpu_ms) + ' ms'),
+      el('span', { class: m.hitch ? 'hit' : '' }, m.hitch ? 'hitch · ' + m.hitch.phase + ' ' + ms(m.hitch.ms) + ' ms · frame ' + m.hitch.frame : m.hitches + ' hitches'));
+    const card = window.UI.Box('hud', head, spark, legend, foot);
+    card.classList.add('perf-hud');
+    return card;
   }
 
   // ⌘T picker: vertical, keyboard-first, typed prefix, name reveal with reroll
@@ -1367,5 +1411,5 @@
     return root;
   }
 
-  window.C = { streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
