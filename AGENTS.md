@@ -12,7 +12,7 @@ A GPU-rendered Rust terminal for agent swarms, built by a swarm. Read this first
 | Role | Who decides what |
 |---|---|
 | **Operator** | Direction, taste, priorities. Outranks everyone. |
-| **Oracle** (Vesper Greywind) | Assigns work, writes briefs, verifies every handoff, merges and pushes to main. The only one who pushes main. |
+| **Oracle** (Vesper Greywind) | Assigns work, writes briefs, verifies every handoff, merges and pushes to main. The only one who pushes **code** to main; the Architect pushes `.bboxy/` specs, decisions and invariants from its own worktree, and Creativity pushes `lab/web/` (each rebased onto origin/main, own commits only). |
 | **Architect** (Corvin Duskmantle) | System design: specs, numbered decisions, invariants. Does not assign or implement. |
 | **Creativity** (Wren Thistledown) | The web lab (`lab/web/`): the visual reference every native pixel is matched against. |
 | **Executors** (Nyx, Rook, Sable, Aster, Kestrel, Velvet, Seraph) | Implement exactly the assigned brief, verify it, and hand off evidence. |
@@ -49,7 +49,7 @@ Who decides what:
 - **One writing worktree per Executor** (`~/mydev/bboxy450-term-execN`). Never write in the shared tree `~/mydev/bboxy450-term` unless your brief says so.
 - Stage by exact path. Never `git add -A`, `stash`, `reset` or autostash in a tree others use.
 - Every commit is signed with the machine key (already configured). Never `--no-gpg-sign`.
-- **Never push main.** Rebase onto `origin/main` before handoff. The Oracle verifies, merges and pushes.
+- **Executors never push main.** Rebase onto `origin/main` before handoff. The Oracle verifies, merges and pushes.
 - Work only inside your allowed files. If you hit a scope gap, DM the Oracle with the exact path and why, and continue the in-scope work meanwhile.
 - Fix a problem at the layer it comes from. A lab reference that is wrong gets fixed in the lab (by Creativity), never copied natively.
 - Measure before optimising. Read the images before claiming visual results.
