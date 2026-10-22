@@ -367,6 +367,66 @@
     return frag;
   }
 
+  // Document view (work-items.md): frontmatter as a header, Markdown body with annotated wikilinks, a provenance strip, and a right
+  // rail with the item's neighbourhood in the markdown graph (weights as stroke). Broken frontmatter shows as broken, never skipped.
+  const DOC_HUE = { epic: '#B07BFF', spec: '#58A6FF', task: '#2EE6A8', bug: '#FF6B6B', note: '#9AA3C7', invariant: '#F2C14E', artifact: '#4FD1C5' };
+  function mdLite(src) {
+    const out = el('div', { class: 'md' }); let list = null, code = null;
+    for (const line of src.split('\n')) {
+      if (line.startsWith('```')) { if (code) { out.append(code); code = null; } else code = el('pre', {}, ''); continue; }
+      if (code) { code.textContent += (code.textContent ? '\n' : '') + line; continue; }
+      const li = line.match(/^\s*[-*] (.*)/), h = line.match(/^(#{1,3}) (.*)/);
+      if (!li && list) { out.append(list); list = null; }
+      if (h) out.append(el('h' + (h[1].length + 1), {}, renderLinks(h[2])));
+      else if (li) { list = list || el('ul'); list.append(el('li', {}, renderLinks(li[1]))); }
+      else if (line.trim()) out.append(el('p', {}, renderLinks(line)));
+    }
+    if (list) out.append(list); if (code) out.append(code);
+    return out;
+  }
+  function neighbourhood(doc) {
+    const W = 260, H = 230, cx = W / 2, cy = H / 2 - 6, n = (doc.near || []).length, NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('class', 'nbhd');
+    const mk = (tag, a) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); svg.append(e); return e; };
+    (doc.near || []).forEach((x, i) => {
+      const t = -Math.PI / 2 + i * 2 * Math.PI / n, r = 78 - (x.w || 1) * 6, X = cx + Math.cos(t) * r, Y = cy + Math.sin(t) * r;
+      mk('line', { x1: cx, y1: cy, x2: X, y2: Y, style: 'stroke:var(--fg-dim);stroke-opacity:.45;stroke-width:' + (0.8 + (x.w || 1) * 0.7) + (x.back ? ';stroke-dasharray:3 3' : '') });
+      mk('circle', { cx: X, cy: Y, r: 5, style: 'fill:' + (DOC_HUE[x.type] || 'var(--fg-dim)') });
+      const tx = mk('text', { x: X, y: Y + (Y < cy ? -9 : 15), 'text-anchor': 'middle', style: 'fill:var(--fg);font-size:9.5px;font-family:var(--font-mono)' }); tx.textContent = x.slug;
+      if (x.rel) { const tr = mk('text', { x: (cx + X) / 2, y: (cy + Y) / 2 - 3, 'text-anchor': 'middle', style: 'fill:var(--fg-dim);font-size:8px' }); tr.textContent = x.rel + (x.w > 1 ? ' ' + x.w : ''); }
+    });
+    mk('circle', { cx, cy, r: 9, style: 'fill:' + (DOC_HUE[doc.type] || 'var(--accent)') + ';stroke:var(--bg);stroke-width:2' });
+    return svg;
+  }
+  function docView(doc, opts) {
+    opts = opts || {};
+    const hue = DOC_HUE[doc.type] || 'var(--accent)';
+    const chipFor = v => v instanceof Node ? v : typeof v === 'string' && v.startsWith('[[') ? renderLinks(v) : el('span', {}, String(v));
+    const fm = el('div', { class: 'doc-fm' });
+    const row = (k, v) => { if (v == null || (Array.isArray(v) && !v.length)) return; fm.append(el('span', { class: 'k' }, k), el('span', { class: 'v' }, ...(Array.isArray(v) ? v.map(chipFor) : [chipFor(v)]))); };
+    row('id', el('code', {}, doc.id)); row('assignee', doc.assignee ? el('span', { class: 'seatchip', style: 'color:' + (doc.assigneeColor || 'var(--fg)') }, doc.assignee) : null);
+    row('role', doc.role); row('parent', doc.parent); row('children', doc.children); row('depends_on', doc.depends_on);
+    row('links', (doc.links || []).map(l => renderLinks(l))); row('allowed_paths', (doc.allowed_paths || []).map(x => el('code', {}, x))); row('verify', doc.verify ? el('code', {}, doc.verify) : null);
+    row('created', doc.created); row('updated', doc.updated);
+    const glyphFor = doc.type === 'task' ? (TASK_GLYPH[doc.status] || '○') + ' ' : '';
+    const head = el('div', { class: 'doc-head', style: '--doc:' + hue },
+      el('div', { class: 'doc-top' }, el('span', { class: 'doc-type' }, doc.type), el('span', { class: 'doc-status ' + (doc.status || 'none') }, glyphFor + (doc.status || 'current')), el('code', { class: 'doc-path' }, doc.path || '')),
+      el('h1', {}, doc.title));
+    if (doc.superseded_by) head.append(el('div', { class: 'doc-super' }, 'superseded by ', renderLinks(doc.superseded_by), ' · kept for provenance'));
+    if (doc.broken) head.append(el('div', { class: 'doc-broken' }, 'frontmatter does not parse · ' + doc.broken + ' · shown, never skipped'));
+    const pv = doc.prov || {};
+    const prov = el('div', { class: 'doc-prov' + (pv.signed ? ' signed' : ' unsigned') },
+      el('span', {}, 'created by ', el('b', { style: 'color:' + (pv.createdColor || 'var(--fg)') }, pv.created_by || 'unknown')),
+      pv.updated_by ? el('span', {}, 'updated by ', el('b', { style: 'color:' + (pv.updatedColor || 'var(--fg)') }, pv.updated_by)) : null,
+      pv.derived_from ? el('span', {}, 'derived from ', renderLinks(pv.derived_from)) : null,
+      el('span', { class: 'dig' }, el('code', {}, (pv.digest || '').slice(0, 12)), pv.signed ? el('i', { class: 'ok' }, '✓ signed · ' + pv.signed) : el('i', { class: 'no' }, 'unsigned · no write is anonymous: updated_by stamped')));
+    const main = el('div', { class: 'doc-main' }, head, fm, mdLite(doc.body || ''), prov);
+    const backs = (doc.near || []).filter(x => x.back);
+    const rail = el('div', { class: 'doc-rail' }, el('div', { class: 'rail-h' }, 'markdown graph · neighbourhood'), neighbourhood(doc),
+      el('div', { class: 'rail-legend' }, ...Object.keys(DOC_HUE).map(t => el('span', {}, el('i', { style: 'background:' + DOC_HUE[t] }), t))),
+      backs.length ? el('div', { class: 'rail-h' }, 'backlinks') : null, ...backs.map(x => el('div', { class: 'rail-back' }, el('i', { style: 'background:' + (DOC_HUE[x.type] || 'var(--fg-dim)') }), el('code', {}, x.slug), el('span', {}, x.rel || 'ref'))));
+    return el('div', { class: 'doc-view', style: '--doc:' + hue }, main, rail);
+  }
   // Provenance card: created_by / updated_by, weighted derived_from, the signed digest pair, and the hash-chained activity log
   function provenanceCard(prov) {
     const card = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Provenance · ' + (prov.items || []).length + ' items · log ' + (prov.log || []).length)));
@@ -915,5 +975,5 @@
     return root;
   }
 
-  window.C = { purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

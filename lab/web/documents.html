@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>documents · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+</head><body><script>
+const el = Lab.el;
+const NYX = '#FF4FA3', VES = '#FFC53D', ROOK = '#2EE6A8', BOXY = 'Boxy · 9B07E849480C68328CA20684844ECC0587DE7AB0';
+const base = { prov: { created_by: 'Vesper Greywind', createdColor: VES, updated_by: 'Nyx Copperwing', updatedColor: NYX, digest: 'b3e1c09a7f2d44e1', signed: BOXY } };
+const D = {
+  epic: { type: 'epic', id: '01JAX3K9Q7M2N8P4R6S1T0V5W9', path: '.bboxy/epics/w3-renderer.md', title: 'W3 renderer: the terminal draws itself', status: 'running', children: ['[[w3-1-renderer-harness]]', '[[w3-2a-ui-model]]', '[[w3-2b-bboxybook]]', '[[w3-3-glow]]'], links: ['[[renderer]]{spec:3}', '[[text-rendering]]{evidence:2}'], created: '2026-10-21 09:12', updated: '2026-10-21 17:40',
+    body: '## Outcome\nA wgpu renderer that draws the grid and the chrome at parity with the lab.\n- [[w3-1-renderer-harness]] done, 48 PNG goldens\n- [[w3-2a-ui-model]] accepted, 30 tests\n- [[w3-2b-bboxybook]] running under [[Nyx Copperwing]]',
+    near: [{ slug: 'renderer', type: 'spec', rel: 'spec', w: 3 }, { slug: 'w3-1', type: 'task', rel: 'child' }, { slug: 'w3-2a', type: 'task', rel: 'child' }, { slug: 'w3-2b', type: 'task', rel: 'child' }, { slug: 'text-rendering', type: 'note', rel: 'evidence', w: 2 }, { slug: 'roadmap', type: 'note', rel: 'see', back: true }] },
+  spec: { type: 'spec', id: '01JAX4B1C2D3E4F5G6H7J8K9M0', path: '.bboxy/specs/messaging.md', title: 'Messaging on quinn: envelope, grants, evidence', status: 'decided', parent: '[[w2-mux]]', links: ['[[agent-messaging]]{evidence:3}', '[[transport-and-identity]]{evidence:2}', '[[messaging-1000]]{constrains}'], created: '2026-10-21 10:02', updated: '2026-10-21 16:11',
+    body: '## Decision\nOption C: rebuild the messaging service on quinn.\n## Evidence states\n- sender-stored, recipient-stored, native-queued, native-written, native-unknown, application-acknowledged\n- an ambiguous write is never retried; see [[harness-adapters]]',
+    near: [{ slug: 'agent-messaging', type: 'note', rel: 'evidence', w: 3 }, { slug: 'transport', type: 'note', rel: 'evidence', w: 2 }, { slug: 'w2-4', type: 'task', rel: 'spec', back: true }, { slug: 'unknown-never-retried', type: 'invariant', rel: 'constrains' }, { slug: 'w2-mux', type: 'epic', rel: 'parent' }] },
+  task: { type: 'task', id: '01JAX5N7P8Q9R0S1T2U3V4W5X6', path: '.bboxy/tasks/2026-10-21-w3-2b-bboxybook.md', title: 'W3.2b bboxybook: native storybook with a parity loop', status: 'running', parent: '[[w3-renderer]]', depends_on: ['[[w3-2a-ui-model]]'], assignee: 'Nyx Copperwing', assigneeColor: NYX, role: 'executor', allowed_paths: ['crates/bboxybook/**', 'scripts/parity.sh', 'Cargo.lock'], verify: 'cargo test -p bboxybook && scripts/parity.sh', links: ['[[ux-prototype]]{spec:2}'], created: '2026-10-21 14:20', updated: '2026-10-21 18:02',
+    body: '## Goal\nEvery lab page renders natively; a parity page diffs web against native.\n## Acceptance\n- every registered component renders on Metal\n- parity triplets inspected by a harness, not only a number',
+    near: [{ slug: 'w3-renderer', type: 'epic', rel: 'parent' }, { slug: 'w3-2a', type: 'task', rel: 'depends' }, { slug: 'ux-prototype', type: 'spec', rel: 'spec', w: 2 }, { slug: 'parity-run-01', type: 'artifact', rel: 'for', back: true }, { slug: 'Nyx', type: 'note', rel: 'assignee' }] },
+  bug: { type: 'bug', id: '01JAX6Y7Z8A9B0C1D2E3F4G5H6', path: '.bboxy/bugs/atlas-unbounded.md', title: 'Glyph atlas grows without bound on long CJK scrollback', status: 'claimed', assignee: 'Rook Ashwhisker', assigneeColor: ROOK, links: ['[[w3-1-renderer-harness]]{blocks}', '[[atlas-bounded]]{violates}'], created: '2026-10-21 18:30', updated: '2026-10-21 18:41',
+    body: '## Reproduction\n```\ncat fixtures/cjk-10k.txt; watch -n1 bbt-render --atlas-stats\n```\nAtlas doubles past 64 MB and never evicts.',
+    near: [{ slug: 'atlas-bounded', type: 'invariant', rel: 'violates' }, { slug: 'w3-1', type: 'task', rel: 'blocks' }, { slug: 'text-rendering', type: 'note', rel: 'see' }] },
+  note: { type: 'note', id: '01JAX7J8K9M0N1P2Q3R4S5T6U7', path: '.bboxy/research/osc7501-capture.md', title: 'OSC 7501 capture from Claude and Codex', status: null, links: ['[[subagent-detection]]{evidence:2}'], created: '2026-10-21 11:00', updated: '2026-10-21 11:58',
+    body: 'Claude 2.1.304 emits 7501 once the probe is answered; Codex 0.163 reports idle, working, blocked.\n- fixture runs/osc7501-claude.bin\n- see [[harness-adapters]]',
+    near: [{ slug: 'subagent-detection', type: 'spec', rel: 'evidence', w: 2, back: true }, { slug: 'harness-adapters', type: 'spec', rel: 'see' }, { slug: 'osc7501-claude.bin', type: 'artifact', rel: 'evidence' }] },
+  invariant: { type: 'invariant', id: '01JAX8V9W0X1Y2Z3A4B5C6D7E8', path: '.bboxy/invariants/unknown-never-retried.md', title: 'An ambiguous delivery is never retried on its own', status: 'active', links: ['[[messaging]]{constrains}', '[[mcp-control-plane]]{constrains}'], created: '2026-10-21 12:00', updated: '2026-10-21 12:00',
+    body: 'A native-unknown or partial write stays visible with its outcome. No automatic second Enter, no second paste.',
+    near: [{ slug: 'messaging', type: 'spec', rel: 'constrains' }, { slug: 'mcp-control-plane', type: 'spec', rel: 'constrains' }, { slug: 'paste-twice', type: 'bug', rel: 'violated-by', back: true }] },
+  artifact: { type: 'artifact', id: '01JAX9F0G1H2J3K4M5N6P7Q8R9', path: '.bboxy/runs/w3-1-goldens/', title: 'Render goldens, 48 PNG', status: 'done', links: ['[[w3-1-renderer-harness]]{for}', '[[w3-1-goldens-v0]]{derived_from}'], assignee: 'Nyx Copperwing', assigneeColor: NYX, created: '2026-10-21 13:10', updated: '2026-10-21 13:10',
+    body: 'Produced by Nyx Copperwing, claimed with artifact_claim; digest pair signed.',
+    near: [{ slug: 'w3-1', type: 'task', rel: 'for' }, { slug: 'goldens-v0', type: 'artifact', rel: 'derived_from' }, { slug: 'parity-run-01', type: 'artifact', rel: 'see', back: true }] },
+};
+const STATES = [...Object.keys(D), 'signed', 'unsigned', 'superseded', 'broken frontmatter'];
+Lab.page({ title: 'documents', wide: true, note: 'The work-item system from work-items.md: one Markdown file with frontmatter per item. Header: type chip, status, path, title. Frontmatter as a grid (id, assignee, role, parent, children, depends_on, links as annotated wikilink chips, allowed_paths, verify, created, updated). Body below. Provenance strip: created and updated by, derived from, the signed digest. Right rail: the item in the markdown graph, weights as stroke, backlinks dashed.',
+  states: STATES,
+  render(s, body) {
+    let d = D[s];
+    if (s === 'signed') d = D.spec;
+    if (s === 'unsigned') d = { ...D.task, prov: { ...base.prov, signed: null, updated_by: 'Rook Ashwhisker', updatedColor: ROOK } };
+    if (s === 'superseded') d = { ...D.spec, status: 'superseded', title: 'Messaging on iroh (first draft)', superseded_by: '[[messaging]]{spec}' };
+    if (s === 'broken frontmatter') d = { ...D.note, broken: 'line 4: expected a list for depends_on', status: null };
+    body.append(C.docView({ prov: base.prov, ...d }));
+  } });
+</script></body></html>

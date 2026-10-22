@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 30,
+  "version": 31,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -575,6 +575,12 @@
       "purpose": "spawn cap per swarm reached",
       "anatomy": "launch rows dim and the banner subtitle names which cap (swarm, machine or account; reserved, starting and grace processes count); template launches may land partial or unknown and say so; reconnect never respawns",
       "status": "built: amber banner atop the launcher list, \"Spawn cap reached · <scope> <name> · used of limit\" with what counts (running · starting · in grace) and the way out; launch rows dim to 38%, lose their number and refuse (the banner shakes); Go to, Graph, Settings stay live and the selection starts on the first live row; showcase caps a swarm at 8 and rejects Oracle spawns past it; picker opts.cap, picker.html?state=cap-swarm, cap-machine"
+    },
+    "document_view": {
+      "purpose": "read one work item: epic, spec, task, bug, note, invariant or artifact (work-items.md)",
+      "anatomy": "header with a 3 px rail in the type hue, type chip, status (task glyphs), path, title; superseded and broken-frontmatter banners; frontmatter grid (id, assignee in seat colour, role, parent, children, depends_on, links as annotated wikilink chips, allowed_paths, verify, created, updated); Markdown body with wikilink chips; provenance strip (created by, updated by, derived from, digest, signed by the full fingerprint or unsigned in amber); right rail: markdown-graph neighbourhood, type legend, backlinks dashed",
+      "rules": ["broken frontmatter is shown, never skipped", "no anonymous write: updated_by is always stamped", "superseded items stay readable for provenance"],
+      "status": "built: docView(), mdLite(), DOC_HUE in components.js; documents.html?state=epic|spec|task|bug|note|invariant|artifact|signed|unsigned|superseded|broken-frontmatter"
     },
     "purge_modal": {
       "purpose": "skip grace, terminate, and move the seat's ring, checkpoints and events to cold storage (never delete)",
