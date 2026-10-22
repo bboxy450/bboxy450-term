@@ -1,0 +1,16 @@
+ROLE: EXECUTOR — Nyx Copperwing
+Approved L6 support for 7.5 TitleBar (Oracle DM 579fe23f-c3cd-4411-9163-d907fbda91a8).
+
+Element::Image retains asset key, square size, radius; existing Prim::Image paints it without tint. Ancestor clips, isolated dim and transformed radius are preserved. No renderer/dependency changes.
+
+Verification:
+- cargo test -p bbt-ui --test components --locked — exit 0, 10 passed; includes geometry/validation/scale.
+- cargo test -p bboxybook --test components --locked — exit 0, 4 passed; includes source colour, circular crop and isolated grayscale/opacity on Metal.
+- cargo build -p bboxybook --locked — exit 0.
+- bboxybook render image-default-cases.json — exit 0, 328 default PNGs (L2/L3/L5/L6) rendered on Apple M4/Metal.
+- byte comparison to accepted group-opacity/regression/native — 328/328 byte-identical.
+- cargo fmt -p bbt-ui -p bboxybook --check — exit 0.
+- scoped cargo clippy --all-targets --locked, -D warnings with pre-existing map_entry/chunks_exact_to_as_chunks allowances — exit 0.
+
+Detailed local logs: target/bboxybook/title-bars/image-{ui,gpu,clippy}.log, image-defaults.log.
+Not checked: native window/input, other backends. Image support changes no default case. TitleBar capture edits remain uncommitted for the module pass.

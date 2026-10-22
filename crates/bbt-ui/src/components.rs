@@ -190,6 +190,12 @@ pub enum Element {
         paint: crate::Paint,
         size: Length,
     },
+    /// An untinted atlas asset; the host resolves the key, never a file path.
+    Image {
+        asset: String,
+        size: Length,
+        radius: Length,
+    },
 }
 #[derive(Debug, Clone)]
 pub struct Placed {
@@ -245,6 +251,10 @@ pub enum LayoutKind {
     Icon {
         name: String,
         color: [f32; 4],
+    },
+    Image {
+        asset: String,
+        radius: f32,
     },
 }
 #[derive(Debug, Clone)]
@@ -512,6 +522,18 @@ impl Element {
                 let s = size.resolve(ctx.density)?;
                 Ok(([s, s], s))
             }
+            Self::Image {
+                asset,
+                size,
+                radius,
+            } => {
+                if asset.is_empty() {
+                    return Err("image asset key is empty");
+                }
+                let s = size.resolve(ctx.density)?;
+                radius.resolve(ctx.density)?;
+                Ok(([s, s], s))
+            }
             Self::ScrollView(s) => Ok((s.viewport, s.viewport[1])),
             Self::Overlay(o) => {
                 let s = o.style.resolve(ctx)?;
@@ -693,6 +715,13 @@ impl Element {
                 },
                 vec![],
             ),
+            Self::Image { asset, radius, .. } => (
+                LayoutKind::Image {
+                    asset: asset.clone(),
+                    radius: radius.resolve(ctx.density)?,
+                },
+                vec![],
+            ),
             Self::Stack(s) => (
                 LayoutKind::Stack,
                 layout_children(
@@ -855,6 +884,7 @@ fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
     node.rect = rect(node.rect);
     node.baseline *= scale;
     match &mut node.kind {
+        LayoutKind::Image { radius, .. } => *radius *= scale,
         LayoutKind::Box { style, .. } => {
             style.radii = style.radii.map(|r| r * scale);
             for border in style
@@ -1470,6 +1500,15 @@ fn paint_contents(
                 rect: node.rect,
                 icon: name.as_str().into(),
                 color: color(*rgba, draw, opacity),
+            });
+            finish(list, clips, out);
+        }
+        LayoutKind::Image { asset, radius } => {
+            let mut list = list_with_clips(clips);
+            list.push(Prim::Image {
+                rect: node.rect,
+                image: asset.as_str().into(),
+                radius: *radius,
             });
             finish(list, clips, out);
         }

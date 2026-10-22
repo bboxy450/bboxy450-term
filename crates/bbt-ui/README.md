@@ -85,6 +85,11 @@ Opacity and dim isolate the completed Box subtree; `Box::group` also forces
 isolation at full strength. Layout stays unchanged. The host paints the layer
 at full strength, then applies saturation and one source-over opacity in L1.
 
+`Element::Image` retains an atlas asset key, square size and corner radius. It
+uses the existing untinted image primitive, follows ancestor clipping and
+group filters, and scales its radius with a parent transform. The host owns
+asset loading; the component accepts no file path or renderer dependency.
+
 ## L6 Button, List, Table, Input
 
 `widgets` builds these controls from Box/Text/Stack/ScrollView and logical icons.

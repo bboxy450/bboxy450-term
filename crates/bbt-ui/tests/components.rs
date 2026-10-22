@@ -21,6 +21,42 @@ fn context() -> Context {
 }
 
 #[test]
+fn image_has_square_intrinsics_a_baseline_and_validated_asset_geometry() {
+    let make = |asset: &str, size, radius| c::Element::Image {
+        asset: asset.into(),
+        size: Length::Px(size),
+        radius: Length::Px(radius),
+    };
+    let image = make("bboxy", 18., 9.);
+    let layout = image
+        .layout(Rect::new(3., 7., 18., 0.), context(), &Metrics)
+        .unwrap();
+    assert_eq!(layout.rect, Rect::new(3., 7., 18., 18.));
+    assert_eq!(layout.baseline, 18.);
+    assert!(matches!(&layout.kind,c::LayoutKind::Image {asset,radius:9.} if asset=="bboxy"));
+    let mut parent = c::Box::new(Style::new(Preset::Row), vec![image.into()]);
+    parent.scale = 0.5;
+    let scaled = c::Element::Box(parent)
+        .layout(Rect::new(0., 0., 50., 0.), context(), &Metrics)
+        .unwrap();
+    assert_eq!(scaled.children[0].rect.w, 9.);
+    assert!(matches!(
+        &scaled.children[0].kind,
+        c::LayoutKind::Image { radius: 4.5, .. }
+    ));
+    for bad in [
+        make("", 18., 9.),
+        make("bboxy", -1., 9.),
+        make("bboxy", 18., f32::NAN),
+    ] {
+        assert!(
+            bad.layout(Rect::new(0., 0., 18., 0.), context(), &Metrics)
+                .is_err()
+        );
+    }
+}
+
+#[test]
 fn box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout() {
     let mut style = Style::new(Preset::Row);
     style.overrides.fill = Some(Paint::solid(Color::Rgba([1., 0., 0., 1.])));

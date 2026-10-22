@@ -8,6 +8,56 @@ use bbt_ui_model::{
 use std::collections::BTreeSet;
 
 #[test]
+fn retained_image_preserves_asset_colour_rounding_and_group_filtering() {
+    let mut renderer = ChromeRenderer::new(vec![bbt_render::chrome::icons::Image {
+        name: "portrait".into(),
+        width: 8,
+        height: 8,
+        rgba: [64, 128, 192, 255].repeat(64),
+    }])
+    .unwrap();
+    let ctx = Context::new(Theme::Dark, Density::Cozy);
+    let image = c::Element::Image {
+        asset: "portrait".into(),
+        size: bbt_ui::Length::Px(18.),
+        radius: bbt_ui::Length::Px(9.),
+    };
+    let layout = image
+        .clone()
+        .layout(Rect::new(2., 2., 18., 0.), ctx, &components::Metrics)
+        .unwrap();
+    let base = [0, 0, 0, 255].repeat(24 * 24);
+    let pixels = components::execute(
+        &mut renderer,
+        c::paint(&layout, ctx),
+        base.clone(),
+        [24, 24],
+        ctx,
+    )
+    .unwrap();
+    let pixel =
+        |pixels: &[u8], x: usize, y: usize| pixels[(y * 24 + x) * 4..(y * 24 + x) * 4 + 4].to_vec();
+    assert_eq!(pixel(&pixels, 11, 11), [64, 128, 192, 255]);
+    assert_eq!(pixel(&pixels, 2, 2), [0, 0, 0, 255]);
+    assert_eq!(pixel(&pixels, 21, 11), [0, 0, 0, 255]);
+    let layout = c::Element::Filter {
+        content: Box::new(image),
+        opacity: 0.5,
+        saturation: 0.,
+    }
+    .layout(Rect::new(2., 2., 18., 0.), ctx, &components::Metrics)
+    .unwrap();
+    let dimmed =
+        components::execute(&mut renderer, c::paint(&layout, ctx), base, [24, 24], ctx).unwrap();
+    assert!(
+        pixel(&dimmed, 11, 11)
+            .iter()
+            .zip([60, 60, 60, 255])
+            .all(|(a, b)| a.abs_diff(b) <= 1)
+    );
+}
+
+#[test]
 fn a_retained_group_keeps_material_coverage_and_filters_the_completed_layer() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
     let ctx = Context::new(Theme::Dark, Density::Cozy);
