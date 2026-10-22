@@ -1,7 +1,7 @@
 ---
 id: 01M5JRGF410XZ88S9EE1A743TS
 type: spec
-title: D1 — providers: a host yields a supervisor link; ssh and cloud as fakes
+title: "D1 — providers: a host yields a supervisor link; ssh and cloud as fakes"
 status: decided
 links:
   - { to: "[[2026-10-22-c-cockpit]]", rel: epic }

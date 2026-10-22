@@ -1,7 +1,7 @@
 ---
 id: 01M5JGSHMT3P6DBTEEJNP62RFC
 type: spec
-title: C1 — live seats: the app becomes a client of logic
+title: "C1 — live seats: the app becomes a client of logic"
 status: decided
 links:
   - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
