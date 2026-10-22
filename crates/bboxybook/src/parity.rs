@@ -225,14 +225,20 @@ impl CasePolicy {
             label
         }
     }
+    fn geometry_status(self, geometry: Option<&Geometry>) -> Option<&'static str> {
+        let limit = self.geometry_tolerance_px?;
+        let Some(g) = geometry.filter(|g| g.complete && g.rects > 0 && (!self.text || g.baselines > 0)) else {
+            return Some("unproven geometry");
+        };
+        if g.max_rect_error > limit || g.max_baseline_error > limit {
+            Some("review geometry")
+        } else {
+            None
+        }
+    }
     fn status(self, score: f64, geometry: Option<&Geometry>) -> &'static str {
-        if let Some(limit) = self.geometry_tolerance_px {
-            let Some(g) = geometry.filter(|g| g.complete && g.rects > 0 && (!self.text || g.baselines > 0)) else {
-                return "unproven geometry";
-            };
-            if g.max_rect_error > limit || g.max_baseline_error > limit {
-                return "review geometry";
-            }
+        if let Some(status) = self.geometry_status(geometry) {
+            return status;
         }
         if score > self.changed_pixel_budget {
             "review pixels"
@@ -310,6 +316,15 @@ pub fn compare_paths(
     cases: &[Case],
     web_prefix: &str,
     native_prefix: &str,
+) -> Result<()> {
+    compare_paths_with_gate(root, cases, web_prefix, native_prefix, false)
+}
+pub fn compare_paths_with_gate(
+    root: &Path,
+    cases: &[Case],
+    web_prefix: &str,
+    native_prefix: &str,
+    strict_geometry: bool,
 ) -> Result<()> {
     fs::create_dir_all(root)?;
     let surface_path = root.join(native_prefix).join("surface-layouts.json");
@@ -394,6 +409,14 @@ pub fn compare_paths(
         .filter(|r| !r.policy.historical && r.status != "within policy")
         .count();
     let historical = rows.iter().filter(|r| r.policy.historical).count();
+    let geometry_failures = rows
+        .iter()
+        .filter(|r| !r.policy.historical && r.policy.geometry_status(r.geometry.as_ref()).is_some())
+        .count();
+    let pixel_reviews = rows
+        .iter()
+        .filter(|r| !r.policy.historical && r.status == "review pixels")
+        .count();
     let component_layer = cases.iter().all(|c| {
         c.fixture
             .as_ref()
@@ -587,6 +610,16 @@ pub fn compare_paths(
         review,
         root.join("index.html").display()
     );
+    if geometry_failures > 0 {
+        if strict_geometry {
+            return Err(format!("parity gate: {geometry_failures} geometry failures (fail)").into());
+        }
+        println!(
+            "parity gate: {geometry_failures} geometry failures (advisory; enable --strict-geometry); {pixel_reviews} pixel reviews advisory"
+        );
+    } else {
+        println!("parity gate: pass ({pixel_reviews} pixel reviews advisory)");
+    }
     Ok(())
 }
 
