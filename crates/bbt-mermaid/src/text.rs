@@ -19,9 +19,10 @@ pub(crate) fn strip_frontmatter(src: &str) -> Vec<(usize, String)> {
     lines
 }
 
-/// Split into statements on newlines and `;`, never inside double quotes, so a
-/// quoted label may span lines. Drops `%%` comment lines and blank statements.
-pub(crate) fn statements(lines: &[(usize, String)]) -> Vec<(usize, String)> {
+/// Split into statements on newlines and (when `semicolons`) on `;` outside
+/// brackets, never inside double quotes, so a quoted label may span lines.
+/// Sequence diagrams keep `;`: message text is prose. Drops `%%` comment lines and blank statements.
+pub(crate) fn statements(lines: &[(usize, String)], semicolons: bool) -> Vec<(usize, String)> {
     let mut out = Vec::new();
     let mut cur = String::new();
     let mut start = 0;
@@ -48,7 +49,7 @@ pub(crate) fn statements(lines: &[(usize, String)]) -> Vec<(usize, String)> {
                     depth = (depth - 1).max(0);
                     cur.push(c);
                 }
-                ';' if !quoted && depth == 0 => {
+                ';' if semicolons && !quoted && depth == 0 => {
                     push(&mut out, start, &mut cur);
                     start = *n;
                 }
@@ -175,7 +176,7 @@ mod tests {
         let lines = strip_frontmatter(
             "---\nconfig: x\n---\nflowchart LR\na(\"x\ny\") --> b; b --> c\n%% hi",
         );
-        let st = statements(&lines);
+        let st = statements(&lines, true);
         assert_eq!(st.len(), 3);
         assert_eq!(st[0], (4, "flowchart LR".to_string()));
         assert_eq!(st[1].1, "a(\"x\ny\") --> b");

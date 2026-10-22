@@ -1,0 +1,19 @@
+sequenceDiagram
+  participant U as operator
+  participant A as app
+  participant L as logic
+  participant F as FakeLink
+  participant S as local supervisor
+  U->>A: ⌘T, pick "ssh · build-box"
+  A->>L: Spawn{spec, location: Ssh{build-box}}
+  L->>F: link(build-box): Connecting
+  F-->>L: HostState Connected{rtt 40}
+  L->>F: Action::Spawn (delayed 40 ms)
+  F->>S: Action::Spawn
+  S-->>F: Reply, Event::Output …
+  F-->>L: released after 40 ms
+  L-->>A: seat record location Ssh, where-mark on the row
+  F-->>L: HostState Disconnected{reason} at T
+  L-->>A: host row and seat rows marked
+  F-->>L: Connecting → Connected
+  L-->>A: marks cleared; output continues, nothing lost

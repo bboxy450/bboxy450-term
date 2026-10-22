@@ -29,7 +29,50 @@ fn fixtures(sub: &str) -> Vec<(String, String)> {
 fn all() -> Vec<(String, String)> {
     let mut v = fixtures("bboxy");
     v.extend(fixtures("docs"));
+    v.extend(fixtures("state"));
     v
+}
+
+/// Mermaid fences in every Markdown file under `dir`, recursively.
+fn mermaid_blocks(dir: &Path, out: &mut Vec<(String, String)>) {
+    let mut entries: Vec<_> = std::fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    entries.sort();
+    for p in entries {
+        if p.is_dir() {
+            mermaid_blocks(&p, out);
+        } else if p.extension().is_some_and(|e| e == "md") {
+            let text = std::fs::read_to_string(&p).unwrap();
+            let mut cur: Option<String> = None;
+            for line in text.lines() {
+                match &mut cur {
+                    None if line.trim_start().starts_with("```mermaid") => {
+                        cur = Some(String::new())
+                    }
+                    Some(b) if line.trim_start().starts_with("```") => {
+                        out.push((p.display().to_string(), std::mem::take(b)));
+                        cur = None;
+                    }
+                    Some(b) => {
+                        b.push_str(line);
+                        b.push('\n');
+                    }
+                    None => {}
+                }
+            }
+        }
+    }
+}
+
+fn normalized(s: &str) -> String {
+    s.lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
 }
 
 fn geo(src: &str) -> Geometry {
@@ -48,10 +91,10 @@ fn on_shape(shape: Shape, r: &Rect, p: Point) -> bool {
     let c = r.center();
     let (hw, hh) = (r.w / 2.0, r.h / 2.0);
     match shape {
-        Shape::Diamond => {
+        Shape::Diamond | Shape::Choice => {
             ((p.x - c.x).abs() / hw + (p.y - c.y).abs() / hh - 1.0).abs() * hw.min(hh) < EPS
         }
-        Shape::Circle | Shape::DoubleCircle => {
+        Shape::Circle | Shape::DoubleCircle | Shape::Start | Shape::End => {
             (((p.x - c.x).powi(2) + (p.y - c.y).powi(2)).sqrt() - hw).abs() < EPS
         }
         _ => on_rect(r, p),
@@ -67,10 +110,69 @@ fn fixture_counts() {
         .count();
     assert_eq!(
         (bboxy.len() - seq, seq),
-        (7, 4),
-        "7 flowcharts and 4 sequence diagrams from .bboxy"
+        (8, 5),
+        "8 flowcharts and 5 sequence diagrams from .bboxy"
     );
     assert_eq!(fixtures("docs").len(), 20);
+    assert_eq!(fixtures("state").len(), 20);
+}
+
+#[test]
+fn every_bboxy_mermaid_block_has_a_fixture() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.bboxy");
+    let mut blocks = Vec::new();
+    mermaid_blocks(&root, &mut blocks);
+    assert!(
+        !blocks.is_empty(),
+        "no mermaid blocks found under {}",
+        root.display()
+    );
+    let have: Vec<String> = fixtures("bboxy")
+        .iter()
+        .map(|(_, s)| normalized(s))
+        .collect();
+    for (file, block) in blocks {
+        assert!(
+            have.contains(&normalized(&block)),
+            "{file}: a mermaid block has no fixture in tests/fixtures/bboxy; add it as <spec>-<n>.mmd:\n{block}"
+        );
+    }
+}
+
+#[test]
+fn subgraph_direction_is_honoured_unless_linked_outside() {
+    let g = geo("flowchart TB\n subgraph S\n direction LR\n a --> b\n end\n x --> S");
+    let pos = |id: &str| g.nodes.iter().find(|n| n.id == id).unwrap().rect.center();
+    let (a, b) = (pos("a"), pos("b"));
+    assert!(
+        b.x > a.x + 1.0 && (b.y - a.y).abs() < 1.0,
+        "LR inside TB: {a:?} {b:?}"
+    );
+    // A link into a member makes the subgraph inherit TB.
+    let g = geo("flowchart TB\n subgraph S\n direction LR\n a --> b\n end\n x --> a");
+    let pos = |id: &str| g.nodes.iter().find(|n| n.id == id).unwrap().rect.center();
+    assert!(pos("b").y > pos("a").y + 1.0);
+    // A state diagram composite with its own direction.
+    let g = geo("stateDiagram-v2\n state B {\n direction LR\n a --> b\n }\n A --> B");
+    let pos = |id: &str| g.nodes.iter().find(|n| n.id == id).unwrap().rect.center();
+    assert!(pos("b").x > pos("a").x + 1.0);
+}
+
+#[test]
+fn multi_edges_take_distinct_paths() {
+    for src in [
+        "flowchart TD\n A --> B\n A --> B\n A -- x --> B",
+        "flowchart LR\n A --> B\n B --> A",
+        "flowchart TD\n A --> A\n A --> A",
+        "stateDiagram-v2\n A --> B : one\n A --> B : two",
+    ] {
+        let g = geo(src);
+        for (i, e) in g.edges.iter().enumerate() {
+            for f in &g.edges[i + 1..] {
+                assert_ne!(e.points, f.points, "{src:?}: two edges share a path");
+            }
+        }
+    }
 }
 
 #[test]
@@ -112,7 +214,7 @@ fn no_overlapping_nodes() {
 fn clusters_hold_members_and_exclude_others() {
     for (name, src) in all() {
         let d = parse(&src).unwrap();
-        let bbt_mermaid::Diagram::Flowchart(f) = &d else {
+        let (bbt_mermaid::Diagram::Flowchart(f) | bbt_mermaid::Diagram::State(f)) = &d else {
             continue;
         };
         let g = layout(&d, &MonoMeasure::default(), &Style::default()).unwrap();
@@ -198,7 +300,7 @@ fn edges_start_and_end_on_borders() {
             );
             let (p0, p1) = (e.points[0], *e.points.last().unwrap());
             match g.kind {
-                Kind::Flowchart => {
+                Kind::Flowchart | Kind::State => {
                     let ends = |id: &str, p: Point| {
                         g.nodes
                             .iter()

@@ -16,6 +16,7 @@ mod flowchart;
 mod geometry;
 mod layered;
 mod sequence;
+mod state;
 mod text;
 
 pub use flowchart::{Dir, Endpoint, FEdge, FNode, Flowchart, Subgraph};
@@ -27,6 +28,8 @@ pub use sequence::{Actor, Event, FragmentKind, NotePlace, Sequence};
 pub enum Diagram {
     Flowchart(Flowchart),
     Sequence(Sequence),
+    /// A state diagram, parsed into the flowchart model (composites are subgraphs).
+    State(Flowchart),
 }
 
 /// Parse or layout failure. `line` is 1-based in the block source (0 when not tied to a line).
@@ -70,6 +73,7 @@ pub fn parse(src: &str) -> Result<Diagram, Error> {
     match kw {
         "flowchart" | "graph" => flowchart::parse(&lines).map(Diagram::Flowchart),
         "sequenceDiagram" => sequence::parse(&lines).map(Diagram::Sequence),
+        "stateDiagram" | "stateDiagram-v2" => state::parse(&lines).map(Diagram::State),
         other => Err(Error::new(
             *n,
             format!("unsupported diagram type '{other}'"),
@@ -80,7 +84,8 @@ pub fn parse(src: &str) -> Result<Diagram, Error> {
 /// Lay a parsed diagram out to geometry.
 pub fn layout(d: &Diagram, m: &dyn Measure, s: &Style) -> Result<Geometry, Error> {
     match d {
-        Diagram::Flowchart(f) => layered::layout(f, m, s),
+        Diagram::Flowchart(f) => layered::layout(f, Kind::Flowchart, m, s),
+        Diagram::State(f) => layered::layout(f, Kind::State, m, s),
         Diagram::Sequence(q) => sequence::layout(q, m, s),
     }
 }

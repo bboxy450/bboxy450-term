@@ -56,7 +56,8 @@ struct LevelOut {
 struct Ctx<'a> {
     f: &'a Flowchart,
     s: &'a Style,
-    swap: bool,
+    /// Effective direction per scope.
+    dirs: Vec<Dir>,
     node_real: Vec<Size>,
     label_real: Vec<Option<Size>>,
     title_real: Vec<Size>,
@@ -126,6 +127,10 @@ fn node_size(shape: Shape, t: Size, s: &Style) -> Size {
             Size { w: d, h: d }
         }
         Shape::Asymmetric => Size { w: w + h / 3.0, h },
+        Shape::Start => Size { w: 14.0, h: 14.0 },
+        Shape::End => Size { w: 18.0, h: 18.0 },
+        Shape::Choice => Size { w: 26.0, h: 26.0 },
+        Shape::Bar => Size { w: 72.0, h: 8.0 },
         // A w0 x h0 text box fits a 1.5 w0 x 3 h0 diamond: 1/1.5 + 1/3 = 1 puts its corners on the border.
         Shape::Diamond => Size {
             w: 1.5 * (t.w + px),
@@ -139,14 +144,48 @@ fn node_size(shape: Shape, t: Size, s: &Style) -> Size {
     }
 }
 
-pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geometry, Error> {
-    let swap = matches!(f.dir, Dir::LR | Dir::RL);
-    let node_real: Vec<Size> = f
-        .nodes
-        .iter()
-        .map(|n| node_size(n.shape, measure_lines(&n.lines, TextRole::Node, m), s))
-        .collect();
-    let label_real = f
+fn swaps(d: Dir) -> bool {
+    matches!(d, Dir::LR | Dir::RL)
+}
+
+/// A real size in the top-to-bottom layout frame of direction `d`.
+fn fr(s: Size, d: Dir) -> Size {
+    if swaps(d) { Size { w: s.h, h: s.w } } else { s }
+}
+
+/// Frame point to real point inside a box whose frame size is `fs`.
+fn to_real(p: Point, fs: Size, d: Dir) -> Point {
+    match d {
+        Dir::TB => p,
+        Dir::BT => Point {
+            x: p.x,
+            y: fs.h - p.y,
+        },
+        Dir::LR => Point { x: p.y, y: p.x },
+        Dir::RL => Point {
+            x: fs.h - p.y,
+            y: p.x,
+        },
+    }
+}
+
+/// Real vector to frame vector (inverse of the linear part of `to_real`).
+fn vec_to_frame(v: Point, d: Dir) -> Point {
+    match d {
+        Dir::TB => v,
+        Dir::BT => Point { x: v.x, y: -v.y },
+        Dir::LR => Point { x: v.y, y: v.x },
+        Dir::RL => Point { x: v.y, y: -v.x },
+    }
+}
+
+pub(crate) fn layout(
+    f: &Flowchart,
+    kind: Kind,
+    m: &dyn Measure,
+    s: &Style,
+) -> Result<Geometry, Error> {
+    let label_real: Vec<Option<Size>> = f
         .edges
         .iter()
         .map(|e| {
@@ -161,17 +200,6 @@ pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geomet
         .map(|g| measure_lines(&g.title, TextRole::ClusterTitle, m))
         .collect();
     let nscopes = f.subgraphs.len() + 1;
-    let mut cx = Ctx {
-        f,
-        s,
-        swap,
-        node_real,
-        label_real,
-        title_real,
-        outs: Vec::new(),
-        flips: BTreeSet::new(),
-    };
-    cx.outs.resize_with(nscopes, LevelOut::default);
 
     // Split every edge into per-scope segments.
     let mut segs: Vec<Vec<Seg>> = (0..nscopes).map(|_| Vec::new()).collect();
@@ -198,7 +226,7 @@ pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geomet
             let mut route = Vec::new();
             for &sc in chain_in[..=top].iter() {
                 let it = item_in(f, inner, sc);
-                let label = if sc == c + 1 { cx.label_real[k] } else { None };
+                let label = if sc == c + 1 { label_real[k] } else { None };
                 let minlen = if sc == c + 1 { e.minlen } else { 1 };
                 segs[sc].push(if into {
                     Seg {
@@ -253,7 +281,7 @@ pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geomet
             s: item_in(f, e.from, l),
             t: item_in(f, e.to, l),
             minlen: e.minlen,
-            label: cx.label_real[k],
+            label: label_real[k],
         });
         route.push(l);
         for &sc in b[..ib].iter().rev() {
@@ -269,7 +297,6 @@ pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geomet
         routes.push(route);
     }
 
-    // Inside out: deeper scopes first.
     let depth = |sc: usize| {
         let mut d = 0;
         let mut x = sc;
@@ -279,6 +306,47 @@ pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geomet
         }
         d
     };
+    // A subgraph keeps its own `direction` only while no edge crosses its border
+    // (Mermaid's rule); otherwise it inherits its parent's.
+    let mut dirs = vec![f.dir; nscopes];
+    let mut by_depth: Vec<usize> = (1..nscopes).collect();
+    by_depth.sort_by_key(|&sc| depth(sc));
+    for &sc in &by_depth {
+        let crossed = segs[sc]
+            .iter()
+            .any(|g| matches!(g.s, Item::In(_)) || matches!(g.t, Item::Out(_)));
+        dirs[sc] = match f.subgraphs[sc - 1].dir {
+            Some(d) if !crossed => d,
+            _ => dirs[scope_parent(f, sc).unwrap()],
+        };
+    }
+    let node_real: Vec<Size> = f
+        .nodes
+        .iter()
+        .enumerate()
+        .map(|(i, n)| {
+            let sz = node_size(n.shape, measure_lines(&n.lines, TextRole::Node, m), s);
+            // Fork and join bars lie across the flow.
+            if n.shape == Shape::Bar {
+                fr(sz, dirs[container(f, Endpoint::Node(i))])
+            } else {
+                sz
+            }
+        })
+        .collect();
+    let mut cx = Ctx {
+        f,
+        s,
+        dirs,
+        node_real,
+        label_real,
+        title_real,
+        outs: Vec::new(),
+        flips: BTreeSet::new(),
+    };
+    cx.outs.resize_with(nscopes, LevelOut::default);
+
+    // Inside out: deeper scopes first.
     let mut order: Vec<usize> = (0..nscopes).collect();
     order.sort_by_key(|&sc| std::cmp::Reverse(depth(sc)));
     // Second pass when a cluster-crossing edge turns out to run backwards:
@@ -302,10 +370,8 @@ pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geomet
         cx.flips = flips;
     }
 
-    // Absolute offsets of each scope's top-left, in the frame.
+    // Absolute offsets of each scope's top-left (level outputs are already real).
     let mut offset = vec![Point::default(); nscopes];
-    let mut by_depth: Vec<usize> = (1..nscopes).collect();
-    by_depth.sort_by_key(|&sc| depth(sc));
     for sc in by_depth {
         let p = scope_parent(f, sc).unwrap();
         let c = cx.outs[p].centers[&Item::Cluster(sc - 1)];
@@ -321,27 +387,13 @@ pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geomet
     };
 
     let root = cx.outs[0].size;
-    let tf = |p: Point| -> Point {
-        let q = match f.dir {
-            Dir::TB => p,
-            Dir::BT => Point {
-                x: p.x,
-                y: root.h - p.y,
-            },
-            Dir::LR => Point { x: p.y, y: p.x },
-            Dir::RL => Point {
-                x: root.h - p.y,
-                y: p.x,
-            },
-        };
-        Point {
-            x: q.x + s.margin,
-            y: q.y + s.margin,
-        }
+    let tf = |p: Point| Point {
+        x: p.x + s.margin,
+        y: p.y + s.margin,
     };
     let real_size = Size {
-        w: if swap { root.h } else { root.w } + 2.0 * s.margin,
-        h: if swap { root.w } else { root.h } + 2.0 * s.margin,
+        w: root.w + 2.0 * s.margin,
+        h: root.h + 2.0 * s.margin,
     };
 
     let mut nodes = Vec::new();
@@ -378,8 +430,7 @@ pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geomet
             x: offset[sc].x + fs.w / 2.0,
             y: offset[sc].y + fs.h / 2.0,
         });
-        let rs = if swap { Size { w: fs.h, h: fs.w } } else { fs };
-        let rect = Rect::centered(center, rs);
+        let rect = Rect::centered(center, fs);
         let ts = cx.title_real[c];
         let title = label(
             f.subgraphs[c].title.clone(),
@@ -441,7 +492,7 @@ pub(crate) fn layout(f: &Flowchart, m: &dyn Measure, s: &Style) -> Result<Geomet
     }
 
     Ok(Geometry {
-        kind: Kind::Flowchart,
+        kind,
         size: real_size,
         clusters,
         lines: Vec::new(),
@@ -464,16 +515,9 @@ struct V {
 }
 
 impl Ctx<'_> {
-    fn frame(&self, s: Size) -> Size {
-        if self.swap {
-            Size { w: s.h, h: s.w }
-        } else {
-            s
-        }
-    }
-
     fn level(&self, scope: usize, segs: &[Seg], loops: &[usize]) -> LevelOut {
         let f = self.f;
+        let dir = self.dirs[scope];
         let st = self.s;
         // Items: nodes, clusters, then ports in segment order.
         let mut items: Vec<Item> = Vec::new();
@@ -500,13 +544,31 @@ impl Ctx<'_> {
             .iter()
             .map(|&it| {
                 let (sz, shape) = match it {
-                    Item::Node(n) => (self.frame(self.node_real[n]), f.nodes[n].shape),
-                    Item::Cluster(c) => (self.outs[c + 1].size, Shape::Rect),
+                    Item::Node(n) => (fr(self.node_real[n], dir), f.nodes[n].shape),
+                    Item::Cluster(c) => (fr(self.outs[c + 1].size, dir), Shape::Rect),
                     _ => (Size::default(), Shape::Rect),
                 };
-                let has_loop = matches!(it, Item::Node(n) if loops.iter().any(|&k| f.edges[k].from == Endpoint::Node(n)));
-                let lw = sz.w + if has_loop { 2.0 * loop_room } else { 0.0 };
-                V { w: sz.w, h: sz.h, lw, rank: 0, shape, real: matches!(it, Item::Node(_) | Item::Cluster(_)) }
+                let n_loops = match it {
+                    Item::Node(n) => loops
+                        .iter()
+                        .filter(|&&k| f.edges[k].from == Endpoint::Node(n))
+                        .count(),
+                    _ => 0,
+                };
+                let lw = sz.w
+                    + if n_loops > 0 {
+                        2.0 * loop_room * (0.6 + 0.4 * n_loops as f32)
+                    } else {
+                        0.0
+                    };
+                V {
+                    w: sz.w,
+                    h: sz.h,
+                    lw,
+                    rank: 0,
+                    shape,
+                    real: matches!(it, Item::Node(_) | Item::Cluster(_)),
+                }
             })
             .collect();
         let n_items = vs.len();
@@ -516,9 +578,14 @@ impl Ctx<'_> {
         let attach = |it: Item, edge: usize, entry: bool| -> Option<Point> {
             let Item::Cluster(c) = it else { return None };
             let o = &self.outs[c + 1];
-            o.ports.get(&(edge, entry)).map(|p| Point {
-                x: p.x - o.size.w / 2.0,
-                y: p.y - o.size.h / 2.0,
+            o.ports.get(&(edge, entry)).map(|p| {
+                vec_to_frame(
+                    Point {
+                        x: p.x - o.size.w / 2.0,
+                        y: p.y - o.size.h / 2.0,
+                    },
+                    dir,
+                )
             })
         };
 
@@ -567,7 +634,7 @@ impl Ctx<'_> {
             .collect();
 
         // 2. Ranks on non-port items, doubled.
-        let len = |k: usize| 2 * segs[k].minlen.max(1);
+        let len = |k: usize| 2 * segs[k].minlen;
         let mut indeg = vec![0usize; n_items];
         for (k, &(a, b)) in dag.iter().enumerate() {
             if !is_port(a) && !is_port(b) {
@@ -630,6 +697,8 @@ impl Ctx<'_> {
 
         // 3. Waypoints.
         let mut lsegs: Vec<S2> = Vec::new();
+        // Same-rank pairs (a note beside its state): b sits right after a.
+        let mut side: Vec<(usize, usize)> = Vec::new();
         let mut chains: Vec<Vec<usize>> = Vec::new();
         let mut label_v: Vec<Option<usize>> = Vec::new();
         for (k, &(a, b)) in dag.iter().enumerate() {
@@ -646,10 +715,13 @@ impl Ctx<'_> {
             for r in ra + 1..rb {
                 let (w, h) = match g.label {
                     Some(ls) if r == mid => {
-                        let fs = self.frame(Size {
-                            w: ls.w + 2.0 * st.label_pad,
-                            h: ls.h + 2.0 * st.label_pad,
-                        });
+                        let fs = fr(
+                            Size {
+                                w: ls.w + 2.0 * st.label_pad,
+                                h: ls.h + 2.0 * st.label_pad,
+                            },
+                            dir,
+                        );
                         (fs.w, fs.h)
                     }
                     _ => (0.0, 0.0),
@@ -668,6 +740,12 @@ impl Ctx<'_> {
                 ch.push(vs.len() - 1);
             }
             ch.push(b);
+            if ra == rb {
+                side.push((a, b));
+                chains.push(ch);
+                label_v.push(lv);
+                continue;
+            }
             for i in 0..ch.len() - 1 {
                 let (u, v) = (ch[i], ch[i + 1]);
                 let dummies = (u >= n_items) as u8 + (v >= n_items) as u8;
@@ -816,7 +894,21 @@ impl Ctx<'_> {
                 best = layers.clone();
             }
         }
-        let layers = best;
+        let mut layers = best;
+        for &(a, b) in &side {
+            // Move whichever end has fewer other edges next to the other one.
+            let deg = |v: usize| succ[v].len() + pred[v].len();
+            let (mover, anchor, after) = if deg(b) <= deg(a) {
+                (b, a, true)
+            } else {
+                (a, b, false)
+            };
+            let l = &mut layers[vs[a].rank];
+            l.retain(|&v| v != mover);
+            let at = l.iter().position(|&v| v == anchor).unwrap();
+            l.insert(if after { at + 1 } else { at }, mover);
+        }
+        let layers = layers;
         set_pos(&layers, &mut pos);
 
         // 5. x: averaging toward neighbours under separation constraints.
@@ -856,6 +948,16 @@ impl Ctx<'_> {
                         let g = &lsegs[i];
                         sum += g.w * (x[g.v] + g.off_v - g.off_u);
                         ws += g.w;
+                    }
+                }
+                for &(a, b) in &side {
+                    let d = (vs[a].lw + vs[b].lw) / 2.0 + st.node_sep;
+                    if v == b {
+                        sum += 4.0 * (x[a] + d);
+                        ws += 4.0;
+                    } else if v == a {
+                        sum += 4.0 * (x[b] - d);
+                        ws += 4.0;
                     }
                 }
                 if ws > 0.0 {
@@ -949,15 +1051,23 @@ impl Ctx<'_> {
                 out.labels.insert(g.edge, at(lv));
             }
         }
-        for &k in loops {
+        for (li, &k) in loops.iter().enumerate() {
             let Endpoint::Node(n) = f.edges[k].from else {
                 continue;
             };
+            // Each further loop on the same node runs wider and taller.
+            let nth = loops[..li]
+                .iter()
+                .filter(|&&j| f.edges[j].from == f.edges[k].from)
+                .count() as f32;
             let i = idx[&Item::Node(n)];
             let c = at(i);
             let (hw, hh) = (vs[i].w / 2.0, vs[i].h / 2.0);
-            let xr = c.x + hw + loop_room * 0.8;
-            let (ya, yb) = (c.y - hh * 0.5, c.y + hh * 0.5);
+            let xr = c.x + hw + loop_room * (0.6 + 0.4 * nth);
+            let (ya, yb) = (
+                c.y - hh * (0.25 + 0.2 * nth).min(0.5),
+                c.y + hh * (0.25 + 0.2 * nth).min(0.5),
+            );
             out.paths.insert(
                 k,
                 vec![
@@ -968,7 +1078,7 @@ impl Ctx<'_> {
                 ],
             );
             if self.label_real[k].is_some() {
-                let ls = self.frame(self.label_real[k].unwrap());
+                let ls = fr(self.label_real[k].unwrap(), dir);
                 out.labels.insert(
                     k,
                     Point {
@@ -994,7 +1104,7 @@ impl Ctx<'_> {
             grow(Rect::centered(at(i), Size { w: v.w, h: v.h }));
         }
         for (&k, &c) in &out.labels {
-            grow(Rect::centered(c, self.frame(self.label_real[k].unwrap())));
+            grow(Rect::centered(c, fr(self.label_real[k].unwrap(), dir)));
         }
         for p in out.paths.values().flatten() {
             grow(Rect {
@@ -1013,7 +1123,7 @@ impl Ctx<'_> {
             let title = self.title_real[c];
             let p = st.cluster_pad;
             let (mut t, b, mut l, mut r) = (title.h + p * 1.5, p, p, p);
-            let content_real_w = if self.swap { y1 - y0 } else { x1 - x0 };
+            let content_real_w = if swaps(dir) { y1 - y0 } else { x1 - x0 };
             let need = title.w + 2.0 * p - (content_real_w + l + r);
             if need > 0.0 {
                 l += need / 2.0;
@@ -1022,7 +1132,7 @@ impl Ctx<'_> {
             if x0 > x1 - 1.0 && y0 > y1 - 1.0 {
                 t = t.max(p);
             }
-            (pt, pb, pl, pr) = match self.f.dir {
+            (pt, pb, pl, pr) = match dir {
                 Dir::TB => (t, b, l, r),
                 Dir::BT => (b, t, l, r),
                 Dir::LR => (l, r, t, b),
@@ -1061,6 +1171,14 @@ impl Ctx<'_> {
                 out.ports.insert((e, false), p);
             }
         }
+        // Hand the parent real coordinates.
+        let fs = out.size;
+        let r = |p: &mut Point| *p = to_real(*p, fs, dir);
+        out.centers.values_mut().for_each(r);
+        out.labels.values_mut().for_each(r);
+        out.paths.values_mut().flatten().for_each(r);
+        out.ports.values_mut().for_each(r);
+        out.size = fr(fs, dir);
         out
     }
 }
@@ -1092,8 +1210,10 @@ fn clip(c: Point, v: &V, p: Point) -> Point {
         };
     }
     let t = match v.shape {
-        Shape::Diamond => 1.0 / (dx.abs() / hw + dy.abs() / hh),
-        Shape::Circle | Shape::DoubleCircle => hw.min(hh) / (dx * dx + dy * dy).sqrt(),
+        Shape::Diamond | Shape::Choice => 1.0 / (dx.abs() / hw + dy.abs() / hh),
+        Shape::Circle | Shape::DoubleCircle | Shape::Start | Shape::End => {
+            hw.min(hh) / (dx * dx + dy * dy).sqrt()
+        }
         _ => {
             let tx = if dx.abs() > 1e-6 {
                 hw / dx.abs()

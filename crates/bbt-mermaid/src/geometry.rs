@@ -168,6 +168,14 @@ pub enum Shape {
     Actor,
     Note,
     Activation,
+    /// State diagram `[*]` as a source: a small filled circle.
+    Start,
+    /// State diagram `[*]` as a target: a ringed filled circle.
+    End,
+    /// `<<choice>>`: a small diamond.
+    Choice,
+    /// `<<fork>>` / `<<join>>`: a solid bar across the flow.
+    Bar,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -261,6 +269,7 @@ pub struct Line {
 pub enum Kind {
     Flowchart,
     Sequence,
+    State,
 }
 
 /// `classDef name style...`, raw.
