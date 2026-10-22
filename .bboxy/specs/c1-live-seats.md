@@ -169,8 +169,8 @@ flowchart TD
 
 | Gate | Fixture | Measure | Budget |
 |---|---|---|---|
-| memory per seat | 1000 headless seats under the T1 firehose, none watched | RSS of supervisor + logic | set by the first run, recorded here |
-| bus fan-out | 1000 seats, an Oracle burst of 30 messages at 10/s | p99 delivery with the weighted fair queue | set by the first run |
+| memory per seat | 1000 headless seats under the T1 firehose, none watched | RSS of supervisor + logic | **idle: 420 MiB at 400 seats** (measured 2026-10-22: median 333.7 MiB over three runs, about 825 KiB per seat, +25 %); `GATE_SEATS=400 GATE_RATE=idle GATE_SECONDS=20 GATE_BUDGET=420 sh scripts/gates.sh memory`. Under the firehose: pending its first measurement |
+| bus fan-out | 1000 seats, an Oracle burst of 30 messages at 10/s | p99 delivery with the weighted fair queue | **pending the per-recipient batching of decision #23**; the first measurement (29 970 of 29 970 delivered, p99 about 120 s) exposed a pump ceiling, not store cost, and is not a budget. `GATE_SEATS=1000 GATE_BUDGET=<ms> sh scripts/gates.sh bus` after W2.4c |
 | supervisor fds and poller | 1000 PTYs under the firehose, open-file limit raised at start | p99 record write latency | set by the first run |
 | sidebar and minimap | 1000 rows, 50 watched panes | frame time under the hitch meter, zero hitches idle | 8.33 ms at 120 Hz |
 
