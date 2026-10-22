@@ -1,0 +1,11 @@
+$ target/debug/bboxy450-term --smoke --meter
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+hitch frame=1 phase=layout 1602.848ms cpu=2780.000ms drain=0.004 layout=1602.848 draw=0.286 encode=1176.862 present_wait=1.104
+first frame: 15 native panes presented
+hitch frame=2 phase=layout 4679.554ms cpu=7892.036ms drain=0.005 layout=4679.554 draw=7.972 encode=3204.506 present_wait=280.268
+idle probe begins: frames=2 last_update=1
+hitch frame=3 phase=layout 1911.439ms cpu=3133.319ms drain=0.361 layout=1911.439 draw=0.594 encode=1220.925 present_wait=27.452
+R2 smoke FAIL: idle 3.878s frames=1 updates=20 CPU p50=3133.319ms p99=7892.036ms samples=3
+Error: "R2 idle/update probe failed"
+
+exit: 1

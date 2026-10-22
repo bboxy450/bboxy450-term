@@ -1,0 +1,27 @@
+$ target/debug/bboxy450-term --smoke --meter --capture .bboxy/runs/r2-scene15.png
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+hitch frame=1 phase=encode 38.125ms cpu=57.064ms drain=0.004 layout=18.723 draw=0.211 encode=38.125 present_wait=0.873
+first frame: 15 native panes presented
+hitch frame=2 phase=encode 44.030ms cpu=63.584ms drain=0.004 layout=19.350 draw=0.200 encode=44.030 present_wait=0.514
+hitch frame=3 phase=encode 40.300ms cpu=59.422ms drain=0.003 layout=18.881 draw=0.237 encode=40.300 present_wait=0.509
+hitch frame=4 phase=encode 39.389ms cpu=58.505ms drain=0.004 layout=18.903 draw=0.209 encode=39.389 present_wait=0.162
+hitch frame=5 phase=encode 37.840ms cpu=57.010ms drain=0.003 layout=18.969 draw=0.198 encode=37.840 present_wait=0.146
+hitch frame=6 phase=encode 38.822ms cpu=58.004ms drain=0.003 layout=18.954 draw=0.226 encode=38.822 present_wait=0.154
+hitch frame=7 phase=encode 40.382ms cpu=59.393ms drain=0.003 layout=18.816 draw=0.192 encode=40.382 present_wait=0.155
+hitch frame=8 phase=encode 39.888ms cpu=59.251ms drain=0.002 layout=19.155 draw=0.206 encode=39.888 present_wait=0.151
+hitch frame=9 phase=encode 41.433ms cpu=60.425ms drain=0.004 layout=18.767 draw=0.221 encode=41.433 present_wait=0.162
+hitch frame=10 phase=encode 40.589ms cpu=60.233ms drain=0.003 layout=19.435 draw=0.206 encode=40.589 present_wait=0.138
+hitch frame=11 phase=encode 43.235ms cpu=62.912ms drain=0.003 layout=19.463 draw=0.211 encode=43.235 present_wait=0.149
+hitch frame=12 phase=encode 40.278ms cpu=59.865ms drain=0.004 layout=19.362 draw=0.221 encode=40.278 present_wait=0.134
+hitch frame=13 phase=encode 41.317ms cpu=60.643ms drain=0.003 layout=19.130 draw=0.193 encode=41.317 present_wait=0.157
+hitch frame=14 phase=encode 41.546ms cpu=61.015ms drain=0.003 layout=19.241 draw=0.226 encode=41.546 present_wait=0.154
+hitch frame=15 phase=encode 39.990ms cpu=59.270ms drain=0.003 layout=19.072 draw=0.205 encode=39.990 present_wait=0.161
+hitch frame=16 phase=encode 40.751ms cpu=60.210ms drain=0.003 layout=19.241 draw=0.215 encode=40.751 present_wait=0.146
+hitch frame=17 phase=encode 40.214ms cpu=59.235ms drain=0.003 layout=18.786 draw=0.233 encode=40.214 present_wait=0.158
+hitch frame=18 phase=encode 40.405ms cpu=59.660ms drain=0.003 layout=19.048 draw=0.205 encode=40.405 present_wait=0.139
+hitch frame=19 phase=encode 42.169ms cpu=61.374ms drain=0.003 layout=18.993 draw=0.208 encode=42.169 present_wait=0.164
+capture .bboxy/runs/r2-scene15.png: Ok(())
+idle probe begins: frames=19 last_update=20
+R2 smoke PASS: idle 10.002s frames=0 updates=20 CPU p50=59.660ms p99=63.584ms samples=19
+
+exit: 0

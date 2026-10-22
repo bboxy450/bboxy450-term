@@ -5,6 +5,10 @@ thread, with a `Waker` backed by its event-loop proxy. `handle()` returns the
 same runtime handle for all subsystems. `is_ui_thread()` and the debug guard
 `assert_not_ui_thread()` identify prohibited blocking entry points.
 
+R2 adds the memory-only `HitchMeter`, with 1,024 interval/per-phase samples,
+lifetime frame count, CPU percentiles and an over-budget phase result. The
+caller owns logging and the overlay; idle gaps are not CPU hitches.
+
 `UiInbox` gives the app a cloneable sender, a bounded `try_recv` queue, the
 command output view and source dirty bits. Drain dirty bits at frame start,
 then drain messages under the app's 1 ms budget. Sources 0 and 1 are reserved

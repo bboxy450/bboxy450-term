@@ -9,10 +9,12 @@ use std::thread::{self, ThreadId};
 use tokio::runtime::{Builder, Handle, Runtime};
 
 mod commands;
+mod meter;
 mod queues;
 mod wake;
 
 pub use commands::{CommandRunner, ExitStatus, OutputChunk, Stream, TaskId, cancel, spawn_command};
+pub use meter::{FrameSample, HitchMeter, Phases};
 pub use queues::{Latest, UiMsg, UiReceiver, UiSender, ViewRing, ui_channel};
 pub use wake::{DirtySet, DirtySource, Waker};
 

@@ -1,0 +1,511 @@
+# R2 command ledger — Sable Embertail
+Oracle authorization c2506d4d: expanded app/rt/Cargo.lock, scripts/ui-lint.sh, r2 logs/screenshots. Startup git fetch origin and git rebase origin/main exit 0. R1 accepted at 29d5e62.
+Read-only renderer, UI, model, bboxybook and lab inspections exit 0 (output omitted); computer-use skill read exit 0. apply_patch calls succeeded. Python copied the read-only bboxybook icon build script into the app with a scoped build-time lint allowance and made the UI lint script executable — exit 0.
+
+One combined apply_patch attempt rejected duplicate Delete/Add main.rs operations; no files changed by it. Split GPU add and main.rs update succeeded.
+
+$ cargo fmt -p bbt-rt -p bboxy450-term
+
+exit: 0
+
+$ cargo check -p bboxy450-term
+   Compiling thiserror-impl v2.0.21
+   Compiling zmij v1.0.23
+   Compiling simd-adler32 v0.3.10
+   Compiling bytemuck_derive v1.12.1
+   Compiling arrayvec v0.7.8
+   Compiling adler2 v2.0.1
+   Compiling serde_json v1.0.154
+   Compiling cfg-if v1.0.5
+   Compiling bytemuck v1.25.2
+   Compiling objc-sys v0.3.5
+   Compiling float-cmp v0.9.0
+   Compiling crc32fast v1.5.3
+   Compiling miniz_oxide v0.9.1
+   Compiling strict-num v0.1.1
+   Compiling polycool v0.4.0
+   Compiling arrayref v0.3.9
+   Compiling smallvec v1.16.3
+   Compiling log v0.4.34
+   Compiling tiny-skia-path v0.12.0
+   Compiling fdeflate v0.3.7
+   Compiling miniz_oxide v0.8.9
+   Compiling kurbo v0.13.1
+   Compiling bitflags v2.13.2
+   Compiling siphasher v1.0.4
+   Compiling flate2 v1.1.10
+    Checking objc2 v0.5.3
+   Compiling simplecss v0.2.2
+   Compiling aho-corasick v1.1.5
+   Compiling png v0.18.1
+   Compiling roxmltree v0.21.1
+   Compiling pico-args v0.5.0
+   Compiling regex-syntax v0.8.11
+    Checking thiserror v2.0.21
+    Checking core-foundation-sys v0.8.7
+   Compiling svgtypes v0.16.1
+   Compiling imagesize v0.15.0
+   Compiling data-url v0.3.2
+    Checking naga-types v30.0.1
+    Checking block2 v0.5.1
+    Checking core-foundation v0.9.4
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking wgpu-types v30.0.1
+    Checking naga v30.0.1
+   Compiling usvg v0.48.1
+   Compiling tiny-skia v0.12.0
+   Compiling rgb v0.8.53
+   Compiling foreign-types-macros v0.2.4
+    Checking dispatch v0.2.0
+    Checking foreign-types-shared v0.3.1
+    Checking bitflags v1.3.2
+    Checking objc2-foundation v0.2.2
+   Compiling serde_derive v1.0.229
+    Checking core-graphics-types v0.1.3
+    Checking foreign-types v0.5.0
+   Compiling winit v0.30.13
+    Checking tracing-core v0.1.36
+    Checking tokio v1.54.1
+   Compiling regex-automata v0.4.18
+    Checking tracing v0.1.44
+   Compiling resvg v0.48.1
+    Checking core-graphics v0.23.2
+    Checking cursor-icon v1.2.0
+    Checking memchr v2.8.3
+    Checking smol_str v0.2.2
+    Checking dpi v0.1.2
+    Checking itoa v1.0.18
+    Checking serde v1.0.229
+   Compiling regex v1.13.1
+    Checking objc2-app-kit v0.2.2
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking wgpu-naga-bridge v30.0.1
+    Checking wgpu-hal v30.0.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+error[E0599]: no variant, associated function, or constant named `Empty` found for enum `SplitNode` in the current scope
+   --> crates/bboxy450-term/src/scene.rs:145:24
+    |
+145 |             SplitNode::Empty => unreachable!("fixture is nonempty"),
+    |                        ^^^^^ variant, associated function, or constant not found in `SplitNode`
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term") due to 1 previous error
+
+exit: 101
+
+Corrected scene matcher to the real two-variant SplitNode enum after first cargo check failed.
+
+$ cargo fmt -p bbt-rt -p bboxy450-term
+
+exit: 0
+
+$ cargo build -p bboxy450-term --locked
+   Compiling unicode-ident v1.0.27
+   Compiling objc2-encode v4.1.0
+   Compiling bitflags v2.13.2
+   Compiling cfg-if v1.0.5
+   Compiling memchr v2.8.3
+   Compiling arrayvec v0.7.8
+   Compiling foldhash v0.2.0
+   Compiling simd-adler32 v0.3.10
+   Compiling equivalent v1.0.3
+   Compiling adler2 v2.0.1
+   Compiling proc-macro2 v1.0.107
+   Compiling libm v0.2.16
+   Compiling rustc-hash v1.1.0
+   Compiling hashbrown v0.17.1
+   Compiling crc32fast v1.5.3
+   Compiling miniz_oxide v0.9.1
+   Compiling unicode-width v0.2.2
+   Compiling bit-vec v0.9.1
+   Compiling raw-window-handle v0.6.2
+   Compiling objc2 v0.6.5
+   Compiling log v0.4.34
+   Compiling bit-set v0.10.0
+   Compiling codespan-reporting v0.13.1
+   Compiling zmij v1.0.23
+   Compiling quote v1.0.47
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+   Compiling indexmap v2.14.2
+   Compiling flate2 v1.1.10
+   Compiling smallvec v1.16.3
+   Compiling itoa v1.0.18
+   Compiling num-traits v0.2.19
+   Compiling static_assertions v1.1.0
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling parking_lot_core v0.9.12
+   Compiling lock_api v0.4.14
+   Compiling polycool v0.4.0
+   Compiling parking_lot v0.12.5
+   Compiling objc-sys v0.3.5
+   Compiling dispatch2 v0.3.1
+   Compiling block2 v0.6.2
+   Compiling serde_json v1.0.154
+   Compiling libloading v0.8.9
+   Compiling kurbo v0.13.1
+   Compiling profiling v1.0.18
+   Compiling png v0.18.1
+   Compiling objc2 v0.5.3
+   Compiling roxmltree v0.21.1
+   Compiling aho-corasick v1.1.5
+   Compiling objc2-core-foundation v0.3.2
+   Compiling core-foundation-sys v0.8.7
+   Compiling core-foundation v0.9.4
+   Compiling serde_core v1.0.229
+   Compiling tiny-skia v0.12.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling svgtypes v0.16.1
+   Compiling regex-automata v0.4.18
+   Compiling block2 v0.5.1
+   Compiling foreign-types-shared v0.3.1
+   Compiling usvg v0.48.1
+   Compiling bitflags v1.3.2
+   Compiling dispatch v0.2.0
+   Compiling core-graphics-types v0.1.3
+   Compiling tracing-core v0.1.36
+   Compiling objc2-foundation v0.2.2
+   Compiling tracing v0.1.44
+   Compiling objc2-foundation v0.3.2
+   Compiling zerocopy-derive v0.8.63
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling foreign-types-macros v0.2.4
+   Compiling foreign-types v0.5.0
+   Compiling regex v1.13.1
+   Compiling resvg v0.48.1
+   Compiling thiserror v2.0.21
+   Compiling tokio-macros v2.7.2
+   Compiling serde_derive v1.0.229
+   Compiling naga-types v30.0.1
+   Compiling bytemuck v1.25.2
+   Compiling core-graphics v0.23.2
+   Compiling dpi v0.1.2
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling zerocopy v0.8.63
+   Compiling tokio v1.54.1
+   Compiling pollster v0.4.0
+   Compiling cursor-icon v1.2.0
+   Compiling smol_str v0.2.2
+   Compiling wgpu-types v30.0.1
+   Compiling objc2-metal v0.3.2
+   Compiling objc2-app-kit v0.2.2
+   Compiling serde v1.0.229
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling objc2-core-graphics v0.3.2
+   Compiling half v2.7.1
+   Compiling winit v0.30.13
+   Compiling naga v30.0.1
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 15.88s
+
+exit: 0
+
+$ cargo test -p bbt-rt --locked
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.55s
+     Running unittests src/lib.rs (target/debug/deps/bbt_rt-ee62fdf8ca244f04)
+
+running 1 test
+test meter::tests::bounded_samples_keep_lifetime_count_and_phase_hitches ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime.rs (target/debug/deps/runtime-3ccc48789f8b32b9)
+
+running 8 tests
+test latest_and_view_ring_replace_old_values ... ok
+test ten_thousand_dirty_sets_wake_once_until_drained ... ok
+test singleton_runtime_and_ui_thread_guard ... ok
+test command_argv_cwd_env_stderr_and_exit_are_observable ... ok
+test spawn_failure_and_early_cancel_always_complete ... ok
+test cancel_kills_the_process_group_including_a_grandchild ... ok
+test million_messages_per_second_never_wait_for_a_consumer ... ok
+test hundred_megabyte_command_finishes_with_a_bounded_view ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+
+   Doc-tests bbt_rt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo clippy -p bboxy450-term -p bbt-rt --locked --all-targets -- -D warnings
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+error: use of a disallowed method `std::fs::read_to_string`
+   --> crates/bbt-ui-model/build.rs:139:47
+    |
+139 |     let tokens: toml::Value = toml::from_str(&fs::read_to_string(tokens_path)?)?;
+    |                                               ^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+    = note: `-D clippy::disallowed-methods` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
+
+error: use of a disallowed method `std::fs::read_to_string`
+   --> crates/bbt-ui-model/build.rs:141:46
+    |
+141 |     let style: Value = serde_json::from_str(&fs::read_to_string(style_path)?)?;
+    |                                              ^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::write`
+   --> crates/bbt-ui-model/build.rs:149:5
+    |
+149 |     fs::write(
+    |     ^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: could not compile `bbt-ui-model` (build script) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+exit: 101
+
+$ cargo clippy -p bboxy450-term -p bbt-rt --locked --all-targets --no-deps -- -D warnings
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.30s
+
+exit: 0
+
+$ cargo fmt -p bbt-rt -p bboxy450-term
+
+exit: 0
+
+$ cargo build -p bboxy450-term --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.53s
+
+exit: 0
+
+$ target/debug/bboxy450-term --smoke --meter
+Output: .bboxy/runs/r2-smoke-first.log
+exit: 1
+
+First native probe failed (exit 1): cold/repeated font measurement and unbatched chrome passes blocked frame CPU for seconds; idle event arrived late. Added persistent width/metrics cache, IO-side first-use preparation, adjacent draw batching, and started the ten-second timer from the actual UI idle boundary after update 20 was presented.
+
+$ cargo fmt -p bbt-rt -p bboxy450-term
+
+exit: 0
+
+$ cargo build -p bboxy450-term --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.40s
+
+exit: 0
+
+$ target/debug/bboxy450-term --smoke --meter
+Output: .bboxy/runs/r2-smoke-warm.log
+exit: 0
+
+Warm/batched smoke: exit 0; 10.002s idle, zero presented frames, update 20, CPU p50 60.124ms/p99 74.901ms. R5 CPU target is not met; retained as measured. CUA cannot select the unbundled binary (Invalid app); added optional exact-frame capture via nonblocking GPU copy and IO-side wait/PNG/write, and will use a local .app build artifact for native inspection.
+
+$ cargo fmt -p bbt-rt -p bboxy450-term
+
+exit: 0
+
+$ cargo build -p bboxy450-term --locked
+   Compiling tokio v1.54.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+error[E0508]: cannot move out of type `[std::string::String]`, a non-copy slice
+   --> crates/bboxy450-term/src/main.rs:322:21
+    |
+322 |         .map(|pair| pair[1].into());
+    |                     ^^^^^^^ ------ `pair[_]` moved due to this method call
+    |                     |
+    |                     cannot move out of here
+    |                     move occurs because `pair[_]` has type `std::string::String`, which does not implement the `Copy` trait
+    |
+note: `std::convert::Into::into` takes ownership of the receiver `self`, which moves `pair[_]`
+   --> /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/convert/mod.rs:456:13
+    |
+456 |     fn into(self) -> T;
+    |             ^^^^
+help: consider cloning the value if the performance cost is acceptable
+    |
+322 |         .map(|pair| pair[1].clone().into());
+    |                            ++++++++
+
+For more information about this error, try `rustc --explain E0508`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term") due to 1 previous error
+
+exit: 101
+
+Python created local target/debug/bboxy450-term.app from the built binary and minimal Info.plist, for native tool inspection only — exit 0.
+
+$ cargo fmt -p bbt-rt -p bboxy450-term
+
+exit: 0
+
+$ cargo build -p bboxy450-term --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.34s
+
+exit: 0
+
+$ cargo clippy -p bboxy450-term -p bbt-rt --locked --all-targets --no-deps -- -D warnings
+    Checking tokio v1.54.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.55s
+
+exit: 0
+
+Refreshed native inspection bundle with successfully rebuilt capture-capable binary — exit 0.
+
+$ target/debug/bboxy450-term --smoke --meter --capture .bboxy/runs/r2-scene15.png
+Output: .bboxy/runs/r2-smoke-final.log
+exit: 0
+
+Native CUA inspection opened the local .app and showed all fifteen headers/sidebar; found Pane min_height was zero, leaving bodies short, and logical Option-F cannot identify the physical shortcut. Corrected min_height to solved rect.h and shortcut to PhysicalKey::KeyF. CUA app-menu Quit closed the temporary inspection app (subsequent state read reported procNotFound).
+
+$ cargo fmt -p bbt-rt -p bboxy450-term
+
+exit: 0
+
+$ cargo build -p bboxy450-term --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.56s
+
+exit: 0
+
+$ cargo clippy -p bboxy450-term -p bbt-rt --locked --all-targets --no-deps -- -D warnings
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.24s
+
+exit: 0
+
+$ cargo test -p bbt-rt --locked
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running unittests src/lib.rs (target/debug/deps/bbt_rt-ee62fdf8ca244f04)
+
+running 1 test
+test meter::tests::bounded_samples_keep_lifetime_count_and_phase_hitches ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime.rs (target/debug/deps/runtime-3ccc48789f8b32b9)
+
+running 8 tests
+test latest_and_view_ring_replace_old_values ... ok
+test ten_thousand_dirty_sets_wake_once_until_drained ... ok
+test singleton_runtime_and_ui_thread_guard ... ok
+test command_argv_cwd_env_stderr_and_exit_are_observable ... ok
+test spawn_failure_and_early_cancel_always_complete ... ok
+test cancel_kills_the_process_group_including_a_grandchild ... ok
+test million_messages_per_second_never_wait_for_a_consumer ... ok
+test hundred_megabyte_command_finishes_with_a_bounded_view ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+   Doc-tests bbt_rt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+
+Refreshed native inspection bundle after visual corrections — exit 0.
+
+$ target/debug/bboxy450-term --smoke --meter --capture .bboxy/runs/r2-scene15.png
+Output: .bboxy/runs/r2-smoke-verified.log
+exit: 0
+
+$ scripts/ui-lint.sh
+Output: .bboxy/runs/r2-ui-io-lint.log
+exit: 101
+
+$ cargo clippy -p bbt-ui-model -p bbt-ui -p bbt-render -p bboxy450-term --locked -- -W clippy::disallowed_methods
+Output: .bboxy/runs/r2-ui-io-lint.log
+exit: 0
+
+Visual verification: view_image read .bboxy/runs/r2-scene15.png after final smoke; verified fifteen full-height split panes, sidebar and runtime update 20, with meter visible. CUA opened the refreshed native bundle, clicked the window, pressed super+alt+f, refreshed AX and read screenshot: meter toggled on; used app-menu Quit to close own verification instance. No other apps edited.
+PNG dimensions (1600, 960); sha256 ac58da8ce68c8e0057e3b0deced6d6edd4d56b39fa6316aeb842d8c65ecf70ed. Python metadata inspection exit 0.
+
+$ git diff --check
+exit: 0
+
+$ git diff --name-only
+Cargo.lock
+crates/bboxy450-term/Cargo.toml
+crates/bboxy450-term/src/main.rs
+crates/bbt-rt/README.md
+crates/bbt-rt/src/lib.rs
+exit: 0
+
+$ git status --short --branch
+## exec3...origin/main [behind 2]
+ M Cargo.lock
+ M crates/bboxy450-term/Cargo.toml
+ M crates/bboxy450-term/src/main.rs
+ M crates/bbt-rt/README.md
+ M crates/bbt-rt/src/lib.rs
+?? .bboxy/runs/r2-commands.log
+?? .bboxy/runs/r2-scene15.png
+?? .bboxy/runs/r2-smoke-final.log
+?? .bboxy/runs/r2-smoke-first.log
+?? .bboxy/runs/r2-smoke-verified.log
+?? .bboxy/runs/r2-smoke-warm.log
+?? .bboxy/runs/r2-ui-io-lint.log
+?? crates/bboxy450-term/README.md
+?? crates/bboxy450-term/build.rs
+?? crates/bboxy450-term/src/assets.rs
+?? crates/bboxy450-term/src/capture.rs
+?? crates/bboxy450-term/src/gpu.rs
+?? crates/bboxy450-term/src/log.rs
+?? crates/bboxy450-term/src/scene.rs
+?? crates/bbt-rt/src/meter.rs
+?? scripts/ui-lint.sh
+exit: 0
+
+$ git config --get user.name
+Boxy
+exit: 0
+
+$ git config --get user.email
+bboxy450@gmail.com
+exit: 0
+
+$ git config --get user.signingkey
+9B07E849480C68328CA20684844ECC0587DE7AB0
+exit: 0
+
+$ git config --get commit.gpgsign
+true
+exit: 0
+
+Read-only API line-number inspection and git log exit 0; Python wrote r2-evidence.log exit 0. Screenshot and CUA observations are summarized in that evidence file.
