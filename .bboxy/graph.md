@@ -54,7 +54,7 @@ R1 bbt-rt runtime ✔ (Sable, 29d5e62) ──▶ R2 app shell + hitch meter ✔ 
 
 O1 bboxy450-rt docs+publish [DEFERRED, velocity first] ──▶ (after W3.2d.7.10) O2 split public/private ──▶ O3 ui-core ──▶ O4 render ──▶ O5 ui ──▶ O6 book
 
-COCKPIT (operator 2026-10-22, epic C): Sable R4b → R3 → C1 live seats | Nyx 7.9 → 7.10 → W3.2c → L8 → L9 | Rook W1.2c → W2.4 local messaging → W2.5 MCP + tasks → W2.6 provenance/events → D1 dummy ssh/cloud | Wren lab refs
+COCKPIT (operator 2026-10-22, epic C): Sable R4b → R3 → C1 live seats | Nyx 7.9 → 7.10 → W3.2c → L8 → L9 | Rook W1.2c → W2.4 local messaging → W2.5 MCP + tasks → W2.5b seat wiring (MCP, hooks, skill) → W2.6 provenance/events → D1 dummy ssh/cloud | Wren lab refs
 
 W4.1 Transport trait + loopback + quinn auth [DEFERRED: cockpit first]
    └──▶ phase 2 cloud: SshProvider bootstrap, remote supervisor
