@@ -174,7 +174,7 @@
   function subagentRows(seat) {
     const run = (seat.subagents || []).filter(a => a.state === 'active' || a.state === 'waiting'); if (!run.length) return [];
     const grade = seat.harness === 'codex' ? 'shim' : 'reported', shown = run.length > 8 ? run.slice(0, 7) : run;
-    const rows = shown.map(a => el('div', { class: 'sa-row ' + a.state, title: a.description + ' · ' + a.state + (a.detail ? ' · ' + a.detail : '') + ' · ' + (grade === 'shim' ? 'from hooks' : 'from OSC 7501') },
+    const rows = shown.map(a => el('div', { class: 'sa-row ' + a.state, 'data-seat': seat.key, 'data-agent': a.id, title: a.description + ' · ' + a.state + (a.detail ? ' · ' + a.detail : '') + ' · ' + (grade === 'shim' ? 'from hooks' : 'from OSC 7501') },
       el('span', { class: 'branch' }), glyph(a.state, { key: seat.key, color: seat.color, grade, waitKind: a.kind }), el('span', { class: 'sdesc' }, a.description), a.detail ? el('span', { class: 'sdetail' }, a.detail) : null));
     if (run.length > 8) rows.push(el('div', { class: 'sa-row more', title: run.slice(7).map(a => a.description).join('\n') }, el('span', { class: 'branch' }), el('span', { class: 'sdesc' }, '+' + (run.length - 7) + ' running')));
     return rows;
@@ -187,7 +187,14 @@
     opts = opts || {};
     const act = (a, v) => { opts.onAction && opts.onAction(a, seat, v); if (!/^copy/.test(a)) opts.onClose && opts.onClose(); };
     const roles = opts.roles || ['oracle', 'executor', 'creativity'];
-    const items = [
+    const ag = opts.agent;
+    const items = ag ? [
+      { label: 'Message this subagent', a: 'message-agent', k: '↩', cap: (opts.addressable ? 'direct' : 'relayed via main: ' + (seat.harness || 'the harness') + ' cannot address subagents') },
+      { label: 'Message the main agent', a: 'message-main' },
+      '-',
+      { label: 'Focus ' + seat.name, a: 'focus' },
+      { label: 'Copy agent id', a: 'copy-agent', cap: ag.id },
+    ] : [
       { label: 'Focus', a: 'focus', k: '↩' },
       { label: 'Split right', a: 'split-right', k: '⌘D' },
       { label: 'Split down', a: 'split-down', k: '⌘⇧D' },
@@ -204,7 +211,7 @@
       { label: 'Close', a: 'close', k: '⌘W', danger: true },
       ...(opts.steer ? [{ label: 'Purge…', a: 'purge', danger: true }] : []),
     ];
-    const menu = el('div', { class: 'row-menu', role: 'menu', tabindex: '-1' }, el('div', { class: 'rm-head' }, harnessIcon(seat.harness), el('b', { style: 'color:' + seatColor(seat) }, seat.name)));
+    const menu = el('div', { class: 'row-menu', role: 'menu', tabindex: '-1' }, el('div', { class: 'rm-head' }, harnessIcon(seat.harness), el('b', { style: 'color:' + seatColor(seat) }, seat.name), ag ? el('span', { class: 'rm-ag' }, '↳ ' + ag.description) : null));
     const rows = [];
     let sel = 0, flyout = null;
     const closeFly = () => { if (flyout) { flyout.remove(); flyout = null; } };
@@ -222,8 +229,9 @@
       const i = rows.length; rows.push(row);
       row.addEventListener('pointerenter', () => { sel = i; paint(); it.sub ? openFly(it, row) : closeFly(); });
       row.addEventListener('click', e => { e.stopPropagation(); if (it.sub) { openFly(it, row); return; }
+        if (it.a === 'copy-agent') { try { navigator.clipboard && navigator.clipboard.writeText(it.cap).catch(() => {}); } catch {} row.classList.add('copied'); }
         if (it.a === 'copy-socket') { try { navigator.clipboard && navigator.clipboard.writeText(it.cap).catch(() => {}); } catch {} row.classList.add('copied'); row.querySelector('.lbl').firstChild.textContent = 'Copied socket path'; }
-        act(it.a); });
+        if (it.a !== 'copy-agent') act(it.a); });
       row._it = it; menu.append(row);
     }
     menu.addEventListener('keydown', e => {
@@ -978,8 +986,13 @@
     const row = el('div', { class: 'msg ' + role + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: '--role:var(--role-' + role + ')' });
     const head = el('div', { class: 'head' }, el('span', { class: 'who' }, m.from), el('span', { class: 'role' }, '<' + role.toUpperCase() + '>'));
     if (role === 'oracle' && !m.foreign) head.append(el('span', { class: 'p0' }, 'p0'));  // a foreign Oracle ranks as a worker here
+    // subagent addressing (messaging.md): to main or to a subagent; from a subagent, or relayed via main; held when the agent ended
+    if (m.fromAgent) head.append(el('span', { class: 'agchip from', title: 'from subagent ' + m.fromAgent }, '↳ ' + m.fromAgent));
+    if (m.via === 'main') head.append(el('span', { class: 'agchip via', title: 'the harness relayed it; the subagent is not addressable directly' }, 'via main'));
+    if (m.to) head.append(el('span', { class: 'agchip to' + (m.to === 'main' ? ' main' : ''), title: m.to === 'main' ? 'to the main agent' : 'to subagent ' + m.to }, '→ ' + (m.to === 'main' ? 'main' : '↳ ' + m.to)));
     head.append(el('span', { class: 'time' }, m.time || ''));
-    if (m.evidence) head.append(tickLadder(m.evidence));
+    if (m.held === 'agent_ended') head.append(el('span', { class: 'agchip held', title: 'held: the subagent ended before delivery; never redirected to main on its own' }, 'held · agent ended'));
+    else if (m.evidence) head.append(tickLadder(m.evidence));
     const body = el('div', { class: 'body' }, head);
     if (m.replyTo) body.append(el('div', { class: 'reply' }, '↩ ' + m.replyTo));
     body.append(el('div', { class: 'text' }, /\[\[/.test(m.text || '') ? renderLinks(m.text) : m.text));

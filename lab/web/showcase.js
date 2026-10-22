@@ -190,6 +190,23 @@
       streamLine(sp, 'operator purged ' + x.name + ' · history moved to cold storage'); render(); } });
     back.append(m); document.body.append(back); spot = back; m.focus();
   }
+  // Subagent rows are message targets (messaging.md Subagent addressing). Claude and Codex cannot address subagents, so the
+  // message goes to the main agent with a routing header: the row says "via main", the ladder is per target, the reply is relayed.
+  function openAgentMenu(sd, ag, x, y) {
+    closeRowMenu();
+    rmenu = C.rowMenu(sd, { agent: ag, addressable: false, onClose: closeRowMenu, onAction: (a) => {
+      const sp = (tabOf(sd.key) || {}).sp || space();
+      if (a === 'focus') return setFocus(sd.key, { locate: 'both' });
+      if (a !== 'message-agent' && a !== 'message-main') return;
+      const toAgent = a === 'message-agent', msg = { from: 'operator', role: 'oracle', time: new Date().toTimeString().slice(0, 5), text: toAgent ? 'how far along is this?' : 'when you are free, summarise the subagents', to: toAgent ? ag.description : 'main', via: toAgent ? 'main' : null, evidence: 'sender-stored' };
+      sp.stream.push(msg); render();
+      ['recipient-stored', 'native-written'].forEach((ev, i) => setTimeout(() => { msg.evidence = ev; render(); }, 500 + i * 700));
+      if (toAgent) setTimeout(() => { sp.stream.push({ from: sd.name, fromKey: sd.key, role: sd.role, time: new Date().toTimeString().slice(0, 5), text: 'for ' + ag.description + ': two thirds done', via: 'main', unread: true }); render(); }, 2600);
+    } });
+    rmenu.style.position = 'fixed'; rmenu.style.left = Math.min(x, innerWidth - 260) + 'px'; rmenu.style.top = Math.min(y, innerHeight - 220) + 'px';
+    document.body.append(rmenu); rmenu.focus();
+  }
+  addEventListener('contextmenu', e => { const r = e.target.closest && e.target.closest('.sa-row'); if (!r || !r.dataset.agent) return; const sd = seats.find(x => x.key === r.dataset.seat), ag = sd && (sd.subagents || []).find(a => a.id === r.dataset.agent); if (!ag) return; e.preventDefault(); e.stopImmediatePropagation(); openAgentMenu(sd, ag, e.clientX, e.clientY); }, true);
   const rowSeat = t => { const r = t.closest && t.closest('.seat-row'); return r && seats.find(x => x.key === r.dataset.key); };
   addEventListener('contextmenu', e => { const sd = rowSeat(e.target); if (!sd) return; e.preventDefault(); openRowMenu(sd, e.clientX, e.clientY); });
   addEventListener('click', e => { if (rmenu && !rmenu.contains(e.target)) { closeRowMenu(); return; } if (!e.metaKey) return; const sd = rowSeat(e.target); if (sd) { e.preventDefault(); e.stopPropagation(); openRowMenu(sd, e.clientX, e.clientY); } }, true);

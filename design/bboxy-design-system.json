@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 38,
+  "version": 39,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -239,6 +239,11 @@
       "source": "identity.md: expired | revoked | forked",
       "drawing": "a small struck-key mark after the name and a muted strip subtitle naming the cause; controls that need the seat's signature are disabled with the same reason; independent of the state glyph",
       "status": "drawn, not built"
+    },
+    "subagent_addressing": {
+      "means": "who a message is for and who answered (messaging.md Subagent addressing)",
+      "drawing": "message row chips: \"→ main\" or \"→ ↳ <subagent title>\"; a reply from a subagent carries \"↳ <title>\" in the role colour; \"via main\" in italics when the harness relayed (Claude and Codex: subagent_addressable false); a message to an ended subagent shows an amber dashed \"held · agent ended\" in place of the ladder, never redirected; the ladder is per target",
+      "status": "built: messageRow m.to, m.fromAgent, m.via, m.held; rowMenu opts.agent (Message this subagent, Message the main agent, Focus seat, Copy agent id); subagent rows open it on right-click; message-row.html?state=to-a-subagent|relayed-via-main|reply-from-a-subagent|agent-ended-held; seat-row.html?state=subagent-menu; showcase right-click a subagent row"
     }
   },
   "elements": {
