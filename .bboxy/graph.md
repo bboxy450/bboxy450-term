@@ -11,13 +11,13 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
 | Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); checkpoint to operator every 3 passes | nothing |
 | Nyx Copperwing | Executor | Codex | **W3.2b bboxybook: draw atoms, chrome pass, modules, parity loop** | nothing |
-| Rook Ashwhisker | Executor | Codex | idle | in-session authorization from the operator |
+| Rook Ashwhisker | Executor | Codex | **W2.2 logic: store objects, registry, .bboxy index, state streams, bus last** | nothing (authorized 2026-10-21) |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
 | subagent provenance | Oracle instrument | Claude | done → `research/provenance-and-documents.md`, decided in `specs/provenance.md` | — |
 | subagent pubsub | Oracle instrument | Claude | researching NATS-class pubsub for the minimal bus → `research/pubsub-nats.md` | nothing |
 | subagent state-backend | Oracle instrument | Claude | done → `research/state-backend.md`, decided in `specs/storage.md` | — |
-| operator | operator | human | lab review with Lumen | Codex trust for the fixture dir; Rook's pane |
+| operator | operator | human | checkpoints | Codex trust for the fixture dir |
 
 ## Graph
 
@@ -39,7 +39,7 @@ W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
 
 W2.1 supervisor + PTY + lease ✔ (Nyx, f6cab17, 12 tests, 50-seat poller)
    ├──▶ W1.2 byte ring [OPEN, claimable]
-   ├──▶ W2.2 logic: store traits, registry, event bus, .bboxy index, state streams [OPEN, claimable]
+   ├──▶ W2.2 logic: store traits, registry, event bus, .bboxy index, state streams [Rook, RUNNING]
    │       └──▶ W3.4 app GUI client
    └──▶ W2.3 adapters Claude/Codex/zsh [OPEN, claimable]
            ├── needs: osc7501-claude.bin ✔, osc7501-codex.bin ✘ (operator trust)
@@ -56,8 +56,8 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 | State | Items |
 |---|---|
-| RUNNING | W3.2b (Nyx); lab passes (Wren) |
-| OPEN, claimable now | W4.1, W1.2, W2.3, W2.2 |
+| RUNNING | W3.2b (Nyx); W2.2 (Rook); UX queue (Wren); pubsub research |
+| OPEN, claimable now | W4.1, W1.2, W2.3 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
 | NOT YET BRIEFED | W2.7 code indexer (tree-sitter code graph, code_search, code_graph), W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |

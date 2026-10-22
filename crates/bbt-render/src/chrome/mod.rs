@@ -425,17 +425,31 @@ fn upload(
     texture
 }
 
-#[cfg(all(test,target_os="macos"))]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
     #[test]
     fn sdf_rounding_stroke_and_clip_survive_gpu_readback() {
-        let mut renderer=ChromeRenderer::new(vec![]).unwrap();
-        let mut list=DrawList::default();
-        list.rect(Rect::new(0.0,0.0,64.0,64.0),0.0,Color::BLACK);
-        list.push(Prim::Rect{rect:Rect::new(8.0,8.0,40.0,40.0),radii:[10.0;4],fill:Color::hex("#FF0000"),stroke:Some((2.0,Color::hex("#0000FF"))),inner_highlight:None,shadow:None});
-        list.clip(Rect::new(52.0,0.0,4.0,64.0),[0.0;4]);list.rect(Rect::new(48.0,0.0,16.0,64.0),0.0,Color::WHITE);list.unclip();
-        let image=renderer.render_to_rgba(&list,64,64,1.0).unwrap();let pixel=|x:usize,y:usize|&image[(y*64+x)*4..(y*64+x)*4+4];
-        assert_eq!(pixel(8,8),[0,0,0,255]);assert_eq!(pixel(25,25),[255,0,0,255]);assert_eq!(pixel(8,26),[0,0,255,255]);assert_eq!(pixel(53,26),[255,255,255,255]);assert_eq!(pixel(59,26),[0,0,0,255]);
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0.0, 0.0, 64.0, 64.0), 0.0, Color::BLACK);
+        list.push(Prim::Rect {
+            rect: Rect::new(8.0, 8.0, 40.0, 40.0),
+            radii: [10.0; 4],
+            fill: Color::hex("#FF0000"),
+            stroke: Some((2.0, Color::hex("#0000FF"))),
+            inner_highlight: None,
+            shadow: None,
+        });
+        list.clip(Rect::new(52.0, 0.0, 4.0, 64.0), [0.0; 4]);
+        list.rect(Rect::new(48.0, 0.0, 16.0, 64.0), 0.0, Color::WHITE);
+        list.unclip();
+        let image = renderer.render_to_rgba(&list, 64, 64, 1.0).unwrap();
+        let pixel = |x: usize, y: usize| &image[(y * 64 + x) * 4..(y * 64 + x) * 4 + 4];
+        assert_eq!(pixel(8, 8), [0, 0, 0, 255]);
+        assert_eq!(pixel(25, 25), [255, 0, 0, 255]);
+        assert_eq!(pixel(8, 26), [0, 0, 255, 255]);
+        assert_eq!(pixel(53, 26), [255, 255, 255, 255]);
+        assert_eq!(pixel(59, 26), [0, 0, 0, 255]);
     }
 }

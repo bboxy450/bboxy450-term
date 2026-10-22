@@ -71,7 +71,10 @@
 
   function page(spec) {
     applyTokens();
-    let current = new URLSearchParams(location.search).get('state') || store.get('lab.state.' + spec.title) || 'all';
+    // ?state= takes the display label or its slug ("subagents · claude" or "subagents-claude"); a miss falls back to "all" and logs
+    const slug = x => String(x).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const resolve = want => { if (!want) return null; const hit = ['all', ...spec.states].find(x => x === want || slug(x) === slug(want)); if (!hit) console.warn('lab: unknown state "' + want + '" on ' + spec.title + '; showing all'); return hit || 'all'; };
+    let current = resolve(new URLSearchParams(location.search).get('state')) || resolve(store.get('lab.state.' + spec.title)) || 'all';
     const root = document.body;
     root.innerHTML = '';
     const top = el('div', { class: 'lab-top' },
@@ -83,7 +86,7 @@
     );
     const strip = el('div', { class: 'state-strip' });
     const names = ['all', ...spec.states];
-    for (const s of names) strip.append(el('button', { class: 'chip' + (s === current ? ' on' : ''), onclick: () => { current = s; store.set('lab.state.' + spec.title, s); history.replaceState(null, '', s === 'all' ? location.pathname : '?state=' + encodeURIComponent(s)); page(spec); } }, s));
+    for (const s of names) strip.append(el('button', { class: 'chip' + (s === current ? ' on' : ''), onclick: () => { current = s; store.set('lab.state.' + spec.title, s); history.replaceState(null, '', s === 'all' ? location.pathname : '?state=' + slug(s)); page(spec); } }, s));
     const main = el('div', { class: 'lab-main' + (current === 'all' && !spec.wide ? '' : ' single') });
     const ctx = { theme: prefs.theme, density: prefs.density, tokens: T, el };
     const draw = (s) => {

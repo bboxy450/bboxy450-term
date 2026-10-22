@@ -41,6 +41,9 @@ function fixture(c) {
     case 'pane':node=C.pane(s,{...options,height:c.height-28});node.style.width='700px';break;
     case 'banner':node=el('div',{class:'banner'},el('span',{},'Split right'),C.miniGrid(tree,b.key,true));break;
     case 'glow_canvas':node=C.pane(s,{focused:true,height:100});node.style.width='450px';break;
+    case 'gap_marker':node=C.gapMarker(c.state==='retained'?{from:'000042'}:null);node.style.width='700px';break;
+    case 'tick_ladder':node=C.tickLadder(c.state);break;
+    case 'nested_subagent_rows':{const n=c.state==='overflow'?10:2;node=el('div',{style:'width:700px'},...C.subagentRows({...s,harness:c.state==='codex'?'codex':'claude',subagents:Array.from({length:n},(_,i)=>({state:i===1?'waiting':'active',kind:'question',description:i===1?'Check assumptions':'Inspect renderer'}))}));break;}
     case 'task_row':node=C.taskRow(task,b,{onAccept:()=>{}});node.style.width='500px';break;
     case 'epic_group':node=C.epicGroup(epic,{});node.style.width='700px';break;
     case 'artifact_row':node=C.artifactRow(art,{});break;

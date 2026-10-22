@@ -125,16 +125,7 @@ pub fn entries() -> Vec<Entry> {
         entry(
             "harness-icon",
             "harness-icon.html",
-            &[
-                "claude",
-                "codex",
-                "pi",
-                "omp",
-                "zsh",
-                "gear",
-                "sidebarfox",
-                "ears",
-            ],
+            &["claude", "codex", "pi", "omp", "zsh", "gear", "sidebarfox"],
             true,
         ),
         entry(
@@ -238,25 +229,13 @@ pub fn entries() -> Vec<Entry> {
             ],
             false,
         ),
-        entry(
-            "logo",
-            "logo.html",
-            &[
-                "portrait at sizes",
-                "circle crop",
-                "app tile",
-                "on light",
-                "svg explorations (reference)",
-            ],
-            true,
-        ),
+        entry("logo", "logo.html", &["identity png"], true),
         entry(
             "toolbar-icon",
             "toolbar-icon.html",
             &[
                 "sidebar toggle · closed",
                 "sidebar toggle · open",
-                "ear pair",
                 "sizes ladder",
                 "in our title bar",
                 "in the menubar",
@@ -327,6 +306,31 @@ pub fn entries() -> Vec<Entry> {
             false,
         ));
     }
+    out.push(entry(
+        "gap_marker",
+        "@component",
+        &["retained", "unavailable"],
+        false,
+    ));
+    out.push(entry(
+        "tick_ladder",
+        "@component",
+        &[
+            "sender-stored",
+            "recipient-stored",
+            "native-queued",
+            "native-written",
+            "native-unknown",
+            "application-acknowledged",
+        ],
+        false,
+    ));
+    out.push(entry(
+        "nested_subagent_rows",
+        "@component",
+        &["claude", "codex", "overflow"],
+        false,
+    ));
     for scene in ["3", "15"] {
         let mut e = entry(
             &format!("showcase-{scene}"),

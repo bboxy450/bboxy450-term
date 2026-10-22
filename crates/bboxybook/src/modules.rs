@@ -38,6 +38,7 @@ pub fn height(id: &str, state: &str, d: Density) -> u32 {
         "provenance_card" | "subscriptions_card" => 400,
         "swarm_card" => 330,
         "pane" => 250,
+        "nested_subagent_rows" => if state=="overflow"{208}else{84},
         _ => 150,
     }
 }
@@ -75,6 +76,17 @@ fn col(i: usize, ctx: &DrawCtx) -> Color {
     } else {
         LIGHT[i % 15]
     })
+}
+fn derived_color(key: &str, ctx: &DrawCtx) -> Color {
+    let h = SeatColor::Derived.resolve(key, ctx.theme);
+    Color::hsl(h.hue, h.saturation / 100.0, h.lightness / 100.0)
+}
+fn seat_color(s: &Seat, ctx: &DrawCtx) -> Color {
+    if let SeatColor::Override(h) = s.color {
+        Color::hsl(h.hue, h.saturation / 100.0, h.lightness / 100.0)
+    } else {
+        col(s.id.0.0.saturating_sub(1) as usize, ctx)
+    }
 }
 fn activity(s: &str) -> Activity {
     match s {
@@ -116,8 +128,10 @@ fn seat(i: usize) -> Seat {
         5 => Activity::Errored,
         _ => Activity::Idle,
     };
-    s.grade = if harness == "claude" || harness == "codex" {
+    s.grade = if harness == "claude" {
         Grade::Reported
+    } else if harness == "codex" {
+        Grade::Shim
     } else {
         Grade::Inferred
     };
@@ -198,7 +212,7 @@ pub fn seat_row(
 ) {
     out.clip(r, [0.0; 4]);
     let d = ctx.density.tokens();
-    let color = col(s.id.0.0.saturating_sub(1) as usize, ctx);
+    let color = seat_color(s, ctx);
     if focused {
         out.rect(
             r,
@@ -266,7 +280,18 @@ pub fn seat_row(
     }
     let role_space = if s.role.is_some() { 12.0 + gap } else { 0.0 };
     let mute_space = if s.muted { 12.0 + gap } else { 0.0 };
-    let natural = s.name.chars().count() as f32 * d.font as f32 * 0.52;
+    let natural = bbt_render::chrome::text::rasterize(
+        &s.name,
+        TextStyle {
+            scale: TypeScale::Custom(d.font as f32),
+            weight: 600,
+            ..Default::default()
+        },
+        None,
+        1.0,
+    )
+    .map(|m| m.advance)
+    .unwrap_or(s.name.chars().count() as f32 * d.font as f32 * 0.52);
     let name_w = natural.min((right - x - role_space - mute_space).max(1.0));
     text(
         out,
@@ -375,13 +400,8 @@ fn band(name: &str, count: usize, r: Rect, color: Color, ctx: &DrawCtx, out: &mu
         radii: [STYLE.radius.tile as f32; 4],
         color: ctx.color(color),
     });
-    Swatch(color).draw(
-        Rect::new(r.x + 12.0, r.y + (r.h - 10.0) * 0.5, 10.0, 10.0),
-        ctx,
-        out,
-    );
     out.text(
-        Rect::new(r.x + 32.0, r.y + (r.h - 14.0) * 0.5, r.w - 70.0, 14.0),
+        Rect::new(r.x + 12.0, r.y + (r.h - 14.0) * 0.5, r.w - 65.0, 14.0),
         name,
         TextStyle {
             scale: TypeScale::Band,
@@ -394,11 +414,21 @@ fn band(name: &str, count: usize, r: Rect, color: Color, ctx: &DrawCtx, out: &mu
     );
     text(
         out,
-        Rect::new(r.right() - 30.0, r.y + (r.h - 14.0) * 0.5, 24.0, 14.0),
+        Rect::new(
+            r.x + 12.0 + name.len() as f32 * 8.0 + 10.0,
+            r.y + (r.h - 14.0) * 0.5,
+            24.0,
+            14.0,
+        ),
         count.to_string(),
         10.5,
         ctx.color(Color::WHITE.alpha(0.7)),
         400,
+    );
+    Swatch(color).draw(
+        Rect::new(r.right() - 22.0, r.y + (r.h - 10.0) * 0.5, 10.0, 10.0),
+        ctx,
+        out,
     );
 }
 fn new_seat(r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
@@ -488,7 +518,7 @@ fn card(
     out: &mut DrawList,
 ) {
     let dim = if focused { *ctx } else { ctx.dimmed() };
-    let color = col(if name == "winnow" { 4 } else { 0 }, ctx);
+    let color = derived_color(&format!("space-{name}"), ctx);
     panel(out, r, &dim);
     out.clip(r, [STYLE.radius.card as f32; 4]);
     let h = STYLE.spacing.band as f32;
@@ -503,18 +533,83 @@ fn card(
     if open {
         let mut y = r.y + h + 6.0;
         let row = ctx.density.tokens().row_h as f32;
+        let tab_h = ctx.density.tokens().tab_h as f32;
+        let tree = if indices.len() == 15 {
+            tree15()
+        } else {
+            tree3()
+        };
+        tab_row(
+            &tree,
+            if indices.len() == 15 {
+                "all fifteen"
+            } else {
+                "core"
+            },
+            Rect::new(r.x + 6.0, y, r.w - 12.0, tab_h),
+            true,
+            &dim,
+            out,
+        );
+        y += tab_h;
         for (n, i) in indices.iter().enumerate() {
+            let nested = indices.len() == 15 || n < 3;
             seat_row(
                 &seat(*i),
-                Rect::new(r.x + 6.0, y, r.w - 12.0, row),
+                Rect::new(
+                    r.x + 6.0 + if nested { 8.0 } else { 0.0 },
+                    y,
+                    r.w - 12.0 - if nested { 8.0 } else { 0.0 },
+                    row,
+                ),
                 *i == 0,
-                Some(n + 1),
+                if nested { None } else { Some(n - 1) },
                 &dim,
                 out,
             );
             y += row;
         }
         new_seat(Rect::new(r.x + 6.0, y + 6.0, r.w - 12.0, row), &dim, out);
+        y += row + 12.0;
+        text(
+            out,
+            Rect::new(r.x + 12.0, y, r.w - 24.0, tab_h),
+            "Shadows",
+            ctx.density.tokens().font_small as f32,
+            dim.muted(),
+            400,
+        );
+        y += tab_h;
+        for (i, name) in ["Kestrel Nine", "Orrin Slate", "Ione Marsh"]
+            .iter()
+            .enumerate()
+        {
+            let mut ph = seat(i);
+            ph.name = (*name).into();
+            ph.title.clear();
+            ph.grade = Grade::Reported;
+            ph.activity = [
+                Activity::Active,
+                Activity::Idle,
+                Activity::Waiting(WaitKind::Question),
+            ][i];
+            ph.where_ = Where::Local;
+            let c = Color::hex(ctx.theme.palette().fg_dim).to_hsl();
+            ph.color = SeatColor::Override(Hsl {
+                hue: c[0],
+                saturation: c[1] * 100.0,
+                lightness: c[2] * 100.0,
+            });
+            seat_row(
+                &ph,
+                Rect::new(r.x + 6.0, y, r.w - 12.0, row),
+                false,
+                None,
+                &dim,
+                out,
+            );
+            y += row;
+        }
     }
     out.push(Prim::Rect {
         rect: Rect::new(
@@ -556,7 +651,10 @@ fn sidebar(r: Rect, count: usize, ctx: &DrawCtx, out: &mut DrawList) {
     };
     for (name, indices, open) in groups {
         let h = if open {
-            STYLE.spacing.band as f32 + 20.0 + row * (indices.len() as f32 + 1.0)
+            STYLE.spacing.band as f32
+                + 24.0
+                + ctx.density.tokens().tab_h as f32 * 2.0
+                + row * (indices.len() as f32 + 4.0)
         } else {
             STYLE.spacing.band as f32 + 11.0
         };
@@ -565,7 +663,7 @@ fn sidebar(r: Rect, count: usize, ctx: &DrawCtx, out: &mut DrawList) {
             name,
             &indices,
             open,
-            true,
+            name != "winnow",
             ctx,
             out,
         );
@@ -616,7 +714,7 @@ fn close_dot(r: Rect, hover: bool, ctx: &DrawCtx, out: &mut DrawList) {
 }
 fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
     let ctx = if focused { *ctx } else { ctx.dimmed() };
-    let color = col(s.id.0.0 as usize - 1, &ctx);
+    let color = seat_color(s, &ctx);
     out.rect(r, 0.0, ctx.color(color));
     out.clip(r, [0.0; 4]);
     close_dot(
@@ -634,7 +732,7 @@ fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
         out,
         Rect::new(x, r.y + 5.0, 13.0, 13.0),
         &s.harness.0,
-        ctx.color(Color::BLACK.alpha(0.8)),
+        ctx.color(Color::WHITE.alpha(0.9)),
     );
     x += 18.0;
     let name_w = (s.name.len() as f32 * 5.6).min((r.w - 150.0).max(12.0));
@@ -643,7 +741,7 @@ fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
         Rect::new(x, r.y + 3.0, name_w, 16.0),
         s.name.as_str(),
         11.0,
-        ctx.color(Color::BLACK.alpha(0.9)),
+        ctx.color(Color::WHITE.alpha(0.95)),
         600,
     );
     x += name_w + 5.0;
@@ -669,7 +767,7 @@ fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
         Rect::new(x, r.y + 3.0, (r.right() - x - 76.0).max(0.0), 16.0),
         title,
         10.5,
-        ctx.color(Color::BLACK.alpha(0.65)),
+        ctx.color(Color::WHITE.alpha(0.8)),
         400,
     );
     Badge {
@@ -686,7 +784,7 @@ fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
         out,
         Rect::new(r.right() - 37.0, r.y + 5.0, 12.0, 12.0),
         if s.muted { "muted" } else { "unmuted" },
-        ctx.color(Color::BLACK.alpha(0.65)),
+        ctx.color(Color::WHITE.alpha(0.8)),
     );
     StateGlyph {
         activity: s.activity,
@@ -703,7 +801,7 @@ fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
 fn pane(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
     let color = match s.activity {
         Activity::Errored => Color::hex(TOKENS.color.state.errored),
-        _ => col(s.id.0.0 as usize - 1, ctx),
+        _ => seat_color(s, ctx),
     };
     let dim = if focused { *ctx } else { ctx.dimmed() };
     out.rect(r, 0.0, dim.ground(Color::hex(ctx.theme.palette().bg)));
@@ -786,7 +884,7 @@ fn titlebar(r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
 fn showcase(r: Rect, n: usize, ctx: &DrawCtx, out: &mut DrawList) {
     let h = STYLE.spacing.title_bar as f32;
     titlebar(Rect::new(r.x, r.y, r.w, h), ctx, out);
-    let w = TOKENS.sidebar.width as f32;
+    let w = TOKENS.sidebar.width_compact as f32;
     sidebar(Rect::new(r.x, r.y + h, w, r.h - h), n, ctx, out);
     let tree = if n == 15 { tree15() } else { tree3() };
     for (id, rect) in solve_split(
@@ -1291,22 +1389,19 @@ pub fn draw(id: &str, state: &str, r: Rect, ctx: &DrawCtx, out: &mut DrawList) -
         "launcher" => launcher(r, state, ctx, out),
         "settings_tab" => settings(r, state, ctx, out),
         "logo" => {
+            // identity PNG only, downscaled; no vector mark exists (operator purge, 2026-10-21)
             let mut x = r.x;
-            for size in [256.0, 128.0, 64.0, 32.0, 24.0, 18.0] {
+            for size in [16.0, 32.0, 64.0, 128.0, 256.0, 512.0] {
                 out.push(Prim::Image {
                     rect: Rect::new(x, r.y, size, size),
                     image: "bboxy".into(),
-                    radius: if state == "app tile" {
-                        size * 0.22
-                    } else {
-                        size * 0.5
-                    },
+                    radius: 0.0,
                 });
-                x += size + 18.0;
+                x += size + 28.0;
             }
         }
         "toolbar-icon" => {
-            for (i, name) in ["sidebarfox", "sidebarfoxopen", "ears"].iter().enumerate() {
+            for (i, name) in ["sidebarfox", "sidebarfoxopen"].iter().enumerate() {
                 icon(
                     out,
                     Rect::new(r.x + i as f32 * 64.0, r.y, 32.0, 32.0),
@@ -1442,6 +1537,103 @@ pub fn draw(id: &str, state: &str, r: Rect, ctx: &DrawCtx, out: &mut DrawList) -
                 ctx.muted(),
                 400,
             );
+        }
+        "gap_marker" => {
+            let caption = if state == "retained" {
+                "earlier output evicted · retained from 000042"
+            } else {
+                "earlier output unavailable"
+            };
+            out.line(
+                [r.x, r.y + 9.0],
+                [r.x + 60.0, r.y + 9.0],
+                1.0,
+                ctx.hairline(),
+            );
+            out.text(
+                Rect::new(r.x + 70.0, r.y, r.w.min(440.0), 18.0),
+                caption,
+                TextStyle {
+                    scale: TypeScale::Custom(10.0),
+                    mono: true,
+                    ..Default::default()
+                },
+                ctx.muted(),
+            );
+            out.line(
+                [r.x + 500.0, r.y + 9.0],
+                [r.x + r.w.min(700.0), r.y + 9.0],
+                1.0,
+                ctx.hairline(),
+            );
+        }
+        "tick_ladder" => {
+            let marks = match state {
+                "sender-stored" => "✓",
+                "recipient-stored" | "native-queued" | "native-written" => "✓✓",
+                "native-unknown" => "✓◌",
+                _ => "✓✓✓",
+            };
+            out.text(
+                Rect::new(r.x, r.y, 60.0, 18.0),
+                marks,
+                TextStyle {
+                    scale: TypeScale::Custom(11.0),
+                    mono: true,
+                    ..Default::default()
+                },
+                ctx.muted()
+                    .alpha(if state == "native-queued" { 0.72 } else { 1.0 }),
+            );
+        }
+        "nested_subagent_rows" => {
+            let n = if state == "overflow" { 7 } else { 2 };
+            for i in 0..n {
+                let y = r.y + i as f32 * 20.0;
+                out.line([r.x + 12.0, y], [r.x + 12.0, y + 20.0], 1.0, ctx.hairline());
+                out.line(
+                    [r.x + 12.0, y + 10.0],
+                    [r.x + 22.0, y + 10.0],
+                    1.0,
+                    ctx.hairline(),
+                );
+                StateGlyph {
+                    activity: if i == 1 {
+                        Activity::Waiting(WaitKind::Question)
+                    } else {
+                        Activity::Active
+                    },
+                    grade: if state == "codex" {
+                        Grade::Shim
+                    } else {
+                        Grade::Reported
+                    },
+                    color: col(0, ctx),
+                }
+                .draw(Rect::new(r.x + 28.0, y + 4.0, 11.0, 11.0), ctx, out);
+                text(
+                    out,
+                    Rect::new(r.x + 48.0, y + 2.0, 350.0, 18.0),
+                    if i == 1 {
+                        "Check assumptions"
+                    } else {
+                        "Inspect renderer"
+                    },
+                    11.0,
+                    ctx.fg(),
+                    400,
+                );
+            }
+            if state == "overflow" {
+                text(
+                    out,
+                    Rect::new(r.x + 28.0, r.y + 140.0, 300.0, 18.0),
+                    "+3 running",
+                    11.0,
+                    ctx.muted(),
+                    400,
+                );
+            }
         }
         "task_row" => task_row(Rect::new(r.x, r.y, 500.0, 28.0), ctx, out),
         "epic_group" => info_card(

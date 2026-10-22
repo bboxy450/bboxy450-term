@@ -75,32 +75,22 @@ impl Draw for StateGlyph {
         } else {
             1.0
         });
-        let inset = 2.0;
-        let c = Rect::new(
-            r.x + inset,
-            r.y + inset,
-            (r.w - inset * 2.0).max(1.0),
-            (r.h - inset * 2.0).max(1.0),
+        let label = match self.activity {
+            Activity::Active => "●",
+            Activity::Idle => "○",
+            Activity::Waiting(_) => "◐",
+            Activity::Errored => "✕",
+        };
+        out.text(
+            Rect::new(r.x + r.w * 0.19, r.y - r.h * 0.2, r.w, r.h),
+            label,
+            TextStyle {
+                scale: TypeScale::Custom(r.h),
+                mono: true,
+                ..Default::default()
+            },
+            color,
         );
-        match self.activity {
-            Activity::Idle => out.push(Prim::Rect {
-                rect: c,
-                radii: [c.h; 4],
-                fill: Color::TRANSPARENT,
-                stroke: Some((1.25, color)),
-                inner_highlight: None,
-                shadow: None,
-            }),
-            Activity::Errored => {
-                out.line([c.x, c.y], [c.right(), c.bottom()], 1.6, color);
-                out.line([c.right(), c.y], [c.x, c.bottom()], 1.6, color);
-            }
-            Activity::Waiting(_) => {
-                out.rect(c, c.h, color.alpha(0.35));
-                out.rect(Rect::new(c.x, c.y, c.w * 0.5, c.h), c.h * 0.4, color);
-            }
-            Activity::Active => out.rect(c, c.h, color),
-        }
         if self.grade == Grade::Shim {
             out.push(Prim::Rect {
                 rect: r,

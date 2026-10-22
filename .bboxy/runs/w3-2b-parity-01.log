@@ -35,3 +35,6 @@ rendered 1400/1624
 rendered 1500/1624
 rendered 1600/1624
 rendered 1624 PNGs to target/parity/native
+parity: 1624 cases, 1414 review; target/parity/index.html
+
+exit_status: 0
