@@ -22,9 +22,9 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | subagent state-backend | Oracle instrument | Claude | done → `research/state-backend.md`, decided in `specs/storage.md` | — |
 | operator | operator | human | checkpoints | Codex trust for the fixture dir |
 
-## CI status (2026-10-22)
+## CI (operator, 2026-10-22): local only
 
-GitHub Actions has not run on main since 07:27 UTC (f2f9552): every macOS job is refused with "recent account payments have failed or your spending limit needs to be increased". **Operator action: GitHub Billing & plans.** Until then the evidence is local, run in the Oracle's worktree at each acceptance; on main at 91084c4 `cargo test --workspace --locked` gave 398 passed, 0 failed, and `scripts/layering.sh` and `scripts/ui-lint.sh` both exit 0. Queued P1 (Architect's call): geometry parity failures fail CI hard; pixel review stays advisory.
+No GitHub CI during heavy development; the workflow runs on manual dispatch only (billing had also refused every run since 07:27). **Every Executor handoff and every Oracle acceptance runs `sh scripts/ci-local.sh`** (layering, workspace build, workspace tests, UI IO lint; `--parity` when lab, design, UI or renderer changed) and reports the exit. CI returns per crate when it is open-sourced into a public repo. Queued P1 (Architect): geometry parity failures fail the gate hard; pixel review stays advisory.
 
 ## ICQ keys (DM addresses)
 
