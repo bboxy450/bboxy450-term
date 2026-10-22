@@ -1,0 +1,35 @@
+W3.5a acceptance amendment — real frontmatter gate
+Source: 715423f08058c3a86545313c048ed35229fbf4d8; parent accepted main 34f7f32.
+Worktree: /Users/feral/mydev/bboxy450-term-nyx; one writing owner.
+git verify-commit 715423f — exit 0, Boxy machine key 9B07E849480C68328CA20684844ECC0587DE7AB0.
+
+crates/bbt-doc/src/markdown/parse.rs:42 — preserve serde_yaml's error location as a one-based whole-Markdown line; CRLF and BOM add no lines. An unterminated header points at its opening line 1.
+crates/bbt-doc/src/markdown/mod.rs:16 — optional error_line; older serialized metadata defaults to None. Reader behavior and original source remain unchanged.
+crates/bbt-doc/tests/corpus.rs:43 — recursively read the real .bboxy, including untracked .md; fail every parse error with path:line, skip symlink directories, do not substitute fixtures.
+crates/bbt-doc/tests/corpus.rs:53 — nested malformed BOM/CRLF fixture reports .bboxy/specs/broken.md:4; unterminated reports .bboxy/specs/open.md:1; quoting/closing fixes clear both. Temporary fixture directory is removed by its own guard.
+crates/bbt-doc/tests/markdown.rs:113 — location, retained body, BOM/CRLF and old serialized-record compatibility regression.
+crates/bboxybook/src/documents/repository.rs:59 — the retained-layout corpus check also fails the parser error before layout.
+
+Exact invariant command supplied to Oracle/Architect:
+cargo test -p bbt-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact --nocapture
+Local command — exit 0, 88 Markdown files, 0 parse errors. Existing title repairs are from Architect eeecbc2, not this change.
+cargo test -p bbt-doc --locked — exit 0; 2 corpus, 5 layout and 5 parser tests.
+cargo test -p bboxybook --test documents --locked — exit 0; 3 tests, 143.36 s unoptimized.
+
+Clean gate: /tmp/ci-nyx-w35a-715423f at exact source; clean before/after. Own target /tmp/ci-nyx-w35a-715423f-target; opt-level 1, debug 0, incremental 0.
+BBOXYBOOK_GALLERY=documents BBOXYBOOK_REFERENCE_HEAD=715423f sh scripts/ci-local.sh --parity — exit 0.
+cargo clippy -p bbt-ui-model -p bbt-render -p bbt-ui -p bbt-doc -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0.
+510 passed, 0 failed, 6 ignored across 95 test-result records including invariant reruns; 696.379 s including strict lint.
+Raw output/environment: w3-5a-frontmatter-ci.log.
+Parity index: /tmp/ci-nyx-w35a-715423f/target/parity/index.html.
+{
+  "cases": 120,
+  "review_count": 48,
+  "new_reviews": [],
+  "resolved_reviews": [],
+  "geometry_complete": 120,
+  "worst_rect_px": 0.08508300781238631,
+  "worst_baseline_px": 0.0078125
+}
+The 48 advisory pixel reviews are the exact inherited set; no policy/golden changes. Geometry remains within 0.5 px for every case.
+The Architect's invariant file/check line and its additional id/type/comment-subset wording were left to the owner; this commit checks YAML parseability, per the amended brief.
