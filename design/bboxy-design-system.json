@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 37,
+  "version": 38,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -752,6 +752,16 @@
       "purpose": "Mermaid diagrams inside documents, drawn by us (document-viewer.md)",
       "anatomy": "flowchart TD/LR, sequence, state; rounded nodes tinted by :::role/state class, stadium, diamond, circle, store; hairline edges with rounded orthogonal bends and arrowheads, dashed -.->, heavy ==>; labels on pills above the lines; layered layout with virtual waypoints so edges never cross nodes, barycentre ordering, each back edge in its own lane on the side nearer its target, leaving from the top when its layer blocks the side; sequence: lifelines, messages, self-messages, notes, lost (-x); unsupported syntax shows the source with a note",
       "status": "built: parseMermaid(), diagram() in components.js; mdLite renders ```mermaid fences; diagrams.html?state=flowchart-td|flowchart-lr|sequence|state|unsupported-syntax; documents.html?state=with-a-diagram"
+    },
+    "document_modal": {
+      "purpose": "open, scroll, copy maybe, close, feed into the harness (document-viewer.md What it is)",
+      "anatomy": "launcher material, centred over the blurred window, up to 980 px by 82vh; the document view inside (frontmatter header, provenance strip and graph rail for a .bboxy item; plain view for any other Markdown) scrolls; a foot of actions: Feed into <focused seat> ⏎ (primary), Feed selection ⌘⏎, Copy as Markdown ⌘C, Copy path ⌘⇧C, Find ⌘F, Pin as tab (quiet, rare), Close esc",
+      "rules": [
+        "a modal, not a tab",
+        "feeding sends an operator message to the focused seat through the adapter, closes, and returns focus exactly where it was",
+        "⌘C copies Markdown source, not rendered text"
+      ],
+      "status": "built: docModal() in components.js; showcase key V (alternates a spec and a plain README; ⏎ feeds and the tick ladder climbs); documents.html?state=as-modal, modal-plain-markdown"
     }
   },
   "modal": {

@@ -202,6 +202,22 @@
   const SWARM_CAP = 8;
   function capOf(sp) { sp = sp || space(); const run = sp.tabs.reduce((n, t) => n + (t.seats || []).filter(x => !x.settings && !x.graph).length, 0), start = (sp.pending || []).filter(p => p.status === 'accepted').length, grace = (sp.closed || []).length, used = run + start + grace;
     return used >= SWARM_CAP ? { scope: 'swarm', name: sp.name, used, limit: SWARM_CAP, counts: run + ' running · ' + start + ' starting · ' + grace + ' in grace' } : null; }
+  // V: the document modal (document-viewer.md). Open, scroll, copy maybe, close, feed into the harness. ⏎ feeds the document
+  // into the focused seat as an operator message (the tick ladder climbs), closes, and focus returns where it was.
+  let docN = 0;
+  function openDoc(doc) {
+    closeSpotlight();
+    const back = el('div', { class: 'spot-back', onclick: e => { if (e.target === back) closeSpotlight(); } });
+    const f = seats.find(x => x.key === focused), was = focused;
+    const m = C.docModal(doc, { seat: f, onClose: () => { closeSpotlight(); focused = was; render(); }, onPin: () => closeSpotlight(), onFeed: (d, sel) => {
+      closeSpotlight(); focused = was; if (!f) return;
+      const sp = (tabOf(f.key) || {}).sp || space(), msg = { from: 'operator', role: 'oracle', time: new Date().toTimeString().slice(0, 5), text: '→ ' + f.name + ': ' + (sel ? 'selection from ' : '') + '[[' + d.path.replace(/^.*\//, '').replace(/\.md$/, '') + ']]', evidence: 'sender-stored' };
+      sp.stream.push(msg); render();
+      ['recipient-stored', 'native-written'].forEach((ev, i) => setTimeout(() => { msg.evidence = ev; render(); }, 500 + i * 700));
+    } });
+    back.append(m); document.body.append(back); spot = back; m.focus();
+  }
+  addEventListener('keydown', e => { if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey && !e.altKey && !spot) { const d = docN++ % 2 ? FIX.docs.readme : FIX.docs.messaging; openDoc(d); } });
   // O: the Oracle spawns a seat over MCP. A dashed pending row with a spinner until applied, then the seat takes a tab of its own.
   // Demo cycle: every fourth spawn is rejected (reason shown), every fifth ends unknown (spelled, not retried).
   let spawnN = 0;

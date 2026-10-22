@@ -532,7 +532,7 @@
   function mdLite(src) {
     const out = el('div', { class: 'md' }); let list = null, code = null;
     for (const line of src.split('\n')) {
-      if (line.startsWith('```')) { if (code) { out.append(code.mermaid ? diagram(code.textContent) : code); code = null; } else { code = el('pre', {}, ''); code.mermaid = /mermaid/.test(line); } continue; }
+      if (line.startsWith('```')) { if (list && !code) { out.append(list); list = null; } if (code) { out.append(code.mermaid ? diagram(code.textContent) : code); code = null; } else { code = el('pre', {}, ''); code.mermaid = /mermaid/.test(line); } continue; }
       if (code) { code.textContent += (code.textContent ? '\n' : '') + line; continue; }
       const li = line.match(/^\s*[-*] (.*)/), h = line.match(/^(#{1,3}) (.*)/);
       if (!li && list) { out.append(list); list = null; }
@@ -585,6 +585,37 @@
       el('div', { class: 'rail-legend' }, ...Object.keys(DOC_HUE).map(t => el('span', {}, el('i', { style: 'background:' + DOC_HUE[t] }), t))),
       backs.length ? el('div', { class: 'rail-h' }, 'backlinks') : null, ...backs.map(x => el('div', { class: 'rail-back' }, el('i', { style: 'background:' + (DOC_HUE[x.type] || 'var(--fg-dim)') }), el('code', {}, x.slug), el('span', {}, x.rel || 'ref'))));
     return el('div', { class: 'doc-view', style: '--doc:' + hue }, main, rail);
+  }
+  // Document modal (document-viewer.md "What it is"): open, scroll, copy maybe, close, feed into the harness. Centred over the
+  // blurred window in the launcher material. Esc closes; ⌘C copies the selection as Markdown source; ⏎ / ⌘⏎ feeds the document or
+  // the selection into the focused seat as a message and closes; focus returns where it was; pin as tab exists but is rare.
+  function docModal(doc, opts) {
+    opts = opts || {};
+    const seat = opts.seat, plain = !doc.type;
+    const view = plain ? el('div', { class: 'doc-view plain' }, el('div', { class: 'doc-main' }, el('div', { class: 'doc-head' }, el('div', { class: 'doc-top' }, el('code', { class: 'doc-path', style: 'margin-left:0' }, doc.path || '')), el('h1', {}, doc.title || doc.path)), mdLite(doc.body || ''))) : docView(doc);
+    const scroller = el('div', { class: 'dm-body' }, view);
+    const act = (label, keys, fn, cls) => el('button', { class: 'dm-act' + (cls ? ' ' + cls : ''), onclick: e => { e.stopPropagation(); fn && fn(e.currentTarget); } }, el('span', {}, label), el('kbd', {}, keys));
+    const feed = sel => opts.onFeed && opts.onFeed(doc, sel || null);
+    const foot = el('div', { class: 'dm-foot' },
+      seat ? act('Feed into ' + seat.name, '⏎', () => feed(), 'primary') : act('Feed into the focused seat', '⏎', () => feed(), 'primary'),
+      act('Feed selection', '⌘⏎', () => feed(String(window.getSelection() || ''))),
+      el('span', { class: 'dm-sep' }),
+      act('Copy as Markdown', '⌘C', b => { try { navigator.clipboard && navigator.clipboard.writeText(doc.source || doc.body || '').catch(() => {}); } catch {} b.classList.add('done'); }),
+      act('Copy path', '⌘⇧C', b => { try { navigator.clipboard && navigator.clipboard.writeText(doc.path || '').catch(() => {}); } catch {} b.classList.add('done'); }),
+      act('Find', '⌘F', () => {}),
+      el('span', { class: 'dm-sep' }),
+      act('Pin as tab', '', () => opts.onPin && opts.onPin(doc), 'quiet'),
+      act('Close', 'esc', () => opts.onClose && opts.onClose(), 'quiet'));
+    const panel = el('div', { class: 'doc-modal', role: 'dialog', 'aria-label': doc.title || doc.path, tabindex: '-1' }, scroller, foot);
+    panel.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); opts.onClose && opts.onClose(); }
+      else if (e.key === 'Enter') { e.preventDefault(); feed(e.metaKey ? String(window.getSelection() || '') : null); }
+      else if (e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); scroller.scrollBy({ top: scroller.clientHeight * .85, behavior: 'smooth' }); }
+      else if (e.key === 'PageUp') { e.preventDefault(); scroller.scrollBy({ top: -scroller.clientHeight * .85, behavior: 'smooth' }); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); scroller.scrollBy({ top: e.key === 'ArrowDown' ? 40 : -40 }); }
+    });
+    return panel;
   }
   // Provenance card: created_by / updated_by, weighted derived_from, the signed digest pair, and the hash-chained activity log
   function provenanceCard(prov) {
@@ -951,7 +982,7 @@
     if (m.evidence) head.append(tickLadder(m.evidence));
     const body = el('div', { class: 'body' }, head);
     if (m.replyTo) body.append(el('div', { class: 'reply' }, '↩ ' + m.replyTo));
-    body.append(el('div', { class: 'text' }, m.text));
+    body.append(el('div', { class: 'text' }, /\[\[/.test(m.text || '') ? renderLinks(m.text) : m.text));
     row.append(el('div', { class: 'rail' }), body);
     if (opts.ripple) row.append(el('div', { class: 'ripple' }));
     return row;
@@ -1172,5 +1203,5 @@
     return root;
   }
 
-  window.C = { diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

@@ -1065,3 +1065,19 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .pane .term .path.hover { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; text-decoration-thickness: 1.5px; text-decoration-skip-ink: none; cursor: pointer; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 2px; }
 .pane .term .path-tip { display: inline-block; margin-left: 8px; font-family: var(--font-chrome); font-size: 10px; color: var(--fg); background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--hair, var(--line)); border-radius: 999px; padding: 0 8px; vertical-align: 1px; }
 .pane .term .path-tip kbd { font-family: var(--font-chrome); color: var(--fg-dim); }
+
+/* document modal: launcher material, scrolls, feeds into the focused seat */
+.doc-modal { width: min(980px, 94vw); max-height: 82vh; display: flex; flex-direction: column; border-radius: var(--r-panel, 14px); background: color-mix(in srgb, var(--surface) var(--mat-alpha, 90%), transparent); backdrop-filter: blur(var(--mat-blur, 24px)) saturate(var(--mat-sat, 1.4)); box-shadow: var(--sh-float, 0 24px 70px rgba(0,0,0,.5)), 0 0 0 1px var(--hair, var(--line)), inset 0 1px 0 var(--hi, transparent); outline: none; overflow: hidden; animation: spotIn var(--appear-ms, 160ms) var(--ease, ease); }
+.doc-modal .dm-body { overflow: auto; min-height: 0; flex: 1; }
+.doc-modal .doc-view { background: transparent; border-radius: 0; }
+.doc-modal .doc-view.plain { grid-template-columns: minmax(0, 1fr); }
+.doc-modal .dm-foot { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 8px 12px; border-top: 1px solid var(--hair, var(--line)); background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.doc-modal .dm-act { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; color: var(--fg); background: transparent; border: 0; border-radius: var(--r-row, 6px); padding: 4px 8px; cursor: pointer; }
+.doc-modal .dm-act:hover { background: var(--sel, var(--surface-2)); }
+.doc-modal .dm-act kbd { font-family: var(--font-chrome); font-size: 10.5px; color: var(--fg-dim); background: var(--badge, var(--surface-2)); border-radius: 4px; padding: 0 5px; }
+.doc-modal .dm-act kbd:empty { display: none; }
+.doc-modal .dm-act.primary { background: var(--accent); color: #fff; font-weight: 600; }
+.doc-modal .dm-act.primary kbd { background: color-mix(in srgb, #fff 22%, transparent); color: #fff; }
+.doc-modal .dm-act.quiet { color: var(--fg-dim); }
+.doc-modal .dm-act.done span { color: var(--c-idle, #2EE6A8); }
+.doc-modal .dm-sep { width: 1px; height: 16px; background: var(--hair, var(--line)); margin: 0 4px; }

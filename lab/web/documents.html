@@ -31,7 +31,7 @@ const D = {
     near: [{ slug: 'w3-1', type: 'task', rel: 'for' }, { slug: 'goldens-v0', type: 'artifact', rel: 'derived_from' }, { slug: 'parity-run-01', type: 'artifact', rel: 'see', back: true }] },
 };
 D['with a diagram'] = { ...D.spec, path: '.bboxy/specs/mux-daemon.md', title: 'Mux daemon: supervisor and logic', body: '## Shape\nThe supervisor holds the PTYs; the logic process may crash and re-attach.\n```mermaid\nflowchart LR\n  gui[GUI] --> logic[mux logic]:::oracle\n  logic --> bus[(events.sqlite)]\n  logic ==> sup[supervisor]:::executor\n  sup --> pty((PTY))\n  sup -.->|re-attach| logic\n```\n- logic restarts never kill a seat\n- see [[storage]] for the ring' };
-const STATES = [...Object.keys(D), 'signed', 'unsigned', 'superseded', 'broken frontmatter'];
+const STATES = [...Object.keys(D), 'signed', 'unsigned', 'superseded', 'broken frontmatter', 'as modal', 'modal · plain markdown'];
 Lab.page({ title: 'documents', wide: true, note: 'The work-item system from work-items.md: one Markdown file with frontmatter per item. Header: type chip, status, path, title. Frontmatter as a grid (id, assignee, role, parent, children, depends_on, links as annotated wikilink chips, allowed_paths, verify, created, updated). Body below. Provenance strip: created and updated by, derived from, the signed digest. Right rail: the item in the markdown graph, weights as stroke, backlinks dashed.',
   states: STATES,
   render(s, body) {
@@ -40,6 +40,12 @@ Lab.page({ title: 'documents', wide: true, note: 'The work-item system from work
     if (s === 'unsigned') d = { ...D.task, prov: { ...base.prov, signed: null, updated_by: 'Rook Ashwhisker', updatedColor: ROOK } };
     if (s === 'superseded') d = { ...D.spec, status: 'superseded', title: 'Messaging on iroh (first draft)', superseded_by: '[[messaging]]{spec}' };
     if (s === 'broken frontmatter') d = { ...D.note, broken: 'line 4: expected a list for depends_on', status: null };
+    if (s === 'as modal' || s === 'modal · plain markdown') {
+      const stage = el('div', { style: 'background:var(--navy);padding:28px;border-radius:var(--r-pill);display:flex;justify-content:center;height:720px' });
+      const doc = s === 'as modal' ? { prov: base.prov, ...D['with a diagram'] } : { path: 'README.md', title: 'bboxy450-term', body: 'A GPU terminal emulator in Rust built as a cockpit for swarms of coding agents.\n## Start\n```\ncargo run -p bboxy450-term\n```\n- knowledge base in [[README|.bboxy]]\n- vision in [[vision]]' };
+      stage.append(C.docModal(doc, { seat: { name: 'Nyx Copperwing' }, onFeed: (d, sel) => console.log('feed', d.path, sel ? 'selection' : 'document'), onClose: () => {} }));
+      body.append(stage, el('div', { class: 'lab-note', style: 'padding-top:8px' }, '⌘-click a .md path in a pane, a wikilink in the stream, or a work item in the sidebar or Graph opens this. ⏎ feeds the document into the focused seat as a message and closes; ⌘⏎ feeds only the selection; esc closes; focus returns where it was.')); return;
+    }
     body.append(C.docView({ prov: base.prov, ...d }));
   } });
 </script></body></html>

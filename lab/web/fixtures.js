@@ -66,4 +66,12 @@ window.FIX = {
     { from: 'Wren Thistledown', fromKey: 'w', role: 'creativity', time: '14:12', text: 'landed: events.html, the bus at a glance', evidence: 'native-unknown' },
     { from: 'Kestrel Nine', fromKey: 'k9', role: 'executor', foreign: true, time: '14:14', text: 'relay bench green on eu-2, 41 ms p50', unread: true },
   ],
+  // documents the showcase opens in the modal (key V): a .bboxy spec and a plain README
+  docs: {
+    messaging: { type: 'spec', id: '01JAX4B1C2D3E4F5G6H7J8K9M0', path: '.bboxy/specs/messaging.md', title: 'Messaging on quinn: envelope, grants, evidence', status: 'decided', parent: '[[w2-mux]]', links: ['[[agent-messaging]]{evidence:3}', '[[transport-and-identity]]{evidence:2}'], created: '2026-10-21 10:02', updated: '2026-10-21 16:11',
+      prov: { created_by: 'Vesper Greywind', createdColor: '#FFC53D', updated_by: 'Nyx Copperwing', updatedColor: '#FF4FA3', digest: 'b3e1c09a7f2d44e1', signed: 'Boxy · 9B07E849480C68328CA20684844ECC0587DE7AB0' },
+      body: '## Decision\nOption C: rebuild the messaging service on quinn; the transport hides behind a trait.\n## Evidence states\n- sender-stored, recipient-stored, native-queued, native-written, native-unknown, application-acknowledged\n- an ambiguous write is never retried; see [[harness-adapters]]\n```mermaid\nsequenceDiagram\n  participant O as Oracle:::oracle\n  participant M as mux\n  participant S as seat:::executor\n  O->>M: message\n  M->>S: wake through the input guard\n  S-->>M: receipt native-written\n  M-->>O: evidence\n```\n## Priority\nOracle-class first; nothing is dropped.',
+      near: [{ slug: 'agent-messaging', type: 'note', rel: 'evidence', w: 3 }, { slug: 'transport', type: 'note', rel: 'evidence', w: 2 }, { slug: 'w2-4', type: 'task', rel: 'spec', back: true }, { slug: 'w2-mux', type: 'epic', rel: 'parent' }] },
+    readme: { path: 'README.md', title: 'bboxy450-term', body: 'A GPU terminal emulator in Rust built as a cockpit for swarms of coding agents.\n## Start\n```\ncargo run -p bboxy450-term\n```\n- knowledge base in [[README|.bboxy]]\n- vision in [[vision]]' },
+  },
 };
