@@ -24,7 +24,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 
 ## CI (operator, 2026-10-22): local only
 
-No GitHub CI during heavy development; the workflow runs on manual dispatch only (billing had also refused every run since 07:27). **Every Executor handoff and every Oracle acceptance runs `sh scripts/ci-local.sh`** (layering, workspace build, workspace tests, UI IO lint; `--parity` when lab, design, UI or renderer changed) and reports the exit. CI returns per crate when it is open-sourced into a public repo. Queued P1 (Architect): geometry parity failures fail the gate hard; pixel review stays advisory.
+No GitHub CI during heavy development; the workflow runs on manual dispatch only (billing had also refused every run since 07:27). **Every Executor handoff and every Oracle acceptance runs `sh scripts/ci-local.sh`** (layering, workspace build, workspace tests, UI IO lint; `--parity` when lab, design, UI or renderer changed) and reports the exit. **Run it in a clean worktree of the commit being handed off** (`git worktree add --detach <tmp> <sha>` on top of origin/main, with its own `CARGO_TARGET_DIR`), never in the shared tree: peers' in-flight sources and concurrent cargo runs make a shared-tree gate non-hermetic (W2.4 hit missing symbols that were present in source). CI returns per crate when it is open-sourced into a public repo. Queued P1 (Architect): geometry parity failures fail the gate hard; pixel review stays advisory.
 
 ## ICQ keys (DM addresses)
 
