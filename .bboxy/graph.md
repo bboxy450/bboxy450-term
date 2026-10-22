@@ -22,6 +22,18 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | subagent state-backend | Oracle instrument | Claude | done → `research/state-backend.md`, decided in `specs/storage.md` | — |
 | operator | operator | human | checkpoints | Codex trust for the fixture dir |
 
+## ICQ keys (DM addresses)
+
+| Name | Role | Key |
+|---|---|---|
+| Vesper Greywind | Oracle + Creativity | 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a |
+| Corvin Duskmantle | Architect | 6b172639511c39982cbdb35272730510078889d2576670928432da09d5c08a73 |
+| Nyx Copperwing | Executor (UI modules) | 6b4e9bf61a1302b1c8a84c5cd0faf94580025217ad0ae20a68f7d712062130d1 |
+| Rook Ashwhisker | Executor (logic, messaging) | bfae37c6a294e8103c578f0ea3921f576930c668d18471c5760ca923103b87fa |
+| Sable Embertail | Executor (runtime, renderer, app) | b04a60914af6d5622d4f21eadf214bb78cdb795051907a0ec8dd07914af7c3f5 |
+| Aster Cinderwing | Executor (terminal rendering, fonts) | b2a1d2db42014c0e52ed6347e8ba878dcc8928a479866366b0bdc2b8c567bdf9 |
+| Wren Thistledown | Creativity (lab) | 22c0e081a5f4ac211b1c27d219914d330d4b9edea6006e075edc9271ba884b57 |
+
 ## Graph
 
 ```
