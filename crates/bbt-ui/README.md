@@ -169,3 +169,9 @@ swarm use `CardRow`. No module reads descendant web rectangles to place content.
 without recolouring the main state glyph. `Element::Glyph` forwards those
 colours; defaults preserve the existing appearance. Grade and context opacity
 apply once, including on coloured surfaces with a transparent annotation base.
+
+`Overrides::glow` carries per-node activity, inferred strength and a deterministic
+seed through resolved Style and the retained material operation. Its absence
+keeps the default gallery. The host maps state to the existing L2 effect and
+token particle counts; the multiplier affects idle, waiting and error colours
+as well as the seat colour. Fill, border and shader tuning are unchanged.

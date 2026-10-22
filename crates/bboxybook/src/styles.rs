@@ -333,6 +333,12 @@ fn paint_box(
         };
         g.color = Color(ctx.seat).alpha(s.opacity);
         g.seed = seed;
+        if s.glow.is_some() {
+            crate::components::configure_glow(&mut g, ctx, s.glow);
+            g.color = g.color.alpha(s.opacity);
+            g.waiting = g.waiting.alpha(s.opacity);
+            g.errored = g.errored.alpha(s.opacity);
+        }
         let items = [Surface {
             rect,
             radii: s.radii,

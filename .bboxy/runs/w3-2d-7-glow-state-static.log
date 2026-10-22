@@ -1,0 +1,4 @@
+COMMAND: cargo fmt -p bbt-ui -p bboxybook --check
+EXIT: 0
+COMMAND: git diff --check
+EXIT: 0

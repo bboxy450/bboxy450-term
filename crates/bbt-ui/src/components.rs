@@ -1137,6 +1137,7 @@ pub enum Paint {
         kind: Material,
         color: Color,
         blur: Option<crate::ResolvedBlur>,
+        glow: Option<crate::Glow>,
         clips: Vec<Clip>,
     },
 }
@@ -1234,6 +1235,7 @@ fn paint_node(
                     kind: s.material,
                     color: color(s.fill, draw, opacity),
                     blur: s.blur,
+                    glow: s.glow,
                     clips: clips.to_vec(),
                 });
             }
@@ -1366,6 +1368,7 @@ fn paint_node(
                     kind: s.material,
                     color: color(s.fill, draw, opacity),
                     blur: s.blur,
+                    glow: s.glow,
                     clips: clips.to_vec(),
                 });
             }

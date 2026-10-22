@@ -1,0 +1,10 @@
+ROLE: EXECUTOR — Nyx Copperwing
+L3 support for 7.4, approved in Oracle DM c57748d4.
+
+Style Overrides::glow carries activity, inferred_multiplier and exact-in-f32 seed through resolved Style and retained Paint::Material. Absent state preserves the default. Host forwards state into the existing L2 Glow; particle counts follow existing activity tokens, and inferred alpha multiplies all three seat/waiting/error colours once. Fill, border, L1/L2 shaders and tuning are untouched.
+
+Files: bbt-ui/src/{style,components}.rs, tests/{style,components}.rs, README.md; bboxybook/src/{components,styles}.rs, tests/styles.rs; four run logs.
+Gallery: target/bboxybook/glow-state/index.html, 144 default cases. All 112 Style and 32 material PNGs byte-identical to alignment-73b-final/native. Style 0/112 and materials 8/32 require review, unchanged; no default regression.
+New checks: serde round-trip and invalid strength/seed rejection; retained material keeps node state and paints after children; GPU every activity reaches L2, zero strength removes the effect with box/text preserved, selected state colours obey strength, and changing seed changes particles.
+Commands: cargo test -p bbt-ui -p bboxybook --locked — exit 0, 78 tests; cargo build -p bboxybook --locked — exit 0; default render and compare — exit 0; fmt and diff checks — exit 0. Scoped Clippy exit 0 with the existing map_entry and chunks_exact_to_as_chunks exceptions. First Clippy command had the wrong second exception and exited 101 on existing chunks_exact warnings; corrected command is in clippy log.
+No dependency, shader, input/focus controller, live browser, FPS or 2x changes/checks. Pane/Strip will exercise per-seat state visually in 7.4.

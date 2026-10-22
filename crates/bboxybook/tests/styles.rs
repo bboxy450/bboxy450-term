@@ -4,6 +4,48 @@ use bbt_ui::{Color, Context, Density, Overrides, Paint, Preset, Style, Theme};
 use std::collections::BTreeSet;
 
 #[test]
+fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
+    use bbt_ui::{Glow, GlowActivity, Material};
+    let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+    let ctx = Context::new(Theme::Dark, Density::Cozy);
+    let mut style = Style::new(Preset::PaneGlow);
+    style.overrides.material = Some(Material::Flat);
+    let no_effect = styles::preview(&mut renderer, &style, ctx).unwrap();
+    style.overrides.material = Some(Material::Glow);
+    let mut rendered = BTreeSet::new();
+    for activity in [
+        GlowActivity::Idle,
+        GlowActivity::Active,
+        GlowActivity::Waiting,
+        GlowActivity::Errored,
+    ] {
+        style.overrides.glow = Some(Glow {
+            activity,
+            inferred_multiplier: 0.,
+            seed: 123,
+        });
+        assert_eq!(
+            styles::preview(&mut renderer, &style, ctx).unwrap(),
+            no_effect,
+            "zero grade must remove the effect for every selected state colour"
+        );
+        style.overrides.glow.as_mut().unwrap().inferred_multiplier = 1.;
+        let image = styles::preview(&mut renderer, &style, ctx).unwrap();
+        assert_ne!(image, no_effect);
+        rendered.insert(image);
+    }
+    assert_eq!(
+        rendered.len(),
+        4,
+        "each state must reach the existing L2 effect"
+    );
+    style.overrides.glow = Some(Glow::default());
+    let first = styles::preview(&mut renderer, &style, ctx).unwrap();
+    style.overrides.glow.as_mut().unwrap().seed += 1;
+    assert_ne!(styles::preview(&mut renderer, &style, ctx).unwrap(), first);
+}
+
+#[test]
 fn style_matrix_is_canonical_and_every_preset_renders_on_the_native_device() {
     let cases = styles::cases();
     assert_eq!(cases.len(), 112); // Fourteen Style records, across four densities and two themes.

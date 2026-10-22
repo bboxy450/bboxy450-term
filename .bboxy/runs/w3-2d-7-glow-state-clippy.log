@@ -1,0 +1,5 @@
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.33s

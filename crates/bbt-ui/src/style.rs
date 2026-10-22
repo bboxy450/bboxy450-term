@@ -69,6 +69,53 @@ pub enum Material {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum GlowActivity {
+    Idle,
+    Active,
+    Waiting,
+    Errored,
+}
+impl From<bbt_ui_model::Activity> for GlowActivity {
+    fn from(value: bbt_ui_model::Activity) -> Self {
+        match value {
+            bbt_ui_model::Activity::Idle => Self::Idle,
+            bbt_ui_model::Activity::Active => Self::Active,
+            bbt_ui_model::Activity::Waiting(_) => Self::Waiting,
+            bbt_ui_model::Activity::Errored => Self::Errored,
+        }
+    }
+}
+
+/// Per-node state for the existing L2 effect. It does not alter fill or border.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Glow {
+    pub activity: GlowActivity,
+    pub inferred_multiplier: f32,
+    /// Kept exactly representable when passed to the shader's f32 uniform.
+    pub seed: u32,
+}
+impl Default for Glow {
+    fn default() -> Self {
+        Self {
+            activity: GlowActivity::Active,
+            inferred_multiplier: 1.,
+            seed: 7,
+        }
+    }
+}
+impl Glow {
+    fn validate(self) -> Result<Self> {
+        unit(self.inferred_multiplier)?;
+        if self.seed > 1 << 24 {
+            return Err("glow seed exceeds exact shader integer range");
+        }
+        Ok(self)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Radius {
     Panel,
     Card,
@@ -325,6 +372,7 @@ impl Default for Dim {
 pub struct Overrides {
     pub material: Option<Material>,
     pub blur: Option<Blur>,
+    pub glow: Option<Glow>,
     pub fill: Option<Paint>,
     pub radii: Option<[Length; 4]>,
     pub border: Option<Border>,
@@ -424,6 +472,7 @@ impl Style {
         };
         Ok(ResolvedStyle {
             material: base.material,
+            glow: o.glow.map(Glow::validate).transpose()?,
             blur: o
                 .blur
                 .map(|b| b.resolve(ctx.density))
@@ -562,6 +611,7 @@ pub struct ResolvedBlur {
 pub struct ResolvedStyle {
     pub material: Material,
     pub blur: Option<ResolvedBlur>,
+    pub glow: Option<Glow>,
     pub fill: [f32; 4],
     pub radii: [f32; 4],
     pub border: Option<ResolvedBorder>,

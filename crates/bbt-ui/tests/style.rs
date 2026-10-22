@@ -143,3 +143,37 @@ fn malformed_override_data_fails_instead_of_silently_changing_the_style() {
             .is_err()
     );
 }
+
+#[test]
+fn glow_state_round_trips_and_rejects_invalid_shader_inputs() {
+    let ctx = Context::new(Theme::Dark, Density::Cozy);
+    let mut style = Style::new(Preset::PaneGlow);
+    assert_eq!(style.resolve(ctx).unwrap().glow, None);
+    for activity in [
+        GlowActivity::Idle,
+        GlowActivity::Active,
+        GlowActivity::Waiting,
+        GlowActivity::Errored,
+    ] {
+        let input = Glow {
+            activity,
+            inferred_multiplier: 0.5,
+            seed: 12345,
+        };
+        style.overrides.glow = Some(input);
+        let copy: Style = serde_json::from_slice(&serde_json::to_vec(&style).unwrap()).unwrap();
+        assert_eq!(copy.resolve(ctx).unwrap().glow, Some(input));
+    }
+    for inferred_multiplier in [-0.1, 1.1, f32::NAN] {
+        style.overrides.glow = Some(Glow {
+            inferred_multiplier,
+            ..Default::default()
+        });
+        assert!(style.resolve(ctx).is_err());
+    }
+    style.overrides.glow = Some(Glow {
+        seed: (1 << 24) + 1,
+        ..Default::default()
+    });
+    assert!(style.resolve(ctx).is_err());
+}

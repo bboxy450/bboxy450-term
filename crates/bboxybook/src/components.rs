@@ -236,6 +236,7 @@ pub fn execute(
                 kind,
                 color,
                 blur,
+                glow,
                 clips,
             } => {
                 let material = match kind {
@@ -266,8 +267,7 @@ pub fn execute(
                         else {
                             unreachable!()
                         };
-                        g.color = Color(ctx.seat);
-                        g.focus = if ctx.focused { 1. } else { 0. };
+                        configure_glow(&mut g, ctx, glow);
                         materials::Material::Glow(g)
                     }
                     ui::Material::Flat => materials::Material::Flat(color),
@@ -302,6 +302,30 @@ pub fn execute(
         )?;
     }
     Ok(pixels)
+}
+
+pub(crate) fn configure_glow(g: &mut materials::Glow, ctx: ui::Context, state: Option<ui::Glow>) {
+    g.color = Color(ctx.seat);
+    g.focus = if ctx.focused { 1. } else { 0. };
+    if let Some(state) = state {
+        use ui::GlowActivity as A;
+        g.activity = match state.activity {
+            A::Idle => materials::Activity::Idle,
+            A::Active => materials::Activity::Active,
+            A::Waiting => materials::Activity::Waiting,
+            A::Errored => materials::Activity::Errored,
+        };
+        let idle = bbt_ui_model::TOKENS.glow.particles_idle as u32;
+        g.particles = match state.activity {
+            A::Active => bbt_ui_model::TOKENS.glow.particles_active as u32,
+            A::Waiting => idle * 2,
+            A::Idle | A::Errored => idle,
+        };
+        g.seed = state.seed as f32;
+        for color in [&mut g.color, &mut g.waiting, &mut g.errored] {
+            *color = color.alpha(state.inferred_multiplier);
+        }
+    }
 }
 pub fn render_case(renderer: &mut ChromeRenderer, case: &Case) -> Result<Vec<u8>> {
     let fix = case.fixture.as_ref().ok_or("component fixture missing")?;

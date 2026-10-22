@@ -19,6 +19,29 @@ impl c::Measure for Metrics {
 fn context() -> Context {
     Context::new(Theme::Dark, Density::Cozy)
 }
+
+#[test]
+fn a_retained_box_keeps_its_own_glow_state_until_after_its_content() {
+    let state = bbt_ui::Glow {
+        activity: bbt_ui::GlowActivity::Waiting,
+        inferred_multiplier: 0.5,
+        seed: 42,
+    };
+    let mut s = Style::new(Preset::PaneGlow);
+    s.overrides.glow = Some(state);
+    let element = c::Element::Box(c::Box::new(
+        s,
+        vec![text("foreground", bbt_ui::TypeStep::Body).into()],
+    ));
+    let layout = element
+        .layout(Rect::new(0., 0., 200., 0.), context(), &Metrics)
+        .unwrap();
+    let ops = c::paint(&layout, context());
+    assert!(
+        matches!(ops.last(), Some(c::Paint::Material { glow: Some(actual), .. }) if *actual==state)
+    );
+    assert!(ops.iter().any(|op| matches!(op,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Text{..})))));
+}
 fn text(value: &str, size: bbt_ui::TypeStep) -> c::Element {
     c::Element::Text(c::Text::new(
         value,
