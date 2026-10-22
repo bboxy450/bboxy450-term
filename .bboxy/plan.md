@@ -4,7 +4,7 @@ Owner: Vesper Greywind <ORACLE>. Date: 2026-10-21. Status: DRAFT until the opera
 
 ## Priority order (operator, 2026-10-21)
 
-Rendering first. Then local messaging, MCP, harness visibility. Cloud designed in from the start, built after rendering. Private cross-instance messaging after cloud. Global messaging last. W2.4 is local-only in v0.1; W4 moves behind cloud.
+**Cockpit first (operator, 2026-10-22, [[vision]] Cockpit first):** a working local terminal with harnesses, messaging, tasks, provenance and events, in the sexy UI; ssh and cloud are dummies in the UI until the cockpit works. Epic [[2026-10-22-c-cockpit]]. Earlier order, still true within that: rendering first. Then local messaging, MCP, harness visibility. Cloud designed in from the start, built after rendering. Private cross-instance messaging after cloud. Global messaging last. W2.4 is local-only in v0.1; W4 moves behind cloud.
 
 ## Shape
 
