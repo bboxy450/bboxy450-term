@@ -48,6 +48,9 @@ W2.1 supervisor + PTY + lease ✔ (Nyx, f6cab17, 12 tests, 50-seat poller)
            └──▶ W2.4 local messaging on loopback (Transport trait from W4.1)
                    └──▶ W2.5 MCP server + seat sockets
 
+R1 bbt-rt runtime [OPEN] ──▶ R2 app shell + hitch meter ──▶ R3 terminal data path ∥ R4 120 Hz display link ──▶ R5 stall test
+   └── R2 replaces W3.4's window/loop part; R3 consumes W2.1
+
 W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
    └──▶ phase 2 cloud: SshProvider bootstrap, remote supervisor
            └──▶ phase 2b private cross-instance messaging (punch, relay)
@@ -59,7 +62,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 | State | Items |
 |---|---|
 | RUNNING | 7.7 StreamDock (Nyx); W2.2 (Rook, blocked on operator authorization in its pane) |
-| OPEN, claimable now | W4.1, W1.2, W2.3 |
+| OPEN, claimable now | R1 (runtime, first), W4.1, W1.2, W2.3 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
 | NOT YET BRIEFED | W3.3 fx (merged into W3.2c step 3), W3.5 bbt-doc markdown viewer + Mermaid engine ([[document-viewer]]), W2.7 code indexer (tree-sitter code graph, code_search, code_graph), W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |

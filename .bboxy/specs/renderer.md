@@ -62,7 +62,7 @@ The matrix is generated, so 4 fonts × 3 sizes × 2 scales × 2 themes × 8 stat
 
 **4.5 Showcase parity, scripted.** The gate is the current lab at a named commit; tag `ux-prototype-v2` matrices are a historical report once a module's design has moved past the tag (decided 2026-10-22 during W3.2d.7.3b). `scripts/parity.sh` captures the web lab headless, renders the same matrix through bboxybook, perceptual-diffs every pair, and writes `target/parity/index.html` (web | native | diff, worst first) plus `report.md` for the next iteration; it runs in CI. The improvement loop is: render, read the report, fix the worst, re-run. **Harnesses look at the images** (operator, 2026-10-21): the perceptual score ranks, but the judgement of what is wrong in a triplet is made by a harness reading the three PNGs, the Executor during the loop and the Oracle at review. A score alone never closes an iteration; an image read does. The Rust `bboxybook` renders the same scenes as the web showcase (`?scene=3`, `?scene=15`, every component page) to PNG; a parity report puts web and Rust side by side for the operator. Not a pass/fail in v0.1; a review artifact.
 
-**4.6 Performance smoke.** Headless frame time for the 15-seat scene at 2×, logged, not asserted (no pre-emptive optimisation rule). Asserted only against a generous ceiling to catch a 10× regression.
+**4.6 Performance.** Target 120 Hz (operator, 2026-10-22): the frame budget, hitch meter and stall test live in [[runtime]] §4–6. Headless frame time for the 15-seat scene at 2× is logged per run; optimisation follows the meter, never ahead of it.
 
 ## 5. Order of work
 
