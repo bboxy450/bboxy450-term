@@ -139,6 +139,27 @@ briefs Executors from the specs, never from this note.
     recording the five "preference" invariants as invariants before they have
     commands.
 
+17. **Device-key custody has three tiers (Architect, from ID1a evidence).**
+    The Data Protection Keychain returns `errSecMissingEntitlement` (-34018)
+    to an unsigned binary; it needs `keychain-access-groups` on a signed app
+    identity. So: tier 1 Data Protection Keychain in the shipped, signed app
+    (lands with packaging, PKG1); tier 2 the login keychain with the same
+    attributes for ad-hoc and dev builds, shown as "dev custody"; tier 3
+    memory for tests; one `DeviceKeyStore` trait, fall from 1 to 2 on -34018,
+    never a plaintext file. ID1a acceptance 4 amended. Operator action
+    pending: an Apple Developer team identity. Rejected: blocking ID1 on
+    packaging (velocity); a plaintext or sqlite secret file (identity.md
+    forbids it); requiring a team ID before any identity work.
+18. **Claude Code may be an Executor when the operator launches it so
+    (operator, 2026-10-22: "i gave you one more executor that is claude
+    code").** The `~/.agents/AGENTS.md` default stands for sessions nobody
+    assigned; an explicit operator launch outranks it, as that file says.
+    Seraph Quillfire is the first. The terminal's harness-eligibility rule
+    ([[mcp-control-plane]] Caller, role and grants) gains the same clause:
+    the operator can assign any role to any seat; the signed class in the
+    grant is what receivers trust. Rejected: editing AGENTS.md (the
+    operator's file; its override clause already covers this).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → D1 spec (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate

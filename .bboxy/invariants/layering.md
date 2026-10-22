@@ -3,6 +3,8 @@ id: 01M5JFWDVFVS0KY552YYZKWRYM
 type: invariant
 title: crate layering — every crate depends only on crates below it
 status: active
+check: sh scripts/layering.sh
+cost: an upward edge welds a library to the product; untangling it later costs the velocity we protect now
 links:
   - { to: "[[open-source]]", rel: constrains }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decision }

@@ -33,7 +33,7 @@ flowchart TB
 ```
 
 - **Root.** Selected and pinned in Settings → Identity (the 7.9 card already says "primary held by gpg-agent · pinned from your keyring · never exported"). Public metadata from the keyring; signing through our own Assuan client exactly as [[identity]] Root custody describes: `SIGKEY <pinned keygrip>`, `SETHASH --inquire`, `PKSIGN`, strict 64-byte result verified before commit; pinentry and cache are the agent's. Three root signatures at bootstrap, none afterwards until the device grant renews.
-- **Device.** Generated with the OS RNG, stored as a non-synchronising Data Protection Keychain item (service `bboxy450-term`, account = device ULID, `kSecUseDataProtectionKeychain`), read by logic only. Its OpenPGP certificate carries the primary's third-party certification; its `DeviceGrant` is 30 days.
+- **Device.** Generated with the OS RNG, read by logic only; its OpenPGP certificate carries the primary's third-party certification; its `DeviceGrant` is 30 days. **Custody has three tiers behind one `DeviceKeyStore` trait** (decision #17, after ID1a found `errSecMissingEntitlement` -34018 on unsigned binaries): (1) the Data Protection Keychain (service `bboxy450-term`, account = device ULID, `kSecUseDataProtectionKeychain`, non-synchronising), which needs the `keychain-access-groups` entitlement on a signed app identity, so it is the shipped app's tier and lands with packaging; (2) the login keychain item with the same attributes minus data protection, for ad-hoc and dev builds, which the identity card labels **dev custody**; (3) memory, tests only. Logic tries tier 1 and falls to tier 2 on -34018; never a plaintext file. The device record stores `custody: data-protection | login-keychain | memory` locally; the signed formats do not change.
 - **Seat.** Generated per seat generation in logic memory, never persisted; the device certifies it and signs a 24-hour `SeatGrant` (swarm, role, class, destinations from the communication graph, `grant_epoch`), renewed by the device without any prompt. A restart is a new generation and a new seat key; the roster keeps the old entry, so attribution survives. This is the v0.1 reading of [[identity]]'s "restart does not imply a new leaf key": the chain allows a persistent seat key, nothing in v0.1 needs one (per-seat Git signing stays off).
 
 ## 2. The seam
@@ -79,11 +79,13 @@ Pending states are states, not errors: agent unavailable, pinentry cancelled, fi
 1. **External check.** Export the public device certificate; in a temporary `GNUPGHOME` holding only the primary's public key, `gpg --check-sigs <device fingerprint>` shows a good certification from `844ECC0587DE7AB0`. The user's own keyring and trustdb are byte-identical before and after.
 2. **Chain verify with negatives.** A launched seat's envelope passes `ChainSeatKeys::verify`; a tampered body, an expired `SeatGrant`, a stale `grant_epoch`, a device not certified by the pinned root, and a `local-dev` envelope at a receiver with a pinned root each fail with their named reason.
 3. **Seam.** The W2.4 messaging tests pass unchanged with `ChainSeatKeys` in place of `LocalSeatKeys`.
-4. **Custody.** The device and seat secrets appear nowhere in argv, the seat's environment, logs or the run dir; the Keychain item exists with the stated attributes; `pubring.kbx` and `trustdb.gpg` are unchanged.
+4. **Custody.** The device and seat secrets appear nowhere in argv, the seat's environment, logs or the run dir; a keychain item exists with the stated attributes for the tier in use and the device record says which tier; `pubring.kbx` and `trustdb.gpg` are unchanged. Tier 1 is verified by the packaging item (PKG1: signed bundle with `keychain-access-groups`), not by ID1a.
 5. **No-primary state.** With nothing pinned, envelopes are `local-dev`, the card says so, and a pinned receiver refuses them.
 6. `sh scripts/ci-local.sh` exits 0 in a clean worktree of the handed-off commit.
 
 ## 7. Out of scope
+
+Operator action pending: an Apple Developer team identity for the signed app, which tier 1 custody and later notarised distribution both need; until then dev custody is the tier on this machine.
 
 Second-device enrollment tickets and the offline-primary request flow (cloud phase), Google binding, per-seat Git signing (default off, operator decision later), roster export and publication beyond the local account object, hardware tokens.
 
