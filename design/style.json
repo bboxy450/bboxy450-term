@@ -63,7 +63,9 @@
     "note": 10.5,
     "label": 11.5,
     "doc_heading": 13.5,
-    "doc_title": 19
+    "doc_title": 19,
+    "heading": 18,
+    "display": 26
   },
   "spacing": {
     "grid": 8,
