@@ -534,3 +534,13 @@ and 0.008px). The 80 historical cases are diagnostic. The handoff continued the
 script's capture as four disjoint render batches and the unchanged comparator;
 the interrupted serial script is not reported as a passing command. Evidence
 and known gaps: `.bboxy/runs/w3-2d-7-7-summary.log`.
+
+Renderer image regression only:
+
+```sh
+target/release/bboxybook replay-images --manifest cases.json --out target/image-replay
+```
+
+This renders every supplied case and writes `image-replay.json`, explicitly
+marking geometry as not replayed. Use it for exact before/after PNG checks;
+`render` and `compare` retain the full geometry and parity requirements.

@@ -119,6 +119,13 @@ fn run() -> Result<()> {
     if let Some(limit) = value(&args, "--limit") {
         cases.truncate(limit.parse()?);
     }
+    if command=="replay-images" {
+        let out=PathBuf::from(value(&args,"--out").ok_or("replay-images requires --out")?);
+        let count=parity::replay_images(&out,&cases)?;
+        fs::write(out.join("image-replay.json"),serde_json::to_vec_pretty(&serde_json::json!({"scope":"image-only renderer regression; not a parity acceptance run","cases":count,"geometry_replayed":false}))?)?;
+        println!("replayed {count} images; geometry not requested");
+        return Ok(());
+    }
     match command{
         "render"=>{
             let explicit=value(&args,"--out");
@@ -144,7 +151,7 @@ fn run() -> Result<()> {
         },
         "compare"=>parity::compare_paths(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/parity".into())),&cases,&value(&args,"--web-root").unwrap_or_else(||"web".into()),&value(&args,"--native-root").unwrap_or_else(||"native".into()))?,
         "sidebar"|"showcase"=>{let component=if command=="showcase"{format!("showcase-{}",value(&args,"--scene").unwrap_or_else(||"3".into()))}else{"sidebar".into()};cases.retain(|c|c.component==component);parity::render(&PathBuf::from("target/bboxybook"),&cases)?;},
-        _=>return Err("usage: bboxybook [gallery | streams | launchers | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | styles | manifest | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
+        _=>return Err("usage: bboxybook [gallery | streams | launchers | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | styles | manifest | replay-images --manifest JSON --out DIR | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
     }
     Ok(())
 }

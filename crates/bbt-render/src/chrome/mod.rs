@@ -1,4 +1,5 @@
 //! One ordered, instanced chrome pass on the caller's device; no window ownership.
+mod atlas_gpu;
 pub mod diff;
 pub mod group;
 pub mod icons;
@@ -31,21 +32,48 @@ pub struct ChromeRenderer {
     atlas: GlyphAtlas,
     text: HashMap<String, (AtlasRect, f32)>,
     icons: icons::IconAtlas,
+    icon_gpu: atlas_gpu::AtlasTexture,
+    glyph_gpu: Option<atlas_gpu::AtlasTexture>,
+    dirty_glyphs: Vec<AtlasRect>,
+    image_sampler: wgpu::Sampler,
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_depth: usize,
 }
 impl ChromeRenderer {
-    #[allow(clippy::disallowed_methods, reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture")]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture"
+    )]
     pub fn new(images: Vec<icons::Image>) -> Result<Self> {
         Self::with_context(pollster::block_on(DeviceContext::new())?, images)
     }
     pub fn with_context(context: DeviceContext, images: Vec<icons::Image>) -> Result<Self> {
+        let icons = icons::IconAtlas::new(images)?;
+        let icon_gpu = atlas_gpu::AtlasTexture::new(
+            &context.device,
+            &context.queue,
+            icons.size,
+            &icons.pixels,
+            wgpu::TextureFormat::Rgba8Unorm,
+            4,
+            1,
+        );
+        let image_sampler = context.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("linear chrome image atlas"),
+            min_filter: wgpu::FilterMode::Linear,
+            mag_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
         Ok(Self {
             context,
             atlas: GlyphAtlas::new(512, 8192)?,
             text: HashMap::new(),
-            icons: icons::IconAtlas::new(images)?,
+            icons,
+            icon_gpu,
+            glyph_gpu: None,
+            dirty_glyphs: Vec::new(),
+            image_sampler,
             pipelines: HashMap::new(),
             group_pipelines: HashMap::new(),
             group_depth: 0,
@@ -345,6 +373,7 @@ impl ChromeRenderer {
                     } else {
                         let line = text::rasterize_at(text, *style, *max_width, scale, phase)?;
                         let rect = self.atlas.insert(line.width, line.height, &line.mask)?;
+                        self.dirty_glyphs.push(rect);
                         let value = (rect, line.advance);
                         self.text.insert(key, value);
                         value
@@ -406,8 +435,14 @@ impl ChromeRenderer {
         if instances.len() > 65_536 {
             return Err("chrome instance budget exceeded".into());
         }
+        atlas_gpu::sync_glyphs(
+            &mut self.glyph_gpu,
+            &self.context.device,
+            &self.context.queue,
+            &self.atlas,
+            &mut self.dirty_glyphs,
+        );
         let device = &self.context.device;
-        let queue = &self.context.queue;
         let gamma_format = format.remove_srgb_suffix();
         self.pipelines
             .entry(gamma_format)
@@ -426,30 +461,12 @@ impl ChromeRenderer {
             contents: bytemuck::cast_slice(&instances),
             usage: wgpu::BufferUsages::STORAGE,
         });
-        let mask = upload(
-            device,
-            queue,
-            self.atlas.size(),
-            self.atlas.pixels(),
-            wgpu::TextureFormat::R8Unorm,
-            1,
-        );
-        let icons = upload(
-            device,
-            queue,
-            self.icons.size,
-            &self.icons.pixels,
-            wgpu::TextureFormat::Rgba8Unorm,
-            4,
-        );
-        let mask = mask.create_view(&Default::default());
-        let icons = icons.create_view(&Default::default());
-        let image_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("linear chrome image atlas"),
-            min_filter: wgpu::FilterMode::Linear,
-            mag_filter: wgpu::FilterMode::Linear,
-            ..Default::default()
-        });
+        let mask = &self
+            .glyph_gpu
+            .as_ref()
+            .expect("synchronized glyph atlas")
+            .view;
+        let icons = &self.icon_gpu.view;
         let bindings = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("chrome bindings"),
             layout: &self.pipelines[&gamma_format].get_bind_group_layout(0),
@@ -464,15 +481,15 @@ impl ChromeRenderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&mask),
+                    resource: wgpu::BindingResource::TextureView(mask),
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&icons),
+                    resource: wgpu::BindingResource::TextureView(icons),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
-                    resource: wgpu::BindingResource::Sampler(&image_sampler),
+                    resource: wgpu::BindingResource::Sampler(&self.image_sampler),
                 },
             ],
         });
@@ -544,7 +561,10 @@ impl ChromeRenderer {
         )?;
         self.readback(&texture, encoder, width, height)
     }
-    #[allow(clippy::disallowed_methods, reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture")]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture"
+    )]
     fn readback(
         &self,
         texture: &wgpu::Texture,
@@ -671,6 +691,127 @@ fn upload(
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes() {
+        use bbt_ui_model::draw::{TextStyle, TypeScale};
+        let image = || icons::Image {
+            name: "test".into(),
+            width: 2,
+            height: 2,
+            rgba: vec![
+                255, 0, 0, 255, 0, 255, 0, 128, 0, 0, 255, 0, 255, 255, 0, 255,
+            ],
+        };
+        let mut cached = ChromeRenderer::new(vec![image()]).unwrap();
+        let mut label = DrawList::default();
+        label.text(
+            Rect::new(4., 4., 140., 24.),
+            "persistent atlas",
+            TextStyle {
+                scale: TypeScale::Custom(13.),
+                ..Default::default()
+            },
+            Color::WHITE,
+        );
+        label.push(Prim::Image {
+            rect: Rect::new(160., 4., 24., 24.),
+            image: "test".into(),
+            radius: 3.,
+        });
+        let mut list = DrawList::default();
+        list.rect(
+            Rect::new(0., 0., 220., 60.),
+            0.,
+            Color([0.1, 0.05, 0.2, 1.]),
+        );
+        list.push(Prim::Group {
+            primitives: label.primitives,
+            opacity: 0.7,
+            saturation: 0.4,
+        });
+        let first = cached.render_to_rgba(&list, 220, 60, 1.).unwrap();
+        let writes = cached.glyph_gpu.as_ref().unwrap().writes;
+        let bytes = cached.glyph_gpu.as_ref().unwrap().bytes;
+        let second = cached.render_to_rgba(&list, 220, 60, 1.).unwrap();
+        assert_eq!(first, second);
+        assert_eq!(cached.icon_gpu.writes, 1);
+        assert_eq!(cached.icon_gpu.bytes, 2048 * 2048 * 4);
+        assert_eq!(cached.glyph_gpu.as_ref().unwrap().writes, writes);
+        assert_eq!(cached.glyph_gpu.as_ref().unwrap().bytes, bytes);
+        let mut fresh = ChromeRenderer::new(vec![image()]).unwrap();
+        assert_eq!(second, fresh.render_to_rgba(&list, 220, 60, 1.).unwrap());
+    }
+    #[test]
+    fn glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct() {
+        use bbt_ui_model::draw::{TextStyle, TypeScale};
+        let mut cached = ChromeRenderer::new(vec![]).unwrap();
+        cached.atlas = GlyphAtlas::new(32, 1024).unwrap();
+        let style = TextStyle {
+            scale: TypeScale::Custom(10.),
+            ..Default::default()
+        };
+        let mut scene = DrawList::default();
+        scene.rect(Rect::new(0., 0., 256., 80.), 0., Color::BLACK);
+        scene.text(Rect::new(2., 2., 20., 20.), "A", style, Color::WHITE);
+        let first = cached.render_to_rgba(&scene, 256, 80, 1.).unwrap();
+        let generation = cached.glyph_gpu.as_ref().unwrap().generation;
+        let bytes = cached.glyph_gpu.as_ref().unwrap().bytes;
+        scene.text(Rect::new(26., 2., 20., 20.), "B", style, Color::WHITE);
+        cached.render_to_rgba(&scene, 256, 80, 1.).unwrap();
+        assert_eq!(cached.glyph_gpu.as_ref().unwrap().generation, generation);
+        assert_eq!(cached.glyph_gpu.as_ref().unwrap().writes, 2);
+        assert!(cached.glyph_gpu.as_ref().unwrap().bytes - bytes < 32 * 32);
+        scene.text(
+            Rect::new(2., 30., 250., 20.),
+            "glyph coordinates survive a larger atlas",
+            style,
+            Color::WHITE,
+        );
+        let grown = cached.render_to_rgba(&scene, 256, 80, 1.).unwrap();
+        assert_eq!(
+            cached.glyph_gpu.as_ref().unwrap().generation,
+            generation + 1
+        );
+        assert!(cached.dirty_glyphs.is_empty());
+        for y in 0..22 {
+            let at = y * 256 * 4;
+            assert_eq!(&first[at..at + 22 * 4], &grown[at..at + 22 * 4]);
+        }
+        let mut fresh = ChromeRenderer::new(vec![]).unwrap();
+        assert_eq!(grown, fresh.render_to_rgba(&scene, 256, 80, 1.).unwrap());
+        let writes = cached.glyph_gpu.as_ref().unwrap().writes;
+        assert_eq!(grown, cached.render_to_rgba(&scene, 256, 80, 1.).unwrap());
+        assert_eq!(writes, cached.glyph_gpu.as_ref().unwrap().writes);
+    }
+    #[test]
+    fn growth_in_a_later_group_preserves_the_earlier_encoded_texture() {
+        use bbt_ui_model::draw::{TextStyle, TypeScale};
+        let mut cached = ChromeRenderer::new(vec![]).unwrap();
+        cached.atlas = GlyphAtlas::new(32, 1024).unwrap();
+        let style = TextStyle {
+            scale: TypeScale::Custom(10.),
+            ..Default::default()
+        };
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 256., 80.), 0., Color::BLACK);
+        list.text(Rect::new(2., 2., 20., 20.), "A", style, Color::WHITE);
+        let mut later = DrawList::default();
+        later.text(
+            Rect::new(2., 30., 250., 20.),
+            "later group grows the texture",
+            style,
+            Color::WHITE,
+        );
+        list.push(Prim::Group {
+            primitives: later.primitives,
+            opacity: 0.6,
+            saturation: 1.,
+        });
+        let pixels = cached.render_to_rgba(&list, 256, 80, 1.).unwrap();
+        assert_eq!(cached.glyph_gpu.as_ref().unwrap().generation, 2);
+        let mut fresh = ChromeRenderer::new(vec![]).unwrap();
+        assert_eq!(pixels, fresh.render_to_rgba(&list, 256, 80, 1.).unwrap());
+    }
     #[test]
     fn colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
