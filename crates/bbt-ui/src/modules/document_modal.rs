@@ -1253,6 +1253,7 @@ fn path(
                 join: c::LineJoin::Miter,
             },
             paint,
+            fill: None,
             opacity: 1.,
         }),
     )

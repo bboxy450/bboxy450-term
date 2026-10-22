@@ -34,6 +34,7 @@ fn path_uses_declared_viewport_and_keeps_its_retained_stroke() {
             cap: c::LineCap::Round,
             ..Default::default()
         },
+        fill: None,
         paint: Paint::solid(Color::Accent),
         opacity: 0.4,
     });
@@ -52,6 +53,7 @@ fn path_uses_declared_viewport_and_keeps_its_retained_stroke() {
             stroke,
             color,
             scale,
+            fill,
         },
     ] = list.primitives.as_slice()
     else {
@@ -59,6 +61,7 @@ fn path_uses_declared_viewport_and_keeps_its_retained_stroke() {
     };
     assert_eq!(*origin, [3., 7.]);
     assert_eq!(*scale, 1.);
+    assert_eq!(*fill, None);
     assert_eq!(points.len(), 2);
     assert_eq!(stroke.width, 1.5);
     assert!((color.0[3] - 0.4).abs() < 1e-6);
@@ -67,6 +70,7 @@ fn path_uses_declared_viewport_and_keeps_its_retained_stroke() {
             size: [-1., 0.],
             points: vec![].into(),
             stroke: Default::default(),
+            fill: None,
             paint: Paint::solid(Color::Accent),
             opacity: 1.
         })
@@ -104,6 +108,49 @@ fn intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero() {
         .layout(Rect::new(0., 0., 0., 0.), context(), &Metrics)
         .unwrap();
     assert_eq!(layout.children[0].rect.w, 2.);
+}
+
+#[test]
+fn path_fill_survives_retained_layout_and_theme_resolution() {
+    let element = c::Element::Path(c::Path {
+        size: [20., 20.],
+        points: vec![
+            c::PathCommand::Move([0., 0.]),
+            c::PathCommand::Line([20., 0.]),
+            c::PathCommand::Line([10., 20.]),
+        ]
+        .into(),
+        stroke: c::PathStroke {
+            width: 0.,
+            ..Default::default()
+        },
+        paint: Paint::solid(Color::Foreground),
+        fill: Some(Paint::solid(Color::Accent)),
+        opacity: 0.5,
+    });
+    let layout = element
+        .layout(Rect::new(3., 7., 20., 20.), context(), &Metrics)
+        .unwrap();
+    let ops = c::paint(&layout, context());
+    let [c::Paint::Draw(list)] = ops.as_slice() else {
+        panic!("path draw")
+    };
+    let [
+        Prim::Path {
+            fill: Some(fill),
+            origin,
+            stroke,
+            ..
+        },
+    ] = list.primitives.as_slice()
+    else {
+        panic!("filled path")
+    };
+    assert_eq!(*origin, [3., 7.]);
+    assert_eq!(stroke.width, 0.);
+    let expected = Paint::solid(Color::Accent).resolve(context()).unwrap();
+    assert_eq!(&fill.0[..3], &expected[..3]);
+    assert!((fill.0[3] - 0.5).abs() < 1e-6);
 }
 
 #[test]
