@@ -1,0 +1,14 @@
+S1 baseline: ba677d3 (accepted W2.4 plus board).
+Authorization: Oracle DM 5711fea0; runtime feature amendment 432f8c8e.
+cargo test --workspace --locked -- --list — exit 0, 417 listed test cases.
+cargo check -p bbt-supervisor -p bbt-mux — first exit 101: retained hook needs mio; cross-crate LaunchSpec::validate/Event::sequence need public visibility. Corrected, final exit 0.
+Initial mechanical move script exited 1 on an over-strict HistoryGap line-count assertion after moving files/client; continued after checking its exact source. No behavior edits.
+cargo fmt -p bbt-mux -p bbt-supervisor -p bbt-rt -- --check — exit 0.
+cargo clippy -p bbt-mux -p bbt-supervisor -p bbt-rt --all-targets --locked -- -D warnings — exit 0.
+Runtime default: build/test exit 0 (1 unit + 8 integration); no-default-features: build/test exit 0 (1 unit; runtime integration requires runtime).
+cargo build -p bbt-supervisor --locked — exit 0 in isolation.
+cargo tree -p bbt-supervisor -e normal — exit 0; no tokio.
+Static move audit — exit 0, PTY actor/writer/codec/blobs byte-identical; same client bodies, test bodies and ring code; moved HistoryGap, two public visibility changes.
+Lock audit — exit 0: only workspace package bbt-supervisor added, no dependency version changes.
+git diff --cached --check — exit 0.
+Clean-worktree CI remains the final gate for the signed source candidate.

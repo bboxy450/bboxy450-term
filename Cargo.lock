@@ -190,6 +190,7 @@ dependencies = [
  "base64",
  "bbt-core",
  "bbt-rt",
+ "bbt-supervisor",
  "ed25519-dalek",
  "futures-util",
  "getrandom 0.3.4",
@@ -198,7 +199,6 @@ dependencies = [
  "mio",
  "notify",
  "petgraph",
- "portable-pty",
  "rusqlite",
  "serde",
  "serde_json",
@@ -208,7 +208,6 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "ulid",
- "zstd",
 ]
 
 [[package]]
@@ -234,6 +233,24 @@ dependencies = [
  "crossbeam-queue",
  "libc",
  "tokio",
+]
+
+[[package]]
+name = "bbt-supervisor"
+version = "0.0.1"
+dependencies = [
+ "bbt-core",
+ "bbt-rt",
+ "getrandom 0.3.4",
+ "libc",
+ "mio",
+ "portable-pty",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "ulid",
+ "zstd",
 ]
 
 [[package]]

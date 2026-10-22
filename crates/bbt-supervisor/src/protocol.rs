@@ -85,7 +85,7 @@ impl LaunchSpec {
         }
     }
 
-    pub(crate) fn validate(&self) -> Result<(), Failure> {
+    pub fn validate(&self) -> Result<(), Failure> {
         self.size.validate()?;
         if self.seat == Ulid::nil()
             || self.generation == 0
@@ -352,7 +352,7 @@ impl Event {
         }
     }
 
-    pub(crate) fn sequence(&self) -> Option<u64> {
+    pub fn sequence(&self) -> Option<u64> {
         match self {
             Self::Output { seq, .. } | Self::Resized { seq, .. } | Self::Exited { seq, .. } => {
                 Some(*seq)

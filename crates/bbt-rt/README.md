@@ -5,6 +5,14 @@ thread, with a `Waker` backed by its event-loop proxy. `handle()` returns the
 same runtime handle for all subsystems. `is_ui_thread()` and the debug guard
 `assert_not_ui_thread()` identify prohibited blocking entry points.
 
+The default `runtime` feature preserves this API. With
+`default-features = false`, the same UI-thread registry/guards, dirty bits and
+hitch meter compile using only std; Tokio, commands and message queues are
+disabled. The supervisor uses this mode, sharing the registry when linked into
+the app. Verify with `cargo build -p bbt-rt --locked --no-default-features` and
+`cargo test -p bbt-rt --locked --no-default-features`; runtime integration tests
+require the default feature.
+
 R2 adds the memory-only `HitchMeter`, with 1,024 interval/per-phase samples,
 lifetime frame count, CPU percentiles and an over-budget phase result. The
 caller owns logging and the overlay; idle gaps are not CPU hitches.

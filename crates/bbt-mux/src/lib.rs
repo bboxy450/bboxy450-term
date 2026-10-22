@@ -1,10 +1,8 @@
-//! Local PTY ownership and the supervisor/logic boundary.
+//! Restartable logic above the local supervisor process boundary.
 //!
-//! One supervisor thread polls every PTY. Both the in-process client and the
-//! optional Unix socket use the same requests, generation checks and leases.
-//! A lease permits a PTY write; composer readiness belongs to the later harness
-//! adapters. Restartable logic adds durable object stores, an event bus, a
-//! repository index and viewport checkpoints; W1.2 supplies the byte ring.
+//! Logic owns durable objects, the bus, repository index, harness adapters,
+//! messaging and viewport streams. `bbt-supervisor` owns PTYs, leases and ring
+//! capture without Tokio; its existing public paths remain re-exported here.
 
 // This is the IO owner. Blocking entry points assert they are off the UI thread.
 #![allow(clippy::disallowed_methods)]
@@ -17,14 +15,13 @@ pub mod bus;
 pub mod index;
 pub mod logic;
 pub mod messaging;
-pub mod protocol;
 pub mod registry;
-pub mod ring;
 pub mod seat_socket;
 pub mod store;
 pub mod streams;
-pub mod supervisor;
-pub mod transport;
+
+// Preserve the existing client paths while the supervisor is a lower crate.
+pub use bbt_supervisor::{protocol, ring, supervisor, transport};
 
 pub use protocol::{
     Action, Attachment, Event, Failure, FailureCode, Frame, InputReceipt, InputState, LaunchSpec,

@@ -13,7 +13,6 @@ use ulid::Ulid;
 
 use crate::protocol::{Event, ExitInfo, OUTPUT_CHUNK_BYTES, SeatSize};
 use crate::store::{Blobs, Result, blobs::LocalBlobs, invalid};
-use crate::streams::HistoryGap;
 
 mod writer;
 pub(crate) use writer::{
@@ -1288,4 +1287,13 @@ const CRC32C: [u32; 256] = {
 };
 pub fn crc32c(bytes: &[u8]) -> u32 {
     crc32c_parts(bytes, &[])
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HistoryGap {
+    pub requested_from: u64,
+    pub requested_to: u64,
+    pub retained_from: Option<u64>,
+    pub retained_to: Option<u64>,
+    pub reason: String,
 }

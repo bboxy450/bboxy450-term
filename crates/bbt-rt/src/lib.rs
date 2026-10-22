@@ -1,28 +1,39 @@
 //! One IO runtime, with bounded memory-only handoffs to the UI.
 //!
-//! Call [`init_ui`] once at app startup. The app implements [`Waker`] using its
+//! With the default `runtime` feature, call `init_ui` once at app startup.
+//! The app implements [`Waker`] using its
 //! event-loop proxy; no winit or renderer dependency belongs in this crate.
 
-use std::sync::{Arc, OnceLock};
+#[cfg(feature = "runtime")]
+use std::sync::Arc;
+use std::sync::OnceLock;
 use std::thread::{self, ThreadId};
 
+#[cfg(feature = "runtime")]
 use tokio::runtime::{Builder, Handle, Runtime};
 
+#[cfg(feature = "runtime")]
 mod commands;
 mod meter;
+#[cfg(feature = "runtime")]
 mod queues;
 mod wake;
 
+#[cfg(feature = "runtime")]
 pub use commands::{CommandRunner, ExitStatus, OutputChunk, Stream, TaskId, cancel, spawn_command};
 pub use meter::{FrameSample, HitchMeter, Phases};
+#[cfg(feature = "runtime")]
 pub use queues::{Latest, UiMsg, UiReceiver, UiSender, ViewRing, ui_channel};
 pub use wake::{DirtySet, DirtySource, Waker};
 
+#[cfg(feature = "runtime")]
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 static UI_THREAD: OnceLock<ThreadId> = OnceLock::new();
+#[cfg(feature = "runtime")]
 static COMMANDS: OnceLock<CommandRunner> = OnceLock::new();
 
 /// Start the process-wide two-worker IO runtime, or return the existing handle.
+#[cfg(feature = "runtime")]
 pub fn handle() -> &'static Handle {
     RUNTIME
         .get_or_init(|| {
@@ -59,6 +70,7 @@ pub fn assert_not_ui_thread() {
 }
 
 /// Memory-only state the UI drains at frame start, under its own time budget.
+#[cfg(feature = "runtime")]
 pub struct UiInbox {
     pub sender: UiSender,
     pub messages: UiReceiver,
@@ -68,6 +80,7 @@ pub struct UiInbox {
 
 /// Startup only. Source 0 is messages, source 1 is command output; the remaining
 /// sources are available for parsers, stores and other app producers.
+#[cfg(feature = "runtime")]
 pub fn init_ui(waker: impl Waker) -> UiInbox {
     register_ui_thread();
     handle();

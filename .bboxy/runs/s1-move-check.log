@@ -1,0 +1,18 @@
+Baseline ba677d3
+supervisor.rs byte-identical move — held
+transport.rs byte-identical move — held
+ring/writer.rs byte-identical move — held
+store/blobs.rs byte-identical move — held
+protocol unchanged except cross-crate visibility of validate/sequence — held
+ring unchanged except same HistoryGap moved below the boundary — held
+supervisor integration tests unchanged except crate import — held
+crates/bbt-mux/tests/adapters.rs byte-identical — held
+crates/bbt-mux/tests/logic.rs byte-identical — held
+crates/bbt-mux/tests/measurements.rs byte-identical — held
+crates/bbt-mux/tests/messaging.rs byte-identical — held
+crates/bbt-mux/tests/ring.rs byte-identical — held
+crates/bbt-mux/tests/storage_bus_index.rs byte-identical — held
+crates/bbt-mux/tests/ui_guard.rs byte-identical — held
+supervisor client/trait bodies unchanged — held
+lock adds only workspace package bbt-supervisor; no dependency version changes — held
+logic body unchanged except client extraction/re-export and unused import removal — held
