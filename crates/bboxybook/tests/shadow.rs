@@ -5,6 +5,45 @@ use bbt_ui_model::{
 };
 
 #[test]
+fn positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass() {
+    use bbt_ui::{self as ui, components as c};
+    let ctx = ui::Context::new(ui::Theme::Light, ui::Density::Cozy);
+    let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+    let mut style = ui::Style::new(ui::Preset::Row);
+    style.overrides.height = Some(ui::Length::Px(20.));
+    style.overrides.padding = Some([ui::Length::Px(0.); 4]);
+    style.overrides.radii = Some([ui::Length::Px(0.); 4]);
+    style.overrides.fill = Some(ui::Paint::solid(ui::Color::Rgba([1., 0., 0., 1.])));
+    style.overrides.shadow = Some(ui::Shadow::Positioned {
+        offset: [0., 12.],
+        blur: 4.,
+        color: [0., 0., 0., 1.],
+    });
+    let layout = c::Element::Box(c::Box::new(style, vec![]))
+        .layout(
+            Rect::new(20., 20., 20., 0.),
+            ctx,
+            &bboxybook::components::Metrics,
+        )
+        .unwrap();
+    let pixels = bboxybook::components::execute(
+        &mut renderer,
+        c::paint(&layout, ctx),
+        [255, 255, 255, 255].repeat(80 * 80),
+        [80, 80],
+        ctx,
+    )
+    .unwrap();
+    let pixel = |x: usize, y: usize| &pixels[(y * 80 + x) * 4..(y * 80 + x) * 4 + 4];
+    assert_eq!(pixel(30, 30), [255, 0, 0, 255]);
+    assert!(
+        pixel(30, 47)[0] < 100,
+        "shifted shadow below the unchanged fill"
+    );
+    assert_eq!(pixel(30, 13), [255, 255, 255, 255]);
+}
+
+#[test]
 fn css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
     let mut list = DrawList::default();

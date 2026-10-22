@@ -191,3 +191,49 @@ fn glow_state_round_trips_and_rejects_invalid_shader_inputs() {
     });
     assert!(style.resolve(ctx).is_err());
 }
+#[test]
+fn positioned_shadow_round_trips_validates_and_preserves_custom_defaults() {
+    use bbt_ui::{Context, Density, Preset, Shadow, Style, Theme};
+    let ctx = Context::new(Theme::Dark, Density::Cozy);
+    let mut s = Style::new(Preset::Card);
+    s.overrides.shadow = Some(Shadow::Positioned {
+        offset: [-3., 20.],
+        blur: 60.,
+        color: [0., 0., 0., 0.45],
+    });
+    let json = serde_json::to_string(&s).unwrap();
+    assert_eq!(serde_json::from_str::<Style>(&json).unwrap(), s);
+    let shadow = s.resolve(ctx).unwrap().shadow.unwrap();
+    assert_eq!(shadow.offset, [-3., 20.]);
+    assert_eq!(shadow.blur, 60.);
+    s.overrides.shadow = Some(Shadow::Custom {
+        blur: 60.,
+        color: [0., 0., 0., 0.45],
+    });
+    assert_eq!(s.resolve(ctx).unwrap().shadow.unwrap().offset, [0., 0.]);
+    for bad in [
+        Shadow::Positioned {
+            offset: [f32::NAN, 0.],
+            blur: 60.,
+            color: [0.; 4],
+        },
+        Shadow::Positioned {
+            offset: [0., f32::INFINITY],
+            blur: 60.,
+            color: [0.; 4],
+        },
+        Shadow::Positioned {
+            offset: [0.; 2],
+            blur: -1.,
+            color: [0.; 4],
+        },
+        Shadow::Positioned {
+            offset: [0.; 2],
+            blur: 1.,
+            color: [0., 0., 0., 1.1],
+        },
+    ] {
+        s.overrides.shadow = Some(bad);
+        assert!(s.resolve(ctx).is_err());
+    }
+}

@@ -8,7 +8,8 @@ It has no renderer dependency, input, clock or window ownership.
 The ten web presets plus `pane-glow` cover material name, independent fill and
 border, per-corner radii, shadow, height, padding and text. Overrides replace a
 whole field; a zero-width border, transparent fill or `Shadow::None` clears it.
-Opacity and dim are explicit data. Invalid lengths, colours, alpha and unknown
+`Shadow::Positioned` carries a finite x/y offset with blur and colour; the
+existing `Custom` shadow retains its zero offset. Opacity and dim are explicit data. Invalid lengths, colours, alpha and unknown
 Style/Overrides fields fail rather than silently falling back. L2 Glow is effect-only;
 the `pane-glow` Style owns its surface fill and seat border. Modal likewise
 owns its tint and ring separately from L2 Frosted.

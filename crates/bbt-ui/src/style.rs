@@ -288,7 +288,15 @@ pub enum Shadow {
     None,
     Floating,
     Pill,
-    Custom { blur: f32, color: [f32; 4] },
+    Custom {
+        blur: f32,
+        color: [f32; 4],
+    },
+    Positioned {
+        offset: [f32; 2],
+        blur: f32,
+        color: [f32; 4],
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -826,19 +834,12 @@ pub(crate) fn resolve_shadow(token: Shadow) -> Result<Option<ResolvedShadow>> {
     // their numeric values into a second source of truth.
     let source = match token {
         Shadow::None => return Ok(None),
-        Shadow::Custom { blur, color } => {
-            if !blur.is_finite() || blur < 0. {
-                return Err("invalid custom shadow blur");
-            }
-            for channel in color {
-                unit(channel)?;
-            }
-            return Ok(Some(ResolvedShadow {
-                offset: [0.; 2],
-                blur,
-                color,
-            }));
-        }
+        Shadow::Custom { blur, color } => return positioned_shadow([0.; 2], blur, color),
+        Shadow::Positioned {
+            offset,
+            blur,
+            color,
+        } => return positioned_shadow(offset, blur, color),
         Shadow::Floating => DESIGN.shadow.floating,
         Shadow::Pill => DESIGN.shadow.pill,
     };
@@ -863,5 +864,26 @@ pub(crate) fn resolve_shadow(token: Shadow) -> Result<Option<ResolvedShadow>> {
         offset: [n(parts[0])?, n(parts[1])?],
         blur: n(parts[2])?,
         color: [c[0] / 255., c[1] / 255., c[2] / 255., unit(c[3])?],
+    }))
+}
+
+fn positioned_shadow(
+    offset: [f32; 2],
+    blur: f32,
+    color: [f32; 4],
+) -> Result<Option<ResolvedShadow>> {
+    if !blur.is_finite() || blur < 0. {
+        return Err("invalid custom shadow blur");
+    }
+    if offset.iter().any(|x| !x.is_finite()) {
+        return Err("invalid shadow offset");
+    }
+    for channel in color {
+        unit(channel)?;
+    }
+    Ok(Some(ResolvedShadow {
+        offset,
+        blur,
+        color,
     }))
 }

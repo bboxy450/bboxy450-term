@@ -1,0 +1,67 @@
+ROLE: EXECUTOR — Nyx Copperwing
+L3 support for Launcher, approved by Oracle DM e67a24a8-ae6c-4375-8ec4-ce8318099a2d.
+
+Shadow::Positioned {offset, blur, color} resolves to the existing L1 shadow parameters; Custom still resolves offset [0,0]. Offset must be finite, blur nonnegative/finite, colour within 0..1. No default preset, shader or dependency changed.
+
+Commands:
+- cargo test -p bbt-ui --test style --locked — exit 0; 5 passed, including roundtrip, negative valid offset, invalid values and Custom compatibility.
+- cargo test -p bboxybook --test shadow --locked — exit 0; 2 passed on Metal. New check proves the shadow moves below an unchanged fill, with no dark pixels above.
+- cargo build -p bboxybook --locked — exit 0.
+- bboxybook render default 328-case manifest — exit 0; all 328 PNGs byte-identical to accepted 7.4b (materials32, Style112, components72, glyph56, harness-icon56).
+- scoped all-target Clippy with -D warnings and the existing map_entry/chunks_exact_to_as_chunks allowances — exit 0.
+- scoped fmt and git diff --check — exit 0.
+
+Logs below. The Launcher module/capture WIP is deliberately excluded from this commit. No push/merge/rebase or operator browser action. No other backend/window/FPS check.
+
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.85s
+     Running tests/style.rs (target/debug/deps/style-fe37ce660b2907a0)
+
+running 5 tests
+test malformed_override_data_fails_instead_of_silently_changing_the_style ... ok
+test positioned_shadow_round_trips_validates_and_preserves_custom_defaults ... ok
+test glow_state_round_trips_and_rejects_invalid_shader_inputs ... ok
+test token_references_and_nontrivial_overrides_round_trip_and_resolve_late ... ok
+test presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.07s
+     Running tests/shadow.rs (target/debug/deps/shadow-f1765693db1b7989)
+
+running 2 tests
+test css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box ... ok
+test positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.28s
+
+
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+error: the following explicit lifetimes could be elided: 'a
+  --> crates/bboxybook/tests/launchers.rs:12:13
+   |
+12 |     fn find<'a>(n: &'a c::Layout) -> Option<&'a c::Layout> {
+   |             ^^      ^^                       ^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#needless_lifetimes
+   = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_lifetimes)]`
+help: elide the lifetimes
+   |
+12 -     fn find<'a>(n: &'a c::Layout) -> Option<&'a c::Layout> {
+12 +     fn find(n: &c::Layout) -> Option<&c::Layout> {
+   |
+
+error: could not compile `bboxybook` (test "launchers") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/328
+rendered 200/328
+rendered 300/328
+native/web layout snapshots: target/bboxybook/launchers/positioned-defaults/layouts.json
+rendered 328 PNGs to target/bboxybook/launchers/positioned-defaults
