@@ -1,0 +1,18 @@
+ROLE: EXECUTOR — Nyx Copperwing. Current-lab micro floor, requested in DM 8e38dc62.
+Reference 93696e92a49efcccb562bd63b04e21256e830901 includes Wren's c711591.
+Waiting-kind marks use STYLE.type.micro and the current CSS right:-7/top:-6;
+subagent glyphs use micro at scale 1; subscription AUTO and external source chips
+use micro. No new state, signal, sizing API or budget. Terminal cells untouched.
+
+Focused current-reference matrix: 56 glyph cases, 32 subagent cases, 16 Graph
+full/subscriptions cases and 16 Stream external-lane/swarm-stream cases = 120.
+Capture 120/120, zero failures; four native render jobs 30 each, exits all 0;
+compare exit 0. target/bboxybook/documents/micro/index.html.
+Final: 120/120 within policy; zero pixel or geometry reviews. Worst rect error
+0.0732421875px, baseline 0.046875px. Read waiting-kinds-permission-question-auth-
+cozy-light web/native. Initial measurement caught a remaining one-pixel offset
+from the old CSS insets; matching the current declared -7/-6 resolved it.
+No snapshots/goldens/thresholds were retuned.
+
+Full committed-stack local CI remains pending; no claim that it has passed.
+Nothing pushed by this Executor.

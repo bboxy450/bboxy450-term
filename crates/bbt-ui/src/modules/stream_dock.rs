@@ -1063,7 +1063,7 @@ fn external(key: &str, events: &[External], open: bool) -> c::Element {
                 "webhook" => "#FF7A45",
                 _ => "#374151",
             });
-            let mut ts = text_style(8.5, 400, true, ui::Color::OnAccent);
+            let mut ts = text_style(STYLE.r#type.micro as f32, 400, true, ui::Color::OnAccent);
             ts.uppercase = true;
             ts.tracking_em = 0.06;
             let mut chip = plain(None, [1., 5., 1., 5.], TOKENS.radius.chip as f32);

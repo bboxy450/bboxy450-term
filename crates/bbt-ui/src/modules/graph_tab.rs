@@ -884,7 +884,10 @@ impl GraphTab {
                         label(
                             format!("{pk}/auto"),
                             "auto",
-                            upper(font(8.5, 400, false, ui::Color::Muted), 0.06),
+                            upper(
+                                font(STYLE.r#type.micro as f32, 400, false, ui::Color::Muted),
+                                0.06,
+                            ),
                         )
                         .into(),
                     )

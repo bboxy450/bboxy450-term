@@ -695,8 +695,8 @@ impl SeatRow {
                             Grade::Reported
                         },
                         color: ui::Paint::solid(self.color(ctx)),
-                        size: d.glyph as f32,
-                        scale: 0.8,
+                        size: STYLE.r#type.micro as f32,
+                        scale: 1.,
                     },
                 )
                 .into(),

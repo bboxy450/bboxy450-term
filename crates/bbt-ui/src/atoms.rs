@@ -164,15 +164,15 @@ impl Glyph {
                 WaitKind::Question => "?",
                 WaitKind::Auth => "⚷",
             };
-            // Glyph family geometry: lab.css .glyph .kind (7px, right -6, top -5).
+            // Current lab: micro type, right -7 and top -6.
             let style = TextStyle {
-                scale: TypeScale::Custom(7.),
+                scale: TypeScale::Custom(STYLE.r#type.micro as f32),
                 weight: 700,
                 mono: true,
                 ..Default::default()
             };
             let w = ctx.width(text, style) + 2.;
-            let mark = Rect::new(r.right() + 6. - w, r.y - 5., w, 7.);
+            let mark = Rect::new(r.right() + 7. - w, r.y - 6., w, STYLE.r#type.micro as f32);
             let override_color = |override_: Option<Color>, default: Color| {
                 override_.map_or(default, |input| {
                     let mut output = ctx.draw.color(input);
