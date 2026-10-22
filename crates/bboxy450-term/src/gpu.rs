@@ -449,18 +449,6 @@ fn encode_ops(
                         encoder,
                     )?;
                 }
-                encoder.copy_texture_to_texture(
-                    destination.as_image_copy(),
-                    backdrop.as_image_copy(),
-                    destination.size(),
-                );
-                if !underlay.primitives.is_empty() {
-                    renderer.draw_overlay(
-                        &std::mem::take(&mut underlay),
-                        target(&view, scale),
-                        encoder,
-                    )?;
-                }
                 let material = match kind {
                     ui::Material::Flat => m::Material::Flat(color),
                     ui::Material::Gloss => m::Material::Gloss(m::Gloss {
@@ -518,6 +506,32 @@ fn encode_ops(
                         })
                         .collect(),
                 }];
+                let size = destination.size();
+                if let Some([x, y, width, height]) =
+                    items[0].backdrop_region(scale, size.width, size.height)?
+                {
+                    let origin = wgpu::Origin3d { x, y, z: 0 };
+                    let mut source = destination.as_image_copy();
+                    source.origin = origin;
+                    let mut sampled = backdrop.as_image_copy();
+                    sampled.origin = origin;
+                    encoder.copy_texture_to_texture(
+                        source,
+                        sampled,
+                        wgpu::Extent3d {
+                            width,
+                            height,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+                }
+                if !underlay.primitives.is_empty() {
+                    renderer.draw_overlay(
+                        &std::mem::take(&mut underlay),
+                        target(&view, scale),
+                        encoder,
+                    )?;
+                }
                 pass.draw(
                     &renderer.context,
                     encoder,

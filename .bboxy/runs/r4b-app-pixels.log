@@ -1,0 +1,26 @@
+Deterministic app snapshot: fake source20, frozen450ms, meter off. Tests the caller backdrop-copy change separately from gallery hosts.
+
+$ /Users/feral/mydev/bboxy450-term-exec3/target/r4b/Before.app/Contents/MacOS/bboxy450-term-r4b-before --smoke --capture /Users/feral/mydev/bboxy450-term-exec3/target/r4b/before-app.png
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: 15 native panes presented
+capture /Users/feral/mydev/bboxy450-term-exec3/target/r4b/before-app.png: Ok(())
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=3.935ms p99=4.448ms samples=21 warm_encode_p50=2.122ms warm_encode_p99=2.562ms
+
+exit: 0
+
+$ /Users/feral/mydev/bboxy450-term-exec3/target/r4b/After.app/Contents/MacOS/bboxy450-term-r4b-after --smoke --capture /Users/feral/mydev/bboxy450-term-exec3/target/r4b/after-app.png
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: 15 native panes presented
+capture /Users/feral/mydev/bboxy450-term-exec3/target/r4b/after-app.png: Ok(())
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.001s frames=0 callbacks=0 updates=20 CPU p50=3.779ms p99=4.096ms samples=21 warm_encode_p50=1.973ms warm_encode_p99=2.239ms
+
+exit: 0
+App PNG byte-identical=True before_sha256=5cd39ab392efbf8fad8a34cab1c3a967941ed6f87df970a752ffd2e0c6755abc after_sha256=5cd39ab392efbf8fad8a34cab1c3a967941ed6f87df970a752ffd2e0c6755abc
