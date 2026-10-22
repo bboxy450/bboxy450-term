@@ -11,6 +11,12 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
         let rgba = if case
             .fixture
             .as_ref()
+            .is_some_and(|f| f["layer"] == "seat-row")
+        {
+            crate::seat_rows::render_case(&mut renderer, case)?
+        } else if case
+            .fixture
+            .as_ref()
             .is_some_and(|f| f["layer"] == "components")
         {
             crate::components::render_case(&mut renderer, case)?
@@ -48,6 +54,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     }
     let mut snapshots = crate::components::snapshots(cases)?;
     snapshots.extend(crate::styles::snapshots(cases)?);
+    snapshots.extend(crate::seat_rows::snapshots(cases)?);
     if !snapshots.is_empty() {
         fs::write(
             out.join("layouts.json"),
@@ -90,7 +97,7 @@ impl CasePolicy {
         let surface_only = f.is_some_and(|f| f["layer"] == "floating-surfaces");
         let text = if case.component == "materials" || surface_only {
             false
-        } else if case.component == "style" {
+        } else if case.component == "style" || f.is_some_and(|f| f["layer"] == "seat-row") {
             true
         } else if f.is_some_and(|f| f["layer"] == "components") {
             contains_text(&f.unwrap()["component"]["tree"])
@@ -109,7 +116,9 @@ impl CasePolicy {
             channel_tolerance: diff::CHANNEL_TOLERANCE,
             changed_pixel_budget: if text { 0.02 } else { diff::CHANGED_BUDGET },
             geometry_tolerance_px: text.then_some(0.5),
-            scope: if surface_only {
+            scope: if f.is_some_and(|f| f["layer"] == "seat-row") {
+                "SeatRow/subagent/task/artifact content; row-menu overlays excluded"
+            } else if surface_only {
                 "container surfaces only; module children hidden"
             } else {
                 "native component content"
@@ -302,6 +311,11 @@ pub fn compare_paths(
             .is_some_and(|f| f["layer"] == "floating-surfaces")
     }) {
         "L6 floating components plus explicitly marked surface-only launcher/document shells. Module children are hidden; the unrendered content is an external fixed-height slot. Full web context is retained in context/. Native computes shell position, width, fill, blur, shadow and border. surface-layouts.json records independent rectangle diagnostics; module contents are not claimed as implemented."
+    } else if cases
+        .iter()
+        .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "seat-row"))
+    {
+        "L7 SeatRow and nested subagent/task/artifact compositions. Current lab states use committed HEAD; the 9-state legacy matrix uses ux-prototype-v2. Constructor data and external parent flow origin/width/gap are shared, never child geometry. Notes remain common context; separate row-menu overlays are hidden on both sides. layouts.json independently checks every exported part and text baseline."
     } else if component_layer {
         "L6 retained components. Public constructor inputs and external host origin/width are shared. Child DOM rectangles and first-line baselines are diagnostics only; native layout uses the shared solver and CoreText metrics."
     } else if cases.iter().all(|c| c.component == "materials") {

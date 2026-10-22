@@ -1,0 +1,35 @@
+COMMAND ['target/debug/bboxybook', 'render', '--out', 'target/bboxybook/seat-row-final-regression/native', '--manifest', 'target/bboxybook/seat-row-final-regression/cases.json']
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/176
+native/web layout snapshots: target/bboxybook/seat-row-final-regression/native/layouts.json
+rendered 176 PNGs to target/bboxybook/seat-row-final-regression/native
+EXIT 0
+COMMAND ['target/debug/bboxybook', 'compare', '--out', 'target/bboxybook/seat-row-final-regression', '--manifest', 'target/bboxybook/seat-row-final-regression/cases.json']
+parity: 176 cases, 24 review; target/bboxybook/seat-row-final-regression/index.html
+EXIT 0
+[
+  {
+    "matrix": "components",
+    "cases": 24,
+    "review": 0,
+    "byte_identical": 24
+  },
+  {
+    "matrix": "widgets",
+    "cases": 32,
+    "review": 8,
+    "byte_identical": 32
+  },
+  {
+    "matrix": "style",
+    "cases": 88,
+    "review": 0,
+    "byte_identical": 88
+  },
+  {
+    "matrix": "overlays",
+    "cases": 32,
+    "review": 16,
+    "byte_identical": 32
+  }
+]

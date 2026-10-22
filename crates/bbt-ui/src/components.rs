@@ -15,6 +15,14 @@ pub enum Extent {
     Fixed(f32),
     Fill,
     Flex(f32),
+    /// Auto basis with CSS-style shrinking and optional growth/min/max bounds.
+    Content {
+        grow: f32,
+        shrink: f32,
+        min: f32,
+        max: Option<f32>,
+        max_fraction: Option<f32>,
+    },
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Alignment {
@@ -64,6 +72,8 @@ pub struct Box {
     pub scale: f32,
     /// Inline formatting includes the Style text's inherited line-height strut.
     pub inline: bool,
+    /// Preserve natural cross size in a short fixed row (CSS flex overflow).
+    pub cross_overflow: bool,
 }
 impl Box {
     pub fn new(style: Style, children: Vec<Item>) -> Self {
@@ -76,6 +86,7 @@ impl Box {
             clip: false,
             scale: 1.,
             inline: false,
+            cross_overflow: false,
         }
     }
 }
@@ -132,6 +143,26 @@ impl Overlay {
 }
 #[derive(Debug, Clone)]
 pub enum Element {
+    /// Stable semantic label for independent geometry snapshots and hit targets.
+    Baseline {
+        content: std::boxed::Box<Element>,
+        offset: f32,
+    },
+    Named {
+        name: String,
+        content: std::boxed::Box<Element>,
+    },
+    Layers {
+        base: std::boxed::Box<Element>,
+        overlays: Vec<Placed>,
+    },
+    Glyph {
+        activity: bbt_ui_model::Activity,
+        grade: bbt_ui_model::Grade,
+        color: crate::Paint,
+        size: f32,
+        scale: f32,
+    },
     Box(Box),
     Text(Text),
     Stack(Stack),
@@ -144,6 +175,13 @@ pub enum Element {
         size: Length,
     },
 }
+#[derive(Debug, Clone)]
+pub struct Placed {
+    pub content: Element,
+    pub left: f32,
+    pub bottom: f32,
+}
+
 #[derive(Debug, Clone)]
 pub struct Item {
     pub element: Element,
@@ -166,6 +204,8 @@ pub struct PositionedRun {
 }
 #[derive(Debug, Clone)]
 pub enum LayoutKind {
+    Named(String),
+    Atom(DrawList),
     Box {
         style: std::boxed::Box<ResolvedStyle>,
         clip: bool,
@@ -371,6 +411,13 @@ impl Element {
         m: &dyn Measure,
     ) -> crate::style::Result<([f32; 2], f32)> {
         match self {
+            Self::Baseline { content, offset } => {
+                let (size, baseline) = content.natural(width, ctx, m)?;
+                Ok((size, baseline + offset))
+            }
+            Self::Named { content, .. } => content.natural(width, ctx, m),
+            Self::Layers { base, .. } => base.natural(width, ctx, m),
+            Self::Glyph { size, .. } => Ok(([*size; 2], *size)),
             Self::Text(t) => {
                 let (_, size, base) = text_lines(t, width, ctx, m)?;
                 Ok((size, base))
@@ -458,6 +505,74 @@ impl Element {
     fn layout_in(&self, rect: Rect, ctx: Context, m: &dyn Measure) -> crate::style::Result<Layout> {
         let (_, base) = self.natural(rect.w, ctx, m)?;
         let (kind, children) = match self {
+            Self::Baseline { content, offset } => {
+                let mut child = content.layout_in(rect, ctx, m)?;
+                child.baseline += offset;
+                return Ok(child);
+            }
+            Self::Named { name, content } => {
+                let child = content.layout_in(rect, ctx, m)?;
+                return Ok(Layout {
+                    rect: child.rect,
+                    baseline: child.baseline,
+                    kind: LayoutKind::Named(name.clone()),
+                    children: vec![child],
+                });
+            }
+            Self::Layers { base, overlays } => {
+                let mut children = vec![base.layout_in(rect, ctx, m)?];
+                for p in overlays {
+                    let (size, _) = p.content.natural((rect.w - p.left).max(0.), ctx, m)?;
+                    children.push(p.content.layout_in(
+                        Rect::new(
+                            rect.x + p.left,
+                            rect.bottom() - p.bottom - size[1],
+                            size[0],
+                            size[1],
+                        ),
+                        ctx,
+                        m,
+                    )?);
+                }
+                (LayoutKind::Stack, children)
+            }
+            Self::Glyph {
+                activity,
+                grade,
+                color,
+                size,
+                scale,
+            } => {
+                use crate::atoms::Atom;
+                let draw = DrawCtx::new(ctx.theme, ctx.density);
+                let scaled = Rect::new(
+                    rect.x + (*size - *size * scale) * 0.5,
+                    rect.y + (*size - *size * scale) * 0.5,
+                    *size * scale,
+                    *size * scale,
+                );
+                let mut list = DrawList::default();
+                crate::atoms::Glyph {
+                    activity: *activity,
+                    grade: *grade,
+                    seat_color: Color(color.resolve(ctx)?),
+                }
+                .paint(
+                    scaled,
+                    &crate::atoms::AtomCtx {
+                        draw,
+                        measure: m,
+                        scale: 1.,
+                    },
+                    &mut list,
+                );
+                return Ok(Layout {
+                    rect: scaled,
+                    baseline: scaled.h,
+                    kind: LayoutKind::Atom(list),
+                    children: vec![],
+                });
+            }
             Self::Text(t) => {
                 let (mut runs, _, _) = text_lines(t, rect.w, ctx, m)?;
                 for run in &mut runs {
@@ -491,6 +606,7 @@ impl Element {
                     rect,
                     ctx,
                     m,
+                    false,
                 )?,
             ),
             Self::Box(b) => {
@@ -503,6 +619,7 @@ impl Element {
                     rect.inset(inset(&style)),
                     ctx,
                     m,
+                    b.cross_overflow,
                 )?;
                 if b.inline {
                     let top = rect.inset(inset(&style)).y;
@@ -667,6 +784,7 @@ fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
         scale_layout(child, pivot, scale);
     }
 }
+#[allow(clippy::too_many_arguments)] // Same solver inputs plus explicit CSS cross-overflow policy.
 fn layout_children(
     children: &[Item],
     axis: Axis,
@@ -675,9 +793,21 @@ fn layout_children(
     r: Rect,
     ctx: Context,
     m: &dyn Measure,
+    cross_overflow: bool,
 ) -> crate::style::Result<Vec<Layout>> {
     let (_, data) = child_measure(children, axis, gap, alignment, r.w, ctx, m)?;
     let mut rects = allocate_children(children, &data, axis, gap, alignment, r, ctx, m)?;
+    if cross_overflow && axis == Axis::Row && alignment != Alignment::Stretch {
+        for (rect, (size, _)) in rects.iter_mut().zip(&data) {
+            rect.h = size[1];
+            rect.y = r.y
+                + match alignment {
+                    Alignment::Center => (r.h - rect.h) * 0.5,
+                    Alignment::End => r.h - rect.h,
+                    _ => 0.,
+                };
+        }
+    }
     if axis == Axis::Row && alignment == Alignment::Baseline {
         let max = data.iter().map(|(_, b)| *b).fold(0., f32::max);
         for (rect, (_, b)) in rects.iter_mut().zip(&data) {
@@ -691,6 +821,18 @@ fn layout_children(
         .collect()
 }
 
+fn fn_content_inset(element: &Element, ctx: Context) -> crate::style::Result<f32> {
+    match element {
+        Element::Named { content, .. } | Element::Baseline { content, .. } => {
+            fn_content_inset(content, ctx)
+        }
+        Element::Box(b) => {
+            let p = inset(&b.style.resolve(ctx)?);
+            Ok(p.left + p.right)
+        }
+        _ => Ok(0.),
+    }
+}
 #[allow(clippy::too_many_arguments)] // Shared solver adapter; keeps the public tree free of renderer state.
 fn allocate_children(
     children: &[Item],
@@ -702,6 +844,128 @@ fn allocate_children(
     ctx: Context,
     m: &dyn Measure,
 ) -> crate::style::Result<Vec<Rect>> {
+    if axis == Axis::Row
+        && children
+            .iter()
+            .any(|c| matches!(c.extent, Extent::Content { .. }))
+    {
+        let available = (r.w - gap * children.len().saturating_sub(1) as f32).max(0.);
+        let mut bases = Vec::new();
+        let mut growth = Vec::new();
+        let mut shrinking = Vec::new();
+        let mut mins = Vec::new();
+        let mut maxes = Vec::new();
+        for (c, (size, _)) in children.iter().zip(data) {
+            let (basis, g, s, min, max) = match c.extent {
+                Extent::Fixed(n) => (n, 0., 0., n, n),
+                Extent::Fill => (0., 1., 1., 0., f32::MAX),
+                Extent::Flex(w) => (0., w, 1., 0., f32::MAX),
+                Extent::Content {
+                    grow,
+                    shrink,
+                    min,
+                    max,
+                    max_fraction,
+                } => (
+                    size[0],
+                    grow,
+                    shrink,
+                    min,
+                    max.unwrap_or(f32::MAX)
+                        .min(max_fraction.map_or(f32::MAX, |f| r.w * f)),
+                ),
+                Extent::Auto => (size[0], 0., 0., size[0], size[0]),
+            };
+            bases.push(basis);
+            growth.push(g);
+            let content_inset = fn_content_inset(&c.element, ctx)?;
+            shrinking.push(s * (basis - content_inset).max(0.));
+            mins.push(min);
+            maxes.push(max.max(min));
+        }
+        let mut sizes = bases.clone();
+        let positive = available
+            >= bases
+                .iter()
+                .enumerate()
+                .map(|(i, b)| b.clamp(mins[i], maxes[i]))
+                .sum::<f32>();
+        let factors = if positive { &growth } else { &shrinking };
+        let mut frozen: Vec<bool> = factors.iter().map(|f| *f == 0.).collect();
+        for i in 0..sizes.len() {
+            if frozen[i] {
+                sizes[i] = bases[i].clamp(mins[i], maxes[i]);
+            }
+        }
+        // CSS flex resolves violations iteratively: a max-clamped invariant chip
+        // freezes before distributing the remaining shrink to a title.
+        for _ in 0..=children.len() {
+            let free = available
+                - bases
+                    .iter()
+                    .enumerate()
+                    .map(|(i, b)| if frozen[i] { sizes[i] } else { *b })
+                    .sum::<f32>();
+            let total = factors
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| !frozen[*i])
+                .map(|(_, f)| f)
+                .sum::<f32>();
+            let mut violations = vec![0.; sizes.len()];
+            for i in 0..sizes.len() {
+                if frozen[i] {
+                    continue;
+                }
+                let proposed = bases[i]
+                    + if total > 0. {
+                        free * factors[i] / total
+                    } else {
+                        0.
+                    };
+                sizes[i] = proposed.clamp(mins[i], maxes[i]);
+                violations[i] = sizes[i] - proposed;
+            }
+            let adjustment = violations.iter().sum::<f32>();
+            if adjustment.abs() < 0.0001 {
+                break;
+            }
+            let mut changed = false;
+            for i in 0..sizes.len() {
+                if !frozen[i]
+                    && ((adjustment > 0. && violations[i] > 0.)
+                        || (adjustment < 0. && violations[i] < 0.))
+                {
+                    frozen[i] = true;
+                    changed = true;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        let mut x = r.x;
+        return Ok(sizes
+            .iter()
+            .zip(data)
+            .map(|(w, (size, _))| {
+                let h = if alignment == Alignment::Stretch {
+                    r.h
+                } else {
+                    size[1].min(r.h)
+                };
+                let y = r.y
+                    + match alignment {
+                        Alignment::Center => (r.h - h) * 0.5,
+                        Alignment::End => r.h - h,
+                        _ => 0.,
+                    };
+                let rect = Rect::new(x, y, *w, h);
+                x += *w + gap;
+                rect
+            })
+            .collect());
+    }
     let axis_i = if axis == Axis::Row { 0 } else { 1 };
     let align = match alignment {
         Alignment::Center => Align::Center,
@@ -735,6 +999,7 @@ fn allocate_children(
         };
         let extent = match c.extent {
             Extent::Fixed(v) => Size::Fixed(v),
+            Extent::Content { .. } => Size::Fixed(size[axis_i]),
             Extent::Fill => Size::Fill,
             Extent::Flex(v) => Size::Flex(v),
             Extent::Auto => {
@@ -793,14 +1058,12 @@ fn color(c: [f32; 4], draw: DrawCtx, opacity: f32) -> Color {
     draw.color(Color(c)).alpha(opacity)
 }
 pub fn paint(layout: &Layout, ctx: Context) -> Vec<Paint> {
+    paint_with_draw(layout, DrawCtx::new(ctx.theme, ctx.density))
+}
+/// Hosts may inherit an ancestor's dim context without changing module content.
+pub fn paint_with_draw(layout: &Layout, draw: DrawCtx) -> Vec<Paint> {
     let mut out = Vec::new();
-    paint_node(
-        layout,
-        DrawCtx::new(ctx.theme, ctx.density),
-        1.,
-        &[],
-        &mut out,
-    );
+    paint_node(layout, draw, 1., &[], &mut out);
     out
 }
 fn paint_node(
@@ -888,6 +1151,8 @@ fn paint_node(
             } else {
                 (node.rect, s.radii, None)
             };
+            let dash_stroke = if s.dashed { stroke } else { None };
+            let stroke = if s.dashed { None } else { stroke };
             // Outside ring and fill have different bounds.
             // A transparent border consumes layout space, while CSS backgrounds
             // still paint through it. It must not cut an empty stroke into fill.
@@ -920,6 +1185,9 @@ fn paint_node(
                     inner_highlight: s.inner_highlight.map(|c| color(c, draw, opacity)),
                     shadow: None,
                 });
+            }
+            if let Some((width, color)) = dash_stroke {
+                dashed_border(&mut body, rect, radii, width, color);
             }
             if let Some(b) = s.border.as_ref().filter(|_| s.border_sides != [true; 4]) {
                 let r = node.rect;
@@ -1000,9 +1268,44 @@ fn paint_node(
                         tracking_em: run.style.tracking_em,
                         uppercase: false,
                     },
-                    max_width: ellipsis.then_some(node.rect.right() - run.rect.x),
+                    // Avoid truncating a naturally sized run on float subtraction noise.
+                    max_width: (*ellipsis && run.rect.right() > node.rect.right() + 0.001)
+                        .then_some((node.rect.right() - run.rect.x).max(0.)),
                     color: color(run.style.color, draw, opacity),
                 });
+            }
+            finish(list, clips, out);
+        }
+        LayoutKind::Atom(atom) => {
+            let mut list = list_with_clips(clips);
+            for primitive in &atom.primitives {
+                let mut p = primitive.clone();
+                match &mut p {
+                    Prim::Text { color: c, .. }
+                    | Prim::Icon { color: c, .. }
+                    | Prim::Hairline { color: c, .. }
+                    | Prim::Gloss { color: c, .. } => *c = draw.color(*c).alpha(opacity),
+                    Prim::Rect {
+                        fill,
+                        stroke,
+                        inner_highlight,
+                        shadow,
+                        ..
+                    } => {
+                        *fill = draw.color(*fill).alpha(opacity);
+                        if let Some((_, c)) = stroke {
+                            *c = draw.color(*c).alpha(opacity);
+                        }
+                        if let Some(c) = inner_highlight {
+                            *c = draw.color(*c).alpha(opacity);
+                        }
+                        if let Some((_, _, c)) = shadow {
+                            *c = draw.color(*c).alpha(opacity);
+                        }
+                    }
+                    _ => {}
+                }
+                list.push(p);
             }
             finish(list, clips, out);
         }
@@ -1026,5 +1329,74 @@ fn paint_node(
     }
     if let Some(after) = after {
         out.push(after);
+    }
+}
+
+fn dashed_border(out: &mut DrawList, rect: Rect, radii: [f32; 4], width: f32, color: Color) {
+    if width <= 0. {
+        return;
+    }
+    let r = Rect::new(
+        rect.x + width * 0.5,
+        rect.y + width * 0.5,
+        (rect.w - width).max(0.),
+        (rect.h - width).max(0.),
+    );
+    let radii = radii.map(|v| (v - width * 0.5).max(0.).min(r.w.min(r.h) * 0.5));
+    let corners = [
+        (
+            [r.right() - radii[1], r.y + radii[1]],
+            radii[1],
+            -std::f32::consts::FRAC_PI_2,
+        ),
+        ([r.right() - radii[2], r.bottom() - radii[2]], radii[2], 0.),
+        (
+            [r.x + radii[3], r.bottom() - radii[3]],
+            radii[3],
+            std::f32::consts::FRAC_PI_2,
+        ),
+        (
+            [r.x + radii[0], r.y + radii[0]],
+            radii[0],
+            std::f32::consts::PI,
+        ),
+    ];
+    let mut points = vec![[r.x + radii[0], r.y]];
+    for (center, radius, start) in corners {
+        let count = ((radius * std::f32::consts::FRAC_PI_2 * 2.).ceil() as usize).max(1);
+        for i in 0..=count {
+            let a = start + std::f32::consts::FRAC_PI_2 * i as f32 / count as f32;
+            points.push([center[0] + radius * a.cos(), center[1] + radius * a.sin()]);
+        }
+    }
+    points.push(points[0]);
+    let dash = 3. * width;
+    let mut distance = 0.;
+    for pair in points.windows(2) {
+        let a = pair[0];
+        let b = pair[1];
+        let len = (b[0] - a[0]).hypot(b[1] - a[1]);
+        if len < 0.0001 {
+            continue;
+        }
+        let mut position = 0.;
+        while position < len - 0.0001 {
+            let phase = distance % (2. * dash);
+            let on = phase < dash;
+            let step = ((if on { dash } else { 2. * dash }) - phase)
+                .max(0.0001)
+                .min(len - position);
+            let point = |t: f32| {
+                [
+                    a[0] + (b[0] - a[0]) * t / len,
+                    a[1] + (b[1] - a[1]) * t / len,
+                ]
+            };
+            if on {
+                out.line(point(position), point(position + step), width, color);
+            }
+            position += step;
+            distance += step;
+        }
     }
 }

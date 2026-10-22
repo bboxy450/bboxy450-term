@@ -15,6 +15,13 @@ function fixture(c) {
   const icon=name=>C.harnessIcon(name);
   let node;
   switch(c.component){
+    case 'seat-row':{
+      node=el('div',{style:'display:flex;flex-direction:column;gap:4px;width:500px'});
+      node.append(C.seatRow(b,{shortcut:'⌘2'}));
+      if(c.state==='task-states')for(const state of ['open','claimed','running','reported','accepted','done','rejected','blocked'])node.append(C.taskRow({id:'task-'+state,title:'Native SeatRow '+state,state,waits:state==='blocked'?'renderer':null},b,{onAccept:()=>{}}));
+      else for(const kind of ['markdown','pr','binary','file','image','release'])node.append(C.artifactRow({...art,kind,ref:'target/'+kind+'-artifact',...(kind==='file'?{responsible:null,digest:null}:{})}));
+      break;
+    }
     case 'logo':node=el('div',{style:'display:flex;gap:18px;align-items:start'},...[256,128,64,32,24,18].map(px=>C.logo(px)));break;
     case 'tile':node=el('span',{class:'tile',style:'width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:#D97757;color:white'},icon('claude'));break;
     case 'badge':node=el('span',{class:'badge'},'3');break;

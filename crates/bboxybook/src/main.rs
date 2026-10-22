@@ -15,6 +15,11 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("gallery");
+    if command == "seat-rows" {
+        return bboxybook::seat_rows::render(&PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/seat-rows".into()),
+        ));
+    }
     if command == "overlays" {
         if args.iter().any(|s| s == "--native-only") {
             return bboxybook::overlays::render_native_gallery(&PathBuf::from(

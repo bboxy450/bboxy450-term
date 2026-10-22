@@ -217,12 +217,13 @@ pub struct Border {
     pub paint: Paint,
     pub outside: bool,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Shadow {
     None,
     Floating,
     Pill,
+    Custom { blur: f32, color: [f32; 4] },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -267,6 +268,9 @@ impl TypeStep {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Text {
     pub step: TypeStep,
+    /// Explicit component geometry, e.g. density-sized seat labels.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<f32>,
     pub weight: u16,
     pub paint: Paint,
     pub tracking_em: f32,
@@ -279,6 +283,7 @@ impl Default for Text {
     fn default() -> Self {
         Self {
             step: TypeStep::Body,
+            size: None,
             weight: 400,
             paint: Paint::solid(Color::Foreground),
             tracking_em: 0.,
@@ -317,6 +322,7 @@ pub struct Overrides {
     pub border: Option<Border>,
     /// Top, right, bottom, left. Table headers use a bottom rule only.
     pub border_sides: Option<[bool; 4]>,
+    pub dashed: Option<bool>,
     /// Ordered outline rings, independent of the box's layout border.
     pub rings: Option<Vec<Border>>,
     pub shadow: Option<Shadow>,
@@ -368,7 +374,8 @@ impl Style {
         if let Some(v) = o.text {
             base.text = v;
         }
-        if !base.text.tracking_em.is_finite()
+        if base.text.size.is_some_and(|s| !s.is_finite() || s <= 0.)
+            || !base.text.tracking_em.is_finite()
             || !base.text.line_height.is_finite()
             || base.text.line_height <= 0.
             || !(1..=1000).contains(&base.text.weight)
@@ -416,6 +423,7 @@ impl Style {
             radii,
             border,
             border_sides: o.border_sides.unwrap_or([true; 4]),
+            dashed: o.dashed.unwrap_or(false),
             rings: o
                 .rings
                 .as_deref()
@@ -434,7 +442,7 @@ impl Style {
             width: o.width.map(|n| n.resolve(ctx.density)).transpose()?,
             padding,
             text: ResolvedText {
-                size: base.text.step.pixels(),
+                size: base.text.size.unwrap_or(base.text.step.pixels()),
                 weight: base.text.weight,
                 color: base.text.paint.resolve(ctx)?,
                 tracking_em: base.text.tracking_em,
@@ -540,6 +548,7 @@ pub struct ResolvedStyle {
     pub radii: [f32; 4],
     pub border: Option<ResolvedBorder>,
     pub border_sides: [bool; 4],
+    pub dashed: bool,
     pub rings: Vec<ResolvedBorder>,
     pub shadow: Option<ResolvedShadow>,
     pub height: Option<f32>,
@@ -694,6 +703,19 @@ pub(crate) fn resolve_shadow(token: Shadow) -> Result<Option<ResolvedShadow>> {
     // their numeric values into a second source of truth.
     let source = match token {
         Shadow::None => return Ok(None),
+        Shadow::Custom { blur, color } => {
+            if !blur.is_finite() || blur < 0. {
+                return Err("invalid custom shadow blur");
+            }
+            for channel in color {
+                unit(channel)?;
+            }
+            return Ok(Some(ResolvedShadow {
+                offset: [0.; 2],
+                blur,
+                color,
+            }));
+        }
         Shadow::Floating => DESIGN.shadow.floating,
         Shadow::Pill => DESIGN.shadow.pill,
     };

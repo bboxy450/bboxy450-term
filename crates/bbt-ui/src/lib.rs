@@ -2,6 +2,7 @@
 //! Renderer-free: the host supplies fonts, a viewport, paint execution and input.
 pub mod atoms;
 pub mod components;
+pub mod modules;
 pub mod overlays;
 pub mod style;
 pub mod widgets;

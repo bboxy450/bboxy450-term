@@ -1,0 +1,434 @@
+{
+  "stage": "before compact auto-margin fix and complete anonymous-text diagnostics",
+  "summary": {
+    "seat-row": {
+      "cases": 224,
+      "review": 90,
+      "statuses": {
+        "review geometry": 56,
+        "review pixels": 34,
+        "within policy": 134
+      },
+      "worst_rect": 327.1447448730469,
+      "worst_baseline": 1.0
+    },
+    "seat_row": {
+      "cases": 72,
+      "review": 41,
+      "statuses": {
+        "review geometry": 18,
+        "review pixels": 23,
+        "within policy": 31
+      },
+      "worst_rect": 213.281982421875,
+      "worst_baseline": 0.0078125
+    }
+  },
+  "ten_worst": {
+    "seat-row": [
+      {
+        "changed_fraction": 0.04262807651150348,
+        "geometry": {
+          "baselines": 11,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 114.60154724121097,
+          "rects": 33
+        },
+        "key": "seat-row/muted-held-compact-light.png",
+        "mean_error": 0.0038205509263630547,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.042327113429641516,
+        "geometry": {
+          "baselines": 11,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 114.60154724121097,
+          "rects": 33
+        },
+        "key": "seat-row/muted-held-compact-dark.png",
+        "mean_error": 0.004494488572582591,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.03363262439807384,
+        "geometry": {
+          "baselines": 9,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 120.38273620605469,
+          "rects": 25
+        },
+        "key": "seat-row/unread-badge-compact-dark.png",
+        "mean_error": 0.008788712114059107,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.03303069823434992,
+        "geometry": {
+          "baselines": 9,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 120.38273620605469,
+          "rects": 25
+        },
+        "key": "seat-row/unread-badge-compact-light.png",
+        "mean_error": 0.006737056948247464,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.030196629213483147,
+        "geometry": {
+          "baselines": 15,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 123.88168334960938,
+          "rects": 40
+        },
+        "key": "seat-row/bug-rows-compact-dark.png",
+        "mean_error": 0.0041520303697321626,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.028370786516853933,
+        "geometry": {
+          "baselines": 12,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 129.60154724121094,
+          "rects": 33
+        },
+        "key": "seat-row/waiting-compact-dark.png",
+        "mean_error": 0.0033350774766835573,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.02820901886035313,
+        "geometry": {
+          "baselines": 15,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 123.88168334960938,
+          "rects": 40
+        },
+        "key": "seat-row/bug-rows-compact-light.png",
+        "mean_error": 0.004146122985711138,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.02771810971579643,
+        "geometry": {
+          "baselines": 16,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 0.2901000976562358,
+          "rects": 37
+        },
+        "key": "seat-row/waiting-cozy-light.png",
+        "mean_error": 0.0029071402189428316,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review pixels"
+      },
+      {
+        "changed_fraction": 0.02742776886035313,
+        "geometry": {
+          "baselines": 12,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 129.60154724121094,
+          "rects": 33
+        },
+        "key": "seat-row/waiting-compact-light.png",
+        "mean_error": 0.0038523274478330658,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.027175195921065057,
+        "geometry": {
+          "baselines": 16,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 0.2901000976562358,
+          "rects": 37
+        },
+        "key": "seat-row/waiting-cozy-dark.png",
+        "mean_error": 0.0025874146750570685,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review pixels"
+      }
+    ],
+    "seat_row": [
+      {
+        "changed_fraction": 0.03363262439807384,
+        "geometry": {
+          "baselines": 9,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 120.38273620605469,
+          "rects": 25
+        },
+        "key": "seat_row/unread-badge-compact-dark.png",
+        "mean_error": 0.008788712114059107,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.03303069823434992,
+        "geometry": {
+          "baselines": 9,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 120.38273620605469,
+          "rects": 25
+        },
+        "key": "seat_row/unread-badge-compact-light.png",
+        "mean_error": 0.006737056948247464,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.02831728196896736,
+        "geometry": {
+          "baselines": 12,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 129.60154724121094,
+          "rects": 33
+        },
+        "key": "seat_row/waiting-compact-dark.png",
+        "mean_error": 0.003385762544718262,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.0281075913511472,
+        "geometry": {
+          "baselines": 16,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 0.2901000976562358,
+          "rects": 37
+        },
+        "key": "seat_row/waiting-cozy-light.png",
+        "mean_error": 0.003058628441462507,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review pixels"
+      },
+      {
+        "changed_fraction": 0.027661851257356877,
+        "geometry": {
+          "baselines": 12,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 129.60154724121094,
+          "rects": 33
+        },
+        "key": "seat_row/waiting-compact-light.png",
+        "mean_error": 0.004004474448955612,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review geometry"
+      },
+      {
+        "changed_fraction": 0.027057171183079973,
+        "geometry": {
+          "baselines": 16,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 0.2901000976562358,
+          "rects": 37
+        },
+        "key": "seat_row/waiting-cozy-dark.png",
+        "mean_error": 0.002630655699160034,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review pixels"
+      },
+      {
+        "changed_fraction": 0.025861704823857395,
+        "geometry": {
+          "baselines": 16,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 0.290313720703125,
+          "rects": 37
+        },
+        "key": "seat_row/waiting-comfortable-light.png",
+        "mean_error": 0.0027844002769647183,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review pixels"
+      },
+      {
+        "changed_fraction": 0.024832404872061183,
+        "geometry": {
+          "baselines": 16,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 0.2901000976562358,
+          "rects": 37
+        },
+        "key": "seat_row/focused-state-cozy-light.png",
+        "mean_error": 0.002587113827685734,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review pixels"
+      },
+      {
+        "changed_fraction": 0.024763453577764636,
+        "geometry": {
+          "baselines": 16,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 0.290313720703125,
+          "rects": 37
+        },
+        "key": "seat_row/waiting-comfortable-dark.png",
+        "mean_error": 0.0024045832111673766,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review pixels"
+      },
+      {
+        "changed_fraction": 0.024714380134076102,
+        "geometry": {
+          "baselines": 16,
+          "complete": true,
+          "max_baseline_error": 0.0078125,
+          "max_rect_error": 0.2901000976562358,
+          "rects": 37
+        },
+        "key": "seat_row/focused-state-cozy-dark.png",
+        "mean_error": 0.002332805230486114,
+        "policy": {
+          "changed_pixel_budget": 0.02,
+          "channel_tolerance": 8,
+          "geometry_tolerance_px": 0.5,
+          "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+          "text": true
+        },
+        "status": "review pixels"
+      }
+    ]
+  },
+  "full_gallery": "target/bboxybook/seat-rows/index.html"
+}

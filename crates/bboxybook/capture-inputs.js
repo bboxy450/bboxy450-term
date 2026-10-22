@@ -37,12 +37,12 @@
       components = value;
       for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
         'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard',
-      'externalLane', 'messageRow', 'glyph', 'titleStrip']) {
+      'externalLane', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow']) {
         const original = value[name];
         if (typeof original !== 'function') continue;
         value[name] = function (...args) {
           const node = original.apply(this, args);
-          calls.push({ name, args, node });
+          if(Array.isArray(node))node.forEach((item,index)=>calls.push({name,args,node:item,index}));else calls.push({ name, args, node });
           return node;
         };
       }
@@ -124,6 +124,25 @@
       }
       return result;
     };
+    if(window.bboxySeatRowFixture){
+      const selected=calls.filter(c=>['seatRow','subagentRows','taskRow','artifactRow'].includes(c.name)&&c.node?.isConnected&&root.contains(c.node));
+      const parents=[...new Set(selected.map(c=>c.node.parentElement))];
+      const leaf=n=>n.classList.contains('glyph')||n.classList.contains('hicon')||!n.children.length;
+      const parts=(node,path='',out=[])=>{
+        const key=path||'row',css=getComputedStyle(node);if(css.display==='none')return out;
+        const r={key,rect:bounds(node)};
+        if(leaf(node)&&!node.classList.contains('glyph')&&!node.classList.contains('hicon')&&node.textContent){Object.assign(r,{kind:'text',...textDiag(node)});r.key=key;}
+        r.css={font:css.font,line_height:css.lineHeight,background:css.backgroundColor,shadow:css.boxShadow,opacity:css.opacity,border_radius:css.borderRadius,flex:css.flex,padding:css.padding};out.push(r);
+        if(!leaf(node)){const counts={};for(const ch of [...node.childNodes]){
+          if(ch.nodeType===Node.TEXT_NODE&&ch.textContent.trim()){out.push({...rawTextDiag(ch),key:(path?path+'/':'')+'text'});continue;}
+          if(ch.nodeType!==Node.ELEMENT_NODE)continue;
+          const cls=ch.classList[0]||ch.tagName.toLowerCase(),i=counts[cls]||0;counts[cls]=i+1;parts(ch,(path?path+'/':'')+cls+(i?i:''),out);
+        }}
+        return out;
+      };
+      const groups=parents.map(parent=>({host:bounds(parent),gap:parseFloat(parent.style.gap)||0,row_height:parseFloat(getComputedStyle(parent).getPropertyValue('--row-h')),rows:selected.filter(c=>c.node.parentElement===parent).map(c=>{c.node.dataset.bboxySeatRow='';return {kind:c.name,args:c.args,index:c.index,rect:bounds(c.node),parts:parts(c.node)};})}));
+      return JSON.parse(JSON.stringify({version:1,layer:'seat-row',scope:'SeatRow and nested subagent/task/artifact rows; notes are shared context, row-menu overlays hidden on both sides',groups},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
+    }
     let component;
     if(window.bboxyComponentFixture){
       const demo=root.querySelector('.ui-scope[data-density] > div[style*="margin-top"]')?.firstElementChild;

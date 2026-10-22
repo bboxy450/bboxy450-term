@@ -56,13 +56,13 @@ try{
   const adapter=await fs.readFile(path.join(root,'crates/bboxybook/web-fixtures.js'),'utf8');
   const captureInputs=await fs.readFile(path.join(root,'crates/bboxybook/capture-inputs.js'),'utf8');
   for(let i=0;i<manifest.length;i++){
-    const c={...manifest[i]};const atomLayer=c.fixture?.layer==='atoms';const componentLayer=c.fixture?.layer==='components';const surfaceLayer=c.fixture?.layer==='floating-surfaces';const surfaceKind=c.fixture?.surface_kind;const relative=`${c.component}/${c.slug}-${c.density}-${c.theme}.png`;cdp.errors=[];
+    const c={...manifest[i]};const seatRowLayer=c.fixture?.layer==='seat-row';const atomLayer=c.fixture?.layer==='atoms';const componentLayer=c.fixture?.layer==='components';const surfaceLayer=c.fixture?.layer==='floating-surfaces';const surfaceKind=c.fixture?.surface_kind;const relative=`${c.component}/${c.slug}-${c.density}-${c.theme}.png`;cdp.errors=[];
     try{
       await cdp.call('Emulation.setDeviceMetricsOverride',{width:c.component.startsWith('showcase')?1440:1280,height:c.component.startsWith('showcase')?868:960,deviceScaleFactor:1,mobile:false});
       await cdp.call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:c.theme}]});
-      const page=c.page==='@component'?'seat-row.html':c.page;const reference=surfaceLayer||componentLayer||atomLayer||['materials','style'].includes(c.component)||c.page==='@component'||(c.component==='settings_tab'&&c.state==='new harness')?supplemental:baseline;const url=new URL(pathToFileURL(path.join(reference,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
+      const page=c.page==='@component'?'seat-row.html':c.page;const reference=(seatRowLayer&&c.fixture?.reference!=='baseline')||surfaceLayer||componentLayer||atomLayer||['materials','style'].includes(c.component)||c.page==='@component'||(c.component==='settings_tab'&&c.state==='new harness')?supplemental:baseline;const url=new URL(pathToFileURL(path.join(reference,'lab/web',page.split('?')[0])));if(page.includes('?'))url.search=page.split('?')[1];
       url.searchParams.set('state',c.page==='@component'?'idle':c.state);url.searchParams.set('density',c.density);url.searchParams.set('theme',c.theme);
-      const init=await cdp.call('Page.addScriptToEvaluateOnNewDocument',{source:`window.bboxySurfaceFixture=${JSON.stringify(surfaceLayer?surfaceKind:null)};window.bboxyComponentFixture=${JSON.stringify(componentLayer)};window.bboxyAtomFixture=${JSON.stringify(atomLayer)};window.bboxyLayerFixture=${JSON.stringify(['materials','style'].includes(c.component))};window.FIX=${JSON.stringify(sharedFixtures)};${captureInputs}\ntry{localStorage.setItem('lab.theme',${JSON.stringify(c.theme)});localStorage.setItem('lab.density',${JSON.stringify(c.density)});localStorage.setItem('showcase.theme',${JSON.stringify(c.theme)});}catch{}`});
+      const init=await cdp.call('Page.addScriptToEvaluateOnNewDocument',{source:`window.bboxySeatRowFixture=${JSON.stringify(seatRowLayer)};window.bboxySurfaceFixture=${JSON.stringify(surfaceLayer?surfaceKind:null)};window.bboxyComponentFixture=${JSON.stringify(componentLayer)};window.bboxyAtomFixture=${JSON.stringify(atomLayer)};window.bboxyLayerFixture=${JSON.stringify(['materials','style'].includes(c.component))};window.FIX=${JSON.stringify(sharedFixtures)};${captureInputs}\ntry{localStorage.setItem('lab.theme',${JSON.stringify(c.theme)});localStorage.setItem('lab.density',${JSON.stringify(c.density)});localStorage.setItem('showcase.theme',${JSON.stringify(c.theme)});}catch{}`});
       await cdp.call('Page.navigate',{url:url.href});await cdp.call('Page.removeScriptToEvaluateOnNewDocument',{identifier:init.identifier});
       let ready=false;for(let j=0;j<80;j++){try{ready=await cdp.eval(`document.readyState==='complete' && !!window.C && !!document.querySelector(${JSON.stringify(c.selector)})`);}catch{}if(ready)break;await pause(25);}
       if(!ready)throw Error('lab page never became ready');
@@ -72,6 +72,7 @@ try{
       if(c.checker)await cdp.eval(`document.querySelector('.card')?.classList.add('checker')`);
       await cdp.eval(`document.fonts.ready`);
       if(['materials','style'].includes(c.component))await cdp.eval(`bboxyFreezeLayer()`);
+      if(seatRowLayer)await cdp.eval(`(()=>{document.getAnimations().forEach(a=>{a.pause();a.effect.updateTiming({delay:0});a.currentTime=0});const s=document.createElement('style');s.textContent='.row-menu{visibility:hidden!important}.seat-row{animation-delay:0ms!important}';document.head.append(s);})()`);
       if(atomLayer)await cdp.eval(`document.getAnimations().forEach(a=>{a.pause();a.currentTime=0})`);
       if(surfaceLayer)await cdp.eval(`document.getAnimations().forEach(a=>{a.pause();a.currentTime=1000})`);
       await cdp.eval(`(()=>{const s=document.createElement('style');s.textContent='*,*::before,*::after{animation-play-state:paused!important;transition:none!important;caret-color:transparent!important}';document.head.append(s);})()`);
@@ -86,9 +87,9 @@ try{
       }
       const shot=await cdp.call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{...rect,scale:1}});
       const dest=path.join(out,'web',relative);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,Buffer.from(shot.data,'base64'));
-      if(surfaceLayer||componentLayer||atomLayer||['materials','style'].includes(c.component)){
+      if(seatRowLayer||surfaceLayer||componentLayer||atomLayer||['materials','style'].includes(c.component)){
         const full=await cdp.eval(`({width:Math.ceil(document.documentElement.clientWidth),height:Math.ceil(Math.max(document.documentElement.scrollHeight,innerHeight))})`);
-        await cdp.eval(`(()=>{const s=document.createElement('style');s.textContent=${JSON.stringify(surfaceLayer?'[data-bboxy-surface-host]{visibility:hidden!important}':componentLayer?'[data-bboxy-capture-demo]{visibility:hidden!important}':atomLayer?'.glyph,.hicon{visibility:hidden!important}':'.ui-sq,.ui-box,.ui-scope .pane-wrap{visibility:hidden!important}')};document.head.append(s);})()`);
+        await cdp.eval(`(()=>{const s=document.createElement('style');s.textContent=${JSON.stringify(seatRowLayer?'[data-bboxy-seat-row]{visibility:hidden!important}':surfaceLayer?'[data-bboxy-surface-host]{visibility:hidden!important}':componentLayer?'[data-bboxy-capture-demo]{visibility:hidden!important}':atomLayer?'.glyph,.hicon{visibility:hidden!important}':'.ui-sq,.ui-box,.ui-scope .pane-wrap{visibility:hidden!important}')};document.head.append(s);})()`);
         const backdrop=await cdp.call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,...full,scale:1}});
         const file=path.join(out,'backdrops',relative);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,Buffer.from(backdrop.data,'base64'));
         c.fixture.backdrop={path:file,...full,crop:rect};

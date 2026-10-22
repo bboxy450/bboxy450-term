@@ -1,0 +1,12 @@
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.89s
+     Running tests/seat_rows.rs (target/debug/deps/seat_rows-af459fff3f25b180)
+
+running 5 tests
+test naturally_sized_text_is_not_truncated_by_float_subtraction ... ok
+test flex_max_violation_freezes_before_redistributing_remaining_space ... ok
+test subagents_filter_finished_work_and_overflow_after_seven ... ok
+test seat_identity_authority_and_activity_stay_independent_when_name_shrinks ... ok
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

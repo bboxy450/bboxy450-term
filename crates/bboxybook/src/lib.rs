@@ -6,6 +6,7 @@ pub mod materials;
 pub mod modules;
 pub mod overlays;
 pub mod parity;
+pub mod seat_rows;
 pub mod styles;
 pub mod widgets;
 pub mod window;

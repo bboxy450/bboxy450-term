@@ -1,0 +1,152 @@
+W3.2d.7.1 SeatRow handoff — Nyx Copperwing <EXECUTOR>
+
+Scope: L7 SeatRow and its subagent, task, bug, invariant and artifact rows.
+Current lab: 26 seat-row.html states plus two supplemental fixtures calling
+C.taskRow/C.artifactRow directly. 28 x 4 densities x 2 themes = 224 cases.
+Legacy: original nine SeatRow states x 4 x 2 = 72, from ux-prototype-v2.
+Gallery: target/bboxybook/seat-rows-final/index.html
+
+All 296 measured geometry records are complete and within 0.5 px. Worst rect
+0.474014 px; worst baseline 0.015625 px. Current 180/224 within policy, 44 pixel
+reviews; legacy 45/72 within policy, 27 pixel reviews. Total 71/296 pixel reviews,
+0 geometry reviews. Budgets unchanged: channel 8, text pixels 2%, geometry 0.5px.
+Before compact placement repair: current 90/224 review + legacy 41/72 = 131.
+After: 71. Layout regressions fixed rather than bypassing geometry requirements.
+
+Evidence:
+crates/bbt-ui/src/modules/seat_row.rs:137 — typed SeatRow composes retained components.
+crates/bbt-ui/src/modules/seat_row.rs:594 — running-only subagents, 7 + overflow past 8,
+  hooks/report grade; parent activity remains independent from authority.
+crates/bbt-ui/src/modules/seat_row.rs:719 — task/bug/invariant composition.
+crates/bbt-ui/src/modules/seat_row.rs:953 — artifact kind/ref/digest/responsible composition.
+crates/bboxybook/src/modules.rs:211 — legacy painter delegates; 116 old lines removed.
+crates/bbt-ui/tests/seat_rows.rs:41 — guard scans all L7 module source for direct primitives.
+crates/bboxybook/tests/seat_rows.rs:41 — poisoned child rects/fonts cannot alter native layout.
+crates/bboxybook/src/seat_rows.rs:247 — native layout from public inputs and external flow bounds.
+crates/bboxybook/src/seat_rows.rs:338 — independent named-part rect/baseline snapshots.
+
+L6 support used by the module: semantic names, retained L5 glyphs, relative
+subtitle placement, CSS auto-basis shrink/min/max with border-box shrink factors,
+explicit inline baseline offset, custom density font sizes, effect shadow and
+dashed border. Compact artifact rows opt into natural cross overflow: a 16 px
+chip can extend out of its 14 px flow slot. Existing L6 defaults are preserved.
+A float-subtraction truncation at naturally sized text widths is also corrected.
+No renderer source or dependency changes; material ancestor clipping (7.0) deferred.
+
+Commands/results (all final commands exit 0):
+cargo build -p bboxybook --locked
+cargo test -p bbt-ui -p bboxybook -p bbt-render --locked — 62 passed, 0 failed.
+cargo fmt -p bbt-ui -p bboxybook --check
+cargo clippy -p bbt-ui -p bboxybook -p bbt-render --all-targets --locked --
+  -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+  — uses the two existing out-of-scope allowances; no new allowance.
+node --check crates/bboxybook/{capture-inputs.js,capture.mjs,web-fixtures.js}
+git diff --check
+bboxybook seat-rows --out target/bboxybook/seat-rows-final — 296 captures, 0 failures,
+  Metal Apple M4; 296 native images. Artifact/focus/palette fixes subsequently
+  re-rendered only affected cases and merged with their fresh geometry records.
+bboxybook compare --out target/bboxybook/seat-rows-final --manifest .../cases.json
+  — final 296 cases / 71 pixel reviews.
+Lower-layer regression re-render: 176/176 images byte-identical to accepted images.
+  Components 0/24 review; widgets 8/32 accepted residue; Style 0/88;
+  floating components/surfaces 16/32 review as previously accepted (16 surfaces).
+  target/bboxybook/seat-row-final-regression/index.html
+
+Inspected web/native pairs: active-cozy-dark; bug-rows-compact-dark;
+waiting-cozy-light; subagents-12-cozy-dark; focused-state-cozy-dark;
+artifacts-compact-dark. Inspected worst bug/waiting diff images. Visual review
+corrected the branch/noise palette and removed an inset focus edge from a
+superseded CSS rule; lab.css:591 explicitly clears --inset. Final focus pair inspected.
+
+Gaps/limits:
+71 cases remain over the pixel budget; not claimed as full visual conformance.
+Worst current pixels: bug-rows-compact-dark ~2.89%. Text-mask/advance and small
+vector icon/glyph differences dominate the inspected diffs. In waiting-cozy-light,
+changed pixels in diagnostic regions: name 2009, title 1628, glyph + halo 615.
+Known residues include the existing 64 px baked-icon sampling, waiting glyph
+text-shadow not reproduced by the L5 atom, and rounded partial-side/dash border AA.
+No L1 fix attempted in this module pass. Standalone row effects are frozen at phase 0;
+no app input/focus/task/messaging controllers are added (later input/fx work).
+Notes remain shared capture context. Separate row-menu overlays are hidden on both
+sides; this report proves row content, not row-menu rendering or interaction.
+Only macOS/Metal and isolated headless Chrome exercised; no Linux, live-input,
+Safari or FPS check. No operator browser opened/reloaded. No commit/push outside
+this task; Oracle owns acceptance/push and next-module sequencing.
+
+Frozen reference: 7dbaef35afe889824304afca069c2e800be648ba
+{
+  "final": {
+    "seat-row": {
+      "cases": 224,
+      "review": 44,
+      "status_counts": {
+        "review pixels": 44,
+        "within policy": 180
+      },
+      "max_rect_error": 0.4740142822265625,
+      "max_baseline_error": 0.015625,
+      "complete": true,
+      "ten_worst": [
+        "seat-row/bug-rows-compact-dark.png",
+        "seat-row/waiting-cozy-light.png",
+        "seat-row/waiting-cozy-dark.png",
+        "seat-row/bug-rows-compact-light.png",
+        "seat-row/bug-rows-cozy-dark.png",
+        "seat-row/waiting-comfortable-light.png",
+        "seat-row/waiting-comfortable-dark.png",
+        "seat-row/focused-state-cozy-light.png",
+        "seat-row/bug-rows-cozy-light.png",
+        "seat-row/focused-state-cozy-dark.png"
+      ]
+    },
+    "seat_row": {
+      "cases": 72,
+      "review": 27,
+      "status_counts": {
+        "review pixels": 27,
+        "within policy": 45
+      },
+      "max_rect_error": 0.4740142822265625,
+      "max_baseline_error": 0.0078125,
+      "complete": true,
+      "ten_worst": [
+        "seat_row/waiting-cozy-light.png",
+        "seat_row/waiting-cozy-dark.png",
+        "seat_row/waiting-comfortable-light.png",
+        "seat_row/focused-state-cozy-light.png",
+        "seat_row/waiting-comfortable-dark.png",
+        "seat_row/focused-state-cozy-dark.png",
+        "seat_row/idle-cozy-light.png",
+        "seat_row/active-cozy-light.png",
+        "seat_row/errored-cozy-light.png",
+        "seat_row/idle-cozy-dark.png"
+      ]
+    }
+  },
+  "regression": [
+    {
+      "matrix": "components",
+      "cases": 24,
+      "review": 0,
+      "byte_identical": 24
+    },
+    {
+      "matrix": "widgets",
+      "cases": 32,
+      "review": 8,
+      "byte_identical": 32
+    },
+    {
+      "matrix": "style",
+      "cases": 88,
+      "review": 0,
+      "byte_identical": 88
+    },
+    {
+      "matrix": "overlays",
+      "cases": 32,
+      "review": 16,
+      "byte_identical": 32
+    }
+  ]
+}
