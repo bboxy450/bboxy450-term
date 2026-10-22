@@ -13,21 +13,19 @@ pub struct LineMask {
     pub mask: Vec<u8>,
 }
 
-// AppKit's verified system-font weight anchors; interpolate numeric CSS weights.
-// CoreText descriptor matching selects the closest real face/variation available.
+// The UI font has a CSS wght axis. Menlo uses CoreText's discrete faces.
 #[cfg(target_os = "macos")]
 fn native_font(
     style: TextStyle,
-    scale: f32,
 ) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
     use objc2_core_foundation::{CFDictionary, CFNumber, CFString, CFType};
     use objc2_core_text::{
         CTFont, CTFontDescriptor, CTFontUIFontType, kCTFontFamilyNameAttribute,
         kCTFontTraitsAttribute, kCTFontWeightTrait,
     };
-    let size = f64::from(style.pixels() * scale);
-    // No regular/bold threshold: weight 400 is the family base, other weights
-    // are requested through the weight trait, including 500 medium/600 semibold.
+    // Optical size is in CSS points, independently of the backing scale.
+    let size = f64::from(style.pixels());
+    // CSS's discrete-face fallback chooses regular for Menlo 400..500.
     let base = unsafe {
         if style.mono {
             CTFont::with_name(&CFString::from_str("Menlo"), size, std::ptr::null())
@@ -36,8 +34,18 @@ fn native_font(
                 .ok_or("system UI font unavailable")?
         }
     };
-    if style.weight == 400 {
+    if style.weight == 400 || (style.mono && (400..=500).contains(&style.weight)) {
         return Ok(base);
+    }
+    if !style.mono {
+        // Named SF Medium/Semibold are wght=510/590. CSS requests the exact
+        // variable weight (500/600); retaining the logical font also keeps opsz.
+        let axis = CFNumber::new_i32(i32::from_be_bytes(*b"wght"));
+        let descriptor = unsafe {
+            base.font_descriptor()
+                .copy_with_variation(&axis, f64::from(style.weight.clamp(100, 900)))
+        };
+        return Ok(unsafe { CTFont::with_font_descriptor(&descriptor, size, std::ptr::null()) });
     }
     let anchors = [-0.8, -0.6, -0.4, 0., 0.23, 0.3, 0.4, 0.56, 0.62];
     let w = style.weight.clamp(100, 900);
@@ -47,23 +55,11 @@ fn native_font(
     let weight = CFNumber::new_f64(anchors[lower] + (anchors[upper] - anchors[lower]) * fraction);
     let weight_key = unsafe { kCTFontWeightTrait };
     let traits = CFDictionary::<CFString, CFNumber>::from_slices(&[weight_key], &[weight.as_ref()]);
-    let values: [&CFType; 1] = [traits.as_ref()];
-    let traits_key = unsafe { kCTFontTraitsAttribute };
-    let attrs = CFDictionary::from_slices(&[traits_key], &values);
-    let descriptor = unsafe {
-        if style.mono {
-            let family = CFString::from_str("Menlo");
-            let values: [&CFType; 2] = [family.as_ref(), traits.as_ref()];
-            let attrs = CFDictionary::from_slices(
-                &[kCTFontFamilyNameAttribute, kCTFontTraitsAttribute],
-                &values,
-            );
-            CTFontDescriptor::with_attributes(attrs.as_opaque())
-        } else {
-            base.font_descriptor()
-                .copy_with_attributes(attrs.as_opaque())
-        }
-    };
+    let family = CFString::from_str("Menlo");
+    let values: [&CFType; 2] = [family.as_ref(), traits.as_ref()];
+    let keys = unsafe { [kCTFontFamilyNameAttribute, kCTFontTraitsAttribute] };
+    let attrs = CFDictionary::from_slices(&keys, &values);
+    let descriptor = unsafe { CTFontDescriptor::with_attributes(attrs.as_opaque()) };
     Ok(unsafe { CTFont::with_font_descriptor(&descriptor, size, std::ptr::null()) })
 }
 
@@ -74,17 +70,38 @@ pub fn rasterize(
     max_width: Option<f32>,
     scale: f32,
 ) -> Result<LineMask> {
+    rasterize_at(text, style, max_width, scale, 0.)
+}
+
+/// Grayscale chrome mask at a fractional device-pixel line origin in [0, 1).
+/// Shaping/metrics stay logical; only glyph origins are quantized, as in Skia.
+#[cfg(target_os = "macos")]
+pub fn rasterize_at(
+    text: &str,
+    style: TextStyle,
+    max_width: Option<f32>,
+    scale: f32,
+    phase_x: f32,
+) -> Result<LineMask> {
     use objc2_core_foundation::{
-        CFAttributedString, CFBoolean, CFDictionary, CFNumber, CFRetained, CFString, CFType,
+        CFArray, CFAttributedString, CFBoolean, CFDictionary, CFNumber, CFRange, CFRetained,
+        CFString, CFType, CGPoint,
     };
     use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext};
     use objc2_core_text::{
-        CTLine, kCTFontAttributeName, kCTForegroundColorFromContextAttributeName,
+        CTFont, CTLine, CTRun, kCTFontAttributeName, kCTForegroundColorFromContextAttributeName,
         kCTKernAttributeName,
     };
-    use std::ptr;
-    let font = native_font(style, scale)?;
-    let kern = CFNumber::new_f64(f64::from(style.tracking_em * style.pixels() * scale));
+    use std::ptr::{self, NonNull};
+    if !scale.is_finite()
+        || !(0.5..=4.).contains(&scale)
+        || !phase_x.is_finite()
+        || !(0. ..1.).contains(&phase_x)
+    {
+        return Err("invalid chrome raster scale or phase".into());
+    }
+    let font = native_font(style)?;
+    let kern = CFNumber::new_f64(f64::from(style.tracking_em * style.pixels()));
     let mut keys = unsafe {
         vec![
             kCTFontAttributeName,
@@ -116,7 +133,7 @@ pub fn rasterize(
     };
     let mut line = make(&value)?;
     if let Some(limit) = max_width.filter(|n| n.is_finite()) {
-        let limit = limit.max(0.0) * scale;
+        let limit = limit.max(0.0);
         if measure(&line) > limit {
             let chars: Vec<char> = value.chars().collect();
             let mut lo = 0;
@@ -141,8 +158,8 @@ pub fn rasterize(
     let (mut ascent, mut descent, mut leading) = (0.0, 0.0, 0.0);
     let advance =
         unsafe { line.typographic_bounds(&mut ascent, &mut descent, &mut leading) } as f32;
-    let width = (advance.ceil() as u32 + 4).max(1);
-    let height = ((ascent + descent).ceil() as u32 + 4).max(1);
+    let width = ((advance * scale).ceil() as u32 + 5).max(1);
+    let height = (((ascent + descent) * f64::from(scale)).ceil() as u32 + 4).max(1);
     if width > 16_384 || height > 2_048 {
         return Err("chrome text line too large".into());
     }
@@ -165,15 +182,55 @@ pub fn rasterize(
     CGContext::set_should_antialias(Some(&context), true);
     CGContext::set_should_smooth_fonts(Some(&context), false);
     CGContext::set_allows_font_smoothing(Some(&context), false);
-    CGContext::set_text_position(Some(&context), 2.0, descent.ceil() + 2.0);
-    unsafe { line.draw(&context) };
+    CGContext::set_allows_font_subpixel_positioning(Some(&context), true);
+    CGContext::set_should_subpixel_position_fonts(Some(&context), true);
+    CGContext::set_allows_font_subpixel_quantization(Some(&context), false);
+    CGContext::set_should_subpixel_quantize_fonts(Some(&context), false);
+    let scale = f64::from(scale);
+    CGContext::scale_ctm(Some(&context), scale, scale);
+    let baseline = ((descent * scale).ceil() + 2.) / scale;
+    // CTLine's built-in quantization differs from Chrome. Keep its shaping and
+    // each fallback run's font, then draw at quarter-device-pixel x origins.
+    // SAFETY: CoreText owns immutable runs/attributes; copied buffers match the
+    // exact glyph count and all retained objects outlive the synchronous draw.
+    unsafe {
+        let runs = CFRetained::cast_unchecked::<CFArray<CTRun>>(line.glyph_runs());
+        for run in runs.iter() {
+            let count = run.glyph_count() as usize;
+            if count == 0 {
+                continue;
+            }
+            let mut glyphs = vec![0; count];
+            let mut positions = vec![CGPoint::ZERO; count];
+            let range = CFRange::new(0, count as isize);
+            run.glyphs(range, NonNull::new(glyphs.as_mut_ptr()).unwrap());
+            run.positions(range, NonNull::new(positions.as_mut_ptr()).unwrap());
+            let attrs =
+                CFRetained::cast_unchecked::<CFDictionary<CFString, CFType>>(run.attributes());
+            let run_font = attrs
+                .get(kCTFontAttributeName)
+                .and_then(|v| v.downcast::<CTFont>().ok())
+                .ok_or("CoreText run font missing")?;
+            for position in &mut positions {
+                position.x =
+                    ((position.x * scale + 2. + f64::from(phase_x)) * 4.).round() / (4. * scale);
+                position.y += baseline;
+            }
+            run_font.draw_glyphs(
+                NonNull::new(glyphs.as_mut_ptr()).unwrap(),
+                NonNull::new(positions.as_mut_ptr()).unwrap(),
+                count,
+                &context,
+            );
+        }
+    }
     drop(context);
     Ok(LineMask {
         width,
         height,
-        advance: advance / scale,
-        ascent: ascent as f32 / scale,
-        descent: descent as f32 / scale,
+        advance,
+        ascent: ascent as f32,
+        descent: descent as f32,
         mask,
     })
 }
@@ -181,10 +238,82 @@ pub fn rasterize(
 pub fn rasterize(_: &str, _: TextStyle, _: Option<f32>, _: f32) -> Result<LineMask> {
     Err("chrome text currently requires CoreText".into())
 }
+#[cfg(not(target_os = "macos"))]
+pub fn rasterize_at(_: &str, _: TextStyle, _: Option<f32>, _: f32, _: f32) -> Result<LineMask> {
+    Err("chrome text currently requires CoreText".into())
+}
 
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn optical_size_and_logical_shaping_do_not_change_with_backing_scale() {
+        use bbt_ui_model::draw::TypeScale;
+        for mono in [false, true] {
+            for weight in [400, 500, 600, 700] {
+                let style = TextStyle {
+                    mono,
+                    weight,
+                    scale: TypeScale::Custom(16.),
+                    ..Default::default()
+                };
+                let a = rasterize("Hamburgefonts AV fi", style, None, 1.).unwrap();
+                let b = rasterize("Hamburgefonts AV fi", style, None, 2.).unwrap();
+                assert_eq!(
+                    [a.advance, a.ascent, a.descent],
+                    [b.advance, b.ascent, b.descent]
+                );
+                assert!(b.width >= a.width * 2 - 6 && b.height >= a.height * 2 - 4);
+            }
+        }
+    }
+    #[test]
+    fn ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face() {
+        use objc2_core_foundation::{CFDictionary, CFNumber, CFRetained};
+        for weight in [500, 600] {
+            let font = native_font(TextStyle {
+                weight,
+                ..Default::default()
+            })
+            .unwrap();
+            let variation = unsafe {
+                CFRetained::cast_unchecked::<CFDictionary<CFNumber, CFNumber>>(
+                    font.variation().unwrap(),
+                )
+            };
+            let w = variation
+                .get(&CFNumber::new_i32(i32::from_be_bytes(*b"wght")))
+                .unwrap();
+            assert_eq!(w.as_f64(), Some(f64::from(weight)));
+        }
+        let mono = |weight| {
+            native_font(TextStyle {
+                mono: true,
+                weight,
+                ..Default::default()
+            })
+            .unwrap()
+        };
+        assert_eq!(unsafe { mono(400).post_script_name() }, unsafe {
+            mono(500).post_script_name()
+        });
+        assert_ne!(unsafe { mono(400).post_script_name() }, unsafe {
+            mono(600).post_script_name()
+        });
+    }
+    #[test]
+    fn quarter_pixel_phases_change_coverage_without_changing_logical_metrics() {
+        let a = rasterize_at("AV fi", TextStyle::default(), None, 1., 0.).unwrap();
+        for phase in [0.25, 0.5, 0.75] {
+            let b = rasterize_at("AV fi", TextStyle::default(), None, 1., phase).unwrap();
+            assert_eq!(
+                [a.advance, a.ascent, a.descent],
+                [b.advance, b.ascent, b.descent]
+            );
+            assert_ne!(a.mask, b.mask);
+        }
+        assert!(rasterize_at("a", TextStyle::default(), None, 1., f32::NAN).is_err());
+    }
     #[test]
     fn numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold() {
         use bbt_ui_model::draw::TypeScale;

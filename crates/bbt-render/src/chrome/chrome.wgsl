@@ -3,7 +3,6 @@ struct Instance {rect:vec4f,fill:vec4f,stroke:vec4f,radii:vec4f,params:vec4f,uv:
 @group(0) @binding(1) var<storage,read> items:array<Instance>;
 @group(0) @binding(2) var masks:texture_2d<f32>;
 @group(0) @binding(3) var images:texture_2d<f32>;
-@group(0) @binding(4) var text_backdrop:texture_2d<f32>;
 @group(0) @binding(5) var image_sampler:sampler;
 struct Vertex {@builtin(position) pos:vec4f,@location(0) point:vec2f,@location(1) @interpolate(flat) index:u32}
 @vertex fn vs(@builtin(vertex_index) v:u32,@builtin(instance_index) i:u32)->Vertex {
@@ -12,8 +11,6 @@ struct Vertex {@builtin(position) pos:vec4f,@location(0) point:vec2f,@location(1
     let p=item.rect.xy-vec2f(margin)+corners[v]*(item.rect.zw+vec2f(margin*2.0));
     return Vertex(vec4f(p.x/view.x*2.0-1.0,1.0-p.y/view.y*2.0,0,1),p,i);
 }
-fn linear(c:vec3f)->vec3f {return select(c/12.92,pow((c+vec3f(0.055))/1.055,vec3f(2.4)),c>vec3f(0.04045));}
-fn srgb1(c:f32)->f32 {return select(c*12.92,1.055*pow(max(c,0.0),1.0/2.4)-0.055,c>0.0031308);}
 fn shade(v:Vertex)->vec4f {
     let i=items[v.index];let p=v.point;
     if rounded_sdf(p,i.clip,i.clip_radii)>0.0 {discard;}
@@ -33,41 +30,7 @@ fn shade(v:Vertex)->vec4f {
     }
     if i.params.y>0.0&&kind<2u {let edge=clamp(d+i.params.y+0.5,0.0,1.0);c=mix(c,i.stroke,edge);}
     if i.params.w>0.0&&p.y<i.rect.y+1.5&&d<0.0 {c=vec4f(mix(c.rgb,vec3f(1),i.params.w),c.a);}
-    var alpha=c.a*a;
-    if kind==2u {
-        let fg=linear(c.rgb);let bg=linear(textureLoad(text_backdrop,vec2i(p),0).rgb);
-        let weights=vec3f(0.2126,0.7152,0.0722);let lf=dot(fg,weights);let lb=dot(bg,weights);
-        if abs(lf-lb)>0.001 {let wanted=linear(vec3f(srgb1(lf)*alpha+srgb1(lb)*(1.0-alpha))).x;alpha=clamp((wanted-lb)/(lf-lb),0.0,1.0);}
-        return vec4f(fg,alpha);
-    }
+    let alpha=c.a*a;
     return vec4f(c.rgb,alpha);
 }
 @fragment fn fs(v:Vertex)->@location(0) vec4f {return shade(v);}
-
-// An sRGB attachment encodes linear-premultiplied RGB, which cannot be sampled
-// as gamma-premultiplied RGBA by a later CSS group compositor. Store that
-// representation explicitly on the UNORM view for isolated text. Opaque pixels
-// retain the existing luminance-corrected linear blend; uncovered pixels carry
-// the grayscale mask as alpha for the group's later source-over operation.
-@fragment fn fs_group_text(v:Vertex)->@location(0) vec4f {
-    let i=items[v.index];
-    if i.params.x!=2.0 {return shade(v);}
-    let p=v.point;
-    if rounded_sdf(p,i.clip,i.clip_radii)>0.0 {discard;}
-    let unit=clamp((p-i.rect.xy)/max(i.rect.zw,vec2f(0.001)),vec2f(0),vec2f(0.99999));
-    let pixel=vec2i(i.uv.xy+unit*i.uv.zw);
-    let a=clamp(0.5-rounded_sdf(p,i.rect,i.radii),0.0,1.0)*textureLoad(masks,pixel,0).r*i.fill.a;
-    let bg=textureLoad(text_backdrop,vec2i(p),0);
-    let fg_linear=linear(i.fill.rgb);
-    let bg_linear=linear(bg.rgb/max(bg.a,0.000001));
-    let weights=vec3f(0.2126,0.7152,0.0722);
-    let lf=dot(fg_linear,weights);let lb=dot(bg_linear,weights);
-    var corrected=a;
-    if abs(lf-lb)>0.001 {
-        let wanted=linear(vec3f(srgb1(lf)*a+srgb1(lb)*(1.0-a))).x;
-        corrected=clamp((wanted-lb)/(lf-lb),0.0,1.0);
-    }
-    let blended=mix(bg_linear,fg_linear,corrected);
-    let encoded=vec3f(srgb1(blended.r),srgb1(blended.g),srgb1(blended.b));
-    return vec4f(encoded*bg.a+i.fill.rgb*a*(1.0-bg.a),bg.a+a*(1.0-bg.a));
-}

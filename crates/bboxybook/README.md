@@ -4,6 +4,27 @@ Native component previews on the same wgpu chrome pass used by headless tests.
 The model's draw list remains std-only. This crate owns fixtures, gallery
 controls, winit and the comparison loop; it does not implement product input.
 
+Chrome-text raster probe (macOS):
+
+```sh
+node crates/bboxybook/chrome-text-probe.mjs target/bboxybook/chrome-text
+cargo run -p bboxybook --example chrome-text-probe --locked -- target/bboxybook/chrome-text
+```
+
+The isolated browser captures 192 black/white, 96 token-palette and 64 fractional-origin samples at
+1× and 2×, using the lab's actual font lists. Shared explicit baselines isolate
+raster coverage from layout; production components never consume these probe
+measurements. The native example writes the production grayscale masks, Metal
+composites, diffs and `summary.json`. `chrome.json` records the browser, selected
+faces, token digest and exceptions. This probe supplies measurements, not a
+golden update or a new acceptance budget.
+
+Chrome text uses exact CSS variable weights, quarter-device-pixel glyph origins
+and logical optical sizing. The cache preserves the fractional line origin;
+each glyph snaps only after adding that origin. Its masks blend source-over in sRGB, including
+inside isolated groups, matching the measured macOS CSS reference. The terminal
+cell font and blending paths are separate and unchanged.
+
 ```sh
 cargo run -p bboxybook --locked                         # windowed gallery
 cargo run -p bboxybook --locked -- gallery --smoke       # three surface frames, exits
@@ -410,9 +431,9 @@ once. Nested groups keep their painter order and ancestor clips. Layout and
 baseline records do not change. A Box isolates automatically for opacity/dim;
 its `group` flag forces an otherwise identity layer.
 
-Offscreen text stores gamma-premultiplied RGBA: grayscale coverage over empty
-pixels, the existing linear-corrected blend over covered pixels. The ordinary
-opaque-target text pass is unchanged. Glow inside an offscreen group retains
+Offscreen text stores gamma-premultiplied RGBA. The later 7.6b raster probe
+replaced its luminance correction with CSS sRGB source-over, for both empty and
+covered pixels and the ordinary opaque target. Glow inside an offscreen group retains
 coverage for the later composite; ordinary glow still preserves destination
 alpha. Pane identity glow and border remain outside its strip/term filters.
 

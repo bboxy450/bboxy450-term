@@ -33,7 +33,6 @@ pub struct ChromeRenderer {
     icons: icons::IconAtlas,
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
-    group_text_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_depth: usize,
 }
 impl ChromeRenderer {
@@ -48,7 +47,6 @@ impl ChromeRenderer {
             icons: icons::IconAtlas::new(images)?,
             pipelines: HashMap::new(),
             group_pipelines: HashMap::new(),
-            group_text_pipelines: HashMap::new(),
             group_depth: 0,
         })
     }
@@ -336,11 +334,15 @@ impl ChromeRenderer {
                     if text.is_empty() {
                         continue;
                     }
-                    let key = format!("{text}\0{style:?}\0{max_width:?}\0{scale}");
+                    // Quantize each glyph once, after adding the line origin.
+                    // Rounding the origin first loses eighth-pixel positions.
+                    let physical_x = origin[0] * scale;
+                    let phase = physical_x.rem_euclid(1.);
+                    let key = format!("{text}\0{style:?}\0{max_width:?}\0{scale}\0{phase}");
                     let (atlas, advance) = if let Some(cached) = self.text.get(&key) {
                         *cached
                     } else {
-                        let line = text::rasterize(text, *style, *max_width, scale)?;
+                        let line = text::rasterize_at(text, *style, *max_width, scale, phase)?;
                         let rect = self.atlas.insert(line.width, line.height, &line.mask)?;
                         let value = (rect, line.advance);
                         self.text.insert(key, value);
@@ -350,8 +352,11 @@ impl ChromeRenderer {
                         continue;
                     }
                     let r = Rect::new(
-                        origin[0] - 2.0 / scale,
-                        origin[1] + (style.pixels() * 1.4 - atlas.height as f32 / scale) * 0.5,
+                        (physical_x.floor() - 2.) / scale,
+                        ((origin[1] + (style.pixels() * 1.4 - atlas.height as f32 / scale) * 0.5)
+                            * scale)
+                            .round()
+                            / scale,
                         atlas.width as f32 / scale,
                         atlas.height as f32 / scale,
                     );
@@ -403,42 +408,13 @@ impl ChromeRenderer {
         let device = &self.context.device;
         let queue = &self.context.queue;
         let gamma_format = format.remove_srgb_suffix();
-        let text_format = format.add_srgb_suffix();
-        for f in [gamma_format, text_format] {
-            self.pipelines
-                .entry(f)
-                .or_insert_with(|| pipeline::create(device, f));
-        }
-        if self.group_depth > 0 {
-            self.group_text_pipelines
-                .entry(gamma_format)
-                .or_insert_with(|| pipeline::create_group_text(device, gamma_format));
-        }
+        self.pipelines
+            .entry(gamma_format)
+            .or_insert_with(|| pipeline::create(device, gamma_format));
         let gamma_view = target.texture().create_view(&wgpu::TextureViewDescriptor {
             format: Some(gamma_format),
             ..Default::default()
         });
-        let text_view = target.texture().create_view(&wgpu::TextureViewDescriptor {
-            format: Some(text_format),
-            ..Default::default()
-        });
-        // The snapshot is gamma-encoded, like the destination bytes. The text
-        // shader linearises it to choose a luminance-corrected coverage alpha.
-        let snapshot = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("text correction backdrop"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: gamma_format,
-            usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
-        let snapshot_view = snapshot.create_view(&Default::default());
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("chrome view"),
             contents: bytemuck::cast_slice(&[width as f32, height as f32, scale, 0.0]),
@@ -473,124 +449,52 @@ impl ChromeRenderer {
             mag_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
-        let bindings = [gamma_format, text_format].map(|f| {
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("chrome bindings"),
-                layout: &if f == text_format && self.group_depth > 0 {
-                    &self.group_text_pipelines[&gamma_format]
-                } else {
-                    &self.pipelines[&f]
-                }
-                .get_bind_group_layout(0),
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: uniform.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: items.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::TextureView(&mask),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wgpu::BindingResource::TextureView(&icons),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: wgpu::BindingResource::TextureView(&snapshot_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 5,
-                        resource: wgpu::BindingResource::Sampler(&image_sampler),
-                    },
-                ],
-            })
+        let bindings = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("chrome bindings"),
+            layout: &self.pipelines[&gamma_format].get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: items.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&mask),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&icons),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&image_sampler),
+                },
+            ],
         });
-        let mut start = 0;
-        let mut operation = load;
-        if let wgpu::LoadOp::Clear(color) = operation {
-            // Clear before a first text run snapshots the destination, and
-            // preserve the old empty-list clear semantics.
-            let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("chrome clear"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &gamma_view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(color),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            operation = wgpu::LoadOp::Load;
-        }
-        // Preserve primitive order. Only contiguous text runs switch to the
-        // sRGB view; chrome/fx use UNORM views for CSS gamma-space blending.
-        while start < instances.len() {
-            let text = instances[start].params[0] == 2.;
-            let mut end = start + 1;
-            while end < instances.len() && (instances[end].params[0] == 2.) == text {
-                end += 1;
-            }
-            if text {
-                encoder.copy_texture_to_texture(
-                    wgpu::TexelCopyTextureInfo {
-                        texture: target.texture(),
-                        mip_level: 0,
-                        origin: wgpu::Origin3d::ZERO,
-                        aspect: wgpu::TextureAspect::All,
-                    },
-                    wgpu::TexelCopyTextureInfo {
-                        texture: &snapshot,
-                        mip_level: 0,
-                        origin: wgpu::Origin3d::ZERO,
-                        aspect: wgpu::TextureAspect::All,
-                    },
-                    wgpu::Extent3d {
-                        width,
-                        height,
-                        depth_or_array_layers: 1,
-                    },
-                );
-            }
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some(if text {
-                    "linear-corrected text"
-                } else {
-                    "gamma chrome"
-                }),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: if text && self.group_depth == 0 {
-                        &text_view
-                    } else {
-                        &gamma_view
-                    },
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: operation,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            pass.set_pipeline(if text && self.group_depth > 0 {
-                &self.group_text_pipelines[&gamma_format]
-            } else {
-                &self.pipelines[&if text { text_format } else { gamma_format }]
-            });
-            pass.set_bind_group(0, &bindings[usize::from(text)], &[]);
-            pass.draw(0..6, start as u32..end as u32);
-            drop(pass);
-            operation = wgpu::LoadOp::Load;
-            start = end;
-        }
+        // Chrome's grayscale CSS text, like its chrome fills, uses source-over
+        // in sRGB. One UNORM pass also stores the right premultiplied values
+        // inside an isolated group; no backdrop-dependent alpha remap is used.
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("CSS gamma chrome and text"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &gamma_view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        pass.set_pipeline(&self.pipelines[&gamma_format]);
+        pass.set_bind_group(0, &bindings, &[]);
+        pass.draw(0..6, 0..instances.len() as u32);
+        drop(pass);
         Ok(())
     }
     pub fn render_to_rgba(
@@ -765,6 +669,75 @@ fn upload(
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops() {
+        use bbt_ui_model::draw::{TextStyle, TypeScale};
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let style = TextStyle {
+            scale: TypeScale::Custom(13.),
+            ..Default::default()
+        };
+        for origin_x in [2.125f32, 2.25] {
+            let mask =
+                text::rasterize_at("Hamburgefonts AV", style, None, 1., origin_x.fract()).unwrap();
+            let foreground = Color([0.18, 0.42, 0.93, 0.8]);
+            for background in [
+                Color::WHITE,
+                Color([0.1, 0.06, 0.2, 0.4]),
+                Color::TRANSPARENT,
+            ] {
+                for opacity in [1., 0.6] {
+                    let mut glyphs = DrawList::default();
+                    glyphs.text(
+                        Rect::new(
+                            origin_x,
+                            2. - (style.pixels() * 1.4 - mask.height as f32) * 0.5,
+                            200.,
+                            30.,
+                        ),
+                        "Hamburgefonts AV",
+                        style,
+                        foreground,
+                    );
+                    let mut list = DrawList::default();
+                    list.rect(Rect::new(0., 0., 256., 48.), 0., background);
+                    if opacity == 1. {
+                        // Exercise the ordinary opaque-backdrop path as well as
+                        // the isolated group below. Empty-layer text alone cannot
+                        // expose a backdrop-dependent luminance correction.
+                        list.primitives.extend(glyphs.primitives);
+                    } else {
+                        list.push(Prim::Group {
+                            primitives: glyphs.primitives,
+                            opacity,
+                            saturation: 1.,
+                        });
+                    }
+                    let pixels = renderer.render_to_rgba(&list, 256, 48, 1.).unwrap();
+                    for (i, coverage) in mask.mask.iter().enumerate() {
+                        let x = i % mask.width as usize;
+                        let y = i / mask.width as usize + 2;
+                        let a = f32::from(*coverage) / 255. * foreground.0[3] * opacity;
+                        let at = (y * 256 + x) * 4;
+                        for channel in 0..4 {
+                            let expected = if channel == 3 {
+                                a + background.0[3] * (1. - a)
+                            } else {
+                                foreground.0[channel] * a
+                                    + background.0[channel] * background.0[3] * (1. - a)
+                            };
+                            assert!(
+                                (f32::from(pixels[at + channel]) - expected * 255.).abs() <= 2.,
+                                "CSS source-over at {x},{y}, channel {channel}: {} vs {}",
+                                pixels[at + channel],
+                                expected * 255.
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
     #[test]
     fn sdf_rounding_stroke_and_clip_survive_gpu_readback() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();

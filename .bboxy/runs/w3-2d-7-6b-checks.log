@@ -1,0 +1,47 @@
+W3.2d.7.6b — verification
+Host: macOS 27.0.1, Apple M4 / Metal, Rust 1.99.0, Chrome 156.0.8078.48.
+
+cargo test -p bbt-render -p bbt-ui -p bboxybook --locked
+  exit 0;125 passed,0 failed,38 test-result records (including empty doctest suites).
+  raw log: target/bboxybook/text-raster/checks-final-phase.log
+cargo test -p bbt-render -p bbt-ui -p bboxybook --release --locked
+  exit 0;125 passed,0 failed,38 test-result records.
+  raw log: target/bboxybook/text-raster/checks-release.log
+cargo clippy -p bbt-render -p bbt-ui -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+  exit 0; two pre-existing allowances retained, no new allowance.
+  raw log: target/bboxybook/text-raster/clippy-final-phase.log
+rustfmt --edition 2024 --check crates/bbt-render/src/chrome/{mod,text,pipeline,group}.rs crates/bboxybook/examples/chrome-text-probe.rs
+  exit 0.
+node --check crates/bboxybook/chrome-text-probe.mjs
+  exit 0.
+git diff --check
+  exit 0 (rechecked before staging).
+
+Focused regression, previous luminance correction substituted with identical masks:
+  colored_text_uses_css_source_over — expected exit 101; final blend exit 0.
+Focused regression, premature whole-line rounding substituted:
+  colored_text_uses_css_source_over — expected exit 101; final single glyph snap exit 0.
+Temporary source substitutions restored before verification.
+
+All 48 terminal smoke PNGs remain byte-identical to pre-change hashes.
+Terminal text and cell source paths have no diff.
+The final source/binary fingerprints are in target/bboxybook/text-raster/source-final.json.
+Full policy-preserving gallery counts and limits are in the separate summary log.
+
+Final gallery replay (immutable candidate-release-bin):
+  render --manifest galleries/release/lower/cases.json --out galleries/release/lower/native
+  compare --manifest galleries/release/lower/cases.json --out galleries/release/lower
+  render --manifest galleries/release/title-bars/cases.json --out galleries/release/title-bars/native
+  compare --manifest galleries/release/title-bars/cases.json --out galleries/release/title-bars
+  all four subprocesses exit 0; actual argv and output in galleries.py and galleries-release.log.
+  Paths above are relative to target/bboxybook/text-raster/.
+
+Launcher combined render: all 224 PNGs complete; stopped during geometry, exit 143.
+Replacement geometry command, for i=0,1,2,3:
+  target/bboxybook/text-raster/candidate-release-bin launchers --geometry-only --manifest target/bboxybook/text-raster/geometry-parts/cases-I.json --out target/bboxybook/text-raster/geometry-parts/part-I
+  each exit 0;56 records each. Merged key set = manifest key set,224 unique records.
+target/bboxybook/text-raster/candidate-release-bin compare --manifest target/bboxybook/text-raster/galleries/release/launchers/cases.json --out target/bboxybook/text-raster/galleries/release/launchers
+  exit 0; current Launcher/Picker 0 of 176 need review.
+python3 target/bboxybook/text-raster/aggregate.py
+  exit 0;1488 cases,1096 current;172 to 81 current reviews,0 newly over policy.
+  Identical case inputs and policy verified; all required current geometry proven.

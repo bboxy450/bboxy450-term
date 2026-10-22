@@ -79,8 +79,8 @@ fn pipeline(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderP
     })
 }
 impl ChromeRenderer {
-    /// Paint an offscreen group using gamma-premultiplied storage. The existing
-    /// opaque-target text pass remains unchanged outside this lexical scope.
+    /// Paint an offscreen group using gamma-premultiplied storage. Chrome text
+    /// uses the same CSS source-over rule inside and outside the group.
     pub fn with_group_layer<T, E>(
         &mut self,
         paint: impl FnOnce(&mut Self) -> std::result::Result<T, E>,
@@ -370,7 +370,7 @@ mod tests {
         assert_eq!(plain, isolated);
     }
     #[test]
-    fn isolated_text_carries_a_premultiplied_mask_and_keeps_opaque_text_correction() {
+    fn isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
         let mut text = DrawList::default();

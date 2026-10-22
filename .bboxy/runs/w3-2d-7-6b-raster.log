@@ -1,0 +1,124 @@
+W3.2d.7.6b — focused chrome-raster evidence
+Assignment: ICQ 139e4ae8-5649-45a7-aad6-9c765af37050
+Host: Apple M4 / Metal, macOS 27.0.1, rustc 1.99.0; Chrome 156.0.8078.48; probe 1x and 2x.
+Terminal font/cells sources were not edited.
+
+Direct CoreText controls: 192 synthetic samples per scale, explicit common baseline.
+Families: lab font.chrome + font.mono; weights 400/500/600/700; sizes 11/12.5/16;
+horizontal phases 0/.25/.5/.75; black/white foreground/background.
+These controls isolate raster parameters; they are not component-layout goldens.
+
+mode | scale | changed pixels (channel delta >8) | mean absolute grayscale error [0,255]
+baseline | 1 | 116060 | 1.75977584
+position | 1 | 116060 | 1.75977584
+noquant | 1 | 91992 | 1.13375523
+smooth | 1 | 168708 | 3.48558836
+rgb | 1 | 116060 | 1.75977584
+invert | 1 | 116060 | 1.75977456
+glyphs | 1 | 91992 | 1.13375523
+quarter-round | 1 | 45828 | 0.82936965
+quarter-floor | 1 | 88184 | 1.45995136
+integer-round | 1 | 124870 | 2.37255669
+variation | 1 | 458 | 0.00616128
+variation-device-quarter | 1 | 458 | 0.00616128
+baseline | 2 | 510028 | 5.73352479
+position | 2 | 510028 | 5.73352479
+noquant | 2 | 469660 | 5.40224484
+smooth | 2 | 603248 | 6.83259006
+rgb | 2 | 510028 | 5.73352479
+invert | 2 | 510028 | 5.73352479
+glyphs | 2 | 469660 | 5.40224484
+quarter-round | 2 | 421560 | 5.31047663
+quarter-floor | 2 | 479032 | 5.53091751
+integer-round | 2 | 510468 | 5.69968660
+variation | 2 | 368356 | 4.88970521
+variation-device-quarter | 2 | 9404 | 0.03084501
+
+Consumed control source: target/bboxybook/text-raster/probe.swift.
+Only the modes above were consumed; older exploratory optical PNGs were not used.
+CG positioning enabled alone has no effect. Disabling CG quantization improves coverage;
+rounding each shaped glyph to a quarter DEVICE pixel improves it further.
+RGB context and inverse black-on-white masks do not change the result.
+CG font smoothing increases the error; no stem dilation was adopted.
+No separate outline-hinting switch was introduced. Integer and quarter position snaps
+were measured as positioning controls, not mislabelled as an autohinter.
+Exact CSS wght 500/600 replaces the measured named-face 510/590 values.
+Menlo CSS 500 resolves to Regular; CG trait-only matching had selected Bold.
+Logical optical size is preserved when scaling to the backing texture.
+
+Reproducible current probe:
+node crates/bboxybook/chrome-text-probe.mjs target/bboxybook/chrome-text-current — exit 0, zero browser exceptions.
+cargo run -p bboxybook --example chrome-text-probe --locked -- target/bboxybook/chrome-text-current — exit 0.
+The experiment shares a baseline deliberately; production module layouts do not consume it.
+192 grayscale +96 palette +64 fractional-origin samples at EACH of 1x and 2x.
+Output: target/bboxybook/chrome-text-final/{chrome,summary}.json and PNGs.
+
+One-variable gamma control: SAME final masks, phases, fonts and fixtures.
+Previous luminance-corrected GPU blend: palette changed pixels 17283 at 1x,35956 at 2x.
+CSS source-over GPU blend: palette changed pixels 701 at 1x,0 at 2x.
+Raw grayscale current: changed pixels 458 at 1x,9404 at 2x.
+Gamma control source was restored exactly after temporary substitution.
+Previous output: target/bboxybook/chrome-text-linear-control/.
+Current output: target/bboxybook/chrome-text-current/.
+Images inspected: target/bboxybook/text-raster/palette-inspected.png, row-inspected.png.
+
+Regression proof:
+cargo test -p bbt-render --lib colored_text_uses_css_source_over --locked
+Previous blend (same final masks): expected exit 101, see target/bboxybook/text-raster/gamma-red.log.
+Final blend: exit 0, see target/bboxybook/text-raster/gamma-green.log.
+A first group-only test did not expose the old opaque-backdrop path; the final test
+covers direct opaque/transparent targets and dimmed isolated groups.
+
+Corroborating primary source (not claimed to be the exact Chrome binary revision):
+https://chromium.googlesource.com/skia/+/4b4cd13d44a833475598beff178a705bf9eddb40/src/ports/SkScalerContext_mac_ct.cpp
+Offscreen::getCG disables CG subpixel quantization and enables subpixel positioning.
+The measured browser and its PNGs, not a source-version assumption, define this probe.
+
+Terminal smoke: {"after": 48, "before": 48, "changed": [], "same_names": true}
+No image goldens or acceptance policy were changed.
+
+Source/binary digests: target/bboxybook/text-raster/source.json.
+Controls and measurement JSON: target/bboxybook/text-raster/controls-consumed.json.
+
+Fractional-origin correction after the aligned probe:
+The first candidate rounded a whole line to a quarter pixel before adding its glyph positions.
+An eighth-pixel Chrome fixture exposed that double rounding. The final cache keeps the
+full fractional line origin; the glyph is rounded only once after adding both positions.
+The final 64-case fractional-origin probe has 500 changed pixels at 1x (0.047871%)
+and 1768 at 2x (0.042318%). GPU and raw mask agree.
+Temporary premature-rounding substitution: focused regression exit 101 (phase-red.log);
+final rule exit 0 (phase-green.log). Both logs are in target/bboxybook/text-raster/.
+The final quantitative matrix is galleries/release; earlier debug/phase/gamma stages remain
+explicit intermediate artifacts and are not substituted for the final comparison.
+
+Baseline correction:
+The initial before sequencer retained the mutable target/debug/bboxybook path.
+Cargo test rebuilt that CLI before its TitleBar/Launcher stages. Exit 0 and the
+resulting 0 Launcher reviews conflicted with the signed 7.6 baseline (32 reviews).
+Those affected runs were discarded for comparison, retained under
+target/bboxybook/text-raster/galleries/before-rebuilt-cli/.
+The before TitleBar and Launcher data now use the accepted af73b4f and 2bf3601
+artifacts; the 1200-case lower before run is the fresh frozen-code replay.
+A separately frozen original executable rerendered five representative cases:
+all five PNGs and all rect/baseline trees are byte/value-identical to the accepted
+baselines. Two accepted Launcher records merely predate extra paint_bounds diagnostics.
+Proof: target/bboxybook/text-raster/baseline-proof/proof.json.
+The final 1488-case run uses an immutable candidate-release-bin path throughout.
+
+Batch build profile:
+Debug replay was slow on the large sidebar fixtures. The optimized CLI build is
+used for the final full replay, with identical captured inputs and policy.
+Overlapping debug/release PNGs are compared byte-for-byte in profile-proof.json.
+The redundant debug worker was stopped; its partial output is labelled intermediate.
+cargo test -p bbt-render -p bbt-ui -p bboxybook --release --locked — exit 0,125 passed.
+No product optimization or FPS measurement was added.
+
+Final replay completion:
+The combined release renderer finished all 224 Launcher PNGs, then was stopped
+during its serial geometry stage (exit 143). This was not recorded as success.
+Four disjoint 56-case manifests used the existing launchers --geometry-only
+command; all four exited 0. Their merged 224 unique keys exactly match the
+Launcher manifest. The final compare command exited 0 on those same images.
+The lower and TitleBar render/compare subprocesses had already exited 0.
+All 1018 complete debug/release overlapping PNGs were byte-identical.
+Authoritative aggregate: target/bboxybook/text-raster/{index.html,report.md,summary.json}.

@@ -1,0 +1,84 @@
+W3.2d.7.6b — chrome text raster handoff
+Assignment: ICQ 139e4ae8-5649-45a7-aad6-9c765af37050.
+Parent:70db5d7205bb35dc93b297f24e5dbcba6df8180e.
+
+Mechanisms:
+crates/bbt-render/src/chrome/text.rs:18 — CSS wght axis for SF UI, Menlo 500
+  resolves to Regular; logical optical size is independent of backing scale.
+crates/bbt-render/src/chrome/text.rs:79 — CoreText shaping/fallback preserved;
+  disable CG subpixel quantization, snap each shaped glyph once to quarter
+  device pixels after adding the full fractional line origin, grayscale only.
+crates/bbt-render/src/chrome/mod.rs:339 — phase-aware atlas key and integer
+  mask placement retain fractional line coverage without moving logical layout.
+crates/bbt-render/src/chrome/mod.rs:482 — CSS source-over chrome text and fills
+  share the sRGB-numeric UNORM pass; remove backdrop luminance remap and special
+  group-text pipeline. This implements the measured rule recorded in 70db5d7.
+crates/bbt-render/src/chrome/mod.rs:673 — regression checks colored text over
+  opaque, transparent and dimmed-group targets, including eighth-pixel origins.
+crates/bboxybook/chrome-text-probe.mjs — isolated Chrome reference using lab
+  font/color tokens;192 grayscale+96 palette+64 phase samples at each of 1x/2x.
+crates/bboxybook/examples/chrome-text-probe.rs — production masks and Metal
+  composites against those synthetic raster probes, separate from layout gates.
+
+Focused controls and red/green proof: w3-2d-7-6b-raster.log.
+Commands, actual exits and tests: w3-2d-7-6b-checks.log.
+Source and immutable executable digests: target/bboxybook/text-raster/source-final.json.
+
+Full existing gallery matrix, same public fixture inputs and acceptance policy:
+Gallery       total current historical before-review after-review
+lower          1200     880        320           140           81
+TitleBar         64      40         24             0            0
+Launcher        224     176         48            32            0
+TOTAL          1488    1096        392           172           81
+91 reviews closed,0 new. Historical v2 results remain labelled, not a gate.
+1048 current cases require geometry;40566 rects and16246 baselines checked.
+Max rect error0.5px; max baseline error0.0078125px.0 unproven/failed geometry.
+The other48 current cases use the unchanged pixel-only policy.
+Budget: text2% plus every rect/baseline<=0.5px; pixel-only0.1%; channel delta8.
+
+Current component reviews before -> after:
+components8/72 ->0/72; documents surface8/8 ->8/8; glyph0/56 ->0/56;
+harness-icon56/56 ->56/56; launcher surface8/8 ->8/8; materials8/32 ->8/32;
+mini-grid0/64 ->0/64; pane0/48 ->0/48; SeatRow39/224 ->1/224;
+Sidebar4/40 ->0/40; SwarmCard0/32 ->0/32; Style0/112 ->0/112;
+TabRow0/40 ->0/40; TitleStrip9/88 ->0/88; TitleBar0/40 ->0/40;
+full Launcher32/112 ->0/112; compact Picker0/64 ->0/64.
+Surface-only L6 cases are separate from the complete Launcher module cases.
+
+Gallery: target/bboxybook/text-raster/index.html
+Full machine report: target/bboxybook/text-raster/summary.json
+Before baseline: fresh frozen lower replay; accepted af73b4f TitleBar and
+  2bf3601 Launcher artifacts, independently matched by five frozen-old-binary
+  PNG and rect/baseline rerenders. Initial mutable-CLI baseline was discarded;
+  details and provenance remain in raster.log and baseline-proof/proof.json.
+After: galleries/release/, immutable optimized executable, no golden updates.
+Debug/release overlap1018/1018 byte-identical. Terminal smoke48/48 identical.
+
+Ten worst current triplets (web/native/diff at galleries/release/lower/):
+seat-row/waiting-compact-dark.png —2.033842%, review pixels
+seat-row/waiting-compact-light.png —1.925495%, within policy
+seat-row/bug-rows-compact-dark.png —1.815184%, within policy
+sidebar/100-seats-compact-dark.png —1.743539%, within policy
+sidebar/100-seats-compact-light.png —1.721973%, within policy
+components/table-compact-light.png —1.630520%, within policy
+components/table-compact-dark.png —1.626041%, within policy
+seat-row/subagents-12-compact-light.png —1.619349%, within policy
+seat-row/subagents-12-compact-dark.png —1.608898%, within policy
+seat-row/focused-state-compact-dark.png —1.602461%, within policy
+These are ranked by changed fraction; non-text cases have a stricter budget.
+
+Images actually inspected: palette-inspected.png, row-inspected.png,
+inspection-{0,1,2}.png and launcher-inspected.png under the text-raster root.
+The last compares preset-split-down-cozy-light: Chrome/native/diff.
+
+Remaining:80 pre-existing non-text icon/material/surface reviews; one waiting
+  compact dark text case is2.033842%.67.74% of its changed pixels lie inside
+  name bounds, but this is location attribution, not proof of the cause.
+  Exact residual cause remains unresolved; no extra tuning or edge pass here.
+  No claim of universal glyph identity: focused grayscale probe residuals are
+  0.014617% at1x/0.075029% at2x; palette GPU0.044743% at1x and exact at2x.
+  macOS14/Linux/mobile/other OS or browser versions and scales beyond1x/2x were
+  not exercised. No hosted CI, product input, new modules, FPS work or rim pass.
+Terminal text/cells source paths unchanged.125 tests pass in each debug/release
+profile; scoped Clippy passes with the two pre-existing exclusions, no new one.
+No acceptance budget, lab fixture, design token, terminal raster or dependency changed.
