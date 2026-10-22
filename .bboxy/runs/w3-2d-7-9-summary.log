@@ -1,0 +1,149 @@
+W3.2d.7.9 Settings — Nyx Copperwing <EXECUTOR>
+Date: 2026-10-22 America/Los_Angeles. Worktree: /Users/feral/mydev/bboxy450-term.
+Brief: .bboxy/tasks/2026-10-21-w3-2d-7-modules.md, step 7.9 only.
+Scope: bbt-ui, bboxybook, this evidence. No renderer, mux, app, dependency,
+lab/design or spec changes by Nyx. No push. Oracle verifies the signed handoff.
+
+Mechanisms
+- crates/bbt-ui/src/modules/settings.rs:106 — serializable host-owned account,
+  providers, machines, ordered roles/harnesses, defaults, appearance, shortcuts,
+  draft-harness records. No config, keyring, signing or network IO.
+- settings.rs:781 — role cards, prompt/default differences, signed-class wording;
+  built-in/custom status follows the record. Controls are read-mostly projections.
+- settings.rs:950 — harness cards and wake/state/hooks values; custom harnesses
+  retain the PTY guard's no-submit/idle-hook wording.
+- settings.rs:1095 — retained Box/Text/Flow/ScrollView/Icon/Image/Path composition;
+  enclosing width/height only, native metrics determine responsive columns/wrap.
+- settings.rs:1588 — full fingerprint and certification path, identity-only
+  recovery, local revocation wording, device cards and signatures. Enrollment
+  content is centred, with independently checked title/hint/caption geometry.
+- settings.rs:2187 — theme/density previews, gutter, opacity and blur/state controls.
+  Changed/default comparisons are supplied-record comparisons, never disk reads.
+- crates/bboxybook/src/settings.rs:104 — public input to layout; child rects,
+  computed CSS, baselines and textBounds are never native placement inputs.
+  Per-layout memoization retains actual native font measures, not browser values.
+- crates/bboxybook/src/settings.rs:136 — shared external backdrop/ancestor clip,
+  followed by native module paint. The in-tab scene's surrounding Sidebar/Strip
+  is common context, not claimed as newly built Settings output.
+- crates/bboxybook/src/settings.rs:192 — independent rect/baseline snapshots.
+- crates/bboxybook/src/modules.rs:1239 — old 150px-nav/info-card placeholder removed;
+  the legacy entry delegates to retained Settings.
+- crates/bboxybook/capture-inputs.js:160 — captures settingsPage options plus
+  public SET/SET_DEF and launch labels; CSS/DOM probes are diagnostic only.
+- crates/bboxybook/src/parity.rs:14, :102, :152 — dispatch, snapshots and the
+  existing 2% text + 0.5px geometry policy, unchanged thresholds.
+
+Verification (actual outputs under target/bboxybook/settings/)
+1. BBOXYBOOK_GALLERY=settings PARITY_OUT=target/bboxybook/settings/matrix
+   scripts/parity.sh — exit 0. 72/72 Chrome captures, zero exceptions, 72 native;
+   24 pixel reviews. Largest changed fraction 3.553% before visual corrections.
+2. BBOXYBOOK_GALLERY=settings BBOXYBOOK_REFERENCE_HEAD=3ef69c5
+   PARITY_OUT=target/bboxybook/settings/final scripts/parity.sh — exit 0.
+   Full capture/native/compare completed (final.log). Before the last Account
+   alignment correction, 72/72 geometry passed and 24 pixel reviews remained.
+3. Account follow-up: node capture.mjs account-delta .../requested.json — exit 0,
+   eight captures at the SAME frozen revision; direct enrollment snapshots added.
+   Account fixture/web updates are listed in final/capture.json supplementalCaptures.
+   cargo build -p bboxybook --release --locked — exit 0.
+   target/release/bboxybook render --all --manifest .../final/cases.json
+   --out .../final/native — exit 0, ALL 72 regenerated with final source
+   (final-replay.log), not only the eight changed cases.
+   target/release/bboxybook compare --manifest .../final/cases.json
+   --out .../final — exit 0 (final-compare.log).
+4. cargo test -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook --locked
+   — exit 0, 201 tests / 52 suites (test-debug.log).
+   Same command with --release — exit 0, 201 tests / 52 suites (test-release.log).
+   After Account's final visual alignment, cargo test -p bbt-ui -p bboxybook
+   --test settings --locked — exit 0, 7 tests (account-delta/tests.log).
+5. cargo clippy -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook
+   --all-targets --locked -- -D warnings -A clippy::map_entry
+   -A clippy::chunks_exact_to_as_chunks — exit 0 after final source
+   (account-delta/clippy.log). Preliminary clippy.log exited 101; local argument,
+   nesting and allocation warnings fixed, no extra lint exemptions beyond the
+   existing renderer exceptions and the labelled-control helper's argument count.
+6. scripts/ui-lint.sh — exit 0 (ui-lint-handoff.log); existing renderer
+   map_entry / chunks_exact suggestions remain nongating. Both capture JS node
+   --check commands and git diff --check — exit 0.
+7. Historical v2: 64/64 supported tag states captured (history/capture.log);
+   native render and compare — exit 0. Raw statuses: 32 within policy,
+   16 review geometry, 16 review pixels. All are historical, NOT a current gate.
+   The eight new-harness combinations did not exist at the tag; explicitly listed
+   in history/unsupported.json, never synthesized or reported as passing.
+
+Final result
+Gallery: target/bboxybook/settings/final/index.html
+Frozen lab: 3ef69c53c0e183dd33a1853ae8257e178e37c447.
+72/72 current geometry pass; 4,576 rect pairs, 920 baselines.
+Max rectangle error 0.0204086304px; max baseline error 0.0078125px.
+48 within policy; 24 pixel-only reviews, all Account/Roles/in-a-tab.
+Final worst changed fraction: 2.59284801% (was 3.55304640% in matrix).
+No geometry failures, missing geometry, browser failures or tolerance changes.
+Current report and native/layouts.json are from the final all-72 release replay.
+
+Images consumed
+Final web/native: Account compact/light and cozy/dark; Roles comfortable/light
+and cozy/dark; in-a-tab cozy/dark and compact/light; Appearance cozy/dark. Worst Account light diff
+and Roles dark diff inspected too. Each issue found by image review was either
+corrected in composition or is explicitly retained below.
+
+Gaps / deliberately untouched
+- Pixel reviews remain: text/outline masks, icon/PNG sampling and rounded/dashed
+  edge differences. The Account portrait's downsampling is visibly different.
+  Source-over/material/kernel tuning belongs to the existing L1/L2 backlog;
+  no renderer change or new tuning was introduced here.
+- The web textarea's resize grip is not drawn. The tiny window-opacity preview
+  lacks the web wallpaper's coloured rim. Native scrolling/input/section changes,
+  role/harness creation, config persistence, pinentry/enrollment, grants and live
+  backend/provider actions are not verified or wired in this static L7 step.
+- Generic custom-record roundtrip/default differences and PTY guard wording are
+  tested; every possible user colour format and arbitrary custom-font/content
+  permutation is not tested.
+- No hosted CI, non-Metal platform, full lower-gallery image replay or live app
+  verification claimed. No operator browser was opened or reloaded.
+- Early exploratory full batches were interrupted with SIGINT before the focused
+  geometry probes; they are not counted as completed checks. Later complete
+  script/replay outputs above supersede them.
+- Concurrent lab/mux/Cargo.lock changes belong to peers and are excluded from
+  this commit. Status at handoff is reported separately, not asserted clean.
+
+Ten worst triplets (paths relative to repository root)
+- settings/roles-comfortable-light.png — 2.592848%
+  web: target/bboxybook/settings/final/web/settings/roles-comfortable-light.png
+  native: target/bboxybook/settings/final/native/settings/roles-comfortable-light.png
+  diff: target/bboxybook/settings/final/diff/settings/roles-comfortable-light.png
+- settings/roles-cozy-light.png — 2.592848%
+  web: target/bboxybook/settings/final/web/settings/roles-cozy-light.png
+  native: target/bboxybook/settings/final/native/settings/roles-cozy-light.png
+  diff: target/bboxybook/settings/final/diff/settings/roles-cozy-light.png
+- settings/roles-compact-light.png — 2.592848%
+  web: target/bboxybook/settings/final/web/settings/roles-compact-light.png
+  native: target/bboxybook/settings/final/native/settings/roles-compact-light.png
+  diff: target/bboxybook/settings/final/diff/settings/roles-compact-light.png
+- settings/roles-touch-light.png — 2.592848%
+  web: target/bboxybook/settings/final/web/settings/roles-touch-light.png
+  native: target/bboxybook/settings/final/native/settings/roles-touch-light.png
+  diff: target/bboxybook/settings/final/diff/settings/roles-touch-light.png
+- settings/roles-compact-dark.png — 2.566777%
+  web: target/bboxybook/settings/final/web/settings/roles-compact-dark.png
+  native: target/bboxybook/settings/final/native/settings/roles-compact-dark.png
+  diff: target/bboxybook/settings/final/diff/settings/roles-compact-dark.png
+- settings/roles-cozy-dark.png — 2.566777%
+  web: target/bboxybook/settings/final/web/settings/roles-cozy-dark.png
+  native: target/bboxybook/settings/final/native/settings/roles-cozy-dark.png
+  diff: target/bboxybook/settings/final/diff/settings/roles-cozy-dark.png
+- settings/roles-touch-dark.png — 2.566777%
+  web: target/bboxybook/settings/final/web/settings/roles-touch-dark.png
+  native: target/bboxybook/settings/final/native/settings/roles-touch-dark.png
+  diff: target/bboxybook/settings/final/diff/settings/roles-touch-dark.png
+- settings/roles-comfortable-dark.png — 2.565815%
+  web: target/bboxybook/settings/final/web/settings/roles-comfortable-dark.png
+  native: target/bboxybook/settings/final/native/settings/roles-comfortable-dark.png
+  diff: target/bboxybook/settings/final/diff/settings/roles-comfortable-dark.png
+- settings/in-a-tab-compact-light.png — 2.360127%
+  web: target/bboxybook/settings/final/web/settings/in-a-tab-compact-light.png
+  native: target/bboxybook/settings/final/native/settings/in-a-tab-compact-light.png
+  diff: target/bboxybook/settings/final/diff/settings/in-a-tab-compact-light.png
+- settings/in-a-tab-compact-dark.png — 2.332975%
+  web: target/bboxybook/settings/final/web/settings/in-a-tab-compact-dark.png
+  native: target/bboxybook/settings/final/native/settings/in-a-tab-compact-dark.png
+  diff: target/bboxybook/settings/final/diff/settings/in-a-tab-compact-dark.png

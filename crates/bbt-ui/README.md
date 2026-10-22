@@ -262,3 +262,18 @@ host records. This module owns no index, verification, routing or commands.
 Provenance keeps the first six items and newest six log entries; artifact
 history keeps the newest twelve. Annotated wikilinks preserve slug, display,
 relation and weight. The caller owns navigation, updates and subscriptions.
+
+## L7 Settings
+
+`settings::Settings` takes ordered roles and harnesses, account/device records,
+providers, machines, appearance values, shortcuts and their defaults. It composes
+seven sections, the custom-harness draft and the same view inside a Settings tab.
+Native font measurements determine wrapping and the responsive card columns;
+the host supplies only the enclosing viewport. Changed values get the dot/reset
+projection. The full fingerprint, certification path, local-revocation wording
+and identity-only recovery caption remain visible; generic PTY harnesses never
+claim they can submit from an inferred state.
+
+Controls are retained read-mostly projections. The host owns section/query/input
+handling, config persistence, pinentry, enrollment and all grant mutations. No
+file, process, keyring or network operation runs from this module.

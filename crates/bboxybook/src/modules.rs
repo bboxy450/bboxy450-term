@@ -799,7 +799,7 @@ pub fn draw(id: &str, state: &str, r: Rect, ctx: &DrawCtx, out: &mut DrawList) -
                 500,
             );
         }
-        "message-row" | "stream_dock" => crate::streams::paint_legacy(r,state,ctx,out),
+        "message-row" | "stream_dock" => crate::streams::paint_legacy(r, state, ctx, out),
         "launcher" => launcher(r, state, ctx, out),
         "settings_tab" => settings(r, state, ctx, out),
         "logo" => {
@@ -1198,7 +1198,7 @@ pub fn draw(id: &str, state: &str, r: Rect, ctx: &DrawCtx, out: &mut DrawList) -
             }
             .draw(Rect::new(r.x, r.y, 190.0, 24.0), ctx, out);
         }
-        "provenance_card" | "subscriptions_card" => crate::graphs::paint_legacy(r,id,ctx,out),
+        "provenance_card" | "subscriptions_card" => crate::graphs::paint_legacy(r, id, ctx, out),
         "external_lane" => info_card(
             Rect::new(r.x, r.y, 700.0, r.h),
             "External events",
@@ -1210,7 +1210,7 @@ pub fn draw(id: &str, state: &str, r: Rect, ctx: &DrawCtx, out: &mut DrawList) -
             ctx,
             out,
         ),
-        "graph_tab" => crate::graphs::paint_legacy(r,id,ctx,out),
+        "graph_tab" => crate::graphs::paint_legacy(r, id, ctx, out),
         "banner" => {
             text(
                 out,
@@ -1237,89 +1237,7 @@ fn launcher(r: Rect, state: &str, ctx: &DrawCtx, out: &mut DrawList) {
 }
 
 fn settings(r: Rect, state: &str, ctx: &DrawCtx, out: &mut DrawList) {
-    let nav = 150.0;
-    for (i, s) in [
-        "Account",
-        "Cloud",
-        "Machines",
-        "Roles",
-        "Harnesses",
-        "Appearance",
-        "Shortcuts",
-    ]
-    .iter()
-    .enumerate()
-    {
-        if *s == state {
-            out.rect(
-                Rect::new(r.x, r.y + i as f32 * 34.0, nav - 12.0, 30.0),
-                8.0,
-                Color::hex(ctx.theme.palette().fg).alpha(STYLE.tint.selection_alpha as f32),
-            );
-        }
-        text(
-            out,
-            Rect::new(r.x + 10.0, r.y + 7.0 + i as f32 * 34.0, nav - 20.0, 22.0),
-            *s,
-            12.5,
-            ctx.muted(),
-            500,
-        );
-    }
-    let rr = Rect::new(r.x + nav + 20.0, r.y, (r.w - nav - 20.0).min(800.0), r.h);
-    let rows: &[&str] = match state {
-        "Account" => &[
-            "Boxy (bboxy450) <bboxy450@gmail.com>",
-            "9B07 E849 480C 6832 8CA2 0684 844E CC05 87DE 7AB0",
-            "Primary secret stays in GnuPG / gpg-agent",
-            "Unlock through pinentry · agent cache",
-            "Device certificates · enroll by signed request",
-            "Revoked here; peers learn on next contact",
-            "Recovery restores identity only",
-            "Google · link for cloud (deferred)",
-            "Per-seat commit signing · off / assumed",
-        ],
-        "Roles" => &[
-            "oracle   built-in   class oracle",
-            "executor   built-in   class worker",
-            "creativity   built-in   class worker",
-            "+ new role",
-            "Changing class re-issues this role's seat grants",
-        ],
-        "Harnesses" | "new harness" => &[
-            "Claude   OSC 7501",
-            "Codex   OSC 7501",
-            "zsh   output cadence",
-            "+ new harness",
-            "Generic input is guarded; never submits on its own",
-        ],
-        "Appearance" => &[
-            "Theme  auto / dark / light",
-            "Density  touch / comfortable / cozy / compact",
-            "Gutter  2 / 4 px",
-            "Glow  enabled",
-            "Subtitles  opt-in",
-        ],
-        "Shortcuts" => &[
-            "⌘T   New seat",
-            "⌘D   Split right",
-            "⌘⇧D  Split below",
-            "⌘M   Mute seat",
-            "⌘Z   Undo close",
-            "⌘,   Settings",
-        ],
-        "Machines" => &[
-            "rig   ~/.ssh/config",
-            "alpha   ~/.ssh/config",
-            "SSH machines are read from config.toml",
-        ],
-        _ => &[
-            "Cloud providers",
-            "Google is a link for cloud, never the account identity",
-            "Provider setup is deferred",
-        ],
-    };
-    info_card(rr, state, rows, ctx, out);
+    crate::settings::paint_legacy(r, state, ctx, out)
 }
 fn tokens(r: Rect, state: &str, ctx: &DrawCtx, out: &mut DrawList) {
     let p = ctx.theme.palette();
