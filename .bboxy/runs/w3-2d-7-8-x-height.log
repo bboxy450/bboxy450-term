@@ -1,0 +1,55 @@
+7.8 support — real font x-height and retained inline-middle
+Oracle authorization 050d3bb5 (after 450e9abb measured Provenance gap).
+
+bbt-render chrome/text.rs — x_height uses the same configured CoreText font
+factory as chrome text, CTFontGetXHeight; invalid sizes are rejected. No cell
+raster or terminal file was edited.
+bbt-ui components.rs — Measure::x_height has a backwards-compatible test-host
+fallback; InlineMiddle positions the child's midpoint at parent baseline minus
+half the parent's measured x-height. Existing element paths are unchanged.
+bboxybook components.rs — Metrics supplies the real chrome x-height.
+Two focused tests cover logical font metrics at every weight/italic/family,
+invalid input, and the retained child's unchanged box with adjusted baseline.
+
+Verification (real commands and exits):
+cargo test -p bbt-render -p bbt-ui -p bboxybook --locked
+  exit 0, 147 tests in the working tree, including five uncommitted GraphTab
+  behavior probes; target/bboxybook/graphs/x-height-tests-02.log.
+cargo test -p bbt-render -p bbt-ui -p bboxybook --release --locked
+  exit 0, 147 tests; x-height-release-tests.log.
+The two new support tests pass; GraphTab is a separate pending commit.
+
+Default images:
+Four disjoint pre/post optimized CLI render jobs processed the 1,488-case
+accepted lower/TitleBar/Launcher matrices. All PNG loops completed (each wrote
+manifest.json). Their repeated post geometry-snapshot phases were stopped only
+after the image files were complete and hash-checked, with the exact known
+owned processes and reasons recorded. The original orchestration exits 1 and is
+NOT claimed as a completed renderer/check command: post workers were SIGTERM
+(-15), and eight surface/Launcher root names overlap in its flat output tree.
+The eight overwritten surface cases were separately rendered pre/post (exit 0
+both), so the output name collision cannot hide a change.
+python3 target/bboxybook/graphs/validate-x-height-pngs.py
+  exit 0; 1,488 logical cases,1,480 main unique PNGs plus 8 collision witnesses;
+  zero changed SHA-256 values. All per-case comparisons are in png-proof.json.
+The newer Flow 40 + StreamDock/message 280 matrices were also replayed against
+accepted native PNGs. All 320 PNG loops completed; duplicate post geometry work
+was stopped after exact file validation, not reported as a renderer exit0.
+python3 target/bboxybook/graphs/validate-x-height-extra.py
+  exit 0; 320/320 unchanged. png-proof.json in graphs/x-height-extra.
+Total 1,808 image comparisons unchanged: zero new pixel reviews. No budgets,
+reference images or goldens changed.
+
+The new wrapper is independently exercised against graph.html Provenance:
+cozy/dark originally had a 0.969 px deficit per link line; all five data cards
+and the empty view now pass 48/48 current density/theme geometry records at
+0.5 px. These are full, completed GraphTab geometry-only runs; the unfinished
+Channels/full-state records are not claimed by this support item.
+Evidence: graphs/cards/native/layouts.json and graphs/spot/x-height/layouts.json.
+
+Required clippy and UI lint after scoped IO-policy support are recorded in
+x-height-clippy-final.log and x-height-ui-lint.log, both exit 0 (same original exclusions).
+No operator browser opened, no commit pushed by this Executor. Other agents'
+core/mux work and lock changes are outside this support commit.
+
+Measured new geometry: {"cases": 48, "rects": 2312, "baselines": 1376, "max_rect": 0.0732421875, "max_baseline": 0.0546875}

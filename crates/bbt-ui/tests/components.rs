@@ -430,3 +430,74 @@ fn mixed_text_runs_align_baselines_and_keep_selection_metadata() {
     assert!(runs[0].rect.y > runs[1].rect.y);
     assert_eq!(l.baseline, 15.);
 }
+
+#[test]
+fn inline_middle_uses_the_parent_x_height_without_moving_the_content_box() {
+    struct XHeight;
+    impl bbt_ui_model::layout::TextMeasure for XHeight {
+        fn width(&self, value: &str, style: &bbt_ui_model::layout::TextStyle) -> f32 {
+            value.len() as f32 * style.size * 0.5
+        }
+    }
+    impl c::Measure for XHeight {
+        fn font_metrics(&self, _: &bbt_ui_model::layout::TextStyle) -> [f32; 2] {
+            [11., 3.]
+        }
+        fn x_height(&self, _: &bbt_ui_model::layout::TextStyle) -> f32 {
+            6.
+        }
+    }
+    let ctx = bbt_ui::Context::new(bbt_ui::Theme::Dark, bbt_ui::Density::Cozy);
+    let mut style = bbt_ui::Style::new(bbt_ui::Preset::Card);
+    style.overrides.width = Some(bbt_ui::Length::Px(40.));
+    style.overrides.height = Some(bbt_ui::Length::Px(16.));
+    style.overrides.padding = Some([bbt_ui::Length::Px(0.); 4]);
+    let plain = c::Element::Box(c::Box::new(style, vec![]));
+    let normal = plain
+        .layout(
+            bbt_ui_model::layout::Rect::new(5., 7., 40., 0.),
+            ctx,
+            &XHeight,
+        )
+        .unwrap();
+    let middle = c::Element::InlineMiddle {
+        content: Box::new(plain),
+        parent: bbt_ui::Text::default(),
+    }
+    .layout(
+        bbt_ui_model::layout::Rect::new(5., 7., 40., 0.),
+        ctx,
+        &XHeight,
+    )
+    .unwrap();
+    assert_eq!(normal.rect, middle.rect);
+    assert_eq!(middle.baseline, 11.);
+    let mut box_style = bbt_ui::Style::new(bbt_ui::Preset::Card);
+    box_style.overrides.padding = Some([bbt_ui::Length::Px(0.); 4]);
+    box_style.overrides.text = Some(bbt_ui::Text {
+        size: Some(11.5),
+        line_height: 1.4,
+        ..Default::default()
+    });
+    let mut parent = c::Box::new(
+        box_style,
+        vec![
+            c::Element::InlineMiddle {
+                content: Box::new(c::Element::Spacer),
+                parent: bbt_ui::Text::default(),
+            }
+            .into(),
+        ],
+    );
+    parent.inline = true;
+    parent.align = c::Alignment::Baseline;
+    assert!(
+        c::Element::Box(parent)
+            .layout(
+                bbt_ui_model::layout::Rect::new(0., 0., 100., 0.),
+                ctx,
+                &XHeight
+            )
+            .is_ok()
+    );
+}

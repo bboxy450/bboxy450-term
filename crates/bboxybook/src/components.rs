@@ -35,6 +35,10 @@ impl TextMeasure for Metrics {
     }
 }
 impl c::Measure for Metrics {
+    fn x_height(&self, style: &MeasureStyle) -> f32 {
+        bbt_render::chrome::text::x_height(font(style)).expect("native chrome x-height")
+    }
+
     fn font_metrics(&self, style: &MeasureStyle) -> [f32; 2] {
         let m = bbt_render::chrome::text::rasterize("Hg", font(style), None, 1.)
             .expect("native component font metrics");

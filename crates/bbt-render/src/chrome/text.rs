@@ -136,6 +136,19 @@ fn native_font(
     Ok(unsafe { base.copy_with_attributes(0., &matrix, None) })
 }
 
+/// Logical chrome font x-height; the terminal raster path never calls this.
+#[cfg(target_os = "macos")]
+pub fn x_height(style: TextStyle) -> Result<f32> {
+    if !style.pixels().is_finite() || style.pixels() <= 0. {
+        return Err("invalid chrome font size".into());
+    }
+    Ok(unsafe { native_font(style)?.x_height() } as f32)
+}
+#[cfg(not(target_os = "macos"))]
+pub fn x_height(_: TextStyle) -> Result<f32> {
+    Err("chrome font metrics require macOS".into())
+}
+
 #[cfg(target_os = "macos")]
 pub fn rasterize(
     text: &str,
