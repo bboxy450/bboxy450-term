@@ -91,6 +91,7 @@
   seats[0].subagents = [{ id: 'a1', description: 'Explore render goldens', state: 'active', detail: 'Grep · bbt-render' }, { id: 'a2', description: 'Review W3.2a diff', state: 'waiting', kind: 'permission', detail: 'Bash · cargo test' }];
   seats[1].subagents = [{ id: 'c1', description: 'worker: ring checksum', state: 'active' }];
   seats[3].gap = { from: '09:14:07' };  // a long-running cloud seat whose ring evicted its oldest output
+  seats[4].authority = 'expired';  // Sable Quill on rig: its seat grant lapsed; it keeps running, signed effects wait
   seats[0].listeners = 2; seats[1].listeners = 1;  // clients on the seat socket: counts only
   // subscriptions and external events (events.md): auto-subscriptions follow delegation; external arrives from webhooks, CI, cloud, cron
   model.spaces[0].subscriptions = FIX.subscriptions.map(x => ({ ...x }));

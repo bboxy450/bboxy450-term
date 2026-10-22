@@ -62,6 +62,7 @@
     zsh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l7 6-7 6M13 18h6"/></svg>',
     gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
     // sidebar-toggle fox: standard sidebar glyph, left column grows an ear tip (pick §8 shape 3). open = sidebar shown (column filled)
+    keyx: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="12" r="3.5"/><path d="M10 12h11M17 12v3M20 12v2.5M3 20L21 4"/></svg>',
     plug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg>',
     sidebarfox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M9.5 8v12"/><path d="M3.2 8.5 3.8 2.2 8.6 7.6Z" fill="currentColor" stroke="none"/></svg>',
     sidebarfoxopen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 8h6.5v12H3z" fill="currentColor" stroke="none"/><path d="M3.2 8.5 3.8 2.2 8.6 7.6Z" fill="currentColor" stroke="none"/></svg>',
@@ -137,6 +138,7 @@
     if (seat.where && seat.where !== 'local') row.append(el('span', { class: 'where ' + seat.where, title: seat.where === 'cloud' ? 'runs in the cloud' + (seat.host ? ' · ' + seat.host : '') : 'over ssh' + (seat.host ? ' · ' + seat.host : '') }, harnessIcon(seat.where)));
     row.append(el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(seat.harness)), el('span', { class: 'name', style: 'color:' + seatColor(seat) }, seat.name));
     if (seat.role) row.append(roleMark(seat.role));
+    if (seat.authority) row.append(authMark(seat));
     if (seat.muted) { row.classList.add('muted'); row.append(el('span', { class: 'mutemark', title: 'muted: 1:1 with the operator' }, harnessIcon('muted'))); }
     row.append(el('span', { class: 'title' }, seat.title || ''));
     const right = el('span', { class: 'right' });
@@ -204,7 +206,7 @@
         { label: 'Permissions', sub: SEND_SCOPES.map(x => ({ label: x, a: 'sends', v: x, on: (seat.sends || SEND_SCOPES[1]) === x })) },
         { label: 'Interrupt', a: 'interrupt', k: '⌘.' },
       ] : []),
-      { label: seat.muted ? 'Unmute' : 'Mute', a: 'mute', k: '⌘M' },
+      { label: seat.muted ? 'Unmute' : 'Mute', a: 'mute', k: '⌘M', disabled: seat.authority ? 'needs the seat signature · ' + AUTH_SAY[seat.authority] : null },
       '-',
       { label: 'Copy socket path', a: 'copy-socket', cap: socketPath(seat) },
       '-',
@@ -224,11 +226,11 @@
     const paint = () => rows.forEach((r, i) => r.classList.toggle('sel', i === sel));
     for (const it of items) {
       if (it === '-') { menu.append(el('div', { class: 'rm-sep' })); continue; }
-      const row = el('div', { class: 'rm-item' + (it.danger ? ' danger' : ''), role: 'menuitem' },
-        el('span', { class: 'chk' }), el('span', { class: 'lbl' }, it.label, it.cap ? el('small', {}, it.cap) : null), it.sub ? el('span', { class: 'k' }, '▸') : it.k ? el('span', { class: 'k' }, it.k) : null);
+      const row = el('div', { class: 'rm-item' + (it.danger ? ' danger' : '') + (it.disabled ? ' disabled' : ''), role: 'menuitem', 'aria-disabled': it.disabled ? 'true' : 'false' },
+        el('span', { class: 'chk' }), el('span', { class: 'lbl' }, it.label, it.cap || it.disabled ? el('small', {}, it.disabled || it.cap) : null), it.sub ? el('span', { class: 'k' }, '▸') : it.k ? el('span', { class: 'k' }, it.k) : null);
       const i = rows.length; rows.push(row);
       row.addEventListener('pointerenter', () => { sel = i; paint(); it.sub ? openFly(it, row) : closeFly(); });
-      row.addEventListener('click', e => { e.stopPropagation(); if (it.sub) { openFly(it, row); return; }
+      row.addEventListener('click', e => { e.stopPropagation(); if (it.disabled) return; if (it.sub) { openFly(it, row); return; }
         if (it.a === 'copy-agent') { try { navigator.clipboard && navigator.clipboard.writeText(it.cap).catch(() => {}); } catch {} row.classList.add('copied'); }
         if (it.a === 'copy-socket') { try { navigator.clipboard && navigator.clipboard.writeText(it.cap).catch(() => {}); } catch {} row.classList.add('copied'); row.querySelector('.lbl').firstChild.textContent = 'Copied socket path'; }
         if (it.a !== 'copy-agent') act(it.a); });
@@ -805,6 +807,9 @@
     const cap = range && range.from ? 'earlier output evicted · retained from ' + range.from : 'earlier output unavailable';
     return el('div', { class: 'gap-mark', title: cap + (range && range.of ? ' · ' + range.of : '') }, el('i'), el('span', {}, cap), el('i'));
   }
+  // authority (identity.md): expired | revoked | forked. Independent of the state glyph; blocks only what needs the seat's signature.
+  const AUTH_SAY = { expired: 'authority expired · renew the seat grant', revoked: 'revoked here · peers learn on next contact', forked: 'forked · two heads at one epoch · the operator resolves' };
+  const authMark = seat => seat.authority ? el('span', { class: 'authmark ' + seat.authority, title: AUTH_SAY[seat.authority] + ' · signed effects are blocked; the seat keeps running' }, harnessIcon('keyx')) : null;
   // one-shot notices survive re-renders: a timestamp value resumes the animation at its elapsed point (true = start now)
   const since = v => typeof v === 'number' ? '-' + Math.max(0, Date.now() - v) + 'ms' : '0ms';
   function titleStrip(seat, opts) {
@@ -813,12 +818,13 @@
     if (seat.where && seat.where !== 'local') s.append(el('span', { class: 'where', title: seat.where + (seat.host ? ' · ' + seat.host : '') }, harnessIcon(seat.where)));
     s.append(harnessIcon(seat.harness), el('span', { class: 'name' }, seat.name));
     if (seat.role) s.append(roleMark(seat.role));
+    if (seat.authority) s.append(authMark(seat), el('span', { class: 'authsay' }, AUTH_SAY[seat.authority]));
     s.append(el('span', { class: 'title' }, (seat.title || '') + (seat.state === 'waiting' ? ' · waiting for ' + (seat.waitKind || 'an answer') : '')));
     if (opts.shortcut) s.append(kbd(opts.shortcut));
     // stop (seat_interrupt, Oracle/operator only: the caller passes onInterrupt only when allowed). A request, not a promise.
     if (seat.interruptSent) { s.classList.add('isent'); s.style.setProperty('--isd', since(seat.interruptSent)); s.append(el('span', { class: 'isent-chip', style: 'animation-delay:' + since(seat.interruptSent), title: 'interrupt sent · the seat decides when it stops' }, 'interrupt sent')); }
     if (opts.onInterrupt) s.append(el('span', { class: 'stop', title: 'interrupt (⌘.) · a request, the seat decides', onclick: e => { e.stopPropagation(); opts.onInterrupt(seat); } }, el('i')));
-    if (opts.onMute) s.append(el('span', { class: 'mute' + (seat.muted ? ' on' : ''), title: seat.muted ? 'unmute (⌘M)' : 'mute: 1:1 with the operator (⌘M)', onclick: e => { e.stopPropagation(); opts.onMute(seat); } }, harnessIcon(seat.muted ? 'muted' : 'unmuted')));
+    if (opts.onMute) s.append(el('span', { class: 'mute' + (seat.muted ? ' on' : '') + (seat.authority ? ' blocked' : ''), title: seat.authority ? 'mute notices are signed by the seat · ' + AUTH_SAY[seat.authority] : seat.muted ? 'unmute (⌘M)' : 'mute: 1:1 with the operator (⌘M)', onclick: e => { e.stopPropagation(); if (!seat.authority) opts.onMute(seat); } }, harnessIcon(seat.muted ? 'muted' : 'unmuted')));
     s.append(glyph(seat.state, seat));
     return s;
   }
@@ -1220,5 +1226,5 @@
     return root;
   }
 
-  window.C = { docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

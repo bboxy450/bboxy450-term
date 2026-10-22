@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 41,
+  "version": 42,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -238,7 +238,7 @@
       "means": "this seat's signing authority is not good",
       "source": "identity.md: expired | revoked | forked",
       "drawing": "a small struck-key mark after the name and a muted strip subtitle naming the cause; controls that need the seat's signature are disabled with the same reason; independent of the state glyph",
-      "status": "drawn, not built"
+      "status": "built: struck-key glyph (ICON_SVG.keyx) after the name and role mark, amber for expired, red for revoked and forked; the strip carries the cause as a dark pill (\"authority expired · renew the seat grant\", \"revoked here · peers learn on next contact\", \"forked · two heads at one epoch · the operator resolves\"); controls that need the seat signature (mute and unmute notices) are disabled with the same reason in the strip toggle and the row menu; the state glyph is untouched; seat.authority; seat-row.html?state=authority-expired|authority-revoked|authority-forked; title-strip.html?state=authority-revoked; showcase Sable Quill expired"
     },
     "subagent_addressing": {
       "means": "who a message is for and who answered (messaging.md Subagent addressing)",

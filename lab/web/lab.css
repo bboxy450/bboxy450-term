@@ -1102,3 +1102,13 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .msg.presence.audit .aout { font-size: 9.5px; padding: 0 5px; border-radius: 999px; border: 1px dashed var(--line); }
 .msg.presence.audit.rejected .aout { color: var(--c-errored); border-color: color-mix(in srgb, var(--c-errored) 50%, transparent); border-style: solid; }
 .msg.presence.audit.unknown .aout, .msg.presence.audit.partial .aout { color: var(--c-waiting); }
+
+/* authority: struck key after the name, cause in the strip, signed controls disabled */
+.authmark { --icon: 11px; display: inline-flex; flex: none; }
+.authmark.expired { color: var(--c-waiting); }
+.authmark.revoked, .authmark.forked { color: var(--c-errored); }
+.strip .authmark { color: #fff; --icon: 12px; }
+.strip .authsay { font-size: 10px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; background: color-mix(in srgb, #000 22%, transparent); padding: 0 6px; border-radius: 999px; }
+.strip .mute.blocked { opacity: .3; cursor: not-allowed; }
+.row-menu .rm-item.disabled { opacity: .45; cursor: not-allowed; }
+.row-menu .rm-item.disabled small { white-space: normal; }

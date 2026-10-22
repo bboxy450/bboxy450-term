@@ -7,7 +7,7 @@
 const el = Lab.el;
 const seat = (st, i) => ({ key: 'pane' + (i || 0), name: ['Vesper Greywind', 'Nyx Copperwing', 'Lumen Foxglove'][i || 0], harness: ['claude', 'codex', 'claude'][i || 0], role: ['oracle', 'executor', 'creativity'][i || 0], title: ['gpu research', 'messaging spec', 'ux divergence'][i || 0], state: st });
 Lab.page({ title: 'title strip + border', wide: true, note: 'Full-width ' + TOKENS.strip.height + ' px strip in the seat colour, same icon · name · role · title · ⌘N · glyph as the sidebar row. Border glow per the operator spec: idle very mild static, active pulsating, waiting pulsating amber at 1 Hz, errored static red, focused brighter at every state. The dots along the edge are a canvas fake of the particle emitter; the real one is a wgpu shader. Count and speed scale with activity.',
-  states: ['idle', 'active', 'waiting', 'errored', 'focused vs unfocused', 'row + pane breathe together', 'three seats, one focused', 'stop · operator', 'interrupt sent', 'worker view'],
+  states: ['idle', 'active', 'waiting', 'errored', 'focused vs unfocused', 'row + pane breathe together', 'three seats, one focused', 'stop · operator', 'interrupt sent', 'worker view', 'authority · revoked'],
   render(s, body) {
     const stage = el('div', { style: 'background:var(--navy);padding:28px;border-radius:var(--r-pill)' });
     const withParticles = (sd, opts) => { const w = el('div', { class: 'pane-wrap' }, C.pane(sd, opts)); requestAnimationFrame(() => Glow.attach(w, sd, opts)); return w; };
@@ -22,6 +22,7 @@ Lab.page({ title: 'title strip + border', wide: true, note: 'Full-width ' + TOKE
       stage.append(withParticles(a, o(a, true)), withParticles(b, o(b, false)));
       body.append(el('div', { class: 'lab-note' }, worker ? 'a worker-class viewer gets no stop glyph' : sent ? 'one-shot: red sweep along the strip, "interrupt sent" fades after 3 s; the state does not change until the seat reports' : 'the square stop glyph sits before the mute toggle; click it'));
     }
+    if (s === 'authority · revoked') { stage.style.display = 'grid'; stage.style.gridTemplateColumns = '1fr 1fr'; stage.style.gap = '28px'; stage.append(withParticles({ ...seat('active', 0), authority: 'revoked' }, { focused: true, shortcut: '⌘1', onMute: () => {} }), withParticles({ ...seat('idle', 1), authority: 'expired' }, { unfocused: true, shortcut: '⌘2', onMute: () => {} })); }
     body.append(stage);
   } });
 </script></body></html>
