@@ -1,0 +1,219 @@
+# R2b release CPU profile — Sable Embertail
+
+No source edits. Oracle assignment: profile release/symbols, report encode hotspots and proposed fix only.
+Setup: git fetch origin exit 0; git rebase origin/main exit 0 skipped duplicate c8e5f03; git diff origin/main --exit-code exit 0; worktree initially clean. samply absent (command -v exit 1). xcrun xctrace list templates exit 0, Time Profiler available. xctrace record --help exit 46 but returned local usage. Release build is running with CARGO_PROFILE_RELEASE_DEBUG=true.
+
+$ git rev-parse HEAD
+93e5eed2990931dc9efde3837d27f1f92028eb60
+
+exit: 0
+
+$ date
+Thu Oct 22 09:19:11 PDT 2026
+
+exit: 0
+
+$ xcrun xctrace export --help
+Command Parser error occured: unrecognized option '--help'
+usage: xctrace export [<trace>] [<options>] [--toc | --xpath expression]
+
+description:
+	Export given .trace using supplied query to the XML file format that can be later read and post-processed
+
+options:
+	--output <path>               Command output is written to the given path, if specified
+	--toc                         Present entities to export in the table of contents form
+	--xpath <expression>          Choose elements to export using specified XPath expression
+	--har                         Export data as the HTTP Archive file
+	--template <path|name>        Template to use when input requires implicit import (name or path)
+	--instrument <name>           Add Instrument with the given name to the implicit import
+	--package <file>              Load Instruments Package from given path for duration of the command
+
+global options:
+	--quiet        Make terminal ouput less verbose
+
+notes:
+	If output path is not specified, the export operation output will be written to the standard output.
+	Table of Contents and XPath query are two separate modes and they cannot be specified together.
+	The trace file path may also be supplied as a positional argument in place of --input.
+
+	If the input is not a .trace bundle (for example .atrc or .logarchive), it is imported in
+	memory before the export runs. The same default-template selection used by 'xctrace import'
+	applies; --template, --instrument, and --package may be supplied to override it.
+
+examples:
+	xctrace export input.trace --toc
+	xctrace export --input input.trace --toc
+	xctrace export --input input.trace --toc --output table_of_contents.xml
+	xctrace export --input input.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="my-table-schema"]'
+	xctrace export --input trace.atrc --toc
+
+exit: 46
+
+CARGO_PROFILE_RELEASE_DEBUG=true cargo build -p bboxy450-term --release --locked — exit 0, optimized + debuginfo, 40.00s. xctrace version 27.0 (27A266a). Time Profiler default settings: highFrequencySampling=false, recordWaitingThreads=false.
+
+$ xcrun xctrace record --template "Time Profiler" --output /Users/feral/mydev/bboxy450-term-exec3/target/r2b/encode.trace --time-limit 20s --target-stdout /Users/feral/mydev/bboxy450-term-exec3/target/r2b/app.stdout --launch -- /Users/feral/mydev/bboxy450-term-exec3/target/release/bboxy450-term --smoke --meter
+Starting recording with the Time Profiler template. Launching process: bboxy450-term. Time limit: 20.0 s
+Ctrl-C to stop the recording
+Target app exited, ending recording...
+Recording completed. Saving output file...
+Output file saved as: encode.trace
+
+exit: 0
+
+$ xcrun xctrace export --input target/r2b/encode.trace --toc --output target/r2b/toc.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r2b/toc.xml
+
+exit: 0
+
+$ xcrun dwarfdump --uuid target/release/bboxy450-term target/debug/bboxy450-term target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-term
+UUID: EF8C14AB-EB84-3857-B4A2-4BBF30C84A0B (arm64) target/release/bboxy450-term
+UUID: E935FD22-DCB1-30A8-9742-181525ECF606 (arm64) target/debug/bboxy450-term
+UUID: AA751FA0-8344-3E02-9683-53E4705C6B57 (arm64) target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-term
+
+exit: 0
+
+First recording completed exit 0, but TOC proved xctrace substituted registered target/debug/bboxy450-term.app (PID 88088), not requested release binary. Its ~62ms CPU / 19ms layout confirms debug timings. This trace is EXCLUDED from release conclusions. Changed premise: unique release .app identity and executable name, copying the release Mach-O without source edits.
+$ xcrun dwarfdump --uuid target/r2b/ReleaseProfile.app/Contents/MacOS/bboxy450-term-r2b
+UUID: EF8C14AB-EB84-3857-B4A2-4BBF30C84A0B (arm64) target/r2b/ReleaseProfile.app/Contents/MacOS/bboxy450-term-r2b
+exit: 0
+
+$ xcrun xctrace record --template "Time Profiler" --output /Users/feral/mydev/bboxy450-term-exec3/target/r2b/release-encode.trace --time-limit 20s --target-stdout /Users/feral/mydev/bboxy450-term-exec3/target/r2b/release.stdout --launch -- /Users/feral/mydev/bboxy450-term-exec3/target/r2b/ReleaseProfile.app --smoke --meter
+Starting recording with the Time Profiler template. Launching process: ReleaseProfile.app. Time limit: 20.0 s
+Ctrl-C to stop the recording
+Target app exited, ending recording...
+Recording completed. Saving output file...
+Output file saved as: release-encode.trace
+
+exit: 0
+
+$ xcrun xctrace export --input target/r2b/release-encode.trace --toc --output target/r2b/release-toc.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r2b/release-toc.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r2b/release-encode.trace --xpath /trace-toc/run[@number=\"1\"]/data/table[@schema=\"time-profile\"] --output target/r2b/release-samples.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r2b/release-samples.xml
+
+exit: 0
+
+Unprofiled release baseline, same symbolized Mach-O:
+$ /Users/feral/mydev/bboxy450-term-exec3/target/release/bboxy450-term --smoke --meter
+
+xcrun dsymutil target/release/bboxy450-term -o target/r2b/ReleaseProfile.dSYM — exit 0.
+
+$ xcrun dwarfdump --uuid target/r2b/ReleaseProfile.dSYM
+UUID: EF8C14AB-EB84-3857-B4A2-4BBF30C84A0B (arm64) target/r2b/ReleaseProfile.dSYM/Contents/Resources/DWARF/bboxy450-term
+exit: 0
+
+$ xcrun atos -o target/r2b/ReleaseProfile.dSYM/Contents/Resources/DWARF/bboxy450-term -arch arm64 -l 0x1049dc000 0x104aa3ffb 0x104aa3fd3
+_RNvMNtCseBddPvksQT9_10bbt_render6chromeNtB2_14ChromeRenderer19draw_flat_with_load (in bboxy450-term) (mod.rs:436)
+_RNvMNtCseBddPvksQT9_10bbt_render6chromeNtB2_14ChromeRenderer19draw_flat_with_load (in bboxy450-term) (mod.rs:428)
+exit: 0
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+hitch frame=1 phase=encode 98.065ms cpu=99.887ms drain=0.002 layout=1.704 draw=0.116 encode=98.065 present_wait=0.883
+first frame: 15 native panes presented
+hitch frame=2 phase=encode 34.120ms cpu=36.098ms drain=0.007 layout=1.869 draw=0.102 encode=34.120 present_wait=0.414
+hitch frame=3 phase=encode 33.097ms cpu=34.985ms drain=0.002 layout=1.799 draw=0.087 encode=33.097 present_wait=0.360
+hitch frame=4 phase=encode 33.815ms cpu=35.643ms drain=0.002 layout=1.742 draw=0.084 encode=33.815 present_wait=0.059
+hitch frame=5 phase=encode 32.611ms cpu=34.418ms drain=0.002 layout=1.718 draw=0.087 encode=32.611 present_wait=0.038
+hitch frame=6 phase=encode 33.037ms cpu=34.827ms drain=0.002 layout=1.707 draw=0.081 encode=33.037 present_wait=0.043
+hitch frame=7 phase=encode 34.645ms cpu=36.468ms drain=0.002 layout=1.734 draw=0.087 encode=34.645 present_wait=0.042
+hitch frame=8 phase=encode 38.552ms cpu=40.442ms drain=0.003 layout=1.801 draw=0.085 encode=38.552 present_wait=0.060
+hitch frame=9 phase=encode 41.894ms cpu=44.416ms drain=0.003 layout=2.187 draw=0.332 encode=41.894 present_wait=0.123
+hitch frame=10 phase=encode 44.870ms cpu=47.488ms drain=0.004 layout=2.488 draw=0.126 encode=44.870 present_wait=0.088
+hitch frame=11 phase=encode 48.761ms cpu=50.697ms drain=0.004 layout=1.840 draw=0.092 encode=48.761 present_wait=0.090
+hitch frame=12 phase=encode 49.080ms cpu=50.965ms drain=0.002 layout=1.767 draw=0.117 encode=49.080 present_wait=0.073
+hitch frame=13 phase=encode 49.874ms cpu=51.783ms drain=0.001 layout=1.787 draw=0.121 encode=49.874 present_wait=0.092
+hitch frame=14 phase=encode 62.662ms cpu=65.101ms drain=0.003 layout=2.316 draw=0.120 encode=62.662 present_wait=0.092
+hitch frame=15 phase=encode 46.898ms cpu=48.762ms drain=0.002 layout=1.766 draw=0.096 encode=46.898 present_wait=0.073
+hitch frame=16 phase=encode 47.795ms cpu=49.641ms drain=0.002 layout=1.749 draw=0.095 encode=47.795 present_wait=2.583
+hitch frame=17 phase=encode 52.839ms cpu=54.675ms drain=0.002 layout=1.731 draw=0.103 encode=52.839 present_wait=3.747
+hitch frame=18 phase=encode 48.919ms cpu=50.725ms drain=0.001 layout=1.713 draw=0.091 encode=48.919 present_wait=0.055
+hitch frame=19 phase=encode 51.686ms cpu=54.053ms drain=0.001 layout=2.076 draw=0.290 encode=51.686 present_wait=0.398
+hitch frame=20 phase=encode 50.353ms cpu=52.992ms drain=0.001 layout=2.444 draw=0.194 encode=50.353 present_wait=0.105
+hitch frame=21 phase=encode 52.885ms cpu=54.902ms drain=0.002 layout=1.921 draw=0.095 encode=52.885 present_wait=0.091
+idle probe begins: frames=21 last_update=20
+R2 smoke PASS: idle 10.002s frames=0 updates=20 CPU p50=49.641ms p99=99.887ms samples=21
+
+exit: 0
+
+Top atlas-copy stack call-site symbolication:
+$ xcrun atos -o target/r2b/ReleaseProfile.dSYM/Contents/Resources/DWARF/bboxy450-term -arch arm64 -l 0x1049dc000 0x104b76183 0x104b4f83b 0x104aee493 0x104aa4eab 0x104aa242f 0x104a20a2b
+_RNvMs8_NtNtCskJMI038GYm9_9wgpu_core6device5queueNtB5_5Queue13write_texture (in bboxy450-term) (queue.rs:999)
+_RNvMs9_NtNtCskJMI038GYm9_9wgpu_core6device5queueNtNtB9_6global6Global19queue_write_texture (in bboxy450-term) (queue.rs:1943)
+_RNvMs3_NtNtCs2XU9ZWUuLg5_4wgpu3api5queueNtB5_5Queue13write_texture (in bboxy450-term) (queue.rs:260)
+_RNvNtCseBddPvksQT9_10bbt_render6chrome6upload (in bboxy450-term) (mod.rs:647)
+_RNvMNtCseBddPvksQT9_10bbt_render6chromeNtB2_14ChromeRenderer12draw_overlay (in bboxy450-term) (mod.rs:73)
+_RNvNtCs1A7Eq9FxJWE_13bboxy450_term3gpu10encode_ops (in bboxy450-term) (gpu.rs:268)
+exit: 0
+
+# Findings — release profile, source 93e5eed2990931dc9efde3837d27f1f92028eb60
+
+Identity / method
+- No product source edits. All source pointers below refer to the profiled commit above, not a later moving main.
+- CARGO_PROFILE_RELEASE_DEBUG=true; compiler reported optimized + debuginfo. Generated an external dSYM with dsymutil (exit 0).
+- Release Mach-O, uniquely named profile bundle, dSYM and trace binary all match UUID EF8C14AB-EB84-3857-B4A2-4BBF30C84A0B. Trace loaded image path is target/r2b/ReleaseProfile.app/Contents/MacOS/bboxy450-term-r2b, load base 0x1049dc000. The earlier debug trace is excluded.
+- Instruments Time Profiler, 1ms CPU samples, waiting threads excluded. The stack filter is Gpu::draw, which also encloses surface acquire/present; it is not a signpost for only the encode timer. The app logs the separate phase times. Attribution uses sampled stack names; inlining can put small costs in the residual category. 1503 total samples, 1101 main-thread samples. Gpu::draw has 934ms sampled CPU. Warm subset excludes samples before first Gpu::draw sample +250ms, removing cold first paint; 889ms / 889 samples remain. The prescribed --smoke --meter changes one row and meter text; 15-pane topology/icons stay fixed. A completely identical manually triggered frame was not separately recorded.
+
+Warm GPU draw/encode path sampled CPU (categories classified once, percentages of 889ms)
+- atlas upload: 776ms, 87.29%.
+- icon upload call at chrome/mod.rs:436: 723ms, 81.33%.
+- glyph-mask upload call at chrome/mod.rs:428: 53ms, 5.96%.
+- _platform_memmove self: 756ms, 85.04% (790ms across all encode_ops including first paint).
+- queue submit: 43ms, 4.84%.
+- other encode: 42ms, 4.72%.
+- material passes: 15ms, 1.69%.
+- text rasterization/shaping: 7ms, 0.79%.
+- buffer creation: 5ms, 0.56%.
+- group composite: 1ms, 0.11%.
+- No warm pipeline-creation samples at 1ms resolution; one sample across all Gpu::draw including first paint. Pipeline construction is cached at chrome/mod.rs:411-413. Absence of a sample is not proof of zero work.
+
+Top copy stack / exact mechanism
+_platform_memmove
+  wgpu_core::device::queue::Queue::write_texture (registry wgpu-core-30.0.1/src/device/queue.rs:999)
+  wgpu_core::Global::queue_write_texture (same file:1943)
+  wgpu::Queue::write_texture (registry wgpu-30.0.1/src/api/queue.rs:260)
+  bbt_render::chrome::upload (crates/bbt-render/src/chrome/mod.rs:647)
+  ChromeRenderer::draw_flat_with_load (same file:436 icon / :428 mask)
+  ChromeRenderer::draw_overlay (:73)
+  bboxy450_term::gpu::encode_ops (crates/bboxy450-term/src/gpu.rs:268)
+
+Atos against the matching dSYM resolved sampled caller addresses 0x104aa3ffb -> mod.rs:436 and 0x104aa3fd3 -> mod.rs:428. The large caller is verified as the icon atlas, not guessed from function names.
+- crates/bbt-render/src/chrome/icons.rs:17-20 fixes the CPU icon atlas at 2048x2048 RGBA = 16 MiB. It is immutable after construction, yet each nonempty flat chrome pass calls upload at :436.
+- chrome/mod.rs:625-646 creates a new GPU texture in upload; :647-666 writes the ENTIRE pixels slice. :428 does the same for the glyph atlas regardless of whether it changed. There is no dirty/generation check or persistent GPU atlas in ChromeRenderer.
+- The hot queue.rs:999 is an actual staging-buffer copy: allocate StagingBuffer then staging_buffer.write(&data[offset..]). This explains the sampled memmove cost.
+- Uniform/storage buffers at chrome/mod.rs:418/:423, sampler at :446 and bindings at :452 are also recreated per pass, but their observed warm cost is small beside uploads.
+- Whole-line text keys are cached at chrome/mod.rs:341-350; only a miss calls rasterize_at at :345. This is not primarily a text-shaping, layout, shader compilation or offscreen-group problem in the warm trace.
+
+Unprofiled release baseline (same binary, exit 0)
+- 21 frames; 10.002s idle / 0 frames / update 20. CPU meter p50=49.641ms, p99=99.887ms including first paint.
+- Excluding first paint: encode median 47.3465ms, min 32.611ms, max 62.662ms; layout median 1.7930ms; draw median 0.0955ms.
+- Early warm encode values were 32.611-34.645ms (matching Oracle's roughly 33ms); later samples were higher. The run did not isolate the cause of this variation, so no causal claim is made. Profiled run CPU p50=49.615ms / p99=106.750ms; timings and sampled CPU are distinct measures.
+
+Proposed fix (not implemented; Oracle sequences it with Nyx)
+1. Store GPU icon texture/view and linear sampler on ChromeRenderer, created once per renderer/device. Upload immutable icon pixels once, then reuse in every pass/frame.
+2. Store the GPU glyph atlas too. Track inserted dirty rectangles and an atlas-growth generation; upload only new rectangles, allocate/full-upload only on actual growth. An unchanged atlas must cause zero write_texture calls, including between material-separated passes in the SAME frame. Keep in-flight old textures alive through bind-group references when growing.
+3. Re-profile before changing layout/fonts/materials. If further work is needed, reuse uniform/instance storage through a per-frame arena or distinct pass offsets. A single overwritten shared uniform/storage buffer would make earlier encoded passes see later data; don't introduce that bug for reuse.
+
+Expected encode after atlas retention: estimate, NOT a measurement.
+- Amdahl estimate from the quiet ~33ms baseline: 33*(1-0.872891) = 4.195ms residual, plus dirty-glyph bookkeeping/uploads. Expect about 4-6ms on that baseline.
+- Applied to this run's 47.3465ms median: residual 6.018ms, so roughly 6-8ms under the same conditions.
+- CPU sampling share is not a guarantee of wall-time reduction; queue/driver waits and the R5 total <=4ms CPU goal still need measurement after the fix. No claim that 120Hz is achieved.
+
+Artifacts (local target only, no upload)
+- target/r2b/release-encode.trace — accepted release recording.
+- target/r2b/release-samples.xml — exported time-profile table.
+- target/r2b/release-toc.xml — selected process identity/path and recording metadata.
+- target/r2b/ReleaseProfile.dSYM — matching full symbol bundle.
+- target/r2b/release.stdout and baseline.stdout — actual app phase logs.
+- target/r2b/encode.trace — excluded debug-redirect recording, retained to show the failed premise.
+- release-samples.xml: bytes=1217245, sha256=2aa12a0628a8149c36c919f3fe12655218cf8242b68ee5f4afdda1fecf5ede4b
+- release-toc.xml: bytes=7952, sha256=868b06a7b7d68202035f37f84b7c47770be5ab4f9882d5f643b7e121cd4a38c0
+- release.stdout: bytes=6018, sha256=901166e6c23c531e20e72b0218f6411884d233bfbc7b3fff7335c424fb4bc7a5
+- baseline.stdout: bytes=2726, sha256=204935e5f99bbcfe7049728dfee055b7bec049d7a99ac9c98310a1c89a13a128
+
+Checks / limits
+- Python XML ID/ref resolution, weighted stack/caller aggregation and stdout statistics exited 0. Raw Rust v0 names remain in the trace; friendly names above match source/atos, not an inferred alternate function.
+- Read-only source/registry inspection and git status exited 0. Only .bboxy/runs/r2b-profile.log changed.
+- Not checked: GPU duration, GPU memory bandwidth, allocations counts, exact copies/frame, fully unchanged forced-redraw workload, 1000 seats, power/thermal isolation, Linux, hosted CI, or any proposed fix. No source fixes, dependency/config changes, push or merge.
