@@ -124,6 +124,21 @@ briefs Executors from the specs, never from this note.
     now; a second script (the Architect's `ci.sh` was removed in favour of the
     Oracle's, same gates).
 
+16. **The Architect's four loads bind the task system (operator: "embody
+    it", 2026-10-22; `~/.agents/AGENTS.md` Four roles).** Applied to
+    [[work-items]], [[vision]] roles, [[messaging]] attention budget and the
+    task tools: an invariant carries property, `check`, held exit status and
+    `cost`, or it is a preference in a note; `accepted` requires `verify` at
+    exit 0 plus evidence per acceptance line, an Executor's report stops at
+    `reported`; `verify` blocks, `review` advises; a violated invariant blocks
+    the task with the halt as a `decision`-kind message; decisions are a type,
+    written when made. Architect is oracle-class, Creativity worker-class.
+    `.bboxy/invariants/` holds four recorded today, all with commands.
+    Rejected: a bottleneck-index telemetry (not our scale; ZOOM OUT does the
+    job in four lines); a separate halt message kind (`decision` suffices);
+    recording the five "preference" invariants as invariants before they have
+    commands.
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → D1 spec (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
