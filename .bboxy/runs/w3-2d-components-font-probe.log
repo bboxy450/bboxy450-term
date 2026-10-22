@@ -1,0 +1,8 @@
+command: swift - (read-only CoreText probe of CTFontCreateUIFontForLanguage(.system), CTFontGetAscent/Descent, CTLineGetTypographicBounds; text Vesper Greywind; compare an absent kCTKernAttributeName against NSNumber(0))
+exit_status=0
+size 9.0 ascent 8.701171875 descent 1.8984375 default width 74.5048828125 zero kern width 75.1640625 mono9 ascent 8.35400390625 descent 2.12255859375
+size 9.5 ascent 9.1845703125 descent 2.00390625 default width 78.156982421875 zero kern width 78.852783203125 mono9 ascent 8.35400390625 descent 2.12255859375
+size 10.0 ascent 9.66796875 descent 2.109375 default width 81.7578125 zero kern width 82.490234375 mono9 ascent 8.35400390625 descent 2.12255859375
+size 12.5 ascent 12.0849609375 descent 2.63671875 default width 99.45068359375 zero kern width 100.3662109375 mono9 ascent 8.35400390625 descent 2.12255859375
+size 16.0 ascent 15.46875 descent 3.375 default width 123.3125 zero kern width 124.484375 mono9 ascent 8.35400390625 descent 2.12255859375
+Captured Chrome components/text-cozy-dark root/11/1 width =123.3125px; native width =124.484375px (layouts.json). No native renderer change was made for this probe.

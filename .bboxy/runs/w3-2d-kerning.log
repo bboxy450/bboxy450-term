@@ -1,0 +1,25 @@
+$ target/debug/bboxybook render --manifest target/bboxybook/d1b-edges/style/cases.json --out target/bboxybook/d4-kerning/style/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 88 PNGs to target/bboxybook/d4-kerning/style/native
+exit 0
+$ target/debug/bboxybook compare --manifest target/bboxybook/d1b-edges/style/cases.json --out target/bboxybook/d4-kerning/style --web-root /Users/feral/mydev/bboxy450-term/target/bboxybook/d1b-edges/style/web --native-root native
+parity: 88 cases, 56 review; target/bboxybook/d4-kerning/style/index.html
+exit 0
+$ target/debug/bboxybook render --manifest target/bboxybook/components-first/cases.json --out target/bboxybook/d4-kerning/components/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 24 PNGs to target/bboxybook/d4-kerning/components/native
+exit 0
+$ target/debug/bboxybook compare --manifest target/bboxybook/components-first/cases.json --out target/bboxybook/d4-kerning/components --web-root /Users/feral/mydev/bboxy450-term/target/bboxybook/components-first/web --native-root native
+parity: 24 cases, 24 review; target/bboxybook/d4-kerning/components/index.html
+exit 0
+
+Regression verification (actual completed run, 2026-10-21):
+$ cargo test -p bbt-render --locked
+6 unit tests + 3 smoke tests + 1 variant test passed, exit 0.
+New test: zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied.
+Terminal cell smoke: coretext_ink_lands_only_in_expected_ascii_cells passed.
+The chrome rasterizer alone changed; terminal rasterization is untouched.
+Frozen-reference parity: Style 56/88 -> 56/88; L6 components 24/24 -> 24/24 over tolerance.
+References and backdrop bytes reused from d1b-edges/style and components-first; no recapture.
+Width probe: .bboxy/runs/w3-2d-components-font-probe.log.
+Not checked: Linux text backend (CoreText path only); full legacy module matrix.

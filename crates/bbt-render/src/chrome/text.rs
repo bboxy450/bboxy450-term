@@ -52,14 +52,19 @@ pub fn rasterize(
         }
     };
     let kern = CFNumber::new_f64(f64::from(style.tracking_em * style.pixels() * scale));
-    let keys = unsafe {
-        [
+    let mut keys = unsafe {
+        vec![
             kCTFontAttributeName,
             kCTForegroundColorFromContextAttributeName,
-            kCTKernAttributeName,
         ]
     };
-    let values: [&CFType; 3] = [font.as_ref(), CFBoolean::new(true).as_ref(), kern.as_ref()];
+    let mut values: Vec<&CFType> = vec![font.as_ref(), CFBoolean::new(true).as_ref()];
+    // Explicit zero disables font kerning. Leave CoreText's default shaping in
+    // charge unless a chrome tracking token deliberately supplies spacing.
+    if style.tracking_em != 0. {
+        keys.push(unsafe { kCTKernAttributeName });
+        values.push(kern.as_ref());
+    }
     let attrs = CFDictionary::from_slices(&keys, &values);
     let make = |s: &str| -> Result<CFRetained<CTLine>> {
         let string = CFString::from_str(s);
@@ -145,6 +150,38 @@ pub fn rasterize(_: &str, _: TextStyle, _: Option<f32>, _: f32) -> Result<LineMa
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied() {
+        use bbt_ui_model::draw::TypeScale;
+        let style = TextStyle {
+            scale: TypeScale::Custom(16.),
+            ..Default::default()
+        };
+        let pair = rasterize("AV", style, None, 1.).unwrap().advance;
+        let separate = ["A", "V"]
+            .into_iter()
+            .map(|letter| rasterize(letter, style, None, 1.).unwrap().advance)
+            .sum::<f32>();
+        assert!(
+            pair < separate - 0.1,
+            "font kerning must survive default tracking"
+        );
+        let tracked = rasterize(
+            "AV",
+            TextStyle {
+                tracking_em: 0.2,
+                ..style
+            },
+            None,
+            1.,
+        )
+        .unwrap()
+        .advance;
+        assert!(
+            tracked > separate + 3.,
+            "nonzero token must add letter spacing"
+        );
+    }
     #[test]
     fn coretext_shapes_unicode_and_ellipsizes_at_the_given_width() {
         let style = TextStyle::default();
