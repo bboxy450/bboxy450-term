@@ -817,6 +817,7 @@ mod tests {
             }],
             opacity: 0.7,
             saturation: 0.4,
+            mask: None,
         });
         let first = renderer.render_to_rgba(&list, 20, 20, 1.).unwrap();
         let writes = renderer.icon_gpu.writes;
