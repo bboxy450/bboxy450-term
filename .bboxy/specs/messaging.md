@@ -196,3 +196,12 @@ Model and effort follow what each role spends attention on:
 | Creativity | highest model and effort | the operator's taste notes and the Oracle's design-relevant decisions, batched | everything else |
 
 Defaults are per-role settings (model, effort, subscriptions) injected at launch; the operator overrides per seat. The goal is little to no messaging distraction for workers: wake events reach a worker only for its own task, a DM addressed to it, or an Oracle-class interrupt. Everything else waits in its inbox until the seat is idle, and the Oracle absorbs the rest.
+
+## Subchannels and subgroups (operator, 2026-10-21)
+
+The swarm stream splits so attention stays narrow. On the bus they are just subjects ([[events]] Bus design):
+
+- **Subchannels** under a swarm: `swarm/<id>/ch/<name>/…`, created by the Oracle or the operator: e.g. `render`, `mux`, `design`, `decisions`. A seat subscribes to the subchannels on its grant; the bare swarm stream carries only chunks.
+- **Subgroups**: named sets of seats (`swarm/<id>/grp/<name>`) such as "executors", "render crew", "Oracle + Creativity". A message to a subgroup fans out as DMs to members, with one thread id. Membership lives in the swarm object and is edited by the Oracle (`graph_set_edge` grows a `group` form).
+- Defaults: each worker is in the subgroup for its workstream and the subchannel for its layer; the Oracle is in all of them, reads summarised; Creativity is in `design` only.
+- UI: subchannels as tabs in the stream dock, subgroups as chips; unread counts per subchannel; mute applies per subchannel.
