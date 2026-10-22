@@ -1,0 +1,4 @@
+COMMAND: cargo clippy -p bbt-mux --lib --test mcp --locked -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.82s
+
+EXIT: 0

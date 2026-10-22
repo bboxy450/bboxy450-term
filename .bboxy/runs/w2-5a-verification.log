@@ -1,0 +1,24 @@
+W2.5a verification record
+UTC: 2026-10-22T21:47:04Z
+Source: signed commits on rook-w2-5a; final SHA is reported separately.
+Installed clients: Claude Code 2.1.304; codex-cli 0.163.0 (both --version exit 0).
+
+Scope: crates/bbt-mux/** except identity implementation; app main.rs four-line early mcp dispatch; no dependency or Cargo.lock edit.
+Acceptance 1: installed clients use the compiled app MCP stdio entry, call orient, say Executor, and produce signed seat/{id}/control audits with correct seat and generation. See interop-02 and final interop-03 logs. Raw client output is inspected only in memory and discarded. No real task/transcript export.
+Protocol: initialize, ping, tools/list, tools/call only; bounded newline JSON-RPC. Optional params._meta["bboxy450/op_id"] preserves an explicit nonce; otherwise minted once per call. No automatic transport retry; unknown response retains nonce.
+Authority: logic admission + supervisor-confirmed generation + current local issuer policy/class/epoch. Workers cannot claim actor/operator fields, cross-swarm reads or Oracle execution graphs. Cached results require identical actor/tool/args. Current local-dev provider remains explicit, not a GPG-chain claim.
+Results/audit: one seat SQLite transaction stores the first read result plus audit intent. Retry returns that result; replay audit signed and event-ID-deduplicated. Failure injection checks rollback; reopen checks retained result; concurrent retry checks one dispatch. Audit preserves insertion order, stores argument digest and no argument payload.
+Read projections: five tools, bounded own briefs/channel tree/execution context, metadata and in-memory graphs. unread_count=null with reason; pending_application_ack is separate and checked before/after recipient ack.
+
+Commands and failures retained:
+cargo check -p bbt-mux -p bboxy450-term --locked: first exit 101 (missing Store import / usize SQL conversion), corrected; second exit 0. check-01/02.log.
+cargo test -p bbt-mux --locked --test mcp: initial fixture used a LaunchSpec seat unequal to its SeatRecord; correctly rejected, exit 101. Fixture fixed; tests-02/03/04/05 logs exit 0.
+Concurrent op_id regression on old code: exit 101, two distinct returned results; immediate transaction around lookup+dispatch+publish fixes it. tests-05.log has 3 unit + 6 integration tests green; explicit live case ignored by default.
+cargo test -p bbt-mux --locked -- --nocapture: exit 0 in mux-tests.log.
+cargo clippy -p bbt-mux --all-targets --locked -- -D warnings: first exit 101 (owned question_mark style), fixed. After accepted ID1a rebase, second exit 101 from nine existing controlled IO/process calls in tests/identity.rs; identity fixture unchanged, owner notified by DM. Final scoped --lib --test mcp exit 0 in clippy-mcp.log.
+Live interop initial exit 101: Claude variadic --mcp-config consumed a trailing prompt. Fixed argument placement; interop-02 and final interop-03 exit 0, both installed clients. Final live test: 23.29 seconds; both client process exits 0. No protocol negotiation failure and no SDK added.
+cargo build -p bboxy450-term --locked: exit 0 after rebase (app-build-03.log). cargo fmt -p bbt-mux -- --check: exit 0; git diff --check: exit 0. Rebased source commits d007f0e/cadab77 verify with the approved machine fingerprint, exit 0; final history may be re-signed by the last rebase.
+Final clean-worktree ci-local.sh uses its own CARGO_TARGET_DIR. Log and exact tested SHA are reported after gate completion; target deleted immediately afterward.
+
+Not checked / deferred by brief: W2.5b generated skill/per-launch wiring and comprehensive config-directory comparison; messaging/channel tools; task/artifact writes; guarded input/spawn; real GPG-chain authority/revocation; UI/GPU parity; network transport. Named settings/config/hooks hashes are compared by the live fixture, not the entire plugins/skills trees. Existing harness-managed session/transcript state stays with each CLI and is not exported.
+Identity implementation and peer GUI endpoint changes deliberately untouched; only additive shared hooks outside their owned blocks.
