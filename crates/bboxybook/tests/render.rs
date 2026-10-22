@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
 use bboxybook::{Result, gallery};
 use bbt_render::chrome::ChromeRenderer;
 #[test]

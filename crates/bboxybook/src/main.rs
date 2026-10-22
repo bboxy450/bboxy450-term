@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "headless storybook tool, not the app UI thread")]
 use bboxybook::{Result, gallery, parity};
 use std::{fs, path::PathBuf};
 fn value(args: &[String], key: &str) -> Option<String> {

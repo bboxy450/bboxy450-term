@@ -1,0 +1,23 @@
+7.8 support: compile-time, test and headless IO lint boundaries
+Oracle authorizations: c5a479cd (build scripts/headless storybook),
+010dde45 (five exact offline functions), 0f362a69 (integration fixture rule).
+
+No lint allow was added to ordinary UI/model/render library paths.
+Explicit exceptions: two build scripts; bboxybook lib/main (headless tool);
+five existing offline functions (ChromeRenderer::new/readback,
+HeadlessRenderer::new/render_to_rgba, write_png); five existing integration
+fixtures with filesystem IO. Reasons are attached to every allow.
+
+Original required clippy first exited101 in build scripts, then in eight
+existing offline library calls, then in the variants integration fixture.
+These failures were reported before changing scope; no diagnostic run with a
+command-line disallowed_methods allow is claimed as the required result.
+
+cargo clippy -p bbt-render -p bbt-ui -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+  exit0; target/bboxybook/graphs/clippy-exemptions-final.log.
+scripts/ui-lint.sh
+  exit0; target/bboxybook/graphs/ui-lint-final.log. It retains the existing
+  non-gating chunks_exact_to_as_chunks suggestion in headless.rs.
+
+This is lint metadata only, with no IO implementation or image change.
+GraphTab and x-height implementation are separate unstaged work.
