@@ -85,7 +85,7 @@ Pending states are states, not errors: agent unavailable, pinentry cancelled, fi
 
 ## 7. Out of scope
 
-Operator action pending: an Apple Developer team identity for the signed app, which tier 1 custody and later notarised distribution both need; until then dev custody is the tier on this machine.
+Apple team (operator, 2026-10-22): Wild Honey on the Porch, LLC, team UQB3368A84. This Mac holds its Apple Development and Apple Distribution certificates and no Developer ID Application certificate yet. Tier 1 custody can be verified locally by PKG1 with an Apple Development-signed bundle carrying `keychain-access-groups` (`UQB3368A84.*`); notarised distribution outside the App Store needs the Developer ID Application certificate, which is the one operator action still pending. Until PKG1 lands, dev custody is the tier on this machine.
 
 Second-device enrollment tickets and the offline-primary request flow (cloud phase), Google binding, per-seat Git signing (default off, operator decision later), roster export and publication beyond the local account object, hardware tokens.
 

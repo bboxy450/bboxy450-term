@@ -146,8 +146,11 @@ briefs Executors from the specs, never from this note.
     (lands with packaging, PKG1); tier 2 the login keychain with the same
     attributes for ad-hoc and dev builds, shown as "dev custody"; tier 3
     memory for tests; one `DeviceKeyStore` trait, fall from 1 to 2 on -34018,
-    never a plaintext file. ID1a acceptance 4 amended. Operator action
-    pending: an Apple Developer team identity. Rejected: blocking ID1 on
+    never a plaintext file. ID1a acceptance 4 amended. Team known the
+    same day: Wild Honey on the Porch, LLC (UQB3368A84), Apple Development
+    and Distribution certificates on this Mac, Developer ID Application
+    still pending, so tier 1 is verifiable locally with a Development-signed
+    bundle and distribution waits on that one certificate. Rejected: blocking ID1 on
     packaging (velocity); a plaintext or sqlite secret file (identity.md
     forbids it); requiring a team ID before any identity work.
 18. **Claude Code may be an Executor when the operator launches it so
