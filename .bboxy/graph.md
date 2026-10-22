@@ -15,7 +15,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
 | subagent provenance | Oracle instrument | Claude | done → `research/provenance-and-documents.md`, decided in `specs/provenance.md` | — |
-| subagent pubsub | Oracle instrument | Claude | researching NATS-class pubsub for the minimal bus → `research/pubsub-nats.md` | nothing |
+| subagent pubsub | Oracle instrument | Claude | done → `research/pubsub-nats.md`, decided in `specs/events.md` Bus design | — |
 | subagent state-backend | Oracle instrument | Claude | done → `research/state-backend.md`, decided in `specs/storage.md` | — |
 | operator | operator | human | checkpoints | Codex trust for the fixture dir |
 
@@ -56,7 +56,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 | State | Items |
 |---|---|
-| RUNNING | W3.2b (Nyx); W2.2 (Rook); UX queue (Wren); pubsub research |
+| RUNNING | W3.2b (Nyx); W2.2 (Rook); UX queue (Wren) |
 | OPEN, claimable now | W4.1, W1.2, W2.3 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |

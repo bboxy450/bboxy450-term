@@ -62,3 +62,19 @@ Lands in W2.2 (logic process) as the bus plus `doc/*`, `task/*`, `seat/*` produc
 - **Gap:** external ingress on a laptop behind NAT needs either polling or the relay from [[networking]]; decide per source.
 
 Links: [[vision]] [[kittens-events]] [[storage]] [[messaging]] [[work-items]] [[provenance]] [[networking]] [[mux-daemon]] [[mcp-control-plane]]
+
+## Bus design decided (Oracle, 2026-10-21, from [[pubsub-nats]])
+
+**Own bus, about two thousand lines, over `events.sqlite`.** NATS's subject grammar and JetStream's consumer model taken verbatim; none of its topology. Embedding the Go server was measured (17.7 MB binary, 17.5 MiB idle) and rejected: a second source of truth and a third process for features we would not use. No Rust NATS server exists.
+
+Changes to the sections above, which now read with these amendments:
+
+1. **Subjects.** Tokens separated by `/`, `*` matches one token, `>` matches the rest at the end only, ≤ 256 bytes, ≤ 16 tokens. **The kind is the last token**: `seat/<id>/state`, `doc/<id>/modified`, `task/<id>/report`, `swarm/<id>/stream/message`, `ext/github/pr_opened`. The `filter: kind list` on subscriptions is gone; filter by pattern.
+2. **One sequence per stream, not per topic.** Each durable object's `events.sqlite` is one stream (seat: `seat/<id>/>`; swarm: `swarm/<id>/>`, its `task/*/>`, its seats' `dm/*/>`; the index object: `doc/>`, `artifact/>`). Per-subject order is a sub-order of stream order. Schema: `events(seq, id UNIQUE, ts, subject, source, payload, signer, sig, prev)`, `consumers(name, filter, cursor, acked, deliver, policy)`, `pending(consumer, seq, delivered_at, deliveries)`, `stream(first_seq, cold)`. Dedupe by `UNIQUE(id)` forever, not a window.
+3. **Two tiers, one grammar.** `inbox/>` and `seat/*/output` are fan-out only: delivered to live consumers, never appended (the byte ring stores output). Everything else is appended before delivery.
+4. **Consumers.** `{name? (durable iff named), filter: [pattern], start: new | all | last_per_subject | seq | time, ack: none | explicit, deliver: socket | wake | gui | webhook | transport, queue_max}`. `ack: none` for socket and GUI with latest-wins coalescing per subject for state-like kinds and `gap` for the rest; `ack: explicit` for wake and webhook through the `pending` table with `ack_wait` and `max_deliver`, acked by the adapter's evidence written as a `receipt` event. `start: last_per_subject` on `seat/*/state` replaces any snapshot API for the GUI and reconnecting clients. The auto-subscriptions in §Subscriptions are named consumers that expire with the grant.
+5. **Request-reply.** `reply_to: inbox/<seat>/<nonce>`; a seat holds one fan-out consumer on `inbox/<seat>/>`; zero matching consumers yields a `no_responders` reply, as NATS does.
+6. **Messaging on the bus.** Outbox = a subject plus a forwarder consumer; inbox = the seat's consumers; mute = two paused consumers; priority = the dispatcher ordering on the wake consumer; evidence states = `receipt` events. [[messaging]] keeps its envelope and grants and drops its own delivery machinery.
+7. **Not built:** clusters, gateways, leaf nodes, Raft, queue groups (v0.1 has no competing consumers), KV and object store as streams (we have `Store` and `Blobs`).
+
+Crates: `rusqlite`, `tokio` (mpsc and the router task), `ulid`, `ed25519-dalek`, `serde_json`, `zstd` for large payloads. Build: W2.2 step 3 (Rook).
