@@ -150,6 +150,33 @@ scroll extents and offsets. GPU tests check clipping, different rows at each
 offset, a fixed Table header and fill through a transparent layout border.
 Primitive layout and paint are covered here; input controllers and SeatRow/
 Settings module rebases remain in their later briefs.
+
+## L6 floating surfaces
+
+```sh
+cargo run -p bboxybook --locked -- overlays
+```
+
+`target/bboxybook/overlays/index.html` pairs 16 complete Overlay/Modal primitive
+cases from `components.html` with native retained compositions. It also pairs
+16 **container surfaces only** from `launcher.html` and
+`documents.html?state=as-modal`: module children are hidden, while the original
+web context remains in `context/` and is linked from each surface triplet.
+The native side computes panel width and placement from the page's declared
+constraints. Unrendered module content occupies a recorded external height
+slot; it is not a claim of native module layout or content parity.
+
+`surface-layouts.json` records independent panel rectangles. Surface cases
+keep the 0.1% pixel budget and declare their scope in HTML and JSON; text-bearing
+primitive cases retain the measured geometry plus 2% pixel policy. The capture
+fixes floating entrance animations at their final state.
+
+`gallery/index.html` renders eight native examples with patterned backgrounds:
+sharp outside the Overlay, blurred and dimmed behind it, and separate sharp
+Modal foreground. `overlays --native-only --out DIR` renders just that gallery.
+The GPU test checks reduced background contrast, unchanged outside pixels and
+an opaque foreground that remains sharp. Keyboard/dismissal/focus behaviour,
+Launcher and DocumentModal bodies, and later module rebases are untouched.
 # L2 materials
 
 `cargo run -p bboxybook --locked -- materials` writes the 32 canonical cases and

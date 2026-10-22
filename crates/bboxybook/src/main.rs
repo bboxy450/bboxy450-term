@@ -15,6 +15,16 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("gallery");
+    if command == "overlays" {
+        if args.iter().any(|s| s == "--native-only") {
+            return bboxybook::overlays::render_native_gallery(&PathBuf::from(
+                value(&args, "--out").unwrap_or_else(|| "target/bboxybook/overlays/gallery".into()),
+            ));
+        }
+        return bboxybook::overlays::render(&PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/overlays".into()),
+        ));
+    }
     if command == "widgets" {
         return bboxybook::widgets::render(&PathBuf::from(
             value(&args, "--out").unwrap_or_else(|| "target/bboxybook/widgets".into()),
@@ -83,7 +93,7 @@ fn run() -> Result<()> {
         },
         "compare"=>parity::compare_paths(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/parity".into())),&cases,&value(&args,"--web-root").unwrap_or_else(||"web".into()),&value(&args,"--native-root").unwrap_or_else(||"native".into()))?,
         "sidebar"|"showcase"=>{let component=if command=="showcase"{format!("showcase-{}",value(&args,"--scene").unwrap_or_else(||"3".into()))}else{"sidebar".into()};cases.retain(|c|c.component==component);parity::render(&PathBuf::from("target/bboxybook"),&cases)?;},
-        _=>return Err("usage: bboxybook [gallery | components | widgets | atoms | materials | styles | manifest | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
+        _=>return Err("usage: bboxybook [gallery | components | widgets | overlays | atoms | materials | styles | manifest | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
     }
     Ok(())
 }

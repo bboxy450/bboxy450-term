@@ -150,6 +150,7 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
             };
             c::Element::Box(c::Box::new(style, items(&v["children"], ctx)?))
         }
+        "overlay" | "modal" => return crate::overlays::element(v, ctx),
         _ => return crate::widgets::element(v, ctx),
     })
 }
@@ -246,6 +247,7 @@ pub fn execute(
                 radii,
                 kind,
                 color,
+                blur,
                 clips,
             } => {
                 let material = match kind {
@@ -258,7 +260,18 @@ pub fn execute(
                         g.color = color;
                         materials::Material::Gloss(g)
                     }
-                    ui::Material::Frosted => crate::materials::material(Kind::Frosted, ctx.theme),
+                    ui::Material::Frosted => {
+                        let materials::Material::Frosted(mut f) =
+                            crate::materials::material(Kind::Frosted, ctx.theme)
+                        else {
+                            unreachable!()
+                        };
+                        if let Some(b) = blur {
+                            f.blur_radius = b.radius;
+                            f.saturation = b.saturation;
+                        }
+                        materials::Material::Frosted(f)
+                    }
                     ui::Material::Glow => {
                         let materials::Material::Glow(mut g) =
                             crate::materials::material(Kind::Glow, ctx.theme)

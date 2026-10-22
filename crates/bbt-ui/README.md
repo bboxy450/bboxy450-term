@@ -109,3 +109,25 @@ GPU clipping/header checks independently exercise actual virtualization.
 SeatRow and Settings module rebases follow in their assigned layer. Overflowing
 wrapping control rows are explicitly rejected by the capture adapter until a
 flow-layout pass; no DOM child bounds are used to position native controls.
+
+## L6 Overlay and Modal
+
+`components::Overlay` places one content subtree within an independently styled
+backdrop. It centres by default, grows to its content with a 220px minimum,
+and exposes alignment, insets and clipping. `overlays::Modal` composes a title,
+body and trailing action row inside the shared frosted Style. Its 380px width
+clamps to the available space; content reflows before height is calculated.
+The host owns opening, focus, dismissal and input.
+
+Style `width` constrains intrinsic Box width. `blur` resolves radius and
+saturation independently of fill, border and shadow and passes them to the
+existing frosted material. Defaults preserve the panel tokens; Overlay uses
+the backdrop tokens. Blur samples previously painted content; Modal children
+paint afterward, so foreground stays sharp. A shadow remains an underlay,
+outside the material's sampled backdrop.
+
+`cargo run -p bboxybook --locked -- overlays` produces 16 complete primitive
+comparisons plus 16 explicitly marked surface-only comparisons from the
+launcher and document-modal pages. Full module content is retained as context
+only; those rebases follow in L7. The native gallery and GPU check use a sharp
+striped backdrop to demonstrate blur, clipping and foreground separation.

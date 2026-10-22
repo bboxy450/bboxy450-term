@@ -1,0 +1,37 @@
+W3.2d.6 — L6 Overlay and Modal.
+Previous d.5 residue accepted by Oracle: ghost-button 1px border slightly brighter natively; recorded in w3-2d-overlays-review.log, unchanged here.
+crates/bbt-ui/src/components.rs:97 — retained Overlay, minimum/content sizing, centering/alignment, style-owned blur/dim and clipping.
+crates/bbt-ui/src/overlays.rs:6 — Modal composes styled Box, title, body and trailing actions; 380px width clamps and reflows.
+crates/bbt-ui/src/style.rs:314 — independently resolved blur and width; existing panel tokens stay defaults; finite/range checks match the L2 provider.
+crates/bboxybook/src/components.rs — forwards resolved blur parameters into the existing L2 frosted shader; no new shader or dependency.
+crates/bboxybook/src/overlays.rs:37/194/228 — complete primitive cases plus isolated actual launcher/document modal container surfaces; module contents remain L7.
+Capture: modal internal title/actions get diagnostic baselines; native receives public constructor args. Surface entrance animations finish at1s; children hidden, full module context retained in context/.
+For surface pairs, unrendered module content is an external fixed-height slot; native computes panel placement, width and decoration independently. No complete module-content parity is claimed.
+Primary gallery: target/bboxybook/overlays/index.html. Native patterned-backdrop gallery: target/bboxybook/overlays/gallery/index.html (8 images).
+components: 16/16 within policy; max changed 0.508293%.
+launcher: 0/8 within policy; max changed 0.567435%.
+documents: 0/8 within policy; max changed 0.413533%.
+All 16 primitive geometry snapshots complete: max rect 0.090820px, max baseline 0.000000px.
+All 16 surface panel rects independently match: max error 0.000000px (surface-layouts.json).
+Initial capture: 8 Modal hook failures; fixed by recording the lexical internal title/action DOM as diagnostics; subsequent 32/32 captures have zero failures.
+Surface fixture correction: legacy --r-pill means card12 in lab.js, not round999. Document max changed 12.344264%→0.413533%; launcher 0.568150%→0.567435%; all 16 surface cases still review under the unchanged 0.1% budget.
+Pixel residue diagnostic, cozy light, threshold 8: launcher 6342 changed pixels, 6254 within 3px of panel perimeter; document 4220 changed, 3250 within 3px. Other residue includes corner/blur/shadow coverage; it is not declared fixed.
+GPU check proves reduced backdrop contrast, unchanged pixels outside Overlay, and a fully opaque foreground that remains unaffected by blur.
+Inspected: complete Modal cozy dark web/native pair; launcher/doc-modal surface light triplets before/after radius correction; native patterned floating cozy dark.
+Verification: cargo test -p bbt-ui -p bboxybook -p bbt-render --locked: 54 green; fmt, Clippy (same two pre-existing exceptions), node checks for both capture files, diff-check:0.
+Ten worst triplets (web/, native/, diff/ beneath target/bboxybook/overlays/):
+launcher/root-comfortable-light.png: review pixels, changed 0.567435%.
+launcher/root-compact-light.png: review pixels, changed 0.567435%.
+launcher/root-cozy-light.png: review pixels, changed 0.567435%.
+launcher/root-touch-light.png: review pixels, changed 0.567435%.
+launcher/root-comfortable-dark.png: review pixels, changed 0.554640%.
+launcher/root-compact-dark.png: review pixels, changed 0.554640%.
+launcher/root-cozy-dark.png: review pixels, changed 0.554640%.
+launcher/root-touch-dark.png: review pixels, changed 0.554640%.
+documents/as-modal-comfortable-light.png: review pixels, changed 0.413533%.
+documents/as-modal-compact-light.png: review pixels, changed 0.413533%.
+Unchanged scope: no app focus/dismissal/keyboard input, no Launcher/DocumentModal body rebase, no design edits, no new renderer pass, no FPS measurements, no operator browser.
+Limits: one content subtree per Overlay capture; material ancestor clips still intersect as rectangles in the host (existing limit); isolated CSS group opacity and L1 antialiasing remain outside this pass; only macOS/Metal exercised.
+Final regression components: 0/24 review; 24/24 PNGs byte-identical to accepted d.5 baseline; target/bboxybook/overlays-regression/components/index.html.
+Final regression widgets: 8/32 review; 32/32 PNGs byte-identical to accepted d.5 baseline; target/bboxybook/overlays-regression/widgets/index.html.
+Final regression style: 0/88 review; 88/88 PNGs byte-identical to accepted d.5 baseline; target/bboxybook/overlays-regression/style/index.html.
