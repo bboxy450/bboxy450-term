@@ -93,9 +93,11 @@ everyone ──(#bboxy450-crates)──▶ everyone  crate release announcements
 
 The Oracle maintains this section and, in the real terminal, edits it with `graph_set_edge` ([[mcp-control-plane]] Orientation tools); any seat calls `orient` to learn its job, current task and what is next; the Oracle calls `graph_read execution` to see who has what. `graph.md` is the authority until the mux's index exists ([[work-items]] graphs), at which point this section becomes a policy the mux enforces per swarm (may-send-to in the role grants).
 
-## Messaging rule (operator, 2026-10-21)
+## Messaging rule (operator, 2026-10-21, tightened)
 
-DMs over the channel. One-to-one traffic (briefs, handoffs, reviews, corrections, questions to one agent) goes by `icq dm <key>`. The channel `#bboxy450-term` carries only what everyone must see: claims, one-line landed reports, decisions, presence. Keys: Oracle 726afa3b…a18f4a, Nyx 6b4e9bf6…30d1, Rook bfae37c6…b87fa, Wren 22c0e081…4b57.
+**DMs by default. The channel is for large chunks only.** Everything goes by `icq dm` to the one agent concerned and the Oracle: claims, pass-by-pass landed reports, questions, handoffs, corrections. `#bboxy450-term` carries only: a workstream finished and accepted (a W-brief done, the lab complete, a checkpoint opened), a decision that changes everyone's work (vocabulary, a spec reversal, a process rule), and roll calls. No per-pass "landed" lines on the channel; those go to the Oracle by DM, batched when passes are small. The Oracle posts the channel summary when a chunk lands.
+
+Keys: Oracle 726afa3b…a18f4a, Nyx 6b4e9bf6…30d1, Rook bfae37c6…b87fa, Wren 22c0e081…4b57.
 
 ## Shared-worktree rule (Wren's flag, 2026-10-21)
 
