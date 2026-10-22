@@ -1,0 +1,691 @@
+# R4b — byte-identical GPU support bounds
+UTC 2026-10-22T17:54:39.407452+00:00
+Assignment Oracle3221; source18e0593; startup git fetch origin0/git rebase origin/main0. Allowed materials.rs/materials.wgsl/their tests/r4b logs. App gpu.rs backdrop-copy scope gap reported, awaiting reply. Shared root only read.
+Baseline manifest /Users/feral/mydev/bboxy450-term/target/bboxybook/graphs/atlas/regression/part-0.json: 451 cases, original sha256 fadce8cb88643360288a8956f66315079431d6422aec9d7ce82eec2fc46188d8; private normalized target/r4b/manifests/part-0.json, sha256 fadce8cb88643360288a8956f66315079431d6422aec9d7ce82eec2fc46188d8
+Baseline manifest /Users/feral/mydev/bboxy450-term/target/bboxybook/graphs/atlas/regression/part-1.json: 452 cases, original sha256 17eb1ee1bc4363d35bcf0f7ce10694a233b3ac547c99c427fe0d32a10292b750; private normalized target/r4b/manifests/part-1.json, sha256 17eb1ee1bc4363d35bcf0f7ce10694a233b3ac547c99c427fe0d32a10292b750
+Baseline manifest /Users/feral/mydev/bboxy450-term/target/bboxybook/graphs/atlas/regression/part-2.json: 453 cases, original sha256 d8ef5fea31974c266206c2d855f32c949900faf225b19f8ddb3a018164dd0a58; private normalized target/r4b/manifests/part-2.json, sha256 d8ef5fea31974c266206c2d855f32c949900faf225b19f8ddb3a018164dd0a58
+Baseline manifest /Users/feral/mydev/bboxy450-term/target/bboxybook/graphs/atlas/regression/part-3.json: 452 cases, original sha256 40a2865274580f3b910b2e3bdb66a779bb38ba125fa827ca9a8c24f3539c32da; private normalized target/r4b/manifests/part-3.json, sha256 40a2865274580f3b910b2e3bdb66a779bb38ba125fa827ca9a8c24f3539c32da
+Exact matrix 1808 cases, 0 existing target file references normalized to absolute read-only source paths. Constructor values unchanged; image-only replay per bboxybook README, not parity/geometry acceptance.
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo build -p bboxybook -p bboxy450-term --release --locked
+   Compiling num-traits v0.2.19
+   Compiling arrayvec v0.7.8
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling float_next_after v1.0.0
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling half v2.7.1
+   Compiling euclid v0.22.14
+   Compiling naga v30.0.1
+   Compiling lyon_geom v1.0.20
+   Compiling lyon_path v1.0.19
+   Compiling lyon_tessellation v1.0.22
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `release` profile [optimized + debuginfo] target(s) in 35.34s
+
+exit: 0
+
+Oracle3228 authorizes app src/gpu.rs for cropped/suppressed backdrop copies. R4 accepted/pushed18e0593 (Oracle3223).
+
+$ xcrun xctrace record --template 'Metal System Trace' --output /Users/feral/mydev/bboxy450-term-exec3/target/r4b/before.trace --time-limit 8s --target-stdout /Users/feral/mydev/bboxy450-term-exec3/target/r4b/before.stdout --no-prompt --launch -- /Users/feral/mydev/bboxy450-term-exec3/target/r4b/Before.app/Contents/MacOS/bboxy450-term-r4b-before --animate --meter
+Starting recording with the Metal System Trace template. Launching process: bboxy450-term-r4b-before. Time limit: 8.0 s
+Ctrl-C to stop the recording
+Reached specified time limit, ending recording...
+Recording completed. Saving output file...
+Output file saved as: before.trace
+
+exit: 54
+
+$ rustfmt --edition 2024 crates/bbt-render/src/chrome/materials.rs crates/bboxy450-term/src/gpu.rs
+
+exit: 0
+
+$ cargo test -p bbt-render --locked chrome::materials::tests
+   Compiling syn v3.0.9
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling bytemuck v1.25.2
+   Compiling thiserror v2.0.21
+   Compiling naga-types v30.0.1
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 20.48s
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-82acb8c124be710c)
+
+running 3 tests
+test chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected ... ok
+test chrome::materials::tests::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges ... ok
+test chrome::materials::tests::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+     Running tests/chrome_x_height.rs (target/debug/deps/chrome_x_height-26d13423943a5b3b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/smoke.rs (target/debug/deps/smoke-1d12650cd52d9ef1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/variants.rs (target/debug/deps/variants-1ae626e88ac71f0e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo check -p bboxy450-term --locked
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.66s
+
+exit: 0
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo test -p bboxybook --test materials --locked
+   Compiling wgpu-hal v30.0.1
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.48s
+     Running tests/materials.rs (target/debug/deps/materials-eac3959766bdb054)
+
+running 3 tests
+test source_over_glow_keeps_destination_alpha ... ok
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.05s
+
+
+exit: 0
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo build -p bboxybook -p bboxy450-term --release --locked
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `release` profile [optimized + debuginfo] target(s) in 10.72s
+
+exit: 0
+
+Baseline replay frozen before-bboxybook (source18e0593), four disjoint collision-free manifests, source cached files read-only.
+[
+  {
+    "command": [
+      "target/r4b/before-bboxybook",
+      "replay-images",
+      "--manifest",
+      "target/r4b/manifests/part-0.json",
+      "--out",
+      "target/r4b/before/part-0"
+    ],
+    "exit": 0,
+    "cases": 451,
+    "seconds": 706.17998299998,
+    "missing": [],
+    "changed_vs_accepted_cache": [],
+    "stdout": "target/r4b/before-part-0.stdout"
+  },
+  {
+    "command": [
+      "target/r4b/before-bboxybook",
+      "replay-images",
+      "--manifest",
+      "target/r4b/manifests/part-1.json",
+      "--out",
+      "target/r4b/before/part-1"
+    ],
+    "exit": 0,
+    "cases": 452,
+    "seconds": 695.3824219999951,
+    "missing": [],
+    "changed_vs_accepted_cache": [],
+    "stdout": "target/r4b/before-part-1.stdout"
+  },
+  {
+    "command": [
+      "target/r4b/before-bboxybook",
+      "replay-images",
+      "--manifest",
+      "target/r4b/manifests/part-2.json",
+      "--out",
+      "target/r4b/before/part-2"
+    ],
+    "exit": 0,
+    "cases": 453,
+    "seconds": 695.8753873330134,
+    "missing": [],
+    "changed_vs_accepted_cache": [],
+    "stdout": "target/r4b/before-part-2.stdout"
+  },
+  {
+    "command": [
+      "target/r4b/before-bboxybook",
+      "replay-images",
+      "--manifest",
+      "target/r4b/manifests/part-3.json",
+      "--out",
+      "target/r4b/before/part-3"
+    ],
+    "exit": 0,
+    "cases": 452,
+    "seconds": 684.2828414579853,
+    "missing": [],
+    "changed_vs_accepted_cache": [],
+    "stdout": "target/r4b/before-part-3.stdout"
+  }
+]
+
+$ /Users/feral/mydev/bboxy450-term-exec3/target/r4b/After.app/Contents/MacOS/bboxy450-term-r4b-after --cadence-test --meter
+Output .bboxy/runs/r4b-cadence.log
+exit: 0
+
+$ xcrun xctrace record --template 'Metal System Trace' --output /Users/feral/mydev/bboxy450-term-exec3/target/r4b/after.trace --time-limit 8s --target-stdout /Users/feral/mydev/bboxy450-term-exec3/target/r4b/after.stdout --no-prompt --launch -- /Users/feral/mydev/bboxy450-term-exec3/target/r4b/After.app/Contents/MacOS/bboxy450-term-r4b-after --animate --meter
+Starting recording with the Metal System Trace template. Launching process: bboxy450-term-r4b-after. Time limit: 8.0 s
+Ctrl-C to stop the recording
+Reached specified time limit, ending recording...
+Recording completed. Saving output file...
+Output file saved as: after.trace
+
+exit: 54
+
+$ cargo clippy -p bbt-render -p bboxy450-term --all-targets --no-deps --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.01s
+
+exit: 0
+
+$ sh scripts/ui-lint.sh
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:210:29
+    |
+210 |     for tri in mesh.indices.chunks_exact(3) {
+    |                             ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:259:31
+    |
+259 |     for tri in result.indices.chunks_exact(3) {
+    |                               ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:366:13
+    |
+366 | /             if !cache.contains_key(&ch) {
+367 | |                 let glyph = match font.rasterize(ch)? {
+368 | |                     Some(raster) => Some(PlacedGlyph {
+369 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+375 | |                 cache.insert(ch, glyph);
+376 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `#[warn(clippy::map_entry)]` on by default
+help: try
+    |
+366 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+367 +                 let glyph = match font.rasterize(ch)? {
+368 +                     Some(raster) => Some(PlacedGlyph {
+369 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+370 +                         left: raster.left,
+371 +                         top: raster.top,
+372 +                     }),
+373 +                     None => None,
+374 +                 };
+375 +                 e.insert(glyph);
+376 +             }
+    |
+
+warning: `bbt-render` (lib) generated 3 warnings (run `cargo clippy --fix --lib -p bbt-render -- -D clippy::disallowed_methods` to apply 3 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.80s
+
+exit: 0
+
+$ rustfmt --check --edition 2024 crates/bbt-render/src/chrome/materials.rs crates/bboxy450-term/src/gpu.rs
+
+exit: 0
+
+$ git diff --check
+
+exit: 0
+
+Optimized replay frozen after-bboxybook; exact PNG SHA256 comparison against source18e0593 before images.
+[
+  {
+    "command": [
+      "target/r4b/after-bboxybook",
+      "replay-images",
+      "--manifest",
+      "target/r4b/manifests/part-0.json",
+      "--out",
+      "target/r4b/after/part-0"
+    ],
+    "exit": 0,
+    "cases": 451,
+    "seconds": 691.3215201659768,
+    "missing": [],
+    "changed": [],
+    "stdout": "target/r4b/after-part-0.stdout"
+  },
+  {
+    "command": [
+      "target/r4b/after-bboxybook",
+      "replay-images",
+      "--manifest",
+      "target/r4b/manifests/part-1.json",
+      "--out",
+      "target/r4b/after/part-1"
+    ],
+    "exit": 0,
+    "cases": 452,
+    "seconds": 678.9402097089915,
+    "missing": [],
+    "changed": [],
+    "stdout": "target/r4b/after-part-1.stdout"
+  },
+  {
+    "command": [
+      "target/r4b/after-bboxybook",
+      "replay-images",
+      "--manifest",
+      "target/r4b/manifests/part-2.json",
+      "--out",
+      "target/r4b/after/part-2"
+    ],
+    "exit": 0,
+    "cases": 453,
+    "seconds": 674.5222754999995,
+    "missing": [],
+    "changed": [],
+    "stdout": "target/r4b/after-part-2.stdout"
+  },
+  {
+    "command": [
+      "target/r4b/after-bboxybook",
+      "replay-images",
+      "--manifest",
+      "target/r4b/manifests/part-3.json",
+      "--out",
+      "target/r4b/after/part-3"
+    ],
+    "exit": 0,
+    "cases": 452,
+    "seconds": 660.920251124975,
+    "missing": [],
+    "changed": [],
+    "stdout": "target/r4b/after-part-3.stdout"
+  }
+]
+
+Acceptance confirmed: optimized4 replay commands all exit0, total1808/1808 PNGs byte-identical,0 changed/0 missing. Deterministic native before/after smoke captures both exit0 and byte-identical; r4b-app-pixels.log. Actual rendered material/native images inspected. No further implementation edits after successful replay.
+
+Signed checkpoint c814920 exit0; exact-path add/cached diff check0. Handoff fetch origin0/rebase origin/main0, successor5596674 at main3c3b8b9; clean status, verify-commit good machine signature exit0. Scoped source hashes unchanged by rebase. Measurements/images remain explicitly pinned to18e0593 plus this R4b diff. Post-rebase checks follow.
+
+$ cargo test -p bbt-render --locked chrome::materials::tests
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.08s
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-82acb8c124be710c)
+
+running 3 tests
+test chrome::materials::tests::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges ... ok
+test chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected ... ok
+test chrome::materials::tests::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+     Running tests/chrome_x_height.rs (target/debug/deps/chrome_x_height-26d13423943a5b3b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/smoke.rs (target/debug/deps/smoke-1d12650cd52d9ef1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/variants.rs (target/debug/deps/variants-1ae626e88ac71f0e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo test -p bboxybook --test materials --locked
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.12s
+     Running tests/materials.rs (target/debug/deps/materials-eac3959766bdb054)
+
+running 3 tests
+test source_over_glow_keeps_destination_alpha ... ok
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+
+
+exit: 0
+
+$ cargo test -p bboxy450-term --locked
+   Compiling libc v0.2.191
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling typenum v1.20.1
+   Compiling thiserror v2.0.21
+   Compiling shlex v2.0.1
+   Compiling indexmap v2.14.2
+   Compiling find-msvc-tools v0.1.15
+   Compiling pkg-config v0.3.34
+   Compiling version_check v0.9.5
+   Compiling const-oid v0.10.2
+   Compiling getrandom v0.3.4
+   Compiling generic-array v0.14.7
+   Compiling semver v1.0.28
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling rustc_version v0.4.1
+   Compiling serde_json v1.0.154
+   Compiling naga-types v30.0.1
+   Compiling cfg_aliases v0.1.1
+   Compiling thiserror v1.0.69
+   Compiling httparse v1.10.1
+   Compiling vcpkg v0.2.15
+   Compiling nix v0.28.0
+   Compiling hybrid-array v0.4.15
+   Compiling jobserver v0.1.35
+   Compiling curve25519-dalek v5.0.0
+   Compiling cc v1.9.0
+   Compiling chacha20 v0.10.2
+   Compiling ppv-lite86 v0.2.21
+   Compiling thiserror-impl v1.0.69
+   Compiling zstd-safe v8.2.0
+   Compiling anyhow v1.0.104
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling http v1.5.0
+   Compiling parking_lot_core v0.9.12
+   Compiling cpufeatures v0.3.1
+   Compiling errno v0.3.14
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling signal-hook-registry v1.4.8
+   Compiling rand_core v0.9.5
+   Compiling parking_lot v0.12.5
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.4
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.10.3
+   Compiling core-foundation v0.9.4
+   Compiling digest v0.11.3
+   Compiling futures-macro v0.3.34
+   Compiling sha1 v0.11.0
+   Compiling tokio v1.54.1
+   Compiling data-encoding v2.11.1
+   Compiling futures-core v0.3.34
+   Compiling subtle v2.6.1
+   Compiling futures-sink v0.3.34
+   Compiling signature v3.0.0
+   Compiling memchr v2.8.3
+   Compiling foldhash v0.1.5
+   Compiling same-file v1.0.6
+   Compiling bitflags v2.13.2
+   Compiling slab v0.4.12
+   Compiling zeroize v1.9.1
+   Compiling dispatch2 v0.3.1
+   Compiling wgpu-types v30.0.1
+   Compiling futures-task v0.3.34
+   Compiling tungstenite v0.30.0
+   Compiling futures-util v0.3.34
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling objc2-core-foundation v0.3.2
+   Compiling libsqlite3-sys v0.38.2
+   Compiling arrayvec v0.7.8
+   Compiling naga v30.0.1
+   Compiling lyon_geom v1.0.20
+   Compiling serde-big-array v0.5.1
+   Compiling lyon_path v1.0.19
+   Compiling objc2-foundation v0.2.2
+   Compiling notify-types v2.1.0
+   Compiling walkdir v2.5.0
+   Compiling hashbrown v0.15.5
+   Compiling ed25519 v3.0.0
+   Compiling core-graphics-types v0.1.3
+   Compiling sha2 v0.11.1
+   Compiling resvg v0.48.1
+   Compiling objc2-foundation v0.3.2
+   Compiling filedescriptor v0.8.3
+   Compiling rand v0.9.5
+   Compiling cpufeatures v0.2.17
+   Compiling fsevent-sys v4.1.0
+   Compiling serial2 v0.2.38
+   Compiling digest v0.10.7
+   Compiling hashlink v0.12.2
+   Compiling base64 v0.22.1
+   Compiling shell-words v1.1.1
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling unsafe-libyaml v0.2.11
+   Compiling fallible-iterator v0.3.0
+   Compiling downcast-rs v1.2.1
+   Compiling ryu v1.0.23
+   Compiling fixedbitset v0.5.7
+   Compiling portable-pty v0.9.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling petgraph v0.8.3
+   Compiling lyon_tessellation v1.0.22
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling objc2-metal v0.3.2
+   Compiling objc2-app-kit v0.2.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling rusqlite v0.40.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling sha2 v0.10.9
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling notify v8.2.0
+   Compiling ulid v1.2.1
+   Compiling ed25519-dalek v3.0.0
+   Compiling core-graphics v0.23.2
+   Compiling png v0.18.1
+   Compiling objc2-app-kit v0.3.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling zstd v0.14.3
+   Compiling winit v0.30.13
+   Compiling objc2-core-graphics v0.3.2
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 20.57s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-fa54a806e08f484d)
+
+running 3 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo clippy -p bbt-render -p bboxy450-term --all-targets --no-deps --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking indexmap v2.14.2
+    Checking typenum v1.20.1
+    Checking thiserror v2.0.21
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking const-oid v0.10.2
+    Checking rand_core v0.10.1
+    Checking ppv-lite86 v0.2.21
+   Compiling thiserror-impl v1.0.69
+    Checking httparse v1.10.1
+    Checking chacha20 v0.10.2
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking http v1.5.0
+   Compiling futures-macro v0.3.34
+    Checking zeroize v1.9.1
+    Checking futures-task v0.3.34
+    Checking futures-core v0.3.34
+    Checking data-encoding v2.11.1
+    Checking naga-types v30.0.1
+    Checking subtle v2.6.1
+    Checking futures-sink v0.3.34
+    Checking signature v3.0.0
+    Checking foldhash v0.1.5
+    Checking same-file v1.0.6
+    Checking slab v0.4.12
+    Checking memchr v2.8.3
+    Checking hashbrown v0.15.5
+    Checking walkdir v2.5.0
+    Checking futures-util v0.3.34
+    Checking hybrid-array v0.4.15
+    Checking generic-array v0.14.7
+    Checking ed25519 v3.0.0
+    Checking thiserror v1.0.69
+    Checking zstd-safe v8.2.0
+    Checking parking_lot_core v0.9.12
+    Checking cpufeatures v0.3.1
+    Checking errno v0.3.14
+    Checking getrandom v0.3.4
+    Checking parking_lot v0.12.5
+    Checking mio v1.2.4
+    Checking signal-hook-registry v1.4.8
+    Checking getrandom v0.4.3
+    Checking rand_core v0.9.5
+    Checking socket2 v0.6.5
+    Checking rand v0.10.3
+    Checking core-foundation v0.9.4
+    Checking rand_chacha v0.9.0
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking crypto-common v0.1.7
+    Checking tokio v1.54.1
+    Checking block-buffer v0.10.4
+    Checking rand v0.9.5
+    Checking core-graphics-types v0.1.3
+    Checking filedescriptor v0.8.3
+    Checking digest v0.10.7
+    Checking cpufeatures v0.2.17
+    Checking fsevent-sys v4.1.0
+    Checking serial2 v0.2.38
+    Checking libsqlite3-sys v0.38.2
+    Checking anyhow v1.0.104
+    Checking hashlink v0.12.2
+    Checking fixedbitset v0.5.7
+    Checking shell-words v1.1.1
+    Checking unsafe-libyaml v0.2.11
+    Checking fallible-streaming-iterator v0.1.9
+    Checking ryu v1.0.23
+    Checking base64 v0.22.1
+    Checking fallible-iterator v0.3.0
+    Checking downcast-rs v1.2.1
+    Checking petgraph v0.8.3
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking sha2 v0.10.9
+    Checking core-graphics v0.23.2
+    Checking zstd v0.14.3
+    Checking digest v0.11.3
+    Checking bitflags v2.13.2
+    Checking serde v1.0.229
+    Checking serde_json v1.0.154
+    Checking sha1 v0.11.0
+    Checking sha2 v0.11.1
+    Checking curve25519-dalek v5.0.0
+    Checking dispatch2 v0.3.1
+    Checking wgpu-types v30.0.1
+    Checking png v0.18.1
+    Checking objc2-core-foundation v0.3.2
+    Checking arrayvec v0.7.8
+    Checking serde-big-array v0.5.1
+    Checking tungstenite v0.30.0
+    Checking naga v30.0.1
+    Checking lyon_geom v1.0.20
+    Checking objc2-foundation v0.2.2
+    Checking notify-types v2.1.0
+    Checking nix v0.28.0
+    Checking lyon_path v1.0.19
+    Checking notify v8.2.0
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking lyon_tessellation v1.0.22
+    Checking ed25519-dalek v3.0.0
+    Checking ulid v1.2.1
+    Checking serde_yaml v0.9.34+deprecated
+    Checking rusqlite v0.40.2
+    Checking portable-pty v0.9.0
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking objc2-foundation v0.3.2
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking objc2-app-kit v0.2.2
+    Checking objc2-metal v0.3.2
+    Checking objc2-app-kit v0.3.2
+    Checking wgpu-naga-bridge v30.0.1
+    Checking winit v0.30.13
+    Checking objc2-core-graphics v0.3.2
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-hal v30.0.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.69s
+
+exit: 0
+
+$ git diff --check
+
+exit: 0

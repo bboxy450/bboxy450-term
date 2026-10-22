@@ -1,0 +1,15 @@
+Source18e0593 + R4b scoped diff. No own replay/profiler job concurrent with measurement.
+$ /Users/feral/mydev/bboxy450-term-exec3/target/r4b/After.app/Contents/MacOS/bboxy450-term-r4b-after --cadence-test --meter
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 56.891ms cpu=58.520ms drain=0.001 layout=1.537 draw=0.092 encode=56.891 present_wait=0.021
+first frame: 15 native panes presented
+cadence CAMetalDisplayLink: frames=225 callbacks=226 seconds=3.002219 hz=74.945 CPU_p50=3.241ms CPU_p99=4.015ms
+cadence intervals (initial tick excluded): samples=224 p50=13.321ms p99=14.064ms max=18.714ms late_intervals=0 (>1.5 panel intervals)
+GPU timestamps: paired=225 pending=0 GPU_span_p50=8.455ms GPU_span_p99=10.776ms CPU+GPU_span_p50=11.766ms p99=14.252ms max=14.601ms over_8.333ms=225; CPU is redraw wall time (Fifo/CV drawable wait excluded); GPU span bounds render+uploads between serial-queue marker GPUStartTime/GPUEndTime (includes marker/queue gaps)
+idle probe begins: frames=226 last_update=0
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=0 CPU p50=3.241ms p99=4.015ms samples=226 warm_encode_p50=1.679ms warm_encode_p99=2.386ms
+
+exit: 0
