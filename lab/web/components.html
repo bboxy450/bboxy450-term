@@ -9,7 +9,7 @@ const el = Lab.el;
 // both themes, built only from ui.js (the component_layers vocabulary in the design system).
 const DENS = ['touch', 'comfortable', 'cozy', 'compact'];
 // wrapping cases keep one full-grid column as their host even when ?density= deep-links a single cell, so a lone capture still wraps
-const COLUMN_HOST = new Set(['flow', 'text-align']);
+const COLUMN_HOST = new Set(['flow', 'text-align', 'edge-fade']);
 const DEMO = {
   box: () => UI.Stack({ gap: 8 }, UI.Box('card', UI.Text('card', { step: 'body' })), UI.Box({ ...UI.STYLES.row }, UI.Text('row', { step: 'row' })), UI.Box({ ...UI.STYLES.band, swarm: TOKENS.color.role.oracle }, UI.Text('BAND', UI.textOpts(UI.STYLES.band)))),
   text: () => UI.Stack({ gap: 2 }, ...UI.STEPS.slice(0, 12).map(s => UI.Stack({ dir: 'row', gap: 8, align: 'baseline' }, UI.Text(s, { step: 'micro', mono: true, dim: true }), UI.Text('Vesper Greywind', { step: s })))),
@@ -23,6 +23,19 @@ const DEMO = {
   'text-align': () => UI.Stack({ gap: 6 },
     ...['start', 'center', 'end'].map(a => UI.Text('align ' + a, { step: 'row', align: a })),
     UI.Text('Terminates now and moves its history to cold storage · nothing is lost', { step: 'caption', dim: true, align: 'center' })),
+  // edge-fade: UI.Group's linear alpha mask over a checker backdrop (not masked), with opaque and translucent children, so a
+  // painted overlay cannot fake it. Right edge (the figure card's 28 px overflow fade), a vertical ramp, a diagonal ramp.
+  'edge-fade': () => {
+    // each row runs past the right edge (items keep their width), one opaque and one translucent child through the ramp
+    const solid = t => UI.Box({ material: 'flat', fill: 'accent', radius: 6, padding: [4, 10], text: 'caption' }, UI.Text(t, { step: 'caption', color: 'var(--on-accent)' }));
+    const glass = t => UI.Box('chip', UI.Text(t, { step: 'micro', mono: true }));
+    const row = (...k) => UI.Stack({ dir: 'row', gap: 6, align: 'center' }, ...k);
+    const fade = (label, mask, size) => UI.Stack({ gap: 4 }, UI.Text(label, { step: 'micro', mono: true, dim: true }), el('div', { class: 'ui-checker', style: 'width:' + size[0] + 'px;height:' + size[1] + 'px' }, UI.Group({ size, mask }, el('div', { class: 'ef-rows' }, row(glass('glass'), solid('opaque runs through the edge')), row(solid('opaque'), glass('translucent runs through the edge'))))));
+    return UI.Stack({ gap: 10 },
+      fade('right edge · 28 px', { start: [192, 0], end: [220, 0], alpha0: 1, alpha1: 0 }, [220, 88]),
+      fade('vertical ramp', { start: [0, 8], end: [0, 80], alpha0: 0, alpha1: 1 }, [220, 88]),
+      fade('diagonal ramp', { start: [0, 0], end: [220, 88], alpha0: 1, alpha1: 0.15 }, [220, 88]));
+  },
   button: () => UI.Stack({ gap: 6 }, ...['primary', 'ghost', 'danger'].map(k => UI.Stack({ dir: 'row', gap: 6, wrap: true }, ...['idle', 'hover', 'pressed', 'focus', 'disabled'].map(st => UI.Button(st, { kind: k, state: st }))))),
   list: () => UI.List([{ label: 'Claude', sub: 'oracle by default', icon: 'claude', kbd: '1' }, { label: 'Codex', sub: 'executor by default', icon: 'codex', kbd: '2' }, { label: 'pi', icon: 'pi', kbd: '3' }, { label: 'zsh', icon: 'zsh', kbd: '4' }], { selected: 1, more: 996 }),
   table: () => UI.Table([{ label: 'seat', w: '1.4fr' }, { label: 'role' }, { label: 'now', w: '1.6fr' }], [['Vesper Greywind', 'oracle', 'swarm control'], ['Nyx Copperwing', 'executor', 'W3.2d L2'], ['Rook Ashwhisker', 'executor', 'W2.2 bus'], ['Wren Thistledown', 'creativity', 'lab galleries']], { zebra: true, selected: 1 }),
@@ -30,7 +43,7 @@ const DEMO = {
   overlay: () => UI.Overlay(UI.Box('chip', UI.Text('anything over a dimmed, blurred backdrop', { step: 'caption' }))),
   modal: () => UI.Overlay(UI.Modal('Purge seat', UI.Text('Terminates now and moves its history to cold storage · nothing is lost', { step: 'caption', dim: true }), [UI.Button('Cancel', { kind: 'ghost' }), UI.Button('Purge', { kind: 'danger' })])),
 };
-Lab.page({ title: 'components', wide: true, note: 'L6 components, the web reference for the bbt-ui components gallery: Box, Text (the type scale micro to title), Stack, Flow (a wrapping Stack: justify, cross align, row and column gap), Text align (start, center, end, wrapped), Button (primary, ghost, danger × idle, hover, pressed, focus, disabled), List (selection band, virtualised), Table (header, zebra, selection), Input (empty, value, focus, invalid), Overlay and Modal. Every case across the four densities (columns) and both themes (rows), built only from ui.js.',
+Lab.page({ title: 'components', wide: true, note: 'L6 components, the web reference for the bbt-ui components gallery: Box, Text (the type scale micro to title), Stack, Flow (a wrapping Stack: justify, cross align, row and column gap), Text align (start, center, end, wrapped), Edge fade (Group linear alpha mask: right edge, vertical, diagonal), Button (primary, ghost, danger × idle, hover, pressed, focus, disabled), List (selection band, virtualised), Table (header, zebra, selection), Input (empty, value, focus, invalid), Overlay and Modal. Every case across the four densities (columns) and both themes (rows), built only from ui.js.',
   states: Object.keys(DEMO),
   render(s, body) {
     const grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:repeat(' + (COLUMN_HOST.has(s) ? DENS.length : UI.densities().length) + ', minmax(0, 1fr));overflow-x:auto' });

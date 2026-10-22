@@ -102,6 +102,22 @@
     for (const k in a) path.setAttribute(k, a[k]);
     svg.append(path); return svg;
   }
+  // Group { size: [w,h]?, mask: { start: [x,y], end: [x,y], alpha0, alpha1 }? }: an isolated group whose alpha is multiplied
+  // by a linear ramp from start (alpha0) to end (alpha1), coordinates local to the group, clamped outside [start, end]. The
+  // record is the public input; the lab draws it as a CSS mask gradient projected onto the group's own box (L1/L6 edge fade).
+  function maskCss(m, w, h) {
+    const dx = m.end[0] - m.start[0], dy = m.end[1] - m.start[1], len = Math.hypot(dx, dy); if (!len) return 'none';
+    const ux = dx / len, uy = dy / len, deg = Math.atan2(ux, -uy) * 180 / Math.PI, L = Math.abs(w * ux) + Math.abs(h * uy);
+    const g0x = w / 2 - L / 2 * ux, g0y = h / 2 - L / 2 * uy, t = p => (p[0] - g0x) * ux + (p[1] - g0y) * uy;
+    return `linear-gradient(${deg.toFixed(3)}deg, rgba(0,0,0,${m.alpha0}) ${t(m.start).toFixed(2)}px, rgba(0,0,0,${m.alpha1}) ${t(m.end).toFixed(2)}px)`;
+  }
+  function Group(o, ...kids) {
+    o = o || {}; const g = el('div', { class: 'ui-group' }, ...kids); g.style.isolation = 'isolate';
+    if (o.size) { g.style.width = px(o.size[0]); g.style.height = px(o.size[1]); }
+    if (o.mask) { const apply = () => { const v = maskCss(o.mask, g.offsetWidth, g.offsetHeight); g.style.maskImage = v; g.style.webkitMaskImage = v; };
+      new ResizeObserver(apply).observe(g); requestAnimationFrame(apply); }
+    return g;
+  }
   // Select { value, onChange }: the native select with no UA chrome, our chevdown caret (components.js selectBox)
   const Select = (options, o) => window.C.selectBox(options, o && o.value, o && o.onChange);
   function Text(text, o) { o = o || {}; const t = el('span', { class: 'ui-text' }, text); t.style.fontSize = 'var(--t-' + (o.step || 'body') + ')'; if (o.weight) t.style.fontWeight = o.weight; if (o.mono) t.style.fontFamily = 'var(--font-mono)'; if (o.dim) t.style.color = 'var(--fg-dim)'; if (o.color) t.style.color = o.color; if (o.caps) { t.style.textTransform = 'uppercase'; t.style.letterSpacing = (o.track || .22) + 'em'; } if (o.align) t.style.textAlign = o.align; return t; }
@@ -121,5 +137,5 @@
   const Q = new URLSearchParams(location.search);
   const themes = () => Q.get('theme') && T.color[Q.get('theme')] ? [Q.get('theme')] : ['dark', 'light'];
   const densities = () => Q.get('density') && T.density[Q.get('density')] ? [Q.get('density')] : ['touch', 'comfortable', 'cozy', 'compact'];
-  window.UI = { textOpts, themes, densities, themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Path, Select, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
+  window.UI = { textOpts, themes, densities, themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Group, Path, Select, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
 })();

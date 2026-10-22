@@ -1511,3 +1511,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 /* focus: one ring, ours, for keyboard focus only; components that draw their own focus keep it (higher specificity) */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 :focus:not(:focus-visible) { outline: none; }
+
+/* lab backdrop for mask cases: a checker that the masked group fades into, never painted over (components.html edge-fade) */
+.ui-checker { background-color: var(--bg); background-image: linear-gradient(45deg, color-mix(in srgb, var(--fg) 14%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--fg) 14%, transparent) 75%), linear-gradient(45deg, color-mix(in srgb, var(--fg) 14%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, var(--fg) 14%, transparent) 75%); background-size: 12px 12px; background-position: 0 0, 6px 6px; border-radius: 4px; }
+.ef-rows { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.ef-rows .ui-box { flex: none; }
