@@ -11,8 +11,8 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
 | Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **standing by**: lab complete (30 pages, design system v54, layer-reference pages for L2/L3/L6); awaiting the operator's review points. Previous queue: **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); no checkpoints until the lab is complete (operator reviews once at the end); after pass 9: new pages documents.html, events.html, launcher.html, graph.html, stream.html, titlebar.html (operator ask), then passes 10-19, then window transparency | nothing |
 | Nyx Copperwing | Executor | Codex | **W3.2d.7.8 GraphTab**; 7.7 StreamDock ✔ (527dad4: 168/200 current within policy, 32 pixel-only text-edge reviews, geometry 200/200; italic ✔ cfa6328, Flow ✔ 3147921); 7.6b text raster ✔ (270582f: reviews 172→81 of 1,096 current, zero new, geometry 1048/1048, terminal smoke 48/48 identical); 7.6 Launcher ✔ (2bf3601: 144/176, geometry all pass, compact picker 64/64); 7.5 TitleBar ✔ (af73b4f: 0/40), Image element ✔ (362793a); 7.4b ✔ (dc3018d: group opacity, 147→140 reviews, zero new); logged L1 text-raster parity item for after modules (remaining residue is 89–93% inside text); L5 snapshots ✔ (910adfe), kind colours ✔ (a17d912), per-node glow ✔ (4884aa5, 65bd72c), 7.4 Pane+Strip ✔ (5734cc4: 120/136, geometry all pass); 7.3b ✔ (f2961ab: zero geometry failures across 744 current cases; Sidebar 4/72, Style 0/112); 7.0 ✔ (47500ea), 7.3 ✔ (f2f9552: 6/136 pixel-only); 7.2 TabRow+MiniGrid ✔ (6b4f2bc: 0/208 review); 7.1 SeatRow ✔ (f811a9d: geometry all pass, 71/296 pixel-only residue); d.6 ✔ (4bf9d4f: overlays 16/16; L6 complete); d.5 ✔ (dca0a05: 24/32 within policy, 8 Button cases visually equivalent; 1000-row List/Table virtualised); Style 0/88 and components 0/24 after font weights (01edd5f); per-case policy ✔ (3a38388), d.4 matrix 0/24 review after Wren ceafbe8, d.1e withdrawn, then d.6 Button/List/Table/Input; d.1c ✔, kerning ✔ (ef1267c), d.4 ✔ (efacd88: text geometry 1.447→0.015 px); d.1d per-size SVG raster later; d.1 ✔, d.2 ✔, d.1b ✔ (materials 8/32, Style 56/88), d.3 ✔ (cc99459: atoms 103/112, worst 4.09%→1.55%); W3.2c steps 1–3 deferred until L7 modules are re-based | nothing |
-| Rook Ashwhisker | Executor | Codex | **W2.2 logic** (authorized 2026-10-22; Term::resize core addition approved first) | nothing |
-| Sable Embertail | Executor | Codex | R1 ✔ (29d5e62), R2 ✔ (be604d4: native window, 15 seats, idle 0 frames, meter; release encode 33 ms/frame); **R2b encode profile** (read-only) in worktree ~/mydev/bboxy450-term-exec3 (branch exec3), then R2, W1.2, W4.1 | nothing |
+| Rook Ashwhisker | Executor | Codex | **W1.2 byte ring**; W2.2 ✔ (4988ac3 merged: SQLite store/blobs/events, registry, bus on the R1 handle, .bboxy index, seat streams; hard-killed logic reattaches same zsh PID and screen; 155 tests on merge); resize ✔ ffe2fae; vendor lint scope ✔ ae0855d | nothing |
+| Sable Embertail | Executor | Codex | R1 ✔ (29d5e62), R2 ✔ (be604d4: native window, 15 seats, idle 0 frames, meter; release encode 33 ms/frame); **R2b encode profile** (read-only) in worktree ~/mydev/bboxy450-term-exec3 (branch exec3), then R2b, R3/R4, W4.1 | nothing |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
 | subagent provenance | Oracle instrument | Claude | done → `research/provenance-and-documents.md`, decided in `specs/provenance.md` | — |
@@ -42,7 +42,7 @@ W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
 
 W2.1 supervisor + PTY + lease ✔ (Nyx, f6cab17, 12 tests, 50-seat poller)
    ├──▶ W1.2 byte ring [OPEN, claimable]
-   ├──▶ W2.2 logic: store traits, registry, event bus, .bboxy index, state streams [Rook, RUNNING 2026-10-22]
+   ├──▶ W2.2 logic: store, registry, bus, .bboxy index, state streams ✔ (Rook, 4988ac3)
    │       └──▶ W3.4 app GUI client
    └──▶ W2.3 adapters Claude/Codex/zsh [OPEN, claimable]
            ├── needs: osc7501-claude.bin ✔, osc7501-codex.bin ✘ (operator trust)
@@ -62,8 +62,8 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 | State | Items |
 |---|---|
-| RUNNING | 7.8 GraphTab (Nyx); W2.2 (Rook); R2b encode profile (Sable) |
-| OPEN, claimable now | W2.3 (W1.2, W4.1 queued for Sable) |
+| RUNNING | 7.8 GraphTab (Nyx); W1.2 byte ring (Rook); R2b encode profile (Sable) |
+| OPEN, claimable now | W2.3 (W4.1 queued for Sable; W1.2 → Rook) |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
 | NOT YET BRIEFED | W3.3 fx (merged into W3.2c step 3), W3.5 bbt-doc markdown viewer + Mermaid engine ([[document-viewer]]), W2.7 code indexer (tree-sitter code graph, code_search, code_graph), W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |

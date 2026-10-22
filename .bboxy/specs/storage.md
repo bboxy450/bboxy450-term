@@ -39,3 +39,7 @@ Durable Objects storage is SQLite-backed with alarms and single-threaded objects
 - **Gap:** `maxfiles` soft limit 256 on macOS versus one or more open SQLite files per object at 1000 seats; raise the limit at startup or pool connections. Measure in W2.2.
 
 Links: [[state-backend]] [[vision]] [[mux-daemon]] [[messaging]] [[work-items]] [[provenance]] [[mcp-control-plane]]
+
+## Decision 2026-10-22 — graph reads in memory
+
+Measured in W2.2 (`.bboxy/runs/w2-2-measurements.log`, 10k docs / 100k edges): a SQLite recursive CTE reachability takes 42.7–43.2 ms; petgraph in memory takes 3.4–3.6 ms. SQLite stays the durable source of truth. `orient`, `graph_read` and the other graph queries answer from an in-memory petgraph projection, rebuilt from SQLite on start and kept current by the bus.
