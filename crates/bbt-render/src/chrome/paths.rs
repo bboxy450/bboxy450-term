@@ -93,7 +93,7 @@ fn source(points: &[PathCommand]) -> Path {
 }
 /// SVG dash lengths run continuously across flattened cubic segments and reset
 /// at Move. A zero on-length with round caps is a dot, not an infinite loop.
-fn dashed(points: &[PathCommand], dash: &[f32]) -> (Path, Vec<[f32; 2]>) {
+fn dashed(points: &[PathCommand], dash: &[f32]) -> Result<(Path, Vec<[f32; 2]>)> {
     let mut contours: Vec<Vec<[f32; 2]>> = vec![];
     let mut at = [0.; 2];
     for cmd in points {
@@ -125,12 +125,19 @@ fn dashed(points: &[PathCommand], dash: &[f32]) -> (Path, Vec<[f32; 2]>) {
     if pattern.len() % 2 == 1 {
         pattern.extend_from_slice(dash);
     }
+    if pattern.iter().all(|part| *part <= 0.000001) {
+        return Err("dash pattern is below path precision".into());
+    }
     let mut b = Path::builder();
     let mut dots = vec![];
     for contour in contours {
         let mut i = 0;
-        let mut remain = pattern[0];
+        let mut remain = f64::from(pattern[0]);
         let mut open = false;
+        // Preserve the established f32 vertices for already-renderable paths.
+        // A sub-ULP remainder switches this contour to an exact f64 cursor;
+        // it must not append the same vertex forever.
+        let mut precise = false;
         for pair in contour.windows(2) {
             let a = pair[0];
             let z = pair[1];
@@ -138,14 +145,16 @@ fn dashed(points: &[PathCommand], dash: &[f32]) -> (Path, Vec<[f32; 2]>) {
             if len <= f32::EPSILON {
                 continue;
             }
-            let pos = |t: f32| {
+            let pos = |t: f64| {
+                let t = t as f32;
                 [
                     a[0] + (z[0] - a[0]) * t / len,
                     a[1] + (z[1] - a[1]) * t / len,
                 ]
             };
-            let mut t = 0.;
-            while t < len - 0.000001 {
+            let mut t = 0_f64;
+            while t < f64::from(len - 0.000001) {
+                let mut skipped = 0;
                 while remain <= 0.000001 {
                     if i % 2 == 0 && pattern[i] == 0. {
                         dots.push(pos(t));
@@ -155,9 +164,22 @@ fn dashed(points: &[PathCommand], dash: &[f32]) -> (Path, Vec<[f32; 2]>) {
                         open = false;
                     }
                     i = (i + 1) % pattern.len();
-                    remain = pattern[i];
+                    remain = f64::from(pattern[i]);
+                    skipped += 1;
+                    if skipped > pattern.len() {
+                        return Err("dash pattern does not advance".into());
+                    }
                 }
-                let end = (t + remain).min(len);
+                let rounded = ((t as f32 + remain as f32).min(len)) as f64;
+                precise |= rounded <= t;
+                let end = if precise {
+                    (t + remain).min(f64::from(len))
+                } else {
+                    rounded
+                };
+                if end <= t {
+                    return Err("dash cursor does not advance".into());
+                }
                 let p = pos(t);
                 let q = pos(end);
                 if i % 2 == 0 {
@@ -165,9 +187,15 @@ fn dashed(points: &[PathCommand], dash: &[f32]) -> (Path, Vec<[f32; 2]>) {
                         b.begin(point(p[0], p[1]));
                         open = true;
                     }
-                    b.line_to(point(q[0], q[1]));
+                    if !precise || p != q {
+                        b.line_to(point(q[0], q[1]));
+                    }
                 }
-                remain -= (end - t).max(0.);
+                remain = if precise {
+                    remain - (end - t)
+                } else {
+                    f64::from(remain as f32 - (end as f32 - t as f32).max(0.))
+                };
                 t = end;
             }
         }
@@ -175,7 +203,7 @@ fn dashed(points: &[PathCommand], dash: &[f32]) -> (Path, Vec<[f32; 2]>) {
             b.end(false);
         }
     }
-    (b.build(), dots)
+    Ok((b.build(), dots))
 }
 fn tessellate(points: &[PathCommand], stroke: &PathStroke) -> Result<Vec<[f32; 4]>> {
     stroke.validate(points)?;
@@ -183,7 +211,7 @@ fn tessellate(points: &[PathCommand], stroke: &PathStroke) -> Result<Vec<[f32; 4
         return Ok(vec![]);
     }
     let (path, dots) = if stroke.dash.iter().sum::<f32>() > 0. {
-        dashed(points, &stroke.dash)
+        dashed(points, &stroke.dash)?
     } else {
         (source(points), vec![])
     };
@@ -463,6 +491,38 @@ mod tests {
         draw::{Color, DrawList},
         layout::Rect,
     };
+    #[test]
+    fn sub_ulp_dash_remainder_advances_instead_of_repeating_a_vertex() {
+        let points = [
+            PathCommand::Move([0., 0.]),
+            // Exactly 3.999998092651367: leaves a 2^-19 dash remainder.
+            PathCommand::Line([f32::from_bits(0x407f_fff8), 0.]),
+            PathCommand::Line([204., 0.]),
+        ];
+        let (path, dots) = dashed(&points, &[4., 4.]).unwrap();
+        let events: Vec<_> = path.iter().collect();
+        assert!(
+            events.len() < 200,
+            "bounded dash expansion: {}",
+            events.len()
+        );
+        assert!(dots.is_empty());
+        assert!(events.iter().any(
+            |e| matches!(e, lyon_tessellation::path::PathEvent::Line { to, .. } if to.x > 195.)
+        ));
+        assert!(events.iter().all(|e| match e {
+            lyon_tessellation::path::PathEvent::Begin { at } =>
+                at.x.is_finite() && at.y.is_finite(),
+            lyon_tessellation::path::PathEvent::Line { from, to } =>
+                from.x.is_finite() && to.x.is_finite(),
+            _ => true,
+        }));
+    }
+    #[test]
+    fn unrepresentable_pattern_cannot_cycle_through_zero_length_phases() {
+        let points = [PathCommand::Move([0., 0.]), PathCommand::Line([1., 0.])];
+        assert!(dashed(&points, &[0., 0.000_000_1]).is_err());
+    }
     fn path(points: Vec<PathCommand>, stroke: PathStroke) -> Prim {
         Prim::Path {
             origin: [0.; 2],

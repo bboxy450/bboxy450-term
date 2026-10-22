@@ -1,0 +1,43 @@
+ROLE: EXECUTOR — Nyx Copperwing. W3.2d.7.10 support: bounded dash expansion.
+Scope: crates/bbt-render/src/chrome/paths.rs only; terminal text untouched.
+
+Cause: a sub-ULP f32 dash remainder can leave end == t. The old loop appended
+identical vertices forever. One-second sample: documents/iteration-1/sample.txt.
+Exact regression: dash [4,4], first segment f32 bits 0x407ffff8, next to x=204.
+The f64 cursor escapes the non-advancing f32 step; normal vertices retain their
+old f32 arithmetic. A strict progress check and bounded zero-phase skip prevent
+unrepresentable patterns from cycling. No policy or visual tuning changed.
+
+Verification so far (logs under target/bboxybook/documents/):
+cargo test -p bbt-render --lib chrome::paths --locked — exit 0, 5 passed;
+ probe/dash-debug-tests2.log.
+cargo test -p bbt-render --lib chrome::paths --release --locked — exit 0,
+ 5 passed; dash/release-tests.log.
+Gallery replay: dash/regression/status.json — four commands, all exit 0;
+ 1,992/1,992 PNGs present and byte-identical to the prior gallery outputs;
+ 48 accepted path cases included. Worker wall times 1501–1528 s.
+Previously stalled diagram render now exits 0 in 1.482638 s;
+ iteration-2/status.json. Earlier debug/release hangs were interrupted (130/254),
+ not counted as passed checks.
+Scoped all-target clippy — exit 0, probe/clippy-second.log:
+ cargo clippy -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook
+ --all-targets --locked -- -D warnings -A clippy::map_entry
+ -A clippy::chunks_exact_to_as_chunks
+git diff --check — exit 0.
+
+Two shared-tree CI attempts failed on stale/mismatched build artifacts:
+ dash/ci-local.log (bboxybook rustdoc), dash/ci-local-02.log (mux test exports).
+A focused bboxybook doc rebuild passed. Per the new process rule, final CI is
+pending on a clean worktree of the signed support commit with its own target.
+No third shared-tree retry. No claim that CI has passed yet.
+
+Cleanup under the Oracle's existing authorization: superseded own render runs
+only; accepted text-raster/italic/flow galleries remain, as do the 1,992 new dash
+witnesses. Historical evidence is already in w3-2d-7-*.log. Removed:
+ target/bboxybook/alignment-73b
+ target/bboxybook/group-opacity/regression
+ target/bboxybook/graphs/atlas
+ target/bboxybook/graphs/x-height-regression
+ target/bboxybook/italic/regression
+ target/bboxybook/flow/regression
+Free bytes before: 3959218176; after: 5503188992.
