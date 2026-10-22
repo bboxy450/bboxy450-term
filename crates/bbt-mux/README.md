@@ -74,12 +74,32 @@ output interval (64 KiB) and idle delay (200 ms). Checkpoints also follow resize
 exit and at most 256 new capture records, bounding index publication for tiny
 writes. Startup admits a private ring for the seat generation before capture,
 then commits its initial checkpoint. Capture continues while logic is absent.
-W1.2b decouples capture from checkpoint progress. At the hot cap the supervisor
+W1.2b decouples capture from checkpoint progress. At the hot cap the capture writer
 seals the complete CRC-framed file into a content-addressed cold blob and starts
 a new bounded hot file. It never waits for logic or a new checkpoint to keep
 reading. A full notification queue retains only the latest event; logic hydrates
 the skipped capture sequences on resume. The ring-less W2.1 primitive still has
 its original bounded queue behavior; production logic configures the ring.
+
+W1.2c moves record encoding, hot-file IO, group commits, cold hashing/compression
+and sealing onto **one disk writer per supervisor**, shared by all its seats.
+The PTY actor only copies output into a bounded queue. It coalesces short reads
+into at most 16 KiB records, flushing a quiet partial record after 2 ms, before
+resize, or at EOF/exit. A poll deadline drives that flush without sleeping on
+the actor. The queue admits at most 64 MiB per seat, 128 MiB across the
+supervisor and 8192 jobs (including the job currently doing IO); byte charges
+include record headers and checkpoint requests. A full queue is the only
+capture-side backpressure. It wakes the actor when space returns. Notification
+queues still coalesce independently and cannot stop capture. Recovery, history
+and checkpoint requests are also deferred: both local and socket callers wait
+for their reply without stopping PTY reads on the actor. Initial ring admission
+still opens/validates its private directory before installing the writer handle.
+
+`Status.capture` reports cumulative encoding/write/sync/marker/cold durations,
+maximum seal time, queued bytes, peak queued bytes and full-queue episodes.
+Worker failures return an explicit IO error rather than a complete history
+claim; media-failure recovery is outside this pass. The writer is a standard IO
+thread, not another Tokio runtime. Supervisor shutdown drains its queued work.
 
 A record has a fixed 56-byte little-endian header: magic/version/kind, payload
 length, capture sequence, process generation, seat ULID, byte start and CRC32C
@@ -93,11 +113,14 @@ Records are capped at 1 MiB; checkpoints at 128 KiB compressed / 16 MiB decoded;
 viewport dimensions and logical index entries are bounded too.
 
 Capture writes complete records and exposes `captured_sequence` separately from
-the durable `committed_sequence`. Output group commits occur after 64 KiB or on
-the next supervisor tick after 20 ms; resize, exit, checkpoint, sealing and
+the durable `committed_sequence`. The supervisor writer groups output commits
+at 1 MiB or its next 20 ms flush deadline; direct synchronous `Ring` users retain
+the 64 KiB threshold. Resize, exit, checkpoint, sealing and
 supervisor shutdown flush immediately. A flush orders data `sync_all` before the
 CRC-protected marker and marker/directory sync. Capture-owner death may discard
-the uncommitted group; logic restart while the supervisor lives does not.
+the uncommitted group and queued memory; logic restart while the supervisor lives
+does not. A request snapshots the captured cursor after preceding queued work,
+and only a synced marker advances the durable cursor.
 The independently valid previous marker remains. Rotation writes a new file
 first and publishes its marker before retiring
 anything. Recovery rejects uncommitted or torn suffixes, falls back to the
@@ -116,7 +139,7 @@ references remain independently reachable even when their framing is cold.
 
 Recovery validates the descriptor chain, then hydrates and validates segments on
 demand through the same CRC reader as hot records. One decoded segment is cached
-(up to the configured hot-file size); no output-sized memory queue is created.
+(up to the configured hot-file size), separately from the bounded capture queue.
 History pages can span hot and cold without a synthetic eviction gap. Bootstrap
 and sequence-jump recovery coalesce intermediate checkpoint writes into one at
 the recovered tail; ordinary live output retains its configured checkpoint
@@ -311,12 +334,22 @@ socket and verifies the same live zsh PID and exact screen. W1.2 adds red-SGR
 restore, incomplete parser checkpoints, torn suffix/CRC rejection, hot rollover
 with cold history, 10k-line history roundtrip and cell-for-cell replay checks.
 The W1.2b live test completes a 20 MiB writer while logic is stopped and a
-notification queue is unread, logs total/max write latency before restart, then
+notification queue is unread, logs total/max/p99 write latency before restart, then
 checks the complete output digest and red tail after cold replay without a gap.
 Another test stalls a live logic receiver and verifies sequence-jump catch-up.
 Group-commit recovery and rejection of corrupt sealed payloads are covered too.
 Idle checkpoint/index publication is also tested. The viewport test
 also checks a metadata-only palette/cursor delta and flattened wire format.
+A gated-writer fault fixture verifies nonblocking admission, an exact byte cap,
+one full-queue episode and complete durable replay after the writer resumes.
+The explicit optimized performance gate writes 128 MiB (twice the per-seat
+queue budget) with logic stopped and running, asserts max write ≤50 ms and
+both writer/durable throughput ≥30 MiB/s, and verifies tail recovery without
+a gap and the same child PID:
+
+```sh
+cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+```
 
 Run the two finite measurements explicitly:
 
@@ -334,7 +367,8 @@ Measured locally on 2026-10-22 (no OS limit changes):
   harness wake, network or GUI load measurement.
 
 Actual command output, failures/corrections and acceptance pointers live in
-`.bboxy/runs/w2-2-*.log`; W1.2 output is in `.bboxy/runs/w1-2-*.log`; W2.1's earlier evidence is in `.bboxy/runs/w2-1-*.log`.
+`.bboxy/runs/w2-2-*.log`; W1.2 output is in `.bboxy/runs/w1-2-*.log`, capture
+profiles/performance in `.bboxy/runs/w1-2c-*.log`; W2.1's earlier evidence is in `.bboxy/runs/w2-1-*.log`.
 Not validated: real power loss, supervisor restart, native harness input or
 state integrations, cloud/SSH, account grants, production key custody, 1000
 running seats, macOS 14/Linux/mobile, hosted CI or renderer parity. No user

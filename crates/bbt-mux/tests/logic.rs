@@ -531,12 +531,14 @@ import os, time, json
 os.write(1, b'BEFORE\n')
 while not os.path.exists(os.environ['BBOXY_TEST_GATE']): time.sleep(0.005)
 remaining=int(os.environ['BBOXY_TEST_BYTES']); total=remaining
-chunk=b'x'*65536; max_write=0.0; calls=0; started=time.perf_counter()
+chunk=b'x'*65536; latencies=[]; calls=0; started=time.perf_counter()
 while remaining:
     before=time.perf_counter(); n=os.write(1, chunk[:min(remaining,len(chunk))])
-    max_write=max(max_write,time.perf_counter()-before); remaining-=n; calls+=1
-os.write(1,b'\x1b[31mRING-TAIL\x1b[0m\n')
-stats={'bytes':total,'elapsed_s':time.perf_counter()-started,'max_write_s':max_write,'calls':calls}
+    latencies.append(time.perf_counter()-before); remaining-=n; calls+=1
+before=time.perf_counter(); os.write(1,b'\x1b[31mRING-TAIL\x1b[0m\n')
+latencies.append(time.perf_counter()-before); calls+=1
+elapsed=time.perf_counter()-started; latencies.sort()
+stats={'bytes':total,'elapsed_s':elapsed,'max_write_s':max(latencies),'p99_write_s':latencies[max(0,(len(latencies)*99+99)//100-1)],'mib_s':total/(1024*1024)/elapsed,'calls':calls}
 path=os.environ['BBOXY_TEST_STATS']
 with open(path+'.tmp','w') as f: json.dump(stats,f)
 os.replace(path+'.tmp',path)
@@ -634,6 +636,7 @@ fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_the
         assert!(!status.paused);
         assert!(status.hot_bytes <= config.ring.capacity_bytes);
         if status.byte_end == raw_size as u64 {
+            println!("capture profile BEFORE logic restart: {:?}", status.capture);
             break;
         }
         assert!(Instant::now() < until, "final capture bytes unavailable");
@@ -736,7 +739,9 @@ fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_the
     }
     expected.update(b"\x1b[31mRING-TAIL\x1b[0m\r\n");
     assert_eq!(count, raw_size);
-    assert_eq!(hash.finalize(), expected.finalize());
+    let actual = hash.finalize();
+    assert_eq!(actual, expected.finalize());
+    println!("complete raw capture: {count} bytes, SHA-256 {actual:x}, no gap");
     logic.shutdown().unwrap();
     let Reply::Seats { seats } = supervisor
         .connect()
@@ -855,4 +860,140 @@ fn ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshol
         std::thread::sleep(Duration::from_millis(10));
     }
     logic.shutdown().unwrap();
+}
+
+/// Run alone in an optimized build: this is a measured IO acceptance gate,
+/// rather than a timing assertion imposed on a contended debug CI runner.
+#[test]
+#[ignore = "cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1"]
+fn ring_capture_throughput_with_logic_running_and_stopped() {
+    for running in [false, true] {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime = runtime();
+        let supervisor = Supervisor::start(Config::default()).unwrap();
+        let config = fixture(temp.path());
+        let key = SigningKey::from_bytes(&[29; 32]);
+        let initial = Logic::start(
+            supervisor.connect().unwrap(),
+            config.clone(),
+            key.clone(),
+            runtime.handle(),
+        )
+        .unwrap();
+        let size = 128 * 1024 * 1024;
+        let spec = ring_writer(temp.path(), size);
+        let seat = spec.seat;
+        let info = runtime
+            .block_on(initial.client.spawn(
+                SeatRecord::new(seat, Ulid::new(), "throughput", "python"),
+                spec,
+            ))
+            .unwrap();
+        wait_for_prefix(&runtime, &initial, seat);
+        let (mut logic, stalled) = if running {
+            (Some(initial), None)
+        } else {
+            initial.shutdown().unwrap();
+            let client = supervisor.connect().unwrap();
+            let attachment = client.attach(seat, 1).unwrap();
+            (None, Some((client, attachment)))
+        };
+        let start = Instant::now();
+        std::fs::write(temp.path().join("gate"), b"go").unwrap();
+        let until = Instant::now() + Duration::from_secs(60);
+        while !temp.path().join("writer.json").exists() {
+            assert!(
+                Instant::now() < until,
+                "writer blocked, logic running={running}"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let stats: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(temp.path().join("writer.json")).unwrap())
+                .unwrap();
+        println!("128 MiB logic running={running} writer: {stats}");
+        let raw_size = size + 8 + b"\x1b[31mRING-TAIL\x1b[0m\r\n".len();
+        let status = loop {
+            let status = if let Some(logic) = &logic {
+                runtime
+                    .block_on(logic.client.history(seat, 1, 1, 1))
+                    .unwrap()
+                    .status
+            } else {
+                let (client, attachment) = stalled.as_ref().unwrap();
+                let Reply::RingRecovery { status, .. } = client
+                    .request(Action::RingRecovery {
+                        attachment: attachment.clone(),
+                    })
+                    .unwrap()
+                else {
+                    panic!()
+                };
+                status
+            };
+            if status.byte_end == raw_size as u64
+                && status.committed_sequence == status.captured_sequence
+            {
+                break status;
+            }
+            assert!(Instant::now() < until, "durable capture failed to catch up");
+            std::thread::sleep(Duration::from_millis(5));
+        };
+        let elapsed = start.elapsed();
+        let durable_mib_s = 128.0 / elapsed.as_secs_f64();
+        println!(
+            "128 MiB logic running={running} durable capture: {elapsed:?}, {durable_mib_s:.3} MiB/s; {:?}",
+            status.capture
+        );
+        assert!(
+            stats["max_write_s"].as_f64().unwrap() <= 0.050,
+            "max write target"
+        );
+        assert!(
+            stats["mib_s"].as_f64().unwrap() >= 30.0,
+            "writer throughput target"
+        );
+        assert!(durable_mib_s >= 30.0, "durable throughput target");
+        assert_eq!(
+            status.capture.queue_full_count, 0,
+            "queue exhausted during acceptance"
+        );
+        assert!(status.capture.peak_queue_bytes <= 64 * 1024 * 1024);
+        if let Some(logic) = logic.take() {
+            logic.shutdown().unwrap();
+        }
+        let client = if let Some((client, _)) = stalled {
+            client
+        } else {
+            supervisor.connect().unwrap()
+        };
+        let restart = Instant::now();
+        let recovered = Logic::start(client, config, key, runtime.handle()).unwrap();
+        println!(
+            "128 MiB logic running={running} replay startup: {:?}",
+            restart.elapsed()
+        );
+        let snapshot = runtime
+            .block_on(recovered.client.snapshot(seat, 1))
+            .unwrap();
+        let text: String = snapshot
+            .screen
+            .cells
+            .iter()
+            .flatten()
+            .map(|c| c.c)
+            .collect();
+        assert!(text.contains("RING-TAIL"));
+        assert!(snapshot.screen.gap.is_none());
+        recovered.shutdown().unwrap();
+        let Reply::Seats { seats } = supervisor
+            .connect()
+            .unwrap()
+            .request(Action::ListOwnedSeats)
+            .unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(seats[0].pid, info.pid);
+    }
 }

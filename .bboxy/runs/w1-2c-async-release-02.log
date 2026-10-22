@@ -1,0 +1,21 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 13.89s
+     Running tests/logic.rs (target/release/deps/logic-8257938323080c77)
+
+running 1 test
+20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":320,"elapsed_s":0.37687958299648017,"max_write_s":0.00638087498373352,"mib_s":53.06734803988251,"p99_write_s":0.005329999985406175}
+capture profile BEFORE logic restart: CaptureStats { records: 1286, encode_ns: 47458592, hot_write_ns: 12600151, sync_ns: 85113000, marker_ns: 184889001, cold_ns: 120336542, seals: 5, max_seal_ns: 50974542, queued_bytes: 0, peak_queue_bytes: 6105440, queue_full_count: 0 }
+cold replay 155.045125ms: 4194304 bytes, reads 117.868713ms, checkpoint writes 0ns
+cold replay 280.698ms: 8403968 bytes, reads 214.215917ms, checkpoint writes 0ns
+cold replay 469.6015ms: 12598272 bytes, reads 374.552246ms, checkpoint writes 0ns
+cold replay 637.346458ms: 16784384 bytes, reads 507.96712ms, checkpoint writes 0ns
+cold replay 724.403208ms: 20971540 bytes, reads 564.938578ms, checkpoint writes 0ns
+20 MiB cold replay startup: 755.110458ms
+cold replay 3.980810125s: 25165852 bytes, reads 683.436122ms, checkpoint writes 24.926667ms
+cold replay 7.179704042s: 29375516 bytes, reads 784.269578ms, checkpoint writes 24.926667ms
+cold replay 10.380619042s: 33569820 bytes, reads 881.947316ms, checkpoint writes 24.926667ms
+cold replay 13.574694083s: 37755932 bytes, reads 987.45898ms, checkpoint writes 24.926667ms
+cold replay 16.749724s: 41943088 bytes, reads 1.062973566s, checkpoint writes 24.926667ms
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 17.44s

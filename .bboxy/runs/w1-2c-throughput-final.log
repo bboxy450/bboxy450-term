@@ -1,0 +1,14 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 16.31s
+     Running tests/logic.rs (target/release/deps/logic-8257938323080c77)
+
+running 1 test
+test ring_capture_throughput_with_logic_running_and_stopped ... 128 MiB logic running=false writer: {"bytes":134217728,"calls":2049,"elapsed_s":2.376689833996352,"max_write_s":0.012796583003364503,"mib_s":53.856417513584766,"p99_write_s":0.004724375001387671}
+128 MiB logic running=false durable capture: 3.217054625s, 39.788 MiB/s; CaptureStats { records: 8220, encode_ns: 301041011, hot_write_ns: 69074423, sync_ns: 501649835, marker_ns: 1062502791, cold_ns: 810897251, seals: 32, max_seal_ns: 59615958, queued_bytes: 0, peak_queue_bytes: 34105500, queue_full_count: 0 }
+128 MiB logic running=false replay startup: 3.903827042s
+128 MiB logic running=true writer: {"bytes":134217728,"calls":2049,"elapsed_s":2.253722458000994,"max_write_s":0.012443583022104576,"mib_s":56.79492589940885,"p99_write_s":0.004570291988784447}
+128 MiB logic running=true durable capture: 3.453548291s, 37.063 MiB/s; CaptureStats { records: 8220, encode_ns: 296623090, hot_write_ns: 70367271, sync_ns: 530851954, marker_ns: 1101576625, cold_ns: 864554917, seals: 32, max_seal_ns: 71177875, queued_bytes: 0, peak_queue_bytes: 47306764, queue_full_count: 0 }
+128 MiB logic running=true replay startup: 5.223064833s
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 16.10s

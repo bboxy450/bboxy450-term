@@ -1,0 +1,46 @@
+W1.2c — measured capture latency and throughput, 2026-10-22
+
+Scope: crates/bbt-mux/** and .bboxy/runs/w1-2c-*.log. No dependency or lock changes.
+Role: Rook Ashwhisker <EXECUTOR>. No push; Oracle integrates and reviews.
+
+Measured before changing the capture path
+- cargo test -p bbt-mux --locked --test logic ring_seals_twenty -- --nocapture — exit 0, w1-2c-baseline-debug.log. 20 MiB: 8.596589 s, 2.326504 MiB/s, max write 384.313 ms, p99 290.818 ms. Of this: encode 1.382 s, hot writes 0.630 s, sync 1.243 s, marker/retirement 2.696 s, cold sealing 1.241 s. 20,484 records; max seal 345.524 ms.
+- Same command with --release — exit 0, w1-2c-baseline-release.log. 20 MiB: 5.348047 s, 3.739683 MiB/s, max 66.126 ms, p99 51.456 ms. Encode 0.109 s, hot writes 0.540 s, sync 1.241 s, markers 2.562 s, cold 0.122 s. Hot sync/markers dominate (3.803 s); sealing alone was not the throughput cause. These phase timers are disjoint except max_seal, which is inclusive. Remaining wall time includes actor/syscall/rotation work.
+
+Mechanisms
+crates/bbt-mux/src/ring/writer.rs:16 — per-seat 64 MiB, global 128 MiB and 8192-job limits; bytes include headers and checkpoint payloads, including work currently doing IO. Queue metadata and allocator overhead are additional bounded memory.
+crates/bbt-mux/src/ring/writer.rs:86 — one standard disk writer thread per supervisor, no additional Tokio runtime or per-seat thread. It owns the disk Rings, encoding/CRC, file appends, group commit, cold compression/hashing/fsync and checkpoint/history IO.
+crates/bbt-mux/src/ring/writer.rs:101 — worker hot groups at 1 MiB, plus 20 ms flush deadline; controls, checkpoints, sealing and shutdown commit. Direct synchronous Ring users keep 64 KiB groups. The hot append descriptor is reused.
+crates/bbt-mux/src/ring/writer.rs:144 — nonblocking admission and full-queue episode counter. The short mutex protects metadata only, never disk IO. The worker wakes the actor after releasing queue capacity.
+crates/bbt-mux/src/supervisor.rs:422 — local and Unix-socket recovery/history/checkpoint requests are deferred, with a bounded pending-reply list; caller waiting does not stop the PTY actor. Authorization/generation/writer checks happen before enqueueing; checkpoint acknowledgements follow the worker's durable publication.
+crates/bbt-mux/src/supervisor.rs:1195 — at most 16 KiB buffered output, 2 ms quiet deadline, flush before resize and at EOF/exit. This coalesces Darwin's short PTY reads while retaining ordering. The actor only reads/copies/queues; a full capture queue is its sole live-capture backpressure. Notification coalescing remains independent.
+crates/bbt-mux/src/ring.rs:32 — phase timings, peak/current queue bytes and full-queue episodes on Status.capture. CRC32C table replaces the bitwise loop without changing the framing/checksum format. Committed and captured cursors remain distinct; a request observes preceding queued records, not future arrivals.
+
+Acceptance: actual optimized 128 MiB gate (twice the per-seat queue budget)
+Command: cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1 — exit 0, w1-2c-throughput-final.log, two modes in one test.
+Fixture: Python os.write, 2048 x 64 KiB repeated ASCII x plus the timed red tail (2049 timed calls), before/after markers. Raw data is synthetic/compressible; these are local measurements, not guarantees for all disks or workloads. p99 uses nearest rank over timed calls. Durable MiB/s includes draining the writer and observing a synced marker through the complete tail, so memory buffering cannot alone pass.
+Logic stopped: writer 53.856418 MiB/s, max 12.796583 ms, p99 4.724375 ms; durable 39.788 MiB/s over 3.217055 s. Peak queue 34,105,500 bytes; full episodes 0. Replay startup 3.903827 s.
+Logic running: writer 56.794926 MiB/s, max 12.443583 ms, p99 4.570292 ms; durable 37.063 MiB/s over 3.453548 s. Peak queue 47,306,764 bytes; full episodes 0. Replay startup 5.223065 s.
+Both modes assert max <=50 ms, writer and durable >=30 MiB/s, bounded queue, recovered red tail with no gap, same child PID. The running case keeps logic alive during capture; it may catch up asynchronously. No capture loss or implicit respawn.
+An earlier 128 MiB run also passed both modes (w1-2c-throughput-01.log); final output above includes tail-write latency and the final queue implementation. No rejected optimized performance run was discarded.
+
+Correctness and checks
+crates/bbt-mux/src/ring/writer.rs:358 — deliberately stalled IO worker: enqueue stays under 50 ms, the actual admission path stops at its reduced fault-fixture byte cap, records one full episode, resumes, then durably reopens with every byte and no gap.
+crates/bbt-mux/tests/logic.rs:563 — 20 MiB with logic stopped and unread notification queue; paginated full-history SHA-256 matches 77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb, 20,971,548 raw bytes, red tail, no gap, same PID.
+crates/bbt-mux/tests/logic.rs:869 — explicit optimized throughput gate, excluded from ordinary contended debug CI; correctness tests still run there.
+cargo test -p bbt-mux --locked -- --nocapture — exit 0, w1-2c-regression-final.log: 52 passed, 4 ignored (optimized gate, separately invoked hard-kill child fixture, two unrelated finite measurements). The expected/caught UI-thread guard panic is a passing test. Includes 11 adapters, 9 logic, 9 ring, 9 store/bus/index, 10 supervisor, 3 unit/codec/writer and 1 UI guard.
+cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit 0, w1-2c-clippy-final.log.
+cargo build --workspace --locked — exit 0, w1-2c-workspace-build.log.
+cargo fmt -p bbt-mux -- --check — exit 0, w1-2c-fmt.log.
+git diff --check -- crates/bbt-mux — exit 0, w1-2c-whitespace.log.
+
+Failed/corrected attempts retained
+w1-2c-check-01.log: first check exit 101 (borrow across writer registration); reacquired the seat after registration.
+w1-2c-clippy-01.log: exit 101 (test-module ordering and constant build-mode assertion); moved the helper before tests and removed the redundant build-mode assertion.
+w1-2c-async-debug-01.log: correctness command exit 0, but timing still missed the target (14.40 MiB/s, max 296.96 ms); 1761 job-bound full episodes with 1 KiB records. Added bounded cross-tick 16 KiB coalescing. This explains the added batching rather than attributing all gain to the writer thread.
+The baseline and intermediate output files remain for comparison. Earlier successful full/filter checks are retained too.
+
+Limits / deliberately untouched
+Only live capture IO moved: initial ring admission still validates/opens the private directory on the supervisor actor. Public Client/Logic APIs, wire actions, R1 runtime ownership, adapters and consumer-side R3 code are unchanged. Media faults remain explicit IO failures; recovery from disk-full/device failure and strict power-cut/F_FULLFSYNC ordering were not tested. A bounded full queue can backpressure a writer; both 128 MiB acceptance modes recorded zero full episodes. No total cold quota is introduced. Supervisor death can discard queued/uncommitted data and still kills its PTYs; logic death while the supervisor lives does not.
+No 1000-seat, multi-minute, noncompressible-data, real harness, UI/render, macOS14/Linux or hosted-CI performance claim. The 128 MiB test checks tail/no-gap/PID; complete bytewise history hashing is the separate 20 MiB test. Retained cold descriptors still grow with history.
+Shared peer UI/lab work remains untouched. Sync attempts: git pull --ff-only (and per-call pull.rebase=false variant) refused unstaged shared edits; fetch succeeded, merge --ff-only later returned exit 128 (w1-2c-sync.log) while shared refs changed. No stash, reset, rebase, conflict resolution or non-FF merge was performed. Final signed SHA/scope are in the ICQ handoff.
