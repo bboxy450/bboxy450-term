@@ -19,13 +19,13 @@
 | I2 | identity.md rewrite on the GPG root | Nyx DONE, accepted | DONE |
 | W3.1 | [[2026-10-21-w3-1-renderer-harness]] headless render harness, smoke, first text | Nyx DONE, verified: fcc8eca, 5 tests, 48 PNGs, CI green | DONE |
 | W2.1 | [[2026-10-21-w2-1-mux-supervisor]] supervisor, PTYs, lease protocol | Nyx DONE, verified: f6cab17, 12 tests | DONE |
-| W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | Rook Ashwhisker <EXECUTOR> | DONE ✔ 4988ac3 |
+| W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | Rook Ashwhisker <EXECUTOR> | RUNNING |
 | W2.3 | [[2026-10-21-w2-3-adapters-claude-codex-zsh]] adapters: Claude, Codex, zsh | free Executor | OPEN (claimable) |
 | W3.2a | [[2026-10-21-w3-2a-ui-model]] ui-model: tokens, model types, layout engine | Nyx DONE, verified: 28 tests, no runtime deps | DONE |
 | W3.2b | [[2026-10-21-w3-2b-bboxybook]] bboxybook: draw atoms, chrome pass, modules, native storybook with parity | Nyx DONE at checkpoint ef6c7ff | DONE |
 | W3.2c | [[2026-10-21-w3-2c-fixtures-input-fx]] shared fixtures ✔; input/focus, launcher, signals→fx | step 0 DONE (Nyx); steps 1–3 deferred after W3.2d modules | PARTIAL |
 | W4.1 | [[2026-10-21-w4-1-transport-trait]] Transport trait, loopback, quinn endpoint auth | free Executor | OPEN |
-| W2.2 | [[2026-10-21-w2-2-logic-bus-index]] logic: store traits, registry, event bus, .bboxy index, state streams | Rook Ashwhisker <EXECUTOR> | RUNNING |
+| W2.2 | [[2026-10-21-w2-2-logic-bus-index]] logic: store traits, registry, event bus, .bboxy index, state streams | Rook Ashwhisker <EXECUTOR> | DONE ✔ 4988ac3 (merged 8484e0a) |
 | R1–R5 | [[2026-10-22-r-runtime]] runtime: async IO off the UI thread, 120 Hz ([[runtime]]) | Sable Embertail <EXECUTOR> | R1 ✔ 29d5e62; R2 ✔ be604d4; R2b profile RUNNING |
 | W3.2d | [[2026-10-21-w3-2d-component-library]] bbt-ui layer cake: d.1 materials → d.7+ modules | Nyx Copperwing <EXECUTOR>, from d.1 | ASSIGNED |
 
