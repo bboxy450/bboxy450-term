@@ -1,0 +1,32 @@
+# R2 evidence — Sable Embertail <EXECUTOR>
+
+Assigned by Vesper after R1 acceptance. Only exec3 was written. Expanded whitelist: app, bbt-rt, Cargo.lock, scripts/ui-lint.sh and r2 run logs/PNGs. No task/graph edits, push or merge.
+
+## Mechanisms by path
+- crates/bboxy450-term/Cargo.toml:10 — app dependencies; winit =0.30.13 and wgpu =30.0.1 match bboxybook. Cargo.lock adds the app dependency list only.
+- crates/bboxy450-term/build.rs:1 — existing lab SVG icon generator copied from read-only bboxybook, with a reasoned build-time-only IO lint exception. No runtime asset files.
+- crates/bboxy450-term/src/assets.rs:1 — decode baked icons/existing identity PNG from embedded bytes on IO.
+- crates/bboxy450-term/src/main.rs:67 — winit window/surface; shared-runtime async GPU/text preparation; :120 bounded 1ms frame-start drain; :157 memory-only scene layout/paint and on-demand submission; :230 ten-second idle probe; :290 physical Cmd+Opt+F key.
+- crates/bboxy450-term/src/scene.rs:29 — retained font measurements; :94 embedded scene-15 seats/tree; :150 fake row state; :176 native Sidebar/TabRow/TitleBar/Pane compositions and solved full pane heights; :260 paint/overlay.
+- crates/bboxy450-term/src/gpu.rs:69 — IO-side compatible Metal adapter/device, Fifo/latency 2; :152 first-use preparation; :173 surface acquire/present timings; :239 ordered chrome/material/group encoding, batching adjacent draw operations without crossing materials/groups.
+- crates/bboxy450-term/src/log.rs:14 — bounded memory-only UI logger; async stderr writes and flush-before-smoke-exit.
+- crates/bboxy450-term/src/capture.rs:6 — optional exact submitted-composition capture: UI queues texture copy only; blocking-pool GPU poll and PNG encoding, then async file write off UI.
+- crates/bbt-rt/src/meter.rs:46 — 1024 interval/per-phase samples, lifetime count, CPU percentile and over-budget phase; idle gaps are not CPU hitches. lib.rs exports; README documents.
+- scripts/ui-lint.sh:1 — hard gate scoped to the three named UI libraries and app.
+- crates/bboxy450-term/README.md:1 — run/verification flags, integration and explicit R3/R4/R5 limits.
+- .bboxy/runs/r2-commands.log — build, Clippy/test and check commands with actual output/exits; r2-ui-io-lint.log holds existing violations; four smoke logs retain initial failure and correction evidence.
+
+## Acceptance
+1. cargo build -p bboxy450-term --locked — exit 0. Native CUA opened local target/debug/bboxy450-term.app (same successfully built binary) and read the rendered fifteen-pane window.
+2. Final target/debug/bboxy450-term --smoke --meter --capture .bboxy/runs/r2-scene15.png — exit 0. r2-smoke-verified.log: Apple M4; 20 updates; last_update=20; 10.002s measured idle with 0 frames. 19 frame samples. CPU p50=59.660ms, p99=63.584ms; drain ~0.003ms, layout ~19ms, encode ~40ms, present wait ~0.15ms. These do not meet R5's 4ms CPU target; not claimed as 120Hz.
+3. .bboxy/runs/r2-scene15.png — 1600x960, SHA256 ac58da8ce68c8e0057e3b0deced6d6edd4d56b39fa6316aeb842d8c65ecf70ed. It is the exact GPU composition copied after update 20, not an OS desktop grab. view_image inspected it: full fifteen-pane split, native sidebar/title bar, runtime update 20 and meter. Independent CUA screenshot inspected the same native app and confirmed corrected pane heights; clicking its window then super+alt+f visibly toggled the overlay on. Quit only the own inspection app through its menu.
+4. cargo test -p bbt-rt --locked — exit 0; one meter unit test + eight existing runtime integration tests, all passed.
+5. cargo clippy -p bboxy450-term -p bbt-rt --locked --all-targets --no-deps -- -D warnings — exit 0, app/runtime clean.
+6. scripts/ui-lint.sh — exit 101 at three existing bbt-ui-model/build.rs IO calls (:139/:141/:149). Full warning-mode four-crate scan — exit 0; unchanged 11 disallowed calls plus renderer map_entry warning, app adds none. Existing renderer points: chrome/mod.rs:40/:584/:593; headless.rs:45/:286/:295/:415/:417; map_entry at :364. Read-only sources deliberately not fixed.
+7. cargo fmt -p bbt-rt -p bboxy450-term and git diff --check — exit 0.
+
+## Corrections and limits
+Initial native smoke failed: uncached font measurement/unbatched chrome encoding took seconds and the timer started before the UI received its idle boundary. Retained measurements, IO-side first-use preparation and adjacent draw batching removed the seconds-long setup from UI; idle timing now starts on UI after update 20 is actually presented. Later visual inspection caught short Pane bodies and Option-F logical text; solved height and physical key corrected both. Earlier compile/verification failures remain in logs.
+
+Untouched: bbt-render, bbt-ui, bbt-ui-model, bboxybook, core/mux, main worktree, clippy.toml, task/graph files and other agents' changes. W1.2/W4.1 not started.
+Not checked: R5 stall load or its CPU/input latency goal; 120Hz/display link/GPU duration; parser pool/PTYS; Linux; close/undo/actions; sustained command/terminal views; hidden/minimized/window-loss behavior; resize matrices; hosted CI or power-loss recovery. Surfaces are shown with the app's frozen effect clock; active animation is R4. The local .app is an inspection build artifact only, not a release.

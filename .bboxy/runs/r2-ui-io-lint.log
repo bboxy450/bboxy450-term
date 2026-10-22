@@ -1,0 +1,179 @@
+
+$ scripts/ui-lint.sh
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+error: use of a disallowed method `std::fs::read_to_string`
+   --> crates/bbt-ui-model/build.rs:139:47
+    |
+139 |     let tokens: toml::Value = toml::from_str(&fs::read_to_string(tokens_path)?)?;
+    |                                               ^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+    = note: requested on the command line with `-D clippy::disallowed-methods`
+
+error: use of a disallowed method `std::fs::read_to_string`
+   --> crates/bbt-ui-model/build.rs:141:46
+    |
+141 |     let style: Value = serde_json::from_str(&fs::read_to_string(style_path)?)?;
+    |                                              ^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::write`
+   --> crates/bbt-ui-model/build.rs:149:5
+    |
+149 |     fs::write(
+    |     ^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: could not compile `bbt-ui-model` (build script) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+exit: 101
+
+$ cargo clippy -p bbt-ui-model -p bbt-ui -p bbt-render -p bboxy450-term --locked -- -W clippy::disallowed_methods
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+warning: use of a disallowed method `std::fs::read_to_string`
+   --> crates/bbt-ui-model/build.rs:139:47
+    |
+139 |     let tokens: toml::Value = toml::from_str(&fs::read_to_string(tokens_path)?)?;
+    |                                               ^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+    = note: requested on the command line with `-W clippy::disallowed-methods`
+
+warning: use of a disallowed method `std::fs::read_to_string`
+   --> crates/bbt-ui-model/build.rs:141:46
+    |
+141 |     let style: Value = serde_json::from_str(&fs::read_to_string(style_path)?)?;
+    |                                              ^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+warning: use of a disallowed method `std::fs::write`
+   --> crates/bbt-ui-model/build.rs:149:5
+    |
+149 |     fs::write(
+    |     ^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+warning: `bbt-ui-model` (build script) generated 3 warnings
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+warning: use of a disallowed method `pollster::block_on`
+  --> crates/bbt-render/src/chrome/mod.rs:40:28
+   |
+40 |         Self::with_context(pollster::block_on(DeviceContext::new())?, images)
+   |                            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: UI must not block on async IO
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+   = note: requested on the command line with `-W clippy::disallowed-methods`
+
+warning: use of a disallowed method `std::sync::mpsc::SyncSender::send`
+   --> crates/bbt-render/src/chrome/mod.rs:584:24
+    |
+584 |             let _ = tx.send(r);
+    |                        ^^^^
+    |
+    = note: UI must use try_send
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+warning: use of a disallowed method `std::sync::mpsc::Receiver::recv_timeout`
+   --> crates/bbt-render/src/chrome/mod.rs:593:12
+    |
+593 |         rx.recv_timeout(Duration::from_secs(20))
+    |            ^^^^^^^^^^^^
+    |
+    = note: UI must use try_recv
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+warning: use of a disallowed method `pollster::block_on`
+  --> crates/bbt-render/src/headless.rs:45:23
+   |
+45 |         let context = pollster::block_on(DeviceContext::new())?;
+   |                       ^^^^^^^^^^^^^^^^^^
+   |
+   = note: UI must not block on async IO
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+warning: use of a disallowed method `std::sync::mpsc::SyncSender::send`
+   --> crates/bbt-render/src/headless.rs:286:28
+    |
+286 |                 let _ = tx.send(result);
+    |                            ^^^^
+    |
+    = note: UI must use try_send
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+warning: use of a disallowed method `std::sync::mpsc::Receiver::recv_timeout`
+   --> crates/bbt-render/src/headless.rs:295:12
+    |
+295 |         rx.recv_timeout(Duration::from_secs(20))
+    |            ^^^^^^^^^^^^
+    |
+    = note: UI must use try_recv
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+warning: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:364:13
+    |
+364 | /             if !cache.contains_key(&ch) {
+365 | |                 let glyph = match font.rasterize(ch)? {
+366 | |                     Some(raster) => Some(PlacedGlyph {
+367 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+373 | |                 cache.insert(ch, glyph);
+374 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `#[warn(clippy::map_entry)]` on by default
+help: try
+    |
+364 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+365 +                 let glyph = match font.rasterize(ch)? {
+366 +                     Some(raster) => Some(PlacedGlyph {
+367 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+368 +                         left: raster.left,
+369 +                         top: raster.top,
+370 +                     }),
+371 +                     None => None,
+372 +                 };
+373 +                 e.insert(glyph);
+374 +             }
+    |
+
+warning: use of a disallowed method `std::fs::create_dir_all`
+   --> crates/bbt-render/src/headless.rs:415:9
+    |
+415 |         std::fs::create_dir_all(parent).map_err(|e| RenderError(e.to_string()))?;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+warning: use of a disallowed method `std::fs::File::create`
+   --> crates/bbt-render/src/headless.rs:417:16
+    |
+417 |     let file = std::fs::File::create(path).map_err(|e| RenderError(e.to_string()))?;
+    |                ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+warning: `bbt-render` (lib) generated 9 warnings (run `cargo clippy --fix --lib -p bbt-render -- -W clippy::disallowed_methods` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.33s
+
+exit: 0

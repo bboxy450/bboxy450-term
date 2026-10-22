@@ -119,6 +119,19 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 [[package]]
 name = "bboxy450-term"
 version = "0.0.1"
+dependencies = [
+ "bbt-render",
+ "bbt-rt",
+ "bbt-ui",
+ "bbt-ui-model",
+ "png",
+ "regex",
+ "resvg",
+ "serde_json",
+ "tokio",
+ "wgpu",
+ "winit",
+]
 
 [[package]]
 name = "bboxybook"
