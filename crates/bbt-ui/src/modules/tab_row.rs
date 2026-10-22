@@ -54,8 +54,25 @@ fn box_row(s: ui::Style, gap: f32, children: Vec<c::Item>) -> c::Element {
     b.gap = ui::Length::Px(gap);
     c::Element::Box(b)
 }
+fn inset(element: c::Element, margin: f32) -> c::Element {
+    if margin == 0. {
+        element
+    } else {
+        let mut b = c::Box::new(style(None, [0., margin, 0., margin]), vec![element.into()]);
+        b.direction = Axis::Column;
+        b.gap = ui::Length::Px(0.);
+        b.align = c::Alignment::Stretch;
+        c::Element::Box(b)
+    }
+}
 impl TabRow {
-    fn seat_body(&self, index: usize, shortcut: bool, ctx: ui::Context) -> Vec<c::Item> {
+    fn seat_body(
+        &self,
+        index: usize,
+        shortcut: bool,
+        ctx: ui::Context,
+        margin: f32,
+    ) -> Vec<c::Item> {
         let source = &self.seats[index];
         let mut row = source.row.clone();
         row.focused = self.focused_key.as_deref() == Some(&row.key);
@@ -65,9 +82,13 @@ impl TabRow {
             None
         };
         let prefix = format!("seat{index}/");
-        let mut head = row.element(ctx);
+        let mut head = if margin > 0. {
+            row.element_with_radius(ctx, bbt_ui_model::STYLE.radius.badge as f32)
+        } else {
+            row.element(ctx)
+        };
         c::namespace(&mut head, &prefix);
-        let mut out = vec![head.into()];
+        let mut out = vec![inset(head, margin).into()];
         for (i, child) in source.children.iter().enumerate() {
             let mut child = child.clone();
             c::namespace(&mut child, &format!("seat{index}/child{i}/"));
@@ -76,6 +97,12 @@ impl TabRow {
         out
     }
     pub fn element(&self, ctx: ui::Context) -> c::Element {
+        self.element_with_margin(ctx, 0.)
+    }
+    pub fn element_in_swarm(&self, ctx: ui::Context) -> c::Element {
+        self.element_with_margin(ctx, bbt_ui_model::STYLE.spacing.s1 as f32)
+    }
+    fn element_with_margin(&self, ctx: ui::Context, margin: f32) -> c::Element {
         let d = ctx.density.tokens();
         if self.seats.len() == 1 {
             return named(
@@ -84,7 +111,7 @@ impl TabRow {
                     direction: Axis::Column,
                     gap: ui::Length::Px(0.),
                     align: c::Alignment::Stretch,
-                    children: self.seat_body(0, true, ctx),
+                    children: self.seat_body(0, true, ctx, margin),
                 }),
             );
         }
@@ -212,11 +239,11 @@ impl TabRow {
                 children,
             ),
         );
-        let mut all = vec![header.into()];
+        let mut all = vec![inset(header, margin).into()];
         if self.expanded {
             let mut seats = vec![];
             for i in 0..self.seats.len() {
-                seats.extend(self.seat_body(i, false, ctx));
+                seats.extend(self.seat_body(i, false, ctx, margin));
             }
             let mut body = c::Box::new(style(None, [0., 0., 0., d.pad_x as f32 + 2.]), seats);
             body.direction = Axis::Column;

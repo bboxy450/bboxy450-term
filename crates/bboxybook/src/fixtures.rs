@@ -16,8 +16,6 @@ struct Call {
     name: String,
     args: Vec<Value>,
     rect: Bounds,
-    #[serde(default)]
-    header: f32,
 }
 #[derive(Debug, Deserialize)]
 struct Bounds {
@@ -238,170 +236,15 @@ fn tab(
 }
 
 fn sidebar(call: &Call, ctx: &DrawCtx, out: &mut DrawList) -> Result<()> {
-    let data = call.args.first().ok_or("sidebar model missing")?;
-    let opts = call.args.get(1).unwrap_or(&Value::Null);
-    let _validated = model(data, opts, ctx.theme)?;
-    let r = call.rect.rect();
-    out.rect(r, 0., Color::hex(ctx.theme.palette().sidebar));
-    out.clip(r, [0.; 4]);
-    let header = call.header;
-    if header > 0. {
-        icon(
-            out,
-            Rect::new(r.x + 10., r.y + (header - 14.) / 2., 14., 14.),
-            "sidebarfox",
-            ctx.muted(),
-        );
-        text(
-            out,
-            Rect::new(r.x + 32., r.y + (header - 14.) / 2., r.w - 64., 14.),
-            "bboxy450-term",
-            12.,
-            ctx.muted(),
-            400,
-        );
-        icon(
-            out,
-            Rect::new(r.right() - 24., r.y + (header - 14.) / 2., 14., 14.),
-            "gear",
-            ctx.muted(),
-        );
-    }
-    let mut y = r.y + header;
-    let row = ctx.density.tokens().row_h as f32;
-    let th = ctx.density.tokens().tab_h as f32;
-    let owner = array(&data["spaces"]).iter().find(|sp| {
-        array(&sp["tabs"]).iter().any(|t| {
-            tab_seats(t)
-                .iter()
-                .any(|v| s(v, "key") == s(opts, "focusedKey"))
-        })
-    });
-    let current = opts["currentSpace"]
-        .as_str()
-        .or_else(|| owner.map(|sp| s(sp, "key")))
-        .unwrap_or("");
-    for sp in array(&data["spaces"]) {
-        let open = contains(&opts["openSpaces"], s(sp, "key"));
-        let dim = if current.is_empty() || s(sp, "key") == current {
-            *ctx
-        } else {
-            ctx.dimmed()
-        };
-        let count: usize = array(&sp["tabs"]).iter().map(|t| tab_seats(t).len()).sum();
-        let mut h = 4. + STYLE.spacing.band as f32 + if open { 3. + 4. + 4. + 6. + th } else { 3. };
-        if open {
-            for t in array(&sp["tabs"]) {
-                let n = tab_seats(t).len();
-                h += if n == 1 {
-                    row
-                } else {
-                    th + if contains(
-                        &opts["openTabs"],
-                        &format!("{}/{}", s(sp, "key"), s(t, "name")),
-                    ) {
-                        n as f32 * row
-                    } else {
-                        0.
-                    }
-                };
-            }
-            if !array(&sp["participants"]).is_empty() {
-                h += 6. + th + array(&sp["participants"]).len() as f32 * row;
-            }
-        }
-        let card = Rect::new(r.x + 6., y, r.w - 12., h);
-        let col = color(sp, ctx.theme);
-        let c = Color::hsl(col.hue, col.saturation / 100., col.lightness / 100.);
-        panel(out, card, &dim);
-        out.clip(card, [STYLE.radius.card as f32; 4]);
-        band(
-            s(sp, "name"),
-            count,
-            Rect::new(
-                card.x + 4.,
-                card.y + 4.,
-                card.w - 8.,
-                STYLE.spacing.band as f32,
-            ),
-            c,
-            &dim,
-            out,
-        );
-        if open {
-            let mut ty = card.y + 4. + STYLE.spacing.band as f32 + 3.;
-            for t in array(&sp["tabs"]) {
-                let expanded = contains(
-                    &opts["openTabs"],
-                    &format!("{}/{}", s(sp, "key"), s(t, "name")),
-                );
-                let n = tab_seats(t).len();
-                tab(
-                    t,
-                    Rect::new(card.x + 6., ty, card.w - 12., th),
-                    expanded,
-                    s(opts, "focusedKey"),
-                    &dim,
-                    out,
-                )?;
-                ty += if n == 1 {
-                    row
-                } else {
-                    th + if expanded { n as f32 * row } else { 0. }
-                };
-            }
-            new_seat(Rect::new(card.x + 6., ty + 6., card.w - 12., th), &dim, out);
-            ty += th + 6.;
-            if !array(&sp["participants"]).is_empty() {
-                text(
-                    out,
-                    Rect::new(card.x + 12., ty + 6., card.w - 24., th),
-                    "Shadows",
-                    11.,
-                    dim.muted(),
-                    600,
-                );
-                ty += 6. + th;
-                for ph in array(&sp["participants"]) {
-                    seat_row(
-                        &seat(ph, SwarmId::from_u128(1), ctx.theme),
-                        Rect::new(card.x + 6., ty, card.w - 12., row),
-                        false,
-                        None,
-                        &dim,
-                        out,
-                    );
-                    ty += row;
-                }
-            }
-        }
-        out.rect(
-            Rect::new(
-                card.x,
-                card.bottom() - if open { 4. } else { 3. },
-                card.w,
-                if open { 4. } else { 3. },
-            ),
-            0.,
-            ctx.identity(c),
-        );
-        out.unclip();
-        y += h + TOKENS.layout.cohort_gap as f32;
-    }
-    if opts.get("onNewSpace").is_some() {
-        panel(out, Rect::new(r.x + 6., y, r.w - 12., 40.), ctx);
-        text(
-            out,
-            Rect::new(r.x + 16., y + 10., r.w - 32., 20.),
-            "+  new swarm",
-            12.5,
-            ctx.muted(),
-            500,
-        );
-    }
-    out.unclip();
-    Ok(())
+    crate::swarms::paint_sidebar_model(
+        call.args.first().ok_or("sidebar model missing")?,
+        call.args.get(1).unwrap_or(&Value::Null),
+        call.rect.rect(),
+        ctx,
+        out,
+    )
 }
+
 fn card(r: Rect, title: &str, rows: &[String], ctx: &DrawCtx, out: &mut DrawList) {
     panel(out, r, ctx);
     text(
@@ -628,6 +471,7 @@ pub fn draw(case: &Case, ctx: &DrawCtx, out: &mut DrawList) -> Result<bool> {
                 &dim,
                 out,
             ),
+            "spaceHeader" => crate::swarms::paint_header_model(v, opts, r, &dim, out)?,
             "seatRow" => seat_row(
                 &seat(v, SwarmId::from_u128(1), ctx.theme),
                 r,

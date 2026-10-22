@@ -1,0 +1,5 @@
+$ node crates/bboxybook/capture.mjs target/bboxybook/swarms-final target/bboxybook/swarms-final/requested.json
+reference 3cac4234b122bd4385610287175caf8548566bf0
+captured 100/136
+web: 136/136 captured; 0 failures
+exit 0

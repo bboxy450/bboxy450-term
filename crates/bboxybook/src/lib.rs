@@ -8,6 +8,7 @@ pub mod overlays;
 pub mod parity;
 pub mod seat_rows;
 pub mod styles;
+pub mod swarms;
 pub mod tabs;
 pub mod widgets;
 pub mod window;

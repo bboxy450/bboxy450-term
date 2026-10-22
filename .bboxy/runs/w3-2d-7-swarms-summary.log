@@ -1,0 +1,59 @@
+ROLE: EXECUTOR — Nyx Copperwing
+W3.2d.7.3 SwarmCard + Sidebar; 7.0 prerequisite is signed commit 47500ea.
+
+Evidence:
+crates/bbt-ui/src/modules/swarm_card.rs:114 — gloss header, stable worst-first roll-up, bounded collapsed composition.
+crates/bbt-ui/src/modules/swarm_card.rs:431 — retained card composition over accepted TabRow/SeatRow; clipped identity bumper; pending/shadow rows.
+crates/bbt-ui/src/modules/sidebar.rs:20 — bounded ScrollView, caller-owned scroll/focus/visibility data, phone handle.
+crates/bbt-ui/src/style.rs:597 — Card uses token radius, card_alpha surface and an outside hairline, matching Wren 3cac423.
+crates/bbt-ui/src/components.rs — min-content extent; literal-hyphen and trailing-space wrap handling; two-line caption clamp; CSS luminance saturation; external ancestor clips.
+crates/bboxybook/src/swarms.rs — public constructor/viewport inputs; independent named rect/baseline diagnostics; parent phone padding-box clip.
+crates/bboxybook/src/modules.rs:331 and :334; src/fixtures.rs:239 — old card/sidebar painters delegate to retained modules. Guard tests pass.
+
+Parity:
+Before: 20/136 need review at reference 47500ea (18 geometry, 2 pixels).
+After: 6/136 need review at reference 3cac4234b122bd4385610287175caf8548566bf0 plus ux-prototype-v2 for legacy. All six are pixel-only.
+Current space-header 32/32 pass; legacy band 32/32 pass; current sidebar 36/40 pass; legacy sidebar 30/32 pass.
+Geometry complete: 23158 rects; 5574 baselines; worst rect 0.4375000px; baseline 0.0078125px.
+Policy unchanged: per-channel tolerance 8; text budget 2%; every rect/baseline <= 0.5px; missing geometry unproven.
+Gallery: target/bboxybook/swarms-final/index.html; report.json, report.md and layouts.json alongside it.
+Clipping prerequisite gallery: target/bboxybook/clipping/index.html (16 native previews, 1x/2x, Metal).
+Card Style/Box regression: 0/16 review; Box/Text/Stack current references: 0/24 review.
+Phone clip refresh: 0/16 review; constructor arguments and external host bounds unchanged; all 16 web PNGs byte-identical.
+Incremental native refreshes include matching layout snapshots. An intermediate compare read stale geometry; its output is explicitly superseded in swarms-final.log.
+
+Ten worst triplets, each under target/bboxybook/swarms-final/{web,native,diff}/:
+sidebar/100-seats-cozy-light.png — review pixels; changed 2.202558%; rect 0.4375000px; baseline 0.0078125px
+sidebar/100-seats-compact-light.png — review pixels; changed 2.151238%; rect 0.4375000px; baseline 0.0078125px
+sidebar/100-seats-cozy-dark.png — review pixels; changed 2.133221%; rect 0.4375000px; baseline 0.0078125px
+sidebar/100-seats-compact-dark.png — review pixels; changed 2.121073%; rect 0.4375000px; baseline 0.0078125px
+sidebar-v2/100-seats-cozy-light.png — review pixels; changed 2.105377%; rect 0.4375000px; baseline 0.0078125px
+sidebar-v2/100-seats-compact-light.png — review pixels; changed 2.028805%; rect 0.4375000px; baseline 0.0078125px
+sidebar/100-seats-comfortable-light.png — within policy; changed 1.995092%; rect 0.4218750px; baseline 0.0078125px
+sidebar-v2/100-seats-cozy-dark.png — within policy; changed 1.989632%; rect 0.4375000px; baseline 0.0078125px
+sidebar/1000-seats-cozy-light.png — within policy; changed 1.986083%; rect 0.4375000px; baseline 0.0078125px
+sidebar-v2/100-seats-compact-dark.png — within policy; changed 1.959877%; rect 0.4375000px; baseline 0.0078125px
+
+Commands and actual results:
+node crates/bboxybook/capture.mjs ... — 136/136 captured, 0 failures; isolated headless Chrome/156.0.8078.48; frozen committed references.
+bboxybook render/compare --manifest ... — exit 0 on Apple M4/Metal; affected sidebars, pending captions and phone context re-rendered incrementally with matching geometry.
+cargo test -p bbt-ui -p bboxybook -p bbt-render --locked — exit 0; 83 tests.
+cargo clippy -p bbt-ui -p bboxybook -p bbt-render --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0; same two existing lint exceptions.
+cargo fmt -p bbt-ui -p bboxybook --check — exit 0.
+node --check crates/bboxybook/capture-inputs.js; node --check crates/bboxybook/capture.mjs — exit 0 each.
+git diff --check — exit 0 before staging; staged check recorded separately.
+7.2 regression: see swarms-regression-final.log for actual 208-PNG byte comparison against target/bboxybook/tabs-final/native.
+
+Visual review consumed:
+Web/native/diff: sidebar/100-seats-cozy-light; sidebar/100-seats-compact-dark.
+Web/native: sidebar/1000-seats-compact-light; sidebar/phone-sheet-cozy-dark (before and after parent clip); space-header/collapsed-with-waiting-cozy-light.
+Native: sidebar/pending-spawns-compact-light after caption wrap/clamp; old and new sidebar/10-seats-cozy-dark pilots.
+7.0 native: gloss-dark-1x; glow-light-2x.
+
+Gaps and deliberately untouched:
+Six dense 100-seat cases exceed the 2% pixel budget (worst 2.202558%). Diffs are concentrated on text/icons/edges; their precise contributions were not separated. Geometry passes in every case.
+Filter opacity remains per paint, not an isolated GPU group. Existing text-mask/icon/edge AA and waiting-name text-shadow residues remain. Phone top partial-border hairline retains the existing L6 edge residue.
+Pane previews are shared web context, not a native Pane parity claim. Navigation, mouse/keyboard focus, live scroll/input/lifecycle controllers and W3.2d.7.4 were left untouched.
+Module matrix checked Chrome/Metal at 1x; 7.0 clipping separately checks 2x. No operator browser opened or reloaded; no FPS measurement. No dependency or Cargo.lock changes.
+
+Worktree/commit: this run is included in the scoped signed 7.3 commit; final hash and worktree state are reported in the ICQ handoff. No push by this Executor; Oracle reviews and pushes.

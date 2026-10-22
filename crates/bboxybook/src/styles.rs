@@ -383,8 +383,9 @@ mod geometry_tests {
         assert_eq!(tree["native"][2], 300.);
         assert!(tree["native"][3].as_f64().unwrap() < 50.);
         let text = &tree["children"][0];
-        assert_eq!(text["native"][0], 18.);
-        assert_eq!(text["native"][1], 20.);
+        // Card's outside ring contributes no padding or layout inset.
+        assert_eq!(text["native"][0], 17.);
+        assert_eq!(text["native"][1], 19.);
         assert!(text["native"][2].as_f64().unwrap() > 20.);
         assert_eq!(text["baseline"]["web"], 1098.);
         assert!(text["baseline"]["native"].as_f64().unwrap() < 100.);

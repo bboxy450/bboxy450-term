@@ -8,7 +8,13 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     let mut renderer = ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}", renderer.context.adapter_info);
     for (i, case) in cases.iter().enumerate() {
-        let rgba = if case.fixture.as_ref().is_some_and(|f| f["layer"] == "tabs") {
+        let rgba = if case
+            .fixture
+            .as_ref()
+            .is_some_and(|f| f["layer"] == "swarms")
+        {
+            crate::swarms::render_case(&mut renderer, case)?
+        } else if case.fixture.as_ref().is_some_and(|f| f["layer"] == "tabs") {
             crate::tabs::render_case(&mut renderer, case)?
         } else if case
             .fixture
@@ -58,6 +64,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     snapshots.extend(crate::styles::snapshots(cases)?);
     snapshots.extend(crate::seat_rows::snapshots(cases)?);
     snapshots.extend(crate::tabs::snapshots(cases)?);
+    snapshots.extend(crate::swarms::snapshots(cases)?);
     if !snapshots.is_empty() {
         fs::write(
             out.join("layouts.json"),
@@ -101,7 +108,9 @@ impl CasePolicy {
         let text = if case.component == "materials" || surface_only {
             false
         } else if case.component == "style"
-            || f.is_some_and(|f| matches!(f["layer"].as_str(), Some("seat-row" | "tabs")))
+            || f.is_some_and(|f| {
+                matches!(f["layer"].as_str(), Some("seat-row" | "tabs" | "swarms"))
+            })
         {
             true
         } else if f.is_some_and(|f| f["layer"] == "components") {
@@ -121,7 +130,9 @@ impl CasePolicy {
             channel_tolerance: diff::CHANNEL_TOLERANCE,
             changed_pixel_budget: if text { 0.02 } else { diff::CHANGED_BUDGET },
             geometry_tolerance_px: text.then_some(0.5),
-            scope: if f.is_some_and(|f| f["layer"] == "tabs") {
+            scope: if f.is_some_and(|f| f["layer"] == "swarms") {
+                "SwarmCard/Sidebar; pane previews retained as shared context"
+            } else if f.is_some_and(|f| f["layer"] == "tabs") {
                 "TabRow and MiniGrid compositions, including expanded SeatRows"
             } else if f.is_some_and(|f| f["layer"] == "seat-row") {
                 "SeatRow/subagent/task/artifact content; row-menu overlays excluded"
@@ -328,6 +339,11 @@ pub fn compare_paths(
         .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "tabs"))
     {
         "L7 TabRow and MiniGrid retained compositions. Current lab states use committed HEAD; legacy states use ux-prototype-v2. Public constructor data, external parent bounds and grid viewport sizes are shared, never child geometry. Every part and text baseline is independently checked in layouts.json."
+    } else if cases
+        .iter()
+        .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "swarms"))
+    {
+        "L7 SwarmCard and Sidebar compositions. Public constructor data and external flow/viewport bounds are shared. Child DOM rectangles and fonts are diagnostic only. Current space-header/sidebar pages use committed HEAD; band/sidebar-v2 retain ux-prototype-v2. Pane previews remain shared web context and are not claimed as native module content. layouts.json checks every exported part and baseline."
     } else if component_layer {
         "L6 retained components. Public constructor inputs and external host origin/width are shared. Child DOM rectangles and first-line baselines are diagnostics only; native layout uses the shared solver and CoreText metrics."
     } else if cases.iter().all(|c| c.component == "materials") {

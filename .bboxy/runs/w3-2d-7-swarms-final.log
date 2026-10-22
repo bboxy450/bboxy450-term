@@ -1,0 +1,26 @@
+$ target/debug/bboxybook render --manifest target/bboxybook/swarms-final/cases.json --out target/bboxybook/swarms-final/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/136
+native/web layout snapshots: target/bboxybook/swarms-final/native/layouts.json
+rendered 136 PNGs to target/bboxybook/swarms-final/native
+exit 0
+$ target/debug/bboxybook compare --manifest target/bboxybook/swarms-final/cases.json --out target/bboxybook/swarms-final
+parity: 136 cases, 21 review; target/bboxybook/swarms-final/index.html
+exit 0
+Applied 72 incrementally rendered PNGs from target/bboxybook/swarms-sidebar-fixes/native; all unchanged header PNGs retained.
+Applied 8 incrementally rendered PNGs from target/bboxybook/swarms-pending-final/native; all unchanged header PNGs retained.
+Recompute all geometry snapshots and compare the complete 136-case matrix after every affected image is refreshed.
+$ target/debug/bboxybook compare --manifest target/bboxybook/swarms-final/cases.json --out target/bboxybook/swarms-final
+parity: 136 cases, 21 review; target/bboxybook/swarms-final/index.html
+exit 0
+
+Correction: compare reads native/layouts.json; the preceding incremental compare retained stale initial geometry. The following compare supersedes it.
+Merged 72 independently rendered geometry records from target/bboxybook/swarms-sidebar-fixes/native/layouts.json.
+Merged 8 independently rendered geometry records from target/bboxybook/swarms-pending-final/native/layouts.json.
+$ target/debug/bboxybook compare --manifest target/bboxybook/swarms-final/cases.json --out target/bboxybook/swarms-final
+parity: 136 cases, 6 review; target/bboxybook/swarms-final/index.html
+exit 0
+Phone parent clip refresh: 16 cases merged with their PNGs, constructor inputs and independent geometry; all arguments and host bounds unchanged; 16/16 web PNGs byte-identical. Legacy requests retain the baseline flag.
+$ target/debug/bboxybook compare --manifest target/bboxybook/swarms-final/cases.json --out target/bboxybook/swarms-final
+parity: 136 cases, 6 review; target/bboxybook/swarms-final/index.html
+exit 0

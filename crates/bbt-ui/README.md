@@ -76,7 +76,9 @@ in `layouts.json`, and 64 native previews under `gallery/`: four Box materials
 with radii 0/6/12/20, three ScrollView offsets and mixed/wrapped/ellipsized text,
 each across four densities and two themes.
 
-Limits: word wrapping has no hyphenation; an unbreakable word can overflow.
+Limits: wrapping permits spaces and literal hyphens, with no automatic
+hyphenation; an unbreakable word can overflow. `Text::max_lines` optionally
+clamps content and ellipsizes the last visible line.
 Selection is metadata until input is assigned. Draw lists and the material host preserve complete rounded ancestor clip
 chains.
 Opacity/dim follow the existing per-colour transform, not isolated CSS group
@@ -143,3 +145,15 @@ MiniGrid composes flat clipped Boxes and optional first-word labels. It keeps
 split ratios, the 3px big-root / 1px nested gap, 2px cell minima and zero
 automatic minimum for clipped nested grids. Waiting/error colour overrides
 focus colour. These modules own no input, clock, renderer or controller.
+
+## L7 SwarmCard and Sidebar
+
+SwarmCard composes the shared card Style, gloss header, accepted tab/seat
+subtrees, pending rows, shadows and a clipped identity bumper. Sidebar adds a
+fixed viewport and caller-owned scroll offset. A collapsed thousand-seat card
+builds only its bounded roll-up. Content keeps source order and supplied state.
+
+`Element::Filter` applies the CSS sRGB luminance saturation matrix and opacity
+to a retained subtree without affecting layout. It leaves the older dim
+transform unchanged. Opacity remains per paint, with no isolated GPU group.
+The host supplies all navigation, focus, lifecycle and input handling.

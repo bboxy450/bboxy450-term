@@ -53,22 +53,17 @@ fn tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_heigh
 fn old_module_and_json_painters_delegate_to_the_retained_compositions() {
     let modules = include_str!("../src/modules.rs");
     let fixtures = include_str!("../src/fixtures.rs");
-    for (source, start, end, adapter) in [
-        (
-            modules,
-            "pub fn mini_grid(",
-            "pub(crate) fn band(",
-            "paint_legacy_mini",
-        ),
-        (modules, "fn tab_row(", "fn card(", "paint_legacy_tab"),
-        (fixtures, "fn mini(", "fn tab(", "paint_mini_model"),
-        (fixtures, "fn tab(", "fn sidebar(", "paint_tab_model"),
+    for (source, start, adapter) in [
+        (modules, "pub fn mini_grid(", "paint_legacy_mini"),
+        (modules, "fn tab_row(", "paint_legacy_tab"),
+        (fixtures, "fn mini(", "paint_mini_model"),
+        (fixtures, "fn tab(", "paint_tab_model"),
     ] {
         let body = source
             .split(start)
             .nth(1)
             .unwrap()
-            .split(end)
+            .split("\n}\n")
             .next()
             .unwrap();
         assert!(body.contains(adapter));

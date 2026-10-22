@@ -1,0 +1,5 @@
+$ target/debug/bboxybook render --manifest target/bboxybook/swarms-sidebar-fixes/cases.json --out target/bboxybook/swarms-sidebar-fixes/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/swarms-sidebar-fixes/native/layouts.json
+rendered 72 PNGs to target/bboxybook/swarms-sidebar-fixes/native
+exit 0

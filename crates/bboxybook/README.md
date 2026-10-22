@@ -348,10 +348,9 @@ public constructor data, parent flow bounds and grid viewport sizes. Native
 composition computes all children; DOM part rectangles and baselines only
 feed `layouts.json` diagnostics under the existing per-case policy.
 
-Both old TabRow/MiniGrid hand painters now delegate to these retained
-compositions. Existing card hosts still own their separate seat body until
-the Sidebar/SwarmCard step. Expansion/focus flags are fixture data; input
-controllers and material-ancestor clipping are later assigned work.
+Both old TabRow/MiniGrid hand painters delegate to these retained
+compositions. Expansion/focus flags are fixture data; input controllers follow
+the module rebases.
 
 ## Rounded material ancestors (W3.2d.7.0)
 
@@ -364,4 +363,28 @@ destination. Backdrop filtering still samples the original border-box image.
 excluded corners, retained Box-to-material propagation and per-surface ranges
 on Metal, then writes 16 native previews (four materials × theme × 1x/2x) to
 `target/bboxybook/clipping/index.html`. This gallery is a clipping check, not
-a claim of new web module parity. SwarmCard/Sidebar follow in 7.3.
+a claim of new web module parity.
+
+## L7 SwarmCard and Sidebar (W3.2d.7.3)
+
+`cargo run -p bboxybook --locked -- swarms` writes
+`target/bboxybook/swarms/index.html`: 72 current header/sidebar pairs and 64
+legacy pairs. Current keys use `space-header/` and `sidebar/`; legacy keys use
+`band/` and `sidebar-v2/`. `capture.json` pins each reference revision.
+
+SwarmCard composes the accepted TabRow/SeatRow trees, roll-up, pending rows,
+shadows and identity bumper. Sidebar adds its bounded ScrollView and phone
+handle. Public constructor arguments, parent bounds and caller scroll offsets
+are inputs. The phone fixture also supplies its external padding-box clip,
+which the host forwards to every draw/material operation. DOM child
+rectangles/fonts remain diagnostics only. Pane previews
+are shared web context, outside this module's parity claim. The old card and
+sidebar painters now delegate to the retained compositions.
+
+The current card uses the shared Card Style: token radius, translucent surface
+and outside hairline. Unfocused contents use CSS luminance saturation; the
+bumper retains its identity colour. This filter applies opacity per paint,
+not as an isolated GPU group. Text supports min-content width, literal-hyphen
+wrap points and a caller-supplied line clamp for pending captions. Visibility,
+focus, pending outcomes, lifecycle and scrolling remain caller data; there is
+no input controller or autonomous state change in this step.

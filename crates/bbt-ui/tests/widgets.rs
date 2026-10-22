@@ -109,6 +109,11 @@ fn pressed_button_scales_visually_without_changing_its_flow_slot() {
 fn side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout() {
     let mut style = ui::Style::new(ui::Preset::Card);
     style.overrides.padding = Some([ui::Length::Px(0.); 4]);
+    style.overrides.border = Some(ui::Border {
+        width: ui::Length::Hairline,
+        paint: ui::Paint::solid(ui::Color::Line),
+        outside: false,
+    });
     style.overrides.border_sides = Some([false, false, true, false]);
     style.overrides.rings = Some(vec![ui::Border {
         width: ui::Length::Px(3.),

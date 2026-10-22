@@ -12,6 +12,8 @@ pub trait Measure: TextMeasure {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Extent {
     Auto,
+    /// CSS auto basis/min-content minimum, shrinking without growth.
+    MinContent,
     Fixed(f32),
     Fill,
     Flex(f32),
@@ -42,6 +44,8 @@ pub struct Text {
     pub runs: Vec<TextRun>,
     pub wrap: bool,
     pub ellipsis: bool,
+    /// Clamp wrapped content, ending the last visible line with an ellipsis.
+    pub max_lines: Option<usize>,
     pub selectable: bool,
     /// Single inline span: expose its font box, retaining its line box for flow.
     pub inline: bool,
@@ -55,6 +59,7 @@ impl Text {
             }],
             wrap: true,
             ellipsis: false,
+            max_lines: None,
             selectable: true,
             inline: false,
         }
@@ -143,6 +148,12 @@ impl Overlay {
 }
 #[derive(Debug, Clone)]
 pub enum Element {
+    /// CSS sRGB saturation/opacity over retained colour records.
+    Filter {
+        content: std::boxed::Box<Element>,
+        saturation: f32,
+        opacity: f32,
+    },
     /// Stable semantic label for independent geometry snapshots and hit targets.
     Baseline {
         content: std::boxed::Box<Element>,
@@ -204,6 +215,10 @@ pub struct PositionedRun {
 }
 #[derive(Debug, Clone)]
 pub enum LayoutKind {
+    Filter {
+        saturation: f32,
+        opacity: f32,
+    },
     Named(String),
     Atom(DrawList),
     Box {
@@ -263,15 +278,19 @@ fn text_lines(
     ctx: Context,
     m: &dyn Measure,
 ) -> crate::style::Result<(Vec<PositionedRun>, [f32; 2], f32)> {
+    if text.max_lines == Some(0) {
+        return Err("text line limit must be positive");
+    }
     let mut placed: Vec<PositionedRun> = Vec::new();
     let (mut x, mut y, mut above, mut below, mut widest) = (0_f32, 0_f32, 0_f32, 0_f32, 0_f32);
     let (mut start, mut first) = (0, None);
+    let (mut line_number, mut clamped) = (1, false);
     let finish_line = |placed: &mut [PositionedRun], start: usize, y: f32, above: f32| {
         for run in &mut placed[start..] {
             run.rect.y = y + above - baseline(&run.style, m);
         }
     };
-    for run in &text.runs {
+    'runs: for run in &text.runs {
         let s = resolve_text(run.style, ctx)?;
         let line = line_height(&s);
         let value = if s.uppercase {
@@ -280,7 +299,9 @@ fn text_lines(
             run.value.clone()
         };
         let pieces: Vec<&str> = if text.wrap {
-            value.split_inclusive(char::is_whitespace).collect()
+            value
+                .split_inclusive(|c: char| c.is_whitespace() || c == '-')
+                .collect()
         } else {
             value.split_inclusive('\n').collect()
         };
@@ -288,7 +309,25 @@ fn text_lines(
             let newline = piece.ends_with('\n');
             let value = piece.trim_end_matches(['\n', '\r']);
             let w = m.width(value, &font(&s));
-            if text.wrap && x > 0. && x + w > width {
+            // Collapsible trailing spaces do not push a fitting word to the
+            // next CSS line. Their advance still separates the next word.
+            let ink_width = m.width(value.trim_end_matches(' '), &font(&s));
+            if text.wrap && x > 0. && x + ink_width > width {
+                if text.max_lines == Some(line_number) {
+                    // CSS line-clamp fills the last line with a partial final
+                    // word before ellipsizing, rather than dropping that word.
+                    let base = baseline(&s, m);
+                    above = above.max(base);
+                    below = below.max(line - base);
+                    placed.push(PositionedRun {
+                        text: value.into(),
+                        style: s.clone(),
+                        rect: Rect::new(x, y, w, line),
+                        line_height: line,
+                    });
+                    clamped = true;
+                    break 'runs;
+                }
                 finish_line(&mut placed, start, y, above);
                 first.get_or_insert(above);
                 widest = widest.max(x);
@@ -297,6 +336,7 @@ fn text_lines(
                 above = 0.;
                 below = 0.;
                 start = placed.len();
+                line_number += 1;
             }
             let value = if x == 0. {
                 value.trim_start_matches(' ')
@@ -315,6 +355,10 @@ fn text_lines(
             });
             x += w;
             if newline {
+                if text.max_lines == Some(line_number) {
+                    clamped = true;
+                    break 'runs;
+                }
                 finish_line(&mut placed, start, y, above);
                 first.get_or_insert(above);
                 widest = widest.max(x);
@@ -323,6 +367,27 @@ fn text_lines(
                 above = 0.;
                 below = 0.;
                 start = placed.len();
+                line_number += 1;
+            }
+        }
+    }
+    if clamped {
+        while !placed.is_empty() {
+            let count = placed.len();
+            let last = placed.last_mut().unwrap();
+            last.text = last.text.trim_end().to_owned();
+            let value = format!("{}…", last.text);
+            let w = m.width(&value, &font(&last.style));
+            if last.rect.x + w <= width || (last.rect.x == 0. && last.text.is_empty()) {
+                last.text = value;
+                last.rect.w = w;
+                x = last.rect.right();
+                break;
+            }
+            if last.text.is_empty() && count > start + 1 {
+                placed.pop();
+            } else {
+                last.text.pop();
             }
         }
     }
@@ -411,6 +476,20 @@ impl Element {
         m: &dyn Measure,
     ) -> crate::style::Result<([f32; 2], f32)> {
         match self {
+            Self::Filter {
+                content,
+                saturation,
+                opacity,
+            } => {
+                if !saturation.is_finite()
+                    || !(0. ..=4.).contains(saturation)
+                    || !opacity.is_finite()
+                    || !(0. ..=1.).contains(opacity)
+                {
+                    return Err("invalid colour filter");
+                }
+                content.natural(width, ctx, m)
+            }
             Self::Baseline { content, offset } => {
                 let (size, baseline) = content.natural(width, ctx, m)?;
                 Ok((size, baseline + offset))
@@ -505,6 +584,17 @@ impl Element {
     fn layout_in(&self, rect: Rect, ctx: Context, m: &dyn Measure) -> crate::style::Result<Layout> {
         let (_, base) = self.natural(rect.w, ctx, m)?;
         let (kind, children) = match self {
+            Self::Filter {
+                content,
+                saturation,
+                opacity,
+            } => (
+                LayoutKind::Filter {
+                    saturation: *saturation,
+                    opacity: *opacity,
+                },
+                vec![content.layout_in(rect, ctx, m)?],
+            ),
             Self::Baseline { content, offset } => {
                 let mut child = content.layout_in(rect, ctx, m)?;
                 child.baseline += offset;
@@ -847,7 +937,7 @@ fn allocate_children(
     if axis == Axis::Row
         && children
             .iter()
-            .any(|c| matches!(c.extent, Extent::Content { .. }))
+            .any(|c| matches!(c.extent, Extent::Content { .. } | Extent::MinContent))
     {
         let available = (r.w - gap * children.len().saturating_sub(1) as f32).max(0.);
         let mut bases = Vec::new();
@@ -858,6 +948,13 @@ fn allocate_children(
         for (c, (size, _)) in children.iter().zip(data) {
             let (basis, g, s, min, max) = match c.extent {
                 Extent::Fixed(n) => (n, 0., 0., n, n),
+                Extent::MinContent => (
+                    size[0],
+                    0.,
+                    1.,
+                    c.element.natural(0., ctx, m)?.0[0],
+                    f32::MAX,
+                ),
                 Extent::Fill => (0., 1., 1., 0., f32::MAX),
                 Extent::Flex(w) => (0., w, 1., 0., f32::MAX),
                 Extent::Content {
@@ -999,7 +1096,7 @@ fn allocate_children(
         };
         let extent = match c.extent {
             Extent::Fixed(v) => Size::Fixed(v),
-            Extent::Content { .. } => Size::Fixed(size[axis_i]),
+            Extent::Content { .. } | Extent::MinContent => Size::Fixed(size[axis_i]),
             Extent::Fill => Size::Fill,
             Extent::Flex(v) => Size::Flex(v),
             Extent::Auto => {
@@ -1062,8 +1159,12 @@ pub fn paint(layout: &Layout, ctx: Context) -> Vec<Paint> {
 }
 /// Hosts may inherit an ancestor's dim context without changing module content.
 pub fn paint_with_draw(layout: &Layout, draw: DrawCtx) -> Vec<Paint> {
+    paint_with_ancestor_clips(layout, draw, &[])
+}
+/// A viewport owner may impose clips outside the component's retained tree.
+pub fn paint_with_ancestor_clips(layout: &Layout, draw: DrawCtx, clips: &[Clip]) -> Vec<Paint> {
     let mut out = Vec::new();
-    paint_node(layout, draw, 1., &[], &mut out);
+    paint_node(layout, draw, 1., clips, &mut out);
     out
 }
 fn paint_node(
@@ -1073,6 +1174,21 @@ fn paint_node(
     clips: &[Clip],
     out: &mut Vec<Paint>,
 ) {
+    if let LayoutKind::Filter {
+        saturation,
+        opacity: filter_alpha,
+    } = &node.kind
+    {
+        let mut ops = Vec::new();
+        for child in &node.children {
+            paint_node(child, draw, opacity, clips, &mut ops);
+        }
+        for op in &mut ops {
+            filter_paint(op, *saturation, *filter_alpha);
+        }
+        out.extend(ops);
+        return;
+    }
     let mut children_clips = clips.to_vec();
     let mut after = None;
     match &node.kind {
@@ -1418,7 +1534,8 @@ pub fn namespace(element: &mut Element, prefix: &str) {
                 namespace(&mut child.element, prefix)
             }
         }
-        Element::Baseline { content, .. }
+        Element::Filter { content, .. }
+        | Element::Baseline { content, .. }
         | Element::Overlay(Overlay { content, .. })
         | Element::ScrollView(ScrollView { content, .. }) => namespace(content, prefix),
         Element::Layers { base, overlays } => {
@@ -1428,5 +1545,53 @@ pub fn namespace(element: &mut Element, prefix: &str) {
             }
         }
         _ => {}
+    }
+}
+
+// Saturation is the CSS luminance matrix in sRGB, not an HSL saturation edit.
+fn filter_paint(paint: &mut Paint, saturation: f32, opacity: f32) {
+    fn apply(c: &mut Color, s: f32, a: f32) {
+        let l = c.0[0] * 0.2126 + c.0[1] * 0.7152 + c.0[2] * 0.0722;
+        for v in &mut c.0[..3] {
+            *v = (l + (*v - l) * s).clamp(0., 1.);
+        }
+        c.0[3] *= a;
+    }
+    match paint {
+        Paint::Draw(d) | Paint::Underlay(d) => {
+            for p in &mut d.primitives {
+                match p {
+                    Prim::Rect {
+                        fill,
+                        stroke,
+                        inner_highlight,
+                        shadow,
+                        ..
+                    } => {
+                        apply(fill, saturation, opacity);
+                        if let Some((_, c)) = stroke {
+                            apply(c, saturation, opacity);
+                        }
+                        if let Some(c) = inner_highlight {
+                            apply(c, saturation, opacity);
+                        }
+                        if let Some((_, _, c)) = shadow {
+                            apply(c, saturation, opacity);
+                        }
+                    }
+                    Prim::Hairline { color, .. }
+                    | Prim::Gloss { color, .. }
+                    | Prim::Text { color, .. }
+                    | Prim::Icon { color, .. } => apply(color, saturation, opacity),
+                    _ => {}
+                }
+            }
+        }
+        Paint::Material { color, blur, .. } => {
+            apply(color, saturation, opacity);
+            if let Some(b) = blur {
+                b.saturation *= saturation;
+            }
+        }
     }
 }

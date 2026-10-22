@@ -596,8 +596,14 @@ fn defaults(p: Preset) -> Base {
     match p {
         Preset::Card => {
             radius = Radius::Card;
-            b.fill = Paint::solid(Color::Surface);
-            b.border = Some(hair);
+            b.fill = Paint {
+                color: Color::Surface,
+                alpha: Alpha::Value(DESIGN.material.card_alpha as f32),
+            };
+            b.border = Some(Border {
+                outside: true,
+                ..hair
+            });
             b.padding = xy(Spacing(6), Spacing(7));
         }
         Preset::Row => {

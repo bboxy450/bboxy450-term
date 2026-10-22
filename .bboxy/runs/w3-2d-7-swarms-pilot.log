@@ -1,0 +1,18 @@
+web: 6/6 captured; 0 failures
+$ target/debug/bboxybook render --manifest target/bboxybook/swarms-pilot/cases.json --out target/bboxybook/swarms-pilot/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/swarms-pilot/native/layouts.json
+rendered 6 PNGs to target/bboxybook/swarms-pilot/native
+exit 0 elapsed_s 31.23
+$ target/debug/bboxybook compare --manifest target/bboxybook/swarms-pilot/cases.json --out target/bboxybook/swarms-pilot
+parity: 6 cases, 6 review; target/bboxybook/swarms-pilot/index.html
+exit 0 elapsed_s 1.77
+After measured layout corrections:
+$ target/debug/bboxybook render --manifest target/bboxybook/swarms-pilot/cases.json --out target/bboxybook/swarms-pilot/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/swarms-pilot/native/layouts.json
+rendered 6 PNGs to target/bboxybook/swarms-pilot/native
+exit 0 elapsed_s 33.26
+$ target/debug/bboxybook compare --manifest target/bboxybook/swarms-pilot/cases.json --out target/bboxybook/swarms-pilot
+parity: 6 cases, 4 review; target/bboxybook/swarms-pilot/index.html
+exit 0 elapsed_s 1.78

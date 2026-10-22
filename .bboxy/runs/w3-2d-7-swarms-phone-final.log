@@ -1,0 +1,12 @@
+Phone parent padding-box clip; reference 3cac4234b122bd4385610287175caf8548566bf0 + ux-prototype-v2 for legacy.
+$ node crates/bboxybook/capture.mjs target/bboxybook/swarms-phone-final target/bboxybook/swarms-phone-final/requested.json
+web: 16/16 captured; 0 failures
+exit 0
+$ target/debug/bboxybook render --manifest target/bboxybook/swarms-phone-final/cases.json --out target/bboxybook/swarms-phone-final/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/swarms-phone-final/native/layouts.json
+rendered 16 PNGs to target/bboxybook/swarms-phone-final/native
+exit 0
+$ target/debug/bboxybook compare --manifest target/bboxybook/swarms-phone-final/cases.json --out target/bboxybook/swarms-phone-final
+parity: 16 cases, 0 review; target/bboxybook/swarms-phone-final/index.html
+exit 0

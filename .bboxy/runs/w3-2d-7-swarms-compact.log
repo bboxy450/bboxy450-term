@@ -1,0 +1,18 @@
+$ target/debug/bboxybook render --manifest target/bboxybook/swarms-compact-check/cases.json --out target/bboxybook/swarms-compact-check/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/swarms-compact-check/native/layouts.json
+rendered 2 PNGs to target/bboxybook/swarms-compact-check/native
+exit 0
+$ target/debug/bboxybook compare --manifest target/bboxybook/swarms-compact-check/cases.json --out target/bboxybook/swarms-compact-check
+parity: 2 cases, 0 review; target/bboxybook/swarms-compact-check/index.html
+exit 0
+
+Last visible word is partially filled before ellipsizing, matching CSS line-clamp:
+$ target/debug/bboxybook render --manifest target/bboxybook/swarms-compact-check/cases.json --out target/bboxybook/swarms-compact-check/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/swarms-compact-check/native/layouts.json
+rendered 2 PNGs to target/bboxybook/swarms-compact-check/native
+exit 0
+$ target/debug/bboxybook compare --manifest target/bboxybook/swarms-compact-check/cases.json --out target/bboxybook/swarms-compact-check
+parity: 2 cases, 0 review; target/bboxybook/swarms-compact-check/index.html
+exit 0

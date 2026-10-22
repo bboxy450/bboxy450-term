@@ -34,9 +34,10 @@ fn sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web() {
             seat.name
         );
     }
+    // Retained Text shapes the uppercase band before emitting paint records.
     assert!(
         list.primitives
             .iter()
-            .any(|p| matches!(p,Prim::Text{text,..} if text.as_ref()=="ontology"))
+            .any(|p| matches!(p,Prim::Text{text,..} if text.eq_ignore_ascii_case("ontology")))
     );
 }

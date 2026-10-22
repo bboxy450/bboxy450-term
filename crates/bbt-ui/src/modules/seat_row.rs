@@ -197,12 +197,15 @@ impl SeatRow {
         }))
     }
     pub fn element(&self, ctx: ui::Context) -> c::Element {
+        self.element_with_radius(ctx, TOKENS.radius.chip as f32)
+    }
+    pub fn element_with_radius(&self, ctx: ui::Context, radius: f32) -> c::Element {
         let d = ctx.density.tokens();
         let color = self.color(ctx);
         let mut style = plain(
             Some(self.row_height.unwrap_or(d.row_h as f32)),
             [0., d.pad_x as f32, 0., d.pad_x as f32],
-            TOKENS.radius.chip as f32,
+            radius,
         );
         let state_color = match self.activity {
             Activity::Waiting(_) => rgba(TOKENS.color.state.waiting),

@@ -137,6 +137,63 @@
       }}
       return out;
     };
+    const tabParts=node=>{
+      const diagnostics=[];
+      diagnostics.push({key:'tab',rect:bounds(node)});
+      const header=node.querySelector(':scope > .tab-row');
+      if(header)parts(header,'header',diagnostics);
+      const body=node.querySelector(':scope > .tab-body');
+      if(body)diagnostics.push({key:'body',rect:bounds(body)});
+      let seat=-1,nestedIndex=0;
+      for(const child of [...(body||node).children]){
+        if(child===header)continue;
+        if(child.classList.contains('seat-row')){seat++;nestedIndex=0;diagnostics.push(...parts(child).map(p=>({...p,key:`seat${seat}/${p.key}`})));}
+        else if(seat>=0){diagnostics.push(...parts(child).map(p=>({...p,key:`seat${seat}/child${nestedIndex}/${p.key}`})));nestedIndex++;}
+      }
+      return diagnostics;
+    };
+    if(window.bboxySwarmFixture){
+      const cardParts=(card,prefix='')=>{
+        let diagnostics=[{key:'card',rect:bounds(card)}];
+        const head=card.querySelector(':scope > .space-head');parts(head,'head',diagnostics);
+        const body=card.querySelector(':scope > .space-body');
+        if(body){
+          diagnostics.push({key:'body',rect:bounds(body)});let ti=0,si=0,xi=0;
+          for(const node of body.children){
+            if(!node.className){diagnostics.push(...tabParts(node).map(p=>({...p,key:`body/tab${ti}/${p.key}`})));ti++;}
+            else if(node.classList.contains('newseat'))parts(node,'body/newseat',diagnostics);
+            else if(node.classList.contains('participants'))parts(node,'body/shadows',diagnostics);
+            else if(node.classList.contains('phantom')){diagnostics.push(...parts(node).map(p=>({...p,key:`body/shadow${si}/${p.key}`})));si++;}
+            else {diagnostics.push(...parts(node).map(p=>({...p,key:`body/extra${xi}/${p.key}`})));xi++;}
+          }
+        }
+        return diagnostics.map(p=>({...p,key:prefix+p.key}));
+      };
+      const sidebar=window.bboxySwarmFixture==='sidebar';
+      const call=calls.findLast(c=>c.name===(sidebar?'sidebar':'spaceHeader')&&c.node?.isConnected&&root.contains(c.node));
+      if(!call)throw Error('missing SwarmCard/Sidebar constructor');
+      const target=sidebar?call.node:call.node.closest('.space');target.dataset.bboxySwarm='';
+      let diagnostics=[],bodyTabs=[];
+      if(sidebar){
+        diagnostics.push({key:'sidebar',rect:bounds(target)});
+        const top=target.querySelector(':scope > .sb-top'),scroll=target.querySelector(':scope > .sb-scroll'),handle=target.querySelector(':scope > .handle');
+        parts(top,'top',diagnostics);if(handle)parts(handle,'handle',diagnostics);
+        diagnostics.push({key:'scroll',rect:bounds(scroll)});
+        [...scroll.querySelectorAll(':scope > .space')].forEach((card,i)=>diagnostics.push(...cardParts(card,`swarm${i}/`)));
+        const add=scroll.querySelector(':scope > .new-cohort');if(add)parts(add,'new-swarm',diagnostics);
+      }else{
+        diagnostics=cardParts(target);
+        bodyTabs=calls.filter(c=>c.name==='tabRow'&&c.node?.isConnected&&target.contains(c.node)).map(c=>c.args);
+      }
+      // The phone is external fixture context. Export its padding-box clip,
+      // independently of all sidebar descendants and their layout diagnostics.
+      const phone=target.closest('.phone');let ancestor_clip=null;
+      if(phone){
+        const r=bounds(phone),s=getComputedStyle(phone),b=['Top','Right','Bottom','Left'].map(side=>parseFloat(s['border'+side+'Width'])||0);
+        ancestor_clip={rect:{x:r.x+b[3],y:r.y+b[0],w:r.w-b[1]-b[3],h:r.h-b[0]-b[2]},radii:['TopLeft','TopRight','BottomRight','BottomLeft'].map((corner,i)=>Math.max(0,parseFloat(s['border'+corner+'Radius'])-Math.max(b[[0,0,2,2][i]],b[[3,1,1,3][i]])))};
+      }
+      return JSON.parse(JSON.stringify({version:1,layer:'swarms',kind:sidebar?'sidebar':'card',args:call.args,body_tabs:bodyTabs,host:bounds(sidebar?target:target.parentElement),phone:!!phone,ancestor_clip,scroll:target.querySelector('.sb-scroll')?.scrollTop||0,parts:diagnostics},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
+    }
     if(window.bboxyTabsFixture){
       const tab=window.bboxyTabsFixture==='tab-row';
       const selected=calls.filter(c=>c.name===(tab?'tabRow':'miniGrid')&&c.node?.isConnected&&root.contains(c.node));
@@ -146,17 +203,7 @@
         c.node.dataset.bboxyTabs='';
         let diagnostics=[];
         if(tab){
-          diagnostics.push({key:'tab',rect:bounds(c.node)});
-          const header=c.node.querySelector(':scope > .tab-row');
-          if(header)parts(header,'header',diagnostics);
-          const body=c.node.querySelector(':scope > .tab-body');
-          if(body)diagnostics.push({key:'body',rect:bounds(body)});
-          let seat=-1,child=0;
-          for(const node of [...(body||c.node).children]){
-            if(node===header)continue;
-            if(node.classList.contains('seat-row')){seat++;child=0;diagnostics.push(...parts(node).map(p=>({...p,key:`seat${seat}/${p.key}`})));}
-            else if(seat>=0){diagnostics.push(...parts(node).map(p=>({...p,key:`seat${seat}/child${child}/${p.key}`})));child++;}
-          }
+          diagnostics=tabParts(c.node);
         }else diagnostics=parts(c.node,`grid${i}`);
         const css=getComputedStyle(c.node);
         return {args:c.args,size:[parseFloat(css.getPropertyValue('--mg-w')),parseFloat(css.getPropertyValue('--mg-h'))],parts:diagnostics};

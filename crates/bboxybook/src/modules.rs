@@ -83,10 +83,6 @@ fn col(i: usize, ctx: &DrawCtx) -> Color {
         LIGHT[i % 15]
     })
 }
-fn derived_color(key: &str, ctx: &DrawCtx) -> Color {
-    let h = SeatColor::Derived.resolve(key, ctx.theme);
-    Color::hsl(h.hue, h.saturation / 100.0, h.lightness / 100.0)
-}
 fn seat_color(s: &Seat, ctx: &DrawCtx) -> Color {
     if let SeatColor::Override(h) = s.color {
         Color::hsl(h.hue, h.saturation / 100.0, h.lightness / 100.0)
@@ -273,50 +269,6 @@ pub fn mini_grid(
     crate::tabs::paint_legacy_mini(tree, r, focused, ctx, out)
 }
 
-pub(crate) fn band(
-    name: &str,
-    count: usize,
-    r: Rect,
-    color: Color,
-    ctx: &DrawCtx,
-    out: &mut DrawList,
-) {
-    out.push(Prim::Gloss {
-        rect: r,
-        radii: [STYLE.radius.tile as f32; 4],
-        color: ctx.color(color),
-    });
-    out.text(
-        Rect::new(r.x + 12.0, r.y + (r.h - 14.0) * 0.5, r.w - 65.0, 14.0),
-        name,
-        TextStyle {
-            scale: TypeScale::Band,
-            weight: 600,
-            tracking_em: 0.16,
-            uppercase: true,
-            ..Default::default()
-        },
-        ctx.color(Color::WHITE.alpha(0.92)),
-    );
-    text(
-        out,
-        Rect::new(
-            r.x + 12.0 + name.len() as f32 * 8.0 + 10.0,
-            r.y + (r.h - 14.0) * 0.5,
-            24.0,
-            14.0,
-        ),
-        count.to_string(),
-        10.5,
-        ctx.color(Color::WHITE.alpha(0.7)),
-        400,
-    );
-    Swatch(color).draw(
-        Rect::new(r.right() - 22.0, r.y + (r.h - 10.0) * 0.5, 10.0, 10.0),
-        ctx,
-        out,
-    );
-}
 pub(crate) fn new_seat(r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
     text(
         out,
@@ -376,183 +328,10 @@ fn card(
     ctx: &DrawCtx,
     out: &mut DrawList,
 ) {
-    let dim = if focused { *ctx } else { ctx.dimmed() };
-    let color = derived_color(&format!("space-{name}"), ctx);
-    panel(out, r, &dim);
-    out.clip(r, [STYLE.radius.card as f32; 4]);
-    let h = STYLE.spacing.band as f32;
-    band(
-        name,
-        indices.len(),
-        Rect::new(r.x + 4.0, r.y + 4.0, r.w - 8.0, h),
-        color,
-        &dim,
-        out,
-    );
-    if open {
-        let mut y = r.y + h + 6.0;
-        let row = ctx.density.tokens().row_h as f32;
-        let tab_h = ctx.density.tokens().tab_h as f32;
-        let tree = if indices.len() == 15 {
-            tree15()
-        } else {
-            tree3()
-        };
-        tab_row(
-            &tree,
-            if indices.len() == 15 {
-                "all fifteen"
-            } else {
-                "core"
-            },
-            Rect::new(r.x + 6.0, y, r.w - 12.0, tab_h),
-            true,
-            &dim,
-            out,
-        );
-        y += tab_h;
-        for (n, i) in indices.iter().enumerate() {
-            let nested = indices.len() == 15 || n < 3;
-            seat_row(
-                &seat(*i),
-                Rect::new(
-                    r.x + 6.0 + if nested { 8.0 } else { 0.0 },
-                    y,
-                    r.w - 12.0 - if nested { 8.0 } else { 0.0 },
-                    row,
-                ),
-                *i == 0,
-                if nested { None } else { Some(n - 1) },
-                &dim,
-                out,
-            );
-            y += row;
-        }
-        new_seat(Rect::new(r.x + 6.0, y + 6.0, r.w - 12.0, row), &dim, out);
-        y += row + 12.0;
-        text(
-            out,
-            Rect::new(r.x + 12.0, y, r.w - 24.0, tab_h),
-            "Shadows",
-            ctx.density.tokens().font_small as f32,
-            dim.muted(),
-            400,
-        );
-        y += tab_h;
-        for (i, name) in ["Kestrel Nine", "Orrin Slate", "Ione Marsh"]
-            .iter()
-            .enumerate()
-        {
-            let mut ph = seat(i);
-            ph.name = (*name).into();
-            ph.title.clear();
-            ph.grade = Grade::Reported;
-            ph.activity = [
-                Activity::Active,
-                Activity::Idle,
-                Activity::Waiting(WaitKind::Question),
-            ][i];
-            ph.where_ = Where::Local;
-            let c = Color::hex(ctx.theme.palette().fg_dim).to_hsl();
-            ph.color = SeatColor::Override(Hsl {
-                hue: c[0],
-                saturation: c[1] * 100.0,
-                lightness: c[2] * 100.0,
-            });
-            seat_row(
-                &ph,
-                Rect::new(r.x + 6.0, y, r.w - 12.0, row),
-                false,
-                None,
-                &dim,
-                out,
-            );
-            y += row;
-        }
-    }
-    out.push(Prim::Rect {
-        rect: Rect::new(
-            r.x,
-            r.bottom() - if open { 4.0 } else { 3.0 },
-            r.w,
-            if open { 4.0 } else { 3.0 },
-        ),
-        radii: [0.0, 0.0, 12.0, 12.0],
-        fill: ctx.identity(color),
-        stroke: None,
-        inner_highlight: None,
-        shadow: None,
-    });
-    out.unclip();
+    crate::swarms::paint_legacy_card(r, name, indices, open, focused, ctx, out)
 }
 fn sidebar(r: Rect, count: usize, ctx: &DrawCtx, out: &mut DrawList) {
-    out.rect(
-        r,
-        0.0,
-        Color::hex(ctx.theme.palette().sidebar)
-            .alpha(STYLE.material.panel_alpha as f32)
-            .mix(
-                Color::hex(ctx.theme.palette().bg),
-                1.0 - STYLE.material.panel_alpha as f32,
-            ),
-    );
-    out.clip(r, [0.0; 4]);
-    let row = ctx.density.tokens().row_h as f32;
-    let grid = STYLE.spacing.grid as f32;
-    let mut y = r.y + grid;
-    let groups = if count == 15 {
-        vec![("swarm", (0..15).collect::<Vec<_>>(), true)]
-    } else {
-        vec![
-            ("term", vec![0, 1, 3, 2, 4], true),
-            ("winnow", vec![5, 6, 7], false),
-        ]
-    };
-    for (name, indices, open) in groups {
-        let h = if open {
-            STYLE.spacing.band as f32
-                + 24.0
-                + ctx.density.tokens().tab_h as f32 * 2.0
-                + row * (indices.len() as f32 + 4.0)
-        } else {
-            STYLE.spacing.band as f32 + 11.0
-        };
-        card(
-            Rect::new(r.x + 8.0, y, r.w - 16.0, h),
-            name,
-            &indices,
-            open,
-            name != "winnow",
-            ctx,
-            out,
-        );
-        y += h + TOKENS.layout.cohort_gap as f32;
-    }
-    let new = Rect::new(r.x + 8.0, y, r.w - 16.0, 40.0);
-    panel(out, new, ctx);
-    text(
-        out,
-        Rect::new(new.x + 14.0, new.y + 11.0, new.w - 28.0, 20.0),
-        "+  new swarm",
-        STYLE.r#type.row as f32,
-        ctx.muted(),
-        500,
-    );
-    icon(
-        out,
-        Rect::new(r.x + 12.0, r.bottom() - 24.0, 16.0, 16.0),
-        "archive",
-        ctx.muted(),
-    );
-    text(
-        out,
-        Rect::new(r.right() - 27.0, r.bottom() - 28.0, 20.0, 22.0),
-        "+",
-        20.0,
-        ctx.muted(),
-        400,
-    );
-    out.unclip();
+    crate::swarms::paint_legacy_sidebar(r, count, ctx, out)
 }
 fn close_dot(r: Rect, hover: bool, ctx: &DrawCtx, out: &mut DrawList) {
     out.rect(r, r.h, ctx.color(Color::hex("#FF5F57")));

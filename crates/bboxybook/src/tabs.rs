@@ -149,7 +149,10 @@ pub fn tab(v: &Value, options: &Value, ctx: ui::Context) -> Result<TabRow> {
     }
     Ok(TabRow {
         name: v["name"].as_str().unwrap_or("").into(),
-        shortcut: v["shortcut"].as_str().map(Into::into),
+        shortcut: v["shortcut"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .map(Into::into),
         tree: node(&v["tree"])?,
         seats,
         expanded: options["expanded"] == true,
