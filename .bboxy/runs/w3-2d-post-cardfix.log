@@ -1,0 +1,31 @@
+Frozen committed web reference 3a383882c3c2822166012cc1a446103b39807a53; includes Wren ceafbe8; measured CSS snapping retained.
+$ target/debug/bboxybook components --out target/bboxybook/post-cardfix/components
+native L6 gallery: 64 PNGs; target/bboxybook/post-cardfix/components/gallery/index.html
+web: 24/24 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/post-cardfix/components/native/layouts.json
+rendered 24 PNGs to target/bboxybook/post-cardfix/components/native
+parity: 24 cases, 0 review; target/bboxybook/post-cardfix/components/index.html
+exit_status=0
+$ target/debug/bboxybook materials --out target/bboxybook/post-cardfix/materials
+web: 32/32 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 32 PNGs to target/bboxybook/post-cardfix/materials/native
+parity: 32 cases, 8 review; target/bboxybook/post-cardfix/materials/index.html
+exit_status=0
+$ target/debug/bboxybook styles --out target/bboxybook/post-cardfix/style
+web: 88/88 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 88 PNGs to target/bboxybook/post-cardfix/style/native
+parity: 88 cases, 88 review; target/bboxybook/post-cardfix/style/index.html
+exit_status=0
+
+Summary after Wren ceafbe8 (no L1 render change):
+components: policy review 0/24 -> 0/24; raw 0.1% pixel review 24 -> 24; worst changed 1.6736% -> 1.6736%.
+Max rect 0.461620px; max baseline 0.000000px. All 24 geometry records complete.
+materials: policy review 8/32 -> 8/32; raw 0.1% pixel review 8 -> 8; worst changed 0.2112% -> 0.2112%.
+style: policy review 88/88 -> 88/88; raw 0.1% pixel review 56 -> 56; worst changed 0.3426% -> 0.3426%.
+L3 Style: all 88 cases are unproven geometry under the new text policy; the reported raw pixel count does not waive that requirement.
+Three captures used frozen committed reference 3a383882c3c2822166012cc1a446103b39807a53, each had zero capture failures. Native CSS snapping unchanged; discarded fractional prototype was not applied.
+Policy commit 3a38388 signed. Full policy checks: 41 tests green; fmt, Clippy (same two legacy exceptions), node syntax, diff check exit 0 — .bboxy/runs/w3-2d-parity-policy-verified.log.
+Browsers used isolated ephemeral headless profiles. No operator browser opened/reloaded. No FPS measured.
