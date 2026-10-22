@@ -156,3 +156,16 @@ Proportionate implementation evidence should cover: a forged role/unknown issuer
 ## Task messages (operator decision 2026-10-21, see [[work-items]])
 
 A third `body` variant in the same signed envelope: `task`. Kinds: `delegate{task_id, path, role, brief_excerpt}` sent oracle-class to the responsible seat; `release{task_id}` to a seat that is no longer responsible; `report{task_id, summary, commit?, verify_result?}` from the responsible seat, routed to `delegated_by`; `accept{task_id}` / `reject{task_id, reason}` from the delegating seat. The mux mirrors every task message into the item's frontmatter (`assignee`, `status`, `updated`) before delivery evidence is recorded, so the file and the stream never disagree for longer than one write. Priority: `delegate`, `release`, `accept`, `reject` carry the sender's class; `report` carries worker class but bypasses the Oracle token bucket (it is the thing the Oracle is waiting for).
+
+## Subagent addressing (operator decision 2026-10-21; ref `runs/ref-iterm-background-task.png`)
+
+iTerm2 shows "1 background task running" under a seat; we know the subagent ids from OSC 7501 ([[subagent-detection]]), so a message names its target precisely. The envelope's destination gains an optional agent part: `to: {seat: <ulid>, agent?: <7501 id>}`. Rules:
+
+| Target | Delivery |
+|---|---|
+| seat only | the harness's main agent, as today |
+| seat + agent, harness can address subagents | through the adapter's subagent channel (none exists today for Claude Code or Codex: their sockets and queues reach the main session only; capability flag `subagent_addressable` on the harness record, false for both) |
+| seat + agent, harness cannot | delivered to the main agent with a routing header `for subagent <id> "<title>"`, so the main loop relays or answers on its behalf; evidence state notes `relayed_via_main` |
+| seat + agent, agent already ended | held with `agent_ended`, shown to the sender, never silently redirected |
+
+The sender side knows the targets: every subagent row in the sidebar is a message target (row menu "message this subagent"), and a reply from a subagent carries `from: {seat, agent}` when the harness reports it (Claude's 7501 `id` on the report that produced it; otherwise `from` is the seat and the UI says "via main"). Receipts and the tick ladder are per target. The stream shows a target chip on the message row: main, or the subagent's title.
