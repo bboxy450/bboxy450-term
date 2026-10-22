@@ -95,6 +95,10 @@ The Oracle maintains this section and, in the real terminal, edits it with `grap
 
 DMs over the channel. One-to-one traffic (briefs, handoffs, reviews, corrections, questions to one agent) goes by `icq dm <key>`. The channel `#bboxy450-term` carries only what everyone must see: claims, one-line landed reports, decisions, presence. Keys: Oracle 726afa3b…a18f4a, Nyx 6b4e9bf6…30d1, Rook bfae37c6…b87fa, Wren 22c0e081…4b57.
 
+## Shared-worktree rule (Wren's flag, 2026-10-21)
+
+One worktree, four writers. Everyone stages **by path**, never `git add -A` or `-a`; the Oracle stages only `.bboxy/` (and the specific files it touched). Each agent commits its own in-flight files; an Oracle snapshot of someone else's WIP happens only on the operator's explicit "save everything" and is labelled wip.
+
 ## Rules for this file
 
 One line per change. The Oracle edits it; Executors report on `#bboxy450-term` and the Oracle moves the line. A claim without an entry here is not a claim.
