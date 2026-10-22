@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>purge · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+</head><body><script>
+const el = Lab.el;
+const seat = { key: 'pg1', name: 'Rook Ashwhisker', harness: 'codex', role: 'executor', title: 'gpu research', state: 'waiting' };
+Lab.page({ title: 'purge', wide: true, note: 'The one confirm dialog in the product, because it ends the process without grace. GUI only, never MCP. Opens from the row menu (Purge…). The seat name must be typed; the history moves to cold storage, so nothing is lost and the d-word never appears.',
+  states: ['empty', 'typed wrong', 'typed right'],
+  render(s, body) {
+    const stage = el('div', { style: 'background:var(--navy);padding:40px;border-radius:var(--r-pill);display:flex;justify-content:center' });
+    stage.append(C.purgeModal(seat, { typed: { 'typed wrong': 'Rook', 'typed right': 'Rook Ashwhisker' }[s] || '', onPurge: x => console.log('purge', x.name), onCancel: () => {} }));
+    body.append(stage);
+  } });
+</script></body></html>

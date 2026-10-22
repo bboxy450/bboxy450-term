@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 29,
+  "version": 30,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -584,7 +584,7 @@
         "the one place a confirm dialog exists, because it ends the process without grace",
         "the word delete never appears"
       ],
-      "status": "drawn, not built"
+      "status": "built: launcher material, red \"Purge seat\", the seat chip, \"Terminates now and moves its history to cold storage · nothing is lost\" (the d-word stays out, so the drawn subtext was reworded), three facts (skips grace, ring/checkpoints/events to cold storage, replayable by session id), typed seat name enables Purge (case-insensitive, exact), Enter/Esc; opens from row menu Purge… for steer callers only; purgeModal() in components.js, purge.html?state=empty, typed-wrong, typed-right"
     },
     "audit_lines": {
       "purpose": "the Oracle's actions in the open",

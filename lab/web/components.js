@@ -202,6 +202,7 @@
       { label: 'Copy socket path', a: 'copy-socket', cap: socketPath(seat) },
       '-',
       { label: 'Close', a: 'close', k: '⌘W', danger: true },
+      ...(opts.steer ? [{ label: 'Purge…', a: 'purge', danger: true }] : []),
     ];
     const menu = el('div', { class: 'row-menu', role: 'menu', tabindex: '-1' }, el('div', { class: 'rm-head' }, harnessIcon(seat.harness), el('b', { style: 'color:' + seatColor(seat) }, seat.name)));
     const rows = [];
@@ -235,6 +236,28 @@
     });
     paint(); if (opts.openSub != null) { const r = rows.find(x => x._it.label === opts.openSub); if (r) requestAnimationFrame(() => openFly(r._it, r)); }
     return menu;
+  }
+  // purge (GUI only, never MCP): the one confirm in the product, because it skips grace and ends the process now. The seat name
+  // must be typed. History moves to cold storage; the terminal never removes it. The d-word never appears.
+  function purgeModal(seat, opts) {
+    opts = opts || {};
+    const go = el('button', { class: 'pg-go', disabled: '' }, 'Purge');
+    const input = el('input', { placeholder: seat.name, spellcheck: 'false', autocomplete: 'off', value: opts.typed || '' });
+    const ok = () => input.value.trim().toLowerCase() === seat.name.toLowerCase();
+    const sync = () => { if (ok()) go.removeAttribute('disabled'); else go.setAttribute('disabled', ''); input.classList.toggle('ok', ok()); };
+    const fire = () => { if (ok()) opts.onPurge && opts.onPurge(seat); };
+    go.addEventListener('click', fire);
+    input.addEventListener('input', sync);
+    input.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') fire(); if (e.key === 'Escape') opts.onCancel && opts.onCancel(); });
+    const panel = el('div', { class: 'purge', role: 'alertdialog', 'aria-label': 'Purge seat' },
+      el('div', { class: 'pg-title' }, 'Purge seat'),
+      el('div', { class: 'pg-seat' }, el('span', { class: 'tile', style: 'background:' + ((LAUNCH.find(l => l.harness === seat.harness) || {}).tile || 'var(--surface-2)') }, harnessIcon(seat.harness)), el('b', { style: 'color:' + seatColor(seat) }, seat.name), seat.title ? el('span', { class: 'pg-t' }, seat.title) : null),
+      el('p', { class: 'pg-sub' }, 'Terminates now and moves its history to cold storage · nothing is lost'),
+      el('ul', { class: 'pg-list' }, el('li', {}, 'skips the ' + (opts.graceS || 60) + ' s grace, no undo'), el('li', {}, 'ring, checkpoints and events move to cold storage'), el('li', {}, 'a later resume can replay them by session id')),
+      el('label', { class: 'pg-label' }, 'Type ', el('b', {}, seat.name), ' to confirm'), input,
+      el('div', { class: 'pg-acts' }, el('button', { class: 'pg-cancel', onclick: () => opts.onCancel && opts.onCancel() }, 'Cancel'), go));
+    sync(); panel.focus = () => input.focus();
+    return panel;
   }
   // pending row (MCP mutation status): a seat the Oracle is spawning. accepted → dashed with a spinner; partial and unknown stay
   // dashed with the outcome spelled; rejected looks like the closed strip with its reason. Never a failure, never an automatic retry.
@@ -892,5 +915,5 @@
     return root;
   }
 
-  window.C = { rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

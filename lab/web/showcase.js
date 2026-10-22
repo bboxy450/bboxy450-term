@@ -199,9 +199,22 @@
       else if (a === 'interrupt') interruptSeat(sd);
       else if (a === 'mute') toggleMute(sd);
       else if (a === 'close') closeSeat(sd);
+      else if (a === 'purge') openPurge(sd);
     } });
     rmenu.style.position = 'fixed'; rmenu.style.left = Math.min(x, innerWidth - 250) + 'px'; rmenu.style.top = Math.min(y, innerHeight - 380) + 'px';
     document.body.append(rmenu); rmenu.focus();
+  }
+  // Purge (GUI only): the one confirm. Typed seat name; skips grace; history to cold storage; a stream line says so.
+  function openPurge(sd) {
+    closeSpotlight();
+    const back = el('div', { class: 'spot-back', onclick: e => { if (e.target === back) closeSpotlight(); } });
+    const m = C.purgeModal(sd, { graceS: GRACE_MS / 1000, onCancel: closeSpotlight, onPurge: x => {
+      closeSpotlight(); const hit = tabOf(x.key); const sp = hit ? hit.sp : space();
+      if (hit) { hit.t.seats = hit.t.seats.filter(y => y !== x); hit.t.tree = prune(hit.t.tree, x.key); if (!hit.t.seats.length) sp.tabs.splice(sp.tabs.indexOf(hit.t), 1); }
+      seats.splice(seats.indexOf(x), 1); clearTimeout(x.replay && x.replay.timer);
+      if (focused === x.key) { const t2 = sp.tabs[0]; focused = t2 ? t2.seats[0].key : null; }
+      streamLine(sp, 'operator purged ' + x.name + ' · history moved to cold storage'); render(); } });
+    back.append(m); document.body.append(back); spot = back; m.focus();
   }
   const rowSeat = t => { const r = t.closest && t.closest('.seat-row'); return r && seats.find(x => x.key === r.dataset.key); };
   addEventListener('contextmenu', e => { const sd = rowSeat(e.target); if (!sd) return; e.preventDefault(); openRowMenu(sd, e.clientX, e.clientY); });
