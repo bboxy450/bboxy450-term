@@ -1,0 +1,22 @@
+Nyx Copperwing <EXECUTOR> — output pruning under the Oracle's prior authorization.
+Only regenerable/superseded outputs in this repository's target/ were removed.
+Accepted text-raster, italic and Flow galleries and all 1,992 dash regression
+witnesses were retained. No source, peer crate build cache or other repo changed.
+
+1. Superseded render runs: alignment-73b, group-opacity/regression, graphs/atlas,
+graphs/x-height-regression, italic/regression, flow/regression.
+Free bytes: 3,959,218,176 -> 5,503,188,992.
+2. Incremental caches of bboxybook, bbt-ui, bbt-render, bbt-ui-model (93 dirs).
+Free bytes: 147,853,312 -> 2,193,338,368.
+3. Incremental caches of the UI/gallery integration tests (not peer crates).
+Current verification has CARGO_INCREMENTAL=0.
+4. Superseded UI/gallery/test build artifacts in target/debug/deps, older than
+one hour; recent outputs and current bboxybook/app executable inodes protected.
+135,316 files, 8,722,627,868 logical file bytes.
+Free bytes: 1,343,123,456 -> 7,311,433,728. Concurrent peer builds affected totals.
+
+The default clean-CI screenshot pass hit ENOSPC before step 4; it is not green.
+Full removal manifest retained locally at
+ target/bboxybook/documents/dash/cleanup-manifest.log
+SHA-256 103a9d44452dd882b43845ba1691c279a8067666bc732be8f27f96b262159b29
+Artifact counts by prefix: {'bboxybook': 78017, 'swarms': 5868, 'overlays': 5759, 'widgets': 6307, 'panes': 2713, 'components': 5494, 'atoms': 6391, 'styles': 3557, 'seat_rows': 6132, 'tabs': 6407, 'launchers': 2280, 'materials': 2385, 'title_bars': 1861, 'streams': 1539, 'graphs': 532, 'libbbt_render': 27, 'libbboxybook': 38, 'libbbt_ui_model': 6, 'libbbt_ui': 3}

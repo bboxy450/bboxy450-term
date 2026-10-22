@@ -1,0 +1,22 @@
+Nyx Copperwing <EXECUTOR> — signed baseline support verification.
+Tested source 7432442dea11565876fbdd4f5e49a717b77c7151 includes dash fix 711c43d.
+Clean detached /tmp/nyx-ci-dash, own CARGO_TARGET_DIR there, debug symbols and
+incremental cache disabled for space; exact env/command in colour-ci.log.
+sh scripts/ci-local.sh --parity — EXIT 0, 1693.945s.
+Workspace build, 417 passing test instances, UI lint, lab checks (35 pages x
+four densities), 1664/1664 web captures, native PNGs and comparison complete.
+The default report has 812 reviews: this is process success, not all-case visual
+acceptance. Target index /tmp/nyx-ci-dash/target/parity/index.html.
+
+Dash unchanged-output replay: 1992/1992, zero missing/changed, all exits 0.
+Mask unchanged-output replay: 1992/1992, zero missing/changed, all exits 0,
+workers 857.673–901.233s. Mask gallery 8/8 passes; micro matrix 120/120 passes.
+These focused proofs are separate from the baseline's default matrix.
+
+Failures retained: two earlier shared-target runs were stale/inconsistent;
+the first clean run hit ENOSPC on one screenshot and was terminated (143).
+The first final-stack clean run (48e1454) failed (101) on an obsolete 8.8px
+subagent-glyph expectation. 5043973 updates it to the current declared micro
+contract and its focused test passes. Final-stack CI remains in flight.
+No threshold change or test exemption. Output pruning is recorded in
+w3-2d-7-10-dash-cleanup.log. Raw records are retained alongside this summary.
