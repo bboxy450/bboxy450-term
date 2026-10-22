@@ -1,0 +1,219 @@
+Atlas landing validation. Oracle DM3200: landed on main. git fetch origin exit0; git rebase origin/main exit0; clean status.
+
+$ git rev-parse HEAD origin/main
+4db2b6112511da889471e68167c3059e0815460a
+e9c2a7e7890e9fb540a34ced3a4690de5cb2a9c1
+
+exit: 0
+
+$ cargo build -p bboxy450-term --release --locked
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `release` profile [optimized + debuginfo] target(s) in 3.18s
+
+exit: 0
+
+$ target/release/bboxy450-term --cadence-test --meter
+Output .bboxy/runs/r4-metal-final.log
+exit: 0
+
+$ target/release/bboxy450-term --cadence-test --meter --pacing cv
+Output .bboxy/runs/r4-cv-final.log
+exit: 0
+
+Acceptance after atlas fix: FAIL panel lock and 8.333ms budget. Metal52.619Hz/67late intervals, CPU p50/p99 3.668/6.916ms, GPU conservative span p50/p99 18.886/20.417ms; CPU+GPU p99 26.628ms. CV52.513Hz/67late intervals, GPU p50/p99 18.914/20.416ms; CPU+GPU p99 24.997ms. Both all158 samples paired, none missing. Idle PASS: Metal10.002s0frames0callbacks; CV10.003s0frames0callbacks.
+Inference from control: shared rendering cost, not proof of exact GPU shader hotspot. Candidate from source: materials.wgsl glow executes Gaussian/particle work on deep interior pixels (no inner distance early-out); actual GPU profiling not performed. These renderer shader files are outside this assignment. Requested Oracle decision by DM, no source scope expanded.
+
+$ cargo test -p bboxy450-term --locked
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.80s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-88dc0c5c8dba8b06)
+
+running 3 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.53s
+
+exit: 0
+
+$ sh scripts/ui-lint.sh
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+warning: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:366:13
+    |
+366 | /             if !cache.contains_key(&ch) {
+367 | |                 let glyph = match font.rasterize(ch)? {
+368 | |                     Some(raster) => Some(PlacedGlyph {
+369 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+375 | |                 cache.insert(ch, glyph);
+376 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `#[warn(clippy::map_entry)]` on by default
+help: try
+    |
+366 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+367 +                 let glyph = match font.rasterize(ch)? {
+368 +                     Some(raster) => Some(PlacedGlyph {
+369 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+370 +                         left: raster.left,
+371 +                         top: raster.top,
+372 +                     }),
+373 +                     None => None,
+374 +                 };
+375 +                 e.insert(glyph);
+376 +             }
+    |
+
+warning: `bbt-render` (lib) generated 1 warning (run `cargo clippy --fix --lib -p bbt-render -- -D clippy::disallowed_methods` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.51s
+
+exit: 0
+
+$ git diff --check
+
+exit: 0
+
+GPU profile completed without source fixes: r4-gpu-profile.log. 284 full steady frames,17,040 CBs/encoders; real GPU active union mean19.016ms/frame, blur13.396ms/frame (67.06% of summed encoder active),15glows3.678ms/frame. R4 acceptance still fails; awaiting Oracle disposition.
+
+Handoff rebase fetched vector-path addition d10585f: git fetch origin0; git rebase origin/main0; signed verify0, clean status; successor1d1e7f0. GPU trace remains pinned to measured source4db2b61/atlas e9c2a7e, not silently relabelled as the newer tree. Post-rebase compilation/lint follows.
+
+$ cargo test -p bboxy450-term --locked
+   Compiling num-traits v0.2.19
+   Compiling arrayvec v0.7.8
+   Compiling tiny-skia v0.12.0
+   Compiling usvg v0.48.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling float_next_after v1.0.0
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling resvg v0.48.1
+   Compiling half v2.7.1
+   Compiling euclid v0.22.14
+   Compiling naga v30.0.1
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling lyon_geom v1.0.20
+   Compiling lyon_path v1.0.19
+   Compiling lyon_tessellation v1.0.22
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 12.86s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-20a7b435b6ceee2b)
+
+running 3 tests
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+    Checking num-traits v0.2.19
+    Checking arrayvec v0.7.8
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking float_next_after v1.0.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking half v2.7.1
+    Checking euclid v0.22.14
+    Checking naga v30.0.1
+    Checking lyon_geom v1.0.20
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking lyon_path v1.0.19
+    Checking lyon_tessellation v1.0.22
+    Checking wgpu-naga-bridge v30.0.1
+    Checking wgpu-hal v30.0.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.80s
+
+exit: 0
+
+$ sh scripts/ui-lint.sh
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:210:29
+    |
+210 |     for tri in mesh.indices.chunks_exact(3) {
+    |                             ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:259:31
+    |
+259 |     for tri in result.indices.chunks_exact(3) {
+    |                               ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:366:13
+    |
+366 | /             if !cache.contains_key(&ch) {
+367 | |                 let glyph = match font.rasterize(ch)? {
+368 | |                     Some(raster) => Some(PlacedGlyph {
+369 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+375 | |                 cache.insert(ch, glyph);
+376 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `#[warn(clippy::map_entry)]` on by default
+help: try
+    |
+366 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+367 +                 let glyph = match font.rasterize(ch)? {
+368 +                     Some(raster) => Some(PlacedGlyph {
+369 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+370 +                         left: raster.left,
+371 +                         top: raster.top,
+372 +                     }),
+373 +                     None => None,
+374 +                 };
+375 +                 e.insert(glyph);
+376 +             }
+    |
+
+warning: `bbt-render` (lib) generated 3 warnings (run `cargo clippy --fix --lib -p bbt-render -- -D clippy::disallowed_methods` to apply 3 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.65s
+
+exit: 0
+
+$ git diff --check
+
+exit: 0

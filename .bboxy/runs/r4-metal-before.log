@@ -1,0 +1,8 @@
+$ target/release/bboxy450-term --cadence-test --meter
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+fatal runtime error: Rust cannot catch foreign exceptions, aborting
+
+exit: -6

@@ -1,13 +1,17 @@
 //! R2 app shell: event-driven native scene, memory-only UI drain and hitch meter.
 mod assets;
+mod budget;
 mod capture;
+mod display_link;
 mod gpu;
 mod log;
 mod scene;
 
 use bbt_rt::{HitchMeter, Latest, Phases, UiInbox, UiMsg};
+use display_link::{Clock, DisplayLink, Mode};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use winit::platform::macos::MonitorHandleExtMacOS;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
@@ -22,6 +26,7 @@ pub enum UiEvent {
     Wake,
     BeginIdle,
     EndIdle,
+    EndAnimation,
     Quit,
 }
 struct Wake(EventLoopProxy<UiEvent>);
@@ -39,6 +44,12 @@ struct App {
     prepared: Arc<Latest<Prepared>>,
     updates: Arc<Latest<usize>>,
     window: Option<Arc<Window>>,
+    pacer: Option<DisplayLink>,
+    pacing: Mode,
+    clock: Clock,
+    occluded: bool,
+    maximum_hz: f64,
+    budget: budget::Budget,
     gpu: Option<gpu::Gpu>,
     scene: scene::Scene,
     meter: HitchMeter,
@@ -49,12 +60,21 @@ struct App {
     demo_started: bool,
     idle_scheduled: bool,
     last_update: usize,
-    idle_start: Option<(Instant, u64)>,
+    idle_start: Option<(Instant, u64, u64)>,
     error: Option<String>,
     capture: Option<std::path::PathBuf>,
+    animate: bool,
+    cadence_test: bool,
+    animation_start: Option<(Instant, u64)>,
+    frozen_ms: f32,
 }
 impl App {
     fn request_redraw(&self) {
+        if !self.occluded
+            && let Some(pacer) = &self.pacer
+        {
+            pacer.request_frame();
+        }
         if let Some(window) = &self.window {
             window.request_redraw();
         }
@@ -84,14 +104,31 @@ impl App {
             .create_surface(window.clone())
             .map_err(|e| e.to_string())?;
         let size = window.inner_size();
+        if let Some(monitor) = window.current_monitor() {
+            self.maximum_hz = display_link::maximum_hz(&monitor);
+            self.meter = HitchMeter::new(self.maximum_hz);
+            let max_hz = monitor
+                .video_modes()
+                .map(|mode| mode.refresh_rate_millihertz())
+                .max()
+                .unwrap_or(0);
+            self.logger.write(format!(
+                "panel: {:?}, current={}mHz max_mode={}mHz maximumFramesPerSecond={}",
+                monitor.name(),
+                monitor.refresh_rate_millihertz().unwrap_or(0),
+                max_hz,
+                self.maximum_hz
+            ));
+        }
         let prepared = self.prepared.clone();
         let scale = window.scale_factor() as f32;
+        let effects = self.animate;
         bbt_rt::handle().spawn(async move {
             let result = async {
                 let mut gpu = gpu::Gpu::new(instance, surface, [size.width, size.height]).await?;
                 let scene = scene::Scene::new();
                 let logical = [size.width as f32 / scale, size.height as f32 / scale];
-                let layouts = scene.layout(logical)?;
+                let layouts = scene.layout(logical, effects)?;
                 gpu.warm(scene.paint(&layouts, logical, None), scale)?;
                 Ok((gpu, scene))
             }
@@ -112,6 +149,32 @@ impl App {
                 gpu.adapter_name(),
                 self.scene.seats.len()
             ));
+            self.logger.write(format!(
+                "Metal maximumDrawableCount={:?}, configured latency={}",
+                gpu.maximum_drawables(),
+                gpu.config.desired_maximum_frame_latency
+            ));
+            let display = self
+                .window
+                .as_ref()
+                .unwrap()
+                .current_monitor()
+                .map_or(0, |monitor| monitor.native_id());
+            let pacer = DisplayLink::new(
+                &gpu.surface,
+                display,
+                self.maximum_hz,
+                self.inbox.dirty.source(4),
+                self.pacing,
+            )?;
+            self.logger.write(format!(
+                "pacing: {}, requested range={}/{}/{} Hz; initially paused",
+                pacer.name(),
+                80_f64.min(self.maximum_hz),
+                self.maximum_hz,
+                self.maximum_hz
+            ));
+            self.pacer = Some(pacer);
             self.gpu = Some(gpu);
             self.request_redraw();
         }
@@ -158,6 +221,7 @@ impl App {
         if self.gpu.is_none() {
             return Ok(());
         }
+        let frame_cpu = Instant::now();
         let size = self.window.as_ref().unwrap().inner_size();
         if size.width == 0 || size.height == 0 {
             return Ok(());
@@ -165,11 +229,24 @@ impl App {
         let mut phases = Phases::default();
         let start = Instant::now();
         self.drain();
+        // Drain the coalesced dirty flag before consuming its latest tick, so a
+        // concurrent CV callback cannot publish a tick without a future wake.
+        let tick = self.pacer.as_ref().and_then(DisplayLink::take_tick);
+        let fifo = self.pacer.as_ref().is_none_or(DisplayLink::is_fifo);
+        let metal = self.pacer.as_ref().is_some_and(DisplayLink::is_metal);
+        if self.occluded
+            || (metal && tick.is_none())
+            || (self.animate && self.animation_start.is_some() && !fifo && tick.is_none())
+        {
+            return Ok(());
+        }
         phases.drain = start.elapsed();
         let scale = self.window.as_ref().unwrap().scale_factor() as f32;
         let logical = [size.width as f32 / scale, size.height as f32 / scale];
         let start = Instant::now();
-        let layouts = self.scene.layout(logical)?;
+        let layouts = self
+            .scene
+            .layout(logical, self.animation_start.is_some() || self.animate)?;
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
             let sample = self.meter.samples().back();
@@ -177,23 +254,65 @@ impl App {
             let interval = sample.and_then(|s| s.interval).unwrap_or_default();
             let ms = |duration: Duration| duration.as_secs_f64() * 1000.;
             format!(
-                "frames {} · interval {:.2}ms · CPU p99 {:.2}ms\ndrain {:.2} layout {:.2} draw {:.2}ms\nencode {:.2} present {:.2}ms · update {}",
-                self.meter.total_frames(), ms(interval), ms(self.meter.cpu_percentile(0.99)),
+                "frames {} · {:.1} Hz · interval {:.2}ms · CPU p99 {:.2}ms\ndrain {:.2} layout {:.2} draw {:.2}ms\nencode {:.2} present {:.2}ms · update {}",
+                self.meter.total_frames(), if interval.is_zero(){0.}else{1./interval.as_secs_f64()},ms(interval), ms(self.meter.cpu_percentile(0.99)),
                 ms(last.drain), ms(last.layout), ms(last.draw), ms(last.encode), ms(last.present_wait), self.last_update,
             )
         });
         let start = Instant::now();
         let ops = self.scene.paint(&layouts, logical, overlay.as_deref());
         phases.draw = start.elapsed();
-        if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(ops, scale)? {
+        if self.animate {
+            if fifo {
+                self.frozen_ms = self
+                    .animation_start
+                    .map_or(0., |(start, _)| start.elapsed().as_secs_f32() * 1000.);
+            } else if let Some(time) = tick
+                .as_ref()
+                .and_then(|tick| self.clock.observe(tick.target))
+            {
+                self.frozen_ms = time;
+            }
+        }
+        if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
+            ops,
+            scale,
+            self.frozen_ms,
+            tick.and_then(|tick| tick.drawable),
+            self.meter.total_frames() + 1,
+        )? {
             phases.encode = encode;
             phases.present_wait = wait;
             if let Some((phase, time)) = self.meter.record(Instant::now(), phases) {
                 self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3}",self.meter.total_frames(),time.as_secs_f64()*1000.,phases.cpu().as_secs_f64()*1000.,phases.drain.as_secs_f64()*1000.,phases.layout.as_secs_f64()*1000.,phases.draw.as_secs_f64()*1000.,phases.encode.as_secs_f64()*1000.,phases.present_wait.as_secs_f64()*1000.));
             }
+            if self.animation_start.is_some() && self.animate {
+                // The Metal path never waits for acquisition: include its full
+                // redraw wall time, including overlay/import/present overhead.
+                let cpu =
+                    frame_cpu
+                        .elapsed()
+                        .saturating_sub(if metal { Duration::ZERO } else { wait });
+                self.budget.cpu(self.meter.total_frames(), cpu);
+            }
+            self.gpu.as_ref().unwrap().collect_gpu(&mut self.budget);
+            if !self.animate {
+                self.pacer.as_ref().unwrap().set_active(false)?;
+            }
             if self.meter.total_frames() == 1 {
                 self.logger.write("first frame: 15 native panes presented");
                 self.demo();
+                if self.animate {
+                    self.animation_start = Some((Instant::now(), self.meter.total_frames()));
+                    self.pacer.as_mut().unwrap().set_active(!self.occluded)?;
+                    if self.cadence_test {
+                        let proxy = self.proxy.clone();
+                        bbt_rt::handle().spawn(async move {
+                            tokio::time::sleep(Duration::from_secs(3)).await;
+                            let _ = proxy.send_event(UiEvent::EndAnimation);
+                        });
+                    }
+                }
             }
             if (!self.fake || self.last_update == 20)
                 && let Some(path) = self.capture.take()
@@ -212,7 +331,10 @@ impl App {
                 });
             }
         }
-        if !self.inbox.messages.is_empty() || !self.inbox.output.is_empty() {
+        if (self.animate && fifo)
+            || !self.inbox.messages.is_empty()
+            || !self.inbox.output.is_empty()
+        {
             self.request_redraw();
         }
         Ok(())
@@ -237,7 +359,15 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_redraw();
             }
             UiEvent::BeginIdle => {
-                self.idle_start = Some((Instant::now(), self.meter.total_frames()));
+                if self.cadence_test {
+                    self.gpu.as_ref().unwrap().collect_gpu(&mut self.budget);
+                    self.logger.write(self.budget.report());
+                }
+                self.idle_start = Some((
+                    Instant::now(),
+                    self.meter.total_frames(),
+                    self.pacer.as_ref().map_or(0, DisplayLink::callbacks),
+                ));
                 self.logger.write(format!(
                     "idle probe begins: frames={} last_update={}",
                     self.meter.total_frames(),
@@ -249,24 +379,79 @@ impl ApplicationHandler<UiEvent> for App {
                     let _ = proxy.send_event(UiEvent::EndIdle);
                 });
             }
+            UiEvent::EndAnimation => {
+                self.animate = false;
+                self.clock.pause();
+                let pacer = self.pacer.as_mut().expect("pacer installed");
+                if let Err(error) = pacer.set_active(false) {
+                    self.fail(error, event_loop);
+                    return;
+                }
+                let (start, frames) = self.animation_start.expect("animation started");
+                let seconds = start.elapsed().as_secs_f64();
+                let count = self.meter.total_frames() - frames;
+                self.logger.write(format!("cadence {}: frames={count} callbacks={} seconds={seconds:.6} hz={:.3} CPU_p50={:.3}ms CPU_p99={:.3}ms",pacer.name(),pacer.callbacks(), count as f64 / seconds, self.meter.cpu_percentile(0.5).as_secs_f64()*1000., self.meter.cpu_percentile(0.99).as_secs_f64()*1000.));
+                let mut intervals: Vec<_> = self
+                    .meter
+                    .samples()
+                    .iter()
+                    .skip(2)
+                    .filter_map(|s| s.interval)
+                    .collect();
+                intervals.sort_unstable();
+                let dropped = intervals
+                    .iter()
+                    .filter(|time| time.as_secs_f64() > 1.5 / self.maximum_hz)
+                    .count();
+                self.logger.write(format!("cadence intervals (initial tick excluded): samples={} p50={:.3}ms p99={:.3}ms max={:.3}ms late_intervals={dropped} (>1.5 panel intervals)",intervals.len(),intervals.get(intervals.len()/2).copied().unwrap_or_default().as_secs_f64()*1000.,intervals.get((intervals.len()*99/100).min(intervals.len().saturating_sub(1))).copied().unwrap_or_default().as_secs_f64()*1000.,intervals.last().copied().unwrap_or_default().as_secs_f64()*1000.));
+                let proxy = self.proxy.clone();
+                bbt_rt::handle().spawn(async move {
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    let _ = proxy.send_event(UiEvent::BeginIdle);
+                });
+            }
             UiEvent::EndIdle => {
-                let (start, frames) = self.idle_start.take().expect("idle probe started");
+                let (start, frames, callbacks) =
+                    self.idle_start.take().expect("idle probe started");
                 let delta = self.meter.total_frames() - frames;
-                let passed = delta == 0 && self.last_update == 20;
+                let callbacks = self.pacer.as_ref().map_or(0, DisplayLink::callbacks) - callbacks;
+                let passed =
+                    delta == 0 && callbacks == 0 && (self.cadence_test || self.last_update == 20);
+                // Reporting patch supplied by Nyx: retain fast warm encode
+                // values too, rather than relying on over-budget hitch logs.
+                let mut encode: Vec<_> = self
+                    .meter
+                    .samples()
+                    .iter()
+                    .skip(1)
+                    .map(|s| s.phases.encode)
+                    .collect();
+                encode.sort_unstable();
+                let encode_percentile = |p: f64| {
+                    encode
+                        .get(((encode.len() as f64 * p).ceil() as usize).saturating_sub(1))
+                        .copied()
+                        .unwrap_or_default()
+                        .as_secs_f64()
+                        * 1000.
+                };
                 let text = format!(
-                    "R2 smoke {}: idle {:.3}s frames={} updates={} CPU p50={:.3}ms p99={:.3}ms samples={}",
+                    "idle probe {}: idle {:.3}s frames={} callbacks={} updates={} CPU p50={:.3}ms p99={:.3}ms samples={} warm_encode_p50={:.3}ms warm_encode_p99={:.3}ms",
                     if passed { "PASS" } else { "FAIL" },
                     start.elapsed().as_secs_f64(),
                     delta,
+                    callbacks,
                     self.last_update,
                     self.meter.cpu_percentile(0.5).as_secs_f64() * 1000.,
                     self.meter.cpu_percentile(0.99).as_secs_f64() * 1000.,
-                    self.meter.samples().len()
+                    self.meter.samples().len(),
+                    encode_percentile(0.5),
+                    encode_percentile(0.99)
                 );
                 if !passed {
                     self.error = Some("R2 idle/update probe failed".into());
                 }
-                if self.smoke {
+                if self.smoke || self.cadence_test {
                     self.logger.finish(text, self.proxy.clone());
                 } else {
                     self.logger.write(text);
@@ -279,12 +464,28 @@ impl ApplicationHandler<UiEvent> for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
+                if let Some(pacer) = &self.pacer {
+                    pacer.clear();
+                }
                 if let Some(gpu) = &mut self.gpu {
                     gpu.resize(size.width, size.height);
                 }
                 self.request_redraw();
             }
             WindowEvent::ScaleFactorChanged { .. } => self.request_redraw(),
+            WindowEvent::Occluded(occluded) => {
+                self.occluded = occluded;
+                if let Some(pacer) = &mut self.pacer
+                    && let Err(error) = pacer.set_active(self.animate && !occluded)
+                {
+                    self.fail(error, event_loop);
+                    return;
+                }
+                self.clock.pause();
+                if !occluded {
+                    self.request_redraw();
+                }
+            }
             WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
             WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
                 if event.physical_key == PhysicalKey::Code(KeyCode::KeyF)
@@ -315,6 +516,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let fake = smoke || std::env::args().any(|arg| arg == "--fake-source");
     let overlay = std::env::args().any(|arg| arg == "--meter");
     let args: Vec<_> = std::env::args().collect();
+    let cadence_test = args.iter().any(|arg| arg == "--cadence-test");
+    let animate = cadence_test || args.iter().any(|arg| arg == "--animate");
+    if cadence_test && fake {
+        return Err("--cadence-test and fake-source/smoke are separate probes".into());
+    }
+    let pacing = Mode::parse(
+        args.windows(2)
+            .find(|pair| pair[0] == "--pacing")
+            .map_or("metal", |pair| pair[1].as_str()),
+    )?;
     let capture = args
         .windows(2)
         .find(|pair| pair[0] == "--capture")
@@ -326,6 +537,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         prepared,
         updates,
         window: None,
+        pacer: None,
+        pacing,
+        clock: Clock::default(),
+        occluded: false,
+        maximum_hz: 60.,
+        budget: budget::Budget::default(),
         gpu: None,
         scene: scene::Scene::new(),
         meter: HitchMeter::new(120.),
@@ -339,6 +556,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         idle_start: None,
         error: None,
         capture,
+        animate,
+        cadence_test,
+        animation_start: None,
+        frozen_ms: 450.,
     };
     event_loop.run_app(&mut app)?;
     if let Some(error) = app.error {

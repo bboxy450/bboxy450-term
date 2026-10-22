@@ -1,0 +1,188 @@
+# R4 GPU profile — Sable Embertail
+Read-only assignment Oracle3203, no source fixes.
+UTC 2026-10-22T17:26:16.976750+00:00
+Source4db2b6112511da889471e68167c3059e0815460a, parent atlas e9c2a7e.
+xcrun xctrace list templates exit0: Metal System Trace available. xctrace record/export --help each rejected (46), printed usage; read documented record/export switches from that output. record --template Metal System Trace --show-recording-options exit0, default options; no changes applied.
+
+$ dwarfdump --uuid target/release/bboxy450-term /Users/feral/mydev/bboxy450-term-exec3/target/r4/GpuProfile.app/Contents/MacOS/bboxy450-term-r4-gpu
+UUID: 02074BD9-3249-34F8-8A69-B0ED49BF4200 (arm64) target/release/bboxy450-term
+UUID: 02074BD9-3249-34F8-8A69-B0ED49BF4200 (arm64) /Users/feral/mydev/bboxy450-term-exec3/target/r4/GpuProfile.app/Contents/MacOS/bboxy450-term-r4-gpu
+
+exit: 0
+
+$ xcrun xctrace record --template 'Metal System Trace' --output /Users/feral/mydev/bboxy450-term-exec3/target/r4/gpu.trace --time-limit 8s --target-stdout /Users/feral/mydev/bboxy450-term-exec3/target/r4/gpu.stdout --no-prompt --launch -- /Users/feral/mydev/bboxy450-term-exec3/target/r4/GpuProfile.app/Contents/MacOS/bboxy450-term-r4-gpu --animate --meter
+Starting recording with the Metal System Trace template. Launching process: bboxy450-term-r4-gpu. Time limit: 8.0 s
+Ctrl-C to stop the recording
+Reached specified time limit, ending recording...
+Recording completed. Saving output file...
+Output file saved as: gpu.trace
+
+exit: 54
+
+$ xcrun xctrace export --input target/r4/gpu.trace --toc --output target/r4/gpu-toc.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4/gpu-toc.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4/gpu.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-application-encoders-list"]' --output target/r4/metal-application-encoders-list.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4/metal-application-encoders-list.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4/gpu.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-application-command-buffer-submissions"]' --output target/r4/metal-application-command-buffer-submissions.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4/metal-application-command-buffer-submissions.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4/gpu.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-object-label"]' --output target/r4/metal-object-label.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4/metal-object-label.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4/gpu.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-gpu-intervals"]' --output target/r4/metal-gpu-intervals.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4/metal-gpu-intervals.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4/gpu.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-command-buffer-completed"]' --output target/r4/metal-command-buffer-completed.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4/metal-command-buffer-completed.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4/gpu.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-application-intervals"]' --output target/r4/metal-application-intervals.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4/metal-application-intervals.xml
+
+exit: 0
+
+RESULT — steady GPU cost is dominated by the title-bar frosted blur, not uploads.
+Record returned54 despite saving a trace. TOC and six data-table exports returned0. TOC: correct unique executable/PID16193, --animate --meter, duration8.941328s, time limit reached, target SIGKILL at end. Thus record exit54 is retained, and the exported measured GPU data is usable; no zero-exit success claim.
+Matched release/copy UUID02074BD9-3249-34F8-8A69-B0ED49BF4200; TOC process path exactly target/r4/GpuProfile.app/Contents/MacOS/bboxy450-term-r4-gpu. No source edits or fixes.
+Raw artifacts are local ignored target/r4/gpu.trace, gpu-toc.xml, gpu.stdout and exported metal-*.xml. Shader Timeline disabled, no GPU counter set forced.
+
+METHOD
+XML id/ref fields resolved within each exported table. GPU rows filtered to PID16193 and state Active; joined encoder-id to metal-application-encoders-list. 36,746 own GPU rows, 36,731 joined; 15 unjoined were omitted, not imputed.
+Reconstruct app frames from Main Thread encoders: each offscreen app-clear block has17 L2 material encoders; the next app-clear clears the drawable. Include PendingWrites/start marker preceding the body and end marker following the final source-over. Each selected full app frame has60 encoders.
+284 complete steady frames /17,040 encoders /17,040 command buffers, GPU work contained in2.505008375–7.990000416s. Every selected encoder has GPU data; every selected CB has exactly1 encoder. Warmup, incomplete edge frames and unjoined objects excluded.
+For GPU ACTIVE duration, union overlapping Vertex/Fragment/Compute intervals within each encoder/CB. CB SPAN is first GPU-stage start to last GPU-stage end, including interstage stalls; do not sum CB spans. Union all stages in each app frame for actual frame GPU occupancy. Sums of per-encoder occupancy can exceed frame union because stages from different encoders overlap.
+Classification: L2 ordinal1 is title-bar Frosted; ordinal2 is card Band Gloss;3–17 are15 pane glows in source paint order (scene.rs:224/:239/:282; title_bar.rs:125, style.rs:780; swarm_card.rs:115, style.rs:720; pane.rs:341/:395). This ordinal subdivision is source-grounded inference: native trace labels all these encoders L2 named materials. Blur X/Y order from materials.rs:560.
+
+DRAWABLE/SCALE
+Actual traced writes: IOSurfaces36/48/55/56 each1600×960. This matches target/r4/native-scene.png physical1600×960. App requests1600×960 logical (main.rs window setup) with no resize in this controlled run; physical/logical ratio gives scale1.0. This scale is inferred from measured drawable and fixed requested logical size, not a direct scale-factor log. Dell S3222HN1920×1080@75Hz, Apple M4; maximumFramesPerSecond75. Renderer logs Fifo/maxDrawableCount3/latency2.
+
+PER ENCODER = PER COMMAND BUFFER (all selected CBs have one encoder). Durations ms.
+Role | encoders/frame | mean Active/CB | p50 Active/CB | p99 Active/CB | mean CB span | mean Active/frame | p99 Active/frame
+frosted blur X | 1 | 6.662446 | 6.585459 | 7.118249 | 6.851929 | 6.662446 | 7.118249
+frosted blur Y | 1 | 6.733112 | 6.706834 | 7.413916 | 13.364932 | 6.733112 | 7.413916
+material frosted composite | 1 | 0.048877 | 0.016083 | 0.711625 | 13.295805 | 0.048877 | 0.711625
+material gloss band | 1 | 0.049491 | 0.010250 | 1.048291 | 13.336158 | 0.049491 | 1.048291
+glow pane 1 | 1 | 0.427205 | 0.421791 | 0.560500 | 13.958330 | 0.427205 | 0.560500
+glow pane 2 | 1 | 0.383303 | 0.369959 | 0.981792 | 13.670084 | 0.383303 | 0.981792
+glow pane 3 | 1 | 0.328832 | 0.316791 | 0.984417 | 13.114234 | 0.328832 | 0.984417
+glow pane 4 | 1 | 0.337337 | 0.322958 | 0.803624 | 13.066320 | 0.337337 | 0.803624
+glow pane 5 | 1 | 0.360650 | 0.354708 | 0.559125 | 13.011457 | 0.360650 | 0.559125
+glow pane 6 | 1 | 0.250100 | 0.230083 | 0.375333 | 2.475797 | 0.250100 | 0.375333
+glow pane 7 | 1 | 0.206871 | 0.205751 | 0.241958 | 2.467258 | 0.206871 | 0.241958
+glow pane 8 | 1 | 0.183488 | 0.178958 | 0.294834 | 2.435549 | 0.183488 | 0.294834
+glow pane 9 | 1 | 0.169189 | 0.168125 | 0.183792 | 2.094419 | 0.169189 | 0.183792
+glow pane 10 | 1 | 0.203998 | 0.202750 | 0.245792 | 1.918422 | 0.203998 | 0.245792
+glow pane 11 | 1 | 0.169192 | 0.168167 | 0.190874 | 1.778252 | 0.169192 | 0.190874
+glow pane 12 | 1 | 0.176413 | 0.173916 | 0.215166 | 1.546490 | 0.176413 | 0.215166
+glow pane 13 | 1 | 0.171318 | 0.170459 | 0.204750 | 1.274343 | 0.171318 | 0.204750
+glow pane 14 | 1 | 0.168931 | 0.168500 | 0.175791 | 1.249359 | 0.168931 | 0.175791
+glow pane 15 | 1 | 0.140813 | 0.140250 | 0.152084 | 1.110238 | 0.140813 | 0.152084
+chrome/text (shadows fused) | 18 | 0.102759 | 0.034791 | 1.401082 | 5.776325 | 1.849670 | 5.447872
+backdrop copies | 17 | 0.045139 | 0.032083 | 0.445083 | 0.045190 | 0.767368 | 1.130834
+uploads PendingWrites | 1 | 0.053461 | 0.054583 | 0.114041 | 0.057742 | 0.053461 | 0.114041
+isolated group source-over | 1 | 0.070847 | 0.066708 | 0.119250 | 0.688644 | 0.070847 | 0.119250
+timing markers | 2 | 0.024386 | 0.020042 | 0.095458 | 0.024386 | 0.048773 | 0.138833
+app clear | 2 | 0.007612 | 0.005791 | 0.053375 | 0.007612 | 0.015224 | 0.080833
+
+FRAME TOTALS (ms): {"frame_gpu_active_union": {"max_ms": 19.595295, "mean_ms": 19.016419376760563, "p50_ms": 18.937249, "p99_ms": 19.532209}, "frame_gpu_span": {"max_ms": 21.24425, "mean_ms": 19.872827457746478, "p50_ms": 19.74525, "p99_ms": 21.170083}, "sum_encoder_active": {"max_ms": 26.048504, "mean_ms": 19.976908059859152, "p50_ms": 19.46979, "p99_ms": 25.872459}}
+two frosted blur passes: mean13.395558, p5013.438458, p9914.418250, 67.06% of summed encoder Active duration.
+all15 glows: mean3.677639, p503.608459, p995.271791, 18.41% of summed encoder Active duration.
+
+MECHANISM / NEXT FIX CANDIDATE (no fixes made)
+crates/bbt-ui/src/modules/title_bar.rs:125/:126 — the38px title bar reuses Preset::Modal Frosted. design/style.json:21 blur30px; :76 title_bar38px.
+crates/bbt-render/src/chrome/materials.rs:539/:540 — each Frosted instance allocates two RGBA16Float intermediates at full target1600×960; :560/:579 runs horizontal/vertical full-screen blur.
+crates/bbt-render/src/chrome/materials.wgsl:38/:39 — vs_blur covers the full viewport. :51/:52 — sigma30 gives support90,181 samples/pixel/pass, ~556million samples across two full1600×960 passes/frame. Only a1600×38 bar consumes the result.
+First candidate: restrict the two Gaussian passes to the actual Frosted element region (preserve mirror_box border-box sampling) or use cropped intermediates with correct coordinate transforms. The pixel-height ratio38/960 is3.96%; this is a work-reduction hypothesis, not a measured fixed budget. Cropping blur alone does not prove CPU+GPU<=8.333ms.
+Second measured cost:15 glows total3.678ms. materials.wgsl:68/:76/:79 plus shapes.wgsl:15/:22 — Gaussian32-step integration and particle loop still execute on deep pane interiors; a valid inside-distance rejection needs to preserve inward jittered particles. No shader patch authorized/applied.
+Shadows are fused into CSS gamma chrome and text instances and cannot be timed independently in this trace. Their cost is included in chrome/text1.850ms/frame; separate shadow-only GPU duration is a gap.
+Groups: final source-over0.071ms/frame; no other isolated group pass in this fixture. Uploads are0.053ms/frame plus17 separate backdrop copies0.767ms/frame; these are distinct from retained atlas upload work. Timing markers themselves0.049ms/frame.
+
+REPRESENTATIVE COMPLETE FRAME (index142), CB/encoder IDs enable raw XML cross-check; Active and span ms.
+uploads PendingWrites — CB27636366747 encoder27636366748 active0.047917 span0.047917
+timing markers — CB27636366749 encoder27636366750 active0.012792 span0.012792
+app clear — CB27636366751 encoder27636366752 active0.006042 span0.006042
+chrome/text (shadows fused) — CB27636366754 encoder27636366755 active0.136500 span0.166125
+backdrop copies — CB27636366757 encoder27636366758 active0.030333 span0.030333
+frosted blur X — CB27636366759 encoder27636366760 active6.566417 span6.571875
+frosted blur Y — CB27636366762 encoder27636366763 active6.715917 span13.235667
+material frosted composite — CB27636366765 encoder27636366766 active0.047126 span13.209667
+chrome/text (shadows fused) — CB27636366768 encoder27636366769 active0.301124 span13.468291
+backdrop copies — CB27636366771 encoder27636366772 active0.187208 span0.187208
+material gloss band — CB27636366773 encoder27636366774 active0.014333 span13.586833
+chrome/text (shadows fused) — CB27636366776 encoder27636366777 active0.365708 span13.790625
+backdrop copies — CB27636366779 encoder27636366780 active0.061458 span0.061458
+glow pane 1 — CB27636366781 encoder27636366782 active0.415125 span14.237125
+chrome/text (shadows fused) — CB27636366784 encoder27636366785 active0.063042 span14.291375
+backdrop copies — CB27636366787 encoder27636366788 active0.031958 span0.031958
+glow pane 2 — CB27636366789 encoder27636366790 active0.358250 span14.569500
+chrome/text (shadows fused) — CB27636366792 encoder27636366793 active0.083000 span14.638000
+backdrop copies — CB27636366795 encoder27636366796 active0.035042 span0.035042
+glow pane 3 — CB27636366797 encoder27636366798 active0.321417 span14.981375
+chrome/text (shadows fused) — CB27636366800 encoder27636366801 active0.058416 span14.930083
+backdrop copies — CB27636366803 encoder27636366804 active0.031166 span0.031166
+glow pane 4 — CB27636366805 encoder27636366806 active0.320125 span15.264208
+chrome/text (shadows fused) — CB27636366808 encoder27636366809 active0.050041 span15.301875
+backdrop copies — CB27636366811 encoder27636366812 active0.031834 span0.031834
+glow pane 5 — CB27636366813 encoder27636366814 active0.360751 span15.682042
+chrome/text (shadows fused) — CB27636366816 encoder27636366817 active0.051875 span9.496500
+backdrop copies — CB27636366819 encoder27636366820 active0.031500 span0.031500
+glow pane 6 — CB27636366821 encoder27636366822 active0.323791 span2.961000
+chrome/text (shadows fused) — CB27636366824 encoder27636366825 active0.032584 span2.881750
+backdrop copies — CB27636366827 encoder27636366828 active0.031541 span0.031541
+glow pane 7 — CB27636366829 encoder27636366830 active0.205334 span1.389584
+chrome/text (shadows fused) — CB27636366832 encoder27636366833 active0.031250 span1.369667
+backdrop copies — CB27636366835 encoder27636366836 active0.031083 span0.031083
+glow pane 8 — CB27636366837 encoder27636366838 active0.175458 span1.227542
+chrome/text (shadows fused) — CB27636366840 encoder27636366841 active0.026083 span1.205875
+backdrop copies — CB27636366843 encoder27636366844 active0.031334 span0.031334
+glow pane 9 — CB27636366845 encoder27636366846 active0.168042 span1.015625
+chrome/text (shadows fused) — CB27636366848 encoder27636366849 active0.026875 span0.992208
+backdrop copies — CB27636366851 encoder27636366852 active0.031709 span0.031709
+glow pane 10 — CB27636366853 encoder27636366854 active0.202542 span0.965709
+chrome/text (shadows fused) — CB27636366856 encoder27636366857 active0.026084 span0.959500
+backdrop copies — CB27636366859 encoder27636366860 active0.031750 span0.031750
+glow pane 11 — CB27636366861 encoder27636366862 active0.168041 span1.151541
+chrome/text (shadows fused) — CB27636366864 encoder27636366865 active0.026750 span1.169875
+backdrop copies — CB27636366867 encoder27636366868 active0.031792 span0.031792
+glow pane 12 — CB27636366869 encoder27636366870 active0.172708 span1.363250
+chrome/text (shadows fused) — CB27636366872 encoder27636366873 active0.027416 span1.334583
+backdrop copies — CB27636366875 encoder27636366876 active0.031500 span0.031500
+glow pane 13 — CB27636366877 encoder27636366878 active0.170542 span1.527708
+chrome/text (shadows fused) — CB27636366880 encoder27636366881 active0.030541 span1.355750
+backdrop copies — CB27636366883 encoder27636366884 active0.034250 span0.034250
+glow pane 14 — CB27636366885 encoder27636366886 active0.169333 span1.368417
+chrome/text (shadows fused) — CB27636366888 encoder27636366889 active0.027334 span1.192417
+backdrop copies — CB27636366891 encoder27636366892 active0.033667 span0.033667
+glow pane 15 — CB27636366893 encoder27636366894 active0.140292 span1.356583
+chrome/text (shadows fused) — CB27636366896 encoder27636366897 active0.031292 span1.161625
+app clear — CB27636366899 encoder27636366900 active0.010500 span0.010500
+isolated group source-over — CB27636366902 encoder27636366903 active0.064792 span0.910584
+timing markers — CB27636366906 encoder27636366907 active0.026292 span0.026292
+
+Derived local artifacts: gpu-per-encoder.json (17,040 CB/encoder measurements), gpu-frames.json (284 frames), gpu-breakdown.json. Python XML resolution/frame reconstruction/interval union invocations exited0.
+target/r4/gpu-joined.json sha256 fab29b1c429b101d651ff7eb17d17633d0085eee5b5e7a30e7ababdfae8d899c
+target/r4/gpu-per-encoder.json sha256 6a7c5bc4c4048a1bcc832ed5e8c0eac9a7fb4c022f8129e9bd1a0eaa39684cc8
+target/r4/gpu-frames.json sha256 a58e9894597b6f067f21cca0059fabffb328ed880a676c1277712d4e2bca264f
+target/r4/gpu-breakdown.json sha256 5bfaf29c4f90be04f81e9046f9167e530c02ea3dbb117232a31b0d686843c8bf
+target/r4/metal-gpu-intervals.xml sha256 a03c3d123e94d628060dc844de26ebe902d913b0fcba799171e80ed7a519736c
+target/r4/metal-application-encoders-list.xml sha256 74ceafd458042dccc6269e9bac06e499be7adea69831cd5e3fa9b08a589f682f
+
+LIMITS / ACCEPTANCE
+Shader counters/timeline disabled; driver Active intervals resolve encoders, not shader branch cycles. L2 subtype labels inferred from source ordering. Shadow-only duration and direct backingScaleFactor read not available. No profiler numbers substituted for the uninstrumented cadence run.
+R4 remains OPEN: post-atlas native52.619Hz,67 late intervals; CPU+GPU span p99 26.628ms; idle10.002s0frames0callbacks. Physical120Hz unverified. No renderer/runtime/mux source changes; O1 remains held.
+
+Shadow fusion source: crates/bbt-render/src/chrome/mod.rs:303 creates kind4 shadow instances inside the same instanced chrome pass; chrome/chrome.wgsl:18 runs the shadow Gaussian within that shader. A separate shadow time is therefore unavailable from encoder-level timing.
+Read-only analysis and source-inspection commands exited0; git diff --check exit0. No tests repeated for this log-only profiling addition. Post-atlas source tests/clippy/policy results are in r4-final.log (all exit0).
