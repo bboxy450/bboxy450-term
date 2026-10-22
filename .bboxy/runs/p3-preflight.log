@@ -1,0 +1,10 @@
+P3 preflight, read-only source evidence.
+Writing-tree base 2bf71d5218568c8b1454e54719a6b5124324986e
+/Users/feral/mydev/bboxy450-term-exec4/target/c1b-parity-d973716/report.json
+1664 default cases; 648 current required cases have geometry:null.
+Missing by component: {"artifact_row": 24, "badge": 24, "banner": 24, "closed_strip": 24, "crumb": 24, "drop_zone": 16, "epic_group": 24, "external_lane": 24, "gap_marker": 16, "ghost": 24, "glow_canvas": 24, "graph_tab": 16, "kbd": 24, "nested_subagent_rows": 24, "new_seat_row": 24, "new_swarm_button": 24, "pane": 8, "pill": 24, "provenance_card": 16, "responsible_chip": 24, "role_mark": 24, "settings_tab": 8, "stream_dock": 16, "subscriptions_card": 16, "swarm_card": 16, "task_row": 24, "tick_ladder": 48, "title_bar": 16, "touched_count": 24, "wikilink_chip": 24}
+Snapshot emitters dispatch by fixture.layer. Missing rows come from legacy gallery::cases() without that routing marker and without per-gallery web diagnostics. No geometry policy or product source changed.
+badge fixture {"version":1,"atoms":[],"calls":[],"materials":[],"styles":[],"reference":"current"}
+role_mark fixture {"version":1,"atoms":[],"calls":[],"materials":[],"styles":[],"reference":"current"}
+settings_tab fixture {"version":1,"atoms":[],"calls":[{"name":"settingsPage","args":[{"section":"Harnesses","draftHarness":{"name":"aider","command":"aider --model sonnet","ci":7,"icon":"zsh","role":"executor","wake":"pty","stateFrom":"output cadence","hooks":false}}],"header":0,"rect":{"x":15,"y":15,"w":1216,"h":638}}],"materials":[],"styles":[],"reference":"current"}
+pane fixture {"version":1,"atoms":[],"calls":[{"name":"pane","args":[{"key":"sc0","name":"Vesper Greywind","harness":"claude","role":"oracle","title":"swarm control","state":"active","grade":"reported","color":"#B8860B"},{"focused":true,"unfocused":false,"shortcut":"\u23181","height":222}],"header":0,"rect":{"x":14,"y":14,"w":700,"h":222}}],"materials":[],"styles":[],"reference":"current"}

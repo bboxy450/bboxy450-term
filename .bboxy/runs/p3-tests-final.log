@@ -1,0 +1,263 @@
+$ cargo test -p bboxybook --locked
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Finished `test` profile [unoptimized] target(s) in 8.73s
+     Running unittests src/lib.rs (target/f3-dev/debug/deps/bboxybook-4b71880d30e7c2ad)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/bboxybook-4b71880d30e7c2ad: replacing existing signature
+
+running 13 tests
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate ... ok
+test gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.00s
+
+     Running unittests src/main.rs (target/f3-dev/debug/deps/bboxybook-3d3a920f1131adee)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/bboxybook-3d3a920f1131adee: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (target/f3-dev/debug/deps/atoms-8faecbe555ef1790)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/atoms-8faecbe555ef1790: replacing existing signature
+
+running 3 tests
+test icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage ... ok
+test icon_size_gallery_renders_at_one_and_two_device_pixels_per_point ... ok
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
+
+     Running tests/blending.rs (target/f3-dev/debug/deps/blending-a3b4c88915bea8c0)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/blending-a3b4c88915bea8c0: replacing existing signature
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/clipping.rs (target/f3-dev/debug/deps/clipping-315d8ec11933e40b)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/clipping-315d8ec11933e40b: replacing existing signature
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.74s
+
+     Running tests/components.rs (target/f3-dev/debug/deps/components-d5858087a014a11d)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/components-d5858087a014a11d: replacing existing signature
+
+running 4 tests
+test component_cases_are_canonical_and_box_gallery_covers_materials_and_radii ... ok
+test a_retained_group_keeps_material_coverage_and_filters_the_completed_layer ... ok
+test retained_image_preserves_asset_colour_rounding_and_group_filtering ... ok
+test retained_scroll_content_moves_but_never_paints_outside_the_viewport ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.47s
+
+     Running tests/documents.rs (target/f3-dev/debug/deps/documents-e2bebf720b1b3811)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/documents-e2bebf720b1b3811: replacing existing signature
+
+running 3 tests
+test document_matrix_covers_all_types_and_both_modal_presentations_and_source ... ok
+test native_document_layout_consumes_public_records_not_css_or_child_geometry ... ok
+test every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow has been running for over 60 seconds
+test every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 116.68s
+
+     Running tests/fixtures.rs (target/f3-dev/debug/deps/fixtures-b6121a4f455439e7)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/fixtures-b6121a4f455439e7: replacing existing signature
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.16s
+
+     Running tests/graphs.rs (target/f3-dev/debug/deps/graphs-4e4344936eae29fe)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/graphs-4e4344936eae29fe: replacing existing signature
+
+running 4 tests
+test former_graph_and_provenance_hand_painters_are_removed ... ok
+test graph_matrix_covers_each_live_card_and_the_empty_swarm ... ok
+test channel_layout_never_consumes_browser_svg_diagnostics ... ok
+test graph_layout_is_driven_by_records_not_browser_child_positions ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.11s
+
+     Running tests/icon_filter.rs (target/f3-dev/debug/deps/icon_filter-d199eaad8540c8d7)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/icon_filter-d199eaad8540c8d7: replacing existing signature
+
+running 1 test
+test icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/launchers.rs (target/f3-dev/debug/deps/launchers-6a3ad54a73e683fd)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/launchers-6a3ad54a73e683fd: replacing existing signature
+
+running 3 tests
+test matrix_has_every_current_lab_state_and_separate_historical_keys ... ok
+test a_machine_subtitle_with_room_stays_on_one_line ... ok
+test geometry_uses_constructor_values_instead_of_child_dom_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.76s
+
+     Running tests/materials.rs (target/f3-dev/debug/deps/materials-689bb5b8031e8dad)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/materials-689bb5b8031e8dad: replacing existing signature
+
+running 3 tests
+test source_over_glow_keeps_destination_alpha ... ok
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+     Running tests/overlays.rs (target/f3-dev/debug/deps/overlays-5d3f6f46fc6b3784)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/overlays-5d3f6f46fc6b3784: replacing existing signature
+
+running 2 tests
+test layer_matrix_distinguishes_full_primitives_from_module_surfaces ... ok
+test overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/panes.rs (target/f3-dev/debug/deps/panes-ee70ce51f14bd962)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/panes-ee70ce51f14bd962: replacing existing signature
+
+running 4 tests
+test legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted ... ok
+test pane_registry_pairs_every_current_and_historical_case_without_collisions ... ok
+test legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip ... ok
+test native_panes_ignore_child_web_bounds_and_font_diagnostics ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/parity_gate.rs (target/f3-dev/debug/deps/parity_gate-2072c0e0cf3ca70d)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/parity_gate-2072c0e0cf3ca70d: replacing existing signature
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/render.rs (target/f3-dev/debug/deps/render-01dacac08fe5d9af)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/render-01dacac08fe5d9af: replacing existing signature
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.61s
+
+     Running tests/seat_rows.rs (target/f3-dev/debug/deps/seat_rows-41e4edfd14d69b2f)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/seat_rows-41e4edfd14d69b2f: replacing existing signature
+
+running 2 tests
+test seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures ... ok
+test child_dom_rectangles_and_css_metrics_are_diagnostics_only ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/settings.rs (target/f3-dev/debug/deps/settings-9dcc2b682830d96c)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/settings-9dcc2b682830d96c: replacing existing signature
+
+running 3 tests
+test placeholder_settings_hand_painter_is_removed ... ok
+test settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme ... ok
+test settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/shadow.rs (target/f3-dev/debug/deps/shadow-ba463eeb0f48290d)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/shadow-ba463eeb0f48290d: replacing existing signature
+
+running 2 tests
+test css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box ... ok
+test positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/streams.rs (target/f3-dev/debug/deps/streams-18456a30713b0fd9)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/streams-18456a30713b0fd9: replacing existing signature
+
+running 3 tests
+test old_stream_painter_is_deleted_in_favor_of_the_retained_composition ... ok
+test stream_matrix_covers_every_current_state_and_labels_legacy_cases ... ok
+test stream_layout_consumes_public_entries_but_never_browser_child_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+     Running tests/styles.rs (target/f3-dev/debug/deps/styles-7d61398b1c869ce7)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/styles-7d61398b1c869ce7: replacing existing signature
+
+running 2 tests
+test per_node_glow_drives_state_grade_and_seed_without_changing_the_box ... ok
+test style_matrix_is_canonical_and_every_preset_renders_on_the_native_device ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+
+     Running tests/swarms.rs (target/f3-dev/debug/deps/swarms-bedbd6b5d7ce7e14)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/swarms-bedbd6b5d7ce7e14: replacing existing signature
+
+running 3 tests
+test old_swarm_card_and_sidebar_hand_painters_are_gone ... ok
+test swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys ... ok
+test captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.69s
+
+     Running tests/tabs.rs (target/f3-dev/debug/deps/tabs-297f1cf0d7c661f9)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/tabs-297f1cf0d7c661f9: replacing existing signature
+
+running 3 tests
+test old_module_and_json_painters_delegate_to_the_retained_compositions ... ok
+test all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions ... ok
+test tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/title_bars.rs (target/f3-dev/debug/deps/title_bars-04ab732850dcf3de)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/title_bars-04ab732850dcf3de: replacing existing signature
+
+running 2 tests
+test titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only ... ok
+test native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running tests/widgets.rs (target/f3-dev/debug/deps/widgets-d381c9d6605b3903)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/widgets-d381c9d6605b3903: replacing existing signature
+
+running 3 tests
+test control_matrix_has_canonical_keys_and_all_constructor_families ... ok
+test transparent_layout_border_does_not_cut_the_background_fill ... ok
+test thousand_row_views_clip_output_and_the_table_header_stays_fixed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.48s
+
+   Doc-tests bboxybook
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+elapsed_seconds: 194.595

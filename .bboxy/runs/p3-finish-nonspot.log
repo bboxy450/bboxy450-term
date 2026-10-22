@@ -1,0 +1,16 @@
+{
+  "before_source": "2282e583300e89d741cd772e16f9327d111efd76",
+  "after_source": "94a29d6d4e0696825648f12edb06faaf82b40866",
+  "cases": 176,
+  "semantic_fixture_mismatches": [],
+  "normalization": "Only backdrop.path replaced with the actual decoded RGBA image size and SHA256; every other captured case/fixture field compared unchanged.",
+  "native_rgba_unchanged": 104,
+  "native_rgba_changed": 72,
+  "changed_by_component": {
+    "launcher": 72
+  },
+  "nonspot_picker_cases": 64,
+  "nonspot_picker_rgba_unchanged": 64,
+  "elapsed_seconds": 11.919,
+  "exit": 0
+}

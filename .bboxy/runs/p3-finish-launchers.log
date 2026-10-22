@@ -1,0 +1,126 @@
+source_sha: 94a29d6d4e0696825648f12edb06faaf82b40866
+started_utc: 2026-10-23T02:33:23.469092+00:00
+$ cargo build -p bboxybook --locked
+owned_pid: 46899
+   Compiling bitflags v2.13.2
+   Compiling objc2-encode v4.1.0
+   Compiling arrayvec v0.7.8
+   Compiling num-traits v0.2.19
+   Compiling objc2 v0.6.5
+   Compiling libm v0.2.16
+   Compiling foldhash v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling bytemuck v1.25.2
+   Compiling block2 v0.6.2
+   Compiling dispatch2 v0.3.1
+   Compiling equivalent v1.0.3
+   Compiling indexmap v2.14.2
+   Compiling objc2-core-foundation v0.3.2
+   Compiling smallvec v1.16.3
+   Compiling thiserror v2.0.21
+   Compiling syn v2.0.119
+   Compiling objc2-foundation v0.3.2
+   Compiling objc2-metal v0.3.2
+   Compiling zerocopy-derive v0.8.63
+   Compiling rustc-hash v1.1.0
+   Compiling naga-types v30.0.1
+   Compiling zerocopy v0.8.63
+   Compiling objc2-core-graphics v0.3.2
+   Compiling raw-window-handle v0.6.2
+   Compiling unicode-width v0.2.2
+   Compiling bit-vec v0.9.1
+   Compiling bit-set v0.10.0
+   Compiling codespan-reporting v0.13.1
+   Compiling memchr v2.8.3
+   Compiling half v2.7.1
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling serde_core v1.0.229
+   Compiling static_assertions v1.1.0
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling lock_api v0.4.14
+   Compiling parking_lot_core v0.9.12
+   Compiling objc2-quartz-core v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+   Compiling parking_lot v0.12.5
+   Compiling objc-sys v0.3.5
+   Compiling polycool v0.4.0
+   Compiling libloading v0.8.9
+   Compiling serde v1.0.229
+   Compiling profiling v1.0.18
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling kurbo v0.13.1
+   Compiling objc2 v0.5.3
+   Compiling tiny-skia-path v0.12.0
+   Compiling euclid v0.22.14
+   Compiling core-foundation-sys v0.8.7
+   Compiling core-foundation v0.9.4
+   Compiling lyon_geom v1.0.20
+   Compiling block2 v0.5.1
+   Compiling svgtypes v0.16.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling roxmltree v0.21.1
+   Compiling png v0.18.1
+   Compiling dispatch v0.2.0
+   Compiling foreign-types-shared v0.3.1
+   Compiling bitflags v1.3.2
+   Compiling core-graphics-types v0.1.3
+   Compiling foreign-types v0.5.0
+   Compiling tiny-skia v0.12.0
+   Compiling objc2-foundation v0.2.2
+   Compiling usvg v0.48.1
+   Compiling wgpu-core v30.0.1
+   Compiling lyon_path v1.0.19
+   Compiling rgb v0.8.53
+   Compiling pin-project-lite v0.2.17
+   Compiling unsafe-libyaml v0.2.11
+   Compiling tracing-core v0.1.36
+   Compiling float_next_after v1.0.0
+   Compiling ryu v1.0.23
+   Compiling unicase v2.10.0
+   Compiling pulldown-cmark v0.13.4
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling wgpu v30.0.1
+   Compiling lyon_tessellation v1.0.22
+   Compiling tracing v0.1.44
+   Compiling resvg v0.48.1
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+   Compiling objc2-app-kit v0.2.2
+   Compiling core-graphics v0.23.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+   Compiling objc2-core-text v0.3.2
+   Compiling cursor-icon v1.2.0
+   Compiling smol_str v0.2.2
+   Compiling pollster v0.4.0
+   Compiling dpi v0.1.2
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mermaid)
+   Compiling winit v0.30.13
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+   Compiling serde_json v1.0.154
+    Finished `dev` profile [unoptimized] target(s) in 25.65s
+exit: 0; seconds: 25.693
+$ bboxybook manifest; exit: 0; seconds: 0.524
+Scoped canonical current launcher/picker cases: 176, historical cases excluded.
+$ node crates/bboxybook/capture.mjs /Users/feral/mydev/bboxy450-term-exec6/target/p3-launchers-94a29d6 /Users/feral/mydev/bboxy450-term-exec6/target/p3-launchers-94a29d6/requested.json
+owned_pid: 47319
+captured 100/176
+web: 176/176 captured; 0 failures
+exit: 0; seconds: 47.315
+$ /Users/feral/mydev/bboxy450-term-exec6/target/p3-finish-dev/debug/bboxybook render --all --out /Users/feral/mydev/bboxy450-term-exec6/target/p3-launchers-94a29d6/native --manifest /Users/feral/mydev/bboxy450-term-exec6/target/p3-launchers-94a29d6/cases.json
+owned_pid: 47902
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/176
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-exec6/target/p3-launchers-94a29d6/native/layouts.json
+rendered 176 PNGs to /Users/feral/mydev/bboxy450-term-exec6/target/p3-launchers-94a29d6/native
+exit: 0; seconds: 1962.310
+$ /Users/feral/mydev/bboxy450-term-exec6/target/p3-finish-dev/debug/bboxybook compare --strict-geometry --out /Users/feral/mydev/bboxy450-term-exec6/target/p3-launchers-94a29d6 --manifest /Users/feral/mydev/bboxy450-term-exec6/target/p3-launchers-94a29d6/cases.json
+owned_pid: 91681
+parity: 176 cases, 0 review; /Users/feral/mydev/bboxy450-term-exec6/target/p3-launchers-94a29d6/index.html
+geometry: 176 required; 176 measured; 0 unproven; 0 mismatches
+parity gate: pass (0 pixel reviews advisory)
+exit: 0; seconds: 70.920
+scoped_gallery_exit: 0; elapsed_seconds: 2106.765

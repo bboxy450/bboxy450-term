@@ -345,6 +345,36 @@ pub fn entries() -> Vec<Entry> {
     }
     out
 }
+/// Current accepted layer matrices, with the routing needed for native geometry.
+/// `cases()` remains the original registry for the separate legacy report.
+pub fn parity_cases() -> Vec<Case> {
+    let mut out = crate::materials::cases();
+    out.extend(crate::styles::cases());
+    out.extend(crate::atoms::cases());
+    out.extend(crate::components::cases());
+    out.extend(crate::components::mask_cases());
+    out.extend(crate::widgets::cases());
+    out.extend(crate::overlays::cases());
+    // A surface-only shell and the complete module share inputs, but must not
+    // overwrite one another's PNGs or geometry in the combined report.
+    out.extend(crate::overlays::surface_cases().into_iter().map(|mut case| {
+        case.component.push_str("-surface");
+        case
+    }));
+    out.extend(crate::seat_rows::cases());
+    out.extend(crate::tabs::cases());
+    out.extend(crate::swarms::cases());
+    out.extend(crate::panes::cases());
+    out.extend(crate::title_bars::cases());
+    out.extend(crate::launchers::cases());
+    out.extend(crate::streams::cases());
+    out.extend(crate::graphs::cases());
+    out.extend(crate::settings::cases());
+    out.extend(crate::documents::cases());
+    out.extend(crate::paths::cases());
+    out
+}
+
 pub fn cases() -> Vec<Case> {
     let mut out = Vec::new();
     for e in entries() {
@@ -419,6 +449,30 @@ pub fn draw(case: &Case) -> Result<DrawList> {
 mod tests {
     use super::*;
     use std::collections::BTreeSet;
+    #[test]
+    fn current_parity_matrix_has_unique_paths_and_geometry_routing() {
+        let all = parity_cases();
+        let paths: BTreeSet<_> = all.iter().map(Case::relative).collect();
+        assert_eq!(paths.len(), all.len());
+        let mut layers = BTreeSet::new();
+        for case in &all {
+            assert_ne!(case.fixture.as_ref().map(|f| &f["reference"]), Some(&serde_json::json!("baseline")));
+            if matches!(case.component.as_str(), "materials" | "style") {
+                layers.insert(case.component.as_str());
+            } else {
+                layers.insert(case.fixture.as_ref().and_then(|f| f["layer"].as_str()).expect("current case needs geometry routing"));
+            }
+        }
+        assert_eq!(layers, BTreeSet::from([
+            "materials", "style", "atoms", "components", "floating-surfaces",
+            "seat-row", "tabs", "swarms", "panes", "titlebars", "launchers",
+            "streams", "graphs", "settings", "documents", "paths",
+        ]));
+        assert!(paths.contains("components/button-cozy-dark.png"));
+        assert!(paths.contains("components/edge-fade-cozy-dark.png"));
+        assert!(paths.contains("style/modal-cozy-dark.png"));
+        assert!(!paths.contains("settings_tab/new-harness-cozy-dark.png"));
+    }
     #[test]
     fn registry_covers_exactly_the_built_design_entries() {
         let design: serde_json::Value = serde_json::from_str(DESIGN).unwrap();
