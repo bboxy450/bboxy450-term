@@ -9,6 +9,7 @@ rust-version.workspace = true
 description = "bboxy450-term: bbt-mux"
 
 [dependencies]
+bbt-proto = { path = "../bbt-proto" }
 bbt-core = { path = "../bbt-core" }
 bbt-rt = { path = "../bbt-rt" }
 bbt-supervisor = { path = "../bbt-supervisor" }

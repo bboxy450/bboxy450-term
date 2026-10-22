@@ -263,6 +263,7 @@ version = "0.0.1"
 dependencies = [
  "base64",
  "bbt-core",
+ "bbt-proto",
  "bbt-rt",
  "bbt-supervisor",
  "ed25519-dalek 3.0.0",
@@ -283,6 +284,17 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-tungstenite",
+ "ulid",
+]
+
+[[package]]
+name = "bbt-proto"
+version = "0.0.1"
+dependencies = [
+ "bbt-core",
+ "bbt-ui-model",
+ "serde",
+ "serde_json",
  "ulid",
 ]
 

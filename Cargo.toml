@@ -5,6 +5,7 @@ members = [
   "crates/bbt-mermaid",
   "crates/bbt-supervisor",
   "crates/bbt-mux",
+  "crates/bbt-proto",
   "crates/bbt-rt",
   "crates/bbt-render",
   "crates/bbt-ui-model",
@@ -26,5 +27,6 @@ rust-version = "1.99"
 bbt-core = { path = "crates/bbt-core" }
 bbt-supervisor = { path = "crates/bbt-supervisor" }
 bbt-mux = { path = "crates/bbt-mux" }
+bbt-proto = { path = "crates/bbt-proto" }
 bbt-render = { path = "crates/bbt-render" }
 bbt-ui-model = { path = "crates/bbt-ui-model" }
