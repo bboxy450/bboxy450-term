@@ -904,6 +904,18 @@
     const theme = opts.themeBtn || el('span', { class: 'tbtn theme', title: 'toggle light / dark', onclick: () => opts.onTheme && opts.onTheme() }, harnessIcon(opts.theme === 'light' ? 'moon' : 'sun'));
     return el('div', { class: 'titlebar app-bar' + (opts.blurred ? ' blurred' : '') }, el('span', { class: 'win' }, el('i'), el('i'), el('i')), toggle, logo(18), el('span', { class: 'ttl' }, opts.title || 'bboxy450-term'), crumb, el('span', { class: 'spacer' }), theme);
   }
+  // Split view: a binary tree of seats, each split a flex row (v) or column (h) with the gutter as a divider between its halves.
+  // opts.leaf(seat) draws a leaf (default: pane); opts.onDivider(div, node, box, A, B) attaches resize behaviour (the showcase's drag).
+  function splitView(t, opts) {
+    opts = opts || {};
+    if (t.key) return opts.leaf ? opts.leaf(t) : pane(t, opts.paneOpts ? opts.paneOpts(t) : {});
+    const A = splitView(t.a, opts), B = splitView(t.b, opts);
+    A.style.flex = t.ratio || 0.5; B.style.flex = 1 - (t.ratio || 0.5);
+    const box = el('div', { class: 'split ' + t.dir }), div = el('div', { class: 'divider' + (t.active ? ' active' : '') });
+    if (opts.onDivider) opts.onDivider(div, t, box, A, B);
+    box.append(A, div, B);
+    return box;
+  }
   // ⌘T launcher items (design system › modal): launchables ▸ placements; SSH ▸ machine ▸ harness ▸ placement; Cloud ▸ region ▸
   // harness ▸ placement; Go to ▸ every seat and swarm; Graph; Settings ▸ section. Shared by the showcase and launcher.html.
   function launcherItems(ctx) {
@@ -1288,5 +1300,5 @@
     return root;
   }
 
-  window.C = { firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

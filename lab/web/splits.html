@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>splits · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+</head><body><script>
+const el = Lab.el;
+document.documentElement.style.setProperty('--gutter', (TOKENS.layout.gutter || 2) + 'px');
+const S = (i, st) => ({ key: 'sp' + i, name: ['Vesper Greywind', 'Nyx Copperwing', 'Rook Ashwhisker', 'Wren Thistledown'][i], harness: ['claude', 'codex', 'codex', 'claude'][i], role: ['oracle', 'executor', 'executor', 'creativity'][i], title: ['swarm control', 'W3.2b', 'W2.2', 'ux lab'][i], state: st || ['active', 'active', 'waiting', 'idle'][i] });
+const TREES = {
+  'two · vertical': { dir: 'v', ratio: .5, a: S(0), b: S(1) },
+  'two · horizontal': { dir: 'h', ratio: .55, a: S(0), b: S(1) },
+  'three · nested': { dir: 'v', ratio: .55, a: S(0), b: { dir: 'h', ratio: .5, a: S(1), b: S(2) } },
+  'four · quadrants': { dir: 'v', ratio: .5, a: { dir: 'h', ratio: .5, a: S(0), b: S(1) }, b: { dir: 'h', ratio: .5, a: S(2), b: S(3) } },
+  'gutter · resizing': { dir: 'v', ratio: .62, active: true, a: S(0), b: { dir: 'h', ratio: .5, a: S(1), b: S(2) } },
+};
+Lab.page({ title: 'splits', wide: true, note: 'A tab is a binary split tree of seats; the gutter (' + (TOKENS.layout.gutter || 2) + ' px, Settings › Appearance) is the divider and drags to change the ratio. Drag a seat row or a pane strip onto a pane: the hovered half tints and dropping splits there. While a ⌘↵ / ⌘⇧↵ preset launcher is open, the target half of the anchor pane breathes in the accent. Same splitView() as the showcase.',
+  states: [...Object.keys(TREES), 'drop zones', 'preset target', 'drag ghost'],
+  render(s, body) {
+    const frame = el('div', { style: 'height:420px;border-radius:var(--r-pill);overflow:hidden;border:1px solid var(--hair);background:var(--bg);display:flex' });
+    const po = t => ({ focused: t.key === 'sp0', unfocused: t.key !== 'sp0', shortcut: '⌘' + (+t.key.slice(2) + 1) });
+    if (TREES[s]) { const v = C.splitView(TREES[s], { paneOpts: po }); v.style.flex = '1'; frame.append(v); }
+    if (s === 'drop zones') { frame.style.cssText += ';display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;padding:10px;height:520px'; ['left', 'right', 'top', 'bottom'].forEach((z, i) => { const p = C.pane(S(i % 3), po(S(0))); p.classList.add('drop-' + z); p.append(el('div', { class: 'lab-note', style: 'position:absolute;bottom:6px;right:10px;z-index:4' }, 'drop ' + z)); frame.append(p); }); }
+    if (s === 'preset target') { const v = C.splitView({ dir: 'v', ratio: .5, a: S(0), b: S(1) }, { paneOpts: po }); v.style.flex = '1'; v.querySelector('.pane').classList.add('will-right'); frame.append(v); }
+    if (s === 'drag ghost') { const v = C.splitView({ dir: 'v', ratio: .5, a: S(0), b: S(1) }, { paneOpts: po }); v.style.flex = '1'; v.querySelectorAll('.pane')[1].classList.add('drop-bottom'); frame.style.position = 'relative'; frame.append(v); const g = el('div', { class: 'drag-ghost', style: 'position:absolute;left:auto;right:150px;top:270px' }, C.harnessIcon('codex'), ' Rook Ashwhisker'); frame.append(g); }
+    body.append(frame);
+  } });
+</script></body></html>

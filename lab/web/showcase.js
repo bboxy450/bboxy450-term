@@ -449,23 +449,21 @@
   const main = el('div', { id: 'main' });
   app.append(titlebar, main);
   let rects = [];
-  function splitDom(t) {
+  function leafDom(t) {
     if (t.key && t.graph) { const sp = space(); const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘G', onClose: closeGraph }), C.graphPage({ seats: seats.filter(x => !x.settings && !x.graph && (tabOf(x.key) || {}).sp === sp), epics: sp.epics, swarm: sp.name, history: sp.history, provenance: sp.provenance, subscriptions: sp.subscriptions })); p.dataset.key = t.key; return p; }
     if (t.key && t.settings) { const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘,', onClose: closeSettings }), C.settingsPage({ section: t.section, onChange: (sec, k, v) => { if (sec === 'appearance') settingsSeat.section = 'Appearance'; applySetting(sec, k, v); } })); p.dataset.key = t.key; return p; }
     if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute, onInterrupt: interruptSeat, reconnecting: daemon === 'lost', reconnected: daemon === 'back' });
-    const A = splitDom(t.a), B = splitDom(t.b);
-    A.style.flex = t.ratio || 0.5; B.style.flex = 1 - (t.ratio || 0.5);
-    const box = el('div', { class: 'split ' + t.dir });
-    // the gutter is the divider: drag it to change the split ratio; the tree keeps the ratio, the mini-grid follows on re-render
-    const div = el('div', { class: 'divider', onpointerdown: e => {
+  }
+  // the gutter is the divider: drag it to change the split ratio; the tree keeps the ratio, the mini-grid follows on re-render
+  function resizeDivider(div, t, box, A, B) {
+    div.addEventListener('pointerdown', e => {
       e.preventDefault(); div.setPointerCapture(e.pointerId); document.body.classList.add('resizing'); document.body.style.cursor = t.dir === 'v' ? 'col-resize' : 'row-resize';
       const move = ev => { const r = box.getBoundingClientRect(); const f = t.dir === 'v' ? (ev.clientX - r.left) / r.width : (ev.clientY - r.top) / r.height; t.ratio = Math.min(0.9, Math.max(0.1, f)); A.style.flex = t.ratio; B.style.flex = 1 - t.ratio; measure(); };
       const up = () => { div.removeEventListener('pointermove', move); div.removeEventListener('pointerup', up); document.body.classList.remove('resizing'); document.body.style.cursor = ''; render(); };
       div.addEventListener('pointermove', move); div.addEventListener('pointerup', up);
-    } });
-    box.append(A, div, B);
-    return box;
+    });
   }
+  const splitDom = t => C.splitView(t, { leaf: leafDom, onDivider: resizeDivider });
   function render() {
     main.innerHTML = '';
     stageTree = stageOf(); stageKeys = stageTree ? C.leaves(stageTree).map(s => s.key) : [];

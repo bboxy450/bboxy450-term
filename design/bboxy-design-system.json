@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 47,
+  "version": 48,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -773,6 +773,11 @@
         "⌘C copies Markdown source, not rendered text"
       ],
       "status": "built: docModal() in components.js; showcase key V (alternates a spec and a plain README; ⏎ feeds and the tick ladder climbs); documents.html?state=as-modal, modal-plain-markdown"
+    },
+    "splits": {
+      "purpose": "a tab is a binary split tree of seats",
+      "anatomy": "flex rows (v) and columns (h), the gutter as a divider (hover and active in the accent with a grip); drop zones tint the hovered half; the preset target half breathes in the accent; the drag ghost is a frosted chip with the harness icon and name",
+      "status": "built: splitView() in components.js shared by the showcase (its resize handler passes as onDivider); split CSS in lab.css; splits.html?state=two-vertical|two-horizontal|three-nested|four-quadrants|gutter-resizing|drop-zones|preset-target|drag-ghost"
     }
   },
   "modal": {

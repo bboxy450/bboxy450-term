@@ -12,14 +12,9 @@
   .sidebar, .space, .pane, .seat-row { box-shadow: none !important; animation: none !important; }
   .seat-row.bounce { animation: rowBounce 520ms var(--ease) !important; outline: 2px solid var(--seat); outline-offset: 0; }
   @keyframes rowBounce { 0% { transform: scale(1); outline-offset: 0; outline-color: transparent; } 35% { transform: scale(1.045); outline-offset: 3px; outline-color: var(--seat); } 70% { transform: scale(0.99); outline-offset: 1px; } 100% { transform: scale(1); outline-offset: 0; outline-color: transparent; } }
-  body.resizing, body.resizing * { cursor: inherit !important; user-select: none; }
   /* drag to split: ghost label follows the pointer; the hovered half of a pane tints */
   body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
-  .drag-ghost { position: fixed; left: 0; top: 0; z-index: 20; pointer-events: none; padding: 4px 10px; border-radius: var(--r-round); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); box-shadow: 0 0 0 1px var(--hair), var(--sh-pill); color: var(--seat); font-size: var(--t-row); font-weight: 600; backdrop-filter: blur(10px); }
   .pane { position: relative; }
-  .pane::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--sel); opacity: 0; transition: opacity var(--hover-ms); z-index: 3; }
-  .pane.drop-left::after { opacity: 1; right: 50%; } .pane.drop-right::after { opacity: 1; left: 50%; }
-  .pane.drop-top::after { opacity: 1; bottom: 50%; } .pane.drop-bottom::after { opacity: 1; top: 50%; }
 
   /* --- title bar: panel material, hairline below --- */
   .tbtn.theme { --icon: 18px; }
@@ -64,14 +59,6 @@
 
   /* --- stage: split tree, gutters are dividers --- */
   .stage { flex: 1; padding: 0; background: transparent; min-width: 0; }
-  .split { display: flex; gap: 0; min-width: 0; min-height: 0; }
-  .split.v { flex-direction: row; } .split.h { flex-direction: column; }
-  .split > .divider { flex: none; position: relative; z-index: 2; }
-  .split.v > .divider { width: var(--gutter); cursor: col-resize; }
-  .split.h > .divider { height: var(--gutter); cursor: row-resize; }
-  .split > .divider::after { content: ""; position: absolute; inset: 0; }
-  .split.v > .divider::after { left: -4px; right: -4px; }
-  .split.h > .divider::after { top: -4px; bottom: -4px; }
   .stage .pane { background: var(--bg); min-height: 0; min-width: 0; border-radius: 0; }
   .pane .strip .kbd { background: rgba(0,0,0,.22); color: rgba(255,255,255,.85); }
   .pane.settings-pane { display: flex; flex-direction: column; min-width: 0; }
@@ -81,17 +68,10 @@
   .pane .term .lines { white-space: pre; overflow: hidden; }
 
   /* split preview: two cells, the new one lit and breathing */
-  .split-preview { display: inline-grid; gap: 3px; width: 44px; height: 30px; padding: 3px; border-radius: var(--r-badge); background: var(--badge); flex: none; }
-  .split-preview.right { grid-template-columns: 1fr 1fr; } .split-preview.bottom { grid-template-rows: 1fr 1fr; }
-  .split-preview i { border-radius: 3px; background: color-mix(in srgb, var(--fg) 35%, transparent); display: block; }
-  .split-preview i.new { background: var(--accent); animation: cellBreathe 1.2s ease-in-out infinite; box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent); }
-  @keyframes cellBreathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
   /* the focused pane types: its cursor blinks */
   .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
   @keyframes curBlink { 50% { opacity: 0; } }
   /* while the preset launcher is open the target half of the pane behind it is lit, same tint as drag-to-split */
-  .pane.will-right::after, .pane.will-bottom::after { opacity: 1; background: color-mix(in srgb, var(--accent) 22%, transparent); animation: cellBreathe 1.2s ease-in-out infinite; }
-  .pane.will-right::after { left: 50%; } .pane.will-bottom::after { top: 50%; }
 </style>
 <script src="tokens.js"></script><script src="logs.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="fixtures.js"></script>
 </head><body>
