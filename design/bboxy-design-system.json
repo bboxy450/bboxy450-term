@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 51,
+  "version": 52,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -249,6 +249,11 @@
       "means": "who a message is for and who answered (messaging.md Subagent addressing)",
       "drawing": "message row chips: \"→ main\" or \"→ ↳ <subagent title>\"; a reply from a subagent carries \"↳ <title>\" in the role colour; \"via main\" in italics when the harness relayed (Claude and Codex: subagent_addressable false); a message to an ended subagent shows an amber dashed \"held · agent ended\" in place of the ladder, never redirected; the ladder is per target",
       "status": "built: messageRow m.to, m.fromAgent, m.via, m.held; rowMenu opts.agent (Message this subagent, Message the main agent, Focus seat, Copy agent id); subagent rows open it on right-click; message-row.html?state=to-a-subagent|relayed-via-main|reply-from-a-subagent|agent-ended-held; seat-row.html?state=subagent-menu; showcase right-click a subagent row"
+    },
+    "routing_discipline": {
+      "means": "workers DM by default; the stream carries chunks, decisions and presence (messaging.md Routing discipline)",
+      "drawing": "kind chips CHUNK (ok green) and DECISION (invariant amber) on stream rows; a rejected worker progress note as a dashed red row \"⊘ Rook Ashwhisker tried to post progress to the stream · DM your delegator · Vesper Greywind\"; subgroup chip \"⧉ render crew · 2\" for fan-out DMs; #subchannel chip on rows seen in all; a dashed amber \"noisy 38%\" chip on a seat row whose stream share passes the threshold (for the Oracle)",
+      "status": "built: messageRow m.kind, m.group, m.ch, m.rejected; seatRow seat.noise; stream.html?state=subgroup-message|rejected-progress; seat-row.html?state=noise-hint"
     }
   },
   "elements": {
@@ -919,6 +924,20 @@
       "status": "built: messageRow() in components.js; message-row.html",
       "component": "Box[row, role rail; oracle: tinted] = Hairline(rail, dashed for creativity) + Stack[column](Stack[row](Text(name) + Text(<ROLE>) + Badge(p0)? + Chip(agent to/from/via)? + Text(time) + tick_ladder | Chip(held)) + Text(reply)? + Text(body with wikilink_chip))",
       "material": "flat"
+    },
+    "stream_tabs": {
+      "purpose": "subchannels as tabs over the stream dock (messaging.md Subchannels and subgroups)",
+      "anatomy": "all + #render #mux #design #decisions as round tabs; unread count as an accent badge; muted tab struck and dimmed with the muted icon; right-click or long-press a tab to mute it; the bare stream shows unscoped lines plus chunks and decisions, a tab shows its subchannel and drops the #chip",
+      "component": "Stack[row, scroll] of Button[tab, round] + Text + Badge(unread) | Icon(muted)",
+      "material": "flat",
+      "status": "built: streamTabs() in components.js; stream.html?state=subchannels|subchannel-muted; showcase dock"
+    },
+    "channel_graph_card": {
+      "purpose": "the channel tree (channel-tree.md): pubsub as a filesystem of sinks under bboxy450://",
+      "anatomy": "folders on the left as an indented tree (channels/<swarm>/ with its filter, subchannels, groups/, ext/ sources in orange); seat sinks on the right (name in seat colour over seats/<id>/inbox); each subscription a thin dashed symlink, traffic weight thick in the sink colour, filter and rate as a pill on the link, paused entries dotted, folder links (bridges) as dashed accent curves",
+      "component": "Box[card] + draw list: Text(mono folder paths) + Hairline(branches) + paths (links, traffic, bridges) + Pill(filter, rate) + Glyph(sink dot) + Text",
+      "material": "flat",
+      "status": "built: channelGraphCard() in components.js, graphPage opts.channels; FIX.channels (the cohort tree of channel-tree.md §9); graph.html?state=channels"
     }
   },
   "modal": {
@@ -1224,5 +1243,12 @@
       "type": "line-heights 14/16/18 px tied to row heights; derive from density tokens"
     },
     "showcase_and_js": "showcase.html and inline styles in components.js still carry literals of their own; next pass after bbt-ui lands names them per component"
-  }
+  },
+  "roles_builtin": {
+    "oracle": "♔ #FFC53D oracle-class",
+    "architect": "♖ #2EC4D6 oracle-class: designs the system and specs, most capable model",
+    "executor": "♟ #2E6BFF worker-class",
+    "creativity": "♝ #B07BFF worker-class"
+  },
+  "token_rules": "one source per value: a leaf path defined in both tokens.toml and style.json fails gen-tokens.py (exit 2). radius.row (10) and radius.pill (999) live in style.json; the lab card radius --r-pill reads style radius.card (12); motion.hover_ms lives in tokens.toml"
 }

@@ -93,6 +93,7 @@
   seats[3].gap = { from: '09:14:07' };  // a long-running cloud seat whose ring evicted its oldest output
   model.spaces[0].retained = [{ seat: { key: 'old1', name: 'Marlo Pike', harness: 'claude', role: 'executor', title: 'tokens audit', state: 'idle', pal: 9 }, closedAt: '13:12', session: '5f3a91c2' }];
   seats[4].authority = 'expired';  // Sable Quill on rig: its seat grant lapsed; it keeps running, signed effects wait
+  seats[2].noise = .38;  // Lumen posts too much to the swarm stream: the Oracle sees the hint
   seats[0].listeners = 2; seats[1].listeners = 1;  // clients on the seat socket: counts only
   // subscriptions and external events (events.md): auto-subscriptions follow delegation; external arrives from webhooks, CI, cloud, cron
   model.spaces[0].subscriptions = FIX.subscriptions.map(x => ({ ...x }));
@@ -611,13 +612,17 @@
   });
 
   // ---------- stream dock: messages land here; clicking a phantom filters to that participant ----------
+  let streamCh = 'all';
   function drawStream() {
     const dock = document.getElementById('stream'); if (!dock) return;
     dock.innerHTML = '';
     const stream = space().stream;
     for (const ep of (space().epics || [])) if (ep.items.length) dock.append(C.epicGroup(ep, { onToggle: drawStream }));
     if ((space().external || []).length) dock.append(C.externalLane(space().external, { open: extOpen, onToggle: () => { extOpen = !extOpen; drawStream(); } }));
-    const items = stream.filter(m => !streamFilter || m.fromKey === streamFilter).slice(-4);
+    // subchannels as tabs (messaging.md): the bare stream shows unscoped lines and chunks/decisions; a tab shows its subchannel
+    const sp = space(); if (!sp.subchannels && sp === model.spaces[0]) sp.subchannels = FIX.subchannels.map(c => ({ ...c }));
+    if (sp.subchannels) dock.append(C.streamTabs(sp.subchannels, { sel: streamCh, onSel: x => { streamCh = x; const c = sp.subchannels.find(y => y.name === x); if (c) c.unread = 0; drawStream(); }, onMute: x => { const c = sp.subchannels.find(y => y.name === x); c.muted = !c.muted; drawStream(); } }));
+    const items = stream.filter(m => !streamFilter || m.fromKey === streamFilter).filter(m => streamCh === 'all' ? !m.ch || m.kind : m.ch === streamCh).slice(-4);
     if (streamFilter) { const ph = space().participants.find(p => p.key === streamFilter); if (!ph) { streamFilter = null; return drawStream(); } dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
     for (const m of items) dock.append(C.messageRow(m));
     dock.style.display = (stream.length || (space().epics || []).some(e => e.items.length) || (space().external || []).length) ? '' : 'none';

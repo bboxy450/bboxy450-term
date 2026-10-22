@@ -35,6 +35,7 @@ window.TOKENS = {
       "surface_2": "#ECEAFF"
     },
     "role": {
+      "architect": "#2EC4D6",
       "creativity": "#B07BFF",
       "executor": "#2E6BFF",
       "oracle": "#FFC53D",
@@ -148,9 +149,7 @@ window.TOKENS = {
   },
   "radius": {
     "chip": 4,
-    "grid": 3,
-    "pill": 12,
-    "row": 6
+    "grid": 3
   },
   "seat_color": {
     "bands_dark": [
@@ -208,8 +207,7 @@ window.STYLE = {
   },
   "motion": {
     "appear_ms": 160,
-    "ease": "cubic-bezier(.2,.8,.2,1)",
-    "hover_ms": 120
+    "ease": "cubic-bezier(.2,.8,.2,1)"
   },
   "name": "bboxy450-term visual style",
   "radius": {

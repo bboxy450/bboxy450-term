@@ -36,7 +36,7 @@
   const DEFAULT_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: null };
   const STATES = ['active', 'idle', 'waiting', 'errored'];
   const GLYPH = { active: '●', idle: '○', waiting: '◐', errored: '✕' };
-  const ROLE_MARK = { oracle: '♔', executor: '♟', creativity: '♝', unsigned: '·' };
+  const ROLE_MARK = { oracle: '♔', architect: '♖', executor: '♟', creativity: '♝', unsigned: '·' };
   const TITLES = ['gpu research', 'messaging spec', 'ux divergence', 'harness hooks', 'mux daemon', 'cargo test', 'review PR 14', 'ssh rig', 'parse logs', 'idle shell', 'tokens', 'relay bench'];
 
   // ---------- atoms ----------
@@ -154,6 +154,8 @@
         : blocked.map(h => h.id + ' · ' + h.blocked).join('\n');
       right.append(el('span', { class: 'held' + (seat.muted ? '' : ' blocked'), title: tip }, 'held ' + held.length));
     }
+    // noise hint (messaging.md routing discipline 4): the seat's share of stream messages is over the threshold; shown to the Oracle
+    if (seat.noise) right.append(el('span', { class: 'noise', title: 'stream share ' + Math.round(seat.noise * 100) + '% over the ' + Math.round((seat.noiseMax || .25) * 100) + '% threshold · route progress by DM' }, 'noisy ' + Math.round(seat.noise * 100) + '%'));
     // seats are sockets: broker telemetry, counts only, never who
     if (seat.listeners > 0) right.append(el('span', { class: 'listeners', title: seat.listeners + ' client' + (seat.listeners === 1 ? '' : 's') + " on this seat's socket · counts only" }, harnessIcon('plug'), String(seat.listeners)));
     const touched = seat.touched || 0;
@@ -337,6 +339,7 @@
     if (want('agents')) root.append(agents);
     if (want('work')) root.append(tree);
     if (opts.subscriptions && want('subscriptions')) root.append(subscriptionsCard(opts.subscriptions));
+    if (opts.channels && want('channels')) root.append(channelGraphCard(opts.channels));
     if (opts.provenance && want('provenance')) root.append(provenanceCard(opts.provenance));
     const hist = opts.history || [];
     if (hist.length) {
@@ -427,7 +430,7 @@
   // Diagrams (document-viewer.md, Mermaid subset built ourselves): flowchart TD/LR, sequence, state. Parsed here, laid out in
   // layers, drawn with the chrome look: rounded nodes tinted in role/seat colours, hairline edges with rounded bends, arrowheads,
   // labels on the type scale. Unsupported syntax renders the raw block with a note, never a broken diagram.
-  const DG_ROLE = { oracle: 'var(--role-oracle)', executor: 'var(--role-executor)', creativity: 'var(--role-creativity)', idle: 'var(--c-idle)', waiting: 'var(--c-waiting)', errored: 'var(--c-errored)', accent: 'var(--accent)' };
+  const DG_ROLE = { architect: 'var(--role-architect)', oracle: 'var(--role-oracle)', executor: 'var(--role-executor)', creativity: 'var(--role-creativity)', idle: 'var(--c-idle)', waiting: 'var(--c-waiting)', errored: 'var(--c-errored)', accent: 'var(--accent)' };
   function parseMermaid(src) {
     const lines = src.split('\n').map(l => l.replace(/%%.*$/, '').trim()).filter(Boolean);
     const head = (lines.shift() || '').toLowerCase();
@@ -674,6 +677,46 @@
       el('pre', { class: 'fr-cmd' }, 'bboxy450-term enroll sign enroll-2026-10-21.req   # where the primary is'),
       el('div', { class: 'fr-acts' }, el('span', { class: 'fr-hint' }, 'Until it is signed this Mac runs local seats only; account messaging waits.'), btn('Continue with local seats', 'ghost', () => opts.onDone && opts.onDone()), btn('Import the signed request', 'primary')));
     return panel;
+  }
+  // subchannels as tabs in the stream dock (messaging.md Subchannels): unread counts, per-subchannel mute (right-click or long-press a tab)
+  function streamTabs(chs, opts) {
+    opts = opts || {};
+    const bar = el('div', { class: 'ch-tabs', role: 'tablist' });
+    const all = { name: 'all', unread: chs.reduce((n, c) => n + (c.muted ? 0 : c.unread || 0), 0) };
+    for (const c of [all, ...chs]) {
+      const t = el('button', { class: 'ch-tab' + (opts.sel === c.name ? ' on' : '') + (c.muted ? ' muted' : ''), role: 'tab', title: c.name === 'all' ? 'the swarm stream: chunks, decisions, presence' : '#' + c.name + (c.muted ? ' · muted (right-click to unmute)' : ' · right-click to mute'), onclick: () => opts.onSel && opts.onSel(c.name) },
+        c.name === 'all' ? 'all' : '#' + c.name, c.muted ? harnessIcon('muted') : c.unread ? el('b', {}, String(c.unread)) : null);
+      if (c.name !== 'all') t.addEventListener('contextmenu', e => { e.preventDefault(); opts.onMute && opts.onMute(c.name); });
+      bar.append(t);
+    }
+    return bar;
+  }
+  // channel graph (channel-tree.md): pubsub as a filesystem of sinks under bboxy450://. Folders (channels, subchannels, groups,
+  // ext sources) on the left as a tree; seat sinks (seats/<seat>/inbox) on the right; each subscription is a symlink drawn as a
+  // thin dashed edge, traffic adds weight; filters and rates ride on the link as a pill; a paused (muted) entry is dotted;
+  // folder links (bridges) curve between folders.
+  function channelGraphCard(g) {
+    const NS = 'http://www.w3.org/2000/svg', rowH = 26, top = 16, W = 700, sinkX = W - 130;
+    const fy = {}, sy = {};
+    g.folders.forEach((f, i) => { fy[f.path] = top + i * rowH + rowH / 2; });
+    const sinkGap = Math.max(rowH, (g.folders.length * rowH) / Math.max(1, g.sinks.length));
+    g.sinks.forEach((x, i) => { sy[x.id] = top + i * sinkGap + sinkGap / 2; });
+    const H = Math.max(g.folders.length * rowH, g.sinks.length * sinkGap) + top * 2;
+    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('class', 'chgraph');
+    const mk = (tag, a, txt) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; svg.append(e); return e; };
+    const fx = f => 24 + f.depth * 16, fEnd = f => fx(f) + 8 + f.label.length * 6.3 + (f.filter ? 10 + f.filter.length * 4.9 : 0);
+    const col = id => (g.sinks.find(x => x.id === id) || {}).color || 'var(--accent)';
+    for (const l of g.links) { const f = g.folders.find(x => x.path === l.from); if (!f || sy[l.to] == null) continue;
+      const x1 = fEnd(f) + 6, y1 = fy[l.from], x2 = sinkX - 8, y2 = sy[l.to], mx = (x1 + x2) / 2, d = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+      mk('path', { d, class: 'cg-link' + (l.paused ? ' paused' : '') });
+      if (l.w) mk('path', { d, class: 'cg-traffic', style: 'stroke-width:' + (1 + l.w * 7) + ';stroke:' + col(l.to) });
+      if (l.filter || l.rate) { const tx = mk('text', { x: mx, y: (y1 + y2) / 2 - 1, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'cg-pill-t' }, [l.filter, l.rate].filter(Boolean).join(' · ')); const w = tx.textContent.length * 5.6 + 10; const r = mk('rect', { x: mx - w / 2, y: (y1 + y2) / 2 - 8, width: w, height: 15, rx: 7.5, class: 'cg-pill' }); svg.insertBefore(r, tx); } }
+    for (const br of (g.bridges || [])) { const a = g.folders.find(x => x.path === br.from), b = g.folders.find(x => x.path === br.to); if (!a || !b) continue; const x = Math.max(fEnd(a), fEnd(b)) + 18; mk('path', { d: `M${fEnd(a) + 4},${fy[a.path]} C${x + 30},${fy[a.path]} ${x + 30},${fy[b.path]} ${fEnd(b) + 4},${fy[b.path]}`, class: 'cg-bridge', 'marker-end': '' }); mk('text', { x: x + 34, y: (fy[a.path] + fy[b.path]) / 2, class: 'cg-pill-t', 'dominant-baseline': 'central' }, 'bridge'); }
+    g.folders.forEach(f => { const y = fy[f.path]; if (f.depth) mk('path', { d: `M${fx(f) - 10},${y - rowH + 8} V${y} H${fx(f) - 3}`, class: 'cg-branch' });
+      mk('text', { x: fx(f), y, 'dominant-baseline': 'central', class: 'cg-folder ' + (f.kind || 'channel') }, f.label);
+      if (f.filter) mk('text', { x: fx(f) + 6 + f.label.length * 6.3 + 8, y, 'dominant-baseline': 'central', class: 'cg-note' }, f.filter); });
+    g.sinks.forEach(x => { const y = sy[x.id]; mk('circle', { cx: sinkX, cy: y, r: 4, style: 'fill:' + (x.color || 'var(--fg)') }); mk('text', { x: sinkX + 10, y: y - 5, 'dominant-baseline': 'central', class: 'cg-sink', style: 'fill:' + (x.color || 'var(--fg)') }, x.name); mk('text', { x: sinkX + 10, y: y + 7, 'dominant-baseline': 'central', class: 'cg-path' }, 'seats/' + x.id + '/inbox'); });
+    return el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Channels · ' + (g.root || 'bboxy450://')), el('span', { class: 'cg-key' }, el('i', { class: 'a' }), 'link', el('i', { class: 't' }), 'traffic', el('i', { class: 'p' }), 'paused')), el('div', { class: 'cg-wrap' }, svg));
   }
   // Provenance card: created_by / updated_by, weighted derived_from, the signed digest pair, and the hash-chained activity log
   function provenanceCard(prov) {
@@ -1057,6 +1100,8 @@
     opts = opts || {};
     if (m.presence) return el('div', { class: 'msg presence' }, el('span', { class: 'ptext' }, m.text), el('span', { class: 'time' }, m.time || ''));
     // audit line (a projection of the Oracle audit log, swarm-member scope): the Oracle's effects in the open, centred like presence
+    // routing discipline (messaging.md): a worker's progress note to the stream is rejected with a hint; only chunk, decision, presence land
+    if (m.rejected) return el('div', { class: 'msg rejected', title: 'rejected: worker-class stream messages must be chunk, decision or presence' }, el('span', { class: 'rj-t' }, el('span', { class: 'rj-x' }, '⊘ '), el('b', {}, m.from), ' tried to post progress to the stream'), el('span', { class: 'rj-hint' }, 'DM your delegator' + (m.delegator ? ' · ' + m.delegator : '')), el('span', { class: 'time' }, m.time || ''));
     if (m.audit) { const a = m.audit; return el('div', { class: 'msg presence audit ' + (a.outcome || 'applied'), title: 'audit · op ' + (a.op || '') + ' · ' + (a.outcome || 'applied') + (a.reason ? ' · ' + a.reason : '') },
       el('div', { class: 'aline' }, el('span', { class: 'amark' }, ROLE_MARK.oracle + ' '), el('b', {}, a.actor || 'Oracle'), ' ' + a.verb + ' ', el('b', {}, a.target || '')),
       el('div', { class: 'ameta' }, a.op ? el('code', { class: 'aop' }, a.op.slice(0, 6)) : null, a.outcome && a.outcome !== 'applied' ? el('span', { class: 'aout' }, a.outcome) : null, el('span', { class: 'time' }, m.time || ''))); }
@@ -1064,6 +1109,9 @@
     const row = el('div', { class: 'msg ' + role + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: '--role:var(--role-' + role + ')' });
     const head = el('div', { class: 'head' }, el('span', { class: 'who' }, m.from), el('span', { class: 'role' }, '<' + role.toUpperCase() + '>'));
     if (role === 'oracle' && !m.foreign) head.append(el('span', { class: 'p0' }, 'p0'));  // a foreign Oracle ranks as a worker here
+    if (m.ch && opts.showCh !== false) head.append(el('span', { class: 'chchip', title: 'arrived by bboxy450://channels/bboxy450-term/' + m.ch + '/' }, '#' + m.ch));
+    if (m.kind && m.kind !== 'message') head.append(el('span', { class: 'kchip ' + m.kind, title: m.kind + ': allowed on the swarm stream' }, m.kind));
+    if (m.group) head.append(el('span', { class: 'agchip grp', title: 'to subgroup ' + m.group.name + ': fanned out as DMs to ' + (m.group.n || '') + ' members, one thread' }, '⧉ ' + m.group.name + (m.group.n ? ' · ' + m.group.n : '')));
     // subagent addressing (messaging.md): to main or to a subagent; from a subagent, or relayed via main; held when the agent ended
     if (m.fromAgent) head.append(el('span', { class: 'agchip from', title: 'from subagent ' + m.fromAgent }, '↳ ' + m.fromAgent));
     if (m.via === 'main') head.append(el('span', { class: 'agchip via', title: 'the harness relayed it; the subagent is not addressable directly' }, 'via main'));
@@ -1096,6 +1144,7 @@
       oracle: { prompt: 'You are the Oracle. Supervise, verify, never implement. Sign every message Name <ORACLE>.', send: 'all channels · all DMs', color: 'var(--role-oracle)', mark: '♔', cls: 'oracle' },
       executor: { prompt: 'You are an Executor. Do the assigned work, report evidence, never expand scope.', send: 'own swarm · operator DM', color: 'var(--role-executor)', mark: '♟', cls: 'worker' },
       creativity: { prompt: 'You are Creativity. Diverge before converging; return a field, not a pick.', send: 'own swarm · operator DM', color: 'var(--role-creativity)', mark: '♝', cls: 'worker' },
+      architect: { prompt: 'You are the Architect. Design the system and write the specs; decide interfaces and invariants; never implement. Sign Name <ARCHITECT>.', send: 'all channels · all DMs', color: 'var(--role-architect)', mark: '♖', cls: 'oracle' },
     },
     // harnesses: built-ins carry command/tile/icon; custom ones run through the PTY adapter
     harness: {
@@ -1116,7 +1165,7 @@
     const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Shortcuts'];
     const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Appearance: 'sun', Shortcuts: 'keys' };
     const SENDS = ['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], WAKES = ['socket', 'hook', 'mcp', 'pty'], STATE_FROM = ['osc7501', 'hooks', 'output cadence'];
-    const MARKS = ['♔', '♟', '♝', '♜', '♞', '♚'], ICONS = ['claude', 'codex', 'pi', 'omp', 'zsh'];
+    const MARKS = ['♔', '♖', '♟', '♝', '♜', '♞', '♚'], ICONS = ['claude', 'codex', 'pi', 'omp', 'zsh'];
     const HUES = [0, 30, 55, 95, 160, 190, 215, 250, 285, 325], hue = i => 'hsl(' + HUES[((i % HUES.length) + HUES.length) % HUES.length] + ' 85% 64%)';
     // marks the settings page alone needs; everything else comes from ICON_SVG
     const SVG = {
@@ -1302,5 +1351,5 @@
     return root;
   }
 
-  window.C = { splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

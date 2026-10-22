@@ -24,7 +24,7 @@
     for (const [k, v] of Object.entries(T.color.role)) set('--role-' + k, v);
     set('--row-h', d.row_h + 'px'); set('--tab-h', d.tab_h + 'px'); set('--glyph', d.glyph + 'px'); set('--icon', d.icon + 'px');
     set('--font', d.font + 'px'); set('--font-small', d.font_small + 'px'); set('--pad-x', d.pad_x + 'px'); set('--gap', d.gap + 'px');
-    set('--r-pill', T.radius.pill + 'px'); set('--r-row', T.radius.row + 'px'); set('--r-chip', T.radius.chip + 'px'); set('--r-grid', T.radius.grid + 'px');
+    set('--r-pill', (window.STYLE ? STYLE.radius.card : 12) + 'px'); set('--r-chip', T.radius.chip + 'px'); set('--r-grid', T.radius.grid + 'px');
     set('--cohort-gap', T.layout.cohort_gap + 'px'); set('--sb-w', T.sidebar.width + 'px'); set('--sb-w-compact', T.sidebar.width_compact + 'px');
     set('--mg-w', T.sidebar.minigrid_w + 'px'); set('--mg-h', T.sidebar.minigrid_h + 'px');
     set('--strip-h', T.strip.height + 'px'); set('--strip-b-idle', T.strip.border_idle + 'px'); set('--strip-b-active', T.strip.border_active + 'px');

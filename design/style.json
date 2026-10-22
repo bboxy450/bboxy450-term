@@ -106,7 +106,6 @@
   },
   "motion": {
     "appear_ms": 160,
-    "hover_ms": 120,
     "ease": "cubic-bezier(.2,.8,.2,1)"
   }
 }

@@ -84,4 +84,35 @@ window.FIX = {
     { audit: { actor: 'Vesper Greywind', verb: 'spawned', target: 'Bram Calder', op: '5e6610fb', outcome: 'rejected', reason: 'spawn cap for this swarm is 8' }, time: '14:19' },
     { audit: { actor: 'Vesper Greywind', verb: 'closed', target: 'Ysolde Pike', op: '90ab3c12', outcome: 'unknown', reason: 'no confirmation from the mux' }, time: '14:21' },
   ],
+  // the channel tree (channel-tree.md §9, this cohort): folders, seat sinks, links with filters and rates
+  channels: {
+    root: 'bboxy450://',
+    folders: [
+      { path: 'c', label: 'channels/bboxy450-term/', depth: 0, filter: 'kind ∈ chunk · decision · presence' },
+      { path: 'c/render', label: 'render/', depth: 1 }, { path: 'c/mux', label: 'mux/', depth: 1 }, { path: 'c/design', label: 'design/', depth: 1 }, { path: 'c/decisions', label: 'decisions/', depth: 1 },
+      { path: 'g/render-crew', label: 'groups/render-crew/', depth: 0, kind: 'group' }, { path: 'g/executors', label: 'groups/executors/', depth: 0, kind: 'group' },
+      { path: 'x/ci', label: 'ext/github/ci-failed', depth: 0, kind: 'ext' },
+    ],
+    sinks: [{ id: 'vesper', name: 'Vesper Greywind', color: '#FFC53D' }, { id: 'nyx', name: 'Nyx Copperwing', color: '#FF4FA3' }, { id: 'rook', name: 'Rook Ashwhisker', color: '#2EE6A8' }, { id: 'wren', name: 'Wren Thistledown', color: '#B07BFF' }],
+    links: [
+      { from: 'c', to: 'vesper', w: .25 }, { from: 'c', to: 'nyx' }, { from: 'c', to: 'rook' }, { from: 'c', to: 'wren' },
+      { from: 'c/render', to: 'nyx', w: .9 }, { from: 'c/render', to: 'vesper', rate: 'batched 10m', w: .2 },
+      { from: 'c/mux', to: 'rook', w: .6 }, { from: 'c/mux', to: 'vesper', rate: 'batched 10m', w: .1 },
+      { from: 'c/design', to: 'wren', w: .7 }, { from: 'c/design', to: 'vesper', filter: 'kind=chunk', w: .15 },
+      { from: 'c/decisions', to: 'nyx', paused: true }, { from: 'c/decisions', to: 'rook' }, { from: 'c/decisions', to: 'wren' },
+      { from: 'g/render-crew', to: 'nyx' }, { from: 'g/render-crew', to: 'wren' }, { from: 'g/executors', to: 'nyx' }, { from: 'g/executors', to: 'rook' },
+    ],
+    bridges: [{ from: 'x/ci', to: 'c/mux' }],
+  },
+  subchannels: [{ name: 'render', unread: 3 }, { name: 'mux', unread: 0 }, { name: 'design', unread: 1 }, { name: 'decisions', unread: 1 }],
+  // subchannel traffic, subgroup fan-out and a rejected progress note (messaging.md routing discipline)
+  routed: [
+    { from: 'Vesper Greywind', fromKey: 'v', role: 'oracle', time: '14:30', text: 'W3.2b accepted; W3.2c is next', kind: 'chunk', evidence: 'application-acknowledged' },
+    { from: 'Nyx Copperwing', fromKey: 'n', role: 'executor', time: '14:31', ch: 'render', text: 'atlas grows ×2 at 2k glyphs, eviction stays off', evidence: 'native-written' },
+    { from: 'Rook Ashwhisker', fromKey: 'r', role: 'executor', time: '14:32', ch: 'mux', text: 'consumers table lands with ack_wait 30 s', evidence: 'native-written' },
+    { from: 'Wren Thistledown', fromKey: 'w', role: 'creativity', time: '14:33', ch: 'design', text: 'lab.css reads tokens now, 514 literals left', evidence: 'recipient-stored' },
+    { from: 'Vesper Greywind', fromKey: 'v', role: 'oracle', time: '14:34', ch: 'decisions', text: 'pubsub is a filesystem of sinks: channel-tree.md', kind: 'decision', evidence: 'native-written' },
+    { from: 'Vesper Greywind', fromKey: 'v', role: 'oracle', time: '14:35', group: { name: 'render crew', n: 2 }, text: 'parity triplets: look at the 41 over tolerance together', evidence: 'native-written' },
+    { rejected: true, from: 'Rook Ashwhisker', delegator: 'Vesper Greywind', time: '14:36' },
+  ],
 };

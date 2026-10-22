@@ -43,6 +43,7 @@ errored = "#FF4D5E"
 oracle = "#FFC53D"
 executor = "#2E6BFF"
 creativity = "#B07BFF"
+architect = "#2EC4D6"              # designs the system and specs; architect-class = oracle-class for priority
 unsigned = "#6B7190"
 
 [color.ui]
@@ -121,8 +122,6 @@ pad_x = 8
 gap = 4
 
 [radius]
-pill = 12
-row = 6
 chip = 4
 grid = 3
 

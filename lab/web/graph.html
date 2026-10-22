@@ -5,12 +5,12 @@
 <script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="fixtures.js"></script>
 </head><body><script>
 const el = Lab.el;
-const CARDS = { 'agents': ['agents'], 'work tree': ['work'], 'subscriptions': ['subscriptions'], 'provenance': ['provenance'], 'artifact history': ['history'] };
+const CARDS = { 'agents': ['agents'], 'work tree': ['work'], 'channels': ['channels'], 'subscriptions': ['subscriptions'], 'provenance': ['provenance'], 'artifact history': ['history'] };
 Lab.page({ title: 'graph', wide: true, note: '⌘G or Graph in the launcher opens a Graph tab, generated from the same data as the sidebar rows and the stream dock: Agents (seat · role · now · blocked on), the work tree (epics → specs and tasks with status, assignee, dependencies, artifacts as leaves), Subscriptions (patterns, AUTO where delegation subscribed), Provenance (created and updated by, derived from, signed digests, the hash-chained log), Artifact history.',
   states: ['full', ...Object.keys(CARDS), 'empty swarm'],
   render(s, body) {
     const empty = s === 'empty swarm';
-    const page = C.graphPage({ seats: empty ? [] : FIX.seats, epics: empty ? [] : FIX.epics, swarm: empty ? 'scratch' : 'term', history: empty ? [] : FIX.history, provenance: empty ? null : FIX.provenance, subscriptions: empty ? null : FIX.subscriptions, only: CARDS[s] || null });
+    const page = C.graphPage({ seats: empty ? [] : FIX.seats, epics: empty ? [] : FIX.epics, swarm: empty ? 'scratch' : 'term', history: empty ? [] : FIX.history, provenance: empty ? null : FIX.provenance, subscriptions: empty ? null : FIX.subscriptions, channels: empty ? null : FIX.channels, only: CARDS[s] || null });
     body.append(el('div', { style: 'height:' + (s === 'full' ? 900 : 'auto') + ';max-height:900px;overflow:auto;border-radius:var(--r-pill);border:1px solid var(--hair)' }, page));
   } });
 </script></body></html>
