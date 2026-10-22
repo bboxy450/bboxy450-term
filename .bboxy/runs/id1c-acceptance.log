@@ -1,0 +1,29 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 4.46s
+     Running tests/identity.rs (target/debug/deps/identity-b26a398efea680ae)
+
+running 13 tests
+test identity_keychain_device_local_item_and_cleanup ... ignored, uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance
+ID1c logic: bounded asynchronous client exposes unsigned/local-only status data; no root action or UI code
+test identity_status_is_available_as_data_through_the_bounded_logic_client ... ok
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+external gpg --check-sigs: good disposable-root certification; fingerprint 52AFF3C8C29C5F777600C76E8E199244C74FF157
+test identity_bootstrap_external_certification_and_custody ... ok
+test identity_device_without_root_certification_is_refused_before_seat_issuance ... ok
+ID1b: gpg-root envelope verified; tamper, wrong device, foreign root, stale/revoked grant and expiry rejected
+test identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs ... ok
+ID1b reset: explicit local-dev epochs 2/3; old root history retained; bootstrap retry does not undo reset; rollback rejected
+test identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history ... ok
+ID1b messaging seam: real chain provider preserved persist-before-dispatch, retry, thread, receipt and ack contracts
+test identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts ... ok
+ID1b: half-life renewal after primary agent stopped; generation key rotated; signed roster/history retained without private scope or seed
+ID1b cutover: live generation kept its local key; next generation gpg-root; pre-fence local history verified, newer local sequence refused
+test identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history ... ok
+test identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences ... ok
+ID1c: week-before-expiry renewal, dev custody label, expired/missing-key holds and exact live local-generation count surfaced without root signing
+test identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count ... ok
+ID1c: no-primary is unsigned/local-only; pending safe reason survives restart, with no authority installed
+test identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons ... ok
+
+test result: ok. 12 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 2.61s

@@ -84,17 +84,10 @@ impl ChainSeatKeys {
             .ok_or_else(|| invalid("no active device"))?
             .device_id;
         let identity: DeviceIdentity = read(&account, &format!("identity/device/{id}"))?;
-        // After an explicit reset only public historical authority is needed;
-        // an expired/lost device key must not block the new local-dev epoch.
-        identity.verify(
-            pinned,
-            &head,
-            if state.kind == IssuerKind::LocalDev {
-                head.payload.issued_at
-            } else {
-                clock()
-            },
-        )?;
+        // Authenticate installed public authority at its signed time. Current
+        // expiry/custody are signing holds, not a reason to stop logic or seats;
+        // every new authenticated effect still checks device_current().
+        identity.verify(pinned, &head, head.payload.issued_at)?;
         if state.kind == IssuerKind::GpgRoot && state.key != identity.grant.payload.root_pubkey {
             return Err(invalid("foreign root issuer journal"));
         }
@@ -113,9 +106,6 @@ impl ChainSeatKeys {
             memory: Mutex::new(Memory::default()),
             renewal_hold: Mutex::new(None),
         };
-        if provider.issuer.kind == IssuerKind::GpgRoot {
-            provider.device_key()?;
-        }
         Ok(provider)
     }
     fn device_key(&self) -> Result<SigningKey> {
@@ -174,12 +164,41 @@ impl ChainSeatKeys {
         Ok(Some(roster))
     }
     pub fn still_local(&self) -> Result<usize> {
-        Ok(transition::read(&self.account)?
-            .ok_or_else(|| invalid("missing issuer state"))?
-            .legacy
-            .iter()
-            .filter(|e| e.before.is_none())
-            .count())
+        let state =
+            transition::read(&self.account)?.ok_or_else(|| invalid("missing issuer state"))?;
+        super::status::local_count(&self.account, Some(&state))
+    }
+    /// Safe identity-card snapshot on the logic/IO owner; never root signing.
+    pub fn status_at(&self, now: u64) -> Result<super::IdentityStatus> {
+        bbt_rt::assert_not_ui_thread();
+        let mut status = super::status::read(&self.account, now)?;
+        if status.bootstrapped
+            && let Some(reason) = self.signing_hold(now)
+        {
+            status.hold(reason);
+        }
+        Ok(status)
+    }
+    pub(super) fn signing_hold(&self, now: u64) -> Option<super::PendingReason> {
+        use super::PendingReason as E;
+        if now >= self.identity.grant.payload.expires_at {
+            return Some(E::DeviceGrantExpired);
+        }
+        if self.device_current(now).is_err() {
+            return Some(E::InvalidProof);
+        }
+        match self.custody.load(self.identity.grant.payload.device_id) {
+            Err(reason) => return Some(reason),
+            Ok(None) => return Some(E::KeychainUnavailable(-25300)),
+            Ok(Some(key))
+                if public(&key.verifying_key().to_bytes())
+                    != self.identity.grant.payload.device_pubkey =>
+            {
+                return Some(E::InvalidProof);
+            }
+            Ok(Some(_)) => {}
+        }
+        self.renewal_hold().map(|_| E::SeatRenewalUnavailable)
     }
     pub fn renewal_hold(&self) -> Option<String> {
         self.renewal_hold.lock().ok().and_then(|h| h.clone())
@@ -819,51 +838,67 @@ pub fn seat_keys(
     local: SigningKey,
     handle: tokio::runtime::Handle,
 ) -> Result<Arc<dyn SeatKeys>> {
-    let account = SqliteStore::open(&object_dir(run_dir, "account")?)?;
-    let Some(state) = transition::read(&account)? else {
-        if account.get("identity/head")?.is_some() {
-            return Err(invalid("bootstrapped identity lacks its issuer journal"));
-        }
-        return Ok(Arc::new(LocalSeatKeys::new(local)));
-    };
-    let pinned = state
-        .root_fingerprint
-        .as_deref()
-        .ok_or_else(|| invalid("missing root fingerprint"))?;
-    let head: Signed<AccountHead> = read(&account, "identity/head")?;
-    let id = head
-        .payload
-        .active_devices
-        .first()
-        .ok_or_else(|| invalid("no active device"))?
-        .device_id;
-    let identity: DeviceIdentity = read(&account, &format!("identity/device/{id}"))?;
-    let custody = KeychainDeviceKeys::resume(identity.custody)?;
-    let chain = Arc::new(ChainSeatKeys::open(
-        account,
-        Arc::new(custody),
-        pinned,
-        local,
-    )?);
-    let weak = Arc::downgrade(&chain);
-    let task = handle.spawn(async move {
-        loop {
-            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-            let Some(chain) = weak.upgrade() else {
-                break;
-            };
-            let job = chain.clone();
-            let result = tokio::task::spawn_blocking(move || job.renew_due()).await;
-            if let Ok(mut hold) = chain.renewal_hold.lock() {
-                *hold = match result {
-                    Ok(Ok(_)) => None,
-                    Ok(Err(e)) => Some(e.to_string()),
-                    Err(_) => Some("identity renewal worker unavailable".into()),
-                };
+    Ok(super::IdentityRuntime::open(run_dir, local, handle)?.keys())
+}
+impl super::IdentityRuntime {
+    pub fn open(run_dir: &Path, local: SigningKey, handle: tokio::runtime::Handle) -> Result<Self> {
+        let account = SqliteStore::open(&object_dir(run_dir, "account")?)?;
+        let Some(state) = transition::read(&account)? else {
+            if account.get("identity/head")?.is_some() {
+                return Err(invalid("bootstrapped identity lacks its issuer journal"));
             }
-        }
-    });
-    Ok(Arc::new(MaintainedKeys { chain, task }))
+            return Ok(Self {
+                account,
+                keys: Arc::new(LocalSeatKeys::new(local)),
+                chain: None,
+            });
+        };
+        let pinned = state
+            .root_fingerprint
+            .as_deref()
+            .ok_or_else(|| invalid("missing root fingerprint"))?;
+        let head: Signed<AccountHead> = read(&account, "identity/head")?;
+        let id = head
+            .payload
+            .active_devices
+            .first()
+            .ok_or_else(|| invalid("no active device"))?
+            .device_id;
+        let identity: DeviceIdentity = read(&account, &format!("identity/device/{id}"))?;
+        let custody = KeychainDeviceKeys::resume(identity.custody)?;
+        let chain = Arc::new(ChainSeatKeys::open(
+            account.clone(),
+            Arc::new(custody),
+            pinned,
+            local,
+        )?);
+        let weak = Arc::downgrade(&chain);
+        let task = handle.spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                let Some(chain) = weak.upgrade() else {
+                    break;
+                };
+                let job = chain.clone();
+                let result = tokio::task::spawn_blocking(move || job.renew_due()).await;
+                if let Ok(mut hold) = chain.renewal_hold.lock() {
+                    *hold = match result {
+                        Ok(Ok(_)) => None,
+                        Ok(Err(e)) => Some(e.to_string()),
+                        Err(_) => Some("identity renewal worker unavailable".into()),
+                    };
+                }
+            }
+        });
+        Ok(Self {
+            account,
+            keys: Arc::new(MaintainedKeys {
+                chain: chain.clone(),
+                task,
+            }),
+            chain: Some(chain),
+        })
+    }
 }
 
 struct MaintainedKeys {
