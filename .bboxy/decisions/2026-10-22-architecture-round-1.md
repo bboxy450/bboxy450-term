@@ -163,6 +163,33 @@ briefs Executors from the specs, never from this note.
     grant is what receivers trust. Rejected: editing AGENTS.md (the
     operator's file; its override clause already covers this).
 
+19. **The PTY ceiling is a product fact, not a bug (from Seraph's C1d
+    measurement).** macOS `kern.tty.ptmx_max` is 511 on this Mac, raisable
+    only by a transient admin sysctl the kernel caps. Decided: capacity is
+    published per host and shown on the host row; a spawn past it is refused
+    with the reason named; the launcher offers the documented raise and
+    another host; "1000 seats" is per swarm across hosts; per-Mac gates run
+    at 500 by default and once at the raised ceiling. Rejected: the app
+    running sudo or installing a LaunchDaemon itself (silent privilege, not
+    our shape); lowering the target (the target is the swarm, hosts are the
+    unit); pretending with pseudo-seats that have no PTY (a seat is a PTY).
+    Gap: the kernel's hard cap on the raise, unverified on this build.
+
+20. **A seat is a PTY; a pipe-mode harness run is a job (from the measured
+    PTY cap).** `sudo sysctl -w kern.tty.ptmx_max=1100` returns Invalid
+    argument; the believed hard cap is 999. Decided: (a) per-machine gate
+    budgets are set at the machine's measured maximum; (b) headless harness
+    runs (`claude -p`, `codex exec`) never become seats; they are **jobs**
+    on the existing `spawn_command` path, a row under the launching seat
+    with Inferred grade, no screen, no input, no PTY, and therefore not
+    capped; the seat model, the sidebar and the 7501 observation stay
+    untouched; (c) at the cap the product refuses with the reason and
+    offers another host (#19). "1000 agents" is a swarm across hosts, or a
+    few hundred seats plus any number of jobs. Rejected: pipe-mode seats
+    (a seat without a screen breaks every seat invariant: observation,
+    guard, scrollback, resume); raising the target by lying about PTYs.
+    A job row spec is written when a brief needs it, not before.
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
