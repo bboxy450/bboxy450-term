@@ -180,7 +180,7 @@ code, .mono { font-family: var(--font-mono); }
 .pane .reconnect.out { opacity: 0; transition-duration: .6s; transition-delay: .3s; }
 .pane .reconnect .spin { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--fg) 25%, transparent); border-top-color: var(--fg); animation: spin .9s linear infinite; animation-play-state: running !important; }
 .pane .reconnect.out .spin { display: none; }
-/* spin keyframes defined above */
+@keyframes spin { to { transform: rotate(360deg); } }
 .seat-row .restarted { font-size: 9.5px; line-height: 14px; padding: 0 5px; border-radius: 5px; white-space: nowrap; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); animation: restarted-out 4s var(--ease, ease) forwards; }
 @keyframes restarted-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 .gap-mark { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; white-space: nowrap; font-size: 10px; color: var(--fg-dim); }
