@@ -1,0 +1,40 @@
+$ cargo test -p bbt-mux --locked --test logic -- --nocapture
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-core)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.84s
+     Running tests/logic.rs (target/debug/deps/logic-40cb07c9d1056a5e)
+
+running 6 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+
+thread 'supervisor_expires_grace_after_logic_stops_and_undo_preserves_process' (6238821) panicked at crates/bbt-mux/tests/logic.rs:53:55:
+called `Result::unwrap()` on an `Err` value: Error { kind: InvalidInput, message: "path must be shorter than SUN_LEN" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap' (6238820) panicked at crates/bbt-mux/tests/logic.rs:73:135:
+called `Result::unwrap()` on an `Err` value: Error { kind: InvalidInput, message: "path must be shorter than SUN_LEN" }
+
+thread 'logic_reconnect_keeps_same_supervisor_child_and_exact_screen' (6238819) panicked at crates/bbt-mux/tests/logic.rs:41:64:
+called `Result::unwrap()` on an `Err` value: Error { kind: InvalidInput, message: "path must be shorter than SUN_LEN" }
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... FAILED
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... FAILED
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... FAILED
+
+thread 'hard_killed_separate_logic_process_recovers_the_same_zsh_view' (6238818) panicked at crates/bbt-mux/tests/logic.rs:90:144:
+called `Result::unwrap()` on an `Err` value: Error { kind: InvalidInput, message: "path must be shorter than SUN_LEN" }
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... FAILED
+
+failures:
+
+failures:
+    hard_killed_separate_logic_process_recovers_the_same_zsh_view
+    logic_reconnect_keeps_same_supervisor_child_and_exact_screen
+    real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap
+    supervisor_expires_grace_after_logic_stops_and_undo_preserves_process
+
+test result: FAILED. 1 passed; 4 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.70s
+
+error: test failed, to rerun pass `-p bbt-mux --test logic`
+
+exit: 101

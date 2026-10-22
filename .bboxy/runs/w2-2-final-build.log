@@ -1,0 +1,26 @@
+$ cargo build --workspace --locked
+   Compiling indexmap v2.14.2
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling tokio-macros v2.7.2
+   Compiling hashlink v0.12.2
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-core)
+   Compiling rusqlite v0.40.2
+   Compiling tokio v1.54.1
+   Compiling naga-types v30.0.1
+   Compiling petgraph v0.8.3
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-rt)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 14.27s
+
+exit_status=0

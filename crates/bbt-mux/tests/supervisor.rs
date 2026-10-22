@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods)] // Disposable IO/process test harness.
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;

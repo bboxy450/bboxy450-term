@@ -1,0 +1,84 @@
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+
+use super::{Blobs, Result, digest, invalid};
+
+pub const MAX_BLOB: usize = 64 * 1024 * 1024;
+
+#[derive(Debug, Clone)]
+pub struct LocalBlobs {
+    root: PathBuf,
+}
+
+impl LocalBlobs {
+    pub fn open(object: &Path) -> Result<Self> {
+        bbt_rt::assert_not_ui_thread();
+        let root = object.join("blobs");
+        std::fs::create_dir_all(&root)?;
+        Ok(Self { root })
+    }
+    fn path(&self, digest: &str) -> Result<PathBuf> {
+        if digest.len() != 64
+            || !digest
+                .bytes()
+                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        {
+            return Err(invalid("invalid blob digest"));
+        }
+        Ok(self.root.join(format!("{digest}.zst")))
+    }
+}
+
+impl Blobs for LocalBlobs {
+    fn put(&self, bytes: &[u8]) -> Result<String> {
+        bbt_rt::assert_not_ui_thread();
+        if bytes.len() > MAX_BLOB {
+            return Err(invalid("blob exceeds 64 MiB"));
+        }
+        let hash = digest(bytes);
+        let path = self.path(&hash)?;
+        if path.exists() {
+            self.get(&hash)?;
+            return Ok(hash);
+        }
+        let temp = self.root.join(format!(".{}.tmp", ulid::Ulid::new()));
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp)?;
+        let compressed = zstd::stream::encode_all(bytes, 3)?;
+        file.write_all(&compressed)?;
+        file.sync_all()?;
+        std::fs::rename(temp, path)?;
+        std::fs::File::open(&self.root)?.sync_all()?;
+        Ok(hash)
+    }
+    fn get(&self, hash: &str) -> Result<Vec<u8>> {
+        bbt_rt::assert_not_ui_thread();
+        let file = std::fs::File::open(self.path(hash)?)?;
+        let mut decoder = zstd::stream::read::Decoder::new(file)?.take((MAX_BLOB + 1) as u64);
+        let mut bytes = Vec::new();
+        decoder.read_to_end(&mut bytes)?;
+        if bytes.len() > MAX_BLOB || digest(&bytes) != hash {
+            return Err(invalid("corrupt or oversized blob"));
+        }
+        Ok(bytes)
+    }
+    fn list(&self) -> Result<Vec<String>> {
+        bbt_rt::assert_not_ui_thread();
+        let mut result = Vec::new();
+        for entry in std::fs::read_dir(&self.root)? {
+            let entry = entry?;
+            if let Some(name) = entry
+                .file_name()
+                .to_str()
+                .and_then(|n| n.strip_suffix(".zst"))
+            {
+                self.path(name)?;
+                result.push(name.to_string());
+            }
+        }
+        result.sort();
+        Ok(result)
+    }
+}

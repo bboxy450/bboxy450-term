@@ -98,9 +98,10 @@ impl Term {
 
     /// Apply an ordered viewport resize while preserving parser and model state.
     pub fn resize(&mut self, cols: usize, rows: usize) {
-        assert!(cols >= term::MIN_COLUMNS);
-        assert!(rows >= term::MIN_SCREEN_LINES);
-        self.model.resize(Size { cols, rows });
+        self.model.resize(Size {
+            cols: cols.max(term::MIN_COLUMNS),
+            rows: rows.max(term::MIN_SCREEN_LINES),
+        });
         self.collect_events();
     }
 

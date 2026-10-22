@@ -1,0 +1,94 @@
+W2.2 acceptance evidence — 2026-10-22T09:15:59.607828-07:00
+Executor: Rook Ashwhisker; worktree /Users/feral/mydev/bboxy450-term
+Brief: .bboxy/tasks/2026-10-21-w2-2-logic-bus-index.md
+Allowed: crates/bbt-mux/**, Cargo.lock, .bboxy/runs/w2-2-*.log.
+Explicit Oracle extensions: core Term::resize + tests/resize.rs; clamp zero sizes; separate exact vendor lint shim.
+Core resize bridge already accepted as ffe2fae; vendor shim ae0855d signed/verified approved machine key.
+Own commits use Boxy <bboxy450@gmail.com>; no push by Executor. Other live UI work preserved.
+
+Mechanism pointers (read actual source and tests):
+crates/bbt-mux/src/store/sqlite.rs:26 — pub fn open(directory:
+crates/bbt-mux/src/store/blobs.rs:32 — impl Blobs for
+crates/bbt-mux/src/store/events.rs:148 — fn append(
+crates/bbt-mux/tests/storage_bus_index.rs:45 — fn signed_events_dedupe
+crates/bbt-mux/src/registry.rs:53 — pub struct SeatRecord
+crates/bbt-mux/src/registry.rs:147 — pub fn close(
+crates/bbt-mux/src/supervisor.rs:500 — Action::ScheduleClose
+crates/bbt-mux/tests/logic.rs:229 — fn supervisor_expires_grace
+crates/bbt-mux/src/bus.rs:19 — pub fn validate_subject
+crates/bbt-mux/src/bus.rs:167 — fn subscribe(&mut self
+crates/bbt-mux/src/bus.rs:554 — pub fn start(handle:
+crates/bbt-mux/tests/storage_bus_index.rs:150 — fn explicit_ack_redelivers
+crates/bbt-mux/src/index.rs:207 — pub fn scan(
+crates/bbt-mux/src/index.rs:395 — pub fn write(
+crates/bbt-mux/src/index.rs:530 — pub struct FileWatch
+crates/bbt-mux/tests/logic.rs:165 — fn a_watched_task_edit
+crates/bbt-mux/src/logic.rs:265 — pub fn start(
+crates/bbt-mux/src/streams.rs:96 — pub struct ViewStream
+crates/bbt-mux/src/seat_socket.rs:22 — pub struct Request
+crates/bbt-mux/tests/logic.rs:379 — fn hard_killed_separate_logic
+crates/bbt-mux/tests/measurements.rs:19 — fn recursive_cte
+crates/bbt-mux/tests/measurements.rs:112 — fn file_descriptors
+crates/bbt-core/src/lib.rs:100 — pub fn resize(
+
+Acceptance results:
+1. Store/Blobs/Events: operation-scoped WAL/FULL SQLite, schema version1, compressed atomic content-addressed blobs, immutable signed hash-chain events. Roundtrip, corruption/torn DB, permanent dedupe, signature/chain/tamper rejection tested.
+2. Registry: ULID record/session/role-class/location/mute/task metadata; revision/generation/layout-bound grace/undo; supervisor-owned deadline continues after logic exit, reconnect reconciles retained exit. Tests exercise deadline and same live process after undo.
+3. Bus: supplied Tokio handle, bounded router; slash grammar; per-object streams; live-only inbox/output; durable named/ephemeral consumers, all start policies, pending redelivery, explicit acks, latest/gaps/no_responders. Supervisor/mux/swarm/doc/task producers and own-seat socket subscriptions wired; adapter state/hook sources require W2.3, with generic bus handle available.
+4. Index: real FSEvents invalidation, YAML and annotated/piped wikilinks, durable SQLite mirror plus transactional outbox, five graph projections. Mux writes stamp and independently verified DSSE digest signatures; intent/completion signed before/after effect and daily JSONL projection. External anonymous edits do not gain invented author.
+5. State IPC: bounded private capability+generation NDJSON Attach/Subscribe/Snapshot/Delta/Applied/GetHistory/Gap; cell/cursor/mode/palette/style metadata, atomic exact-baseline checks. Actual SIGKILL of separate logic process, supervisor socket reattach, same zsh child PID, exact viewport; no graceful-save assumption.
+6. Measurements in w2-2-measurements.log: baseline8/current408 FDs with 200 live PTYs +200 listeners + SQLite objects, soft4096/hard9223372036854775807; no limit changes. 10k docs/100k edges: CTE42.690042–43.237709ms vs petgraph3.371625–3.610167ms, reachable10000 each. Durable edit to1000 live in-process consumers2.778583ms; no real harness wake/load claim.
+
+Actual successful commands and logs:
+cargo test -p bbt-core --locked — exit0, 118 tests; w2-2-verify-01.log (108 unit+7 checkpoint+1 resize+2 doctest).
+cargo test -p bbt-mux --locked — exit0, 28 tests; w2-2-final-tests.log (2 codec+6 logic+9 store/index+10 supervisor+1 UI guard), 3 ignored helpers/measurements, no failed tests.
+cargo clippy -p bbt-core -p bbt-mux --locked -- -D warnings — exit0; w2-2-final-clippy-core.log.
+cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit0; w2-2-final-clippy-mux.log.
+cargo build --workspace --locked — exit0; w2-2-final-build.log. Shared UI work was building concurrently; this does not claim native UI/parity acceptance.
+cargo fmt -p bbt-mux -p bbt-core -- --check — exit0; w2-2-final-fmt.log.
+cargo test -p bbt-mux --locked --test measurements -- --ignored --nocapture --test-threads=1 — exit0,2 tests; w2-2-measurements.log.
+git diff --check -- crates/bbt-mux crates/bbt-core/src/lib.rs crates/bbt-core/tests/resize.rs Cargo.lock — exit0.
+git verify-commit ae0855d — exit0; EDDSA9B07E849480C68328CA20684844ECC0587DE7AB0.
+Cargo.lock comparison: 53 new name/version/source tuples, zero removed/updated locked tuples; root workspace unchanged by me.
+
+Failures/corrections retained:
+w2-2-logic-01.log: initial Unix socket path exceeded macOS sockaddr_un length; moved per-incarnation endpoint namespace to short private /tmp path. Later logic integration passes.
+w2-2-clippy-01.log: nine imported-core style diagnostics blocked required mux clippy; Oracle authorized exact vendor-module lint exceptions, no imported implementation rewrite; signed ae0855d.
+w2-2-verify-03.log: intentionally overbroad core ALL-TARGETS clippy also reached old checkpoint fixture std::Mutex calls newly disallowed by R1 policy; left outside assigned scope. Separate core-library + mux-all-target checks pass. Owned large Update enum was fixed by boxed flattened Delta; metadata-only/wire roundtrip checked.
+Staged diff check first found one trailing-space compiler suggestion in w2-2-clippy-01.log; formatting-only trimming noted in that log; final staged check exit0.
+Earlier initial cargo checks corrected SQLite u64 binding via checked i64 and a borrowed destination path; no remaining build failure claimed.
+
+Deliberate limits / not checked:
+W1.2 supervisor ring/semantic history not implemented; capture gap explicit if logic misses bytes. Per-output logic checkpoints are a correctness bridge, not an optimized ring or throughput result.
+Supervisor death/restart, power loss, cold migration, transactional cross-object effects, production root/leaf enrollment/grant authorization, scheduler priorities/mute delivery and channel-tree routing remain later layers.
+No autonomous PTY submission is exposed by seat sockets; native readiness, 7501/hooks/cwd/state parsing and terminal query replies remain W2.3 integrations. Generic trusted IO publishers can use the bus.
+No GUI or renderer wiring, external webhook/wake/network dispatch, automatic delegated-doc subscription lifecycle, full artifact filesystem attribution, primary-signed daily activity checkpoints or interrupted JSONL projection repair.
+Endpoint reconnect needs owner-client rediscovery; hard-killed incarnations leave private socket directories for a later scoped janitor; no foreign endpoint takeover. At most32 peers/endpoint,8 own-topic consumers/session,1MiB NDJSON frame; oversized snapshots fail explicitly, no chunking.
+Index reconciles final state after watcher coalescing, not every intermediate file write; body/frontmatter diffs remain payload digest+frontmatter snapshot. Broken YAML remains visible. No timestamps guessed for file author.
+No maxfiles change or1000-running-seat test; no macOS14/Linux/mobile runtime or hosted CI; no production keys/credentials/trust settings/transcripts accessed.
+
+Current source SHA-256 (excludes peer files):
+035f97f9c3096eb468238df653ce684737958afd15d5bbea16e95aef21b3c507  crates/bbt-mux/src/bus.rs
+e101278a14d2541b64117b0b0966f0e89d5a85b4aeecd4fa803aa9380e960b65  crates/bbt-mux/src/index.rs
+1f84dbc955bf8bd7bacca7d24c7d826ca012a65d4a84c29ae9c439675d48a878  crates/bbt-mux/src/lib.rs
+73407e79ada18b465029bd5b0610f8a28cdefe77501fd8f2fb942b97b2cee413  crates/bbt-mux/src/logic.rs
+c4046324c7158ab9a2c50eb00695a998d9372849f68abeef61ec440ceaaf8314  crates/bbt-mux/src/protocol.rs
+2f7f9b850991017e52932ba1b89984b7f4069fa87c9fd951a78391ea31673221  crates/bbt-mux/src/registry.rs
+1c5b8eb55b7c85a37ba85bbcf48fa377e649d1cdbf34ff9034487781d95cc41b  crates/bbt-mux/src/seat_socket.rs
+6dc8cc015cc27f378d85a175a6d08dbf204395874db2907bc1d75241ebe207b6  crates/bbt-mux/src/store/blobs.rs
+b7cf48aa1f60459deaff8fd6389518ad15595fec13f6dffeb7bfb130716dc2ec  crates/bbt-mux/src/store/events.rs
+363159c8e60c8bcc942d5c0ac437afe7b64948056ac7fa8e70cc3438c7b2dc94  crates/bbt-mux/src/store/mod.rs
+35ec4dc4ba7e899fb4a52b20d9ca0e24e6265d0fd2e852db79c5dabe1dc01c8d  crates/bbt-mux/src/store/sqlite.rs
+5230a5feb260eaf4f4b4bba744ce4f2cb747c4656200aac29aae2d7dd24d6c57  crates/bbt-mux/src/streams.rs
+a0be04c881440a7693f2b695a0002dd6e93a34a1a10302744385c471f3a95d43  crates/bbt-mux/src/supervisor.rs
+5a022f65c620ecd94b35ec798fa047808b6ccfbb7ab3a05d464fb7b1411b2665  crates/bbt-mux/src/transport.rs
+1cbc686510f685d62f51980cc4d95074eb0f24c2066dea21c3cdb9425db36832  crates/bbt-mux/tests/logic.rs
+3a66bab366bb82196ef093cec5ab5fa6c2a7f59385e61c7642eb3bab15163ff3  crates/bbt-mux/tests/measurements.rs
+6a024a30e747907bf2c8ca23319b35879cb261dc7e8b8c4b27051afe5b61b504  crates/bbt-mux/tests/storage_bus_index.rs
+9faac51a3d7407740c51b69a0d91588b00d76fad0b68b312d3a289ad27d2b5fd  crates/bbt-mux/tests/supervisor.rs
+6c125c275f0b0452c6dcb6617e04375c03dd8e8568309e5d300b386cb6e27840  crates/bbt-mux/tests/ui_guard.rs
+9df5ced33a991a50a2fa7deabcf84d8aa523e1053e5917e73f05a2203f32f522  crates/bbt-mux/Cargo.toml
+d6a8c2fd8f0cebc25af68f3d71fb8448deeedd5a6243f3ee92f7a01335322f06  crates/bbt-mux/README.md
+a483bd88d63fad9e76859b84f19433f6493d059547d43702da725ccda9e46b8a  Cargo.lock
+270bea51d254ea80664e30de06f808dd8fd4d46b12f40f14600822011117bd8b  crates/bbt-core/src/lib.rs
+26d0138c89eb642f9832571daf5b4a009b3b029889bc25ec4930b7e496a80991  crates/bbt-core/tests/resize.rs

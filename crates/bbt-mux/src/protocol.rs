@@ -176,6 +176,15 @@ pub enum Action {
     Kill {
         attachment: Attachment,
     },
+    ScheduleClose {
+        attachment: Attachment,
+        close_id: Ulid,
+        deadline_ms: u64,
+    },
+    UndoClose {
+        attachment: Attachment,
+        close_id: Ulid,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -248,6 +257,13 @@ pub enum Reply {
         sequence: u64,
     },
     Terminating,
+    CloseScheduled {
+        close_id: Ulid,
+        deadline_ms: u64,
+    },
+    CloseUndone {
+        close_id: Ulid,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

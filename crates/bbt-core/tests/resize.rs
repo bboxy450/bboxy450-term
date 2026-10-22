@@ -15,4 +15,10 @@ fn resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes() {
         assert!(cursor.column.0 < cols);
         assert!(term.grid().display_iter().any(|cell| cell.cell.c != ' '));
     }
+    term.resize(0, 0);
+    assert_eq!(term.grid().columns(), bbt_core::term::MIN_COLUMNS);
+    assert_eq!(term.grid().screen_lines(), bbt_core::term::MIN_SCREEN_LINES);
+    assert_eq!(*term.mode(), modes);
+    assert_eq!(term.grid().cursor.point.line.0, 0);
+    assert!(term.grid().cursor.point.column.0 < term.grid().columns());
 }
