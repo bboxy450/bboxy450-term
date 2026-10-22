@@ -1,0 +1,14 @@
+flowchart LR
+  subgraph LOGIC["logic"]
+    P["Provider registry<br/>LocalProvider, FakeProvider, later SshProvider, plugins"]
+    C["connections: host → Box dyn SupervisorConnection"]
+    W["Worker loop<br/>routes Spawn, Input, Resize by the seat's host<br/>drains every link each pass"]
+    P -- "link(host)" --> C
+    C --- W
+  end
+  LP["LocalProvider<br/>one host: this Mac<br/>link = the existing client"] --> S1["supervisor process"]
+  FP["FakeProvider<br/>hosts from a fixture<br/>link = FakeLink around a local link<br/>scripted connect, rtt, drop, reconnect"] --> S1
+  SP["SshProvider (later)<br/>bootstraps a supervisor over ssh<br/>tunnels the same protocol"] -.-> S2["remote supervisor"]
+  PL["plugin binary (later, #12)<br/>binary --shape, yields a link"] -.-> S3["whatever it runs"]
+  P --> LP & FP
+  P -.-> SP & PL

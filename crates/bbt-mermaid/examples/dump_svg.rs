@@ -2,7 +2,9 @@
 //!
 //!     cargo run -p bbt-mermaid --example dump_svg -- OUT_DIR FIXTURE_DIR...
 
-use bbt_mermaid::{Arrow, Geometry, Label, MonoMeasure, Point, Shape, Stroke, Style, render};
+use bbt_mermaid::{
+    Arrow, Geometry, Label, MonoMeasure, Point, Shape, Stroke, Style, TextRole, render,
+};
 use std::fmt::Write;
 use std::path::Path;
 
@@ -43,6 +45,11 @@ fn main() {
 }
 
 fn text(s: &mut String, l: &Label, color: &str) {
+    // Menlo advances 0.6 em: match MonoMeasure (7.0 per char, 0.9 of it for small roles).
+    let size = match l.role {
+        TextRole::EdgeLabel | TextRole::FrameLabel | TextRole::Note => 10.5,
+        _ => 11.6,
+    };
     let lh = l.rect.h / l.lines.len().max(1) as f32;
     for (i, line) in l.lines.iter().enumerate() {
         let y = l.rect.y + lh * (i as f32 + 0.75);
@@ -52,7 +59,7 @@ fn text(s: &mut String, l: &Label, color: &str) {
             .replace('>', "&gt;");
         let _ = writeln!(
             s,
-            r#"<text x="{:.1}" y="{y:.1}" text-anchor="middle" font-family="Menlo, monospace" font-size="11.6" fill="{color}">{esc}</text>"#,
+            r#"<text x="{:.1}" y="{y:.1}" text-anchor="middle" font-family="Menlo, monospace" font-size="{size}" fill="{color}">{esc}</text>"#,
             l.rect.x + l.rect.w / 2.0
         );
     }
@@ -267,6 +274,30 @@ fn svg(g: &Geometry) -> String {
                     r.bottom()
                 )
             }
+            Shape::Start => writeln!(
+                s,
+                r##"<circle cx="{cx:.1}" cy="{cy:.1}" r="{:.1}" fill="#333"/>"##,
+                r.w / 2.0
+            ),
+            Shape::End => writeln!(
+                s,
+                r##"<circle cx="{cx:.1}" cy="{cy:.1}" r="{:.1}" fill="#fff" stroke="#333" stroke-width="1.5"/><circle cx="{cx:.1}" cy="{cy:.1}" r="{:.1}" fill="#333"/>"##,
+                r.w / 2.0,
+                r.w / 2.0 - 4.0
+            ),
+            Shape::Choice => writeln!(
+                s,
+                r#"<path d="M{cx:.1},{:.1} L{:.1},{cy:.1} L{cx:.1},{:.1} L{:.1},{cy:.1} Z" {attrs}/>"#,
+                r.y,
+                r.right(),
+                r.bottom(),
+                r.x
+            ),
+            Shape::Bar => writeln!(
+                s,
+                r##"<rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" rx="2" fill="#333"/>"##,
+                r.x, r.y, r.w, r.h
+            ),
             Shape::Activation => writeln!(
                 s,
                 r##"<rect x="{:.1}" y="{:.1}" width="{:.1}" height="{:.1}" fill="#dde" stroke="#556"/>"##,
@@ -327,7 +358,7 @@ fn svg(g: &Geometry) -> String {
         head(&mut s, e.points[n - 1], e.points[n - 2], e.end);
         head(&mut s, e.points[0], e.points[1], e.start);
         if let Some(l) = &e.label {
-            if g.kind == bbt_mermaid::Kind::Flowchart {
+            if g.kind != bbt_mermaid::Kind::Sequence {
                 let r = l.rect;
                 let _ = writeln!(
                     s,

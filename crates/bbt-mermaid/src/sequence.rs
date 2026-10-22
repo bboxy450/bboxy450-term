@@ -132,7 +132,7 @@ impl P {
 }
 
 pub(crate) fn parse(lines: &[(usize, String)]) -> Result<Sequence, Error> {
-    let st = statements(lines);
+    let st = statements(lines, false);
     let mut p = P {
         actors: Vec::new(),
         index: HashMap::new(),

@@ -29,6 +29,8 @@ pub struct Subgraph {
     pub id: String,
     pub title: Vec<String>,
     pub parent: Option<usize>,
+    /// `direction` inside the subgraph; honoured only while no edge crosses its border.
+    pub dir: Option<Dir>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -82,10 +84,12 @@ struct P {
     stack: Vec<usize>,
     edges: Vec<RawEdge>,
     class_defs: Vec<ClassDef>,
+    /// Top-level `direction` statement, overriding the header.
+    dir: Option<Dir>,
 }
 
 pub(crate) fn parse(lines: &[(usize, String)]) -> Result<Flowchart, Error> {
-    let st = statements(lines);
+    let st = statements(lines, true);
     let (hn, header) = &st[0];
     let mut words = header.split_whitespace();
     words.next();
@@ -103,6 +107,7 @@ pub(crate) fn parse(lines: &[(usize, String)]) -> Result<Flowchart, Error> {
         stack: Vec::new(),
         edges: Vec::new(),
         class_defs: Vec::new(),
+        dir: None,
     };
     for (n, s) in &st[1..] {
         p.statement(*n, s)?;
@@ -110,10 +115,11 @@ pub(crate) fn parse(lines: &[(usize, String)]) -> Result<Flowchart, Error> {
     if !p.stack.is_empty() {
         return Err(Error::new(0, "subgraph without 'end'"));
     }
+    let dir = p.dir.unwrap_or(dir);
     p.finish(dir)
 }
 
-fn parse_dir(d: &str) -> Option<Dir> {
+pub(crate) fn parse_dir(d: &str) -> Option<Dir> {
     Some(match d {
         "TB" | "TD" => Dir::TB,
         "BT" => Dir::BT,
@@ -138,6 +144,7 @@ impl P {
                     id,
                     title,
                     parent: self.stack.last().copied(),
+                    dir: None,
                 });
                 self.stack.push(idx);
             }
@@ -147,8 +154,12 @@ impl P {
                     .ok_or_else(|| Error::new(n, "'end' without subgraph"))?;
             }
             "direction" => {
-                parse_dir(rest)
+                let d = parse_dir(rest)
                     .ok_or_else(|| Error::new(n, format!("unknown direction '{rest}'")))?;
+                match self.stack.last() {
+                    Some(&g) => self.subgraphs[g].dir = Some(d),
+                    None => self.dir = Some(d),
+                }
             }
             "classDef" => {
                 let (names, style) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
