@@ -18,9 +18,9 @@ Any prefix of that order builds and publishes without the rest. A new crate gets
 its place in the order in the commit that adds it.
 
 **Check.** `sh scripts/layering.sh` — exit 0 held, exit 1 an upward edge or a
-crate missing from the order. First step of `sh scripts/ci.sh`, the local CI
-that runs before every merge to main (operator, 2026-10-22: no cloud CI for
-now; the workflow file stays for later).
+crate missing from the order. First step of `sh scripts/ci-local.sh`, the local
+CI that runs before every handoff and merge (operator, 2026-10-22: no cloud
+CI during heavy development; GitHub runs on manual dispatch only).
 
 **Cost of a violation.** An upward edge welds a library to the product. Every
 bboxy450 crate goes public eventually (operator, 2026-10-22); untangling it then
