@@ -81,9 +81,41 @@ briefs Executors from the specs, never from this note.
     and that is accepted; no third process, no shared-memory mirror. Within
     reason: velocity.
 
+12. **Audience and the plugin seam (operator).** Hackers and furries first;
+    cloud and ssh support that never locks anyone in; then teams and
+    enterprises want it; opinionated, not locked; developers. **No plugin
+    system yet.** Shape recorded for later: a binary in a folder, the terminal
+    runs `binary --shape` to learn how to integrate, the plugin runs as a
+    subprocess of our runtime and may expose sockets, a CLI or a daemon.
+    First kind: cloud and ssh providers, the out-of-process form of #7.
+    Rejected: a plugin API now (scope); a scripting runtime (not our shape).
+
+13. **Document types: the seven in [[work-items]] plus `decision`.** epic, spec,
+    task, bug, note, invariant, artifact stay. `decision` is added: a numbered
+    record of alternatives, choice, reason and date, statuses proposed,
+    decided, superseded, linking the specs it changes; this file is the first.
+    Architecture is a spec (status decided, re-read on each round), not a
+    type. Research, runs, runbooks and evidence stay `note`; a brief is a
+    task; a report lives in its task; a release is an artifact; a question
+    for the operator is a task assigned to the operator. Architect's call,
+    operator may override. Rejected: `architecture`, `research`, `report`,
+    `question` as types (each is a view of an existing one).
+14. **The app reads its own `.bboxy`: the viewer is cockpit work (operator).**
+    "I want to use our app to review our architecture and specs and docs."
+    [[document-viewer]] (W3.5, `bbt-doc`: Markdown plus our own Mermaid
+    engine) moves from not-yet-briefed into [[2026-10-22-c-cockpit]] as a
+    track; the 7.10 DocumentModal is its L7 face. Harnesses write tasks,
+    epics, specs and decisions as Markdown through the task tools (W2.5) and
+    everyone, the operator first, reads them in the app. The Mermaid subset to
+    build first is what `.bboxy` uses today: `flowchart` LR, TB, BT, TD with
+    subgraphs, `&` fan-out, dotted edges, cylinder and stadium shapes,
+    `classDef` dashed; `sequenceDiagram` with participants, `loop`, dashed
+    replies. Wikilinks resolve to documents in the viewer. Rejected: a
+    browser-based viewer (not our shape); waiting for L9.
+
 ## Specs to touch (Architect, in this order)
 
-[[architecture]] drawn from the code (new) → C1 spec (2, 6, 10, 11) → W2.5 and
+[[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → W2.5 and
 W2.5b spec (3) → D1 spec (7) → [[identity]] custody per 4 → [[mux-daemon]] crate
 split per 1 → [[open-source]] §1 per 8.
 
