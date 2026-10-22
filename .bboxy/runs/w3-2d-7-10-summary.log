@@ -1,0 +1,79 @@
+ROLE: EXECUTOR — Nyx Copperwing. W3.2d.7.10 DocumentModal.
+Brief: tasks/2026-10-21-w3-2d-7-modules.md, last L7 module; static fixture body.
+
+bbt-ui/src/modules/document_modal.rs:39 — public document/provenance/neighbour
+records; host owns trust, actions, storage and updates. No IO or verification.
+:346 — type/status/header, malformed frontmatter retained as an explicit warning,
+code values centred in the frontmatter grid, superseded status struck through.
+Body: static headings, paragraphs, lists, fences and annotated wikilinks at the
+shared 576px reading measure. Native font metrics and L6 flow own geometry.
+:882 — 1:1 neighbourhood paths/nodes, legend and backlinks; :1100 — seven visual
+footer actions. :1244 — standalone or centred modal, bounded scrolling, clips,
+shared Style material. All module paint is component composition, no Prim code.
+document_modal/diagram.rs — semantic public flow nodes/edges and native layered
+layout; true-size canvas, Path edges, Box nodes, text on real type steps, picked
+figure header/Drawing/Source/expand, live link labels, 28px alpha fade on overflow.
+Other diagram kinds remain visible as source; the full producer is bbt-doc later.
+
+bboxybook/src/documents.rs:73 — parent bounds + public records drive native layout;
+DOM/SVG child bounds and baselines are independent diagnostics only. :113 — same
+device material host; :169 — named snapshots, including diagram nodes and labels.
+Capture exports docView/docModal and public C.parseMermaid ASTs. Source is a
+public toggle state, not browser SVG geometry. lib/main/parity route the gallery;
+settings.rs only exposes the existing memoized native font host for reuse.
+READMEs document ownership and commands. No old DocumentModal adapter existed,
+so the historical matrix is empty rather than invented.
+
+Reference: 93696e92a49efcccb562bd63b04e21256e830901 (ec7d8df figure pick + 576px token).
+Final gallery: target/bboxybook/documents/final/index.html.
+120 current cases: 14 states x four densities x two themes, plus eight Source
+variants. Web 120/120, zero capture errors. Four native jobs of 30, all exit 0,
+60.3–61.1s each; compare exit 0. Geometry: 120/120 complete/pass, 5,424 rects,
+2,344 baselines, max rect 0.085083px, baseline 0.0078125px.
+Initial 64 pixel reviews -> final 48. Final 72/120 within unchanged policy;
+48 pixel-only reviews, worst 2.9172% versus 2% text budget. No geometry reviews.
+No threshold, golden or reference changed by this Executor.
+
+Read broken-frontmatter-cozy-dark web/native/diff, as-modal-cozy-light web/native,
+as-modal-source-cozy-light native, plus earlier task and diagram dark pairs.
+Visible gaps: inherited text/thin-stroke masks and approximate dashed-border
+coverage; diagram arrowheads are stroke outlines, not SVG filled triangles;
+Markdown's outside bullet marker differs slightly from the browser default.
+These are not hidden under a geometry pass. The support mask gallery separately
+proves horizontal/vertical/diagonal alpha through opaque and translucent layers.
+
+Checks completed in the writing tree:
+cargo test -p bbt-ui -p bboxybook --test documents --locked — exit 0, 5+2 passed.
+Includes broken/unsigned evidence, scroll/actions, true-size/serializable diagram,
+unsupported source, short-code centring, registry and child-diagnostic independence.
+cargo clippy -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook
+ --all-targets --locked -- -D warnings -A clippy::map_entry
+ -A clippy::chunks_exact_to_as_chunks — exit 0; final/clippy.log.
+node --check capture-inputs.js and capture.mjs; git diff --check — exit 0.
+The final tiny fade-start correction affects only viewports narrower than 28px;
+all measured fixture viewports exceed that, so matrix pixels are unchanged.
+
+Signed support commits are separate: dash 711c43d; colour roundtrip 7432442;
+linear group mask 1166d69; CARGO_TARGET_DIR script d3df264; micro-floor ac5839f.
+Mask replay: 1,992/1,992 PNGs byte-identical, exits [0,0,0,0], no missing images;
+8/8 new mask cases pass. Micro corrections: 120/120 pass, worst rect 0.073px.
+Evidence is in their w3-2d-7-10-*.log records and local target directories.
+
+CLEAN COMMITTED-WORKTREE CI IS PENDING at this candidate commit. No claim that
+sh scripts/ci-local.sh --parity has passed yet. Earlier shared-target failures and
+the ENOSPC-interrupted clean run are retained, not counted as success.
+Not checked: non-Metal/Safari/mobile; live actions, clipboard, navigation, feed,
+real files, signing or a full Markdown/Mermaid producer. Those are host/bbt-doc
+work. No app/mux/dependency changes in this Document commit. Nothing pushed.
+
+Ten worst triplets (base target/bboxybook/documents/final; each has web/native/diff):
+documents/broken-frontmatter-comfortable-dark.png — 2.91721097%
+documents/broken-frontmatter-compact-dark.png — 2.91721097%
+documents/broken-frontmatter-cozy-dark.png — 2.91721097%
+documents/broken-frontmatter-touch-dark.png — 2.91721097%
+documents/broken-frontmatter-comfortable-light.png — 2.87851914%
+documents/broken-frontmatter-compact-light.png — 2.87851914%
+documents/broken-frontmatter-cozy-light.png — 2.87851914%
+documents/broken-frontmatter-touch-light.png — 2.87851914%
+documents/superseded-comfortable-dark.png — 2.58799877%
+documents/superseded-compact-dark.png — 2.58799877%

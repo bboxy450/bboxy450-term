@@ -17,7 +17,7 @@ use std::{collections::BTreeMap, path::Path};
 type FontKey = (u32, u16, bool, bool, u32);
 type WidthKey = (String, u32, u16, bool, bool, u32);
 #[derive(Default)]
-struct Metrics {
+pub(crate) struct Metrics {
     widths: std::cell::RefCell<BTreeMap<WidthKey, f32>>,
     fonts: std::cell::RefCell<BTreeMap<FontKey, [f32; 2]>>,
 }

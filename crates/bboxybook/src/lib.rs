@@ -7,6 +7,7 @@ pub mod components;
 pub mod fixtures;
 pub mod gallery;
 pub mod graphs;
+pub mod documents;
 pub mod launchers;
 pub mod materials;
 pub mod modules;

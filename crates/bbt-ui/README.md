@@ -277,3 +277,20 @@ claim they can submit from an inferred state.
 Controls are retained read-mostly projections. The host owns section/query/input
 handling, config persistence, pinentry, enrollment and all grant mutations. No
 file, process, keyring or network operation runs from this module.
+
+## L7 DocumentModal
+
+`document_modal::DocumentModal` projects supplied document metadata, a static
+body, provenance claims and a graph neighbourhood. It renders both the document
+page and the plain or work-item modal. The enclosing viewport determines modal
+placement and its scroll range; the reading measure comes from
+`STYLE.spacing.doc_measure`. Feed, selection, copy, find, pin and close are
+visual controls. The host owns their actions and restores keyboard focus.
+
+The fixture body supports headings, paragraphs, unordered lists, code fences
+and annotated wikilinks. A diagram producer supplies semantic flow nodes and
+edges with the source; native code computes layers, back lanes, true-size
+Paths and ordinary Text. Link targets remain in those records. Drawing/Source
+and scroll offsets are supplied state. Unsupported diagrams retain their source.
+Full Markdown/Mermaid parsing, file/index access and document interaction belong
+to the later `bbt-doc` and input work.

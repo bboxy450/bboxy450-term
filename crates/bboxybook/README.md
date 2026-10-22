@@ -591,3 +591,23 @@ within a layout. The legacy placeholder hand painter has been removed. The v2
 inventory remains a historical diagnostic, separate from the current gate.
 Input, config/keyring operations and live application wiring are outside this
 static module matrix.
+
+## L7 DocumentModal (W3.2d.7.10)
+
+```sh
+BBOXYBOOK_GALLERY=documents BBOXYBOOK_REFERENCE_HEAD=93696e9 PARITY_OUT=target/bboxybook/documents/final scripts/parity.sh
+```
+
+The matrix covers the fourteen `documents.html` states across four densities
+and two themes, plus the eight work-item modal Source variants: 120 pairs.
+Capture exports `docView`/`docModal` constructor records and the public
+`parseMermaid` semantic result. Native code uses the enclosing viewport and
+native font measurements. DOM rectangles, font probes and SVG diagnostics are
+comparison evidence only. The existing modal backdrop remains common context.
+
+`bboxybook documents --geometry-only --manifest cases.json --out DIR` writes
+independent named rectangles and baselines. The frozen v2 registry has no
+DocumentModal entry; no historical reference is invented. Library tests cover
+host-record changes, retained scrolling, signed/unsigned/broken presentation,
+true-size diagrams, Source state and unsupported-source fallback. The later
+`bbt-doc` producer and app input implement file loading and actions.

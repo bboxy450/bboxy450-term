@@ -11,6 +11,8 @@ pub fn replay_images(out: &Path, cases: &[Case]) -> Result<usize> {
     for (i, case) in cases.iter().enumerate() {
         let rgba = if case.fixture.as_ref().is_some_and(|f|f["layer"]=="paths") {
             crate::paths::render_case(&mut renderer,case)?
+        } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="documents") {
+            crate::documents::render_case(&mut renderer,case)?
         } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="settings") {
             crate::settings::render_case(&mut renderer,case)?
         } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="graphs") {
@@ -100,6 +102,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     snapshots.extend(crate::streams::snapshots(cases)?);
     snapshots.extend(crate::graphs::snapshots(cases)?);
     snapshots.extend(crate::settings::snapshots(cases)?);
+    snapshots.extend(crate::documents::snapshots(cases)?);
     snapshots.extend(crate::paths::snapshots(cases)?);
     if !snapshots.is_empty() {
         fs::write(
@@ -149,7 +152,7 @@ impl CasePolicy {
             || f.is_some_and(|f| {
                 matches!(
                     f["layer"].as_str(),
-                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams" | "graphs" | "settings")
+                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams" | "graphs" | "settings" | "documents")
                 )
             })
         {
@@ -174,6 +177,8 @@ impl CasePolicy {
             geometry_tolerance_px: if vector { Some(0.) } else { text.then_some(0.5) },
             scope: if f.is_some_and(|f|f["layer"]=="paths") {
                 "L6 Path strokes in caller-owned slots; public points tessellated natively; 1x/2x"
+            } else if f.is_some_and(|f|f["layer"]=="documents") {
+                "DocumentModal and static document views; public document records, native layout, shared enclosing backdrop"
             } else if f.is_some_and(|f|f["layer"]=="settings") {
                 "Settings; public records and outer viewport only, read-mostly controls"
             } else if f.is_some_and(|f|f["layer"]=="graphs") {

@@ -13,3 +13,4 @@ pub mod title_bar;
 pub mod graph_tab;
 
 pub mod settings;
+pub mod document_modal;

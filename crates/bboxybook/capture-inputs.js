@@ -42,7 +42,7 @@
       components = value;
       for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
         'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard',
-      'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker', 'settingsPage']) {
+      'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker', 'settingsPage', 'docView', 'docModal']) {
         const original = value[name];
         if (typeof original !== 'function') continue;
         value[name] = function (...args) {
@@ -163,6 +163,27 @@
       }
       return diagnostics;
     };
+    if(window.bboxyDocumentFixture){
+      const call=calls.find(c=>['docView','docModal'].includes(c.name)&&c.node?.isConnected&&root.contains(c.node));
+      if(!call)throw Error('Document constructor missing');
+      const node=call.node,modal=call.name==='docModal',view=modal?node.querySelector('.doc-view'):node,diagnostics=[];
+      const add=(key,n,text=false)=>{if(!n)throw Error('Missing document part '+key);diagnostics.push(text?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});};
+      add('document',node);if(modal){add('scroller',node.querySelector('.dm-body'));add('footer',node.querySelector('.dm-foot'));[...node.querySelectorAll('.dm-act')].forEach((n,i)=>{add('action'+i,n);add('action'+i+'/label',n.firstChild,true);if(n.lastChild.textContent)add('action'+i+'/key',n.lastChild,true);});}
+      add('view',view);add('main',view.querySelector('.doc-main'));add('head',view.querySelector('.doc-head'));add('top',view.querySelector('.doc-top'));add('path',view.querySelector('.doc-path'),true);add('title',view.querySelector('h1'),true);
+      for(const [key,sel]of [['type','.doc-type'],['status','.doc-status'],['super','.doc-super'],['broken','.doc-broken'],['frontmatter','.doc-fm'],['body','.md'],['provenance','.doc-prov'],['rail','.doc-rail'],['rail/graph','.nbhd'],['rail/legend','.rail-legend']]){const n=view.querySelector(sel);if(n)add(key,n,key==='type'||key==='status');}
+      [...view.querySelectorAll('.doc-fm > .k')].forEach((n,i)=>{add('fm'+i+'/key',n,true);add('fm'+i+'/value',n.nextElementSibling);[...n.nextElementSibling.children].forEach((v,j)=>{if(!v.children.length)add('fm'+i+'/value'+j,v,true);});});
+      [...view.querySelectorAll('.md > *')].forEach((n,i)=>{add('block'+i,n,/^H[234]$/.test(n.tagName)||n.tagName==='PRE');if(n.tagName==='UL')[...n.children].forEach((li,j)=>add('block'+i+'/li'+j,li));});
+      [...view.querySelectorAll('.md > *')].forEach((n,i)=>{if(!n.classList.contains('dgfig'))return;const k='block'+i;add(k+'/figure',n);for(const [name,sel,tx]of [['head','.dgfig-h',false],['kind','.dgfig-h>.kind',true],['count','.dgfig-h>.cnt',true],['segment','.dgfig-h>.seg',false],['button-drawing','.seg button:first-child',false],['button-source','.seg button:last-child',false],['expand','.exp',false],['drawing','.dgfig-b',false]])add(k+'/'+name,n.querySelector(sel),tx);if(n.querySelector('svg.dg')){add(k+'/canvas',n.querySelector('svg.dg'));[...n.querySelectorAll('.dg-node')].forEach((g,j)=>{add(k+'/node'+j,g.querySelector('rect,path,circle'));const t=g.querySelector('text');if(t){const p=t.getStartPositionOfChar(0).matrixTransform(t.getScreenCTM()),css=getComputedStyle(t),ctx=document.createElement('canvas').getContext('2d');ctx.font=css.fontStyle+' '+css.fontWeight+' '+parseFloat(css.fontSize)+'px '+css.fontFamily;const fm=ctx.measureText(t.textContent),r=bounds(t);diagnostics.push({key:k+'/label'+j,kind:'text',rect:r,font_diagnostics:{baseline:p.y-origin.y-r.y+(fm.fontBoundingBoxAscent-fm.fontBoundingBoxDescent)/2,source:'SVG central anchor; diagnostic only'}})}});}if(n.querySelector('.dgfig-src'))add(k+'/source',n.querySelector('.dgfig-src'));});
+      [...view.querySelectorAll('.rail-h')].forEach((n,i)=>add('rail/h'+i,n,true));[...view.querySelectorAll('.rail-back')].forEach((n,i)=>add('rail/back'+i,n));
+      const parent=node.parentElement,pb=bounds(parent),pc=getComputedStyle(parent),pad=['Left','Top','Right','Bottom'].map(k=>parseFloat(pc['padding'+k])||0);
+      const host=modal?{x:pb.x+pad[0],y:pb.y+pad[1],w:pb.w-pad[0]-pad[2],h:pb.h-pad[1]-pad[3]}:{...bounds(node),h:0};
+      const textBounds=[],walk=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);while(walk.nextNode()){const n=walk.currentNode;if(!n.textContent.trim())continue;const r=document.createRange();r.selectNodeContents(n);for(const b of r.getClientRects())if(b.width&&b.height)textBounds.push({x:b.x-origin.x,y:b.y-origin.y,w:b.width,h:b.height});}
+      node.dataset.bboxyDocument='';
+      const probes=[...node.querySelectorAll('.doc-main,.doc-head,.doc-top,.doc-fm,.doc-prov,.doc-rail,.md,.md>*,.md li,.dm-foot,.dm-act,.wl')].map(n=>{const s=getComputedStyle(n);return {name:n.className||n.tagName,rect:bounds(n),font:s.font,line_height:s.lineHeight,margin:s.margin,padding:s.padding,border:s.border,display:s.display,gap:s.gap,align:s.alignItems,max_width:s.maxWidth};});
+      const diagrams=[...(call.args[0].body||'').matchAll(/```mermaid[^\n]*\n([\s\S]*?)\n```/g)].map((match,i)=>{const source=match[1],show_source=[...view.querySelectorAll('.dgfig')][i]?.querySelector('.seg .on')?.textContent==='Source';try{return {source,graph:C.parseMermaid(source),show_source};}catch(error){return {source,error:String(error.message||error)};}});
+      const md=view.querySelector('.md'),ms=getComputedStyle(md),cv=document.createElement('canvas'),mc=cv.getContext('2d');mc.font=ms.font;const chProbe=document.createElement('span');chProbe.style.cssText='display:block;width:1ch;height:0';md.append(chProbe);const ch={font:ms.font,zero:mc.measureText('0').width,unit:chProbe.getBoundingClientRect().width,font_kerning:ms.fontKerning,font_optical:ms.fontOpticalSizing};chProbe.remove();
+      return JSON.parse(JSON.stringify({version:1,layer:'documents',frames:[{view:{document:call.args[0],modal,seat_name:call.args[1]?.seat?.name||null,viewport:[innerWidth,innerHeight],diagrams},host,parts:diagnostics,textBounds,probes,ch}]}));
+    }
     if(window.bboxySettingsFixture){
       const call=calls.find(c=>c.name==='settingsPage'&&c.node?.isConnected&&root.contains(c.node));
       if(!call)throw Error('Settings constructor missing');
