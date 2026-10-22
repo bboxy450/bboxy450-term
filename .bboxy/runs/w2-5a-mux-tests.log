@@ -1,0 +1,151 @@
+COMMAND: cargo test -p bbt-mux --locked -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.98s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/bbt_mux-25ec9b06ffd26cc0)
+
+running 3 tests
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/adapters.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/adapters-90b95b5cd5da33a5)
+
+running 11 tests
+test adapters_custom_harness_cadence_and_reported_idle_never_create_readiness ... ok
+test adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows ... ok
+test adapters_codex_native_readiness_and_hooks_only_subagents ... ok
+test adapters_native_claude_socket_writes_priority_without_claiming_consumption ... ok
+test adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields ... ok
+test adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect ... ok
+test adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping ... ok
+test adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reuse ... ok
+test adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallback ... ok
+test adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it ... ok
+test adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s
+
+     Running tests/logic.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/logic-ab7ebaa46bcaceb0)
+
+running 11 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test ring_capture_throughput_with_logic_running_and_stopped ... ignored, cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+test a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity ... ok
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":321,"elapsed_s":0.1956395829911344,"max_write_s":0.005094332998851314,"mib_s":102.22880101367994,"p99_write_s":0.002100875019095838}
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+capture profile BEFORE logic restart: CaptureStats { records: 1284, encode_ns: 422595592, hot_write_ns: 135370583, sync_ns: 129277584, marker_ns: 262350582, cold_ns: 927121167, seals: 5, max_seal_ns: 245945292, queued_bytes: 0, peak_queue_bytes: 18916296, queue_full_count: 0 }
+cold replay 1.786085042s: 4194304 bytes, reads 1.426601916s, checkpoint writes 0ns
+cold replay 3.193392083s: 8398848 bytes, reads 2.540512557s, checkpoint writes 0ns
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+cold replay 4.547331708s: 12593152 bytes, reads 3.608244682s, checkpoint writes 0ns
+cold replay 5.891928583s: 16787456 bytes, reads 4.673144564s, checkpoint writes 0ns
+cold replay 6.995372542s: 20971540 bytes, reads 5.494342102s, checkpoint writes 0ns
+20 MiB cold replay startup: 7.077902583s
+cold replay 11.87306325s: 25165852 bytes, reads 7.102974813s, checkpoint writes 62.684667ms
+cold replay 16.318232125s: 29370396 bytes, reads 8.331891771s, checkpoint writes 62.684667ms
+cold replay 20.837049833s: 33564700 bytes, reads 9.623743318s, checkpoint writes 62.684667ms
+cold replay 25.162996333s: 37759004 bytes, reads 10.773755933s, checkpoint writes 62.684667ms
+cold replay 29.245707208s: 41943088 bytes, reads 11.662112013s, checkpoint writes 62.684667ms
+complete raw capture: 20971548 bytes, SHA-256 77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb, no gap
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 9 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 32.87s
+
+     Running tests/mcp.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/mcp-ed9239f840b87f1c)
+
+running 7 tests
+test mcp_installed_claude_and_codex_call_orient ... ignored, live installed-client interop; BBOXY_TEST_EXE must name the built app
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_unread_is_unknown_and_application_ack_is_a_separate_count ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+
+test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 2.53s
+
+     Running tests/measurements.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/measurements-65001ee62fb4fd28)
+
+running 2 tests
+test file_descriptors_at_200_live_seats_and_sqlite_objects ... ignored, finite 200-live-seat descriptor measurement
+test recursive_cte_vs_petgraph_and_thousand_subscriber_fanout ... ignored, finite synthetic 10k-document / 100k-link measurement
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/messaging-48683873ec2cc328)
+
+running 15 tests
+test live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence ... ok
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route ... ok
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen ... ok
+test ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger ... ok
+test supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes ... ok
+test batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo ... ok
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... ok
+test live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.54s
+
+     Running tests/ring.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/ring-f4e856c56ce093f3)
+
+running 9 tests
+test ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation ... ok
+test ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor ... ok
+test ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes ... ok
+test ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay ... ok
+test ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell ... ok
+test ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again ... ok
+test ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects ... ok
+test ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index ... ok
+test ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.19s
+
+     Running tests/storage_bus_index.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/storage_bus_index-2bdb98e87a4448bf)
+
+running 9 tests
+test grammar_matches_tokens_and_rejects_mid_path_tail_wildcards ... ok
+test registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart ... ok
+test request_reply_has_no_responders_and_fanout_is_not_replayed ... ok
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+test index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite ... ok
+test explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work ... ok
+test mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes ... ok
+test independent_streams_latest_snapshots_queue_gaps_and_nonretained_output ... ok
+test sqlite_objects_blobs_and_alarms_round_trip_across_reopen ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/ui_guard.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/ui_guard-f6a3a51757138463)
+
+running 1 test
+
+thread 'ui_thread_is_rejected_before_creating_a_database_directory' (8148532) panicked at crates/bbt-mux/src/store/sqlite.rs:27:9:
+blocking IO on the UI thread
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ui_thread_is_rejected_before_creating_a_database_directory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_mux
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+EXIT: 0

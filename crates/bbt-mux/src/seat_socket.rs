@@ -1,5 +1,5 @@
-//! Owner-only, capability-bound seat observation socket. Input is deliberately
-//! unavailable until W2.3/W2.5 provide the common adapter/input-readiness broker.
+//! Owner-only, capability-bound seat observation and semantic-control socket.
+//! Raw input is unavailable here; messaging uses the common adapter/guard broker.
 
 use std::collections::BTreeSet;
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};

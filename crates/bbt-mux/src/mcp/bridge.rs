@@ -139,9 +139,7 @@ impl Bridge {
             return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
         }
         let method = value["method"].as_str().unwrap();
-        let Some(id) = value.get("id").cloned() else {
-            return None;
-        };
+        let id = value.get("id").cloned()?;
         if !(id.is_string() || id.is_i64() || id.is_u64())
             || id.as_str().is_some_and(|s| s.len() > 128)
         {
@@ -210,13 +208,26 @@ impl Bridge {
                     },
                     None => Ulid::new(),
                 };
-                self.forward(Action::Call {
-                    call: Call {
-                        op_id,
-                        tool: tool.into(),
-                        args,
-                    },
-                })
+                let call = Call {
+                    op_id,
+                    tool: tool.into(),
+                    args,
+                };
+                if call.validate().is_err() {
+                    return Some(rpc_error(id, -32602, "Invalid control call"));
+                }
+                match self.forward(Action::Call { call }) {
+                    Ok(result) => Ok(result),
+                    Err(_) => {
+                        let mut response = rpc_error(
+                            id,
+                            -32001,
+                            "Seat control transport unavailable; retain this operation ID before retry",
+                        );
+                        response["error"]["data"] = json!({"op_id":op_id,"status":"unknown"});
+                        return Some(response);
+                    }
+                }
             }
             _ => return Some(rpc_error(id, -32601, "Method not found")),
         };

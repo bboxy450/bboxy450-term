@@ -28,6 +28,7 @@ The UI uses bounded asynchronous `LogicClient` messages.
 | `index` | FSEvents/inotify invalidation, Markdown/YAML parsing, weighted wikilinks, SQLite mirror and durable event outbox, five petgraph projections. |
 | `bus` | One bounded router over per-object event streams, consumer policies, replay, coalescing, explicit acknowledgments and request/reply. |
 | `messaging` | Signed local envelopes, SQLite channel tree and inbox/outbox, current-grant release, receiver scheduling, evidence receipts and adapter delivery. |
+| `mcp` | Stdio bridge to the same seat socket; logic owns read-tool schemas, current authority, durable operation results and signed control audit. |
 | `streams`, `seat_socket` | Acknowledged snapshot/delta baselines, generation validation, bounded NDJSON admission and explicit unavailable-history ranges. |
 
 ## Supervisor and input boundary
@@ -466,4 +467,66 @@ pages local commit sequence, receipt pages receiver-local row cursors. Channel
 reads remain restricted to messages in the caller's inbox/outbox (or an Oracle's
 swarm view with channel read permission); joining later does not reveal an old
 private inbox. This pass provides the local client/broker path, not the composer
-UI, MCP tools, networking, external identity enrollment or multi-account routing.
+UI, messaging MCP tools, networking, external identity enrollment or multi-account routing.
+
+## Read-only MCP control (W2.5a)
+
+`bboxy450-term mcp` returns before window, GPU or runtime setup. It reads
+`BBOXY_SOCK`, `BBOXY_CAPABILITY` (64 hex characters), `BBOXY_SEAT_ID` and
+`BBOXY_GENERATION` from its launch environment. These identify one admitted seat
+generation, not a caller-supplied role. No capability is put in the catalogue,
+tool results, audit or diagnostics. The private CLI uses blocking IO; it is not
+called on the UI thread.
+
+The bridge implements four newline-delimited JSON-RPC methods: `initialize`,
+`ping`, `tools/list`, `tools/call`. Initialized notifications have no response.
+Frames are bounded at 1 MiB, arguments at 64 KiB and tool results at 512 KiB.
+The bridge forwards `Catalogue` / `Call {op_id, tool, args}` to the existing
+capability-bound seat socket; logic supplies both catalogue and results.
+No resources, prompts, sampling, screens or mutations are exposed in this pass.
+
+The five tools are `orient`, `self_status`, `seat_list`, `seat_get`, `graph_read`.
+Workers read seat metadata in their own swarm and their own task/markdown graph
+items. Oracle-class seats can read account seat metadata and execution/task/
+markdown graphs. The communication graph awaits the messaging tool pass.
+`orient` includes bounded task briefs/verify commands, own execution context and
+tree, and the current role/class. `unread_count` is explicitly unavailable
+(`null` plus reason); `pending_application_ack` is separate delivery evidence.
+No read count is inferred from a delivery receipt.
+
+For each call, logic rechecks the supervisor's current generation and the local
+issuer's current grant epoch/class before reading or returning a retained result.
+Results at `control/op/<ULID>` and the control-audit outbox commit in one seat
+SQLite transaction, including concurrent duplicate calls. Reuse under changed
+arguments or authority is rejected. Audit publication is restartable, signed and
+deduplicated by event ID at `seat/<id>/control`; it records tool, actor, outcome
+and argument digest, never argument payloads. Outbox reads preserve call order.
+These are read-only dispatch closures; effectful tools must journal admission
+before effects when they are added.
+
+A client can supply `params._meta["bboxy450/op_id"]` to retry an exact operation;
+otherwise the bridge mints a ULID per call. It never retries automatically. A
+transport error preserves that ID in `error.data` with `status: unknown`; it does
+not assert the call failed before commit. Successful/error tool results include
+the operation ID in `structuredContent` and the equivalent text content.
+Authority still uses W2.4's explicit `local-dev` issuer behind `SeatKeys`; this
+is not the deferred GPG certificate chain. No identity implementation is changed.
+
+The integration tests exercise framing, schemas, current authority, scoped graph
+reads, restart/replay, signed audit and application-ack counts. The explicit live
+test launches installed Claude and Codex with per-launch MCP configuration and
+synthetic tasks, discards raw client output, checks the returned role and signed
+audit seat/generation, and compares the named user config files before/after:
+
+```sh
+cargo build -p bboxy450-term --locked
+BBOXY_TEST_EXE="$CARGO_TARGET_DIR/debug/bboxy450-term" cargo test -p bbt-mux --locked --test mcp mcp_installed_claude_and_codex_call_orient -- --ignored --exact --nocapture
+```
+
+Installed Codex forwards the four `BBOXY_*` names through its per-launch
+`mcp_servers.bboxy.env_vars` setting. The overlay/skill wiring and the full
+no-user-config comparison belong to W2.5b; messaging, task/artifact and input/
+spawn tools remain later passes. Protocol references: [MCP lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle),
+[stdio transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports),
+[tool results](https://modelcontextprotocol.io/specification/2025-11-25/server/tools),
+and [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).

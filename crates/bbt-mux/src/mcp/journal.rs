@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use ulid::Ulid;
 
 use super::{Actor, Call, MAX_RESULT, error};
-use crate::store::{Result, Store, digest, events::Draft, invalid, sqlite::SqliteStore};
+use crate::store::{Result, digest, events::Draft, sqlite::SqliteStore};
 
 #[derive(Clone)]
 pub(crate) struct Journal {
@@ -34,7 +34,16 @@ impl Journal {
     ) -> Result<Value> {
         let hash = digest(&serde_json::to_vec(&call.args)?);
         let key = format!("control/op/{}", call.op_id);
-        let retained = self.store.get(&key)?;
+        // The lookup and result publication use the same write transaction, so
+        // overlapping logic owners cannot return two results for one op_id.
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let retained: Option<Vec<u8>> = tx
+            .query_row("SELECT value FROM kv WHERE key=?1", [&key], |row| {
+                row.get(0)
+            })
+            .optional()?;
+        let fresh = retained.is_none();
         let (result, replay) = if let Some(bytes) = retained {
             let old: Entry = serde_json::from_slice(&bytes)?;
             if old.actor != *actor || old.tool != call.tool || old.args_digest != hash {
@@ -71,11 +80,9 @@ impl Journal {
         );
         event.seat = Some(actor.seat_id);
         event.generation = Some(actor.process_generation);
-        let mut db = self.store.connection()?;
-        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         // This pass has reads only. Later effectful tools must journal admission
         // before their effects rather than running an effect in this closure.
-        if retained_is_absent(&tx, &key)? {
+        if fresh {
             tx.execute(
                 "INSERT INTO kv VALUES(?1,?2)",
                 params![
@@ -103,7 +110,7 @@ impl Journal {
     pub fn pending(&self, limit: usize) -> Result<Vec<Draft>> {
         let db = self.store.connection()?;
         let mut q = db.prepare(
-            "SELECT value FROM kv WHERE substr(key,1,14)='control/audit/' ORDER BY key LIMIT ?1",
+            "SELECT value FROM kv WHERE substr(key,1,14)='control/audit/' ORDER BY rowid LIMIT ?1",
         )?;
         q.query_map([limit.min(128) as i64], |row| row.get::<_, Vec<u8>>(0))?
             .map(|bytes| Ok(serde_json::from_slice(&bytes?)?))
@@ -119,15 +126,152 @@ impl Journal {
     }
 }
 
-fn retained_is_absent(tx: &rusqlite::Transaction<'_>, key: &str) -> Result<bool> {
-    let old: Option<Vec<u8>> = tx
-        .query_row("SELECT value FROM kv WHERE key=?1", [key], |r| r.get(0))
-        .optional()?;
-    if let Some(bytes) = old {
-        let _: Entry =
-            serde_json::from_slice(&bytes).map_err(|_| invalid("invalid control journal"))?;
-        Ok(false)
-    } else {
-        Ok(true)
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::messaging::wire::IssuerKind;
+    use crate::registry::{Class, Role};
+    use crate::store::Store;
+
+    #[test]
+    fn control_result_and_audit_commit_atomically_and_reopen_without_redispatch() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(temp.path()).unwrap();
+        let actor = Actor {
+            seat_id: Ulid::new(),
+            process_generation: 1,
+            swarm_id: Ulid::new(),
+            role: Role {
+                name: "executor".into(),
+                class: Class::Worker,
+            },
+            grant_epoch: 1,
+            issuer_kind: IssuerKind::LocalDev,
+        };
+        let call = Call {
+            op_id: Ulid::new(),
+            tool: "self_status".into(),
+            args: json!({}),
+        };
+        store.connection().unwrap().execute_batch("CREATE TRIGGER fail_audit BEFORE INSERT ON kv WHEN substr(NEW.key,1,14)='control/audit/' BEGIN SELECT RAISE(ABORT,'fixture audit failure'); END;").unwrap();
+        let journal = Journal::new(store.clone());
+        assert!(
+            journal
+                .call(&actor, &call, || super::super::success(
+                    call.op_id,
+                    json!({"fixture":true})
+                ))
+                .is_err()
+        );
+        assert!(
+            store
+                .get(&format!("control/op/{}", call.op_id))
+                .unwrap()
+                .is_none()
+        );
+        assert!(journal.pending(128).unwrap().is_empty());
+        store
+            .connection()
+            .unwrap()
+            .execute_batch("DROP TRIGGER fail_audit")
+            .unwrap();
+        let result = journal
+            .call(&actor, &call, || {
+                super::super::success(call.op_id, json!({"fixture":true}))
+            })
+            .unwrap();
+        assert_eq!(journal.pending(128).unwrap().len(), 1);
+        drop(journal);
+        let reopened = Journal::new(SqliteStore::open(temp.path()).unwrap());
+        assert_eq!(
+            reopened
+                .call(&actor, &call, || panic!("cached read dispatched again"))
+                .unwrap(),
+            result
+        );
+        let events = reopened.pending(128).unwrap();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[1].payload["outcome"], "replay");
+        reopened.published(events[0].id).unwrap();
+        assert_eq!(reopened.pending(128).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn audit_outbox_preserves_call_order_instead_of_random_ulid_order() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(temp.path()).unwrap();
+        let mut first = Draft::new("seat/fixture/control", "mcp", json!({"call":1}));
+        first.id = Ulid::from(2_u128);
+        let mut second = Draft::new("seat/fixture/control", "mcp", json!({"call":2}));
+        second.id = Ulid::from(1_u128);
+        for event in [&first, &second] {
+            store
+                .put(
+                    &format!("control/audit/{}", event.id),
+                    &serde_json::to_vec(event).unwrap(),
+                )
+                .unwrap();
+        }
+        let pending = Journal::new(store).pending(128).unwrap();
+        assert_eq!(
+            pending.iter().map(|event| event.id).collect::<Vec<_>>(),
+            vec![first.id, second.id]
+        );
+    }
+
+    #[test]
+    fn concurrent_operation_retries_return_one_committed_result() {
+        use std::sync::{
+            Arc, Barrier,
+            atomic::{AtomicUsize, Ordering},
+        };
+        let temp = tempfile::tempdir().unwrap();
+        let journal = Journal::new(SqliteStore::open(temp.path()).unwrap());
+        let actor = Actor {
+            seat_id: Ulid::new(),
+            process_generation: 1,
+            swarm_id: Ulid::new(),
+            role: Role {
+                name: "executor".into(),
+                class: Class::Worker,
+            },
+            grant_epoch: 1,
+            issuer_kind: IssuerKind::LocalDev,
+        };
+        let call = Call {
+            op_id: Ulid::new(),
+            tool: "self_status".into(),
+            args: json!({}),
+        };
+        let barrier = Arc::new(Barrier::new(2));
+        let dispatched = Arc::new(AtomicUsize::new(0));
+        let threads: Vec<_> = (0..2)
+            .map(|_| {
+                let (journal, actor, call, barrier, dispatched) = (
+                    journal.clone(),
+                    actor.clone(),
+                    call.clone(),
+                    barrier.clone(),
+                    dispatched.clone(),
+                );
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    journal
+                        .call(&actor, &call, || {
+                            let ordinal = dispatched.fetch_add(1, Ordering::SeqCst);
+                            std::thread::sleep(std::time::Duration::from_millis(30));
+                            super::super::success(call.op_id, json!({"ordinal":ordinal}))
+                        })
+                        .unwrap()
+                })
+            })
+            .collect();
+        let values: Vec<_> = threads
+            .into_iter()
+            .map(|thread| thread.join().unwrap())
+            .collect();
+        assert_eq!(values[0], values[1]);
+        assert_eq!(dispatched.load(Ordering::SeqCst), 1);
+        assert_eq!(journal.pending(128).unwrap().len(), 2);
     }
 }

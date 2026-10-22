@@ -1,0 +1,19 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running tests/mcp.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/mcp-ed9239f840b87f1c)
+
+running 1 test
+test mcp_installed_claude_and_codex_call_orient ... 
+thread 'mcp_installed_claude_and_codex_call_orient' (7961319) panicked at crates/bbt-mux/tests/mcp.rs:615:9:
+claude exit=exit status: 1; stdout_bytes=0 stderr_bytes=327 trust_text=false config_text=true
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    mcp_installed_claude_and_codex_call_orient
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 6 filtered out; finished in 1.05s
+
+error: test failed, to rerun pass `-p bbt-mux --test mcp`
+EXIT 101

@@ -23,6 +23,23 @@ pub struct Call {
     pub tool: String,
     pub args: Value,
 }
+impl Call {
+    pub(crate) fn validate(&self) -> crate::store::Result<()> {
+        if self.op_id == Ulid::nil()
+            || self.tool.is_empty()
+            || self.tool.len() > 64
+            || !self
+                .tool
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"_.-".contains(&b))
+            || !self.args.is_object()
+            || serde_json::to_vec(&self.args)?.len() > MAX_ARGS
+        {
+            return Err(crate::store::invalid("malformed or oversized control call"));
+        }
+        Ok(())
+    }
+}
 
 /// Resolved by logic from admission and current policy, never from tool input.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

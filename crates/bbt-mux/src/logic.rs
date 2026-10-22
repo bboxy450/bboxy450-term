@@ -585,17 +585,9 @@ impl Worker {
         call: crate::mcp::Call,
     ) -> Result<serde_json::Value> {
         let (actor, record) = self.control_actor(id, generation)?;
+        call.validate()?;
         let journal = self.control_journal(id)?;
         journal.call(&actor, &call, || {
-            if call.op_id == Ulid::nil()
-                || call.tool.is_empty()
-                || call.tool.len() > 64
-                || !call.args.is_object()
-                || !serde_json::to_vec(&call.args)
-                    .is_ok_and(|bytes| bytes.len() <= crate::mcp::MAX_ARGS)
-            {
-                return crate::mcp::error(call.op_id, "invalid_arguments", "invalid control call");
-            }
             match self.control_read(&actor, &record, &call) {
                 Ok(value) => crate::mcp::success(call.op_id, value),
                 Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
