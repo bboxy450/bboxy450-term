@@ -13,6 +13,15 @@ window.TOKENS = {
       "surface": "#12142A",
       "surface_2": "#1B1F3F"
     },
+    "doc": {
+      "artifact": "#4FD1C5",
+      "bug": "#FF6B6B",
+      "epic": "#B07BFF",
+      "invariant": "#F2C14E",
+      "note": "#9AA3C7",
+      "spec": "#58A6FF",
+      "task": "#2EE6A8"
+    },
     "light": {
       "accent": "#2E6BFF",
       "accent_soft": "#7B8CFF",
@@ -35,6 +44,24 @@ window.TOKENS = {
       "errored": "#FF4D5E",
       "idle": "#6B7190",
       "waiting": "#FFB454"
+    },
+    "subject": {
+      "artifact": "#4FD1C5",
+      "channel": "#F2D16B",
+      "cloud": "#58D7FF",
+      "dm": "#FF4FA3",
+      "doc": "#58A6FF",
+      "ext": "#FF7A45",
+      "inbox": "#E96BFF",
+      "mux": "#9AA3C7",
+      "seat": "#2EE6A8",
+      "swarm": "#FFC53D",
+      "task": "#B07BFF"
+    },
+    "ui": {
+      "invariant": "#F2C14E",
+      "ok": "#2EE6A8",
+      "on_accent": "#FFFFFF"
     }
   },
   "density": {
@@ -173,6 +200,7 @@ window.STYLE = {
     "backdrop_dim_alpha": 0.35,
     "card_alpha": 0.72,
     "hairline_alpha": 0.7,
+    "hairline_px": 1,
     "inner_highlight_alpha": 0.08,
     "panel_alpha": 0.78,
     "panel_blur_px": 30,
@@ -187,9 +215,11 @@ window.STYLE = {
   "radius": {
     "badge": 6,
     "card": 12,
+    "mark": 2,
     "panel": 20,
     "pill": 999,
     "row": 10,
+    "tag": 5,
     "tile": 8
   },
   "rules": [
@@ -221,6 +251,16 @@ window.STYLE = {
     "row_height_sidebar": 24,
     "row_margin_x": 10,
     "row_pad_x": 14,
+    "s1": 2,
+    "s10": 24,
+    "s2": 4,
+    "s3": 6,
+    "s4": 8,
+    "s5": 10,
+    "s6": 12,
+    "s7": 14,
+    "s8": 16,
+    "s9": 20,
     "section_pad_bottom": 6,
     "section_pad_top": 12,
     "title_bar": 38
@@ -239,10 +279,15 @@ window.STYLE = {
     "family": "system sans (SF, Inter)",
     "input": 22,
     "kind": 14,
+    "label": 11.5,
+    "micro": 9,
     "mono": "ui-monospace",
+    "note": 10.5,
     "row": 12.5,
     "section": 12,
+    "small": 10,
     "subtitle": 15,
+    "tiny": 9.5,
     "title": 16,
     "weight_name": 600,
     "weight_section": 500,

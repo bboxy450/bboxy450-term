@@ -45,6 +45,33 @@ executor = "#2E6BFF"
 creativity = "#B07BFF"
 unsigned = "#6B7190"
 
+[color.ui]
+on_accent = "#FFFFFF"         # text and glyphs on accent, seat-colour strips and tiles
+ok = "#2EE6A8"                # done, accepted, signed, fixed
+invariant = "#F2C14E"         # invariant chips and ◆ lines
+
+[color.doc]                   # work-item type hues (documents, graph tree, diagrams legend)
+epic = "#B07BFF"
+spec = "#58A6FF"
+task = "#2EE6A8"
+bug = "#FF6B6B"
+note = "#9AA3C7"
+invariant = "#F2C14E"
+artifact = "#4FD1C5"
+
+[color.subject]               # event-bus subject roots (events.md)
+seat = "#2EE6A8"
+doc = "#58A6FF"
+task = "#B07BFF"
+swarm = "#FFC53D"
+ext = "#FF7A45"
+mux = "#9AA3C7"
+inbox = "#E96BFF"
+artifact = "#4FD1C5"
+dm = "#FF4FA3"
+channel = "#F2D16B"
+cloud = "#58D7FF"
+
 [seat_color]
 # hash(seat key) -> hue index, then lightness band. 36 hues x 2 bands = 72 distinct seat colours per theme.
 saturation = 72

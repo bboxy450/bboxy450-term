@@ -392,7 +392,8 @@
 
   // Event bus (events.md, Bus design): subject tokens coloured by root, the kind (last token) emphasised, seq per stream,
   // tier mark (stored ● appended before delivery, fan-out ○ live only), request-reply pairs linked, gaps spelled.
-  const EV_ROOT = { seat: '#2EE6A8', doc: '#58A6FF', task: '#B07BFF', swarm: '#FFC53D', ext: '#FF7A45', mux: '#9AA3C7', inbox: '#E96BFF', artifact: '#4FD1C5', dm: '#FF4FA3', channel: '#F2D16B', cloud: '#58D7FF' };
+  const ordered = (src, keys) => Object.fromEntries(keys.map(k => [k, src[k]]));   // tokens.js sorts keys; legends keep semantic order
+  const EV_ROOT = ordered(T.color.subject, ['seat', 'doc', 'task', 'swarm', 'ext', 'mux', 'inbox', 'artifact', 'dm', 'channel', 'cloud']);   // tokens.toml [color.subject]
   const evTier = subj => /^inbox\//.test(subj) || /^seat\/[^/]+\/output$/.test(subj) ? 'fanout' : 'stored';
   function subjectChip(subj) {
     const t = subj.split('/'), root = t[0], c = EV_ROOT[root] || 'var(--fg-dim)';
@@ -548,7 +549,7 @@
   }
   // Document view (work-items.md): frontmatter as a header, Markdown body with annotated wikilinks, a provenance strip, and a right
   // rail with the item's neighbourhood in the markdown graph (weights as stroke). Broken frontmatter shows as broken, never skipped.
-  const DOC_HUE = { epic: '#B07BFF', spec: '#58A6FF', task: '#2EE6A8', bug: '#FF6B6B', note: '#9AA3C7', invariant: '#F2C14E', artifact: '#4FD1C5' };
+  const DOC_HUE = ordered(T.color.doc, ['epic', 'spec', 'task', 'bug', 'note', 'invariant', 'artifact']);   // tokens.toml [color.doc]
   function mdLite(src) {
     const out = el('div', { class: 'md' }); let list = null, code = null;
     for (const line of src.split('\n')) {

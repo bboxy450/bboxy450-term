@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 49,
+  "version": 51,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -259,7 +259,9 @@
         "launcher": 30,
         "row": 16
       },
-      "ref": "LAUNCH[].tile"
+      "ref": "LAUNCH[].tile",
+      "component": "Box[radius tile, harness colour] + Icon(white)",
+      "material": "flat"
     },
     "badge": {
       "purpose": "a number or a key",
@@ -269,99 +271,143 @@
         "row numbers in the launcher",
         "counts on bands"
       ],
-      "selected": "badge_selected tint"
+      "selected": "badge_selected tint",
+      "component": "Badge",
+      "material": "flat"
     },
     "kbd": {
       "purpose": "a key hint",
-      "anatomy": "mono, badge tint, radius 5, inside pills and legends"
+      "anatomy": "mono, badge tint, radius 5, inside pills and legends",
+      "component": "Badge[kbd]",
+      "material": "flat"
     },
     "glyph": {
       "purpose": "seat state",
-      "anatomy": "● ○ ◐ ✕ at density.glyph, coloured by state; active takes the seat colour"
+      "anatomy": "● ○ ◐ ✕ at density.glyph, coloured by state; active takes the seat colour",
+      "component": "Glyph",
+      "material": "glow"
     },
     "role_mark": {
       "purpose": "the seat's role",
-      "anatomy": "♔ oracle ♟ executor ♝ creativity, role colour"
+      "anatomy": "♔ oracle ♟ executor ♝ creativity, role colour",
+      "component": "Text(role mark glyph in role colour)",
+      "material": "flat"
     },
     "swatch": {
       "purpose": "change a colour",
-      "anatomy": "10 px circle in the colour with a white ring; click cycles"
+      "anatomy": "10 px circle in the colour with a white ring; click cycles",
+      "component": "Swatch",
+      "material": "flat"
     },
     "hairline": {
       "purpose": "separate without weight",
-      "anatomy": "1 px, line at 70%"
+      "anatomy": "1 px, line at 70%",
+      "component": "Hairline",
+      "material": "flat"
     },
     "pill": {
       "purpose": "floating actions with keys",
-      "anatomy": "radius.pill, panel material, shadow.pill, label · kbd pairs with thin separators"
+      "anatomy": "radius.pill, panel material, shadow.pill, label · kbd pairs with thin separators",
+      "component": "Pill",
+      "material": "flat"
     },
     "crumb": {
       "purpose": "where you are inside a nested list",
-      "anatomy": "selection-tinted chip with a trailing ›, before the input"
+      "anatomy": "selection-tinted chip with a trailing ›, before the input",
+      "component": "Chip[crumb] = Box[radius badge] + Text",
+      "material": "flat"
     },
     "chevron": {
       "purpose": "this row opens",
-      "anatomy": "› at the right edge of a parent row, replacing the number"
+      "anatomy": "› at the right edge of a parent row, replacing the number",
+      "component": "Icon(chevron)",
+      "material": "flat"
     },
     "band": {
       "purpose": "name a swarm",
       "anatomy": "24 px gloss band in the swarm colour, tracked uppercase, count, swatch; set into the card top",
-      "hover": "lightens its own colour, never white"
+      "hover": "lightens its own colour, never white",
+      "component": "Box[gloss] + Text(caps, tracked) + Badge(count) + Glyph(roll-up)",
+      "material": "gloss"
     },
     "bumper": {
       "purpose": "carry the swarm colour at the bottom",
-      "anatomy": "4 px solid strip, 3 px when shut"
+      "anatomy": "4 px solid strip, 3 px when shut",
+      "component": "Box[gloss] (the band's lower edge in the swarm colour)",
+      "material": "gloss"
     },
     "close_dot": {
       "purpose": "close a seat",
-      "anatomy": "macOS red dot at the left of the strip; greys when unfocused; × on hover"
+      "anatomy": "macOS red dot at the left of the strip; greys when unfocused; × on hover",
+      "component": "Button[icon, kind danger, round] (macOS-style dot)",
+      "material": "flat"
     },
     "mute_toggle": {
       "purpose": "mute or unmute a seat",
-      "anatomy": "speaker icon in the strip before the glyph; lit amber when muted"
+      "anatomy": "speaker icon in the strip before the glyph; lit amber when muted",
+      "component": "Button[icon, ghost]",
+      "material": "flat"
     },
     "muted_mark": {
       "purpose": "this seat is muted",
-      "anatomy": "small amber muted icon after the name; name at 70%"
+      "anatomy": "small amber muted icon after the name; name at 70%",
+      "component": "Icon(muted) in the waiting colour",
+      "material": "flat"
     },
     "mini_grid": {
       "purpose": "the split tree of a tab",
       "anatomy": "nested cells with real ratios; focused cell accent; waiting and errored cells tinted; single-seat tabs show none",
-      "large": "launcher banner, phone home"
+      "large": "launcher banner, phone home",
+      "component": "Box[grid] of Box cells (split tree preview), focused cell in accent",
+      "material": "flat"
     },
     "ghost": {
       "purpose": "what is being dragged",
-      "anatomy": "pill with the seat name in the seat colour following the pointer"
+      "anatomy": "pill with the seat name in the seat colour following the pointer",
+      "component": "Box[frosted, pill] + Icon + Text (drag ghost)",
+      "material": "frosted"
     },
     "drop_zone": {
       "purpose": "where a drop will split",
-      "anatomy": "the hovered half of a pane tinted with selection; also used by ⌘D previews (breathing)"
+      "anatomy": "the hovered half of a pane tinted with selection; also used by ⌘D previews (breathing)",
+      "component": "Overlay[half-pane tint, selection colour]",
+      "material": "flat"
     },
     "divider": {
       "purpose": "resize a split",
-      "anatomy": "the 2 px gutter with an 8 px grab zone; col/row-resize cursor; nothing drawn"
+      "anatomy": "the 2 px gutter with an 8 px grab zone; col/row-resize cursor; nothing drawn",
+      "component": "Divider (split gutter, hover and active in accent with a grip)",
+      "material": "flat"
     },
     "cursor": {
       "purpose": "typing lands here",
-      "anatomy": "block cursor at the end of the focused pane's text, blinking 1 Hz; static elsewhere"
+      "anatomy": "block cursor at the end of the focused pane's text, blinking 1 Hz; static elsewhere",
+      "component": "Box[solid fg, blink]",
+      "material": "flat"
     },
     "gap_marker": {
       "purpose": "scrollback was evicted here",
       "source": "ring eviction",
       "anatomy": "a hairline across the pane body with a centred caption built from the supplied retained range (\"retained from <range>\" or \"earlier output unavailable\"); never an invented line count",
-      "status": "built: at the top of the retained output in the pane body, two hairlines around a mono caption, \"earlier output evicted · retained from <range.from>\" or \"earlier output unavailable\"; the tooltip may add the supplied record id; gapMarker() in components.js, pane.html?state=gap · retained"
+      "status": "built: at the top of the retained output in the pane body, two hairlines around a mono caption, \"earlier output evicted · retained from <range.from>\" or \"earlier output unavailable\"; the tooltip may add the supplied record id; gapMarker() in components.js, pane.html?state=gap · retained",
+      "component": "Stack[row] = Hairline + Text(mono caption) + Hairline",
+      "material": "flat"
     },
     "stop_action": {
       "purpose": "interrupt the seat",
       "source": "seat_interrupt, Oracle/operator only",
       "anatomy": "a square stop glyph in the strip next to the mute toggle; hidden for worker roles",
-      "status": "built: 8 px rounded square on currentColor in the strip before the mute toggle, 55% until hover; present only when the caller may interrupt (operator, Oracle class); ⌘. on the focused seat; titleStrip opts.onInterrupt, title-strip.html?state=stop-operator, worker-view"
+      "status": "built: 8 px rounded square on currentColor in the strip before the mute toggle, 55% until hover; present only when the caller may interrupt (operator, Oracle class); ⌘. on the focused seat; titleStrip opts.onInterrupt, title-strip.html?state=stop-operator, worker-view",
+      "component": "Button[icon square, ghost]",
+      "material": "flat"
     },
     "listener_count": {
       "purpose": "external clients on the seat socket",
       "source": "seats are sockets",
       "anatomy": "a tiny plug glyph with a count at the row's right when > 0",
-      "status": "built: plug glyph and mono count in the row's right cluster when > 0, nothing at zero; tooltip \"N clients on this seat's socket · counts only\"; never identities; ICON_SVG.plug, seat.listeners, seat-row.html?state=listeners"
+      "status": "built: plug glyph and mono count in the row's right cluster when > 0, nothing at zero; tooltip \"N clients on this seat's socket · counts only\"; never identities; ICON_SVG.plug, seat.listeners, seat-row.html?state=listeners",
+      "component": "Stack[row] = Icon(plug) + Text(mono count)",
+      "material": "flat"
     },
     "logo": {
       "purpose": "the product mark, everywhere a logo appears",
@@ -371,70 +417,91 @@
         "never generate or redraw it",
         "the sidebar-toggle fox (toolbar icon) is a separate glyph and stays"
       ],
-      "status": "identity PNG only; SVG retired"
+      "status": "identity PNG only; SVG retired",
+      "component": "Image(identity PNG, circle or rounded-square crop)",
+      "material": "flat"
     },
     "tick_ladder": {
       "purpose": "delivery evidence on a message",
       "anatomy": "see signals.delivery_evidence",
-      "status": "built (see signals.delivery_evidence)"
+      "status": "built (see signals.delivery_evidence)",
+      "component": "Stack[row, overlapped] of Text(tick) + Box[dashed ring] for unknown",
+      "material": "flat"
     },
     "where_mark": {
       "purpose": "where the seat runs",
       "anatomy": "a prefix before the harness tile on rows and strips: cloud glyph for cloud seats, server glyph for ssh seats, nothing for local; tooltip names the host",
-      "status": "built"
+      "status": "built",
+      "component": "Icon(server | cloud)",
+      "material": "flat"
     },
     "bug_row": {
       "purpose": "a bug work item under its seat or in the tree",
       "source": "work-items.md item type bug",
       "anatomy": "task row anatomy with a red bug glyph (⬣) instead of the status glyph and a \"breaks <invariant>\" link when a violates link exists",
-      "status": "built: task-row anatomy with a red bug icon (ICON_SVG.bug, green when fixed, dimmed when wontfix or duplicate) in place of the status glyph and a red \"breaks <invariant>\" chip when a violates link exists; the same in the Graph tree; taskRow type bug; seat-row.html?state=bug-rows; graph.html?state=work-tree"
+      "status": "built: task-row anatomy with a red bug icon (ICON_SVG.bug, green when fixed, dimmed when wontfix or duplicate) in place of the status glyph and a red \"breaks <invariant>\" chip when a violates link exists; the same in the Graph tree; taskRow type bug; seat-row.html?state=bug-rows; graph.html?state=work-tree",
+      "component": "task_row composition with Icon(bug) in place of Glyph + Chip(invariant, violates)",
+      "material": "flat"
     },
     "invariant_chip": {
       "purpose": "name the invariant a spec or task binds, or a bug breaks",
       "source": "work-items.md item type invariant; typed links violates / constrains",
       "anatomy": "a small outlined chip \"inv · <title>\" on spec and task lines (constrains) and a red one on bug lines (violates); in the graph tree an invariant is its own line with the items it binds beneath",
-      "status": "built: outlined amber \"inv <title>\" on task and spec lines it constrains, red \"breaks <title>\" on bug lines that violate it; in the Graph tree an invariant is its own ◆ line with the items it binds beneath (constrains, violated-by); invChip() in components.js; seat-row.html?state=invariant-chips; graph.html?state=work-tree"
+      "status": "built: outlined amber \"inv <title>\" on task and spec lines it constrains, red \"breaks <title>\" on bug lines that violate it; in the Graph tree an invariant is its own ◆ line with the items it binds beneath (constrains, violated-by); invChip() in components.js; seat-row.html?state=invariant-chips; graph.html?state=work-tree",
+      "component": "Chip[outlined amber | red violates] + Text",
+      "material": "flat"
     },
     "artifact_row": {
       "purpose": "a provenance leaf under its task",
       "source": "work-items.md Artifacts (type artifact: kind, ref, digest, produced_by, for, derived_from)",
       "anatomy": "indented under the task row: kind glyph (▤ markdown ⎇ pr ▣ binary ▢ file ▧ image ◆ release) · KIND chip · ref in mono · short digest · responsible-seat chip",
-      "status": "built"
+      "status": "built",
+      "component": "Box[row] + Icon(kind) + Text(mono ref) + Chip(digest) + Chip(responsible)",
+      "material": "flat"
     },
     "responsible_chip": {
       "purpose": "which seat claimed responsibility for an artifact",
       "source": "artifact_claim",
       "anatomy": "outlined pill with the seat's first name in the seat colour; absent on unclaimed (auto-created) records",
-      "status": "built"
+      "status": "built",
+      "component": "Chip[seat colour] + Text",
+      "material": "flat"
     },
     "touched_count": {
       "purpose": "how many artifacts a seat has touched",
       "source": "terminal-detected artifact events attributed to the seat",
       "anatomy": "small archive glyph + count badge on the seat row, before the unread dot",
-      "status": "built"
+      "status": "built",
+      "component": "Badge = Icon(archive) + Text(count)",
+      "material": "flat"
     },
     "wikilink_chip": {
       "purpose": "a rendered wikilink with its relation and weight",
       "source": "provenance.md: [[slug]], [[slug|display]], [[slug]]{rel:w}",
       "anatomy": "a two-part chip: slug or display in accent on the left, the relation badge (and weight) in mono on the right; relation colours: derives accent, constrains amber, violates red; the pure forms render without the badge",
-      "status": "built"
+      "status": "built",
+      "component": "Chip = Text(slug) + Badge(rel weight)",
+      "material": "flat"
     },
     "path_hover": {
       "purpose": "open what a pane names",
       "anatomy": "holding ⌘ underlines the path, path:line or path:line:col token under the pointer in accent with a faint tint, and a small \"⌘-click opens\" pill follows the token",
-      "status": "built: .term .path.hover in lab.css; pane.html?state=hover-path"
+      "status": "built: .term .path.hover in lab.css; pane.html?state=hover-path",
+      "component": "Text[underline accent, tint] + Pill(hint)",
+      "material": "flat"
     }
   },
   "modules": {
     "title_bar": {
       "purpose": "the window's one set of controls",
       "anatomy": "three window dots · sidebar toggle · portrait mark · app name · crumb (swarm · seat) · spacer · theme icon",
-      "material": "panel material, hairline below, 38 px",
+      "material": "frosted",
       "rules": [
         "no second set of dots anywhere",
         "one theme icon, no label, no cycle"
       ],
-      "implementation": "titleBar() in components.js, shared by the showcase and titlebar.html?state=default|sidebar-closed|long-crumb|narrow-window|window-unfocused; .titlebar.app-bar CSS in lab.css"
+      "implementation": "titleBar() in components.js, shared by the showcase and titlebar.html?state=default|sidebar-closed|long-crumb|narrow-window|window-unfocused; .titlebar.app-bar CSS in lab.css",
+      "component": "TitleBar = Box[frosted] + window dots + Button(sidebar toggle fox) + Image(logo) + Text(name) + Text(crumb) + Spacer + Button(theme)"
     },
     "sidebar": {
       "purpose": "the map",
@@ -445,7 +512,9 @@
         "no footer row",
         "no space dots",
         "nothing moves on focus"
-      ]
+      ],
+      "component": "Box[sidebar material] = Stack[column](swarm_card* + new_swarm_button + stream_dock + footer)",
+      "material": "flat"
     },
     "swarm_card": {
       "purpose": "one world",
@@ -462,7 +531,9 @@
         "several may be open",
         "8 px apart",
         "double-click the band renames; a new swarm is born with its name field open"
-      ]
+      ],
+      "component": "Box[radius card] = band + List(tab_row*) + closed_strip* + new_seat_row + bumper",
+      "material": "gloss"
     },
     "seat_row": {
       "purpose": "one seat on the map",
@@ -479,21 +550,27 @@
         "click focuses and locates its pane",
         "drag onto a pane splits",
         "hover never focuses"
-      ]
+      ],
+      "component": "Box[row, glow at reduced radius] + Icon(where)? + Box(tile)+Icon + Text(name, seat colour) + Text(role mark) + Icon(authority)? + Icon(muted)? + Text(title) + Stack[right](Pill(held) + Pill(restarted | interrupt) + listener_count + touched_count + Badge(⌘N) + Glyph)",
+      "material": "glow"
     },
     "tab_row": {
       "purpose": "one tab of a swarm",
       "anatomy": "name · roll-up glyphs when collapsed · ⌘N badge · mini-grid",
       "rules": [
         "single-seat tabs render as their seat row with no grid"
-      ]
+      ],
+      "component": "List row = Chevron + Text(name) + MiniGrid + Badge(⌘N) + Glyph(roll-up); expanded: seat_row*",
+      "material": "flat"
     },
     "new_seat_row": {
       "purpose": "launch into this swarm",
       "anatomy": "+ new seat · ⌘T badge; last seat row of every open swarm",
       "rules": [
         "present in every open swarm so nothing jiggles"
-      ]
+      ],
+      "component": "List row = Text(+) + Text + Badge(kbd ⌘T)",
+      "material": "flat"
     },
     "closed_strip": {
       "purpose": "a seat in grace after close",
@@ -503,7 +580,9 @@
         "undo or ⌘Z restores in place with its split position; undo may come back expired, process-replaced or layout-conflict and says so",
         "no confirm dialog",
         "after the window only the live pane is gone: retained history survives; archive / resume UX is an open pick"
-      ]
+      ],
+      "component": "List row = Box[tint] + Text(×) + Icon + Text(struck) + Button(undo) + Hairline(draining grace)",
+      "material": "flat"
     },
     "shadows_group": {
       "purpose": "other people's harnesses in this swarm's channels",
@@ -514,7 +593,9 @@
         "never focus, never ripple",
         "a message pulses the row once"
       ],
-      "status": "deferred with global messaging; module kept"
+      "status": "deferred with global messaging; module kept",
+      "component": "List rows (deferred): Icon(greyed) + Text + Glyph",
+      "material": "flat"
     },
     "new_swarm_button": {
       "purpose": "create a world",
@@ -522,7 +603,9 @@
       "rules": [
         "the only creator",
         "new swarm starts with one zsh seat and opens its name field"
-      ]
+      ],
+      "component": "Button[ghost, dashed, full width]",
+      "material": "flat"
     },
     "stream_dock": {
       "purpose": "the swarm stream at the foot of the sidebar",
@@ -533,7 +616,9 @@
         "messages never ripple"
       ],
       "status": "built",
-      "page": "stream.html?state=swarm-stream|epic-groups|epic-collapsed|external-lane|messages|filtered-to-one-participant|empty; dock CSS in lab.css, data in fixtures.js"
+      "page": "stream.html?state=swarm-stream|epic-groups|epic-collapsed|external-lane|messages|filtered-to-one-participant|empty; dock CSS in lab.css, data in fixtures.js",
+      "component": "ScrollView = epic_group* + external_lane + message rows (Box[rail] + Text + Chip + tick_ladder) + audit_lines",
+      "material": "flat"
     },
     "pane": {
       "purpose": "a seat's screen",
@@ -548,7 +633,9 @@
         "hover dwell focuses after 150 ms",
         "click focuses and bounces its row",
         "drag by the strip to move"
-      ]
+      ],
+      "component": "Box[border in seat colour, radius row, glow] = title_strip + ScrollView(terminal grid) + Overlay(reconnect pill | drop zone | preset target)",
+      "material": "glow"
     },
     "title_strip": {
       "purpose": "name the pane",
@@ -556,10 +643,14 @@
       "rules": [
         "names never wrap",
         "same drawing as the row so the mapping is instant"
-      ]
+      ],
+      "component": "Box[solid seat colour, strip height] = close_dot + Icon(where)? + Icon(harness) + Text(name) + Text(role) + Pill(authority, interrupt)? + Text(title) + Badge(kbd) + stop_action? + mute_toggle + Glyph",
+      "material": "flat"
     },
     "launcher": {
-      "see": "modules.modal"
+      "see": "modules.modal",
+      "component": "Modal[frosted] = Input(crumbs + query) + Box[capnote]? + List[sections, virtualised](Box(tile) + Text(label, sub, kind) + Badge(number) | Chevron) + Stack(footer: Swatch + Text(name) + Button(reroll) + Pill(actions))",
+      "material": "frosted"
     },
     "banner": {
       "purpose": "say what the launcher will do",
@@ -567,12 +658,16 @@
       "variants": {
         "split": "real pane layout with the new cell breathing: Split right / Split down · of <seat>",
         "new_tab": "the swarm's tab strip with a new lit tab: New tab · in <swarm>"
-      }
+      },
+      "component": "Box[frosted] + MiniGrid | TabRow stack + Text(big) + Text(of)",
+      "material": "frosted"
     },
     "glow_canvas": {
       "purpose": "all border glow and ripples",
       "anatomy": "one full-window WebGL2 pass above the DOM, premultiplied alpha, zero layout space",
-      "budget": "evaluate only rects whose halo reaches the pixel; sidebar rows on a smaller budget"
+      "budget": "evaluate only rects whose halo reaches the pixel; sidebar rows on a smaller budget",
+      "component": "fx pass: particle border glow and locate ripple, state-driven",
+      "material": "glow"
     },
     "reconnect_overlay": {
       "purpose": "the GUI lost the daemon",
@@ -582,7 +677,9 @@
         "never blank the pane",
         "no modal"
       ],
-      "status": "built: pane keeps its stale frame, strip and term dimmed with the dim tokens, CSS animations paused and the particle glow held on its last frame, centred frosted pill with spinner \"reconnecting…\"; on reconnect the pill reads \"reconnected\" and fades; never blank, no modal; pane(seat, { reconnecting | reconnected }), pane.html?state=reconnecting, showcase key D"
+      "status": "built: pane keeps its stale frame, strip and term dimmed with the dim tokens, CSS animations paused and the particle glow held on its last frame, centred frosted pill with spinner \"reconnecting…\"; on reconnect the pill reads \"reconnected\" and fades; never blank, no modal; pane(seat, { reconnecting | reconnected }), pane.html?state=reconnecting, showcase key D",
+      "component": "Overlay(dim the stale frame) + Pill[frosted] = Spinner + Text",
+      "material": "frosted"
     },
     "row_menu": {
       "purpose": "per-seat actions that are not worth a strip icon",
@@ -591,22 +688,30 @@
         "Oracle/operator only for role, permissions, interrupt",
         "interrupt permission belongs to the acting caller, not the target"
       ],
-      "status": "built: frosted panel headed by the seat; Focus, Split right, Split down | Assign role ▸ (roles with marks, check on current), Permissions ▸ (send scopes), Interrupt — steer callers only | Mute | Copy socket path with the path as a mono caption, flashes Copied | Close in red; opens on right-click, ⌘-click, 550 ms long-press, ⇧F10 on the focused seat; ↑↓ ↵ → ← esc; rowMenu() in components.js, seat-row.html?state=row-menu-operator, row-menu-role-flyout, row-menu-worker"
+      "status": "built: frosted panel headed by the seat; Focus, Split right, Split down | Assign role ▸ (roles with marks, check on current), Permissions ▸ (send scopes), Interrupt — steer callers only | Mute | Copy socket path with the path as a mono caption, flashes Copied | Close in red; opens on right-click, ⌘-click, 550 ms long-press, ⇧F10 on the focused seat; ↑↓ ↵ → ← esc; rowMenu() in components.js, seat-row.html?state=row-menu-operator, row-menu-role-flyout, row-menu-worker",
+      "component": "Overlay + Box[frosted, panel radius] + List(menu items: Text + Text(caption) + Badge(kbd) | Chevron) + Divider; flyout = the same Box",
+      "material": "frosted"
     },
     "launcher_cap_notice": {
       "purpose": "spawn cap per swarm reached",
       "anatomy": "launch rows dim and the banner subtitle names which cap (swarm, machine or account; reserved, starting and grace processes count); template launches may land partial or unknown and say so; reconnect never respawns",
-      "status": "built: amber banner atop the launcher list, \"Spawn cap reached · <scope> <name> · used of limit\" with what counts (running · starting · in grace) and the way out; launch rows dim to 38%, lose their number and refuse (the banner shakes); Go to, Graph, Settings stay live and the selection starts on the first live row; showcase caps a swarm at 8 and rejects Oracle spawns past it; picker opts.cap, picker.html?state=cap-swarm, cap-machine"
+      "status": "built: amber banner atop the launcher list, \"Spawn cap reached · <scope> <name> · used of limit\" with what counts (running · starting · in grace) and the way out; launch rows dim to 38%, lose their number and refuse (the banner shakes); Go to, Graph, Settings stay live and the selection starts on the first live row; showcase caps a swarm at 8 and rejects Oracle spawns past it; picker opts.cap, picker.html?state=cap-swarm, cap-machine",
+      "component": "Box[amber tint, radius row] + Text(bold) + Text(small)",
+      "material": "flat"
     },
     "event_stream": {
       "purpose": "watch the bus (events.md Bus design)",
       "anatomy": "rows: seq per stream (dash for fan-out), time, tier mark (● stored, ○ fan-out), subject with the root token in its hue (seat, doc, task, swarm, ext, mux, inbox, artifact, dm, channel, cloud) and the kind (last token) bold, source in seat colour, payload summary, request ⇢ nonce and reply ⇠ #seq (hover lights both), ×N latest-wins coalescing, signer tick; gap rows in amber with the consumer, the reason and the replay point; a stream can be viewed as one consumer",
-      "status": "built: eventRow(), subjectChip(), EV_ROOT, evTier() in components.js; events.html?state=idle|busy|slow-consumer-gap|external-burst|request-reply"
+      "status": "built: eventRow(), subjectChip(), EV_ROOT, evTier() in components.js; events.html?state=idle|busy|slow-consumer-gap|external-burst|request-reply",
+      "component": "Table[virtualised] columns seq · time · tier Glyph · subject Text(coloured tokens) · source · payload · Chip(rr, coalesced) · Glyph(signer); gap rows = Hairline + Text",
+      "material": "flat"
     },
     "consumer_card": {
       "purpose": "one subscription on the bus",
       "anatomy": "name (durable iff named) or ephemeral, live/slow/paused badge; filter patterns as code chips, start, ack (none, or explicit with ack_wait and max_deliver), deliver, cursor, pending bar against queue_max (amber past 85%)",
-      "status": "built: consumerCard() in components.js; events.html"
+      "status": "built: consumerCard() in components.js; events.html",
+      "component": "Box[card] + Table(key, value) + Chip(patterns) + Box[queue bar]",
+      "material": "flat"
     },
     "document_view": {
       "purpose": "read one work item: epic, spec, task, bug, note, invariant or artifact (work-items.md)",
@@ -616,7 +721,9 @@
         "no anonymous write: updated_by is always stamped",
         "superseded items stay readable for provenance"
       ],
-      "status": "built: docView(), mdLite(), DOC_HUE in components.js; documents.html?state=epic|spec|task|bug|note|invariant|artifact|signed|unsigned|superseded|broken-frontmatter"
+      "status": "built: docView(), mdLite(), DOC_HUE in components.js; documents.html?state=epic|spec|task|bug|note|invariant|artifact|signed|unsigned|superseded|broken-frontmatter",
+      "component": "Stack[row] = Stack[column](Box[rail] header + Table(frontmatter) + Text(markdown) + diagram + Stack(provenance)) + Box(rail: neighbourhood graph + List(backlinks))",
+      "material": "flat"
     },
     "purge_modal": {
       "purpose": "skip grace, terminate, and move the seat's ring, checkpoints and events to cold storage (never delete)",
@@ -626,13 +733,17 @@
         "the one place a confirm dialog exists, because it ends the process without grace",
         "the word delete never appears"
       ],
-      "status": "built: launcher material, red \"Purge seat\", the seat chip, \"Terminates now and moves its history to cold storage · nothing is lost\" (the d-word stays out, so the drawn subtext was reworded), three facts (skips grace, ring/checkpoints/events to cold storage, replayable by session id), typed seat name enables Purge (case-insensitive, exact), Enter/Esc; opens from row menu Purge… for steer callers only; purgeModal() in components.js, purge.html?state=empty, typed-wrong, typed-right"
+      "status": "built: launcher material, red \"Purge seat\", the seat chip, \"Terminates now and moves its history to cold storage · nothing is lost\" (the d-word stays out, so the drawn subtext was reworded), three facts (skips grace, ring/checkpoints/events to cold storage, replayable by session id), typed seat name enables Purge (case-insensitive, exact), Enter/Esc; opens from row menu Purge… for steer callers only; purgeModal() in components.js, purge.html?state=empty, typed-wrong, typed-right",
+      "component": "Modal[frosted] = Text(red title) + Box(seat chip) + Text + List(facts) + Input(typed name) + Stack[row](Button ghost, Button danger)",
+      "material": "frosted"
     },
     "audit_lines": {
       "purpose": "the Oracle's actions in the open",
       "source": "Oracle audit log as a stream kind",
       "anatomy": "centred lines in the swarm stream like presence notices: \"Oracle spawned X\", \"Oracle closed X\", \"Oracle interrupted X\"",
-      "status": "built: centred in the swarm stream like presence, two parts: the Oracle mark in role colour, actor, verb, target; then the short op id, the outcome when not applied (rejected solid red, unknown and partial dashed amber) and the time; tooltip carries the reason; messageRow m.audit, FIX.audit; stream.html?state=audit-lines; showcase key O writes them"
+      "status": "built: centred in the swarm stream like presence, two parts: the Oracle mark in role colour, actor, verb, target; then the short op id, the outcome when not applied (rejected solid red, unknown and partial dashed amber) and the time; tooltip carries the reason; messageRow m.audit, FIX.audit; stream.html?state=audit-lines; showcase key O writes them",
+      "component": "Stack[column, centred] = Text(role mark + actor verb target) + Stack[row] = Badge(op) + Chip(outcome) + Text(time)",
+      "material": "flat"
     },
     "first_run": {
       "purpose": "identity bootstrap",
@@ -643,7 +754,9 @@
         "Google linking"
       ],
       "status": "built: firstRun(state) in components.js, launcher material: Who are you? (keyring secret keys with uid, full fingerprint in fours, algorithm, created, expiry, where; unsupported RSA primaries dimmed with the identity.md gap), three steps (pin primary, certify this device, account head epoch 1), Pin this key; signing (waiting for gpg-agent, pinentry in its own window, never our field); pinned (You are Boxy; primary, uid, device); no secret key (the gpg command, nothing created for you); first-run.html",
-      "states_built": "primary unavailable (public certificate only: make an enrollment request, or insert the card and look again); enrollment awaiting signature (request path and digest, the sign command for where the primary is, local seats only until signed, import the signed request)"
+      "states_built": "primary unavailable (public certificate only: make an enrollment request, or insert the card and look again); enrollment awaiting signature (request path and digest, the sign command for where the primary is, local seats only until signed, import the signed request)",
+      "component": "Modal[frosted] = Image(logo) + Text(title, sub) + Stack(steps) + List(radio rows: Text(uid) + Text(mono fingerprint) + Text(meta)) + Button(primary, ghost)",
+      "material": "frosted"
     },
     "settings_tab": {
       "purpose": "settings, as a tab in the current swarm",
@@ -686,13 +799,17 @@
       "account": "hero: portrait beside the key block; full fingerprint large in mono; ed25519 · signing chip; unlocked · gpg-agent cache; uid line; copy fingerprint; trust path GPG primary → certified device key → certified seat key; primary held by gpg-agent · pinned from your keyring · never exported; device cards are certified leaf keys with revoke (local; peers learn on next contact); enroll card produces a signed request when the primary is elsewhere; Signatures card; Link Google for cloud as a link; paper recovery = the GPG paperkey fallback with the identity-only caption",
       "roles": "per account, assigned per seat in any swarm; built-in oracle / executor / creativity chipped built-in, editable, not deletable; + new role card: name, colour, mark, default system prompt, may-send-to, priority class (oracle | worker) editable on every card with the caption \"changing class re-issues this role's seat grants\"; receivers trust the signed class, never the name",
       "harnesses": "built-in tiles chipped built-in; + new harness tile: name, command, tile colour, icon, default role (built-in + custom), wake method (default pty), state source (default output cadence), hooks; user-added harnesses run through the generic PTY adapter and appear in the launcher; the Wake row of a custom or draft tile on pty spells the input guard: hooks off → 'never submits on its own' (operator handoff, harness-adapters R7), hooks on → 'types after an idle hook'",
-      "appearance": "theme as window thumbnails, density as four row previews at real heights, gutter segmented 2 / 4, glow and subtitle toggles; all apply live"
+      "appearance": "theme as window thumbnails, density as four row previews at real heights, gutter segmented 2 / 4, glow and subtitle toggles; all apply live",
+      "component": "Stack[row] = List(nav) + ScrollView of Box[card] with Table rows (Text label + caption, control, diff dot + Button(reset)); controls: Input, Button, toggle Button, segmented Stack, range Input",
+      "material": "flat"
     },
     "nested_subagent_rows": {
       "purpose": "a harness's subagents under its seat row",
       "source": "OSC 7501 (Claude) / hooks (Codex)",
       "anatomy": "optional per harness: indented rows with description and working/idle glyph; absent when the harness gives nothing",
-      "status": "built: running only (active, waiting) under the seat row and before its tasks; branch hairline, glyph in the parent seat colour, description, mono detail; grade from the source (7501 reported for Claude, hooks shim for Codex); waiting carries its kind mark; past 8 shows 7 and +N running; ended subagents leave; subagentRows() in components.js, seat-row.html?state=subagents · claude"
+      "status": "built: running only (active, waiting) under the seat row and before its tasks; branch hairline, glyph in the parent seat colour, description, mono detail; grade from the source (7501 reported for Claude, hooks shim for Codex); waiting carries its kind mark; past 8 shows 7 and +N running; ended subagents leave; subagentRows() in components.js, seat-row.html?state=subagents · claude",
+      "component": "List rows = Hairline(branch) + Glyph(scaled) + Text(description) + Text(mono detail)",
+      "material": "flat"
     },
     "task_row": {
       "purpose": "a delegated work item under its seat",
@@ -703,7 +820,9 @@
         "rows never reorder",
         "a task also writes a line in the swarm stream on delegate, each status change and accept"
       ],
-      "status": "built"
+      "status": "built",
+      "component": "List row = Glyph(task state) | Icon(bug) + Text(title) + Chip(invariant)? + Text(waits on)? + Stack[right](Button(accept)? + Text(state))",
+      "material": "flat"
     },
     "epic_group": {
       "purpose": "an epic and its specs and tasks in the swarm stream dock",
@@ -714,7 +833,9 @@
         "blocked shows its dependency",
         "never deletes an item: done and rejected are states"
       ],
-      "status": "built"
+      "status": "built",
+      "component": "List[nested] = Stack[row](Chevron + Chip(EPIC) + Text + Badge(count)) + task_row rows",
+      "material": "flat"
     },
     "graph_tab": {
       "purpose": "who is on what, and the work tree, generated from seats and work items",
@@ -730,7 +851,9 @@
         "artifacts hang under their task in the tree as ├─ leaves with the responsible chip"
       ],
       "status": "built",
-      "page": "graph.html?state=full|agents|work-tree|subscriptions|provenance|artifact-history|empty-swarm; graphPage(opts.only) renders a subset; data from fixtures.js shared with the showcase"
+      "page": "graph.html?state=full|agents|work-tree|subscriptions|provenance|artifact-history|empty-swarm; graphPage(opts.only) renders a subset; data from fixtures.js shared with the showcase",
+      "component": "ScrollView of Box[card]: Table(agents) + List(work tree) + subscriptions_card + provenance_card + Table(artifact history)",
+      "material": "flat"
     },
     "provenance_card": {
       "purpose": "where an item came from and who touched it, with proof",
@@ -741,13 +864,17 @@
         "a missing signature reads unsigned, never broken",
         "the provenance graph is the sixth graph; this card is its per-item view"
       ],
-      "status": "built"
+      "status": "built",
+      "component": "Box[card] + List(items: Chip(type) + Text + Text(by) + wikilink_chip + Text(mono digest)) + List(log rows)",
+      "material": "flat"
     },
     "subscriptions_card": {
       "purpose": "what each seat listens to on the bus",
       "source": "events.md: subscriptions by pattern; delegated seats auto-follow their task doc and its derived_from docs; the Oracle follows every task it delegated",
       "anatomy": "in the Graph tab: seat in its colour · pattern chips in mono (task/*, seat/*/state, doc/specs/**, artifact/*/for:…); auto-subscriptions carry an AUTO badge and a tooltip naming why",
-      "status": "built"
+      "status": "built",
+      "component": "Box[card] + Table(seat, patterns: Chip[code, AUTO badge])",
+      "material": "flat"
     },
     "external_lane": {
       "purpose": "events from outside the swarm in the stream",
@@ -757,12 +884,16 @@
         "external lines never ripple or focus",
         "the source chip is the only colour; text stays in the stream type"
       ],
-      "status": "built"
+      "status": "built",
+      "component": "List[collapsible] = Chevron + Text + Badge(count); rows = Chip(source) + Text + Text(time)",
+      "material": "flat"
     },
     "diagram": {
       "purpose": "Mermaid diagrams inside documents, drawn by us (document-viewer.md)",
       "anatomy": "flowchart TD/LR, sequence, state; rounded nodes tinted by :::role/state class, stadium, diamond, circle, store; hairline edges with rounded orthogonal bends and arrowheads, dashed -.->, heavy ==>; labels on pills above the lines; layered layout with virtual waypoints so edges never cross nodes, barycentre ordering, each back edge in its own lane on the side nearer its target, leaving from the top when its layer blocks the side; sequence: lifelines, messages, self-messages, notes, lost (-x); unsupported syntax shows the source with a note",
-      "status": "built: parseMermaid(), diagram() in components.js; mdLite renders ```mermaid fences; diagrams.html?state=flowchart-td|flowchart-lr|sequence|state|unsupported-syntax; documents.html?state=with-a-diagram"
+      "status": "built: parseMermaid(), diagram() in components.js; mdLite renders ```mermaid fences; diagrams.html?state=flowchart-td|flowchart-lr|sequence|state|unsupported-syntax; documents.html?state=with-a-diagram",
+      "component": "Box + SVG-like draw list: Box[rounded, tinted] nodes, Hairline paths with rounded bends, Icon(arrowhead), Pill(labels)",
+      "material": "flat"
     },
     "document_modal": {
       "purpose": "open, scroll, copy maybe, close, feed into the harness (document-viewer.md What it is)",
@@ -772,12 +903,22 @@
         "feeding sends an operator message to the focused seat through the adapter, closes, and returns focus exactly where it was",
         "⌘C copies Markdown source, not rendered text"
       ],
-      "status": "built: docModal() in components.js; showcase key V (alternates a spec and a plain README; ⏎ feeds and the tick ladder climbs); documents.html?state=as-modal, modal-plain-markdown"
+      "status": "built: docModal() in components.js; showcase key V (alternates a spec and a plain README; ⏎ feeds and the tick ladder climbs); documents.html?state=as-modal, modal-plain-markdown",
+      "component": "Modal[frosted] = ScrollView(document_view) + Stack[row] of Button(primary, ghost, quiet) with Badge(kbd)",
+      "material": "frosted"
     },
     "splits": {
       "purpose": "a tab is a binary split tree of seats",
       "anatomy": "flex rows (v) and columns (h), the gutter as a divider (hover and active in the accent with a grip); drop zones tint the hovered half; the preset target half breathes in the accent; the drag ghost is a frosted chip with the harness icon and name",
-      "status": "built: splitView() in components.js shared by the showcase (its resize handler passes as onDivider); split CSS in lab.css; splits.html?state=two-vertical|two-horizontal|three-nested|four-quadrants|gutter-resizing|drop-zones|preset-target|drag-ghost"
+      "status": "built: splitView() in components.js shared by the showcase (its resize handler passes as onDivider); split CSS in lab.css; splits.html?state=two-vertical|two-horizontal|three-nested|four-quadrants|gutter-resizing|drop-zones|preset-target|drag-ghost",
+      "component": "Stack[row | column] tree of pane with Divider between halves",
+      "material": "flat"
+    },
+    "message_row": {
+      "purpose": "a message in the swarm stream: sender, role, priority, delivery",
+      "status": "built: messageRow() in components.js; message-row.html",
+      "component": "Box[row, role rail; oracle: tinted] = Hairline(rail, dashed for creativity) + Stack[column](Stack[row](Text(name) + Text(<ROLE>) + Badge(p0)? + Chip(agent to/from/via)? + Text(time) + tick_ladder | Chip(held)) + Text(reply)? + Text(body with wikilink_chip))",
+      "material": "flat"
     }
   },
   "modal": {
@@ -911,5 +1052,177 @@
     "ux-prototype-v1": "b7538ed · first operator review",
     "ux-prototype-v2": "implementation starting point: settings, launcher nesting, splits, remote, mute, grace close, glyph family, design system v9"
   },
-  "mcp_note": "worker-class seats have four MCP tools (self_status, message_send, message_status, operation_get); seeing or steering other seats needs delegated oracle-class authority; the UI draws nothing that implies more"
+  "mcp_note": "worker-class seats have four MCP tools (self_status, message_send, message_status, operation_get); seeing or steering other seats needs delegated oracle-class authority; the UI draws nothing that implies more",
+  "component_layers": {
+    "L5_atoms": [
+      "Hairline",
+      "Glyph",
+      "Icon",
+      "Badge",
+      "Chip",
+      "Pill",
+      "Swatch",
+      "Spinner",
+      "Checkerboard",
+      "Image",
+      "Divider"
+    ],
+    "L6_components": [
+      "Box",
+      "Text",
+      "Stack",
+      "ScrollView",
+      "Button",
+      "List",
+      "Table",
+      "Input",
+      "Overlay",
+      "Modal",
+      "Spacer"
+    ],
+    "materials": {
+      "flat": "solid fill",
+      "gloss": "the band gradient with its highlight and bumper",
+      "frosted": "backdrop blur + material alpha + hairline ring + inner highlight (launcher, menus, modals, title bar, pills over panes)",
+      "glow": "state-driven particle border (pane, seat row, glyph)"
+    },
+    "source": "gui-components.md §2b, §2c"
+  },
+  "hardcoded": {
+    "measured": "lab/web/lab.css after the token pass of 2026-10-21: 514 literal occurrences remain, down from 1,407 (same counter on the previous commit); every page pixel-identical before and after (headless diff, animated pages within their run-to-run noise)",
+    "moved_to_tokens": {
+      "style.json type": "micro 9, tiny 9.5, small 10, note 10.5, label 11.5 (with caption 11 … title 16 the full scale; 213 font-size literals now var(--t-*))",
+      "style.json spacing": "s1 2 … s7 14, s8 16, s9 20, s10 24 (464 padding/margin/gap literals now var(--s*))",
+      "style.json radius": "tag 5, mark 2 (with chip 4, grid 3, badge 6, round 999: 70 radius literals)",
+      "style.json material.hairline_px": "1 (83 border hairlines and 24 box-shadow rings now var(--hair-w))",
+      "tokens.toml color.ui": "on_accent #FFFFFF (26 uses), ok #2EE6A8, invariant #F2C14E",
+      "tokens.toml color.doc / color.subject": "work-item type hues and event subject roots, formerly hard-coded palettes in components.js"
+    },
+    "remaining_by_kind": {
+      "size": {
+        "10px": 19,
+        "12px": 13,
+        "14px": 11,
+        "7px": 10,
+        "30px": 10,
+        "16px": 9,
+        "28px": 8,
+        "18px": 7,
+        "2px": 6,
+        "40px": 6,
+        "1px": 6,
+        "8px": 6
+      },
+      "spacing": {
+        "5px": 25,
+        "3px": 21,
+        "1px": 21,
+        "7px": 18,
+        "18px": 9,
+        "9px": 8,
+        "22px": 7,
+        "28px": 4,
+        "11px": 2,
+        "32px": 1,
+        "13px": 1,
+        "36px": 1
+      },
+      "shadow": {
+        "1px": 15,
+        "2px": 4,
+        "6px": 3,
+        "rgba(0,0,0,.25)": 2,
+        "rgba(255,255,255,.12)": 2,
+        "18px": 2,
+        "20px": 1,
+        "60px": 1,
+        "rgba(0,0,0,.45)": 1,
+        "rgba(0,0,0,.3)": 1,
+        "#fff": 1,
+        "3px": 1
+      },
+      "other": {
+        "44px": 5,
+        "8px": 3,
+        "4px": 3,
+        "16px": 2,
+        "2px": 2,
+        "72px": 2,
+        "230px": 2,
+        "1px": 2,
+        "14px": 2,
+        "320px": 1,
+        "120px": 1,
+        "13px": 1
+      },
+      "colour": {
+        "#fff": 8,
+        "#000": 6,
+        "4px": 2,
+        "#1c1c1e": 2,
+        "#f2f2f2": 2,
+        "rgba(255,255,255,.75)": 1,
+        "#FF5F57": 1,
+        "rgba(0,0,0,0)": 1,
+        "rgba(0,0,0,.6)": 1,
+        "rgba(255,255,255,.8)": 1,
+        "7px": 1,
+        "rgba(255,255,255,.92)": 1
+      },
+      "type": {
+        "14px": 9,
+        "16px": 6,
+        "18px": 5,
+        "17px": 2,
+        "8.5px": 2,
+        "22px": 1,
+        "1px": 1,
+        "12px": 1,
+        "7px": 1,
+        "19px": 1,
+        "13.5px": 1,
+        "26px": 1
+      },
+      "offset": {
+        "2px": 6,
+        "4px": 5,
+        "7px": 2,
+        "8px": 1,
+        "10px": 1,
+        "6px": 1,
+        "9px": 1,
+        "14px": 1,
+        "26px": 1,
+        "11px": 1,
+        "18px": 1
+      },
+      "border": {
+        "3px": 5,
+        "1.5px": 4,
+        "2px": 4,
+        "1.3px": 2,
+        "4px": 2,
+        "rgba(0,0,0,.25)": 1,
+        "6px": 1,
+        "rgba(255,255,255,.85)": 1
+      },
+      "radius": {
+        "28px": 2,
+        "20px": 2,
+        "11px": 2,
+        "8px": 2,
+        "1.5px": 1,
+        "1px": 1
+      }
+    },
+    "reading": {
+      "size": "component geometry (icon boxes 10/12/14/16/18, tiles 28/30, swatches): belongs in each bbt-ui component's Style size, not global tokens",
+      "spacing": "odd fine-tuning (1, 3, 5, 7, 9 px) and one-offs; snap to the s-scale when the component is rebuilt",
+      "border/shadow": "1.5 and 1.3 px dashed rings and 2 px rails: Glyph/tick ladder and rail geometry",
+      "radius": "28/20/11/8 px one-offs (phone sheet, launcher pill, swatches)",
+      "colour": "#000/#fff alpha mixes on strips and kbd badges; #1c1c1e/#f2f2f2 and the macOS dots are the demo menubar and window chrome; the wallpaper gradients are demo-only (they stand in for the desktop)",
+      "type": "line-heights 14/16/18 px tied to row heights; derive from density tokens"
+    },
+    "showcase_and_js": "showcase.html and inline styles in components.js still carry literals of their own; next pass after bbt-ui lands names them per component"
+  }
 }

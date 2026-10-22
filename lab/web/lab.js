@@ -20,7 +20,7 @@
     const set = (k, v) => r.setProperty(k, v);
     set('--bg', c.bg); set('--surface', c.surface); set('--surface-2', c.surface_2); set('--line', c.line);
     set('--fg', c.fg); set('--fg-dim', c.fg_dim); set('--accent', c.accent); set('--accent-soft', c.accent_soft); set('--navy', c.navy); set('--sidebar-bg', c.sidebar);
-    set('--c-idle', T.color.state.idle); set('--c-waiting', T.color.state.waiting); set('--c-errored', T.color.state.errored);
+    set('--c-idle', T.color.state.idle); set('--on-accent', T.color.ui.on_accent); set('--c-ok', T.color.ui.ok); set('--c-invariant', T.color.ui.invariant); set('--c-waiting', T.color.state.waiting); set('--c-errored', T.color.state.errored);
     for (const [k, v] of Object.entries(T.color.role)) set('--role-' + k, v);
     set('--row-h', d.row_h + 'px'); set('--tab-h', d.tab_h + 'px'); set('--glyph', d.glyph + 'px'); set('--icon', d.icon + 'px');
     set('--font', d.font + 'px'); set('--font-small', d.font_small + 'px'); set('--pad-x', d.pad_x + 'px'); set('--gap', d.gap + 'px');
@@ -45,7 +45,7 @@
       set('--badge', 'color-mix(in srgb, var(--fg-dim) ' + S.tint.badge_alpha * 100 + '%, transparent)'); set('--badge-sel', 'color-mix(in srgb, var(--fg-dim) ' + S.tint.badge_selected_alpha * 100 + '%, transparent)');
       for (const [k, v] of Object.entries(S.type)) if (typeof v === 'number') set('--t-' + k, v + 'px');
       set('--sh-float', S.shadow.floating); set('--sh-pill', S.shadow.pill); set('--appear-ms', S.motion.appear_ms + 'ms'); set('--ease', S.motion.ease);
-      set('--grid', S.spacing.grid + 'px'); set('--row-mx', S.spacing.row_margin_x + 'px'); set('--row-px', S.spacing.row_pad_x + 'px'); set('--title-bar-h', S.spacing.title_bar + 'px'); set('--band-h', S.spacing.band + 'px');
+      set('--grid', S.spacing.grid + 'px'); for (const [k, v] of Object.entries(S.spacing)) if (/^s\d+$/.test(k)) set('--' + k, v + 'px'); set('--hair-w', S.material.hairline_px + 'px'); set('--row-mx', S.spacing.row_margin_x + 'px'); set('--row-px', S.spacing.row_pad_x + 'px'); set('--title-bar-h', S.spacing.title_bar + 'px'); set('--band-h', S.spacing.band + 'px');
     }
     document.documentElement.className = 'theme-' + prefs.theme + ' density-' + prefs.density;
   }

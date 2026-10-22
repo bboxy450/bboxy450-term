@@ -24,9 +24,19 @@
     "backdrop_dim_alpha": 0.35,
     "backdrop_blur_px": 14,
     "hairline_alpha": 0.7,
-    "inner_highlight_alpha": 0.08
+    "inner_highlight_alpha": 0.08,
+    "hairline_px": 1
   },
-  "radius": { "panel": 20, "card": 12, "row": 10, "tile": 8, "badge": 6, "pill": 999 },
+  "radius": {
+    "panel": 20,
+    "card": 12,
+    "row": 10,
+    "tile": 8,
+    "badge": 6,
+    "pill": 999,
+    "tag": 5,
+    "mark": 2
+  },
   "shadow": {
     "floating": "0 40px 120px rgba(0,0,0,.45)",
     "pill": "0 6px 20px rgba(0,0,0,.18)",
@@ -46,7 +56,12 @@
     "caption": 11,
     "weight_title": 500,
     "weight_name": 600,
-    "weight_section": 500
+    "weight_section": 500,
+    "micro": 9,
+    "tiny": 9.5,
+    "small": 10,
+    "note": 10.5,
+    "label": 11.5
   },
   "spacing": {
     "grid": 8,
@@ -59,13 +74,23 @@
     "section_pad_top": 12,
     "section_pad_bottom": 6,
     "title_bar": 38,
-    "band": 24
+    "band": 24,
+    "s1": 2,
+    "s2": 4,
+    "s3": 6,
+    "s4": 8,
+    "s5": 10,
+    "s6": 12,
+    "s7": 14,
+    "s8": 16,
+    "s9": 20,
+    "s10": 24
   },
   "tint": {
     "selection_alpha": 0.09,
     "selection_hover_alpha": 0.06,
     "badge_alpha": 0.18,
-    "badge_selected_alpha": 0.30,
+    "badge_selected_alpha": 0.3,
     "tile_text": "#ffffff"
   },
   "components": {
@@ -79,5 +104,9 @@
     "band": "swarm colour gloss band set into the card top, tracked uppercase 10.5px",
     "bumper": "4px strip of swarm colour along the card bottom, 3px when shut"
   },
-  "motion": { "appear_ms": 160, "hover_ms": 120, "ease": "cubic-bezier(.2,.8,.2,1)" }
+  "motion": {
+    "appear_ms": 160,
+    "hover_ms": 120,
+    "ease": "cubic-bezier(.2,.8,.2,1)"
+  }
 }
