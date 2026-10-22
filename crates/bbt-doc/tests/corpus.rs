@@ -22,13 +22,23 @@ fn frontmatter_errors(root: &Path) -> io::Result<(usize, Vec<String>)> {
                 walk(root, &path, count, errors)?;
             } else if kind.is_file() && path.extension().is_some_and(|ext| ext == "md") {
                 *count += 1;
-                let doc = bbt_doc::parse(&fs::read_to_string(&path)?);
+                let source = fs::read_to_string(&path)?;
+                let doc = bbt_doc::parse(&source);
                 if let Some(error) = &doc.frontmatter.error {
                     errors.push(format!(
                         "{}:{}: invalid YAML frontmatter: {error}",
                         path.strip_prefix(root).unwrap().display(),
                         doc.frontmatter.error_line.unwrap_or(1)
                     ));
+                } else if source.trim_start_matches('\u{feff}').lines().next() == Some("---") {
+                    for key in ["id", "type"] {
+                        if !doc.frontmatter.fields.contains_key(key) {
+                            errors.push(format!(
+                                "{}:1: frontmatter missing `{key}:`",
+                                path.strip_prefix(root).unwrap().display()
+                            ));
+                        }
+                    }
                 }
             }
         }
@@ -71,16 +81,26 @@ fn corpus_gate_rejects_nested_malformed_frontmatter_with_path_and_source_line() 
     .unwrap();
     fs::write(specs.join("open.md"), "---\ntitle: never closed").unwrap();
     fs::write(specs.join("plain.md"), "# No frontmatter is valid\n").unwrap();
+    fs::write(specs.join("missing-id.md"), "---\ntype: spec\n---\nBody\n").unwrap();
+    fs::write(specs.join("missing-type.md"), "---\nid: fox\n---\nBody\n").unwrap();
     let (count, errors) = frontmatter_errors(&root.0).unwrap();
-    assert_eq!(count, 3);
-    assert_eq!(errors.len(), 2);
-    assert!(errors[0].starts_with(".bboxy/specs/broken.md:4: invalid YAML frontmatter:"));
-    assert!(errors[1].starts_with(".bboxy/specs/open.md:1: invalid YAML frontmatter:"));
+    assert_eq!(count, 5);
+    assert_eq!(errors.len(), 4);
+    for expected in [
+        ".bboxy/specs/broken.md:4: invalid YAML frontmatter:",
+        ".bboxy/specs/open.md:1: invalid YAML frontmatter:",
+        ".bboxy/specs/missing-id.md:1: frontmatter missing `id:`",
+        ".bboxy/specs/missing-type.md:1: frontmatter missing `type:`",
+    ] {
+        assert!(errors.iter().any(|e| e.starts_with(expected)), "{errors:?}");
+    }
     fs::write(
         specs.join("broken.md"),
-        "---\ntitle: 'live seats: cockpit'\n---\nBody.",
+        "---\nid: fox\ntype: spec\ntitle: 'live seats: cockpit'\n---\nBody.",
     )
     .unwrap();
-    fs::write(specs.join("open.md"), "---\ntitle: now closed\n---\n").unwrap();
+    for name in ["open.md", "missing-id.md", "missing-type.md"] {
+        fs::write(specs.join(name), "---\nid: fox\ntype: spec\n---\nBody\n").unwrap();
+    }
     assert!(frontmatter_errors(&root.0).unwrap().1.is_empty());
 }
