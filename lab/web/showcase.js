@@ -91,6 +91,7 @@
   seats[0].subagents = [{ id: 'a1', description: 'Explore render goldens', state: 'active', detail: 'Grep · bbt-render' }, { id: 'a2', description: 'Review W3.2a diff', state: 'waiting', kind: 'permission', detail: 'Bash · cargo test' }];
   seats[1].subagents = [{ id: 'c1', description: 'worker: ring checksum', state: 'active' }];
   seats[3].gap = { from: '09:14:07' };  // a long-running cloud seat whose ring evicted its oldest output
+  model.spaces[0].retained = [{ seat: { key: 'old1', name: 'Marlo Pike', harness: 'claude', role: 'executor', title: 'tokens audit', state: 'idle', pal: 9 }, closedAt: '13:12', session: '5f3a91c2' }];
   seats[4].authority = 'expired';  // Sable Quill on rig: its seat grant lapsed; it keeps running, signed effects wait
   seats[0].listeners = 2; seats[1].listeners = 1;  // clients on the seat socket: counts only
   // subscriptions and external events (events.md): auto-subscriptions follow delegation; external arrives from webhooks, CI, cloud, cron
@@ -251,10 +252,9 @@
       if (n % 5 === 0) { p.status = 'unknown'; audit('unknown', 'no confirmation from the mux'); render(); return; }
       sp.pending = sp.pending.filter(x => x !== p);
       const seat = { key: 'o' + n + Date.now().toString(36), name: p.name, harness: h, role: C.DEFAULT_ROLE[h], title: '', state: 'active', pal: (seats.length + 3) % 15, where: 'local' };
-      Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
-      Object.defineProperty(seat, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
+      dressSeat(seat);
       seats.push(seat); startReplay(seat, seats.length - 1); placeSeat(seat, 'tab');
-      audit('applied');
+      audit('applied'); render();
     }, 1800);
   });
   // D: the GUI loses the daemon. Every pane keeps its stale frame, dimmed, glow frozen, "reconnecting…"; on reconnect the
@@ -340,7 +340,7 @@
     const anchor = focused, anchorSeat = seats.find(x => x.key === anchor);   // ⌘↵ splits right of the focused pane, ⌘⇧↵ below it, ↵ opens a new tab
     const ph = preset && anchorSeat ? 'split ' + (preset === 'right' ? 'right of ' : 'below ') + anchorSeat.name + ' · pick a harness' : 'launch or go to · type to search';
     const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : [['Launch / go', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']];
-    const items = C.launcherItems({ seats, spaces: model.spaces, sp, anchorSeat, tabOf });
+    const items = C.launcherItems({ seats, spaces: model.spaces, sp, anchorSeat, tabOf, retained: sp.retained || [] });
     const acts = p => (p.length && p[p.length - 1].id === 'goto') ? [['Go', '↵'], ['Back', '←']] : (p.length ? [['Place', '↵'], ['Back', '←']] : (preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['Placements', '→'], ['New tab instead', '⌥↵']] : [['New tab', '↵'], ['Placements', '→'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵']]));
     // banner above the panel: the real pane layout, large, with the new cell lit; nothing subtle about it
     if (preset && anchorSeat && stageTree) {
@@ -369,11 +369,11 @@
       if (it.settingsOpen) { closeSpotlight(); openSettings(it.section); return; }
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
       if (it.swarm) { closeSpotlight(); jumpSpace(it.swarm); return; }
+      if (it.resume) { closeSpotlight(); resumeSeat(sp, it.resume); return; }
       const l = it.launch || it;
       const where = it.where || (path.find(x => x.where) || {}).where || 'local', host = it.host || (path.find(x => x.host) || {}).host;
       const seat = { key: 'n' + Date.now().toString(36), name: l.harness === 'zsh' ? 'zsh' : name, harness: l.harness, role: C.DEFAULT_ROLE[l.harness], title: l.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15, where, host };
-      Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
-      Object.defineProperty(seat, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
+      dressSeat(seat);
       seats.push(seat); startReplay(seat, seats.length - 1);
       closeSpotlight();
       if (it.place) { if (it.place === 'tab' || !anchor) placeSeat(seat, 'tab'); else placeSeat(seat, it.place, anchor); return; }
@@ -403,9 +403,20 @@
     tab.seats = tab.seats.filter(x => x !== seat); tab.tree = prune(tab.tree, seat.key);
     if (!tab.seats.length) sp.tabs.splice(rec.tabIndex, 1);
     sp.closed = sp.closed || []; sp.closed.push(rec);
-    rec.timer = setTimeout(() => { sp.closed = sp.closed.filter(r => r !== rec); seats.splice(seats.indexOf(seat), 1); clearTimeout(seat.replay && seat.replay.timer); if (focused === seat.key) focused = null; render(); }, GRACE_MS);
+    rec.timer = setTimeout(() => { sp.closed = sp.closed.filter(r => r !== rec); seats.splice(seats.indexOf(seat), 1); clearTimeout(seat.replay && seat.replay.timer); if (focused === seat.key) focused = null; retain(sp, seat); render(); }, GRACE_MS);
     if (focused === seat.key) { const t2 = sp.tabs[0]; focused = t2 ? t2.seats[0].key : null; }
     render();
+  }
+  // a new or resumed seat gets the theme-aware colour and the grade from its harness record, like the built-in seats
+  function dressSeat(seat) { if (seat.pal == null) seat.pal = (seats.length + 3) % 15; if (!Object.getOwnPropertyDescriptor(seat, 'color') || !Object.getOwnPropertyDescriptor(seat, 'color').get) Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true, configurable: true }); if (!Object.getOwnPropertyDescriptor(seat, 'grade')) Object.defineProperty(seat, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true, configurable: true }); return seat; }
+  // past grace: closed_retained. History and the harness-session mapping stay; Resume in the launcher starts a new generation.
+  function retain(sp, seat) { sp.retained = sp.retained || []; sp.retained.unshift({ seat, closedAt: new Date().toTimeString().slice(0, 5), session: C.hash32(seat.key + 's').toString(16).slice(0, 8) }); streamLine(sp, seat.name + ' closed · history retained · Resume in ⌘T'); }
+  function resumeSeat(sp, r) {
+    sp.retained = (sp.retained || []).filter(x => x !== r && x.seat !== r.seat);
+    const seat = dressSeat(r.seat); seat.generation = (seat.generation || 1) + 1; seat.resumed = { gen: seat.generation, cmd: r.cmd }; seat.state = 'active';
+    seats.push(seat); startReplay(seat, seats.length - 1); placeSeat(seat, 'tab');
+    streamLine(sp, 'operator resumed ' + seat.name + ' · ' + (r.cmd || 'new shell') + ' · generation ' + seat.generation);
+    setFocus(seat.key, { locate: 'both' }); render();
   }
   function undoClose(rec) {
     clearTimeout(rec.timer); rec.sp.closed = rec.sp.closed.filter(r => r !== rec);
@@ -580,10 +591,107 @@
     });
   }
 
+  // ---------- cause and effect: no timers. Keys change one thing at a time. ----------
+  const ROLE_RANK = { oracle: 0, executor: 1, creativity: 2, unsigned: 3 };
+  let msgN = 0;
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey || spot) return;
+    const f = seats.find(s => s.key === focused); if (!f || f.settings || f.graph) return;
+    const st = { '1': 'idle', '2': 'active', '3': 'waiting', '4': 'errored' }[e.key];
+    if (st) { if (st === 'waiting' && f.state === 'waiting') { const ks = ['permission', 'question', 'auth']; f.waitKind = ks[(ks.indexOf(f.waitKind || 'question') + 1) % 3]; render(); return; } setState(f, st); if (st === 'active' && f.replay && f.replay.waiting) { f.replay.waiting = false; schedule(f, 200); } }
+    else if (e.key === 'm' || e.key === 'M') {
+      // a message arrives for the next seat in order, from a sender role that cycles; unread dot only, no ripple
+      const s = seats[msgN % seats.length], role = ['executor', 'oracle', 'creativity'][msgN % 3]; msgN++;
+      // a muted seat holds swarm traffic instead (demo: every fourth held item is outgoing work its grant no longer permits)
+      if (s.muted) { s.held = s.held || []; const k = s.held.length; s.held.push({ id: 'msg-' + C.hash32(s.key + k).toString(16).slice(0, 6), dir: k % 4 === 3 ? 'out' : 'in', blocked: k % 4 === 3 ? 'sent under an old grant epoch · the current grant no longer permits the swarm' : null }); render(); return; }
+      s.unread = (s.unread || 0) + 1;
+      if (!s.unreadRole || ROLE_RANK[role] < ROLE_RANK[s.unreadRole]) s.unreadRole = role;
+      render();
+    }
+    else if (e.key === 'Tab') { e.preventDefault(); const i = stageKeys.indexOf(focused); setFocus(stageKeys[(i + (e.shiftKey ? -1 : 1) + stageKeys.length) % stageKeys.length], { locate: 'both' }); }
+  });
+
+  // ---------- stream dock: messages land here; clicking a phantom filters to that participant ----------
+  function drawStream() {
+    const dock = document.getElementById('stream'); if (!dock) return;
+    dock.innerHTML = '';
+    const stream = space().stream;
+    for (const ep of (space().epics || [])) if (ep.items.length) dock.append(C.epicGroup(ep, { onToggle: drawStream }));
+    if ((space().external || []).length) dock.append(C.externalLane(space().external, { open: extOpen, onToggle: () => { extOpen = !extOpen; drawStream(); } }));
+    const items = stream.filter(m => !streamFilter || m.fromKey === streamFilter).slice(-4);
+    if (streamFilter) { const ph = space().participants.find(p => p.key === streamFilter); if (!ph) { streamFilter = null; return drawStream(); } dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
+    for (const m of items) dock.append(C.messageRow(m));
+    dock.style.display = (stream.length || (space().epics || []).some(e => e.items.length) || (space().external || []).length) ? '' : 'none';
+  }
+  const PHRASES = ['relay bench green on eu-2, 41 ms p50', 'claiming the glyphon atlas question', 'B spec amended, envelope has presence now', 'who owns the ssh bootstrap doc?', 'pushed fixtures, four files'];
+  let phN = 0;
+  addEventListener('keydown', e => {
+    if ((e.key !== 'p' && e.key !== 'P') || spot) return;
+    const phs = space().participants; if (!phs.length) return;
+    const ph = phs[phN % phs.length], text = PHRASES[phN % PHRASES.length]; phN++;
+    ph.pulseT = performance.now();                                        // row pulses once
+    space().stream.push({ from: ph.name, fromKey: ph.key, role: ph.role, foreign: true, text, time: new Date().toTimeString().slice(0, 5), unread: true });
+    drawStream();
+  });
+
+  // ---------- live log replay ----------
+  // Each seat replays one fixture line by line: bursts of 1-6 lines at 30-120 ms, pauses of 0.4-2 s between bursts,
+  // a 3-6 s pause at the end of the fixture, then it loops. State follows the replay: active while lines flow,
+  // idle at the loop pause, waiting when a burst ends on a line containing 'Allow' or ending in '?', until key 2.
+  const L = window.LOGS || {};
+  const SHELL = [['cargo build --release', 'cargo-build'], ['git log -3', 'git-log'], ['icq --human status', 'icq-status'], ['ls -R .kb', 'ls-kb']];
+  function fixtureFor(seat, i) {
+    if (seat.harness === 'claude') return (L['claude-session'] || '').split('\n');
+    if (seat.harness === 'codex') return (L['codex-session'] || '').split('\n');
+    const out = []; // shell seats: prompt + each shell fixture, rotated by seat index so panes differ
+    for (let k = 0; k < SHELL.length; k++) { const [cmd, name] = SHELL[(k + i) % SHELL.length]; out.push('$ ' + cmd, ...(L[name] || '').split('\n'), ''); }
+    return out;
+  }
+  const MAXLINES = 400;
+  function paintTerm(seat) {
+    const term = main.querySelector('.pane[data-key="' + seat.key + '"] .term'); if (!term || !seat.replay) return;
+    const rp = seat.replay;
+    const marks = [...term.querySelectorAll(':scope > .gap-mark')];   // history markers (gap, resumed) stay above the replay
+    term.innerHTML = '';
+    const lines = el('div', { class: 'lines' }, rp.buf.join('\n'));
+    lines.append(el('span', { class: 'cur', style: 'margin-left:2px' }));
+    term.append(...marks, lines);
+  }
+  function emit(seat, line) {
+    const rp = seat.replay; rp.buf.push(line); if (rp.buf.length > MAXLINES) rp.buf.shift();
+    paintTerm(seat);
+  }
+  function schedule(seat, ms) { clearTimeout(seat.replay.timer); seat.replay.timer = setTimeout(() => step(seat), ms); }
+  function step(seat) {
+    const rp = seat.replay, rnd = rp.rnd;
+    if (rp.waiting) return;
+    if (rp.idx >= rp.lines.length) {                     // end of fixture: idle at the loop pause, then restart
+      setState(seat, 'idle');
+      rp.idx = 0; rp.burst = 0; rp.buf.push(''); 
+      return schedule(seat, 3000 + rnd() * 3000);
+    }
+    if (rp.burst === 0) rp.burst = 1 + Math.floor(rnd() * 6);
+    setState(seat, 'active');
+    const line = rp.lines[rp.idx++]; emit(seat, line); rp.burst--;
+    if (rp.burst === 0) {                                 // burst ended
+      if (/Allow|\?\s*$/.test(line)) { seat.waitKind = /Allow/.test(line) ? 'permission' : /auth|login|token|password/i.test(line) ? 'auth' : 'question'; rp.waiting = true; setState(seat, 'waiting'); return; }
+      return schedule(seat, 400 + rnd() * 1600);
+    }
+    schedule(seat, 30 + rnd() * 90);
+  }
+  function startReplay(seat, i) {
+    if (seat.settings || seat.graph) return;
+    const lines = fixtureFor(seat, i);
+    const start = Math.floor(C.rng('start' + seat.key)() * lines.length);
+    seat.replay = { lines, idx: start, buf: lines.slice(Math.max(0, start - 12), start), burst: 0, waiting: false, rnd: C.rng('replay' + seat.key), timer: null };
+    if (seat.state === 'waiting' || seat.state === 'errored') seat.replay.waiting = true;   // held until the operator presses 2
+    else schedule(seat, 300 + i * 170);
+  }
+
   // ---------- WebGL2 ----------
   const cv = document.getElementById('glow');
   const gl = cv.getContext('webgl2', { antialias: false, alpha: true, premultipliedAlpha: true });
-  if (!gl) { render(); return; }
+  if (!gl) { render(); seats.slice().forEach((seat, i) => startReplay(seat, i)); return; }   // no WebGL: everything but the glow still runs
   const MAXR = 40, MAXRIP = 6;
   const vs = `#version 300 es
     const vec2 q[3] = vec2[3](vec2(-1.,-1.), vec2(3.,-1.), vec2(-1.,3.));
@@ -674,7 +782,7 @@
   const STATE_IDX = { idle: 0, active: 1, waiting: 2, errored: 3 };
   const rectBuf = new Float32Array(MAXR * 4), colBuf = new Float32Array(MAXR * 4), parBuf = new Float32Array(MAXR * 4), mulBuf = new Float32Array(MAXR);
   const ripples = []; const ripBuf = new Float32Array(MAXRIP * 4), ripCol = new Float32Array(MAXRIP * 4);
-  function ripple(x, y, color) { ripples.push({ x, y, t0: performance.now(), c: color }); if (ripples.length > MAXRIP) ripples.shift(); }
+  function ripple(x, y, color) { if (!gl) return; ripples.push({ x, y, t0: performance.now(), c: color }); if (ripples.length > MAXRIP) ripples.shift(); }
   function resize() { const dpr = Math.min(devicePixelRatio, 2); cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; gl.viewport(0, 0, cv.width, cv.height); measure(); }
   addEventListener('resize', resize);
 
@@ -706,101 +814,6 @@
     requestAnimationFrame(frame);
   }
 
-  // ---------- cause and effect: no timers. Keys change one thing at a time. ----------
-  const ROLE_RANK = { oracle: 0, executor: 1, creativity: 2, unsigned: 3 };
-  let msgN = 0;
-  addEventListener('keydown', e => {
-    if (e.metaKey || e.ctrlKey || e.altKey || spot) return;
-    const f = seats.find(s => s.key === focused); if (!f || f.settings || f.graph) return;
-    const st = { '1': 'idle', '2': 'active', '3': 'waiting', '4': 'errored' }[e.key];
-    if (st) { if (st === 'waiting' && f.state === 'waiting') { const ks = ['permission', 'question', 'auth']; f.waitKind = ks[(ks.indexOf(f.waitKind || 'question') + 1) % 3]; render(); return; } setState(f, st); if (st === 'active' && f.replay && f.replay.waiting) { f.replay.waiting = false; schedule(f, 200); } }
-    else if (e.key === 'm' || e.key === 'M') {
-      // a message arrives for the next seat in order, from a sender role that cycles; unread dot only, no ripple
-      const s = seats[msgN % seats.length], role = ['executor', 'oracle', 'creativity'][msgN % 3]; msgN++;
-      // a muted seat holds swarm traffic instead (demo: every fourth held item is outgoing work its grant no longer permits)
-      if (s.muted) { s.held = s.held || []; const k = s.held.length; s.held.push({ id: 'msg-' + C.hash32(s.key + k).toString(16).slice(0, 6), dir: k % 4 === 3 ? 'out' : 'in', blocked: k % 4 === 3 ? 'sent under an old grant epoch · the current grant no longer permits the swarm' : null }); render(); return; }
-      s.unread = (s.unread || 0) + 1;
-      if (!s.unreadRole || ROLE_RANK[role] < ROLE_RANK[s.unreadRole]) s.unreadRole = role;
-      render();
-    }
-    else if (e.key === 'Tab') { e.preventDefault(); const i = stageKeys.indexOf(focused); setFocus(stageKeys[(i + (e.shiftKey ? -1 : 1) + stageKeys.length) % stageKeys.length], { locate: 'both' }); }
-  });
-
-  // ---------- stream dock: messages land here; clicking a phantom filters to that participant ----------
-  function drawStream() {
-    const dock = document.getElementById('stream'); if (!dock) return;
-    dock.innerHTML = '';
-    const stream = space().stream;
-    for (const ep of (space().epics || [])) if (ep.items.length) dock.append(C.epicGroup(ep, { onToggle: drawStream }));
-    if ((space().external || []).length) dock.append(C.externalLane(space().external, { open: extOpen, onToggle: () => { extOpen = !extOpen; drawStream(); } }));
-    const items = stream.filter(m => !streamFilter || m.fromKey === streamFilter).slice(-4);
-    if (streamFilter) { const ph = space().participants.find(p => p.key === streamFilter); if (!ph) { streamFilter = null; return drawStream(); } dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
-    for (const m of items) dock.append(C.messageRow(m));
-    dock.style.display = (stream.length || (space().epics || []).some(e => e.items.length) || (space().external || []).length) ? '' : 'none';
-  }
-  const PHRASES = ['relay bench green on eu-2, 41 ms p50', 'claiming the glyphon atlas question', 'B spec amended, envelope has presence now', 'who owns the ssh bootstrap doc?', 'pushed fixtures, four files'];
-  let phN = 0;
-  addEventListener('keydown', e => {
-    if ((e.key !== 'p' && e.key !== 'P') || spot) return;
-    const phs = space().participants; if (!phs.length) return;
-    const ph = phs[phN % phs.length], text = PHRASES[phN % PHRASES.length]; phN++;
-    ph.pulseT = performance.now();                                        // row pulses once
-    space().stream.push({ from: ph.name, fromKey: ph.key, role: ph.role, foreign: true, text, time: new Date().toTimeString().slice(0, 5), unread: true });
-    drawStream();
-  });
-
-  // ---------- live log replay ----------
-  // Each seat replays one fixture line by line: bursts of 1-6 lines at 30-120 ms, pauses of 0.4-2 s between bursts,
-  // a 3-6 s pause at the end of the fixture, then it loops. State follows the replay: active while lines flow,
-  // idle at the loop pause, waiting when a burst ends on a line containing 'Allow' or ending in '?', until key 2.
-  const L = window.LOGS || {};
-  const SHELL = [['cargo build --release', 'cargo-build'], ['git log -3', 'git-log'], ['icq --human status', 'icq-status'], ['ls -R .kb', 'ls-kb']];
-  function fixtureFor(seat, i) {
-    if (seat.harness === 'claude') return (L['claude-session'] || '').split('\n');
-    if (seat.harness === 'codex') return (L['codex-session'] || '').split('\n');
-    const out = []; // shell seats: prompt + each shell fixture, rotated by seat index so panes differ
-    for (let k = 0; k < SHELL.length; k++) { const [cmd, name] = SHELL[(k + i) % SHELL.length]; out.push('$ ' + cmd, ...(L[name] || '').split('\n'), ''); }
-    return out;
-  }
-  const MAXLINES = 400;
-  function paintTerm(seat) {
-    const term = main.querySelector('.pane[data-key="' + seat.key + '"] .term'); if (!term || !seat.replay) return;
-    const rp = seat.replay;
-    term.innerHTML = '';
-    const lines = el('div', { class: 'lines' }, rp.buf.join('\n'));
-    lines.append(el('span', { class: 'cur', style: 'margin-left:2px' }));
-    term.append(lines);
-  }
-  function emit(seat, line) {
-    const rp = seat.replay; rp.buf.push(line); if (rp.buf.length > MAXLINES) rp.buf.shift();
-    paintTerm(seat);
-  }
-  function schedule(seat, ms) { clearTimeout(seat.replay.timer); seat.replay.timer = setTimeout(() => step(seat), ms); }
-  function step(seat) {
-    const rp = seat.replay, rnd = rp.rnd;
-    if (rp.waiting) return;
-    if (rp.idx >= rp.lines.length) {                     // end of fixture: idle at the loop pause, then restart
-      setState(seat, 'idle');
-      rp.idx = 0; rp.burst = 0; rp.buf.push(''); 
-      return schedule(seat, 3000 + rnd() * 3000);
-    }
-    if (rp.burst === 0) rp.burst = 1 + Math.floor(rnd() * 6);
-    setState(seat, 'active');
-    const line = rp.lines[rp.idx++]; emit(seat, line); rp.burst--;
-    if (rp.burst === 0) {                                 // burst ended
-      if (/Allow|\?\s*$/.test(line)) { seat.waitKind = /Allow/.test(line) ? 'permission' : /auth|login|token|password/i.test(line) ? 'auth' : 'question'; rp.waiting = true; setState(seat, 'waiting'); return; }
-      return schedule(seat, 400 + rnd() * 1600);
-    }
-    schedule(seat, 30 + rnd() * 90);
-  }
-  function startReplay(seat, i) {
-    if (seat.settings || seat.graph) return;
-    const lines = fixtureFor(seat, i);
-    const start = Math.floor(C.rng('start' + seat.key)() * lines.length);
-    seat.replay = { lines, idx: start, buf: lines.slice(Math.max(0, start - 12), start), burst: 0, waiting: false, rnd: C.rng('replay' + seat.key), timer: null };
-    if (seat.state === 'waiting' || seat.state === 'errored') seat.replay.waiting = true;   // held until the operator presses 2
-    else schedule(seat, 300 + i * 170);
-  }
   render(); resize(); requestAnimationFrame(frame);
   seats.slice().forEach((seat, i) => startReplay(seat, i));
 })();

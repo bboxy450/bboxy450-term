@@ -135,8 +135,10 @@ Colour (dark and light sets, state and role colours, seat colour hash), density 
 Keys 1-4 (state of the focused seat), M (message arrives), P (shadow speaks), the log replay with its state following, `?scene=15`, `?gutter=`. No legend in the window; the list lives on the lab index.
 
 ## 9. Gaps
-- Remote owned seats versus shadows: owned seats over ssh look like local seats; not shown in the lab.
-- The toolbar icon exists as a lab page only.
+- Closed: owned remote seats carry the where-mark (server glyph for ssh, cloud glyph for cloud) before the harness tile on rows and strips; shadows stay a separate, deferred module.
+- Closed: the toolbar icon is the sidebar toggle in the real title bar (`titleBar()`), and settings opens as a tab from the launcher.
+- Closed: a seat past its grace is retained; ⌘T Resume ▸ reopens it as a new process generation through the harness resume command, or a new shell for zsh, with a "resumed" hairline in the pane.
+- Open: the lab cannot warp the OS pointer; native only.
 
 ## 10. From the specs (drawn, not built)
 
@@ -157,7 +159,7 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 11 | purge | GUI only | BUILT: the one confirm modal from row menu Purge…; typed seat name; "terminates now and moves its history to cold storage · nothing is lost" |
 | 12 | sockets | seats are sockets | row menu "copy socket path" (pass 9); listener count BUILT: plug glyph + count at the row's right when > 0, counts only |
 | 13 | first run | identity (I2) | BUILT: select and pin an existing GPG primary (full fingerprint), sign via gpg-agent with pinentry in its own window; no key points at gpg; primary elsewhere makes a signed enrollment request that waits; never creates a root or shows words |
-| 14 | settings | config.toml | settings tab read-mostly |
+| 14 | settings | config.toml | BUILT: settings tab read-mostly; values differing from config.toml carry the dot and a reset |
 | 15 | role and permissions | per seat | BUILT: row menu (right-click, ⌘-click, long-press, ⇧F10): focus, splits, role ▸, permissions ▸, interrupt for steer callers, mute, copy socket path, close |
 | 16 | shadows | global messaging | module kept, deferred |
 | 17 | nested subagent rows | 7501 / hooks | BUILT: running only, under the seat before its tasks, glyph in the seat colour with the source grade; past 8 collapses to +N running |

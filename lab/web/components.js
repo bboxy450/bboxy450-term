@@ -846,6 +846,7 @@
       errored: 'error[E0599]: no method named `glow`\n  --> src/sidebar.rs:88:14\n<b>$</b> <span class="cur"></span>',
     };
     const t = el('div', { class: 'term', html: seat.term || lines[seat.state] });
+    if (seat.resumed) t.prepend(el('div', { class: 'gap-mark resumed', title: seat.resumed.cmd || 'new session; the old output is replayed above, read-only' }, el('i'), el('span', {}, 'resumed · process generation ' + seat.resumed.gen + ' · ' + (seat.resumed.cmd || 'new shell, old output above')), el('i')));
     if (seat.gap) t.prepend(gapMarker(seat.gap));
     return t;
   }
@@ -928,7 +929,13 @@
     const goRow = { id: 'goto', label: 'Go to', aliases: ['goto', 'go', 'jump'], sub: 'a seat or a swarm', harness: 'sidebarfoxopen', kind: 'Navigate', tile: '#6B7190', section: 'Navigate', children: () => [...goSeats(), ...goSwarms()] };
     const settingsRow = { id: 'settings', label: 'Settings', aliases: ['prefs', 'preferences', 'config'], sub: 'account · cloud · machines · roles · harnesses · appearance', harness: 'gear', kind: 'Open', tile: '#6B7190', section: 'Navigate', settingsOpen: true, enterPicks: true, children: () => ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Shortcuts'].map(sct => ({ id: 'settings:' + sct.toLowerCase(), label: sct, harness: 'gear', kind: 'Section', tile: '#6B7190', settingsOpen: true, section: sct })) };
     const graphRow = { id: 'graph', label: 'Graph', aliases: ['who', 'status', 'board'], sub: 'who is on what · epics → work', harness: 'sidebarfoxopen', kind: 'Open', tile: '#6B7190', section: 'Navigate', graphOpen: true, enterPicks: true };
-    return [...launchRows, ...remoteRows, goRow, graphRow, settingsRow];
+    // Resume (mux-daemon closed_retained): seats past their grace keep history and a harness-session mapping; resuming starts a
+    // new process generation through the adapter's resume policy and counts toward the spawn cap. zsh has no resume: a new shell.
+    const RESUME = { claude: id => 'claude --resume ' + id, codex: id => 'codex resume ' + id };
+    const retained = ctx.retained || [];
+    const resumeRow = retained.length ? [{ id: 'resume', label: 'Resume', aliases: ['reopen', 'recent', 'closed'], sub: retained.length + ' closed seat' + (retained.length === 1 ? '' : 's') + ' with history', harness: 'archive', kind: 'Resume', tile: '#6B7190', section: 'Resume',
+      children: () => retained.map(r => ({ id: 'resume:' + r.seat.key, label: r.seat.name, sub: 'closed ' + r.closedAt + ' · ' + (RESUME[r.seat.harness] ? RESUME[r.seat.harness](r.session) : 'no resume: a new shell, history replayed above it'), harness: r.seat.harness, tile: tileOf(r.seat.harness), kind: 'Seat', resume: { ...r, cmd: RESUME[r.seat.harness] ? RESUME[r.seat.harness](r.session) : null }, enterPicks: true })) }] : [];
+    return [...launchRows, ...remoteRows, ...resumeRow, goRow, graphRow, settingsRow];
   }
   function picker(opts) {
     opts = opts || {};

@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 45,
+  "version": 47,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -876,7 +876,8 @@
       }
     },
     "implementation": "launcherItems() and picker() in components.js, shared by the showcase and launcher.html; picker opts.path deep-links any nesting level; launcher styles live in lab.css",
-    "matching_display": "plain text in every row; no underline or highlight on matched text; the only emphasis is the selection band (operator, Raycast reference runs/ref-raycast-no-match-underline.png)"
+    "matching_display": "plain text in every row; no underline or highlight on matched text; the only emphasis is the selection band (operator, Raycast reference runs/ref-raycast-no-match-underline.png)",
+    "resume": "Resume ▸ lists closed_retained seats (past grace): name, closed time, the resume command (claude --resume <id>, codex resume <id>) or \"no resume: a new shell, history replayed above it\"; resuming starts a new process generation, counts toward the spawn cap, lands in a tab of its own with a \"resumed · process generation N · <cmd>\" hairline in the pane and an operator stream line; launcherItems ctx.retained; launcher.html?state=resume-recently-closed; pane.html?state=resumed"
   },
   "interactions": {
     "focus": "click a row or a pane; Tab / Shift+Tab across panes; arrow keys move to the nearest pane in that direction (⌘⌥ arrows while typing, plain arrows otherwise); pane dwell 150 ms; a seat in another tab or swarm switches the stage; open/shut of swarms is separate",
@@ -896,10 +897,9 @@
     "purge": "GUI-only modal, typed seat name"
   },
   "gaps": [
-    "settings page and toolbar icon exist as lab pages, not wired into the showcase",
     "the lab cannot warp the OS pointer; native only",
-    "17 spec implications are drawn in this file with status \"drawn, not built\"; each is one lab pass",
-    "machine and region lists are demo values; the real app reads ~/.ssh/config and the cloud account"
+    "machine and region lists are demo values; the real app reads ~/.ssh/config and the cloud account",
+    "shadows_group is deferred with global messaging"
   ],
   "milestones": {
     "ux-prototype-v1": "b7538ed · first operator review",

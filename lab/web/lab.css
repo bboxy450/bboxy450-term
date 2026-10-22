@@ -1181,3 +1181,5 @@ html.transparent.win-blur .stage .pane { -webkit-backdrop-filter: blur(var(--win
 .win-prev.blur .wp-pane { backdrop-filter: blur(4px); }
 .win-prev .wp-pane i { display: block; height: 2px; width: 70%; background: var(--fg-dim); border-radius: 1px; }
 .win-prev .wp-pane i:nth-child(2) { width: 45%; } .win-prev .wp-pane i:nth-child(3) { width: 58%; }
+.gap-mark.resumed { color: var(--accent); }
+.gap-mark.resumed i { background: color-mix(in srgb, var(--accent) 40%, transparent); }
