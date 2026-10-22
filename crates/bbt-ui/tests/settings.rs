@@ -140,3 +140,42 @@ fn records_roundtrip_with_ordered_custom_harnesses_and_roles() {
     assert_eq!(round.values.roles[0].0, "z custom");
     assert!(labels(&layout(&round)).contains("private command supplied by the host"));
 }
+
+#[test]
+fn role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view() {
+    fn find<'a>(n: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
+        if matches!(&n.kind,c::LayoutKind::Named(k)if k==key) {
+            Some(n)
+        } else {
+            n.children.iter().find_map(|n| find(n, key))
+        }
+    }
+    let mut view = Settings {
+        section: "Roles".into(),
+        values: Records {
+            roles: vec![(
+                "test".into(),
+                Role {
+                    prompt: "short".into(),
+                    color: "#abcdef".into(),
+                    ..Default::default()
+                },
+            )],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let short = layout(&view);
+    assert_eq!(find(&short, "card0/f0/control").unwrap().rect.h, 88.);
+    view.values.roles[0].1.prompt = "line of supplied prompt
+"
+    .repeat(80);
+    let long = layout(&view);
+    let control = find(&long, "card0/f0/control").unwrap();
+    assert_eq!(control.rect.h, 240.);
+    fn scroll(n: &c::Layout) -> bool {
+        matches!(&n.kind,c::LayoutKind::ScrollView{content,..}if content[1]>n.rect.h)
+            || n.children.iter().any(scroll)
+    }
+    assert!(scroll(control));
+}

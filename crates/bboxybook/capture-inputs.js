@@ -189,14 +189,15 @@
       if(!call)throw Error('Settings constructor missing');
       const node=call.node,options=call.args[0]||{},diagnostics=[];
       const add=(key,n,text=false)=>{if(!n)throw Error('Missing Settings part '+key);diagnostics.push(text?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});};
+      const addControl=(key,n)=>{add(key,n);const caret=n?.querySelector('.caret');if(caret)add(key+'/caret',caret);};
       add('settings',node);add('side',node.querySelector('.s-side'));add('main',node.querySelector('.s-main'));
       add('search',node.querySelector('.s-q'));add('source',node.querySelector('.s-src'));diagnostics.push({...rawTextDiag(node.querySelector('.s-src').firstChild),key:'source/text'});
       [...node.querySelectorAll('.s-navi')].forEach((n,i)=>{add('nav'+i,n);add('nav'+i+'/icon',n.firstChild);add('nav'+i+'/text',n.lastChild,true)});
       [...node.querySelectorAll('.s-main .s-card')].forEach((n,i)=>{
         const k='card'+i;add(k,n);
         const head=n.querySelector(':scope>.s-card-h');if(head){add(k+'/head',head);add(k+'/title',head.querySelector('.t'),true)}
-        [...n.querySelectorAll('.s-row')].forEach((r,j)=>{const q=k+'/r'+j;add(q,r);add(q+'/label',r.querySelector('.lbl'));const hint=r.querySelector('.lbl small');if(hint)add(q+'/hint',hint,true);add(q+'/ctl',r.querySelector('.ctl'));});
-        [...n.querySelectorAll('.fl')].forEach((r,j)=>{const q=k+'/f'+j;add(q,r);add(q+'/label',r.firstChild);const ctrl=r.children[1];if(ctrl)add(q+'/control',ctrl)});
+        [...n.querySelectorAll('.s-row')].forEach((r,j)=>{const q=k+'/r'+j;add(q,r);add(q+'/label',r.querySelector('.lbl'));const hint=r.querySelector('.lbl small');if(hint)add(q+'/hint',hint,true);addControl(q+'/ctl',r.querySelector('.ctl'));});
+        [...n.querySelectorAll('.fl')].forEach((r,j)=>{const q=k+'/f'+j;add(q,r);add(q+'/label',r.firstChild);const ctrl=r.children[1];if(ctrl)addControl(q+'/control',ctrl)});
         const band=n.querySelector(':scope>.band');if(band){add(k+'/band',band);add(k+'/name',band.querySelector('.rn'),true)}
         const hh=n.querySelector(':scope>.hh');if(hh){add(k+'/head',hh);if(hh.querySelector('.tile'))add(k+'/tile',hh.querySelector('.tile'));add(k+'/hname',hh.querySelector('.ht b')||hh.querySelector('.ht input'));if(hh.querySelector('.ht code'))add(k+'/command',hh.querySelector('.ht code'),true)}
       });

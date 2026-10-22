@@ -490,12 +490,15 @@ impl Build<'_> {
     fn select(&self, k: &str, opts: &[String], v: &str, small: bool, full: bool) -> c::Element {
         let size = if small { 11. } else { 12.5 };
         let f = font(size, 400, false, ui::Color::Foreground);
+        let pad_left = if small { 8. } else { 9. };
+        let pad_right = if small { 22. } else { STYLE.spacing.s10 as f32 };
         let w = opts
             .iter()
             .map(|s| measured(self.m, s, f))
             .fold(0., f32::max)
             .ceil()
-            + (if small { 30. } else { 33. });
+            + pad_left
+            + pad_right;
         let mut style = border(
             surface(
                 mixed(
@@ -508,7 +511,7 @@ impl Build<'_> {
                 6.,
                 [
                     if small { 3. } else { 5. },
-                    if small { 22. } else { 24. },
+                    pad_right,
                     if small { 3. } else { 5. },
                     if small { 8. } else { 9. },
                 ],
@@ -520,29 +523,18 @@ impl Build<'_> {
         if !full {
             style.overrides.width = Some(ui::Length::Px(if small { w.min(128.) } else { w }));
         }
-        // The CSS dropdown indicator is two 4px triangles; retained strokes keep it in the control.
+        // The lab's explicit 12px chevdown tile; no browser-native indicator.
+        let control_width = if full {
+            self.width
+        } else {
+            w.min(if small { 128. } else { w })
+        };
+        let line_height = (size * 1.35 * 64.).floor() / 64.;
+        let control_height = line_height + if small { 6. } else { 10. };
         let arrow = c::Placed {
-            content: c::Element::Path(c::Path {
-                size: [8., 4.],
-                points: vec![
-                    c::PathCommand::Move([0., 0.]),
-                    c::PathCommand::Line([4., 4.]),
-                    c::PathCommand::Line([8., 0.]),
-                ]
-                .into(),
-                stroke: c::PathStroke {
-                    width: 1.5,
-                    ..Default::default()
-                },
-                paint: ui::Paint::solid(ui::Color::Muted),
-                opacity: 1.,
-            }),
-            left: if full {
-                self.width - 17.
-            } else {
-                w.min(if small { 128. } else { w }) - 17.
-            },
-            bottom: 6.,
+            content: icon(&format!("{k}/caret"), "chevdown", 12., ui::Color::Muted),
+            left: control_width - STYLE.spacing.s4 as f32 - 12.,
+            bottom: (control_height - 12.) * 0.5,
         };
         let mut b = c::Box::new(style, vec![fill(txt(&format!("{k}/text"), v, f))]);
         b.gap = ui::Length::Px(0.);
@@ -800,6 +792,19 @@ impl Build<'_> {
             outside: false,
         });
         s.overrides.border_sides = Some([false, false, true, false]);
+        let prompt_text = wrap(
+            "",
+            &v.prompt,
+            ui::Text {
+                line_height: 1.45,
+                ..font(11., 400, true, ui::Color::Foreground)
+            },
+        );
+        let text_height = prompt_text
+            .natural((self.width - 18.).max(0.), self.ctx, self.m)
+            .expect("prompt geometry")
+            .0[1];
+        let prompt_height = (text_height + 10.).clamp(88., 240.);
         let prompt = col(
             "",
             border(
@@ -813,21 +818,19 @@ impl Build<'_> {
                     1.,
                     6.,
                     [5., 9., 5., 9.],
-                    Some(88.),
+                    Some(prompt_height),
                 ),
                 hair(self.ctx),
                 true,
             ),
             0.,
             vec![
-                wrap(
-                    "",
-                    &v.prompt,
-                    ui::Text {
-                        line_height: 1.45,
-                        ..font(11., 400, true, ui::Color::Foreground)
-                    },
-                )
+                c::Element::ScrollView(c::ScrollView {
+                    viewport: [(self.width - 18.).max(0.), prompt_height - 10.],
+                    offset: [0.; 2],
+                    content_width: None,
+                    content: Box::new(prompt_text),
+                })
                 .into(),
             ],
         );

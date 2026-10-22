@@ -1,0 +1,29 @@
+ROLE: EXECUTOR — Nyx Copperwing. Queued 7.9 explicit-control follow-up.
+Assigned in DM e7a4b9e4; source Wren 412c1e3, captured at descendant 93696e9.
+Native Settings now composes the same 12px chevdown asset, right spacing.s4 and
+vertically centred in its line/padding box. Removed the manual 8x4 chevron path.
+Padding-right names spacing.s10. No textarea resize grip is drawn, as decided.
+The same source correction made textareas grow with content, so role prompts
+use native measured line height, min 88px/max 240px, and a bounded ScrollView.
+No input/editing behaviour or component-library API was added.
+
+Capture adds independent caret rectangles. Native snapshots locate the retained
+chevdown within its control; browser rectangles are diagnostics, never inputs.
+72 current cases, capture 72/72 zero errors, native jobs all exit 0, compare 0.
+Before: 10 geometry reviews plus 14 pixel reviews. After: 0 geometry reviews,
+48 within policy and 24 pixel-only reviews (unchanged total review count).
+Worst rect 0.020409px, baseline 0.0078125px; unchanged 2% text policy.
+Gallery target/bboxybook/settings/explicit-controls-fixed/index.html.
+Read roles-comfortable-light web/native: caret shape/placement and growing
+Architect prompt match; inherited text-mask and panel-edge residue remains.
+
+cargo test -p bbt-ui --test settings role_prompt_grows --locked — exit 0, one
+passed, proves short min height and long bounded scrolling.
+Scoped all-target clippy with the existing two advisory allowances — exit 0;
+explicit-controls-fixed/clippy.log. node --check capture-inputs.js and
+ git diff --check — exit 0. One intermediate width hypothesis added a text
+line; the independent geometry check rejected it and the existing proven
+control-width contract was retained before this commit.
+Full clean committed-stack CI is pending, not claimed passed. No lab, design,
+renderer, app, dependency, policy or golden changes. Nothing pushed.
+Worst pixels: 2.47306350%.

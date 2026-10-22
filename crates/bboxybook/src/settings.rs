@@ -189,6 +189,13 @@ pub fn render_case(
     }
     Ok(out)
 }
+fn caret(layout: &c::Layout) -> Option<&c::Layout> {
+    if matches!(&layout.kind,c::LayoutKind::Icon{name,..}if name=="chevdown") {
+        Some(layout)
+    } else {
+        layout.children.iter().find_map(caret)
+    }
+}
 pub fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
     let mut all = vec![];
     for case in cases
@@ -212,7 +219,12 @@ pub fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
                 .ok_or("Settings diagnostics missing")?
             {
                 let key = p["key"].as_str().ok_or("Settings part key missing")?;
-                let native = names.get(key).map(|n| {
+                let node = names.get(key).copied().or_else(|| {
+                    key.strip_suffix("/caret")
+                        .and_then(|parent| names.get(parent))
+                        .and_then(|parent| caret(parent))
+                });
+                let native = node.map(|n| {
                     json!([
                         n.rect.x - offset[0],
                         n.rect.y - offset[1],
