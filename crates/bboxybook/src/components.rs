@@ -349,7 +349,7 @@ pub fn render(out: &Path) -> Result<()> {
     crate::materials::render_gallery(out, &cases())?;
     Ok(())
 }
-pub fn write_snapshots(out: &Path, cases: &[Case]) -> Result<()> {
+pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
     let mut records = vec![];
     for case in cases.iter().filter(|c| {
         c.fixture
@@ -367,18 +367,7 @@ pub fn write_snapshots(out: &Path, cases: &[Case]) -> Result<()> {
         )?;
         records.push(json!({"key":case.relative(),"max_geometry_error":worst,"tree":tree}));
     }
-    if records.is_empty() {
-        return Ok(());
-    }
-    fs::write(
-        out.join("layouts.json"),
-        serde_json::to_vec_pretty(&records)?,
-    )?;
-    println!(
-        "native/web layout snapshots: {}",
-        out.join("layouts.json").display()
-    );
-    Ok(())
+    Ok(records)
 }
 
 fn label(value: impl Into<String>, step: ui::TypeStep) -> c::Element {

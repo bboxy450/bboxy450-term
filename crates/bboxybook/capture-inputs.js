@@ -60,14 +60,17 @@
     const color=(value,node)=>{const probe=document.createElement('span');probe.style.color=value;node.append(probe);const c=getComputedStyle(probe).color;probe.remove();const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');ctx.fillStyle=c;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].map(c=>c/255);};
     const bounds=node=>{const r=node.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,w:r.width,h:r.height};};
     const radii=css=>[css.borderTopLeftRadius,css.borderTopRightRadius,css.borderBottomRightRadius,css.borderBottomLeftRadius].map(parseFloat);
+    const fontDiagnostics=node=>{
+      const css=getComputedStyle(node),cv=document.createElement('canvas'),ctx=cv.getContext('2d');ctx.font=css.font;
+      const tm=ctx.measureText(node.innerText),marker=document.createElement('span');marker.style.cssText='display:inline-block;width:0;height:0;padding:0;margin:0;border:0;line-height:0';node.prepend(marker);
+      const result={font:css.font,ascent:tm.fontBoundingBoxAscent,descent:tm.fontBoundingBoxDescent,baseline:marker.getBoundingClientRect().y-node.getBoundingClientRect().y};marker.remove();return result;
+    };
     const exportUi=node=>{
       const call=uiNodes.get(node);if(!call)throw Error('unrecorded UI component');
       const result={kind:call.kind,rect:bounds(node)};
       if(call.kind==='text'){
         result.value=call.args[0];result.options=call.args[1]||{};
-        const css=getComputedStyle(node),cv=document.createElement('canvas'),ctx=cv.getContext('2d');ctx.font=css.font;
-        const tm=ctx.measureText(node.innerText),marker=document.createElement('span');marker.style.cssText='display:inline-block;width:0;height:0;padding:0;margin:0;border:0;line-height:0';node.prepend(marker);
-        result.font_diagnostics={font:css.font,ascent:tm.fontBoundingBoxAscent,descent:tm.fontBoundingBoxDescent,baseline:marker.getBoundingClientRect().y-node.getBoundingClientRect().y};marker.remove();
+        result.font_diagnostics=fontDiagnostics(node);
       }
       else if(call.kind==='box'){result.style=call.style;result.children=call.children.map(exportUi);}
       else if(call.kind==='stack'){result.options=call.args[0]||{};result.children=call.args.slice(1).map(exportUi);}
@@ -89,7 +92,7 @@
     const boxes=styles.filter(c=>c.node.isConnected&&root.contains(c.node)).map(({style,node})=>{
       const css=getComputedStyle(node),text=node.querySelector('.ui-text'),tc=getComputedStyle(text);
       return {style,glow:glowFor(node),rect:bounds(node),computed:{fill:color(css.backgroundColor,node),radii:radii(css),padding:[css.paddingTop,css.paddingRight,css.paddingBottom,css.paddingLeft].map(parseFloat),border_width:parseFloat(css.borderTopWidth)},
-        text:{value:text.innerText,rect:bounds(text),size:parseFloat(tc.fontSize),color:color(tc.color,text),weight:Number(tc.fontWeight)}};
+        text:{value:text.innerText,rect:bounds(text),font_diagnostics:fontDiagnostics(text),size:parseFloat(tc.fontSize),color:color(tc.color,text),weight:Number(tc.fontWeight)}};
     });
     return JSON.parse(JSON.stringify({ version: 1, layer:window.bboxyAtomFixture?'atoms':window.bboxyComponentFixture?'components':undefined, component, atoms, calls: serialized, materials:squares, styles:boxes }, (key, value) => {
       if (typeof value === 'function') return { $callback: true };

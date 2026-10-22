@@ -1,0 +1,16 @@
+$ target/debug/bboxybook styles --out target/bboxybook/style-geometry
+web: 88/88 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 88 PNGs to target/bboxybook/style-geometry/native
+parity: 88 cases, 88 review; target/bboxybook/style-geometry/index.html
+exit_status=0
+
+Initial matrix was launched before cargo build completed and used the prior binary (no layouts.json). Excluded from geometry evidence. Build completed exit0; reuse its 88 valid fresh web captures with the current renderer:
+$ target/debug/bboxybook render --manifest target/bboxybook/style-geometry/cases.json --out target/bboxybook/style-geometry/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/style-geometry/native/layouts.json
+rendered 88 PNGs to target/bboxybook/style-geometry/native
+exit_status=0
+$ target/debug/bboxybook compare --manifest target/bboxybook/style-geometry/cases.json --out target/bboxybook/style-geometry --web-root web --native-root native
+parity: 88 cases, 16 review; target/bboxybook/style-geometry/index.html
+exit_status=0

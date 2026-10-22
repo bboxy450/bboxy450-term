@@ -283,6 +283,7 @@ clips as rectangles; rounded clips are retained for ordinary draw lists.
 
 L6 rendering writes `layouts.json` beside its native PNGs before comparison,
 including first-line Text baselines in the same coordinate system as the rects.
-The report copies that file for inspection. Legacy Style/module and glyph cases
-without those snapshots remain explicitly unproven under the text policy. CSS
+The report copies that file for inspection. The L3 Style fixture likewise records box/text rects and baselines from the same
+paint-frame helpers and CoreText metrics. Legacy module and glyph cases without
+those snapshots remain explicitly unproven under the text policy. CSS
 diagnostic labels shared in an L2 backdrop do not make a material-only case text.

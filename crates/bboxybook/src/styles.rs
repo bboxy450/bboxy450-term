@@ -87,28 +87,8 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &Case) -> Result<Vec<u8>
     ))?;
     let x = bg["crop"]["x"].as_f64().ok_or("crop x")? as f32;
     let y = bg["crop"]["y"].as_f64().ok_or("crop y")? as f32;
-    let r = &item["rect"];
-    let n = |key| {
-        r[key]
-            .as_f64()
-            .map(|n| n as f32)
-            .ok_or("invalid Style fixture rect")
-    };
     let resolved = style(case)?.resolve(context(case))?;
-    let inset = resolved
-        .border
-        .as_ref()
-        .filter(|b| !b.outside)
-        .map_or(0., |b| b.width);
-    let height = resolved.height.unwrap_or(
-        resolved.text.size * resolved.text.line_height
-            + resolved.padding[0]
-            + resolved.padding[2]
-            + inset * 2.,
-    );
-    // Only the external fixture width/origin is shared. Height and padding are
-    // resolved by the Style; the L6 layout engine is not involved yet.
-    let rect = Rect::new(n("x")? + x, n("y")? + y, n("w")?, height);
+    let rect = box_frame(case, &resolved)?;
     let image = paint_box(
         renderer,
         &pixels,
@@ -131,6 +111,90 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &Case) -> Result<Vec<u8>
         crop.extend_from_slice(&image[start..start + case.width as usize * 4]);
     }
     Ok(crop)
+}
+
+fn box_frame(case: &Case, resolved: &ResolvedStyle) -> Result<Rect> {
+    let f = case.fixture.as_ref().ok_or("missing Style fixture")?;
+    let item = &f["styles"][0];
+    let x = f["backdrop"]["crop"]["x"].as_f64().ok_or("crop x")? as f32;
+    let y = f["backdrop"]["crop"]["y"].as_f64().ok_or("crop y")? as f32;
+    let r = &item["rect"];
+    let n = |key| {
+        r[key]
+            .as_f64()
+            .map(|n| n as f32)
+            .ok_or("invalid Style fixture rect")
+    };
+
+    let inset = resolved
+        .border
+        .as_ref()
+        .filter(|b| !b.outside)
+        .map_or(0., |b| b.width);
+    let height = resolved.height.unwrap_or(
+        resolved.text.size * resolved.text.line_height
+            + resolved.padding[0]
+            + resolved.padding[2]
+            + inset * 2.,
+    );
+    // Only the external fixture width/origin is shared. Height and padding are
+    // resolved by the Style; the L6 layout engine is not involved yet.
+    Ok(Rect::new(n("x")? + x, n("y")? + y, n("w")?, height))
+}
+fn text_frame(rect: Rect, s: &ResolvedStyle) -> Rect {
+    let inset = s
+        .border
+        .as_ref()
+        .filter(|b| !b.outside)
+        .map_or(0., |b| b.width);
+    Rect::new(
+        rect.x + s.padding[3] + inset,
+        rect.y + (rect.h - s.text.size * 1.4) * 0.5,
+        (rect.w - s.padding[1] - s.padding[3] - inset * 2.).max(0.),
+        s.text.size * 1.4,
+    )
+}
+pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
+    use serde_json::json;
+    let mut out = vec![];
+    for case in cases.iter().filter(|c| c.component == "style") {
+        let f = case.fixture.as_ref().ok_or("missing Style fixture")?;
+        let item = &f["styles"][0];
+        let s = style(case)?.resolve(context(case))?;
+        let outer = box_frame(case, &s)?;
+        let line = text_frame(outer, &s);
+        let x = f["backdrop"]["crop"]["x"].as_f64().ok_or("crop x")? as f32;
+        let y = f["backdrop"]["crop"]["y"].as_f64().ok_or("crop y")? as f32;
+        let font = TextStyle {
+            scale: TypeScale::Custom(s.text.size),
+            weight: s.text.weight,
+            mono: s.text.mono,
+            tracking_em: s.text.tracking_em,
+            uppercase: s.text.uppercase,
+        };
+        let mask = bbt_render::chrome::text::rasterize(
+            item["text"]["value"].as_str().ok_or("missing Style text")?,
+            font,
+            Some(line.w),
+            1.,
+        )?;
+        let metrics = bbt_render::chrome::text::rasterize("Hg", font, None, 1.)?;
+        let height = s.text.size * s.text.line_height;
+        let text_y = line.y + (line.h - height) * 0.5;
+        let baseline = metrics.ascent.round()
+            + ((height - metrics.ascent.round() - metrics.descent.round()) * 0.5).floor();
+        let web = |r: &serde_json::Value| {
+            [
+                r["x"].as_f64(),
+                r["y"].as_f64(),
+                r["w"].as_f64(),
+                r["h"].as_f64(),
+            ]
+        };
+        let text = json!({"kind":"text","native":[line.x-x,text_y-y,mask.advance,height],"web":web(&item["text"]["rect"]),"baseline":{"native":text_y-y+baseline,"web":item["text"]["font_diagnostics"]["baseline"].as_f64().zip(item["text"]["rect"]["y"].as_f64()).map(|(b,y)|b+y)},"children":[]});
+        out.push(json!({"key":case.relative(),"tree":{"kind":"box","native":[outer.x-x,outer.y-y,outer.w,outer.h],"web":web(&item["rect"]),"children":[text]}}));
+    }
+    Ok(out)
 }
 
 fn border(list: &mut DrawList, rect: Rect, radii: [f32; 4], b: &ResolvedBorder, opacity: f32) {
@@ -239,19 +303,9 @@ fn paint_box(
     if let Some(b) = &s.focus_ring {
         border(&mut foreground, rect, s.radii, b, s.opacity);
     }
-    let inset = s
-        .border
-        .as_ref()
-        .filter(|b| !b.outside)
-        .map_or(0., |b| b.width);
     foreground.clip(rect, s.radii);
     foreground.text(
-        Rect::new(
-            rect.x + s.padding[3] + inset,
-            rect.y + (rect.h - s.text.size * 1.4) * 0.5,
-            (rect.w - s.padding[1] - s.padding[3] - inset * 2.).max(0.),
-            s.text.size * 1.4,
-        ),
+        text_frame(rect, s),
         label,
         TextStyle {
             scale: TypeScale::Custom(s.text.size),
@@ -308,4 +362,34 @@ pub fn preview(renderer: &mut ChromeRenderer, style: &Style, ctx: Context) -> Re
         7.,
         "Style",
     )
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod geometry_tests {
+    use super::*;
+    #[test]
+    fn snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds() -> Result<()> {
+        let mut case = cases()
+            .into_iter()
+            .find(|c| c.state == "card" && c.density == "cozy" && c.theme == "dark")
+            .unwrap();
+        case.fixture = Some(
+            serde_json::json!({"styles":[{"rect":{"x":3,"y":7,"w":300,"h":1000},"text":{"value":"Vesper","rect":{"x":999,"y":999,"w":1,"h":1},"font_diagnostics":{"baseline":99}}}],"backdrop":{"crop":{"x":13,"y":17}}}),
+        );
+        let data = snapshots(&[case.clone()])?;
+        let tree = &data[0]["tree"];
+        assert_eq!(tree["native"][0], 3.);
+        assert_eq!(tree["native"][1], 7.);
+        assert_eq!(tree["native"][2], 300.);
+        assert!(tree["native"][3].as_f64().unwrap() < 50.);
+        let text = &tree["children"][0];
+        assert_eq!(text["native"][0], 18.);
+        assert_eq!(text["native"][1], 20.);
+        assert!(text["native"][2].as_f64().unwrap() > 20.);
+        assert_eq!(text["baseline"]["web"], 1098.);
+        assert!(text["baseline"]["native"].as_f64().unwrap() < 100.);
+        case.fixture.as_mut().unwrap()["styles"][0]["rect"]["h"] = serde_json::json!(12);
+        assert_eq!(snapshots(&[case])?[0]["tree"]["native"], tree["native"]);
+        Ok(())
+    }
 }

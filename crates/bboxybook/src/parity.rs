@@ -33,7 +33,18 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     }
     fs::create_dir_all(out)?;
     fs::write(out.join("manifest.json"), serde_json::to_vec_pretty(cases)?)?;
-    crate::components::write_snapshots(out, cases)?;
+    let mut snapshots = crate::components::snapshots(cases)?;
+    snapshots.extend(crate::styles::snapshots(cases)?);
+    if !snapshots.is_empty() {
+        fs::write(
+            out.join("layouts.json"),
+            serde_json::to_vec_pretty(&snapshots)?,
+        )?;
+        println!(
+            "native/web layout snapshots: {}",
+            out.join("layouts.json").display()
+        );
+    }
     println!("rendered {} PNGs to {}", cases.len(), out.display());
     Ok(cases.len())
 }
@@ -261,7 +272,7 @@ pub fn compare_paths(
     } else if cases.iter().all(|c| c.component == "materials") {
         "L2 effect-only materials. CSS backdrop and diagnostic labels are common fixtures; native paints material surfaces. No native text is compared."
     } else if cases.iter().all(|c| c.component == "style") {
-        "L3 Style paints material, fill, border, shadow and text. Geometry snapshots are required by the text policy; absent measurements remain unproven."
+        "L3 Style paints material, fill, border, shadow and text. Native box/text rects and baselines in layouts.json use the same paint-frame helpers and CoreText advances as the render pass. CSS metrics remain independent diagnostics; no native child bounds are copied from them."
     } else {
         "Pinned base ux-prototype-v2; supplemental committed lab revision and capture policy in capture.json. Legacy text cases without geometry are unproven, regardless of their pixel score."
     };
@@ -280,7 +291,7 @@ pub fn compare_paths(
         rows.len(),
         review
     );
-    if component_layer {
+    if component_layer || cases.iter().all(|c| c.component == "style") {
         html.push_str("<p><a href=layouts.json>Rects and baselines</a></p>");
         if root.join("gallery/index.html").exists() {
             html.push_str("<p><a href=gallery/index.html>Native gallery</a></p>");

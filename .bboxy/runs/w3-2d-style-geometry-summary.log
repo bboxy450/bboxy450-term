@@ -1,0 +1,19 @@
+L3 Style geometry — Nyx Copperwing <EXECUTOR>
+
+Mechanism: styles.rs box_frame/text_frame are shared by painting and snapshots; widths and font metrics come from chrome::text::rasterize. Only external x/y/w are shared. Child CSS rects and first-line baselines are diagnostics, never native inputs.
+Capture adds independent CSS font diagnostics to every styles[].text. Native render collects L3 and L6 snapshots into layouts.json beside the PNGs before compare; report copies it and prints per-case policy/rect/baseline results.
+
+cargo test -p bbt-ui -p bboxybook -p bbt-render --locked — 42 passed, exit 0.
+New test corrupts the captured outer height and child rects; native geometry remains derived from Style + font metrics.
+fmt, Clippy (same two pre-existing exceptions), node syntax, diff check — exit 0.
+Actual output: .bboxy/runs/w3-2d-style-geometry-verified.log.
+
+Gallery: target/bboxybook/style-geometry/index.html; layouts.json and report.json.
+88/88 CSS captures, zero failures. The first native invocation raced the build and used the prior binary; excluded. After the build completed, the native side was re-rendered with the same 88 captures. Exact commands/output: w3-2d-style-geometry-gallery.log.
+88/88 geometry records complete; missing/unproven geometry 88 -> 0.
+72/88 within policy; 16 review geometry (strip and button-primary, each four densities x two themes).
+Maximum rect error 1.919189 px; maximum baseline error 0.006256 px. Remaining failures are text advances under the current 600->700 font selection.
+Web PNGs 88/88 and native PNGs 88/88 byte-identical to post-cardfix/style: this is new measurement, no paint or threshold change.
+
+D.5 WIP preserved at target/w3-2d5-deferred (12 exact files + tracked.patch). No widget changes in this commit. Oracle 4e479419-e5f2-4c17-aab7-48b3357afe9d approves numeric CoreText weights as the next separate L1 fix, then resume d.5.
+Not checked here: Linux text backend; legacy module/glyph geometry; interactive input. No FPS measured or operator browser opened.
