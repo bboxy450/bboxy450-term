@@ -4,6 +4,8 @@
 #   git worktree add --detach /tmp/ci-<name> <sha>; cd there; CARGO_TARGET_DIR=<own dir> sh scripts/ci-local.sh
 # Usage: sh scripts/ci-local.sh [--parity]   (parity is slow; run it when lab, design, ui or render changed)
 set -eu
+# Disk is tight: gates need no incremental cache and no debug info (about half the target size).
+export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}" CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}" CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
 sh scripts/layering.sh
 cargo build --workspace --locked
 cargo test --workspace --locked
