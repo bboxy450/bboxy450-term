@@ -285,3 +285,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### Splits have their own page, one implementation
 **Rule:** `splits.html` shows the split tree (two vertical, two horizontal, three nested, four quadrants), a gutter while resizing (accent with a grip), the four drop zones, the lit preset target and the drag ghost. `splitView()` builds the tree for both the page and the showcase, which passes its drag-to-resize as `onDivider`; the split, divider, drop, ghost and preview CSS moved from `showcase.html` into `lab.css`. **Where:** `splitView()` in `components.js`; `leafDom`, `resizeDivider` in `showcase.js`; design system v48 `modules.splits`.
+
+### Closing shows how long undo lasts
+**Rule:** a closed seat's strip carries a 2 px hairline that drains over the grace window (60 s by default), so the operator sees how long ⌘Z still restores the same live process. The bar resumes at its real point after any re-render. After grace the stream says the seat is retained and ⌘T Resume brings it back. **Where:** closed strip in `sidebar()` (`components.js`), `rec.closedAt` / `rec.graceMs` in `closeSeat` (`showcase.js`); new page `close.html` (in grace, two in grace, almost expired, after grace retained); design system v49.

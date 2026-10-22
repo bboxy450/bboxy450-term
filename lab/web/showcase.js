@@ -402,6 +402,7 @@
     const rec = { seat, sp, tab, tabIndex: sp.tabs.indexOf(tab), sibling: parent ? (parent.a === seat ? parent.b : parent.a) : null, side: parent ? (parent.a === seat ? 'a' : 'b') : null, dir: parent && parent.dir, ratio: parent && parent.ratio, at: performance.now() };
     tab.seats = tab.seats.filter(x => x !== seat); tab.tree = prune(tab.tree, seat.key);
     if (!tab.seats.length) sp.tabs.splice(rec.tabIndex, 1);
+    rec.closedAt = Date.now(); rec.graceMs = GRACE_MS;
     sp.closed = sp.closed || []; sp.closed.push(rec);
     rec.timer = setTimeout(() => { sp.closed = sp.closed.filter(r => r !== rec); seats.splice(seats.indexOf(seat), 1); clearTimeout(seat.replay && seat.replay.timer); if (focused === seat.key) focused = null; retain(sp, seat); render(); }, GRACE_MS);
     if (focused === seat.key) { const t2 = sp.tabs[0]; focused = t2 ? t2.seats[0].key : null; }

@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 48,
+  "version": 49,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -899,7 +899,8 @@
     "permissions": "row menu, Oracle/operator; which channels and DMs the seat may send to",
     "copy_socket_path": "row menu; seats are sockets",
     "interrupt": "stop action in the strip or row menu; Oracle/operator; interrupt signal",
-    "purge": "GUI-only modal, typed seat name"
+    "purge": "GUI-only modal, typed seat name",
+    "close_grace": "closed strip (red ×, struck name, undo ⌘Z) with a 2 px hairline draining over the grace window, timestamped so re-renders resume it; after grace the seat is retained (stream line, ⌘T Resume); close.html?state=in-grace|two-in-grace|almost-expired|after-grace-retained"
   },
   "gaps": [
     "the lab cannot warp the OS pointer; native only",

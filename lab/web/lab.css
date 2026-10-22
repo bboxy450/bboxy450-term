@@ -1209,3 +1209,6 @@ body.resizing, body.resizing * { cursor: inherit !important; user-select: none; 
 .split.v > .divider.active::before, .split.h > .divider.active::before { content: ""; position: absolute; z-index: 3; background: var(--accent); border-radius: 2px; }
 .split.v > .divider.active::before { left: 50%; top: 50%; width: 3px; height: 28px; transform: translate(-50%, -50%); }
 .split.h > .divider.active::before { left: 50%; top: 50%; width: 28px; height: 3px; transform: translate(-50%, -50%); }
+.tab-row.closed-strip { position: relative; overflow: hidden; }
+.tab-row.closed-strip .grace { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: color-mix(in srgb, var(--c-errored) 70%, transparent); transform-origin: left; animation-name: grace-drain; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes grace-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
