@@ -1,0 +1,15 @@
+F1 matched release --smoke --meter, baseline bd2fdc6 vs same baseline + F1.
+Three before/after pairs run serially after our gallery jobs ended; no trace/profiler. All native windows use the same fifteen-seat fixture,20 updates and10s idle.
+CPU p50 includes the21-frame smoke sample; p99 includes cold frame1. warm_encode excludes cold frame1. No120Hz or GPU timing claim here.
+{"pair": 0, "phase": "before", "command": ["target/f1/Before.app/Contents/MacOS/bboxy450-term-f1-before", "--smoke", "--meter"], "exit": 0, "seconds": 12.853, "summary": "idle probe PASS: idle 10.001s frames=0 callbacks=0 updates=20 CPU p50=4.183ms p99=5.947ms samples=21 warm_encode_p50=2.316ms warm_encode_p99=2.642ms", "stdout": "target/f1/cpu-before-0.stdout"}
+{"pair": 0, "phase": "after", "command": ["target/f1/After.app/Contents/MacOS/bboxy450-term-f1-after", "--smoke", "--meter"], "exit": 0, "seconds": 14.346, "summary": "idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=4.307ms p99=66.226ms samples=21 warm_encode_p50=2.440ms warm_encode_p99=6.273ms", "stdout": "target/f1/cpu-after-0.stdout"}
+{"pair": 1, "phase": "before", "command": ["target/f1/Before.app/Contents/MacOS/bboxy450-term-f1-before", "--smoke", "--meter"], "exit": 0, "seconds": 12.772, "summary": "idle probe PASS: idle 10.003s frames=0 callbacks=0 updates=20 CPU p50=4.159ms p99=10.057ms samples=21 warm_encode_p50=2.349ms warm_encode_p99=6.448ms", "stdout": "target/f1/cpu-before-1.stdout"}
+{"pair": 1, "phase": "after", "command": ["target/f1/After.app/Contents/MacOS/bboxy450-term-f1-after", "--smoke", "--meter"], "exit": 0, "seconds": 12.803, "summary": "idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=4.194ms p99=9.473ms samples=21 warm_encode_p50=2.396ms warm_encode_p99=4.915ms", "stdout": "target/f1/cpu-after-1.stdout"}
+{"pair": 2, "phase": "before", "command": ["target/f1/Before.app/Contents/MacOS/bboxy450-term-f1-before", "--smoke", "--meter"], "exit": 0, "seconds": 12.727, "summary": "idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=4.162ms p99=6.105ms samples=21 warm_encode_p50=2.290ms warm_encode_p99=3.372ms", "stdout": "target/f1/cpu-before-2.stdout"}
+{"pair": 2, "phase": "after", "command": ["target/f1/After.app/Contents/MacOS/bboxy450-term-f1-after", "--smoke", "--meter"], "exit": 0, "seconds": 12.723, "summary": "idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=4.202ms p99=9.276ms samples=21 warm_encode_p50=2.398ms warm_encode_p99=4.294ms", "stdout": "target/f1/cpu-after-2.stdout"}
+before CPU p50: all[4.183, 4.159, 4.162]; median4.162ms
+before warm encode p50: all[2.316, 2.349, 2.29]; median2.316ms
+before warm encode p99: all[2.642, 6.448, 3.372]; median3.372ms
+after CPU p50: all[4.307, 4.194, 4.202]; median4.202ms
+after warm encode p50: all[2.44, 2.396, 2.398]; median2.398ms
+after warm encode p99: all[6.273, 4.915, 4.294]; median4.915ms

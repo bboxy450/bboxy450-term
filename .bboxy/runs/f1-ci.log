@@ -1,0 +1,11 @@
+F1 local CI --parity: exit101, elapsed1640.198s on signed source bec57ee, after rebase onto a30a1b3.
+Worktree exec3; every product source file was committed and unchanged during CI. Only run logs changed. No shared worktree build.
+Layering, workspace build, all nonignored workspace tests and UI IO lint completed before parity. Existing warnings: paths.rs:210/:259 chunks_exact_to_as_chunks and headless.rs:366 map_entry; outside F1, unchanged.
+Parity web capture:1664/1664,0 failures. Native outputs1344; next case index1344 pane/normal-touch-dark (legacy compatibility painter, fixture reference=current).
+Failure: crates/bboxybook/src/panes.rs:320, expect("legacy Pane") receives style alpha must be between zero and one; this path precedes icon drawing.
+Single-case reproduction on frozen baseline bd2fdc6 before-bboxybook exit101, and frozen final F1 after-bboxybook exit101, same panic. This disproves attribution to F1. No Pane/UI/style edits made; await Oracle disposition.
+target/f1/ci-failure-case.json sha256 1e2e8891e844d78cf59e989ac12d8c196972b08cf031d155e1586c8dacb5c5c0
+
+Oracle disposition, authenticated DM0399a342-2d35-4c06-8cf5-877d3929015c: baseline Pane bug routed to Nyx; F1 acceptance explicitly waives that one --parity failure with isolated pre-F1 repro. Zero new reviews and workspace gates exit0 remain required. No waiver inferred by Executor.
+
+Post-rebase workspace CI: sh scripts/ci-local.sh EXIT0,218.136s, source checkpoint9dd7ebb atop origin/main ba677d3 (accepted W2.4). Layering, workspace build, workspace tests and UI IO lint pass. No upstream renderer/UI/lab changes since the --parity attempt, so the exact baseline Pane repro and explicit waiver remain the parity disposition; no identical failing full parity rerun.

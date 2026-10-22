@@ -1,0 +1,18 @@
+F1 signed provisional source checkpoint and rebase for the newly required local CI.
+{"command":"git add -- Cargo.lock crates/bboxy450-term/build.rs crates/bboxy450-term/src/assets.rs crates/bboxybook/build.rs crates/bboxybook/src/lib.rs crates/bboxybook/tests/atoms.rs crates/bbt-render/Cargo.toml crates/bbt-render/src/chrome/icons.rs crates/bbt-render/src/chrome/mod.rs .bboxy/runs/f1-commands.log .bboxy/runs/f1-phase.log .bboxy/runs/f1-gallery-partial.log","exit":0}
+{"command":"git diff --cached --stat","exit":0}
+{"command":"git diff --cached --check","exit":0}
+{"command":"git commit -S9B07E849480C68328CA20684844ECC0587DE7AB0 -m 'render: rasterize SVG icons at device size'","exit":0}
+{"command":"git rebase origin/main","exit":0}
+Source checkpoint ad1d322; rebased signed successor bec57ee. Origin a30a1b3. All measured-source hashes except Cargo.lock unchanged by rebase; only upstream lock changes, no F1 shader/layout/source changes.
+Final full replay binary remains frozen to bd2fdc6 + the identical F1 source. CI runs on the rebased tree; its parity reference records the rebased source commit.
+{"command":"git add -- .bboxy/runs/f1-commands.log .bboxy/runs/f1-gallery-partial.log .bboxy/runs/f1-phase.log .bboxy/runs/f1-ci.log .bboxy/runs/f1-cpu.log .bboxy/runs/f1-gallery.log .bboxy/runs/f1-git.log .bboxy/runs/f1-summary.log","exit":0}
+{"command":"git diff --cached --check","exit":0}
+{"command":"git commit --amend -S9B07E849480C68328CA20684844ECC0587DE7AB0 --no-edit","exit":0}
+{"command":"git fetch origin","exit":0}
+{"command":"git rebase origin/main","exit":0,"note":"7c9aa09 ->9dd7ebb atop ba677d3"}
+Final workspace integration: sh scripts/ci-local.sh exit0 in218.136s after rebase onto ba677d3 (W2.4). No renderer/UI/lab source changed upstream in that rebase; measured F1 source blobs unchanged, Cargo.lock only differs from the original measurement baseline.
+Evidence-only final amend, final fetch/rebase, git verify-commit and clean status are reported with actual results in the handoff DM (a commit cannot include its own hash).
+
+Final rebase evidence: signed successor9de5b8b onto origin/main295916c. Since workspaceCI baseba677d3, additional executable-source delta is lab/web/components.html,lab.css,ui.js only; all F1 product sources unchanged. sh scripts/lab-check.sh rerun exit0: self-test9 checks,35 pages*4 densities,0 findings.
+Authorized own-area cleanup (Oracle19b2b26e): removal script0; removed 5119963136 allocated bytes (4.768337GiB), observed volume free 15815376896 ->20817301504 bytes. Accepted F1 and R4b gallery PNG counts unchanged, all frozen F1 binaries retained. Prior accepted raw R2b/R4/R4b traces and release-with-debuginfo build profile are intentionally no longer retained; derived trace XML/JSON and committed logs remain. Detailed paths/accounting: f1-cleanup.log.

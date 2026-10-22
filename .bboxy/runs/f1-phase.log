@@ -1,0 +1,35 @@
+F1 SVG origin probe, Chrome/156.0.8078.48, isolated ephemeral headless profile.
+Reference SVG codex from committed lab/web/components.js; original SVG text is identical to reference5561530. One16pt SVG; requested device-origin phases recorded by CDP boundingClientRect.
+Measured rule at1x/2x: floor(CSS origin+0.5) BEFORE device scaling. Cache contains no fractional phase. Full-size target rasters then sample1:1 on the physical grid for the measured integer DPRs.
+Positive translations:1x phases0,.25,.5,.75,1,1.25,1.5,1.75 ->0,0,1,1,1,1,2,2px;2x ->0,0,0,0,2,2,2,2px. Every sprite is byte-identical to its phase0 reference after that translation.
+Negative translations:1x device phases-1.5,-1,-.75,-.5,-.25,0 ->-1,-1,-1,0,0,0px;2x ->-2,0,0,0,0,0px. Each is also an exact sprite match. Native GPU regression covers signed half ties.
+Competing native candidates are independent target-size resvg bitmaps: nearest-device snap, CSS snap, and shifted-SVG-viewBox baked coverage; bitmap quads avoid the production SVG placement rule.
+CSS snap has lower absolute RGB error than baked coverage at all6 fractional samples; at2x .5/.75 the CSS snap also beats nearest-device snap. Phase0 error remains because resvg/tiny-skia and Chrome/Skia raster coverage differ.
+Initial failed hypothesis: phase0 raster placed fractionally left56/56 reviews, mean0.648760%; baked fractional phase left56, mean0.466749%. Measured CSS snap gives48, mean0.353120% (baseline56,mean0.524382%). Threshold8,0.1% icon budget unchanged.
+The initial assertion that baked phase won every sample exited1; it was disproved and replaced by the sprite translation proof. A short build failed101 while removing a stale phase variable; corrected before final build/tests. Intermediate replay workers were explicitly terminated with SIGTERM (-15); wrappers exit1. Their partial outputs/statuses are experiments, never full acceptance.
+Image-read: 49-icon size grids at1x and2x plus phase triplets; web/native/diff and snapped/baked comparisons show retained silhouettes and edge coverage residue. No browser/user profile state used.
+Unmeasured: fractional DPR, CSS transforms, nonintegral SVG extents, other browser/platform rasterizers. No claim for those. No filter/tap/shape/tolerance/golden changes.
+
+Exact phase candidate results:
+{"baked": {"pixels_over8": 63, "rgb_absolute_error": 5511}, "css-snapped": {"pixels_over8": 63, "rgb_absolute_error": 5511}, "device-snapped": {"pixels_over8": 63, "rgb_absolute_error": 5511}, "device_phase": 0, "scale": 1}
+{"baked": {"pixels_over8": 95, "rgb_absolute_error": 17295}, "css-snapped": {"pixels_over8": 63, "rgb_absolute_error": 5511}, "device-snapped": {"pixels_over8": 63, "rgb_absolute_error": 5511}, "device_phase": 0.25, "scale": 1}
+{"baked": {"pixels_over8": 117, "rgb_absolute_error": 33108}, "css-snapped": {"pixels_over8": 63, "rgb_absolute_error": 5511}, "device-snapped": {"pixels_over8": 63, "rgb_absolute_error": 5511}, "device_phase": 0.5, "scale": 1}
+{"baked": {"pixels_over8": 98, "rgb_absolute_error": 17709}, "css-snapped": {"pixels_over8": 63, "rgb_absolute_error": 5511}, "device-snapped": {"pixels_over8": 63, "rgb_absolute_error": 5511}, "device_phase": 0.75, "scale": 1}
+{"baked": {"pixels_over8": 109, "rgb_absolute_error": 9255}, "css-snapped": {"pixels_over8": 109, "rgb_absolute_error": 9255}, "device-snapped": {"pixels_over8": 109, "rgb_absolute_error": 9255}, "device_phase": 0, "scale": 2}
+{"baked": {"pixels_over8": 200, "rgb_absolute_error": 34668}, "css-snapped": {"pixels_over8": 109, "rgb_absolute_error": 9255}, "device-snapped": {"pixels_over8": 109, "rgb_absolute_error": 9255}, "device_phase": 0.25, "scale": 2}
+{"baked": {"pixels_over8": 249, "rgb_absolute_error": 66141}, "css-snapped": {"pixels_over8": 109, "rgb_absolute_error": 9255}, "device-snapped": {"pixels_over8": 343, "rgb_absolute_error": 129543}, "device_phase": 0.5, "scale": 2}
+{"baked": {"pixels_over8": 287, "rgb_absolute_error": 97890}, "css-snapped": {"pixels_over8": 109, "rgb_absolute_error": 9255}, "device-snapped": {"pixels_over8": 343, "rgb_absolute_error": 129543}, "device_phase": 0.75, "scale": 2}
+
+Raw artifact digests:
+target/f1/icon-sizes/capture.json sha256 99f66e57a48a221ba7c2946f7210921712e46e22104f22c169829cb45f1dc3ef
+target/f1/icon-sizes/web-phase-translations-extended.json sha256 cecf9ef6f9851f2bceebe50ce40240cd2f120b8717d4e6d9f5e63f638a495b10
+target/f1/icon-sizes/negative-phase-results.json sha256 9b26388ffc3960246e80ff6b746ad7698b49f92dd0a3e68c1ea67fe560f13a0a
+target/f1/icon-sizes/phase-final-results.json sha256 ff510a5ef4db6ee7bad159d17d3c828080361ab4d77be86c3cbb7997d08fd07c
+target/f1/icon-sizes/phase-web-1x.png sha256 a29a93a3b1c3f8371c31cd4d4a8492f6a7df7b686f1c9b8a66f3068165fb470b
+target/f1/icon-sizes/phase-web-2x.png sha256 1cb608eb231b294e75b68750543f14e60b3ff591d13eca860d130c303d457c47
+target/f1/icon-sizes/web-1x.png sha256 476f4b60cbff2d0313c174f7240bed4400f63ae635c0a687bf2474e4c25bade3
+target/f1/icon-sizes/web-2x.png sha256 1479bd32f519dc6a6394a3922c3ee9e426f9e25641d202dbac502883e7a5746b
+target/f1/icon-sizes/native-1x.png sha256 1a6e871ca965c87f1b1e7f8ec8e7190d006df2175a0788908252d5a7f1e0a582
+target/f1/icon-sizes/native-2x.png sha256 aaee1b0c551ea315aaaf641f816df8a9b3bacfb2d39654ba84f7b7b2e4fe5344
+target/f1/icon-sizes/phase-final-triplet-1x.png sha256 1843adda8e4904ecef44c67f5ef6ea0bd58f86acb55b4e6983c5161ad81087d7
+target/f1/icon-sizes/phase-final-triplet-2x.png sha256 a6c5080284508f49a952f20dc95261980fc85795f1d9d0b2cf852d5b601506c3
