@@ -8,7 +8,7 @@ Commands:
 - cargo test -p bboxybook --test shadow --locked — exit 0; 2 passed on Metal. New check proves the shadow moves below an unchanged fill, with no dark pixels above.
 - cargo build -p bboxybook --locked — exit 0.
 - bboxybook render default 328-case manifest — exit 0; all 328 PNGs byte-identical to accepted 7.4b (materials32, Style112, components72, glyph56, harness-icon56).
-- scoped all-target Clippy with -D warnings and the existing map_entry/chunks_exact_to_as_chunks allowances — exit 0.
+- scoped all-target Clippy with -D warnings and the existing map_entry/chunks_exact_to_as_chunks allowances — initial exit 101 on needless_lifetimes in uncommitted Launcher test; corrected separately and rerun below.
 - scoped fmt and git diff --check — exit 0.
 
 Logs below. The Launcher module/capture WIP is deliberately excluded from this commit. No push/merge/rebase or operator browser action. No other backend/window/FPS check.
@@ -65,3 +65,8 @@ rendered 200/328
 rendered 300/328
 native/web layout snapshots: target/bboxybook/launchers/positioned-defaults/layouts.json
 rendered 328 PNGs to target/bboxybook/launchers/positioned-defaults
+
+Correction after 61d4d3f: the first full Clippy command exited 101 for needless_lifetimes in the uncommitted Launcher regression test, not a Style diagnostic. That test signature was corrected; the identical scoped all-target command then exited 0. Actual corrected output follows. No failed command is counted as a pass.
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.29s
