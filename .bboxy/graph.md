@@ -68,7 +68,7 @@ R1 bbt-rt runtime ✔ (Sable, 29d5e62) ──▶ R2 app shell + hitch meter ✔ 
 
 O1 bboxy450-rt docs+publish [DEFERRED, velocity first] ──▶ (after W3.2d.7.10) O2 split public/private ──▶ O3 ui-core ──▶ O4 render ──▶ O5 ui ──▶ O6 book
 
-TOP PRIORITY: visual foundation (renderer, library, parity). COCKPIT (operator 2026-10-22, epic C): Sable R4b → F1–F5 fidelity backlog → C1 live seats | Aster (exec4) T1 ✔ → T2a headless fidelity ∥ T3 fonts → R3 (after C1 spec) → R5 | Nyx 7.9 → 7.10 → W3.2c → L8 → L9 | Rook W2.4 local messaging → S1 bbt-supervisor split (arch #1) → W2.5 MCP inside logic + stdio bridge (arch #3) + tasks → W2.5b seat wiring (MCP, hooks, skill) → W2.6 provenance/events → D1 dummy ssh/cloud | Wren lab refs
+TOP PRIORITY: visual foundation (renderer, library, parity). COCKPIT (operator 2026-10-22, epic C): Sable F1 → C1a → C1c → F2–F5 | Aster (exec4) T1 ✔ → T2a ∥ T3 → C1b watched grids (supersedes R3) → R5 | Nyx 7.10 → W3.5 bbt-doc (#14) → W3.2c → L8 → L9 | Rook W2.4 local messaging → S1 bbt-supervisor split (arch #1) → W2.5 MCP inside logic + stdio bridge (arch #3) + tasks → W2.5b seat wiring (MCP, hooks, skill) → W2.6 provenance/events → D1 dummy ssh/cloud | Wren lab refs
 
 W4.1 Transport trait + loopback + quinn auth [DEFERRED: cockpit first]
    └──▶ phase 2 cloud: SshProvider bootstrap, remote supervisor
