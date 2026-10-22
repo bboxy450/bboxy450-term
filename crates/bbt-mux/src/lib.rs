@@ -17,6 +17,7 @@ pub mod index;
 pub mod logic;
 pub mod mcp;
 pub mod messaging;
+pub mod provider;
 pub mod registry;
 pub mod seat_socket;
 pub mod store;
