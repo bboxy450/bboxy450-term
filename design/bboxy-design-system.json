@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 26,
+  "version": 27,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -351,7 +351,7 @@
       "purpose": "external clients on the seat socket",
       "source": "seats are sockets",
       "anatomy": "a tiny plug glyph with a count at the row's right when > 0",
-      "status": "decided (broker telemetry, counts only, no identities), drawn, not built"
+      "status": "built: plug glyph and mono count in the row's right cluster when > 0, nothing at zero; tooltip \"N clients on this seat's socket · counts only\"; never identities; ICON_SVG.plug, seat.listeners, seat-row.html?state=listeners"
     },
     "logo": {
       "purpose": "the product mark, everywhere a logo appears",
