@@ -1,0 +1,2633 @@
+C1a command evidence — Sable Embertail <EXECUTOR>
+Base df53a5c74af29b490a69dcfd67a852834bbb86d7 (Vesper main-landed ping 65ba1da5).
+Preparation: read vision.md, graph.md, tasks/README.md, C1 spec and architecture; all read commands exited 0.
+Before implementation: git fetch origin exit 0; git rebase origin/main exit 0; clean exec3 branch.
+Rook coordination a5f43ee8 confirms separate GUI commands/types fit beside ControlCatalogue/ControlCall and seat Catalogue/Call; preserve MCP dispatch at integration.
+Integration blocker signed 076d38a separately accepted into this base; CI exit 0, 440 passed/4 ignored.
+
+$ cargo check -p bboxy450-term --offline
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+error[E0508]: cannot move out of type `[std::string::String]`, a non-copy slice
+   --> crates/bboxy450-term/src/main.rs:580:68
+    |
+580 |         args.windows(2).find(|pair|pair[0]=="--run-dir").map(|pair|pair[1].into()),
+    |                                                                    ^^^^^^^ ------ `pair[_]` moved due to this method call
+    |                                                                    |
+    |                                                                    cannot move out of here
+    |                                                                    move occurs because `pair[_]` has type `std::string::String`, which does not implement the `Copy` trait
+    |
+note: `std::convert::Into::into` takes ownership of the receiver `self`, which moves `pair[_]`
+   --> /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/convert/mod.rs:456:13
+    |
+456 |     fn into(self) -> T;
+    |             ^^^^
+help: consider cloning the value if the performance cost is acceptable
+    |
+580 |         args.windows(2).find(|pair|pair[0]=="--run-dir").map(|pair|pair[1].clone().into()),
+    |                                                                           ++++++++
+
+For more information about this error, try `rustc --explain E0508`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term") due to 1 previous error
+EXIT 101 elapsed_seconds=8.449
+
+$ cargo test -p bboxy450-term --test cockpit --locked -- --nocapture
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.73s
+     Running tests/cockpit.rs (target/debug/deps/cockpit-3d598393904f67b9)
+
+running 3 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.38s
+
+EXIT 0 elapsed_seconds=12.369
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/tests/cockpit.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/seat_socket.rs
+EXIT 0 elapsed_seconds=0.066
+
+$ sh scripts/ui-lint.sh
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:238:29
+    |
+238 |     for tri in mesh.indices.chunks_exact(3) {
+    |                             ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:287:31
+    |
+287 |     for tri in result.indices.chunks_exact(3) {
+    |                               ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:366:13
+    |
+366 | /             if !cache.contains_key(&ch) {
+367 | |                 let glyph = match font.rasterize(ch)? {
+368 | |                     Some(raster) => Some(PlacedGlyph {
+369 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+375 | |                 cache.insert(ch, glyph);
+376 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `#[warn(clippy::map_entry)]` on by default
+help: try
+    |
+366 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+367 +                 let glyph = match font.rasterize(ch)? {
+368 +                     Some(raster) => Some(PlacedGlyph {
+369 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+370 +                         left: raster.left,
+371 +                         top: raster.top,
+372 +                     }),
+373 +                     None => None,
+374 +                 };
+375 +                 e.insert(glyph);
+376 +             }
+    |
+
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+warning: `bbt-render` (lib) generated 3 warnings (run `cargo clippy --fix --lib -p bbt-render -- -D clippy::disallowed_methods` to apply 3 suggestions)
+warning: large size difference between variants
+  --> crates/bbt-mux/src/seat_socket.rs:31:1
+   |
+31 | / pub enum GuiAction {
+32 | |     ListSeats,
+   | |     --------- the second-largest variant carries no data at all
+33 | |     Spawn { spec: GuiSpawnSpec },
+   | |     ---------------------------- the largest variant contains at least 560 bytes
+34 | | }
+   | |_^ the entire enum is at least 560 bytes
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#large_enum_variant
+   = note: `#[warn(clippy::large_enum_variant)]` on by default
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+33 -     Spawn { spec: GuiSpawnSpec },
+33 +     Spawn { spec: Box<GuiSpawnSpec> },
+   |
+
+warning: `bbt-mux` (lib) generated 1 warning
+warning: large size difference between variants
+   --> crates/bboxy450-term/src/cockpit.rs:175:1
+    |
+175 | / pub enum Event {
+176 | |     Reply(GuiReply),
+    | |     --------------- the largest variant contains at least 608 bytes
+177 | |     Exited {
+178 | |         process: &'static str,
+...   |
+181 | |     Disconnected(String),
+    | |     -------------------- the second-largest variant contains at least 24 bytes
+182 | | }
+    | |_^ the entire enum is at least 608 bytes
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#large_enum_variant
+    = note: `#[warn(clippy::large_enum_variant)]` on by default
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+    |
+176 -     Reply(GuiReply),
+176 +     Reply(Box<GuiReply>),
+    |
+
+warning: `bboxy450-term` (lib) generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.90s
+EXIT 0 elapsed_seconds=3.974
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/tests/cockpit.rs crates/bbt-mux/src/seat_socket.rs
+EXIT 0 elapsed_seconds=0.052
+
+$ cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking fastrand v2.5.0
+    Checking rustix v1.1.5
+    Checking tempfile v3.27.0
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+error: use of a disallowed method `tokio::runtime::Runtime::block_on`
+   --> crates/bboxy450-term/tests/cockpit.rs:103:6
+    |
+103 |     );
+    |      ^
+    |
+    = note: UI must spawn onto bbt-rt
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+    = note: `-D clippy::disallowed-methods` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
+
+error: use of a disallowed method `tokio::runtime::Runtime::block_on`
+   --> crates/bboxy450-term/tests/cockpit.rs:161:38
+    |
+161 |     session.shutdown().await.unwrap();
+    |                                      ^
+    |
+    = note: UI must spawn onto bbt-rt
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `tokio::runtime::Runtime::block_on`
+   --> crates/bboxy450-term/tests/cockpit.rs:201:38
+    |
+201 |     session.shutdown().await.unwrap();
+    |                                      ^
+    |
+    = note: UI must spawn onto bbt-rt
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: could not compile `bboxy450-term` (test "cockpit") due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+EXIT 101 elapsed_seconds=4.785
+
+$ cargo build -p bboxy450-term --locked
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.87s
+EXIT 0 elapsed_seconds=6.921
+
+$ target/c1a/Live.app/Contents/MacOS/bboxy450-term-c1a --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live-run
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 66.070ms cpu=67.840ms drain=0.004 layout=1.729 draw=0.036 encode=66.070 present_wait=0.064
+first frame: 15 native panes presented
+cockpit ready: supervisor=80665 logic=80666
+seat 01M5JRYMZ6C504HRSNVTC0Q2XK state=Idle source=unobserved pid=81591
+seat 01M5JRYMZ6C504HRSNVTC0Q2XK state=Idle source=unobserved pid=81591
+seat 01M5JRYMZ6C504HRSNVTC0Q2XK state=Idle source=133 pid=81591
+
+$ ps -p 81591 -o pid=,comm=
+81591 /bin/zsh
+EXIT 0 elapsed_seconds=0.008
+
+$ /bin/kill -KILL 81591
+EXIT 0 elapsed_seconds=0.005
+seat 01M5JRYMZ6C504HRSNVTC0Q2XK state=Errored source=exit pid=81591
+
+$ cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.13s
+EXIT 0 elapsed_seconds=1.239
+EXIT -15 elapsed_seconds=202.71
+
+Administrative reads: stale computer-use skill alias cat exit 1; corrected catalog path cat exit 0. CUA documentation refresh and native observations succeeded. Read-only rg queries with no matches exited 1; no source mutation depended on them.
+Native-pilot cleanup Python exit 0; pilot logging wrapper exit 241 / child signal 15, explicitly described in c1a-native.log.
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs crates/bboxy450-term/tests/cockpit.rs
+EXIT 0 elapsed_seconds=0.079
+
+$ git diff --check
+EXIT 0 elapsed_seconds=0.079
+
+$ cargo build -p bboxy450-term --locked
+error: cannot update the lock file /Users/feral/mydev/bboxy450-term-exec3/Cargo.lock because --locked was passed to prevent this
+help: to generate the lock file without accessing the network, remove the --locked flag and use --offline instead.
+EXIT 101 elapsed_seconds=0.171
+
+$ cargo build -p bboxy450-term --offline
+   Compiling serde_core v1.0.229
+   Compiling subtle v2.6.1
+   Compiling serde v1.0.229
+   Compiling generic-array v0.14.7
+   Compiling const-oid v0.9.6
+   Compiling syn v2.0.119
+   Compiling getrandom v0.2.17
+   Compiling num-traits v0.2.19
+   Compiling base64ct v1.8.3
+   Compiling smallvec v1.16.3
+   Compiling rand_core v0.6.4
+   Compiling radium v0.7.0
+   Compiling tap v1.0.1
+   Compiling funty v2.0.0
+   Compiling wyz v0.5.1
+   Compiling base16ct v0.2.0
+   Compiling serde_json v1.0.154
+   Compiling parking_lot_core v0.9.12
+   Compiling pem-rfc7468 v0.7.0
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+   Compiling parking_lot v0.12.5
+   Compiling core-foundation-sys v0.8.7
+   Compiling ident_case v1.0.1
+   Compiling zlib-rs v0.6.8
+   Compiling curve25519-dalek v4.1.3
+   Compiling spin v0.9.9
+   Compiling num-bigint-dig v0.8.6
+   Compiling lazy_static v1.5.1
+   Compiling flate2 v1.1.10
+   Compiling rustversion v1.0.23
+   Compiling opaque-debug v0.3.1
+   Compiling unicode-segmentation v1.13.3
+   Compiling keccak v0.1.6
+   Compiling bitvec v1.1.1
+   Compiling byteorder v1.5.0
+   Compiling crc24 v0.1.6
+   Compiling png v0.18.1
+   Compiling heck v0.5.0
+   Compiling convert_case v0.10.0
+   Compiling num-integer v0.1.47
+   Compiling euclid v0.22.14
+   Compiling unicode-xid v0.2.6
+   Compiling num-iter v0.1.46
+   Compiling core-foundation v0.9.4
+   Compiling password-hash v0.5.0
+   Compiling core-foundation v0.10.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling core-graphics-types v0.1.3
+   Compiling security-framework-sys v2.17.0
+   Compiling nom v8.0.0
+   Compiling buffer-redux v1.1.0
+   Compiling replace_with v0.1.8
+   Compiling hex v0.4.3
+   Compiling core-graphics v0.23.2
+   Compiling tiny-skia v0.12.0
+   Compiling bitflags v2.13.2
+   Compiling dispatch2 v0.3.1
+   Compiling wgpu-types v30.0.1
+   Compiling ff v0.13.1
+   Compiling group v0.13.0
+   Compiling nix v0.28.0
+   Compiling objc2-core-foundation v0.3.2
+   Compiling arrayvec v0.7.8
+   Compiling serdect v0.2.0
+   Compiling serdect v0.3.0
+   Compiling serde-big-array v0.5.1
+   Compiling polycool v0.4.0
+   Compiling lyon_geom v1.0.20
+   Compiling kurbo v0.13.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling lyon_path v1.0.19
+   Compiling resvg v0.48.1
+   Compiling darling_core v0.20.11
+   Compiling notify-types v2.1.0
+   Compiling objc2-foundation v0.2.2
+   Compiling notify v8.2.0
+   Compiling zeroize_derive v1.5.0
+   Compiling zerocopy-derive v0.8.63
+   Compiling zeroize v1.9.1
+   Compiling thiserror-impl v1.0.69
+   Compiling der v0.7.10
+   Compiling objc2-foundation v0.3.2
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling inout v0.1.4
+   Compiling digest v0.10.7
+   Compiling cipher v0.4.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling hkdf v0.12.4
+   Compiling sha2 v0.10.9
+   Compiling rfc6979 v0.4.0
+   Compiling ctr v0.9.2
+   Compiling aead v0.5.2
+   Compiling universal-hash v0.5.1
+   Compiling zerocopy v0.8.63
+   Compiling polyval v0.6.2
+   Compiling aes v0.8.4
+   Compiling thiserror v1.0.69
+   Compiling darling_macro v0.20.11
+   Compiling spki v0.7.3
+   Compiling darling v0.20.11
+   Compiling dbl v0.3.2
+   Compiling pkcs8 v0.10.2
+   Compiling cmac v0.7.2
+   Compiling filedescriptor v0.8.3
+   Compiling derive_builder_core v0.20.2
+   Compiling sec1 v0.7.3
+   Compiling pkcs1 v0.7.5
+   Compiling ghash v0.5.1
+   Compiling ed25519 v2.2.3
+   Compiling sha3 v0.10.9
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+   Compiling bitfields-impl v1.0.3
+   Compiling elliptic-curve v0.13.8
+   Compiling snafu-derive v0.9.2
+   Compiling derive_builder_macro v0.20.2
+   Compiling derive_more-impl v2.1.1
+   Compiling ecdsa v0.16.9
+   Compiling primeorder v0.13.6
+   Compiling svgtypes v0.16.1
+   Compiling bitfields v1.0.3
+   Compiling p384 v0.13.1
+   Compiling usvg v0.48.1
+   Compiling k256 v0.13.4
+   Compiling p256 v0.13.2
+   Compiling objc2-metal v0.3.2
+   Compiling p521 v0.13.3
+   Compiling derive_more v2.1.1
+   Compiling snafu v0.9.2
+   Compiling num_enum v0.7.6
+   Compiling cx448 v0.1.1
+   Compiling derive_builder v0.20.2
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling ed25519-dalek v2.2.0
+   Compiling x25519-dalek v2.0.1
+   Compiling aes-gcm v0.10.3
+   Compiling portable-pty v0.9.0
+   Compiling eax v0.5.0
+   Compiling aes-kw v0.2.1
+   Compiling ocb3 v0.1.0
+   Compiling ripemd v0.1.3
+   Compiling md-5 v0.10.6
+   Compiling cfb-mode v0.8.2
+   Compiling blowfish v0.9.1
+   Compiling cast5 v0.11.1
+   Compiling idea v0.5.1
+   Compiling camellia v0.1.0
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling block-padding v0.3.3
+   Compiling curve25519-dalek v5.0.0
+   Compiling objc2-app-kit v0.2.2
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling lyon_tessellation v1.0.22
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling security-framework v3.7.0
+   Compiling rusqlite v0.40.2
+   Compiling ed25519-dalek v3.0.0
+   Compiling objc2-app-kit v0.3.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling rand_chacha v0.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling naga v30.0.1
+   Compiling rand v0.8.8
+   Compiling rand v0.9.5
+   Compiling ulid v1.2.1
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling objc2-core-graphics v0.3.2
+   Compiling dsa v0.6.3
+   Compiling rsa v0.9.10
+   Compiling pgp v0.21.0
+   Compiling winit v0.30.13
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 02s
+EXIT 0 elapsed_seconds=62.723
+
+$ target/c1a/Live2.app/Contents/MacOS/bboxy450-term-c1a-2 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live-run2
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+cockpit ready: supervisor=12534 logic=12535
+seat 01M5JSMM8YVRYRKYE5CTTZ8T0X state=Idle source=unobserved pid=13222
+seat 01M5JSMM8YVRYRKYE5CTTZ8T0X state=Idle source=unobserved pid=13222
+seat 01M5JSMM8YVRYRKYE5CTTZ8T0X state=Idle source=133 pid=13222
+EXIT -15 elapsed_seconds=216.612
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs crates/bbt-proto/src/gui.rs crates/bbt-proto/src/seat_state.rs
+EXIT 0 elapsed_seconds=0.259
+
+$ cargo build -p bboxy450-term --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.51s
+EXIT 0 elapsed_seconds=10.572
+
+$ target/debug/bboxy450-term --smoke
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+smoke bootstrap: early producer handled before GPU ready
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 150.241ms cpu=170.654ms drain=0.004 layout=20.143 draw=0.266 encode=150.241 present_wait=0.081
+first frame: native scene presented, seats=15
+hitch frame=2 phase=layout 20.176ms cpu=29.740ms drain=0.005 layout=20.176 draw=0.226 encode=9.334 present_wait=0.072
+hitch frame=3 phase=layout 20.198ms cpu=30.214ms drain=0.006 layout=20.198 draw=0.258 encode=9.752 present_wait=0.073
+hitch frame=4 phase=layout 20.112ms cpu=30.018ms drain=0.005 layout=20.112 draw=0.238 encode=9.663 present_wait=0.070
+hitch frame=5 phase=layout 20.106ms cpu=30.025ms drain=0.005 layout=20.106 draw=0.233 encode=9.680 present_wait=0.063
+hitch frame=6 phase=layout 20.157ms cpu=30.022ms drain=0.005 layout=20.157 draw=0.239 encode=9.621 present_wait=0.068
+hitch frame=7 phase=layout 20.209ms cpu=30.077ms drain=0.005 layout=20.209 draw=0.232 encode=9.630 present_wait=0.063
+hitch frame=8 phase=layout 20.171ms cpu=29.943ms drain=0.006 layout=20.171 draw=0.232 encode=9.535 present_wait=0.066
+hitch frame=9 phase=layout 20.194ms cpu=30.134ms drain=0.005 layout=20.194 draw=0.240 encode=9.695 present_wait=0.066
+hitch frame=10 phase=layout 20.175ms cpu=30.149ms drain=0.006 layout=20.175 draw=0.248 encode=9.721 present_wait=0.070
+hitch frame=11 phase=layout 20.271ms cpu=29.927ms drain=0.005 layout=20.271 draw=0.227 encode=9.425 present_wait=0.063
+hitch frame=12 phase=layout 20.159ms cpu=30.169ms drain=0.005 layout=20.159 draw=0.242 encode=9.763 present_wait=0.069
+hitch frame=13 phase=layout 20.053ms cpu=29.760ms drain=0.001 layout=20.053 draw=0.231 encode=9.475 present_wait=0.056
+hitch frame=14 phase=layout 20.199ms cpu=30.279ms drain=0.005 layout=20.199 draw=0.242 encode=9.832 present_wait=0.070
+hitch frame=15 phase=layout 20.140ms cpu=30.187ms drain=0.005 layout=20.140 draw=0.242 encode=9.800 present_wait=0.067
+hitch frame=16 phase=layout 20.255ms cpu=30.164ms drain=0.005 layout=20.255 draw=0.226 encode=9.679 present_wait=0.068
+hitch frame=17 phase=layout 20.211ms cpu=30.121ms drain=0.006 layout=20.211 draw=0.231 encode=9.673 present_wait=0.064
+hitch frame=18 phase=layout 20.129ms cpu=29.949ms drain=0.005 layout=20.129 draw=0.234 encode=9.580 present_wait=0.065
+hitch frame=19 phase=layout 20.225ms cpu=30.122ms drain=0.006 layout=20.225 draw=0.236 encode=9.655 present_wait=0.065
+hitch frame=20 phase=layout 20.092ms cpu=29.663ms drain=0.001 layout=20.092 draw=0.221 encode=9.349 present_wait=0.057
+hitch frame=21 phase=layout 20.173ms cpu=29.942ms drain=0.005 layout=20.173 draw=0.231 encode=9.533 present_wait=0.061
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.003s frames=0 callbacks=0 updates=20 CPU p50=30.077ms p99=170.654ms samples=21 warm_encode_p50=9.655ms warm_encode_p99=9.832ms
+EXIT 0 elapsed_seconds=14.314
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/tests/cockpit.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/seat_socket.rs
+EXIT 0 elapsed_seconds=0.093
+
+$ cargo test -p bboxy450-term --test cockpit --offline -- --nocapture
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling rustix v1.1.5
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+error[E0599]: no method named `unwrap_or_else` found for type `u32` in the current scope
+    --> crates/bbt-mux/src/logic.rs:1401:39
+     |
+1401 |                     status: exit.code.unwrap_or_else(|| 128 + exit.signal.unwrap_or(0)),
+     |                                       ^^^^^^^^^^^^^^ method not found in `u32`
+
+error[E0308]: mismatched types
+    --> crates/bbt-mux/src/logic.rs:1401:85
+     |
+1401 |                     status: exit.code.unwrap_or_else(|| 128 + exit.signal.unwrap_or(0)),
+     |                                                                           --------- ^ expected `String`, found integer
+     |                                                                           |
+     |                                                                           arguments to this method are incorrect
+     |
+help: the return type of this call is `{integer}` due to the type of the argument passed
+    --> crates/bbt-mux/src/logic.rs:1401:63
+     |
+1401 |                     status: exit.code.unwrap_or_else(|| 128 + exit.signal.unwrap_or(0)),
+     |                                                               ^^^^^^^^^^^^^^^^^^^^^^-^
+     |                                                                                     |
+     |                                                                                     this argument influences the return type of `unwrap_or`
+note: method defined here
+    --> /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:1036:18
+     |
+1036 |     pub const fn unwrap_or(self, default: T) -> T
+     |                  ^^^^^^^^^
+help: try using a conversion method
+     |
+1401 |                     status: exit.code.unwrap_or_else(|| 128 + exit.signal.unwrap_or(0.to_string())),
+     |                                                                                      ++++++++++++
+
+error[E0277]: cannot add `std::string::String` to `{integer}`
+    --> crates/bbt-mux/src/logic.rs:1401:61
+     |
+1401 |                     status: exit.code.unwrap_or_else(|| 128 + exit.signal.unwrap_or(0)),
+     |                                                             ^ no implementation for `{integer} + std::string::String`
+     |
+     = help: the trait `Add<std::string::String>` is not implemented for `{integer}`
+     = help: the following other types implement trait `Add<Rhs>`:
+               `&f128` implements `Add<f128>`
+               `&f128` implements `Add`
+               `&f16` implements `Add<f16>`
+               `&f16` implements `Add`
+               `&f32` implements `Add<f32>`
+               `&f32` implements `Add`
+               `&f64` implements `Add<f64>`
+               `&f64` implements `Add`
+             and 140 others
+
+Some errors have detailed explanations: E0277, E0308, E0599.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `bbt-mux` (lib) due to 3 previous errors
+EXIT 101 elapsed_seconds=13.881
+
+$ cargo test -p bboxy450-term --test cockpit --locked -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 26.96s
+     Running tests/cockpit.rs (target/debug/deps/cockpit-a479498f52c6e26a)
+
+running 3 tests
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+test app_io_owner_observes_both_child_process_exits ... ok
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.43s
+
+EXIT 0 elapsed_seconds=29.669
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bbt-mux/src/logic.rs crates/bbt-mux/src/seat_socket.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/gpu.rs crates/bboxy450-term/src/lib.rs
+EXIT 0 elapsed_seconds=0.098
+
+$ cargo test -p bbt-mux --locked gui_view_waits -- --nocapture
+   Compiling syn v2.0.119
+   Compiling serde v1.0.229
+   Compiling smallvec v1.16.3
+   Compiling thiserror v2.0.21
+   Compiling hashbrown v0.17.1
+   Compiling rand_chacha v0.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling tokio v1.54.1
+   Compiling zlib-rs v0.6.8
+   Compiling futures-util v0.3.34
+   Compiling tungstenite v0.30.0
+   Compiling parking_lot_core v0.9.12
+   Compiling rand v0.8.8
+   Compiling parking_lot v0.12.5
+   Compiling rand v0.9.5
+   Compiling serdect v0.2.0
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling indexmap v2.14.2
+   Compiling serdect v0.3.0
+   Compiling hashlink v0.12.2
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling notify v8.2.0
+   Compiling rusqlite v0.40.2
+   Compiling ulid v1.2.1
+   Compiling petgraph v0.8.3
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling darling_core v0.20.11
+   Compiling zeroize_derive v1.5.0
+   Compiling thiserror-impl v1.0.69
+   Compiling num_enum_derive v0.7.6
+   Compiling bitfields-impl v1.0.3
+   Compiling snafu-derive v0.9.2
+   Compiling derive_more-impl v2.1.1
+   Compiling zeroize v1.9.1
+   Compiling generic-array v0.14.7
+   Compiling der v0.7.10
+   Compiling num-bigint-dig v0.8.6
+   Compiling thiserror v1.0.69
+   Compiling bitfields v1.0.3
+   Compiling filedescriptor v0.8.3
+   Compiling portable-pty v0.9.0
+   Compiling flate2 v1.1.10
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling inout v0.1.4
+   Compiling cipher v0.4.4
+   Compiling digest v0.10.7
+   Compiling crypto-bigint v0.5.5
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling hkdf v0.12.4
+   Compiling sha2 v0.10.9
+   Compiling rfc6979 v0.4.0
+   Compiling ctr v0.9.2
+   Compiling universal-hash v0.5.1
+   Compiling darling_macro v0.20.11
+   Compiling aead v0.5.2
+   Compiling polyval v0.6.2
+   Compiling aes v0.8.4
+   Compiling curve25519-dalek v4.1.3
+   Compiling darling v0.20.11
+   Compiling dbl v0.3.2
+   Compiling ghash v0.5.1
+   Compiling spki v0.7.3
+   Compiling cmac v0.7.2
+   Compiling ed25519 v2.2.3
+   Compiling sha3 v0.10.9
+   Compiling pkcs8 v0.10.2
+   Compiling sha1 v0.10.7
+   Compiling derive_builder_core v0.20.2
+   Compiling sec1 v0.7.3
+   Compiling pkcs1 v0.7.5
+   Compiling blake2 v0.10.6
+   Compiling sha1-checked v0.10.0
+   Compiling dsa v0.6.3
+   Compiling aes-kw v0.2.1
+   Compiling aes-gcm v0.10.3
+   Compiling eax v0.5.0
+   Compiling ocb3 v0.1.0
+   Compiling snafu v0.9.2
+   Compiling argon2 v0.5.3
+   Compiling cfb-mode v0.8.2
+   Compiling rsa v0.9.10
+   Compiling blowfish v0.9.1
+   Compiling cast5 v0.11.1
+   Compiling idea v0.5.1
+   Compiling camellia v0.1.0
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling ripemd v0.1.3
+   Compiling md-5 v0.10.6
+   Compiling x25519-dalek v2.0.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling derive_more v2.1.1
+   Compiling block-padding v0.3.3
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling num_enum v0.7.6
+   Compiling derive_builder_macro v0.20.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling tokio-tungstenite v0.30.0
+   Compiling derive_builder v0.20.2
+   Compiling elliptic-curve v0.13.8
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling ecdsa v0.16.9
+   Compiling primeorder v0.13.6
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v3.0.0
+   Compiling k256 v0.13.4
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling p521 v0.13.3
+   Compiling pgp v0.21.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 51.77s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-d55be4ae558dff48)
+
+running 1 test
+
+thread 'seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells' (8758358) panicked at crates/bbt-mux/src/seat_socket.rs:448:55:
+GUI rejected operation: logic stopped
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... FAILED
+
+failures:
+
+failures:
+    seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.66s
+
+error: test failed, to rerun pass `-p bbt-mux --lib`
+EXIT 101 elapsed_seconds=52.964
+
+$ cargo test -p bbt-mux --locked gui_view_waits -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.46s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-d55be4ae558dff48)
+
+running 1 test
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.80s
+
+     Running tests/adapters.rs (target/debug/deps/adapters-d1cf1b498d4a361e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/identity.rs (target/debug/deps/identity-29847dd2ef448996)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/logic.rs (target/debug/deps/logic-4118cc9562b324a4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/measurements.rs (target/debug/deps/measurements-3d4877906433ef29)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (target/debug/deps/messaging-0d52a02fdcc47017)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s
+
+     Running tests/ring.rs (target/debug/deps/ring-32fd5006f5a36177)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-ea7e108c90af5207)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/ui_guard.rs (target/debug/deps/ui_guard-e5c65185936b4ca8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=9.479
+
+$ cargo test -p bboxy450-term --locked
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+error[E0308]: mismatched types
+  --> crates/bboxy450-term/src/live.rs:92:26
+   |
+92 |     options.font.scale = rendering.scale;
+   |     ------------------   ^^^^^^^^^^^^^^^ expected `u32`, found `f32`
+   |     |
+   |     expected due to the type of this binding
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bboxy450-term` (bin "bboxy450-term") due to 1 previous error
+EXIT 101 elapsed_seconds=14.604
+
+$ cargo test -p bboxy450-term --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.46s
+     Running unittests src/lib.rs (target/debug/deps/bboxy450_term-6ddb82bbe2c7b3cf)
+
+running 4 tests
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-e3129e767414990f)
+
+running 3 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cockpit.rs (target/debug/deps/cockpit-a479498f52c6e26a)
+
+running 3 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.85s
+
+   Doc-tests bboxy450_term
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=6.772
+
+$ cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+    Checking subtle v2.6.1
+    Checking const-oid v0.9.6
+    Checking serde_core v1.0.229
+    Checking getrandom v0.2.17
+   Compiling zerocopy-derive v0.8.63
+    Checking zeroize v1.9.1
+    Checking smallvec v1.16.3
+    Checking base64ct v1.8.3
+    Checking num-traits v0.2.19
+    Checking tap v1.0.1
+    Checking radium v0.7.0
+    Checking wyz v0.5.1
+    Checking rand_core v0.6.4
+    Checking base16ct v0.2.0
+    Checking generic-array v0.14.7
+    Checking funty v2.0.0
+    Checking parking_lot_core v0.9.12
+    Checking core-foundation-sys v0.8.7
+   Compiling serde_json v1.0.154
+    Checking pem-rfc7468 v0.7.0
+    Checking zlib-rs v0.6.8
+    Checking der v0.7.10
+    Checking parking_lot v0.12.5
+    Checking spin v0.9.9
+    Checking lazy_static v1.5.1
+    Checking opaque-debug v0.3.1
+    Checking thiserror v1.0.69
+   Compiling thiserror v2.0.21
+    Checking bitvec v1.1.1
+    Checking keccak v0.1.6
+    Checking byteorder v1.5.0
+    Checking num-integer v0.1.47
+    Checking euclid v0.22.14
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking inout v0.1.4
+    Checking crypto-bigint v0.5.5
+    Checking digest v0.10.7
+    Checking cipher v0.4.4
+    Checking hmac v0.12.1
+    Checking signature v2.2.0
+    Checking hkdf v0.12.4
+    Checking sha2 v0.10.9
+    Checking rfc6979 v0.4.0
+    Checking ctr v0.9.2
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking spki v0.7.3
+    Checking universal-hash v0.5.1
+    Checking aead v0.5.2
+    Checking pkcs8 v0.10.2
+    Checking num-iter v0.1.46
+    Checking polyval v0.6.2
+    Checking aes v0.8.4
+    Checking curve25519-dalek v4.1.3
+    Checking dbl v0.3.2
+    Checking ghash v0.5.1
+    Checking zerocopy v0.8.63
+    Checking flate2 v1.1.10
+    Checking cmac v0.7.2
+    Checking pkcs1 v0.7.5
+    Checking ed25519 v2.2.3
+    Checking sha1 v0.10.7
+    Checking blake2 v0.10.6
+    Checking sha3 v0.10.9
+   Compiling bitfields-impl v1.0.3
+    Checking filedescriptor v0.8.3
+    Checking core-foundation v0.9.4
+    Checking password-hash v0.5.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking core-graphics-types v0.1.3
+    Checking x25519-dalek v2.0.1
+    Checking ed25519-dalek v2.2.0
+    Checking derive_builder v0.20.2
+    Checking curve25519-dalek v5.0.0
+    Checking serde v1.0.229
+    Checking bitflags v2.13.2
+    Checking crc24 v0.1.6
+    Checking snafu v0.9.2
+    Checking ff v0.13.1
+    Checking derive_more v2.1.1
+    Checking dispatch2 v0.3.1
+    Checking wgpu-types v30.0.1
+    Checking group v0.13.0
+    Checking png v0.18.1
+    Checking nix v0.28.0
+    Checking bitfields v1.0.3
+    Checking notify-types v2.1.0
+    Checking objc2-foundation v0.2.2
+    Checking sha1-checked v0.10.0
+    Checking objc2-core-foundation v0.3.2
+    Checking arrayvec v0.7.8
+    Checking serdect v0.2.0
+    Checking polycool v0.4.0
+    Checking serde-big-array v0.5.1
+    Checking sec1 v0.7.3
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking lyon_geom v1.0.20
+    Checking kurbo v0.13.1
+    Checking elliptic-curve v0.13.8
+    Checking serdect v0.3.0
+    Checking tiny-skia v0.12.0
+    Checking lyon_path v1.0.19
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+    Checking portable-pty v0.9.0
+    Checking cx448 v0.1.1
+    Checking svgtypes v0.16.1
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking usvg v0.48.1
+    Checking k256 v0.13.4
+    Checking p256 v0.13.2
+    Checking eax v0.5.0
+    Checking aes-gcm v0.10.3
+    Checking aes-kw v0.2.1
+    Checking ocb3 v0.1.0
+    Checking idea v0.5.1
+    Checking cfb-mode v0.8.2
+    Checking camellia v0.1.0
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking blowfish v0.9.1
+    Checking cast5 v0.11.1
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking block-padding v0.3.3
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking replace_with v0.1.8
+    Checking hex v0.4.3
+    Checking serde_yaml v0.9.34+deprecated
+    Checking security-framework v3.7.0
+    Checking resvg v0.48.1
+    Checking rusqlite v0.40.2
+    Checking objc2-foundation v0.3.2
+    Checking lyon_tessellation v1.0.22
+    Checking notify v8.2.0
+    Checking ppv-lite86 v0.2.21
+    Checking half v2.7.1
+    Checking rand_chacha v0.3.1
+    Checking rand_chacha v0.9.0
+    Checking ed25519-dalek v3.0.0
+    Checking rand v0.8.8
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking rand v0.9.5
+    Checking core-graphics v0.23.2
+    Checking naga v30.0.1
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking rustix v1.1.5
+    Checking objc2-app-kit v0.2.2
+    Checking num-bigint-dig v0.8.6
+    Checking ulid v1.2.1
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking tempfile v3.27.0
+    Checking rsa v0.9.10
+    Checking dsa v0.6.3
+    Checking objc2-metal v0.3.2
+    Checking objc2-app-kit v0.3.2
+    Checking pgp v0.21.0
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live3-zdotdir target/c1a/Live3.app/Contents/MacOS/bboxy450-term-c1a-3 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live3-run
+    Checking winit v0.30.13
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+    Checking objc2-core-graphics v0.3.2
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 75.878ms cpu=77.668ms drain=0.004 layout=1.745 draw=0.040 encode=75.878 present_wait=0.077
+first frame: native scene presented, seats=0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking wgpu-naga-bridge v30.0.1
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+cockpit ready: supervisor=43306 logic=43307
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-hal v30.0.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+seat 01M5JWMQJEB2PXSTBFZE5W216C activity=Idle process=Running { pid: 43878 }
+seat 01M5JWMQJEB2PXSTBFZE5W216C activity=Idle process=Running { pid: 43878 }
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+error: use of a disallowed method `tokio::runtime::Handle::block_on`
+   --> crates/bboxy450-term/src/model.rs:590:49
+    |
+590 |         let context = Arc::new(bbt_rt::handle().block_on(DeviceContext::new()).unwrap());
+    |                                                 ^^^^^^^^
+    |
+    = note: UI must spawn onto bbt-rt
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+    = note: `-D clippy::disallowed-methods` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
+
+error: unnecessary use of `clone` to create a slice from a reference
+   --> crates/bboxy450-term/src/model.rs:595:31
+    |
+595 |         let mut first = build(&[record.clone()], &grids, &Model::default());
+    |                               ^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&record)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#cloned_ref_to_slice_refs
+    = note: `-D clippy::cloned-ref-to-slice-refs` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::cloned_ref_to_slice_refs)]`
+
+error: could not compile `bboxy450-term` (lib test) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+EXIT 101 elapsed_seconds=46.156
+
+$ /bin/kill -KILL 43878
+EXIT 0 elapsed_seconds=0.005
+seat 01M5JWMQJEB2PXSTBFZE5W216C activity=Errored process=Exited { status: 1 }
+GUI operation 01M5JWNW13V2A6VXHS0VP3XY5Z accepted
+EXIT 0 elapsed_seconds=67.203
+
+$ cargo test -p bbt-mux --locked gui_view_waits_for_applied_and_resize_clamps_without_reading_cells
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+
+$ sh scripts/ui-lint.sh
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 33.23s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-d55be4ae558dff48)
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+
+running 1 test
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 1.16s
+
+     Running tests/adapters.rs (target/debug/deps/adapters-d1cf1b498d4a361e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/identity.rs (target/debug/deps/identity-29847dd2ef448996)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+     Running tests/logic.rs (target/debug/deps/logic-4118cc9562b324a4)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/mcp.rs (target/debug/deps/mcp-5f602d02c1dbc2a6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/measurements.rs (target/debug/deps/measurements-3d4877906433ef29)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (target/debug/deps/messaging-0d52a02fdcc47017)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s
+
+     Running tests/ring.rs (target/debug/deps/ring-32fd5006f5a36177)
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:238:29
+    |
+238 |     for tri in mesh.indices.chunks_exact(3) {
+    |                             ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:287:31
+    |
+287 |     for tri in result.indices.chunks_exact(3) {
+    |                               ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:366:13
+    |
+366 | /             if !cache.contains_key(&ch) {
+367 | |                 let glyph = match font.rasterize(ch)? {
+368 | |                     Some(raster) => Some(PlacedGlyph {
+369 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+375 | |                 cache.insert(ch, glyph);
+376 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `#[warn(clippy::map_entry)]` on by default
+help: try
+    |
+366 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+367 +                 let glyph = match font.rasterize(ch)? {
+368 +                     Some(raster) => Some(PlacedGlyph {
+369 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+370 +                         left: raster.left,
+371 +                         top: raster.top,
+372 +                     }),
+373 +                     None => None,
+374 +                 };
+375 +                 e.insert(glyph);
+376 +             }
+    |
+
+warning: `bbt-render` (lib) generated 3 warnings (run `cargo clippy --fix --lib -p bbt-render -- -D clippy::disallowed_methods` to apply 3 suggestions)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-ea7e108c90af5207)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/ui_guard.rs (target/debug/deps/ui_guard-e5c65185936b4ca8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=38.962
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+
+Dependency integration audit (2026-10-22 15:43 PDT onward):
+git verify-commit d97371612ae34b58423a29b0ae39573e3e4ac1fa: exit 0 (signed Aster dependency, local only at this point).
+git rebase --onto d97371612ae34b58423a29b0ae39573e3e4ac1fa 3790aa2ca1cb96c28f37939da53e4300603bc4e8: initial exit 1, conflicts lib.rs and logic.rs.
+Resolution kept cockpit, grids, model exports; preserved ControlCatalogue/ControlCall plus Gui* commands, clients and dispatch. git add exact two conflict paths exit 0; GIT_EDITOR=true git rebase --continue exit 0, WIP ed804cc.
+Cargo manifest automatic merge had duplicate bbt-proto/bbt-core entries; removed duplicates (Python edit exit 0).
+rustfmt --edition 2024 --config skip_children=true (owned app/mux source and cockpit test paths): exit 0.
+Font-scale source probes: rg against nonexistent crates/bbt-fonts path returned error inside pipeline (shell status 0); later direct rg nonexistent crates/bboxy450-fonts path exit 2; shell ../bboxy450-font* glob probe exit 1; final source search found crates/bbt-render/src/text/mod.rs:7 scale:u32 (search also included two nonexistent sibling dirs, exit 2). Actual source crates/bbt-render/src/cells/terminal.rs read exit 0. No source edits outside allowed paths.
+git diff d973716 --check exit 0.
+Read-only status/log/diff/spec/skill/source diagnostics exited 0 except those explicitly listed.
+Native third validation preparation (own Live3 bundle copy, Info.plist, empty ZDOTDIR) Python exit 0; native and cleanup results are in c1a-native.log.
+warning: this `if` statement can be collapsed
+   --> crates/bbt-mux/src/identity/transition.rs:246:5
+    |
+246 | /     if let Some(latest) = latest {
+247 | |         if state.map(|s| counter(&s.cutover_epoch)).transpose()? != Some(latest) {
+248 | |             return Err(invalid("issuer journal rollback"));
+249 | |         }
+250 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+    = note: `#[warn(clippy::collapsible_if)]` on by default
+help: collapse nested if block
+    |
+246 ~     if let Some(latest) = latest
+247 ~         && state.map(|s| counter(&s.cutover_epoch)).transpose()? != Some(latest) {
+248 |             return Err(invalid("issuer journal rollback"));
+249 ~         }
+    |
+
+warning: `bbt-mux` (lib) generated 1 warning (run `cargo clippy --fix --lib -p bbt-mux -- -D clippy::disallowed_methods` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 40.89s
+EXIT 0 elapsed_seconds=41.029
+
+$ cargo clippy -p bboxy450-term --lib --bin bboxy450-term --no-deps --locked -- -D warnings
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.52s
+EXIT 0 elapsed_seconds=11.739
+
+Preflight metadata: git fetch origin exit 0; git verify-commit d973716 exit 0 (good machine signature); git diff --check exit 0; git config identity/signing inspection exit 0. Native third app wrapper exited 0; targeted ps absence exit 1 is expected and recorded in native log. Documentation-only comments and c1a-handoff.log written by Python exit 0.
+
+Own idle debug-cache cleanup (all local app/mux/clippy processes completed; native bundle copied separately): {"path": "/Users/feral/mydev/bboxy450-term-exec3/target/debug", "allocated_bytes_freed": 14242762752, "elapsed_seconds": 14.574, "status": 0}
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live3-zdotdir target/c1a/Live3.app/Contents/MacOS/bboxy450-term-c1a-3 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live3-run
+Error: Os { code: 48, kind: AddrInUse, message: "Address already in use" }
+cockpit stopped: supervisor exited during startup
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+app error: supervisor exited during startup
+Error: "supervisor exited during startup"
+EXIT 1 elapsed_seconds=0.218
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live3-zdotdir target/c1a/Live3.app/Contents/MacOS/bboxy450-term-c1a-3 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live3-run
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=0
+Error: Custom { kind: InvalidData, error: "local messaging issuer changed; explicit re-enrollment required" }
+cockpit stopped: logic exited during startup
+app error: logic exited during startup
+Error: "logic exited during startup"
+EXIT 1 elapsed_seconds=0.491
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --locked
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling subtle v2.6.1
+   Compiling serde v1.0.229
+   Compiling const-oid v0.9.6
+   Compiling log v0.4.34
+   Compiling itoa v1.0.18
+   Compiling zerocopy v0.8.63
+   Compiling autocfg v1.5.1
+   Compiling generic-array v0.14.7
+   Compiling libm v0.2.16
+   Compiling objc2-encode v4.1.0
+   Compiling zmij v1.0.23
+   Compiling smallvec v1.16.3
+   Compiling num-traits v0.2.19
+   Compiling memchr v2.8.3
+   Compiling base64ct v1.8.3
+   Compiling cfg_aliases v0.2.2
+   Compiling objc2 v0.6.5
+   Compiling pem-rfc7468 v0.7.0
+   Compiling thiserror v2.0.21
+   Compiling foldhash v0.2.0
+   Compiling simd-adler32 v0.3.10
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling hashbrown v0.17.1
+   Compiling crc32fast v1.5.3
+   Compiling radium v0.7.0
+   Compiling adler2 v2.0.1
+   Compiling serde_json v1.0.154
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling miniz_oxide v0.9.1
+   Compiling base16ct v0.2.0
+   Compiling getrandom v0.2.17
+   Compiling cpufeatures v0.2.17
+   Compiling shlex v2.0.1
+   Compiling funty v2.0.0
+   Compiling rand_core v0.6.4
+   Compiling jobserver v0.1.35
+   Compiling find-msvc-tools v0.1.15
+   Compiling equivalent v1.0.3
+   Compiling indexmap v2.14.2
+   Compiling cc v1.9.0
+   Compiling block2 v0.6.2
+   Compiling pkg-config v0.3.34
+   Compiling semver v1.0.28
+   Compiling bitvec v1.1.1
+   Compiling float-cmp v0.9.0
+   Compiling bytes v1.12.1
+   Compiling parking_lot_core v0.9.12
+   Compiling unicode-width v0.2.2
+   Compiling strict-num v0.1.1
+   Compiling rustc_version v0.4.1
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling arrayref v0.3.9
+   Compiling lock_api v0.4.14
+   Compiling hybrid-array v0.4.15
+   Compiling parking_lot v0.12.5
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling bitflags v2.13.2
+   Compiling dispatch2 v0.3.1
+   Compiling rustc-hash v1.1.0
+   Compiling siphasher v1.0.4
+   Compiling getrandom v0.3.4
+   Compiling winnow v1.0.4
+   Compiling objc2-core-foundation v0.3.2
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling errno v0.3.14
+   Compiling naga v30.0.1
+   Compiling winnow v0.7.15
+   Compiling core-foundation-sys v0.8.7
+   Compiling fnv v1.0.7
+   Compiling const-oid v0.10.2
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling arrayvec v0.7.8
+   Compiling pin-project-lite v0.2.17
+   Compiling bit-vec v0.9.1
+   Compiling strsim v0.11.1
+   Compiling ident_case v1.0.1
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-set v0.10.0
+   Compiling digest v0.11.3
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling codespan-reporting v0.13.1
+   Compiling simplecss v0.2.2
+   Compiling ff v0.13.1
+   Compiling group v0.13.0
+   Compiling rand_core v0.10.1
+   Compiling objc-sys v0.3.5
+   Compiling getrandom v0.4.3
+   Compiling imagesize v0.15.0
+   Compiling zlib-rs v0.6.8
+   Compiling static_assertions v1.1.0
+   Compiling bytemuck v1.25.2
+   Compiling data-url v0.3.2
+   Compiling pico-args v0.5.0
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling darling_core v0.20.11
+   Compiling naga-types v30.0.1
+   Compiling rand_core v0.9.5
+   Compiling wgpu-types v30.0.1
+   Compiling polycool v0.4.0
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling curve25519-dalek v4.1.3
+   Compiling num-integer v0.1.47
+   Compiling cpufeatures v0.3.1
+   Compiling zeroize_derive v1.5.0
+   Compiling zerocopy-derive v0.8.63
+   Compiling objc2-foundation v0.3.2
+   Compiling zeroize v1.9.1
+   Compiling der v0.7.10
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling wgpu-hal v30.0.1
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling inout v0.1.4
+   Compiling digest v0.10.7
+   Compiling cipher v0.4.4
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling sha2 v0.10.9
+   Compiling rfc6979 v0.4.0
+   Compiling crossbeam-utils v0.8.23
+   Compiling darling_macro v0.20.11
+   Compiling spki v0.7.3
+   Compiling cfg_aliases v0.1.1
+   Compiling pkcs8 v0.10.2
+   Compiling num-bigint-dig v0.8.6
+   Compiling thiserror v1.0.69
+   Compiling serdect v0.2.0
+   Compiling spin v0.9.9
+   Compiling sec1 v0.7.3
+   Compiling kurbo v0.13.1
+   Compiling lazy_static v1.5.1
+   Compiling nix v0.28.0
+   Compiling darling v0.20.11
+   Compiling ctr v0.9.2
+   Compiling aead v0.5.2
+   Compiling universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+   Compiling num-iter v0.1.46
+   Compiling tiny-skia-path v0.12.0
+   Compiling tokio-macros v2.7.2
+   Compiling signal-hook-registry v1.4.8
+   Compiling flate2 v1.1.10
+   Compiling elliptic-curve v0.13.8
+   Compiling mio v1.2.4
+   Compiling socket2 v0.6.5
+   Compiling libloading v0.8.9
+   Compiling vcpkg v0.2.15
+   Compiling zstd-safe v8.2.0
+   Compiling rustversion v1.0.23
+   Compiling cursor-icon v1.2.0
+   Compiling objc2-metal v0.3.2
+   Compiling unicode-segmentation v1.13.3
+   Compiling profiling v1.0.18
+   Compiling opaque-debug v0.3.1
+   Compiling base64 v0.22.1
+   Compiling anyhow v1.0.104
+   Compiling ecdsa v0.16.9
+   Compiling primeorder v0.13.6
+   Compiling httparse v1.10.1
+   Compiling libsqlite3-sys v0.38.2
+   Compiling polyval v0.6.2
+   Compiling convert_case v0.10.0
+   Compiling png v0.18.1
+   Compiling tokio v1.54.1
+   Compiling svgtypes v0.16.1
+   Compiling objc2 v0.5.3
+   Compiling derive_builder_core v0.20.2
+   Compiling serde-big-array v0.5.1
+   Compiling aes v0.8.4
+   Compiling dbl v0.3.2
+   Compiling chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling euclid v0.22.14
+   Compiling keccak v0.1.6
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling wgpu-core v30.0.1
+   Compiling regex-syntax v0.8.11
+   Compiling crc24 v0.1.6
+   Compiling litrs v1.0.1
+   Compiling byteorder v1.5.0
+   Compiling heck v0.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling document-features v0.2.12
+   Compiling lyon_geom v1.0.20
+   Compiling usvg v0.48.1
+   Compiling sha3 v0.10.9
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling rand_chacha v0.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.8.8
+   Compiling rand v0.9.5
+   Compiling crossbeam-queue v0.3.14
+   Compiling regex-automata v0.4.18
+   Compiling rand v0.10.3
+   Compiling ulid v1.2.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling cmac v0.7.2
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling block2 v0.5.1
+   Compiling tiny-skia v0.12.0
+   Compiling objc2-core-graphics v0.3.2
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling ed25519 v2.2.3
+   Compiling blake2 v0.10.6
+   Compiling sha1 v0.10.7
+   Compiling sha1 v0.11.0
+   Compiling num_enum_derive v0.7.6
+   Compiling bitfields-impl v1.0.3
+   Compiling rgb v0.8.53
+   Compiling objc2-quartz-core v0.3.2
+   Compiling futures-macro v0.3.34
+   Compiling foreign-types-macros v0.2.4
+   Compiling core-foundation v0.9.4
+   Compiling http v1.5.0
+   Compiling password-hash v0.5.0
+   Compiling raw-window-metal v1.1.0
+   Compiling serial2 v0.2.38
+   Compiling wgpu v30.0.1
+   Compiling futures-task v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling slab v0.4.12
+   Compiling futures-core v0.3.34
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling signature v3.0.0
+   Compiling foreign-types-shared v0.3.1
+   Compiling data-encoding v2.11.1
+   Compiling downcast-rs v1.2.1
+   Compiling shell-words v1.1.1
+   Compiling foreign-types v0.5.0
+   Compiling portable-pty v0.9.0
+   Compiling ed25519 v3.0.0
+   Compiling futures-util v0.3.34
+   Compiling walkdir v2.5.0
+   Compiling regex v1.13.1
+   Compiling objc2-foundation v0.2.2
+   Compiling core-graphics-types v0.1.3
+   Compiling hashbrown v0.15.5
+   Compiling bitfields v1.0.3
+   Compiling tungstenite v0.30.0
+   Compiling argon2 v0.5.3
+   Compiling num_enum v0.7.6
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling resvg v0.48.1
+   Compiling sha1-checked v0.10.0
+   Compiling ed25519-dalek v2.2.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling dsa v0.6.3
+   Compiling aes-gcm v0.10.3
+   Compiling derive_builder v0.20.2
+   Compiling eax v0.5.0
+   Compiling snafu v0.9.2
+   Compiling zstd v0.14.3
+   Compiling derive_more v2.1.1
+   Compiling lyon_path v1.0.19
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling k256 v0.13.4
+   Compiling p256 v0.13.2
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling ocb3 v0.1.0
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling idea v0.5.1
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling block-padding v0.3.3
+   Compiling sha2 v0.11.1
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling notify-types v2.1.0
+   Compiling fsevent-sys v4.1.0
+   Compiling hashlink v0.12.2
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling winit v0.30.13
+   Compiling unsafe-libyaml v0.2.11
+   Compiling float_next_after v1.0.0
+   Compiling replace_with v0.1.8
+   Compiling fallible-iterator v0.3.0
+   Compiling ryu v1.0.23
+   Compiling tracing-core v0.1.36
+   Compiling fixedbitset v0.5.7
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling hex v0.4.3
+   Compiling petgraph v0.8.3
+   Compiling ed25519-dalek v3.0.0
+   Compiling lyon_tessellation v1.0.22
+   Compiling rusqlite v0.40.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling tracing v0.1.44
+   Compiling notify v8.2.0
+   Compiling security-framework v3.7.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling core-graphics v0.23.2
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling rustix v1.1.5
+   Compiling objc2-app-kit v0.2.2
+   Compiling pollster v0.4.0
+   Compiling smol_str v0.2.2
+   Compiling dpi v0.1.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling objc2-app-kit v0.3.2
+   Compiling fastrand v2.5.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling tempfile v3.27.0
+   Compiling pgp v0.21.0
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized] target(s) in 54.91s
+     Running unittests src/lib.rs (target/debug/deps/bboxy450_term-ff5263a6ed70f71e)
+
+running 4 tests
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-7e14867c516fb4c8)
+
+running 3 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cockpit.rs (target/debug/deps/cockpit-9cd2d6eb9379ef05)
+
+running 3 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.59s
+
+   Doc-tests bboxy450_term
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=57.28
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live4-zdotdir target/c1a/Live4.app/Contents/MacOS/bboxy450-term-c1a-4 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live4-run
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+cockpit ready: supervisor=78162 logic=78163
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 64.639ms cpu=66.246ms drain=0.005 layout=1.570 draw=0.032 encode=64.639 present_wait=0.065
+first frame: native scene presented, seats=0
+app close requested; stopping IO owner
+cockpit stopped: logic shutdown timed out; child was killed
+app error: logic shutdown timed out; child was killed
+Error: "logic shutdown timed out; child was killed"
+EXIT 1 elapsed_seconds=22.87
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxy450-term --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 4.23s
+EXIT 0 elapsed_seconds=4.272
+
+$ python3 target/c1a/stop-probe.py
+supervisor_pid 83898
+logic_pid 83916
+both private startup lines parsed; capabilities not logged
+logic exit 0 elapsed 0.066
+supervisor exit 0 elapsed 0.001
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+
+EXIT 0 elapsed_seconds=3.621
+
+$ python3 target/c1a/stop-probe-open.py
+supervisor_pid 84987
+logic_pid 84989
+both private startup lines parsed; capabilities not logged
+logic exit 0 elapsed 0.012
+supervisor exit 0 elapsed 0.001
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+
+EXIT 0 elapsed_seconds=0.725
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live5-zdotdir target/c1a/Live5.app/Contents/MacOS/bboxy450-term-c1a-5 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live5-run
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+cockpit ready: supervisor=87252 logic=87253
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 66.611ms cpu=68.222ms drain=0.005 layout=1.571 draw=0.034 encode=66.611 present_wait=0.067
+first frame: native scene presented, seats=0
+app close requested; stopping IO owner
+cockpit stopped: logic shutdown timed out; child was killed
+app error: logic shutdown timed out; child was killed
+Error: "logic shutdown timed out; child was killed"
+EXIT 1 elapsed_seconds=35.747
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --test cockpit --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 3.12s
+     Running tests/cockpit.rs (target/debug/deps/cockpit-9cd2d6eb9379ef05)
+
+running 4 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.44s
+
+EXIT 0 elapsed_seconds=4.792
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live6-zdotdir target/c1a/Live6.app/Contents/MacOS/bboxy450-term-c1a-6 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live6-run
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+cockpit ready: supervisor=91813 logic=91814
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 65.870ms cpu=67.467ms drain=0.005 layout=1.558 draw=0.034 encode=65.870 present_wait=0.078
+first frame: native scene presented, seats=0
+seat 01M5JY1D423GCCJF4320DX30ZF activity=Idle process=Running { pid: 92628 }
+seat 01M5JY1D423GCCJF4320DX30ZF activity=Idle process=Running { pid: 92628 }
+app close requested; stopping IO owner
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+EXIT 0 elapsed_seconds=57.94
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-supervisor --locked refused_socket_rebinds_without_replacing_a_live_socket_or_file
+   Compiling serde_core v1.0.229
+   Compiling generic-array v0.14.7
+   Compiling zerocopy v0.8.63
+   Compiling serde v1.0.229
+   Compiling typenum v1.20.1
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+   Compiling smallvec v1.16.3
+   Compiling log v0.4.34
+   Compiling getrandom v0.4.3
+   Compiling errno v0.3.14
+   Compiling mio v1.2.4
+   Compiling parking_lot_core v0.9.12
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling parking_lot v0.12.5
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling sha2 v0.10.9
+   Compiling thiserror-impl v1.0.69
+   Compiling serde_derive v1.0.229
+   Compiling thiserror v1.0.69
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling filedescriptor v0.8.3
+   Compiling nix v0.28.0
+   Compiling rustix v1.1.5
+   Compiling tempfile v3.27.0
+   Compiling portable-pty v0.9.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.5
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling ulid v1.2.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized] target(s) in 6.22s
+     Running unittests src/lib.rs (target/debug/deps/bbt_supervisor-aa5d79e9f44a3463)
+
+running 1 test
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... FAILED
+
+failures:
+
+---- transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file stdout ----
+
+thread 'transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file' (9081131) panicked at crates/bbt-supervisor/src/transport.rs:281:46:
+called `Result::unwrap()` on an `Err` value: Custom { kind: PermissionDenied, error: "runtime parent must be owned and mode 0700" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+EXIT 101 elapsed_seconds=6.422
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-supervisor --locked
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized] target(s) in 1.73s
+     Running unittests src/lib.rs (target/debug/deps/bbt_supervisor-aa5d79e9f44a3463)
+
+running 4 tests
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/supervisor.rs (target/debug/deps/supervisor-2e57d33c752bb165)
+
+running 10 tests
+test natural_exit_follows_all_final_output ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+test validation_rejects_stale_and_oversized_input ... ok
+test fifty_seats_share_one_supervisor_poller ... ok
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+test two_seats_interleave_without_cross_talk ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.04s
+
+   Doc-tests bbt_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=3.499
+
+Scope expansion: Vesper DM73321ded authorizes bbt-supervisor/src/transport.rs stale socket recovery as a tiny separate signed hunk; Rook notified first via 8f5b8b86. Signed candidate d824edb changes only transport.rs. Initial stale-socket unit fixture failed exit101 because tempfile root was not 0700; corrected the test to create a private run child, preserving the runtime permission rule. Full bbt-supervisor suite then passed 14 tests, exit0 in3.499s.
+Vesper DM0a52045d extends C1a startup/model/footer with typed identity status; terminals remain live on a Keychain hold, identity retry at30s, held sends queued/released. ID1d implementation/custody is Kestrel's; C1a integration awaits his helper and accepted base. No secret file fallback.
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-proto --locked
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling getrandom v0.3.4
+   Compiling parking_lot_core v0.9.12
+   Compiling bitflags v2.13.2
+   Compiling rand_core v0.9.5
+   Compiling parking_lot v0.12.5
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.5
+   Compiling syn v3.0.9
+   Compiling serde_derive v1.0.229
+   Compiling serde v1.0.229
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling ulid v1.2.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Finished `test` profile [unoptimized] target(s) in 5.23s
+     Running unittests src/lib.rs (target/debug/deps/bbt_proto-c0821a435b5491dc)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/bbt_proto-c0821a435b5491dc: replacing existing signature
+
+running 3 tests
+test gui::tests::identity_status_is_portable_and_contains_only_state_and_reason ... ok
+test gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids ... ok
+test gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=5.681
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --locked
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 8.50s
+     Running unittests src/lib.rs (target/debug/deps/bboxy450_term-ff5263a6ed70f71e)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/bboxy450_term-ff5263a6ed70f71e: replacing existing signature
+
+running 4 tests
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-7e14867c516fb4c8)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/bboxy450_term-7e14867c516fb4c8: replacing existing signature
+
+running 3 tests
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cockpit.rs (target/debug/deps/cockpit-9cd2d6eb9379ef05)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/cockpit-9cd2d6eb9379ef05: replacing existing signature
+
+running 4 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.58s
+
+   Doc-tests bboxy450_term
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=11.083
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-mux --locked gui_view_waits_for_applied_and_resize_clamps_without_reading_cells
+    Blocking waiting for file lock on package cache
+   Compiling smallvec v1.16.3
+   Compiling hashbrown v0.17.1
+   Compiling rand_chacha v0.3.1
+   Compiling tokio v1.54.1
+   Compiling ulid v1.2.1
+   Compiling zlib-rs v0.6.8
+   Compiling portable-pty v0.9.0
+   Compiling tungstenite v0.30.0
+   Compiling notify v8.2.0
+   Compiling rand v0.8.8
+   Compiling parking_lot_core v0.9.12
+   Compiling parking_lot v0.12.5
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling indexmap v2.14.2
+   Compiling hashlink v0.12.2
+   Compiling num-bigint-dig v0.8.6
+   Compiling rusqlite v0.40.2
+   Compiling petgraph v0.8.3
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling rsa v0.9.10
+   Compiling dsa v0.6.3
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling flate2 v1.1.10
+   Compiling pgp v0.21.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 16.41s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-017f77418b356b83)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/bbt_mux-017f77418b356b83: replacing existing signature
+
+running 1 test
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.81s
+
+     Running tests/adapters.rs (target/debug/deps/adapters-21afc056d8856d7a)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/adapters-21afc056d8856d7a: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/identity.rs (target/debug/deps/identity-b26a398efea680ae)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/identity-b26a398efea680ae: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+     Running tests/logic.rs (target/debug/deps/logic-5f4e525199605785)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/logic-5f4e525199605785: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/mcp.rs (target/debug/deps/mcp-ac537312b5c2835b)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/mcp-ac537312b5c2835b: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/measurements.rs (target/debug/deps/measurements-761ddd9d862abe18)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/measurements-761ddd9d862abe18: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (target/debug/deps/messaging-b10224175eec68ba)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/messaging-b10224175eec68ba: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s
+
+     Running tests/ring.rs (target/debug/deps/ring-2ff5e05ac5b2c54d)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/ring-2ff5e05ac5b2c54d: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-887e35d635a5afe8)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/storage_bus_index-887e35d635a5afe8: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/ui_guard.rs (target/debug/deps/ui_guard-36a5787d0d313623)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/ui_guard-36a5787d0d313623: replacing existing signature
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=21.475
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+    Checking cfg-if v1.0.5
+    Checking typenum v1.20.1
+    Checking subtle v2.6.1
+    Checking const-oid v0.9.6
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking log v0.4.34
+    Checking zeroize v1.9.1
+    Checking zerocopy v0.8.63
+    Checking objc2-encode v4.1.0
+    Checking libm v0.2.16
+    Checking base64ct v1.8.3
+    Checking smallvec v1.16.3
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+    Checking foldhash v0.2.0
+    Checking objc2 v0.6.5
+    Checking tap v1.0.1
+    Checking pem-rfc7468 v0.7.0
+    Checking wyz v0.5.1
+    Checking hashbrown v0.17.1
+    Checking der v0.7.10
+    Checking radium v0.7.0
+    Checking zmij v1.0.23
+    Checking funty v2.0.0
+    Checking equivalent v1.0.3
+    Checking base16ct v0.2.0
+    Checking bytemuck v1.25.2
+    Checking indexmap v2.14.2
+    Checking bitvec v1.1.1
+    Checking generic-array v0.14.7
+    Checking num-traits v0.2.19
+    Checking thiserror v2.0.21
+    Checking bytes v1.12.1
+    Checking spki v0.7.3
+    Checking pkcs8 v0.10.2
+    Checking getrandom v0.2.17
+    Checking cpufeatures v0.2.17
+    Checking unicode-width v0.2.2
+    Checking once_cell v1.21.4
+    Checking block2 v0.6.2
+    Checking scopeguard v1.2.0
+    Checking block-buffer v0.10.4
+    Checking rand_core v0.6.4
+    Checking inout v0.1.4
+    Checking lock_api v0.4.14
+    Checking parking_lot_core v0.9.12
+    Checking hybrid-array v0.4.15
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking rustc-hash v1.1.0
+    Checking crypto-common v0.1.7
+    Checking crypto-bigint v0.5.5
+    Checking naga-types v30.0.1
+    Checking errno v0.3.14
+    Checking digest v0.10.7
+    Checking cipher v0.4.4
+    Checking parking_lot v0.12.5
+    Checking bit-vec v0.9.1
+    Checking raw-window-handle v0.6.2
+    Checking core-foundation-sys v0.8.7
+    Checking const-oid v0.10.2
+    Checking hmac v0.12.1
+    Checking signature v2.2.0
+    Checking sha2 v0.10.9
+    Checking pin-project-lite v0.2.17
+    Checking hkdf v0.12.4
+    Checking rfc6979 v0.4.0
+    Checking bit-set v0.10.0
+    Checking getrandom v0.3.4
+    Checking miniz_oxide v0.9.1
+    Checking codespan-reporting v0.13.1
+    Checking crc32fast v1.5.3
+    Checking unicode-ident v1.0.27
+    Checking rand_core v0.10.1
+    Checking zlib-rs v0.6.8
+    Checking static_assertions v1.1.0
+    Checking rand_core v0.9.5
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking spin v0.9.9
+    Checking float-cmp v0.9.0
+    Checking lazy_static v1.5.1
+    Checking num-iter v0.1.46
+    Checking objc-sys v0.3.5
+    Checking strict-num v0.1.1
+    Checking getrandom v0.4.3
+    Checking ctr v0.9.2
+    Checking serde v1.0.229
+    Checking bitflags v2.13.2
+    Checking serde_json v1.0.154
+    Checking signal-hook-registry v1.4.8
+    Checking dispatch2 v0.3.1
+    Checking wgpu-types v30.0.1
+    Checking aead v0.5.2
+    Checking universal-hash v0.5.1
+    Checking digest v0.11.3
+    Checking objc2-core-foundation v0.3.2
+    Checking mio v1.2.4
+    Checking arrayvec v0.7.8
+    Checking serdect v0.2.0
+    Checking socket2 v0.6.5
+    Checking sec1 v0.7.3
+    Checking polycool v0.4.0
+    Checking libloading v0.8.9
+    Checking profiling v1.0.18
+    Checking cursor-icon v1.2.0
+    Checking base64 v0.22.1
+    Checking arrayref v0.3.9
+    Checking opaque-debug v0.3.1
+    Checking kurbo v0.13.1
+    Checking ff v0.13.1
+    Checking tiny-skia-path v0.12.0
+    Checking tokio v1.54.1
+    Checking polyval v0.6.2
+    Checking group v0.13.0
+    Checking thiserror v1.0.69
+    Checking serde-big-array v0.5.1
+    Checking elliptic-curve v0.13.8
+    Checking objc2 v0.5.3
+    Checking flate2 v1.1.10
+    Checking curve25519-dalek v4.1.3
+    Checking crossbeam-utils v0.8.23
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking chacha20 v0.10.2
+    Checking aes v0.8.4
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking euclid v0.22.14
+    Checking dbl v0.3.2
+    Checking keccak v0.1.6
+    Checking byteorder v1.5.0
+    Checking siphasher v1.0.4
+    Checking sha3 v0.10.9
+    Checking cmac v0.7.2
+    Checking rand v0.10.3
+    Checking svgtypes v0.16.1
+    Checking block2 v0.5.1
+    Checking png v0.18.1
+    Checking zstd-safe v8.2.0
+    Checking nix v0.28.0
+    Checking crossbeam-queue v0.3.14
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking filedescriptor v0.8.3
+    Checking ghash v0.5.1
+    Checking anyhow v1.0.104
+    Checking ppv-lite86 v0.2.21
+    Checking half v2.7.1
+    Checking lyon_geom v1.0.20
+    Checking httparse v1.10.1
+    Checking sha1 v0.11.0
+    Checking rand_chacha v0.3.1
+    Checking rand_chacha v0.9.0
+    Checking serdect v0.3.0
+    Checking rand v0.8.8
+    Checking core-foundation v0.9.4
+    Checking objc2-foundation v0.3.2
+    Checking naga v30.0.1
+    Checking ed25519 v2.2.3
+    Checking sha1 v0.10.7
+    Checking rand v0.9.5
+    Checking blake2 v0.10.6
+    Checking password-hash v0.5.0
+    Checking http v1.5.0
+    Checking pkcs1 v0.7.5
+    Checking serial2 v0.2.38
+    Checking roxmltree v0.21.1
+    Checking simplecss v0.2.2
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking ulid v1.2.1
+    Checking signature v3.0.0
+    Checking data-encoding v2.11.1
+    Checking num-bigint-dig v0.8.6
+    Checking pico-args v0.5.0
+    Checking data-url v0.3.2
+    Checking downcast-rs v1.2.1
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking futures-task v0.3.34
+    Checking foldhash v0.1.5
+    Checking imagesize v0.15.0
+    Checking slab v0.4.12
+    Checking foreign-types-shared v0.3.1
+    Checking shell-words v1.1.1
+    Checking futures-core v0.3.34
+    Checking hashbrown v0.15.5
+    Checking foreign-types v0.5.0
+    Checking portable-pty v0.9.0
+    Checking futures-util v0.3.34
+    Checking tungstenite v0.30.0
+    Checking usvg v0.48.1
+    Checking objc2-foundation v0.2.2
+    Checking core-graphics-types v0.1.3
+    Checking ed25519 v3.0.0
+    Checking walkdir v2.5.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking ed25519-dalek v2.2.0
+    Checking dsa v0.6.3
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking lyon_path v1.0.19
+    Checking tiny-skia v0.12.0
+    Checking libsqlite3-sys v0.38.2
+    Checking aes-gcm v0.10.3
+    Checking derive_builder v0.20.2
+    Checking zstd v0.14.3
+    Checking eax v0.5.0
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking curve25519-dalek v5.0.0
+    Checking bitfields v1.0.3
+    Checking snafu v0.9.2
+    Checking derive_more v2.1.1
+    Checking crc24 v0.1.6
+    Checking aes-kw v0.2.1
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking objc2-metal v0.3.2
+    Checking k256 v0.13.4
+    Checking p256 v0.13.2
+    Checking x25519-dalek v2.0.1
+    Checking sha2 v0.11.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking ocb3 v0.1.0
+    Checking notify-types v2.1.0
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking cast5 v0.11.1
+    Checking idea v0.5.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking block-padding v0.3.3
+    Checking fsevent-sys v4.1.0
+    Checking rgb v0.8.53
+    Checking hashlink v0.12.2
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+    Checking ryu v1.0.23
+    Checking fixedbitset v0.5.7
+    Checking fallible-streaming-iterator v0.1.9
+    Checking hex v0.4.3
+    Checking unsafe-libyaml v0.2.11
+    Checking float_next_after v1.0.0
+    Checking replace_with v0.1.8
+    Checking tracing-core v0.1.36
+    Checking fallible-iterator v0.3.0
+    Checking lyon_tessellation v1.0.22
+    Checking petgraph v0.8.3
+    Checking resvg v0.48.1
+    Checking tracing v0.1.44
+    Checking rusqlite v0.40.2
+    Checking notify v8.2.0
+    Checking tokio-tungstenite v0.30.0
+    Checking ed25519-dalek v3.0.0
+    Checking security-framework v3.7.0
+    Checking serde_yaml v0.9.34+deprecated
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking core-graphics v0.23.2
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking dpi v0.1.2
+    Checking smol_str v0.2.2
+    Checking pollster v0.4.0
+    Checking objc2-app-kit v0.2.2
+    Checking objc2-app-kit v0.3.2
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking rustix v1.1.5
+    Checking fastrand v2.5.0
+    Checking tempfile v3.27.0
+    Checking pgp v0.21.0
+    Checking objc2-core-graphics v0.3.2
+    Checking wgpu-naga-bridge v30.0.1
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking raw-window-metal v1.1.0
+    Checking winit v0.30.13
+    Checking wgpu-hal v30.0.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `dev` profile [unoptimized] target(s) in 14.35s
+EXIT 0 elapsed_seconds=14.421
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live7-zdotdir target/c1a/Live7.app/Contents/MacOS/bboxy450-term-c1a-7 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live7-run
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+cockpit ready: supervisor=36482 logic=36483
+hitch frame=1 phase=encode 63.949ms cpu=65.508ms drain=0.004 layout=1.522 draw=0.033 encode=63.949 present_wait=0.060
+first frame: native scene presented, seats=0
+logic: orderly shutdown requested
+app close requested; stopping IO owner
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+EXIT 0 elapsed_seconds=54.979
+
+Main integration: git fetch origin0; rebase onto origin/main initially1 at logic.rs identity initialization, preserved ID1c IdentityRuntime::open/keys plus prefixed GUI endpoint binding, exact git add0 + rebase --continue0. Next rebase consumed accepted C1b-lib main fa596f5, exit0 (three equivalent Aster dependency commits skipped). Machine signatures remain enabled; separate transport candidate was signed, original d824edb, rebased4bd8ce0. No merge or main push.
+Metadata continuation: Aster b2dd5fb3 cleared Model metadata-only edit after accepted main, satisfied. Kestrel6f22d92e agreed account/identity/state; new full status maps to only public portable state/reason. Code and source reads0; missing guessed ring.md git-show was fatal internally (pipeline tail status0), corrected by listing spec paths; read id1-seat-chain§4 from main3896c1f0, custody hold/run closure stays ID1d.
+Housekeeping wide ps -axww inspection0/empty; no matching old R2b or own target binary was running; no kill used. All UI actions/observations recorded in c1a-native.log. A later attempt to collect an already-ended ICQ long-poll session failed at the tool layer (unknown process id32143), no shell command ran and no task state changed.
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-proto --locked
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Finished `test` profile [unoptimized] target(s) in 2.84s
+     Running unittests src/lib.rs (target/debug/deps/bbt_proto-c0821a435b5491dc)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/bbt_proto-c0821a435b5491dc: replacing existing signature
+
+running 3 tests
+test gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids ... ok
+test gui::tests::identity_status_is_portable_and_contains_only_state_and_reason ... ok
+test gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=3.393
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --test cockpit --locked
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 12.86s
+     Running tests/cockpit.rs (target/debug/deps/cockpit-9cd2d6eb9379ef05)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/cockpit-9cd2d6eb9379ef05: replacing existing signature
+
+running 4 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.62s
+
+EXIT 0 elapsed_seconds=14.822
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo check -p bboxy450-term --offline
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking security-framework-sys v2.17.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking security-framework v3.7.0
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `dev` profile [unoptimized] target(s) in 11.19s
+EXIT 0 elapsed_seconds=11.245
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --test custody --locked -- --nocapture
+   Compiling security-framework-sys v2.17.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling security-framework v3.7.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 9.21s
+     Running tests/custody.rs (target/debug/deps/custody-e47a856cdb9fc328)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/custody-e47a856cdb9fc328: replacing existing signature
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.14s
+
+EXIT 0 elapsed_seconds=39.869
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --test cockpit --locked -- --nocapture
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 1.78s
+     Running tests/cockpit.rs (target/debug/deps/cockpit-6f4661edf49f761c)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/cockpit-6f4661edf49f761c: replacing existing signature
+
+running 5 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.95s
+
+EXIT 0 elapsed_seconds=4.054
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `dev` profile [unoptimized] target(s) in 4.05s
+EXIT 0 elapsed_seconds=4.121
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live8-zdotdir target/c1a/Live8.app/Contents/MacOS/bboxy450-term-c1a-8 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live8-run
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+cockpit ready: supervisor=23474 logic=23475
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 70.136ms cpu=71.740ms drain=0.005 layout=1.555 draw=0.044 encode=70.136 present_wait=0.078
+first frame: native scene presented, seats=0
+seat 01M5K1VVV24SBBV872W237A7T6 activity=Idle process=Running { pid: 23684 }
+seat 01M5K1VVV24SBBV872W237A7T6 activity=Idle process=Running { pid: 23684 }
+app close requested; stopping IO owner
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+EXIT 0 elapsed_seconds=22.89
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live8-zdotdir target/c1a/Live8.app/Contents/MacOS/bboxy450-term-c1a-8 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live8-run
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=0
+cockpit ready: supervisor=24064 logic=24065
+seat 01M5K1X9HKQ48G29813YBVCAJQ activity=Idle process=Running { pid: 24301 }
+seat 01M5K1X9HKQ48G29813YBVCAJQ activity=Idle process=Running { pid: 24301 }
+app close requested; stopping IO owner
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+EXIT 0 elapsed_seconds=29.489
+
+$ env ZDOTDIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1a/live8-zdotdir target/c1a/Live8.app/Contents/MacOS/bboxy450-term-c1a-8 --run-dir /Users/feral/mydev/bboxy450-term-exec3/target/c1a/live3-run
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=0
+cockpit ready: supervisor=25441 logic=25442
+seat 01M5K210Y8STGF8EQ1RJ6XHFXF activity=Idle process=Running { pid: 26328 }
+seat 01M5K210Y8STGF8EQ1RJ6XHFXF activity=Idle process=Running { pid: 26328 }
+app close requested; stopping IO owner
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+EXIT 0 elapsed_seconds=33.902
+
+ID1d integration: git verify-commit06423940853348274750ea2ced27ad2fb7b369f1 ffa497bd2f4cceee8f64cd2b8f32527b37ac4195 exit0, both good machine signatures. Rebase onto exact ffa artifact initially1 at adjacent logic methods; kept seal_active_hold/refresh_identity and every Gui method, exact add0/rebase-continue0, then resolved the analogous GuiIdentity adjacency conflict/add0/continue0. No identity implementation edits.
+App now calls Logic::start_custodied; removed app RNG dependency and moved ed25519 to test-only. cargo check --offline exit0 updated Cargo.lock by removing only the app getrandom entry. Added actual same-root process relaunch test and fault-injected GUI hold/echo/recovery/FIFO test. No OS Keychain lock/unlock, no secret-file fallback.
+
+Clean exact CI attempt1: signed28fd1b39e33fff234aeb4e419d33191cf6dfaac1, accepted baseb50f7dc.
+$ sh scripts/ci-local.sh --parity
+Private detached checkout and own CARGO_TARGET_DIR. Workspace build0 (37.02s); test compile0 (15.34s); app7 unit tests0. All5 cockpit real-process tests timed out30s during startup; cargo test/workspace and CI exited101 (86.187s). No UI lint/smoke/invariant/parity reached. Post-gate tracked tree clean.
+Raw target/c1a-ci-attempt1.log SHA256 f5f81e1d0d3e1533416a4508fb376044e3daa5bcb9a1e8a9f57cae90d0b69fba.
+Exact binary isolated startup probe: supervisorReady0.007s; logic77881 no Ready10s; owned PID sample0 showed880/880 at IdentityRuntime::open_custodied -> local_dev_issuer -> KeychainDeviceKeys::load -> SecKeychainFindGenericPassword -> securityd mach_msg. Probe wrapper0; logic killed/reaped(-9), supervisor orderly0. Both binary and sample UUID FFFF0C95-AAD9-34AC-89BC-0F9FBF53026A.
+Configured sign-run comparison: supervisor83744 Ready0.958s, logic83761 still blocked10s at same880/880 stack; sample0; wrapper0; logic killed/reaped(-9), supervisor orderly0. Signing alone is not a fix. Samples retained target/c1a/ci-{logic,signed-logic}-sample.txt; no peer processes touched.
+Oracle df0059b4 assigned ID1e to Kestrel: bounded noninteractive Keychain and debug-only BBOXY_TEST_CUSTODY=memory. Gate held pending accepted ID1e; keychain implementation untouched here. Process fixture sets the switch per child through a private wrapper, without process-global env mutation. Startup timeout errors now identify supervisor vs logic.
+Own exited CI target removal0 freed2,601,492,480 allocated bytes; clean detached worktree removal0. Kept raw log, samples and pristine binary for reproduction.
+
+$ cargo fmt -p bboxy450-term -p bbt-proto -- --check
+EXIT 0 elapsed_seconds=0.132
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --test cockpit --locked -- --nocapture
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 16.73s
+     Running tests/cockpit.rs (target/debug/deps/cockpit-6f4661edf49f761c)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/cockpit-6f4661edf49f761c: replacing existing signature
+
+running 5 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.71s
+
+EXIT 0 elapsed_seconds=18.764
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --test custody --locked -- --nocapture
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 1.89s
+     Running tests/custody.rs (target/debug/deps/custody-e47a856cdb9fc328)
+/Users/feral/mydev/bboxy450-term-exec3/target/debug/deps/custody-e47a856cdb9fc328: replacing existing signature
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.17s
+
+EXIT 0 elapsed_seconds=32.622
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 8.57s
+EXIT 0 elapsed_seconds=8.803
+
+Stop-rule compliance: all production-custody diagnostic probes stopped/reaped before Oracle hold; targeted ps -p71580,77880,77881,83744,83761 returned1/empty. No real-custody/ignored test during the hold. Local ID1e process preflight used debug memory and explicit injected custody only; reported0cee853c/386ee0bc.
+ID1e accepted8ed2547; Oracle2c94e8bc lifted the hold. Decision24 removes development executable signing (.cargo/config.toml removed at1b1a80e, recorded510f0ef).
+$ git fetch origin
+EXIT0
+$ git rebase origin/main
+EXIT0 (accepted base510f0ef, two C1a commits only)
+The trailing journal_directory search returned1/no match: API is not present on this base, not a rebase failure. Final exact clean CI now follows; first failed CI remains retained separately.

@@ -147,6 +147,14 @@ fn target(view: &wgpu::TextureView, scale: f32) -> ChromeTarget<'_> {
 }
 
 impl Gpu {
+    /// Clone handles to the same device while bootstrap still owns Gpu on IO.
+    pub fn shared_context(&self) -> std::sync::Arc<DeviceContext> {
+        std::sync::Arc::new(DeviceContext {
+            device: self.renderer.context.device.clone(),
+            queue: self.renderer.context.queue.clone(),
+            adapter_info: self.renderer.context.adapter_info.clone(),
+        })
+    }
     pub async fn new(
         instance: wgpu::Instance,
         surface: wgpu::Surface<'static>,

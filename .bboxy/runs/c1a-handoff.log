@@ -1,0 +1,31 @@
+C1a preflight handoff record — Sable Embertail <EXECUTOR>
+The final DM binds this record to signed commit(s), exact clean CI log/hash/exit, and cleanup evidence.
+
+Implemented:
+- Private supervisor and logic entry points, each owning bbt-rt. One bounded startup JSON line carries the private GUI root/capability and public identity status; no capability/secret in argv or logs.
+- IO owns both processes and one admitted GUI connection. Control pipes live outside Child because Tokio Child::wait closes child.stdin on its first poll, even if cancelled. Explicit async close reaps both; timeouts are errors. Default macOS Quit menu is disabled so Command-Q reaches this path.
+- gui.sock shares the existing owner/mode/version/capability/1MiB framing. Subscribe before initial status/list; multiplex state for unwatched seats and ack-gated optional views; resync status/list on bus gap. Existing seat MCP control preserved.
+- GUI logic maps adapter/lifecycle state, cached supervisor process metadata, launch planner, operator input and bounded resize. UI publishes immutable models through Grids/build/apply state/prepare before Applied. No production Screen content reads in C1a.
+- Production logic uses start_custodied. Pending identity is public state/reason in Ready, GuiReply::Identity, the immutable model and a one-line sidebar footer. Kestrel ID1d owns custody/retry/held queue/audit.
+- Command-T creates real zsh rows. Live scene has no panes; C1i is Aster's next writer, live.rs is its IO review touch point. Restart/history/close/undo remain C1c.
+- Early producer wake before GPU bootstrap drains admission; deterministic native smoke covers it, with30s deadline. ci-local retains UI lint and runs cargo run --smoke against the selected CI target. The former development signing runner was removed on main1b1a80e (decision24); executable signing is not required.
+- Separate signed transport.rs hunk: recover an unchanged owned ECONNREFUSED socket, refuse live sockets by name, preserve other files. Explicit authorization Vesper73321ded; Rook notified/no overlap.
+
+Preflight actual results (full commands/output in c1a-commands.log):
+- Proto3 tests0; app model/window7 tests0 before ID1d switch; after switch all5 real-process tests0 (1.95s test time), including same state directory relaunch/spawn/shutdown twice.
+- Custody integration0 (30.14s): injected memory store unavailable, Pending reason on GUI connection, real zsh echo through Input/Update/Grids and C1b projection while held, two Held sends, actual30s retry status reaches GUI, FIFO IDs/sequences1,2 restored. No real Keychain lock state changed.
+- Mux GUI Applied/backpressure/resize regression0. Supervisor suite14 tests0, including refused/live/file socket regression.
+- Strict app all-target/no-deps clippy -Dwarnings0 after ID1d integration. UI IO lint0; existing renderer/identity warnings retained in command log.
+- Native Live8 SAME bundle/SAME saved state twice: Command-T row on each, unsigned/local-only footer, Command-Q both helper completions and app0 twice; no manual unlink or pin rewrite.
+- Native old OWN random-pin fixture: held footer visible and Command-T still created live zsh, app0. Lost old issuer was preserved.
+- Native killed-seat row evidence, early-wake failure and correction, and corrected shutdown proof are in c1a-native.log. Failed/superseded pilots remain labelled with real exits, not presented as passes.
+
+Final clean detached CI --parity follows this source snapshot; no final gate claimed by this preflight record. Private checkout/target are owned under exec3/target, raw final log outside checkout, and cleaned after exit.
+Deliberately untouched: Aster grids/Screen/renderer implementation (only approved4-line Model identity metadata addition), Rook writer/ring/MCP code, Kestrel identity implementation, renderer/UI/lab appearance, peer processes/targets.
+Not checked here: native terminal cells, keyboard/resize pane glue (C1i), process restart/resume, scrollback/close/undo (C1c), 1000-seat budgets (C1d), physical120Hz/performance budget. Rook's journal_directory constructor hunk will be applied when that API is present on accepted main; it is not in the current dependency.
+
+First clean exact gate28fd1b3 failed101 at real-process startup before parity. Raw target/c1a-ci-attempt1.log and sampled Keychain stack prove the dependency; see end of command log. Oracle df0059b4 assigned Kestrel ID1e and held this gate. A later final DM must bind the ID1e rebase and fresh gate result; this failed gate is not an acceptance claim.
+
+ID1e local integration preflight only: final signed candidate0a21099831967cbea4fc27023ff239e6bb30393d consumed unchanged; per-child debug-memory process fixture5/5 in1.71s (command0/18.764s), injected-store GUI echo/actual retry/FIFO1/1 in30.17s (command0/32.622s), strict app all-target/no-deps clippy -Dwarnings0/8.803s. New process fixtures never call native Keychain and mutate no process-global environment. Full gate remains held for accepted ID1e main, per Oracle df0059b4.
+
+Final-base preparation: ID1e accepted on main8ed2547; stop rule lifted by Oracle2c94e8bc. Main1b1a80e removes executable signing, decision24 at510f0ef. Fetch/rebase onto accepted origin/main510f0ef succeeded; only the two C1a commits remain above it. Process fixtures retain the approved debug memory switch; no signing or real Keychain dependency. Rook journal_directory is absent on this accepted base, so its compatibility hunk remains the agreed follow-up.

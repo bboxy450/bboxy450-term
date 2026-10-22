@@ -6,6 +6,23 @@ use crate::seat_state::{GuiSeat, SpawnSpec, text_id};
 use crate::{SeatId, Update, View};
 pub type Row = Vec<bbt_core::Cell>;
 
+/// Public signing state; custody and secret key material never cross the GUI socket.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GuiIdentityState {
+    LocalDev,
+    Pending,
+    Certified,
+    Held,
+}
+
+/// The compact identity note kept in the app's immutable model.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GuiIdentity {
+    pub state: GuiIdentityState,
+    pub reason: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GuiRequest {
     pub version: u16,
@@ -69,6 +86,7 @@ pub enum GuiAction {
     reason = "keep the decided C1 shared API; transport bounds each message"
 )]
 pub enum GuiReply {
+    Identity(GuiIdentity),
     Seats(Vec<GuiSeat>),
     Update {
         #[serde(with = "text_id")]
@@ -94,6 +112,27 @@ pub enum GuiReply {
 mod tests {
     use super::*;
     use crate::{registry::SeatRecord, seat_state::*};
+    #[test]
+    fn identity_status_is_portable_and_contains_only_state_and_reason() {
+        for (state, name) in [
+            (GuiIdentityState::LocalDev, "local-dev"),
+            (GuiIdentityState::Pending, "pending"),
+            (GuiIdentityState::Certified, "certified"),
+            (GuiIdentityState::Held, "held"),
+        ] {
+            let identity = GuiIdentity {
+                state,
+                reason: Some("Keychain unavailable".into()),
+            };
+            let value = serde_json::to_value(GuiReply::Identity(identity.clone())).unwrap();
+            assert_eq!(value["body"]["state"], name);
+            assert_eq!(value["body"].as_object().unwrap().len(), 2);
+            let GuiReply::Identity(decoded) = serde_json::from_value(value).unwrap() else {
+                panic!("identity reply changed kind")
+            };
+            assert_eq!(identity, decoded);
+        }
+    }
     #[test]
     fn gui_state_round_trips_portable_enums_without_a_mux_dependency() {
         for activity in [

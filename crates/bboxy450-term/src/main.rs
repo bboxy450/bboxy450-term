@@ -4,6 +4,7 @@ mod budget;
 mod capture;
 mod display_link;
 mod gpu;
+mod live;
 mod log;
 mod scene;
 
@@ -28,6 +29,8 @@ pub enum UiEvent {
     EndIdle,
     EndAnimation,
     Quit,
+    BackendStopped(Result<(), String>),
+    SmokeDeadline,
 }
 struct Wake(EventLoopProxy<UiEvent>);
 impl bbt_rt::Waker for Wake {
@@ -43,6 +46,13 @@ struct App {
     logger: log::Logger,
     prepared: Arc<Latest<Prepared>>,
     updates: Arc<Latest<usize>>,
+    live_updates: Arc<Latest<Arc<bboxy450_term::model::Model>>>,
+    live_state: Option<Arc<bboxy450_term::model::Model>>,
+    live_commands: Option<tokio::sync::mpsc::Sender<live::UiMsg>>,
+    render_context: Option<tokio::sync::oneshot::Sender<live::RenderContext>>,
+    closing: bool,
+    smoke_bootstrap: Option<tokio::sync::oneshot::Sender<()>>,
+    smoke_wake_seen: bool,
     window: Option<Arc<Window>>,
     pacer: Option<DisplayLink>,
     pacing: Mode,
@@ -69,6 +79,18 @@ struct App {
     frozen_ms: f32,
 }
 impl App {
+    fn request_close(&mut self, event_loop: &ActiveEventLoop) {
+        if self.closing {
+            return;
+        }
+        self.closing = true;
+        self.logger.write("app close requested; stopping IO owner");
+        if self.live_commands.take().is_none() {
+            event_loop.exit();
+        }
+        // The IO owner reaps both children, then sends BackendStopped. Never
+        // wait for process shutdown on this thread.
+    }
     fn request_redraw(&self) {
         if !self.occluded
             && let Some(pacer) = &self.pacer
@@ -123,10 +145,32 @@ impl App {
         let prepared = self.prepared.clone();
         let scale = window.scale_factor() as f32;
         let effects = self.animate;
+        let fixture = self.fake || self.animate;
+        let render_context = self.render_context.take();
+        let bootstrap = if self.smoke {
+            let (open, wait) = tokio::sync::oneshot::channel();
+            self.smoke_bootstrap = Some(open);
+            Some(wait)
+        } else {
+            None
+        };
         bbt_rt::handle().spawn(async move {
+            if let Some(wait) = bootstrap {
+                let _ = wait.await;
+            }
             let result = async {
                 let mut gpu = gpu::Gpu::new(instance, surface, [size.width, size.height]).await?;
-                let scene = scene::Scene::new();
+                if let Some(sender) = render_context {
+                    let _ = sender.send(live::RenderContext {
+                        context: gpu.shared_context(),
+                        scale,
+                    });
+                }
+                let scene = if fixture {
+                    scene::Scene::new()
+                } else {
+                    scene::Scene::live()
+                };
                 let logical = [size.width as f32 / scale, size.height as f32 / scale];
                 let layouts = scene.layout(logical, effects)?;
                 gpu.warm(scene.paint(&layouts, logical, None), scale)?;
@@ -136,12 +180,20 @@ impl App {
             prepared.publish(result);
         });
         self.window = Some(window);
+        if self.smoke {
+            // Force an early producer wake before GPU bootstrap. This catches
+            // the live-seat startup race in the real native CI probe.
+            self.inbox.dirty.source(5).mark();
+        }
         Ok(())
     }
     fn install_gpu(&mut self) -> Result<(), String> {
         if let Some(result) = self.prepared.take() {
             let (mut gpu, scene) = result?;
             self.scene = scene;
+            if let Some(state) = &self.live_state {
+                self.scene.set_model(state);
+            }
             let size = self.window.as_ref().unwrap().inner_size();
             gpu.resize(size.width, size.height);
             self.logger.write(format!(
@@ -189,8 +241,7 @@ impl App {
             if message.is_none() && output.is_none() {
                 break;
             }
-            // R2 consumes only state notifications. Command views and terminal
-            // parser buffers join later; no process is spawned by this fixture.
+            // These runtime notices carry no process handles or socket IO.
             if let Some(UiMsg::Exited { task, status }) = message {
                 self.logger
                     .write(format!("task {} exited {:?}", task.id(), status.code));
@@ -199,6 +250,10 @@ impl App {
         if let Some(sequence) = self.updates.take() {
             self.scene.update(sequence);
             self.last_update = sequence;
+        }
+        if let Some(state) = self.live_updates.take() {
+            self.scene.set_model(&state);
+            self.live_state = Some(state);
         }
     }
     fn demo(&mut self) {
@@ -219,7 +274,20 @@ impl App {
     }
     fn redraw(&mut self) -> Result<(), String> {
         if self.gpu.is_none() {
-            return Ok(());
+            // A producer may wake us before GPU preparation finishes. Drain
+            // admission even on an empty frame, or GPU-ready can lose its wake.
+            self.inbox.dirty.drain();
+            if self.smoke_wake_seen
+                && let Some(open) = self.smoke_bootstrap.take()
+            {
+                self.logger
+                    .write("smoke bootstrap: early producer handled before GPU ready");
+                let _ = open.send(());
+            }
+            self.install_gpu()?;
+            if self.gpu.is_none() {
+                return Ok(());
+            }
         }
         let frame_cpu = Instant::now();
         let size = self.window.as_ref().unwrap().inner_size();
@@ -300,7 +368,10 @@ impl App {
                 self.pacer.as_ref().unwrap().set_active(false)?;
             }
             if self.meter.total_frames() == 1 {
-                self.logger.write("first frame: 15 native panes presented");
+                self.logger.write(format!(
+                    "first frame: native scene presented, seats={}",
+                    self.scene.seats.len()
+                ));
                 self.demo();
                 if self.animate {
                     self.animation_start = Some((Instant::now(), self.meter.total_frames()));
@@ -352,6 +423,9 @@ impl ApplicationHandler<UiEvent> for App {
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UiEvent) {
         match event {
             UiEvent::Wake => {
+                if self.smoke && self.gpu.is_none() {
+                    self.smoke_wake_seen = true;
+                }
                 if let Err(error) = self.install_gpu() {
                     self.fail(error, event_loop);
                     return;
@@ -458,11 +532,21 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::Quit => event_loop.exit(),
+            UiEvent::SmokeDeadline => self.fail(
+                "smoke probe did not finish within 30 seconds".into(),
+                event_loop,
+            ),
+            UiEvent::BackendStopped(result) => match result {
+                Ok(()) => event_loop.exit(),
+                Err(error) => self.fail(error, event_loop),
+            },
         }
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::CloseRequested => {
+                self.request_close(event_loop);
+            }
             WindowEvent::Resized(size) => {
                 if let Some(pacer) = &self.pacer {
                     pacer.clear();
@@ -488,6 +572,24 @@ impl ApplicationHandler<UiEvent> for App {
             }
             WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
             WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
+                if event.physical_key == PhysicalKey::Code(KeyCode::KeyQ)
+                    && self.modifiers.super_key()
+                    && !event.repeat
+                {
+                    self.request_close(event_loop);
+                    return;
+                }
+                if event.physical_key == PhysicalKey::Code(KeyCode::KeyT)
+                    && self.modifiers.super_key()
+                    && !self.modifiers.alt_key()
+                    && !self.modifiers.shift_key()
+                    && !event.repeat
+                    && let Some(commands) = &self.live_commands
+                    && let Err(error) = commands.try_send(live::UiMsg::SpawnZsh)
+                {
+                    self.logger
+                        .write(format!("new seat request rejected: {error}"));
+                }
                 if event.physical_key == PhysicalKey::Code(KeyCode::KeyF)
                     && self.modifiers.super_key()
                     && self.modifiers.alt_key()
@@ -508,6 +610,9 @@ impl ApplicationHandler<UiEvent> for App {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    if let Some(result) = bboxy450_term::cockpit::private_entry(&hook_args) {
+        return result.map_err(|error| error as Box<dyn std::error::Error>);
+    }
     if hook_args.first().is_some_and(|arg| arg == "hook") {
         bbt_mux::adapters::hook::run_cli(&hook_args[1..]);
         return Ok(());
@@ -516,12 +621,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         bbt_mux::mcp::run_cli()?;
         return Ok(());
     }
-    let event_loop = EventLoop::<UiEvent>::with_user_event().build()?;
+    let mut event_loop_builder = EventLoop::<UiEvent>::with_user_event();
+    #[cfg(target_os = "macos")]
+    {
+        use winit::platform::macos::EventLoopBuilderExtMacOS;
+        // The default Quit menu sends NSApplication::terminate before our
+        // async child shutdown can run. Route Command-Q through App instead.
+        event_loop_builder.with_default_menu(false);
+    }
+    let event_loop = event_loop_builder.build()?;
     let proxy = event_loop.create_proxy();
     let inbox = bbt_rt::init_ui(Wake(proxy.clone()));
     let prepared = Arc::new(Latest::new(inbox.dirty.source(2)));
     let updates = Arc::new(Latest::new(inbox.dirty.source(3)));
+    let live_updates = Arc::new(Latest::new(inbox.dirty.source(5)));
     let smoke = std::env::args().any(|arg| arg == "--smoke");
+    if smoke {
+        let timeout_proxy = proxy.clone();
+        bbt_rt::handle().spawn(async move {
+            tokio::time::sleep(Duration::from_secs(30)).await;
+            let _ = timeout_proxy.send_event(UiEvent::SmokeDeadline);
+        });
+    }
     let fake = smoke || std::env::args().any(|arg| arg == "--fake-source");
     let overlay = std::env::args().any(|arg| arg == "--meter");
     let args: Vec<_> = std::env::args().collect();
@@ -539,12 +660,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .windows(2)
         .find(|pair| pair[0] == "--capture")
         .map(|pair| std::path::PathBuf::from(&pair[1]));
+    let logger = log::Logger::new();
+    let (render_context, rendering) = tokio::sync::oneshot::channel();
+    let live_commands = if fake || animate {
+        None
+    } else {
+        Some(live::start(
+            live_updates.clone(),
+            proxy.clone(),
+            logger.clone(),
+            args.windows(2)
+                .find(|pair| pair[0] == "--run-dir")
+                .map(|pair| std::path::PathBuf::from(&pair[1])),
+            rendering,
+        ))
+    };
     let mut app = App {
         proxy,
         inbox,
-        logger: log::Logger::new(),
+        logger,
         prepared,
         updates,
+        live_updates,
+        live_state: None,
+        live_commands,
+        render_context: (!fake && !animate).then_some(render_context),
+        closing: false,
+        smoke_bootstrap: None,
+        smoke_wake_seen: false,
         window: None,
         pacer: None,
         pacing,
@@ -553,7 +696,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         maximum_hz: 60.,
         budget: budget::Budget::default(),
         gpu: None,
-        scene: scene::Scene::new(),
+        scene: if fake || animate {
+            scene::Scene::new()
+        } else {
+            scene::Scene::live()
+        },
         meter: HitchMeter::new(120.),
         modifiers: ModifiersState::empty(),
         overlay,
