@@ -9,7 +9,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Agent | Role | Harness | Now | Blocked on |
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
-| Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); checkpoint to operator every 3 passes | nothing |
+| Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); checkpoint to operator every 3 passes; after pass 9: new pages documents.html, events.html, launcher.html, graph.html, stream.html, titlebar.html (operator ask), then passes 10-19, then window transparency | nothing |
 | Nyx Copperwing | Executor | Codex | **W3.2b bboxybook: draw atoms, chrome pass, modules, parity loop** | nothing |
 | Rook Ashwhisker | Executor | Codex | **W2.2 logic: store objects, registry, .bboxy index, state streams, bus last** | nothing (authorized 2026-10-21) |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
