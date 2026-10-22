@@ -1,0 +1,14 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.78s
+     Running tests/identity.rs (target/debug/deps/identity-f785212eeece100d)
+
+running 4 tests
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+login Keychain: isolated service/account attributes present; dev custody, no sync API
+Keychain tier LoginKeychain: isolated item created, read, attributes checked and deleted
+external gpg --check-sigs: good disposable-root certification; fingerprint EAFB8B90ACE4FCB8562C14CF435828E15EA4BD05
+test identity_keychain_device_local_item_and_cleanup ... ok
+test identity_bootstrap_external_certification_and_custody ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
