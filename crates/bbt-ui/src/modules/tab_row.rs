@@ -1,0 +1,237 @@
+//! Tab header and optional seat body. Single-seat tabs reduce to a SeatRow.
+use crate::{
+    self as ui, components as c,
+    modules::{
+        mini_grid::{MiniGrid, Node},
+        seat_row::{SeatRow, named},
+    },
+};
+use bbt_ui_model::{Activity, TOKENS, layout::Axis};
+#[derive(Debug, Clone)]
+pub struct TabSeat {
+    pub row: SeatRow,
+    pub children: Vec<c::Element>,
+}
+#[derive(Debug, Clone)]
+pub struct TabRow {
+    pub name: String,
+    pub shortcut: Option<String>,
+    pub tree: Node,
+    pub seats: Vec<TabSeat>,
+    pub expanded: bool,
+    pub focused_key: Option<String>,
+}
+fn style(h: Option<f32>, padding: [f32; 4]) -> ui::Style {
+    let mut s = ui::Style::new(ui::Preset::Card);
+    s.overrides.height = h.map(ui::Length::Px);
+    s.overrides.fill = Some(ui::Paint::solid(ui::Color::Transparent));
+    s.overrides.border = Some(ui::Border {
+        width: ui::Length::Px(0.),
+        paint: ui::Paint::solid(ui::Color::Transparent),
+        outside: false,
+    });
+    s.overrides.radii = Some([ui::Length::Px(0.); 4]);
+    s.overrides.padding = Some(padding.map(ui::Length::Px));
+    s
+}
+fn label(value: &str, size: f32, mono: bool, color: ui::Color) -> c::Element {
+    let mut t = c::Text::new(
+        value,
+        ui::Text {
+            size: Some(size),
+            mono,
+            line_height: 1.4,
+            paint: ui::Paint::solid(color),
+            ..Default::default()
+        },
+    );
+    t.wrap = false;
+    t.ellipsis = true;
+    c::Element::Text(t)
+}
+fn box_row(s: ui::Style, gap: f32, children: Vec<c::Item>) -> c::Element {
+    let mut b = c::Box::new(s, children);
+    b.gap = ui::Length::Px(gap);
+    c::Element::Box(b)
+}
+impl TabRow {
+    fn seat_body(&self, index: usize, shortcut: bool, ctx: ui::Context) -> Vec<c::Item> {
+        let source = &self.seats[index];
+        let mut row = source.row.clone();
+        row.focused = self.focused_key.as_deref() == Some(&row.key);
+        row.shortcut = if shortcut {
+            self.shortcut.clone()
+        } else {
+            None
+        };
+        let prefix = format!("seat{index}/");
+        let mut head = row.element(ctx);
+        c::namespace(&mut head, &prefix);
+        let mut out = vec![head.into()];
+        for (i, child) in source.children.iter().enumerate() {
+            let mut child = child.clone();
+            c::namespace(&mut child, &format!("seat{index}/child{i}/"));
+            out.push(child.into());
+        }
+        out
+    }
+    pub fn element(&self, ctx: ui::Context) -> c::Element {
+        let d = ctx.density.tokens();
+        if self.seats.len() == 1 {
+            return named(
+                "tab",
+                c::Element::Stack(c::Stack {
+                    direction: Axis::Column,
+                    gap: ui::Length::Px(0.),
+                    align: c::Alignment::Stretch,
+                    children: self.seat_body(0, true, ctx),
+                }),
+            );
+        }
+        let mut children = vec![c::Item {
+            element: named(
+                "header/tname",
+                label(
+                    &self.name,
+                    d.font_small as f32,
+                    false,
+                    ui::Color::Foreground,
+                ),
+            ),
+            extent: c::Extent::Content {
+                grow: 0.,
+                shrink: 1.,
+                min: 0.,
+                max: None,
+                max_fraction: None,
+            },
+        }];
+        if !self.expanded {
+            let mut seats = self.seats.iter().collect::<Vec<_>>();
+            seats.sort_by_key(|s| match s.row.activity {
+                Activity::Errored => 0,
+                Activity::Waiting(_) => 1,
+                Activity::Active => 2,
+                Activity::Idle => 3,
+            });
+            let count = TOKENS.sidebar.collapse_glyphs as usize;
+            let mut glyphs = vec![];
+            for (i, s) in seats.iter().take(count).enumerate() {
+                glyphs.push(
+                    named(
+                        format!(
+                            "header/roll/glyph{}",
+                            if i == 0 { String::new() } else { i.to_string() }
+                        ),
+                        c::Element::Glyph {
+                            activity: s.row.activity,
+                            grade: s.row.grade,
+                            color: ui::Paint::solid(s.row.color(ctx)),
+                            size: d.glyph as f32,
+                            scale: 1.,
+                        },
+                    )
+                    .into(),
+                );
+            }
+            if self.seats.len() > count {
+                glyphs.push(
+                    named(
+                        "header/roll/ellip",
+                        c::Element::Text({
+                            let mut text = c::Text::new(
+                                "…",
+                                ui::Text {
+                                    size: Some(d.glyph as f32),
+                                    line_height: 1.,
+                                    paint: ui::Paint::solid(ui::Color::Muted),
+                                    ..Default::default()
+                                },
+                            );
+                            text.wrap = false;
+                            text
+                        }),
+                    )
+                    .into(),
+                );
+            }
+            let roll = named("header/roll", box_row(style(None, [0.; 4]), 2., glyphs));
+            children.push(box_row(style(None, [0., 0., 0., 4.]), 0., vec![roll.into()]).into());
+        }
+        let mut right = vec![];
+        if let Some(shortcut) = &self.shortcut {
+            right.push(
+                named(
+                    "header/right/kbd",
+                    label(shortcut, d.font_small as f32, true, ui::Color::Muted),
+                )
+                .into(),
+            );
+        }
+        right.push(
+            MiniGrid {
+                tree: self.tree.clone(),
+                focused_key: self.focused_key.clone(),
+                size: [
+                    TOKENS.sidebar.minigrid_w as f32,
+                    TOKENS.sidebar.minigrid_h as f32,
+                ],
+                big: false,
+            }
+            .element_named(ctx, "header/right/mg")
+            .into(),
+        );
+        let right = named(
+            "header/right",
+            box_row(style(None, [0.; 4]), d.gap as f32, right),
+        );
+        let pushed = c::Element::Stack(c::Stack {
+            direction: Axis::Row,
+            gap: ui::Length::Px(0.),
+            align: c::Alignment::Center,
+            children: vec![c::Element::Spacer.into(), right.into()],
+        });
+        children.push(c::Item {
+            element: pushed,
+            extent: c::Extent::Content {
+                grow: 1.,
+                shrink: 0.,
+                min: 0.,
+                max: None,
+                max_fraction: None,
+            },
+        });
+        let header = named(
+            "header",
+            box_row(
+                style(
+                    Some(d.tab_h as f32),
+                    [0., d.pad_x as f32, 0., d.pad_x as f32],
+                ),
+                d.gap as f32,
+                children,
+            ),
+        );
+        let mut all = vec![header.into()];
+        if self.expanded {
+            let mut seats = vec![];
+            for i in 0..self.seats.len() {
+                seats.extend(self.seat_body(i, false, ctx));
+            }
+            let mut body = c::Box::new(style(None, [0., 0., 0., d.pad_x as f32 + 2.]), seats);
+            body.direction = Axis::Column;
+            body.gap = ui::Length::Px(0.);
+            body.align = c::Alignment::Stretch;
+            all.push(named("body", c::Element::Box(body)).into());
+        }
+        named(
+            "tab",
+            c::Element::Stack(c::Stack {
+                direction: Axis::Column,
+                gap: ui::Length::Px(0.),
+                align: c::Alignment::Stretch,
+                children: all,
+            }),
+        )
+    }
+}

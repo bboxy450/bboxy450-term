@@ -1400,3 +1400,33 @@ fn dashed_border(out: &mut DrawList, rect: Rect, radii: [f32; 4], width: f32, co
         }
     }
 }
+
+/// Qualify semantic names when a module composes repeated component subtrees.
+pub fn namespace(element: &mut Element, prefix: &str) {
+    match element {
+        Element::Named { name, content } => {
+            *name = format!("{prefix}{name}");
+            namespace(content, prefix)
+        }
+        Element::Box(b) => {
+            for child in &mut b.children {
+                namespace(&mut child.element, prefix)
+            }
+        }
+        Element::Stack(s) => {
+            for child in &mut s.children {
+                namespace(&mut child.element, prefix)
+            }
+        }
+        Element::Baseline { content, .. }
+        | Element::Overlay(Overlay { content, .. })
+        | Element::ScrollView(ScrollView { content, .. }) => namespace(content, prefix),
+        Element::Layers { base, overlays } => {
+            namespace(base, prefix);
+            for p in overlays {
+                namespace(&mut p.content, prefix);
+            }
+        }
+        _ => {}
+    }
+}

@@ -1,0 +1,9 @@
+captured 100/208
+captured 200/208
+web: 208/208 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/208
+rendered 200/208
+native/web layout snapshots: target/bboxybook/tabs-first/native/layouts.json
+rendered 208 PNGs to target/bboxybook/tabs-first/native
+parity: 208 cases, 16 review; target/bboxybook/tabs-first/index.html

@@ -124,22 +124,48 @@
       }
       return result;
     };
+    const leaf=n=>n.classList.contains('glyph')||n.classList.contains('hicon')||(!n.children.length&&!n.classList.contains('cell'));
+    const parts=(node,path='',out=[])=>{
+      const key=path||'row',css=getComputedStyle(node);if(css.display==='none')return out;
+      const r={key,rect:bounds(node)};
+      if(leaf(node)&&!node.classList.contains('glyph')&&!node.classList.contains('hicon')&&node.textContent){Object.assign(r,{kind:'text',...textDiag(node)});r.key=key;}
+      r.css={font:css.font,line_height:css.lineHeight,background:css.backgroundColor,shadow:css.boxShadow,opacity:css.opacity,border_radius:css.borderRadius,flex:css.flex,padding:css.padding};out.push(r);
+      if(!leaf(node)){const counts={};for(const ch of [...node.childNodes]){
+        if(ch.nodeType===Node.TEXT_NODE&&ch.textContent.trim()){out.push({...rawTextDiag(ch),key:(path?path+'/':'')+'text'});continue;}
+        if(ch.nodeType!==Node.ELEMENT_NODE)continue;
+        const cls=ch.classList[0]||ch.tagName.toLowerCase(),i=counts[cls]||0;counts[cls]=i+1;parts(ch,(path?path+'/':'')+cls+(i?i:''),out);
+      }}
+      return out;
+    };
+    if(window.bboxyTabsFixture){
+      const tab=window.bboxyTabsFixture==='tab-row';
+      const selected=calls.filter(c=>c.name===(tab?'tabRow':'miniGrid')&&c.node?.isConnected&&root.contains(c.node));
+      if(!selected.length)throw Error('missing TabRow/MiniGrid constructor');
+      const host=root.firstElementChild;
+      const items=selected.map((c,i)=>{
+        c.node.dataset.bboxyTabs='';
+        let diagnostics=[];
+        if(tab){
+          diagnostics.push({key:'tab',rect:bounds(c.node)});
+          const header=c.node.querySelector(':scope > .tab-row');
+          if(header)parts(header,'header',diagnostics);
+          const body=c.node.querySelector(':scope > .tab-body');
+          if(body)diagnostics.push({key:'body',rect:bounds(body)});
+          let seat=-1,child=0;
+          for(const node of [...(body||c.node).children]){
+            if(node===header)continue;
+            if(node.classList.contains('seat-row')){seat++;child=0;diagnostics.push(...parts(node).map(p=>({...p,key:`seat${seat}/${p.key}`})));}
+            else if(seat>=0){diagnostics.push(...parts(node).map(p=>({...p,key:`seat${seat}/child${child}/${p.key}`})));child++;}
+          }
+        }else diagnostics=parts(c.node,`grid${i}`);
+        const css=getComputedStyle(c.node);
+        return {args:c.args,size:[parseFloat(css.getPropertyValue('--mg-w')),parseFloat(css.getPropertyValue('--mg-h'))],parts:diagnostics};
+      });
+      return JSON.parse(JSON.stringify({version:1,layer:'tabs',kind:window.bboxyTabsFixture,host:bounds(host),gap:parseFloat(getComputedStyle(host).gap)||0,items},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
+    }
     if(window.bboxySeatRowFixture){
       const selected=calls.filter(c=>['seatRow','subagentRows','taskRow','artifactRow'].includes(c.name)&&c.node?.isConnected&&root.contains(c.node));
       const parents=[...new Set(selected.map(c=>c.node.parentElement))];
-      const leaf=n=>n.classList.contains('glyph')||n.classList.contains('hicon')||!n.children.length;
-      const parts=(node,path='',out=[])=>{
-        const key=path||'row',css=getComputedStyle(node);if(css.display==='none')return out;
-        const r={key,rect:bounds(node)};
-        if(leaf(node)&&!node.classList.contains('glyph')&&!node.classList.contains('hicon')&&node.textContent){Object.assign(r,{kind:'text',...textDiag(node)});r.key=key;}
-        r.css={font:css.font,line_height:css.lineHeight,background:css.backgroundColor,shadow:css.boxShadow,opacity:css.opacity,border_radius:css.borderRadius,flex:css.flex,padding:css.padding};out.push(r);
-        if(!leaf(node)){const counts={};for(const ch of [...node.childNodes]){
-          if(ch.nodeType===Node.TEXT_NODE&&ch.textContent.trim()){out.push({...rawTextDiag(ch),key:(path?path+'/':'')+'text'});continue;}
-          if(ch.nodeType!==Node.ELEMENT_NODE)continue;
-          const cls=ch.classList[0]||ch.tagName.toLowerCase(),i=counts[cls]||0;counts[cls]=i+1;parts(ch,(path?path+'/':'')+cls+(i?i:''),out);
-        }}
-        return out;
-      };
       const groups=parents.map(parent=>({host:bounds(parent),gap:parseFloat(parent.style.gap)||0,row_height:parseFloat(getComputedStyle(parent).getPropertyValue('--row-h')),rows:selected.filter(c=>c.node.parentElement===parent).map(c=>{c.node.dataset.bboxySeatRow='';return {kind:c.name,args:c.args,index:c.index,rect:bounds(c.node),parts:parts(c.node)};})}));
       return JSON.parse(JSON.stringify({version:1,layer:'seat-row',scope:'SeatRow and nested subagent/task/artifact rows; notes are shared context, row-menu overlays hidden on both sides',groups},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
     }

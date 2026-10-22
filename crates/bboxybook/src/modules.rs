@@ -73,7 +73,7 @@ const LIGHT: [&str; 15] = [
     "#B8860B", "#C2185B", "#6A3FD1", "#0E8F6A", "#1E4FD1", "#D1541C", "#0E7FA8", "#5B6480",
     "#9A7B10", "#1F8F4A", "#9C1FBF", "#C63B3B", "#0E86B8", "#8A6B2E", "#1E9C7E",
 ];
-fn sid(i: usize) -> SeatId {
+pub(crate) fn sid(i: usize) -> SeatId {
     SeatId::from_u128(i as u128 + 1)
 }
 fn col(i: usize, ctx: &DrawCtx) -> Color {
@@ -102,7 +102,7 @@ fn activity(s: &str) -> Activity {
         _ => Activity::Idle,
     }
 }
-fn seat(i: usize) -> Seat {
+pub(crate) fn seat(i: usize) -> Seat {
     let harness = match i {
         0 | 2 | 14 => "claude",
         5 | 10 => "pi",
@@ -270,22 +270,9 @@ pub fn mini_grid(
     ctx: &DrawCtx,
     out: &mut DrawList,
 ) {
-    out.clip(r, [TOKENS.radius.grid as f32; 4]);
-    for (id, rect) in solve_split(tree, r, 1.0).panes {
-        let s = seat(id.0.0 as usize - 1);
-        let c = if Some(id) == focused {
-            ctx.theme.palette().accent
-        } else {
-            match s.activity {
-                Activity::Waiting(_) => TOKENS.color.state.waiting,
-                Activity::Errored => TOKENS.color.state.errored,
-                _ => ctx.theme.palette().line,
-            }
-        };
-        out.rect(rect, 1.0, ctx.color(Color::hex(c)));
-    }
-    out.unclip();
+    crate::tabs::paint_legacy_mini(tree, r, focused, ctx, out)
 }
+
 pub(crate) fn band(
     name: &str,
     count: usize,
@@ -377,36 +364,9 @@ fn tab_row(
     ctx: &DrawCtx,
     out: &mut DrawList,
 ) {
-    text(
-        out,
-        Rect::new(r.x + 8.0, r.y + 3.0, r.w - 72.0, r.h),
-        name,
-        ctx.density.tokens().font_small as f32,
-        ctx.muted(),
-        400,
-    );
-    mini_grid(
-        tree,
-        Rect::new(r.right() - 32.0, r.y + (r.h - 16.0) * 0.5, 24.0, 16.0),
-        if expanded { Some(sid(0)) } else { None },
-        ctx,
-        out,
-    );
-    if !expanded {
-        for (i, id) in tree.leaves().into_iter().take(6).enumerate() {
-            StateGlyph {
-                activity: seat(id.0.0 as usize - 1).activity,
-                grade: Grade::Reported,
-                color: col(i, ctx),
-            }
-            .draw(
-                Rect::new(r.right() - 105.0 + i as f32 * 10.0, r.y + 6.0, 8.0, 8.0),
-                ctx,
-                out,
-            );
-        }
-    }
+    crate::tabs::paint_legacy_tab(tree, name, r, expanded, ctx, out)
 }
+
 fn card(
     r: Rect,
     name: &str,

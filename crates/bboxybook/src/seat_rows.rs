@@ -106,7 +106,7 @@ pub fn legacy_cases() -> Vec<Case> {
 fn string(v: &Value, k: &str) -> String {
     v[k].as_str().unwrap_or_default().into()
 }
-fn number(v: &Value, k: &str) -> Result<f32> {
+pub(crate) fn number(v: &Value, k: &str) -> Result<f32> {
     v[k].as_f64()
         .map(|v| v as f32)
         .ok_or_else(|| format!("SeatRow missing {k}").into())
@@ -127,7 +127,7 @@ fn color(v: &Value) -> Option<[f32; 4]> {
         None
     }
 }
-fn activity(v: &Value) -> Activity {
+pub(crate) fn activity(v: &Value) -> Activity {
     match v["state"].as_str() {
         Some("active") => Activity::Active,
         Some("waiting") => Activity::Waiting(match v["waitKind"].as_str().or(v["kind"].as_str()) {
@@ -195,7 +195,7 @@ pub fn seat(v: &Value, o: &Value, height: Option<f32>) -> row::SeatRow {
     s.row_height = height;
     s
 }
-fn element(v: &Value, height: Option<f32>, ctx: ui::Context) -> Result<c::Element> {
+pub(crate) fn element(v: &Value, height: Option<f32>, ctx: ui::Context) -> Result<c::Element> {
     let args = &v["args"];
     Ok(match v["kind"].as_str() {
         Some("seatRow") => seat(&args[0], &args[1], height).element(ctx),
@@ -320,7 +320,7 @@ pub fn render_case(
     }
     Ok(crop)
 }
-fn named<'a>(node: &'a c::Layout, out: &mut BTreeMap<&'a str, &'a c::Layout>) {
+pub(crate) fn named<'a>(node: &'a c::Layout, out: &mut BTreeMap<&'a str, &'a c::Layout>) {
     if let c::LayoutKind::Named(name) = &node.kind {
         out.insert(name, node);
     }
@@ -328,7 +328,7 @@ fn named<'a>(node: &'a c::Layout, out: &mut BTreeMap<&'a str, &'a c::Layout>) {
         named(ch, out);
     }
 }
-fn text_baseline(node: &c::Layout) -> Option<f32> {
+pub(crate) fn text_baseline(node: &c::Layout) -> Option<f32> {
     if matches!(node.kind, c::LayoutKind::Text { .. }) {
         Some(node.rect.y + node.baseline)
     } else {
@@ -399,28 +399,9 @@ pub fn paint_model(
     out: &mut bbt_ui_model::draw::DrawList,
 ) {
     let ctx = ui::Context::new(draw.theme, draw.density);
-    let mut view = row::SeatRow::new(format!("{:?}", s.key), &s.name, &s.harness.0);
-    view.role = s.role.as_ref().map(|r| r.name.clone());
-    view.title = s.title.clone();
-    view.activity = s.activity;
-    view.grade = s.grade;
+    let mut view = model_view(s, draw);
     view.focused = focused;
-    view.muted = s.muted;
-    let color = s.color.resolve(&format!("{:?}", s.key), draw.theme);
-    view.color = Some(
-        bbt_ui_model::draw::Color::hsl(color.hue, color.saturation / 100., color.lightness / 100.)
-            .0,
-    );
-    view.where_ = match s.where_ {
-        bbt_ui_model::Where::Local => None,
-        bbt_ui_model::Where::Ssh { .. } => Some("ssh".into()),
-        bbt_ui_model::Where::Cloud { .. } => Some("cloud".into()),
-    };
     view.shortcut = shortcut.map(|n| format!("⌘{n}"));
-    view.unread = s
-        .unread
-        .as_ref()
-        .map(|(n, r)| (n.to_string(), r.name.clone()));
     view.row_height = Some(r.h);
     let layout = view
         .element(ctx)
@@ -434,4 +415,31 @@ pub fn paint_model(
             c::Paint::Material { .. } => unreachable!("SeatRow is a flat composition"),
         }
     }
+}
+
+pub(crate) fn model_view(
+    s: &bbt_ui_model::Seat,
+    draw: &bbt_ui_model::draw::DrawCtx,
+) -> row::SeatRow {
+    let mut view = row::SeatRow::new(format!("{:?}", s.key), &s.name, &s.harness.0);
+    view.role = s.role.as_ref().map(|r| r.name.clone());
+    view.title = s.title.clone();
+    view.activity = s.activity;
+    view.grade = s.grade;
+    view.muted = s.muted;
+    let color = s.color.resolve(&format!("{:?}", s.key), draw.theme);
+    view.color = Some(
+        bbt_ui_model::draw::Color::hsl(color.hue, color.saturation / 100., color.lightness / 100.)
+            .0,
+    );
+    view.where_ = match s.where_ {
+        bbt_ui_model::Where::Local => None,
+        bbt_ui_model::Where::Ssh { .. } => Some("ssh".into()),
+        bbt_ui_model::Where::Cloud { .. } => Some("cloud".into()),
+    };
+    view.unread = s
+        .unread
+        .as_ref()
+        .map(|(n, r)| (n.to_string(), r.name.clone()));
+    view
 }

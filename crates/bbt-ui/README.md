@@ -131,3 +131,15 @@ comparisons plus 16 explicitly marked surface-only comparisons from the
 launcher and document-modal pages. Full module content is retained as context
 only; those rebases follow in L7. The native gallery and GPU check use a sharp
 striped backdrop to demonstrate blur, clipping and foreground separation.
+
+## L7 TabRow and MiniGrid
+
+`modules::tab_row::TabRow` composes a name, worst-first state roll-up, shortcut
+and MiniGrid; expansion adds the accepted SeatRow/subagent/task/artifact
+compositions. A single-seat tab reduces to that SeatRow with its shortcut.
+`components::namespace` qualifies repeated subtrees for independent diagnostics.
+
+MiniGrid composes flat clipped Boxes and optional first-word labels. It keeps
+split ratios, the 3px big-root / 1px nested gap, 2px cell minima and zero
+automatic minimum for clipped nested grids. Waiting/error colour overrides
+focus colour. These modules own no input, clock, renderer or controller.

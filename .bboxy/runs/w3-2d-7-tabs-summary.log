@@ -1,0 +1,50 @@
+W3.2d.7.2 — Nyx Copperwing <EXECUTOR>
+2026-10-21T23:04:22.220587-07:00
+
+Evidence:
+crates/bbt-ui/src/modules/tab_row.rs:78 — retained header/body composition; a single seat reduces to accepted SeatRow; stable worst-first capped glyph roll-up; shortcut belongs to the tab.
+crates/bbt-ui/src/modules/mini_grid.rs:38 — clipped flat Boxes and Text; V/H ratios, root/nested gaps, state-over-focus colour, cell minimum height under zero-height nested clipping.
+crates/bbt-ui/src/components.rs:1405 — qualifies semantic names in repeated retained subtrees; no change to existing layout/paint policy.
+crates/bboxybook/src/tabs.rs:193 — layout receives constructor arguments, host origin/width and grid viewport sizes. Child DOM rectangles/fonts remain diagnostics only.
+crates/bboxybook/src/modules.rs:266,359 and src/fixtures.rs:219,229 — old MiniGrid/TabRow hand painters replaced by retained composition adapters.
+crates/bboxybook/tests/tabs.rs — matrix/key coverage, diagnostic poisoning, old-adapter guard. bbt-ui/tests/tabs.rs — ratio/gap, clipping/minimum, state precedence, stable roll-up, single/expanded body semantics.
+
+Commands/results (actual output in sibling logs):
+cargo build -p bboxybook --locked — exit 0.
+cargo test -p bbt-ui -p bboxybook -p bbt-render --locked — exit 0; 71 tests passed, zero failures.
+cargo clippy -p bbt-ui -p bboxybook -p bbt-render --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0; same two pre-existing bbt-render exclusions, no new lint exclusions.
+cargo fmt -p bbt-ui -p bboxybook --check; node --check crates/bboxybook/capture-inputs.js; node --check crates/bboxybook/capture.mjs; git diff --check — each exit 0.
+First: target/debug/bboxybook tabs --out target/bboxybook/tabs-first — exit 0; Chrome/156.0.8078.48, 208/208 captured, zero script exceptions, Apple M4/Metal; 16 geometry reviews (all pixels within budget).
+Fixed ellipsis glyph-size/line-height and nested-grid zero automatic minimum; remaining 16 reviews reduced to two cell-height diagnostics each. Preserved the explicit 2px cell minimum under clipped zero-height ancestors.
+Final: target/debug/bboxybook render --manifest target/bboxybook/tabs-final/cases.json --out target/bboxybook/tabs-final/native; target/debug/bboxybook compare --manifest target/bboxybook/tabs-final/cases.json --out target/bboxybook/tabs-final — both exit 0. Web inputs/backdrops reused without changes from the first capture; provenance retained in capture.json.
+
+Parity: 208 pairs, 0 review; current 104/104 and legacy 104/104 within existing policy.
+Geometry: all 4260 rects and 820 baselines complete; max rect 0.2686767578125 px; max baseline 0.0078125 px.
+Gallery: target/bboxybook/tabs-final/index.html
+Policy unchanged: channel tolerance 8; text cases <=2% changed pixels AND every rect/baseline <=0.5px. No zero-pixel equivalence claimed.
+
+Ten worst triplets (relative to web/, native/, diff/):
+tab-row/expanded-cozy-light.png — changed 1.716312%, rect 0.228699px, baseline 0.007812px, within policy
+tab_row/expanded-cozy-light.png — changed 1.716312%, rect 0.228699px, baseline 0.007812px, within policy
+tab-row/expanded-with-focus-cozy-light.png — changed 1.706444%, rect 0.228699px, baseline 0.007812px, within policy
+tab_row/expanded-with-focus-cozy-light.png — changed 1.706444%, rect 0.228699px, baseline 0.007812px, within policy
+tab-row/expanded-cozy-dark.png — changed 1.611715%, rect 0.228699px, baseline 0.007812px, within policy
+tab_row/expanded-cozy-dark.png — changed 1.611715%, rect 0.228699px, baseline 0.007812px, within policy
+tab-row/expanded-with-focus-cozy-dark.png — changed 1.609741%, rect 0.228699px, baseline 0.007812px, within policy
+tab_row/expanded-with-focus-cozy-dark.png — changed 1.609741%, rect 0.228699px, baseline 0.007812px, within policy
+tab-row/expanded-compact-light.png — changed 1.479451%, rect 0.208298px, baseline 0.007812px, within policy
+tab_row/expanded-compact-light.png — changed 1.479451%, rect 0.208298px, baseline 0.007812px, within policy
+
+Final web/native/diff triplets visually inspected:
+mini-grid/depth-3-cozy-dark.png
+mini-grid/waiting-errored-cells-cozy-light.png
+tab-row/8-seats-collapsed-touch-light.png
+tab-row/expanded-with-focus-cozy-dark.png
+tab-row/expanded-cozy-light.png
+tab_row/1-seat-collapsed-cozy-light.png
+
+Gaps/not checked:
+Existing CoreText/Chrome mask, icon sampling, glyph/name text-shadow and corner-AA differences remain visible below the policy. No L1/render changes were made.
+Input/focus/toggle controllers remain deferred; expanded/focused data is rendered here. 7.0 material-ancestor rounded clipping and 7.3 SwarmCard/Sidebar were not started.
+No full unrelated global parity matrix re-run; the scoped test includes every registered component rendering on Metal. No Safari, Linux/mobile, macOS 14, hosted CI or FPS checks.
+Only allowed crate paths and these run logs changed; no lab/design, task/spec, Cargo.lock or dependency changes. Signed commit and final worktree state are in the ICQ handoff.

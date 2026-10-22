@@ -1,11 +1,7 @@
 //! JSON exported from the frozen web page's component inputs, including FIX
 //! from fixtures.js. Bounds describe the lab fixture, not component internals.
 use crate::{Result, gallery::Case, modules::*};
-use bbt_ui_model::{
-    draw::*,
-    layout::{Rect, solve_split},
-    *,
-};
+use bbt_ui_model::{draw::*, layout::Rect, *};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -220,28 +216,15 @@ pub fn model(data: &Value, opts: &Value, theme: Theme) -> Result<Model> {
     }
     Ok(model)
 }
-fn mini(v: &Value, r: Rect, focus: &str, ctx: &DrawCtx, out: &mut DrawList) -> Result<()> {
-    let tree = tree(v)?;
-    let colors: BTreeMap<_, _> = leaves(v).into_iter().map(|v| (id(v), v)).collect();
-    out.clip(r, [TOKENS.radius.grid as f32; 4]);
-    out.rect(r, 0., ctx.color(Color::hex(ctx.theme.palette().line)));
-    for (id, rect) in solve_split(&tree, r, 1.).panes {
-        let v = colors[&id];
-        let c = if s(v, "key") == focus {
-            Color::hex(ctx.theme.palette().accent)
-        } else {
-            match s(v, "state") {
-                "waiting" => Color::hex(TOKENS.color.state.waiting)
-                    .mix(Color::hex(ctx.theme.palette().surface_2), 0.25),
-                "errored" => Color::hex(TOKENS.color.state.errored)
-                    .mix(Color::hex(ctx.theme.palette().surface_2), 0.25),
-                _ => Color::hex(ctx.theme.palette().surface_2),
-            }
-        };
-        out.rect(rect, 0., ctx.color(c));
-    }
-    out.unclip();
-    Ok(())
+fn mini(
+    v: &Value,
+    r: Rect,
+    focus: &str,
+    big: bool,
+    ctx: &DrawCtx,
+    out: &mut DrawList,
+) -> Result<()> {
+    crate::tabs::paint_mini_model(v, r, focus, big, ctx, out)
 }
 fn tab(
     v: &Value,
@@ -251,90 +234,9 @@ fn tab(
     ctx: &DrawCtx,
     out: &mut DrawList,
 ) -> Result<()> {
-    let seats = tab_seats(v);
-    let row = ctx.density.tokens().row_h as f32;
-    if seats.len() == 1 {
-        seat_row(
-            &seat(seats[0], SwarmId::from_u128(1), ctx.theme),
-            Rect::new(r.x, r.y, r.w, row),
-            s(seats[0], "key") == focused,
-            s(v, "shortcut").trim_start_matches('⌘').parse().ok(),
-            ctx,
-            out,
-        );
-        return Ok(());
-    }
-    let h = ctx.density.tokens().tab_h as f32;
-    text(
-        out,
-        Rect::new(
-            r.x + ctx.density.tokens().pad_x as f32,
-            r.y + (h - 14.) / 2.,
-            r.w - 86.,
-            14.,
-        ),
-        s(v, "name"),
-        ctx.density.tokens().font_small as f32,
-        ctx.muted(),
-        400,
-    );
-    mini(
-        &v["tree"],
-        Rect::new(r.right() - 32., r.y + (h - 16.) / 2., 24., 16.),
-        focused,
-        ctx,
-        out,
-    )?;
-    if !s(v, "shortcut").is_empty() {
-        Badge {
-            label: s(v, "shortcut"),
-            selected: false,
-            mono: true,
-        }
-        .draw(
-            Rect::new(r.right() - 68., r.y + (h - 16.) / 2., 28., 16.),
-            ctx,
-            out,
-        );
-    }
-    if expanded {
-        for (i, v) in seats.iter().enumerate() {
-            seat_row(
-                &seat(v, SwarmId::from_u128(1), ctx.theme),
-                Rect::new(
-                    r.x + ctx.density.tokens().pad_x as f32 + 2.,
-                    r.y + h + i as f32 * row,
-                    r.w - ctx.density.tokens().pad_x as f32 - 2.,
-                    row,
-                ),
-                s(v, "key") == focused,
-                None,
-                ctx,
-                out,
-            );
-        }
-    } else {
-        for (i, v) in seats.iter().take(6).enumerate() {
-            let st = seat(v, SwarmId::from_u128(1), ctx.theme);
-            StateGlyph {
-                activity: st.activity,
-                grade: st.grade,
-                color: ctx.fg(),
-            }
-            .draw(
-                Rect::new(
-                    r.right() - 134. + i as f32 * 10.,
-                    r.y + (h - 9.) / 2.,
-                    9.,
-                    9.,
-                ),
-                ctx,
-                out,
-            );
-        }
-    }
-    Ok(())
+    crate::tabs::paint_tab_model(v, r, expanded, focused, ctx, out)
 }
+
 fn sidebar(call: &Call, ctx: &DrawCtx, out: &mut DrawList) -> Result<()> {
     let data = call.args.first().ok_or("sidebar model missing")?;
     let opts = call.args.get(1).unwrap_or(&Value::Null);
@@ -746,6 +648,7 @@ pub fn draw(case: &Case, ctx: &DrawCtx, out: &mut DrawList) -> Result<bool> {
                 v,
                 r,
                 call.args.get(1).and_then(Value::as_str).unwrap_or(""),
+                call.args.get(2).and_then(Value::as_bool).unwrap_or(false),
                 &dim,
                 out,
             )?,

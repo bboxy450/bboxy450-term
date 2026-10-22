@@ -337,3 +337,18 @@ The report copies that file for inspection. The L3 Style fixture likewise record
 paint-frame helpers and CoreText metrics. Legacy module and glyph cases without
 those snapshots remain explicitly unproven under the text policy. CSS
 diagnostic labels shared in an L2 backdrop do not make a material-only case text.
+
+## L7 TabRow and MiniGrid (W3.2d.7.2)
+
+`cargo run -p bboxybook --locked -- tabs` writes
+`target/bboxybook/tabs/index.html`: 104 current lab pairs and the same 104
+legacy pairs from `ux-prototype-v2`. Keys use `tab-row/` and `mini-grid/` for
+current cases; underscore ids retain the legacy registry. Each pair shares
+public constructor data, parent flow bounds and grid viewport sizes. Native
+composition computes all children; DOM part rectangles and baselines only
+feed `layouts.json` diagnostics under the existing per-case policy.
+
+Both old TabRow/MiniGrid hand painters now delegate to these retained
+compositions. Existing card hosts still own their separate seat body until
+the Sidebar/SwarmCard step. Expansion/focus flags are fixture data; input
+controllers and material-ancestor clipping are later assigned work.
