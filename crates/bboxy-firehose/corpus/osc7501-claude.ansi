@@ -1,0 +1,7 @@
+]7501;?]7501;state=idle:app=claude-code]7501;state=working:app=claude-code]7501;state=working:app=claude-code:msg=T1NDNzUwMSBjaGlsZCBmaXh0dXJl]7501;state=working:app=claude-code:id=a9d4d919158900674:title=T1NDNzUwMSBjaGlsZCBmaXh0dXJl]7501;state=working:app=claude-code]7501;state=clear:id=a9d4d919158900674]7501;state=done:app=claude-code]7501;state=working:app=claude-code]7501;state=done:app=claude-code]7501;state=clear]7501;state=clear]7501;state=clear[1mClaude status capture[0m
+
+Original control-only bytes: 482
+States: idle → working → child working → clear → done
+Transport: OSC 7501, BEL-terminated
+
+Visible text is synthetic; the captured bytes are unmodified.

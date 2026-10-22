@@ -1,0 +1,217 @@
+# T1 Git evidence
+
+Worktree: /Users/feral/mydev/bboxy450-term-exec4
+Branch: exec4
+No stash, autostash, push or merge. Stage by exact file paths.
+
+$ git diff --name-only
+Cargo.lock
+Cargo.toml
+exit_status=0
+
+$ git ls-files --others --exclude-standard
+.bboxy/runs/t1-bootstrap.log
+.bboxy/runs/t1-commands.log
+.bboxy/runs/t1-evidence.log
+.bboxy/runs/t1-git.log
+.bboxy/runs/t1-reference.log
+.bboxy/runs/t1-throughput.log
+.bboxy/runs/t1-validation.log
+crates/bboxy-firehose/Cargo.toml
+crates/bboxy-firehose/README.md
+crates/bboxy-firehose/corpus/alternate.ansi
+crates/bboxy-firehose/corpus/claude.ansi
+crates/bboxy-firehose/corpus/codex.ansi
+crates/bboxy-firehose/corpus/generate.py
+crates/bboxy-firehose/corpus/osc7501-claude.ansi
+crates/bboxy-firehose/corpus/osc7501-codex.ansi
+crates/bboxy-firehose/corpus/osc7501-preflight.ansi
+crates/bboxy-firehose/corpus/palette.ansi
+crates/bboxy-firehose/corpus/progress.ansi
+crates/bboxy-firehose/corpus/screen-hashes.txt
+crates/bboxy-firehose/corpus/scroll-links-sync.ansi
+crates/bboxy-firehose/corpus/unicode.ansi
+crates/bboxy-firehose/examples/screen_dump.rs
+crates/bboxy-firehose/reference/.gitignore
+crates/bboxy-firehose/reference/README.md
+crates/bboxy-firehose/reference/capture.mjs
+crates/bboxy-firehose/reference/evidence/alternate-dark-1x.png
+crates/bboxy-firehose/reference/evidence/alternate-intermediate-dark-1x.png
+crates/bboxy-firehose/reference/evidence/claude-dark-1x.png
+crates/bboxy-firehose/reference/evidence/codex-dark-1x.png
+crates/bboxy-firehose/reference/evidence/osc7501-claude-dark-1x.png
+crates/bboxy-firehose/reference/evidence/osc7501-codex-dark-1x.png
+crates/bboxy-firehose/reference/evidence/osc7501-preflight-dark-1x.png
+crates/bboxy-firehose/reference/evidence/palette-dark-1x.png
+crates/bboxy-firehose/reference/evidence/progress-dark-1x.png
+crates/bboxy-firehose/reference/evidence/progress-intermediate-dark-1x.png
+crates/bboxy-firehose/reference/evidence/report-dark-1x.json
+crates/bboxy-firehose/reference/evidence/scroll-links-sync-dark-1x.png
+crates/bboxy-firehose/reference/evidence/unicode-dark-1x.png
+crates/bboxy-firehose/reference/index.html
+crates/bboxy-firehose/reference/package-lock.json
+crates/bboxy-firehose/reference/package.json
+crates/bboxy-firehose/reference/vendor/LICENSE
+crates/bboxy-firehose/reference/vendor/addon-unicode11.js
+crates/bboxy-firehose/reference/vendor/provenance.json
+crates/bboxy-firehose/reference/vendor/unicode11-LICENSE
+crates/bboxy-firehose/reference/vendor/xterm.css
+crates/bboxy-firehose/reference/vendor/xterm.js
+crates/bboxy-firehose/src/lib.rs
+crates/bboxy-firehose/src/main.rs
+crates/bboxy-firehose/src/options.rs
+crates/bboxy-firehose/tests/cli.rs
+crates/bboxy-firehose/tests/corpus.rs
+crates/bboxy-firehose/tests/throughput.py
+exit_status=0
+
+$ git add -- .bboxy/runs/t1-bootstrap.log .bboxy/runs/t1-commands.log .bboxy/runs/t1-evidence.log .bboxy/runs/t1-git.log .bboxy/runs/t1-reference.log .bboxy/runs/t1-throughput.log .bboxy/runs/t1-validation.log Cargo.lock Cargo.toml crates/bboxy-firehose/Cargo.toml crates/bboxy-firehose/README.md crates/bboxy-firehose/corpus/alternate.ansi crates/bboxy-firehose/corpus/claude.ansi crates/bboxy-firehose/corpus/codex.ansi crates/bboxy-firehose/corpus/generate.py crates/bboxy-firehose/corpus/osc7501-claude.ansi crates/bboxy-firehose/corpus/osc7501-codex.ansi crates/bboxy-firehose/corpus/osc7501-preflight.ansi crates/bboxy-firehose/corpus/palette.ansi crates/bboxy-firehose/corpus/progress.ansi crates/bboxy-firehose/corpus/screen-hashes.txt crates/bboxy-firehose/corpus/scroll-links-sync.ansi crates/bboxy-firehose/corpus/unicode.ansi crates/bboxy-firehose/examples/screen_dump.rs crates/bboxy-firehose/reference/.gitignore crates/bboxy-firehose/reference/README.md crates/bboxy-firehose/reference/capture.mjs crates/bboxy-firehose/reference/evidence/alternate-dark-1x.png crates/bboxy-firehose/reference/evidence/alternate-intermediate-dark-1x.png crates/bboxy-firehose/reference/evidence/claude-dark-1x.png crates/bboxy-firehose/reference/evidence/codex-dark-1x.png crates/bboxy-firehose/reference/evidence/osc7501-claude-dark-1x.png crates/bboxy-firehose/reference/evidence/osc7501-codex-dark-1x.png crates/bboxy-firehose/reference/evidence/osc7501-preflight-dark-1x.png crates/bboxy-firehose/reference/evidence/palette-dark-1x.png crates/bboxy-firehose/reference/evidence/progress-dark-1x.png crates/bboxy-firehose/reference/evidence/progress-intermediate-dark-1x.png crates/bboxy-firehose/reference/evidence/report-dark-1x.json crates/bboxy-firehose/reference/evidence/scroll-links-sync-dark-1x.png crates/bboxy-firehose/reference/evidence/unicode-dark-1x.png crates/bboxy-firehose/reference/index.html crates/bboxy-firehose/reference/package-lock.json crates/bboxy-firehose/reference/package.json crates/bboxy-firehose/reference/vendor/LICENSE crates/bboxy-firehose/reference/vendor/addon-unicode11.js crates/bboxy-firehose/reference/vendor/provenance.json crates/bboxy-firehose/reference/vendor/unicode11-LICENSE crates/bboxy-firehose/reference/vendor/xterm.css crates/bboxy-firehose/reference/vendor/xterm.js crates/bboxy-firehose/src/lib.rs crates/bboxy-firehose/src/main.rs crates/bboxy-firehose/src/options.rs crates/bboxy-firehose/tests/cli.rs crates/bboxy-firehose/tests/corpus.rs crates/bboxy-firehose/tests/throughput.py
+exit_status=0
+
+$ git diff --cached --check
+.bboxy/runs/t1-git.log:67: new blank line at EOF.
+.bboxy/runs/t1-validation.log:64: new blank line at EOF.
+exit_status=2
+
+$ git add -- .bboxy/runs/t1-git.log .bboxy/runs/t1-validation.log
+exit_status=0
+
+$ git diff --cached --check
+exit_status=0
+
+$ git diff --cached --stat
+ .bboxy/runs/t1-bootstrap.log                       |  88 ++++
+ .bboxy/runs/t1-commands.log                        | 333 ++++++++++++++
+ .bboxy/runs/t1-evidence.log                        |  54 +++
+ .bboxy/runs/t1-git.log                             |  74 ++++
+ .bboxy/runs/t1-reference.log                       |  13 +
+ .bboxy/runs/t1-throughput.log                      |   3 +
+ .bboxy/runs/t1-validation.log                      |  63 +++
+ Cargo.lock                                         |   9 +
+ Cargo.toml                                         |   1 +
+ crates/bboxy-firehose/Cargo.toml                   |  16 +
+ crates/bboxy-firehose/README.md                    |  97 +++++
+ crates/bboxy-firehose/corpus/alternate.ansi        |  12 +
+ crates/bboxy-firehose/corpus/claude.ansi           |  18 +
+ crates/bboxy-firehose/corpus/codex.ansi            |  18 +
+ crates/bboxy-firehose/corpus/generate.py           | 141 ++++++
+ crates/bboxy-firehose/corpus/osc7501-claude.ansi   |   7 +
+ crates/bboxy-firehose/corpus/osc7501-codex.ansi    |  10 +
+ .../bboxy-firehose/corpus/osc7501-preflight.ansi   |   7 +
+ crates/bboxy-firehose/corpus/palette.ansi          |  18 +
+ crates/bboxy-firehose/corpus/progress.ansi         |  12 +
+ crates/bboxy-firehose/corpus/screen-hashes.txt     |  10 +
+ .../bboxy-firehose/corpus/scroll-links-sync.ansi   |  18 +
+ crates/bboxy-firehose/corpus/unicode.ansi          |  19 +
+ crates/bboxy-firehose/examples/screen_dump.rs      |  42 ++
+ crates/bboxy-firehose/reference/.gitignore         |   3 +
+ crates/bboxy-firehose/reference/README.md          |  39 ++
+ crates/bboxy-firehose/reference/capture.mjs        | 136 ++++++
+ .../reference/evidence/alternate-dark-1x.png       | Bin 0 -> 15145 bytes
+ .../evidence/alternate-intermediate-dark-1x.png    | Bin 0 -> 14685 bytes
+ .../reference/evidence/claude-dark-1x.png          | Bin 0 -> 44887 bytes
+ .../reference/evidence/codex-dark-1x.png           | Bin 0 -> 44549 bytes
+ .../reference/evidence/osc7501-claude-dark-1x.png  | Bin 0 -> 18573 bytes
+ .../reference/evidence/osc7501-codex-dark-1x.png   | Bin 0 -> 24628 bytes
+ .../evidence/osc7501-preflight-dark-1x.png         | Bin 0 -> 18753 bytes
+ .../reference/evidence/palette-dark-1x.png         | Bin 0 -> 26953 bytes
+ .../reference/evidence/progress-dark-1x.png        | Bin 0 -> 16733 bytes
+ .../evidence/progress-intermediate-dark-1x.png     | Bin 0 -> 8445 bytes
+ .../reference/evidence/report-dark-1x.json         | 477 +++++++++++++++++++++
+ .../evidence/scroll-links-sync-dark-1x.png         | Bin 0 -> 39507 bytes
+ .../reference/evidence/unicode-dark-1x.png         | Bin 0 -> 47081 bytes
+ crates/bboxy-firehose/reference/index.html         |  58 +++
+ crates/bboxy-firehose/reference/package-lock.json  |  31 ++
+ crates/bboxy-firehose/reference/package.json       |   9 +
+ crates/bboxy-firehose/reference/vendor/LICENSE     |  21 +
+ .../reference/vendor/addon-unicode11.js            |   2 +
+ .../reference/vendor/provenance.json               |  18 +
+ .../reference/vendor/unicode11-LICENSE             |  19 +
+ crates/bboxy-firehose/reference/vendor/xterm.css   | 285 ++++++++++++
+ crates/bboxy-firehose/reference/vendor/xterm.js    |   2 +
+ crates/bboxy-firehose/src/lib.rs                   | 119 +++++
+ crates/bboxy-firehose/src/main.rs                  | 184 ++++++++
+ crates/bboxy-firehose/src/options.rs               | 128 ++++++
+ crates/bboxy-firehose/tests/cli.rs                 | 169 ++++++++
+ crates/bboxy-firehose/tests/corpus.rs              | 178 ++++++++
+ crates/bboxy-firehose/tests/throughput.py          |  29 ++
+ 55 files changed, 2990 insertions(+)
+exit_status=0
+
+$ git add -- .bboxy/runs/t1-git.log
+exit_status=0
+
+Initial signed commit c48e7d7 and log-only signed amend b2bd628: commit commands exited 0.
+git fetch origin: exit_status=0
+git -c rebase.autoStash=false rebase --gpg-sign=9B07E849480C68328CA20684844ECC0587DE7AB0 origin/main: exit_status=0
+Rebased implementation commit: 3750581ef501aa57ddfedc4a5ac2a2d600d23b52
+git verify-commit HEAD: exit_status=0; Good signature, EDDSA 9B07E849480C68328CA20684844ECC0587DE7AB0; Boxy <bboxy450@gmail.com>.
+git status --short --branch: exit_status=0; clean, exec4 ahead 1.
+
+$ git diff --exit-code fb06db0 origin/main -- Cargo.toml Cargo.lock crates/bbt-core
+exit_status=0
+
+$ git diff --exit-code b2bd628 HEAD -- Cargo.toml Cargo.lock crates/bboxy-firehose
+exit_status=0
+
+$ git diff origin/main..HEAD --name-only
+.bboxy/graph.md
+.bboxy/runs/t1-bootstrap.log
+.bboxy/runs/t1-commands.log
+.bboxy/runs/t1-evidence.log
+.bboxy/runs/t1-git.log
+.bboxy/runs/t1-reference.log
+.bboxy/runs/t1-throughput.log
+.bboxy/runs/t1-validation.log
+Cargo.lock
+Cargo.toml
+crates/bboxy-firehose/Cargo.toml
+crates/bboxy-firehose/README.md
+crates/bboxy-firehose/corpus/alternate.ansi
+crates/bboxy-firehose/corpus/claude.ansi
+crates/bboxy-firehose/corpus/codex.ansi
+crates/bboxy-firehose/corpus/generate.py
+crates/bboxy-firehose/corpus/osc7501-claude.ansi
+crates/bboxy-firehose/corpus/osc7501-codex.ansi
+crates/bboxy-firehose/corpus/osc7501-preflight.ansi
+crates/bboxy-firehose/corpus/palette.ansi
+crates/bboxy-firehose/corpus/progress.ansi
+crates/bboxy-firehose/corpus/screen-hashes.txt
+crates/bboxy-firehose/corpus/scroll-links-sync.ansi
+crates/bboxy-firehose/corpus/unicode.ansi
+crates/bboxy-firehose/examples/screen_dump.rs
+crates/bboxy-firehose/reference/.gitignore
+crates/bboxy-firehose/reference/README.md
+crates/bboxy-firehose/reference/capture.mjs
+crates/bboxy-firehose/reference/evidence/alternate-dark-1x.png
+crates/bboxy-firehose/reference/evidence/alternate-intermediate-dark-1x.png
+crates/bboxy-firehose/reference/evidence/claude-dark-1x.png
+crates/bboxy-firehose/reference/evidence/codex-dark-1x.png
+crates/bboxy-firehose/reference/evidence/osc7501-claude-dark-1x.png
+crates/bboxy-firehose/reference/evidence/osc7501-codex-dark-1x.png
+crates/bboxy-firehose/reference/evidence/osc7501-preflight-dark-1x.png
+crates/bboxy-firehose/reference/evidence/palette-dark-1x.png
+crates/bboxy-firehose/reference/evidence/progress-dark-1x.png
+crates/bboxy-firehose/reference/evidence/progress-intermediate-dark-1x.png
+crates/bboxy-firehose/reference/evidence/report-dark-1x.json
+crates/bboxy-firehose/reference/evidence/scroll-links-sync-dark-1x.png
+crates/bboxy-firehose/reference/evidence/unicode-dark-1x.png
+crates/bboxy-firehose/reference/index.html
+crates/bboxy-firehose/reference/package-lock.json
+crates/bboxy-firehose/reference/package.json
+crates/bboxy-firehose/reference/vendor/LICENSE
+crates/bboxy-firehose/reference/vendor/addon-unicode11.js
+crates/bboxy-firehose/reference/vendor/provenance.json
+crates/bboxy-firehose/reference/vendor/unicode11-LICENSE
+crates/bboxy-firehose/reference/vendor/xterm.css
+crates/bboxy-firehose/reference/vendor/xterm.js
+crates/bboxy-firehose/src/lib.rs
+crates/bboxy-firehose/src/main.rs
+crates/bboxy-firehose/src/options.rs
+crates/bboxy-firehose/tests/cli.rs
+crates/bboxy-firehose/tests/corpus.rs
+crates/bboxy-firehose/tests/throughput.py
+exit_status=0
+
+Upstream changes did not alter Cargo metadata or bbt-core; rebased firehose files are byte-identical to the validated implementation. No redundant validation rerun.
+Final log-only signed amend, its git verify-commit result and final SHA are recorded in the ICQ handoff; no self-referential commit hash is inserted here.

@@ -9,6 +9,7 @@ members = [
   "crates/bbt-ui",
   "crates/bboxybook",
   "crates/bboxy450-term",
+  "crates/bboxy-firehose",
 ]
 
 [workspace.package]

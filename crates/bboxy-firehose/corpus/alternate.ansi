@@ -1,0 +1,12 @@
+[1mPrimary screen before the tool[0m
+Persistent transcript line A
+Persistent transcript line B
+[?1049h[2J[H[1;36mAlternate-screen synthetic inspector[0m
+
+┌──────────────────────────────────┐
+│ seat 0042    parser shard 01      │
+│ rows 24      columns 80           │
+└──────────────────────────────────┘
+[8;1H[7m selected: viewport.rs [0m[10;1HInspecting…[2KInspection complete.
+[?1049l[5;1H[32mReturned to the primary screen.[0m
+The two transcript lines above survived unchanged.
