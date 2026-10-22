@@ -1,0 +1,328 @@
+default parallelism; no RUST_TEST_THREADS or --test-threads override
+env: CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0
+
+iteration 1/20: $ cargo test -p bboxybook --test parity_gate
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Finished `test` profile [unoptimized] target(s) in 4.59s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+exit: 0
+
+iteration 2/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.09s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+exit: 0
+
+iteration 3/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.09s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test historical_geometry_review_exits_zero ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_reference_does_not_hide_missing_geometry ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+
+exit: 0
+
+iteration 4/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.08s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+exit: 0
+
+iteration 5/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.09s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+exit: 0
+
+iteration 6/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.21s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+
+exit: 0
+
+iteration 7/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.11s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_reference_does_not_hide_missing_geometry ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+exit: 0
+
+iteration 8/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.20s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test historical_geometry_review_exits_zero ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+exit: 0
+
+iteration 9/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.19s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+exit: 0
+
+iteration 10/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.16s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.58s
+
+exit: 0
+
+iteration 11/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.14s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+exit: 0
+
+iteration 12/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.17s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+
+exit: 0
+
+iteration 13/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.26s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_reference_does_not_hide_missing_geometry ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+exit: 0
+
+iteration 14/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.19s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+exit: 0
+
+iteration 15/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.23s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s
+
+exit: 0
+
+iteration 16/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.21s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test missing_reference_does_not_hide_missing_geometry ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+
+exit: 0
+
+iteration 17/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.27s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+exit: 0
+
+iteration 18/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.16s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s
+
+exit: 0
+
+iteration 19/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.18s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+exit: 0
+
+iteration 20/20: $ cargo test -p bboxybook --test parity_gate
+    Finished `test` profile [unoptimized] target(s) in 0.11s
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-448530954e7bd33b)
+
+running 6 tests
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+exit: 0
+
+20/20 default-parallel runs passed (120 test executions).

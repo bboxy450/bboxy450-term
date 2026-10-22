@@ -1,7 +1,14 @@
 use bboxybook::gallery::Case;
-use std::{fs, path::PathBuf, process::Command};
+use std::{
+    fs,
+    path::PathBuf,
+    process::Command,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+
+static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
 
 struct Fixture {
     root: PathBuf,
@@ -10,13 +17,14 @@ struct Fixture {
 
 impl Fixture {
     fn new(historical: bool, pixel_review: bool) -> Result<Self> {
+        let thread = std::thread::current();
+        let test_name = thread.name().unwrap_or("fixture");
         let root = std::env::temp_dir().join(format!(
-            "bboxybook-parity-gate-{}-{}",
+            "bboxybook-parity-gate-{}-{}-{test_name}",
             std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)?
-                .as_nanos()
+            NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed),
         ));
+        fs::create_dir(&root)?;
         let mut case = bboxybook::components::cases().remove(0);
         case.width = 1;
         case.height = 1;
