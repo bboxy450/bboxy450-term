@@ -185,12 +185,13 @@ window.TOKENS = {
 window.STYLE = {
   "components": {
     "badge": "radius.badge square, badge_alpha tint, mono digits (\u2318N, numbers)",
-    "band": "swarm colour gloss band set into the card top, tracked uppercase 10.5px",
+    "band": "swarm colour gloss band set into the card top: radius.tile, height spacing.band, padding 0 s6, note 600 tracked .16em uppercase",
     "bumper": "4px strip of swarm colour along the card bottom, 3px when shut",
-    "card": "flat surface at card_alpha, radius.card, outside hairline ring (material.hairline_px, hair), no inner highlight, no shadow: the swarm block body, the new-swarm button and Box card",
+    "card": "flat surface at card_alpha, radius.card, outside hairline ring (material.hairline_px, hair), no inner highlight, no shadow: the swarm block body (padding s2 s2 0, rows on a body padded s1 0 s2), the new-swarm button and Box card",
+    "new_swarm": "card-shaped button under the swarm cards: the card Style at spacing.new_swarm high, row 500 fg-dim",
     "panel": "frosted surface at panel_alpha with panel_blur, radius.panel, hairline ring, shadow.floating, inner top highlight",
     "pill": "radius.pill, panel material, shadow.pill; floating actions with kbd hints",
-    "row": "radius.row, margin row_margin_x, selection tint on select, hover tint on hover, tile \u00b7 title \u00b7 subtitle \u00b7 kind \u00b7 badge",
+    "row": "radius.row, margin row_margin_x, selection tint on select, hover tint on hover, tile \u00b7 title \u00b7 subtitle \u00b7 kind \u00b7 badge; inside the swarm card: radius.row, padding 0 s4, margin 0 s1",
     "section": "type.section at weight_section, muted, sentence case",
     "tile": "radius.tile square in the harness colour, white glyph inside"
   },
@@ -243,6 +244,7 @@ window.STYLE = {
   "spacing": {
     "band": 24,
     "grid": 8,
+    "new_swarm": 40,
     "panel_pad_x": 24,
     "row_gap": 12,
     "row_height_panel": 46,

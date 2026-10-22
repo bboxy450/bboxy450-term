@@ -475,7 +475,7 @@
       onDismissPending: p => { for (const sp of model.spaces) sp.pending = (sp.pending || []).filter(x => x !== p); render(); },
       onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: sp => openSpotlight(sp), onUndo: undoClose, onAccept: acceptTask, onRename: () => render(), editName: birth,
       onColor: sp => { const hues = [0, 30, 50, 90, 150, 190, 220, 260, 300, 330]; sp.hueI = ((sp.hueI == null ? -1 : sp.hueI) + 1) % hues.length; sp.color = 'hsl(' + hues[sp.hueI] + ' 70% ' + (theme() === 'light' ? 42 : 58) + '%)'; render(); } });
-    const stage = el('div', { class: 'stage' }, (() => { if (!stageTree) return el('div'); const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
+    const stage = el('div', { class: 'stage tiled' }, (() => { if (!stageTree) return el('div'); const root = splitDom(stageTree); root.style.height = '100%'; return root; })());
     main.append(sb, stage);
     main.querySelectorAll('[data-key]').forEach(n => {
       const ph = space().participants.find(x => x.key === n.dataset.key);

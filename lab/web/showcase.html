@@ -3,75 +3,20 @@
 <title>bboxy450-term · showcase</title>
 <link rel="stylesheet" href="lab.css">
 <style>
-  /* ========= showcase: the style.json material applied to every surface (operator 2026-10-21) ========= */
-  html, body { height: 100%; overflow: hidden; background: var(--bg); }
+  /* page scaffolding only: every Style value lives in lab.css (test: crates/bbt-ui-model/tests/showcase_overrides.rs) */
+  html, body { height: 100%; overflow: hidden; }
   #glow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; display: block; pointer-events: none; }
   #app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; }
   #main { flex: 1; display: flex; min-height: 0; }
-  /* the shader is the only glow: kill the CSS fakes */
-  .sidebar, .pane, .seat-row { box-shadow: none !important; animation: none !important; }
-  .seat-row.bounce { animation: rowBounce 520ms var(--ease) !important; outline: 2px solid var(--seat); outline-offset: 0; }
-  @keyframes rowBounce { 0% { transform: scale(1); outline-offset: 0; outline-color: transparent; } 35% { transform: scale(1.045); outline-offset: 3px; outline-color: var(--seat); } 70% { transform: scale(0.99); outline-offset: 1px; } 100% { transform: scale(1); outline-offset: 0; outline-color: transparent; } }
-  /* drag to split: ghost label follows the pointer; the hovered half of a pane tints */
   body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
   .pane { position: relative; }
-
-  /* --- title bar: panel material, hairline below --- */
-  .tbtn.theme { --icon: 18px; }
-
-  /* --- sidebar: frosted ground, resizable edge --- */
-  .sidebar { position: relative; background: color-mix(in srgb, var(--sidebar-bg) var(--mat-alpha), var(--bg)); border-right: 1px solid var(--hair); padding-left: var(--gutter); }
   .sidebar .sb-top { display: none; }
-  .sidebar .sb-scroll { padding: var(--grid) calc(var(--grid) - 2px) 0 calc(var(--grid) - 2px); }
-  .sb-resize { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 3; }
-
-  /* --- swarm block: body is the card Style (lab.css .space); band set in, bumper carries the colour --- */
-  .space-head { height: var(--band-h); border-radius: var(--r-tile); padding: 0 12px; font-size: 10.5px; letter-spacing: .16em; }
-  .space-head .swatch { width: 10px; height: 10px; }
-  .space-body { padding: 2px 0 4px; }
-
-  /* --- rows: tile · name · title · badge · glyph; selection and hover are tints --- */
-  .space-body .seat-row, .space-body .tab-row { margin: 0 2px; border-radius: var(--r-row); padding-left: 8px; padding-right: 8px; }
-  .seat-row:hover, .tab-row:hover { background: var(--sel-hover); }
-  .seat-row.focused { background: var(--sel); box-shadow: none; }
-  .seat-row.waiting, .seat-row.errored { background: transparent; }
-  .seat-row .tile { width: 16px; height: 16px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; color: #fff; flex: none; }
-  .seat-row .tile .hicon { --icon: 10px; }
-  .seat-row.phantom .tile { background: var(--badge) !important; color: var(--fg-dim); }
-  .seat-row .name { font-weight: var(--t-weight_name, 600); }
-  .kbd { font-family: var(--font-mono); font-size: 10px; color: var(--fg-dim); background: var(--badge); border-radius: 5px; padding: 1px 5px; line-height: 14px; }
-  .seat-row.focused .kbd { background: var(--badge-sel); color: var(--fg); }
-  .tab-row .tname { letter-spacing: 0; }
-  .tab-row.participants, .tab-row.newseat { font-size: var(--t-section); font-weight: var(--t-weight_section, 500); color: var(--fg-dim); margin-top: 6px; text-transform: none; letter-spacing: 0; }
-  .tab-row.participants .kbd { background: transparent; }
-  .tab-row.newseat { border-radius: var(--r-row); }
-  .tab-row.closed-strip { background: var(--sel-hover); border-radius: var(--r-row); }
-  .tab-row.closed-strip .undo { border: 1px solid var(--hair); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); border-radius: var(--r-round); font-size: 10px; }
-
-  /* --- new swarm: a card-shaped button --- */
-  .new-cohort { height: 40px; color: var(--fg-dim); font-size: var(--t-row); font-weight: 500; }
-  .new-cohort:hover { background: color-mix(in srgb, var(--surface) 95%, var(--fg)); color: var(--fg); }
-
-  /* --- stream dock: rows of the same anatomy --- */
-
-  /* --- stage: split tree, gutters are dividers --- */
-  .stage { flex: 1; padding: 0; background: transparent; min-width: 0; }
-  .stage .pane { background: var(--bg); min-height: 0; min-width: 0; border-radius: 0; }
-  .pane .strip .kbd { background: rgba(0,0,0,.22); color: rgba(255,255,255,.85); }
-  .pane.settings-pane { display: flex; flex-direction: column; min-width: 0; }
-  .pane.settings-pane .settings { flex: 1; min-height: 0; min-width: 0; background: color-mix(in srgb, var(--surface) 35%, var(--bg)); }
-  .pane.settings-pane.unfocused .settings { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); }
-  .pane .term { font-size: 12px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+  /* the live terminal grows from the bottom */
+  .pane .term { overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
   .pane .term .lines { white-space: pre; overflow: hidden; }
-
-  /* split preview: two cells, the new one lit and breathing */
-  /* the focused pane types: its cursor blinks */
-  .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
-  @keyframes curBlink { 50% { opacity: 0; } }
-  /* while the preset launcher is open the target half of the pane behind it is lit, same tint as drag-to-split */
 </style>
 <script src="tokens.js"></script><script src="logs.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="fixtures.js"></script>
-</head><body>
+</head><body class="live">
 <canvas id="glow"></canvas>
 <div id="app"></div>
 <script src="showcase.js"></script>

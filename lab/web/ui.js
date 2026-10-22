@@ -43,7 +43,11 @@
   const STYLES = {
     card: { material: 'flat', fill: 'material.card_alpha', radius: R.card, border: 'hairline outside', padding: [S.spacing.s6, S.spacing.s7], text: 'body' },
     row: { material: 'flat', fill: 'transparent', radius: R.row, height: 'density.row_h', padding: [0, 'density.pad_x'], text: 'row', selection: 'tint.selection_alpha' },
-    band: { material: 'gloss', fill: 'swarm colour', radius: T.radius.chip, height: T.strip.height, padding: [0, 'density.pad_x'], text: 'small · 600 · tracked .22em · uppercase · on_accent' },
+    band: { material: 'gloss', fill: 'swarm colour', radius: R.tile, height: S.spacing.band, padding: [0, S.spacing.s6], text: 'note · 600 · tracked .16em · uppercase · on_accent' },
+    // the swarm card (lab .space): the card body, rows set on it, the swarm colour as a bumper; the showcase is the source (Oracle, decided)
+    'swarm-card': { material: 'flat', fill: 'material.card_alpha', radius: R.card, border: 'hairline outside', padding: [S.spacing.s2, S.spacing.s2, 0], body: [S.spacing.s1, 0, S.spacing.s2], bumper: 'swarm 4px (closed 3px)', text: 'row' },
+    'card-row': { material: 'flat', fill: 'transparent', radius: R.row, height: 'density.row_h', padding: [0, S.spacing.s4], margin: [0, S.spacing.s1], text: 'row', selection: 'tint.selection_alpha' },
+    'new-swarm': { material: 'flat', fill: 'material.card_alpha', radius: R.card, border: 'hairline outside', height: S.spacing.new_swarm, text: 'row · 500 · fg_dim' },
     pill: { material: 'flat', fill: 'tint.badge_alpha', radius: R.pill, padding: [0, S.spacing.s3], text: 'tiny' },
     chip: { material: 'flat', fill: 'tint.badge_alpha', radius: R.tag, padding: [0, S.spacing.s2], text: 'micro · mono' },
     modal: { material: 'frosted', fill: 'material.panel_alpha', radius: R.panel, border: 'hairline ring', shadow: 'shadow.floating', padding: [S.spacing.s8, S.spacing.s9], text: 'body' },
@@ -69,17 +73,18 @@
     if (st.shadow) css.boxShadow = (css.boxShadow ? css.boxShadow + ', ' : '') + 'var(--sh-float)';
     if (st.height) css.height = resolve(st.height);
     if (st.padding) css.padding = st.padding.map(resolve).join(' ');
+    if (st.margin) css.margin = st.margin.map(resolve).join(' ');
     return css;
   }
 
   // the Style record's text field ('row · 600 · on_accent', 'micro · mono', 'small · 600 · tracked .22em · uppercase · on_accent')
   // resolves to Text options, so a page cannot drift from the record (Nyx parity correction: buttons declare row, not body)
-  function textOpts(st) { const t = (st && st.text) || 'body'; return { step: t.split(' · ')[0].trim(), weight: /\b600\b/.test(t) ? 600 : null, mono: /\bmono\b/.test(t), caps: /uppercase/.test(t), color: /on_accent/.test(t) ? 'var(--on-accent)' : null }; }
+  function textOpts(st) { const t = (st && st.text) || 'body'; return { step: t.split(' · ')[0].trim(), weight: +(t.match(/\b([4-7]00)\b/) || [])[1] || null, mono: /\bmono\b/.test(t), caps: /uppercase/.test(t), track: +(t.match(/tracked ([\d.]+)em/) || [])[1] || null, color: /on_accent/.test(t) ? 'var(--on-accent)' : /fg_dim/.test(t) ? 'var(--fg-dim)' : null }; }
   // ---------- L6 components ----------
   const apply = (node, css) => { for (const k in css) node.style[k] = css[k]; return node; };
   function Box(style, ...kids) { const st = typeof style === 'string' ? STYLES[style] : style; const b = el('div', { class: 'ui-box' + (typeof style === 'string' ? ' ui-s-' + style : '') }, ...kids); apply(b, styleCss(st, style && style.swarm)); return b; }
   const STEPS = ['micro', 'tiny', 'small', 'note', 'caption', 'label', 'section', 'row', 'body', 'kind', 'subtitle', 'title', 'input'];
-  function Text(text, o) { o = o || {}; const t = el('span', { class: 'ui-text' }, text); t.style.fontSize = 'var(--t-' + (o.step || 'body') + ')'; if (o.weight) t.style.fontWeight = o.weight; if (o.mono) t.style.fontFamily = 'var(--font-mono)'; if (o.dim) t.style.color = 'var(--fg-dim)'; if (o.color) t.style.color = o.color; if (o.caps) { t.style.textTransform = 'uppercase'; t.style.letterSpacing = '.22em'; } return t; }
+  function Text(text, o) { o = o || {}; const t = el('span', { class: 'ui-text' }, text); t.style.fontSize = 'var(--t-' + (o.step || 'body') + ')'; if (o.weight) t.style.fontWeight = o.weight; if (o.mono) t.style.fontFamily = 'var(--font-mono)'; if (o.dim) t.style.color = 'var(--fg-dim)'; if (o.color) t.style.color = o.color; if (o.caps) { t.style.textTransform = 'uppercase'; t.style.letterSpacing = (o.track || .22) + 'em'; } return t; }
   function Stack(o, ...kids) { o = o || {}; const s = el('div', { class: 'ui-stack' }, ...kids); s.style.display = 'flex'; s.style.flexDirection = o.dir === 'row' ? 'row' : 'column'; s.style.gap = o.gap != null ? px(o.gap) : 'var(--gap)'; if (o.align) s.style.alignItems = o.align; if (o.wrap) s.style.flexWrap = 'wrap'; return s; }
   function Spacer() { const s = el('span', { class: 'ui-spacer' }); s.style.flex = '1'; return s; }
   function Badge(text) { return el('span', { class: 'ui-badge' }, text); }

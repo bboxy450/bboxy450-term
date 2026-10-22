@@ -9,7 +9,7 @@ const el = Lab.el;
 // both themes, built only from ui.js (the component_layers vocabulary in the design system).
 const DENS = ['touch', 'comfortable', 'cozy', 'compact'];
 const DEMO = {
-  box: () => UI.Stack({ gap: 8 }, UI.Box('card', UI.Text('card', { step: 'body' })), UI.Box({ ...UI.STYLES.row }, UI.Text('row', { step: 'row' })), UI.Box({ material: 'gloss', fill: 'swarm colour', radius: TOKENS.radius.chip, height: TOKENS.strip.height, padding: [0, 'density.pad_x'], swarm: TOKENS.color.role.oracle }, UI.Text('BAND', { step: 'small', weight: 600, caps: true, color: 'var(--on-accent)' }))),
+  box: () => UI.Stack({ gap: 8 }, UI.Box('card', UI.Text('card', { step: 'body' })), UI.Box({ ...UI.STYLES.row }, UI.Text('row', { step: 'row' })), UI.Box({ ...UI.STYLES.band, swarm: TOKENS.color.role.oracle }, UI.Text('BAND', UI.textOpts(UI.STYLES.band)))),
   text: () => UI.Stack({ gap: 2 }, ...UI.STEPS.slice(0, 12).map(s => UI.Stack({ dir: 'row', gap: 8, align: 'baseline' }, UI.Text(s, { step: 'micro', mono: true, dim: true }), UI.Text('Vesper Greywind', { step: s })))),
   stack: () => UI.Stack({ gap: 6 }, UI.Stack({ dir: 'row', gap: 6 }, ...[1, 2, 3].map(i => UI.Box('chip', UI.Text('row ' + i, { step: 'micro', mono: true })))), UI.Stack({ gap: 4 }, ...[1, 2].map(i => UI.Box('chip', UI.Text('column ' + i, { step: 'micro', mono: true })))), UI.Stack({ dir: 'row', gap: 6, align: 'center' }, UI.Text('left', { step: 'caption' }), UI.Spacer(), UI.Text('spacer pushes right', { step: 'caption', dim: true }))),
   button: () => UI.Stack({ gap: 6 }, ...['primary', 'ghost', 'danger'].map(k => UI.Stack({ dir: 'row', gap: 6, wrap: true }, ...['idle', 'hover', 'pressed', 'focus', 'disabled'].map(st => UI.Button(st, { kind: k, state: st }))))),
