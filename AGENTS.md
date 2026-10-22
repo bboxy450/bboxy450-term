@@ -51,6 +51,7 @@ Who decides what:
 - Every commit is signed with the machine key (already configured). Never `--no-gpg-sign`.
 - **Executors never push main.** Rebase onto `origin/main` before handoff. The Oracle verifies, merges and pushes.
 - Work only inside your allowed files. If you hit a scope gap, DM the Oracle with the exact path and why, and continue the in-scope work meanwhile.
+- **Touch only what you own on this machine.** Never `pkill`, `killall` or kill by name or pattern; kill only PIDs you started yourself and recorded. Delete only directories you created. Peers' processes, targets, worktrees and `/tmp` dirs are theirs, even when they look stale: ask the owner. (A broad pkill and a stale-looking target deletion each broke a peer's gate on 2026-10-22.)
 - Fix a problem at the layer it comes from. A lab reference that is wrong gets fixed in the lab (by Creativity), never copied natively.
 - Measure before optimising. Read the images before claiming visual results.
 
