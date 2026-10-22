@@ -442,6 +442,12 @@ impl Table {
                         ui::Length::Spacing(2),
                         ui::Length::Spacing(5),
                     ]);
+                    s.overrides.border = Some(border(
+                        ui::Color::Line,
+                        STYLE.material.hairline_alpha as f32,
+                        STYLE.material.hairline_px as f32,
+                        false,
+                    ));
                     s.overrides.border_sides = Some([false, false, true, false]);
                     let mut label = text(
                         &col.title,
@@ -502,6 +508,14 @@ impl Table {
         s.overrides.padding = Some([ui::Length::Px(0.); 4]);
         s.overrides.radii = Some([ui::Length::Radius(ui::Radius::Row); 4]);
         s.overrides.fill = Some(ui::Paint::solid(ui::Color::Transparent));
+        // A table keeps its CSS layout border inside; the shared Card record
+        // now uses an outside ring for cards and must not set table geometry.
+        s.overrides.border = Some(border(
+            ui::Color::Line,
+            STYLE.material.hairline_alpha as f32,
+            STYLE.material.hairline_px as f32,
+            false,
+        ));
         let mut b = c::Box::new(s, children);
         b.direction = Axis::Column;
         b.gap = ui::Length::Px(0.);

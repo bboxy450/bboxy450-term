@@ -73,7 +73,7 @@ pub(crate) fn inset(e: c::Element, x: f32) -> c::Element {
     )
 }
 pub(crate) fn card_style(fill: ui::Color) -> ui::Style {
-    let mut s = ui::Style::new(ui::Preset::Card);
+    let mut s = ui::Style::new(ui::Preset::SwarmCard);
     s.overrides.padding = Some([ui::Length::Px(0.); 4]);
     s.overrides.fill = Some(ui::Paint {
         color: fill,
@@ -112,11 +112,14 @@ pub struct SwarmCard {
 }
 impl SwarmCard {
     pub fn header_element(&self, ctx: ui::Context) -> c::Element {
+        let band = ui::Style::new(ui::Preset::Band)
+            .resolve(ctx)
+            .expect("band Style");
         let white = |a: f32| ui::Color::Rgba([1., 1., 1., a]);
         let mut title = match text(
             &self.name,
-            STYLE.r#type.note as f32,
-            600,
+            band.text.size,
+            band.text.weight,
             false,
             white(0.92),
         ) {
@@ -125,8 +128,8 @@ impl SwarmCard {
         };
         title.wrap = true;
         title.ellipsis = false;
-        title.runs[0].style.uppercase = true;
-        title.runs[0].style.tracking_em = 0.16;
+        title.runs[0].style.uppercase = band.text.uppercase;
+        title.runs[0].style.tracking_em = band.text.tracking_em;
         let mut children = vec![
             c::Item {
                 element: named("head/sname", c::Element::Text(title)),
@@ -297,13 +300,8 @@ impl SwarmCard {
                 max_fraction: None,
             },
         });
-        let mut style = plain(
-            Some(TOKENS.strip.height as f32 + 2.),
-            [0., STYLE.spacing.s6 as f32, 0., STYLE.spacing.s6 as f32],
-            ui::Color::Rgba(self.color),
-            TOKENS.radius.chip as f32,
-        );
-        style.overrides.material = Some(ui::Material::Gloss);
+        let mut style = ui::Style::new(ui::Preset::Band);
+        style.overrides.fill = Some(ui::Paint::solid(ui::Color::Rgba(self.color)));
         let mut header = flow(
             style,
             Axis::Row,
@@ -353,7 +351,7 @@ impl SwarmCard {
                 text(
                     label,
                     ctx.density.tokens().font_small as f32,
-                    if key == "newseat" { 500 } else { 600 },
+                    500,
                     false,
                     ui::Color::Muted,
                 ),
@@ -371,12 +369,11 @@ impl SwarmCard {
                 vec![
                     named(
                         format!("body/{key}/right/kbd"),
-                        text(
+                        super::seat_row::keyboard_badge(
                             count.map_or("⌘T".into(), |n| n.to_string()),
-                            ctx.density.tokens().font_small as f32,
-                            if key == "newseat" { 500 } else { 600 },
-                            true,
-                            ui::Color::Muted,
+                            false,
+                            key == "shadows",
+                            500,
                         ),
                     )
                     .into(),
@@ -384,26 +381,8 @@ impl SwarmCard {
             ),
         );
         row.push(right.into());
-        let mut style = plain(
-            Some(ctx.density.tokens().tab_h as f32),
-            [
-                0.,
-                ctx.density.tokens().pad_x as f32,
-                0.,
-                ctx.density.tokens().pad_x as f32,
-            ],
-            ui::Color::Transparent,
-            STYLE.radius.badge as f32,
-        );
-        style.overrides.padding = Some(
-            [
-                0.,
-                ctx.density.tokens().pad_x as f32,
-                0.,
-                ctx.density.tokens().pad_x as f32,
-            ]
-            .map(ui::Length::Px),
-        );
+        let mut style = ui::Style::new(ui::Preset::CardRow);
+        style.overrides.height = Some(ui::Length::Px(ctx.density.tokens().tab_h as f32));
         let mut row = flow(
             style,
             Axis::Row,
@@ -429,6 +408,12 @@ impl SwarmCard {
         )
     }
     pub fn element(&self, ctx: ui::Context) -> c::Element {
+        let chrome = ui::Style::new(ui::Preset::SwarmCard)
+            .resolve(ctx)
+            .expect("swarm Style");
+        let row_style = ui::Style::new(ui::Preset::CardRow)
+            .resolve(ctx)
+            .expect("row Style");
         let mut children = vec![self.header_element(ctx).into()];
         if !self.closed {
             children.push(
@@ -449,7 +434,7 @@ impl SwarmCard {
             for (i, e) in self.extra.iter().enumerate() {
                 let mut e = e.clone();
                 c::namespace(&mut e, &format!("body/extra{i}/"));
-                body.push(inset(e, STYLE.spacing.s1 as f32).into());
+                body.push(inset(e, row_style.margin[3]).into());
             }
             if self.new_seat {
                 body.push(self.section("new seat", "newseat", ctx, None).into());
@@ -460,17 +445,12 @@ impl SwarmCard {
                         .into(),
                 );
                 for (i, row) in self.shadows.iter().enumerate() {
-                    let mut e = row.element_with_radius(ctx, STYLE.radius.badge as f32);
+                    let mut e = row.element_in_swarm(ctx);
                     c::namespace(&mut e, &format!("body/shadow{i}/"));
-                    body.push(inset(e, STYLE.spacing.s1 as f32).into());
+                    body.push(inset(e, row_style.margin[3]).into());
                 }
             }
-            let s = plain(
-                None,
-                [0., 0., STYLE.spacing.s2 as f32, 0.],
-                ui::Color::Transparent,
-                0.,
-            );
+            let s = plain(None, chrome.body_padding, ui::Color::Transparent, 0.);
             children.push(
                 named(
                     "body",
@@ -495,7 +475,7 @@ impl SwarmCard {
             ui::Color::Surface
         };
         let inner = flow(
-            plain(None, [4., 4., 0., 4.], ui::Color::Transparent, 0.),
+            plain(None, chrome.padding, ui::Color::Transparent, 0.),
             Axis::Column,
             0.,
             c::Alignment::Stretch,
@@ -503,7 +483,7 @@ impl SwarmCard {
         );
         let bumper = flow(
             plain(
-                Some(if self.closed { 3. } else { 4. }),
+                Some(chrome.bumper[usize::from(self.closed)]),
                 [0.; 4],
                 ui::Color::Rgba(self.color),
                 0.,
@@ -532,6 +512,9 @@ pub struct PendingSpawn {
 }
 pub fn pending_row(p: &PendingSpawn, ctx: ui::Context) -> c::Element {
     let d = ctx.density.tokens();
+    let card_row = ui::Style::new(ui::Preset::CardRow)
+        .resolve(ctx)
+        .expect("card row Style");
     let rejected = p.status == "rejected";
     let accepted = p.status == "accepted";
     let mark = if rejected {
@@ -685,16 +668,24 @@ pub fn pending_row(p: &PendingSpawn, ctx: ui::Context) -> c::Element {
             ],
         ),
     );
+    // CSS centers the text column but aligns the status mark and icon to
+    // the row's top edge, even when min-height adds spare vertical space.
+    let mut column_center = c::Overlay::new(column);
+    column_center.style = Box::new(plain(None, [0.; 4], ui::Color::Transparent, 0.));
+    column_center.min_height = ui::Length::Px(0.);
+    column_center.horizontal = c::Alignment::Stretch;
+    column_center.vertical = c::Alignment::Center;
+    column_center.clip = false;
     let row = flow(
         plain(None, [0.; 4], ui::Color::Transparent, 0.),
         Axis::Row,
         STYLE.spacing.s3 as f32,
-        c::Alignment::Start,
+        c::Alignment::Stretch,
         vec![
             top_margin(mark).into(),
             top_margin(icon).into(),
             c::Item {
-                element: column,
+                element: c::Element::Overlay(column_center),
                 extent: c::Extent::Content {
                     grow: 1.,
                     shrink: 1.,
@@ -707,13 +698,13 @@ pub fn pending_row(p: &PendingSpawn, ctx: ui::Context) -> c::Element {
     );
     let mut s = plain(
         None,
-        [3., d.pad_x as f32, 3., d.pad_x as f32],
+        [3., card_row.padding[1], 3., card_row.padding[3]],
         if rejected {
             ui::Color::Rgba([fg[0], fg[1], fg[2], 0.1])
         } else {
             ui::Color::Transparent
         },
-        STYLE.radius.badge as f32,
+        card_row.radii[0],
     );
     s.overrides.border = Some(ui::Border {
         width: ui::Length::Hairline,
@@ -729,7 +720,7 @@ pub fn pending_row(p: &PendingSpawn, ctx: ui::Context) -> c::Element {
     outer.style = Box::new(s);
     outer.min_height = ui::Length::Px(d.tab_h as f32);
     outer.horizontal = c::Alignment::Stretch;
-    outer.vertical = c::Alignment::Center;
+    outer.vertical = c::Alignment::Stretch;
     outer.clip = false;
     named("row", c::Element::Overlay(outer))
 }

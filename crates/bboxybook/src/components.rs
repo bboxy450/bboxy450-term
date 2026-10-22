@@ -88,7 +88,7 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
                 ..Default::default()
             };
             if s.uppercase {
-                s.tracking_em = 0.22;
+                s.tracking_em = o["track"].as_f64().unwrap_or(0.22) as f32;
             }
             s.paint = ui::Paint::solid(if o["dim"] == true {
                 ui::Color::Muted

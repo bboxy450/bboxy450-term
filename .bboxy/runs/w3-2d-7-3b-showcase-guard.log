@@ -1,0 +1,10 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/showcase_overrides.rs (target/debug/deps/showcase_overrides-2e7ee147b6a2286e)
+
+running 2 tests
+test the_guard_catches_an_override ... ok
+test showcase_sets_no_token_backed_property ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

@@ -4,7 +4,7 @@ use crate::{
     self as ui, components as c,
     modules::{
         seat_row::named,
-        swarm_card::{SwarmCard, card_style, flow, plain, text},
+        swarm_card::{SwarmCard, flow, plain, text},
     },
 };
 use bbt_ui_model::{STYLE, layout::Axis};
@@ -18,8 +18,9 @@ pub struct Sidebar {
 }
 impl Sidebar {
     pub fn element(&self, ctx: ui::Context) -> c::Element {
-        let border = 1.;
-        let width = self.size[0] - if self.phone { 0. } else { border };
+        let border = STYLE.material.hairline_px as f32;
+        let gutter = bbt_ui_model::TOKENS.layout.gutter as f32;
+        let width = self.size[0] - if self.phone { 0. } else { border } - gutter;
         let top_height = bbt_ui_model::TOKENS.strip.height as f32;
         let handle_height = if self.phone { 44. } else { 0. };
         let scroll_height =
@@ -102,8 +103,7 @@ impl Sidebar {
                 "new-swarm/plus",
                 text("+", 18., 500, false, ui::Color::Muted),
             );
-            let mut style = card_style(ui::Color::Surface);
-            style.overrides.height = Some(ui::Length::Px(40.));
+            let style = ui::Style::new(ui::Preset::NewSwarm);
             let body = flow(
                 style,
                 Axis::Row,
@@ -138,7 +138,7 @@ impl Sidebar {
         let scroll = c::Element::ScrollView(c::ScrollView {
             viewport: [
                 (width - 2. * STYLE.spacing.s3 as f32).max(0.),
-                scroll_height,
+                (scroll_height - STYLE.spacing.s4 as f32).max(0.),
             ],
             offset: [0., self.scroll],
             content_width: None,
@@ -149,7 +149,12 @@ impl Sidebar {
             flow(
                 plain(
                     Some(scroll_height),
-                    [0., STYLE.spacing.s3 as f32, 0., STYLE.spacing.s3 as f32],
+                    [
+                        STYLE.spacing.s4 as f32,
+                        STYLE.spacing.s3 as f32,
+                        0.,
+                        STYLE.spacing.s3 as f32,
+                    ],
                     ui::Color::Transparent,
                     0.,
                 ),
@@ -190,13 +195,27 @@ impl Sidebar {
         children.extend([top.into(), scroll.into()]);
         let mut style = plain(
             Some(self.size[1]),
-            [0.; 4],
-            ui::Color::Rgba(bbt_ui_model::draw::Color::hex(ctx.theme.palette().sidebar).0),
+            [0., 0., 0., gutter],
+            ui::Color::Rgba(
+                bbt_ui_model::draw::Color::hex(ctx.theme.palette().bg)
+                    .mix(
+                        bbt_ui_model::draw::Color::hex(ctx.theme.palette().sidebar),
+                        STYLE.material.panel_alpha as f32,
+                    )
+                    .0,
+            ),
             0.,
         );
         style.overrides.border = Some(ui::Border {
             width: ui::Length::Px(border),
-            paint: ui::Paint::solid(ui::Color::Line),
+            paint: ui::Paint {
+                color: ui::Color::Line,
+                alpha: if self.phone {
+                    ui::Alpha::Value(1.)
+                } else {
+                    ui::Alpha::Hairline
+                },
+            },
             outside: false,
         });
         style.overrides.border_sides = Some(if self.phone {

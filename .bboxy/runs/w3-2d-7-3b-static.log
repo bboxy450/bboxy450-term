@@ -1,0 +1,14 @@
+$ cargo fmt -p bbt-ui -p bboxybook --check
+exit 0
+
+$ node --check crates/bboxybook/capture-inputs.js
+exit 0
+
+$ node --check crates/bboxybook/capture.mjs
+exit 0
+
+$ git diff --check
+exit 0
+
+$ git diff --cached --check
+exit 0 (after trimming extra blank log EOFs)

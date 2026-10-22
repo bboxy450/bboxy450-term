@@ -149,7 +149,10 @@ fn text_frame(rect: Rect, s: &ResolvedStyle) -> Rect {
         .map_or(0., |b| b.width);
     Rect::new(
         rect.x + s.padding[3] + inset,
-        rect.y + (rect.h - s.text.size * 1.4) * 0.5,
+        rect.y
+            + s.padding[0]
+            + inset
+            + (rect.h - s.padding[0] - s.padding[2] - inset * 2. - s.text.size * 1.4) * 0.5,
         (rect.w - s.padding[1] - s.padding[3] - inset * 2.).max(0.),
         s.text.size * 1.4,
     )
