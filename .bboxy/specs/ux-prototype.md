@@ -148,7 +148,7 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 2 | waiting kinds | OSC 7501 | BUILT: ◐ with a tiny kind mark (⚿ permission, ? question, ⚷ auth); the strip title spells it |
 | 3 | delivery evidence | messaging | BUILT: tick ladder after the time on message rows (· ✓ ✓✓ ✓✓ ✓✓✓); queued dims its second tick; acknowledged in accent; unknown is ✓ then a dashed hollow ring, never red, never a failure |
 | 4 | held count | mute | BUILT: muted row shows an amber "held N"; unmute releases only eligible items and the stream line counts them; blocked items stay as a dashed "held N" with id and reason |
-| 5 | reconnect | mux state streams | stale frame dimmed under a "reconnecting…" pill; "restarted" chip on generation change |
+| 5 | reconnect | mux state streams | BUILT: stale frame dimmed, glow frozen, under a "reconnecting…" pill that fades on reconnect; one-shot "restarted" chip for 4 s on generation change, then a stream line |
 | 6 | scrollback gap | ring eviction | BUILT: hairline with a centred caption, "earlier output evicted · retained from <from>" or "earlier output unavailable"; never an invented count |
 | 7 | pending row | MCP mutation status | dashed row with spinner until applied; rejected shows the reason |
 | 8 | audit lines | Oracle audit log | DECIDED: a projection of the audit log, swarm-member scope; centred stream lines |

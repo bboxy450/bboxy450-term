@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 23,
+  "version": 24,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -220,7 +220,7 @@
       "means": "the seat process generation changed",
       "source": "mux-daemon state streams",
       "drawing": "one-shot \"restarted\" chip on the row for 4 s, then a stream line",
-      "status": "decided (one-shot notice), drawn, not built"
+      "status": "built: one-shot accent \"restarted\" chip in the row's right cluster, fades out over 4 s; then a stream line \"<name> restarted · process generation N\"; seat.restarted, seat-row.html?state=restarted, showcase key D"
     },
     "pending_row": {
       "means": "the Oracle is spawning this seat",
@@ -560,7 +560,7 @@
         "never blank the pane",
         "no modal"
       ],
-      "status": "drawn, not built"
+      "status": "built: pane keeps its stale frame, strip and term dimmed with the dim tokens, CSS animations paused and the particle glow held on its last frame, centred frosted pill with spinner \"reconnecting…\"; on reconnect the pill reads \"reconnected\" and fades; never blank, no modal; pane(seat, { reconnecting | reconnected }), pane.html?state=reconnecting, showcase key D"
     },
     "row_menu": {
       "purpose": "per-seat actions that are not worth a strip icon",

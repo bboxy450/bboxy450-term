@@ -180,6 +180,18 @@
     render();
   }
   addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f) toggleMute(f); } });
+  // D: the GUI loses the daemon. Every pane keeps its stale frame, dimmed, glow frozen, "reconnecting…"; on reconnect the
+  // frames redraw, the pill fades, and a seat whose process generation changed shows "restarted" for 4 s, then a stream line.
+  let daemon = null;
+  addEventListener('keydown', e => {
+    if ((e.key !== 'd' && e.key !== 'D') || e.metaKey || e.ctrlKey || e.altKey || spot || daemon) return;
+    daemon = 'lost'; render();
+    setTimeout(() => {
+      const s = seats[1]; s.generation = (s.generation || 3) + 1; s.restarted = true; daemon = 'back'; render();
+      setTimeout(() => { daemon = null; render(); }, 1000);
+      setTimeout(() => { s.restarted = false; const t = tabOf(s.key); streamLine(t ? t.sp : space(), s.name + ' restarted · process generation ' + s.generation); render(); }, 4000);
+    }, 2600);
+  });
   // Appearance settings apply live: density, theme and gutter re-render the window; glow toggles the shader canvas.
   function applySetting(section, key, value) {
     if (section !== 'appearance') return;
@@ -367,7 +379,7 @@
   function splitDom(t) {
     if (t.key && t.graph) { const sp = space(); const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘G', onClose: closeGraph }), C.graphPage({ seats: seats.filter(x => !x.settings && !x.graph && (tabOf(x.key) || {}).sp === sp), epics: sp.epics, swarm: sp.name, history: sp.history, provenance: sp.provenance, subscriptions: sp.subscriptions })); p.dataset.key = t.key; return p; }
     if (t.key && t.settings) { const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘,', onClose: closeSettings }), C.settingsPage({ section: t.section, onChange: (sec, k, v) => { if (sec === 'appearance') settingsSeat.section = 'Appearance'; applySetting(sec, k, v); } })); p.dataset.key = t.key; return p; }
-    if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute });
+    if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute, reconnecting: daemon === 'lost', reconnected: daemon === 'back' });
     const A = splitDom(t.a), B = splitDom(t.b);
     A.style.flex = t.ratio || 0.5; B.style.flex = 1 - (t.ratio || 0.5);
     const box = el('div', { class: 'split ' + t.dir });
