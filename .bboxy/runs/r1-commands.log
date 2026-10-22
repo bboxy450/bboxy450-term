@@ -1,0 +1,200 @@
+# R1 command ledger — Sable Embertail
+Setup/read-only tool invocations returned exit 0 except: initial instruction discovery rg (no AGENTS found) exit 1; missing .bboxy/taing.md cat exit 1; profile /dev/stdin rejected (regular file required) exit 1; relative profile path preview rejected (absolute required) exit 1; R1 baseline rg clippy.toml/.cargo/config.toml exit 2 (absent); final AGENTS discovery rg exit 1 (none). Absolute regular-file profile succeeded; temporary profile removed. No source edits before R1 reassignment.
+
+$ git status --short --branch
+## exec3...origin/main
+?? .bboxy/runs/r1-commands.log
+
+exit: 0
+
+$ git log -3 "--format=%h %s"
+3d4f3f2 kb: Sable joins on R1; Rook running W2.2
+3147921 ui: add retained Flow and per-line text alignment
+e883ec4 kb: runtime spec (UI thread never waits on IO, 120 Hz) and R1–R5 epic
+
+exit: 0
+
+$ git rev-parse HEAD
+3d4f3f2730efe36a4012029c99c78f5e2187995c
+
+exit: 0
+
+$ cargo fmt -p bbt-rt
+
+exit: 0
+
+$ cargo test -p bbt-rt --no-run
+    Updating crates.io index
+     Locking 3 packages to highest Rust 1.99 compatible versions
+      Adding crossbeam-queue v0.3.14
+      Adding signal-hook-registry v1.4.8
+      Adding tokio-macros v2.7.2
+   Compiling libc v0.2.191
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling crossbeam-utils v0.8.23
+   Compiling bytes v1.12.1
+   Compiling pin-project-lite v0.2.17
+   Compiling crossbeam-queue v0.3.14
+   Compiling errno v0.3.14
+   Compiling mio v1.2.4
+   Compiling syn v3.0.9
+   Compiling signal-hook-registry v1.4.8
+   Compiling tokio-macros v2.7.2
+   Compiling tokio v1.54.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.00s
+  Executable unittests src/lib.rs (target/debug/deps/bbt_rt-ee62fdf8ca244f04)
+  Executable tests/runtime.rs (target/debug/deps/runtime-3ccc48789f8b32b9)
+
+exit: 0
+
+$ cargo test -p bbt-rt --locked -- --nocapture
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running unittests src/lib.rs (target/debug/deps/bbt_rt-ee62fdf8ca244f04)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime.rs (target/debug/deps/runtime-3ccc48789f8b32b9)
+
+running 8 tests
+
+thread 'singleton_runtime_and_ui_thread_guard' (6205129) panicked at /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5:
+blocking IO on the UI thread
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test latest_and_view_ring_replace_old_values ... ok
+test ten_thousand_dirty_sets_wake_once_until_drained ... ok
+test singleton_runtime_and_ui_thread_guard ... ok
+test command_argv_cwd_env_stderr_and_exit_are_observable ... ok
+test spawn_failure_and_early_cancel_always_complete ... ok
+cancelled process group Some(66018), grandchild 66022 no longer running
+test cancel_kills_the_process_group_including_a_grandchild ... ok
+1M try_send: 107.41175ms, 9309968 msgs/s, rejected=999992
+test million_messages_per_second_never_wait_for_a_consumer ... ok
+stdout=104857600 bytes, retained=262144 bytes, dropped=6384 chunks; Exited status survived full queue
+test hundred_megabyte_command_finishes_with_a_bounded_view ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+
+   Doc-tests bbt_rt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo clippy -p bbt-rt --locked --all-targets -- -D warnings
+    Checking pin-project-lite v0.2.17
+    Checking bytes v1.12.1
+    Checking libc v0.2.191
+    Checking crossbeam-utils v0.8.23
+    Checking crossbeam-queue v0.3.14
+    Checking errno v0.3.14
+    Checking mio v1.2.4
+    Checking signal-hook-registry v1.4.8
+    Checking tokio v1.54.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.46s
+
+exit: 0
+
+$ cargo clippy -p bbt-ui-model -p bbt-ui -p bbt-render --locked --lib -- -D clippy::disallowed_methods
+Full output: .bboxy/runs/r1-ui-io-lint.log
+exit: 101
+
+$ cargo clippy -p bbt-ui-model -p bbt-ui -p bbt-render --locked --lib -- -W clippy::disallowed_methods
+Full output: .bboxy/runs/r1-ui-io-lint.log
+exit: 0
+
+$ cargo fmt -p bbt-rt
+
+exit: 0
+
+$ cargo test -p bbt-rt --locked -- --nocapture
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.40s
+     Running unittests src/lib.rs (target/debug/deps/bbt_rt-ee62fdf8ca244f04)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime.rs (target/debug/deps/runtime-3ccc48789f8b32b9)
+
+running 8 tests
+test latest_and_view_ring_replace_old_values ... ok
+
+thread 'singleton_runtime_and_ui_thread_guard' (6210726) panicked at /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5:
+blocking IO on the UI thread
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ten_thousand_dirty_sets_wake_once_until_drained ... ok
+test singleton_runtime_and_ui_thread_guard ... ok
+test command_argv_cwd_env_stderr_and_exit_are_observable ... ok
+test spawn_failure_and_early_cancel_always_complete ... ok
+cancelled process group Some(67073), grandchild 67077 no longer running
+test cancel_kills_the_process_group_including_a_grandchild ... ok
+1M try_send: 110.17975ms, 9076078 msgs/s, rejected=999992
+test million_messages_per_second_never_wait_for_a_consumer ... ok
+stdout=104857600 bytes, retained=262144 bytes, dropped=6384 chunks; Exited status survived full queue
+test hundred_megabyte_command_finishes_with_a_bounded_view ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+   Doc-tests bbt_rt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo clippy -p bbt-rt --locked --all-targets -- -D warnings
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.19s
+
+exit: 0
+
+$ git diff --check
+
+exit: 0
+
+$ git diff --numstat
+45	0	Cargo.lock
+1	0	Cargo.toml
+exit: 0
+
+$ git status --short --branch
+## exec3...origin/main
+ M Cargo.lock
+ M Cargo.toml
+?? .bboxy/runs/r1-commands.log
+?? .bboxy/runs/r1-ui-io-lint.log
+?? clippy.toml
+?? crates/bbt-rt/
+exit: 0
+
+$ git config --get user.name
+Boxy
+exit: 0
+
+$ git config --get user.email
+bboxy450@gmail.com
+exit: 0
+
+$ git config --get user.signingkey
+9B07E849480C68328CA20684844ECC0587DE7AB0
+exit: 0
+
+$ git config --get commit.gpgsign
+true
+exit: 0
+
+Read-only source inspections (all shell invocations exit 0): sed commands.rs; cat lib.rs/wake.rs/queues.rs; git status; git diff --check; registry tokio process_group/kill_on_drop source rg; git diff --stat; git diff -- Cargo.lock. Authenticated Oracle inbox reads after cursor 3119 exit 0 (no new messages).
+
+Evidence inspections: rg API/test line numbers; rg clippy paths; rg bbt-rt Cargo.toml/Cargo.lock; tail command log — shell invocation exit 0. Python write r1-evidence.log and append command ledger — exit 0.

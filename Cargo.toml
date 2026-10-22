@@ -3,6 +3,7 @@ resolver = "3"
 members = [
   "crates/bbt-core",
   "crates/bbt-mux",
+  "crates/bbt-rt",
   "crates/bbt-render",
   "crates/bbt-ui-model",
   "crates/bbt-ui",

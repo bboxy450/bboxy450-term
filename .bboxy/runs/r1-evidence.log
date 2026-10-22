@@ -1,0 +1,42 @@
+# R1 handoff evidence — Sable Embertail <EXECUTOR>
+
+Worktree: /Users/feral/mydev/bboxy450-term-exec3, branch exec3.
+Base after required startup fetch/rebase: 3d4f3f2730efe36a4012029c99c78f5e2187995c.
+Assignment: authenticated Vesper R1 DM, replacing W1.2 before source edits.
+
+## Files and mechanisms
+- Cargo.toml:6 — add bbt-rt member only.
+- Cargo.lock:186 — bbt-rt, crossbeam queue, Tokio IO/process/macro feature dependencies; no existing version upgrades.
+- crates/bbt-rt/Cargo.toml:1 — workspace identity and Tokio/crossbeam/libc dependencies.
+- crates/bbt-rt/src/lib.rs:24 — OnceLock process runtime, two named IO workers, shared handle.
+- crates/bbt-rt/src/lib.rs:38 — one registered UI thread; debug guard at :55; init_ui at :69 provides bounded app handoff and singleton commands.
+- crates/bbt-rt/src/wake.rs:50 — reset wake admission before atomically draining source words; :65 sets source bit and globally coalesces wake on false-to-true.
+- crates/bbt-rt/src/queues.rs:44 — bounded try_send returns rejected ownership; :71 single pending latest value; :103 view ring force-pushes and counts oldest-view drops.
+- crates/bbt-rt/src/commands.rs:103 — TaskId returned before IO; :153 direct argv/cwd/env spawn and async wait; :186 pinned join retains pipe reads across cancellation; :206 stdout/stderr split into <=16KiB pieces; :247 cancel only notifies; :254 IO-side SIGKILL to child's own process group.
+- crates/bbt-rt/src/commands.rs:69 — completion slot survives rejected Exited notification; :143 status published before notification, plus dirty wake even on full queue.
+- crates/bbt-rt/tests/runtime.rs:48 — all five named acceptance tests plus latest/ring, argv/cwd/env/stderr, and spawn-failure/early-cancel cases (8 tests total).
+- crates/bbt-rt/README.md:1 — app integration, bounds, cancellation, lint commands and limitations.
+- clippy.toml:4 — concrete blocking filesystem/process/sleep/recv/lock/block_on methods, including pollster; globally picked up by Clippy, scanned against all three named UI crates.
+- .bboxy/runs/r1-commands.log — actual test/build/check outputs and exit statuses.
+- .bboxy/runs/r1-ui-io-lint.log — hard-gate failure plus full warning scan; existing source left unchanged.
+
+## Acceptance results
+1. cargo test -p bbt-rt --locked -- --nocapture — exit 0, 8 passed in 0.34s (final source).
+   - tests/runtime.rs:48 — 1M try_send calls in 110.17975ms, 9,076,078 msgs/s, 999,992 rejected, queue stays at 8 with no consumer.
+   - tests/runtime.rs:67 — 10k sets across 1000 source bits cause exactly 1 wake before drain; next mark causes wake 2.
+   - tests/runtime.rs:100 — command reads 104,857,600 stdout bytes; view retains 262,144 bytes in 16 chunks, drops 6384; full notification queue does not block or lose task status.
+   - tests/runtime.rs:170 — cancel kills process group 67073 and grandchild 67077 stops running; parent reaped with SIGKILL.
+   - tests/runtime.rs:227 — init_ui registers UI thread; guard panics there; IO task guard passes; runtime handle stable and metrics report two workers.
+2. cargo clippy -p bbt-rt --locked --all-targets -- -D warnings — exit 0.
+3. cargo fmt -p bbt-rt — exit 0; git diff --check — exit 0.
+4. UI policy hard gate — exit 101, stopped at existing build-script IO. Warning-mode full scan — exit 0, 11 disallowed calls plus one unrelated map_entry warning:
+   - bbt-ui-model/build.rs:139,141 read_to_string, :149 write (build-time, not the UI thread).
+   - bbt-render/src/chrome/mod.rs:40 pollster block_on, :584 SyncSender send, :593 recv_timeout.
+   - bbt-render/src/headless.rs:45 pollster block_on, :286 SyncSender send, :295 recv_timeout, :415 create_dir_all, :417 File create.
+   - bbt-render/src/headless.rs:364 unrelated map_entry warning.
+   - bbt-ui and bbt-ui-model runtime libraries: no disallowed-method warnings in full scan.
+
+## Deliberately untouched and unchecked
+Untouched: UI sources, renderer sources, mux, core, shared main worktree, graph/tasks, other agents' changes. W1.2/W4.1 not started. No push or merge.
+Not checked: window/AppKit behavior, GUI pacing or R2 hitch meter, parser pool, display link, R5 stall/load test, Linux, detached/session-changing descendants, syscall failures, machine/power-loss recovery, hosted CI, durable output storage. The view is disposable; process count has no aggregate quota in R1.
+Root lint policy also flags deliberate blocking work in IO crates/build scripts; those need scoped justified exceptions in their own assignments. R1 does not waive or fix them.
