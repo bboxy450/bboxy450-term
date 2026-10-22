@@ -325,28 +325,7 @@
     const anchor = focused, anchorSeat = seats.find(x => x.key === anchor);   // ⌘↵ splits right of the focused pane, ⌘⇧↵ below it, ↵ opens a new tab
     const ph = preset && anchorSeat ? 'split ' + (preset === 'right' ? 'right of ' : 'below ') + anchorSeat.name + ' · pick a harness' : 'launch or go to · type to search';
     const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : [['Launch / go', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']];
-    // rows with sublists: each launchable → placements; 'Go to' → every seat and swarm. 'goto <name>' types straight in.
-    const tileOf = h => (C.LAUNCH.find(l => l.harness === h) || {}).tile || '#374151';
-    const goSeats = () => seats.filter(x => !x.settings && !x.graph).map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || '') + (x.where && x.where !== 'local' ? ' · ' + x.where + (x.host ? ' ' + x.host : '') : ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Seats', seat: x, tags: [x.harness, x.where || 'local', x.host || '', x.role || '', x.state, x.grade || '', x.state === 'waiting' ? (x.waitKind || 'question') : '', t ? t.sp.name : '', x.muted ? 'muted' : '', ...((x.tasks || []).map(t => t.title))].filter(Boolean) }; });
-    const goSwarms = () => model.spaces.map(x => ({ id: 'swarm:' + x.key, label: x.name, sub: x.tabs.reduce((n, t) => n + t.seats.length, 0) + ' seats', harness: 'sidebarfoxopen', kind: 'Swarm', tile: x.color, section: 'Swarms', swarm: x, tags: ['swarm'] }));
-    const placements = l => [
-      { id: l.id + ':tab', label: 'New tab', sub: 'in ' + sp.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'tab', launch: l },
-      ...(anchorSeat ? [{ id: l.id + ':right', label: 'Split right', sub: 'of ' + anchorSeat.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'right', launch: l },
-                        { id: l.id + ':bottom', label: 'Split down', sub: 'of ' + anchorSeat.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'bottom', launch: l }] : []),
-    ];
-    const launchRows = C.LAUNCH.map(l => ({ ...l, enterPicks: true, children: () => placements(l), aliases: [l.harness] }));
-    // remote: SSH ▸ harness ▸ placement, Cloud ▸ harness ▸ placement. 'ssh codex' and 'cloud claude' type straight through.
-    // SSH ▸ machine ▸ harness ▸ placement; Cloud ▸ region ▸ harness ▸ placement. Machines come from ~/.ssh/config in the
-    // real app; here a demo list. 'ssh rig codex' types straight through all three levels.
-    const HOSTS = { ssh: [['rig', 'rig.local · M2 Ultra'], ['alpha', 'alpha.tail · Linux x86'], ['studio', 'studio.local · M1 Max']], cloud: [['eu-2', 'Hetzner · Falkenstein'], ['us-1', 'Fly · Ashburn'], ['gpu-a', 'Lambda · A100']] };
-    const harnessesAt = (where, host) => C.LAUNCH.map(l => ({ ...l, id: where + ':' + host + ':' + l.id, sub: l.sub + ' · ' + host, enterPicks: true, aliases: [l.harness], where, host, children: () => placements(l).map(pl => ({ ...pl, where, host })) }));
-    const remoteRow = (id, label, where, tile) => ({ id, label, aliases: [where], sub: where === 'cloud' ? 'pick a region, then a harness' : 'pick a machine, then a harness', harness: where, kind: 'Remote', tile, section: 'Remote',
-      children: () => HOSTS[where].map(([host, desc]) => ({ id: where + ':' + host, label: host, sub: desc, harness: where, kind: where === 'cloud' ? 'Region' : 'Machine', tile, where, host, children: () => harnessesAt(where, host) })) });
-    const remoteRows = [remoteRow('ssh', 'SSH', 'ssh', '#374151'), remoteRow('cloud', 'Cloud', 'cloud', '#2E6BFF')];
-    const goRow = { id: 'goto', label: 'Go to', aliases: ['goto', 'go', 'jump'], sub: 'a seat or a swarm', harness: 'sidebarfoxopen', kind: 'Navigate', tile: '#6B7190', section: 'Navigate', children: () => [...goSeats(), ...goSwarms()] };
-    const settingsRow = { id: 'settings', label: 'Settings', aliases: ['prefs', 'preferences', 'config'], sub: 'account · cloud · machines · roles · harnesses · appearance', harness: 'gear', kind: 'Open', tile: '#6B7190', section: 'Navigate', settingsOpen: true, enterPicks: true, children: () => ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Shortcuts'].map(sct => ({ id: 'settings:' + sct.toLowerCase(), label: sct, harness: 'gear', kind: 'Section', tile: '#6B7190', settingsOpen: true, section: sct })) };
-    const graphRow = { id: 'graph', label: 'Graph', aliases: ['who', 'status', 'board'], sub: 'who is on what · epics → work', harness: 'sidebarfoxopen', kind: 'Open', tile: '#6B7190', section: 'Navigate', graphOpen: true, enterPicks: true };
-    const items = [...launchRows, ...remoteRows, goRow, graphRow, settingsRow];
+    const items = C.launcherItems({ seats, spaces: model.spaces, sp, anchorSeat, tabOf });
     const acts = p => (p.length && p[p.length - 1].id === 'goto') ? [['Go', '↵'], ['Back', '←']] : (p.length ? [['Place', '↵'], ['Back', '←']] : (preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['Placements', '→'], ['New tab instead', '⌥↵']] : [['New tab', '↵'], ['Placements', '→'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵']]));
     // banner above the panel: the real pane layout, large, with the new cell lit; nothing subtle about it
     if (preset && anchorSeat && stageTree) {

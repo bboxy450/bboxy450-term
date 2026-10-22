@@ -968,3 +968,50 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .qbar .track { display: block; width: 120px; height: 5px; border-radius: 3px; background: var(--badge, var(--surface-2)); overflow: hidden; }
 .qbar .track i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
 .qbar b { font-family: var(--font-mono); font-size: 10.5px; font-weight: 400; }
+
+/* launcher (⌘T): the frosted panel and its banner; shared by the showcase and launcher.html */
+/* --- launcher: the panel --- */
+.spot-back { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) var(--back-dim), transparent); backdrop-filter: blur(var(--back-blur)) saturate(1.15); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 9vh; gap: 14px; }
+/* split banner: the real layout, large, new cell breathing */
+.spot-banner { width: min(760px, 92vw); display: flex; align-items: center; gap: 22px; padding: 16px 22px; border-radius: var(--r-panel); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: var(--sh-float), 0 0 0 1px var(--hair), inset 0 1px 0 var(--hi); animation: spotIn var(--appear-ms) var(--ease); }
+.spot-banner .mg.big { --mg-w: 168px; --mg-h: 104px; gap: 3px; background: var(--hair); border-radius: var(--r-tile); flex: none; }
+.spot-banner .mg.big .cell { background: color-mix(in srgb, var(--fg) 14%, transparent); color: var(--fg-dim); font-size: 11px; }
+.spot-banner .mg.big .cell.focus { background: var(--accent); color: #fff; font-weight: 600; animation: cellBreathe 1.2s ease-in-out infinite; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent); }
+.spot-banner .tab-stack { display: flex; flex-direction: column; gap: 2px; width: 200px; padding: 4px; border-radius: var(--r-tile); background: color-mix(in srgb, var(--surface) 80%, transparent); box-shadow: 0 0 0 1px var(--hair); border-bottom: 3px solid var(--space); flex: none; }
+.spot-banner .tab-stack .tband { height: 18px; line-height: 18px; border-radius: 4px; background: var(--space); color: #fff; font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; padding: 0 8px; }
+.spot-banner .tab-stack .tcell { padding: 4px 8px; border-radius: 5px; color: var(--fg-dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spot-banner .tab-stack .tcell.more { font-size: 10px; }
+.spot-banner .tab-stack .tcell.indent { padding-left: 18px; }
+.spot-banner .tab-stack .tcell.seatrow { font-weight: 600; }
+.spot-banner .tab-stack .tcell.ghost { opacity: .45; }
+.spot-banner .tab-stack .tcell.new { background: var(--accent); color: #fff; font-weight: 600; animation: cellBreathe 1.2s ease-in-out infinite; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent); }
+.spot-banner .txt .big { font-size: 26px; font-weight: 600; letter-spacing: -.01em; line-height: 1.1; }
+.spot-banner .txt .of { margin-top: 6px; font-size: var(--t-subtitle); color: var(--fg-dim); }
+.spot-banner .txt .of b { font-weight: 600; }
+.spot-back .picker { width: min(760px, 92vw); border-radius: var(--r-panel); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: var(--sh-float), 0 0 0 1px var(--hair), inset 0 1px 0 var(--hi); animation: spotIn var(--appear-ms) var(--ease); overflow: hidden; }
+@keyframes spotIn { from { transform: translateY(-8px) scale(.985); opacity: 0; } to { transform: none; opacity: 1; } }
+.spot-back .picker .inrow { display: flex; align-items: center; border-bottom: 1px solid var(--hair); padding: 0 20px 0 0; gap: 0; }
+.spot-back .picker .crumbs { display: flex; gap: 6px; padding-left: 20px; }
+.spot-back .picker .crumbs:empty { display: none; }
+.spot-back .picker .crumb { padding: 4px 10px; border-radius: var(--r-badge); background: var(--sel); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.spot-back .picker .crumb::after { content: ' ›'; color: var(--fg-dim); }
+.spot-back .picker .opt .chev { width: 24px; text-align: center; color: var(--fg-dim); font-size: 18px; flex: none; }
+.spot-back .picker input { font-size: var(--t-input); padding: 20px 24px 18px; border-bottom: 0; font-weight: 400; flex: 1; min-width: 0; }
+.spot-back .picker input::placeholder { color: color-mix(in srgb, var(--fg-dim) 80%, transparent); }
+.spot-back .picker .sec { font-size: var(--t-section); font-weight: var(--t-weight_section, 500); letter-spacing: 0; padding: 12px 24px 6px; }
+.spot-back .picker .opt { display: flex; align-items: center; gap: 12px; padding: 8px var(--row-px); margin: 0 var(--row-mx); border-radius: var(--r-row); font-size: var(--t-title); color: var(--fg); }
+.spot-back .picker .opt.sel { background: var(--sel); color: var(--fg); }
+.spot-back .picker .opt .tile { width: 30px; height: 30px; border-radius: var(--r-tile); display: inline-flex; align-items: center; justify-content: center; color: #fff; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.spot-back .picker .opt .tile .hicon { --icon: 17px; }
+.spot-back .picker .opt .lbl { font-weight: var(--t-weight_title, 500); }
+.spot-back .picker .opt .sub { color: var(--fg-dim); font-size: var(--t-subtitle); margin-left: 2px; }
+.spot-back .picker .opt .kind { margin-left: auto; color: var(--fg-dim); font-size: var(--t-kind); }
+.spot-back .picker .opt .num { width: 24px; height: 22px; border-radius: var(--r-badge); background: var(--badge); color: var(--fg); font-size: var(--t-badge); font-family: var(--font-mono); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.spot-back .picker .opt.sel .num { background: var(--badge-sel); }
+.spot-back .picker .foot { display: flex; align-items: center; gap: 10px; padding: 10px 14px 12px 20px; border-top: 1px solid var(--hair); font-size: var(--t-body); }
+.spot-back .picker .foot .sw { width: 12px; height: 12px; }
+.spot-back .picker .foot .nm { font-weight: var(--t-weight_name, 600); font-size: 14px; }
+.spot-back .picker .foot button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--hair); background: transparent; color: var(--fg); font-size: 14px; padding: 0; margin: 0; }
+.spot-back .picker .foot .pill { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--r-round); background: color-mix(in srgb, var(--surface) 85%, transparent); box-shadow: 0 0 0 1px var(--hair), var(--sh-pill); font-size: var(--t-body); color: var(--fg); }
+.spot-back .picker .foot .pill kbd { font-family: var(--font-mono); font-size: 11px; background: var(--badge); border-radius: 5px; padding: 2px 6px; }
+.spot-back .picker .foot .pill .sep { width: 1px; height: 16px; background: var(--hair); }

@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 32,
+  "version": 33,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -356,7 +356,11 @@
     "logo": {
       "purpose": "the product mark, everywhere a logo appears",
       "anatomy": "the operator's identity PNG (lab/web/bboxy.png, from ~/.agents/identity/bboxy.png), downscaled; circle crop in chrome, rounded square as a tile, plain at 16/32/64/128/256/512 on the logo page; the menubar shows it at 16 px",
-      "rules": ["no vector mark exists", "never generate or redraw it", "the sidebar-toggle fox (toolbar icon) is a separate glyph and stays"],
+      "rules": [
+        "no vector mark exists",
+        "never generate or redraw it",
+        "the sidebar-toggle fox (toolbar icon) is a separate glyph and stays"
+      ],
       "status": "identity PNG only; SVG retired"
     },
     "tick_ladder": {
@@ -589,7 +593,11 @@
     "document_view": {
       "purpose": "read one work item: epic, spec, task, bug, note, invariant or artifact (work-items.md)",
       "anatomy": "header with a 3 px rail in the type hue, type chip, status (task glyphs), path, title; superseded and broken-frontmatter banners; frontmatter grid (id, assignee in seat colour, role, parent, children, depends_on, links as annotated wikilink chips, allowed_paths, verify, created, updated); Markdown body with wikilink chips; provenance strip (created by, updated by, derived from, digest, signed by the full fingerprint or unsigned in amber); right rail: markdown-graph neighbourhood, type legend, backlinks dashed",
-      "rules": ["broken frontmatter is shown, never skipped", "no anonymous write: updated_by is always stamped", "superseded items stay readable for provenance"],
+      "rules": [
+        "broken frontmatter is shown, never skipped",
+        "no anonymous write: updated_by is always stamped",
+        "superseded items stay readable for provenance"
+      ],
       "status": "built: docView(), mdLite(), DOC_HUE in components.js; documents.html?state=epic|spec|task|bug|note|invariant|artifact|signed|unsigned|superseded|broken-frontmatter"
     },
     "purge_modal": {
@@ -831,7 +839,8 @@
           "never": "reorder while the user is holding a key or within 300 ms of the last keystroke; reorder rows the user can reach by number keys without re-numbering them"
         }
       }
-    }
+    },
+    "implementation": "launcherItems() and picker() in components.js, shared by the showcase and launcher.html; picker opts.path deep-links any nesting level; launcher styles live in lab.css"
   },
   "interactions": {
     "focus": "click a row or a pane; Tab / Shift+Tab across panes; arrow keys move to the nearest pane in that direction (⌘⌥ arrows while typing, plain arrows otherwise); pane dwell 150 ms; a seat in another tab or swarm switches the stage; open/shut of swarms is separate",
