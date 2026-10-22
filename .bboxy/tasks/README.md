@@ -31,6 +31,7 @@
 | C | [[2026-10-22-c-cockpit]] cockpit: F1–F5 fidelity backlog → C1 live seats (Sable); 7.9 → 7.10 → W3.2c → L8 → L9 (Nyx); W2.4 messaging → S1 supervisor split (arch #1) → W2.5 MCP + tasks (arch #3) → W2.5b seat wiring (MCP, hooks, skill per seat) → W2.6 provenance/events → D1 dummy ssh/cloud (Rook); lab refs (Wren) | cohort | RUNNING |
 | W2.4 | [[2026-10-22-w2-4-local-messaging]] local messaging: envelopes, channel tree, priority, harness delivery | Rook Ashwhisker <EXECUTOR> | RUNNING |
 | T1–T3 | [[2026-10-22-t-terminal-fidelity]] firehose → R3 → fonts ∥ fidelity → R5 | Aster Cinderwing <EXECUTOR> (exec4) | T1 ✔ dc06057; T2a ∥ T3 RUNNING |
+| P1 | parity in CI: geometry failures fail hard, pixel review stays advisory (Architect) | next free Executor | QUEUED |
 | ID1 | full GPG seat chain (arch #4): root → Keychain device key → in-memory seat keys | next free Executor, after Corvin's identity spec | QUEUED |
 | O1–O6 | [[2026-10-22-o-open-source]] publish bboxy450-rt, -ui-core, -render, -ui, -book ([[open-source]]) | deferred: publish at a plateau, velocity first | DEFERRED |
 | R1–R5 | [[2026-10-22-r-runtime]] runtime: async IO off the UI thread, 120 Hz ([[runtime]]) | Sable Embertail <EXECUTOR> | R1 ✔ 29d5e62; R2 ✔ be604d4; R2b ✔ 82c821b; R4 ✔ 18e0593; R4b ✔ 6f67402; F1 RUNNING; R4c (GPU ≤8.33) queued |
