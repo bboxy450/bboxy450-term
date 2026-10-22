@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
 //! The showcase is the source of the lab's look, so it must not keep a second copy of any Style value
 //! (Oracle, decided). Every token-backed property lives in lab/web/lab.css; showcase.html keeps page
 //! scaffolding only (position, flex, overflow, cursor, z-index, 100% sizes).

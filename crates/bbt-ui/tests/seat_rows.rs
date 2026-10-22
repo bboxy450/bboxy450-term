@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
 use bbt_ui::{
     self as ui, components as c,
     modules::seat_row::{SeatRow, Subagent, named},

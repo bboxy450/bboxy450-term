@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "headless storybook tool, not the app UI thread")]
 pub mod atoms;
 pub mod components;
 pub mod fixtures;

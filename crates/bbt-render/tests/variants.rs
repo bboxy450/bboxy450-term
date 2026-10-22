@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
 #![cfg(target_os = "macos")]
 use bbt_render::{FontConfig, HeadlessRenderer, Scene, text::Font, write_png};
 

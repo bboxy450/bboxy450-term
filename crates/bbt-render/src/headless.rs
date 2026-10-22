@@ -41,6 +41,7 @@ pub struct HeadlessRenderer {
 }
 
 impl HeadlessRenderer {
+    #[allow(clippy::disallowed_methods, reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture")]
     pub fn new() -> Result<Self> {
         let context = pollster::block_on(DeviceContext::new())?;
         let backgrounds = pipeline(
@@ -68,6 +69,7 @@ impl HeadlessRenderer {
         &self.context.adapter_info
     }
 
+    #[allow(clippy::disallowed_methods, reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture")]
     pub fn render_to_rgba(&self, scene: &Scene, width: u32, height: u32) -> Result<Vec<u8>> {
         let context = &self.context;
         let limit = context.device.limits().max_texture_dimension_2d;
@@ -405,6 +407,7 @@ pub fn render_to_rgba(scene: &Scene, width: u32, height: u32) -> Result<Vec<u8>>
         .render_to_rgba(scene, width, height)
 }
 
+#[allow(clippy::disallowed_methods, reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture")]
 pub fn write_png(path: impl AsRef<Path>, rgba: &[u8], width: u32, height: u32) -> Result<()> {
     let expected = u64::from(width) * u64::from(height) * 4;
     if width == 0 || height == 0 || expected != rgba.len() as u64 {

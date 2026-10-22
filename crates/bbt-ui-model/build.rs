@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "build script: compile-time IO, not the UI thread")]
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;

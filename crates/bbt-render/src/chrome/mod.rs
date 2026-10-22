@@ -36,6 +36,7 @@ pub struct ChromeRenderer {
     group_depth: usize,
 }
 impl ChromeRenderer {
+    #[allow(clippy::disallowed_methods, reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture")]
     pub fn new(images: Vec<icons::Image>) -> Result<Self> {
         Self::with_context(pollster::block_on(DeviceContext::new())?, images)
     }
@@ -543,6 +544,7 @@ impl ChromeRenderer {
         )?;
         self.readback(&texture, encoder, width, height)
     }
+    #[allow(clippy::disallowed_methods, reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture")]
     fn readback(
         &self,
         texture: &wgpu::Texture,

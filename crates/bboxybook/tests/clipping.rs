@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
 use bbt_render::chrome::{ChromeRenderer, materials::*};
 use bbt_ui_model::{
     Theme,
