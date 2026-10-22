@@ -24,7 +24,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 
 ## CI (operator, 2026-10-22): local only
 
-No GitHub CI during heavy development; the workflow runs on manual dispatch only (billing had also refused every run since 07:27). **Every Executor handoff and every Oracle acceptance runs `sh scripts/ci-local.sh`** (layering, workspace build, workspace tests, UI IO lint; `--parity` when lab, design, UI or renderer changed) and reports the exit. **Run it in a clean worktree of the commit being handed off** (`git worktree add --detach <tmp> <sha>` on top of origin/main, with its own `CARGO_TARGET_DIR`), never in the shared tree: peers' in-flight sources and concurrent cargo runs make a shared-tree gate non-hermetic (W2.4 hit missing symbols that were present in source). CI returns per crate when it is open-sourced into a public repo. Queued P1 (Architect): geometry parity failures fail the gate hard; pixel review stays advisory.
+No GitHub CI during heavy development; the workflow runs on manual dispatch only (billing had also refused every run since 07:27). **Every Executor handoff and every Oracle acceptance runs `sh scripts/ci-local.sh`** (layering, workspace build, workspace tests, UI IO lint; `--parity` when lab, design, UI or renderer changed) and reports the exit. **Disk:** the volume is near full (four worktrees × their targets ≈ 60 GiB). Delete a private CI target as soon as its gate exits; prune your own superseded `target/` run dirs and unused profiles; never touch another agent's. **Run it in a clean worktree of the commit being handed off** (`git worktree add --detach <tmp> <sha>` on top of origin/main, with its own `CARGO_TARGET_DIR`), never in the shared tree: peers' in-flight sources and concurrent cargo runs make a shared-tree gate non-hermetic (W2.4 hit missing symbols that were present in source). CI returns per crate when it is open-sourced into a public repo. Queued P1 (Architect): geometry parity failures fail the gate hard; pixel review stays advisory.
 
 ## ICQ keys (DM addresses)
 
@@ -72,7 +72,7 @@ R1 bbt-rt runtime ✔ (Sable, 29d5e62) ──▶ R2 app shell + hitch meter ✔ 
 
 O1 bboxy450-rt docs+publish [DEFERRED, velocity first] ──▶ (after W3.2d.7.10) O2 split public/private ──▶ O3 ui-core ──▶ O4 render ──▶ O5 ui ──▶ O6 book
 
-TOP PRIORITY: visual foundation (renderer, library, parity). COCKPIT (operator 2026-10-22, epic C): Sable F1 → C1a → C1c → F2–F5 | Aster (exec4) T1 ✔ → T2a ∥ T3 → C1b watched grids (supersedes R3) → R5 | Nyx 7.10 → W3.5 bbt-doc (#14) → W3.2c → L8 → L9 | Rook W2.4 local messaging → S1 bbt-supervisor split (arch #1) → W2.5 MCP inside logic + stdio bridge (arch #3) + tasks → W2.5b seat wiring (MCP, hooks, skill) → W2.6 provenance/events → D1 dummy ssh/cloud | Wren lab refs
+TOP PRIORITY: visual foundation (renderer, library, parity). COCKPIT (operator 2026-10-22, epic C): Sable F1 → C1a → C1c → F2–F5 | Aster (exec4) T1 ✔ → T2a ∥ T3 → C1b watched grids (supersedes R3) → R5 | Nyx 7.10 → W3.5 bbt-doc (#14) → W3.2c → L8 → L9 | Rook W2.4 local messaging → S1 bbt-supervisor split (arch #1) → W2.5a–e MCP + seat wiring (spec w2-5-mcp-and-seat-wiring, arch #3) → W2.5b seat wiring (MCP, hooks, skill) → W2.6 provenance/events → D1 dummy ssh/cloud | Wren lab refs
 
 W4.1 Transport trait + loopback + quinn auth [DEFERRED: cockpit first]
    └──▶ phase 2 cloud: SshProvider bootstrap, remote supervisor
