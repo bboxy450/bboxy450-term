@@ -203,6 +203,17 @@ briefs Executors from the specs, never from this note.
     (unbounded power-cut loss); a writer thread per seat (1000 threads is
     not a design). The numbers bind when W1.2d's gate measures them.
 
+22. **One tick journal per machine, not barrier threads (from Rook's
+    measurement: cost is per file, two files per seat per tick; Busy at
+    seat 58 after group commit).** All seats append to one journal per
+    supervisor process with a tick-commit record as the boundary, so a
+    tick costs one barrier at any seat count; per-seat rings are compacted
+    from it lazily; recovery replays the journal tail; loss bounds and
+    never-delete unchanged ([[mux-daemon]] Durability tiers). Rejected: four
+    barrier worker threads (a constant factor, still O(seats), and CPU
+    burned on fcntl); dropping the marker file alone (halves it, still
+    O(seats)); a journal per swarm (swarms are not a machine boundary).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
