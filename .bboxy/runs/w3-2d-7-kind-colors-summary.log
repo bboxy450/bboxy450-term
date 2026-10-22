@@ -1,0 +1,11 @@
+ROLE: EXECUTOR — Nyx Copperwing
+L5 support for 7.4, approved by Oracle c57748d4.
+
+Mechanism: atoms::KindColors optionally overrides only the waiting annotation foreground/background. Atom::paint preserves the default; Element::Glyph forwards the optional colours. Existing constructors explicitly use defaults. Context opacity and grade are applied once; transparent backgrounds stay transparent. The atom snapshot includes a transparent annotation box by its semantic un-stroked rectangle rather than its alpha.
+Files: bbt-ui/src/atoms.rs, components.rs, modules/{seat_row,tab_row,swarm_card}.rs, tests/atoms.rs, README.md; bboxybook/src/atoms.rs; these four run logs.
+
+Default regression: all 112 native PNGs and native/layouts.json byte-identical to target/bboxybook/atoms-geometry-final. Same 759fdde web references. The API-variant test verifies main-symbol stability, annotation white/transparent contrast, single grade+dimming application, and forwarding through retained Glyph.
+Gallery: target/bboxybook/kind-colors/index.html. Existing outcome: all 56 glyphs within policy; 56 existing icon pixel-only reviews.
+
+Commands: cargo test -p bbt-ui -p bboxybook --locked — exit 0, 75 tests. Scoped Clippy --all-targets --locked with existing map_entry/chunks_exact exceptions — exit 0. Native 112 render and compare — exit 0. fmt and diff check — exit 0.
+No shader, dependency, live controller, browser, FPS or 2x change/check. The strip module will exercise the contrast override visually in 7.4; this step proves the default gallery and variant semantics in isolation.

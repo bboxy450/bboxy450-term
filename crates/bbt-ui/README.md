@@ -164,3 +164,8 @@ geometry supplies the inner/body padding and open/closed bumper heights;
 supplies the action height and text. Band geometry and tracking also resolve
 from its shared record. Standalone rows retain their small corners; rows in a
 swarm use `CardRow`. No module reads descendant web rectangles to place content.
+
+`atoms::KindColors` optionally sets a waiting annotation's foreground/background
+without recolouring the main state glyph. `Element::Glyph` forwards those
+colours; defaults preserve the existing appearance. Grade and context opacity
+apply once, including on coloured surfaces with a transparent annotation base.

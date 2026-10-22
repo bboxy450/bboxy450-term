@@ -157,6 +157,7 @@ impl TabRow {
                             if i == 0 { String::new() } else { i.to_string() }
                         ),
                         c::Element::Glyph {
+                            kind_colors: Default::default(),
                             activity: s.row.activity,
                             grade: s.row.grade,
                             color: ui::Paint::solid(s.row.color(ctx)),

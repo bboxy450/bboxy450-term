@@ -382,7 +382,9 @@ pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
                                 + number(&diagnostic["font_diagnostics"],"baseline")?},"children":[]}));
                         text_index += 1;
                     }
-                    Prim::Rect { rect, fill, .. } if fill.0[3] > 0. => {
+                    Prim::Rect {
+                        rect, stroke: None, ..
+                    } => {
                         parts.push(json!({"key":"waiting-kind-box","kind":"box",
                             "native":[rect.x,rect.y,rect.w,rect.h],"web":web_rect(&atom["kind_rect"])?,"children":[]}));
                     }

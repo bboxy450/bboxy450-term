@@ -168,6 +168,7 @@ impl SwarmCard {
                             if i == 0 { String::new() } else { i.to_string() }
                         ),
                         c::Element::Glyph {
+                            kind_colors: Default::default(),
                             activity: s.activity,
                             grade: s.grade,
                             color: ui::Paint::solid(s.color(ctx)),

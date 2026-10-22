@@ -5,6 +5,11 @@ use bbt_ui_model::{
     layout::{Rect, TextMeasure, TextStyle},
 };
 struct Metrics;
+impl bbt_ui::components::Measure for Metrics {
+    fn font_metrics(&self, style: &TextStyle) -> [f32; 2] {
+        [style.size * 0.8, style.size * 0.2]
+    }
+}
 impl TextMeasure for Metrics {
     fn width(&self, text: &str, style: &TextStyle) -> f32 {
         text.chars().count() as f32 * style.size * 0.6
@@ -149,4 +154,74 @@ fn a_waiting_kind_background_and_text_receive_dimming_once() {
         .unwrap();
     assert_eq!(alpha, 0.45 * 0.72);
     assert_eq!(background, alpha);
+}
+
+#[test]
+fn kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice() {
+    use bbt_ui::atoms::KindColors;
+    for dim in [false, true] {
+        let draw = DrawCtx::new(Theme::Dark, Density::Cozy);
+        let ctx = AtomCtx {
+            draw: if dim { draw.dimmed() } else { draw },
+            measure: &Metrics,
+            scale: 1.,
+        };
+        let glyph = Glyph {
+            activity: Activity::Waiting(WaitKind::Question),
+            grade: Grade::Inferred,
+            seat_color: Color::WHITE,
+        };
+        let rect = Rect::new(20., 20., 12., 12.);
+        let mut ordinary = DrawList::default();
+        let mut strip = DrawList::default();
+        glyph.paint(rect, &ctx, &mut ordinary);
+        glyph.paint_with_kind_colors(
+            rect,
+            &ctx,
+            &mut strip,
+            KindColors {
+                foreground: Some(Color::WHITE),
+                background: Some(Color::TRANSPARENT),
+            },
+        );
+        assert_eq!(
+            ordinary.primitives[0], strip.primitives[0],
+            "main state signal must be unchanged"
+        );
+        let alpha = if dim { 0.45 * 0.72 } else { 0.72 };
+        assert!(
+            matches!(strip.primitives.last(),Some(Prim::Text {color,..}) if color.0==[1.,1.,1.,alpha])
+        );
+        assert!(
+            strip
+                .primitives
+                .iter()
+                .any(|p| matches!(p,Prim::Rect {fill,stroke:None,..} if fill.0[3]==0.))
+        );
+    }
+    let element = bbt_ui::components::Element::Glyph {
+        kind_colors: KindColors {
+            foreground: Some(Color::WHITE),
+            background: Some(Color::TRANSPARENT),
+        },
+        activity: Activity::Waiting(WaitKind::Question),
+        grade: Grade::Inferred,
+        color: bbt_ui::Paint::solid(bbt_ui::Color::Seat),
+        size: 12.,
+        scale: 1.,
+    };
+    let layout = element
+        .layout(
+            Rect::new(20., 20., 12., 12.),
+            bbt_ui::Context::new(Theme::Dark, Density::Cozy),
+            &Metrics,
+        )
+        .unwrap();
+    let bbt_ui::components::LayoutKind::Atom(list) = layout.kind else {
+        panic!("not an atom")
+    };
+    assert!(
+        matches!(list.primitives.last(),Some(Prim::Text {color,..}) if color.0==[1.,1.,1.,0.72]),
+        "retained Glyph must forward the annotation colours"
+    );
 }

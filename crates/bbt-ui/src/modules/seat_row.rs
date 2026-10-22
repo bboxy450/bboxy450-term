@@ -529,6 +529,7 @@ impl SeatRow {
             named(
                 "glyph",
                 c::Element::Glyph {
+                    kind_colors: Default::default(),
                     activity: self.activity,
                     grade: self.grade,
                     color: ui::Paint::solid(color),
@@ -686,6 +687,7 @@ impl SeatRow {
                 named(
                     "glyph",
                     c::Element::Glyph {
+                        kind_colors: Default::default(),
                         activity: agent.activity,
                         grade: if self.harness == "codex" {
                             Grade::Shim

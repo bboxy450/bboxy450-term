@@ -168,6 +168,7 @@ pub enum Element {
         overlays: Vec<Placed>,
     },
     Glyph {
+        kind_colors: crate::atoms::KindColors,
         activity: bbt_ui_model::Activity,
         grade: bbt_ui_model::Grade,
         color: crate::Paint,
@@ -627,13 +628,13 @@ impl Element {
                 (LayoutKind::Stack, children)
             }
             Self::Glyph {
+                kind_colors,
                 activity,
                 grade,
                 color,
                 size,
                 scale,
             } => {
-                use crate::atoms::Atom;
                 let draw = DrawCtx::new(ctx.theme, ctx.density);
                 let scaled = Rect::new(
                     rect.x + (*size - *size * scale) * 0.5,
@@ -647,7 +648,7 @@ impl Element {
                     grade: *grade,
                     seat_color: Color(color.resolve(ctx)?),
                 }
-                .paint(
+                .paint_with_kind_colors(
                     scaled,
                     &crate::atoms::AtomCtx {
                         draw,
@@ -655,6 +656,7 @@ impl Element {
                         scale: 1.,
                     },
                     &mut list,
+                    *kind_colors,
                 );
                 return Ok(Layout {
                     rect: scaled,

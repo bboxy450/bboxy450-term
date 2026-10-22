@@ -68,6 +68,14 @@ impl Atom for Icon<'_> {
     }
 }
 
+/// Optional annotation colours for an atom placed on a coloured surface.
+/// State/grade colours and the main symbol keep their existing meaning.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct KindColors {
+    pub foreground: Option<Color>,
+    pub background: Option<Color>,
+}
+
 pub struct Glyph {
     pub activity: Activity,
     pub grade: Grade,
@@ -75,6 +83,17 @@ pub struct Glyph {
 }
 impl Atom for Glyph {
     fn paint(&self, r: Rect, ctx: &AtomCtx<'_>, out: &mut DrawList) {
+        self.paint_with_kind_colors(r, ctx, out, KindColors::default());
+    }
+}
+impl Glyph {
+    pub fn paint_with_kind_colors(
+        &self,
+        r: Rect,
+        ctx: &AtomCtx<'_>,
+        out: &mut DrawList,
+        kind_colors: KindColors,
+    ) {
         let color = ctx
             .draw
             .color(match self.activity {
@@ -153,10 +172,29 @@ impl Atom for Glyph {
             };
             let w = ctx.width(text, style) + 2.;
             let mark = Rect::new(r.right() + 6. - w, r.y - 5., w, 7.);
+            let override_color = |override_: Option<Color>, default: Color| {
+                override_.map_or(default, |input| {
+                    let mut output = ctx.draw.color(input);
+                    // State colour already carries grade and context opacity;
+                    // preserve it once while respecting the supplied alpha.
+                    output.0[3] = input.0[3] * color.0[3];
+                    output
+                })
+            };
             let mut background = ctx.draw.color(Color::hex(ctx.draw.theme.palette().bg));
             background.0[3] = color.0[3];
-            out.rect(mark, 3.5, background);
-            ctx.label(out, mark, text, style, color);
+            out.rect(
+                mark,
+                3.5,
+                override_color(kind_colors.background, background),
+            );
+            ctx.label(
+                out,
+                mark,
+                text,
+                style,
+                override_color(kind_colors.foreground, color),
+            );
         }
     }
 }
