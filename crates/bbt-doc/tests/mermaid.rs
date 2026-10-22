@@ -37,17 +37,33 @@ fn texts(l: &c::Layout) -> String {
     out
 }
 fn paths(l: &c::Layout) -> Vec<Prim> {
-    c::paint(l, ctx())
-        .into_iter()
-        .flat_map(|op| match op {
-            c::Paint::Draw(list) => {
-                list.validate().unwrap();
-                list.primitives
+    fn primitives(items: Vec<Prim>, out: &mut Vec<Prim>) {
+        for item in items {
+            match item {
+                Prim::Group {
+                    primitives: children,
+                    ..
+                } => primitives(children, out),
+                Prim::Path { .. } => out.push(item),
+                _ => {}
             }
-            _ => vec![],
-        })
-        .filter(|p| matches!(p, Prim::Path { .. }))
-        .collect()
+        }
+    }
+    fn paints(ops: Vec<c::Paint>, out: &mut Vec<Prim>) {
+        for op in ops {
+            match op {
+                c::Paint::Group { ops, .. } => paints(ops, out),
+                c::Paint::Draw(list) | c::Paint::Underlay(list) => {
+                    list.validate().unwrap();
+                    primitives(list.primitives, out);
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut out = vec![];
+    paints(c::paint(l, ctx()), &mut out);
+    out
 }
 
 #[test]
@@ -211,4 +227,50 @@ fn every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract() {
         "the required real corpus must be present, got {count}"
     );
     println!("Mermaid: {count} real .bboxy blocks, native geometry and retained layout pass");
+}
+
+#[test]
+fn lab_diagram_inputs_stay_aligned_and_supported_cases_use_the_native_engine() {
+    let reference = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../lab/web/diagrams.html"),
+    )
+    .unwrap();
+    for (name, fixture, supported) in [
+        (
+            "flowchart TD",
+            include_str!("fixtures/lab/flowchart-td.md"),
+            true,
+        ),
+        (
+            "flowchart LR",
+            include_str!("fixtures/lab/flowchart-lr.md"),
+            true,
+        ),
+        ("sequence", include_str!("fixtures/lab/sequence.md"), true),
+        ("state", include_str!("fixtures/lab/state.md"), true),
+        (
+            "unsupported syntax",
+            include_str!("fixtures/lab/unsupported-syntax.md"),
+            false,
+        ),
+    ] {
+        let doc = bbt_doc::parse(fixture);
+        let bbt_doc::BlockKind::Code { text, .. } = &doc.blocks[0].kind else {
+            panic!("Mermaid fixture")
+        };
+        assert!(
+            reference.contains(text.trim_end()),
+            "lab input drift: {name}"
+        );
+        let geometry = mermaid::geometry(text, ctx(), &Fonts);
+        assert_eq!(geometry.is_ok(), supported, "{name}: {geometry:?}");
+        let layout = mermaid::element(text, 576., ctx(), &Fonts, Default::default())
+            .layout(Rect::new(0., 0., 576., 0.), ctx(), &Fonts)
+            .unwrap();
+        if supported {
+            assert!(!paths(&layout).is_empty());
+        } else {
+            assert!(texts(&layout).contains("shown as source"));
+        }
+    }
 }

@@ -13,8 +13,9 @@ Metadata that resembles a signature is never promoted to verified evidence.
 Mermaid uses `bbt-mermaid`'s public geometry with native font measurement,
 retained shapes, filled/open arrowheads, clusters and sequence frames. The
 shared figure card draws at true size and scrolls sideways. Unsupported syntax
-shows Source with its error. Supplied 7.10 semantic fixture figures remain
-available to the parity gallery. Code is monospace without highlighting, and image
+shows Source with its error. Document parity consumes the real engine; diagram
+bodies follow renderer §4.4c while the figure chrome stays gated. Code is
+monospace without highlighting, and image
 references retain their alt text and destination without loading images.
 
 ```sh

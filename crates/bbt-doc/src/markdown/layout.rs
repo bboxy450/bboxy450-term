@@ -236,8 +236,8 @@ impl Markdown {
         children.push(r.blocks(self.display_blocks(title), "").into());
         column("markdown", plain([0.; 4]), 0., children)
     }
-    /// Body seam used by DocumentModal. Supplied semantic fixture diagrams are
-    /// preserved; real Mermaid uses the native geometry producer.
+    /// Body seam used by DocumentModal. Diagram records carry Source/scroll
+    /// state; their illustrative graph geometry is not consumed.
     pub fn body_element(
         &self,
         ctx: ui::Context,
@@ -470,27 +470,20 @@ impl Render<'_> {
             ),
             BlockKind::Code { info, text } => {
                 if info.split_whitespace().next() == Some("mermaid") {
-                    if let Some(d) = self
+                    let options = self
                         .diagrams
                         .iter()
                         .find(|d| d.source.trim_end() == text.trim_end())
-                    {
-                        return (
-                            named(key, d.retained_element(key, self.width, self.ctx, self.m)),
-                            0.,
-                            0.,
-                        );
-                    }
+                        .map(|d| crate::mermaid::Options {
+                            show_source: d.show_source,
+                            scroll_x: d.scroll_x,
+                        })
+                        .unwrap_or_default();
                     (
                         named(
                             key,
                             crate::mermaid::element_with_key(
-                                key,
-                                text,
-                                self.width,
-                                self.ctx,
-                                self.m,
-                                Default::default(),
+                                key, text, self.width, self.ctx, self.m, options,
                             ),
                         ),
                         0.,

@@ -57,3 +57,24 @@ fn native_document_layout_consumes_public_records_not_css_or_child_geometry() {
         format!("{:?}", documents::layout_case(&case).unwrap())
     );
 }
+
+#[test]
+fn document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records() {
+    let source = "flowchart LR\n A[alpha] --> B[beta]";
+    let mut case = documents::cases().remove(0);
+    case.fixture = Some(
+        json!({"layer":"documents","backdrop":{"crop":{"x":0,"y":0}},"frames":[{"view":{"document":{"type":"note","title":"Native engine","path":"note.md","body":format!("```mermaid\n{source}\n```\n")},"diagrams":[{"source":source,"graph":{"type":"flow","nodes":[{"id":"fake","label":"not the source"}],"edges":[]}}]},"host":{"x":0,"y":0,"w":1218,"h":0},"parts":[]}]}),
+    );
+    let before = format!("{:?}", documents::layout_case(&case).unwrap());
+    case.fixture.as_mut().unwrap()["frames"][0]["view"]["diagrams"][0]["graph"] =
+        json!({"type":"flow","nodes":[]});
+    assert_eq!(
+        before,
+        format!("{:?}", documents::layout_case(&case).unwrap())
+    );
+    case.fixture.as_mut().unwrap()["frames"][0]["view"]["diagrams"][0]["show_source"] = json!(true);
+    assert_ne!(
+        before,
+        format!("{:?}", documents::layout_case(&case).unwrap())
+    );
+}
