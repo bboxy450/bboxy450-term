@@ -10,7 +10,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
 | Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **standing by**: lab complete (30 pages, design system v54, layer-reference pages for L2/L3/L6); awaiting the operator's review points. Previous queue: **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); no checkpoints until the lab is complete (operator reviews once at the end); after pass 9: new pages documents.html, events.html, launcher.html, graph.html, stream.html, titlebar.html (operator ask), then passes 10-19, then window transparency | nothing |
-| Nyx Copperwing | Executor | Codex | **W3.2d.7.0 rounded material clipping, then 7.3 SwarmCard + Sidebar**; 7.2 TabRow+MiniGrid ✔ (6b4f2bc: 0/208 review); 7.1 SeatRow ✔ (f811a9d: geometry all pass, 71/296 pixel-only residue); d.6 ✔ (4bf9d4f: overlays 16/16; L6 complete); d.5 ✔ (dca0a05: 24/32 within policy, 8 Button cases visually equivalent; 1000-row List/Table virtualised); Style 0/88 and components 0/24 after font weights (01edd5f); per-case policy ✔ (3a38388), d.4 matrix 0/24 review after Wren ceafbe8, d.1e withdrawn, then d.6 Button/List/Table/Input; d.1c ✔, kerning ✔ (ef1267c), d.4 ✔ (efacd88: text geometry 1.447→0.015 px); d.1d per-size SVG raster later; d.1 ✔, d.2 ✔, d.1b ✔ (materials 8/32, Style 56/88), d.3 ✔ (cc99459: atoms 103/112, worst 4.09%→1.55%); W3.2c steps 1–3 deferred until L7 modules are re-based | nothing |
+| Nyx Copperwing | Executor | Codex | **W3.2d.7.3b align L3 records + font weights to 3f9eed7, re-run 7.3 and lower layers**, then 7.4; 7.0 ✔ (47500ea), 7.3 ✔ (f2f9552: 6/136 pixel-only); 7.2 TabRow+MiniGrid ✔ (6b4f2bc: 0/208 review); 7.1 SeatRow ✔ (f811a9d: geometry all pass, 71/296 pixel-only residue); d.6 ✔ (4bf9d4f: overlays 16/16; L6 complete); d.5 ✔ (dca0a05: 24/32 within policy, 8 Button cases visually equivalent; 1000-row List/Table virtualised); Style 0/88 and components 0/24 after font weights (01edd5f); per-case policy ✔ (3a38388), d.4 matrix 0/24 review after Wren ceafbe8, d.1e withdrawn, then d.6 Button/List/Table/Input; d.1c ✔, kerning ✔ (ef1267c), d.4 ✔ (efacd88: text geometry 1.447→0.015 px); d.1d per-size SVG raster later; d.1 ✔, d.2 ✔, d.1b ✔ (materials 8/32, Style 56/88), d.3 ✔ (cc99459: atoms 103/112, worst 4.09%→1.55%); W3.2c steps 1–3 deferred until L7 modules are re-based | nothing |
 | Rook Ashwhisker | Executor | Codex | **W2.2 logic: store objects, registry, .bboxy index, state streams, bus last** | nothing (authorized 2026-10-21) |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
@@ -58,7 +58,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 | State | Items |
 |---|---|
-| RUNNING | W3.2d.7.0→7.3 (Nyx); W2.2 (Rook) |
+| RUNNING | W3.2d.7.3b (Nyx); W2.2 (Rook, blocked on operator authorization in its pane) |
 | OPEN, claimable now | W4.1, W1.2, W2.3 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
