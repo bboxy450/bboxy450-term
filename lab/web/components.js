@@ -695,27 +695,43 @@
   // ext sources) on the left as a tree; seat sinks (seats/<seat>/inbox) on the right; each subscription is a symlink drawn as a
   // thin dashed edge, traffic adds weight; filters and rates ride on the link as a pill; a paused (muted) entry is dotted;
   // folder links (bridges) curve between folders.
+  // Drawn 1:1: the viewBox is the graph's own pixel box (no scaling to the card), labels sit on the type steps (caption folders and
+  // sinks, micro notes and paths, tiny pills) measured with the real font, strokes are pixel widths. The card scrolls if narrower.
+  const CG_TEXT = { folder: ['caption', 400, 'mono'], note: ['micro', 400, 'chrome'], sink: ['caption', 600, 'chrome'], path: ['micro', 400, 'mono'], pill: ['tiny', 400, 'mono'] };
+  let cgCtx;
+  const cgWidth = (kind, text) => {
+    const [step, weight, fam] = CG_TEXT[kind], css = getComputedStyle(document.documentElement);
+    cgCtx = cgCtx || document.createElement('canvas').getContext('2d');
+    cgCtx.font = weight + ' ' + window.STYLE.type[step] + 'px ' + css.getPropertyValue('--font-' + fam).trim();
+    return cgCtx.measureText(text).width;
+  };
   function channelGraphCard(g) {
-    const NS = 'http://www.w3.org/2000/svg', rowH = 26, top = 16, W = 700, sinkX = W - 130;
+    const NS = 'http://www.w3.org/2000/svg', rowH = 22, top = 12, span = 220;
     const fy = {}, sy = {};
     g.folders.forEach((f, i) => { fy[f.path] = top + i * rowH + rowH / 2; });
     const sinkGap = Math.max(rowH, (g.folders.length * rowH) / Math.max(1, g.sinks.length));
     g.sinks.forEach((x, i) => { sy[x.id] = top + i * sinkGap + sinkGap / 2; });
-    const H = Math.max(g.folders.length * rowH, g.sinks.length * sinkGap) + top * 2;
-    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('class', 'chgraph');
+    const H = Math.ceil(Math.max(g.folders.length * rowH, g.sinks.length * sinkGap) + top * 2);
+    const fx = f => 12 + f.depth * 14, fEnd = f => fx(f) + cgWidth('folder', f.label) + (f.filter ? 8 + cgWidth('note', f.filter) : 0);
+    const bridgeX = br => { const a = g.folders.find(x => x.path === br.from), b = g.folders.find(x => x.path === br.to); return a && b ? Math.max(fEnd(a), fEnd(b)) + 14 : 0; };
+    const left = Math.max(0, ...g.folders.map(fEnd), ...(g.bridges || []).map(br => bridgeX(br) + 28 + cgWidth('pill', 'bridge')));
+    const sinkX = Math.round(left + span), W = Math.ceil(sinkX + 10 + Math.max(0, ...g.sinks.map(x => Math.max(cgWidth('sink', x.name), cgWidth('path', 'seats/' + x.id + '/inbox')))) + 12);
+    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('class', 'chgraph');
     const mk = (tag, a, txt) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; svg.append(e); return e; };
-    const fx = f => 24 + f.depth * 16, fEnd = f => fx(f) + 8 + f.label.length * 6.3 + (f.filter ? 10 + f.filter.length * 4.9 : 0);
     const col = id => (g.sinks.find(x => x.id === id) || {}).color || 'var(--accent)';
     for (const l of g.links) { const f = g.folders.find(x => x.path === l.from); if (!f || sy[l.to] == null) continue;
       const x1 = fEnd(f) + 6, y1 = fy[l.from], x2 = sinkX - 8, y2 = sy[l.to], mx = (x1 + x2) / 2, d = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
       mk('path', { d, class: 'cg-link' + (l.paused ? ' paused' : '') });
-      if (l.w) mk('path', { d, class: 'cg-traffic', style: 'stroke-width:' + (1 + l.w * 7) + ';stroke:' + col(l.to) });
-      if (l.filter || l.rate) { const tx = mk('text', { x: mx, y: (y1 + y2) / 2 - 1, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'cg-pill-t' }, [l.filter, l.rate].filter(Boolean).join(' · ')); const w = tx.textContent.length * 5.6 + 10; const r = mk('rect', { x: mx - w / 2, y: (y1 + y2) / 2 - 8, width: w, height: 15, rx: 7.5, class: 'cg-pill' }); svg.insertBefore(r, tx); } }
-    for (const br of (g.bridges || [])) { const a = g.folders.find(x => x.path === br.from), b = g.folders.find(x => x.path === br.to); if (!a || !b) continue; const x = Math.max(fEnd(a), fEnd(b)) + 18; mk('path', { d: `M${fEnd(a) + 4},${fy[a.path]} C${x + 30},${fy[a.path]} ${x + 30},${fy[b.path]} ${fEnd(b) + 4},${fy[b.path]}`, class: 'cg-bridge', 'marker-end': '' }); mk('text', { x: x + 34, y: (fy[a.path] + fy[b.path]) / 2, class: 'cg-pill-t', 'dominant-baseline': 'central' }, 'bridge'); }
-    g.folders.forEach(f => { const y = fy[f.path]; if (f.depth) mk('path', { d: `M${fx(f) - 10},${y - rowH + 8} V${y} H${fx(f) - 3}`, class: 'cg-branch' });
+      if (l.w) mk('path', { d, class: 'cg-traffic', style: 'stroke-width:' + (1 + l.w * 5) + ';stroke:' + col(l.to) });
+      // the pill rides 30% along its own curve, near its folder, so pills from neighbouring folders (rowH apart) never stack
+      if (l.filter || l.rate) { const t = [l.filter, l.rate].filter(Boolean).join(' · '), w = cgWidth('pill', t) + 12, u = .3, v = 1 - u;
+        const cx = v * v * v * x1 + 3 * v * v * u * mx + 3 * v * u * u * mx + u * u * u * x2, cy = y1 + (y2 - y1) * (3 * u * u - 2 * u * u * u);
+        mk('rect', { x: cx - w / 2, y: cy - 7, width: w, height: 14, rx: 7, class: 'cg-pill' }); mk('text', { x: cx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'cg-pill-t' }, t); } }
+    for (const br of (g.bridges || [])) { const a = g.folders.find(x => x.path === br.from), b = g.folders.find(x => x.path === br.to); if (!a || !b) continue; const x = bridgeX(br); mk('path', { d: `M${fEnd(a) + 4},${fy[a.path]} C${x + 20},${fy[a.path]} ${x + 20},${fy[b.path]} ${fEnd(b) + 4},${fy[b.path]}`, class: 'cg-bridge' }); mk('text', { x: x + 24, y: (fy[a.path] + fy[b.path]) / 2, class: 'cg-pill-t', 'dominant-baseline': 'central' }, 'bridge'); }
+    g.folders.forEach(f => { const y = fy[f.path]; if (f.depth) mk('path', { d: `M${fx(f) - 8.5},${y - rowH + 7} V${y + .5} H${fx(f) - 3}`, class: 'cg-branch' });
       mk('text', { x: fx(f), y, 'dominant-baseline': 'central', class: 'cg-folder ' + (f.kind || 'channel') }, f.label);
-      if (f.filter) mk('text', { x: fx(f) + 6 + f.label.length * 6.3 + 8, y, 'dominant-baseline': 'central', class: 'cg-note' }, f.filter); });
-    g.sinks.forEach(x => { const y = sy[x.id]; mk('circle', { cx: sinkX, cy: y, r: 4, style: 'fill:' + (x.color || 'var(--fg)') }); mk('text', { x: sinkX + 10, y: y - 5, 'dominant-baseline': 'central', class: 'cg-sink', style: 'fill:' + (x.color || 'var(--fg)') }, x.name); mk('text', { x: sinkX + 10, y: y + 7, 'dominant-baseline': 'central', class: 'cg-path' }, 'seats/' + x.id + '/inbox'); });
+      if (f.filter) mk('text', { x: fx(f) + cgWidth('folder', f.label) + 8, y, 'dominant-baseline': 'central', class: 'cg-note' }, f.filter); });
+    g.sinks.forEach(x => { const y = sy[x.id]; mk('circle', { cx: sinkX, cy: y, r: 3.5, style: 'fill:' + (x.color || 'var(--fg)') }); mk('text', { x: sinkX + 10, y: y - 6, 'dominant-baseline': 'central', class: 'cg-sink', style: 'fill:' + (x.color || 'var(--fg)') }, x.name); mk('text', { x: sinkX + 10, y: y + 6, 'dominant-baseline': 'central', class: 'cg-path' }, 'seats/' + x.id + '/inbox'); });
     return el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Channels · ' + (g.root || 'bboxy450://')), el('span', { class: 'cg-key' }, el('i', { class: 'a' }), 'link', el('i', { class: 't' }), 'traffic', el('i', { class: 'p' }), 'paused')), el('div', { class: 'cg-wrap' }, svg));
   }
   // Provenance card: created_by / updated_by, weighted derived_from, the signed digest pair, and the hash-chained activity log
