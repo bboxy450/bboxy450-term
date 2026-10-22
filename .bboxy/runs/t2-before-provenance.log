@@ -1,0 +1,9 @@
+{
+  "frozenBinary": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-prefix/before-bboxybook",
+  "sourceBinary": "/Users/feral/mydev/bboxy450-term/target/w2-4-ci/debug/bboxybook",
+  "sha256": "a6fbc1f3ae74497465c57e388f1c9fd6bcea54df45629a66931dae1a7b8acd84",
+  "sourceCommit": "9cd9ee17591e9a5396750a2f19a701d5831815f6",
+  "rendererAndBboxybookSourcesEqualTo": "4e0a191203f537fc33d9e4ab95148037d34edb91",
+  "ciRecord": "/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/s1-clean-ci.log",
+  "baselineAcceptance": "source-equivalent pre-T2a renderer; Oracle approval pending"
+}
