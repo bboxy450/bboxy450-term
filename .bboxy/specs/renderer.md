@@ -18,7 +18,7 @@ All geometry is retained between frames; only changed buffers upload. Damage tra
 
 ## 1a. Blending (decided 2026-10-21 after W3.2d.2)
 
-Chrome and fx passes blend in sRGB (gamma) space so the native UI matches the CSS reference; text keeps linear-corrected blending ([[text-rendering]]). Shadows use a Gaussian kernel with sigma = blur/2 to match CSS box-shadow.
+Chrome and fx passes blend in sRGB (gamma) space so the native UI matches the CSS reference. **Chrome text also blends sRGB source-over** (measured in W3.2d.7.6b: a 96-case palette probe went from 35,956 changed pixels to zero at 2x against Chrome); **terminal text keeps linear-corrected blending** ([[text-rendering]]). Chrome text glyph origins snap to quarter device pixels as Chrome does, SF weights are requested numerically (500/600, not the named 510/590 faces), and fonts are created at the logical size so 2x does not change optical size. Shadows use a Gaussian kernel with sigma = blur/2 to match CSS box-shadow.
 
 ## 1b. Window transparency (operator, 2026-10-21, "semi transparency like iTerm2; our renderer supports it")
 
