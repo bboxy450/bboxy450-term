@@ -1,0 +1,50 @@
+probe source:
+#include <stdio.h>
+int main(int argc, char **argv) { for (int i=1; i<argc; i++) puts(argv[i]); return 7; }
+$ ['cc', '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/probe.c', '-o', '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/probe-deadbeef01234567']
+exit: 0; elapsed_seconds: 0.078925
+$ ['/Users/feral/mydev/bboxy450-term-exec6/scripts/sign-run.sh', '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/probe-deadbeef01234567', 'two words', '--literal-flag']
+two words
+--literal-flag
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/probe-deadbeef01234567: replacing existing signature
+exit: 7; elapsed_seconds: 0.248625
+$ ['/usr/bin/codesign', '--display', '--verbose=4', '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/probe-deadbeef01234567']
+Executable=/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/probe-deadbeef01234567
+Identifier=com.bboxy450.probe
+Format=Mach-O thin (arm64)
+CodeDirectory v=20400 size=278 flags=0x0(none) hashes=3+2 location=embedded
+VersionPlatform=1
+VersionMin=1769472
+VersionSDK=1769472
+Hash type=sha256 size=32
+CandidateCDHash sha256=f3077810566b3e76d065cc1307ad085c90e451c8
+CandidateCDHashFull sha256=f3077810566b3e76d065cc1307ad085c90e451c89ff1dcbfcc6c3d8c4c8175e9
+Hash choices=sha256
+CMSDigest=f3077810566b3e76d065cc1307ad085c90e451c89ff1dcbfcc6c3d8c4c8175e9
+CMSDigestType=2
+Executable Segment base=0
+Executable Segment limit=16384
+Executable Segment flags=0x1
+Page size=16384
+CDHash=f3077810566b3e76d065cc1307ad085c90e451c8
+Signature size=4795
+Authority=Apple Development: Max Soltan (G2XY6PGFKS)
+Authority=Apple Worldwide Developer Relations Certification Authority
+Authority=Apple Root CA
+Signed Time=Oct 22, 2026 at 3:08:47 PM
+Info.plist=not bound
+TeamIdentifier=UQB3368A84
+Sealed Resources=none
+Internal requirements count=1 size=180
+Total signatures=1
+Chosen signature=1
+exit: 0; elapsed_seconds: 0.036445
+$ ['/usr/bin/codesign', '--verify', '--strict', '--test-requirement', '=identifier "com.bboxy450.probe" and certificate leaf = H"3943AF130A015B36824B7FBC86AA672E7B25F3C4"', '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/probe-deadbeef01234567']
+exit: 0; elapsed_seconds: 0.018959
+$ ['/Users/feral/mydev/bboxy450-term-exec6/scripts/sign-run.sh', '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/probe-deadbeef01234567']
+exit: 7; elapsed_seconds: 0.025418
+$ ['/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/missing-identity.sh', '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-pkg0-probe-51lx8_rt/probe-deadbeef01234567', 'absence probe']
+absence probe
+sign-run: development signing identity unavailable; executing without signing
+exit: 7; elapsed_seconds: 0.166765
+PASS: stable name/team, matching signature unchanged, absent-identity note once, args/exit preserved, no interaction

@@ -1,0 +1,45 @@
+$ ['/usr/bin/codesign', '--display', '--verbose=4', '/Users/feral/mydev/bboxy450-term-exec6/target/pkg0-dev/debug/deps/identity-b26a398efea680ae']
+Executable=/Users/feral/mydev/bboxy450-term-exec6/target/pkg0-dev/debug/deps/identity-b26a398efea680ae
+Identifier=com.bboxy450.identity
+Format=Mach-O thin (arm64)
+CodeDirectory v=20400 size=20281 flags=0x0(none) hashes=628+2 location=embedded
+VersionPlatform=1
+VersionMin=720896
+VersionSDK=1769472
+Hash type=sha256 size=32
+CandidateCDHash sha256=cbc4080cd7c5658b521a25070695d852ab9c4a09
+CandidateCDHashFull sha256=cbc4080cd7c5658b521a25070695d852ab9c4a091a28b528482d943f3419d873
+Hash choices=sha256
+CMSDigest=cbc4080cd7c5658b521a25070695d852ab9c4a091a28b528482d943f3419d873
+CMSDigestType=2
+Executable Segment base=0
+Executable Segment limit=6160384
+Executable Segment flags=0x1
+Page size=16384
+CDHash=cbc4080cd7c5658b521a25070695d852ab9c4a09
+Signature size=4795
+Authority=Apple Development: Max Soltan (G2XY6PGFKS)
+Authority=Apple Worldwide Developer Relations Certification Authority
+Authority=Apple Root CA
+Signed Time=Oct 22, 2026 at 3:04:55 PM
+Info.plist=not bound
+TeamIdentifier=UQB3368A84
+Sealed Resources=none
+Internal requirements count=1 size=184
+Total signatures=1
+Chosen signature=1
+exit: 0
+$ ['/usr/bin/codesign', '--display', '--requirements', '-', '/Users/feral/mydev/bboxy450-term-exec6/target/pkg0-dev/debug/deps/identity-b26a398efea680ae']
+designated => identifier "com.bboxy450.identity" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development: Max Soltan (G2XY6PGFKS)" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */
+Executable=/Users/feral/mydev/bboxy450-term-exec6/target/pkg0-dev/debug/deps/identity-b26a398efea680ae
+exit: 0
+$ ['/Users/feral/mydev/bboxy450-term-exec6/scripts/sign-run.sh', '/Users/feral/mydev/bboxy450-term-exec6/target/pkg0-dev/debug/deps/identity-b26a398efea680ae', '--list']
+identity_bootstrap_external_certification_and_custody: test
+identity_keychain_device_local_item_and_cleanup: test
+identity_locked_keychain_and_wrong_keygrip_install_nothing: test
+identity_pending_failure_installs_no_authority_and_retries_same_device: test
+
+4 tests, 0 benchmarks
+exit: 0
+interleaved --list launch wall time (direct vs matching-signature runner): {'samples_per_mode': 20, 'direct_median_ms': 11.394875007681549, 'runner_median_ms': 210.11916649877094, 'added_median_ms': 198.7242914910894, 'runner_max_ms': 406.4925420098007}
+matching-signature fast path: executable bytes and mtime unchanged through all launches

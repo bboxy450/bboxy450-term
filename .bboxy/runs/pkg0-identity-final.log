@@ -1,0 +1,21 @@
+cwd: crates/bbt-mux (runner must still resolve from workspace config)
+$ cargo test -p bbt-mux --test identity
+env: absolute owned pkg0-dev target, jobs=2, incremental=0, dev/test debug=0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 10.46s
+     Running tests/identity.rs (/Users/feral/mydev/bboxy450-term-exec6/target/pkg0-dev/debug/deps/identity-b26a398efea680ae)
+/Users/feral/mydev/bboxy450-term-exec6/target/pkg0-dev/debug/deps/identity-b26a398efea680ae: replacing existing signature
+
+running 4 tests
+test identity_keychain_device_local_item_and_cleanup ... ignored, uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+test identity_bootstrap_external_certification_and_custody ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+
+exit: 0
+elapsed_seconds: 11.085
