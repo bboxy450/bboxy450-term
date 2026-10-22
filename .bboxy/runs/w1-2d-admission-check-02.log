@@ -1,0 +1,30 @@
+UTC 2026-10-22T23:26:14.058329+00:00
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 5.03s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 7 tests
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 5 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+EXIT=0
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', 'capture_sigkill', '--', '--ignored', '--nocapture']
+    Finished `release` profile [optimized] target(s) in 0.08s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 1 test
+{"admitted":6464,"admitted_loss":192,"admitted_tick_bytes":576,"coalescing_limit":16384,"committed":6272,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":64,"seat":"01M5JYZNXY5GXG05Q0BJA85ECA","signal":"SIGKILL","written":6528}
+{"admitted":6336,"admitted_loss":256,"admitted_tick_bytes":576,"coalescing_limit":16384,"committed":6080,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":64,"seat":"01M5JYZNYDWA8BDDWV9MZXRJW5","signal":"SIGKILL","written":6400}
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.33s
+
+EXIT=0

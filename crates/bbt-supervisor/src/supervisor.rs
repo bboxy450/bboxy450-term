@@ -647,7 +647,7 @@ impl Actor {
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
                 seat.check_live()?;
-                seat.flush_output().map_err(pty_error)?;
+                seat.flush_output().map_err(capture_error)?;
                 Ok(Reply::InputContext {
                     context: seat.input_context(),
                 })
@@ -662,7 +662,7 @@ impl Actor {
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
                 seat.check_live()?;
-                seat.flush_output().map_err(pty_error)?;
+                seat.flush_output().map_err(capture_error)?;
                 if !seat.inputs.contains_key(&input_id)
                     && (seat.input_context() != expected
                         || !expected.settled
@@ -708,7 +708,7 @@ impl Actor {
                         "ring full: checkpoint required before resize",
                     ));
                 }
-                seat.flush_output().map_err(pty_error)?;
+                seat.flush_output().map_err(capture_error)?;
                 seat.master.resize(pty_size(size)).map_err(pty_error)?;
                 seat.size = size;
                 let sequence = seat.next_seq;
@@ -1272,7 +1272,7 @@ impl Seat {
 
     fn capture(&mut self, event: Event) -> io::Result<()> {
         if let Some(ring) = self.ring.as_mut() {
-            ring.append_event(&event).map_err(io::Error::other)?;
+            ring.append_event(&event)?;
         }
         self.sequence();
         self.pending_event = Some(event);
@@ -1284,13 +1284,25 @@ impl Seat {
             return Ok(());
         }
         let bytes = std::mem::replace(&mut self.output, Vec::with_capacity(OUTPUT_CHUNK_BYTES));
-        self.output_since = None;
-        self.capture(Event::Output {
+        let event = Event::Output {
             seat: self.spec.seat,
             generation: self.spec.generation,
             seq: self.next_seq,
             bytes,
-        })
+        };
+        if let Some(ring) = self.ring.as_mut() {
+            if let Err(error) = ring.append_event(&event) {
+                let Event::Output { bytes, .. } = event else {
+                    unreachable!()
+                };
+                self.output = bytes;
+                return Err(error);
+            }
+        }
+        self.output_since = None;
+        self.sequence();
+        self.pending_event = Some(event);
+        Ok(())
     }
 
     fn tick(&mut self, actor: &mut Actor) -> io::Result<()> {
@@ -1380,7 +1392,12 @@ impl Seat {
                 self.output.extend_from_slice(&bytes[..count]);
                 self.output_since.get_or_insert_with(Instant::now);
                 if count == capacity || self.ring.is_none() {
-                    self.flush_output()?;
+                    if let Err(error) = self.flush_output() {
+                        if error.kind() == io::ErrorKind::WouldBlock {
+                            return Ok(());
+                        }
+                        return Err(error);
+                    }
                     self.publish_pending(actor);
                 }
                 continue;
@@ -1392,13 +1409,19 @@ impl Seat {
             .is_some_and(|at| at.elapsed() >= OUTPUT_DELAY || self.eof || self.exited.is_some())
             && self.ring.as_ref().is_none_or(CaptureHandle::can_capture)
         {
-            self.flush_output()?;
+            if let Err(error) = self.flush_output() {
+                if error.kind() == io::ErrorKind::WouldBlock {
+                    return Ok(());
+                }
+                return Err(error);
+            }
             self.publish_pending(actor);
         }
         if let Some(status) = self.exited.clone()
             && !self.read_ready
             && (self.ring.is_some() || self.pending_event.is_none())
             && !self.exit_published
+            && self.output.is_empty()
             && self.ring.as_ref().is_none_or(CaptureHandle::can_control)
         {
             let seq = self.next_seq;
@@ -1452,6 +1475,13 @@ fn pty_size(size: SeatSize) -> PtySize {
     }
 }
 
+fn capture_error(error: io::Error) -> Failure {
+    if error.kind() == io::ErrorKind::WouldBlock {
+        Failure::new(FailureCode::Busy, "capture admission paused")
+    } else {
+        pty_error(error)
+    }
+}
 fn pty_error(error: impl std::fmt::Display) -> Failure {
     Failure::new(FailureCode::Io, error.to_string())
 }

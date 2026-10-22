@@ -1,0 +1,21 @@
+UTC 2026-10-22T22:47:05.554375+00:00
+Invalidated workspace artifacts after baseline and revised sources shared a cache; dependencies retained.
+COMMAND ['cargo', 'clean', '--release', '-p', 'bbt-supervisor', '-p', 'bbt-mux']
+     Removed 33 files, 54.6MiB total
+EXIT=0
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', '--no-run']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 1m 00s
+  Executable tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-553bb7d31ee804d0)
+EXIT=0
+GATE_SEATS=50 GATE_RATE=32kB/s GATE_SECONDS=4
+PID=48739
+
+running 1 test
+test gate_memory ... GATE memory value=69.328 unit=MiB budget=none MEASURED ptmx_max=999 seats=50 rate=32kB/s load_s=4 baseline_mib=11.2 peak_mib=69.3 per_seat_kib=1190.7 spawn_s=11.2 records=94997 sync_s=7.3 marker_s=12.2 queue_full=0 disk_peak_mib=82.0 observed_s=47.064 writer_busy_s=43.307 writer_s_per_wall_s=0.920 commit_rounds=425 commit_p99_upper_ms=1557.499 commit_max_ms=1557.499 logic_alive=true
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 77.01s
+
+CHILD_EXIT=0 ELAPSED_S=77.296289

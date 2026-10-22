@@ -1,0 +1,24 @@
+UTC 2026-10-22T22:55:06.473997+00:00
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--test', 'capture_crash', 'capture_sigkill', '--', '--ignored', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 8.85s
+     Running tests/capture_crash.rs (target/w1-2d/release/deps/capture_crash-b0dedc4d82ad90ed)
+
+running 1 test
+{"crc_errors":0,"last_tick_bytes":512,"lost":128,"replayed":6080,"seat":"01M5JX6SNC7A0JHR7TN741T5J4","signal":"SIGKILL","written":6208}
+{"crc_errors":0,"last_tick_bytes":512,"lost":768,"replayed":4928,"seat":"01M5JX6SNZ4755A5WBHZJC69AK","signal":"SIGKILL","written":5696}
+
+thread 'capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost' (8957489) panicked at crates/bbt-supervisor/tests/capture_crash.rs:199:9:
+lost more than the producer's last 20 ms of successful writes
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... FAILED
+
+failures:
+
+failures:
+    capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.33s
+
+error: test failed, to rerun pass `-p bbt-supervisor --test capture_crash`
+EXIT 101

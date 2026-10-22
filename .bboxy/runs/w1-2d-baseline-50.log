@@ -1,0 +1,7 @@
+UTC: 2026-10-22T22:33:31.636119+00:00
+Source HEAD: eeecbc2bd447adfea2a6489de87ae5230cd87f64
+Binary SHA256: 8457c5b99783eced8512af7053112e333a7de55697161c5b51d139e66f613db3
+GATE_SEATS=50 GATE_RATE=32kB/s GATE_SECONDS=4 /Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-553bb7d31ee804d0 gate_memory --ignored --nocapture --test-threads=1
+
+running 1 test
+test gate_memory ... CHILD_EXIT=-15 ELAPSED_S=7.837759

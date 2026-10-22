@@ -1,0 +1,7 @@
+UTC 2026-10-22T22:38:19.827113+00:00
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', '--no-run']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 22.48s
+  Executable tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-553bb7d31ee804d0)
+EXIT 0

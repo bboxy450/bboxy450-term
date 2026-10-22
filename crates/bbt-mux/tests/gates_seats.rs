@@ -6,11 +6,9 @@
 //! is theirs. Env: `GATE_SEATS` (min(1000, ptmx_max - 32)), `GATE_RATE` (per seat, or `idle`,
 //! 32kB/s), `GATE_SECONDS` (load time, 20), `GATE_RUN_DIR` (parent of the
 //! run directory, /tmp), `GATE_BUDGET`.
+//! Based on Seraph's signed 8a291a8; W1.2d adds writer timing/health evidence.
 
-#![allow(
-    clippy::disallowed_methods,
-    reason = "measurement fixture IO, not the UI thread"
-)]
+#![allow(clippy::disallowed_methods)] // Explicit opt-in blocking process/IO load fixture.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -224,7 +222,16 @@ impl Rig {
             let record =
                 SeatRecord::new(launch.seat, self.swarm, format!("firehose-{i}"), "firehose");
             match self.try_spawn(record, launch) {
-                Ok(s) => seats.push(s),
+                Ok(s) => {
+                    seats.push(s);
+                    if (i + 1) % 25 == 0 || i + 1 == n {
+                        eprintln!(
+                            "GATE spawn progress={}/{n} elapsed_s={:.3}",
+                            i + 1,
+                            started.elapsed().as_secs_f64()
+                        );
+                    }
+                }
                 Err(e) => {
                     let at = started.elapsed();
                     let exit = self.logic.shutdown();
@@ -251,6 +258,12 @@ impl Rig {
             t.marker_ns += c.marker_ns;
             t.queue_full_count += c.queue_full_count;
             t.peak_queue_bytes = t.peak_queue_bytes.max(c.peak_queue_bytes);
+            // Machine-wide counters repeat on each seat. Keep the last sample,
+            // never multiply shared-writer time by the number of seats.
+            t.writer_busy_ns = c.writer_busy_ns;
+            t.commit_rounds = c.commit_rounds;
+            t.commit_p99_ns = c.commit_p99_ns;
+            t.commit_max_ns = c.commit_max_ns;
         }
         t
     }
@@ -281,19 +294,29 @@ fn gate_memory() {
     let mut samples = Vec::new();
     for _ in 0..secs {
         std::thread::sleep(Duration::from_secs(1));
+        let record = rig
+            .runtime
+            .block_on(async {
+                tokio::time::timeout(Duration::from_secs(5), rig.logic.client.record(seats[0]))
+                    .await
+            })
+            .expect("logic heartbeat timed out")
+            .expect("logic died under firehose");
+        assert_eq!(record.id, seats[0]);
         let r = rss_kib();
         peak = peak.max(r);
         samples.push(r);
     }
     let last = *samples.last().unwrap_or(&base);
     let cap = rig.sum_capture(&seats);
+    let observed = t.elapsed().as_secs_f64();
     let disk = rig.stop();
     budget(
         "memory",
         last as f64 / 1024.0,
         "MiB",
         format!(
-            "seats={n} rate={rate} load_s={secs} baseline_mib={:.1} peak_mib={:.1} per_seat_kib={:.1} spawn_s={:.1} records={} sync_s={:.1} marker_s={:.1} queue_full={} disk_peak_mib={:.1}",
+            "seats={n} rate={rate} load_s={secs} baseline_mib={:.1} peak_mib={:.1} per_seat_kib={:.1} spawn_s={:.1} records={} sync_s={:.1} marker_s={:.1} queue_full={} disk_peak_mib={:.1} observed_s={observed:.3} writer_busy_s={:.3} writer_s_per_wall_s={:.3} commit_rounds={} commit_p99_upper_ms={:.3} commit_max_ms={:.3} logic_alive=true",
             base as f64 / 1024.0,
             peak as f64 / 1024.0,
             (last.saturating_sub(base)) as f64 / n.max(1) as f64,
@@ -302,7 +325,12 @@ fn gate_memory() {
             cap.sync_ns as f64 / 1e9,
             cap.marker_ns as f64 / 1e9,
             cap.queue_full_count,
-            disk as f64 / 1048576.0
+            disk as f64 / 1048576.0,
+            cap.writer_busy_ns as f64 / 1e9,
+            cap.writer_busy_ns as f64 / 1e9 / observed,
+            cap.commit_rounds,
+            cap.commit_p99_ns as f64 / 1e6,
+            cap.commit_max_ns as f64 / 1e6
         ),
     );
 }
@@ -513,6 +541,7 @@ fn gate_poller() {
     let rig = Rig::start(n);
     let fds_before = open_fds();
     let (rig, mut seats) = rig.firehose_seats(n - probes, &rate);
+    let load_started = Instant::now();
     let mut stats = Vec::new();
     for i in 0..probes {
         let (launch, path) = probe(rig.run.path(), i, 2 << 20);
@@ -539,6 +568,9 @@ fn gate_poller() {
         lat.extend(v.into_iter().map(|s| s * 1000.0));
     }
     lat.sort_by(f64::total_cmp);
+    if let Some(remaining) = Duration::from_secs(secs).checked_sub(load_started.elapsed()) {
+        std::thread::sleep(remaining);
+    }
     let cap = rig.sum_capture(&seats);
     let disk = rig.stop();
     budget(

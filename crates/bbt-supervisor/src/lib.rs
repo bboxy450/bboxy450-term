@@ -11,6 +11,7 @@
 compile_error!("bbt-supervisor currently requires Unix PTYs and Unix sockets");
 
 pub mod client;
+mod durability;
 pub mod protocol;
 pub mod ring;
 pub mod store;

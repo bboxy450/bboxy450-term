@@ -1,0 +1,57 @@
+UTC 2026-10-22T22:40:17.578852+00:00
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', '--', '--nocapture']
+   Compiling serde_core v1.0.229
+   Compiling generic-array v0.14.7
+   Compiling serde v1.0.229
+   Compiling typenum v1.20.1
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+   Compiling getrandom v0.4.3
+   Compiling smallvec v1.16.3
+   Compiling errno v0.3.14
+   Compiling serde_json v1.0.154
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling parking_lot_core v0.9.12
+   Compiling parking_lot v0.12.5
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling sha2 v0.10.9
+   Compiling thiserror-impl v1.0.69
+   Compiling serde_derive v1.0.229
+   Compiling thiserror v1.0.69
+   Compiling bitflags v2.13.2
+   Compiling nix v0.28.0
+   Compiling rustix v1.1.5
+   Compiling filedescriptor v0.8.3
+   Compiling portable-pty v0.9.0
+   Compiling tempfile v3.27.0
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling ulid v1.2.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 8.42s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 4 tests
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+EXIT 0
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'capture_busy', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 13.75s
+     Running tests/capture_busy.rs (target/w1-2d/release/deps/capture_busy-aea4365cb6f6f61e)
+
+running 1 test
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+EXIT 0

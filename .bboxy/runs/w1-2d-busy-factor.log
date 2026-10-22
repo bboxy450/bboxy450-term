@@ -1,0 +1,14 @@
+UTC 2026-10-22T22:44:44.713764+00:00
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'capture_busy', '--', '--nocapture']
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 29.06s
+     Running tests/capture_busy.rs (target/w1-2d/release/deps/capture_busy-aea4365cb6f6f61e)
+
+running 1 test
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s
+
+EXIT 0
