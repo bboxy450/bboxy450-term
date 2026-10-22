@@ -1,0 +1,71 @@
+
+$ xcrun xctrace export --input target/r4b/before.trace --toc --output target/r4b/before-toc.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4b/before-toc.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4b/before.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-application-encoders-list"]' --output target/r4b/before-metal-application-encoders-list.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4b/before-metal-application-encoders-list.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4b/before.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-gpu-intervals"]' --output target/r4b/before-metal-gpu-intervals.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4b/before-metal-gpu-intervals.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4b/after.trace --toc --output target/r4b/after-toc.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4b/after-toc.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4b/after.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-application-encoders-list"]' --output target/r4b/after-metal-application-encoders-list.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4b/after-metal-application-encoders-list.xml
+
+exit: 0
+
+$ xcrun xctrace export --input target/r4b/after.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-gpu-intervals"]' --output target/r4b/after-metal-gpu-intervals.xml
+Finished export to the file: /Users/feral/mydev/bboxy450-term-exec3/target/r4b/after-metal-gpu-intervals.xml
+
+exit: 0
+
+R4b matched Metal System Trace comparison
+Both runs: same8s Metal System Trace, --animate --meter, same1600x960/scale1 fixture, Apple M4/Dell75Hz. Binaries frozen separately; source base18e0593 and scoped3-file R4b diff. Own gallery jobs started only after each recording ended.
+Record exits54 both, saved traces with Time limit reached and target SIGKILL metadata. All6 TOC/dataset exports0. XML parsing/frame reconstruction0.
+GPU Active union combines overlapping Vertex/Fragment/Compute intervals per encoder and whole frame; elapsed spans are separate, not summed. Filter PID from each matched unique executable; steady GPU work2.5–8.0s; complete17-material frames only.
+Before: {"active": {"max_ms": 20.319165, "mean_ms": 19.17273489247312, "p50_ms": 19.10304, "p99_ms": 19.878874}, "encoder_counts": {"60": 279}, "encoders": 16740, "frames": 279, "missing_frames": 1, "process": {"arguments": "--animate --meter", "name": "bboxy450-term-r4b-before", "pid": "35895", "return-exit-status": "9", "termination-reason": "SIGKILL", "type": "launched"}, "span": {"max_ms": 22.072375, "mean_ms": 20.1025437562724, "p50_ms": 20.018041, "p99_ms": 21.563792}}
+After: {"active": {"max_ms": 10.842877, "mean_ms": 8.912887000000001, "p50_ms": 9.050414, "p99_ms": 10.35254}, "encoder_counts": {"44": 411}, "encoders": 18084, "frames": 411, "missing_frames": 0, "process": {"arguments": "--animate --meter", "name": "bboxy450-term-r4b-after", "pid": "43395", "return-exit-status": "9", "termination-reason": "SIGKILL", "type": "launched"}, "span": {"max_ms": 13.468709, "mean_ms": 10.879315284671533, "p50_ms": 10.974875, "p99_ms": 12.974542}}
+
+Per-frame GPU Active duration ms (means, then p99).
+Pass | before mean | after mean | before p99 | after p99
+all blur | 13.510889 | 3.418783 | 14.732666 | 4.440544
+all glow | 3.693734 | 3.723074 | 5.074582 | 4.291464
+chrome/text | 1.873433 | 2.503596 | 9.939833 | 4.035291
+backdrop copies | 0.797409 | 0.014565 | 1.322080 | 0.021625
+uploads | 0.051395 | 0.080777 | 0.108417 | 0.330458
+markers | 0.043124 | 0.026807 | 0.125958 | 0.117500
+frosted composite | 0.058441 | 0.094155 | 1.101875 | 0.691292
+gloss band | 0.047080 | 0.036055 | 1.056875 | 0.596791
+isolated group source-over | 0.074030 | 0.096562 | 0.111625 | 0.119583
+app clear | 0.016422 | 0.121912 | 0.078083 | 0.330334
+
+GPU Active frame mean19.172735 ->8.912887ms (53.51% reduction). Blur13.510889 ->3.418783ms; backdrop copies17/frame ->1/frame,0.797409 ->0.014565ms. Glow3.693734 ->3.723074ms: this combined trace does not demonstrate an independent glow-time reduction. Chrome/text includes fused shadows; no shadow-only estimate.
+Remaining budget: real GPU active alone p50 9.050414ms, p99 10.352540ms. Native uninstrumented paired conservative CPU+GPU span p50 11.766ms/p99 14.252ms; every225 animation samples >8.333ms. 120Hz budget remains OPEN; no approximation or follow-on optimization applied.
+75Hz criterion PASS:225 frames/3.002219s=74.945Hz,0/224 late intervals (>1.5 panel periods), p50 interval13.321ms/p99 14.064ms. CPU p50/p99 3.241/4.015ms. Idle10.002s0frames0callbacks.
+Logical/physical1600x960 gives inferred scale1.0, same as R4. Generic L2 subtypes inferred from source paint order. GPU frequency not forced; default instrument state retained. Trace PIDs/binary names and exact command inputs above; raw inputs and per-encoder/frame JSON in target/r4b.
+
+$ dwarfdump --uuid target/r4b/Before.app/Contents/MacOS/bboxy450-term-r4b-before
+UUID: 970C35BD-43A1-3E5C-8C29-7447ECB3C85E (arm64) target/r4b/Before.app/Contents/MacOS/bboxy450-term-r4b-before
+
+exit: 0
+
+$ dwarfdump --uuid target/r4b/After.app/Contents/MacOS/bboxy450-term-r4b-after
+UUID: 89CCD6D5-CE78-3D9C-B53B-32319E4233CB (arm64) target/r4b/After.app/Contents/MacOS/bboxy450-term-r4b-after
+
+exit: 0
+target/r4b/before-summary.json sha256 9cb369fb97feeb05e19f16e425db81eb061affa9b596bbd171929c101f035fd6
+target/r4b/after-summary.json sha256 01b9b45243613995de4873d534bc46984d83de7383bf38f1b9fe2afb5a68bcc0
+target/r4b/before-status.json sha256 2b731f9107503f22ecb83ecece01c6f636c6699f960ae6d9dddf37d4c344dece
+target/r4b/after-status.json sha256 5fcfcbf7d3fbb8bf38de5fe2aa803e2e774e698b1d5c5696a2de9595032b6173
+target/r4b/before-metal-gpu-intervals.xml sha256 a70045502cbcc8d6c9f82b8db30d232d26a69bd8739d87a58f806a982c7e52b0
+target/r4b/after-metal-gpu-intervals.xml sha256 4a3c16c463744cee869d0907a57d03a88e39909294e2b910d97c5734136bb1e2

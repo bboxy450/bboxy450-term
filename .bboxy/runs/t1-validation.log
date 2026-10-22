@@ -1,0 +1,63 @@
+$ cargo fmt --check -p bboxy-firehose
+exit_status=0
+
+$ cargo test -p bboxy-firehose
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.92s
+
+
+running 3 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running unittests src/lib.rs (target/debug/deps/bboxy_firehose-8d8445138875d41b)
+     Running unittests src/main.rs (target/debug/deps/bboxy_firehose-0c54e984b00bc6ec)
+     Running tests/cli.rs (target/debug/deps/cli-6dcf76111137c0ce)
+     Running tests/corpus.rs (target/debug/deps/corpus-e1943ecd41bd24ca)
+   Doc-tests bboxy_firehose
+exit_status=0
+
+$ cargo clippy -p bboxy-firehose --all-targets -- -D warnings
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.22s
+exit_status=0
+
+$ cargo build --release -p bboxy-firehose
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose)
+    Finished `release` profile [optimized] target(s) in 0.39s
+exit_status=0
+
+$ git diff --check
+exit_status=0

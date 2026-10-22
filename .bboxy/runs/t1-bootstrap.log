@@ -1,0 +1,88 @@
+Initial frozen-hash bootstrap. Command: python3 crates/bboxy-firehose/corpus/generate.py && cargo test -p bboxy-firehose --test corpus -- --nocapture
+Exit status: 101 (hash manifest intentionally pending; two behavior/provenance tests passed).
+   Compiling syn v3.0.9
+   Compiling parking_lot v0.12.5
+   Compiling bitflags v2.13.2
+   Compiling serde_derive v1.0.229
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.09s
+     Running tests/corpus.rs (target/debug/deps/corpus-b2c26d90c6f396b7)
+
+running 3 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+codex af10134782b46681
+claude 383d92c5c132719a
+palette 374de81d0f7b8aa6
+unicode c585318383de0833
+progress a1a8923034c9b2f3
+alternate 7ae14925efd425d2
+scroll-links-sync e8c8282603029a40
+osc7501-claude bc12654d7d8da675
+osc7501-preflight 990a7886c0b5246b
+osc7501-codex b822608a1187611d
+
+thread 'frozen_semantic_screens_survive_arbitrary_pty_chunking' (6848083) panicked at crates/bboxy-firehose/tests/corpus.rs:49:5:
+codex chunk=767 hash=af10134782b46681
+codex chunk=1 hash=af10134782b46681
+codex chunk=7 hash=af10134782b46681
+codex chunk=64 hash=af10134782b46681
+codex chunk=4096 hash=af10134782b46681
+claude chunk=778 hash=383d92c5c132719a
+claude chunk=1 hash=383d92c5c132719a
+claude chunk=7 hash=383d92c5c132719a
+claude chunk=64 hash=383d92c5c132719a
+claude chunk=4096 hash=383d92c5c132719a
+palette chunk=2806 hash=374de81d0f7b8aa6
+palette chunk=1 hash=374de81d0f7b8aa6
+palette chunk=7 hash=374de81d0f7b8aa6
+palette chunk=64 hash=374de81d0f7b8aa6
+palette chunk=4096 hash=374de81d0f7b8aa6
+unicode chunk=1409 hash=c585318383de0833
+unicode chunk=1 hash=c585318383de0833
+unicode chunk=7 hash=c585318383de0833
+unicode chunk=64 hash=c585318383de0833
+unicode chunk=4096 hash=c585318383de0833
+progress chunk=2452 hash=a1a8923034c9b2f3
+progress chunk=1 hash=a1a8923034c9b2f3
+progress chunk=7 hash=a1a8923034c9b2f3
+progress chunk=64 hash=a1a8923034c9b2f3
+progress chunk=4096 hash=a1a8923034c9b2f3
+alternate chunk=722 hash=7ae14925efd425d2
+alternate chunk=1 hash=7ae14925efd425d2
+alternate chunk=7 hash=7ae14925efd425d2
+alternate chunk=64 hash=7ae14925efd425d2
+alternate chunk=4096 hash=7ae14925efd425d2
+scroll-links-sync chunk=1254 hash=e8c8282603029a40
+scroll-links-sync chunk=1 hash=e8c8282603029a40
+scroll-links-sync chunk=7 hash=e8c8282603029a40
+scroll-links-sync chunk=64 hash=e8c8282603029a40
+scroll-links-sync chunk=4096 hash=e8c8282603029a40
+osc7501-claude chunk=772 hash=bc12654d7d8da675
+osc7501-claude chunk=1 hash=bc12654d7d8da675
+osc7501-claude chunk=7 hash=bc12654d7d8da675
+osc7501-claude chunk=64 hash=bc12654d7d8da675
+osc7501-claude chunk=4096 hash=bc12654d7d8da675
+osc7501-preflight chunk=596 hash=990a7886c0b5246b
+osc7501-preflight chunk=1 hash=990a7886c0b5246b
+osc7501-preflight chunk=7 hash=990a7886c0b5246b
+osc7501-preflight chunk=64 hash=990a7886c0b5246b
+osc7501-preflight chunk=4096 hash=990a7886c0b5246b
+osc7501-codex chunk=627 hash=b822608a1187611d
+osc7501-codex chunk=1 hash=b822608a1187611d
+osc7501-codex chunk=7 hash=b822608a1187611d
+osc7501-codex chunk=64 hash=b822608a1187611d
+osc7501-codex chunk=4096 hash=b822608a1187611d
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... FAILED
+
+failures:
+
+failures:
+    frozen_semantic_screens_survive_arbitrary_pty_chunking
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+error: test failed, to rerun pass `-p bboxy-firehose --test corpus`

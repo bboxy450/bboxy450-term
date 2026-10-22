@@ -1,0 +1,12 @@
+[1mLive tool progress / cursor rewrites[0m
+
+[2K[36m⠋[0m compiling [░░░░░░░░░░░░░░░░░░░░]   0%[2K[36m⠙[0m compiling [█░░░░░░░░░░░░░░░░░░░]   5%[2K[36m⠹[0m compiling [██░░░░░░░░░░░░░░░░░░]  10%[2K[36m⠸[0m compiling [███░░░░░░░░░░░░░░░░░]  15%[2K[36m⠼[0m compiling [████░░░░░░░░░░░░░░░░]  20%[2K[36m⠴[0m compiling [█████░░░░░░░░░░░░░░░]  25%[2K[36m⠦[0m compiling [██████░░░░░░░░░░░░░░]  30%[2K[36m⠧[0m compiling [███████░░░░░░░░░░░░░]  35%[2K[36m⠇[0m compiling [████████░░░░░░░░░░░░]  40%[2K[36m⠏[0m compiling [█████████░░░░░░░░░░░]  45%[2K[36m⠋[0m compiling [██████████░░░░░░░░░░]  50%[2K[36m⠙[0m compiling [███████████░░░░░░░░░]  55%[2K[36m⠹[0m compiling [████████████░░░░░░░░]  60%[2K[36m⠸[0m compiling [█████████████░░░░░░░]  65%[2K[36m⠼[0m compiling [██████████████░░░░░░]  70%[2K[36m⠴[0m compiling [███████████████░░░░░]  75%[2K[36m⠦[0m compiling [████████████████░░░░]  80%[2K[36m⠧[0m compiling [█████████████████░░░]  85%[2K[36m⠇[0m compiling [██████████████████░░]  90%[2K[36m⠏[0m compiling [███████████████████░]  95%[2K[36m⠋[0m compiling [████████████████████] 100%[2K[32m✓[0m compiling [████████████████████] 100%
+parser: queued
+render: queued
+frames: queued
+[3A[2Kparser: [32mcomplete[0m
+[2Krender: [32mcomplete[0m
+[2Kframes: [32mcomplete[0m
+
+Cursor horizontal: WRONG[5D[K[1mRIGHT[0m
+Final counters: 120 frames | 0 dropped | 42 synthetic tools

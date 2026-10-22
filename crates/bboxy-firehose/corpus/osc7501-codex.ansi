@@ -1,0 +1,10 @@
+[1mCodex OSC 7501 / explicit capture gap[0m
+
+Original Codex capture entries: 10 files, all empty (0 bytes).
+No captured Codex status is claimed.
+
+The protocol exercise below is entirely synthetic:
+  working → blocked (question) → working → done → clear
+  OSC terminator: ST
+]7501;state=working:app=codex:id=synthetic\]7501;state=blocked:app=codex:id=synthetic:kind=question\]7501;state=working:app=codex:id=synthetic\]7501;state=done:app=codex:id=synthetic\]7501;state=clear:id=synthetic\
+[2mGap: real Codex status bytes — no data.[0m
