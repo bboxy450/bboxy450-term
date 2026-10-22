@@ -70,6 +70,9 @@
     return css;
   }
 
+  // the Style record's text field ('row · 600 · on_accent', 'micro · mono', 'small · 600 · tracked .22em · uppercase · on_accent')
+  // resolves to Text options, so a page cannot drift from the record (Nyx parity correction: buttons declare row, not body)
+  function textOpts(st) { const t = (st && st.text) || 'body'; return { step: t.split(' · ')[0].trim(), weight: /\b600\b/.test(t) ? 600 : null, mono: /\bmono\b/.test(t), caps: /uppercase/.test(t), color: /on_accent/.test(t) ? 'var(--on-accent)' : null }; }
   // ---------- L6 components ----------
   const apply = (node, css) => { for (const k in css) node.style[k] = css[k]; return node; };
   function Box(style, ...kids) { const st = typeof style === 'string' ? STYLES[style] : style; const b = el('div', { class: 'ui-box' + (typeof style === 'string' ? ' s-' + style : '') }, ...kids); apply(b, styleCss(st, style && style.swarm)); return b; }
@@ -91,5 +94,5 @@
   const Q = new URLSearchParams(location.search);
   const themes = () => Q.get('theme') && T.color[Q.get('theme')] ? [Q.get('theme')] : ['dark', 'light'];
   const densities = () => Q.get('density') && T.density[Q.get('density')] ? [Q.get('density')] : ['touch', 'comfortable', 'cozy', 'compact'];
-  window.UI = { themes, densities, themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
+  window.UI = { textOpts, themes, densities, themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
 })();

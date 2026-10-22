@@ -14,7 +14,7 @@ Lab.page({ title: 'style', wide: true, note: 'L3 Style, the web reference for th
     const st = UI.STYLES[s], grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:repeat(' + UI.themes().length + ', 1fr)' });
     for (const theme of UI.themes()) {
       const style = { ...st, swarm: s === 'strip' || s === 'pane-glow' ? SEAT : s === 'band' ? SWARM : null };
-      const box = UI.Box(style, UI.Text(CONTENT[s], { step: { pill: 'tiny', chip: 'micro', band: 'small', strip: 'caption', row: 'row' }[s] || 'body', weight: ['band', 'strip', 'button-primary'].includes(s) ? 600 : null, caps: s === 'band', color: ['band', 'strip', 'button-primary'].includes(s) ? 'var(--on-accent)' : null, mono: s === 'chip', dim: s === 'input' }));
+      const box = UI.Box(style, UI.Text(CONTENT[s], { ...UI.textOpts(st), dim: s === 'input' }));
       if (s === 'row') box.style.background = 'var(--sel)';
       if (s === 'button-primary') box.style.background = 'var(--accent)';
       box.style.width = ['pill', 'chip', 'button-primary', 'button-ghost'].includes(s) ? 'auto' : '280px';
