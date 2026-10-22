@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 42,
+  "version": 43,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -382,13 +382,13 @@
       "purpose": "a bug work item under its seat or in the tree",
       "source": "work-items.md item type bug",
       "anatomy": "task row anatomy with a red bug glyph (⬣) instead of the status glyph and a \"breaks <invariant>\" link when a violates link exists",
-      "status": "drawn, not built"
+      "status": "built: task-row anatomy with a red bug icon (ICON_SVG.bug, green when fixed, dimmed when wontfix or duplicate) in place of the status glyph and a red \"breaks <invariant>\" chip when a violates link exists; the same in the Graph tree; taskRow type bug; seat-row.html?state=bug-rows; graph.html?state=work-tree"
     },
     "invariant_chip": {
       "purpose": "name the invariant a spec or task binds, or a bug breaks",
       "source": "work-items.md item type invariant; typed links violates / constrains",
       "anatomy": "a small outlined chip \"inv · <title>\" on spec and task lines (constrains) and a red one on bug lines (violates); in the graph tree an invariant is its own line with the items it binds beneath",
-      "status": "drawn, not built"
+      "status": "built: outlined amber \"inv <title>\" on task and spec lines it constrains, red \"breaks <title>\" on bug lines that violate it; in the Graph tree an invariant is its own ◆ line with the items it binds beneath (constrains, violated-by); invChip() in components.js; seat-row.html?state=invariant-chips; graph.html?state=work-tree"
     },
     "artifact_row": {
       "purpose": "a provenance leaf under its task",

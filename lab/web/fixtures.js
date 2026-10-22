@@ -39,12 +39,14 @@ window.FIX = {
   seats: [
     { key: 'v', name: 'Vesper Greywind', harness: 'claude', role: 'oracle', title: 'swarm control', state: 'active', color: '#FFC53D', tasks: [] },
     { key: 'n', name: 'Nyx Copperwing', harness: 'codex', role: 'executor', title: 'W3.2b bboxybook', state: 'active', color: '#FF4FA3', tasks: [{ id: 'w32b', title: 'W3.2b bboxybook', state: 'running' }] },
-    { key: 'r', name: 'Rook Ashwhisker', harness: 'codex', role: 'executor', title: 'W2.2 logic', state: 'waiting', color: '#2EE6A8', where: 'cloud', host: 'eu-2', tasks: [{ id: 'w22', title: 'W2.2 logic, bus, index', state: 'running' }] },
+    { key: 'r', name: 'Rook Ashwhisker', harness: 'codex', role: 'executor', title: 'W2.2 logic', state: 'waiting', color: '#2EE6A8', where: 'cloud', host: 'eu-2', tasks: [{ id: 'w22', title: 'W2.2 logic, bus, index', state: 'running', constrains: 'one sequence per stream' }, { id: 'b2', type: 'bug', title: 'gap row lost on replay', state: 'claimed', violates: 'never invent a count' }] },
     { key: 'w', name: 'Wren Thistledown', harness: 'claude', role: 'creativity', title: 'ux lab', state: 'active', color: '#B07BFF', tasks: [{ id: 'w33', title: 'W3.3 glow and locate', state: 'blocked', waits: 'W3.2b' }] },
   ],
   epics: [
     { id: 'e3', title: 'W3 renderer', open: true, items: [
-      { id: 'w31', kind: 'task', title: 'W3.1 renderer harness', state: 'accepted', assignee: 'Nyx Copperwing', artifacts: [{ kind: 'image', ref: 'target/render/smoke/ · 48 PNG', digest: '7a21ee90', by: 'Nyx Copperwing' }] },
+      { id: 'inv1', type: 'invariant', title: 'upright text', state: 'active', binds: [{ title: 'W3.1 renderer harness', rel: 'constrains' }, { title: 'glyphs upside down in smoke', rel: 'violated-by' }] },
+      { id: 'b1', type: 'bug', title: 'glyphs upside down in smoke', state: 'fixed', assignee: 'Nyx Copperwing', violates: 'upright text' },
+      { id: 'w31', kind: 'task', title: 'W3.1 renderer harness', state: 'accepted', assignee: 'Nyx Copperwing', constrains: 'upright text', artifacts: [{ kind: 'image', ref: 'target/render/smoke/ · 48 PNG', digest: '7a21ee90', by: 'Nyx Copperwing' }] },
       { id: 'w32a', kind: 'task', title: 'W3.2a ui-model', state: 'accepted', assignee: 'Nyx Copperwing' },
       { id: 'w32b', kind: 'task', title: 'W3.2b bboxybook', state: 'running', assignee: 'Nyx Copperwing' },
       { id: 'w33', kind: 'task', title: 'W3.3 glow and locate', state: 'blocked', waits: 'W3.2b' },

@@ -1112,3 +1112,23 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .strip .mute.blocked { opacity: .3; cursor: not-allowed; }
 .row-menu .rm-item.disabled { opacity: .45; cursor: not-allowed; }
 .row-menu .rm-item.disabled small { white-space: normal; }
+
+/* bug rows and invariant chips */
+.task-row.bug .tglyph, .g-item.k-bug .tglyph { color: var(--c-errored); }
+.task-row.bug.fixed .tglyph, .g-item.k-bug.fixed .tglyph { color: var(--c-idle, #2EE6A8); }
+.task-row.wontfix, .task-row.duplicate { opacity: .6; }
+.invchip { display: inline-flex; align-items: center; gap: 2px; font-size: 9.5px; line-height: 14px; padding: 0 6px; border-radius: 999px; border: 1px solid color-mix(in srgb, #F2C14E 55%, transparent); color: var(--fg-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 14em; flex: 0 1 auto; }
+.invchip b { font-weight: 500; color: var(--fg); overflow: hidden; text-overflow: ellipsis; }
+.invchip.violates { border-color: color-mix(in srgb, var(--c-errored) 60%, transparent); color: var(--c-errored); background: color-mix(in srgb, var(--c-errored) 10%, transparent); }
+.invchip.violates b { color: var(--c-errored); }
+.g-item.k-invariant .tglyph { color: #F2C14E; }
+.g-item.k-invariant .g-title { font-weight: 600; }
+.g-bind { display: flex; align-items: center; gap: 6px; padding-left: 8px; color: var(--fg-dim); font-size: 11px; }
+.g-bind .g-branch { color: var(--line); }
+.g-bind .g-title { color: var(--fg); }
+.g-bind .g-rel { font-size: 9.5px; color: var(--fg-dim); }
+.g-bind .g-rel.violated-by { color: var(--c-errored); }
+.task-row .tglyph .hicon, .g-item .tglyph .hicon, .g-bind .g-bound .hicon { --icon: 11px; vertical-align: -1px; }
+.g-bind .g-bound.bugb { color: var(--c-errored); }
+.task-row .ttitle { min-width: 5em; flex: 1 1 auto; }
+.task-row .invchip { max-width: 42%; flex: 0 1 auto; }

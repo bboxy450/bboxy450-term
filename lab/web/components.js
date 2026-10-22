@@ -62,6 +62,7 @@
     zsh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l7 6-7 6M13 18h6"/></svg>',
     gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
     // sidebar-toggle fox: standard sidebar glyph, left column grows an ear tip (pick §8 shape 3). open = sidebar shown (column filled)
+    bug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M9.5 7.5 8 4.5M14.5 7.5 16 4.5M7 11H3.5M17 11h3.5M7 15.5H4M17 15.5h3M12 7v13"/></svg>',
     keyx: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="12" r="3.5"/><path d="M10 12h11M17 12v3M20 12v2.5M3 20L21 4"/></svg>',
     plug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg>',
     sidebarfox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M9.5 8v12"/><path d="M3.2 8.5 3.8 2.2 8.6 7.6Z" fill="currentColor" stroke="none"/></svg>',
@@ -281,10 +282,15 @@
     if (st !== 'accepted' && opts.onDismiss) top.append(el('button', { class: 'undo', onclick: e => { e.stopPropagation(); opts.onDismiss(p); } }, 'dismiss'));
     return el('div', { class: 'tab-row pending ' + st, title: (p.op ? 'op ' + p.op + ' · ' : '') + say }, mark, harnessIcon(p.harness), el('span', { class: 'pcol' }, top, el('span', { class: 'pcap' }, say)));
   }
+  // invariant chip (work-items.md): outlined "inv · <title>" where an item is constrained, red "breaks inv · <title>" where a bug violates
+  const invChip = (title, rel) => el('span', { class: 'invchip ' + rel, title: (rel === 'violates' ? 'violates invariant ' : 'constrained by invariant ') + title }, rel === 'violates' ? 'breaks ' : 'inv ', el('b', {}, title));
   function taskRow(task, seat, opts) {
     opts = opts || {};
-    const row = el('div', { class: 'task-row ' + task.state, 'data-task': task.id, title: task.title + ' · ' + task.state + (task.from ? ' · from ' + task.from : '') });
-    row.append(el('span', { class: 'tglyph' }, TASK_GLYPH[task.state] || '○'), el('span', { class: 'ttitle' }, task.title));
+    const bug = task.type === 'bug';
+    const row = el('div', { class: 'task-row ' + task.state + (bug ? ' bug' : ''), 'data-task': task.id, title: (bug ? 'bug · ' : '') + task.title + ' · ' + task.state + (task.from ? ' · from ' + task.from : '') });
+    row.append(el('span', { class: 'tglyph' }, bug ? harnessIcon('bug') : TASK_GLYPH[task.state] || '○'), el('span', { class: 'ttitle' }, task.title));
+    if (task.violates) row.append(invChip(task.violates, 'violates'));
+    if (task.constrains) row.append(invChip(task.constrains, 'constrains'));
     if (task.state === 'blocked' && task.waits) row.append(el('span', { class: 'twaits' }, 'waits on ' + task.waits));
     const right = el('span', { class: 'right' });
     if (task.state === 'reported' && opts.onAccept) right.append(el('button', { class: 'accept', onclick: e => { e.stopPropagation(); opts.onAccept(task, seat); } }, 'accept'));
@@ -314,7 +320,11 @@
       pre.append(el('div', { class: 'g-epic' }, el('span', { class: 'ekind' }, 'epic'), el('b', {}, ep.title), el('span', { class: 'ecount' }, done + '/' + (ep.items || []).length)));
       (ep.items || []).forEach((it, i, arr) => {
         const last = i === arr.length - 1;
-        const line = el('div', { class: 'g-item ' + it.state }, el('span', { class: 'g-branch' }, last ? '└─' : '├─'), el('span', { class: 'tglyph' }, TASK_GLYPH[it.state] || '○'), el('span', { class: 'ekind' }, it.type || 'task'), el('span', { class: 'g-title' }, it.title));
+        const kind = it.type || 'task', glyphOf = kind === 'bug' ? harnessIcon('bug') : kind === 'invariant' ? '◆' : TASK_GLYPH[it.state] || '○';
+        const line = el('div', { class: 'g-item ' + it.state + ' k-' + kind }, el('span', { class: 'g-branch' }, last ? '└─' : '├─'), el('span', { class: 'tglyph' }, glyphOf), el('span', { class: 'ekind' }, kind === 'invariant' ? 'inv' : kind), el('span', { class: 'g-title' }, it.title));
+        if (it.violates) line.append(invChip(it.violates, 'violates'));
+        if (it.constrains) line.append(invChip(it.constrains, 'constrains'));
+        if (kind === 'invariant') { pre.append(line); for (const b of (it.binds || [])) pre.append(el('div', { class: 'g-bind' }, el('span', { class: 'g-branch' }, (last ? '   ' : '│  ') + '└─'), el('span', { class: 'g-bound' + (b.rel === 'violated-by' ? ' bugb' : '') }, b.rel === 'violated-by' ? harnessIcon('bug') : '○'), el('span', { class: 'g-title' }, b.title), el('span', { class: 'g-rel ' + (b.rel || 'constrains') }, b.rel || 'constrains'))); return; }
         if (it.assignee) line.append(el('span', { class: 'eass' }, '· ' + it.assignee));
         if (it.waits) line.append(el('span', { class: 'g-dep' }, '◀ waits on ' + it.waits));
         pre.append(line);
@@ -1226,5 +1236,5 @@
     return root;
   }
 
-  window.C = { AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
