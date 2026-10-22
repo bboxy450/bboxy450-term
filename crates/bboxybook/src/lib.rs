@@ -1,10 +1,12 @@
-#![allow(clippy::disallowed_methods, reason = "headless storybook tool, not the app UI thread")]
+#![allow(
+    clippy::disallowed_methods,
+    reason = "headless storybook tool, not the app UI thread"
+)]
 pub mod atoms;
 pub mod components;
 pub mod fixtures;
 pub mod gallery;
 pub mod graphs;
-pub mod settings;
 pub mod launchers;
 pub mod materials;
 pub mod modules;
@@ -13,27 +15,20 @@ pub mod panes;
 pub mod parity;
 pub mod paths;
 pub mod seat_rows;
-pub mod styles;
+pub mod settings;
 pub mod streams;
+pub mod styles;
 pub mod swarms;
 pub mod tabs;
 pub mod title_bars;
 pub mod widgets;
 pub mod window;
-use bbt_render::chrome::icons::Image;
+use bbt_render::chrome::icons::{Assets, Image};
 use std::{io::Cursor, path::Path};
 include!(concat!(env!("OUT_DIR"), "/icons.rs"));
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-pub fn images() -> Result<Vec<Image>> {
-    let mut images: Vec<Image> = BAKED_ICONS
-        .iter()
-        .map(|(name, w, h, rgba)| Image {
-            name: (*name).into(),
-            width: *w,
-            height: *h,
-            rgba: rgba.to_vec(),
-        })
-        .collect();
+pub fn images() -> Result<Assets> {
+    let mut images = Vec::new();
     let (width, height, rgba) = read_png_bytes(include_bytes!("../../../lab/web/bboxy.png"))?;
     images.push(Image {
         name: "bboxy".into(),
@@ -41,7 +36,7 @@ pub fn images() -> Result<Vec<Image>> {
         height,
         rgba,
     });
-    Ok(images)
+    Ok(Assets::with_svgs(images, BAKED_ICONS))
 }
 pub fn read_png(path: &Path) -> Result<(u32, u32, Vec<u8>)> {
     read_png_bytes(&std::fs::read(path)?)

@@ -1,0 +1,40 @@
+F1 — SVG rasters at device size; final handoff evidence.
+Implementation: keep public bitmap Image/Vec<Image> compatibility through Assets; retain parsed usvg trees; cache premultiplied target rasters by name/physical width/height/scale, within the existing2048 atlas. Queue-write only dirty rectangles; warm rasters issue no writes. resvg is pinned0.48.1.
+Measured Chrome156 origin rule: floor(CSS origin+0.5)*scale, including signed half ties. Independent0/.25/.5/.75 probes at1x/2x plus extended positive/negative translation proofs; no baked phase. Renderer spec record supplied to Oracle, not edited here.
+Original allowed source files plus Oracle cc73ec14 scope extension for both asset factories and Cargo.lock. Nyx notified about chrome/mod.rs before editing; no recruitment or shared-worktree writes.
+Gallery acceptance:1992 before/after outputs; all8 workers exit0 and full comparator0;888 exact PNGs,1104 icon-bearing changed,264/264 known SVG-free cases byte-identical. Every current and historical group has0 new pixel-budget crossings. All other group review counts unchanged. Per changed case and score direction: f1-gallery.log.
+Harness icons:56 -> 48 reviews. Mean changed pixels0.524382% ->0.353120%; worst0.647787% ->0.459327%. Tolerance8/icon budget0.1% unchanged.
+Visual QA: read actual web/native/diff icon triplets,49-icon grids at1x/2x, and device-snap/CSS-snap/baked-phase probe triplets. Remaining48 icon reviews and edge coverage differences remain visible.
+App CPU:3 matched release --smoke --meter pairs; all6 exit0,20 updates each and10s idle0frames0callbacks. Median CPU p50 4.162 ->4.202ms (+0.040ms); warm encode p50 2.316 ->2.398ms (+0.082ms), warm encode p99 medians3.372 ->4.915ms. All values and native logs in f1-cpu.log. One after cold frame66.226ms is retained; no startup or120Hz/GPU-budget claim.
+Verification:27 chrome unit/GPU tests0,3 atom tests+1 bitmap filter GPU test0,3 app tests0; release build0; scoped all-target clippy0 with only existing map_entry/chunks_exact warnings disabled; exact-file rustfmt0, diff check0, UI IO lint0.
+NEW LOCAL CI: sh scripts/ci-local.sh --parity EXIT101. Layering/workspace build/tests/UI IO lint completed,1664/1664 web captures0failures; native stopped at case1344 pane/normal-touch-dark, panes.rs:320 style alpha must be between zero and one. The exact case also exits101 on the frozen PRE-F1 binary and final F1 binary, same panic. Fixture reference is current; failure predates F1. Pane/UI source is outside scope, left untouched; Oracle notified for disposition. Full CI is NOT claimed passing. f1-ci.log.
+Checks not done: frozen1992-case geometry was not replayed; existing geometry gates remain required. CI default matrix render/comparison after case1344 unexecuted due the baseline panic. Fractional DPR, transformed icons and nonintegral SVG extents unmeasured. Ignored workspace tests stayed ignored. CPU samples are small matched runs on this machine, not a statistical equivalence proof.
+Left alone: all shaders, glyph/cell/text paths, materials/blur/glow algorithms, UI constructors/layouts/tokens, reference PNGs/budgets, mux/IO/transport, publishing. Existing now-unused resvg build-dependency declarations in app/book Cargo.toml are outside scope; only bbt-render dependency changed.
+Failed/intermediate experiments are labelled, not deleted: one false baked-phase assertion1, stale phase-removal build101 corrected, initial scoped clippy101 (test IO annotation/borrow) corrected;3 superseded partial replay wrappers1 with owned workers SIGTERM(-15). Final full replay and tests are separate complete runs.
+Provenance: all images/perf are baseline bd2fdc6 + the recorded F1 source. Rebase for CI onto a30a1b3 changed only Cargo.lock among measured inputs; source hashes unchanged. Signed provisional source bec57ee. Final Git rebase/signature/state recorded in f1-git.log and DM; Oracle verifies and pushes.
+
+Measured source and frozen binaries:
+F1 final measured candidate: baselinebd2fdc6a4f6334b20c51d6ad4e9b57be64dffa55
+crates/bbt-render/src/chrome/icons.rs sha256 e6c8c8239d73244a85ce5c62686729530556e55370862b284f1eb4fcd2bd064a
+crates/bbt-render/src/chrome/mod.rs sha256 291c7d472ea90fe13b3af46aa9a5d3e89510be828c183e21d5f340f41f5d4512
+crates/bboxy450-term/build.rs sha256 784dd7064137221c5cf046fa55e76811a912330425e2292d3c7ea6b87f3ad117
+crates/bboxy450-term/src/assets.rs sha256 1a30cb9b589ce034e95fd7bfef5ca009e2fe1b1e5cfde8c43c316ff625ee833d
+crates/bboxybook/build.rs sha256 03416599d16d4772459f60a6e099f04d7856d4cea0ba5402ea86dde4b37bbb62
+crates/bboxybook/src/lib.rs sha256 a6b420a8477d43ab841cf7e930d6697a0d9da67c359143db0fa7b48249d8f6d0
+crates/bboxybook/tests/atoms.rs sha256 8f36c1bef83824a32d6c6022766a2ff5f8c670a4f963aba9104b552580ed0fbf
+crates/bbt-render/Cargo.toml sha256 ec626735dc0874f9425e468622eb25291ee78bd34743ca30ffa8bbaef18676a8
+Cargo.lock sha256 51f6d6c3176a9bd5acec77e27edd81738b17f75d630608f290701856a90a6a76
+target/f1/after-bboxybook sha256 b4af2445169417690a03e66b6b7ec72e7410bc7fe79ff211997a75538f73f17f
+target/f1/After.app/Contents/MacOS/bboxy450-term-f1-after sha256 4dc70cba9af25dd4bf8c36dc55ab1a5bc2191258b7d959c0fa897c39aceb5d6e
+target/f1/cpu-results.json sha256 aba34535f072bca312e5c0731375d9929e82d12d64ad882143abe4ac7b42016b
+target/f1/comparison-summary.json sha256 c7c8c7a88115ef740ac3e716d8a3ac76bbbfb13de8341d80c1e0008ced9abce7
+target/f1/ci-failure-case.json sha256 1e2e8891e844d78cf59e989ac12d8c196972b08cf031d155e1586c8dacb5c5c0
+
+Oracle disposition, authenticated DM0399a342-2d35-4c06-8cf5-877d3929015c: baseline Pane bug routed to Nyx; F1 acceptance explicitly waives that one --parity failure with isolated pre-F1 repro. Zero new reviews and workspace gates exit0 remain required. No waiver inferred by Executor.
+
+Post-rebase workspace CI: sh scripts/ci-local.sh EXIT0,218.136s, source checkpoint9dd7ebb atop origin/main ba677d3 (accepted W2.4). Layering, workspace build, workspace tests and UI IO lint pass. No upstream renderer/UI/lab changes since the --parity attempt, so the exact baseline Pane repro and explicit waiver remain the parity disposition; no identical failing full parity rerun.
+
+Final rebase evidence: signed successor9de5b8b onto origin/main295916c. Since workspaceCI baseba677d3, additional executable-source delta is lab/web/components.html,lab.css,ui.js only; all F1 product sources unchanged. sh scripts/lab-check.sh rerun exit0: self-test9 checks,35 pages*4 densities,0 findings.
+Authorized own-area cleanup (Oracle19b2b26e): removal script0; removed 5119963136 allocated bytes (4.768337GiB), observed volume free 15815376896 ->20817301504 bytes. Accepted F1 and R4b gallery PNG counts unchanged, all frozen F1 binaries retained. Prior accepted raw R2b/R4/R4b traces and release-with-debuginfo build profile are intentionally no longer retained; derived trace XML/JSON and committed logs remain. Detailed paths/accounting: f1-cleanup.log.
+
+Final lab-input follow-up: cargo test -p bbt-ui-model --locked exit0 (including both static lab guard tests) after the lab-only rebase. Product Rust sources remain identical to the measured F1 candidate.

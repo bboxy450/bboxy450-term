@@ -47,11 +47,11 @@ impl ChromeRenderer {
         clippy::disallowed_methods,
         reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture"
     )]
-    pub fn new(images: Vec<icons::Image>) -> Result<Self> {
+    pub fn new(images: impl Into<icons::Assets>) -> Result<Self> {
         Self::with_context(pollster::block_on(DeviceContext::new())?, images)
     }
-    pub fn with_context(context: DeviceContext, images: Vec<icons::Image>) -> Result<Self> {
-        let icons = icons::IconAtlas::new(images)?;
+    pub fn with_context(context: DeviceContext, images: impl Into<icons::Assets>) -> Result<Self> {
+        let mut icons = icons::IconAtlas::new(images)?;
         let icon_gpu = atlas_gpu::AtlasTexture::new(
             &context.device,
             &context.queue,
@@ -67,6 +67,7 @@ impl ChromeRenderer {
             mag_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
+        icons.dirty.clear();
         Ok(Self {
             context,
             atlas: GlyphAtlas::new(512, 8192)?,
@@ -436,13 +437,23 @@ impl ChromeRenderer {
                     instances.push(item);
                 }
                 Prim::Icon { rect, icon, color } => {
-                    let uv = self
-                        .icons
-                        .rects
-                        .get(icon.as_ref())
-                        .ok_or_else(|| RenderError(format!("unbaked icon: {icon}")))?;
+                    if rect.w == 0. || rect.h == 0. {
+                        continue;
+                    }
                     let mut item = make(*rect, *color, 3.0, clip);
-                    item.uv = *uv;
+                    item.uv = self.icons.raster(
+                        icon.as_ref(),
+                        [rect.w * scale, rect.h * scale],
+                        scale,
+                    )?;
+                    if self.icons.is_svg(icon.as_ref()) {
+                        // The Chrome 1x/2x device-origin probe snaps SVG origins
+                        // in CSS pixels, before the device transform. Place the
+                        // target-size texels once, without fractional filtering.
+                        item.rect[0] = (rect.x + 0.5).floor() * scale;
+                        item.rect[1] = (rect.y + 0.5).floor() * scale;
+                        item.rect[2..].copy_from_slice(&item.uv[2..]);
+                    }
                     instances.push(item);
                 }
                 Prim::Image {
@@ -478,6 +489,31 @@ impl ChromeRenderer {
             &self.atlas,
             &mut self.dirty_glyphs,
         );
+        for [x, y, width, height] in self.icons.dirty.drain(..) {
+            let start = ((y * self.icons.size + x) * 4) as usize;
+            let end = start + (((height - 1) * self.icons.size + width) * 4) as usize;
+            self.context.queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &self.icon_gpu.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d { x, y, z: 0 },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &self.icons.pixels[start..end],
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(self.icons.size * 4),
+                    rows_per_image: Some(height),
+                },
+                wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+            );
+            self.icon_gpu.writes += 1;
+            self.icon_gpu.bytes += u64::from(width) * u64::from(height) * 4;
+        }
         let device = &self.context.device;
         let gamma_format = format.remove_srgb_suffix();
         self.pipelines
@@ -727,6 +763,73 @@ fn upload(
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn svg_origins_follow_measured_css_half_up_ties_at_both_device_scales() {
+        let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="white"/></svg>"#;
+        let mut renderer =
+            ChromeRenderer::new(icons::Assets::with_svgs(vec![], &[("circle", svg)])).unwrap();
+        for scale in [1., 2.] {
+            for (origin, snapped) in [
+                (-1.5, -1.),
+                (-0.5, 0.),
+                (-0.25, 0.),
+                (0., 0.),
+                (0.25, 0.),
+                (0.5, 1.),
+                (0.75, 1.),
+            ] {
+                let draw = |x| {
+                    let mut list = DrawList::default();
+                    list.push(Prim::Icon {
+                        rect: Rect::new(x, 2., 16., 16.),
+                        icon: "circle".into(),
+                        color: Color::WHITE,
+                    });
+                    list
+                };
+                let extent = (24. * scale) as u32;
+                let actual = renderer
+                    .render_to_rgba(&draw(origin), extent, extent, scale)
+                    .unwrap();
+                let expected = renderer
+                    .render_to_rgba(&draw(snapped), extent, extent, scale)
+                    .unwrap();
+                assert_eq!(
+                    actual, expected,
+                    "CSS origin {origin}, device scale {scale}"
+                );
+            }
+        }
+    }
+    #[test]
+    fn svg_device_rasters_upload_once_and_survive_isolated_passes_and_scale_changes() {
+        let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="white"/></svg>"#;
+        let mut renderer =
+            ChromeRenderer::new(icons::Assets::with_svgs(vec![], &[("circle", svg)])).unwrap();
+        let mut list = DrawList::default();
+        list.push(Prim::Group {
+            primitives: vec![Prim::Icon {
+                rect: Rect::new(2., 2., 14., 14.),
+                icon: "circle".into(),
+                color: Color::WHITE,
+            }],
+            opacity: 0.7,
+            saturation: 0.4,
+        });
+        let first = renderer.render_to_rgba(&list, 20, 20, 1.).unwrap();
+        let writes = renderer.icon_gpu.writes;
+        let bytes = renderer.icon_gpu.bytes;
+        assert_eq!(writes, 2, "one initial texture and one 14px raster upload");
+        assert_eq!(bytes, 2048 * 2048 * 4 + 14 * 14 * 4);
+        assert_eq!(first, renderer.render_to_rgba(&list, 20, 20, 1.).unwrap());
+        assert_eq!(renderer.icon_gpu.writes, writes);
+        assert_eq!(renderer.icon_gpu.bytes, bytes);
+        renderer.render_to_rgba(&list, 40, 40, 2.).unwrap();
+        assert_eq!(renderer.icon_gpu.writes, writes + 1);
+        assert_eq!(renderer.icon_gpu.bytes, bytes + 28 * 28 * 4);
+        assert_eq!(first, renderer.render_to_rgba(&list, 20, 20, 1.).unwrap());
+        assert_eq!(renderer.icon_gpu.writes, writes + 1);
+    }
     #[test]
     fn immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};

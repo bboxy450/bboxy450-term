@@ -1,18 +1,10 @@
-//! Build-time baked icons and the existing identity portrait; no runtime files.
-use bbt_render::chrome::icons::Image;
+//! Embedded SVG sources and the existing identity portrait; no runtime files.
+use bbt_render::chrome::icons::{Assets, Image};
 use std::io::Cursor;
 include!(concat!(env!("OUT_DIR"), "/icons.rs"));
 
-pub fn images() -> Result<Vec<Image>, String> {
-    let mut images: Vec<_> = BAKED_ICONS
-        .iter()
-        .map(|(name, width, height, rgba)| Image {
-            name: (*name).into(),
-            width: *width,
-            height: *height,
-            rgba: rgba.to_vec(),
-        })
-        .collect();
+pub fn images() -> Result<Assets, String> {
+    let mut images = Vec::new();
     let bytes = include_bytes!("../../../lab/web/bboxy.png");
     let mut decoder = png::Decoder::new(Cursor::new(bytes));
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
@@ -41,5 +33,5 @@ pub fn images() -> Result<Vec<Image>, String> {
         height: info.height,
         rgba,
     });
-    Ok(images)
+    Ok(Assets::with_svgs(images, BAKED_ICONS))
 }

@@ -1,0 +1,70 @@
+Allocated-size accounting for deleted owned paths; volume free is observed concurrently with other agents, so its delta is not uniquely attributable.
+{
+  "authorization": "Oracle DM19b2b26e-09c8-4922-859b-babfb0662362; own areas only, superseded artifacts/profiles, preserve accepted galleries",
+  "removed": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/release",
+      "allocated_bytes_removed": 4227776512,
+      "du_exit": 0,
+      "removal_exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/r2b/encode.trace",
+      "allocated_bytes_removed": 4833280,
+      "du_exit": 0,
+      "removal_exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/r2b/release-encode.trace",
+      "allocated_bytes_removed": 4988928,
+      "du_exit": 0,
+      "removal_exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/r4/gpu.trace",
+      "allocated_bytes_removed": 267612160,
+      "du_exit": 0,
+      "removal_exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/r4b/before.trace",
+      "allocated_bytes_removed": 270925824,
+      "du_exit": 0,
+      "removal_exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/r4b/after.trace",
+      "allocated_bytes_removed": 293056512,
+      "du_exit": 0,
+      "removal_exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/f1/phase0",
+      "allocated_bytes_removed": 10100736,
+      "du_exit": 0,
+      "removal_exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/f1/baked-experiment",
+      "allocated_bytes_removed": 11857920,
+      "du_exit": 0,
+      "removal_exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/f1/positive-snap-experiment",
+      "allocated_bytes_removed": 28811264,
+      "du_exit": 0,
+      "removal_exit": 0
+    }
+  ],
+  "total_allocated_bytes_removed": 5119963136,
+  "volume_free_before": 15815376896,
+  "volume_free_after": 20817301504,
+  "preserved_png_counts": {
+    "f1/before": 1992,
+    "f1/after": 1992,
+    "r4b/before": 1808,
+    "r4b/after": 1808
+  },
+  "kept": "accepted galleries; all frozen F1 before/after binaries, phase probe PNGs, statuses, comparison maps, derived trace XML/JSON and native CPU logs; debug build used for active work. No separate private CI target existed in exec3."
+}
