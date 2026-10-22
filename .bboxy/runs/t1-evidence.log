@@ -1,0 +1,54 @@
+# T1 bboxy-firehose — Executor evidence
+
+Scope: T1 only, worktree /Users/feral/mydev/bboxy450-term-exec4, branch exec4.
+Executor: Aster Cinderwing, own ICQ key b2a1d2db42014c0e52ed6347e8ba878dcc8928a479866366b0bdc2b8c567bdf9.
+Oracle: Vesper Greywind, 726afa3bb257faf85781e90a3ff97bbe826449f3ae4300c39ce4a8ba0ca18f4a.
+Date: 2026-10-22. No push, merge, task creation or changes in the main worktree.
+
+## Acceptance and mechanism
+
+- Cargo.toml:12 — adds only the bboxy-firehose workspace member. Cargo.lock:120 — adds its package entry; no existing dependency versions changed.
+- crates/bboxy-firehose/Cargo.toml:1 — one release CLI; libc is its only runtime dependency. bbt-core and serde_json are dev-only.
+- crates/bboxy-firehose/src/lib.rs:18 — ten include_bytes! scene assets; src/lib.rs:72 — frozen include_bytes! screen-hash manifest. Playback reads no input/files or terminal size.
+- corpus/generate.py:1 — author-time synthetic corpus construction. Original Claude 482-byte and 303-byte captures are embedded verbatim. All ten original Codex captures are zero bytes; no real Codex state is claimed. tests/corpus.rs:74 checks provenance and every empty capture.
+- src/options.rs:10 — positive byte and LF-line rate caps, max, explicit units and overflow rejection. src/options.rs:68 — scene/list/check, real/flood, seed and infinite or bounded loop options.
+- src/lib.rs:89 — deterministic seeded scene permutation; src/main.rs:122 — deterministic real burst/pause schedule and cumulative rate deadlines. A fixed named scene has fixed bytes for every seed.
+- src/main.rs:96 — prebuilt roughly 1 MiB batch for max/flood; bounded memory for infinite output. src/main.rs:21 — signal request atomics; restoration outside the handler. Tests verify SIGINT restores terminal modes promptly and a closed pipe stops an infinite flood.
+- src/main.rs:69 — --check prints frozen 80x24 semantic screen expectations without parsing or emitting ANSI. README.md documents the exact FNV-1a/JSON schema. tests/corpus.rs:47 verifies all ten expectations across 5 chunk sizes (50 cases).
+- tests/cli.rs — ten CLI tests; tests/corpus.rs — three corpus/provenance/effect tests. t1-validation.log records cargo test: 13 passed; fmt, strict clippy, release build and whitespace check: all exit 0.
+- tests/throughput.py — actual release CLI, --rate max --loop 200000000 > /dev/null. t1-throughput.log: 2,434,800,000,000 accepted bytes / 4.489680375 s = 517,187.4235 MiB/s; binary exit 0, measurement exit 0. Requirement >=200 MiB/s holds. This measures /dev/null write acceptance, not PTY/parser/GPU throughput.
+
+## Amended visual gate
+
+Vesper ICQ DM f650943a-3d34-40db-91a0-13ad972199f3, 2026-10-22: local pinned xterm.js reference is the T1 gate; real iTerm2 comparison is a deferred checkpoint. Ghostty is absent; native computer-use denied iTerm2; Oracle separately observed absent shell Screen Recording permission. Original iTerm2/Ghostty comparison is UNPROVEN.
+
+- reference/package-lock.json — xterm 6.0.0 and Unicode11 addon 0.9.0 pinned with npm integrity. reference/vendor/ — JS/CSS and both MIT licenses; provenance.json lists SHA-256 digests checked before execution.
+- reference/capture.mjs:24 — compares independently parsed xterm cells to bbt-core output from examples/screen_dump.rs. Uses the existing bboxybook isolated-headless-Chrome/CDP approach. No operator browser attachment or CDN; remote asset requests blocked.
+- reference/index.html — Menlo 13px, 80x24, dark at 1x, foreground/background matching Scene::smoke. Unicode11 provider fixes the base reference's Unicode6 width-table mismatch.
+- t1-reference.log — node reference/capture.mjs --strict: exit 0. All 10 scenes rendered, all 19,200 cells and all 10 cursors match the documented shared semantic schema. Detailed report and image/input digests: reference/evidence/report-dark-1x.json.
+- Twelve PNGs were read with view_image at original size: ten final scenes plus progress at 50% and the active alternate screen. Corrected preflight caption was read again after its final regeneration.
+
+## Image observations
+
+All paths below are under crates/bboxy-firehose/reference/evidence/.
+
+- codex-dark-1x.png — exec and patch blocks, red deletion/green addition, dim metadata, coloured review/PASS.
+- claude-dark-1x.png — nested tool/agent tree, italic conclusion, dim output, coloured tool names.
+- palette-dark-1x.png — 16-colour labels, indexed cube/grey rows, RGB gradient, bold/dim/italic/inverse/strike and five underlines.
+- unicode-dark-1x.png — combining marks and CJK remain on their rows; emoji and ZWJ sequences are present. Menlo/DOM reference visibly has powerline missing-glyph boxes and clipped heavy/double-box drawing. This is a reference limitation exposed by the fixture, not a native render pass.
+- progress-intermediate-dark-1x.png / progress-dark-1x.png — 50% then 100%; three overwritten status rows read complete, WRONG is replaced by RIGHT.
+- alternate-intermediate-dark-1x.png / alternate-dark-1x.png — inspector on alternate screen, then original two primary transcript lines restored.
+- scroll-links-sync-dark-1x.png — header/footer retained outside margins, only recent region events retained, link underlined, committed frame present.
+- osc7501-claude-dark-1x.png — labels original 482 control-only bytes and synthetic visible text.
+- osc7501-preflight-dark-1x.png — labels original 303 bytes; corrected state caption ends at clear (no captured done).
+- osc7501-codex-dark-1x.png — explicitly labels ten empty captures and synthetic ST protocol exercise.
+
+## Corrections and deliberately untouched work
+
+Bootstrap hash check failed with exit 101 while expectations were pending. One later hash mismatch (exit 101) was intentional after correcting the preflight caption; only its hash changed, 990a7886c0b5246b -> 61637783be3702b6. The first xterm pass matched 9/10 because Unicode6 assigned fox width 1; selecting pinned Unicode11 made all ten match. Strict clippy initially rejected intentional non-UI sleeps/subprocess tests; precise, reasoned offline-tool exemptions were added, and final clippy exits 0. A misplaced test-module attribute and a typings inspection error were corrected before final validation. Setup profile failures (regular-file requirement, relative-path diagnostic) were corrected; profile is set on this session's own key. Full command statuses: t1-commands.log.
+
+Not checked: real iTerm2/Ghostty images; light/2x variants; native renderer/font/AA/pixel parity; correct ZWJ shaping; all OSC 8/underline attributes in the independent shared-schema comparison; real Codex statuses; 1000-seat load, PTY speed, R3/R5 stalls. The frozen bbt-core hashes cover more semantic fields than the cross-parser shared schema and are regression expectations, not independent pixel proof.
+
+Left alone: bbt-core, bbt-render terminal/chrome code, bbt-mux ring/supervisor, app window, materials, all task/spec/graph files, all other worktrees. No native renderer or font changes belong to T1. R3 awaits Vesper acceptance and a scoped assignment.
+
+Git handoff state, exact staged paths and signature/rebase command results are recorded in t1-git.log and the final DM.

@@ -1,0 +1,3 @@
+$ python3 crates/bboxy-firehose/tests/throughput.py
+{"MiB_per_second": 517187.4235223474, "bytes": 2434800000000, "command": ["/Users/feral/mydev/bboxy450-term-exec4/target/release/bboxy-firehose", "--seed", "42", "--rate", "max", "--loop", "200000000"], "cycle_bytes": 12174, "cycles": 200000000, "exit_status": 0, "minimum_MiB_per_second": 200, "seconds": 4.489680375001626, "stdout": "/dev/null"}
+exit_status=0

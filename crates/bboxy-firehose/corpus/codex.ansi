@@ -1,0 +1,18 @@
+[1;38;2;64;180;255mCodex / synthetic session 0042[0m
+[2mModel: fixture-agent | sandbox: isolated | no private content[0m
+
+[36m> Repair the viewport resize regression.[0m
+[1mexec[0m  cargo test -p fixture-core -- resize
+[2m  cwd: /synthetic/workspace[0m
+[32m  test resize_preserves_cursor ... ok[0m
+[32m  test resize_keeps_wide_cells ... ok[0m
+
+[1mapply_patch[0m  src/viewport.rs
+[36m@@ -41,3 +41,4 @@[0m
+[31m- let rows = incoming_rows;[0m
+[32m+ let rows = incoming_rows.max(1);[0m
+[32m+ grid.resize(cols, rows);[0m
+  publish_damage();
+
+[38;5;214mreview[0m  Cursor clamped before the next frame is published.
+[1;32mPASS[0m  12 tests | 0 failures | 2 files changed

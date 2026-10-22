@@ -1,0 +1,19 @@
+[1mUnicode, cell widths and procedural glyphs[0m
+
+ASCII       | ABCDEFGHIJKLMNOPQRSTUVWXYZ | 0123456789
+Latin       | café naïve Ångström Straße | Ελληνικά Кириллица
+Combining   | é ä ô ñ Å | ẋ̣ z̄ | café
+CJK         | 中文測試 日本語 한국어 | 全角：１２３
+Emoji       | 🦊 🚀 🔧 🌒 | 👩‍💻 👨‍👩‍👧‍👦 🏳️‍🌈 | 👍🏽
+Width ruler | 1234567890123456789012345678901234567890
+
+┌──────────────────┬──────────────────┐
+│ parser shard 01  │ render seat 0042 │
+├──────────────────┼──────────────────┤
+│ [32mREADY[0m            │ [36m120 Hz[0m           │
+└──────────────────┴──────────────────┘
+Double box  ╔══════╦══════╗  ║ ╠ ╣ ╬ ╚ ╝
+Rounded     ╭──────╮ ╰──────╯   ━┃┏┓┗┛┣┫╋
+Powerline   [30;46m main [36;44m[37;44m src [34;40m[0m     
+Blocks      ▁▂▃▄▅▆▇█ ▏▎▍▌▋▊▉ ░▒▓█ ▀▄▐▌
+Braille     ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏ ⣿
