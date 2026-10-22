@@ -12,7 +12,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 | Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **standing by**: lab complete (30 pages, design system v54, layer-reference pages for L2/L3/L6); awaiting the operator's review points. Previous queue: **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); no checkpoints until the lab is complete (operator reviews once at the end); after pass 9: new pages documents.html, events.html, launcher.html, graph.html, stream.html, titlebar.html (operator ask), then passes 10-19, then window transparency | nothing |
 | Nyx Copperwing | Executor | Codex | **W3.2d.7.7 StreamDock**; 7.6b text raster ✔ (270582f: reviews 172→81 of 1,096 current, zero new, geometry 1048/1048, terminal smoke 48/48 identical); 7.6 Launcher ✔ (2bf3601: 144/176, geometry all pass, compact picker 64/64); 7.5 TitleBar ✔ (af73b4f: 0/40), Image element ✔ (362793a); 7.4b ✔ (dc3018d: group opacity, 147→140 reviews, zero new); logged L1 text-raster parity item for after modules (remaining residue is 89–93% inside text); L5 snapshots ✔ (910adfe), kind colours ✔ (a17d912), per-node glow ✔ (4884aa5, 65bd72c), 7.4 Pane+Strip ✔ (5734cc4: 120/136, geometry all pass); 7.3b ✔ (f2961ab: zero geometry failures across 744 current cases; Sidebar 4/72, Style 0/112); 7.0 ✔ (47500ea), 7.3 ✔ (f2f9552: 6/136 pixel-only); 7.2 TabRow+MiniGrid ✔ (6b4f2bc: 0/208 review); 7.1 SeatRow ✔ (f811a9d: geometry all pass, 71/296 pixel-only residue); d.6 ✔ (4bf9d4f: overlays 16/16; L6 complete); d.5 ✔ (dca0a05: 24/32 within policy, 8 Button cases visually equivalent; 1000-row List/Table virtualised); Style 0/88 and components 0/24 after font weights (01edd5f); per-case policy ✔ (3a38388), d.4 matrix 0/24 review after Wren ceafbe8, d.1e withdrawn, then d.6 Button/List/Table/Input; d.1c ✔, kerning ✔ (ef1267c), d.4 ✔ (efacd88: text geometry 1.447→0.015 px); d.1d per-size SVG raster later; d.1 ✔, d.2 ✔, d.1b ✔ (materials 8/32, Style 56/88), d.3 ✔ (cc99459: atoms 103/112, worst 4.09%→1.55%); W3.2c steps 1–3 deferred until L7 modules are re-based | nothing |
 | Rook Ashwhisker | Executor | Codex | **W2.2 logic** (authorized 2026-10-22; Term::resize core addition approved first) | nothing |
-| Sable Embertail | Executor | Codex | **R1 bbt-rt runtime** in worktree ~/mydev/bboxy450-term-exec3 (branch exec3), then R2, W1.2, W4.1 | nothing |
+| Sable Embertail | Executor | Codex | R1 ✔ (29d5e62: 8 tests, 1M try_send never blocks, 10k marks → 1 wake, 100 MB stdout bounded view, cancel kills group); **R2 app shell** in worktree ~/mydev/bboxy450-term-exec3 (branch exec3), then R2, W1.2, W4.1 | nothing |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
 | subagent provenance | Oracle instrument | Claude | done → `research/provenance-and-documents.md`, decided in `specs/provenance.md` | — |
@@ -49,7 +49,7 @@ W2.1 supervisor + PTY + lease ✔ (Nyx, f6cab17, 12 tests, 50-seat poller)
            └──▶ W2.4 local messaging on loopback (Transport trait from W4.1)
                    └──▶ W2.5 MCP server + seat sockets
 
-R1 bbt-rt runtime [Sable, RUNNING] ──▶ R2 app shell + hitch meter ──▶ R3 terminal data path ∥ R4 120 Hz display link ──▶ R5 stall test
+R1 bbt-rt runtime ✔ (Sable, 29d5e62) ──▶ R2 app shell + hitch meter [Sable, RUNNING] ──▶ R3 terminal data path ∥ R4 120 Hz display link ──▶ R5 stall test
    └── R2 replaces W3.4's window/loop part; R3 consumes W2.1
 
 W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
@@ -62,7 +62,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 | State | Items |
 |---|---|
-| RUNNING | 7.7 StreamDock (Nyx); W2.2 (Rook); R1 runtime (Sable) |
+| RUNNING | 7.7 StreamDock (Nyx); W2.2 (Rook); R2 app shell (Sable) |
 | OPEN, claimable now | W2.3 (W1.2, W4.1 queued for Sable) |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
