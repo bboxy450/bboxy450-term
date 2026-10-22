@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>style · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="ui.js"></script>
+</head><body><script>
+const el = Lab.el;
+// L3 (gui-components.md §2c): one Box, ten Styles. A Style is data (tokens + overrides); the printed record is what serialises.
+const SWARM = TOKENS.color.role.oracle, SEAT = '#2EE6A8';
+const CONTENT = { card: 'Agents · term', row: 'Vesper Greywind', band: 'TERM  5', pill: 'held 4', chip: 'inv upright', modal: 'Purge seat', strip: 'Nyx Copperwing', input: 'type to filter', 'button-primary': 'Pin this key', 'button-ghost': 'Cancel' };
+Lab.page({ title: 'style', wide: true, note: 'L3 Style, the web reference for the bbt-ui Style gallery: the same Box drawn with ten Styles resolved from tokens. Each prints its Style record (material, fill, radius, border, height, padding, text), which is the serialisable data the native Style round-trips. Dark and light side by side.',
+  states: Object.keys(UI.STYLES),
+  render(s, body) {
+    const st = UI.STYLES[s], grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:1fr 1fr' });
+    for (const theme of ['dark', 'light']) {
+      const style = { ...st, swarm: s === 'strip' ? SEAT : s === 'band' ? SWARM : null };
+      const box = UI.Box(style, UI.Text(CONTENT[s], { step: { pill: 'tiny', chip: 'micro', band: 'small', strip: 'caption', row: 'row' }[s] || 'body', weight: ['band', 'strip', 'button-primary'].includes(s) ? 600 : null, caps: s === 'band', color: ['band', 'strip', 'button-primary'].includes(s) ? 'var(--on-accent)' : null, mono: s === 'chip', dim: s === 'input' }));
+      if (s === 'row') box.style.background = 'var(--sel)';
+      if (s === 'button-primary') box.style.background = 'var(--accent)';
+      box.style.width = ['pill', 'chip', 'button-primary', 'button-ghost'].includes(s) ? 'auto' : '280px';
+      box.style.display = 'inline-flex';
+      grid.append(UI.themeScope(theme, UI.Text(theme, { step: 'small', caps: true, dim: true }), el('div', { style: 'padding:18px 0;' + (s === 'modal' ? 'background:var(--wallpaper);border-radius:12px;padding:18px' : '') }, box), el('div', { class: 'ui-params' }, s + ' ' + JSON.stringify(st, null, 1).replace(/"/g, ''))));
+    }
+    body.append(grid);
+  } });
+</script></body></html>

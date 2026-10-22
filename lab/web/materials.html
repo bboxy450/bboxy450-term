@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>materials · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script><script src="ui.js"></script>
+</head><body><script>
+const el = Lab.el;
+// L2 (gui-components.md §2c): one square per material × theme × radius, parameters printed with the native field names
+// (bbt-render chrome/materials.rs). Frosted sits over a wallpaper so the blur reads.
+const RADII = [0, 6, 12, 20];
+Lab.page({ title: 'materials', wide: true, note: 'L2 materials, the web reference for the bbt-ui materials gallery: flat, gloss, frosted, glow, each in dark and light at radii 0, 6, 12 and 20, with the parameters printed under the native field names. Frosted sits over a wallpaper so the blur is visible; glow runs the same particle emitter as the panes.',
+  states: ['flat', 'gloss', 'frosted', 'glow'],
+  render(s, body) {
+    const grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:1fr 1fr' });
+    for (const theme of ['dark', 'light']) {
+      const row = UI.Stack({ dir: 'row', gap: 16, wrap: true, align: 'flex-end' });
+      let params = null;
+      for (const r of RADII) {
+        const m = UI.material(s, { color: s === 'flat' ? 'var(--surface-2)' : 'var(--accent)' }); params = m.params;
+        const sq = el('div', { class: 'ui-sq' }); Object.assign(sq.style, m.css); sq.style.borderRadius = r + 'px';
+        const cell = UI.Stack({ gap: 4, align: 'center' });
+        if (s === 'glow') { const w = el('div', { class: 'pane-wrap', style: 'padding:0' }, sq); requestAnimationFrame(() => Glow.attach(w, { key: 'mat' + r, state: 'active' }, { color: TOKENS.color[theme].accent, focused: true })); cell.append(w); }
+        else cell.append(sq);
+        cell.append(el('div', { class: 'ui-cap' }, 'r ' + r));
+        row.append(cell);
+      }
+      const show = s === 'frosted' ? el('div', { class: 'ui-wallpaper' }, row) : row;
+      grid.append(UI.themeScope(theme, UI.Text(theme, { step: 'small', caps: true, dim: true }), show, el('div', { class: 'ui-params' }, s + ' ' + JSON.stringify(params, null, 1).replace(/"/g, ''))));
+    }
+    body.append(grid);
+  } });
+</script></body></html>

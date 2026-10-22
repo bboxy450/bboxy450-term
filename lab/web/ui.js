@@ -1,0 +1,84 @@
+// ui.js — the web reference for bbt-ui (gui-components.md §2b, §2c): L2 materials, L3 Style, L5/L6 components.
+// Pages built on it (materials.html, style.html, components.html) use only these names, so a native gallery case and its
+// web reference are the same composition. Everything resolves from tokens.js (TOKENS + STYLE); nothing is drawn ad hoc.
+(function () {
+  const T = window.TOKENS, S = window.STYLE, el = (tag, attrs, ...kids) => window.Lab.el(tag, attrs, ...kids);
+  const px = v => v + 'px';
+
+  // ---------- scopes: render dark and light, or four densities, side by side on one page ----------
+  function themeScope(theme, ...kids) {
+    const c = T.color[theme], vars = { '--bg': c.bg, '--surface': c.surface, '--surface-2': c.surface_2, '--line': c.line, '--fg': c.fg, '--fg-dim': c.fg_dim, '--accent': c.accent, '--accent-soft': c.accent_soft, '--sidebar-bg': c.sidebar };
+    const d = el('div', { class: 'ui-scope theme-' + theme, 'data-theme': theme }, ...kids);
+    for (const k in vars) d.style.setProperty(k, vars[k]);
+    d.style.colorScheme = theme; d.style.background = c.bg; d.style.color = c.fg;
+    return d;
+  }
+  function densityScope(name, ...kids) {
+    const d = T.density[name], s = el('div', { class: 'ui-scope density-' + name, 'data-density': name }, ...kids);
+    s.style.setProperty('--row-h', px(d.row_h)); s.style.setProperty('--icon', px(d.icon)); s.style.setProperty('--font', px(d.font)); s.style.setProperty('--pad-x', px(d.pad_x)); s.style.setProperty('--gap', px(d.gap));
+    return s;
+  }
+
+  // ---------- L2 materials: flat, gloss, frosted, glow, with the native parameter names ----------
+  const mix = (a, b, pct) => `color-mix(in srgb, ${a} ${100 - pct}%, ${b})`;
+  const MATERIAL = {
+    flat: o => ({ params: { color: o.color }, css: { background: o.color } }),
+    // the swarm band: top lifted toward white, bottom toward black, a 1 px inner highlight and a bottom shade (lab .space-head)
+    gloss: o => { const p = { color: o.color, top_white: o.top_white ?? 0.12, bottom_black: o.bottom_black ?? 0.18, highlight: o.highlight ?? 0.18, bottom_shade: o.bottom_shade ?? 0.25 };
+      return { params: p, css: { background: `linear-gradient(180deg, ${mix(p.color, '#fff', p.top_white * 100)} 0%, ${p.color} 55%, ${mix(p.color, '#000', p.bottom_black * 100)} 100%)`, boxShadow: `inset 0 1px 0 rgba(255,255,255,${p.highlight}), inset 0 -1px 0 rgba(0,0,0,${p.bottom_shade})` } }; },
+    // backdrop blur + material alpha + hairline ring + inner highlight (launcher, menus, modals, title bar)
+    frosted: o => { const p = { tint: o.tint || `color-mix(in srgb, var(--surface) ${S.material.panel_alpha * 100}%, transparent)`, blur_radius: o.blur_radius ?? S.material.panel_blur_px, saturation: o.saturation ?? S.material.panel_saturate };
+      return { params: p, css: { background: p.tint, backdropFilter: `blur(${p.blur_radius}px) saturate(${p.saturation})`, webkitBackdropFilter: `blur(${p.blur_radius}px) saturate(${p.saturation})`, boxShadow: `0 0 0 ${S.material.hairline_px}px var(--hair, var(--line)), inset 0 1px 0 rgba(255,255,255,${S.material.inner_highlight_alpha})` } }; },
+    // state-driven particle border; the particles come from glow.js (the same emitter the panes use)
+    glow: o => { const g = T.glow, p = { color: o.color, activity: o.activity || 'active', radius: g.pane_radius, particles: g.particles_active ?? g.particles, speed: g.particle_speed, particle_size: g.particle_size, idle_alpha: g.idle_alpha, active_alpha: [g.active_alpha_min, g.active_alpha_max], focused_boost: g.focused_boost };
+      return { params: p, css: { background: 'var(--surface)', boxShadow: `0 0 ${g.pane_radius}px color-mix(in srgb, ${p.color} 45%, transparent)`, border: `1.5px solid ${p.color}` }, glow: p }; },
+  };
+  function material(name, opts) { return MATERIAL[name](opts || {}); }
+
+  // ---------- L3 Style: tokens + overrides, data you can print ----------
+  const R = S.radius;
+  const STYLES = {
+    card: { material: 'flat', fill: 'var(--surface)', radius: R.card, border: 'hairline', padding: [S.spacing.s6, S.spacing.s7], text: 'body' },
+    row: { material: 'flat', fill: 'transparent', radius: R.row, height: 'density.row_h', padding: [0, 'density.pad_x'], text: 'row', selection: 'tint.selection_alpha' },
+    band: { material: 'gloss', fill: 'swarm colour', radius: T.radius.chip, height: T.strip.height, padding: [0, 'density.pad_x'], text: 'small · 600 · tracked .22em · uppercase · on_accent' },
+    pill: { material: 'flat', fill: 'tint.badge_alpha', radius: R.pill, padding: [0, S.spacing.s3], text: 'tiny' },
+    chip: { material: 'flat', fill: 'tint.badge_alpha', radius: R.tag, padding: [0, S.spacing.s2], text: 'micro · mono' },
+    modal: { material: 'frosted', fill: 'material.panel_alpha', radius: R.panel, border: 'hairline ring', shadow: 'shadow.floating', padding: [S.spacing.s8, S.spacing.s9], text: 'body' },
+    strip: { material: 'flat', fill: 'seat colour', radius: 0, height: T.strip.height, padding: [0, S.spacing.s4], text: 'caption · 600 · on_accent' },
+    input: { material: 'flat', fill: 'var(--bg)', radius: R.row, border: 'hairline', padding: [S.spacing.s4, S.spacing.s5], text: 'body', focus: 'accent ring' },
+    'button-primary': { material: 'flat', fill: 'accent', radius: R.pill, padding: [S.spacing.s3, S.spacing.s8], text: 'row · 600 · on_accent' },
+    'button-ghost': { material: 'flat', fill: 'transparent', radius: R.pill, border: 'hairline', padding: [S.spacing.s3, S.spacing.s8], text: 'row' },
+  };
+  const resolve = v => typeof v === 'number' ? px(v) : v === 'density.row_h' ? 'var(--row-h)' : v === 'density.pad_x' ? 'var(--pad-x)' : v;
+  function styleCss(st, swarm) {
+    const css = {};
+    const fill = { 'var(--surface)': 'var(--surface)', transparent: 'transparent', 'tint.badge_alpha': 'var(--badge)', 'var(--bg)': 'var(--bg)', accent: 'var(--accent)', 'seat colour': swarm || 'var(--accent)', 'swarm colour': swarm || 'var(--accent)', 'material.panel_alpha': null }[st.fill];
+    if (st.material === 'gloss') Object.assign(css, material('gloss', { color: swarm || 'var(--accent)' }).css);
+    else if (st.material === 'frosted') Object.assign(css, material('frosted').css);
+    else if (fill) css.background = fill;
+    css.borderRadius = px(st.radius);
+    if (st.border === 'hairline') css.border = 'var(--hair-w) solid var(--hair, var(--line))';
+    if (st.shadow) css.boxShadow = (css.boxShadow ? css.boxShadow + ', ' : '') + 'var(--sh-float)';
+    if (st.height) css.height = resolve(st.height);
+    if (st.padding) css.padding = st.padding.map(resolve).join(' ');
+    return css;
+  }
+
+  // ---------- L6 components ----------
+  const apply = (node, css) => { for (const k in css) node.style[k] = css[k]; return node; };
+  function Box(style, ...kids) { const st = typeof style === 'string' ? STYLES[style] : style; const b = el('div', { class: 'ui-box' + (typeof style === 'string' ? ' s-' + style : '') }, ...kids); apply(b, styleCss(st, style && style.swarm)); return b; }
+  const STEPS = ['micro', 'tiny', 'small', 'note', 'caption', 'label', 'section', 'row', 'body', 'kind', 'subtitle', 'title', 'input'];
+  function Text(text, o) { o = o || {}; const t = el('span', { class: 'ui-text' }, text); t.style.fontSize = 'var(--t-' + (o.step || 'body') + ')'; if (o.weight) t.style.fontWeight = o.weight; if (o.mono) t.style.fontFamily = 'var(--font-mono)'; if (o.dim) t.style.color = 'var(--fg-dim)'; if (o.color) t.style.color = o.color; if (o.caps) { t.style.textTransform = 'uppercase'; t.style.letterSpacing = '.22em'; } return t; }
+  function Stack(o, ...kids) { o = o || {}; const s = el('div', { class: 'ui-stack' }, ...kids); s.style.display = 'flex'; s.style.flexDirection = o.dir === 'row' ? 'row' : 'column'; s.style.gap = o.gap != null ? px(o.gap) : 'var(--gap)'; if (o.align) s.style.alignItems = o.align; if (o.wrap) s.style.flexWrap = 'wrap'; return s; }
+  function Spacer() { const s = el('span', { class: 'ui-spacer' }); s.style.flex = '1'; return s; }
+  function Badge(text) { return el('span', { class: 'ui-badge' }, text); }
+  function Button(label, o) { o = o || {}; const kind = o.kind || 'primary', st = o.state || 'idle'; const b = el('button', { class: 'ui-btn ' + kind + ' st-' + st, disabled: st === 'disabled' ? '' : null }, o.icon ? window.C.harnessIcon(o.icon) : null, label, o.kbd ? Badge(o.kbd) : null); return b; }
+  function List(items, o) { o = o || {}; const l = el('div', { class: 'ui-list', role: 'listbox' }); items.forEach((it, i) => l.append(el('div', { class: 'ui-li' + (i === o.selected ? ' sel' : ''), role: 'option' }, it.icon ? window.C.harnessIcon(it.icon) : null, Text(it.label, { step: 'row' }), it.sub ? Text(it.sub, { step: 'caption', dim: true }) : null, Spacer(), it.kbd ? Badge(it.kbd) : null))); if (o.more) l.append(el('div', { class: 'ui-li more' }, Text('… ' + o.more + ' more, virtualised', { step: 'caption', dim: true }))); return l; }
+  function Table(cols, rows, o) { o = o || {}; const t = el('div', { class: 'ui-table' + (o.zebra ? ' zebra' : ''), role: 'table' }); t.style.gridTemplateColumns = cols.map(c => c.w || '1fr').join(' ');
+    cols.forEach(c => t.append(el('div', { class: 'ui-th' }, Text(c.label, { step: 'small', caps: true, dim: true })))); rows.forEach((r, i) => r.forEach(v => t.append(el('div', { class: 'ui-td' + (i === o.selected ? ' sel' : '') + (i % 2 ? ' odd' : '') }, typeof v === 'string' ? Text(v, { step: 'row' }) : v)))); return t; }
+  function Input(o) { o = o || {}; const st = o.state || 'empty'; const box = el('label', { class: 'ui-input st-' + st }, o.icon ? window.C.harnessIcon(o.icon) : null, el('input', { value: st === 'empty' ? '' : (o.value || ''), placeholder: o.placeholder || '', spellcheck: 'false' })); const wrap = el('div', { class: 'ui-input-wrap' }, box); if (st === 'invalid') wrap.append(Text(o.error || 'not a valid value', { step: 'caption', color: 'var(--c-errored)' })); return wrap; }
+  function Overlay(...kids) { return el('div', { class: 'ui-overlay' }, ...kids); }
+  function Modal(title, body, actions) { const m = Box('modal', Stack({ gap: S.spacing.s5 }, Text(title, { step: 'subtitle', weight: 650 }), body, Stack({ dir: 'row', gap: S.spacing.s3, align: 'center' }, Spacer(), ...(actions || [])))); m.classList.add('ui-modal'); return m; }
+
+  window.UI = { themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
+})();

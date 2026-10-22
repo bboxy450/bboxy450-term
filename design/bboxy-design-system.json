@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 52,
+  "version": 53,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -1250,5 +1250,16 @@
     "executor": "♟ #2E6BFF worker-class",
     "creativity": "♝ #B07BFF worker-class"
   },
-  "token_rules": "one source per value: a leaf path defined in both tokens.toml and style.json fails gen-tokens.py (exit 2). radius.row (10) and radius.pill (999) live in style.json; the lab card radius --r-pill reads style radius.card (12); motion.hover_ms lives in tokens.toml"
+  "token_rules": "one source per value: a leaf path defined in both tokens.toml and style.json fails gen-tokens.py (exit 2). radius.row (10) and radius.pill (999) live in style.json; the lab card radius --r-pill reads style radius.card (12); motion.hover_ms lives in tokens.toml",
+  "galleries": {
+    "purpose": "web references for the bbt-ui layer galleries (gui-components.md §2c), so each native layer has a lab page to diff against before modules use it",
+    "implementation": "lab/web/ui.js: themeScope, densityScope, the four materials with the native parameter names (Gloss{color, top_white, bottom_black, highlight, bottom_shade}, Frosted{tint, blur_radius, saturation}, Glow{color, activity, radius, particles, speed, particle_size, idle_alpha, active_alpha, focused_boost}), STYLES (ten Style records), Box, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal; the pages use nothing else",
+    "pages": {
+      "materials.html": "L2: states flat | gloss | frosted | glow; each = dark and light × radii 0/6/12/20 with params printed; frosted over the wallpaper",
+      "style.html": "L3: states card | row | band | pill | chip | modal | strip | input | button-primary | button-ghost; one Box per Style, the Style record printed, dark and light",
+      "components.html": "L6: states box | text | stack | button | list | table | input | overlay | modal; each × density (touch, comfortable, cozy, compact) × theme"
+    },
+    "case_ids": "gallery id = page name, case = state slug (bboxybook entry(id, page, states) convention); proposed to Nyx, confirmation pending",
+    "status": "built"
+  }
 }
