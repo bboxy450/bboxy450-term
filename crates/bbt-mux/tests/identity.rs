@@ -1,4 +1,4 @@
-#![allow(clippy::disallowed_methods)] // Disposable keyring/account/Keychain fixtures run on IO test threads.
+#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
 //! Disposable interoperability/custody checks. Every GnuPG command has an
 //! explicit throwaway homedir; these tests never query the operator keyring.
 use std::{
