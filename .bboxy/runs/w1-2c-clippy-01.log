@@ -1,0 +1,32 @@
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+error: items after a test module
+   --> crates/bbt-mux/src/ring/writer.rs:334:1
+    |
+334 | mod tests {
+    | ^^^^^^^^^
+...
+415 | fn query_ring(ring: &mut Ring, query: Query) -> super::Result<Reply> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#items_after_test_module
+    = note: `-D clippy::items-after-test-module` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::items_after_test_module)]`
+    = help: move the items to before the test module was defined
+
+error: could not compile `bbt-mux` (lib test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: this assertion has a constant value
+   --> crates/bbt-mux/tests/logic.rs:867:5
+    |
+867 | /     assert!(
+868 | |         !cfg!(debug_assertions),
+869 | |         "performance gate requires --release"
+870 | |     );
+    | |_____^
+    |
+    = help: consider moving this into a const block: `const { assert!(..) }`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assertions_on_constants
+    = note: `-D clippy::assertions-on-constants` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::assertions_on_constants)]`
+
+error: could not compile `bbt-mux` (test "logic") due to 1 previous error

@@ -1,0 +1,4 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 39.15s

@@ -15,6 +15,7 @@ use sha2::{Digest, Sha256};
 use ulid::Ulid;
 
 use crate::protocol::*;
+use crate::ring::{CaptureHandle, CaptureQuery, CaptureResponse, CaptureWriter};
 use crate::transport::{BoundSocket, SocketPeer};
 
 const WAKE: Token = Token(0);
@@ -24,6 +25,7 @@ const MAX_CLIENTS: usize = 8;
 const MAX_INPUT_IDS: usize = 4096;
 const TICK: Duration = Duration::from_millis(20);
 const CALL_TIMEOUT: Duration = Duration::from_secs(10);
+const OUTPUT_DELAY: Duration = Duration::from_millis(2);
 
 pub struct Config {
     /// None is the v0.1 in-process transport; Some enables the same protocol on Unix IPC.
@@ -75,6 +77,7 @@ impl Supervisor {
         getrandom::fill(&mut capability).map_err(io::Error::other)?;
         let (tx, rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
         let mut actor = Actor {
+            capture_writer: CaptureWriter::start(waker.clone())?,
             poll,
             socket,
             config,
@@ -86,6 +89,7 @@ impl Supervisor {
             seats: BTreeMap::new(),
             active: None,
             next_token: 2,
+            pending_io: Vec::new(),
         };
         let thread = thread::Builder::new()
             .name("bbt-supervisor".into())
@@ -287,6 +291,20 @@ struct Actor {
     seats: BTreeMap<Ulid, Seat>,
     active: Option<(Ulid, Ulid)>,
     next_token: usize,
+    pending_io: Vec<PendingIo>,
+    // Dropped after seats, so their queued close/flush jobs are drained first.
+    capture_writer: CaptureWriter,
+}
+
+enum Dispatch {
+    Ready(Result<Reply, Failure>),
+    Pending(CaptureResponse),
+}
+struct PendingIo {
+    client: Ulid,
+    request_id: Ulid,
+    reply: Option<mpsc::SyncSender<Result<Reply, Failure>>>,
+    response: CaptureResponse,
 }
 
 impl Actor {
@@ -302,6 +320,7 @@ impl Actor {
     fn run(&mut self) -> io::Result<()> {
         let mut events = Events::with_capacity(256);
         loop {
+            self.complete_io();
             for _ in 0..64 {
                 match self.rx.try_recv() {
                     Ok(Control::Shutdown) => return Ok(()),
@@ -323,8 +342,18 @@ impl Actor {
                         frame,
                         reply,
                     }) => {
-                        let result = self.dispatch(client, frame);
-                        let _ = reply.send(result);
+                        let request_id = frame.body.request_id;
+                        match self.dispatch(client, frame) {
+                            Dispatch::Ready(result) => {
+                                let _ = reply.try_send(result);
+                            }
+                            Dispatch::Pending(response) => self.pending_io.push(PendingIo {
+                                client,
+                                request_id,
+                                reply: Some(reply),
+                                response,
+                            }),
+                        }
                     }
                     Err(mpsc::TryRecvError::Empty) => break,
                     Err(mpsc::TryRecvError::Disconnected) => return Ok(()),
@@ -344,13 +373,24 @@ impl Actor {
                     && seat
                         .ring
                         .as_ref()
-                        .map_or(seat.writer.is_some(), crate::ring::Ring::can_capture)
+                        .map_or(seat.writer.is_some(), CaptureHandle::can_capture)
                     && !seat.exit_published
             });
-            match self
-                .poll
-                .poll(&mut events, Some(if ready { Duration::ZERO } else { TICK }))
-            {
+            let timeout = if ready {
+                Duration::ZERO
+            } else {
+                self.seats
+                    .values()
+                    .filter_map(|seat| {
+                        seat.output_since
+                            .filter(|_| seat.ring.as_ref().is_none_or(CaptureHandle::can_capture))
+                            .map(|at| (at + OUTPUT_DELAY).saturating_duration_since(Instant::now()))
+                    })
+                    .min()
+                    .unwrap_or(TICK)
+                    .min(TICK)
+            };
+            match self.poll.poll(&mut events, Some(timeout)) {
                 Ok(()) => {}
                 Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
                 Err(error) => return Err(error),
@@ -379,7 +419,101 @@ impl Actor {
         }
     }
 
-    fn dispatch(&mut self, client: Ulid, frame: Frame<Request>) -> Result<Reply, Failure> {
+    fn dispatch(&mut self, client: Ulid, frame: Frame<Request>) -> Dispatch {
+        if !matches!(
+            &frame.body.action,
+            Action::RingRecovery { .. }
+                | Action::ReadRing { .. }
+                | Action::PublishCheckpoint { .. }
+        ) {
+            return Dispatch::Ready(self.dispatch_now(client, frame));
+        }
+        let result = (|| {
+            if frame.version != VERSION {
+                return Err(Failure::new(FailureCode::Version, "unsupported version"));
+            }
+            if !self.clients.contains_key(&client) {
+                return Err(disconnected());
+            }
+            if frame.body.request_id == Ulid::nil() {
+                return Err(Failure::new(FailureCode::Invalid, "nil request id"));
+            }
+            if self.active.is_none()
+                || self.active != frame.body.logic_lease.map(|lease| (client, lease))
+            {
+                return Err(Failure::new(
+                    FailureCode::StaleLease,
+                    "logic lease was replaced or disconnected",
+                ));
+            }
+            if self.pending_io.len() >= CHANNEL_CAPACITY {
+                return Err(Failure::new(
+                    FailureCode::Busy,
+                    "too many pending ring requests",
+                ));
+            }
+            let (attachment, query) = match frame.body.action {
+                Action::RingRecovery { attachment } => (attachment, CaptureQuery::Recovery),
+                Action::ReadRing {
+                    attachment,
+                    from,
+                    to,
+                } => (attachment, CaptureQuery::History { from, to }),
+                Action::PublishCheckpoint {
+                    attachment,
+                    checkpoint,
+                } => (attachment, CaptureQuery::Checkpoint(checkpoint)),
+                _ => unreachable!(),
+            };
+            let seat = self.seat_mut(attachment.seat, attachment.generation)?;
+            seat.check_writer(client, &attachment)?;
+            let ring = seat
+                .ring
+                .as_ref()
+                .ok_or_else(|| Failure::new(FailureCode::NotFound, "no ring configured"))?;
+            ring.request(query)
+        })();
+        match result {
+            Ok(response) => Dispatch::Pending(response),
+            Err(error) => Dispatch::Ready(Err(error)),
+        }
+    }
+
+    fn complete_io(&mut self) {
+        let mut ready = Vec::new();
+        for i in (0..self.pending_io.len()).rev() {
+            let result = match self.pending_io[i].response.try_recv() {
+                Ok(result) => result,
+                Err(mpsc::TryRecvError::Empty) => continue,
+                Err(mpsc::TryRecvError::Disconnected) => Err(Failure::new(
+                    FailureCode::Io,
+                    "capture reply unavailable; outcome unknown",
+                )),
+            };
+            ready.push((self.pending_io.swap_remove(i), result));
+        }
+        for (pending, result) in ready {
+            if let Some(reply) = pending.reply {
+                let _ = reply.try_send(result);
+            } else {
+                self.socket_reply(pending.client, pending.request_id, result);
+            }
+        }
+    }
+
+    fn socket_reply(&mut self, id: Ulid, request_id: Ulid, result: Result<Reply, Failure>) {
+        let queued = match self.clients.get_mut(&id) {
+            Some(Target::Socket { peer, .. }) => peer
+                .enqueue(Message::Reply { request_id, result })
+                .unwrap_or(false),
+            _ => false,
+        };
+        if !queued {
+            self.disconnect(id);
+        }
+    }
+
+    fn dispatch_now(&mut self, client: Ulid, frame: Frame<Request>) -> Result<Reply, Failure> {
         if frame.version != VERSION {
             return Err(Failure::new(FailureCode::Version, "unsupported version"));
         }
@@ -449,7 +583,8 @@ impl Actor {
                 directory,
                 settings,
             } => {
-                let seat = self.seat_mut(seat, generation)?;
+                let seat_id = seat;
+                let seat = self.seat_mut(seat_id, generation)?;
                 if !directory.is_absolute() {
                     return Err(Failure::new(
                         FailureCode::Invalid,
@@ -478,8 +613,10 @@ impl Actor {
                             "retained ring is from an earlier supervisor/process; resume needs a new generation",
                         ));
                     }
-                    seat.ring = Some(ring);
+                    let handle = self.capture_writer.register(ring);
+                    self.seat_mut(seat_id, generation)?.ring = Some(handle);
                 }
+                let seat = self.seat_mut(seat_id, generation)?;
                 let attachment = Attachment {
                     seat: seat.spec.seat,
                     generation,
@@ -489,52 +626,12 @@ impl Actor {
                 Ok(Reply::Attached {
                     attachment,
                     info: seat.info(),
-                    first_available_sequence: seat.ring.as_ref().unwrap().status().first_sequence,
+                    first_available_sequence: seat.ring.as_ref().unwrap().first_sequence(),
                 })
             }
-            Action::RingRecovery { attachment } => {
-                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
-                seat.check_writer(client, &attachment)?;
-                let ring = seat
-                    .ring
-                    .as_ref()
-                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "no ring configured"))?;
-                Ok(Reply::RingRecovery {
-                    status: ring.status(),
-                    checkpoint: ring.latest_checkpoint().map_err(pty_error)?,
-                })
-            }
-            Action::ReadRing {
-                attachment,
-                from,
-                to,
-            } => {
-                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
-                seat.check_writer(client, &attachment)?;
-                let ring = seat
-                    .ring
-                    .as_ref()
-                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "no ring configured"))?;
-                Ok(Reply::RingHistory {
-                    history: Box::new(ring.history(from, to).map_err(pty_error)?),
-                })
-            }
-            Action::PublishCheckpoint {
-                attachment,
-                checkpoint,
-            } => {
-                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
-                seat.check_writer(client, &attachment)?;
-                let ring = seat
-                    .ring
-                    .as_mut()
-                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "no ring configured"))?;
-                let sequence = crate::ring::Saved::decode(&checkpoint)
-                    .map_err(pty_error)?
-                    .sequence;
-                ring.checkpoint(checkpoint).map_err(pty_error)?;
-                Ok(Reply::CheckpointCommitted { sequence })
-            }
+            Action::RingRecovery { .. }
+            | Action::ReadRing { .. }
+            | Action::PublishCheckpoint { .. } => unreachable!("ring IO is deferred"),
             Action::Input {
                 attachment,
                 input_id,
@@ -577,6 +674,7 @@ impl Actor {
                         "ring full: checkpoint required before resize",
                     ));
                 }
+                seat.flush_output().map_err(pty_error)?;
                 seat.master.resize(pty_size(size)).map_err(pty_error)?;
                 seat.size = size;
                 let sequence = seat.next_seq;
@@ -808,15 +906,16 @@ impl Actor {
             };
             for frame in frames {
                 let request_id = frame.body.request_id;
-                let result = self.dispatch(id, frame);
-                let queued = match self.clients.get_mut(&id) {
-                    Some(Target::Socket { peer, .. }) => peer
-                        .enqueue(Message::Reply { request_id, result })
-                        .unwrap_or(false),
-                    _ => false,
-                };
-                if !queued {
-                    self.disconnect(id);
+                match self.dispatch(id, frame) {
+                    Dispatch::Ready(result) => self.socket_reply(id, request_id, result),
+                    Dispatch::Pending(response) => self.pending_io.push(PendingIo {
+                        client: id,
+                        request_id,
+                        reply: None,
+                        response,
+                    }),
+                }
+                if !self.clients.contains_key(&id) {
                     return;
                 }
             }
@@ -874,6 +973,8 @@ struct Seat {
     next_seq: u64,
     writer: Option<(Ulid, Ulid)>,
     pending_event: Option<Event>,
+    output: Vec<u8>,
+    output_since: Option<Instant>,
     pending_write: Option<PendingWrite>,
     inputs: HashMap<Ulid, StoredInput>,
     exited: Option<ExitInfo>,
@@ -882,7 +983,7 @@ struct Seat {
     termination_escalated: bool,
     grace: Option<(Ulid, Instant)>,
     close_ids: HashMap<Ulid, (u64, bool)>,
-    ring: Option<crate::ring::Ring>,
+    ring: Option<CaptureHandle>,
 }
 
 impl Seat {
@@ -925,6 +1026,8 @@ impl Seat {
             next_seq: 1,
             writer: None,
             pending_event: None,
+            output: Vec::with_capacity(OUTPUT_CHUNK_BYTES),
+            output_since: None,
             pending_write: None,
             inputs: HashMap::new(),
             exited: None,
@@ -1089,6 +1192,20 @@ impl Seat {
         Ok(())
     }
 
+    fn flush_output(&mut self) -> io::Result<()> {
+        if self.output.is_empty() {
+            return Ok(());
+        }
+        let bytes = std::mem::replace(&mut self.output, Vec::with_capacity(OUTPUT_CHUNK_BYTES));
+        self.output_since = None;
+        self.capture(Event::Output {
+            seat: self.spec.seat,
+            generation: self.spec.generation,
+            seq: self.next_seq,
+            bytes,
+        })
+    }
+
     fn tick(&mut self, actor: &mut Actor) -> io::Result<()> {
         if self.exited.is_none()
             && self.terminate_at.is_none()
@@ -1125,9 +1242,6 @@ impl Seat {
         // One latest notification survives a full queue; skipped sequences are
         // hydrated by logic. The legacy ring-less path retains its old bound.
         for _ in 0..4 {
-            if let Some(ring) = self.ring.as_mut() {
-                ring.prepare_capture().map_err(io::Error::other)?;
-            }
             if !self.read_ready
                 || (self.ring.is_none() && self.pending_event.is_some())
                 || self
@@ -1142,40 +1256,63 @@ impl Seat {
             let capacity = self
                 .ring
                 .as_ref()
-                .map_or(OUTPUT_CHUNK_BYTES, crate::ring::Ring::capture_capacity);
-            // SAFETY: master owns fd; bytes is writable for its stated length.
-            let count = unsafe { libc::read(self.fd, bytes.as_mut_ptr().cast(), capacity) };
+                .map_or(OUTPUT_CHUNK_BYTES, CaptureHandle::capture_capacity)
+                - self.output.len();
+            // Darwin commonly returns 1 KiB per PTY read. Coalesce currently
+            // available bytes into one bounded record, without waiting for more.
+            let mut count = 0;
+            for _ in 0..64 {
+                // SAFETY: master owns fd; the remaining slice is writable.
+                let read = unsafe {
+                    libc::read(
+                        self.fd,
+                        bytes[count..].as_mut_ptr().cast(),
+                        capacity - count,
+                    )
+                };
+                if read > 0 {
+                    count += read as usize;
+                    if count == capacity {
+                        break;
+                    }
+                    continue;
+                }
+                let error = io::Error::last_os_error();
+                if read < 0 && error.kind() == io::ErrorKind::Interrupted {
+                    continue;
+                }
+                self.read_ready = false;
+                if read == 0 || error.raw_os_error() == Some(libc::EIO) {
+                    self.eof = true;
+                } else if error.kind() != io::ErrorKind::WouldBlock {
+                    return Err(error);
+                }
+                break;
+            }
             if count > 0 {
-                let seq = self.next_seq;
-                self.capture(Event::Output {
-                    seat: self.spec.seat,
-                    generation: self.spec.generation,
-                    seq,
-                    bytes: bytes[..count as usize].into(),
-                })?;
-                self.publish_pending(actor);
+                self.output.extend_from_slice(&bytes[..count]);
+                self.output_since.get_or_insert_with(Instant::now);
+                if count == capacity || self.ring.is_none() {
+                    self.flush_output()?;
+                    self.publish_pending(actor);
+                }
                 continue;
-            }
-            let error = io::Error::last_os_error();
-            if count < 0 && error.kind() == io::ErrorKind::Interrupted {
-                continue;
-            }
-            self.read_ready = false;
-            if count == 0 || error.raw_os_error() == Some(libc::EIO) {
-                self.eof = true;
-            } else if error.kind() != io::ErrorKind::WouldBlock {
-                return Err(error);
             }
             break;
+        }
+        if self
+            .output_since
+            .is_some_and(|at| at.elapsed() >= OUTPUT_DELAY || self.eof || self.exited.is_some())
+            && self.ring.as_ref().is_none_or(CaptureHandle::can_capture)
+        {
+            self.flush_output()?;
+            self.publish_pending(actor);
         }
         if let Some(status) = self.exited.clone()
             && !self.read_ready
             && (self.ring.is_some() || self.pending_event.is_none())
             && !self.exit_published
-            && self
-                .ring
-                .as_ref()
-                .is_none_or(crate::ring::Ring::can_control)
+            && self.ring.as_ref().is_none_or(CaptureHandle::can_control)
         {
             let seq = self.next_seq;
             self.capture(Event::Exited {
@@ -1186,9 +1323,6 @@ impl Seat {
             })?;
             self.exit_published = true;
             self.publish_pending(actor);
-        }
-        if let Some(ring) = self.ring.as_mut() {
-            ring.flush_due().map_err(io::Error::other)?;
         }
         if self.eof || self.exit_published {
             if self.registered {
@@ -1212,8 +1346,8 @@ impl Seat {
 
 impl Drop for Seat {
     fn drop(&mut self) {
-        if let Some(ring) = self.ring.as_mut() {
-            let _ = ring.flush();
+        if self.ring.as_ref().is_none_or(CaptureHandle::can_capture) {
+            let _ = self.flush_output();
         }
         if self.exited.is_none() {
             let _ = signal(self.pid, libc::SIGKILL);

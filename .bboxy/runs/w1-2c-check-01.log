@@ -1,0 +1,14 @@
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+error[E0502]: cannot borrow `self.capture_writer` as immutable because it is also borrowed as mutable
+   --> crates/bbt-mux/src/supervisor.rs:603:38
+    |
+574 |                 let seat = self.seat_mut(seat, generation)?;
+    |                            ---- mutable borrow occurs here
+...
+603 |                     seat.ring = Some(self.capture_writer.register(ring));
+    |                     ---------        ^^^^^^^^^^^^^^^^^^^ immutable borrow occurs here
+    |                     |
+    |                     mutable borrow later used here
+
+For more information about this error, try `rustc --explain E0502`.
+error: could not compile `bbt-mux` (lib) due to 1 previous error

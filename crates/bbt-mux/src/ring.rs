@@ -15,12 +15,33 @@ use crate::protocol::{Event, ExitInfo, OUTPUT_CHUNK_BYTES, SeatSize};
 use crate::store::{Blobs, Result, blobs::LocalBlobs, invalid};
 use crate::streams::HistoryGap;
 
+mod writer;
+pub(crate) use writer::{
+    CaptureWriter, Handle as CaptureHandle, Query as CaptureQuery, Response as CaptureResponse,
+};
+
 const HEADER: usize = 56;
 const MAX_RECORD: usize = 1024 * 1024;
 const MAX_CHECKPOINT: usize = 128 * 1024;
 const MAX_DECODED: u64 = 16 * 1024 * 1024;
 const MAX_POINTS: usize = 4096;
 const PAGE_BYTES: usize = 64 * 1024;
+
+/// Cumulative capture timings; durations use monotonic nanoseconds.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CaptureStats {
+    pub records: u64,
+    pub encode_ns: u64,
+    pub hot_write_ns: u64,
+    pub sync_ns: u64,
+    pub marker_ns: u64,
+    pub cold_ns: u64,
+    pub seals: u64,
+    pub max_seal_ns: u64,
+    pub queued_bytes: usize,
+    pub peak_queue_bytes: usize,
+    pub queue_full_count: u64,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
@@ -301,6 +322,8 @@ pub struct Status {
     pub hot_bytes: u64,
     pub paused: bool,
     pub recovery_notice: Option<String>,
+    #[serde(default)]
+    pub capture: CaptureStats,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexedEvent {
@@ -379,6 +402,9 @@ pub struct Ring {
     hydrated: RefCell<Option<Hydrated>>,
     durable: Boundary,
     last_commit: std::time::Instant,
+    stats: CaptureStats,
+    group_bytes: u64,
+    append_file: Option<File>,
 }
 impl Ring {
     pub fn open(
@@ -426,6 +452,9 @@ impl Ring {
                                 root: root.into(),
                                 durable: boundary.clone(),
                                 last_commit: std::time::Instant::now(),
+                                stats: CaptureStats::default(),
+                                group_bytes: 64 * 1024,
+                                append_file: None,
                                 boundary,
                                 entries,
                                 index: Default::default(),
@@ -485,6 +514,9 @@ impl Ring {
             root: root.into(),
             durable: boundary.clone(),
             last_commit: std::time::Instant::now(),
+            stats: CaptureStats::default(),
+            group_bytes: 64 * 1024,
+            append_file: None,
             boundary,
             entries: Vec::new(),
             index: Default::default(),
@@ -519,6 +551,7 @@ impl Ring {
             hot_bytes: self.boundary.length,
             paused: false,
             recovery_notice: self.notice.clone(),
+            capture: self.stats.clone(),
         }
     }
     fn first_base(&self) -> u64 {
@@ -615,7 +648,9 @@ impl Ring {
         if self.boundary.length == 0 {
             return Ok(());
         }
+        let seal_started = std::time::Instant::now();
         self.flush()?;
+        let cold_started = std::time::Instant::now();
         let raw = std::fs::read(self.data_path())?;
         if raw.len() as u64 != self.boundary.length {
             return Err(invalid("cannot seal an uncommitted tail"));
@@ -635,6 +670,7 @@ impl Ring {
             length: self.boundary.length,
         };
         let digest = blobs.put(&serde_json::to_vec(&segment)?)?;
+        self.stats.cold_ns += cold_started.elapsed().as_nanos() as u64;
         let mut next = self.boundary.clone();
         next.origin_base = Some(self.first_base());
         next.origin_byte_start = Some(
@@ -657,10 +693,16 @@ impl Ring {
         self.durable = next.clone();
         self.last_commit = std::time::Instant::now();
         self.boundary = next;
+        self.append_file = None;
         self.entries.clear();
         self.sealed.push(segment);
         self.rebuild_index()?;
         self.retire_orphans()?;
+        self.stats.seals += 1;
+        self.stats.max_seal_ns = self
+            .stats
+            .max_seal_ns
+            .max(seal_started.elapsed().as_nanos() as u64);
         Ok(())
     }
     fn hydrate(&self, segment: &Sealed) -> Result<()> {
@@ -742,6 +784,7 @@ impl Ring {
     }
     fn append(&mut self, kind: u16, sequence: u64, byte_start: u64, payload: &[u8]) -> Result<()> {
         bbt_rt::assert_not_ui_thread();
+        let encode_started = std::time::Instant::now();
         let bytes = encode(
             kind,
             self.boundary.seat,
@@ -750,6 +793,8 @@ impl Ring {
             byte_start,
             payload,
         )?;
+        self.stats.encode_ns += encode_started.elapsed().as_nanos() as u64;
+        self.stats.records += 1;
         if bytes.len() as u64 > self.boundary.settings.capacity_bytes {
             return Err(invalid("record exceeds ring capacity"));
         }
@@ -757,8 +802,13 @@ impl Ring {
             self.seal_hot()?;
         }
         let start = self.boundary.length;
-        let mut file = OpenOptions::new().append(true).open(self.data_path())?;
+        let write_started = std::time::Instant::now();
+        if self.append_file.is_none() {
+            self.append_file = Some(OpenOptions::new().append(true).open(self.data_path())?);
+        }
+        let file = self.append_file.as_mut().unwrap();
         file.write_all(&bytes)?;
+        self.stats.hot_write_ns += write_started.elapsed().as_nanos() as u64;
         let mut next = self.boundary.clone();
         next.length += bytes.len() as u64;
         if kind == 4 {
@@ -785,27 +835,32 @@ impl Ring {
             sequence,
             byte_start,
         });
-        if kind != 1 || self.boundary.length.saturating_sub(self.durable.length) >= 64 * 1024 {
+        if kind != 1 || self.boundary.length.saturating_sub(self.durable.length) >= self.group_bytes
+        {
             self.flush()?;
         }
         Ok(())
     }
-    /// Captured and durable cursors are distinct. Commit at 64 KiB, 20 ms idle,
-    /// control/checkpoint publication, sealing and supervisor shutdown.
+    /// Captured and durable cursors are distinct. Commit at the group byte
+    /// threshold, 20 ms idle, control/checkpoint publication, sealing and shutdown.
     pub fn flush(&mut self) -> Result<()> {
         bbt_rt::assert_not_ui_thread();
         if self.boundary.file == self.durable.file && self.boundary.length == self.durable.length {
             return Ok(());
         }
+        let sync_started = std::time::Instant::now();
         let file = OpenOptions::new().write(true).open(self.data_path())?;
         if file.metadata()?.len() != self.boundary.length {
             return Err(invalid("untracked/torn capture suffix before commit"));
         }
         file.sync_all()?;
+        self.stats.sync_ns += sync_started.elapsed().as_nanos() as u64;
+        let marker_started = std::time::Instant::now();
         self.publish_boundary(&self.boundary)?;
         self.durable = self.boundary.clone();
         self.last_commit = std::time::Instant::now();
         self.retire_orphans()?;
+        self.stats.marker_ns += marker_started.elapsed().as_nanos() as u64;
         Ok(())
     }
     pub fn flush_due(&mut self) -> Result<()> {
@@ -1212,13 +1267,25 @@ fn load_boundary(path: &Path) -> Result<Boundary> {
 fn crc32c_parts(header: &[u8], payload: &[u8]) -> u32 {
     let mut crc = !0u32;
     for byte in header.iter().chain(payload) {
-        crc ^= *byte as u32;
-        for _ in 0..8 {
-            crc = (crc >> 1) ^ (0x82f63b78 & (0u32.wrapping_sub(crc & 1)));
-        }
+        crc = CRC32C[((crc ^ *byte as u32) & 255) as usize] ^ (crc >> 8);
     }
     !crc
 }
+const CRC32C: [u32; 256] = {
+    let mut table = [0; 256];
+    let mut i = 0;
+    while i < 256 {
+        let mut crc = i as u32;
+        let mut bit = 0;
+        while bit < 8 {
+            crc = (crc >> 1) ^ (0x82f63b78 & (0u32.wrapping_sub(crc & 1)));
+            bit += 1;
+        }
+        table[i] = crc;
+        i += 1;
+    }
+    table
+};
 pub fn crc32c(bytes: &[u8]) -> u32 {
     crc32c_parts(bytes, &[])
 }
