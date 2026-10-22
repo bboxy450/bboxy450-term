@@ -126,8 +126,7 @@ briefs Executors from the specs, never from this note.
 
 ## Specs to touch (Architect, in this order)
 
-[[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → W2.5 and
-W2.5b spec (3) → D1 spec (7) → [[identity]] custody per 4 → [[mux-daemon]] crate
+[[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → D1 spec (7) → [[identity]] custody per 4 → [[mux-daemon]] crate
 split per 1 → [[open-source]] §1 per 8.
 
 ## Operator action pending
