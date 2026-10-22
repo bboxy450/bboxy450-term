@@ -4,7 +4,8 @@ use crate::{
 };
 use bbt_render::chrome::{ChromeRenderer, diff};
 use std::{fmt::Write, fs, path::Path};
-pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
+/// Image-only renderer regression: no geometry snapshots or parity acceptance.
+pub fn replay_images(out: &Path, cases: &[Case]) -> Result<usize> {
     let mut renderer = ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}", renderer.context.adapter_info);
     for (i, case) in cases.iter().enumerate() {
@@ -69,6 +70,11 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     }
     fs::create_dir_all(out)?;
     fs::write(out.join("manifest.json"), serde_json::to_vec_pretty(cases)?)?;
+    Ok(cases.len())
+}
+
+pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
+    replay_images(out,cases)?;
     let surfaces = crate::overlays::surface_snapshots(cases)?;
     if !surfaces.is_empty() {
         fs::write(

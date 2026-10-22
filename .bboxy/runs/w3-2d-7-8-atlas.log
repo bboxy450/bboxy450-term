@@ -1,0 +1,69 @@
+7.8 support — retained GPU atlas storage
+Authorization: 66a95d56. Profile read: .bboxy/runs/r2b-profile.log.
+Order: after x-height d8f2b86, before paths and complete GraphTab.
+
+Mechanism:
+chrome/mod.rs ChromeRenderer::with_context — immutable icon GPU texture/view
+and its linear sampler created once per renderer/device; CPU icon pixels and
+pixel-coordinate metadata unchanged.
+chrome/mod.rs text-cache miss — retain inserted AtlasRect as dirty, then sync
+once before a flat draw. Warm passes and material-separated draws reuse storage.
+chrome/atlas_gpu.rs — first use/growth full-uploads the glyph atlas and increments
+the texture generation; otherwise queue.write_texture covers only dirty rects.
+Transparent guard texels stay zero. Bind groups retain old generations through
+already-encoded work. No uniform/storage arena, font, shader or material tuning.
+
+Tests:
+- repeated isolated passes: exact fresh/cached RGBA, icon uploads=1, no warm
+  glyph writes or bytes;
+- dirty insert: sub-atlas upload; growth: preserved coordinates, exact RGBA
+  against a fresh renderer;
+- growth in a later group: earlier encoded text remains correct after replacing
+  its atlas generation (actual GPU readback, not only a counter assertion).
+
+cargo test -p bbt-render -p bbt-ui -p bboxybook --locked
+  exit 0,152 passed in working tree; atlas/debug-tests.log.
+cargo test -p bbt-render -p bbt-ui -p bboxybook --release --locked
+  exit 0,152; atlas/release-tests.log.
+Added in-flight growth witness then run separately in both debug and release:
+cargo test -p bbt-render --lib growth_in_a_later_group --locked
+cargo test -p bbt-render --lib growth_in_a_later_group --release --locked
+  each exit 0,1 passed. Together 153 tests in each mode; no prior test omitted.
+These working-tree totals include eight pending GraphTab tests; GraphTab source
+is not part of this support commit.
+Required all-target clippy (same two exclusions) and scripts/ui-lint.sh exit 0;
+see atlas/clippy-final.log and atlas/ui-lint.log. git diff --check exit 0.
+
+Image identity:
+python3 target/bboxybook/graphs/atlas/regress.py
+  exit 0;4 disjoint CLI replay-images jobs exit 0;1,808/1,808 PNG SHA-256 matches;
+  zero missing or changed, so zero new reviews. Old overlapping launcher names
+  assigned separate jobs. The before sources include x-height's 8 independent
+  surface witnesses and accepted Flow/Stream images. Source records, commands,
+  exits and wall times: atlas/regression/{part-*.json,status.json,summary.json}.
+The new replay-images CLI explicitly writes geometry_replayed=false. It is for
+renderer image identity, not parity acceptance. Default render and compare still
+require the original geometry checks and budgets; no snapshots/goldens changed.
+
+Timings, Apple M4 Metal, same session (one batch; not an fps claim):
+40-case material/Style render including its geometry: 1.596565958s before,
+1.335301875s after; both exit 0. atlas/{before,after}-bench.json.
+target/release/bboxy450-term --smoke --meter
+  before exit 0: 21 frames, 20 updates, idle 10.002s with 0 redraws;
+  CPU p50 = 33.174ms,p99 = 97.337ms. All 20 warm frames are in the hitch log;
+  nearest-rank warm encode p50 = 31.541ms,p99 = 37.848ms.
+  after exit 0: 21 frames, 20 updates, idle 10.002s with 0 redraws;
+  CPU p50 = 4.327ms,p99 = 5.011ms,zero hitch lines. Since encode is part of CPU,
+  these bound warm encode p50<=4.327ms,p99<=5.011ms, not exact phase readings.
+Before log: graphs/atlas-before-meter.log. After: graphs/atlas/after-meter.log.
+Exact fast-frame encode percentiles are absent from the old console report.
+Vesper routed the prepared measurement-only summary patch to Sable (9ae38b6d),
+who owns the app during R4. No app source was edited here.
+A computer-use app-name lookup showed a conflicting older meter window and the
+exact executable path was unsupported; that screen is discarded as evidence.
+No browser was opened/reloaded.
+
+Not checked: new CPU sampling trace, hosted CI, macOS14/Linux/mobile, allocation
+pressure over long sessions. Renderer/atlas tests and exact image replay cover
+this change; runtime event/lease/mux behavior is outside it. No push by Executor.
+GraphTab WIP and other agents' mux/ring work remain outside this commit.
