@@ -13,6 +13,60 @@ pub struct LineMask {
     pub mask: Vec<u8>,
 }
 
+// AppKit's verified system-font weight anchors; interpolate numeric CSS weights.
+// CoreText descriptor matching selects the closest real face/variation available.
+#[cfg(target_os = "macos")]
+fn native_font(
+    style: TextStyle,
+    scale: f32,
+) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
+    use objc2_core_foundation::{CFDictionary, CFNumber, CFString, CFType};
+    use objc2_core_text::{
+        CTFont, CTFontDescriptor, CTFontUIFontType, kCTFontFamilyNameAttribute,
+        kCTFontTraitsAttribute, kCTFontWeightTrait,
+    };
+    let size = f64::from(style.pixels() * scale);
+    // No regular/bold threshold: weight 400 is the family base, other weights
+    // are requested through the weight trait, including 500 medium/600 semibold.
+    let base = unsafe {
+        if style.mono {
+            CTFont::with_name(&CFString::from_str("Menlo"), size, std::ptr::null())
+        } else {
+            CTFont::new_ui_font_for_language(CTFontUIFontType::System, size, None)
+                .ok_or("system UI font unavailable")?
+        }
+    };
+    if style.weight == 400 {
+        return Ok(base);
+    }
+    let anchors = [-0.8, -0.6, -0.4, 0., 0.23, 0.3, 0.4, 0.56, 0.62];
+    let w = style.weight.clamp(100, 900);
+    let lower = usize::from((w / 100).saturating_sub(1));
+    let upper = (lower + 1).min(8);
+    let fraction = f64::from(w % 100) / 100.;
+    let weight = CFNumber::new_f64(anchors[lower] + (anchors[upper] - anchors[lower]) * fraction);
+    let weight_key = unsafe { kCTFontWeightTrait };
+    let traits = CFDictionary::<CFString, CFNumber>::from_slices(&[weight_key], &[weight.as_ref()]);
+    let values: [&CFType; 1] = [traits.as_ref()];
+    let traits_key = unsafe { kCTFontTraitsAttribute };
+    let attrs = CFDictionary::from_slices(&[traits_key], &values);
+    let descriptor = unsafe {
+        if style.mono {
+            let family = CFString::from_str("Menlo");
+            let values: [&CFType; 2] = [family.as_ref(), traits.as_ref()];
+            let attrs = CFDictionary::from_slices(
+                &[kCTFontFamilyNameAttribute, kCTFontTraitsAttribute],
+                &values,
+            );
+            CTFontDescriptor::with_attributes(attrs.as_opaque())
+        } else {
+            base.font_descriptor()
+                .copy_with_attributes(attrs.as_opaque())
+        }
+    };
+    Ok(unsafe { CTFont::with_font_descriptor(&descriptor, size, std::ptr::null()) })
+}
+
 #[cfg(target_os = "macos")]
 pub fn rasterize(
     text: &str,
@@ -25,35 +79,11 @@ pub fn rasterize(
     };
     use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext};
     use objc2_core_text::{
-        CTFont, CTFontUIFontType, CTLine, kCTFontAttributeName,
-        kCTForegroundColorFromContextAttributeName, kCTKernAttributeName,
+        CTLine, kCTFontAttributeName, kCTForegroundColorFromContextAttributeName,
+        kCTKernAttributeName,
     };
     use std::ptr;
-    // SAFETY: all CoreFoundation values are retained through synchronous CoreText calls.
-    let font = unsafe {
-        if style.mono {
-            CTFont::with_name(
-                &CFString::from_str(if style.weight >= 600 {
-                    "Menlo-Bold"
-                } else {
-                    "Menlo"
-                }),
-                f64::from(style.pixels() * scale),
-                ptr::null(),
-            )
-        } else {
-            CTFont::new_ui_font_for_language(
-                if style.weight >= 600 {
-                    CTFontUIFontType::EmphasizedSystem
-                } else {
-                    CTFontUIFontType::System
-                },
-                f64::from(style.pixels() * scale),
-                None,
-            )
-            .ok_or("system UI font unavailable")?
-        }
-    };
+    let font = native_font(style, scale)?;
     let kern = CFNumber::new_f64(f64::from(style.tracking_em * style.pixels() * scale));
     let mut keys = unsafe {
         vec![
@@ -155,6 +185,31 @@ pub fn rasterize(_: &str, _: TextStyle, _: Option<f32>, _: f32) -> Result<LineMa
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold() {
+        use bbt_ui_model::draw::TypeScale;
+        let widths = [400, 500, 600, 700].map(|weight| {
+            rasterize(
+                "disabled",
+                TextStyle {
+                    scale: TypeScale::Custom(12.5),
+                    weight,
+                    ..Default::default()
+                },
+                None,
+                1.,
+            )
+            .unwrap()
+            .advance
+        });
+        for pair in widths.windows(2) {
+            assert!(
+                pair[1] > pair[0] + 0.5,
+                "distinct UI weight advances: {widths:?}"
+            );
+        }
+        assert!(widths[1] < widths[3] - 0.5 && widths[2] > widths[0] + 0.5);
+    }
     #[test]
     fn zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied() {
         use bbt_ui_model::draw::TypeScale;

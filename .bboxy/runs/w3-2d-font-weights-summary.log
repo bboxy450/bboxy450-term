@@ -1,0 +1,9 @@
+L1 numeric chrome font weights: CoreText traits, nearest available face/variation; terminal cell text untouched.
+Probe: AppKit regular/medium/semibold/bold anchors match CoreText 0/.23/.3/.4; see w3-2d-font-weights-probe.log.
+Frozen references reused; no CSS captures or tolerances changed.
+style: review 16 -> 0 / 88; max rect 1.919189 -> 0.500000px; max baseline 0.006256px.
+Gallery: target/bboxybook/font-weights/style/index.html
+components: review 0 -> 0 / 24; max rect 0.461620 -> 0.056736px; max baseline 0.000000px.
+Gallery: target/bboxybook/font-weights/components/index.html
+Inspected native and web strip-cozy-dark at full size: weight and width now agree by eye.
+Not checked: app interaction, other platforms, terminal font changes (none), full legacy module matrix.

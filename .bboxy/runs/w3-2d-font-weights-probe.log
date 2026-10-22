@@ -1,0 +1,65 @@
+$ swift target/bboxybook/d5-font-weight.swift
+system {
+    NSCTFontProportionTrait = 0;
+    NSCTFontSlantTrait = 0;
+    NSCTFontSymbolicTrait = 16384;
+    NSCTFontUIFontDesignTrait = NSCTFontUIFontDesignDefault;
+    NSCTFontWeightTrait = 0;
+} 49.57275390625 20.9228515625
+emphasized {
+    NSCTFontProportionTrait = 0;
+    NSCTFontSlantTrait = 0;
+    NSCTFontSymbolicTrait = 16386;
+    NSCTFontUIFontDesignTrait = NSCTFontUIFontDesignDefault;
+    NSCTFontWeightTrait = "0.4000000059604645";
+} 53.369140625 22.7813720703125
+0.0 .SFNS-Regular {
+    NSCTFontProportionTrait = 0;
+    NSCTFontSlantTrait = 0;
+    NSCTFontSymbolicTrait = 16384;
+    NSCTFontUIFontDesignTrait = NSCTFontUIFontDesignDefault;
+    NSCTFontWeightTrait = 0;
+} 49.57275390625 20.9228515625
+0.23 .SFNS-Medium {
+    NSCTFontProportionTrait = 0;
+    NSCTFontSlantTrait = 0;
+    NSCTFontSymbolicTrait = 16384;
+    NSCTFontUIFontDesignTrait = NSCTFontUIFontDesignDefault;
+    NSCTFontWeightTrait = "0.2300000041723251";
+} 50.9648859500885 21.604369580745697
+0.3 .SFNS-Semibold {
+    NSCTFontProportionTrait = 0;
+    NSCTFontSlantTrait = 0;
+    NSCTFontSymbolicTrait = 16386;
+    NSCTFontUIFontDesignTrait = NSCTFontUIFontDesignDefault;
+    NSCTFontWeightTrait = "0.300000011920929";
+} 51.9770085811615 22.099854052066803
+0.4 .SFNS-Bold {
+    NSCTFontProportionTrait = 0;
+    NSCTFontSlantTrait = 0;
+    NSCTFontSymbolicTrait = 16386;
+    NSCTFontUIFontDesignTrait = NSCTFontUIFontDesignDefault;
+    NSCTFontWeightTrait = "0.4000000059604645";
+} 53.369140625 22.7813720703125
+AppKit regular 0.0 .SFNS-Regular 49.57275390625 20.9228515625
+{
+    NSCTFontUIUsageAttribute = CTFontRegularUsage;
+    NSFontSizeAttribute = "12.5";
+}
+AppKit medium 0.23000000417232513 .SFNS-Medium 50.9648859500885 21.604369580745697
+{
+    NSCTFontUIUsageAttribute = CTFontMediumUsage;
+    NSFontSizeAttribute = "12.5";
+}
+AppKit semibold 0.30000001192092896 .SFNS-Semibold 51.9770085811615 22.099854052066803
+{
+    NSCTFontUIUsageAttribute = CTFontDemiUsage;
+    NSFontSizeAttribute = "12.5";
+}
+AppKit bold 0.4000000059604645 .SFNS-Bold 53.369140625 22.7813720703125
+{
+    NSCTFontUIUsageAttribute = CTFontBoldUsage;
+    NSFontSizeAttribute = "12.5";
+}
+NSFont CSS weight anchors -0.800000011920929 -0.6000000238418579 -0.4000000059604645 0.0 0.23000000417232513 0.30000001192092896 0.4000000059604645 0.5600000023841858 0.6200000047683716
+exit_status=0
