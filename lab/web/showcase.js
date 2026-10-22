@@ -6,14 +6,14 @@
   const T = window.TOKENS, G = T.glow, el = Lab.el;
   const q = new URLSearchParams(location.search);
   const SCENE = q.get('scene') === '15' ? 15 : 3;
-  const GUTTER = q.has('gutter') ? Math.max(0, +q.get('gutter')) : T.layout.gutter;
+  let gutter = q.has('gutter') ? Math.max(0, +q.get('gutter')) : T.layout.gutter;   // ?gutter= or the live Settings value; re-applied over the token
 
   // ---------- theme: auto (prefers-color-scheme) | dark | light ----------
   let density = 'cozy';   // live from Settings › Appearance
   const mq = matchMedia('(prefers-color-scheme: dark)');
   let themeMode = Lab.store.get('showcase.theme') || 'auto';
   const theme = () => themeMode === 'auto' ? (mq.matches ? 'dark' : 'light') : themeMode;
-  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = density; Lab.applyTokens(); if (!document.documentElement.style.getPropertyValue('--gutter')) document.documentElement.style.setProperty('--gutter', GUTTER + 'px'); }
+  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = density; Lab.applyTokens(); document.documentElement.style.setProperty('--gutter', gutter + 'px'); }
   mq.addEventListener('change', () => { if (themeMode === 'auto') { applyTheme(); render(); } });
   applyTheme();
 
@@ -280,7 +280,7 @@
     if (section !== 'appearance') return;
     if (key === 'density') { density = value; }
     if (key === 'theme') { themeMode = value; Lab.store.set('showcase.theme', value); drawThemeBtn(); }
-    if (key === 'gutter') { document.documentElement.style.setProperty('--gutter', value + 'px'); }
+    if (key === 'gutter') { gutter = value; document.documentElement.style.setProperty('--gutter', value + 'px'); }
     if (key === 'glow') { document.getElementById('glow').style.display = value ? '' : 'none'; }
     if (key === 'opacity' || key === 'blur' || key === 'blurRadius') { applyWindow(); if (key === 'opacity') return; }
     const keep = settingsSeat.section; applyTheme(); settingsSeat.section = keep; render();
