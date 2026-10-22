@@ -1,0 +1,11 @@
+flowchart TD
+  X[supervisor or logic exits] --> A[app sees the child exit]
+  A --> B{which one?}
+  B -- logic --> C[restart logic: AcquireLogic, re-attach; seats never notice]
+  B -- supervisor --> D[restart both]
+  D --> E{seat record has a harness session id?}
+  E -- yes --> F["launch resume_command: claude --resume, codex resume"]
+  E -- no --> G[spawn a fresh zsh]
+  F --> H[ring replayed into Playback for scrollback]
+  G --> H
+  H --> I["row shows the restarted notice; pane shows the gap marker"]

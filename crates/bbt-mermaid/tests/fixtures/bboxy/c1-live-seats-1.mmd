@@ -1,0 +1,19 @@
+flowchart LR
+  subgraph APP["app process: bboxy450-term"]
+    UI["UI thread<br/>winit, layout, draw, present<br/>never waits"]
+    IO["IO task on bbt-io<br/>owns gui.sock<br/>Replica per watched seat<br/>builds the next Model"]
+    IO -- "Latest of Arc Model, swapped at frame start" --> UI
+    UI -- "UiMsg: input, resize, watched set" --> IO
+  end
+  subgraph LOGIC["logic process: bboxy450-term logic"]
+    GUI["gui endpoint<br/>seat-socket framing and admission"]
+    VS["ViewStream per watched seat<br/>one Update in flight"]
+    GUI --- VS
+  end
+  subgraph SUP["supervisor process: bboxy450-term supervisor"]
+    PTY["PTYs, rings, leases, close grace"]
+  end
+  IO <-- "gui.sock, NDJSON" --> GUI
+  LOGIC <-- "control socket" --> SUP
+  APP -- "spawns and restarts (#11)" --> LOGIC
+  APP -- "spawns and restarts (#11)" --> SUP

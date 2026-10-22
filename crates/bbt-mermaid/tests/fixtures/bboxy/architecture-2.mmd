@@ -1,0 +1,18 @@
+sequenceDiagram
+  participant H as harness PTY
+  participant S as supervisor (mio)
+  participant W as capture writer
+  participant L as logic
+  participant C as client on the seat socket
+  H->>S: bytes
+  S->>S: tick: read up to 64 times, merge to 16 KiB, flush after 2 ms
+  S->>W: append_event (queued, never blocks)
+  W->>W: Ring::append BBR1 + CRC32C, fsync commit
+  S->>L: Event::Output with seq (writer client only)
+  L->>L: Playback::apply: vte parse, Term::advance, OSC to Session
+  L->>L: checkpoint zstd, PublishCheckpoint
+  C->>L: Subscribe
+  loop every 20 ms, one Update in flight
+    L->>C: Update::Snapshot or Delta
+    C->>L: Applied{view, sequence}
+  end

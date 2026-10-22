@@ -254,6 +254,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbt-mermaid"
+version = "0.0.1"
+
+[[package]]
 name = "bbt-mux"
 version = "0.0.1"
 dependencies = [

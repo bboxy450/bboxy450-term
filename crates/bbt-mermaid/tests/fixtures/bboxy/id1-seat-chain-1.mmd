@@ -1,0 +1,8 @@
+flowchart TB
+  R["account primary<br/>operator's GPG key, pinned fingerprint<br/>custody: gpg-agent, own Assuan client<br/>never in the app"]
+  D["device key, Ed25519 per machine<br/>custody: Data Protection Keychain<br/>certified once by the primary"]
+  S["seat key, Ed25519 per seat generation<br/>custody: logic memory only<br/>certified by the device key"]
+  E["envelope (W2.4)<br/>issuer-kind gpg-root, issuer = root, device, author = seat<br/>role_grant_id = SeatGrant, role_epoch = grant_epoch"]
+  R -- "OpenPGP certification + DeviceGrant + AccountHead, epoch 1" --> D
+  D -- "OpenPGP certification + SeatGrant (24 h) + roster entry" --> S
+  S -- "signs" --> E

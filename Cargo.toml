@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
   "crates/bbt-core",
+  "crates/bbt-mermaid",
   "crates/bbt-supervisor",
   "crates/bbt-mux",
   "crates/bbt-rt",

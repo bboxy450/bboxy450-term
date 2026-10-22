@@ -1,0 +1,14 @@
+sequenceDiagram
+  participant O as Oracle seat
+  participant L as logic
+  participant X as Executor seat
+  O->>L: task_delegate{op_id, task_path, seat_id}
+  L->>L: rewrite frontmatter: assignee, delegated_by, status claimed
+  L->>X: Body::Task{event: delegate} via W2.4 delivery (native or guarded PTY)
+  X->>L: orient
+  L-->>X: card: role, task path, verify command, who it may message
+  X->>X: works in its worktree
+  X->>L: task_report{op_id, task_path, summary, commit, verify_result}
+  L->>L: status reported, evidence appended to the task file
+  L->>O: Body::Task{event: report} to delegated_by
+  O->>L: task_accept or task_reject

@@ -1,0 +1,15 @@
+flowchart TB
+  subgraph SUPV["supervisor"]
+    CAP["32 random bytes per start<br/>constant-time compare on AcquireLogic"]
+    LEASE["logic lease, writer lease, generation<br/>checked on every action"]
+  end
+  subgraph LOG["logic"]
+    SCAP["per-seat endpoint capability<br/>in the env of the whole harness tree<br/>checked per line"]
+    SIGN["event signing key<br/>Ed25519 + hash chain, key not pinned"]
+    KEYS["SeatKeys: HKDF local-dev placeholder (W2.4)<br/>decision #4: GPG root, device key, seat key"]
+  end
+  PTY["PTY observations: no capability<br/>the PTY is authoritative (S4)"]
+  LOG -- AcquireLogic --> CAP
+  HOOK[hook] -- NDJSON line --> SCAP
+  HARN[harness] --> PTY --> LOG
+  LOG -. "W2.4 wires it" .-> KEYS

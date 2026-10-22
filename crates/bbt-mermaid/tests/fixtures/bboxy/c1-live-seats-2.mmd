@@ -1,0 +1,14 @@
+sequenceDiagram
+  participant UI as UI thread
+  participant IO as IO task
+  participant L as logic
+  participant S as supervisor
+  UI->>IO: UiMsg::Input{seat, bytes}
+  IO->>L: Input{seat, id, bytes} (operator input, no guard)
+  L->>S: Action::Input (dedup by id + SHA-256)
+  S-->>L: Event::Output seq
+  L->>IO: Update::Delta rows
+  IO->>IO: Replica::apply, new Arc Screen for that seat
+  IO->>UI: publish Model, dirty bit, one Wake
+  UI->>UI: take latest Arc, draw only panes whose Screen changed
+  IO->>L: Applied{seat, view, sequence}
