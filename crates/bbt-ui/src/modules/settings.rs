@@ -1,0 +1,2830 @@
+//! Read-mostly Settings composition. Host-owned records and section selection;
+//! this view never reads config files, unlocks keys, or issues grants.
+use super::{
+    seat_row::{named, role_color},
+    strip::plain,
+};
+use crate::{self as ui, components as c};
+use bbt_ui_model::{
+    STYLE, TOKENS,
+    draw::Color as Rgba,
+    layout::{Axis, TextStyle as MeasureStyle},
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Account {
+    pub name: String,
+    pub handle: String,
+    pub email: String,
+    pub fingerprint: String,
+    pub algo: String,
+    #[serde(rename = "keyState")]
+    pub key_state: String,
+    pub trust: Vec<String>,
+    pub devices: Vec<(String, String, String)>,
+    pub sign: Signatures,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Signatures {
+    pub commits: bool,
+    pub messages: bool,
+    #[serde(rename = "seatCommits")]
+    pub seat_commits: bool,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Role {
+    pub prompt: String,
+    pub send: String,
+    pub color: String,
+    pub mark: String,
+    pub cls: String,
+    pub custom: bool,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Harness {
+    pub role: String,
+    pub wake: String,
+    pub hooks: bool,
+    pub command: String,
+    pub tile: String,
+    pub icon: String,
+    #[serde(rename = "stateFrom")]
+    pub state_from: String,
+    pub custom: bool,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Appearance {
+    pub theme: String,
+    pub density: String,
+    pub gutter: f32,
+    pub glow: bool,
+    pub subtitle: bool,
+    pub opacity: f32,
+    pub blur: bool,
+    #[serde(rename = "blurRadius")]
+    pub blur_radius: f32,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Records {
+    pub account: Account,
+    pub cloud: Vec<(String, String, bool, String)>,
+    pub machines: Vec<(String, String, String, String, bool)>,
+    pub roles: Vec<(String, Role)>,
+    pub harness: Vec<(String, Harness)>,
+    pub appearance: Appearance,
+    pub shortcuts: Vec<(String, String)>,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DraftHarness {
+    pub name: String,
+    pub command: String,
+    pub ci: i32,
+    pub icon: String,
+    pub role: String,
+    pub wake: String,
+    #[serde(rename = "stateFrom")]
+    pub state_from: String,
+    pub hooks: bool,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Launch {
+    pub harness: String,
+    pub label: String,
+    pub tile: String,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Settings {
+    pub section: String,
+    pub values: Records,
+    pub defaults: Records,
+    #[serde(rename = "draftHarness")]
+    pub draft_harness: Option<DraftHarness>,
+    pub launch: Vec<Launch>,
+}
+const SECTIONS: [(&str, &str); 7] = [
+    ("Account", "key"),
+    ("Cloud", "cloud"),
+    ("Machines", "ssh"),
+    ("Roles", "roles"),
+    ("Harnesses", "gear"),
+    ("Appearance", "sun"),
+    ("Shortcuts", "keys"),
+];
+fn paint(color: ui::Color, alpha: f32) -> ui::Paint {
+    ui::Paint {
+        color,
+        alpha: ui::Alpha::Value(alpha),
+    }
+}
+fn color(v: &str) -> ui::Color {
+    if let Some(r) = v
+        .strip_prefix("var(--role-")
+        .and_then(|s| s.strip_suffix(')'))
+    {
+        role_color(r)
+    } else {
+        ui::Color::Rgba(Rgba::hex(v).0)
+    }
+}
+fn font(size: f32, weight: u16, mono: bool, co: ui::Color) -> ui::Text {
+    ui::Text {
+        size: Some(size),
+        weight,
+        mono,
+        paint: ui::Paint::solid(co),
+        line_height: 1.35,
+        ..Default::default()
+    }
+}
+fn txt(k: &str, v: impl Into<String>, f: ui::Text) -> c::Element {
+    let mut t = c::Text::new(v, f);
+    t.wrap = false;
+    t.ellipsis = true;
+    named(k, c::Element::Text(t))
+}
+fn wrap(k: &str, v: impl Into<String>, f: ui::Text) -> c::Element {
+    named(k, c::Element::Text(c::Text::new(v, f)))
+}
+fn row(k: &str, s: ui::Style, gap: f32, children: Vec<c::Item>) -> c::Element {
+    let mut b = c::Box::new(s, children);
+    b.gap = ui::Length::Px(gap);
+    named(k, c::Element::Box(b))
+}
+fn col(k: &str, s: ui::Style, gap: f32, children: Vec<c::Item>) -> c::Element {
+    let mut b = c::Box::new(s, children);
+    b.direction = Axis::Column;
+    b.align = c::Alignment::Stretch;
+    b.gap = ui::Length::Px(gap);
+    named(k, c::Element::Box(b))
+}
+fn fixed(e: c::Element, n: f32) -> c::Item {
+    c::Item {
+        element: e,
+        extent: c::Extent::Fixed(n),
+    }
+}
+fn fill(e: c::Element) -> c::Item {
+    c::Item {
+        element: e,
+        extent: c::Extent::Fill,
+    }
+}
+fn natural(e: c::Element) -> c::Item {
+    c::Item {
+        element: e,
+        extent: c::Extent::Content {
+            grow: 0.,
+            shrink: 0.,
+            min: 0.,
+            max: None,
+            max_fraction: None,
+        },
+    }
+}
+fn icon(k: &str, name: &str, size: f32, co: ui::Color) -> c::Element {
+    named(
+        k,
+        c::Element::Icon {
+            name: name.into(),
+            paint: ui::Paint::solid(co),
+            size: ui::Length::Px(size),
+        },
+    )
+}
+fn surface(
+    fill: ui::Color,
+    alpha: f32,
+    radius: f32,
+    pad: [f32; 4],
+    height: Option<f32>,
+) -> ui::Style {
+    let mut s = plain(height, pad, radius);
+    s.overrides.fill = Some(paint(fill, alpha));
+    s
+}
+fn hair(ctx: ui::Context) -> ui::Color {
+    let mut c = Rgba::hex(ctx.theme.palette().line);
+    c.0[3] *= STYLE.material.hairline_alpha as f32;
+    ui::Color::Rgba(c.0)
+}
+fn border(mut s: ui::Style, co: ui::Color, outside: bool) -> ui::Style {
+    s.overrides.border = Some(ui::Border {
+        width: ui::Length::Hairline,
+        paint: ui::Paint::solid(co),
+        outside,
+    });
+    s
+}
+fn bottom(s: ui::Style, ctx: ui::Context, last: bool) -> ui::Style {
+    if last {
+        s
+    } else {
+        let mut s = border(s, hair(ctx), false);
+        s.overrides.border_sides = Some([false, false, true, false]);
+        s
+    }
+}
+fn tint(ctx: ui::Context, alpha: f32) -> ui::Color {
+    let mut v = Rgba::hex(ctx.theme.palette().fg);
+    v.0[3] *= alpha;
+    ui::Color::Rgba(v.0)
+}
+fn badge(ctx: ui::Context, alpha: f32) -> ui::Color {
+    let mut v = Rgba::hex(ctx.theme.palette().fg_dim);
+    v.0[3] *= alpha;
+    ui::Color::Rgba(v.0)
+}
+fn mixed(ctx: ui::Context, a: &str, b: &str, f: f32) -> ui::Color {
+    let _ = ctx;
+    ui::Color::Rgba(Rgba::hex(a).mix(Rgba::hex(b), 1. - f).0)
+}
+fn measured(m: &dyn c::Measure, v: &str, f: ui::Text) -> f32 {
+    m.width(
+        v,
+        &MeasureStyle {
+            size: f.size.unwrap_or(13.),
+            weight: f.weight,
+            mono: f.mono,
+            italic: f.italic,
+            tracking_em: f.tracking_em,
+        },
+    )
+}
+fn flow(
+    k: &str,
+    items: Vec<c::Item>,
+    row_gap: f32,
+    col_gap: f32,
+    align: c::Alignment,
+) -> c::Element {
+    let mut f = c::Flow::new(items);
+    f.row_gap = ui::Length::Px(row_gap);
+    f.column_gap = ui::Length::Px(col_gap);
+    f.align = align;
+    named(k, c::Element::Flow(f))
+}
+struct Build<'a> {
+    ctx: ui::Context,
+    m: &'a dyn c::Measure,
+    width: f32,
+}
+impl Build<'_> {
+    fn text(
+        &self,
+        k: &str,
+        v: impl Into<String>,
+        size: f32,
+        weight: u16,
+        mono: bool,
+        dim: bool,
+    ) -> c::Element {
+        txt(
+            k,
+            v,
+            font(
+                size,
+                weight,
+                mono,
+                if dim {
+                    ui::Color::Muted
+                } else {
+                    ui::Color::Foreground
+                },
+            ),
+        )
+    }
+    fn note(&self, k: &str, v: &str, inside: bool) -> c::Element {
+        col(
+            k,
+            plain(
+                None,
+                if inside {
+                    [8., 0., 0., 0.]
+                } else {
+                    [0., 2., 0., 2.]
+                },
+                0.,
+            ),
+            0.,
+            vec![
+                wrap(
+                    &format!("{k}/text"),
+                    v,
+                    ui::Text {
+                        line_height: 1.5,
+                        ..font(12., 400, false, ui::Color::Muted)
+                    },
+                )
+                .into(),
+            ],
+        )
+    }
+    fn card(&self, k: &str, title: &str, children: Vec<c::Item>, pad: [f32; 4]) -> c::Element {
+        let mut all = vec![];
+        if !title.is_empty() {
+            all.push(
+                row(
+                    &format!("{k}/head"),
+                    plain(None, [8., 0., 4., 0.], 0.),
+                    10.,
+                    vec![
+                        self.text(&format!("{k}/title"), title, 13., 600, false, false)
+                            .into(),
+                    ],
+                )
+                .into(),
+            );
+        }
+        all.extend(children);
+        col(
+            k,
+            border(
+                surface(
+                    ui::Color::Surface,
+                    STYLE.material.card_alpha as f32,
+                    STYLE.radius.card as f32,
+                    pad,
+                    None,
+                ),
+                hair(self.ctx),
+                true,
+            ),
+            0.,
+            all,
+        )
+    }
+    fn dot(&self, k: &str, on: bool, size: f32) -> c::Element {
+        let co = if on {
+            color(TOKENS.color.ui.ok)
+        } else {
+            color(TOKENS.color.state.idle)
+        };
+        let mut s = surface(co, 1., size / 2., [0.; 4], Some(size));
+        s.overrides.width = Some(ui::Length::Px(size));
+        if on {
+            s.overrides.shadow = Some(ui::Shadow::Positioned {
+                offset: [0., 0.],
+                blur: 6.,
+                color: ui::Paint {
+                    color: co,
+                    alpha: ui::Alpha::Value(0.6),
+                }
+                .resolve(self.ctx)
+                .unwrap(),
+            });
+        }
+        row(k, s, 0., vec![])
+    }
+    fn toggle(&self, k: &str, on: bool) -> c::Element {
+        let mut knob = surface(
+            if on {
+                ui::Color::Rgba([1.; 4])
+            } else {
+                ui::Color::Surface
+            },
+            1.,
+            7.,
+            [0.; 4],
+            Some(14.),
+        );
+        knob.overrides.width = Some(ui::Length::Px(14.));
+        knob.overrides.shadow = Some(ui::Shadow::Positioned {
+            offset: [0., 1.],
+            blur: 2.,
+            color: [0., 0., 0., 0.3],
+        });
+        row(
+            k,
+            surface(
+                if on {
+                    ui::Color::Accent
+                } else {
+                    badge(self.ctx, STYLE.tint.badge_selected_alpha as f32)
+                },
+                1.,
+                9.,
+                [2., if on { 2. } else { 14. }, 2., if on { 14. } else { 2. }],
+                Some(18.),
+            ),
+            0.,
+            vec![fixed(row(&format!("{k}/knob"), knob, 0., vec![]), 14.)],
+        )
+    }
+    fn chip(
+        &self,
+        k: &str,
+        v: &str,
+        builtin: bool,
+        co: Option<ui::Color>,
+        ico: Option<&str>,
+    ) -> c::Element {
+        let fg = co.unwrap_or(if builtin {
+            ui::Color::Muted
+        } else {
+            ui::Color::Foreground
+        });
+        let mut items = vec![];
+        if let Some(i) = ico {
+            items.push(icon(&format!("{k}/icon"), i, 12., ui::Color::Muted).into());
+        }
+        let mut f = font(
+            if builtin { 10. } else { 11. },
+            if co.is_some() { 600 } else { 400 },
+            false,
+            fg,
+        );
+        if builtin {
+            f.tracking_em = 0.04;
+        }
+        items.push(txt(&format!("{k}/text"), v, f).into());
+        row(
+            k,
+            surface(
+                co.unwrap_or(badge(self.ctx, STYLE.tint.badge_alpha as f32)),
+                if co.is_some() { 0.14 } else { 1. },
+                6.,
+                [
+                    0.,
+                    if builtin { 6. } else { 8. },
+                    0.,
+                    if builtin { 6. } else { 8. },
+                ],
+                Some(if builtin { 18. } else { 20. }),
+            ),
+            6.,
+            items,
+        )
+    }
+    fn diff(&self, k: &str) -> c::Element {
+        let s = border(plain(None, [1., 8., 1., 8.], 999.), hair(self.ctx), false);
+        let mut t = font(11., 400, false, ui::Color::Muted);
+        t.line_height = 16. / 11.;
+        row(
+            k,
+            plain(None, [0.; 4], 0.),
+            6.,
+            vec![
+                fixed(
+                    row(
+                        "",
+                        surface(ui::Color::Accent, 1., 3.5, [0.; 4], Some(7.)),
+                        0.,
+                        vec![],
+                    ),
+                    7.,
+                ),
+                row("", s, 0., vec![txt("", "reset", t).into()]).into(),
+            ],
+        )
+    }
+    fn select(&self, k: &str, opts: &[String], v: &str, small: bool, full: bool) -> c::Element {
+        let size = if small { 11. } else { 12.5 };
+        let f = font(size, 400, false, ui::Color::Foreground);
+        let w = opts
+            .iter()
+            .map(|s| measured(self.m, s, f))
+            .fold(0., f32::max)
+            .ceil()
+            + (if small { 30. } else { 33. });
+        let mut style = border(
+            surface(
+                mixed(
+                    self.ctx,
+                    self.ctx.theme.palette().bg,
+                    self.ctx.theme.palette().surface,
+                    0.6,
+                ),
+                1.,
+                6.,
+                [
+                    if small { 3. } else { 5. },
+                    if small { 22. } else { 24. },
+                    if small { 3. } else { 5. },
+                    if small { 8. } else { 9. },
+                ],
+                None,
+            ),
+            hair(self.ctx),
+            true,
+        );
+        if !full {
+            style.overrides.width = Some(ui::Length::Px(if small { w.min(128.) } else { w }));
+        }
+        // The CSS dropdown indicator is two 4px triangles; retained strokes keep it in the control.
+        let arrow = c::Placed {
+            content: c::Element::Path(c::Path {
+                size: [8., 4.],
+                points: vec![
+                    c::PathCommand::Move([0., 0.]),
+                    c::PathCommand::Line([4., 4.]),
+                    c::PathCommand::Line([8., 0.]),
+                ]
+                .into(),
+                stroke: c::PathStroke {
+                    width: 1.5,
+                    ..Default::default()
+                },
+                paint: ui::Paint::solid(ui::Color::Muted),
+                opacity: 1.,
+            }),
+            left: if full {
+                self.width - 17.
+            } else {
+                w.min(if small { 128. } else { w }) - 17.
+            },
+            bottom: 6.,
+        };
+        let mut b = c::Box::new(style, vec![fill(txt(&format!("{k}/text"), v, f))]);
+        b.gap = ui::Length::Px(0.);
+        named(
+            k,
+            c::Element::Layers {
+                base: Box::new(c::Element::Box(b)),
+                overlays: vec![arrow],
+            },
+        )
+    }
+    #[allow(clippy::too_many_arguments)] // A labelled control row and its supplied display flags.
+    fn setting_row(
+        &self,
+        k: &str,
+        label: &str,
+        hint: Option<&str>,
+        control: c::Element,
+        changed: bool,
+        last: bool,
+        small: bool,
+    ) -> c::Element {
+        let mut labels = vec![
+            wrap(
+                &format!("{k}/label/text"),
+                label,
+                font(
+                    if small { 12.5 } else { 13. },
+                    500,
+                    false,
+                    ui::Color::Foreground,
+                ),
+            )
+            .into(),
+        ];
+        if let Some(h) = hint {
+            labels.push(
+                wrap(
+                    &format!("{k}/hint"),
+                    h,
+                    font(11., 400, false, ui::Color::Muted),
+                )
+                .into(),
+            );
+        }
+        let lbl = col(&format!("{k}/label"), plain(None, [0.; 4], 0.), 1., labels);
+        let mut s = bottom(
+            plain(
+                None,
+                [
+                    if small { 6. } else { 8. },
+                    0.,
+                    if small { 6. } else { 8. },
+                    0.,
+                ],
+                0.,
+            ),
+            self.ctx,
+            last,
+        );
+        s.overrides.height = None;
+        let mut children = vec![fill(lbl), natural(named(format!("{k}/ctl"), control))];
+        // Grid's empty third auto column still contributes its second gap.
+        children.push(if changed {
+            natural(self.diff(&format!("{k}/diff")))
+        } else {
+            fixed(c::Element::Spacer, 0.)
+        });
+        let mut e = row(k, s, if small { 10. } else { 14. }, children);
+        let h = e
+            .layout(
+                bbt_ui_model::layout::Rect::new(
+                    0.,
+                    0.,
+                    self.width + if changed && small { 16. } else { 0. },
+                    0.,
+                ),
+                self.ctx,
+                self.m,
+            )
+            .unwrap()
+            .rect
+            .h
+            .max(if small { 34. } else { 40. });
+        set_height(&mut e, h);
+        if changed {
+            expand_row(&mut e, k, 8., self.width, self.ctx, self.m, small);
+        }
+        e
+    }
+    fn field(
+        &self,
+        k: &str,
+        label: &str,
+        hint: Option<&str>,
+        control: c::Element,
+        changed: bool,
+        small: bool,
+    ) -> c::Element {
+        let mut labels = vec![self.text("", label, 12.5, 500, false, false).into()];
+        if let Some(h) = hint {
+            labels.push(wrap("", h, font(11., 400, false, ui::Color::Muted)).into());
+        }
+        let mut line = vec![fill(col("", plain(None, [0.; 4], 0.), 0., labels))];
+        if changed {
+            line.push(self.diff("").into());
+        }
+        col(
+            k,
+            plain(
+                None,
+                [
+                    if small { 6. } else { 7. },
+                    0.,
+                    if small { 6. } else { 7. },
+                    0.,
+                ],
+                0.,
+            ),
+            5.,
+            vec![
+                row(&format!("{k}/label"), plain(None, [0.; 4], 0.), 8., line).into(),
+                named(format!("{k}/control"), control).into(),
+            ],
+        )
+    }
+    fn segment(&self, k: &str, opts: &[&str], v: &str) -> c::Element {
+        row(
+            k,
+            surface(
+                badge(self.ctx, STYLE.tint.badge_alpha as f32),
+                1.,
+                8.,
+                [2.; 4],
+                None,
+            ),
+            2.,
+            opts.iter()
+                .enumerate()
+                .map(|(i, o)| {
+                    row(
+                        &format!("{k}/{i}"),
+                        if *o == v {
+                            border(
+                                surface(ui::Color::Surface, 1., 6., [2., 10., 2., 10.], None),
+                                hair(self.ctx),
+                                true,
+                            )
+                        } else {
+                            plain(None, [2., 10., 2., 10.], 6.)
+                        },
+                        0.,
+                        vec![self.text("", *o, 12.5, 400, false, *o != v).into()],
+                    )
+                    .into()
+                })
+                .collect(),
+        )
+    }
+    fn button(&self, k: &str, v: &str, ico: Option<&str>, kind: &str) -> c::Element {
+        let co = if kind == "primary" {
+            ui::Color::OnAccent
+        } else if kind == "link" {
+            color(self.ctx.theme.palette().accent_soft)
+        } else if kind == "ghost" {
+            ui::Color::Muted
+        } else {
+            ui::Color::Foreground
+        };
+        let s = surface(
+            if kind == "primary" {
+                ui::Color::Accent
+            } else if kind == "link" || kind == "ghost" {
+                ui::Color::Transparent
+            } else {
+                tint(self.ctx, STYLE.tint.selection_alpha as f32)
+            },
+            1.,
+            999.,
+            [
+                0.,
+                if kind == "link" { 4. } else { 13. },
+                0.,
+                if kind == "link" { 4. } else { 13. },
+            ],
+            Some(28.),
+        );
+        let mut kids = vec![];
+        if let Some(i) = ico {
+            kids.push(icon("", i, 14., co).into());
+        }
+        kids.push(txt("", v, font(13., 400, false, co)).into());
+        row(
+            k,
+            if kind == "ghost" {
+                border(s, hair(self.ctx), true)
+            } else {
+                s
+            },
+            7.,
+            kids,
+        )
+    }
+    fn grid(&self, k: &str, width: f32, min: f32, gap: f32, items: Vec<c::Element>) -> c::Element {
+        let cols = (((width + gap) / (min + gap)).floor() as usize).max(1);
+        let cw = (width - gap * (cols - 1) as f32) / cols as f32;
+        let rows = items
+            .chunks(cols)
+            .map(|chunk| {
+                let height = chunk
+                    .iter()
+                    .map(|e| {
+                        e.layout(
+                            bbt_ui_model::layout::Rect::new(0., 0., cw, 0.),
+                            self.ctx,
+                            self.m,
+                        )
+                        .expect("settings grid child")
+                        .rect
+                        .h
+                    })
+                    .fold(0., f32::max);
+                let children = chunk
+                    .iter()
+                    .map(|e| {
+                        let mut child = e.clone();
+                        set_height(&mut child, height);
+                        fixed(child, cw)
+                    })
+                    .collect();
+                row("", plain(None, [0.; 4], 0.), gap, children).into()
+            })
+            .collect();
+        col(k, plain(None, [0.; 4], 0.), gap, rows)
+    }
+    fn role_card(&self, k: &str, name: &str, v: &Role, d: Option<&Role>) -> c::Element {
+        let co = color(&v.color);
+        let mut f = font(10.5, 600, false, co);
+        f.tracking_em = 0.16;
+        f.uppercase = true;
+        let mut band = vec![
+            txt("", &v.mark, font(14., 600, false, co)).into(),
+            fill(txt(&format!("{k}/name"), name, f)),
+            self.chip("", "built-in", true, Some(co), None).into(),
+        ];
+        if v.custom {
+            band.pop();
+            band.push(self.text("", "delete", 10., 500, false, false).into());
+        }
+        let mut s = surface(co, 0.18, 0., [0., 12., 0., 12.], Some(30.));
+        s = border(s, co, false);
+        s.overrides.border = Some(ui::Border {
+            width: ui::Length::Px(2.),
+            paint: ui::Paint::solid(co),
+            outside: false,
+        });
+        s.overrides.border_sides = Some([false, false, true, false]);
+        let prompt = col(
+            "",
+            border(
+                surface(
+                    mixed(
+                        self.ctx,
+                        self.ctx.theme.palette().bg,
+                        self.ctx.theme.palette().surface,
+                        0.6,
+                    ),
+                    1.,
+                    6.,
+                    [5., 9., 5., 9.],
+                    Some(88.),
+                ),
+                hair(self.ctx),
+                true,
+            ),
+            0.,
+            vec![
+                wrap(
+                    "",
+                    &v.prompt,
+                    ui::Text {
+                        line_height: 1.45,
+                        ..font(11., 400, true, ui::Color::Foreground)
+                    },
+                )
+                .into(),
+            ],
+        );
+        let fld0 = self.field(
+            &format!("{k}/f0"),
+            "Default system prompt",
+            None,
+            prompt,
+            d.is_some_and(|d| d.prompt != v.prompt),
+            false,
+        );
+        let fld1 = self.field(
+            &format!("{k}/f1"),
+            "May send to",
+            Some("terminal-enforced"),
+            self.select(
+                "",
+                &[
+                    "all channels · all DMs".into(),
+                    "own swarm · operator DM".into(),
+                    "operator DM only".into(),
+                ],
+                &v.send,
+                false,
+                true,
+            ),
+            d.is_some_and(|d| d.send != v.send),
+            false,
+        );
+        let mut fld2 = self.field(
+            &format!("{k}/f2"),
+            "Priority class",
+            Some("delivery order and badging follow the class"),
+            self.segment(
+                "",
+                &["oracle class", "worker class"],
+                &format!("{} class", v.cls),
+            ),
+            d.is_some_and(|d| d.cls != v.cls),
+            false,
+        );
+        if let c::Element::Named { content, .. } = &mut fld2
+            && let c::Element::Box(b) = content.as_mut()
+        {
+            b.children.push(
+                wrap(
+                    "",
+                    "changing class re-issues this role's seat grants",
+                    font(11., 400, false, ui::Color::Muted),
+                )
+                .into(),
+            );
+        }
+        let mut fld0 = fld0;
+        if d.is_some_and(|d| d.prompt != v.prompt) {
+            expand_row(
+                &mut fld0,
+                &format!("{k}/f0"),
+                8.,
+                self.width,
+                self.ctx,
+                self.m,
+                false,
+            );
+        }
+
+        let mut b = c::Box::new(
+            surface(
+                ui::Color::Surface,
+                STYLE.material.card_alpha as f32,
+                12.,
+                [0.; 4],
+                None,
+            ),
+            vec![
+                row(&format!("{k}/band"), s, 8., band).into(),
+                col(
+                    "",
+                    plain(None, [4., 12., 10., 12.], 0.),
+                    0.,
+                    vec![fld0.into(), fld1.into(), fld2.into()],
+                )
+                .into(),
+            ],
+        );
+        b.direction = Axis::Column;
+        b.align = c::Alignment::Stretch;
+        b.gap = ui::Length::Px(0.);
+        b.clip = true;
+        let mut s = b.style.as_ref().clone();
+        s = border(s, hair(self.ctx), true);
+        b.style = Box::new(s);
+        named(k, c::Element::Box(b))
+    }
+    fn add_card(&self, k: &str, title: &str, note: &str, height: f32) -> c::Element {
+        let mut style = border(plain(Some(height), [0.; 4], 12.), ui::Color::Line, false);
+        style.overrides.dashed = Some(true);
+        let mut children = vec![
+            fill(c::Element::Spacer),
+            self.text(
+                "",
+                title,
+                if note.is_empty() { 12.5 } else { 13. },
+                500,
+                false,
+                false,
+            )
+            .into(),
+        ];
+        if !note.is_empty() {
+            children.push(self.text("", note, 11., 400, false, true).into());
+        }
+        children.push(fill(c::Element::Spacer));
+        let mut b = c::Box::new(style, children);
+        b.direction = Axis::Column;
+        b.align = c::Alignment::Center;
+        b.gap = ui::Length::Px(4.);
+        named(k, c::Element::Box(b))
+    }
+    fn harness_card(
+        &self,
+        k: &str,
+        name: &str,
+        v: &Harness,
+        d: Option<&Harness>,
+        launch: &[Launch],
+        roles: &[String],
+    ) -> c::Element {
+        let label = launch
+            .iter()
+            .find(|h| h.harness == name)
+            .map(|h| h.label.as_str())
+            .unwrap_or(name);
+        let title = col(
+            "",
+            plain(None, [0.; 4], 0.),
+            1.,
+            vec![
+                named(
+                    format!("{k}/hname"),
+                    txt(
+                        "",
+                        label,
+                        ui::Text {
+                            line_height: 1.25,
+                            ..font(13., 600, false, ui::Color::Foreground)
+                        },
+                    ),
+                )
+                .into(),
+                txt(
+                    &format!("{k}/command"),
+                    &v.command,
+                    ui::Text {
+                        line_height: 1.25,
+                        ..font(11., 400, true, ui::Color::Muted)
+                    },
+                )
+                .into(),
+            ],
+        );
+        let tile = row(
+            &format!("{k}/tile"),
+            surface(color(&v.tile), 1., 8., [0.; 4], Some(30.)),
+            0.,
+            vec![
+                icon(
+                    "",
+                    if v.icon.is_empty() { name } else { &v.icon },
+                    17.,
+                    ui::Color::OnAccent,
+                )
+                .into(),
+            ],
+        );
+        let head = row(
+            &format!("{k}/head"),
+            bottom(plain(None, [0., 0., 6., 0.], 0.), self.ctx, false),
+            10.,
+            vec![
+                fixed(tile, 30.),
+                fill(title),
+                if v.custom {
+                    self.text("", "delete", 10., 500, false, true)
+                } else {
+                    self.chip("", "built-in", true, None, None)
+                }
+                .into(),
+            ],
+        );
+        let row0 = self.setting_row(
+            &format!("{k}/r0"),
+            "Default role",
+            None,
+            self.select("", roles, &v.role, true, false),
+            d.is_some_and(|d| d.role != v.role),
+            false,
+            true,
+        );
+        let row1 = self.setting_row(
+            &format!("{k}/r1"),
+            "Wake",
+            if v.custom && v.wake == "pty" {
+                Some(if v.hooks {
+                    "types after an idle hook"
+                } else {
+                    "never submits on its own"
+                })
+            } else {
+                None
+            },
+            self.select(
+                "",
+                &["socket", "hook", "mcp", "pty"].map(str::to_string),
+                &v.wake,
+                true,
+                false,
+            ),
+            d.is_some_and(|d| d.wake != v.wake),
+            false,
+            true,
+        );
+        let row2 = self.setting_row(
+            &format!("{k}/r2"),
+            "State from",
+            None,
+            self.select(
+                "",
+                &["osc7501", "hooks", "output cadence"].map(str::to_string),
+                &v.state_from,
+                true,
+                false,
+            ),
+            d.is_some_and(|d| d.state_from != v.state_from),
+            false,
+            true,
+        );
+        let row3 = self.setting_row(
+            &format!("{k}/r3"),
+            "Hooks",
+            Some("state from harness hooks"),
+            self.toggle("", v.hooks),
+            d.is_some_and(|d| d.hooks != v.hooks),
+            true,
+            true,
+        );
+        self.card(
+            k,
+            "",
+            vec![
+                head.into(),
+                col(
+                    "",
+                    plain(None, [2., 0., 0., 0.], 0.),
+                    0.,
+                    vec![row0.into(), row1.into(), row2.into(), row3.into()],
+                )
+                .into(),
+            ],
+            [10., 12., 8., 12.],
+        )
+    }
+}
+impl Settings {
+    pub fn element(
+        &self,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+        height: f32,
+    ) -> c::Element {
+        let b = Build {
+            ctx,
+            m,
+            width: (width - 200. - 36. - 28.).max(1.),
+        };
+        let side_fill = mixed(
+            ctx,
+            ctx.theme.palette().sidebar,
+            ctx.theme.palette().bg,
+            STYLE.material.panel_alpha as f32,
+        );
+        let q = row(
+            "search",
+            border(
+                surface(
+                    ui::Color::Surface,
+                    STYLE.material.card_alpha as f32,
+                    10.,
+                    [0., 10., 0., 9.],
+                    Some(28.),
+                ),
+                hair(ctx),
+                true,
+            ),
+            6.,
+            vec![
+                icon("", "search", 13., ui::Color::Muted).into(),
+                b.text("", "Search settings", 12.5, 400, false, true).into(),
+            ],
+        );
+        let nav = SECTIONS
+            .iter()
+            .enumerate()
+            .map(|(i, (name, ico))| {
+                row(
+                    &format!("nav{i}"),
+                    surface(
+                        if *name == self.section {
+                            tint(ctx, STYLE.tint.selection_alpha as f32)
+                        } else {
+                            ui::Color::Transparent
+                        },
+                        1.,
+                        10.,
+                        [0., 9., 0., 9.],
+                        Some(28.),
+                    ),
+                    9.,
+                    vec![
+                        icon(
+                            &format!("nav{i}/icon"),
+                            ico,
+                            14.,
+                            if *name == self.section {
+                                ui::Color::Accent
+                            } else {
+                                ui::Color::Muted
+                            },
+                        )
+                        .into(),
+                        b.text(
+                            &format!("nav{i}/text"),
+                            *name,
+                            12.5,
+                            500,
+                            false,
+                            *name != self.section,
+                        )
+                        .into(),
+                    ],
+                )
+                .into()
+            })
+            .collect();
+        let mut side = border(
+            surface(side_fill, 1., 0., [10., 8., 10., 8.], Some(height)),
+            hair(ctx),
+            false,
+        );
+        side.overrides.border_sides = Some([false, true, false, false]);
+        let side = col(
+            "side",
+            side,
+            2.,
+            vec![
+                col("", plain(None, [0., 0., 8., 0.], 0.), 0., vec![q.into()]).into(),
+                col("", plain(None, [0.; 4], 0.), 1., nav).into(),
+                fill(c::Element::Spacer),
+                col(
+                    "source",
+                    plain(None, [8., 9., 0., 9.], 0.),
+                    0.,
+                    vec![
+                        row(
+                            "",
+                            plain(None, [0.; 4], 0.),
+                            0.,
+                            vec![
+                                b.text(
+                                    "source/text",
+                                    "~/.config/bboxy/config.toml",
+                                    10.,
+                                    400,
+                                    true,
+                                    true,
+                                )
+                                .into(),
+                            ],
+                        )
+                        .into(),
+                    ],
+                )
+                .into(),
+            ],
+        );
+        let content_width = (width - 200. - 36.).max(1.);
+        let kids = self.section_elements(&b, content_width);
+        let main = named(
+            "main",
+            c::Element::ScrollView(c::ScrollView {
+                viewport: [(width - 200.).max(1.), height],
+                offset: [0.; 2],
+                content_width: None,
+                content: Box::new(col("", plain(None, [14., 18., 32., 18.], 0.), 12., kids)),
+            }),
+        );
+        row(
+            "settings",
+            surface(ui::Color::Background, 1., 0., [0.; 4], Some(height)),
+            0.,
+            vec![fixed(side, 200.), fill(main)],
+        )
+    }
+    fn section_elements(&self, b: &Build, width: f32) -> Vec<c::Item> {
+        match self.section.as_str() {
+            "Roles" => {
+                let mut items: Vec<_> = self
+                    .values
+                    .roles
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (n, v))| {
+                        Build {
+                            width: (width
+                                - 10.
+                                    * ((((width + 10.) / 240.).floor() as usize).max(1) - 1)
+                                        as f32)
+                                / ((((width + 10.) / 240.).floor() as usize).max(1)) as f32
+                                - 24.,
+                            ..*b
+                        }
+                        .role_card(
+                            &format!("card{i}"),
+                            n,
+                            v,
+                            self.defaults
+                                .roles
+                                .iter()
+                                .find(|(k, _)| k == n)
+                                .map(|(_, v)| v),
+                        )
+                    })
+                    .collect();
+                items.push(b.add_card(
+                    &format!("card{}", items.len()),
+                    "+ new role",
+                    "your own mark, colour and prompt",
+                    160.,
+                ));
+                vec![b.grid("roles", width, 230., 10., items).into()]
+            }
+            "Harnesses" => {
+                let mut items: Vec<_> = self
+                    .values
+                    .harness
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (n, v))| {
+                        Build {
+                            width: (width
+                                - 10.
+                                    * ((((width + 10.) / 240.).floor() as usize).max(1) - 1)
+                                        as f32)
+                                / ((((width + 10.) / 240.).floor() as usize).max(1)) as f32
+                                - 24.,
+                            ..*b
+                        }
+                        .harness_card(
+                            &format!("card{i}"),
+                            n,
+                            v,
+                            self.defaults
+                                .harness
+                                .iter()
+                                .find(|(k, _)| k == n)
+                                .map(|(_, v)| v),
+                            &self.launch,
+                            &self
+                                .values
+                                .roles
+                                .iter()
+                                .map(|(n, _)| n.clone())
+                                .collect::<Vec<_>>(),
+                        )
+                    })
+                    .collect();
+                if let Some(d) = &self.draft_harness {
+                    items.push(self.draft_card(
+                        &Build {
+                            width: (width
+                                - 10.
+                                    * ((((width + 10.) / 240.).floor() as usize).max(1) - 1)
+                                        as f32)
+                                / ((((width + 10.) / 240.).floor() as usize).max(1)) as f32
+                                - 24.,
+                            ..*b
+                        },
+                        &format!("card{}", items.len()),
+                        d,
+                    ));
+                } else {
+                    items.push(b.add_card(
+                        &format!("card{}", items.len()),
+                        "+ new harness",
+                        "any command that talks in a terminal",
+                        150.,
+                    ));
+                }
+                vec![b.grid("harnesses", width, 230., 10., items).into()]
+            }
+            "Cloud" => vec![self.cloud(b, width).into()],
+            "Machines" => vec![self.machines(b).into()],
+            "Shortcuts" => vec![self.shortcuts(b, width).into()],
+            "Appearance" => vec![self.appearance(b).into()],
+            _ => self.account(b, width),
+        }
+    }
+}
+impl Settings {
+    fn cloud(&self, b: &Build, width: f32) -> c::Element {
+        let tiles = self
+            .values
+            .cloud
+            .iter()
+            .enumerate()
+            .map(|(i, (name, region, on, co))| {
+                let title = col(
+                    "",
+                    plain(None, [0.; 4], 0.),
+                    0.,
+                    vec![
+                        txt(
+                            "",
+                            name,
+                            ui::Text {
+                                line_height: 1.25,
+                                ..font(13., 600, false, ui::Color::Foreground)
+                            },
+                        )
+                        .into(),
+                        txt(
+                            "",
+                            region,
+                            ui::Text {
+                                line_height: 1.25,
+                                ..font(11., 400, false, ui::Color::Muted)
+                            },
+                        )
+                        .into(),
+                    ],
+                );
+                let tile = row(
+                    "",
+                    surface(color(co), 1., 8., [0.; 4], Some(30.)),
+                    0.,
+                    vec![
+                        b.text(
+                            "",
+                            name.chars().next().unwrap_or('?').to_string(),
+                            14.,
+                            700,
+                            false,
+                            false,
+                        )
+                        .into(),
+                    ],
+                );
+                let head = row(
+                    "",
+                    plain(None, [0.; 4], 0.),
+                    10.,
+                    vec![fixed(tile, 30.), fill(title), b.dot("", *on, 8.).into()],
+                );
+                let foot = row(
+                    "",
+                    plain(None, [0.; 4], 0.),
+                    8.,
+                    vec![
+                        fill(b.text(
+                            "",
+                            if *on { "connected" } else { "not connected" },
+                            11.,
+                            400,
+                            false,
+                            true,
+                        )),
+                        b.toggle("", *on).into(),
+                    ],
+                );
+                col(
+                    &format!("cloud/{i}"),
+                    border(
+                        surface(ui::Color::Background, 0.45, 10., [10., 11., 10., 11.], None),
+                        hair(b.ctx),
+                        true,
+                    ),
+                    10.,
+                    vec![head.into(), foot.into()],
+                )
+            })
+            .chain(std::iter::once(b.add_card(
+                "cloud/add",
+                "+ connect a provider",
+                "",
+                72.,
+            )))
+            .collect();
+        b.card("card0","Cloud providers",vec![col("",plain(None,[4.,0.,0.,0.],0.),0.,vec![b.grid("cloud",width-28.,190.,8.,tiles).into()]).into(),b.note("","Regions appear under Cloud in the launcher. Credentials live in the keychain, never in config.toml.",true).into()],[4.,14.,10.,14.])
+    }
+    fn machines(&self, b: &Build) -> c::Element {
+        let mut rows: Vec<c::Item> = self
+            .values
+            .machines
+            .iter()
+            .enumerate()
+            .map(|(i, (host, user, hw, key, up))| {
+                let mt = col(
+                    "",
+                    plain(None, [0.; 4], 0.),
+                    0.,
+                    vec![
+                        txt(
+                            "",
+                            host,
+                            ui::Text {
+                                line_height: 1.25,
+                                ..font(13., 600, false, ui::Color::Foreground)
+                            },
+                        )
+                        .into(),
+                        txt(
+                            "",
+                            user,
+                            ui::Text {
+                                line_height: 1.25,
+                                ..font(11., 400, true, ui::Color::Muted)
+                            },
+                        )
+                        .into(),
+                    ],
+                );
+                row(
+                    &format!("machine{i}"),
+                    bottom(plain(None, [8., 0., 8., 0.], 0.), b.ctx, false),
+                    12.,
+                    vec![
+                        fixed(b.dot("", *up, 8.), 8.),
+                        fill(mt),
+                        b.text("", hw, 11., 400, false, true).into(),
+                        row(
+                            "",
+                            surface(
+                                badge(b.ctx, STYLE.tint.badge_alpha as f32),
+                                1.,
+                                5.,
+                                [1., 6., 1., 6.],
+                                None,
+                            ),
+                            0.,
+                            vec![
+                                txt(
+                                    "",
+                                    key,
+                                    ui::Text {
+                                        line_height: 16. / 11.,
+                                        ..font(11., 400, true, ui::Color::Foreground)
+                                    },
+                                )
+                                .into(),
+                            ],
+                        )
+                        .into(),
+                    ],
+                )
+                .into()
+            })
+            .collect();
+        rows.push(
+            row(
+                "",
+                bottom(plain(Some(44.), [10., 0., 10., 0.], 0.), b.ctx, false),
+                0.,
+                vec![b.text("", "+ add a machine", 12.5, 400, false, true).into()],
+            )
+            .into(),
+        );
+        rows.push(
+            b.note(
+                "",
+                "Read from ~/.ssh/config. Machines appear under SSH in the launcher.",
+                true,
+            )
+            .into(),
+        );
+        b.card("card0", "SSH machines", rows, [4., 14., 10., 14.])
+    }
+    fn shortcuts(&self, b: &Build, width: f32) -> c::Element {
+        let w = (width - 28. - 28.) / 2.;
+        let rows = self
+            .values
+            .shortcuts
+            .chunks(2)
+            .enumerate()
+            .map(|(ri, rs)| {
+                row(
+                    "",
+                    plain(None, [0.; 4], 0.),
+                    28.,
+                    rs.iter()
+                        .map(|(label, key)| {
+                            fixed(
+                                row(
+                                    "",
+                                    bottom(
+                                        plain(Some(34.), [0.; 4], 0.),
+                                        b.ctx,
+                                        ri + 1 == self.values.shortcuts.len().div_ceil(2),
+                                    ),
+                                    12.,
+                                    vec![
+                                        fill(b.text("", label, 12.5, 400, false, false)),
+                                        row(
+                                            "",
+                                            surface(
+                                                badge(b.ctx, STYLE.tint.badge_alpha as f32),
+                                                1.,
+                                                5.,
+                                                [1., 6., 1., 6.],
+                                                None,
+                                            ),
+                                            0.,
+                                            vec![
+                                                txt(
+                                                    "",
+                                                    key,
+                                                    ui::Text {
+                                                        line_height: 16. / 11.,
+                                                        ..font(
+                                                            11.,
+                                                            400,
+                                                            true,
+                                                            ui::Color::Foreground,
+                                                        )
+                                                    },
+                                                )
+                                                .into(),
+                                            ],
+                                        )
+                                        .into(),
+                                    ],
+                                ),
+                                w,
+                            )
+                        })
+                        .collect(),
+                )
+                .into()
+            })
+            .collect();
+        b.card(
+            "card0",
+            "Shortcuts",
+            vec![col("", plain(None, [2., 0., 4., 0.], 0.), 0., rows).into()],
+            [4., 14., 10., 14.],
+        )
+    }
+    fn account(&self, b: &Build, width: f32) -> Vec<c::Item> {
+        let a = &self.values.account;
+        let d = &self.defaults.account;
+        let ok = color(TOKENS.color.ui.ok);
+        let status = row(
+            "",
+            surface(ok, 0.14, 999., [1., 8., 1., 6.], None),
+            5.,
+            vec![
+                fixed(
+                    row("", surface(ok, 1., 3., [0.; 4], Some(6.)), 0., vec![]),
+                    6.,
+                ),
+                txt("", "signed in", font(11., 500, false, ok)).into(),
+            ],
+        );
+        let name = row(
+            "account/name",
+            plain(None, [0.; 4], 0.),
+            10.,
+            vec![
+                txt(
+                    "",
+                    &a.name,
+                    ui::Text {
+                        line_height: 1.2,
+                        ..font(18., 600, false, ui::Color::Foreground)
+                    },
+                )
+                .into(),
+                status.into(),
+            ],
+        );
+        let fp = flow(
+            "account/fp",
+            a.fingerprint
+                .as_bytes()
+                .chunks(4)
+                .enumerate()
+                .map(|(i, s)| {
+                    let mut f = font(
+                        15.,
+                        500,
+                        true,
+                        if i % 2 == 0 {
+                            ui::Color::Foreground
+                        } else {
+                            ui::Color::Muted
+                        },
+                    );
+                    f.line_height = 1.3;
+                    f.tracking_em = 0.02;
+                    txt("", String::from_utf8_lossy(s).into_owned(), f).into()
+                })
+                .collect(),
+            3.,
+            9.,
+            c::Alignment::Start,
+        );
+        let chips = flow(
+            "",
+            vec![
+                mono(b.chip(
+                    "account/algo",
+                    &format!("{} · signing", a.algo),
+                    false,
+                    None,
+                    Some("key"),
+                ))
+                .into(),
+                row(
+                    "",
+                    surface(
+                        badge(b.ctx, STYLE.tint.badge_alpha as f32),
+                        1.,
+                        6.,
+                        [0., 8., 0., 8.],
+                        Some(20.),
+                    ),
+                    6.,
+                    vec![
+                        b.dot("", true, 8.).into(),
+                        b.text("", &a.key_state, 11., 400, false, false).into(),
+                    ],
+                )
+                .into(),
+                b.chip("", "copy fingerprint", false, None, Some("copy"))
+                    .into(),
+            ],
+            6.,
+            6.,
+            c::Alignment::Center,
+        );
+        let mut trust = vec![
+            row(
+                "",
+                plain(None, [0., 2., 0., 0.], 0.),
+                0.,
+                vec![b.text("", "trust path", 11., 400, false, true).into()],
+            )
+            .into(),
+        ];
+        for (i, t) in a.trust.iter().enumerate() {
+            if i > 0 {
+                trust.push(b.text("", "→", 11., 400, false, true).into());
+            }
+            trust.push(b.chip("", t, false, None, None).into());
+        }
+        let trust = flow("", trust, 6., 6., c::Alignment::Center);
+        let held = row(
+            "",
+            plain(None, [0.; 4], 0.),
+            8.,
+            vec![
+                natural(b.text(
+                    "",
+                    "primary held by gpg-agent · pinned from your keyring · never exported",
+                    11.,
+                    400,
+                    false,
+                    true,
+                )),
+                b.chip("", "open in gpg", false, None, Some("open")).into(),
+            ],
+        );
+        let action = |title: &str, ico: &str, kind: &str, note: &str| {
+            let mut f = font(10.5, 400, false, ui::Color::Muted);
+            f.line_height = 1.35;
+            col(
+                "",
+                plain(None, [0.; 4], 0.),
+                4.,
+                vec![
+                    row(
+                        "",
+                        plain(None, [0.; 4], 0.),
+                        0.,
+                        vec![b.button("", title, Some(ico), kind).into()],
+                    )
+                    .into(),
+                    wrap("", note, f).into(),
+                ],
+            )
+        };
+        let acts = align_box(
+            row(
+                "",
+                plain(None, [4., 0., 0., 0.], 0.),
+                14.,
+                vec![
+                    fixed(
+                        action(
+                            "Show paper recovery",
+                            "key",
+                            "primary",
+                            "restores identity only · needs your GPG backup or paperkey plus the public certificate · seats, history and grants are not recovered",
+                        ),
+                        220.,
+                    ),
+                    fixed(
+                        action(
+                            "Link Google for cloud",
+                            "link",
+                            "link",
+                            "binds a provider for cloud seats · the key stays the identity",
+                        ),
+                        220.,
+                    ),
+                ],
+            ),
+            c::Alignment::Stretch,
+        );
+        let hb = col(
+            "",
+            plain(None, [0.; 4], 0.),
+            7.,
+            vec![
+                name.into(),
+                fp.into(),
+                chips.into(),
+                b.text(
+                    "",
+                    format!("{} ({}) <{}>", a.name, a.handle, a.email),
+                    11.,
+                    400,
+                    true,
+                    true,
+                )
+                .into(),
+                trust.into(),
+                held.into(),
+                acts.into(),
+            ],
+        );
+        let avatar = named(
+            "account/avatar",
+            c::Element::Image {
+                asset: "bboxy".into(),
+                size: ui::Length::Px(72.),
+                radius: ui::Length::Px(16.),
+            },
+        );
+        let mut hero = c::Box::new(
+            bottom(plain(None, [14., 0., 12., 0.], 0.), b.ctx, false),
+            vec![fixed(avatar, 72.), fill(hb)],
+        );
+        hero.gap = ui::Length::Px(16.);
+        hero.align = c::Alignment::Start;
+        let group = align_box(
+            row(
+                "",
+                plain(None, [12., 0., 6., 0.], 0.),
+                10.,
+                vec![
+                    b.text("", "Devices · certified leaf keys", 12., 500, false, true)
+                        .into(),
+                    b.text(
+                        "",
+                        "revoke is local · peers learn on next contact",
+                        11.,
+                        400,
+                        false,
+                        true,
+                    )
+                    .into(),
+                ],
+            ),
+            c::Alignment::Baseline,
+        );
+        let mut keys: Vec<_> = a
+            .devices
+            .iter()
+            .map(|(n, s, when)| {
+                col(
+                    "",
+                    border(
+                        surface(ui::Color::Background, 0.45, 10., [9., 11., 9., 11.], None),
+                        hair(b.ctx),
+                        true,
+                    ),
+                    3.,
+                    vec![
+                        row(
+                            "",
+                            plain(None, [0.; 4], 0.),
+                            8.,
+                            vec![
+                                fill(b.text("", n, 12.5, 600, false, false)),
+                                b.dot("", true, 8.).into(),
+                            ],
+                        )
+                        .into(),
+                        b.text("", "device cert · ed25519", 10.5, 400, true, true)
+                            .into(),
+                        b.text("", format!("{s} · {when}"), 11., 400, false, true)
+                            .into(),
+                        col(
+                            "",
+                            plain(None, [4., 0., 0., 0.], 0.),
+                            0.,
+                            vec![
+                                row(
+                                    "",
+                                    plain(None, [0.; 4], 0.),
+                                    0.,
+                                    vec![
+                                        row(
+                                            "",
+                                            border(
+                                                plain(None, [0., 8., 0., 8.], 999.),
+                                                hair(b.ctx),
+                                                false,
+                                            ),
+                                            0.,
+                                            vec![
+                                                txt(
+                                                    "",
+                                                    "revoke",
+                                                    ui::Text {
+                                                        line_height: 17. / 10.5,
+                                                        ..font(10.5, 400, false, ui::Color::Muted)
+                                                    },
+                                                )
+                                                .into(),
+                                            ],
+                                        )
+                                        .into(),
+                                    ],
+                                )
+                                .into(),
+                            ],
+                        )
+                        .into(),
+                    ],
+                )
+            })
+            .collect();
+        let mut enroll_style = border(plain(None, [9., 11., 9., 11.], 10.), ui::Color::Line, false);
+        enroll_style.overrides.dashed = Some(true);
+        let enroll_body = col(
+            "",
+            plain(None, [0.; 4], 0.),
+            2.,
+            vec![
+                b.text(
+                    "account/enroll/title",
+                    "+ enroll a device",
+                    12.5,
+                    500,
+                    false,
+                    false,
+                )
+                .into(),
+                b.text(
+                    "account/enroll/hint",
+                    "request if primary is elsewhere",
+                    11.,
+                    400,
+                    false,
+                    true,
+                )
+                .into(),
+                col(
+                    "",
+                    plain(None, [2., 0., 0., 0.], 0.),
+                    0.,
+                    vec![
+                        wrap(
+                            "account/enroll/caption",
+                            "primary not available here → produces a signed request",
+                            ui::Text {
+                                line_height: 1.3,
+                                ..font(10., 400, false, ui::Color::Muted)
+                            },
+                        )
+                        .into(),
+                    ],
+                )
+                .into(),
+            ],
+        );
+        keys.push(col(
+            "account/enroll",
+            enroll_style,
+            0.,
+            vec![
+                fill(c::Element::Spacer),
+                enroll_body.into(),
+                fill(c::Element::Spacer),
+            ],
+        ));
+        let first = b.card(
+            "card0",
+            "",
+            vec![
+                named("account/hero", c::Element::Box(hero)).into(),
+                group.into(),
+                b.grid("account/devices", width - 28., 200., 8., keys)
+                    .into(),
+            ],
+            [4., 14., 14., 14.],
+        );
+        let note=b.note("account/note","Devices and seats are leaf keys certified by your GPG primary; enrollment is a one-use ticket signed where the primary lives. Expired, revoked or forked authority blocks controls on its own, apart from seat state. Google is a later link for cloud; the primary stays the identity.",false);
+        let sign = b.card(
+            "card1",
+            "Signatures",
+            vec![
+                b.setting_row(
+                    "card1/r0",
+                    "Sign commits as this key",
+                    Some(&format!("git author and committer · Boxy <{}>", a.email)),
+                    b.toggle("", a.sign.commits),
+                    a.sign.commits != d.sign.commits,
+                    false,
+                    false,
+                )
+                .into(),
+                b.setting_row(
+                    "card1/r1",
+                    "Sign messages and presence with the seat's leaf key",
+                    Some("chain verifies to this key"),
+                    b.toggle("", a.sign.messages),
+                    a.sign.messages != d.sign.messages,
+                    false,
+                    false,
+                )
+                .into(),
+                b.setting_row(
+                    "card1/r2",
+                    "Seats sign commits with their own keys",
+                    Some("assumed, not decided"),
+                    b.toggle("", a.sign.seat_commits),
+                    a.sign.seat_commits != d.sign.seat_commits,
+                    true,
+                    false,
+                )
+                .into(),
+            ],
+            [4., 14., 10., 14.],
+        );
+        vec![first.into(), note.into(), sign.into()]
+    }
+    fn draft_card(&self, b: &Build, k: &str, d: &DraftHarness) -> c::Element {
+        let hue =
+            [0., 30., 55., 95., 160., 190., 215., 250., 285., 325.][d.ci.rem_euclid(10) as usize];
+        let co = ui::Color::Rgba(hsl(hue, 0.85, 0.64));
+        let input = |v: &str, mono: bool| {
+            row(
+                "",
+                border(
+                    surface(
+                        mixed(
+                            b.ctx,
+                            b.ctx.theme.palette().bg,
+                            b.ctx.theme.palette().surface,
+                            0.6,
+                        ),
+                        1.,
+                        6.,
+                        [3., 7., 3., 7.],
+                        None,
+                    ),
+                    hair(b.ctx),
+                    true,
+                ),
+                0.,
+                vec![
+                    txt(
+                        "",
+                        v,
+                        ui::Text {
+                            line_height: 1.25,
+                            ..font(
+                                if mono { 10.5 } else { 12.5 },
+                                400,
+                                mono,
+                                ui::Color::Foreground,
+                            )
+                        },
+                    )
+                    .into(),
+                ],
+            )
+        };
+        let head = row(
+            &format!("{k}/head"),
+            bottom(plain(None, [0., 0., 6., 0.], 0.), b.ctx, false),
+            10.,
+            vec![
+                fixed(
+                    row("", surface(co, 1., 7., [0.; 4], Some(14.)), 0., vec![]),
+                    14.,
+                ),
+                fill(col(
+                    "",
+                    plain(None, [0.; 4], 0.),
+                    1.,
+                    vec![
+                        named(format!("{k}/hname"), input(&d.name, false)).into(),
+                        input(&d.command, true).into(),
+                    ],
+                )),
+                b.chip("", "new", true, None, None).into(),
+            ],
+        );
+        let marks = row(
+            "",
+            plain(None, [0.; 4], 0.),
+            4.,
+            ["claude", "codex", "pi", "omp", "zsh"]
+                .iter()
+                .map(|i| {
+                    fixed(
+                        row(
+                            "",
+                            surface(
+                                if *i == d.icon {
+                                    co
+                                } else {
+                                    badge(b.ctx, STYLE.tint.badge_alpha as f32)
+                                },
+                                1.,
+                                6.,
+                                [0.; 4],
+                                Some(26.),
+                            ),
+                            0.,
+                            vec![
+                                icon(
+                                    "",
+                                    i,
+                                    14.,
+                                    if *i == d.icon {
+                                        ui::Color::OnAccent
+                                    } else {
+                                        ui::Color::Muted
+                                    },
+                                )
+                                .into(),
+                            ],
+                        ),
+                        28.,
+                    )
+                })
+                .collect(),
+        );
+        let roles = self
+            .values
+            .roles
+            .iter()
+            .map(|(n, _)| n.clone())
+            .collect::<Vec<_>>();
+        let rows = vec![
+            b.setting_row(
+                &format!("{k}/r0"),
+                "Default role",
+                None,
+                b.select("", &roles, &d.role, true, false),
+                false,
+                false,
+                true,
+            )
+            .into(),
+            b.setting_row(
+                &format!("{k}/r1"),
+                "Wake",
+                if d.wake == "pty" {
+                    Some(if d.hooks {
+                        "types after an idle hook"
+                    } else {
+                        "never submits on its own"
+                    })
+                } else {
+                    None
+                },
+                b.select(
+                    "",
+                    &["socket", "hook", "mcp", "pty"].map(str::to_string),
+                    &d.wake,
+                    true,
+                    false,
+                ),
+                false,
+                false,
+                true,
+            )
+            .into(),
+            b.setting_row(
+                &format!("{k}/r2"),
+                "State from",
+                None,
+                b.select(
+                    "",
+                    &["osc7501", "hooks", "output cadence"].map(str::to_string),
+                    &d.state_from,
+                    true,
+                    false,
+                ),
+                false,
+                false,
+                true,
+            )
+            .into(),
+            b.setting_row(
+                &format!("{k}/r3"),
+                "Hooks",
+                None,
+                b.toggle("", d.hooks),
+                false,
+                false,
+                true,
+            )
+            .into(),
+        ];
+        let mut children = vec![
+            col("", plain(None, [0., 0., 2., 0.], 0.), 0., vec![head.into()]).into(),
+            with_bottom(
+                b.field(&format!("{k}/f0"), "Icon", None, marks, false, true),
+                b.ctx,
+            )
+            .into(),
+        ];
+        children.extend(rows);
+        children.push(col("",plain(None,[6.,0.,0.,0.],0.),0.,vec![wrap("","unknown harnesses run through the PTY adapter: state is inferred from output until hooks or OSC 7501 upgrade it",ui::Text{line_height:1.5,..font(11.,400,false,ui::Color::Muted)}).into()]).into());
+        children.push(
+            row(
+                "",
+                plain(None, [8., 0., 0., 0.], 0.),
+                8.,
+                vec![
+                    b.button("", "Add harness", None, "primary").into(),
+                    b.button("", "Cancel", None, "ghost").into(),
+                ],
+            )
+            .into(),
+        );
+        b.card(k, "", children, [10., 12., 8., 12.])
+    }
+
+    fn appearance(&self, b: &Build) -> c::Element {
+        let v = &self.values.appearance;
+        let d = &self.defaults.appearance;
+        let mut rows = vec![];
+        let themes = row(
+            "",
+            plain(None, [0.; 4], 0.),
+            8.,
+            ["auto", "dark", "light"]
+                .iter()
+                .map(|t| self.theme_thumb(b, t, *t == v.theme).into())
+                .collect(),
+        );
+        rows.push(
+            b.setting_row(
+                "card0/r0",
+                "Theme",
+                Some("starts from the OS"),
+                themes,
+                v.theme != d.theme,
+                false,
+                false,
+            )
+            .into(),
+        );
+        let dens = row(
+            "",
+            plain(None, [0.; 4], 0.),
+            8.,
+            [
+                bbt_ui_model::Density::Touch,
+                bbt_ui_model::Density::Comfortable,
+                bbt_ui_model::Density::Cozy,
+                bbt_ui_model::Density::Compact,
+            ]
+            .iter()
+            .map(|d| {
+                let name = match d {
+                    bbt_ui_model::Density::Touch => "touch",
+                    bbt_ui_model::Density::Comfortable => "comfortable",
+                    bbt_ui_model::Density::Cozy => "cozy",
+                    bbt_ui_model::Density::Compact => "compact",
+                };
+                self.density_thumb(b, *d, name, name == v.density).into()
+            })
+            .collect(),
+        );
+        rows.push(
+            b.setting_row(
+                "card0/r1",
+                "Density",
+                Some("row height on the map"),
+                dens,
+                v.density != d.density,
+                false,
+                false,
+            )
+            .into(),
+        );
+        rows.push(
+            b.setting_row(
+                "card0/r2",
+                "Gutter",
+                Some("between panes"),
+                b.segment("", &["2 px", "4 px"], &format!("{} px", v.gutter)),
+                v.gutter != self.defaults.appearance.gutter,
+                false,
+                false,
+            )
+            .into(),
+        );
+        let opacity = row(
+            "",
+            plain(None, [0.; 4], 0.),
+            10.,
+            vec![
+                fixed(self.opacity_preview(b), 64.),
+                fixed(self.opacity_slider(b), 124.),
+                fixed(
+                    b.text(
+                        "",
+                        format!("{}%", (v.opacity * 100.).round()),
+                        11.,
+                        500,
+                        true,
+                        false,
+                    ),
+                    35.2,
+                ),
+            ],
+        );
+        rows.push(
+            b.setting_row(
+                "card0/r3",
+                "Window opacity",
+                Some("panes only; chrome and text stay opaque"),
+                opacity,
+                v.opacity != d.opacity,
+                false,
+                false,
+            )
+            .into(),
+        );
+        rows.push(
+            b.setting_row(
+                "card0/r4",
+                "Blur behind",
+                Some("what is behind the window, like iTerm2"),
+                b.toggle("", v.blur),
+                v.blur != d.blur,
+                false,
+                false,
+            )
+            .into(),
+        );
+        let mut i = 5;
+        if v.blur {
+            rows.push(
+                b.setting_row(
+                    "card0/r5",
+                    "Blur radius",
+                    None,
+                    b.segment(
+                        "",
+                        &["10 px", "20 px", "40 px"],
+                        &format!("{} px", v.blur_radius),
+                    ),
+                    false,
+                    false,
+                    false,
+                )
+                .into(),
+            );
+            i += 1;
+        }
+        rows.push(
+            b.setting_row(
+                &format!("card0/r{i}"),
+                "Border glow",
+                Some("particles in the seat colour"),
+                b.toggle("", v.glow),
+                v.glow != d.glow,
+                false,
+                false,
+            )
+            .into(),
+        );
+        i += 1;
+        rows.push(
+            b.setting_row(
+                &format!("card0/r{i}"),
+                "Last-output subtitle",
+                Some("second line on seat rows"),
+                b.toggle("", v.subtitle),
+                v.subtitle != d.subtitle,
+                true,
+                false,
+            )
+            .into(),
+        );
+        b.card("card0", "Appearance", rows, [4., 14., 10., 14.])
+    }
+    fn theme_thumb(&self, b: &Build, t: &str, selected: bool) -> c::Element {
+        let p = if t == "light" {
+            &TOKENS.color.light
+        } else {
+            &TOKENS.color.dark
+        };
+        let base = col(
+            "",
+            surface(color(p.bg), 1., 6., [0.; 4], Some(48.)),
+            0.,
+            vec![],
+        );
+        let mut overlays = vec![
+            c::Placed {
+                content: row(
+                    "",
+                    surface(color(p.surface), 1., 0., [0.; 4], Some(7.)),
+                    0.,
+                    vec![],
+                ),
+                left: 0.,
+                bottom: 41.,
+            },
+            c::Placed {
+                content: row(
+                    "",
+                    surface(color(p.sidebar), 1., 0., [0.; 4], Some(41.)),
+                    0.,
+                    vec![],
+                ),
+                left: 0.,
+                bottom: 0.,
+            },
+            c::Placed {
+                content: row(
+                    "",
+                    surface(color(p.surface_2), 1., 2., [0.; 4], Some(33.)),
+                    0.,
+                    vec![],
+                ),
+                left: 26.,
+                bottom: 4.,
+            },
+        ];
+        // Layers' fixed child widths are source geometry, not browser positions.
+        for (i, p) in overlays.iter_mut().enumerate() {
+            if let c::Element::Named { content, .. } = &mut p.content
+                && let c::Element::Box(b) = content.as_mut()
+            {
+                b.style.overrides.width = Some(ui::Length::Px([72., 22., 42.][i]));
+            }
+        }
+        if t == "auto" {
+            for (left, bottom, w, h, co, radius) in [
+                (36., 0., 36., 48., TOKENS.color.light.bg, 0.),
+                (36., 41., 36., 7., TOKENS.color.light.surface, 0.),
+                (40., 4., 28., 33., TOKENS.color.light.surface_2, 2.),
+            ] {
+                overlays.push(c::Placed {
+                    content: row(
+                        "",
+                        surface(color(co), 1., radius, [0.; 4], Some(h)),
+                        0.,
+                        vec![fixed(c::Element::Spacer, w)],
+                    ),
+                    left,
+                    bottom,
+                });
+            }
+        }
+        let mut s = border(
+            plain(None, [0.; 4], 6.),
+            if selected {
+                ui::Color::Accent
+            } else {
+                hair(b.ctx)
+            },
+            true,
+        );
+        if selected {
+            s.overrides.border.as_mut().unwrap().width = ui::Length::Px(2.);
+        }
+        let mut bx = c::Box::new(
+            s,
+            vec![fixed(
+                c::Element::Layers {
+                    base: Box::new(base),
+                    overlays,
+                },
+                72.,
+            )],
+        );
+        bx.clip = true;
+        bx.gap = ui::Length::Px(0.);
+        align_box(
+            col(
+                "",
+                plain(None, [4.; 4], 10.),
+                5.,
+                vec![
+                    fixed(c::Element::Box(bx), 48.),
+                    txt(
+                        "",
+                        t,
+                        ui::Text {
+                            line_height: 1.2,
+                            ..font(13., 400, false, ui::Color::Foreground)
+                        },
+                    )
+                    .into(),
+                ],
+            ),
+            c::Alignment::Center,
+        )
+    }
+    fn density_thumb(
+        &self,
+        b: &Build,
+        d: bbt_ui_model::Density,
+        name: &str,
+        selected: bool,
+    ) -> c::Element {
+        let t = d.tokens();
+        let rows = (100. / t.row_h as f32).floor() as usize;
+        let mut all = vec![];
+        for i in 0..rows {
+            let tile = row(
+                "",
+                surface(
+                    badge(b.ctx, STYLE.tint.badge_selected_alpha as f32),
+                    1.,
+                    TOKENS.radius.grid as f32,
+                    [0.; 4],
+                    Some(t.icon as f32),
+                ),
+                0.,
+                vec![],
+            );
+            let bar = row(
+                "",
+                surface(ui::Color::Muted, 0.55, 2., [0.; 4], Some(3.)),
+                0.,
+                vec![],
+            );
+            let glyph = row(
+                "",
+                surface(
+                    color(TOKENS.color.state.idle),
+                    1.,
+                    t.glyph as f32 / 4.,
+                    [0.; 4],
+                    Some(t.glyph as f32 / 2.),
+                ),
+                0.,
+                vec![],
+            );
+            all.push(
+                row(
+                    "",
+                    bottom(
+                        surface(
+                            if i == 1 {
+                                tint(b.ctx, STYLE.tint.selection_alpha as f32)
+                            } else {
+                                ui::Color::Transparent
+                            },
+                            1.,
+                            0.,
+                            [
+                                0.,
+                                (t.pad_x as f32 / 2.).round(),
+                                0.,
+                                (t.pad_x as f32 / 2.).round(),
+                            ],
+                            Some(t.row_h as f32),
+                        ),
+                        b.ctx,
+                        false,
+                    ),
+                    t.gap as f32,
+                    vec![
+                        fixed(tile, t.icon as f32),
+                        fill(bar),
+                        fixed(glyph, t.glyph as f32 / 2.),
+                    ],
+                )
+                .into(),
+            );
+        }
+        let mut s = border(
+            surface(
+                mixed(
+                    b.ctx,
+                    b.ctx.theme.palette().sidebar,
+                    b.ctx.theme.palette().bg,
+                    STYLE.material.panel_alpha as f32,
+                ),
+                1.,
+                6.,
+                [0.; 4],
+                Some(100.),
+            ),
+            if selected {
+                ui::Color::Accent
+            } else {
+                hair(b.ctx)
+            },
+            true,
+        );
+        if selected {
+            s.overrides.border.as_mut().unwrap().width = ui::Length::Px(2.);
+        }
+        s.overrides.width = Some(ui::Length::Px(76.));
+        let mut bx = c::Box::new(s, all);
+        bx.direction = Axis::Column;
+        bx.align = c::Alignment::Stretch;
+        bx.gap = ui::Length::Px(0.);
+        bx.clip = true;
+        align_box(
+            col(
+                "",
+                plain(None, [4.; 4], 10.),
+                5.,
+                vec![
+                    c::Element::Box(bx).into(),
+                    align_box(
+                        col(
+                            "",
+                            plain(None, [0.; 4], 0.),
+                            0.,
+                            vec![
+                                txt(
+                                    "",
+                                    name,
+                                    ui::Text {
+                                        line_height: 1.2,
+                                        ..font(13., 400, false, ui::Color::Foreground)
+                                    },
+                                )
+                                .into(),
+                                txt(
+                                    "",
+                                    format!("{} px", t.row_h),
+                                    ui::Text {
+                                        line_height: 1.2,
+                                        ..font(9.5, 400, true, ui::Color::Muted)
+                                    },
+                                )
+                                .into(),
+                            ],
+                        ),
+                        c::Alignment::Center,
+                    )
+                    .into(),
+                ],
+            ),
+            c::Alignment::Center,
+        )
+    }
+    fn opacity_slider(&self, _b: &Build) -> c::Element {
+        let fraction = ((self.values.appearance.opacity - TOKENS.window.opacity_min as f32)
+            / (1. - TOKENS.window.opacity_min as f32))
+            .clamp(0., 1.);
+        let base = row(
+            "",
+            plain(Some(16.), [0.; 4], 0.),
+            0.,
+            vec![fixed(c::Element::Spacer, 124.)],
+        );
+        let track = row(
+            "",
+            surface(ui::Color::Accent, 1., 2., [0.; 4], Some(4.)),
+            0.,
+            vec![fixed(c::Element::Spacer, 120.)],
+        );
+        let knob = row(
+            "",
+            surface(ui::Color::Accent, 1., 8., [0.; 4], Some(16.)),
+            0.,
+            vec![fixed(c::Element::Spacer, 16.)],
+        );
+        c::Element::Layers {
+            base: Box::new(base),
+            overlays: vec![
+                c::Placed {
+                    content: track,
+                    left: 2.,
+                    bottom: 6.,
+                },
+                c::Placed {
+                    content: knob,
+                    left: 2. + 104. * fraction,
+                    bottom: 0.,
+                },
+            ],
+        }
+    }
+    fn opacity_preview(&self, b: &Build) -> c::Element {
+        let mut base = c::Box::new(
+            border(
+                surface(ui::Color::Background, 1., 6., [0.; 4], Some(40.)),
+                hair(b.ctx),
+                true,
+            ),
+            vec![fixed(c::Element::Spacer, 64.)],
+        );
+        base.gap = ui::Length::Px(0.);
+        base.clip = true;
+        let side = row(
+            "",
+            surface(
+                color(b.ctx.theme.palette().sidebar),
+                1.,
+                0.,
+                [0.; 4],
+                Some(40.),
+            ),
+            0.,
+            vec![fixed(c::Element::Spacer, 16.)],
+        );
+        let pane = col(
+            "",
+            surface(
+                ui::Color::Background,
+                self.values.appearance.opacity,
+                4.,
+                [5.; 4],
+                Some(36.),
+            ),
+            3.,
+            [0.7, 0.45, 0.58]
+                .iter()
+                .map(|fraction| {
+                    row(
+                        "",
+                        plain(None, [0.; 4], 0.),
+                        0.,
+                        vec![fixed(
+                            row(
+                                "",
+                                surface(ui::Color::Muted, 1., 1., [0.; 4], Some(2.)),
+                                0.,
+                                vec![],
+                            ),
+                            34. * fraction,
+                        )],
+                    )
+                    .into()
+                })
+                .collect(),
+        );
+        c::Element::Layers {
+            base: Box::new(c::Element::Box(base)),
+            overlays: vec![
+                c::Placed {
+                    content: side,
+                    left: 0.,
+                    bottom: 0.,
+                },
+                c::Placed {
+                    content: row("", plain(None, [0.; 4], 0.), 0., vec![fixed(pane, 44.)]),
+                    left: 18.,
+                    bottom: 2.,
+                },
+            ],
+        }
+    }
+}
+fn hsl(h: f32, s: f32, l: f32) -> [f32; 4] {
+    let a = s * l.min(1. - l);
+    let f = |n: f32| {
+        let k = (n + h / 30.) % 12.;
+        l - a * (k - 3.).min(9. - k).clamp(-1., 1.)
+    };
+    [f(0.), f(8.), f(4.), 1.]
+}
+
+fn set_height(e: &mut c::Element, h: f32) {
+    match e {
+        c::Element::Named { content, .. } => set_height(content, h),
+        c::Element::Box(b) => b.style.overrides.height = Some(ui::Length::Px(h)),
+        _ => {}
+    }
+}
+fn expand_row(
+    e: &mut c::Element,
+    k: &str,
+    pad: f32,
+    width: f32,
+    ctx: ui::Context,
+    m: &dyn c::Measure,
+    move_content: bool,
+) {
+    let content_width = width + if move_content { pad * 2. } else { 0. };
+    let height = e
+        .layout(
+            bbt_ui_model::layout::Rect::new(0., 0., content_width, 0.),
+            ctx,
+            m,
+        )
+        .expect("changed Settings row")
+        .rect
+        .h;
+    let base = row("", plain(Some(height), [0.; 4], 0.), 0., vec![]);
+    let mut background = surface(ui::Color::Accent, 0.06, 10., [0.; 4], Some(height));
+    background.overrides.width = None;
+    let old = std::mem::replace(e, c::Element::Spacer);
+    let mut content = match old {
+        c::Element::Named { content, .. } => *content,
+        other => other,
+    };
+    if let c::Element::Box(b) = &mut content {
+        b.style.overrides.width = Some(ui::Length::Px(content_width));
+    }
+    *e = c::Element::Layers {
+        base: Box::new(base),
+        overlays: vec![
+            c::Placed {
+                content: row(
+                    k,
+                    background,
+                    0.,
+                    vec![fixed(c::Element::Spacer, width + pad * 2.)],
+                ),
+                left: -pad,
+                bottom: 0.,
+            },
+            c::Placed {
+                content: if move_content {
+                    row(
+                        "",
+                        plain(None, [0.; 4], 0.),
+                        0.,
+                        vec![fixed(content, content_width)],
+                    )
+                } else {
+                    content
+                },
+                left: if move_content { -pad } else { 0. },
+                bottom: 0.,
+            },
+        ],
+    };
+}
+
+fn with_bottom(mut e: c::Element, ctx: ui::Context) -> c::Element {
+    if let c::Element::Named { content, .. } = &mut e
+        && let c::Element::Box(b) = content.as_mut()
+    {
+        *b.style = bottom(*b.style.clone(), ctx, false);
+    }
+    e
+}
+
+fn mono(mut e: c::Element) -> c::Element {
+    fn set(e: &mut c::Element) {
+        match e {
+            c::Element::Named { content, .. } => set(content),
+            c::Element::Text(t) => {
+                for r in &mut t.runs {
+                    r.style.mono = true
+                }
+            }
+            c::Element::Box(b) => {
+                for i in &mut b.children {
+                    set(&mut i.element)
+                }
+            }
+            _ => {}
+        }
+    }
+    set(&mut e);
+    e
+}
+fn align_box(mut e: c::Element, align: c::Alignment) -> c::Element {
+    match &mut e {
+        c::Element::Named { content, .. } => return named("", align_box(*content.clone(), align)),
+        c::Element::Box(b) => b.align = align,
+        _ => {}
+    }
+    e
+}

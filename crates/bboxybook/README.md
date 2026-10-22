@@ -571,3 +571,23 @@ The 72 v2 GraphTab/provenance/subscription entries remain a historical probe
 inventory; the tag has no corresponding C constructors, so their capture is
 unproven and they are not a current gate. No references are invented for them.
 The old hand-painted graph adapters now call the retained composition.
+
+## L7 Settings (W3.2d.7.9)
+
+```sh
+BBOXYBOOK_GALLERY=settings PARITY_OUT=target/bboxybook/settings/final scripts/parity.sh
+```
+
+The 72 current cases cover Account, Cloud, Machines, Roles, Harnesses, the custom
+harness draft, Appearance, Shortcuts and Settings in a tab, across four densities
+and two themes. Captures export `C.settingsPage` options plus the public `SET`,
+`SET_DEF` and launch labels. Native layout consumes these records and the outer
+viewport; DOM child rectangles, computed CSS and baseline probes are diagnostics
+only. The enclosing fixture clip/backdrop remain shared caller context.
+
+`bboxybook settings --geometry-only --manifest cases.json --out DIR` measures
+native geometry without rendering. The fixture memoizes native font measurements
+within a layout. The legacy placeholder hand painter has been removed. The v2
+inventory remains a historical diagnostic, separate from the current gate.
+Input, config/keyring operations and live application wiring are outside this
+static module matrix.

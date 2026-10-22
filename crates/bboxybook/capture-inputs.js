@@ -42,7 +42,7 @@
       components = value;
       for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
         'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard',
-      'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker']) {
+      'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker', 'settingsPage']) {
         const original = value[name];
         if (typeof original !== 'function') continue;
         value[name] = function (...args) {
@@ -157,6 +157,31 @@
       }
       return diagnostics;
     };
+    if(window.bboxySettingsFixture){
+      const call=calls.find(c=>c.name==='settingsPage'&&c.node?.isConnected&&root.contains(c.node));
+      if(!call)throw Error('Settings constructor missing');
+      const node=call.node,options=call.args[0]||{},diagnostics=[];
+      const add=(key,n,text=false)=>{if(!n)throw Error('Missing Settings part '+key);diagnostics.push(text?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});};
+      add('settings',node);add('side',node.querySelector('.s-side'));add('main',node.querySelector('.s-main'));
+      add('search',node.querySelector('.s-q'));add('source',node.querySelector('.s-src'));diagnostics.push({...rawTextDiag(node.querySelector('.s-src').firstChild),key:'source/text'});
+      [...node.querySelectorAll('.s-navi')].forEach((n,i)=>{add('nav'+i,n);add('nav'+i+'/icon',n.firstChild);add('nav'+i+'/text',n.lastChild,true)});
+      [...node.querySelectorAll('.s-main .s-card')].forEach((n,i)=>{
+        const k='card'+i;add(k,n);
+        const head=n.querySelector(':scope>.s-card-h');if(head){add(k+'/head',head);add(k+'/title',head.querySelector('.t'),true)}
+        [...n.querySelectorAll('.s-row')].forEach((r,j)=>{const q=k+'/r'+j;add(q,r);add(q+'/label',r.querySelector('.lbl'));const hint=r.querySelector('.lbl small');if(hint)add(q+'/hint',hint,true);add(q+'/ctl',r.querySelector('.ctl'));});
+        [...n.querySelectorAll('.fl')].forEach((r,j)=>{const q=k+'/f'+j;add(q,r);add(q+'/label',r.firstChild);const ctrl=r.children[1];if(ctrl)add(q+'/control',ctrl)});
+        const band=n.querySelector(':scope>.band');if(band){add(k+'/band',band);add(k+'/name',band.querySelector('.rn'),true)}
+        const hh=n.querySelector(':scope>.hh');if(hh){add(k+'/head',hh);if(hh.querySelector('.tile'))add(k+'/tile',hh.querySelector('.tile'));add(k+'/hname',hh.querySelector('.ht b')||hh.querySelector('.ht input'));if(hh.querySelector('.ht code'))add(k+'/command',hh.querySelector('.ht code'),true)}
+      });
+      for(const [key,sel]of [['account/hero','.hero'],['account/avatar','.hero .logo'],['account/name','.hname'],['account/fp','.fp'],['account/algo','.chips .chip:first-child'],['account/devices','.subkeys'],['account/note','.s-main > .s-note']]){const n=node.querySelector(sel);if(n)add(key,n);}
+      const textBounds=[],walk=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);while(walk.nextNode()){const n=walk.currentNode;if(!n.textContent.trim()||n.parentElement.closest('select,option'))continue;const range=document.createRange();range.selectNodeContents(n);for(const r of range.getClientRects())if(r.width&&r.height)textBounds.push({x:r.x-origin.x,y:r.y-origin.y,w:r.width,h:r.height});}
+      for(const [key,sel]of [['account/enroll','.sk.add'],['account/enroll/title','.sk.add b'],['account/enroll/hint','.sk.add span'],['account/enroll/caption','.sk.add small']]){const n=node.querySelector(sel);if(n)add(key,n,key!=='account/enroll');}
+      const records=v=>({...v,roles:Object.entries(v.roles),harness:Object.entries(v.harness)});
+      const view={section:options.section||'Account',draftHarness:options.draftHarness||null,values:records(C.SET),defaults:records(C.SET_DEF),launch:C.LAUNCH.map(l=>({harness:l.harness,label:l.label,tile:l.tile}))};
+      node.dataset.bboxySettings='';
+      const parent=node.parentElement,pc=getComputedStyle(parent),pr=bounds(parent),bt=parseFloat(pc.borderTopWidth)||0,br=parseFloat(pc.borderRightWidth)||0,bb=parseFloat(pc.borderBottomWidth)||0,bl=parseFloat(pc.borderLeftWidth)||0;const clip={rect:{x:pr.x+bl,y:pr.y+bt,w:pr.w-bl-br,h:pr.h-bt-bb},radii:radii(pc).map(v=>Math.max(0,v-Math.max(bt,br,bb,bl)))};
+      return JSON.parse(JSON.stringify({version:1,layer:'settings',frames:[{view,host:bounds(node),clip,textBounds,probes:[...node.querySelectorAll('.mrow,.thumb,.cap,.wo,.wo input,.wo-pct,.ht b,.sk,.fp,.acts,.act,.hero,.subkeys,.s-group,select')].map(n=>{const s=getComputedStyle(n);return {tag:n.className||n.tagName,value:n.textContent,rect:bounds(n),font:s.font,lineHeight:s.lineHeight,padding:s.padding,width:s.width,height:s.height,display:s.display,alignItems:s.alignItems}}),parts:diagnostics}]}));
+    }
     if(window.bboxyGraphFixture){
       const graphCall=calls.find(c=>c.name==='graphPage'&&c.node?.isConnected&&root.contains(c.node));
       const standalone=!graphCall&&calls.find(c=>['provenanceCard','subscriptionsCard'].includes(c.name)&&c.node?.isConnected&&root.contains(c.node));
