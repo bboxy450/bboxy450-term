@@ -149,7 +149,7 @@ fn subagents_filter_finished_work_and_overflow_after_seven() {
         .layout(Rect::new(0., 0., 300., 0.), ctx, &Metrics)
         .unwrap();
     let g = find(&first, "glyph").unwrap();
-    assert!((g.rect.w - 8.8).abs() < 0.001);
+    assert_eq!(g.rect.w, bbt_ui_model::STYLE.r#type.micro as f32);
     assert!(
         matches!(&g.children[0].kind,c::LayoutKind::Atom(d) if d.primitives.iter().any(|p|matches!(p,Prim::Rect{stroke:Some(_),..})))
     );

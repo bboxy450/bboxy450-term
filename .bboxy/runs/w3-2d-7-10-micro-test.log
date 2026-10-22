@@ -1,0 +1,9 @@
+Nyx Copperwing <EXECUTOR> — micro contract follow-up.
+Clean CI of 48e1454 correctly failed on tests/seat_rows.rs:152: the test still
+expected the old 11px x 0.8 = 8.8px subagent glyph. Current lab c711591 declares
+STYLE.type.micro at scale 1. The 120-case current-lab matrix already passes.
+Updated that geometry expectation to the declared micro token; filtering,
+overflow count and source-grade assertions remain unchanged.
+cargo test -p bbt-ui --test seat_rows subagents_filter_finished --locked:
+exit 0, one passed; target/bboxybook/documents/micro/test-contract.log.
+No production code or pixels changed. Full clean CI must still be re-run.
