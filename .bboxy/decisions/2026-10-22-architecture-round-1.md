@@ -173,7 +173,7 @@ briefs Executors from the specs, never from this note.
     running sudo or installing a LaunchDaemon itself (silent privilege, not
     our shape); lowering the target (the target is the swarm, hosts are the
     unit); pretending with pseudo-seats that have no PTY (a seat is a PTY).
-    Gap: the kernel's hard cap on the raise, unverified on this build.
+    Gap closed the same day: the raise ceiling is 999 on this build (999 accepted, 1100 refused); the at-limit help's LaunchDaemon sets 999.
 
 20. **A seat is a PTY; a pipe-mode harness run is a job (from the measured
     PTY cap).** `sudo sysctl -w kern.tty.ptmx_max=1100` returns Invalid
