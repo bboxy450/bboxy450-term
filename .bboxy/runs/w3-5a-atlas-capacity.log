@@ -1,0 +1,205 @@
+W3.5a / R6 capacity evidence
+Original signed snapshot: b20ee4f9a97b326262d5df9ee02288b852a5ba6c (retained locally as nyx-w35a-atlas-replay).
+Original renderer command: /tmp/nyx-w3-5a-target/release/bboxybook documents --repository --out target/bbt-doc/repository
+Original observed failure: after document 20/87, glyph atlas capacity exhausted; exit 1; elapsed 49.035 s.
+Bounded gallery change: a fresh ChromeRenderer per document; no renderer cache/eviction change.
+Bounded gallery: 87 documents / 390 viewports, exit 0, 130.338 s before final link projection update.
+
+The resource is whole CoreText line masks, not individual glyphs. The diagnostic below replays
+ChromeRenderer's key expression, public rasterize_at and public GlyphAtlas shelf packing.
+It is a deterministic packing replay rather than internal live-cache telemetry. It reproduces
+the original failure at document 21 / dark top viewport, with 40,123 cached line masks,
+8192 x 8192 atlas, and a failed 58 x 20 mask at scale 1. No renderer source was modified.
+The initial standalone probe compile failed on private Settings Metrics; the corrected probe
+memoizes the same public component font host. Both actual command results follow.
+
+Frozen release artifacts from b20ee4f; public ChromeRenderer key + rasterizer + GlyphAtlas packing replay, not internal cache telemetry.
+SOURCE
+use std::{collections::HashSet, error::Error, path::Path};
+use bbt_render::{atlas::GlyphAtlas, chrome::text::rasterize_at};
+use bbt_ui::{self as ui, components as c};
+use bbt_ui_model::{draw::{DrawCtx, Prim}, layout::Rect};
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+fn visit(primitives: &[Prim], atlas: &mut GlyphAtlas, keys: &mut HashSet<String>) -> Result<bool> {
+    for prim in primitives {
+        match prim {
+            Prim::Group { primitives, .. } => if !visit(primitives, atlas, keys)? { return Ok(false); },
+            Prim::Text { origin, text, style, max_width, .. } if !text.is_empty() => {
+                let scale = 1_f32;
+                let phase = (origin[0] * scale).rem_euclid(1.);
+                let key = format!("{text}\0{style:?}\0{max_width:?}\0{scale}\0{phase}");
+                if keys.contains(&key) { continue; }
+                let line = rasterize_at(text, *style, *max_width, scale, phase)?;
+                if let Err(error) = atlas.insert(line.width, line.height, &line.mask) {
+                    println!("failure={error}; cached_line_masks={}; atlas={}x{}; failed_mask={}x{}; scale={scale}", keys.len(), atlas.size(), atlas.size(), line.width, line.height);
+                    return Ok(false);
+                }
+                keys.insert(key);
+            }
+            _ => {},
+        }
+    }
+    Ok(true)
+}
+fn paints(ops: &[c::Paint], atlas: &mut GlyphAtlas, keys: &mut HashSet<String>) -> Result<bool> {
+    for op in ops {
+        let ok = match op {
+            c::Paint::Group { ops, .. } => paints(ops, atlas, keys)?,
+            c::Paint::Draw(list) | c::Paint::Underlay(list) => visit(&list.primitives, atlas, keys)?,
+            c::Paint::Material { .. } => true,
+        };
+        if !ok { return Ok(false); }
+    }
+    Ok(true)
+}
+fn main() -> Result<()> {
+    let root_arg = std::env::args().nth(1).expect("worktree");
+    let root = Path::new(&root_arg);
+    let metrics = bboxybook::settings::Metrics::default();
+    let mut atlas = GlyphAtlas::new(512, 8192)?;
+    let mut keys = HashSet::new();
+    for (index, path) in bboxybook::documents::repository::inputs(root)?.into_iter().enumerate() {
+        let source = std::fs::read_to_string(root.join(&path))?;
+        let doc = bbt_doc::parse(&source);
+        for theme in [ui::Theme::Dark, ui::Theme::Light] {
+            let ctx = ui::Context::new(theme, ui::Density::Cozy);
+            let element = doc.modal_element(&path.to_string_lossy(), false, [1246., 900.], ctx, &metrics);
+            let first = element.layout(Rect::new(0., 0., 1246., 0.), ctx, &metrics)?;
+            let last = (first.rect.h - 900.).max(0.);
+            let mut offsets = vec![0.];
+            if last > 900. { offsets.push(last * 0.5); }
+            if last > 1. { offsets.push(last); }
+            for offset in offsets {
+                let layout = if offset == 0. { first.clone() } else { element.layout(Rect::new(0., -offset, 1246., 0.), ctx, &metrics)? };
+                if !paints(&c::paint_with_draw(&layout, DrawCtx::new(theme, ctx.density)), &mut atlas, &mut keys)? {
+                    println!("document_index={}; path={}; theme={theme:?}; offset={offset}; source=public-rasterizer-and-shelf-packing-replay", index + 1, path.display());
+                    return Ok(());
+                }
+            }
+        }
+    }
+    Err("corpus did not reproduce the capacity limit".into())
+}
+
+COMMAND rustc --edition=2024 -O /tmp/nyx-w35-atlas-probe.rs -L dependency=/tmp/nyx-w3-5a-target/release/deps -o /tmp/nyx-w35-atlas-probe --extern bboxybook=/tmp/nyx-w3-5a-target/release/deps/libbboxybook-f7f903852d890aff.rlib --extern bbt_render=/tmp/nyx-w3-5a-target/release/deps/libbbt_render-dcc43905a53823d2.rlib --extern bbt_ui=/tmp/nyx-w3-5a-target/release/deps/libbbt_ui-ee42b22967d1a389.rlib --extern bbt_ui_model=/tmp/nyx-w3-5a-target/release/deps/libbbt_ui_model-0405f0e23d049037.rlib --extern bbt_doc=/tmp/nyx-w3-5a-target/release/deps/libbbt_doc-d80c56d02fb52d9e.rlib
+error[E0603]: struct `Metrics` is private
+  --> /tmp/nyx-w35-atlas-probe.rs:42:40
+   |
+42 |     let metrics = bboxybook::settings::Metrics::default();
+   |                                        ^^^^^^^ private struct
+   |
+note: the struct `Metrics` is defined here
+  --> crates/bboxybook/src/settings.rs:20:1
+   |
+20 | pub(crate) struct Metrics {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.
+COMPILE EXIT 1
+EXIT 1 ELAPSED 0.325s
+
+CORRECTED PROBE: same public native metrics with memoization (private Settings Metrics is inaccessible).
+SOURCE
+use std::{collections::HashSet, error::Error, path::Path};
+use bbt_render::{atlas::GlyphAtlas, chrome::text::rasterize_at};
+use bbt_ui::{self as ui, components as c};
+use bbt_ui_model::{draw::{DrawCtx, Prim}, layout::Rect};
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+fn visit(primitives: &[Prim], atlas: &mut GlyphAtlas, keys: &mut HashSet<String>) -> Result<bool> {
+    for prim in primitives {
+        match prim {
+            Prim::Group { primitives, .. } => if !visit(primitives, atlas, keys)? { return Ok(false); },
+            Prim::Text { origin, text, style, max_width, .. } if !text.is_empty() => {
+                let scale = 1_f32;
+                let phase = (origin[0] * scale).rem_euclid(1.);
+                let key = format!("{text}\0{style:?}\0{max_width:?}\0{scale}\0{phase}");
+                if keys.contains(&key) { continue; }
+                let line = rasterize_at(text, *style, *max_width, scale, phase)?;
+                if let Err(error) = atlas.insert(line.width, line.height, &line.mask) {
+                    println!("failure={error}; cached_line_masks={}; atlas={}x{}; failed_mask={}x{}; scale={scale}", keys.len(), atlas.size(), atlas.size(), line.width, line.height);
+                    return Ok(false);
+                }
+                keys.insert(key);
+            }
+            _ => {},
+        }
+    }
+    Ok(true)
+}
+fn paints(ops: &[c::Paint], atlas: &mut GlyphAtlas, keys: &mut HashSet<String>) -> Result<bool> {
+    for op in ops {
+        let ok = match op {
+            c::Paint::Group { ops, .. } => paints(ops, atlas, keys)?,
+            c::Paint::Draw(list) | c::Paint::Underlay(list) => visit(&list.primitives, atlas, keys)?,
+            c::Paint::Material { .. } => true,
+        };
+        if !ok { return Ok(false); }
+    }
+    Ok(true)
+}
+
+#[derive(Default)]
+struct Metrics {
+    widths: std::cell::RefCell<std::collections::HashMap<String, f32>>,
+    fonts: std::cell::RefCell<std::collections::HashMap<String, [f32; 2]>>,
+}
+impl bbt_ui_model::layout::TextMeasure for Metrics {
+    fn width(&self, value: &str, style: &bbt_ui_model::layout::TextStyle) -> f32 {
+        let key = format!("{value}\0{style:?}");
+        if let Some(value) = self.widths.borrow().get(&key) { return *value; }
+        let value = bbt_ui_model::layout::TextMeasure::width(&bboxybook::components::Metrics, value, style);
+        self.widths.borrow_mut().insert(key, value);
+        value
+    }
+}
+impl c::Measure for Metrics {
+    fn font_metrics(&self, style: &bbt_ui_model::layout::TextStyle) -> [f32;2] {
+        let key = format!("{style:?}");
+        if let Some(value) = self.fonts.borrow().get(&key) { return *value; }
+        let value = c::Measure::font_metrics(&bboxybook::components::Metrics, style);
+        self.fonts.borrow_mut().insert(key, value);
+        value
+    }
+    fn x_height(&self, style: &bbt_ui_model::layout::TextStyle) -> f32 {
+        c::Measure::x_height(&bboxybook::components::Metrics, style)
+    }
+}
+
+fn main() -> Result<()> {
+    let root_arg = std::env::args().nth(1).expect("worktree");
+    let root = Path::new(&root_arg);
+    let metrics = Metrics::default();
+    let mut atlas = GlyphAtlas::new(512, 8192)?;
+    let mut keys = HashSet::new();
+    for (index, path) in bboxybook::documents::repository::inputs(root)?.into_iter().enumerate() {
+        let source = std::fs::read_to_string(root.join(&path))?;
+        let doc = bbt_doc::parse(&source);
+        for theme in [ui::Theme::Dark, ui::Theme::Light] {
+            let ctx = ui::Context::new(theme, ui::Density::Cozy);
+            let element = doc.modal_element(&path.to_string_lossy(), false, [1246., 900.], ctx, &metrics);
+            let first = element.layout(Rect::new(0., 0., 1246., 0.), ctx, &metrics)?;
+            let last = (first.rect.h - 900.).max(0.);
+            let mut offsets = vec![0.];
+            if last > 900. { offsets.push(last * 0.5); }
+            if last > 1. { offsets.push(last); }
+            for offset in offsets {
+                let layout = if offset == 0. { first.clone() } else { element.layout(Rect::new(0., -offset, 1246., 0.), ctx, &metrics)? };
+                if !paints(&c::paint_with_draw(&layout, DrawCtx::new(theme, ctx.density)), &mut atlas, &mut keys)? {
+                    println!("document_index={}; path={}; theme={theme:?}; offset={offset}; source=public-rasterizer-and-shelf-packing-replay", index + 1, path.display());
+                    return Ok(());
+                }
+            }
+        }
+    }
+    Err("corpus did not reproduce the capacity limit".into())
+}
+
+COMMAND rustc --edition=2024 -O /tmp/nyx-w35-atlas-probe.rs -L dependency=/tmp/nyx-w3-5a-target/release/deps -o /tmp/nyx-w35-atlas-probe --extern bboxybook=/tmp/nyx-w3-5a-target/release/deps/libbboxybook-f7f903852d890aff.rlib --extern bbt_render=/tmp/nyx-w3-5a-target/release/deps/libbbt_render-dcc43905a53823d2.rlib --extern bbt_ui=/tmp/nyx-w3-5a-target/release/deps/libbbt_ui-ee42b22967d1a389.rlib --extern bbt_ui_model=/tmp/nyx-w3-5a-target/release/deps/libbbt_ui_model-0405f0e23d049037.rlib --extern bbt_doc=/tmp/nyx-w3-5a-target/release/deps/libbbt_doc-d80c56d02fb52d9e.rlib
+COMPILE EXIT 0
+failure=glyph atlas capacity exhausted; cached_line_masks=40123; atlas=8192x8192; failed_mask=58x20; scale=1
+document_index=21; path=.bboxy/research/provenance-and-documents.md; theme=Dark; offset=0; source=public-rasterizer-and-shelf-packing-replay
+EXIT 0 ELAPSED 47.320s

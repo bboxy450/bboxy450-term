@@ -1,0 +1,74 @@
+W3.5a — bbt-doc Markdown handoff evidence
+Source: 6a627d99c70bcfca05f1e1c612d279154da941d3; parent 8de468a (accepted main).
+Worktree: /Users/feral/mydev/bboxy450-term-nyx; branch nyx-w3-5a.
+git verify-commit 6a627d9 — exit 0, Boxy / 9B07E849480C68328CA20684844ECC0587DE7AB0.
+Environment: macOS 27.0.1 (26A434), Apple M4 / Metal, rustc 1.99.0 (b940084d7 2026-09-28).
+
+Mechanisms
+crates/bbt-doc/src/markdown/parse.rs:4 — pinned pulldown-cmark 0.13.4 to semantic blocks/inlines with original UTF-8 byte ranges; GFM tables/tasks/strike/footnotes, YAML and annotated wikilinks.
+crates/bbt-doc/src/markdown/mod.rs:11 — original source, raw/lossless metadata values and errors remain available.
+crates/bbt-doc/src/markdown/layout.rs:232 — retained body composition uses host font measurement; doc_measure=576 and named doc_heading token.
+crates/bbt-doc/src/markdown/layout.rs:744 — extended-grapheme breaks for an oversized path/token; source text is unchanged.
+crates/bbt-doc/src/markdown/layout.rs:941 — measured table columns use solve_box; rows wrap to natural height, wide content gets an explicit ScrollView.
+crates/bbt-ui/src/modules/document_modal.rs:1267 — optional body factory; existing element() still uses the fixture body by default.
+crates/bboxybook/src/documents.rs:87 — public document body is parsed by bbt-doc; existing supplied semantic Drawing fixtures remain available.
+crates/bboxybook/src/documents/repository.rs:54 — tracked corpus font-layout overflow check, dark/light.
+crates/bboxybook/src/documents/repository.rs:153 — actual Markdown corpus images, per-document renderer lifetime, top/middle/end viewports. Flat pages use existing retained flat composition; material pages retain the existing executor.
+Cargo.lock — bbt-doc, pulldown-cmark 0.13.4 and unicase 2.10.0 added; no existing package removed or upgraded. Unicode segmentation and YAML use already-locked versions.
+scripts/layering.sh:7 — only ORDER changed, bbt-doc after bbt-ui and before bboxybook; main's bbt-proto retained.
+
+Verification
+Clean detached worktree: /tmp/ci-nyx-w35a-6a627d9. git status --porcelain empty before/after.
+CARGO_TARGET_DIR=/tmp/ci-nyx-w35a-6a627d9-target; dev/test opt-level 1, debug 0, incremental 0.
+BBOXYBOOK_GALLERY=documents BBOXYBOOK_REFERENCE_HEAD=6a627d9 sh scripts/ci-local.sh --parity — exit 0.
+Workspace build/tests, UI IO lint, layering/modules invariants, lab checks and fresh document parity passed. Raw CI log: w3-5a-ci-local.log (including commands/environment).
+Strict cargo clippy -p bbt-ui-model -p bbt-render -p bbt-ui -p bbt-doc -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0, same clean worktree.
+Log totals including invariant test reruns: 504 passed, 0 failed, 6 ignored across 94 test-result records; ignored fixtures/benchmarks retain their stated reasons.
+New parser/layout tests: 4 + 5 passed. Corpus integration tests: 3 passed. Flat gallery composition pixel regression: 1 passed, both themes.
+Final gate elapsed 700.836 s. Private CI build target removed only after final exit 0; gallery images retained.
+Earlier strict all-target check was blocked by P1's missing fixture-IO exemption; owner fix 087a3e2 is in this parent, final check passes. An early CI launch before checkout finished exited 127 before a gate ran; the confirmed clean-checkout run above is the gate.
+
+Final corpus
+cargo run -p bboxybook --release --locked -- documents --repository --out target/bbt-doc/repository-final — exit 0, 191.386 s including build.
+87 tracked .bboxy Markdown files, both themes, 390 PNGs; zero unclipped body overflows, no rendering panic.
+Gallery: /Users/feral/mydev/bboxy450-term-nyx/target/bbt-doc/repository-final/index.html.
+Visual reads: vision.dark-top, specs/architecture.light-top, tasks/2026-10-22-w3-5-bbt-doc.light-top. Wrapped tables, source-preserving code and structured frontmatter link chips checked.
+Two existing YAML warnings: specs/c1-live-seats.md:4 and specs/d1-providers.md:4 have unquoted title values containing colon-space. Their errors/raw metadata and bodies remain visible. Reported to Vesper; spec sources untouched.
+Raw corpus output: w3-5a-corpus.log; full report.json and images remain in the gallery.
+
+Document parity
+Index: /tmp/ci-nyx-w35a-6a627d9/target/parity/index.html.
+Fresh isolated Chrome capture: 120/120, zero capture errors; native: 120 PNGs.
+Geometry complete/passing: 120/120; max rect error 0.085083 px, max baseline error 0.0078125 px.
+48 advisory pixel reviews; same exact review keys as accepted target/bboxybook/documents/final/report.json, zero new/resolved review cases. No policy or golden changed.
+Worst broken-frontmatter-comfortable-dark web/native/diff inspected: structure aligns; text/edge and dashed warning-rim residue remains inherited.
+Worst ten triplets (web/<key> | native/<key> | diff/<key> under the index directory):
+documents/broken-frontmatter-comfortable-dark.png — 2.91721% changed; review pixels
+documents/broken-frontmatter-compact-dark.png — 2.91721% changed; review pixels
+documents/broken-frontmatter-cozy-dark.png — 2.91721% changed; review pixels
+documents/broken-frontmatter-touch-dark.png — 2.91721% changed; review pixels
+documents/broken-frontmatter-comfortable-light.png — 2.87852% changed; review pixels
+documents/broken-frontmatter-compact-light.png — 2.87852% changed; review pixels
+documents/broken-frontmatter-cozy-light.png — 2.87852% changed; review pixels
+documents/broken-frontmatter-touch-light.png — 2.87852% changed; review pixels
+documents/superseded-comfortable-dark.png — 2.58800% changed; review pixels
+documents/superseded-compact-dark.png — 2.58800% changed; review pixels
+
+Limits / deliberate scope
+Real Markdown Mermaid is Source-only; existing lab Drawing states still consume their supplied semantic figure records. The bbt-mermaid engine is on main; connecting it to this body/figure pipeline is outside W3.5a.
+Code highlighting, image loading (alt/destination retained), interactive open/find/selection/feed wiring, and signature verification are outside W3.5a. Signature-shaped YAML is never promoted to verified evidence.
+The original unbounded corpus renderer exhausted its whole-line mask atlas after 20 files. Exact packing replay: 40,123 cached line masks, 8192x8192 atlas, failed 58x20 insertion on document 21. Replay source/command and result are in w3-5a-atlas-capacity.log. No renderer source changed. Oracle queued R6 per-glyph caching plus LRU after W3.5.
+
+Cleanup
+{
+  "removed": "/tmp/ci-nyx-w35a-6a627d9-target",
+  "allocated_bytes_removed": 2256097280,
+  "volume_free_before": 24752373760,
+  "volume_free_after": 26856599552,
+  "PNG_files_in_removed_build_target": 0,
+  "retained": [
+    "/tmp/ci-nyx-w35a-6a627d9/target/parity",
+    "target/bbt-doc/repository-final",
+    "target/bbt-doc/parity"
+  ]
+}
