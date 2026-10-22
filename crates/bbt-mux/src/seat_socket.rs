@@ -29,6 +29,11 @@ pub struct Request {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Action {
+    Catalogue,
+    Call {
+        #[serde(flatten)]
+        call: crate::mcp::Call,
+    },
     Messaging {
         request: crate::messaging::api::Request,
     },
@@ -218,6 +223,8 @@ async fn session_inner(
                 // on every request, not merely against this listener's pathname.
                 let snapshot=client.snapshot(seat,generation).await?;
                 let result:Result<serde_json::Value>=match request.action {
+                    Action::Catalogue=>client.control_catalogue(seat,generation).await,
+                    Action::Call{call}=>client.control_call(seat,generation,call).await,
                     Action::Messaging{request}=>client.messaging(seat,generation,request).await.and_then(|v|Ok(serde_json::to_value(v)?)),
                     Action::Hook{event}=>Ok(serde_json::json!({"kind":"HookObserved","status":client.hook(seat,generation,event).await?})),
                     Action::Attach|Action::Snapshot=>Ok(serde_json::json!({"kind":"Snapshot","snapshot":snapshot})),

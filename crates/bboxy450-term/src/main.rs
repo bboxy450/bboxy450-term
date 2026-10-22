@@ -512,6 +512,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         bbt_mux::adapters::hook::run_cli(&hook_args[1..]);
         return Ok(());
     }
+    if hook_args.first().is_some_and(|arg| arg == "mcp") {
+        bbt_mux::mcp::run_cli()?;
+        return Ok(());
+    }
     let event_loop = EventLoop::<UiEvent>::with_user_event().build()?;
     let proxy = event_loop.create_proxy();
     let inbox = bbt_rt::init_ui(Wake(proxy.clone()));

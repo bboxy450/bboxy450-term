@@ -1,0 +1,5 @@
+    Checking wgpu v30.0.1
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-render)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.00s
