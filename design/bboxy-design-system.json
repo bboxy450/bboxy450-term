@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 39,
+  "version": 40,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -869,7 +869,8 @@
         }
       }
     },
-    "implementation": "launcherItems() and picker() in components.js, shared by the showcase and launcher.html; picker opts.path deep-links any nesting level; launcher styles live in lab.css"
+    "implementation": "launcherItems() and picker() in components.js, shared by the showcase and launcher.html; picker opts.path deep-links any nesting level; launcher styles live in lab.css",
+    "matching_display": "plain text in every row; no underline or highlight on matched text; the only emphasis is the selection band (operator, Raycast reference runs/ref-raycast-no-match-underline.png)"
   },
   "interactions": {
     "focus": "click a row or a pane; Tab / Shift+Tab across panes; arrow keys move to the nearest pane in that direction (⌘⌥ arrows while typing, plain arrows otherwise); pane dwell 150 ms; a seat in another tab or swarm switches the stage; open/shut of swarms is separate",

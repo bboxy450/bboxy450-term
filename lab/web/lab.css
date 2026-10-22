@@ -204,7 +204,6 @@ code, .mono { font-family: var(--font-mono); }
 .picker .opt.sel { background: var(--accent); color: #fff; }
 .picker .opt.sel .role { color: rgba(255,255,255,.8); }
 .picker .opt.zsh { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 9px; }
-.picker .opt .m { text-decoration: underline; text-decoration-color: var(--accent-soft); }
 .picker .foot { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg-dim); }
 .picker .foot .nm { color: var(--fg); font-weight: 600; }
 .picker .foot .sw { width: 10px; height: 10px; border-radius: 50%; }

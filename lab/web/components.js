@@ -933,8 +933,8 @@
       items.forEach((it, i) => {
         if (it.section && it.section !== lastSec) { list.append(el('div', { class: 'sec' }, it.section)); lastSec = it.section; }
         const o = el('div', { class: 'opt' + (i === sel ? ' sel' : '') + (it.children ? ' parent' : '') + (capped(it) ? ' capped' : ''), onclick: e => pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
-        const label = el('span', { class: 'lbl' }); const L = it.label, qq = scope().qq, m = qq && norm(L).startsWith(qq) ? qq.length : 0;
-        if (m) label.append(el('span', { class: 'm' }, L.slice(0, m)), L.slice(m)); else label.textContent = L;
+        // plain text in every row; the only emphasis is the selection band (operator, Raycast reference)
+        const label = el('span', { class: 'lbl' }, it.label);
         o.append(label, el('span', { class: 'sub' }, it.sub || ''), el('span', { class: 'kind' }, it.kind || it.hint || ''));
         o.append(it.children ? el('span', { class: 'chev', title: '→ opens' }, '›') : el('span', { class: 'num' }, String(i + 1)));
         list.append(o);
