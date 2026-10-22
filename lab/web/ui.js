@@ -102,6 +102,8 @@
     for (const k in a) path.setAttribute(k, a[k]);
     svg.append(path); return svg;
   }
+  // Select { value, onChange }: the native select with no UA chrome, our chevdown caret (components.js selectBox)
+  const Select = (options, o) => window.C.selectBox(options, o && o.value, o && o.onChange);
   function Text(text, o) { o = o || {}; const t = el('span', { class: 'ui-text' }, text); t.style.fontSize = 'var(--t-' + (o.step || 'body') + ')'; if (o.weight) t.style.fontWeight = o.weight; if (o.mono) t.style.fontFamily = 'var(--font-mono)'; if (o.dim) t.style.color = 'var(--fg-dim)'; if (o.color) t.style.color = o.color; if (o.caps) { t.style.textTransform = 'uppercase'; t.style.letterSpacing = (o.track || .22) + 'em'; } if (o.align) t.style.textAlign = o.align; return t; }
   function Stack(o, ...kids) { o = o || {}; const s = el('div', { class: 'ui-stack' }, ...kids); s.style.display = 'flex'; s.style.flexDirection = o.dir === 'row' ? 'row' : 'column'; s.style.gap = o.gap != null ? px(o.gap) : 'var(--gap)'; if (o.rowGap != null) s.style.rowGap = px(o.rowGap); if (o.columnGap != null) s.style.columnGap = px(o.columnGap); if (o.align) s.style.alignItems = o.align; if (o.justify) s.style.justifyContent = o.justify; if (o.wrap) s.style.flexWrap = 'wrap'; return s; }
   function Spacer() { const s = el('span', { class: 'ui-spacer' }); s.style.flex = '1'; return s; }
@@ -119,5 +121,5 @@
   const Q = new URLSearchParams(location.search);
   const themes = () => Q.get('theme') && T.color[Q.get('theme')] ? [Q.get('theme')] : ['dark', 'light'];
   const densities = () => Q.get('density') && T.density[Q.get('density')] ? [Q.get('density')] : ['touch', 'comfortable', 'cozy', 'compact'];
-  window.UI = { textOpts, themes, densities, themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Path, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
+  window.UI = { textOpts, themes, densities, themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Path, Select, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
 })();

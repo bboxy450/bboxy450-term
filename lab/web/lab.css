@@ -348,9 +348,9 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .settings .diff button:hover { background: var(--sel-hover); color: var(--fg); }
 /* controls */
 .settings select, .settings input[type=text], .settings textarea { background: color-mix(in srgb, var(--bg) 60%, var(--surface)); border: 0; box-shadow: 0 0 0 var(--hair-w) var(--hair); color: var(--fg); border-radius: var(--r-badge); padding: 5px 9px; font: inherit; font-size: var(--t-row); outline: 0; max-width: 100%; }
-.settings select { -webkit-appearance: none; appearance: none; padding-right: var(--s10); background-image: linear-gradient(45deg, transparent 50%, var(--fg-dim) 50%), linear-gradient(135deg, var(--fg-dim) 50%, transparent 50%); background-position: calc(100% - 13px) 55%, calc(100% - 9px) 55%; background-size: 4px 4px; background-repeat: no-repeat; }
+.settings select { padding-right: var(--s10); }
 .settings select:focus, .settings input[type=text]:focus, .settings textarea:focus { box-shadow: 0 0 0 var(--hair-w) var(--accent); }
-.settings textarea { font-family: var(--font-mono); font-size: var(--t-caption); line-height: 1.45; min-height: 64px; resize: vertical; width: 100%; display: block; }
+.settings textarea { font-family: var(--font-mono); font-size: var(--t-caption); line-height: 1.45; min-height: 64px; max-height: 240px; resize: none; field-sizing: content; overflow-y: auto; width: 100%; display: block; box-sizing: border-box; }
 .settings input.mono { font-family: var(--font-mono); font-size: var(--t-caption); }
 .settings .toggle { width: 30px; height: 18px; border-radius: var(--r-round); background: var(--badge-sel); position: relative; display: inline-block; cursor: pointer; flex: none; transition: background var(--hover-ms); }
 .settings .toggle.on { background: var(--accent); }
@@ -452,7 +452,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .settings .del:hover { color: var(--c-errored); border-color: var(--c-errored); }
 .s-card.role .rb { padding: var(--s2) var(--s6) var(--s5); display: flex; flex-direction: column; flex: 1; }
 .s-card.role textarea { min-height: 88px; }
-.s-card.role select { width: 100%; }
+.s-card.role .sel, .s-card.role select { width: 100%; }
 .s-card.role.add { border: var(--hair-w) dashed var(--line); box-shadow: none; background: transparent; align-items: center; justify-content: center; gap: var(--s2); min-height: 160px; color: var(--fg-dim); }
 .s-card.role.add b { font-weight: 500; color: var(--fg); font-size: var(--t-body); }
 .s-card.role.add span { font-size: var(--t-caption); }
@@ -1173,7 +1173,7 @@ html.transparent, html.transparent body { background: var(--wallpaper) fixed; }
 html.transparent .stage .pane { background: color-mix(in srgb, var(--bg) calc(var(--win-a) * 100%), transparent); }
 html.transparent.win-blur .stage .pane { -webkit-backdrop-filter: blur(var(--win-blur)); backdrop-filter: blur(var(--win-blur)); }
 .wo { display: inline-flex; align-items: center; gap: var(--s5); }
-.wo input[type=range] { width: 120px; accent-color: var(--accent); }
+.wo input[type=range] { width: 120px; }
 .wo .wo-pct { font-family: var(--font-mono); font-size: var(--t-caption); width: 3.2em; font-weight: 500; }
 .win-prev { position: relative; width: 64px; height: 40px; border-radius: var(--r-badge); overflow: hidden; background: var(--wallpaper); box-shadow: 0 0 0 var(--hair-w) var(--hair, var(--line)); flex: none; }
 .win-prev .wp-side { position: absolute; left: 0; top: 0; bottom: 0; width: 16px; background: var(--sidebar-bg); }
@@ -1476,3 +1476,34 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 .dgfig-b { overflow-x: auto; padding: var(--s4); }
 .dgfig-b.wide { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
 .dgfig-src { margin: 0; font-family: var(--font-mono); font-size: var(--t-caption); line-height: 1.5; color: var(--fg); white-space: pre; }
+
+/* ---------- no browser-default chrome: every control below is drawn by us, the same on every OS and browser ---------- */
+/* select: appearance none everywhere; the caret is our chevdown icon on the .sel wrapper (components.js selectBox, UI.Select) */
+select { -webkit-appearance: none; appearance: none; }
+.sel { position: relative; display: inline-flex; align-items: center; max-width: 100%; }
+.sel select { width: 100%; padding-right: var(--s10); }
+.sel .caret { --icon: 12px; position: absolute; right: var(--s4); pointer-events: none; color: var(--fg-dim); }
+.sel select:focus + .caret { color: var(--fg); }
+/* textarea: no grip; it grows with its content to a cap and then scrolls with our scrollbar (field-sizing: content) */
+textarea { resize: none; }
+/* range: our track and thumb */
+input[type=range] { -webkit-appearance: none; appearance: none; height: 16px; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--fg) 18%, transparent); }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--fg) 18%, transparent); }
+input[type=range]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: var(--fg); box-shadow: 0 0 0 3px var(--accent), 0 1px 3px rgba(0,0,0,.35); }
+input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: var(--fg); box-shadow: 0 0 0 3px var(--accent), 0 1px 3px rgba(0,0,0,.35); }
+/* checkbox, radio and number: none ship today; if one appears it starts from nothing, never the UA look */
+input[type=checkbox], input[type=radio] { -webkit-appearance: none; appearance: none; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* details: our caret, not the UA disclosure triangle */
+summary { display: block; list-style: none; cursor: pointer; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: '▸'; display: inline-block; width: 1em; color: var(--fg-dim); transition: transform var(--hover-ms, 120ms); }
+details[open] > summary::before { transform: rotate(90deg); }
+/* scrollbars: thin, our thumb on a clear track, everywhere */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--fg) 22%, transparent) transparent; }
+/* focus: one ring, ours, for keyboard focus only; components that draw their own focus keep it (higher specificity) */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus:not(:focus-visible) { outline: none; }
