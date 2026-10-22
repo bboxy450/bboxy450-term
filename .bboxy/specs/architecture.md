@@ -124,7 +124,7 @@ Index: `Index::open(repository, run_dir/index)` + FileWatch (`M/logic.rs:480-485
 | PTY-sourced observations | OSC 7502 needs no capability; a SessionStart with a new session_id rebinds (`hook.rs:138, 162-175`) | the PTY is authoritative by design (specs/README S4) |
 | native identity | binding = pid + `ps` lstart (`M/adapters/mod.rs:99-112`); `own_socket` uid check follows symlinks (`native.rs:50-58`); `Priority::Now` needs `allow_interrupt` (`363-365`) | |
 | events | Ed25519 over `"bboxy/event/v1\0"` + len + JSON; verify trusts the key in the envelope, not pinned (`M/store/events.rs:59-90`); hash chain verified on open (`161-169, 225-252`) | signing key = the one passed to `Logic::start` (`M/logic.rs:357`) |
-| messaging | `SeatKeys` trait; `LocalSeatKeys` derives leaf seeds by HKDF-SHA256 from the broker secret, issuer `LocalDev` (`M/messaging/keys.rs:10-60`); `IssuerKind::GpgRoot` exists and is never constructed (`wire.rs:12-17`); grants, policy epoch, class rules in `service.rs` and `tree.rs` | **not wired**: `Messaging::open` has no production caller; `Logic` holds no `SeatKeys` (`service.rs:44-74`). Decision #4 replaces `LocalSeatKeys`, keeps envelopes. |
+| messaging | `SeatKeys` trait; logic builds it through `identity::seat_keys(run_dir, key, handle)` (`M/logic.rs:500`), which yields `ChainSeatKeys` (`M/identity/chain.rs:39`: GPG root → device → seat, expired and stale grants refused by name) when the journaled issuer is `gpg-root`, else `LocalSeatKeys` (HKDF from the broker secret, `M/messaging/keys.rs`); grants, policy epoch, class rules in `service.rs` and `tree.rs` | wired by W2.4 and ID1a/b (2026-10-22); the one-way issuer transition is `M/identity/transition.rs` ([[id1-seat-chain]] §2b) |
 
 ```mermaid
 flowchart TB
@@ -166,7 +166,7 @@ Only those that change a decision or a brief ([[c1-live-seats]] consumes most of
 - No daemon mode, no production start of supervisor or logic, no connection from the GUI (`A/main.rs:509-574`). C1 is the first time these processes run outside tests.
 - The seat socket has no input action (`M/seat_socket.rs:30-58`). `Adapter::{launch, attach, wake, input_guard}`, `ArbiterView`, `submit_pty` have no production callers (`M/adapters/mod.rs:171-193`, `guard.rs:9-21, 80`); `foreground_pid`, `canonical`, `echo` have no source. The input arbiter is unproven because it is unreachable.
 - `Replica` (client-side applier) is unused (`M/streams.rs:185-256`); the C1 IO thread is its first user. `Screen::from_term` serialises a whole checkpoint per snapshot every 20 ms per connection (`streams.rs:30-60`): a cost to measure in the 1000-seat gate before optimising.
-- Messaging is a library with no caller; `msg_bus_outbox` is never drained (`M/messaging/service.rs:44-74, 547-566`).
+- Closed 2026-10-22: messaging is wired into logic (W2.4) and signs with the chain when a root is pinned (ID1b); the seat socket carries `Action::Messaging`. Input over the seat socket is still C1a's.
 - `PtyWrite` replies are dropped (`M/ring.rs:293-299`): programs that query the terminal get no answer except the 7501 probe. Unverified effect.
 - bbt-rt's runtime is created by the app and never reaches Logic (`R/lib.rs:26-37`, `A/main.rs:517`); two runtimes would exist in one process. C1 decides which one logic runs on.
 - Risks not executed: an index path with whitespace or > 16 tokens fails subject validation and ends logic (`M/index.rs:259-262`, `M/bus.rs:21-27`, `M/logic.rs:536`); a resize beyond 512×256 passes the supervisor and ends the logic thread (`M/logic.rs:966-967`).
@@ -190,7 +190,7 @@ flowchart BT
   classDef next stroke-dasharray: 5 5
 ```
 
-Order `bbt-rt bbt-core bboxy-firehose bbt-ui-model bbt-render bbt-ui bboxybook bbt-supervisor bbt-mux bboxy450-term`, gated by [[layering]]. Decision #1 landed on 2026-10-22 (S1, Rook): `bbt-supervisor` holds the mio supervisor, PTYs, leases and the ring writer; `bbt-mux` re-exports `SocketSupervisor` and `SupervisorConnection` from it (`M/logic.rs:29`). bbt-mux depends on bbt-core and bbt-rt only; the app depends on everything. Decision #6 (`bbt-proto`) adds one more crate to the order when C1a lands. Public set and docs standard: [[open-source]]; renderer design: [[renderer]]; components: [[gui-components]]; the parity loop: [[runbook-web-to-native]].
+Order `bbt-rt bbt-core bboxy-firehose bbt-ui-model bbt-render bbt-ui bboxybook bbt-supervisor bbt-mux bboxy450-term`, gated by [[layering]]. Decision #1 landed on 2026-10-22 (S1, Rook): `bbt-supervisor` holds the mio supervisor, PTYs, leases and the ring writer; `bbt-mux` re-exports `SocketSupervisor` and `SupervisorConnection` from it (`M/logic.rs:29`). bbt-mux depends on bbt-core and bbt-rt only; the app depends on everything. Decision #6 (`bbt-proto`) adds one more crate to the order when C1a lands; `bbt-mermaid` (W3.5m) sits after bbt-core. Public set and docs standard: [[open-source]]; renderer design: [[renderer]]; components: [[gui-components]]; the parity loop: [[runbook-web-to-native]].
 
 ## 10. Direction (operator, 2026-10-22)
 
