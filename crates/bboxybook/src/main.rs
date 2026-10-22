@@ -20,6 +20,12 @@ fn run() -> Result<()> {
         let out = PathBuf::from(
             value(&args, "--out").unwrap_or_else(|| "target/bboxybook/documents".into()),
         );
+        if args.iter().any(|a| a == "--repository") {
+            let root = value(&args, "--root")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
+            return bboxybook::documents::repository::render(&root, &out);
+        }
         if args.iter().any(|a| a == "--geometry-only") {
             let cases: Vec<gallery::Case> = serde_json::from_str(&fs::read_to_string(
                 value(&args, "--manifest").ok_or("--manifest required")?,

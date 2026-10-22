@@ -1,0 +1,20 @@
+[package]
+name = "bbt-doc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Native Markdown documents on bboxy's retained UI and text pipeline"
+
+[dependencies]
+bbt-ui = { path = "../bbt-ui" }
+bbt-ui-model = { path = "../bbt-ui-model" }
+pulldown-cmark = { version = "=0.13.4", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "=0.9.34"
+unicode-segmentation = "=1.13.3"
+
+[dev-dependencies]
+serde_json = "1"

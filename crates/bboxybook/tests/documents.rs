@@ -1,5 +1,25 @@
+#![allow(
+    clippy::disallowed_methods,
+    reason = "test/fixture IO, not the UI thread"
+)]
 use bboxybook::{documents, parity::CasePolicy};
 use serde_json::json;
+#[test]
+fn every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let files = documents::repository::inputs(&root).unwrap();
+    assert!(files.contains(&std::path::PathBuf::from(".bboxy/vision.md")));
+    assert!(files.contains(&std::path::PathBuf::from(".bboxy/specs/architecture.md")));
+    assert!(files.iter().any(|p| p.starts_with(".bboxy/tasks")));
+    let reports = documents::repository::check(&root).unwrap();
+    assert_eq!(reports.len(), files.len() * 2);
+    assert!(reports.iter().all(|r| {
+        r["overflows"] == 0
+            && r["height"]
+                .as_f64()
+                .is_some_and(|h| h.is_finite() && h >= 0.)
+    }));
+}
 #[test]
 fn document_matrix_covers_all_types_and_both_modal_presentations_and_source() {
     let cases = documents::cases();

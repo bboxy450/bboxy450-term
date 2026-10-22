@@ -1,0 +1,113 @@
+COMMIT 6a627d99c70bcfca05f1e1c612d279154da941d3
+COMMAND cargo run -p bboxybook --release --locked -- documents --repository --out target/bbt-doc/repository-final
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxybook)
+    Finished `release` profile [optimized] target(s) in 39.94s
+     Running `/tmp/nyx-w3-5a-target/release/bboxybook documents --repository --out target/bbt-doc/repository-final`
+document 1/87: .bboxy/README.md
+document 2/87: .bboxy/decisions/2026-10-22-architecture-round-1.md
+document 3/87: .bboxy/graph.md
+document 4/87: .bboxy/invariants/README.md
+document 5/87: .bboxy/invariants/layering.md
+document 6/87: .bboxy/invariants/modules-through-components.md
+document 7/87: .bboxy/invariants/parity-geometry.md
+document 8/87: .bboxy/invariants/signed-main.md
+document 9/87: .bboxy/invariants/ui-never-waits.md
+document 10/87: .bboxy/plan.md
+document 11/87: .bboxy/research/agent-messaging.md
+document 12/87: .bboxy/research/cloud-and-mosh-exec.md
+document 13/87: .bboxy/research/cloud-and-mosh.md
+document 14/87: .bboxy/research/gpu-terminals-rust.md
+document 15/87: .bboxy/research/harness-touchpoints-exec.md
+document 16/87: .bboxy/research/harness-touchpoints.md
+document 17/87: .bboxy/research/iterm-harness-plugin.md
+document 18/87: .bboxy/research/kittens-events.md
+document 19/87: .bboxy/research/monorepo-weavie.md
+document 20/87: .bboxy/research/osc7501-capture.md
+document 21/87: .bboxy/research/provenance-and-documents.md
+document 22/87: .bboxy/research/pubsub-nats.md
+document 23/87: .bboxy/research/state-backend.md
+document 24/87: .bboxy/research/text-rendering.md
+document 25/87: .bboxy/research/transport-and-identity.md
+document 26/87: .bboxy/research/usage-limits-tachyon.md
+document 27/87: .bboxy/research/ux-divergence.md
+document 28/87: .bboxy/roadmap.md
+document 29/87: .bboxy/runbook-web-to-native.md
+document 30/87: .bboxy/runs/2026-10-21-agent-messaging-checks.md
+document 31/87: .bboxy/specs/README.md
+document 32/87: .bboxy/specs/architecture.md
+document 33/87: .bboxy/specs/c1-live-seats.md
+document 34/87: .bboxy/specs/channel-tree.md
+document 35/87: .bboxy/specs/d1-providers.md
+document 36/87: .bboxy/specs/document-viewer.md
+document 37/87: .bboxy/specs/events.md
+document 38/87: .bboxy/specs/gui-components.md
+document 39/87: .bboxy/specs/harness-adapters.md
+document 40/87: .bboxy/specs/id1-seat-chain.md
+document 41/87: .bboxy/specs/identity.md
+document 42/87: .bboxy/specs/mcp-control-plane.md
+document 43/87: .bboxy/specs/messaging.md
+document 44/87: .bboxy/specs/mux-daemon.md
+document 45/87: .bboxy/specs/networking.md
+document 46/87: .bboxy/specs/open-source.md
+document 47/87: .bboxy/specs/provenance.md
+document 48/87: .bboxy/specs/renderer.md
+document 49/87: .bboxy/specs/runtime.md
+document 50/87: .bboxy/specs/storage.md
+document 51/87: .bboxy/specs/subagent-detection.md
+document 52/87: .bboxy/specs/terminal-core.md
+document 53/87: .bboxy/specs/ux-prototype.md
+document 54/87: .bboxy/specs/w2-5-mcp-and-seat-wiring.md
+document 55/87: .bboxy/specs/work-items.md
+document 56/87: .bboxy/tasks/2026-10-21-agent-messaging-research.md
+document 57/87: .bboxy/tasks/2026-10-21-cloud-and-mosh-research.md
+document 58/87: .bboxy/tasks/2026-10-21-gpu-terminal-research.md
+document 59/87: .bboxy/tasks/2026-10-21-harness-touchpoints-research.md
+document 60/87: .bboxy/tasks/2026-10-21-identity-spec.md
+document 61/87: .bboxy/tasks/2026-10-21-mcp-control-plane.md
+document 62/87: .bboxy/tasks/2026-10-21-subagent-detection-research.md
+document 63/87: .bboxy/tasks/2026-10-21-text-rendering-research.md
+document 64/87: .bboxy/tasks/2026-10-21-transport-identity-research.md
+document 65/87: .bboxy/tasks/2026-10-21-w1-1-term-core-fork.md
+document 66/87: .bboxy/tasks/2026-10-21-w1-2-byte-ring.md
+document 67/87: .bboxy/tasks/2026-10-21-w2-1-mux-supervisor.md
+document 68/87: .bboxy/tasks/2026-10-21-w2-2-logic-bus-index.md
+document 69/87: .bboxy/tasks/2026-10-21-w2-3-adapters-claude-codex-zsh.md
+document 70/87: .bboxy/tasks/2026-10-21-w3-1-renderer-harness.md
+document 71/87: .bboxy/tasks/2026-10-21-w3-2a-ui-model.md
+document 72/87: .bboxy/tasks/2026-10-21-w3-2b-bboxybook.md
+document 73/87: .bboxy/tasks/2026-10-21-w3-2c-fixtures-input-fx.md
+document 74/87: .bboxy/tasks/2026-10-21-w3-2d-7-modules.md
+document 75/87: .bboxy/tasks/2026-10-21-w3-2d-component-library.md
+document 76/87: .bboxy/tasks/2026-10-21-w4-1-transport-trait.md
+document 77/87: .bboxy/tasks/2026-10-22-c-cockpit.md
+document 78/87: .bboxy/tasks/2026-10-22-o-open-source.md
+document 79/87: .bboxy/tasks/2026-10-22-r-runtime.md
+document 80/87: .bboxy/tasks/2026-10-22-t-terminal-fidelity.md
+document 81/87: .bboxy/tasks/2026-10-22-w2-4-local-messaging.md
+document 82/87: .bboxy/tasks/2026-10-22-w3-5-bbt-doc.md
+document 83/87: .bboxy/tasks/README.md
+document 84/87: .bboxy/ux-flow.md
+document 85/87: .bboxy/ux-pick.md
+document 86/87: .bboxy/ux-sidebar.md
+document 87/87: .bboxy/vision.md
+87 documents rendered; target/bbt-doc/repository-final/index.html
+EXIT 0 ELAPSED 191.386s
+
+REPORT SUMMARY
+{
+  "documents": 87,
+  "images": 390,
+  "unclipped_overflows": 0,
+  "metadata_warnings": [
+    {
+      "path": ".bboxy/specs/c1-live-seats.md",
+      "error": "mapping values are not allowed in this context at line 3 column 23"
+    },
+    {
+      "path": ".bboxy/specs/d1-providers.md",
+      "error": "mapping values are not allowed in this context at line 3 column 22"
+    }
+  ]
+}

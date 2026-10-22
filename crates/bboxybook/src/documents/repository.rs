@@ -1,0 +1,304 @@
+//! Offline corpus gallery: actual tracked Markdown, never a browser screenshot.
+use crate::{Result, components, gallery, settings::Metrics};
+use bbt_ui::{self as ui, components as c};
+use bbt_ui_model::{
+    draw::{DrawCtx, DrawList},
+    layout::Rect,
+};
+use serde_json::json;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
+
+pub fn inputs(root: &Path) -> Result<Vec<PathBuf>> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["ls-files", "-z", "--", ".bboxy"])
+        .output()?;
+    if !output.status.success() {
+        return Err(format!(
+            "cannot enumerate tracked .bboxy: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
+    }
+    let mut paths = vec![];
+    for value in output.stdout.split(|b| *b == 0).filter(|s| !s.is_empty()) {
+        let relative = PathBuf::from(std::str::from_utf8(value)?);
+        if relative.extension().is_some_and(|s| s == "md") {
+            if relative.components().any(|c| {
+                matches!(
+                    c,
+                    std::path::Component::ParentDir | std::path::Component::RootDir
+                )
+            }) {
+                return Err("document path escapes the worktree".into());
+            }
+            paths.push(relative);
+        }
+    }
+    paths.sort();
+    Ok(paths)
+}
+fn escape(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+pub fn check(root: &Path) -> Result<Vec<serde_json::Value>> {
+    let mut results = vec![];
+    let metrics = Metrics::default();
+    for path in inputs(root)? {
+        let source = fs::read_to_string(root.join(&path))?;
+        let doc = bbt_doc::parse(&source);
+        for theme in [ui::Theme::Dark, ui::Theme::Light] {
+            let ctx = ui::Context::new(theme, ui::Density::Cozy);
+            let e = doc.modal_element(&path.to_string_lossy(), false, [1246., 900.], ctx, &metrics);
+            let l = e.layout(Rect::new(0., 0., 1246., 0.), ctx, &metrics)?;
+            let failures = body_overflows(&l);
+            if !failures.is_empty() {
+                return Err(format!("{}: {}", path.display(), failures.join("; ")).into());
+            }
+            results.push(json!({"path":path,"theme":gallery::theme_name(theme),"blocks":doc.blocks.len(),"height":l.rect.h,"overflows":failures.len()}));
+        }
+    }
+    Ok(results)
+}
+
+/// Horizontal overflow is checked against the reading column. Descendants of
+/// an explicit scrolling viewport are allowed to extend behind its clip.
+pub fn body_overflows(layout: &c::Layout) -> Vec<String> {
+    fn body(layout: &c::Layout) -> Option<&c::Layout> {
+        if matches!(&layout.kind,c::LayoutKind::Named(k) if k=="body") {
+            Some(layout)
+        } else {
+            layout.children.iter().find_map(body)
+        }
+    }
+    fn walk(
+        l: &c::Layout,
+        left: f32,
+        right: f32,
+        clipped: bool,
+        path: &str,
+        out: &mut Vec<String>,
+    ) {
+        let key = if let c::LayoutKind::Named(k) = &l.kind {
+            k.as_str()
+        } else {
+            path
+        };
+        if ![l.rect.x, l.rect.y, l.rect.w, l.rect.h, l.baseline]
+            .iter()
+            .all(|n| n.is_finite())
+        {
+            out.push(format!("{key}: non-finite geometry"));
+            return;
+        }
+        if !clipped && (l.rect.x < left - 0.5 || l.rect.x + l.rect.w > right + 0.5) {
+            out.push(format!(
+                "{key}: {}..{} outside {left}..{right}",
+                l.rect.x,
+                l.rect.x + l.rect.w
+            ));
+        }
+        let clipped = clipped || matches!(&l.kind, c::LayoutKind::ScrollView { .. });
+        for child in &l.children {
+            walk(child, left, right, clipped, key, out)
+        }
+    }
+    let mut out = vec![];
+    if let Some(b) = body(layout) {
+        walk(b, b.rect.x, b.rect.x + b.rect.w, false, "body", &mut out)
+    }
+    out
+}
+
+// Real Markdown pages use flat chrome. Keep its retained order, clips and
+// groups in one draw list instead of round-tripping the full image for each
+// box. The existing executor still handles any future material-bearing page.
+pub(super) fn page_pixels(
+    renderer: &mut bbt_render::chrome::ChromeRenderer,
+    ops: Vec<c::Paint>,
+    pixels: Vec<u8>,
+    size: [u32; 2],
+    ctx: ui::Context,
+) -> Result<Vec<u8>> {
+    let mut flat = DrawList::default();
+    if components::append_draw(ops.clone(), &mut flat).is_err() {
+        return components::execute(renderer, ops, pixels, size, ctx);
+    }
+    use bbt_render::chrome::materials::{self, Backdrop, Scene};
+    Ok(materials::render_composed_to_rgba(
+        renderer,
+        Scene {
+            backdrop: Backdrop::Rgba(&pixels),
+            items: &[],
+            width: size[0],
+            height: size[1],
+            scale: 1.,
+            time_ms: 450.,
+            theme: ctx.theme,
+        },
+        &flat,
+    )?)
+}
+
+pub fn render(root: &Path, out: &Path) -> Result<()> {
+    let paths = inputs(root)?;
+    let total = paths.len();
+    if paths.is_empty() {
+        return Err("no tracked .bboxy Markdown found".into());
+    }
+    fs::create_dir_all(out)?;
+    let metrics = Metrics::default();
+    let [width, height] = [1246u32, 900u32];
+    let mut report = vec![];
+    let mut html = String::from(
+        "<!doctype html><meta charset=utf-8><title>bbt-doc · repository</title><style>body{font:14px system-ui;background:#10131c;color:#dde4fa;margin:24px}section{margin:24px 0}img{width:100%;max-width:1246px;border:1px solid #65718c}a{color:#8ebaff}summary{cursor:pointer}</style><h1>Native repository documents</h1><p>Tracked .bboxy Markdown · top, middle and end viewports · Mermaid Source-only.</p>",
+    );
+    for relative in paths {
+        // Each document is an independent offline case. Do not let hundreds of
+        // pages accumulate unrelated glyphs in one bounded atlas.
+        let mut renderer = bbt_render::chrome::ChromeRenderer::new(crate::images()?)?;
+        let source = fs::read_to_string(root.join(&relative))?;
+        let markdown = bbt_doc::parse(&source);
+        let mut variants = vec![];
+        for theme in [ui::Theme::Dark, ui::Theme::Light] {
+            let ctx = ui::Context::new(theme, ui::Density::Cozy);
+            let element = markdown.modal_element(
+                &relative.to_string_lossy(),
+                false,
+                [width as f32, height as f32],
+                ctx,
+                &metrics,
+            );
+            let first = element.layout(Rect::new(0., 0., width as f32, 0.), ctx, &metrics)?;
+            let overflows = body_overflows(&first);
+            if !overflows.is_empty() {
+                return Err(format!(
+                    "{} {}: {}",
+                    relative.display(),
+                    gallery::theme_name(theme),
+                    overflows.join("; ")
+                )
+                .into());
+            }
+            let extent = first.rect.h;
+            if !extent.is_finite() {
+                return Err(format!("{}: non-finite document height", relative.display()).into());
+            }
+            let last = (extent - height as f32).max(0.);
+            let mut offsets = vec![("top", 0.)];
+            if last > height as f32 {
+                offsets.push(("middle", last * 0.5));
+            }
+            if last > 1. {
+                offsets.push(("end", last));
+            }
+            let mut shots = vec![];
+            for (name, offset) in offsets {
+                let layout = if offset == 0. {
+                    first.clone()
+                } else {
+                    element.layout(Rect::new(0., -offset, width as f32, 0.), ctx, &metrics)?
+                };
+                let color = bbt_ui_model::draw::Color::hex(theme.palette().bg).0;
+                let bg: Vec<u8> = (0..width * height)
+                    .flat_map(|_| color.map(|v| (v * 255.).round() as u8))
+                    .collect();
+                let pixels = page_pixels(
+                    &mut renderer,
+                    c::paint_with_draw(&layout, DrawCtx::new(theme, ctx.density)),
+                    bg,
+                    [width, height],
+                    ctx,
+                )?;
+                let file = relative
+                    .strip_prefix(".bboxy")?
+                    .with_extension(format!("{}-{name}.png", gallery::theme_name(theme)));
+                let path = out.join(&file);
+                fs::create_dir_all(path.parent().ok_or("gallery output has no parent")?)?;
+                bbt_render::write_png(&path, &pixels, width, height)?;
+                shots.push(json!({"view":name,"offset":offset,"png":file}));
+            }
+            variants.push(json!({"theme":gallery::theme_name(theme),"height":extent,"overflow_count":overflows.len(),"shots":shots}));
+        }
+        html.push_str(&format!(
+            "<section><h2>{}</h2>",
+            escape(&relative.to_string_lossy())
+        ));
+        for variant in &variants {
+            html.push_str(&format!(
+                "<details><summary>{} · {} px</summary>",
+                variant["theme"].as_str().unwrap_or(""),
+                variant["height"]
+            ));
+            for shot in variant["shots"].as_array().unwrap() {
+                html.push_str(&format!(
+                    "<p>{}</p><img loading=lazy src=\"{}\">",
+                    shot["view"].as_str().unwrap_or(""),
+                    escape(shot["png"].as_str().ok_or("shot path missing")?)
+                ));
+            }
+            html.push_str("</details>");
+        }
+        html.push_str("</section>");
+        report.push(json!({"path":relative,"bytes":source.len(),"blocks":markdown.blocks.len(),"metadata_fields":markdown.frontmatter.fields.len(),"metadata_error":markdown.frontmatter.error,"variants":variants}));
+        println!(
+            "document {}/{}: {}",
+            report.len(),
+            total,
+            relative.display()
+        );
+    }
+    fs::write(out.join("report.json"), serde_json::to_vec_pretty(&report)?)?;
+    fs::write(out.join("index.html"), html)?;
+    println!(
+        "{} documents rendered; {}",
+        report.len(),
+        out.join("index.html").display()
+    );
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn flat_document_composition_preserves_pixels_including_clips_and_alpha() {
+        let markdown = bbt_doc::parse(
+            "---\ntype: task\ntitle: Native reader\nstatus: running\n---\nA **bold** line with [[events]]{derives:0.7}.\n\n| Key | Value |\n| --- | --- |\n| alpha | wrapped table content |\n",
+        );
+        let metrics = Metrics::default();
+        let mut renderer =
+            bbt_render::chrome::ChromeRenderer::new(crate::images().unwrap()).unwrap();
+        for theme in [ui::Theme::Dark, ui::Theme::Light] {
+            let ctx = ui::Context::new(theme, ui::Density::Cozy);
+            let e = markdown.modal_element("task.md", false, [700., 500.], ctx, &metrics);
+            let layout = e
+                .layout(Rect::new(0., 0., 700., 0.), ctx, &metrics)
+                .unwrap();
+            let ops = c::paint_with_draw(&layout, DrawCtx::new(theme, ctx.density));
+            let color = bbt_ui_model::draw::Color::hex(theme.palette().bg).0;
+            let bg: Vec<_> = (0..700 * 500)
+                .flat_map(|_| color.map(|v| (v * 255.).round() as u8))
+                .collect();
+            let before =
+                components::execute(&mut renderer, ops.clone(), bg.clone(), [700, 500], ctx)
+                    .unwrap();
+            let after = page_pixels(&mut renderer, ops, bg, [700, 500], ctx).unwrap();
+            assert_eq!(
+                before, after,
+                "flat corpus composition must be pixel-identical"
+            );
+        }
+    }
+}

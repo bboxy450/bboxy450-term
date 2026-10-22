@@ -10,6 +10,7 @@ members = [
   "crates/bbt-render",
   "crates/bbt-ui-model",
   "crates/bbt-ui",
+  "crates/bbt-doc",
   "crates/bboxybook",
   "crates/bboxy450-term",
   "crates/bboxy-firehose",

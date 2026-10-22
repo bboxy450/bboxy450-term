@@ -8,6 +8,7 @@ use bbt_ui::{components as c, modules::document_modal::DocumentModal};
 use bbt_ui_model::{draw::DrawCtx, layout::Rect};
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::Path};
+pub mod repository;
 
 pub const STATES: &[&str] = &[
     "epic",
@@ -83,7 +84,10 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
             let view: DocumentModal = serde_json::from_value(frame["view"].clone())?;
             let host = &frame["host"];
             let available = [seat_rows::number(host, "w")?, seat_rows::number(host, "h")?];
-            let element = view.element(ctx, &metrics, available);
+            let markdown = bbt_doc::parse(&view.document.body);
+            let element = view.element_with_body(ctx, &metrics, available, &|width| {
+                markdown.body_element(ctx, &metrics, width, &view.diagrams)
+            });
             let width = if view.modal {
                 980_f32.min(view.viewport[0] * 0.94).min(available[0])
             } else {
@@ -146,7 +150,7 @@ pub fn render_case(
                 radii: radii.try_into().map_err(|_| "four clip radii required")?,
             });
         }
-        pixels = crate::components::execute(
+        pixels = repository::page_pixels(
             renderer,
             c::paint_with_ancestor_clips(&layout, DrawCtx::new(ctx.theme, ctx.density), &clips),
             pixels,
