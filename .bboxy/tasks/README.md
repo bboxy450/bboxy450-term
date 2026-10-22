@@ -19,8 +19,8 @@
 | I2 | identity.md rewrite on the GPG root | Nyx DONE, accepted | DONE |
 | W3.1 | [[2026-10-21-w3-1-renderer-harness]] headless render harness, smoke, first text | Nyx DONE, verified: fcc8eca, 5 tests, 48 PNGs, CI green | DONE |
 | W2.1 | [[2026-10-21-w2-1-mux-supervisor]] supervisor, PTYs, lease protocol | Nyx DONE, verified: f6cab17, 12 tests | DONE |
-| W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | Rook Ashwhisker <EXECUTOR> | DONE ✔ c69fe4c, W1.2b ✔ b12dfcb; W1.2c latency QUEUED |
-| W2.3 | [[2026-10-21-w2-3-adapters-claude-codex-zsh]] adapters: Claude, Codex, zsh | Rook Ashwhisker <EXECUTOR> | RUNNING |
+| W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | Rook Ashwhisker <EXECUTOR> | DONE ✔ c69fe4c, W1.2b ✔ b12dfcb; W1.2c latency RUNNING |
+| W2.3 | [[2026-10-21-w2-3-adapters-claude-codex-zsh]] adapters: Claude, Codex, zsh | Rook Ashwhisker <EXECUTOR> | DONE ✔ d60ee06 |
 | W3.2a | [[2026-10-21-w3-2a-ui-model]] ui-model: tokens, model types, layout engine | Nyx DONE, verified: 28 tests, no runtime deps | DONE |
 | W3.2b | [[2026-10-21-w3-2b-bboxybook]] bboxybook: draw atoms, chrome pass, modules, native storybook with parity | Nyx DONE at checkpoint ef6c7ff | DONE |
 | W3.2c | [[2026-10-21-w3-2c-fixtures-input-fx]] shared fixtures ✔; input/focus, launcher, signals→fx | step 0 DONE (Nyx); steps 1–3 deferred after W3.2d modules | PARTIAL |

@@ -337,3 +337,7 @@ The PTY is the last resort and the only path for zsh. Everything here is gated b
 - **Gap:** every runtime transition/injection claim in both passes is unexercised; this spec is a convergence of static evidence, not a compatibility certification — HTE «Verification and provenance ledger», HT Open gaps.
 
 Links: [[vision]] [[harness-touchpoints]] [[harness-touchpoints-exec]] [[subagent-detection]] [[messaging]] [[mux-daemon]]
+
+## Correction 2026-10-22 (W2.3, checked against installed Codex 0.163 and Claude 2.1.304 schemas)
+
+Codex hook keys are launched in CamelCase; the decoder keeps snake_case aliases. Hook child IDs are independent of the parent `session_id` and may be full UUIDs. Implementation: `crates/bbt-mux/src/adapters/`; evidence `.bboxy/runs/w2-3-evidence.log`.
