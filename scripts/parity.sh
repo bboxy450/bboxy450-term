@@ -11,5 +11,5 @@ bboxybook_bin="${CARGO_TARGET_DIR:-target}/debug/bboxybook"
 capture_status=0
 node crates/bboxybook/capture.mjs "$parity_out" "$parity_out/requested.json" || capture_status=$?
 "$bboxybook_bin" render --all --out "$parity_out/native" --manifest "$parity_out/cases.json"
-"$bboxybook_bin" compare --out "$parity_out" --manifest "$parity_out/cases.json"
+"$bboxybook_bin" compare --strict-geometry --out "$parity_out" --manifest "$parity_out/cases.json"
 exit "$capture_status"

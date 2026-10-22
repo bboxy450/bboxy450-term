@@ -1,0 +1,12 @@
+$ CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 BBOXYBOOK_GALLERY=paths PARITY_OUT=target/p1-parity sh scripts/parity.sh
+lab-check: self-test ok (9 checks fire on checks/bad.html)
+lab-check: 36 pages × 4 densities · 0 findings
+    Finished `dev` profile [unoptimized] target(s) in 0.12s
+web: 48/48 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/p1-parity/native/layouts.json
+rendered 48 PNGs to target/p1-parity/native
+parity: 48 cases, 0 review; target/p1-parity/index.html
+parity gate: pass (0 pixel reviews advisory)
+
+exit: 0
