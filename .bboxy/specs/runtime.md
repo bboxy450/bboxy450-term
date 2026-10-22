@@ -13,6 +13,8 @@ Enforced three ways, cheapest first:
 2. Debug builds: `rt::assert_not_ui_thread()` at the top of every blocking API in the IO crates; panics with the call site.
 3. The stall test (§6) runs in CI.
 
+Scope of the lint (decided 2026-10-22 during 7.8): `src/` of `bbt-ui-model`, `bbt-ui`, `bbt-render` and `bboxy450-term`. Exempt with a stated reason: build scripts (compile-time IO), integration tests, examples and benches (fixture IO), the `bboxybook` crate (headless tool), and exactly the headless/offline functions in `bbt-render` (`ChromeRenderer::new`, PNG readback, `headless.rs`). Everything else in those `src/` trees obeys it with no allows.
+
 ## 2. Threads
 
 | Thread | Owns | Never does |
