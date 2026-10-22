@@ -11,6 +11,20 @@ use serde::{Deserialize, Serialize};
 mod diagram;
 pub use diagram::{Diagram, FlowEdge, FlowGraph, FlowNode};
 
+impl Diagram {
+    /// Compose geometry already supplied by a document producer. This exposes
+    /// the existing retained figure without adding a Mermaid parser to the UI.
+    pub fn retained_element(
+        &self,
+        key: &str,
+        width: f32,
+        ctx: ui::Context,
+        measure: &dyn c::Measure,
+    ) -> c::Element {
+        self.element(key, width, ctx, measure)
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Provenance {
@@ -226,6 +240,7 @@ struct Build<'a> {
     ctx: ui::Context,
     m: &'a dyn c::Measure,
     diagrams: &'a [Diagram],
+    body: Option<&'a dyn Fn(f32) -> c::Element>,
 }
 // A cell's public text, code-font flag and assignee-colour flag.
 type Cells = Vec<(String, bool, bool)>;
@@ -1067,7 +1082,10 @@ impl Build<'_> {
             children.push(self.frontmatter(d, main_w).into());
             children.push(space(14.));
         }
-        let md = self.markdown(&d.body, main_w);
+        let md = match self.body {
+            Some(build) => build(main_w),
+            None => self.markdown(&d.body, main_w),
+        };
         children.push(md.into());
         if !plain_doc {
             children.push(space(14.));
@@ -1242,10 +1260,31 @@ fn path(
 impl DocumentModal {
     /// Only the enclosing viewport and native font host participate in layout.
     pub fn element(&self, ctx: ui::Context, m: &dyn c::Measure, available: [f32; 2]) -> c::Element {
+        self.compose(ctx, m, available, None)
+    }
+    /// The document producer builds the body at the shell's actual inner width.
+    /// Header, metadata, provenance, rail, modal and scrolling retain one owner.
+    pub fn element_with_body(
+        &self,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        available: [f32; 2],
+        body: &dyn Fn(f32) -> c::Element,
+    ) -> c::Element {
+        self.compose(ctx, m, available, Some(body))
+    }
+    fn compose(
+        &self,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        available: [f32; 2],
+        body: Option<&dyn Fn(f32) -> c::Element>,
+    ) -> c::Element {
         let b = Build {
             ctx,
             m,
             diagrams: &self.diagrams,
+            body,
         };
         if !self.modal {
             return named("document", b.view(&self.document, available[0], false));
