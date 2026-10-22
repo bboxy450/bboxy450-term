@@ -10,7 +10,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
 | Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); no checkpoints until the lab is complete (operator reviews once at the end); after pass 9: new pages documents.html, events.html, launcher.html, graph.html, stream.html, titlebar.html (operator ask), then passes 10-19, then window transparency | nothing |
-| Nyx Copperwing | Executor | Codex | **W3.2b bboxybook: draw atoms, chrome pass, modules, parity loop** | nothing |
+| Nyx Copperwing | Executor | Codex | **W3.2c: shared fixtures, input/focus, launcher, signals→fx, parity re-runs** | nothing |
 | Rook Ashwhisker | Executor | Codex | **W2.2 logic: store objects, registry, .bboxy index, state streams, bus last** | nothing (authorized 2026-10-21) |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
@@ -31,8 +31,8 @@ specs (done +2): gui-components ✔ ──▶ W3.2a brief ✔ [OPEN]; networking
 W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
    ├──▶ W3.1 renderer harness ✔ (Nyx, fcc8eca, 5 tests, 48 PNGs, CI green on macos-15)
    │       └──▶ W3.2a ui-model ✔ (Nyx, 28 tests, zero runtime deps, scene-15 layout matches v2 blob)
-   │               └──▶ W3.2b bboxybook: atoms, chrome pass, modules, parity [Nyx, RUNNING]
-   │                       └──▶ W3.2c input, launcher, signals→fx
+   │               └──▶ W3.2b bboxybook ✔ checkpoint (Nyx, ef6c7ff, 56 previews, 1,664 pairs, index.html)
+   │                       └──▶ W3.2c fixtures alignment, input, launcher, signals→fx [Nyx, RUNNING]
    │                               └──▶ W3.3 glow/locate/dim fx
    │                       └──▶ W3.4 app: window, sidebar, stage, launcher, GUI client
    └──▶ W1.2 byte ring [OPEN, after W2.1]
@@ -56,11 +56,11 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 | State | Items |
 |---|---|
-| RUNNING | W3.2b (Nyx); W2.2 (Rook); UX queue (Wren) |
+| RUNNING | W3.2c (Nyx); W2.2 (Rook); UX lab run (Wren) |
 | OPEN, claimable now | W4.1, W1.2, W2.3 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
-| NOT YET BRIEFED | W3.5 bbt-doc markdown viewer + Mermaid engine ([[document-viewer]]), W2.7 code indexer (tree-sitter code graph, code_search, code_graph), W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |
+| NOT YET BRIEFED | W3.3 fx (merged into W3.2c step 3), W3.5 bbt-doc markdown viewer + Mermaid engine ([[document-viewer]]), W2.7 code indexer (tree-sitter code graph, code_search, code_graph), W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |
 | PARTIAL | H Codex capture (operator trust) |
 | REDUNDANT, optional | Rook's `-exec` passes on A and H |
 
