@@ -361,7 +361,9 @@
     g.append(head);
     if (epic.open !== false) for (const it of items) {
       const line = el('div', { class: 'eitem ' + it.state }, el('span', { class: 'tglyph' }, TASK_GLYPH[it.state] || '○'), el('span', { class: 'ekind' }, it.type || 'task'), el('span', { class: 'etitle' }, it.title));
-      if (it.assignee) line.append(el('span', { class: 'eass' }, it.assignee));
+      if (it.assignee) line.append(el('span', { class: 'eass' }, (it.assigned ? '→ ' : '') + it.assignee));
+      if (it.assigned) { line.classList.add('assigned'); line.append(el('span', { class: 'echip' }, 'assigned')); }
+      if (opts.onDelegate && it.state === 'open' && !it.assignee) line.append(el('button', { class: 'edel', onclick: e => { e.stopPropagation(); opts.onDelegate(it); } }, 'Delegate…'));
       if (it.state === 'blocked' && it.waits) line.append(el('span', { class: 'twaits' }, 'waits on ' + it.waits));
       g.append(line);
     }
@@ -1156,6 +1158,38 @@
     const marks = [...e.ticks].map((t, i) => el('i', { class: (t === '◌' ? 'hollow' : '') + (e.dim && i === 1 ? ' q' : '') }, t));
     return el('span', { class: 'ticks ' + state, title: state + ' · ' + e.title }, ...marks);
   }
+  // StreamDock composer (messaging.md): one bar at the dock foot. Picked shape: address chips (seat, role, #channel, ↳ subagent)
+  // that typed @ # ↳ tokens turn into, defaulting to the dock's current tab; priority as a pip on the send button (p0 is the
+  // Oracle's); artifacts and tasks attach as cards above the text. Delegate mode is the same bar with a task attached: the verb
+  // becomes Delegate and the address picker lists seats by role with their load. Nothing is sent without its evidence ladder.
+  const ADDR_MARK = { seat: '', role: '', channel: '#', subagent: '↳ ' };
+  const addrChip = a => el('span', { class: 'addr ' + a.kind, style: a.color ? '--c:' + a.color : '', title: a.kind + (a.n ? ' · fans out to ' + a.n + ' seats' : '') + (a.parent ? ' · inside ' + a.parent : '') },
+    a.kind === 'seat' ? el('i', { class: 'dot' }) : null, a.kind === 'role' ? el('span', { class: 'rm' }, ROLE_MARK[a.role] || '') : null, (ADDR_MARK[a.kind] || '') + (a.parent ? a.parent + ' ▸ ' : '') + a.label, a.n ? el('small', {}, a.n) : null, el('span', { class: 'x' }, '×'));
+  const attachCard = a => el('span', { class: 'att ' + a.kind, title: a.kind + ' · ' + a.title }, el('span', { class: 'ak' }, a.kind === 'task' ? (TASK_GLYPH[a.state] || '○') : ART_GLYPH[a.akind] || '▢'), el('span', { class: 'at' }, a.title), a.state ? el('small', {}, a.state) : a.meta ? el('small', {}, a.meta) : null);
+  function composer(st, opts) {
+    opts = opts || {};
+    const mode = st.mode || 'message', to = st.to || [], att = st.attach || [], prio = st.prio || 'p1';
+    const c = el('div', { class: 'composer ' + mode + (st.focus ? ' focus' : '') });
+    if (st.pick) c.append(el('div', { class: 'cpick', role: 'listbox' }, ...st.pick.map(g => el('div', { class: 'cgroup' }, el('div', { class: 'cgh' }, g.title),
+      ...g.items.map((it, i) => el('div', { class: 'copt' + (it.sel ? ' sel' : '') }, it.kind === 'seat' ? el('i', { class: 'dot', style: 'background:' + it.color }) : el('span', { class: 'ok' }, it.kind === 'role' ? ROLE_MARK[it.role] : it.kind === 'channel' ? '#' : '↳'),
+        el('span', { class: 'ol' }, it.label), it.sub ? el('small', {}, it.sub) : null, it.load != null ? el('span', { class: 'load' + (it.load ? '' : ' free') }, it.load ? it.load + ' running' : 'free') : null))))));
+    c.append(el('div', { class: 'cto' }, el('span', { class: 'cl' }, mode === 'delegate' ? 'Delegate to' : 'To'), ...to.map(addrChip), el('span', { class: 'ctyped' }, st.typed || ''), st.focus && !st.text ? el('span', { class: 'caret' }) : null));
+    if (att.length) c.append(el('div', { class: 'catt' }, ...att.map(attachCard)));
+    c.append(el('div', { class: 'ctext' + (st.text ? '' : ' empty') }, st.text || (mode === 'delegate' ? 'Brief, or leave empty to send the task as written' : 'Message ' + (to[0] ? (ADDR_MARK[to[0].kind] || '') + to[0].label : 'the swarm')), st.focus && st.text ? el('span', { class: 'caret' }) : null));
+    c.append(el('div', { class: 'cfoot' }, el('button', { class: 'cbtn', title: 'attach an artifact or task ([[)' }, harnessIcon('archive')), el('span', { class: 'chint' }, '[[ attach · @ # ↳ address'), el('span', { class: 'spacer' }),
+      el('button', { class: 'send ' + prio, title: 'priority ' + prio + ' · ⌘↵' }, el('span', { class: 'pip' }, prio), mode === 'delegate' ? 'Delegate' : 'Send', el('span', { class: 'kbd' }, '⌘↵'))));
+    return c;
+  }
+  // report-back card (work-items.md: the Executor's report is a handoff, not proof): what changed, what ran with its exit
+  // status, each acceptance check, gaps; Accept and Re-brief belong to the delegator. Accepting flips the task to done.
+  function reportCard(r, opts) {
+    const card = el('div', { class: 'report ' + (r.verdict || 'pending') }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, TASK_GLYPH[r.state || 'reported'] || '◆'), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
+      el('div', { class: 'rsec' }, ...r.files.map(f => el('div', { class: 'rf' }, el('code', {}, f.path), el('span', { class: 'rd' }, el('i', { class: 'add' }, '+' + f.add), ' ', el('i', { class: 'del' }, '−' + f.del))))),
+      el('div', { class: 'rsec' }, ...r.checks.map(k => el('div', { class: 'rc ' + (k.ok ? 'ok' : 'bad') }, el('span', { class: 'ck' }, k.ok ? '✓' : '✕'), el('code', {}, k.cmd), el('span', { class: 'ex' }, k.exit)))),
+      r.gaps ? el('div', { class: 'rgap' }, 'gap · ' + r.gaps) : null, r.commit ? el('div', { class: 'rcommit' }, el('code', {}, r.commit), ' signed') : null);
+    if (r.verdict !== 'accepted' && opts && opts.onAccept) card.append(el('div', { class: 'racts' }, el('button', { class: 'rebrief' }, 'Re-brief'), el('button', { class: 'accept', onclick: () => opts.onAccept(r) }, 'Accept')));
+    return card;
+  }
   function messageRow(m, opts) {
     opts = opts || {};
     if (m.presence) return el('div', { class: 'msg presence' }, el('span', { class: 'ptext' }, m.text), el('span', { class: 'time' }, m.time || ''));
@@ -1176,12 +1210,16 @@
     if (m.fromAgent) head.append(el('span', { class: 'agchip from', title: 'from subagent ' + m.fromAgent }, '↳ ' + m.fromAgent));
     if (m.via === 'main') head.append(el('span', { class: 'agchip via', title: 'the harness relayed it; the subagent is not addressable directly' }, 'via main'));
     if (m.to) head.append(el('span', { class: 'agchip to' + (m.to === 'main' ? ' main' : ''), title: m.to === 'main' ? 'to the main agent' : 'to subagent ' + m.to }, '→ ' + (m.to === 'main' ? 'main' : '↳ ' + m.to)));
+    if (m.prio && m.prio !== 'p1' && !(m.prio === 'p0' && role === 'oracle')) head.append(el('span', { class: 'prio ' + m.prio, title: m.prio === 'p0' ? 'urgent' : 'low priority' }, m.prio));
     head.append(el('span', { class: 'time' }, m.time || ''));
     if (m.held === 'agent_ended') head.append(el('span', { class: 'agchip held', title: 'held: the subagent ended before delivery; never redirected to main on its own' }, 'held · agent ended'));
     else if (m.evidence) head.append(tickLadder(m.evidence));
     const body = el('div', { class: 'body' }, head);
     if (m.replyTo) body.append(el('div', { class: 'reply' }, '↩ ' + m.replyTo));
+    if (m.toLabel) body.append(el('div', { class: 'tol', title: 'to ' + m.toLabel }, '→ ' + m.toLabel));
     body.append(el('div', { class: 'text' }, /\[\[/.test(m.text || '') ? renderLinks(m.text) : m.text));
+    if (m.attach && m.attach.length) body.append(el('div', { class: 'attach' }, ...m.attach.map(a => attachCard(a))));
+    if (m.report) body.append(reportCard(m.report, opts));
     row.append(el('div', { class: 'rail' }), body);
     if (opts.ripple) row.append(el('div', { class: 'ripple' }));
     return row;
@@ -1411,5 +1449,5 @@
     return root;
   }
 
-  window.C = { perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

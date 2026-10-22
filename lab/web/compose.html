@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>compose · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="fixtures.js"></script><script src="ui.js"></script>
+</head><body><script>
+const el = Lab.el;
+const COL = { v: '#FFC53D', n: '#FF4FA3', r: '#34D399', s: '#FF8A3D', w: '#B57BFF' };
+const seat = (k, label, sub, load, sel) => ({ kind: 'seat', label, sub, color: COL[k], load, sel });
+const ch = { kind: 'channel', label: 'bboxy450-term' };
+const nyx = { kind: 'seat', label: 'Nyx Copperwing', color: COL.n };
+const task = (title, state) => ({ kind: 'task', title, state });
+// the W2 epic with open work to hand out; the delegation states rewrite W2.3
+const epic = w23 => ({ id: 'e2', title: 'W2 mux', open: true, items: [
+  { id: 'w21', kind: 'task', title: 'W2.1 supervisor + PTY + lease', state: 'accepted', assignee: 'Nyx Copperwing' },
+  { id: 'w22', kind: 'task', title: 'W2.2 logic, bus, index', state: 'running', assignee: 'Rook Ashwhisker' },
+  { id: 'w23', kind: 'task', title: 'W2.3 adapters', state: 'open', ...(w23 || {}) },
+  { id: 'w12', kind: 'task', title: 'W1.2 byte ring', state: 'open' }] });
+const REPORT = { task: 'W2.3 adapters', files: [{ path: 'crates/bbt-mux/src/adapter.rs', add: 214, del: 9 }, { path: 'crates/bbt-mux/tests/adapters.rs', add: 88, del: 0 }], checks: [{ cmd: 'cargo test -p bbt-mux', exit: 'exit 0', ok: true }, { cmd: 'scripts/parity.sh', exit: 'exit 0', ok: true }], gaps: 'omp adapter untested, no binary here', commit: 'a41c9e2' };
+const sent = (extra) => ({ from: 'Vesper Greywind', role: 'oracle', time: '14:20', ...extra });
+const STATES = {
+  'idle': () => [...FIX.stream.slice(-3).map(m => C.messageRow(m)), C.composer({ to: [ch] })],
+  'to a seat': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, typed: '@ny', pick: [
+    { title: 'Seats', items: [seat('n', 'Nyx Copperwing', 'executor · 7.9', null, true), seat('w', 'Wren Thistledown', 'creativity · lab')] },
+    { title: 'Subagents', items: [{ kind: 'subagent', label: 'Nyx ▸ parity sweep', sub: 'running' }] }] })],
+  'to a role': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, to: [{ kind: 'role', role: 'executor', label: 'executors', n: 3, color: 'var(--role-executor)' }], text: 'Freeze parity captures at 650f548; rerun after the merge.' })],
+  'to a channel': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, to: [{ kind: 'channel', label: 'bboxy450-term/render' }], text: 'decision: glyph atlas stays retained across passes.' })],
+  'to a subagent': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, to: [{ kind: 'subagent', parent: 'Nyx', label: 'parity sweep' }], text: 'skip the compact density; it is already within policy.' })],
+  'priority': () => [C.composer({ to: [nyx], prio: 'p2', text: 'when free: tidy the bboxybook gallery index.' }), C.composer({ to: [nyx], prio: 'p1', text: 'next after 7.9: DocumentModal.' }), C.composer({ focus: true, to: [ch], prio: 'p0', text: 'Stop pushes to main until the merge lands.' })],
+  'attachments': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, to: [nyx], attach: [{ kind: 'artifact', akind: 'image', title: 'target/bboxybook/launchers/final', meta: '48 PNG' }, task('7.8 Channels', 'open')], text: 'Reference set for 7.8 attached; same keys as the lab.' })],
+  'sent': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.messageRow(sent({ toLabel: 'Nyx Copperwing', text: 'Reference set for 7.8 attached; same keys as the lab.', attach: [{ kind: 'artifact', akind: 'image', title: 'target/bboxybook/launchers/final', meta: '48 PNG' }, task('7.8 Channels', 'open')], evidence: 'native-written' })), C.composer({ to: [nyx] })],
+  'delegate · pick task': () => [C.epicGroup(epic(), { onDelegate: () => {} }), ...FIX.stream.slice(-1).map(m => C.messageRow(m)), C.composer({ to: [ch] })],
+  'delegate · pick seat': () => [C.epicGroup(epic()), C.composer({ mode: 'delegate', focus: true, attach: [task('W2.3 adapters', 'open')], pick: [
+    { title: 'Executors', items: [seat('s', 'Sable Embertail', 'executor · codex', 0, true), seat('n', 'Nyx Copperwing', 'executor · codex', 1), seat('r', 'Rook Ashwhisker', 'executor · codex', 2)] },
+    { title: 'Role', items: [{ kind: 'role', role: 'executor', label: 'any free executor', sub: 'first to claim' }] }] })],
+  'delegate · assigned': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', assigned: true })), C.messageRow(sent({ toLabel: 'Sable Embertail', text: 'ROLE: EXECUTOR · W2.3 is yours. Brief and checks in the task file.', attach: [task('W2.3 adapters', 'open')], evidence: 'native-written' })), C.composer({ to: [{ kind: 'seat', label: 'Sable Embertail', color: COL.s }] })],
+  'delegate · report back': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', state: 'reported' })), C.messageRow({ presence: true, text: 'Sable Embertail claimed W2.3 adapters', time: '14:22' }), C.messageRow({ from: 'Sable Embertail', role: 'executor', time: '15:40', text: 'W2.3 reported. Two adapters, tests green; omp untested.', report: REPORT, evidence: 'recipient-stored', unread: true }, { onAccept: () => { location.search = '?state=delegate-done'; } })],
+  'delegate · done': () => { const g = C.epicGroup(epic({ assignee: 'Sable Embertail', state: 'done' })); g.querySelector('.eitem.done')?.classList.add('flip');
+    return [g, C.messageRow({ from: 'Sable Embertail', role: 'executor', time: '15:40', text: 'W2.3 reported. Two adapters, tests green; omp untested.', report: { ...REPORT, verdict: 'accepted', state: 'done' }, evidence: 'application-acknowledged' }), C.messageRow({ audit: { actor: 'Vesper Greywind', verb: 'accepted', target: 'W2.3 adapters', op: 'b7e2c1d0' }, time: '15:44' })]; },
+};
+// divergence before the pick: each shape as a one-line sketch and why it lost or won
+function shapes() {
+  const cell = (name, say, sketch, pick) => el('div', { style: 'display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--r-card);background:var(--surface);box-shadow:0 0 0 var(--hair-w) ' + (pick ? 'var(--accent)' : 'var(--hair)') }, el('code', { style: 'font-family:var(--font-mono);font-size:var(--t-small);color:var(--fg-dim);white-space:pre' }, sketch), el('b', { style: 'font-size:var(--t-row)' }, name + (pick ? ' · picked' : '')), el('span', { style: 'font-size:var(--t-caption);color:var(--fg-dim)' }, say));
+  const grid = (...c) => el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px' }, ...c);
+  return [el('h3', { style: 'margin:0 0 8px;font-size:var(--t-subtitle)' }, 'Composer'), grid(
+    cell('A · chat bar', 'the address is typed: @nyx #render. Fast for the keyboard; the target hides in the text.', '@nyx parity at 650f548▌'),
+    cell('B · envelope', 'To, Priority and Attach fields above the body. Explicit; four rows of chrome at 300 px.', 'To: Nyx\nPrio: p1\nAttach: —\n────\nbody'),
+    cell('C · reply from row', 'hover a seat or message, compose inline. Context-addressed; no way to reach a role or channel.', 'Nyx Copperwing  [reply]'),
+    cell('D · ⌘J palette', 'a floating composer like the launcher. Powerful; leaves the stream it answers.', '⌘J ▸ Nyx ▸ ↳ parity sweep'),
+    cell('E · chip address bar', 'chips for seat, role, #channel, ↳ subagent; priority as a pip on Send; attachments as cards.', '[● Nyx ×][♟ executors 3 ×]\nmessage…\n📎          [p1 Send ⌘↵]', true),
+    cell('F · drag to seat', 'drop text on a seat row or pane. Spatial; no subagents, no roles.', 'text ──drag──▶ ● Nyx'),
+    cell('G · walkie-talkie', 'the dock tab is the channel; whatever tab you are on is the target.', '[all][render][decisions]\n> to #render'),
+    cell('H · postcard', 'priority as a stamp, attachments clipped on. Charming; slow to fill.', '┌───────[p0]┐\n│ to Nyx    │\n└───────────┘'),
+    cell('Pick · E typed like A, defaulting like G', 'typed @ # ↳ tokens become chips; the target defaults to the dock tab; p0 only for the Oracle.', '[#bboxy450-term ×]\nMessage #bboxy450-term\n📎 [[ attach   [p1 Send ⌘↵]', true)),
+    el('h3', { style: 'margin:16px 0 8px;font-size:var(--t-subtitle)' }, 'Delegation'), grid(
+    cell('1 · drag task to seat', 'drop a task row on a seat. Quick; no brief, no load shown.', '○ W2.3 ──▶ ● Sable'),
+    cell('2 · composer delegate mode', 'the composer with a task attached; the verb becomes Delegate.', '[○ W2.3 adapters]\n[Delegate ⌘↵]'),
+    cell('3 · Delegate… seat picker', 'from the task row, a picker of executors with their load, free first.', 'Delegate…\n● Sable   free\n● Nyx     1 running'),
+    cell('4 · kanban', 'columns open / assigned / reported / done. Clear; no room in a 300 px dock.', 'open │ assigned │ done'),
+    cell('5 · /delegate', 'a slash command in the composer. Terse; undiscoverable.', '/delegate W2.3 @sable'),
+    cell('Pick · 3 into 2', 'Delegate… on the row opens the composer in delegate mode with the task attached and the picker on executors by load; assigned on send, the report card arrives in the stream, Accept flips it done.', 'Delegate… ▸ [○ W2.3]\nDelegate to ● Sable (free)\n▸ assigned ▸ report ▸ ✓ done', true))];
+}
+Lab.page({ title: 'compose', note: 'The StreamDock composer and the delegation flow (cockpit epic). One bar at the dock foot: address chips for a seat, a role (fans out), a #channel or a ↳ subagent, typed with @ # ↳ and defaulting to the dock tab; priority as a pip on Send (p0 is the Oracle\'s); artifacts and tasks attach as cards. Delegation: Delegate… on an open task opens the same bar in delegate mode with the task attached and executors listed by load; it shows as assigned until claimed; the report-back card arrives in the stream; Accept flips the task to done. shapes: the divergence before the pick.',
+  states: ['shapes', ...Object.keys(STATES)],
+  render(s, body) {
+    if (s === 'shapes') { body.append(...shapes()); return; }
+    const frame = el('div', { style: 'width:300px;background:var(--sidebar-bg);border-radius:var(--r-pill);border:1px solid var(--hair);overflow:visible;padding-top:' + (/pick seat|to a seat/.test(s) ? '190px' : '0') });
+    const dock = el('div', { class: 'stream-dock', style: 'max-height:none;overflow:visible' }, ...STATES[s]());
+    frame.append(dock); body.append(frame);
+  } });
+</script></body></html>
