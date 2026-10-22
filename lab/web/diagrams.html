@@ -47,9 +47,39 @@ const SRC = {
   bboxybook :a1, 2026-10-21, 3d`,
 };
 SRC['flowchart TD'] = SRC['flowchart TD'].replace('op((operator)):::accent', 'op((operator)):::accent');
+// 7.10 DocumentModal: how a diagram lives inside the document. Divergence first, then the pick drawn for real.
+function figure(src, wide) {
+  const draw = C.diagram(src), n = draw.querySelectorAll('.dg-node').length, kind = src.trim().split(/\s/)[0];
+  const body = el('div', { class: 'dgfig-b' + (wide ? ' wide' : '') }, draw), pre = el('pre', { class: 'dgfig-src' }, src);
+  const seg = (k, on) => el('button', { class: on ? 'on' : '', onclick: () => { body.replaceChildren(k === 'Drawing' ? draw : pre); fig.querySelectorAll('.dgfig-h .seg button').forEach(b => b.classList.toggle('on', b.textContent === k)); } }, k);
+  const fig = el('figure', { class: 'dgfig' }, el('div', { class: 'dgfig-h' }, el('span', { class: 'kind' }, kind), el('span', { class: 'cnt' }, n + ' nodes'), el('span', { class: 'seg' }, seg('Drawing', true), seg('Source')), el('button', { class: 'exp', title: 'open on its own canvas: pan, zoom, minimap' }, '⤢')), body);
+  return fig;
+}
+function modalShapes() {
+  const cell = (name, say, sketch, pick) => el('div', { style: 'display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--r-card);background:var(--surface);box-shadow:0 0 0 var(--hair-w) ' + (pick ? 'var(--accent)' : 'var(--hair)') }, el('code', { style: 'font-family:var(--font-mono);font-size:var(--t-small);color:var(--fg-dim);white-space:pre' }, sketch), el('b', { style: 'font-size:var(--t-row)' }, name + (pick ? ' · picked' : '')), el('span', { style: 'font-size:var(--t-caption);color:var(--fg-dim)' }, say));
+  const grid = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px' },
+    cell('1 · true size, scroll', 'drawn 1:1 on the type scale; wider than the column scrolls sideways with a fade. Honest; wide graphs hide their right side.', '│ ▢──▶▢──▶▢──▶▢──▶▢ ░│▶'),
+    cell('2 · scale to fit', 'shrink until it fits (today\'s max-width). Whole graph visible; text drops below the type scale, the native renderer cannot match a moving scale.', '│ ▫▸▫▸▫▸▫▸▫▸▫ │  9 px'),
+    cell('3 · relayout to fit', 'flip LR to TB when the column is narrow, like a phone breakpoint. Always fits at true size; the author\'s direction is lost.', 'LR ──▶  TB\n         ▢\n         ▼\n         ▢'),
+    cell('4 · figure card', 'a card with a header: kind, node count, Drawing / Source toggle, expand. The source is one click away, like GitHub.', '┌ flowchart · 7 ─ [Drawing|Source] ⤢┐\n│      ▢──▶▢                       │'),
+    cell('5 · lightbox canvas', 'a thumbnail in the text; click opens the whole modal as a pan-and-zoom canvas. Big graphs breathe; two steps to read.', '[▫▫▫] ──click──▶ ⤢ full canvas'),
+    cell('6 · source beside drawing', 'Mermaid live-editor split: text left, drawing right. For editing; doubles the width a reader needs.', 'flowchart TD │ ▢\n  A --> B    │ ▼\n             │ ▢'),
+    cell('7 · minimap', 'a small overview corner with the viewport box, from game maps. Great over 40 nodes; noise under 10.', '▢▢▢▢▢▢▢▢  ┌▫▫▫┐\n          └[▫]┘'),
+    cell('8 · live nodes', 'nodes that name a [[doc]], seat or task are links; ⌘-click opens it in the modal stack, like Obsidian.', '[[mux-daemon]] ▢ ← ⌘-click'),
+    cell('9 · outline fallback', 'the graph read as an indented list for narrow widths and screen readers. Accessible; not a picture.', 'operator\n└ Vesper\n  ├ Nyx\n  └ Rook'),
+    cell('10 · source morphs in', 'the code block draws first, then morphs into the figure: "built from this text". Lovely once; slow every time.', '```mermaid  ~~▶  ▢──▶▢'),
+    cell('11 · trace on hover', 'hover a node: its edges and neighbours stay lit, the rest dims, like a subway map. Reads dense graphs; needs a pointer.', '▢━━▶▣━━▶▢   ░░ ░░'),
+    cell('12 · margin figure', 'small diagrams float in the right rail beside the paragraph that cites them, Tufte sidenotes. Elegant; only for small ones.', 'text text text │ ▫▸▫\ntext text      │'),
+    cell('Pick · 4 holding 1, with 8 and 11, 5 for big ones', 'a figure card at true size (no scaling, sideways scroll with a fade), Drawing / Source toggle, live [[links]] on nodes, hover trace; ⤢ opens the canvas with a minimap past 40 nodes.', '┌ flowchart · 7 nodes [Drawing|Source] ⤢┐\n│  ▢━━▶▣──▶▢          (scrolls) ░│\n└───────────────────────────────────────┘', true));
+  const col = el('div', { style: 'width:560px;max-width:100%;display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:var(--r-panel, 16px);background:color-mix(in srgb, var(--surface) var(--mat-alpha), transparent);box-shadow:0 0 0 var(--hair-w) var(--hair), var(--sh-float)' },
+    el('p', { style: 'margin:0;font-size:var(--t-body);line-height:1.55;color:var(--fg)' }, 'The supervisor holds the PTYs; the logic process may crash and restart without losing a seat.'),
+    figure(SRC['flowchart TD']), el('p', { style: 'margin:0;font-size:var(--t-body);line-height:1.55;color:var(--fg)' }, 'A left-to-right graph wider than the column keeps its size and scrolls:'), figure(SRC['flowchart LR'] || Object.values(SRC)[1], true));
+  return [grid, el('h3', { style: 'margin:18px 0 10px;font-size:var(--t-subtitle)' }, 'The pick, in a 560 px modal column'), col];
+}
 Lab.page({ title: 'diagrams', wide: true, note: 'Mermaid, built ourselves (document-viewer.md): a subset parser and a layered layout drawn with the chrome look. Rounded nodes tinted in role and state colours (:::oracle, :::executor, :::creativity, :::accent), hairline edges with rounded bends and arrowheads, dashed for -.->, heavy for ==>, labels on pills, back edges routed around the side. Sequence: lifelines, messages, notes, a lost message (-x). Unsupported syntax renders the source with a note, never a broken diagram. This is the design the native viewer renders.',
-  states: Object.keys(SRC),
+  states: [...Object.keys(SRC), 'in the modal · shapes'],
   render(s, body) {
+    if (s === 'in the modal · shapes') { body.append(...modalShapes()); return; }
     body.append(el('div', { style: 'background:var(--bg);border-radius:var(--r-pill);padding:18px;border:1px solid var(--hair)' }, C.diagram(SRC[s]), el('details', { style: 'margin-top:10px;font-size:11px;color:var(--fg-dim)' }, el('summary', {}, 'source'), el('pre', { style: 'font-family:var(--font-mono);font-size:11px' }, SRC[s]))));
   } });
 </script></body></html>
