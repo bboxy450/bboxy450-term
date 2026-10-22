@@ -1,0 +1,60 @@
+ROLE: EXECUTOR — Nyx Copperwing
+7.4 Pane + Strip. Frozen current lab revision 759fdde; historical ux-prototype-v2.
+
+Mechanisms:
+crates/bbt-ui/src/modules/strip.rs:134 — retained identity strip, shrinking title/name, authority caption, waiting annotation contrast, caller-supplied stop/mute capabilities and notice state.
+crates/bbt-ui/src/modules/pane.rs:256 — height from content + public minimum; structured preformatted terminal spans, gaps from supplied range, generation/resume notice, stale/focus filters, centred reconnect pill, fill-only opacity, effect layer behind the frame.
+crates/bboxybook/src/panes.rs:159 — independent native layout and material execution from shared view data and caller origin/width. Descendant web bounds/fonts only enter snapshots.
+crates/bboxybook/capture-inputs.js:155 — exports semantic terminal spans (fixture content), public seat/options and independent text-range geometry. Adjacent rows/notes stay common context.
+crates/bboxybook/src/modules.rs — removed the old Strip painter and delegates Pane to the retained composition. Old DrawList gallery paints composed chrome; full materials use the retained executor.
+crates/bboxybook/src/components.rs — explicit host time API; existing callers retain 450ms, Pane fixtures use 0ms. No L1/L2 shader or tuning changes.
+
+Results:
+Gallery: target/bboxybook/panes-final/index.html
+Current: 120/136 within policy, 16 pixel reviews, zero geometry failures. Pane page 48/48 within policy; TitleStrip 72/88 within policy. All four densities and both themes at 1x.
+Current geometry: 5768 rectangles including case roots (5632 descendants), 2848 baselines. Max rectangle error 0.2479553223px; max baseline error 0.0078125px.
+Historical: 80/80 retain raw geometry differences from v2 (max rect 22.263671875px); labelled historical, excluded from the current review count.
+
+Pilot: first 27-case attempt had 20 reviews (three generic historical entries were initially mislabelled current); geometry/pill-height/icon metrics corrected, final frame stretch enforced and particles placed behind content. Pilot is diagnostic only; final results above use the complete frozen 216-case capture. One incomplete pre-fix full render was stopped with SIGTERM (143), not claimed as a result.
+
+Commands and actual results:
+BBOXYBOOK_REFERENCE_HEAD=759fdde... node crates/bboxybook/capture.mjs target/bboxybook/panes-final target/bboxybook/panes-first/requested.json — exit 0, 216/216 captured, zero script exceptions; isolated ephemeral Chrome 156 profile.
+cargo build -p bboxybook --locked — exit 0.
+target/debug/bboxybook render --out target/bboxybook/panes-final/native --manifest target/bboxybook/panes-final/cases.json — exit 0, 216 images on Apple M4 / Metal.
+After the final rounded spinner mask, eight reconnecting cases were re-rendered into panes-final-refresh/native (exit 0). Asserted identical fixture inputs; copied those eight PNGs and replaced only their eight independently produced snapshot records. Full 216-case manifest retained; refresh.log records keys.
+target/debug/bboxybook compare --out target/bboxybook/panes-final --manifest target/bboxybook/panes-final/cases.json — exit 0, 16 current reviews.
+cargo test -p bbt-ui -p bboxybook --locked — exit 0, 83 tests. Scoped Clippy --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0. fmt, both JS syntax checks and diff check — exit 0.
+
+Residuals and limits:
+16 current pixel reviews are exactly the eight-density/theme variants each of focused-vs-unfocused and authority-revoked. In the worst dense and authority examples, 88.0% and 91.5% of changed pixels are inside expanded text bounds; outside-text changes cover 0.390% and 0.200% of their images. Inference from the masks and visual triplets: existing text-mask / per-paint dim compositing plus icon, particle/corner AA residues dominate. Budgets remain unchanged (2% plus geometry for text); no L1 fix or relaxation in this pass. Hover-path highlight/underline and spinner are component approximations, with measured geometry passing.
+No live input/focus/interrupt/mute/path-open/process/resume controller or animation controller is claimed. The fixture clock is frozen at 0ms; existing shader state/particle controls are carried. No 2x, full-workspace suite, native window interaction, Safari or performance measurements. No dependencies, lab/design or other specifications changed.
+
+Images inspected: idle cozy dark pair; reconnect cozy dark pair and final refreshed native dark/light; dense focused-vs-unfocused compact dark triplet; authority-revoked comfortable dark triplet; hover-path comfortable light triplet.
+
+Ten worst current triplets (each key exists under web/, native/, diff/ in the gallery):
+title-strip/focused-vs-unfocused-compact-dark.png — 3.2466% changed, rect 0.222168px, baseline 0.007812px
+title-strip/focused-vs-unfocused-touch-dark.png — 3.2324% changed, rect 0.219238px, baseline 0.007812px
+title-strip/focused-vs-unfocused-cozy-dark.png — 3.2257% changed, rect 0.229492px, baseline 0.007812px
+title-strip/focused-vs-unfocused-touch-light.png — 3.0163% changed, rect 0.219238px, baseline 0.007812px
+title-strip/focused-vs-unfocused-cozy-light.png — 2.9994% changed, rect 0.229492px, baseline 0.007812px
+title-strip/focused-vs-unfocused-compact-light.png — 2.9812% changed, rect 0.222168px, baseline 0.007812px
+title-strip/focused-vs-unfocused-comfortable-dark.png — 2.8117% changed, rect 0.221191px, baseline 0.007812px
+title-strip/focused-vs-unfocused-comfortable-light.png — 2.5624% changed, rect 0.221191px, baseline 0.007812px
+title-strip/authority-revoked-comfortable-dark.png — 2.3633% changed, rect 0.227997px, baseline 0.007812px
+title-strip/authority-revoked-touch-dark.png — 2.3300% changed, rect 0.226044px, baseline 0.007812px
+
+Files in this pass (before evidence logs):
+crates/bboxybook/capture-inputs.js
+crates/bboxybook/capture.mjs
+crates/bboxybook/src/components.rs
+crates/bboxybook/src/lib.rs
+crates/bboxybook/src/main.rs
+crates/bboxybook/src/modules.rs
+crates/bboxybook/src/parity.rs
+crates/bbt-ui/README.md
+crates/bbt-ui/src/modules/mod.rs
+crates/bboxybook/src/panes.rs
+crates/bboxybook/tests/panes.rs
+crates/bbt-ui/src/modules/pane.rs
+crates/bbt-ui/src/modules/strip.rs
+crates/bbt-ui/tests/panes.rs

@@ -178,3 +178,23 @@ as well as the seat colour. Fill, border and shader tuning are unchanged.
 
 Optional `Glow::halo_alpha` and `particles` forward existing L2 inputs; `None`
 keeps its defaults. This lets a Pane use its state halo without an emitter.
+
+## L7 Pane and Strip
+
+`Strip` composes seat identity, the optional authority/interrupt notice,
+caller-supplied stop/mute capabilities, shortcut and state glyph. The waiting
+annotation uses the contrasting L5 colour override. It owns no commands.
+
+`Pane` accepts structured terminal spans, a supplied retained timestamp and
+resume notice, focus/stale flags, minimum height and emitter seed. It composes
+Strip and the preformatted body, clips to the identity border and centres the
+reconnect pill. Gap text never invents an evicted line count. A stale frame
+keeps its content and state. Content height and the minimum determine the frame;
+child web geometry never enters layout. Window opacity applies to fill only.
+
+The retained effect layer precedes the frame, matching the web emitter behind
+the pane. Per-node state/grade/seed and the existing halo/count controls reach
+L2. The fixture host supplies a frozen 0ms pose; it owns animation time, input,
+path resolution, process lifecycle and event handling. Current previews are
+`bboxybook panes` (136 current + 80 historical cases). The older DrawList-only
+gallery adapter composes chrome; full materials use the retained host executor.

@@ -1,0 +1,44 @@
+Full render:
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/216
+rendered 200/216
+native/web layout snapshots: target/bboxybook/panes-final/native/layouts.json
+rendered 216 PNGs to target/bboxybook/panes-final/native
+
+Refresh render:
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/panes-final-refresh/native/layouts.json
+rendered 8 PNGs to target/bboxybook/panes-final-refresh/native
+
+Base render: 216 cases, exit 0. After the final spinner mask, re-rendered the eight reconnecting cases, exit 0.
+Asserted identical case inputs. Copied only those eight PNGs and replaced only their independently generated native snapshot records. Full 216-case manifest retained.
+Updated keys:
+pane/reconnecting-touch-dark.png
+pane/reconnecting-touch-light.png
+pane/reconnecting-comfortable-dark.png
+pane/reconnecting-comfortable-light.png
+pane/reconnecting-cozy-dark.png
+pane/reconnecting-cozy-light.png
+pane/reconnecting-compact-dark.png
+pane/reconnecting-compact-light.png
+
+Compare:
+parity: 216 cases, 16 review; target/bboxybook/panes-final/index.html
+
+Residue measurements:
+[
+  {
+    "key": "title-strip/focused-vs-unfocused-compact-dark.png",
+    "changed": 15534,
+    "within_text_boxes": 13670,
+    "text_share": 0.8800051499935625,
+    "outside_text_fraction": 0.003895799892990904
+  },
+  {
+    "key": "title-strip/authority-revoked-comfortable-dark.png",
+    "changed": 6596,
+    "within_text_boxes": 6037,
+    "text_share": 0.9152516676773802,
+    "outside_text_fraction": 0.0020028376519146984
+  }
+]

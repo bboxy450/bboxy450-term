@@ -5,6 +5,7 @@ pub mod gallery;
 pub mod materials;
 pub mod modules;
 pub mod overlays;
+pub mod panes;
 pub mod parity;
 pub mod seat_rows;
 pub mod styles;

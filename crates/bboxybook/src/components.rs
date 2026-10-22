@@ -199,6 +199,7 @@ fn scene<'a>(
     size: [u32; 2],
     items: &'a [Surface],
     ctx: ui::Context,
+    time_ms: f32,
 ) -> Scene<'a> {
     Scene {
         backdrop: Backdrop::Rgba(pixels),
@@ -206,16 +207,26 @@ fn scene<'a>(
         width: size[0],
         height: size[1],
         scale: 1.,
-        time_ms: 450.,
+        time_ms,
         theme: ctx.theme,
     }
 }
 pub fn execute(
     renderer: &mut ChromeRenderer,
     ops: Vec<c::Paint>,
+    pixels: Vec<u8>,
+    size: [u32; 2],
+    ctx: ui::Context,
+) -> Result<Vec<u8>> {
+    execute_at(renderer, ops, pixels, size, ctx, 450.)
+}
+pub fn execute_at(
+    renderer: &mut ChromeRenderer,
+    ops: Vec<c::Paint>,
     mut pixels: Vec<u8>,
     size: [u32; 2],
     ctx: ui::Context,
+    time_ms: f32,
 ) -> Result<Vec<u8>> {
     let mut underlay = DrawList::default();
     for op in ops {
@@ -226,7 +237,7 @@ pub fn execute(
                 combined.primitives.extend(list.primitives);
                 pixels = materials::render_composed_to_rgba(
                     renderer,
-                    scene(&pixels, size, &[], ctx),
+                    scene(&pixels, size, &[], ctx, time_ms),
                     &combined,
                 )?;
             }
@@ -286,7 +297,7 @@ pub fn execute(
                 }];
                 pixels = materials::render_layered_to_rgba(
                     renderer,
-                    scene(&pixels, size, &items, ctx),
+                    scene(&pixels, size, &items, ctx, time_ms),
                     &underlay,
                     &DrawList::default(),
                 )?;
@@ -297,7 +308,7 @@ pub fn execute(
     if !underlay.primitives.is_empty() {
         pixels = materials::render_composed_to_rgba(
             renderer,
-            scene(&pixels, size, &[], ctx),
+            scene(&pixels, size, &[], ctx, time_ms),
             &underlay,
         )?;
     }

@@ -83,13 +83,6 @@ fn col(i: usize, ctx: &DrawCtx) -> Color {
         LIGHT[i % 15]
     })
 }
-fn seat_color(s: &Seat, ctx: &DrawCtx) -> Color {
-    if let SeatColor::Override(h) = s.color {
-        Color::hsl(h.hue, h.saturation / 100.0, h.lightness / 100.0)
-    } else {
-        col(s.id.0.0.saturating_sub(1) as usize, ctx)
-    }
-}
 fn activity(s: &str) -> Activity {
     match s {
         "active" => Activity::Active,
@@ -350,124 +343,8 @@ fn close_dot(r: Rect, hover: bool, ctx: &DrawCtx, out: &mut DrawList) {
         );
     }
 }
-pub(crate) fn strip(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
-    let ctx = if focused { *ctx } else { ctx.dimmed() };
-    let color = seat_color(s, &ctx);
-    out.rect(r, 0.0, ctx.color(color));
-    out.clip(r, [0.0; 4]);
-    close_dot(
-        Rect::new(r.x + 6.0, r.y + 5.0, 12.0, 12.0),
-        false,
-        &ctx,
-        out,
-    );
-    let mut x = r.x + 25.0;
-    if s.where_ != Where::Local {
-        WhereMark(&s.where_).draw(Rect::new(x, r.y + 5.0, 12.0, 12.0), &ctx, out);
-        x += 17.0;
-    }
-    icon(
-        out,
-        Rect::new(x, r.y + 5.0, 13.0, 13.0),
-        &s.harness.0,
-        ctx.color(Color::WHITE.alpha(0.9)),
-    );
-    x += 18.0;
-    let name_w = (s.name.len() as f32 * 5.6).min((r.w - 150.0).max(12.0));
-    text(
-        out,
-        Rect::new(x, r.y + 3.0, name_w, 16.0),
-        s.name.as_str(),
-        11.0,
-        ctx.color(Color::WHITE.alpha(0.95)),
-        600,
-    );
-    x += name_w + 5.0;
-    if let Some(role) = &s.role {
-        RoleMark(role).draw(Rect::new(x, r.y + 3.0, 12.0, 16.0), &ctx, out);
-        x += 16.0;
-    }
-    let title = if let Activity::Waiting(kind) = s.activity {
-        format!(
-            "{} · waiting for {}",
-            s.title,
-            match kind {
-                WaitKind::Permission => "permission",
-                WaitKind::Question => "question",
-                WaitKind::Auth => "auth",
-            }
-        )
-    } else {
-        s.title.clone()
-    };
-    text(
-        out,
-        Rect::new(x, r.y + 3.0, (r.right() - x - 76.0).max(0.0), 16.0),
-        title,
-        10.5,
-        ctx.color(Color::WHITE.alpha(0.8)),
-        400,
-    );
-    Badge {
-        label: "⌘1",
-        selected: false,
-        mono: true,
-    }
-    .draw(
-        Rect::new(r.right() - 72.0, r.y + 3.0, 28.0, 16.0),
-        &ctx,
-        out,
-    );
-    icon(
-        out,
-        Rect::new(r.right() - 37.0, r.y + 5.0, 12.0, 12.0),
-        if s.muted { "muted" } else { "unmuted" },
-        ctx.color(Color::WHITE.alpha(0.8)),
-    );
-    StateGlyph {
-        activity: s.activity,
-        grade: s.grade,
-        color,
-    }
-    .draw(
-        Rect::new(r.right() - 18.0, r.y + 5.0, 11.0, 11.0),
-        &ctx,
-        out,
-    );
-    out.unclip();
-}
 pub(crate) fn pane(s: &Seat, r: Rect, focused: bool, ctx: &DrawCtx, out: &mut DrawList) {
-    let color = match s.activity {
-        Activity::Errored => Color::hex(TOKENS.color.state.errored),
-        _ => seat_color(s, ctx),
-    };
-    let dim = if focused { *ctx } else { ctx.dimmed() };
-    out.rect(r, 0.0, dim.ground(Color::hex(ctx.theme.palette().bg)));
-    let b = if s.activity == Activity::Active {
-        TOKENS.strip.border_active
-    } else {
-        TOKENS.strip.border_idle
-    } as f32;
-    out.push(Prim::Rect {
-        rect: r,
-        radii: [0.0; 4],
-        fill: Color::TRANSPARENT,
-        stroke: Some((b, ctx.identity(color))),
-        inner_highlight: None,
-        shadow: None,
-    });
-    strip(
-        s,
-        Rect::new(
-            r.x + b,
-            r.y + b,
-            (r.w - 2.0 * b).max(0.0),
-            TOKENS.strip.height as f32,
-        ),
-        focused,
-        ctx,
-        out,
-    );
+    crate::panes::paint_legacy_pane(s, r, focused, ctx, out)
 }
 pub(crate) fn titlebar(r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
     out.rect(
