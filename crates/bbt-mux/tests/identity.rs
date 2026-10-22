@@ -1,4 +1,7 @@
-#![allow(clippy::disallowed_methods)] // Disposable keyring/account/Keychain fixtures run on IO test threads.
+#![allow(
+    clippy::disallowed_methods,
+    reason = "test/fixture IO, not the UI thread"
+)]
 //! Disposable interoperability/custody checks. Every GnuPG command has an
 //! explicit throwaway homedir; these tests never query the operator keyring.
 use std::{
@@ -961,5 +964,283 @@ fn identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ac
     );
     println!(
         "ID1b messaging seam: real chain provider preserved persist-before-dispatch, retry, thread, receipt and ack contracts"
+    );
+}
+
+#[test]
+fn identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons() {
+    use bbt_mux::identity::{IdentityRuntime, IdentityState};
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let view = IdentityRuntime::open(
+        directory.path(),
+        SigningKey::from_bytes(&[42; 32]),
+        runtime.handle().clone(),
+    )
+    .unwrap();
+    let local = view.status().unwrap();
+    assert_eq!(local.state, IdentityState::LocalDev);
+    assert_eq!(local.label, "unsigned, local only");
+    assert!(!local.bootstrapped);
+    assert!(local.root_fingerprint.is_none());
+    assert!(local.custody.is_none());
+    assert_eq!(
+        view.keys().issuer().kind,
+        bbt_mux::messaging::wire::IssuerKind::LocalDev
+    );
+    let account = SqliteStore::open(&directory.path().join("account")).unwrap();
+    let registry = bbt_mux::registry::Registry::new(account.clone());
+    let swarm = Ulid::new();
+    let sender = bbt_mux::registry::SeatRecord::new(Ulid::new(), swarm, "local sender", "zsh");
+    let peer = bbt_mux::registry::SeatRecord::new(Ulid::new(), swarm, "local peer", "zsh");
+    registry.insert(&sender).unwrap();
+    registry.insert(&peer).unwrap();
+    let mut messaging = bbt_mux::messaging::Messaging::open(directory.path(), view.keys()).unwrap();
+    let envelope = messaging
+        .send(
+            sender.id,
+            1,
+            bbt_mux::messaging::wire::SendRequest::text(
+                format!("seats/{}/inbox", peer.id),
+                "local only",
+            ),
+            now() * 1000,
+        )
+        .unwrap()
+        .envelope;
+    assert_eq!(
+        envelope.issuer_kind,
+        bbt_mux::messaging::wire::IssuerKind::LocalDev
+    );
+    let receiver = SeatFixture::new(false);
+    use bbt_mux::messaging::keys::SeatKeys;
+    assert!(
+        receiver
+            .chain
+            .verify(&envelope)
+            .unwrap_err()
+            .to_string()
+            .contains("not admitted before cutover")
+    );
+    let mut fixture = Fixture::new();
+    let agent_socket = fixture.bootstrap.agent_socket.clone();
+    let custody = MemoryKeys::default();
+    fixture.bootstrap.agent_socket = directory.path().join("absent-agent.sock");
+    assert!(matches!(
+        fixture.bootstrap.run(&account, &custody, now()),
+        BootstrapOutcome::Pending(PendingReason::AgentUnavailable)
+    ));
+    let pending = view.status().unwrap();
+    assert_eq!(pending.state, IdentityState::Pending);
+    assert_eq!(
+        pending.pending_reason,
+        Some(PendingReason::AgentUnavailable)
+    );
+    assert_eq!(
+        pending.root_fingerprint.as_deref(),
+        Some(fixture.bootstrap.fingerprint.as_str())
+    );
+    assert!(!pending.authenticated_signing_ready);
+    assert!(account.get("identity/head").unwrap().is_none());
+    let reopened = IdentityRuntime::open(
+        directory.path(),
+        SigningKey::from_bytes(&[42; 32]),
+        runtime.handle().clone(),
+    )
+    .unwrap();
+    assert_eq!(
+        reopened.status().unwrap().pending_reason,
+        pending.pending_reason
+    );
+    let json = serde_json::to_string(&pending).unwrap();
+    assert!(!json.contains("absent-agent.sock"));
+    assert!(!json.contains("certificate"));
+    assert!(!json.contains("keygrip"));
+    fixture.bootstrap.agent_socket = agent_socket;
+    assert!(matches!(
+        fixture.bootstrap.run(&account, &custody, now()),
+        BootstrapOutcome::Certified(_)
+    ));
+    assert!(account.get("identity/attempt").unwrap().is_none());
+    let installed_after_open = view.status().unwrap();
+    assert!(installed_after_open.bootstrapped);
+    assert_eq!(
+        installed_after_open.pending_reason,
+        Some(PendingReason::ActivationRequired)
+    );
+    assert!(!installed_after_open.authenticated_signing_ready);
+    println!(
+        "ID1c: no-primary is unsigned/local-only; pending safe reason survives restart, with no authority installed"
+    );
+}
+
+#[test]
+fn identity_status_is_available_as_data_through_the_bounded_logic_client() {
+    use bbt_mux::identity::IdentityState;
+    use bbt_mux::logic::{Logic, LogicConfig};
+    let directory = tempfile::tempdir().unwrap();
+    let repository = directory.path().join(".bboxy");
+    fs::create_dir(&repository).unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let supervisor = bbt_mux::Supervisor::start(bbt_mux::Config::default()).unwrap();
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: directory.path().join("run"),
+            repository,
+            ring: Default::default(),
+        },
+        SigningKey::from_bytes(&[42; 32]),
+        runtime.handle(),
+    )
+    .unwrap();
+    let status = runtime.block_on(logic.client.identity_status()).unwrap();
+    assert_eq!(status.state, IdentityState::LocalDev);
+    assert_eq!(status.label, "unsigned, local only");
+    assert!(status.root_fingerprint.is_none());
+    let json = serde_json::to_string(&status).unwrap();
+    assert!(!json.contains("capability"));
+    assert!(!json.contains("socket"));
+    logic.shutdown().unwrap();
+    println!(
+        "ID1c logic: bounded asynchronous client exposes unsigned/local-only status data; no root action or UI code"
+    );
+}
+
+#[test]
+fn identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count() {
+    use bbt_mux::identity::{ChainSeatKeys, IdentityState};
+    use std::sync::Arc;
+    let f = SeatFixture::new(true);
+    assert!(
+        Command::new("gpgconf")
+            .arg("--homedir")
+            .arg(f.root.home.path())
+            .args(["--kill", "gpg-agent"])
+            .env("GNUPGHOME", f.root.home.path())
+            .status()
+            .unwrap()
+            .success()
+    );
+    let status = f.chain.status_at(f.time()).unwrap();
+    assert_eq!(status.state, IdentityState::Certified);
+    assert!(status.bootstrapped && status.authenticated_signing_ready);
+    assert_eq!(
+        status.root_fingerprint.as_deref(),
+        Some(f.root.bootstrap.fingerprint.as_str())
+    );
+    assert_eq!(status.custody_label.as_deref(), Some("test custody"));
+    assert_eq!(status.seats_still_local_dev, 2);
+    let due = status.device_renewal_due_at.unwrap();
+    let expires = status.device_grant_expires_at.unwrap();
+    assert_eq!(expires - due, 7 * 24 * 3600);
+    assert!(!f.chain.status_at(due - 1).unwrap().device_renewal_required);
+    assert!(f.chain.status_at(due).unwrap().device_renewal_required);
+    assert_eq!(
+        f.chain.status_at(expires).unwrap().pending_reason,
+        Some(PendingReason::DeviceGrantExpired)
+    );
+    f.registry
+        .update(f.seat.id, |r| {
+            r.generation += 1;
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(
+        f.chain.status_at(f.time()).unwrap().seats_still_local_dev,
+        1
+    );
+    f.registry
+        .update(f.peer.id, |r| {
+            r.lifecycle = bbt_mux::registry::Lifecycle::ClosedRetained;
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(f.chain.still_local().unwrap(), 0);
+    let head: Signed<AccountHead> =
+        serde_json::from_slice(&f.account.get("identity/head").unwrap().unwrap()).unwrap();
+    let id = head.payload.active_devices[0].device_id;
+    let key = format!("identity/device/{id}");
+    let mut device: bbt_mux::identity::DeviceIdentity =
+        serde_json::from_slice(&f.account.get(&key).unwrap().unwrap()).unwrap();
+    device.custody = Custody::LoginKeychain; // Public dev-record label; custody remains the memory test trait.
+    f.account
+        .put(&key, &serde_json::to_vec(&device).unwrap())
+        .unwrap();
+    assert_eq!(
+        f.chain
+            .status_at(f.time())
+            .unwrap()
+            .custody_label
+            .as_deref(),
+        Some("dev custody")
+    );
+    f.custody.0.lock().unwrap().clear();
+    let held = f.chain.status_at(f.time()).unwrap();
+    assert_eq!(held.state, IdentityState::Held);
+    assert_eq!(
+        held.pending_reason,
+        Some(PendingReason::KeychainUnavailable(-25300))
+    );
+    assert!(!held.authenticated_signing_ready);
+    let clock = f.time();
+    let reopened = ChainSeatKeys::with_clock(
+        f.account.clone(),
+        f.custody.clone(),
+        &f.root.bootstrap.fingerprint,
+        SigningKey::from_bytes(&[42; 32]),
+        Arc::new(move || clock),
+    )
+    .unwrap();
+    assert_eq!(
+        reopened.status_at(clock).unwrap().state,
+        IdentityState::Held
+    );
+    let expired = ChainSeatKeys::with_clock(
+        f.account.clone(),
+        f.custody.clone(),
+        &f.root.bootstrap.fingerprint,
+        SigningKey::from_bytes(&[42; 32]),
+        Arc::new(move || expires),
+    )
+    .unwrap();
+    assert_eq!(
+        expired.status_at(expires).unwrap().pending_reason,
+        Some(PendingReason::DeviceGrantExpired)
+    );
+    struct Locked;
+    impl DeviceKeyStore for Locked {
+        fn custody(&self) -> Custody {
+            Custody::Memory
+        }
+        fn load(&self, _: Ulid) -> bbt_mux::identity::Result<Option<SigningKey>> {
+            Err(PendingReason::KeychainUnavailable(-25308))
+        }
+        fn create(&self, _: Ulid, _: &SigningKey) -> bbt_mux::identity::Result<()> {
+            panic!("status must not generate a key")
+        }
+    }
+    let locked = ChainSeatKeys::with_clock(
+        f.account.clone(),
+        Arc::new(Locked),
+        &f.root.bootstrap.fingerprint,
+        SigningKey::from_bytes(&[42; 32]),
+        Arc::new(move || clock),
+    )
+    .unwrap();
+    assert_eq!(
+        locked.status_at(clock).unwrap().pending_reason,
+        Some(PendingReason::KeychainUnavailable(-25308))
+    );
+    println!(
+        "ID1c: week-before-expiry renewal, dev custody label, expired/missing-key holds and exact live local-generation count surfaced without root signing"
     );
 }

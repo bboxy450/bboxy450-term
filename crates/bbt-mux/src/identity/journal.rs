@@ -232,9 +232,19 @@ impl Bootstrap {
         now: u64,
     ) -> BootstrapOutcome {
         bbt_rt::assert_not_ui_thread();
+        if let Err(reason) =
+            super::status::attempted(account, &self.fingerprint, E::BootstrapInProgress, now)
+        {
+            return BootstrapOutcome::Pending(reason);
+        }
         match self.install(account, keys, now) {
             Ok(identity) => BootstrapOutcome::Certified(Box::new(identity)),
-            Err(reason) => BootstrapOutcome::Pending(reason),
+            Err(reason) => {
+                let reason = super::status::attempted(account, &self.fingerprint, reason, now)
+                    .err()
+                    .unwrap_or(reason);
+                BootstrapOutcome::Pending(reason)
+            }
         }
     }
 
@@ -297,8 +307,11 @@ impl Bootstrap {
                         [proof(serde_json::to_vec(&head))?],
                     )
                     .map_err(|_| E::StorageUnavailable)?;
-                stage.commit().map_err(|_| E::StorageUnavailable)?;
             }
+            stage
+                .execute("DELETE FROM kv WHERE key='identity/attempt'", [])
+                .map_err(|_| E::StorageUnavailable)?;
+            stage.commit().map_err(|_| E::StorageUnavailable)?;
             return Ok(identity);
         }
         let pending: Option<Vec<u8>> = stage
@@ -447,6 +460,8 @@ impl Bootstrap {
                 .map_err(|_| E::StorageUnavailable)?;
         }
         tx.execute("DELETE FROM kv WHERE key='identity/pending'", [])
+            .map_err(|_| E::StorageUnavailable)?;
+        tx.execute("DELETE FROM kv WHERE key='identity/attempt'", [])
             .map_err(|_| E::StorageUnavailable)?;
         tx.commit().map_err(|_| E::StorageUnavailable)?;
         Ok(identity)

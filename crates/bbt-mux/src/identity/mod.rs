@@ -10,12 +10,14 @@ mod chain;
 mod journal;
 mod keychain;
 mod seats;
+mod status;
 mod transition;
 
 pub use chain::{ChainSeatKeys, seat_keys};
 pub use journal::{AccountHead, Bootstrap, BootstrapOutcome, DeviceGrant, DeviceIdentity, Signed};
 pub use keychain::{Custody, DeviceKeyStore, KeychainDeviceKeys};
 pub use seats::{KeyStatus, RosterEntry, SeatGrant, SeatProof, SeatRoster};
+pub use status::{IdentityRuntime, IdentityState, IdentityStatus};
 pub use transition::{IssuerState, reset_identity};
 
 use std::fmt;
@@ -35,6 +37,30 @@ pub enum PendingReason {
     KeychainUnavailable(i32),
     JournalConflict,
     StorageUnavailable,
+    BootstrapInProgress,
+    ActivationRequired,
+    DeviceGrantExpired,
+    SeatRenewalUnavailable,
+}
+impl PendingReason {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::AgentUnavailable => "gpg-agent unavailable",
+            Self::UnsupportedAgent => "unsupported gpg-agent",
+            Self::AgentRejected(_) => "gpg-agent rejected the request",
+            Self::Cancelled => "pinentry cancelled",
+            Self::TimedOut => "gpg-agent timed out",
+            Self::FingerprintMismatch => "primary fingerprint mismatch",
+            Self::InvalidProof => "identity proof invalid",
+            Self::KeychainUnavailable(_) => "device Keychain unavailable",
+            Self::JournalConflict => "identity journal conflict",
+            Self::StorageUnavailable => "identity storage unavailable",
+            Self::BootstrapInProgress => "bootstrap has not completed",
+            Self::ActivationRequired => "restart logic to activate the certified identity",
+            Self::DeviceGrantExpired => "device grant expired; operator renewal required",
+            Self::SeatRenewalUnavailable => "seat grant renewal held",
+        }
+    }
 }
 impl fmt::Display for PendingReason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -92,6 +92,7 @@ enum Command {
     Undo(Ulid, u64, u64, u64, oneshot::Sender<Result<Position>>),
     Record(Ulid, oneshot::Sender<Result<SeatRecord>>),
     Endpoint(Ulid, oneshot::Sender<Result<EndpointInfo>>),
+    IdentityStatus(oneshot::Sender<Result<crate::identity::IdentityStatus>>),
 }
 
 /// Private discovery result; never include the admission capability in logs.
@@ -108,6 +109,16 @@ pub struct LogicClient {
     pub bus: BusHandle,
 }
 impl LogicClient {
+    /// Read-only identity-card data for the in-process GUI. Primary signing is
+    /// deliberately absent from this client and from the seat/MCP surface.
+    pub async fn identity_status(&self) -> Result<crate::identity::IdentityStatus> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::IdentityStatus(tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
     pub async fn control_catalogue(
         &self,
         seat: Ulid,
@@ -465,6 +476,7 @@ struct Worker {
     endpoints: BTreeMap<Ulid, (EndpointInfo, crate::seat_socket::SeatEndpoint)>,
     endpoint_root: PathBuf,
     messaging: crate::messaging::Messaging,
+    identity: crate::identity::IdentityRuntime,
     deliveries: tokio::task::JoinSet<Delivery>,
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
 }
@@ -495,10 +507,9 @@ impl Worker {
         std::fs::DirBuilder::new()
             .mode(0o700)
             .create(&endpoint_root)?;
-        let messaging = crate::messaging::Messaging::open(
-            &config.run_dir,
-            crate::identity::seat_keys(&config.run_dir, key, handle.clone())?,
-        )?;
+        let identity =
+            crate::identity::IdentityRuntime::open(&config.run_dir, key, handle.clone())?;
+        let messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
         let mut worker = Self {
             connection,
             config,
@@ -513,6 +524,7 @@ impl Worker {
             endpoints: BTreeMap::new(),
             endpoint_root,
             messaging,
+            identity,
             deliveries: tokio::task::JoinSet::new(),
             control_journals: BTreeMap::new(),
         };
@@ -1484,6 +1496,9 @@ impl Worker {
                     break;
                 };
                 match command {
+                    Command::IdentityStatus(reply) => {
+                        let _ = reply.send(self.identity.status());
+                    }
                     Command::ControlCatalogue(id, generation, reply) => {
                         let result = self
                             .control_actor(id, generation)
