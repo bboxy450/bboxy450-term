@@ -821,10 +821,6 @@ fn mint(
     };
     let raw_grant = serde_json::to_vec(&grant)?;
     let grant_id = digest(&raw_grant);
-    tx.execute(
-        "INSERT OR IGNORE INTO msg_grants VALUES(?1,?2)",
-        params![grant_id, raw_grant],
-    )?;
     let mut envelope = Envelope {
         version: 1,
         id: request.id,
@@ -851,6 +847,11 @@ fn mint(
         attachments: request.attachments.clone(),
         signature: String::new(),
     };
+    keys.finalize(&mut envelope, record, tx)?;
+    tx.execute(
+        "INSERT OR IGNORE INTO msg_grants VALUES(?1,?2)",
+        params![envelope.role_grant_id, raw_grant],
+    )?;
     envelope.sign(&leaf)?;
     tx.execute("INSERT INTO msg_counters VALUES(?1,?2,?3) ON CONFLICT(seat,generation) DO UPDATE SET sequence=excluded.sequence",params![record.id.to_string(),sqlint(record.generation)?,sqlint(sequence)?])?;
     Ok(envelope)

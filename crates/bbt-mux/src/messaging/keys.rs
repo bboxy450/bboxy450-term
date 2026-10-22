@@ -11,6 +11,17 @@ pub trait SeatKeys: Send + Sync {
     fn issuer(&self) -> Issuer;
     fn leaf(&self, seat: Ulid, generation: u64) -> Result<SigningKey>;
     fn verify(&self, envelope: &Envelope) -> Result<()>;
+    /// The IO owner supplies the current registry record and existing account
+    /// transaction. Local-dev keeps its exact v1 bytes; certified providers can
+    /// bind the device and journal a signed SeatGrant before envelope signing.
+    fn finalize(
+        &self,
+        _envelope: &mut Envelope,
+        _record: &crate::registry::SeatRecord,
+        _tx: &rusqlite::Transaction<'_>,
+    ) -> Result<()> {
+        Ok(())
+    }
 }
 pub struct LocalSeatKeys {
     broker: SigningKey,

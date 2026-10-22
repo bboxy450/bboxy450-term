@@ -1,7 +1,7 @@
 use std::{path::PathBuf, time::Duration};
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD as B64};
-use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
@@ -132,13 +132,26 @@ impl<T: Serialize> Signed<T> {
             signature: B64.encode(sig),
         })
     }
-    fn verify(&self, kind: &str, key: &VerifyingKey) -> Result<()> {
+    pub(crate) fn verify(&self, kind: &str, key: &VerifyingKey) -> Result<()> {
         let bytes = signed_bytes(kind, &self.payload)?;
         let signature: [u8; 64] = proof(proof(B64.decode(&self.signature))?.try_into())?;
         if self.digest != digest(&bytes) {
             return Err(E::InvalidProof);
         }
         proof(key.verify_strict(&bytes, &Signature::from_bytes(&signature)))
+    }
+    pub(crate) fn issue_device(kind: &str, payload: T, key: &SigningKey) -> Result<Self> {
+        let bytes = signed_bytes(kind, &payload)?;
+        let signature = key.sign(&bytes).to_bytes();
+        proof(
+            key.verifying_key()
+                .verify_strict(&bytes, &Signature::from_bytes(&signature)),
+        )?;
+        Ok(Self {
+            payload,
+            digest: digest(&bytes),
+            signature: B64.encode(signature),
+        })
     }
 }
 
@@ -266,6 +279,26 @@ impl Bootstrap {
             if hex(&key.verifying_key().to_bytes()) != identity.grant.payload.device_pubkey {
                 return Err(E::InvalidProof);
             }
+            if super::transition::get(&stage)
+                .map_err(|_| E::JournalConflict)?
+                .is_none()
+            {
+                super::transition::bootstrap(
+                    &stage,
+                    head.payload.root_pubkey.clone(),
+                    self.fingerprint.clone(),
+                    head.digest.clone(),
+                    now,
+                )
+                .map_err(|_| E::JournalConflict)?;
+                stage
+                    .execute(
+                        "UPDATE kv SET value=?1 WHERE key='identity/head'",
+                        [proof(serde_json::to_vec(&head))?],
+                    )
+                    .map_err(|_| E::StorageUnavailable)?;
+                stage.commit().map_err(|_| E::StorageUnavailable)?;
+            }
             return Ok(identity);
         }
         let pending: Option<Vec<u8>> = stage
@@ -391,6 +424,14 @@ impl Bootstrap {
             grant,
         };
         identity.verify(&self.fingerprint, &head, now)?;
+        super::transition::bootstrap(
+            &tx,
+            head.payload.root_pubkey.clone(),
+            self.fingerprint.clone(),
+            head.digest.clone(),
+            now,
+        )
+        .map_err(|_| E::JournalConflict)?;
         for (key, value) in [
             (
                 "identity/head".to_string(),
