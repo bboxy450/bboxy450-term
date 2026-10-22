@@ -1,0 +1,66 @@
+ROLE: EXECUTOR — Nyx Copperwing. FINAL HANDOFF EVIDENCE.
+This completes verification; it supersedes earlier 'CI pending' statements.
+Tested production source: 70d34d21d1744fec8b210e66ceeabeeabc575608, signed.
+Document module: 48e14545c8668ac3525a894e90c0473947e13799, signed.
+Queued Settings follow-up: 70d34d2; micro test contract: 5043973.
+
+Clean detached worktree /tmp/nyx-ci-doc, git status clean before running;
+CARGO_TARGET_DIR=/tmp/nyx-ci-doc-target, deliberately outside the checkout.
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0.
+BBOXYBOOK_REFERENCE_HEAD=93696e92a49efcccb562bd63b04e21256e830901.
+BBOXYBOOK_GALLERY=documents sh scripts/ci-local.sh --parity
+ EXIT 0, 582.959s. Workspace build, 428 test instances passed, UI lint,
+ lab checks (36 pages x four densities, zero findings), 120/120 captures,
+ native renders/snapshots and comparison all complete.
+Then the SAME CLEAN COMMITTED source, BBOXYBOOK_GALLERY=settings
+ PARITY_OUT=target/settings-controls-parity sh scripts/parity.sh
+ EXIT 0, 306.996s, 72/72 captures, native renders and comparison complete.
+Raw output: w3-2d-7-10-clean-ci.log. This also proves parity.sh follows the
+external CARGO_TARGET_DIR rather than using a stale target/debug binary.
+
+Clean results:
+{
+  "documents": {
+    "cases": 120,
+    "statuses": {
+      "review pixels": 48,
+      "within policy": 72
+    },
+    "max_rect": 0.08508300781238631,
+    "max_baseline": 0.0078125
+  },
+  "settings": {
+    "cases": 72,
+    "statuses": {
+      "review pixels": 24,
+      "within policy": 48
+    },
+    "max_rect": 0.02040863037109375,
+    "max_baseline": 0.0078125
+  }
+}
+Every geometry record is complete and passes. Pixel flags remain explicit:
+DocumentModal 48/120, worst 2.91721097%; Settings 24/72. Same 2% text policy,
+0.5px geometry budget, no threshold/golden changes. Read shared-tree triplets
+in documents/final and settings/explicit-controls-fixed (recorded in each log).
+Clean copies remain at /tmp/nyx-ci-doc/target/parity/index.html and
+/tmp/nyx-ci-doc/target/settings-controls-parity/index.html.
+
+Separate supports, all signed:
+711c43d — bounded dash cursor; 7432442 — legitimate RGB/HSL roundoff correction;
+1166d69 — optional group alpha mask; d3df264 — Cargo target binding;
+ac5839f — current micro floor; 5043973 — stale test expectation corrected.
+The full default 1664-case baseline CI at 7432442 exited 0 (417 tests), raw
+colour-ci.log and baseline-ci.log; 812 default reviews were not called passes.
+Mask proof: 1992/1992 old PNGs byte-identical, all four commands exit 0; 8/8
+new effect gallery cases pass. Micro proof: 120/120 current cases pass, worst
+rect .073242px, baseline .046875px. See the individual support logs.
+
+Known visual gaps are in the module handoff, not concealed: text/thin-stroke
+masks, dashed border coverage, outlined arrowheads, outside bullet placement.
+Not checked: non-Metal platforms, live input/actions, actual document IO,
+signature verification or full Markdown/Mermaid production (bbt-doc later).
+No code changes after the tested 70d34d2 by this Executor; later commits record
+evidence only. Peer reserved-lane lab work is not claimed as my implementation.
+No merge, rebase, stash, push, operator-browser open/reload or dependency edit.
+Private build caches pruned after gates exited; all accepted galleries retained.

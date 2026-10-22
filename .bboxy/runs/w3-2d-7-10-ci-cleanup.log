@@ -1,0 +1,3 @@
+Nyx: after clean baseline CI exited 0, removed only /tmp/nyx-ci-dash/target/debug (private compiled build cache). Its /tmp/nyx-ci-dash/target/parity report and all images remain, as do the source checkout and accepted main-tree galleries. No other agent target touched.
+Allocated bytes before removal: 2288902144. Volume free bytes 22004375552 -> 24081092608.
+After final CI and Settings parity both exited 0, removed only /tmp/nyx-ci-doc-target (private build cache), allocated 2314366976 bytes. All /tmp/nyx-ci-doc/target/parity and target/settings-controls-parity images/reports remain. Volume free 24006492160 -> 26104279040.
