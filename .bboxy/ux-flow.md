@@ -264,3 +264,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### The launcher shows matches as plain text
 **Rule:** no underline or highlight on the matched part of a launcher row; every row is plain text and the only emphasis is the current row's selection band, as in Raycast. **Why:** operator tweak, reference `runs/ref-raycast-no-match-underline.png` (ux-pick.md). **Where:** `picker()` label in `components.js`, `.picker .opt .m` removed from `lab.css`; applies to picker.html, launcher.html and the showcase; design system v40 `modal.matching_display`.
+
+### The Oracle's actions show in the stream
+**Rule:** every Oracle effect a swarm member may see becomes a centred stream line: the Oracle mark in its role colour, then "Vesper Greywind spawned Odile Marsh"; under it the short op id, the outcome when it is not applied (rejected in solid red, unknown and partial in dashed amber) and the time; hovering gives the reason. **Why:** audit_lines decided as a projection of the audit log scoped to swarm members (mcp-control-plane). **Where:** `messageRow` `m.audit` in `components.js`; `FIX.audit`; `stream.html?state=audit-lines`; showcase key O writes an audit line per spawn outcome; design system v41.

@@ -151,7 +151,7 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 5 | reconnect | mux state streams | BUILT: stale frame dimmed, glow frozen, under a "reconnecting…" pill that fades on reconnect; one-shot "restarted" chip for 4 s on generation change, then a stream line |
 | 6 | scrollback gap | ring eviction | BUILT: hairline with a centred caption, "earlier output evicted · retained from <from>" or "earlier output unavailable"; never an invented count |
 | 7 | pending row | MCP mutation status | BUILT: dashed row with spinner until applied; partial and unknown stay dashed with the outcome spelled; rejected is a closed-strip row with the reason; dismiss, never an automatic retry |
-| 8 | audit lines | Oracle audit log | DECIDED: a projection of the audit log, swarm-member scope; centred stream lines |
+| 8 | audit lines | Oracle audit log | BUILT: centred stream lines, "♔ Vesper Greywind spawned Odile Marsh", then op id, outcome when not applied, time |
 | 9 | interrupt | seat_interrupt | BUILT: square stop glyph before the mute toggle for Oracle/operator only (⌘.); one-shot red sweep and "interrupt sent" on strip and row; the state waits for the seat |
 | 10 | spawn cap | per swarm | BUILT: amber banner names the cap (swarm, machine or account) and what counts; launch rows dim and refuse; Go to, Graph and Settings stay live |
 | 11 | purge | GUI only | BUILT: the one confirm modal from row menu Purge…; typed seat name; "terminates now and moves its history to cold storage · nothing is lost" |

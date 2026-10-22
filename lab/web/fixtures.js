@@ -74,4 +74,12 @@ window.FIX = {
       near: [{ slug: 'agent-messaging', type: 'note', rel: 'evidence', w: 3 }, { slug: 'transport', type: 'note', rel: 'evidence', w: 2 }, { slug: 'w2-4', type: 'task', rel: 'spec', back: true }, { slug: 'w2-mux', type: 'epic', rel: 'parent' }] },
     readme: { path: 'README.md', title: 'bboxy450-term', body: 'A GPU terminal emulator in Rust built as a cockpit for swarms of coding agents.\n## Start\n```\ncargo run -p bboxy450-term\n```\n- knowledge base in [[README|.bboxy]]\n- vision in [[vision]]' },
   },
+  // audit projection for the stream (Oracle effects, swarm-member scope)
+  audit: [
+    { audit: { actor: 'Vesper Greywind', verb: 'spawned', target: 'Odile Marsh', op: '3fa91c2e', outcome: 'applied' }, time: '14:16' },
+    { audit: { actor: 'Vesper Greywind', verb: 'assigned executor to', target: 'Odile Marsh', op: '7d02aa41', outcome: 'applied' }, time: '14:16' },
+    { audit: { actor: 'Vesper Greywind', verb: 'interrupted', target: 'Rook Ashwhisker', op: 'c19be004', outcome: 'applied' }, time: '14:18' },
+    { audit: { actor: 'Vesper Greywind', verb: 'spawned', target: 'Bram Calder', op: '5e6610fb', outcome: 'rejected', reason: 'spawn cap for this swarm is 8' }, time: '14:19' },
+    { audit: { actor: 'Vesper Greywind', verb: 'closed', target: 'Ysolde Pike', op: '90ab3c12', outcome: 'unknown', reason: 'no confirmation from the mux' }, time: '14:21' },
+  ],
 };

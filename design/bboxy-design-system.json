@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 40,
+  "version": 41,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -627,7 +627,7 @@
       "purpose": "the Oracle's actions in the open",
       "source": "Oracle audit log as a stream kind",
       "anatomy": "centred lines in the swarm stream like presence notices: \"Oracle spawned X\", \"Oracle closed X\", \"Oracle interrupted X\"",
-      "status": "decided: a projection of the audit log scoped to swarm members; drawn, not built"
+      "status": "built: centred in the swarm stream like presence, two parts: the Oracle mark in role colour, actor, verb, target; then the short op id, the outcome when not applied (rejected solid red, unknown and partial dashed amber) and the time; tooltip carries the reason; messageRow m.audit, FIX.audit; stream.html?state=audit-lines; showcase key O writes them"
     },
     "first_run": {
       "purpose": "identity bootstrap",

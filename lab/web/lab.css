@@ -1091,3 +1091,14 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .row-menu .rm-head .rm-ag { color: var(--fg-dim); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sa-row { cursor: context-menu; border-radius: var(--r-row, 6px); }
 .sa-row:hover { background: var(--sel-hover, var(--surface-2)); }
+
+/* audit lines: the Oracle's actions, centred like presence, with its mark and the op */
+.msg.presence.audit { color: var(--fg-dim); flex-direction: column; align-items: center; gap: 2px; }
+.msg.presence.audit .aline { text-align: center; line-height: 1.4; }
+.msg.presence.audit .ameta { display: flex; align-items: center; gap: 6px; }
+.msg.presence.audit .amark { color: var(--role-oracle); font-size: 11px; }
+.msg.presence.audit b { color: var(--fg); font-weight: 500; }
+.msg.presence.audit .aop { font-size: 9.5px; color: var(--fg-dim); background: var(--badge, var(--surface-2)); padding: 0 4px; border-radius: 4px; }
+.msg.presence.audit .aout { font-size: 9.5px; padding: 0 5px; border-radius: 999px; border: 1px dashed var(--line); }
+.msg.presence.audit.rejected .aout { color: var(--c-errored); border-color: color-mix(in srgb, var(--c-errored) 50%, transparent); border-style: solid; }
+.msg.presence.audit.unknown .aout, .msg.presence.audit.partial .aout { color: var(--c-waiting); }

@@ -6,7 +6,7 @@
 </head><body><script>
 const el = Lab.el;
 Lab.page({ title: 'stream', note: 'The swarm stream dock at the foot of the sidebar: epic groups (collapsible, specs and tasks with status), the external lane (github, ci, cloud, cron, webhook), then the newest messages with role rail, priority, delivery ticks and centred presence notices. Clicking a shadow filters the dock to that participant. Same epicGroup(), externalLane(), messageRow() as the showcase.',
-  states: ['swarm stream', 'epic groups', 'epic collapsed', 'external lane', 'messages', 'filtered to one participant', 'empty'],
+  states: ['swarm stream', 'epic groups', 'epic collapsed', 'external lane', 'messages', 'audit lines', 'filtered to one participant', 'empty'],
   render(s, body) {
     const frame = el('div', { style: 'width:300px;background:var(--sidebar-bg);border-radius:var(--r-pill);border:1px solid var(--hair);overflow:hidden' });
     const dock = el('div', { class: 'stream-dock', style: 'max-height:none' });
@@ -18,7 +18,8 @@ Lab.page({ title: 'stream', note: 'The swarm stream dock at the foot of the side
       if (all || s === 'external lane') dock.append(C.externalLane(FIX.external, { open: extOpen, onToggle: () => { extOpen = !extOpen; draw(); } }));
       let msgs = (all || s === 'messages') ? FIX.stream : s === 'filtered to one participant' ? FIX.stream.filter(m => m.fromKey === 'k9') : [];
       if (s === 'filtered to one participant') dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, 'Kestrel Nine'), el('button', {}, '× all')));
-      if (all) msgs = msgs.slice(-4);
+      if (s === 'audit lines') msgs = [...FIX.stream.slice(0, 2), ...FIX.audit, FIX.stream[3]];
+      if (all) msgs = [...msgs.slice(-3, -1), FIX.audit[0], ...msgs.slice(-1)];
       for (const m of msgs) dock.append(C.messageRow(m));
       if (s === 'empty') dock.append(el('div', { class: 'lab-note', style: 'padding:10px' }, 'an empty swarm shows no dock at all; the sidebar ends at the footer'));
     };

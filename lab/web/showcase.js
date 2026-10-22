@@ -244,15 +244,16 @@
     const p = { op: C.hash32('op' + n).toString(16).slice(0, 8), name: C.rollName(C.rng('spawn' + n)), harness: h, by: 'Vesper Greywind', status: 'accepted' };
     sp.pending = sp.pending || []; sp.pending.push(p); open.add(sp.key); render();
     setTimeout(() => {
-      const c = capOf(sp); if (c && c.used > SWARM_CAP) { p.status = 'rejected'; p.reason = 'spawn cap for this swarm is ' + SWARM_CAP + ' (' + c.counts + ')'; render(); return; }
-      if (n % 4 === 0) { p.status = 'rejected'; p.reason = 'spawn cap for this swarm is 8'; render(); return; }
-      if (n % 5 === 0) { p.status = 'unknown'; render(); return; }
+      const audit = (outcome, reason) => sp.stream.push({ audit: { actor: p.by, verb: 'spawned', target: p.name, op: p.op, outcome, reason }, time: new Date().toTimeString().slice(0, 5) });
+      const c = capOf(sp); if (c && c.used > SWARM_CAP) { p.status = 'rejected'; p.reason = 'spawn cap for this swarm is ' + SWARM_CAP + ' (' + c.counts + ')'; audit('rejected', p.reason); render(); return; }
+      if (n % 4 === 0) { p.status = 'rejected'; p.reason = 'spawn cap for this swarm is 8'; audit('rejected', p.reason); render(); return; }
+      if (n % 5 === 0) { p.status = 'unknown'; audit('unknown', 'no confirmation from the mux'); render(); return; }
       sp.pending = sp.pending.filter(x => x !== p);
       const seat = { key: 'o' + n + Date.now().toString(36), name: p.name, harness: h, role: C.DEFAULT_ROLE[h], title: '', state: 'active', pal: (seats.length + 3) % 15, where: 'local' };
       Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
       Object.defineProperty(seat, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
       seats.push(seat); startReplay(seat, seats.length - 1); placeSeat(seat, 'tab');
-      streamLine(sp, 'Oracle spawned ' + seat.name + ' · ' + h);
+      audit('applied');
     }, 1800);
   });
   // D: the GUI loses the daemon. Every pane keeps its stale frame, dimmed, glow frozen, "reconnecting…"; on reconnect the
