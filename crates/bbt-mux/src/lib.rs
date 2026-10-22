@@ -12,6 +12,7 @@ compile_error!("bbt-mux currently requires Unix PTYs and Unix sockets");
 
 pub mod adapters;
 pub mod bus;
+pub mod identity;
 pub mod index;
 pub mod logic;
 pub mod messaging;
