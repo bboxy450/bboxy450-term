@@ -1,0 +1,149 @@
+//! The one admitted GUI connection multiplexes state and watched view updates.
+use serde::{Deserialize, Serialize};
+use ulid::Ulid;
+
+use crate::seat_state::{GuiSeat, SpawnSpec, text_id};
+use crate::{SeatId, Update, View};
+pub type Row = Vec<bbt_core::Cell>;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GuiRequest {
+    pub version: u16,
+    pub capability: [u8; 32],
+    pub action: GuiAction,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "body")]
+pub enum GuiAction {
+    ListSeats,
+    Watch {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+        view: View,
+    },
+    Unwatch {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+    },
+    Applied {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+        view: View,
+        sequence: u64,
+    },
+    Input {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+        id: Ulid,
+        bytes: Vec<u8>,
+    },
+    Resize {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+        cols: u16,
+        rows: u16,
+    },
+    Spawn {
+        spec: SpawnSpec,
+    },
+    ScheduleClose {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+    },
+    UndoClose {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+        close_id: Ulid,
+    },
+    GetHistory {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+        from: u64,
+        to: u64,
+    },
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "body")]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "keep the decided C1 shared API; transport bounds each message"
+)]
+pub enum GuiReply {
+    Seats(Vec<GuiSeat>),
+    Update {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+        update: Update,
+    },
+    Seat(GuiSeat),
+    Ok {
+        op: Ulid,
+    },
+    Error {
+        op: Ulid,
+        reason: String,
+    },
+    History {
+        #[serde(with = "text_id")]
+        seat: SeatId,
+        rows: Vec<(u64, Row)>,
+    },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{registry::SeatRecord, seat_state::*};
+    #[test]
+    fn gui_state_round_trips_portable_enums_without_a_mux_dependency() {
+        for activity in [
+            Activity::Active,
+            Activity::Idle,
+            Activity::Errored,
+            Activity::Waiting(WaitKind::Permission),
+            Activity::Waiting(WaitKind::Question),
+            Activity::Waiting(WaitKind::Auth),
+        ] {
+            for grade in [Grade::Reported, Grade::Shim, Grade::Inferred] {
+                for process in [
+                    ProcessStatus::Running { pid: 7 },
+                    ProcessStatus::Exited { status: 137 },
+                    ProcessStatus::ClosedGrace { until_ms: 99 },
+                    ProcessStatus::Retained,
+                ] {
+                    let state = SeatState {
+                        generation: 1,
+                        process,
+                        activity,
+                        grade,
+                        title: "zsh".into(),
+                        detail: None,
+                        turn_open: false,
+                        observed_ms: 3,
+                        subagents: vec![],
+                    };
+                    let seat = GuiSeat {
+                        record: SeatRecord::new(Ulid::from(1), Ulid::from(2), "zsh", "zsh"),
+                        state,
+                    };
+                    let wire = serde_json::to_vec(&GuiReply::Seat(seat.clone())).unwrap();
+                    let GuiReply::Seat(decoded) = serde_json::from_slice(&wire).unwrap() else {
+                        panic!()
+                    };
+                    assert_eq!(decoded, seat);
+                }
+            }
+        }
+    }
+    #[test]
+    fn gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids() {
+        let seat = SeatId::from_u128(42);
+        let value = serde_json::to_value(GuiAction::Unwatch { seat }).unwrap();
+        assert_eq!(value["body"]["seat"], seat.to_string());
+        let decoded: GuiAction = serde_json::from_value(value.clone()).unwrap();
+        assert!(matches!(decoded,GuiAction::Unwatch {seat:id} if id==seat));
+        let mut bad = value;
+        bad["body"]["seat"] = serde_json::json!("not-a-seat");
+        assert!(serde_json::from_value::<GuiAction>(bad).is_err());
+    }
+}
