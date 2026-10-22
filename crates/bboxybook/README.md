@@ -109,8 +109,8 @@ is the authoritative remaining-case list. In particular:
   later renderer/app briefs. The glow gallery entry previews chrome only.
 - CoreText line masks are grayscale, including fallback symbols; colour emoji
   is absent. Ellipsis cuts at Unicode scalar boundaries, not grapheme clusters.
-  CSS filters, whole-group opacity and alpha blending can differ from the
-  draw-time HSL transform and the renderer's linear blending.
+  Group opacity/saturation now composite isolated L1 layers in CSS sRGB;
+  CoreText/Chrome glyph-mask and edge-antialiasing differences remain.
 - A few dimensions remain the cited CSS literals where no token exists
   (band type size, bumper, close dot, sample bounds); title-bar and band heights
   now use Wren's `STYLE.spacing` tokens. No design files were modified here.
@@ -389,8 +389,8 @@ sidebar painters now delegate to the retained compositions.
 
 The current card uses the SwarmCard Style: token radius, translucent surface
 and outside hairline. Unfocused contents use CSS luminance saturation; the
-bumper retains its identity colour. This filter applies opacity per paint,
-not as an isolated GPU group. Text supports min-content width, literal-hyphen
+bumper retains its identity colour. This filter now retains one isolated GPU group (7.4b); the layer is filtered
+and source-over composited once. Text supports min-content width, literal-hyphen
 wrap points and a caller-supplied line clamp for pending captions. Visibility,
 focus, pending outcomes, lifecycle and scrolling remain caller data; there is
 no input controller or autonomous state change in this step.
@@ -399,3 +399,25 @@ Frozen `ux-prototype-v2` module cases are historical diagnostics once the design
 has moved on. Capture preserves that reference identity in the fixture; reports
 label it, retain the raw pixel/geometry result, and exclude it from the current
 lab gate. Current cases keep the existing pixel and geometry policies.
+
+
+## Isolated opacity and dim (W3.2d.7.4b)
+
+Retained `Paint::Group` and flat `Prim::Group` preserve isolation through both
+host paths. Chrome paints each group to transparent RGBA on the same device,
+then a premultiplied source-over pass applies CSS sRGB saturation and opacity
+once. Nested groups keep their painter order and ancestor clips. Layout and
+baseline records do not change. A Box isolates automatically for opacity/dim;
+its `group` flag forces an otherwise identity layer.
+
+Offscreen text stores gamma-premultiplied RGBA: grayscale coverage over empty
+pixels, the existing linear-corrected blend over covered pixels. The ordinary
+opaque-target text pass is unchanged. Glow inside an offscreen group retains
+coverage for the later composite; ordinary glow still preserves destination
+alpha. Pane identity glow and border remain outside its strip/term filters.
+
+The regression uses the 1,200 accepted layer/module cases and frozen web
+captures from 7.3b, L5 snapshots and 7.4. It includes historical v2 diagnostics,
+which remain labelled and do not gate current lab cases. See
+`target/bboxybook/group-opacity/regression/after/index.html` and its adjacent
+`report.md`; `before/index.html` records the same cases before this change.

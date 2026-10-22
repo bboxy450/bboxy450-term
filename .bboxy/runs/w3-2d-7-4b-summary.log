@@ -1,0 +1,110 @@
+7.4b — isolated group opacity and dim
+Start: a16941f (main == origin/main), worktree clean before edits.
+Assignment: cf1de629-c4a1-4d11-af1e-0783f3bc45ef.
+Scope extension: Oracle DM 3d84d3eb-1452-4535-98ec-a30be714166e (inbox seq 3056):
+crates/bbt-ui-model/src/draw/{prim,list}.rs and their draw tests,
+Group primitive record only. Other scope: chrome/**, bbt-ui/**, bboxybook/**,
+Cargo.lock if needed and .bboxy/runs/w3-2d-7-*.log. No dependency changes.
+
+crates/bbt-ui-model/src/draw/prim.rs:139 — nested Group record.
+crates/bbt-ui-model/src/draw/list.rs:50 — finite/range checks, independent balanced
+clip scopes and at most 64 nested groups.
+crates/bbt-render/src/chrome/mod.rs:80 — split ordered draw batches at groups,
+preserve ancestor clips, render each child group offscreen on the same device.
+crates/bbt-render/src/chrome/group.wgsl:1 — unpremultiply gamma RGBA, CSS sRGB
+saturation (.213/.715/.072), multiply completed alpha once, premultiplied OVER.
+crates/bbt-render/src/chrome/group.rs:84 — lexical offscreen text mode;
+:95 GPU composite; :160 headless RGBA host bridge.
+crates/bbt-render/src/chrome/chrome.wgsl:52 — transparent text stores a
+premultiplied grayscale mask; covered pixels keep corrected linear text.
+Opaque-target text follows the existing fs path.
+crates/bbt-render/src/chrome/materials.rs:338 — offscreen glow keeps coverage
+for its later group composite; ordinary fx keep destination alpha.
+crates/bbt-ui/src/components.rs:78 — Box group flag; :1140 Paint::Group;
+:1181 inherited dim and :1195 node Filter/Style opacity retain groups;
+children keep full original colours; geometry/layout is unchanged.
+crates/bboxybook/src/components.rs:234 — execute nested retained groups;
+:345 flat adapters preserve them as Prim::Group. Legacy module adapters
+preserve boundaries instead of flattening/recolouring every child.
+
+No shader tuning, token, design or module-layout change. No files under lab/web
+or design differ from the frozen current reference 759fdde. No new web capture
+was needed: regression keeps data, fonts, pose, crop and references identical.
+
+Verification (macOS / Apple M4 / Metal, headless):
+$ cargo test -p bbt-ui-model -p bbt-ui -p bbt-render -p bboxybook --locked
+exit 0 — 135 passed, 0 failed, 0 ignored.
+$ cargo test -p bbt-render --lib chrome::group --locked
+exit 0 — 5 passed; final size guard included. GPU checks overlap (one alpha,
+not pink from repeated alpha), nested groups, clipping/order, fractional 2x,
+empty groups, transparent destination alpha, and premultiplied text edges.
+Retained-host test checks material/glow coverage in a transparent group.
+$ cargo clippy -p bbt-ui-model -p bbt-ui -p bbt-render -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+exit 0 (the two existing lint allowances are retained).
+$ cargo fmt -p bbt-ui-model -p bbt-ui -p bbt-render -p bboxybook --check
+exit 0.
+$ git diff --check
+exit 0.
+$ cargo build -p bboxybook --locked
+exit 0.
+
+Paired regression:
+$ target/debug/bboxybook render --out target/bboxybook/group-opacity/regression/native --manifest target/bboxybook/group-opacity/regression/cases.json
+exit 0 — 1,200 PNGs, independently computed layouts.json.
+$ target/debug/bboxybook compare --out target/bboxybook/group-opacity/regression/before --manifest target/bboxybook/group-opacity/regression/cases.json --web-root ../web --native-root ../before-native
+exit 0 — 147 current cases require review.
+$ target/debug/bboxybook compare --out target/bboxybook/group-opacity/regression/after --manifest target/bboxybook/group-opacity/regression/cases.json --web-root ../web --native-root ../native
+exit 0 — 140 current cases require review. No new reviews; seven close.
+
+Coverage: 880 current cases + 320 historical v2 diagnostics. Historical results
+are visible but do not gate the current design. Current geometry: 832 paired
+layout cases, 28,678 rectangle records, 9,830 baseline records; max rect error
+0.5 px, max baseline error 0.0078125 px, zero incomplete records. All 1,152
+before/after layout snapshots are identical (historical included).
+856 PNGs are byte-identical; 344 change where opacity/dim is used. Materials
+32/32, Style 112/112, atoms 112/112, Box/Text/Stack 24/24, and TabRow/MiniGrid
+104/104 keep identical default images. No module gains a new review case.
+Pane remains 48/48 within policy; TitleStrip goes 72/88 to 79/88.
+
+Target remeasurement: focused-vs-unfocused + authority-revoked, 16 cases:
+16 to 9 needing pixel review; every case improves, all geometry passes.
+Worst focused light: 3.016% -> 2.754%; worst focused dark: 3.247% -> 2.528%.
+Authority comfortable dark: 2.363% -> 1.870%; comfortable light remains a
+review at 2.030% (from 2.179%). Remaining target differences are 89-93% within
+text bounds (+1px); outside text bounds 0.126-0.286% of each image. The policy
+is unchanged: text 2% + geometry, non-text 0.1%.
+After the final bounds-only guard and test-module ordering, the final binary
+re-rendered all 16 targets: byte-identical to the 1,200-case run.
+
+Review paths:
+target/bboxybook/group-opacity/regression/after/index.html
+target/bboxybook/group-opacity/regression/after/report.md
+target/bboxybook/group-opacity/regression/before/index.html
+target/bboxybook/group-opacity/regression/{summary,hash-delta,layout-delta}.json
+target/bboxybook/group-opacity/target-after/index.html
+target/bboxybook/group-opacity/target-residue.json
+target/bboxybook/group-opacity/final-proof/hash-check.json
+
+Inspected: web/native/diff focused-vs-unfocused light and dark, authority dark/light,
+plus web/native sidebar 10-seats cozy dark. Native
+text over transparency no longer leaves bright edge artifacts in the light
+theme. Remaining font-mask, icon and panel-edge residues stay in the report.
+
+Not checked: hosted CI, Linux/mobile, real window presentation/desktop blur.
+No FPS measured or performance tuning; group storage is full-viewport, and the
+storybook host retains its existing readback-based material execution.
+No lab/design/token, module layout, input/focus, dependency or TitleBar change.
+No push/merge/rebase/autostash. Commit is prepared by explicit paths; Oracle
+reviews and pushes.
+
+Ten worst current triplets (same key under web/, native/, after/diff/):
+seat-row/bug-rows-compact-dark.png — 2.848490% changed, review pixels
+title-strip/focused-vs-unfocused-touch-light.png — 2.753812% changed, review pixels
+title-strip/focused-vs-unfocused-cozy-light.png — 2.753185% changed, review pixels
+title-strip/focused-vs-unfocused-compact-light.png — 2.707623% changed, review pixels
+seat-row/bug-rows-compact-light.png — 2.687977% changed, review pixels
+seat-row/waiting-cozy-light.png — 2.682702% changed, review pixels
+seat-row/waiting-cozy-dark.png — 2.636083% changed, review pixels
+title-strip/focused-vs-unfocused-cozy-dark.png — 2.566128% changed, review pixels
+title-strip/focused-vs-unfocused-touch-dark.png — 2.561530% changed, review pixels
+title-strip/focused-vs-unfocused-compact-dark.png — 2.528299% changed, review pixels

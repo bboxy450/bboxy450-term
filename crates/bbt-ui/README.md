@@ -81,8 +81,9 @@ hyphenation; an unbreakable word can overflow. `Text::max_lines` optionally
 clamps content and ellipsizes the last visible line.
 Selection is metadata until input is assigned. Draw lists and the material host preserve complete rounded ancestor clip
 chains.
-Opacity/dim follow the existing per-colour transform, not isolated CSS group
-opacity. Those material/group cases are outside the paired d.4 references.
+Opacity and dim isolate the completed Box subtree; `Box::group` also forces
+isolation at full strength. Layout stays unchanged. The host paints the layer
+at full strength, then applies saturation and one source-over opacity in L1.
 
 ## L6 Button, List, Table, Input
 
@@ -153,9 +154,11 @@ tab/seat subtrees, pending rows, shadows and a clipped identity bumper. Sidebar 
 fixed viewport and caller-owned scroll offset. A collapsed thousand-seat card
 builds only its bounded roll-up. Content keeps source order and supplied state.
 
-`Element::Filter` applies the CSS sRGB luminance saturation matrix and opacity
-to a retained subtree without affecting layout. It leaves the older dim
-transform unchanged. Opacity remains per paint, with no isolated GPU group.
+`Element::Filter` retains an isolated `Paint::Group` with CSS sRGB saturation
+and opacity. The group owns its child paint records, including materials and
+nested groups; children keep their original colours and alpha. Inherited dim
+contexts use the same group path. Identity bumpers/borders remain outside the
+content filter.
 The host supplies all navigation, focus, lifecycle and input handling.
 
 The 7.3b Style records match lab revision `759fdde`. Resolved `SwarmCard`

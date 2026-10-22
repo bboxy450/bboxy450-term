@@ -231,6 +231,32 @@ pub fn execute_at(
     let mut underlay = DrawList::default();
     for op in ops {
         match op {
+            c::Paint::Group {
+                ops,
+                opacity,
+                saturation,
+            } => {
+                if !underlay.primitives.is_empty() {
+                    pixels = materials::render_composed_to_rgba(
+                        renderer,
+                        scene(&pixels, size, &[], ctx, time_ms),
+                        &underlay,
+                    )?;
+                    underlay = DrawList::default();
+                }
+                let layer = renderer.with_group_layer(|renderer| {
+                    execute_at(renderer, ops, vec![0; pixels.len()], size, ctx, time_ms)
+                })?;
+                pixels = renderer.composite_group_rgba(
+                    &layer,
+                    &pixels,
+                    size,
+                    bbt_render::chrome::group::Filter {
+                        opacity,
+                        saturation,
+                    },
+                )?;
+            }
             c::Paint::Underlay(list) => underlay.primitives.extend(list.primitives),
             c::Paint::Draw(list) => {
                 let mut combined = std::mem::take(&mut underlay);
@@ -313,6 +339,34 @@ pub fn execute_at(
         )?;
     }
     Ok(pixels)
+}
+
+/// Preserve group boundaries when a flat gallery coalesces adjacent chrome.
+pub(crate) fn append_draw(ops: Vec<c::Paint>, out: &mut DrawList) -> Result<()> {
+    for op in ops {
+        match op {
+            c::Paint::Draw(list) | c::Paint::Underlay(list) => {
+                out.primitives.extend(list.primitives)
+            }
+            c::Paint::Group {
+                ops,
+                opacity,
+                saturation,
+            } => {
+                let mut inner = DrawList::default();
+                append_draw(ops, &mut inner)?;
+                out.push(bbt_ui_model::draw::Prim::Group {
+                    primitives: inner.primitives,
+                    opacity,
+                    saturation,
+                });
+            }
+            c::Paint::Material { .. } => {
+                return Err("flat composition requires a material pass".into());
+            }
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn configure_glow(g: &mut materials::Glow, ctx: ui::Context, state: Option<ui::Glow>) {

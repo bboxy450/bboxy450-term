@@ -8,6 +8,53 @@ use bbt_ui_model::{
 use std::collections::BTreeSet;
 
 #[test]
+fn a_retained_group_keeps_material_coverage_and_filters_the_completed_layer() {
+    let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+    let ctx = Context::new(Theme::Dark, Density::Cozy);
+    let ops = || {
+        vec![c::Paint::Material {
+            rect: Rect::new(20., 20., 24., 24.),
+            radii: [4.; 4],
+            kind: bbt_ui::Material::Glow,
+            color: Color::WHITE,
+            blur: None,
+            clips: vec![],
+            glow: Some(bbt_ui::Glow {
+                halo_alpha: Some(0.8),
+                particles: Some(0),
+                ..Default::default()
+            }),
+        }]
+    };
+    let base = vec![0; 64 * 64 * 4];
+    let normal = components::execute(&mut renderer, ops(), base.clone(), [64, 64], ctx).unwrap();
+    assert!(
+        normal.as_chunks::<4>().0.iter().all(|p| p[3] == 0),
+        "ordinary fx preserve destination alpha"
+    );
+    let grouped = components::execute(
+        &mut renderer,
+        vec![c::Paint::Group {
+            ops: ops(),
+            opacity: 0.45,
+            saturation: 0.,
+        }],
+        base,
+        [64, 64],
+        ctx,
+    )
+    .unwrap();
+    assert!(
+        grouped.as_chunks::<4>().0.iter().any(|p| p[3] > 0),
+        "offscreen fx must retain their coverage"
+    );
+    for p in grouped.as_chunks::<4>().0 {
+        assert!(p[..3].iter().all(|c| *c <= p[3] + 1));
+        assert!(p[0].abs_diff(p[1]) <= 1 && p[1].abs_diff(p[2]) <= 1);
+    }
+}
+
+#[test]
 fn retained_scroll_content_moves_but_never_paints_outside_the_viewport() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
     let ctx = Context::new(Theme::Dark, Density::Cozy);

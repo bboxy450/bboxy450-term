@@ -215,14 +215,8 @@ pub fn layout_case(case: &Case) -> Result<c::Layout> {
         .map_err(Into::into)
 }
 fn append(layout: &c::Layout, draw: DrawCtx, out: &mut DrawList) {
-    for op in c::paint_with_draw(layout, draw) {
-        match op {
-            c::Paint::Draw(list) | c::Paint::Underlay(list) => {
-                out.primitives.extend(list.primitives)
-            }
-            c::Paint::Material { .. } => unreachable!("TabRow/MiniGrid are flat compositions"),
-        }
-    }
+    crate::components::append_draw(c::paint_with_draw(layout, draw), out)
+        .expect("TabRow/MiniGrid are flat compositions");
 }
 pub fn render_case(
     renderer: &mut bbt_render::chrome::ChromeRenderer,

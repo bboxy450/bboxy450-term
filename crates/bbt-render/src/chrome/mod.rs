@@ -1,5 +1,6 @@
 //! One ordered, instanced chrome pass on the caller's device; no window ownership.
 pub mod diff;
+pub mod group;
 pub mod icons;
 pub mod materials;
 pub mod pipeline;
@@ -31,6 +32,9 @@ pub struct ChromeRenderer {
     text: HashMap<String, (AtlasRect, f32)>,
     icons: icons::IconAtlas,
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    group_text_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    group_depth: usize,
 }
 impl ChromeRenderer {
     pub fn new(images: Vec<icons::Image>) -> Result<Self> {
@@ -43,6 +47,9 @@ impl ChromeRenderer {
             text: HashMap::new(),
             icons: icons::IconAtlas::new(images)?,
             pipelines: HashMap::new(),
+            group_pipelines: HashMap::new(),
+            group_text_pipelines: HashMap::new(),
+            group_depth: 0,
         })
     }
     pub fn draw(
@@ -68,6 +75,124 @@ impl ChromeRenderer {
         self.draw_with_load(list, target, encoder, wgpu::LoadOp::Load)
     }
     fn draw_with_load(
+        &mut self,
+        list: &DrawList,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+        load: wgpu::LoadOp<wgpu::Color>,
+    ) -> Result<()> {
+        list.validate().map_err(RenderError::from)?;
+        if !list
+            .primitives
+            .iter()
+            .any(|p| matches!(p, Prim::Group { .. }))
+        {
+            return self.draw_flat_with_load(list, target, encoder, load);
+        }
+        let ChromeTarget {
+            width,
+            height,
+            scale,
+            view,
+            format,
+        } = target;
+        if width == 0 || height == 0 || !scale.is_finite() || !(0.5..=4.0).contains(&scale) {
+            return Err("invalid chrome viewport".into());
+        }
+        if let wgpu::LoadOp::Clear(color) = load {
+            clear(view, color, encoder);
+        }
+        let mut clips = Vec::new();
+        let mut batch = DrawList::default();
+        for primitive in &list.primitives {
+            if let Prim::Group {
+                primitives,
+                opacity,
+                saturation,
+            } = primitive
+            {
+                for _ in &clips {
+                    batch.unclip();
+                }
+                self.draw_flat_with_load(
+                    &batch,
+                    ChromeTarget {
+                        width,
+                        height,
+                        scale,
+                        view,
+                        format,
+                    },
+                    encoder,
+                    wgpu::LoadOp::Load,
+                )?;
+                let mut children = DrawList {
+                    primitives: clips.clone(),
+                    ..Default::default()
+                };
+                children.primitives.extend(primitives.iter().cloned());
+                for _ in &clips {
+                    children.unclip();
+                }
+                let layer = group::texture(&self.context.device, width, height);
+                let layer_view = layer.create_view(&Default::default());
+                self.with_group_layer(|renderer| {
+                    renderer.draw(
+                        &children,
+                        ChromeTarget {
+                            width,
+                            height,
+                            scale,
+                            view: &layer_view,
+                            format: wgpu::TextureFormat::Rgba8Unorm,
+                        },
+                        encoder,
+                    )
+                })?;
+                self.composite_group(
+                    &layer_view,
+                    group::Filter {
+                        opacity: *opacity,
+                        saturation: *saturation,
+                    },
+                    ChromeTarget {
+                        width,
+                        height,
+                        scale,
+                        view,
+                        format,
+                    },
+                    encoder,
+                )?;
+                batch = DrawList {
+                    primitives: clips.clone(),
+                    ..Default::default()
+                };
+            } else {
+                match primitive {
+                    Prim::Clip { .. } => clips.push(primitive.clone()),
+                    Prim::Unclip => {
+                        clips.pop();
+                    }
+                    _ => {}
+                }
+                batch.push(primitive.clone());
+            }
+        }
+        self.draw_flat_with_load(
+            &batch,
+            ChromeTarget {
+                width,
+                height,
+                scale,
+                view,
+                format,
+            },
+            encoder,
+            wgpu::LoadOp::Load,
+        )
+    }
+    fn draw_flat_with_load(
         &mut self,
         list: &DrawList,
         target: ChromeTarget<'_>,
@@ -120,6 +245,9 @@ impl ChromeRenderer {
         for prim in &list.primitives {
             let clip = *clips.last().unwrap();
             match prim {
+                Prim::Group { .. } => {
+                    unreachable!("isolated groups split before the instance pass")
+                }
                 Prim::Clip { rect, radii } => {
                     let x = rect.x.max(clip.0.x);
                     let y = rect.y.max(clip.0.y);
@@ -264,6 +392,9 @@ impl ChromeRenderer {
             }
         }
         if instances.is_empty() {
+            if let wgpu::LoadOp::Clear(color) = load {
+                clear(target, color, encoder);
+            }
             return Ok(());
         }
         if instances.len() > 65_536 {
@@ -277,6 +408,11 @@ impl ChromeRenderer {
             self.pipelines
                 .entry(f)
                 .or_insert_with(|| pipeline::create(device, f));
+        }
+        if self.group_depth > 0 {
+            self.group_text_pipelines
+                .entry(gamma_format)
+                .or_insert_with(|| pipeline::create_group_text(device, gamma_format));
         }
         let gamma_view = target.texture().create_view(&wgpu::TextureViewDescriptor {
             format: Some(gamma_format),
@@ -340,7 +476,12 @@ impl ChromeRenderer {
         let bindings = [gamma_format, text_format].map(|f| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("chrome bindings"),
-                layout: &self.pipelines[&f].get_bind_group_layout(0),
+                layout: &if f == text_format && self.group_depth > 0 {
+                    &self.group_text_pipelines[&gamma_format]
+                } else {
+                    &self.pipelines[&f]
+                }
+                .get_bind_group_layout(0),
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -425,7 +566,11 @@ impl ChromeRenderer {
                     "gamma chrome"
                 }),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: if text { &text_view } else { &gamma_view },
+                    view: if text && self.group_depth == 0 {
+                        &text_view
+                    } else {
+                        &gamma_view
+                    },
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -435,7 +580,11 @@ impl ChromeRenderer {
                 })],
                 ..Default::default()
             });
-            pass.set_pipeline(&self.pipelines[&if text { text_format } else { gamma_format }]);
+            pass.set_pipeline(if text && self.group_depth > 0 {
+                &self.group_text_pipelines[&gamma_format]
+            } else {
+                &self.pipelines[&if text { text_format } else { gamma_format }]
+            });
             pass.set_bind_group(0, &bindings[usize::from(text)], &[]);
             pass.draw(0..6, start as u32..end as u32);
             drop(pass);
@@ -552,6 +701,22 @@ impl ChromeRenderer {
         buffer.unmap();
         Ok(rgba)
     }
+}
+
+fn clear(view: &wgpu::TextureView, color: wgpu::Color, encoder: &mut wgpu::CommandEncoder) {
+    let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("chrome group clear"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(color),
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        ..Default::default()
+    });
 }
 fn upload(
     device: &wgpu::Device,

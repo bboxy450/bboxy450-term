@@ -1,0 +1,189 @@
+$ target/debug/bboxybook render --out target/bboxybook/group-opacity/regression/native --manifest target/bboxybook/group-opacity/regression/cases.json
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/1200
+rendered 200/1200
+rendered 300/1200
+rendered 400/1200
+rendered 500/1200
+rendered 600/1200
+rendered 700/1200
+rendered 800/1200
+rendered 900/1200
+rendered 1000/1200
+rendered 1100/1200
+rendered 1200/1200
+native/web layout snapshots: target/bboxybook/group-opacity/regression/native/layouts.json
+rendered 1200 PNGs to target/bboxybook/group-opacity/regression/native
+
+exit 0
+
+parity: 1200 cases, 147 review; target/bboxybook/group-opacity/regression/before/index.html
+exit 0
+parity: 1200 cases, 140 review; target/bboxybook/group-opacity/regression/after/index.html
+exit 0
+
+$ final-build 16-case remeasurement
+$ cargo build -p bboxybook --locked
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.27s
+
+exit 0
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/group-opacity/final-proof/layouts.json
+rendered 16 PNGs to target/bboxybook/group-opacity/final-proof
+exit 0
+{
+  "cases": 16,
+  "changed_after_final_build": []
+}
+
+{
+  "cases": 1200,
+  "current": 880,
+  "historical": 320,
+  "review_before": 147,
+  "review_after": 140,
+  "new_reviews": [],
+  "closed_reviews": [
+    "title-strip/authority-revoked-touch-light.png",
+    "title-strip/authority-revoked-cozy-light.png",
+    "title-strip/authority-revoked-compact-light.png",
+    "title-strip/authority-revoked-comfortable-dark.png",
+    "title-strip/authority-revoked-touch-dark.png",
+    "title-strip/authority-revoked-cozy-dark.png",
+    "title-strip/authority-revoked-compact-dark.png"
+  ],
+  "geometry_cases": 832,
+  "rects": 28678,
+  "baselines": 9830,
+  "max_rect_error": 0.5,
+  "max_baseline_error": 0.0078125,
+  "unproven": 0,
+  "pixel_changed": [
+    {
+      "component": "components",
+      "review": 8,
+      "cases": 72
+    },
+    {
+      "component": "documents",
+      "review": 8,
+      "cases": 8
+    },
+    {
+      "component": "glyph",
+      "review": 0,
+      "cases": 56
+    },
+    {
+      "component": "harness-icon",
+      "review": 56,
+      "cases": 56
+    },
+    {
+      "component": "launcher",
+      "review": 8,
+      "cases": 8
+    },
+    {
+      "component": "materials",
+      "review": 8,
+      "cases": 32
+    },
+    {
+      "component": "mini-grid",
+      "review": 0,
+      "cases": 64
+    },
+    {
+      "component": "pane",
+      "review": 0,
+      "cases": 48
+    },
+    {
+      "component": "seat-row",
+      "review": 39,
+      "cases": 224
+    },
+    {
+      "component": "sidebar",
+      "review": 4,
+      "cases": 40
+    },
+    {
+      "component": "space-header",
+      "review": 0,
+      "cases": 32
+    },
+    {
+      "component": "style",
+      "review": 0,
+      "cases": 112
+    },
+    {
+      "component": "tab-row",
+      "review": 0,
+      "cases": 40
+    },
+    {
+      "component": "title-strip",
+      "review": 9,
+      "cases": 88
+    }
+  ],
+  "worst": [
+    {
+      "key": "seat-row/bug-rows-compact-dark.png",
+      "changed_fraction": 0.02848490168539326,
+      "status": "review pixels"
+    },
+    {
+      "key": "title-strip/focused-vs-unfocused-touch-light.png",
+      "changed_fraction": 0.02753812199036918,
+      "status": "review pixels"
+    },
+    {
+      "key": "title-strip/focused-vs-unfocused-cozy-light.png",
+      "changed_fraction": 0.027531851926163725,
+      "status": "review pixels"
+    },
+    {
+      "key": "title-strip/focused-vs-unfocused-compact-light.png",
+      "changed_fraction": 0.02707622726056715,
+      "status": "review pixels"
+    },
+    {
+      "key": "seat-row/bug-rows-compact-light.png",
+      "changed_fraction": 0.026879765248796147,
+      "status": "review pixels"
+    },
+    {
+      "key": "seat-row/waiting-cozy-light.png",
+      "changed_fraction": 0.026827022944009064,
+      "status": "review pixels"
+    },
+    {
+      "key": "seat-row/waiting-cozy-dark.png",
+      "changed_fraction": 0.02636082522896799,
+      "status": "review pixels"
+    },
+    {
+      "key": "title-strip/focused-vs-unfocused-cozy-dark.png",
+      "changed_fraction": 0.02566128277153558,
+      "status": "review pixels"
+    },
+    {
+      "key": "title-strip/focused-vs-unfocused-touch-dark.png",
+      "changed_fraction": 0.025615302300695558,
+      "status": "review pixels"
+    },
+    {
+      "key": "title-strip/focused-vs-unfocused-compact-dark.png",
+      "changed_fraction": 0.025282988897806315,
+      "status": "review pixels"
+    }
+  ]
+}

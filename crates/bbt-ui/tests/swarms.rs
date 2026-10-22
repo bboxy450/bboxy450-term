@@ -186,10 +186,22 @@ fn css_filter_uses_luminance_saturation_and_preserves_layout() {
     .layout(Rect::new(0., 0., 100., 0.), ctx(), &Metrics)
     .unwrap();
     assert_eq!(plain.rect, filtered.rect);
-    let fills = c::paint(&filtered, ctx())
-        .into_iter()
+    let ops = c::paint(&filtered, ctx());
+    let [
+        c::Paint::Group {
+            ops,
+            opacity,
+            saturation,
+        },
+    ] = ops.as_slice()
+    else {
+        panic!("the completed content must have one filter boundary");
+    };
+    assert_eq!((*opacity, *saturation), (0.45, 0.1));
+    let fills = ops
+        .iter()
         .flat_map(|p| match p {
-            c::Paint::Draw(d) => d.primitives,
+            c::Paint::Draw(d) => d.primitives.iter().collect::<Vec<_>>(),
             _ => vec![],
         })
         .filter_map(|p| match p {
@@ -197,11 +209,8 @@ fn css_filter_uses_luminance_saturation_and_preserves_layout() {
             _ => None,
         })
         .collect::<Vec<_>>();
-    assert!(fills.iter().any(|c| {
-        c.iter()
-            .zip([0.29134, 0.19134, 0.19134, 0.45])
-            .all(|(a, b)| (*a - b).abs() < 0.00001)
-    }));
+    // Child colours stay full-strength; the L1 compositor filters their overlap.
+    assert!(fills.contains(&[1., 0., 0., 1.]));
     assert!(
         c::Element::Filter {
             content: Box::new(content),

@@ -21,6 +21,112 @@ fn context() -> Context {
 }
 
 #[test]
+fn box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout() {
+    let mut style = Style::new(Preset::Row);
+    style.overrides.fill = Some(Paint::solid(Color::Rgba([1., 0., 0., 1.])));
+    style.overrides.opacity = Some(0.5);
+    style.overrides.dim = Some(true);
+    let element = c::Element::Box(c::Box::new(
+        style,
+        vec![text("overlap", bbt_ui::TypeStep::Body).into()],
+    ));
+    let layout = element
+        .layout(Rect::new(0., 0., 100., 0.), context(), &Metrics)
+        .unwrap();
+    let ops = c::paint(&layout, context());
+    let [
+        c::Paint::Group {
+            ops,
+            opacity,
+            saturation,
+        },
+    ] = ops.as_slice()
+    else {
+        panic!("missing isolated Box")
+    };
+    assert_eq!(
+        (*opacity, *saturation),
+        (
+            0.5 * bbt_ui_model::TOKENS.dim.opacity as f32,
+            bbt_ui_model::TOKENS.dim.saturate as f32
+        )
+    );
+    assert!(ops.iter().any(|p|matches!(p,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Rect {fill,..} if fill.0==[1.,0.,0.,1.])))));
+    assert!(ops.iter().any(|p|matches!(p,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Text {color,..} if color.0[3]==1.)))));
+    let mut plain = c::Box::new(Style::new(Preset::Row), vec![]);
+    let before = c::Element::Box(plain.clone())
+        .layout(Rect::new(0., 0., 100., 0.), context(), &Metrics)
+        .unwrap();
+    plain.group = true;
+    let after = c::Element::Box(plain)
+        .layout(Rect::new(0., 0., 100., 0.), context(), &Metrics)
+        .unwrap();
+    assert_eq!(before.rect, after.rect);
+    assert_eq!(before.baseline, after.baseline);
+    assert!(matches!(
+        c::paint(&after, context()).as_slice(),
+        [c::Paint::Group {
+            opacity: 1.,
+            saturation: 1.,
+            ..
+        }]
+    ));
+}
+
+#[test]
+fn nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms() {
+    let leaf = text("grey once per group", bbt_ui::TypeStep::Body);
+    let inner = c::Element::Filter {
+        content: Box::new(leaf),
+        saturation: 0.4,
+        opacity: 0.5,
+    };
+    let outer = c::Element::Filter {
+        content: Box::new(inner),
+        saturation: 0.1,
+        opacity: 0.7,
+    };
+    let layout = outer
+        .layout(Rect::new(0., 0., 180., 0.), context(), &Metrics)
+        .unwrap();
+    let clip = c::Clip {
+        rect: Rect::new(2., 2., 50., 20.),
+        radii: [4.; 4],
+    };
+    let ops = c::paint_with_ancestor_clips(
+        &layout,
+        bbt_ui_model::draw::DrawCtx::new(Theme::Dark, Density::Cozy),
+        &[clip],
+    );
+    let [
+        c::Paint::Group {
+            ops,
+            opacity: 0.7,
+            saturation: 0.1,
+        },
+    ] = ops.as_slice()
+    else {
+        panic!("outer boundary lost")
+    };
+    let [
+        c::Paint::Group {
+            ops,
+            opacity: 0.5,
+            saturation: 0.4,
+        },
+    ] = ops.as_slice()
+    else {
+        panic!("inner boundary lost")
+    };
+    let [c::Paint::Draw(list)] = ops.as_slice() else {
+        panic!("text missing")
+    };
+    assert!(matches!(list.primitives.first(),Some(Prim::Clip {rect,..}) if *rect==clip.rect));
+    assert!(matches!(list.primitives.last(), Some(Prim::Unclip)));
+    assert!(list.validate().is_ok());
+}
+
+#[test]
 fn a_retained_box_keeps_its_own_glow_state_until_after_its_content() {
     let state = bbt_ui::Glow {
         activity: bbt_ui::GlowActivity::Waiting,

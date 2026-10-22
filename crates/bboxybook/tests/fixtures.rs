@@ -25,19 +25,28 @@ fn sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web() {
     );
     assert_eq!(calls.iter().filter(|c| c["name"] == "pane").count(), 1);
     let list = bboxybook::gallery::draw(&case).unwrap();
+    fn texts(primitives: &[Prim]) -> Vec<&str> {
+        primitives
+            .iter()
+            .flat_map(|p| match p {
+                Prim::Group { primitives, .. } => texts(primitives),
+                Prim::Text { text, .. } => vec![text.as_ref()],
+                _ => vec![],
+            })
+            .collect()
+    }
+    let labels = texts(&list.primitives);
     for seat in model.seats.values() {
         assert!(
-            list.primitives
-                .iter()
-                .any(|p| matches!(p,Prim::Text{text,..} if text.as_ref()==seat.name)),
+            labels.contains(&seat.name.as_str()),
             "{} is absent from native draw data",
             seat.name
         );
     }
     // Retained Text shapes the uppercase band before emitting paint records.
     assert!(
-        list.primitives
+        labels
             .iter()
-            .any(|p| matches!(p,Prim::Text{text,..} if text.eq_ignore_ascii_case("ontology")))
+            .any(|text| text.eq_ignore_ascii_case("ontology"))
     );
 }

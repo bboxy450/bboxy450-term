@@ -7,6 +7,7 @@ pub struct DrawList {
     pub primitives: Vec<Prim>,
     pub revision: u64,
 }
+
 impl DrawList {
     pub fn push(&mut self, prim: Prim) {
         self.primitives.push(prim);
@@ -45,9 +46,29 @@ impl DrawList {
         self.push(Prim::Unclip);
     }
     pub fn validate(&self) -> Result<(), &'static str> {
+        Self::validate_primitives(&self.primitives, 0)
+    }
+    fn validate_primitives(primitives: &[Prim], groups: usize) -> Result<(), &'static str> {
+        if groups > 64 {
+            return Err("draw-list group nesting exceeded");
+        }
         let mut depth = 0usize;
-        for p in &self.primitives {
+        for p in primitives {
             match p {
+                Prim::Group {
+                    primitives,
+                    opacity,
+                    saturation,
+                } => {
+                    if !opacity.is_finite()
+                        || !(0.0..=1.0).contains(opacity)
+                        || !saturation.is_finite()
+                        || !(0.0..=4.0).contains(saturation)
+                    {
+                        return Err("invalid draw-list group filter");
+                    }
+                    Self::validate_primitives(primitives, groups + 1)?;
+                }
                 Prim::Clip { .. } => depth += 1,
                 Prim::Unclip if depth == 0 => return Err("unbalanced draw-list clip"),
                 Prim::Unclip => depth -= 1,
@@ -59,5 +80,40 @@ impl DrawList {
         } else {
             Err("unclosed draw-list clip")
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn group_filters_and_clip_scopes_validate_recursively() {
+        let group = |primitives, opacity, saturation| DrawList {
+            primitives: vec![Prim::Group {
+                primitives,
+                opacity,
+                saturation,
+            }],
+            ..Default::default()
+        };
+        assert!(group(vec![], 0.5, 0.1).validate().is_ok());
+        assert!(group(vec![], f32::NAN, 1.).validate().is_err());
+        assert!(group(vec![], 1., -1.).validate().is_err());
+        assert!(group(vec![Prim::Unclip], 1., 1.).validate().is_err());
+        let mut outer = group(vec![Prim::Unclip], 1., 1.);
+        outer.primitives.insert(
+            0,
+            Prim::Clip {
+                rect: Rect::new(0., 0., 1., 1.),
+                radii: [0.; 4],
+            },
+        );
+        // A child's pop cannot consume the outer clip.
+        assert!(outer.validate().is_err());
+        let mut nested = DrawList::default();
+        for _ in 0..66 {
+            nested = group(nested.primitives, 1., 1.);
+        }
+        assert!(nested.validate().is_err());
     }
 }

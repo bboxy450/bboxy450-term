@@ -73,6 +73,9 @@ pub struct Box {
     pub gap: Length,
     pub align: Alignment,
     pub clip: bool,
+    /// Force an isolated layer even at full opacity. Nonidentity opacity/dim
+    /// always isolate, as CSS does; the default needs no extra layer.
+    pub group: bool,
     /// Visual transform only; the unscaled box still occupies its flow slot.
     pub scale: f32,
     /// Inline formatting includes the Style text's inherited line-height strut.
@@ -89,6 +92,7 @@ impl Box {
             gap: Length::Spacing(4),
             align: Alignment::Center,
             clip: false,
+            group: false,
             scale: 1.,
             inline: false,
             cross_overflow: false,
@@ -225,6 +229,7 @@ pub enum LayoutKind {
     Box {
         style: std::boxed::Box<ResolvedStyle>,
         clip: bool,
+        group: bool,
     },
     Text {
         runs: Vec<PositionedRun>,
@@ -728,6 +733,7 @@ impl Element {
                     LayoutKind::Box {
                         style: std::boxed::Box::new(style),
                         clip: b.clip,
+                        group: b.group,
                     },
                     children,
                 )
@@ -765,6 +771,7 @@ impl Element {
                     LayoutKind::Box {
                         style: std::boxed::Box::new(s),
                         clip: o.clip,
+                        group: false,
                     },
                     vec![child],
                 )
@@ -1129,6 +1136,12 @@ pub struct Clip {
 }
 #[derive(Debug, Clone)]
 pub enum Paint {
+    /// Paint children to transparent storage before applying this filter once.
+    Group {
+        ops: Vec<Paint>,
+        opacity: f32,
+        saturation: f32,
+    },
     Draw(DrawList),
     Underlay(DrawList),
     Material {
@@ -1165,18 +1178,21 @@ pub fn paint_with_draw(layout: &Layout, draw: DrawCtx) -> Vec<Paint> {
     paint_with_ancestor_clips(layout, draw, &[])
 }
 /// A viewport owner may impose clips outside the component's retained tree.
-pub fn paint_with_ancestor_clips(layout: &Layout, draw: DrawCtx, clips: &[Clip]) -> Vec<Paint> {
+pub fn paint_with_ancestor_clips(layout: &Layout, mut draw: DrawCtx, clips: &[Clip]) -> Vec<Paint> {
     let mut out = Vec::new();
+    let dim = draw.dim.take();
     paint_node(layout, draw, 1., clips, &mut out);
-    out
+    if let Some(dim) = dim {
+        vec![Paint::Group {
+            ops: out,
+            opacity: dim.opacity,
+            saturation: dim.saturate,
+        }]
+    } else {
+        out
+    }
 }
-fn paint_node(
-    node: &Layout,
-    mut draw: DrawCtx,
-    mut opacity: f32,
-    clips: &[Clip],
-    out: &mut Vec<Paint>,
-) {
+fn paint_node(node: &Layout, draw: DrawCtx, opacity: f32, clips: &[Clip], out: &mut Vec<Paint>) {
     if let LayoutKind::Filter {
         saturation,
         opacity: filter_alpha,
@@ -1186,24 +1202,38 @@ fn paint_node(
         for child in &node.children {
             paint_node(child, draw, opacity, clips, &mut ops);
         }
-        for op in &mut ops {
-            filter_paint(op, *saturation, *filter_alpha);
-        }
-        out.extend(ops);
+        out.push(Paint::Group {
+            ops,
+            opacity: *filter_alpha,
+            saturation: *saturation,
+        });
         return;
     }
+    if let LayoutKind::Box { style, group, .. } = &node.kind
+        && (*group || style.opacity != 1. || style.dim.is_some())
+    {
+        let mut ops = Vec::new();
+        paint_contents(node, draw, opacity, clips, &mut ops);
+        out.push(Paint::Group {
+            ops,
+            opacity: style.opacity * style.dim.map_or(1., |d| d.opacity),
+            saturation: style.dim.map_or(1., |d| d.saturate),
+        });
+        return;
+    }
+    paint_contents(node, draw, opacity, clips, out);
+}
+fn paint_contents(
+    node: &Layout,
+    draw: DrawCtx,
+    opacity: f32,
+    clips: &[Clip],
+    out: &mut Vec<Paint>,
+) {
     let mut children_clips = clips.to_vec();
     let mut after = None;
     match &node.kind {
-        LayoutKind::Box { style: s, clip } => {
-            if let Some(dim) = s.dim {
-                draw.dim = Some(bbt_ui_model::draw::Dim {
-                    saturate: dim.saturate,
-                    opacity: dim.opacity,
-                    wash: dim.wash,
-                });
-            }
-            opacity *= s.opacity;
+        LayoutKind::Box { style: s, clip, .. } => {
             let mut list = list_with_clips(clips);
             if let Some(shadow) = &s.shadow {
                 list.push(Prim::Rect {
@@ -1550,53 +1580,5 @@ pub fn namespace(element: &mut Element, prefix: &str) {
             }
         }
         _ => {}
-    }
-}
-
-// Saturation is the CSS luminance matrix in sRGB, not an HSL saturation edit.
-fn filter_paint(paint: &mut Paint, saturation: f32, opacity: f32) {
-    fn apply(c: &mut Color, s: f32, a: f32) {
-        let l = c.0[0] * 0.2126 + c.0[1] * 0.7152 + c.0[2] * 0.0722;
-        for v in &mut c.0[..3] {
-            *v = (l + (*v - l) * s).clamp(0., 1.);
-        }
-        c.0[3] *= a;
-    }
-    match paint {
-        Paint::Draw(d) | Paint::Underlay(d) => {
-            for p in &mut d.primitives {
-                match p {
-                    Prim::Rect {
-                        fill,
-                        stroke,
-                        inner_highlight,
-                        shadow,
-                        ..
-                    } => {
-                        apply(fill, saturation, opacity);
-                        if let Some((_, c)) = stroke {
-                            apply(c, saturation, opacity);
-                        }
-                        if let Some(c) = inner_highlight {
-                            apply(c, saturation, opacity);
-                        }
-                        if let Some((_, _, c)) = shadow {
-                            apply(c, saturation, opacity);
-                        }
-                    }
-                    Prim::Hairline { color, .. }
-                    | Prim::Gloss { color, .. }
-                    | Prim::Text { color, .. }
-                    | Prim::Icon { color, .. } => apply(color, saturation, opacity),
-                    _ => {}
-                }
-            }
-        }
-        Paint::Material { color, blur, .. } => {
-            apply(color, saturation, opacity);
-            if let Some(b) = blur {
-                b.saturation *= saturation;
-            }
-        }
     }
 }

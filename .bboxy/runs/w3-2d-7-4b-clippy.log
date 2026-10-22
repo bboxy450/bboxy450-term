@@ -1,0 +1,14 @@
+$ cargo clippy -p bbt-ui-model -p bbt-ui -p bbt-render -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.07s
+
+exit 0
+
+$ cargo fmt -p bbt-ui-model -p bbt-ui -p bbt-render -p bboxybook --check
+
+exit 0
+
+$ git diff --check
+
+exit 0

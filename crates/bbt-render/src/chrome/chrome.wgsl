@@ -14,7 +14,7 @@ struct Vertex {@builtin(position) pos:vec4f,@location(0) point:vec2f,@location(1
 }
 fn linear(c:vec3f)->vec3f {return select(c/12.92,pow((c+vec3f(0.055))/1.055,vec3f(2.4)),c>vec3f(0.04045));}
 fn srgb1(c:f32)->f32 {return select(c*12.92,1.055*pow(max(c,0.0),1.0/2.4)-0.055,c>0.0031308);}
-@fragment fn fs(v:Vertex)->@location(0) vec4f {
+fn shade(v:Vertex)->vec4f {
     let i=items[v.index];let p=v.point;
     if rounded_sdf(p,i.clip,i.clip_radii)>0.0 {discard;}
     let kind=u32(i.params.x);let d=rounded_sdf(p,i.rect,i.radii);var c=i.fill;var a=clamp(0.5-d,0.0,1.0);
@@ -41,4 +41,33 @@ fn srgb1(c:f32)->f32 {return select(c*12.92,1.055*pow(max(c,0.0),1.0/2.4)-0.055,
         return vec4f(fg,alpha);
     }
     return vec4f(c.rgb,alpha);
+}
+@fragment fn fs(v:Vertex)->@location(0) vec4f {return shade(v);}
+
+// An sRGB attachment encodes linear-premultiplied RGB, which cannot be sampled
+// as gamma-premultiplied RGBA by a later CSS group compositor. Store that
+// representation explicitly on the UNORM view for isolated text. Opaque pixels
+// retain the existing luminance-corrected linear blend; uncovered pixels carry
+// the grayscale mask as alpha for the group's later source-over operation.
+@fragment fn fs_group_text(v:Vertex)->@location(0) vec4f {
+    let i=items[v.index];
+    if i.params.x!=2.0 {return shade(v);}
+    let p=v.point;
+    if rounded_sdf(p,i.clip,i.clip_radii)>0.0 {discard;}
+    let unit=clamp((p-i.rect.xy)/max(i.rect.zw,vec2f(0.001)),vec2f(0),vec2f(0.99999));
+    let pixel=vec2i(i.uv.xy+unit*i.uv.zw);
+    let a=clamp(0.5-rounded_sdf(p,i.rect,i.radii),0.0,1.0)*textureLoad(masks,pixel,0).r*i.fill.a;
+    let bg=textureLoad(text_backdrop,vec2i(p),0);
+    let fg_linear=linear(i.fill.rgb);
+    let bg_linear=linear(bg.rgb/max(bg.a,0.000001));
+    let weights=vec3f(0.2126,0.7152,0.0722);
+    let lf=dot(fg_linear,weights);let lb=dot(bg_linear,weights);
+    var corrected=a;
+    if abs(lf-lb)>0.001 {
+        let wanted=linear(vec3f(srgb1(lf)*a+srgb1(lb)*(1.0-a))).x;
+        corrected=clamp((wanted-lb)/(lf-lb),0.0,1.0);
+    }
+    let blended=mix(bg_linear,fg_linear,corrected);
+    let encoded=vec3f(srgb1(blended.r),srgb1(blended.g),srgb1(blended.b));
+    return vec4f(encoded*bg.a+i.fill.rgb*a*(1.0-bg.a),bg.a+a*(1.0-bg.a));
 }

@@ -331,10 +331,26 @@ fn append(
     draw: &bbt_ui_model::draw::DrawCtx,
     out: &mut bbt_ui_model::draw::DrawList,
 ) {
+    append_ops(c::paint_with_draw(layout, *draw), out);
+}
+fn append_ops(ops: Vec<c::Paint>, out: &mut bbt_ui_model::draw::DrawList) {
     use bbt_ui_model::draw::Prim;
-    for op in c::paint_with_draw(layout, *draw) {
+    for op in ops {
         match op {
             c::Paint::Draw(d) | c::Paint::Underlay(d) => out.primitives.extend(d.primitives),
+            c::Paint::Group {
+                ops,
+                opacity,
+                saturation,
+            } => {
+                let mut inner = bbt_ui_model::draw::DrawList::default();
+                append_ops(ops, &mut inner);
+                out.push(Prim::Group {
+                    primitives: inner.primitives,
+                    opacity,
+                    saturation,
+                });
+            }
             c::Paint::Material {
                 rect,
                 radii,

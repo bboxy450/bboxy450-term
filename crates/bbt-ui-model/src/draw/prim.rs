@@ -134,6 +134,13 @@ impl TextStyle {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Prim {
+    /// Isolated children: render at full strength, then filter/composite once.
+    /// Child clips are balanced locally; an outer clip still bounds the group.
+    Group {
+        primitives: Vec<Prim>,
+        opacity: f32,
+        saturation: f32,
+    },
     Rect {
         rect: Rect,
         radii: [f32; 4],

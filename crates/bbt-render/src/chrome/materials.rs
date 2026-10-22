@@ -255,7 +255,7 @@ pub struct Frame<'a> {
 }
 pub struct Pass {
     layout: wgpu::BindGroupLayout,
-    pipelines: [wgpu::RenderPipeline; 5],
+    pipelines: [wgpu::RenderPipeline; 6],
     blur: [wgpu::RenderPipeline; 2],
     sampler: wgpu::Sampler,
     format: wgpu::TextureFormat,
@@ -335,8 +335,12 @@ impl Pass {
             operation: wgpu::BlendOperation::Add,
         };
         let pipelines = std::array::from_fn(|index| {
-            let entry = ["flat", "gloss", "frosted", "glow", "glow"][index];
-            let blend = if index >= 3 {
+            let entry = ["flat", "gloss", "frosted", "glow", "glow", "glow"][index];
+            let blend = if index == 5 {
+                // A transparent group must retain the effect's coverage for
+                // its later source-over composite. Normal fx keep dest alpha.
+                wgpu::BlendState::ALPHA_BLENDING
+            } else if index >= 3 {
                 wgpu::BlendState {
                     color: wgpu::BlendComponent::OVER,
                     alpha: preserve_alpha,
@@ -420,6 +424,15 @@ impl Pass {
         context: &DeviceContext,
         encoder: &mut wgpu::CommandEncoder,
         frame: Frame<'_>,
+    ) -> Result<()> {
+        self.draw_into(context, encoder, frame, false)
+    }
+    fn draw_into(
+        &self,
+        context: &DeviceContext,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: Frame<'_>,
+        group: bool,
     ) -> Result<()> {
         let Frame {
             target,
@@ -590,7 +603,9 @@ impl Pass {
                 Kind::Gloss => 1,
                 Kind::Frosted => 2,
                 Kind::Glow => {
-                    if theme == Theme::Light {
+                    if group {
+                        5
+                    } else if theme == Theme::Light {
                         4
                     } else {
                         3
@@ -749,7 +764,7 @@ pub fn render_layered_to_rgba(
         )?;
     }
     let pass = Pass::new(&renderer.context.device, format);
-    pass.draw(
+    pass.draw_into(
         &renderer.context,
         &mut encoder,
         Frame {
@@ -765,6 +780,7 @@ pub fn render_layered_to_rgba(
             time_ms,
             theme,
         },
+        renderer.group_depth > 0,
     )?;
     if !foreground.primitives.is_empty() {
         renderer.draw_overlay(

@@ -267,9 +267,25 @@ fn model_strip(s: &bbt_ui_model::Seat, focused: bool, ctx: ui::Context) -> Strip
     strip
 }
 fn append(layout: &c::Layout, draw: DrawCtx, out: &mut DrawList) {
-    for op in c::paint_with_draw(layout, draw) {
+    append_ops(c::paint_with_draw(layout, draw), out);
+}
+fn append_ops(ops: Vec<c::Paint>, out: &mut DrawList) {
+    for op in ops {
         match op {
             c::Paint::Draw(d) | c::Paint::Underlay(d) => out.primitives.extend(d.primitives),
+            c::Paint::Group {
+                ops,
+                opacity,
+                saturation,
+            } => {
+                let mut inner = DrawList::default();
+                append_ops(ops, &mut inner);
+                out.push(bbt_ui_model::draw::Prim::Group {
+                    primitives: inner.primitives,
+                    opacity,
+                    saturation,
+                });
+            }
             c::Paint::Material { .. } => {}
         }
     }

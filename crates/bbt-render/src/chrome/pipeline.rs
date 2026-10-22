@@ -12,6 +12,19 @@ pub struct Instance {
     pub clip_radii: [f32; 4],
 }
 pub fn create(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
+    create_for(device, format, false)
+}
+pub fn create_group_text(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+) -> wgpu::RenderPipeline {
+    create_for(device, format, true)
+}
+fn create_for(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    group_text: bool,
+) -> wgpu::RenderPipeline {
     let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("chrome SDF"),
         source: wgpu::ShaderSource::Wgsl(
@@ -34,10 +47,14 @@ pub fn create(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::Rende
         },
         fragment: Some(wgpu::FragmentState {
             module: &module,
-            entry_point: Some("fs"),
+            entry_point: Some(if group_text { "fs_group_text" } else { "fs" }),
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                blend: Some(if group_text {
+                    wgpu::BlendState::REPLACE
+                } else {
+                    wgpu::BlendState::ALPHA_BLENDING
+                }),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
             compilation_options: Default::default(),

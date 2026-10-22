@@ -293,16 +293,10 @@ pub fn render_case(
     // list instead of reading the GPU back after each label and icon.
     let mut draw = bbt_ui_model::draw::DrawList::default();
     for layout in layout_case(case)? {
-        for op in c::paint(&layout, crate::components::context(case)) {
-            match op {
-                c::Paint::Draw(list) | c::Paint::Underlay(list) => {
-                    draw.primitives.extend(list.primitives)
-                }
-                c::Paint::Material { .. } => {
-                    return Err("SeatRow unexpectedly requires a material pass".into());
-                }
-            }
-        }
+        crate::components::append_draw(
+            c::paint(&layout, crate::components::context(case)),
+            &mut draw,
+        )?;
     }
     pixels = crate::components::execute(
         renderer,
@@ -407,14 +401,8 @@ pub fn paint_model(
         .element(ctx)
         .layout(r, ctx, &crate::components::Metrics)
         .expect("SeatRow composition layout");
-    for op in c::paint_with_draw(&layout, *draw) {
-        match op {
-            c::Paint::Draw(list) | c::Paint::Underlay(list) => {
-                out.primitives.extend(list.primitives)
-            }
-            c::Paint::Material { .. } => unreachable!("SeatRow is a flat composition"),
-        }
-    }
+    crate::components::append_draw(c::paint_with_draw(&layout, *draw), out)
+        .expect("SeatRow is a flat composition");
 }
 
 pub(crate) fn model_view(
