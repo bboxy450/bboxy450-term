@@ -580,6 +580,14 @@
   // Document view (work-items.md): frontmatter as a header, Markdown body with annotated wikilinks, a provenance strip, and a right
   // rail with the item's neighbourhood in the markdown graph (weights as stroke). Broken frontmatter shows as broken, never skipped.
   const DOC_HUE = ordered(T.color.doc, ['epic', 'spec', 'task', 'bug', 'note', 'invariant', 'artifact']);   // tokens.toml [color.doc]
+  // The header already shows the frontmatter title; a body that opens with '# <same title>' would repeat it. Drop that one
+  // leading H1 when it equals the title (case, whitespace and dash style ignored); any other first heading stays.
+  const sameTitle = (a, b) => { const n = x => String(x || '').toLowerCase().replace(/[\u2012-\u2015-]/g, '-').replace(/\s+/g, ' ').trim(); return !!a && n(a) === n(b); };
+  function bodyAfterTitle(body, title) {
+    const lines = String(body || '').split('\n'); let i = 0; while (i < lines.length && !lines[i].trim()) i++;
+    const h = (lines[i] || '').match(/^# (.*)/);
+    return h && sameTitle(h[1], title) ? lines.slice(i + 1).join('\n').replace(/^\s*\n/, '') : String(body || '');
+  }
   function mdLite(src) {
     const out = el('div', { class: 'md' }); let list = null, code = null;
     for (const line of src.split('\n')) {
@@ -630,7 +638,7 @@
       pv.updated_by ? el('span', {}, 'updated by ', el('b', { style: 'color:' + (pv.updatedColor || 'var(--fg)') }, pv.updated_by)) : null,
       pv.derived_from ? el('span', {}, 'derived from ', renderLinks(pv.derived_from)) : null,
       el('span', { class: 'dig' }, el('code', {}, (pv.digest || '').slice(0, 12)), pv.signed ? el('i', { class: 'ok' }, '✓ signed · ' + pv.signed) : el('i', { class: 'no' }, 'unsigned · no write is anonymous: updated_by stamped')));
-    const main = el('div', { class: 'doc-main' }, head, fm, mdLite(doc.body || ''), prov);
+    const main = el('div', { class: 'doc-main' }, head, fm, mdLite(bodyAfterTitle(doc.body, doc.title)), prov);
     const backs = (doc.near || []).filter(x => x.back);
     const rail = el('div', { class: 'doc-rail' }, el('div', { class: 'rail-h' }, 'markdown graph · neighbourhood'), neighbourhood(doc),
       el('div', { class: 'rail-legend' }, ...Object.keys(DOC_HUE).map(t => el('span', {}, el('i', { style: 'background:' + DOC_HUE[t] }), t))),
@@ -643,7 +651,7 @@
   function docModal(doc, opts) {
     opts = opts || {};
     const seat = opts.seat, plain = !doc.type;
-    const view = plain ? el('div', { class: 'doc-view plain' }, el('div', { class: 'doc-main' }, el('div', { class: 'doc-head' }, el('div', { class: 'doc-top' }, el('code', { class: 'doc-path', style: 'margin-left:0' }, doc.path || '')), el('h1', {}, doc.title || doc.path)), mdLite(doc.body || ''))) : docView(doc);
+    const view = plain ? el('div', { class: 'doc-view plain' }, el('div', { class: 'doc-main' }, el('div', { class: 'doc-head' }, el('div', { class: 'doc-top' }, el('code', { class: 'doc-path', style: 'margin-left:0' }, doc.path || '')), el('h1', {}, doc.title || doc.path)), mdLite(bodyAfterTitle(doc.body, doc.title || doc.path)))) : docView(doc);
     const scroller = el('div', { class: 'dm-body' }, view);
     const act = (label, keys, fn, cls) => el('button', { class: 'dm-act' + (cls ? ' ' + cls : ''), onclick: e => { e.stopPropagation(); fn && fn(e.currentTarget); } }, el('span', {}, label), el('kbd', {}, keys));
     const feed = sel => opts.onFeed && opts.onFeed(doc, sel || null);
@@ -1472,5 +1480,5 @@
     return root;
   }
 
-  window.C = { diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

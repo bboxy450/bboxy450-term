@@ -31,6 +31,9 @@ const D = {
     near: [{ slug: 'w3-1', type: 'task', rel: 'for' }, { slug: 'goldens-v0', type: 'artifact', rel: 'derived_from' }, { slug: 'parity-run-01', type: 'artifact', rel: 'see', back: true }] },
 };
 D['with a diagram'] = { ...D.spec, path: '.bboxy/specs/mux-daemon.md', title: 'Mux daemon: supervisor and logic', body: '## Shape\nThe supervisor holds the PTYs; the logic process may crash and re-attach.\n```mermaid\nflowchart LR\n  gui[GUI] --> logic[mux logic]:::oracle\n  logic --> bus[(events.sqlite)]\n  logic ==> sup[supervisor]:::executor\n  sup --> pty((PTY))\n  sup -.->|re-attach| logic\n  bus -.-> evdoc[[events]]\n```\n- logic restarts never kill a seat\n- see [[storage]] for the ring' };
+// a real .bboxy doc opens with an H1 equal to its title: the header shows it once; a different first heading stays
+D['title in body'] = { ...D.spec, path: '.bboxy/vision.md', title: 'bboxy450-term — vision', body: '# bboxy450-term - vision\n\n## Cockpit first\nReal and local seats, harnesses, messaging, tasks.' };
+D['different first heading'] = { ...D.spec, path: '.bboxy/vision.md', title: 'bboxy450-term — vision', body: '# Why a cockpit\n\n## Cockpit first\nReal and local seats, harnesses, messaging, tasks.' };
 const STATES = [...Object.keys(D), 'signed', 'unsigned', 'superseded', 'broken frontmatter', 'as modal', 'modal · plain markdown'];
 Lab.page({ title: 'documents', wide: true, note: 'The work-item system from work-items.md: one Markdown file with frontmatter per item. Header: type chip, status, path, title. Frontmatter as a grid (id, assignee, role, parent, children, depends_on, links as annotated wikilink chips, allowed_paths, verify, created, updated). Body below. Provenance strip: created and updated by, derived from, the signed digest. Right rail: the item in the markdown graph, weights as stroke, backlinks dashed.',
   states: STATES,
