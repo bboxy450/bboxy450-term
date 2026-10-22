@@ -15,6 +15,7 @@ pub mod bus;
 pub mod identity;
 pub mod index;
 pub mod logic;
+pub mod mcp;
 pub mod messaging;
 pub mod registry;
 pub mod seat_socket;

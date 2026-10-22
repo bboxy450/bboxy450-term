@@ -1,0 +1,22 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+warning: unused import: `BufReader`
+ --> crates/bbt-mux/tests/mcp.rs:3:15
+  |
+3 | use std::io::{BufReader, Cursor, Read, Write};
+  |               ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bbt-mux` (test "mcp") generated 1 warning (run `cargo fix --test "mcp" -p bbt-mux` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.90s
+     Running tests/mcp.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/mcp-ed9239f840b87f1c)
+
+running 6 tests
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_unread_is_unknown_and_application_ack_is_a_separate_count ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.42s

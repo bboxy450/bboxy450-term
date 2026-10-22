@@ -36,6 +36,13 @@ pub struct LogicConfig {
 }
 
 enum Command {
+    ControlCatalogue(Ulid, u64, oneshot::Sender<Result<serde_json::Value>>),
+    ControlCall(
+        Ulid,
+        u64,
+        crate::mcp::Call,
+        oneshot::Sender<Result<serde_json::Value>>,
+    ),
     Messaging(
         Ulid,
         u64,
@@ -101,6 +108,32 @@ pub struct LogicClient {
     pub bus: BusHandle,
 }
 impl LogicClient {
+    pub async fn control_catalogue(
+        &self,
+        seat: Ulid,
+        generation: u64,
+    ) -> Result<serde_json::Value> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::ControlCatalogue(seat, generation, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
+    pub async fn control_call(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+    ) -> Result<serde_json::Value> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::ControlCall(seat, generation, call, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await
+            .map_err(|_| invalid("control outcome unavailable; query the original operation ID"))?
+    }
     /// Admitted seat identity; the broker derives its class from the registry.
     pub async fn messaging(
         &self,
@@ -433,6 +466,7 @@ struct Worker {
     endpoint_root: PathBuf,
     messaging: crate::messaging::Messaging,
     deliveries: tokio::task::JoinSet<Delivery>,
+    control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
 }
 impl Worker {
     fn open(
@@ -480,6 +514,7 @@ impl Worker {
             endpoint_root,
             messaging,
             deliveries: tokio::task::JoinSet::new(),
+            control_journals: BTreeMap::new(),
         };
         if let Reply::Seats { seats } = worker.connection.request(Action::ListOwnedSeats)? {
             for info in seats {
@@ -487,7 +522,164 @@ impl Worker {
             }
         }
         worker.scan()?;
+        // Recover audit outboxes after a logic crash, even without a new call.
+        for record in worker.registry.list()? {
+            worker.control_journal(record.id)?;
+        }
+        worker.publish_control_audits()?;
         Ok(worker)
+    }
+    fn control_actor(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+    ) -> Result<(crate::mcp::Actor, SeatRecord)> {
+        self.snapshot(id, generation)?;
+        let Reply::Seats { seats } = self.connection.request(Action::ListOwnedSeats)? else {
+            return Err(invalid("supervisor ownership unavailable"));
+        };
+        if !seats
+            .iter()
+            .any(|seat| seat.seat == id && seat.generation == generation)
+        {
+            return Err(invalid("stale control process generation"));
+        }
+        let (record, grant_epoch, issuer_kind) = self.messaging.authority(id, generation)?;
+        Ok((
+            crate::mcp::Actor {
+                seat_id: id,
+                process_generation: generation,
+                swarm_id: record.swarm,
+                role: record.role.clone(),
+                grant_epoch,
+                issuer_kind,
+            },
+            record,
+        ))
+    }
+    fn control_journal(&mut self, id: Ulid) -> Result<crate::mcp::journal::Journal> {
+        if let Some(journal) = self.control_journals.get(&id) {
+            return Ok(journal.clone());
+        }
+        let journal = crate::mcp::journal::Journal::new(SqliteStore::open(&object_dir(
+            &self.config.run_dir,
+            &format!("seat-{id}"),
+        )?)?);
+        self.control_journals.insert(id, journal.clone());
+        Ok(journal)
+    }
+    fn publish_control_audits(&self) -> Result<()> {
+        for (id, journal) in &self.control_journals {
+            for event in journal.pending(32)? {
+                let event_id = event.id;
+                self.publish(&format!("seat-{id}"), event)?;
+                journal.published(event_id)?;
+            }
+        }
+        Ok(())
+    }
+    fn control_call(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+    ) -> Result<serde_json::Value> {
+        let (actor, record) = self.control_actor(id, generation)?;
+        call.validate()?;
+        let journal = self.control_journal(id)?;
+        journal.call(&actor, &call, || {
+            match self.control_read(&actor, &record, &call) {
+                Ok(value) => crate::mcp::success(call.op_id, value),
+                Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
+            }
+        })
+    }
+    fn control_seat(&self, record: &SeatRecord) -> serde_json::Value {
+        serde_json::json!({"record":record,"adapter":self.views.get(&record.id).filter(|v|v.generation==record.generation).map(|v|&v.adapter.status)})
+    }
+    fn control_read(
+        &mut self,
+        actor: &crate::mcp::Actor,
+        record: &SeatRecord,
+        call: &crate::mcp::Call,
+    ) -> std::result::Result<serde_json::Value, String> {
+        use crate::mcp::tools;
+        use crate::registry::Class;
+        use serde_json::json;
+        match call.tool.as_str() {
+            "orient" => {
+                let _: tools::Empty = tools::parse(&call.args)?;
+                let channels = self
+                    .messaging
+                    .request(
+                        record.id,
+                        record.generation,
+                        crate::messaging::api::Request::Ls {
+                            path: format!("seats/{}", record.id),
+                            after: None,
+                            limit: 32,
+                        },
+                        false,
+                        None,
+                        now_ms(),
+                    )
+                    .map_err(|e| e.to_string())?;
+                Ok(
+                    json!({"actor":actor,"seat":self.control_seat(record),"tasks":tools::orient_documents(&self.index,record),
+                    "execution":tools::graph(&self.index,actor,record,&tools::GraphRead{graph:"execution".into(),after:None,limit:Some(32)},true)?,
+                    "channels":channels,"unread_count":null,"unread_unavailable":"no read cursor exists; delivery and application acknowledgment are separate evidence",
+                    "pending_application_ack":self.messaging.pending_application_ack(record.id,record.generation).map_err(|e|e.to_string())?}),
+                )
+            }
+            "self_status" => {
+                let _: tools::Empty = tools::parse(&call.args)?;
+                Ok(json!({"actor":actor,"seat":self.control_seat(record)}))
+            }
+            "seat_get" => {
+                let args: tools::SeatGet = tools::parse(&call.args)?;
+                let target = self
+                    .registry
+                    .get(args.seat_id)
+                    .map_err(|_| "seat unavailable")?;
+                if actor.role.class != Class::Oracle && target.swarm != record.swarm {
+                    return Err("seat outside caller swarm".into());
+                }
+                Ok(self.control_seat(&target))
+            }
+            "seat_list" => {
+                let args: tools::SeatList = tools::parse(&call.args)?;
+                let limit = tools::page_limit(args.limit)?;
+                let scope = args.scope.as_deref().unwrap_or("swarm");
+                if !matches!(scope, "swarm" | "account") {
+                    return Err("invalid seat scope".into());
+                }
+                let swarm = args.swarm_id.unwrap_or(record.swarm);
+                if actor.role.class != Class::Oracle
+                    && (scope == "account" || swarm != record.swarm)
+                {
+                    return Err("cross-swarm reads require oracle-class authority".into());
+                }
+                if scope == "account" && args.swarm_id.is_some() {
+                    return Err("account scope cannot also select a swarm".into());
+                }
+                let mut records = self.registry.list().map_err(|e| e.to_string())?;
+                records.retain(|r| {
+                    (scope == "account" || r.swarm == swarm)
+                        && args.after.is_none_or(|after| r.id > after)
+                });
+                records.sort_by_key(|r| r.id);
+                let more = records.len() > limit;
+                records.truncate(limit);
+                Ok(
+                    json!({"items":records.iter().map(|r|self.control_seat(r)).collect::<Vec<_>>(),"next":if more{records.last().map(|r|r.id)}else{None}}),
+                )
+            }
+            "graph_read" => {
+                let args: tools::GraphRead = tools::parse(&call.args)?;
+                tools::graph(&self.index, actor, record, &args, false)
+            }
+            _ => Err("tool is unavailable for this actor and catalogue".into()),
+        }
     }
     fn publish(&self, stream: &str, event: Draft) -> Result<()> {
         self.handle.block_on(self.bus.publish(stream, event))?;
@@ -1292,6 +1484,16 @@ impl Worker {
                     break;
                 };
                 match command {
+                    Command::ControlCatalogue(id, generation, reply) => {
+                        let result = self
+                            .control_actor(id, generation)
+                            .map(|(actor, _)| crate::mcp::tools::catalogue(&actor));
+                        let _ = reply.send(result);
+                    }
+                    Command::ControlCall(id, generation, call, reply) => {
+                        let result = self.control_call(id, generation, call);
+                        let _ = reply.send(result);
+                    }
                     Command::Messaging(id, generation, request, operator, reply) => {
                         let result = (|| {
                             self.snapshot(id, generation)?;
@@ -1489,6 +1691,7 @@ impl Worker {
             }
             if messages_at.elapsed() >= Duration::from_millis(100) {
                 self.pump_messages()?;
+                self.publish_control_audits()?;
                 messages_at = Instant::now();
             }
             let idle: Vec<_> = self

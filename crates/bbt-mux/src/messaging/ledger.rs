@@ -608,6 +608,12 @@ impl Ledger {
         }
         Ok(Page { items, next })
     }
+    pub fn pending_application_ack(&self, recipient: Ulid) -> Result<u64> {
+        Ok(self.store.connection()?.query_row(
+            "SELECT COUNT(DISTINCT message) FROM msg_deliveries WHERE recipient=?1 AND evidence<>'application-acknowledged'",
+            [recipient.to_string()],|row|u64_at(row,0),
+        )?)
+    }
     pub fn bus_outbox(&self) -> Result<Vec<Draft>> {
         let db = self.store.connection()?;
         let mut q =

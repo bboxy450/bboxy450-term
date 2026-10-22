@@ -1,0 +1,13 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.20s
+     Running tests/mcp.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/mcp-ed9239f840b87f1c)
+
+running 1 test
+test mcp_installed_claude_and_codex_call_orient ... client=claude exit=0 tool=orient seat=01M5JRMXG6VJ5EZ09T0SK05Z0R generation=1 role=executor class=worker audit=01M5JRN9GPQHDWG8VMRGYNXPZ3 seq=2 final_role_verified=true stdout_bytes=2126 stderr_bytes=0 (raw outputs discarded)
+client=codex exit=0 tool=orient seat=01M5JRMXG6ESKJW7RVWKGSEADT generation=1 role=executor class=worker audit=01M5JRNMBZ864TEMFFZ3MF54NS seq=2 final_role_verified=true stdout_bytes=3704 stderr_bytes=39 (raw outputs discarded)
+named Claude/Codex settings/config/hooks hashes unchanged; no secret/config values exported
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 27.33s
+
+EXIT 0

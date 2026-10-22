@@ -217,6 +217,26 @@ impl Messaging {
             },
         ))
     }
+    /// Current local authority seam shared with control. ID1 replaces the
+    /// issuer/grant verifier; a caller can never supply its role or epoch.
+    pub fn authority(
+        &self,
+        id: Ulid,
+        generation: u64,
+    ) -> Result<(SeatRecord, u64, super::wire::IssuerKind)> {
+        let record = self.record(id, generation)?;
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let epoch = policy(&tx, &record)?;
+        tx.commit()?;
+        Ok((record, epoch, self.keys.issuer().kind))
+    }
+    pub fn pending_application_ack(&mut self, seat: Ulid, generation: u64) -> Result<u64> {
+        let record = self.record(seat, generation)?;
+        self.swarm(record.swarm)?
+            .ledger
+            .pending_application_ack(seat)
+    }
     fn swarm(&mut self, id: Ulid) -> Result<&mut Swarm> {
         if !self.swarms.contains_key(&id) {
             let store = SqliteStore::open(&object_dir(&self.root, &format!("swarm-{id}"))?)?;

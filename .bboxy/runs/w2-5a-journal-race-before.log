@@ -1,0 +1,22 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.42s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term/target/w2-5a-ci/debug/deps/bbt_mux-25ec9b06ffd26cc0)
+
+running 1 test
+
+thread 'mcp::journal::tests::concurrent_operation_retries_return_one_committed_result' (8041778) panicked at crates/bbt-mux/src/mcp/journal.rs:278:9:
+assertion `left == right` failed
+  left: Object {"content": Array [Object {"text": String("{\"op_id\":\"01M5JRRA6ZR5RMY18ZY4C4TMGM\",\"ordinal\":1}"), "type": String("text")}], "isError": Bool(false), "structuredContent": Object {"op_id": String("01M5JRRA6ZR5RMY18ZY4C4TMGM"), "ordinal": Number(1)}}
+ right: Object {"content": Array [Object {"text": String("{\"op_id\":\"01M5JRRA6ZR5RMY18ZY4C4TMGM\",\"ordinal\":0}"), "type": String("text")}], "isError": Bool(false), "structuredContent": Object {"op_id": String("01M5JRRA6ZR5RMY18ZY4C4TMGM"), "ordinal": Number(0)}}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... FAILED
+
+failures:
+
+failures:
+    mcp::journal::tests::concurrent_operation_retries_return_one_committed_result
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `-p bbt-mux --lib`
+EXIT 101

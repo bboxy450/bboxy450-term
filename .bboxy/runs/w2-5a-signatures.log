@@ -1,0 +1,25 @@
+COMMAND: git verify-commit 770c96eec4c7de2b67bd33d5401c2c1646a02148
+gpg: Signature made Thu Oct 22 14:49:06 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT: 0
+COMMAND: git verify-commit 0a1b7adcd88ec0fc5a29fb0e8a434b13afc3c77a
+gpg: Signature made Thu Oct 22 14:49:06 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT: 0
+COMMAND: git verify-commit ab028a14ec3563bd908883ca9851430b7f531124
+gpg: Signature made Thu Oct 22 14:49:06 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT: 0
+COMMAND: cargo fmt -p bbt-mux -- --check
+EXIT: 0
+COMMAND: git diff --check origin/main...HEAD
+.bboxy/runs/w2-5a-interop-01.log:5: trailing whitespace.
++test mcp_installed_claude_and_codex_call_orient ...
+.bboxy/runs/w2-5a-tests-02.log:23: new blank line at EOF.
+EXIT: 2
+COMMAND: git diff --check origin/main...HEAD -- crates
+EXIT: 0
+NOTE: full diff whitespace diagnostics above are from retained raw command logs only; source check is separate. No log bytes changed after the exact-commit CI began.

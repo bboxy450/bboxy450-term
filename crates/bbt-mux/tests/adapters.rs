@@ -667,7 +667,8 @@ fn adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it() 
             launch,
         ))
         .unwrap();
-    let until = Instant::now() + Duration::from_secs(2);
+    let observed_at = Instant::now();
+    let until = observed_at + Duration::from_secs(2);
     loop {
         let status = runtime
             .block_on(logic.client.adapter_status(id, 1))
@@ -685,10 +686,17 @@ fn adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it() 
         }
         assert!(
             Instant::now() < until,
-            "live probe was not echoed before the harness deadline"
+            "live probe observation exceeded 2s: elapsed={:?}, status={status:?}, screen_seq={}, probe_ok={}",
+            observed_at.elapsed(),
+            snapshot.sequence,
+            text.contains("PROBE_OK")
         );
         std::thread::sleep(Duration::from_millis(10));
     }
+    println!(
+        "live OSC probe and reported working state observed in {:?}",
+        observed_at.elapsed()
+    );
     assert_eq!(
         runtime
             .block_on(logic.client.record(id))
