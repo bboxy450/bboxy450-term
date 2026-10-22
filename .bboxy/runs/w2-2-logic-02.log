@@ -1,0 +1,17 @@
+$ cargo test -p bbt-mux --locked --test logic -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.66s
+     Running tests/logic.rs (target/debug/deps/logic-40cb07c9d1056a5e)
+
+running 6 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+
+test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 2.61s
+
+
+exit: 0

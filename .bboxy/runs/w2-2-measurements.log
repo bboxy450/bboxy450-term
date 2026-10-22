@@ -1,0 +1,20 @@
+$ cargo test -p bbt-mux --locked --test measurements -- --ignored --nocapture --test-threads=1
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.58s
+     Running tests/measurements.rs (target/debug/deps/measurements-3251c16983af012c)
+
+running 2 tests
+test file_descriptors_at_200_live_seats_and_sqlite_objects ... RLIMIT_NOFILE before: soft=4096 hard=9223372036854775807
+200 live seats + 200 Unix listeners + per-object SQLite with operation-scoped connections: baseline=8, current=408, delta=400, soft=4096, hard=9223372036854775807, bootstrap=4.297237958s
+ok
+test recursive_cte_vs_petgraph_and_thousand_subscriber_fanout ... fixture: 10000 documents, 100000 directed links; SQLite 3.53.2
+trial 1: recursive CTE 42.9295ms; petgraph DFS 3.371625ms; both reach 10000
+trial 2: recursive CTE 43.237709ms; petgraph DFS 3.5005ms; both reach 10000
+trial 3: recursive CTE 42.690042ms; petgraph DFS 3.610167ms; both reach 10000
+one durable doc edit -> 1000 live consumers: 2.778583ms; no harness wake/load claim
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.44s
+
+
+exit: 0

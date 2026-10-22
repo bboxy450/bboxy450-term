@@ -1,0 +1,6 @@
+$ cargo clippy -p bbt-core -p bbt-mux --locked -- -D warnings
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-core)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.02s
+
+exit: 0

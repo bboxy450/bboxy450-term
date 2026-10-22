@@ -497,6 +497,75 @@ impl Actor {
                 }
                 Ok(Reply::Terminating)
             }
+            Action::ScheduleClose {
+                attachment,
+                close_id,
+                deadline_ms,
+            } => {
+                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
+                seat.check_writer(client, &attachment)?;
+                if let Some((deadline, canceled)) = seat.close_ids.get(&close_id) {
+                    if *canceled || *deadline != deadline_ms {
+                        return Err(Failure::new(
+                            FailureCode::Invalid,
+                            "close id was canceled or conflicts",
+                        ));
+                    }
+                    return Ok(Reply::CloseScheduled {
+                        close_id,
+                        deadline_ms: *deadline,
+                    });
+                }
+                seat.check_live()?;
+                let now = crate::store::now_ms();
+                if close_id == Ulid::nil()
+                    || deadline_ms.saturating_sub(now) > 86_400_000
+                    || seat.close_ids.len() >= 4096
+                    || seat.grace.is_some()
+                {
+                    return Err(Failure::new(
+                        FailureCode::Invalid,
+                        "invalid or conflicting close",
+                    ));
+                }
+                seat.grace = Some((
+                    close_id,
+                    Instant::now() + Duration::from_millis(deadline_ms.saturating_sub(now)),
+                ));
+                seat.close_ids.insert(close_id, (deadline_ms, false));
+                Ok(Reply::CloseScheduled {
+                    close_id,
+                    deadline_ms,
+                })
+            }
+            Action::UndoClose {
+                attachment,
+                close_id,
+            } => {
+                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
+                seat.check_writer(client, &attachment)?;
+                if seat
+                    .close_ids
+                    .get(&close_id)
+                    .is_some_and(|(_, canceled)| *canceled)
+                {
+                    return Ok(Reply::CloseUndone { close_id });
+                }
+                seat.check_live()?;
+                match seat.grace {
+                    Some((id, deadline)) if id == close_id && Instant::now() < deadline => {
+                        seat.grace = None;
+                        if let Some((_, canceled)) = seat.close_ids.get_mut(&close_id) {
+                            *canceled = true;
+                        }
+                        Ok(Reply::CloseUndone { close_id })
+                    }
+                    _ => Err(Failure::new(
+                        FailureCode::Exited,
+                        "close expired or revision changed",
+                    )),
+                }
+            }
         }
     }
 
@@ -709,6 +778,8 @@ struct Seat {
     exit_published: bool,
     terminate_at: Option<Instant>,
     termination_escalated: bool,
+    grace: Option<(Ulid, Instant)>,
+    close_ids: HashMap<Ulid, (u64, bool)>,
 }
 
 impl Seat {
@@ -757,6 +828,8 @@ impl Seat {
             exit_published: false,
             terminate_at: None,
             termination_escalated: false,
+            grace: None,
+            close_ids: HashMap::new(),
         })
     }
 
@@ -900,6 +973,15 @@ impl Seat {
     }
 
     fn tick(&mut self, actor: &mut Actor) -> io::Result<()> {
+        if self.exited.is_none()
+            && self.terminate_at.is_none()
+            && self
+                .grace
+                .is_some_and(|(_, deadline)| Instant::now() >= deadline)
+        {
+            signal(self.pid, libc::SIGHUP).map_err(io::Error::other)?;
+            self.terminate_at = Some(Instant::now() + Duration::from_millis(250));
+        }
         if self
             .writer
             .is_some_and(|(client, _)| !actor.active.is_some_and(|(active, _)| active == client))

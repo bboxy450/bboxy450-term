@@ -1,0 +1,6 @@
+$ cargo clippy -p bbt-mux --all-targets --locked -- -D warnings
+    Blocking waiting for file lock on build directory
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.88s
+
+exit_status=0

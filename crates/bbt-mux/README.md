@@ -1,143 +1,163 @@
-# bbt-mux — supervisor foundation (W2.1)
+# bbt-mux — supervisor and restartable logic
 
-One `Supervisor` owns one named thread and one `mio::Poll`. Every seat's
-`portable-pty 0.9.0` master, child handle, resize, read and write lives in that
-actor. The poller registers each master's `as_raw_fd()` and uses nonblocking
-reads/writes; no per-seat reader, writer or wait thread is created. Child exit is
-checked with `try_wait` on the same thread, at a 20 ms maximum idle interval.
+W2.1 owns PTYs; W2.2 adds durable objects, the seat registry, the repository
+index, the bus and generation-bound viewport sockets. `Logic::start` accepts a
+W2.1 in-process client or `logic::SocketSupervisor` for a separate process. It
+receives the application's existing Tokio handle; production code creates no
+runtime. Bootstrap, database work and terminal parsing belong to IO owners,
+with debug guards against calling their blocking entry points on the UI thread.
+The UI uses bounded asynchronous `LogicClient` messages.
 
-This implements the first layer of [[mux-daemon]] and [[terminal-core]]. Ring
-storage/checkpoints (W1.2), harness adapters/readiness (W2.3), and the eventual
-supervisor/logic process split are later layers. A supervisor lease is **not**
-proof that a harness composer is ready for input.
+## Ownership and modules
 
-## Module map
+| Module | Mechanism |
+|---|---|
+| `protocol`, `supervisor`, `transport` | One supervisor thread and one mio poller own PTY masters, children, resize, writer leases and close deadlines. Bounded u32-BE length/versioned JSON is the supervisor IPC. |
+| `logic` | One logic IO worker attaches owned children, restores terminal checkpoints, captures ordered output and hosts seat endpoints. A supplied runtime handle runs the bus and asynchronous sockets. |
+| `store/sqlite` | Per-object SQLite WAL/FULL databases, version 1, key/value, SQL and alarms. Connections are operation-scoped rather than held open for every object. |
+| `store/blobs` | SHA-256 addressed, zstd-compressed local blobs, fsynced temporary file and rename, digest verification and a 64 MiB decompression bound. |
+| `store/events` | Immutable, Ed25519-signed, hash-chained event rows; permanent event-ID deduplication and conflict rejection; chain verification on reopen. |
+| `registry` | Account-owned ULID seat records, signed-role shape, location, mute, harness session and task references, close revisions and exact restore positions. |
+| `index` | FSEvents/inotify invalidation, Markdown/YAML parsing, weighted wikilinks, SQLite mirror and durable event outbox, five petgraph projections. |
+| `bus` | One bounded router over per-object event streams, consumer policies, replay, coalescing, explicit acknowledgments and request/reply. |
+| `streams`, `seat_socket` | Acknowledged snapshot/delta baselines, generation validation, bounded NDJSON admission and explicit unavailable-history ranges. |
 
-- `src/protocol.rs`: ULID seat/request/input/lease identities, u64 process
-  generations, launch overrides, versioned requests, replies and ordered events.
-- `src/supervisor.rs`: native PTYs, the single poller, logic/writer lease fencing,
-  input receipts/deduplication, child exit/termination and the in-process client.
-- `src/transport.rs`: length-prefixed framing, partial-frame decoding, private
-  Unix listener setup, socket output bounds and the default runtime path.
-- `tests/supervisor.rs`: live `/bin/zsh -f` fixtures, including 50 simultaneous
-  seats and a PTY that refuses input long enough to exercise a partial write.
+## Supervisor and input boundary
 
-## In-process use
+`Supervisor::start` owns native portable-pty children. `LaunchSpec` carries the
+program, arguments, cwd and launch environment overrides. The supervisor sets
+`BBOXY_SEAT_ID` and `BBOXY_PROCESS_GENERATION` last. One actor polls every master
+fd and child exit; no per-seat PTY reader/writer/wait thread is created.
 
-```rust,no_run
-use bbt_mux::{Config, LaunchSpec, Supervisor, Ulid};
+An owner capability admits a logic connection. A new logic lease fences the
+old one; an attachment binds a writer to that connection, seat and process
+generation. Exact launch retries return the original child; an explicit
+replacement increments the generation. Output, resize and exit share the
+supervisor's ordered per-seat cursor. Low-level input IDs retain digest/receipt
+state across logic replacement. An in-flight write completes or becomes
+`PartialUnknown`; it is never automatically replayed. The lease proves neither
+composer readiness nor application acknowledgment. Seat observation sockets
+expose no input operation: adapters and the guarded common writer are W2.3/W2.5.
 
-let supervisor = Supervisor::start(Config::default())?;
-let logic = supervisor.connect()?;
-let mut launch = LaunchSpec::new("/bin/zsh", std::env::current_dir()?);
-launch.args.push("-f".into());
-let seat = logic.spawn(launch)?;
-let writer = logic.attach(seat.seat, seat.generation)?;
-// The caller/adapters must establish input readiness before this low-level call.
-let receipt = logic.input(&writer, Ulid::new(), b"echo hi\n")?;
-// receipt proves PTY writing only, never shell/model consumption.
-# Ok::<(), Box<dyn std::error::Error>>(())
+The supervisor's optional Unix listener uses a private owned 0700 parent, 0600
+socket and a random admission capability. Frames are capped at 1 MiB before
+allocation. Existing endpoints are never stolen; cleanup checks socket inode.
+W2.1 bounds remain: 16 KiB output chunks, 64 KiB inputs, 128 queued channel
+messages, 4 MiB encoded socket output, eight logic clients and at most 1024
+seats. Backpressure stops PTY reads rather than accumulating an unbounded tail.
+
+## Durable lifecycle and crash boundary
+
+The registry separates open/closed-grace/closed-retained lifecycle from harness
+activity. Closing records a durable intent, the default 60-second deadline and
+split position before asking the supervisor to schedule termination. The
+supervisor owns the monotonic timer, so killing logic does not extend grace.
+Undo must match process generation, close revision and layout revision; an
+expired, replaced or conflicting seat is not silently restored. Reconnecting
+logic reconciles exits and re-submits any outstanding close intent.
+
+Logic checkpoints contain the complete terminal model/parser plus title, cwd,
+capture cursor and generation. A content-addressed blob is committed before its
+pointer. Reattaching the same process restores that checkpoint and assigns a
+new view generation. If the supervisor no longer has intervening bytes, a
+capture-gap marker names the missing sequence range. There is no fabricated
+replay or blank-screen success. W1.2 supplies the supervisor byte ring and
+semantic history; this checkpoint bridge does not preserve all bytes emitted
+while logic is dead. Supervisor death still ends its PTYs.
+
+## Event bus and repository index
+
+Each object stream has its own `events.sqlite` and sequence. Subjects use `/`
+tokens, `*` for one token and terminal `>` for one or more remaining tokens,
+with 256-byte/16-token limits. `inbox/>` and `seat/*/output` are live fan-out
+only (sequence zero); all other subjects append before delivery. Supplied leaf
+keys sign records; verification establishes integrity, not account-grant trust.
+The identity/grant layer must authenticate and authorize producers/consumers.
+
+Consumers may be ephemeral or named/durable, start new/all/last-per-subject/
+sequence/time, and use no acknowledgment or explicit acknowledgment. Live
+queues are bounded (1–4096); state-like subjects coalesce and overflow produces
+an explicit gap. Explicit deliveries use persistent pending rows, acknowledgment
+waits and bounded redelivery counts with the original event IDs. Reaching the
+redelivery limit retains the pending row for operator policy. `reply_to` inboxes
+receive `no_responders` when no consumer matches. Durable event retention/cold
+migration and external wake/webhook/network delivery are later layers.
+
+Supervisor output, resize and exit, mux spawn and swarm join are producers.
+The shared bus handle accepts adapter state and hook events; native observation
+and composer readiness are left to W2.3. A real watched document edit produces
+by-ID and by-path events; task/epic/bug status transitions also produce task
+events. The index mirror and event drafts commit together. The outbox retries
+the same IDs after restart and clears only after the bus confirms append.
+
+The index reads `.bboxy/**/*.md`, rejects symlink traversal and caps documents
+at 2 MiB. Broken frontmatter remains visible with a diagnostic. It handles
+`[[target]]`, `[[target|display]]`, `[[target]]{rel:weight}`, `links:` records and
+frontmatter relationship fields. Ambiguous aliases are not resolved by guess.
+Markdown, task, execution, artifact and provenance graphs rebuild from SQLite.
+A watcher coalesces changes into a full reconciliation; a watcher failure is
+reported rather than silently serving a stale index.
+
+Mux-authored document writes stamp `created_by`/`updated_by`, sign frontmatter
+and body digests with DSSE PAE and append signed preparation/completion records
+before/after the file effect. `.bboxy/log/<date>.jsonl` is a signed-record
+projection. Anonymous external changes are observed without invented
+attribution. Primary-signed daily checkpoints, export and repair of a projection
+interrupted between SQLite commit and JSONL append are not implemented here.
+
+## Seat observation and viewport streams
+
+Each attached seat gets a private `/tmp/bbt-<uid>-<ULID>/<seat>.sock` namespace
+(short enough for macOS sockaddr_un) with 0700 directory/0600 socket. Discovery
+through the owner client yields its path, process generation and capability;
+never log the capability. Restart creates a new namespace and capability.
+After a hard kill the abandoned empty namespace/socket requires later janitor
+policy; a new instance never unlinks or takes over it.
+
+Every version-1 NDJSON request binds capability, seat and process generation.
+`Attach`, `Snapshot`, `Subscribe`, `Applied`, `GetHistory`, `BusSubscribe`,
+`PollEvents` and `Ack` share that boundary. Socket consumers are restricted to
+their own ephemeral `seat/<id>/...` and `inbox/<id>/...` subjects. No account or
+other-seat authorization is implied. At most 32 clients per endpoint, eight
+consumers per session, 1 MiB per line, a two-second write deadline and bounded
+reader channels limit slow/malformed clients. Oversized snapshots fail the
+frame bound; chunking/negotiation is not implemented.
+
+A viewer retains one acknowledged baseline, one sent snapshot and one latest
+pending frame. Deltas carry changed rows and cursor/modes/palette/style/title/
+cwd metadata. `Applied` must match the sent view generation and sequence;
+wrong/stale baselines are rejected atomically. Resize changes view generation
+and requires a snapshot. `GetHistory` returns an explicit W1.2-pending gap,
+never claims unavailable scrollback. Native OSC cwd/status observation, hooks,
+terminal query replies and renderer/GUI wiring remain integration work.
+
+## Verification and measurements
+
+`cargo test -p bbt-mux --locked` covers storage/signatures/corruption, consumer
+replay/redelivery/gaps, registry undo, graph recovery, watcher-to-bus task events,
+provenance signatures, real seat sockets and W2.1 PTY/lease/backpressure tests.
+The subprocess fixture hard-kills logic, reattaches through the supervisor
+socket and verifies the same live zsh PID and exact screen. The viewport test
+also checks a metadata-only palette/cursor delta and flattened wire format.
+
+Run the two finite measurements explicitly:
+
+```sh
+cargo test -p bbt-mux --locked --test measurements -- --ignored --nocapture --test-threads=1
 ```
 
-`LaunchSpec` sets program, arguments, absolute cwd and explicit environment
-overrides. `BBOXY_SEAT_ID` and `BBOXY_PROCESS_GENERATION` are assigned last by the
-supervisor so a supplied override cannot change the attribution. Only explicit
-launch overrides are retained, not a snapshot of the inherited environment.
+Measured locally on 2026-10-22 (no OS limit changes):
 
-## Leases, ordering and input evidence
+- 200 live PTYs plus 200 seat listeners and per-object SQLite: 8 baseline fds,
+  408 observed (400 added); soft maxfiles 4096, hard 9223372036854775807.
+- 10k synthetic document rows/100k directed links: recursive CTE 42.69–43.24 ms,
+  petgraph DFS 3.37–3.61 ms; both reach 10k nodes in three trials.
+- One durable doc edit to 1000 live in-process consumers: 2.78 ms. This is not a
+  harness wake, network or GUI load measurement.
 
-`AcquireLogic` requires the supervisor owner's random 32-byte admission
-capability. It replaces the previous logic lease and invalidates all previous
-writer attachments. `Attach{seat,generation}` issues a new writer lease for
-that process. Both leases are checked against the owning connection, not merely
-against caller-supplied token strings. `Input`, `Resize` and `Kill` require the
-attachment. Stale logic, writer and process generations return distinct errors.
-
-First launch uses generation 1. Exact repeated launch specs return the original
-child instead of spawning another; an exited/drained seat can be explicitly
-replaced with generation + 1. A reconnect lists/attaches existing children.
-Dropping a logic client does not restart or kill its child. Dropping/shutting
-down the supervisor kills and reaps its owned live children; there is no promise
-of process survival across supervisor death in this in-process milestone.
-
-Output, successful resize and exit events share one monotonically increasing
-per-seat `seq`. Captured output precedes the published exit; no timestamp merge
-is used. `Attach` supplies `first_available_sequence` and `next_sequence` so a
-caller cannot interpret an unavailable earlier prefix as replayed history.
-There is no retained-history API yet. Events already delivered into an old
-client's channel/socket cannot be replayed to its replacement without W1.2.
-
-Input IDs are retained in memory for the whole process generation, including
-across logic replacement. A retry with the same bytes returns the same stored
-receipt; different bytes under the same ID are rejected. A SHA-256 digest avoids
-retaining completed input plaintext. Only one input is in flight per seat;
-replacing a lease cannot start a second write around it. Pending writes finish
-or time out without being restarted. Query `InputStatus` with the original ID.
-
-Receipts are `Pending`, `PtyWritten`, or `PartialUnknown`, with the exact written
-prefix length. `Input` returns its current receipt; `InputStatus` observes a
-pending write's later result. A timeout/error never automatically pastes its
-unwritten suffix or presses Enter. None of these receipts claims application
-acknowledgment. A supervisor crash loses the in-memory IDs/receipts; durable
-input bookkeeping is not implemented here.
-
-`Kill` sends SIGHUP without blocking the poller, escalates to SIGKILL after
-250 ms, and returns `Terminating`; the actual outcome is the later `Exited`
-event. It addresses the owned child, not a caller-supplied PID. Process-tree,
-close-grace and harness-resume policies are not implemented by this primitive.
-
-## Unix framing and bounds
-
-Default v0.1 transport is bounded in-process channels. To enable Unix IPC, pass
-`Config { socket_path: Some(transport::default_socket_path()?), .. }`.
-On macOS the default is
-`~/Library/Application Support/bboxy450-term/run/mux.sock`; Linux uses a private
-`bboxy450-term` directory below `$XDG_RUNTIME_DIR`, with a home-state fallback.
-The parent must be owned by the current uid, non-symlink and private (0700); the
-socket is 0600. An existing endpoint is never unlinked to take ownership. Drop
-removes only the same socket inode this supervisor bound.
-
-The same poller accepts and serves socket clients; there is no extra socket or
-per-client thread. Frames are a **u32 big-endian byte length**, then a UTF-8 JSON
-`Frame { version: 1, body }`. Client body is `Request`; server body is `Message`
-(correlated reply or event). Length is checked **before payload allocation**.
-Malformed/unsupported frames close the connection. Typed in-process requests
-use the identical dispatcher and version checks. Unix IPC is local admission,
-not a sandbox against another process already holding the same uid/capability.
-
-Bounds: 1 MiB per encoded frame; 64 KiB per input or launch configuration;
-16 KiB output chunks; 128 queued in-process commands/events; 4 MiB encoded output
-per socket; eight logic connections; at most 1024 seats (configurable downward).
-The per-generation input cache admits 4096 IDs, then rejects new ones rather
-than forgetting an old ID and risking duplicate input. A stalled/detached reader
-holds at most one pending output chunk per seat and applies kernel PTY
-backpressure; it never creates an unbounded capture queue. These are bounded
-starting limits, not a 1000-seat memory/performance measurement.
-
-## Verification and limits
-
-Run `cargo test -p bbt-mux --locked`. Exact command results are in
-`.kb/runs/w2-1-*.log`. Codec tests reject invalid/oversized lengths, unknown
-versions and truncated bodies, and decode fragmented/coalesced frames. Native
-tests verify echo, cwd/env attribution, `stty size`, generation-tagged exit,
-two-seat separation, 50-seat echo, lease replacement without child duplication,
-input-ID retry/conflict, live Unix admission/framing and blocked-write ambiguity.
-The finite-output test orders the child's final bytes before exit. The slow
-subscriber test drains exactly 4 MiB plus `TAIL`, with contiguous sequences,
-after first leaving the bounded channel unread.
-
-Verified locally on 2026-10-21: **12 mux tests**, **134 workspace tests**, workspace
-build, mux clippy with `-D warnings`, formatting and `git diff --check` all
-passed. The final command output is in `.kb/runs/w2-1-final-*.log`; the earlier
-compile error and its correction remain in the numbered logs. Hosted CI has
-not been run for W2.1 by this Executor.
-
-Not covered: rings/checkpoints or disk durability; logic/supervisor process
-splitting; GUI wiring; native harnesses/input guards; close grace/undo/resume;
-remote seats/network identity; crash/power-loss recovery; macOS 14 or Linux
-runtime validation; inherited background-job lifecycle; 1000 seats or throughput
-benchmarks. No user harness settings, trust hashes or credentials are changed.
-
-API references inspected: [portable-pty MasterPty](https://docs.rs/portable-pty/0.9.0/portable_pty/trait.MasterPty.html),
-[mio Poll](https://docs.rs/mio/latest/mio/struct.Poll.html). Locked versions and
-licenses are recorded by Cargo; no upstream PTY or poller source was vendored.
+Actual command output, failures/corrections and acceptance pointers live in
+`.bboxy/runs/w2-2-*.log`; W2.1's earlier evidence is in `.bboxy/runs/w2-1-*.log`.
+Not validated: real power loss, supervisor restart, native harness input or
+state integrations, cloud/SSH, account grants, production key custody, 1000
+running seats, macOS 14/Linux/mobile, hosted CI or renderer parity. No user
+keys, credentials, harness trust settings or model transcripts were accessed.

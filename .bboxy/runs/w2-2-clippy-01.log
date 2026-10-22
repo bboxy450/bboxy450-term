@@ -1,0 +1,155 @@
+[Formatting: trailing whitespace in one compiler suggestion removed.]
+$ cargo clippy -p bbt-mux --all-targets --locked -- -D warnings
+    Checking notify-types v2.1.0
+    Checking errno v0.3.14
+    Checking tokio v1.54.1
+    Checking portable-pty v0.9.0
+    Checking rusqlite v0.40.2
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-core)
+    Checking getrandom v0.4.3
+    Checking fastrand v2.5.0
+    Checking rustix v1.1.5
+    Checking notify v8.2.0
+error: empty line after doc comment
+  --> crates/bbt-core/src/vendor/vte/ansi.rs:67:5
+   |
+67 | /     /// [W3C's luminance algorithm]: https://www.w3.org/TR/WCAG20/#relativeluminancedef
+68 | |
+   | |_^
+69 |       pub fn luminance(self) -> f64 {
+   |       ---------------- the comment documents this function
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#empty_line_after_doc_comments
+note: the lint level is defined here
+  --> crates/bbt-core/src/vendor/vte/mod.rs:29:9
+   |
+29 | #![deny(clippy::all, clippy::if_not_else, clippy::enum_glob_use)]
+   |         ^^^^^^^^^^^
+   = note: `#[deny(clippy::empty_line_after_doc_comments)]` implied by `#[deny(clippy::all)]`
+   = help: if the empty line is unintentional, remove it
+
+error: empty line after doc comment
+  --> crates/bbt-core/src/vendor/vte/ansi.rs:88:5
+   |
+88 | /     /// [W3C's contrast algorithm]: https://www.w3.org/TR/WCAG20/#contrast-ratiodef
+89 | |
+   | |_^
+90 |       pub fn contrast(self, other: Rgb) -> f64 {
+   |       --------------- the comment documents this function
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#empty_line_after_doc_comments
+   = help: if the empty line is unintentional, remove it
+
+error: empty line after doc comment
+   --> crates/bbt-core/src/vendor/vte/ansi.rs:284:1
+    |
+284 | / /// Handler.
+285 | |
+    | |_^
+286 |   impl<T: Timeout> Processor<T> {
+    |   - the comment documents this implementation
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#empty_line_after_doc_comments
+    = help: if the empty line is unintentional, remove it
+
+    Checking tempfile v3.27.0
+error: returning the result of a `let` binding from a block
+   --> crates/bbt-core/src/vendor/alacritty/term/mod.rs:836:9
+    |
+832 | /         let cursor_style = self
+833 | |             .cursor_style
+834 | |             .unwrap_or(self.config.default_cursor_style);
+    | |_________________________________________________________- unnecessary `let` binding
+835 |
+836 |           cursor_style
+    |           ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#let_and_return
+    = note: `-D clippy::let-and-return` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
+help: return the expression directly
+    |
+832 ~
+833 |
+834 ~         self
+835 +             .cursor_style
+836 +             .unwrap_or(self.config.default_cursor_style)
+    |
+
+error: this `if` statement can be collapsed
+    --> crates/bbt-core/src/vendor/alacritty/term/mod.rs:1655:9
+     |
+1655 | /         if let Ok(bytes) = Base64.decode(base64) {
+1656 | |             if let Ok(text) = String::from_utf8(bytes) {
+1657 | |                 self.event_proxy
+1658 | |                     .send_event(Event::ClipboardStore(clipboard_type, text));
+1659 | |             }
+1660 | |         }
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+     = note: `-D clippy::collapsible-if` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+     |
+1655 ~         if let Ok(bytes) = Base64.decode(base64)
+1656 ~             && let Ok(text) = String::from_utf8(bytes) {
+1657 |                 self.event_proxy
+1658 |                     .send_event(Event::ClipboardStore(clipboard_type, text));
+1659 ~             }
+     |
+
+error: manual implementation of `.is_multiple_of()`
+    --> crates/bbt-core/src/vendor/alacritty/term/mod.rs:2271:30
+     |
+2271 |             let is_tabstop = index % INITIAL_TABSTOPS == 0;
+     |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `index.is_multiple_of(INITIAL_TABSTOPS)`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#manual_is_multiple_of
+     = note: `-D clippy::manual-is-multiple-of` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::manual_is_multiple_of)]`
+
+error: redundant reference in `debug!` argument
+    --> crates/bbt-core/src/vendor/vte/ansi.rs:1355:65
+     |
+1355 |             debug!("[unhandled osc_dispatch]: [{}] at line {}", &buf, line!());
+     |                                                                 ^^^^ help: remove the redundant `&`: `buf`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#useless_borrows_in_formatting
+     = note: `#[deny(clippy::useless_borrows_in_formatting)]` implied by `#[deny(clippy::all)]`
+
+error: manual implementation of `.is_multiple_of()`
+    --> crates/bbt-core/src/vendor/vte/ansi.rs:1381:41
+     |
+1381 |                 if params.len() <= 1 || params.len() % 2 == 0 {
+     |                                         ^^^^^^^^^^^^^^^^^^^^^ help: replace with: `params.len().is_multiple_of(2)`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#manual_is_multiple_of
+     = note: `#[deny(clippy::manual_is_multiple_of)]` implied by `#[deny(clippy::all)]`
+
+error: this `if` statement can be collapsed
+    --> crates/bbt-core/src/vendor/vte/ansi.rs:1438:17
+     |
+1438 | /                 if params.len() >= 2 {
+1439 | |                     if let Some(mut dynamic_code) = parse_number(params[0]) {
+1440 | |                         for param in &params[1..] {
+...    |
+1466 | |                 }
+     | |_________________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+     = note: `#[deny(clippy::collapsible_if)]` implied by `#[deny(clippy::all)]`
+help: collapse nested if block
+     |
+1438 ~                 if params.len() >= 2
+1439 ~                     && let Some(mut dynamic_code) = parse_number(params[0]) {
+1440 |                         for param in &params[1..] {
+ ...
+1464 |                         return;
+1465 ~                     }
+     |
+
+error: could not compile `bbt-core` (lib) due to 9 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+exit: 101
