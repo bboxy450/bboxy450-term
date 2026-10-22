@@ -4,7 +4,6 @@
 
 [meta]
 version = 1
-brand_tilt_deg = -12          # logo gesture: 12 degrees counter-clockwise
 
 [font]
 chrome = "ui-sans-serif, -apple-system, 'Inter', 'Segoe UI', system-ui, sans-serif"

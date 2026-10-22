@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 22,
+  "version": 23,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -352,6 +352,12 @@
       "source": "seats are sockets",
       "anatomy": "a tiny plug glyph with a count at the row's right when > 0",
       "status": "decided (broker telemetry, counts only, no identities), drawn, not built"
+    },
+    "logo": {
+      "purpose": "the product mark, everywhere a logo appears",
+      "anatomy": "the operator's identity PNG (lab/web/bboxy.png, from ~/.agents/identity/bboxy.png), downscaled; circle crop in chrome, rounded square as a tile, plain at 16/32/64/128/256/512 on the logo page; the menubar shows it at 16 px",
+      "rules": ["no vector mark exists", "never generate or redraw it", "the sidebar-toggle fox (toolbar icon) is a separate glyph and stays"],
+      "status": "identity PNG only; SVG retired"
     },
     "tick_ladder": {
       "purpose": "delivery evidence on a message",

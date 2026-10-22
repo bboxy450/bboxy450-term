@@ -2,18 +2,12 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>logo · bboxy450-term lab</title>
 <link rel="stylesheet" href="lab.css">
-<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
 </head><body><script>
 const el = Lab.el;
-const T = TOKENS;
-Lab.page({ title: 'logo', checker: true, wide: true, note: 'The mark is the identity portrait (bboxy.png), per the operator. Circle crop in chrome, rounded square as an app tile. The SVG silhouette explorations stay in the last state for reference only.',
-  states: ['portrait at sizes', 'circle crop', 'app tile', 'on light', 'svg explorations (reference)'],
+Lab.page({ title: 'logo', checker: true, wide: true, note: 'The logo is the identity PNG only (lab/web/bboxy.png, from ~/.agents/identity/bboxy.png), downscaled. No vector mark exists.',
+  states: ['identity png'],
   render(s, body) {
-    const lt = (px, opts, label) => el('div', { class: 'lt' }, C.logo(px, opts), el('small', {}, label || px));
-    if (s === 'portrait at sizes') body.append(el('div', { class: 'logo-row' }, ...[16, 18, 24, 32, 48, 64, 128, 256].map(px => lt(px, { square: true }))));
-    if (s === 'circle crop') body.append(el('div', { class: 'logo-row' }, ...[16, 18, 24, 32, 48, 64, 128].map(px => lt(px, {}))));
-    if (s === 'app tile') { const tile = (px, bg) => el('div', { class: 'lt' }, el('div', { class: 'tile', style: 'width:' + px + 'px;height:' + px + 'px;background:' + bg }, C.logo(Math.round(px * .8), { square: true })), el('small', {}, px)); body.append(el('div', { class: 'logo-row' }, tile(128, T.color.dark.accent_soft), tile(128, T.color.dark.navy), tile(128, T.color.dark.bg), tile(64, T.color.dark.accent_soft), tile(32, T.color.dark.accent_soft))); }
-    if (s === 'on light') body.append(el('div', { class: 'logo-row', style: 'background:' + T.color.light.bg + ';padding:24px;border-radius:var(--r-pill)' }, lt(128, { square: true }), lt(64, {}), lt(32, {}), lt(18, {})));
-    if (s === 'svg explorations (reference)') body.append(el('div', { class: 'logo-row' }, lt(128, { svg: true, ears: false }, 'head'), lt(128, { svg: true, ears: false, tilt: 0 }, 'untilted'), lt(64, { svg: true, ears: true }, 'ears'), lt(128, { svg: true, ears: false, face: true }, 'with face')));
+    body.append(el('div', { class: 'logo-row' }, ...[16, 32, 64, 128, 256, 512].map(px => el('div', { class: 'lt' }, el('img', { src: 'bboxy.png', alt: 'bboxy', width: px, height: px, style: 'display:block' }), el('small', {}, px)))));
   } });
 </script></body></html>

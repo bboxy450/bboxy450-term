@@ -5,8 +5,8 @@
 <script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
 </head><body><script>
 const el = Lab.el;
-Lab.page({ title: 'harness icon', checker: true, note: 'Monochrome marks on currentColor. Claude ✳, Codex hexagon, pi, omp ring, zsh prompt. Plus the two chrome marks from the pick: the sidebar-toggle fox and the ear pair.',
-  states: ['claude', 'codex', 'pi', 'omp', 'zsh', 'gear', 'sidebarfox', 'ears'],
+Lab.page({ title: 'harness icon', checker: true, note: 'Monochrome marks on currentColor. Claude ✳, Codex hexagon, pi, omp ring, zsh prompt. Plus the chrome mark from the pick: the sidebar-toggle fox.',
+  states: ['claude', 'codex', 'pi', 'omp', 'zsh', 'gear', 'sidebarfox'],
   render(s, body) {
     const row = el('div', { style: 'display:flex;gap:28px;align-items:end' });
     for (const px of [12, 16, 20, 32, 64]) row.append(el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:6px;--icon:' + px + 'px' }, C.harnessIcon(s), el('small', { style: 'color:var(--fg-dim);font-size:10px' }, px)));

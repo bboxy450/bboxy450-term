@@ -112,7 +112,6 @@ window.TOKENS = {
     "gutter": 2
   },
   "meta": {
-    "brand_tilt_deg": -12,
     "version": 1
   },
   "motion": {

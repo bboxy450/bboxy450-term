@@ -5,12 +5,12 @@
 <script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
 </head><body>
 <div class="index">
-  <h1><span class="hicon" style="--icon:28px;color:var(--accent)" id="mark"></span> bboxy450-term · component lab</h1>
+  <h1><span id="mark" style="display:inline-flex;vertical-align:-5px"></span> bboxy450-term · component lab</h1>
   <p>Web lab, option c stage one. Every page has a state strip, a density toggle (touch / comfortable / compact) and a theme toggle. Values come from <code>design/tokens.toml</code>; run <code>python3 lab/web/gen-tokens.py</code> after editing it. Pick table: <code>.bboxy/ux-pick.md</code>.</p>
   <ol>
     <li><a href="tokens.html">tokens</a><small>palette, state and role colours, seat colour hash, density table</small></li>
     <li><a href="glyph.html">state glyph</a><small>● ○ ◐ ✕ at three sizes</small></li>
-    <li><a href="harness-icon.html">harness icon</a><small>claude codex pi omp zsh, sidebar fox, ears</small></li>
+    <li><a href="harness-icon.html">harness icon</a><small>claude codex pi omp zsh, sidebar fox</small></li>
     <li><a href="seat-row.html">seat row</a><small>states, focus, unread, subtitle, overflow</small></li>
     <li><a href="mini-grid.html">mini grid</a><small>V, H, nested, focused, state cells, phone size</small></li>
     <li><a href="tab-row.html">tab row</a><small>collapsed roll-up, expanded seats</small></li>
@@ -21,15 +21,15 @@
     <li><a href="picker.html">⌘T picker</a><small>prefix filter, roles, name reveal</small></li>
     <li><a href="message-row.html">message row</a><small>role + priority proposal, stream, ripple</small></li>
     <li><a href="settings.html">settings</a><small>as a tab, long page, harness cards, diff-from-default</small></li>
-    <li><a href="toolbar-icon.html">toolbar icon</a><small>sidebar-toggle fox, ear pair, in our title bar</small></li>
-    <li><a href="logo.html">logo</a><small>head silhouette tilted 12°, ears-only small, app tile</small></li>
+    <li><a href="toolbar-icon.html">toolbar icon</a><small>sidebar-toggle fox, in our title bar, menubar</small></li>
+    <li><a href="logo.html">logo</a><small>identity PNG only, downscaled at 16 to 512</small></li>
     <li><a href="showcase.html">showcase</a><small>full-window mock, shader glow, live replay. Keys: 1-4 state of the focused seat, M message, P phantom speaks, T delegate a task / advance it, E external event, ⌘G graph, ⌘, settings, Tab focus next, arrows walk panes. URL: <code>?scene=15</code>, <code>?gutter=4</code></small></li>
   </ol>
   <p id="foot"></p>
 </div>
 <script>
   Lab.applyTokens();
-  document.getElementById('mark').innerHTML = C.logoSvg({});
+  document.getElementById('mark').append(C.logo(28));
   document.getElementById('foot').textContent = 'tokens v' + TOKENS.meta.version + ' · theme ' + Lab.prefs.theme + ' · density ' + Lab.prefs.density;
 </script>
 </body></html>

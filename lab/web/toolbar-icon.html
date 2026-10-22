@@ -5,13 +5,12 @@
 <script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
 </head><body><script>
 const el = Lab.el;
-Lab.page({ title: 'toolbar icon', checker: true, wide: true, note: 'Pick §8 shapes 3 + 1. Toolbar: the standard sidebar-toggle glyph whose left column grows an ear tip; filled column = sidebar shown. It <i>is</i> the sidebar toggle. Menubar: the ear pair as a template icon. Shown at sizes, tinted, and in our own title bar (no native chrome).',
-  states: ['sidebar toggle · closed', 'sidebar toggle · open', 'ear pair', 'sizes ladder', 'in our title bar', 'in the menubar'],
+Lab.page({ title: 'toolbar icon', checker: true, wide: true, note: 'Pick §8 shapes 3 + 1. Toolbar: the standard sidebar-toggle glyph whose left column grows an ear tip; filled column = sidebar shown. It <i>is</i> the sidebar toggle. Menubar: the identity PNG, downscaled. Shown at sizes, tinted, and in our own title bar (no native chrome).',
+  states: ['sidebar toggle · closed', 'sidebar toggle · open', 'sizes ladder', 'in our title bar', 'in the menubar'],
   render(s, body) {
     const ladder = name => { const r = el('div', { class: 'logo-row' }); for (const px of [12, 16, 20, 24, 32, 64]) r.append(el('div', { class: 'lt', style: '--icon:' + px + 'px' }, C.harnessIcon(name), el('small', {}, px))); r.append(el('div', { class: 'lt', style: '--icon:32px;color:var(--accent)' }, C.harnessIcon(name), el('small', {}, 'tinted'))); return r; };
     if (s === 'sidebar toggle · closed') body.append(ladder('sidebarfox'));
     if (s === 'sidebar toggle · open') body.append(ladder('sidebarfoxopen'));
-    if (s === 'ear pair') body.append(ladder('ears'));
     if (s === 'sizes ladder') body.append(el('div', { class: 'logo-row' }, ...[12, 16, 20, 24].map(px => el('div', { class: 'lt', style: '--icon:' + px + 'px' }, el('div', { style: 'display:flex;gap:8px' }, C.harnessIcon('sidebarfox'), C.harnessIcon('sidebarfoxopen'), C.harnessIcon('ears')), el('small', {}, px)))));
     if (s === 'in our title bar') {
       let open = true;
@@ -20,6 +19,6 @@ Lab.page({ title: 'toolbar icon', checker: true, wide: true, note: 'Pick §8 sha
       draw();
       body.append(el('div', { style: 'max-width:640px' }, bar, el('div', { style: 'height:120px;background:var(--bg);border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r-pill) var(--r-pill)' })), el('p', { class: 'lab-note', style: 'padding:8px 0 0' }, 'click the icon to toggle'));
     }
-    if (s === 'in the menubar') body.append(el('div', { class: 'menubar', style: 'max-width:520px' }, C.harnessIcon('ears'), el('span', { style: 'margin-left:auto;display:flex;gap:12px;opacity:.7' }, '◐ 3 waiting', 'Wed 12:14')));
+    if (s === 'in the menubar') body.append(el('div', { class: 'menubar', style: 'max-width:520px' }, C.logo(16), el('span', { style: 'margin-left:auto;display:flex;gap:12px;opacity:.7' }, '◐ 3 waiting', 'Wed 12:14')));
   } });
 </script></body></html>

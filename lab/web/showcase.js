@@ -360,7 +360,7 @@
   const themeBtn = el('span', { class: 'tbtn theme', title: 'toggle light / dark', onclick: () => { themeMode = theme() === 'dark' ? 'light' : 'dark'; Lab.store.set('showcase.theme', themeMode); applyTheme(); drawThemeBtn(); render(); } });
   function drawThemeBtn() { themeBtn.innerHTML = ''; themeBtn.append(C.harnessIcon(theme() === 'dark' ? 'sun' : 'moon')); }
   drawThemeBtn();
-  const titlebar = el('div', { class: 'titlebar' }, el('span', { class: 'win' }, el('i'), el('i'), el('i')), el('span', { class: 'tbtn on' }, C.harnessIcon('sidebarfoxopen')), C.logo(18, { ears: false }), el('span', { class: 'ttl' }, 'bboxy450-term'), el('span', { id: 'crumb' }), el('span', { class: 'spacer' }), themeBtn);
+  const titlebar = el('div', { class: 'titlebar' }, el('span', { class: 'win' }, el('i'), el('i'), el('i')), el('span', { class: 'tbtn on' }, C.harnessIcon('sidebarfoxopen')), C.logo(18), el('span', { class: 'ttl' }, 'bboxy450-term'), el('span', { id: 'crumb' }), el('span', { class: 'spacer' }), themeBtn);
   const main = el('div', { id: 'main' });
   app.append(titlebar, main);
   let rects = [];
