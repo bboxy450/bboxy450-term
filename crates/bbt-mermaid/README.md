@@ -15,7 +15,7 @@ let g = bbt_mermaid::render(src, &my_measure, &bbt_mermaid::Style::default())?;
 | Diagram | Syntax |
 |---|---|
 | `flowchart` / `graph` | TB/TD/BT/LR/RL; 14 node shapes; `A[[slug]]` sets `Node::link`; `-->` `---` `-.->` `==>` `~~~` `<-->` `o--o` `--x`, longer links (`--->`), labels (`-- t -->`, `-->\|t\|`); `&` groups; `:::class`, `class`, `classDef`, `style`; nested `subgraph` with its own `direction` (kept only while no edge crosses its border, as in Mermaid) |
-| `sequenceDiagram` | `participant`/`actor` `as`; all ten arrows; `+`/`-` and `activate`/`deactivate`; notes left/right/over; `loop` `alt`/`else` `opt` `par`/`and` `critical`/`option` `break` `rect`; `autonumber` |
+| `sequenceDiagram` | `participant`/`actor` `as` (with `:::class`); all ten arrows; `+`/`-` and `activate`/`deactivate`; notes left/right/over; `loop` `alt`/`else` `opt` `par`/`and` `critical`/`option` `break` `rect`; `autonumber` |
 | `stateDiagram`, `stateDiagram-v2` | states, `state "name" as id`, `id : description`, transitions with labels, `[*]` start/end per scope, composite states (nested), `<<choice>>` `<<fork>>` `<<join>>`, notes left/right of a state, `direction`, classes |
 
 Not supported (errors): `@{ }` node metadata, sequence `box`/`create`, state concurrency `--`, other diagram types.

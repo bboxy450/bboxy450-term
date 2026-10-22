@@ -13,6 +13,8 @@ pub struct Actor {
     pub lines: Vec<String>,
     /// `Shape::Participant` or `Shape::Actor`.
     pub shape: Shape,
+    /// `participant O as Vesper:::oracle`: the lab's role classes.
+    pub classes: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -126,6 +128,7 @@ impl P {
             id: id.into(),
             lines: vec![id.into()],
             shape: Shape::Participant,
+            classes: Vec::new(),
         });
         self.actors.len() - 1
     }
@@ -168,6 +171,11 @@ pub(crate) fn parse(lines: &[(usize, String)]) -> Result<Sequence, Error> {
         }
         match kw {
             "participant" | "actor" => {
+                // A `:::class` suffix, on the id or the alias, is a class, not label text.
+                let (rest, class) = match rest.rsplit_once(":::") {
+                    Some((r, c)) => (r.trim(), Some(c.trim())),
+                    None => (rest, None),
+                };
                 let (id, alias) = match rest.split_once(" as ") {
                     Some((i, a)) => (i.trim(), Some(a.trim())),
                     None => (rest, None),
@@ -178,6 +186,9 @@ pub(crate) fn parse(lines: &[(usize, String)]) -> Result<Sequence, Error> {
                 let i = p.actor(id);
                 if let Some(a) = alias {
                     p.actors[i].lines = clean(a);
+                }
+                if let Some(c) = class.filter(|c| !c.is_empty()) {
+                    p.actors[i].classes.push(c.to_string());
                 }
                 if kw == "actor" {
                     p.actors[i].shape = Shape::Actor;
@@ -692,7 +703,7 @@ pub(crate) fn layout(q: &Sequence, m: &dyn Measure, s: &Style) -> Result<Geometr
                     Rect::centered(lc, ts),
                 )),
                 link: None,
-                classes: Vec::new(),
+                classes: a.classes.clone(),
                 style: None,
             });
         }
@@ -802,6 +813,18 @@ mod tests {
         assert_eq!(q.actors.len(), 2);
         assert_eq!(q.actors[0].lines, vec!["harness PTY"]);
         assert_eq!(q.actors[1].shape, Shape::Actor);
+        let r = parse(&strip_frontmatter(
+            "sequenceDiagram\n participant O as Vesper:::oracle\n participant N:::executor\n O->>N: hi",
+        ))
+        .unwrap();
+        assert_eq!(
+            (r.actors[0].lines.clone(), r.actors[0].classes.clone()),
+            (vec!["Vesper".to_string()], vec!["oracle".to_string()])
+        );
+        assert_eq!(
+            (r.actors[1].id.as_str(), r.actors[1].classes.clone()),
+            ("N", vec!["executor".to_string()])
+        );
         match &q.events[0] {
             Event::Message {
                 activate,
