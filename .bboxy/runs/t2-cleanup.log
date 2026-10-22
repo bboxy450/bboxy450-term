@@ -1,0 +1,11 @@
+{
+  "deleted": "/Users/feral/mydev/bboxy450-term-exec4/target/debug/incremental",
+  "allocatedFileBytesRemoved": 2309595136,
+  "logicalFileBytesRemoved": 2277430019,
+  "acceptedGalleriesKept": true,
+  "compiledBinariesAndEvidenceKept": true,
+  "authorization": "Vesper eda9ccaa-28f4-4f7a-84b8-a63317af82a3",
+  "postRebaseAllocatedFileBytesRemoved": 853721088,
+  "postRebaseLogicalFileBytesRemoved": 826859927,
+  "metricLimit": "st_blocks summed per file entry, including possible hardlinks; not an isolated filesystem-free-space delta. Initial du was approximately 1.9 GiB; both incremental directories were removed."
+}

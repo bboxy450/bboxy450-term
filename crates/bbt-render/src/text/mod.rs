@@ -32,6 +32,8 @@ pub struct RasterizedGlyph {
     pub mask: Vec<u8>,
 }
 
+pub mod terminal;
+
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(target_os = "macos")]

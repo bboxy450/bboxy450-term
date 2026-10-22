@@ -214,6 +214,8 @@ dependencies = [
 name = "bbt-render"
 version = "0.0.1"
 dependencies = [
+ "bboxy-firehose",
+ "bbt-core",
  "bbt-ui-model",
  "bytemuck",
  "lyon_tessellation",
@@ -223,6 +225,7 @@ dependencies = [
  "png",
  "pollster",
  "resvg",
+ "serde_json",
  "wgpu",
 ]
 

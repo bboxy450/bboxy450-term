@@ -1,0 +1,22 @@
+{
+  "fullParityTestedSource": "c6ca5d175015b27a60d03000765439bf469cbcdc",
+  "rebasedSource": "288c4c272d49791756af3f5b6094f12b4cfd3a25",
+  "parent": "a9ab5c157498a436c2088fbc3d9a84c085fe5f95",
+  "unchanged": {
+    "crates/bbt-render": {
+      "beforeTree": "374b6557c3b86d039a694c942f6ffab0a37b9889",
+      "afterTree": "374b6557c3b86d039a694c942f6ffab0a37b9889",
+      "equal": true
+    },
+    "crates/bboxybook": {
+      "beforeTree": "4de4b743162dae3facd49816b94312f633ac056f",
+      "afterTree": "4de4b743162dae3facd49816b94312f633ac056f",
+      "equal": true
+    },
+    "crates/bboxy-firehose": {
+      "beforeTree": "5f04529c5c19c898a3b1691462ea2571b5bb2ef0",
+      "afterTree": "5f04529c5c19c898a3b1691462ea2571b5bb2ef0",
+      "equal": true
+    }
+  }
+}

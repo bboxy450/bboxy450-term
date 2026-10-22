@@ -1,0 +1,406 @@
+{
+  "adapter": "AdapterInfo { name: \"Apple M4\", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: \"\", driver: \"\", driver_info: \"\", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }",
+  "baseline": true,
+  "cases": [
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "codex-dark-1x.png",
+      "height": 432,
+      "legacyError": null,
+      "name": "codex",
+      "variant": "codex-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 16,
+      "file": "claude-dark-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "claude",
+      "variant": "claude-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "palette-dark-1x.png",
+      "height": 432,
+      "legacyError": null,
+      "name": "palette",
+      "variant": "palette-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 269,
+      "file": "unicode-dark-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "unicode",
+      "variant": "unicode-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 21,
+      "file": "progress-dark-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "progress",
+      "variant": "progress-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "alternate-dark-1x.png",
+      "height": 432,
+      "legacyError": null,
+      "name": "alternate",
+      "variant": "alternate-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 2,
+      "file": "scroll-links-sync-dark-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 4,
+      "file": "osc7501-claude-dark-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 3,
+      "file": "osc7501-preflight-dark-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 5,
+      "file": "osc7501-codex-dark-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-dark-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "codex-light-1x.png",
+      "height": 432,
+      "legacyError": null,
+      "name": "codex",
+      "variant": "codex-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 16,
+      "file": "claude-light-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "claude",
+      "variant": "claude-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "palette-light-1x.png",
+      "height": 432,
+      "legacyError": null,
+      "name": "palette",
+      "variant": "palette-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 269,
+      "file": "unicode-light-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "unicode",
+      "variant": "unicode-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 21,
+      "file": "progress-light-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "progress",
+      "variant": "progress-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "alternate-light-1x.png",
+      "height": 432,
+      "legacyError": null,
+      "name": "alternate",
+      "variant": "alternate-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 2,
+      "file": "scroll-links-sync-light-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 4,
+      "file": "osc7501-claude-light-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 3,
+      "file": "osc7501-preflight-light-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 5,
+      "file": "osc7501-codex-light-1x.png",
+      "height": 432,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-light-1x",
+      "width": 640
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "codex-dark-2x.png",
+      "height": 840,
+      "legacyError": null,
+      "name": "codex",
+      "variant": "codex-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 16,
+      "file": "claude-dark-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "claude",
+      "variant": "claude-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "palette-dark-2x.png",
+      "height": 840,
+      "legacyError": null,
+      "name": "palette",
+      "variant": "palette-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 269,
+      "file": "unicode-dark-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "unicode",
+      "variant": "unicode-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 21,
+      "file": "progress-dark-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "progress",
+      "variant": "progress-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "alternate-dark-2x.png",
+      "height": 840,
+      "legacyError": null,
+      "name": "alternate",
+      "variant": "alternate-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 2,
+      "file": "scroll-links-sync-dark-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 4,
+      "file": "osc7501-claude-dark-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 3,
+      "file": "osc7501-preflight-dark-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 5,
+      "file": "osc7501-codex-dark-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-dark-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "codex-light-2x.png",
+      "height": 840,
+      "legacyError": null,
+      "name": "codex",
+      "variant": "codex-light-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 16,
+      "file": "claude-light-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "claude",
+      "variant": "claude-light-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "palette-light-2x.png",
+      "height": 840,
+      "legacyError": null,
+      "name": "palette",
+      "variant": "palette-light-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 269,
+      "file": "unicode-light-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "unicode",
+      "variant": "unicode-light-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 21,
+      "file": "progress-light-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "progress",
+      "variant": "progress-light-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "actual legacy cells pass",
+      "diagnosticReplacements": 0,
+      "file": "alternate-light-2x.png",
+      "height": 840,
+      "legacyError": null,
+      "name": "alternate",
+      "variant": "alternate-light-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 2,
+      "file": "scroll-links-sync-light-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-light-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 4,
+      "file": "osc7501-claude-light-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-light-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 3,
+      "file": "osc7501-preflight-light-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-light-2x",
+      "width": 1280
+    },
+    {
+      "baselineKind": "ASCII replacement diagnostic; original rendering failed",
+      "diagnosticReplacements": 5,
+      "file": "osc7501-codex-light-2x.png",
+      "height": 840,
+      "legacyError": "W3.1 text supports printable ASCII only",
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-light-2x",
+      "width": 1280
+    }
+  ]
+}

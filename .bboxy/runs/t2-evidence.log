@@ -1,0 +1,82 @@
+T2a headless terminal fidelity / T3 supporting fonts — 2026-10-22
+Assignment: Vesper DM cb26a9ab-24f8-4869-a6fc-a97d22cc7dad. C1b queued; R3 parser-pool assignment superseded.
+Worktree /Users/feral/mydev/bboxy450-term-exec4, branch exec4.
+
+Reproduction: crates/bboxy-firehose/reference/README.md, Headless cells gallery.
+Local gallery: crates/bboxy-firehose/reference/gallery/index.html.
+40 cases = 10 scenes x dark/light x 1x/2x, seed 42, Menlo 13, 80x24.
+Native and reference geometry agree in all 40: 640x360 at 1x, 1280x720 at 2x.
+Four strict web runs: exit 0 each, 10/10 scenes each; 76,800 shared semantic cells and 40 cursors match.
+Shared semantic schema: chars,width,fg,bg,bold,dim,italic,inverse,underline-present,strike. Does not prove full private-mode/OSC state or underline-style equality.
+
+Before/after: max absolute RGB channel difference >12/255 on the same padded union canvas, no resampling.
+Viewport metric below uses only the current 80x24 viewport and excludes padding.
+* Before is an ASCII replacement diagnostic because the actual legacy renderer rejected non-ASCII; not a successful legacy render.
+scene | before % | after % | after viewport % | before status
+codex | 9.103 | 3.834 | 4.549 | actual legacy render
+claude | 9.358 | 3.847 | 4.564 | diagnostic *
+palette | 21.635 | 2.254 | 2.673 | actual legacy render
+unicode | 12.129 | 5.731 | 6.793 | diagnostic *
+progress | 4.209 | 1.628 | 1.931 | diagnostic *
+alternate | 3.007 | 1.278 | 1.517 | actual legacy render
+scroll-links-sync | 8.148 | 3.804 | 4.513 | diagnostic *
+osc7501-claude | 3.814 | 1.647 | 1.954 | diagnostic *
+osc7501-preflight | 3.756 | 1.617 | 1.918 | diagnostic *
+osc7501-codex | 5.345 | 2.320 | 2.752 | diagnostic *
+
+Mechanisms:
+crates/bbt-render/src/cells/terminal.rs:21 — parser-free snapshots, per-cell style and three cursor shapes.
+crates/bbt-render/src/cells/terminal/gpu.rs:54 — retained per-face glyph/sprite caches, R8 mask/BGRA color atlases, shared-device Metal render and offline readback.
+crates/bbt-render/src/cells/terminal/terminal.wgsl:33 — sRGB decode, premultiplied linear blend with luminance-remapped text coverage; sprites and emoji take their own coverage paths.
+crates/bbt-render/src/cells/terminal/sprites.rs:165 — procedural box/block/Braille/Powerline, underlines, strike and cursor sprites.
+crates/bbt-render/src/text/terminal_macos.rs:46 — CoreText regular/bold/italic/bold-italic, symbols/CJK/emoji fallback, alpha-only masks and premultiplied BGRA color glyphs.
+crates/bbt-render/src/atlas.rs:38 — four-channel growth retains original glyph coordinates.
+crates/bbt-render/examples/terminal_gallery.rs:68 — bbt-core Term -> snapshot -> actual cells pass, plus honest legacy failure diagnostics.
+crates/bboxy-firehose/reference/index.html:32 — optional fixed integer cell metrics; pinned xterm still parses independently, font remains 13px.
+crates/bboxy-firehose/reference/gallery.py:31 — true-size comparison strips, SHA-256s and both canvas/viewport metrics.
+
+Tests and observed results:
+cargo test -p bbt-render --test terminal — exit 0, 4 passed.
+cargo test -p bbt-render -p bboxy-firehose — exit 0; complete output in t2-checks.log (49 tests total including existing smoke/variant coverage).
+New coverage: real bold/italic face differences; CJK not LastResort; combining masks; premultiplied colored ZWJ emoji; 1x/2x integer metrics; invalid config rejection; procedural cell seams; repeat-frame cache reuse; all three cursor shapes; invalid snapshots; color-atlas growth; explicit emoji joins respect style boundaries.
+cargo clippy -p bbt-render -p bboxy-firehose --all-targets -- -D warnings — exit 101; own derivable Default fixed. Existing chrome/paths.rs chunks_exact and headless.rs map_entry warnings left in their ownership.
+cargo clippy -p bbt-render -p bboxy-firehose --all-targets — exit 0; t2-clippy.log. Own items_after_test_module warning subsequently fixed by moving tests to the end.
+
+Image reads completed: all 40 gallery/read/<scene>-<theme>-<scale>x.png strips, each displaying xterm | native | diff side by side.
+Scenes: codex, claude, palette, unicode, progress, alternate, scroll-links-sync, osc7501-claude, osc7501-preflight, osc7501-codex. Every scene read dark/light at 1x/2x.
+Read findings: text stays on the integer cell grid; palettes and reversed backgrounds appear; CJK/combining marks and colored joined emoji are present; procedural boxes, blocks, Braille and Powerline avoid font tofu; underlines/strike and hollow cursor are visible. Raster weight and some decoration/glyph geometry differ from the reference.
+Follow-up fixes from actual reads: alpha-only coverage, explicit ZWJ/modifier joins, two-cell joined rainbow flag despite one-cell base, rounded corners, nested double-line corners.
+
+Observed limits and deliberately untouched:
+CoreText text coverage/weight and decoration placement differ from Chrome. No exact pixel-parity claim.
+xterm DOM reference lacks Powerline glyphs; native procedural glyphs render them rather than copying tofu. Rounded/double boxes and Braille can differ in geometry.
+Final frames only in native matrix; intermediate progress/alternate images exist for the web reference. Cursor shape behavior is verified by Metal pixel tests.
+Actual iTerm2/Ghostty comparisons remain unproven under the earlier authorized fallback.
+Live app integration, input/resize/selection, font size-change latency and R5 load/stall tests are deferred to their assignments.
+Non-macOS font backend explicitly unsupported in this new path; no Linux claim.
+Chrome text, app/materials, bbt-mux/logic/ring/supervisor, parser and existing ASCII HeadlessRenderer left alone.
+No push, merge or new task creation.
+
+CI layering decision: initial sh scripts/ci-local.sh --parity exited 1 (bboxy-firehose -> bbt-render upward edge), log t2-ci-local.log. Vesper decision b11b2a7a-d231-4fef-af65-ebb7230dc88e: keep ORDER and move gallery example to renderer. bbt-render/Cargo.toml dev-deps explicitly authorized.
+Applied: gallery now crates/bbt-render/examples/terminal_gallery.rs; downward dev-deps on bboxy-firehose, bbt-core, serde_json. Firehose manifest restored to T1. sh scripts/layering.sh exits 0; cargo check -p bbt-render --example terminal_gallery exits 0.
+Added Metal coverage-polarity test: neutral partial-coverage edges match gamma-space mask coverage in both dark/light polarities, no RGB fringes.
+
+After the authorized gallery move, cargo run -p bbt-render --example terminal_gallery -- crates/bboxy-firehose/reference/gallery/native exited 0; all 40 PNG SHA-256 digests identical to the reviewed matrix (t2-native-final.log).
+Shell command inventory: t2-command-inventory.log points to every recorded T2 shell request and actual observed statuses; computed commands/long stdin programs retain local source pointers rather than guesses. ICQ payloads and raw session transcripts are deliberately not copied into Git.
+Current public GPU API is offline readback only. C1b still needs live prepare/encode and pane composition; no claim that readback is usable on the UI thread.
+
+Final added AA test: cargo test -p bbt-render --test terminal metal_grayscale_blending_preserves_coverage_in_both_polarities -- --exact — exit 0, one passed, four filtered; t2-aa.log.
+Pre-commit independent workspace build/test/UI lint checks exited 0. Their duplicate parity capture was deliberately stopped via SIGTERM before final clean-commit CI; runner exit 143, not a parity result.
+Exact owned Rust files: rustfmt --check --edition 2024 --config skip_children=true ... — exit 0. git diff --check — exit 0.
+Final clean-commit CI output will be target/t2-ci-final.log (ignored build artifact, kept outside the commit it tests); its SHA and exit status are supplied in the ICQ handoff.
+
+Final verified source: 288c4c272d49791756af3f5b6094f12b4cfd3a25, parent origin/main a9ab5c157498a436c2088fbc3d9a84c085fe5f95, after signed rebase. No authored runtime changes followed this source commit.
+sh scripts/ci-local.sh --parity on clean c6ca5d1: exit 101 at crates/bboxybook/src/panes.rs:320, legacy Pane style alpha outside zero..one. 1664/1664 web captures succeeded; 1344 native images completed before the known panic. Full actual output: t2-ci-full.log.
+Vesper waiver 1c8d9b2f-091d-430b-80c2-13e1895aecb6; amended gate dccf7bbd-b2cf-4cd9-8115-6c8622096b07 accepts byte identity of the completed 1344-case prefix to a frozen pre-T2a binary, plus the 40-case terminal gate. Geometry: not re-emitted (unchanged layout code). No layout fix or new helper shipped.
+sh scripts/ci-local.sh on clean rebased 288c4c2: exit 0, 420 tests passed, four existing ignored; layering/build/workspace tests/UI IO lint passed. This later run did not repeat --parity. t2-rebase.log proves identical entire bbt-render, bboxybook and bboxy-firehose Git subtree hashes across c6ca5d1 -> 288c4c2. Full output: t2-ci-rebased.log.
+Frozen before executable SHA256 a6fbc1f3ae74497465c57e388f1c9fd6bcea54df45629a66931dae1a7b8acd84, copied read-only from the accepted W2.4 CI target reused by clean S1 source 9cd9ee1. All bbt-render/bboxybook source paths are identical between 4e0a191 and 9cd9ee1. The clean S1 build record identifies source/worktree/CARGO_TARGET_DIR; t2-before-provenance.log records the artifact path/hash. Three controls were byte-identical before launching the full comparison.
+Frozen before render of the same captured 1344-case manifest: exit 0. Every PNG SHA-256 is identical to the T2 after image, 1344/1344. Exact per-file digests: t2-chrome-prefix.log. Actual render output: t2-before-render.log. No geometric acceptance claim is substituted for these bytes.
+Stale cache probes were not accepted as baselines: main f436bc3 cache matched 40/1344; exec3 bec57ee cache matched 752/1344, with the same decoded-pixel counts. Both were superseded by the controlled frozen-binary comparison. Those different historical revisions did not establish a regression.
+A stdin-only geometry probe failed compilation with E0603 (seven helpers are private), exit 1. It installed no source helper and was abandoned per the Oracle decision. t2-geometry-probe.log retains source and actual error output.
+Disk action authorized by Vesper eda9ccaa-28f4-4f7a-84b8-a63317af82a3: removed only this worktree's two completed incremental compiler caches, preserving accepted galleries, binaries and evidence. File-entry allocated-byte sums were 2309595136 and 853721088; these can count hardlinks, so they are not claimed as an isolated volume delta. Initial du was approximately 1.9 GiB. t2-cleanup.log records this metric limit.
+This evidence update changes only .bboxy/runs/t2-*.log; the verified source remains 288c4c2. No push or merge.

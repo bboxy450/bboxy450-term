@@ -1,0 +1,5 @@
+$ sh scripts/ci-local.sh --parity
+bboxy-firehose -> bbt-render: depends upward
+layering: VIOLATED
+
+exit_status=1

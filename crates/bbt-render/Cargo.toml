@@ -21,3 +21,8 @@ wgpu = { version = "=30.0.1", default-features = false, features = ["std", "meta
 objc2-core-foundation = "0.3.2"
 objc2-core-graphics = "0.3.2"
 objc2-core-text = "0.3.2"
+
+[dev-dependencies]
+bbt-core.workspace = true
+bboxy-firehose = { path = "../bboxy-firehose" }
+serde_json = "1"

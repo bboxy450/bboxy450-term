@@ -9,7 +9,8 @@ import {createHash} from 'node:crypto';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../../..');
 const binary = path.join(root, 'target/release/bboxy-firehose');
-const out = path.join(here, 'evidence');
+const out = process.env.TERMINAL_OUT ? path.resolve(process.env.TERMINAL_OUT) : path.join(here, 'evidence');
+const fixedGrid = process.env.TERMINAL_GRID === '1';
 const chrome = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const seed = '42', scale = Number(process.env.SCALE || 1), light = process.env.THEME === 'light';
 if (![1, 2].includes(scale)) throw Error('SCALE must be 1 or 2');
@@ -92,7 +93,7 @@ try {
   };
   for (const name of names) {
     const bytes = execFileSync(binary, ['--scene', name, '--seed', seed, '--rate', 'max']);
-    await cdp.eval(`openFixture(${light})`);
+    await cdp.eval(`openFixture(${light},${fixedGrid})`);
     const endAlt = name === 'alternate' ? bytes.lastIndexOf(Buffer.from('\x1b[?1049l')) : -1;
     const halfProgress = name === 'progress' ? bytes.indexOf(Buffer.from(' 50%')) + 4 : -1;
     const split = endAlt > 0 ? endAlt : halfProgress > 4 ? halfProgress : -1;

@@ -1,0 +1,1834 @@
+{
+  "metric": "max absolute RGB channel difference >12/255; same padded union canvas before/after, no resampling",
+  "baseline": "actual legacy renderer where supported; visibly labelled ASCII-replacement diagnostic where original rendering errored",
+  "cases": [
+    {
+      "cachedGlyphs": 72,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Regular"
+      ],
+      "file": "codex-dark-1x.png",
+      "height": 360,
+      "name": "codex",
+      "variant": "codex-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 10.040147569444445,
+      "changedPercent": 4.341724537037037,
+      "viewportChangedPercent": 5.210069444444445,
+      "changedPixels": 12004,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "657bc1a4f2b9f52f67cb5ced7d0edb73e9bcdb7fef11a649f31550f1e953583c",
+      "nativeSha256": "f156637e2aba6ad9b3edb057a9b1218b434bdfc6121cee969136b4603f5b5bbd"
+    },
+    {
+      "cachedGlyphs": 116,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "claude-dark-1x.png",
+      "height": 360,
+      "name": "claude",
+      "variant": "claude-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 10.562065972222221,
+      "changedPercent": 4.850622106481482,
+      "viewportChangedPercent": 5.820746527777778,
+      "changedPixels": 13411,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 16,
+      "webSha256": "844a38130bd42628be5760ce7e1ef6e919f54e6074fad4a2fa3532381ccf2f15",
+      "nativeSha256": "7b45c2459c5f06717736cc0bd466e65848aff9f60595856419673a11c4ea55b9"
+    },
+    {
+      "cachedGlyphs": 139,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "palette-dark-1x.png",
+      "height": 360,
+      "name": "palette",
+      "variant": "palette-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 22.024739583333332,
+      "changedPercent": 2.7745225694444446,
+      "viewportChangedPercent": 3.3294270833333335,
+      "changedPixels": 7671,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "3bed6775877a145a40b39a7b0407622c5dfc623a2ecfd538a2b6ebf9199aa97e",
+      "nativeSha256": "6d3347c072d11ba961b2765d998a6a3444ec1a233375dd5867fca529cb8d4065"
+    },
+    {
+      "cachedGlyphs": 272,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "unicode-dark-1x.png",
+      "height": 360,
+      "name": "unicode",
+      "variant": "unicode-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 13.80714699074074,
+      "changedPercent": 6.716941550925926,
+      "viewportChangedPercent": 8.06032986111111,
+      "changedPixels": 18571,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 269,
+      "webSha256": "5a9b790c779e7a2e38f717777e9e32a11fac412a875abc8b770ab086a5b383c1",
+      "nativeSha256": "d8db77683444e1c780d38c3fa71263a3184bd468eaed001635c827f1ffe16d62"
+    },
+    {
+      "cachedGlyphs": 281,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "progress-dark-1x.png",
+      "height": 360,
+      "name": "progress",
+      "variant": "progress-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 4.585141782407407,
+      "changedPercent": 1.9921874999999998,
+      "viewportChangedPercent": 2.390625,
+      "changedPixels": 5508,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 21,
+      "webSha256": "581b395b3355e50056cad0d4d73f50cc89fef97f7209aa86d042de1d20f01059",
+      "nativeSha256": "7a34c235059580353bf29c3f06074e9e14ce38419ce81c4e19128fb3be5902cb"
+    },
+    {
+      "cachedGlyphs": 283,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "alternate-dark-1x.png",
+      "height": 360,
+      "name": "alternate",
+      "variant": "alternate-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 3.3369502314814814,
+      "changedPercent": 1.5928819444444444,
+      "viewportChangedPercent": 1.9114583333333335,
+      "changedPixels": 4404,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "417490e545ba37828fb5acd689d69a34bc3aafc0c752a5d8372c6fc4f3cf1fd5",
+      "nativeSha256": "d52313f71de9d09931dd2ccbf2de1945b8e6286b1cb47787c243a97d1e1062c7"
+    },
+    {
+      "cachedGlyphs": 288,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "scroll-links-sync-dark-1x.png",
+      "height": 360,
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 9.150390625,
+      "changedPercent": 4.438657407407407,
+      "viewportChangedPercent": 5.326388888888889,
+      "changedPixels": 12272,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 2,
+      "webSha256": "7f46b654534da728640b293f13c4bff7b77eb8e4fb455e07bb533a362e2ee3f9",
+      "nativeSha256": "fbe82ff2e792bc3d8ea3c1d3dc20e871cc2dbbe0798c488e6f2c025400654b90"
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-claude-dark-1x.png",
+      "height": 360,
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 4.263237847222222,
+      "changedPercent": 2.109013310185185,
+      "viewportChangedPercent": 2.5308159722222223,
+      "changedPixels": 5831,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 4,
+      "webSha256": "a95bab64c5d1ee2c5a56cf45fdc58d9f7adeae1509895d91ad49fc5782811c62",
+      "nativeSha256": "8b93d7913a6f1e0d0e54101c20a6e3df205e877d2dba051ce98bae89ebdc4915"
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-preflight-dark-1x.png",
+      "height": 360,
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 4.19921875,
+      "changedPercent": 2.080078125,
+      "viewportChangedPercent": 2.49609375,
+      "changedPixels": 5751,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 3,
+      "webSha256": "b1fd6bf93e1a12a2dd590b3ed7ba1eeb5ac87d2d1136006dd9b47160de969bf1",
+      "nativeSha256": "894a49d7c805be7b0ccc6302790122ebd3b0d5ba250275c2c62d613902d2a9f4"
+    },
+    {
+      "cachedGlyphs": 293,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-codex-dark-1x.png",
+      "height": 360,
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-dark-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 6.064814814814815,
+      "changedPercent": 2.996961805555556,
+      "viewportChangedPercent": 3.596354166666667,
+      "changedPixels": 8286,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 5,
+      "webSha256": "0d95ba0479bc5031e2f066ed8adf86a38fcfcd99a624591130c7dc9ad1e7b3d6",
+      "nativeSha256": "0bce00d613a7deb4e39630c9901566a8c826ce9a7241c5e884b278b3f3f7278f"
+    },
+    {
+      "cachedGlyphs": 72,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Regular"
+      ],
+      "file": "codex-light-1x.png",
+      "height": 360,
+      "name": "codex",
+      "variant": "codex-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 9.33376736111111,
+      "changedPercent": 4.665798611111112,
+      "viewportChangedPercent": 5.598958333333334,
+      "changedPixels": 12900,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "e5a4da44d9895d21018b7c7f258233c1f295ef27378f07aefdbcdcf3629bdb62",
+      "nativeSha256": "d95f700b752c7b737cfc607d78eee01a04cc674b6953cd92ec8e2ffb10133003"
+    },
+    {
+      "cachedGlyphs": 116,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "claude-light-1x.png",
+      "height": 360,
+      "name": "claude",
+      "variant": "claude-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 9.617332175925926,
+      "changedPercent": 4.19921875,
+      "viewportChangedPercent": 5.0390625,
+      "changedPixels": 11610,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 16,
+      "webSha256": "1bffb7947b789e1a44dfb605ac01441d56aada3f191606c94364efef041a326a",
+      "nativeSha256": "7b2c0cbbaad583fdd27a020070483208309dad5fc3467816a26f9761f525c7a9"
+    },
+    {
+      "cachedGlyphs": 139,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "palette-light-1x.png",
+      "height": 360,
+      "name": "palette",
+      "variant": "palette-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 21.69921875,
+      "changedPercent": 2.455150462962963,
+      "viewportChangedPercent": 2.946180555555556,
+      "changedPixels": 6788,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "f3c51dc450534f0980fa714fd7c69ee6e9f417b4ed0923fb6e329b2a2afb2e87",
+      "nativeSha256": "659bff92fe6e0d8d850ad7189ef858749f1a15c299f901fa07114c65b95a9cd7"
+    },
+    {
+      "cachedGlyphs": 272,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "unicode-light-1x.png",
+      "height": 360,
+      "name": "unicode",
+      "variant": "unicode-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 12.52025462962963,
+      "changedPercent": 6.125578703703704,
+      "viewportChangedPercent": 7.350694444444445,
+      "changedPixels": 16936,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 269,
+      "webSha256": "a3aa592042b8dee86313383f3af46767361dd4968715bbb92d4e280306916f5b",
+      "nativeSha256": "e199c8a493a660f00d41dce2202757427a1ece606425c6b8f356bbc09cd0fba5"
+    },
+    {
+      "cachedGlyphs": 281,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "progress-light-1x.png",
+      "height": 360,
+      "name": "progress",
+      "variant": "progress-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 4.328703703703703,
+      "changedPercent": 1.8511284722222223,
+      "viewportChangedPercent": 2.2213541666666665,
+      "changedPixels": 5118,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 21,
+      "webSha256": "9769c74a746540d2818312bfe421af258eeab84f27bccbf89e658a3b6dd91576",
+      "nativeSha256": "08af723b4327eb3f510e8d754704db6ac30ca83ec3afc71bcd7e141ccd80c8e2"
+    },
+    {
+      "cachedGlyphs": 283,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "alternate-light-1x.png",
+      "height": 360,
+      "name": "alternate",
+      "variant": "alternate-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 3.113425925925926,
+      "changedPercent": 1.4731626157407407,
+      "viewportChangedPercent": 1.767795138888889,
+      "changedPixels": 4073,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "bbd3f213328970c8bc35b74acf39af435aafd50bde8b8878a5ac4779a9382742",
+      "nativeSha256": "d1e426b39754a8a5be0a1abac121d17676e87e007134abc7ecd9f175e77ab119"
+    },
+    {
+      "cachedGlyphs": 288,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "scroll-links-sync-light-1x.png",
+      "height": 360,
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 8.582175925925926,
+      "changedPercent": 4.593822337962963,
+      "viewportChangedPercent": 5.512586805555555,
+      "changedPixels": 12701,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 2,
+      "webSha256": "e02c0b4e17595c65f0e6b0c943b6fd9e40beb1d2f13f061ce1810ffda38a0469",
+      "nativeSha256": "bc69fa00193ae51d695917af7d4e53f19fa1df8e61a84bc0a81f01a895588d2a"
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-claude-light-1x.png",
+      "height": 360,
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 3.915653935185185,
+      "changedPercent": 1.8019386574074074,
+      "viewportChangedPercent": 2.162326388888889,
+      "changedPixels": 4982,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 4,
+      "webSha256": "616ddb9d55d3b38c51b32d6e65f7efbe8f764660769227724624d8cafda51dc5",
+      "nativeSha256": "1dfd72fd8f624ed1b4974b12c05a8354d2faac2eb3b42d0d81cf8b18301d089f"
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-preflight-light-1x.png",
+      "height": 360,
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 3.8682725694444446,
+      "changedPercent": 1.769024884259259,
+      "viewportChangedPercent": 2.122829861111111,
+      "changedPixels": 4891,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 3,
+      "webSha256": "93f1439f06699d6e27a5c29219f9e57298b9148a0f19a59f737ddc66ba2cc61d",
+      "nativeSha256": "1fd5ecf600cd2edb1323a55f8f07f637fad58f3c8fb8e68788fb1921205f2cf2"
+    },
+    {
+      "cachedGlyphs": 293,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-codex-light-1x.png",
+      "height": 360,
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-light-1x",
+      "width": 640,
+      "webSize": [
+        640,
+        360
+      ],
+      "nativeSize": [
+        640,
+        360
+      ],
+      "beforeSize": [
+        640,
+        432
+      ],
+      "comparisonCanvas": [
+        640,
+        432
+      ],
+      "beforeChangedPercent": 5.524088541666667,
+      "changedPercent": 2.488425925925926,
+      "viewportChangedPercent": 2.986111111111111,
+      "changedPixels": 6880,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 5,
+      "webSha256": "60671a3b70c4033d12aa80932632e41d067db887bfca8e59df83b562079a8250",
+      "nativeSha256": "d91cf65a96ee89c91b82752ae4e471802b5c99833324701d102a04750f2da053"
+    },
+    {
+      "cachedGlyphs": 72,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Regular"
+      ],
+      "file": "codex-dark-2x.png",
+      "height": 720,
+      "name": "codex",
+      "variant": "codex-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 8.649925595238095,
+      "changedPercent": 3.0397135416666665,
+      "viewportChangedPercent": 3.546332465277778,
+      "changedPixels": 32683,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "ab7b7e80909c3eb6a6efb99f338fbc910b152485e1dfaacf8974acc9a918ea0f",
+      "nativeSha256": "46ef1080d46a08cad5bb9e74fc6bea6ab6cc8735da639e238bc52523ea3f0959"
+    },
+    {
+      "cachedGlyphs": 116,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "claude-dark-2x.png",
+      "height": 720,
+      "name": "claude",
+      "variant": "claude-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 8.809988839285714,
+      "changedPercent": 3.247395833333333,
+      "viewportChangedPercent": 3.788628472222222,
+      "changedPixels": 34916,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 16,
+      "webSha256": "58ee66b82ec4b32e2d744a20526044bfadb854f0528a92e72f44acdd7b48e715",
+      "nativeSha256": "55bdb61d83cae4eb818866894109298f2493a474f22b5b5a3652360331f46c66"
+    },
+    {
+      "cachedGlyphs": 139,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "palette-dark-2x.png",
+      "height": 720,
+      "name": "palette",
+      "variant": "palette-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 21.462425595238095,
+      "changedPercent": 1.9636346726190474,
+      "viewportChangedPercent": 2.290907118055556,
+      "changedPixels": 21113,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "d3059f3c2f7d4796533606fff276b1c03582505d97d71645dfdf8d64137b7ef4",
+      "nativeSha256": "87b5127de453be80e5f522b94d86ef98b4981cc04ff73c3ab68477cd147dd842"
+    },
+    {
+      "cachedGlyphs": 272,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "unicode-dark-2x.png",
+      "height": 720,
+      "name": "unicode",
+      "variant": "unicode-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 11.255673363095237,
+      "changedPercent": 5.033854166666667,
+      "viewportChangedPercent": 5.872829861111111,
+      "changedPixels": 54124,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 269,
+      "webSha256": "6f4c7a06d4f80da984cb7fe2ef203ea2ca10743dba38f343a506afb68beb2140",
+      "nativeSha256": "aa5524a61f3c97cb777987f53c801ec8cb03b793d627da5ea3268a79e979a929"
+    },
+    {
+      "cachedGlyphs": 281,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "progress-dark-2x.png",
+      "height": 720,
+      "name": "progress",
+      "variant": "progress-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 3.9968377976190474,
+      "changedPercent": 1.342168898809524,
+      "viewportChangedPercent": 1.5658637152777777,
+      "changedPixels": 14431,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 21,
+      "webSha256": "3f9689ebd31066b2e731513f14364dd47902e3e3471931d214c269b743243745",
+      "nativeSha256": "d907a65a0bc6b8cb3c7b5e958499750013df5e052fe2b5e6c59d70483e677961"
+    },
+    {
+      "cachedGlyphs": 283,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "alternate-dark-2x.png",
+      "height": 720,
+      "name": "alternate",
+      "variant": "alternate-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 2.831845238095238,
+      "changedPercent": 1.032924107142857,
+      "viewportChangedPercent": 1.205078125,
+      "changedPixels": 11106,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "4646ff83e672100dd6ff757c1126e40c049c44fd8fc2af3c7186735700370a41",
+      "nativeSha256": "cb04abc15b1af7bf6de0c82f8245554266c8aa832338970ae5f9f1cc096ded39"
+    },
+    {
+      "cachedGlyphs": 288,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "scroll-links-sync-dark-2x.png",
+      "height": 720,
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 7.537574404761904,
+      "changedPercent": 3.025297619047619,
+      "viewportChangedPercent": 3.529513888888889,
+      "changedPixels": 32528,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 2,
+      "webSha256": "f0e0bcc5b07481b4a279f9aefdc15d9e2057184ff9f207cd1fe53ad431c7d790",
+      "nativeSha256": "2b67b8f5fcad5d11da36959abd63c03c7e2accffb4dafaabd3664a2e2d04d911"
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-claude-dark-2x.png",
+      "height": 720,
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 3.6092819940476186,
+      "changedPercent": 1.3872767857142858,
+      "viewportChangedPercent": 1.6184895833333335,
+      "changedPixels": 14916,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 4,
+      "webSha256": "d57e9581b558848a96f6b1fab5ff563e844eca776601aa3eb5d983fd22d2d9da",
+      "nativeSha256": "242c343479e83fe0f5e58887dfb29358dc4da8feb612fe86c309d059825bbb0b"
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-preflight-dark-2x.png",
+      "height": 720,
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 3.5471540178571432,
+      "changedPercent": 1.357421875,
+      "viewportChangedPercent": 1.5836588541666665,
+      "changedPixels": 14595,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 3,
+      "webSha256": "5524a322360616f8321de2fc6300694c9f42dae3eeccde0a454537f6558f93cc",
+      "nativeSha256": "9eebe115addb8b63a8deddd33ac635370a187b3c6a807829e5c8143bf6f369dd"
+    },
+    {
+      "cachedGlyphs": 293,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-codex-dark-2x.png",
+      "height": 720,
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-dark-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 4.994512648809524,
+      "changedPercent": 1.9774925595238093,
+      "viewportChangedPercent": 2.307074652777778,
+      "changedPixels": 21262,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 5,
+      "webSha256": "3feeb4fc41cfa3fe67b8a838522ccb398ba92594c31140a5612e59bfcd52d951",
+      "nativeSha256": "d0a2eaa67925c56120df8004a1ae9c35aebbf1f5105645e4a5525a6288c8316a"
+    },
+    {
+      "cachedGlyphs": 72,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Regular"
+      ],
+      "file": "codex-light-2x.png",
+      "height": 720,
+      "name": "codex",
+      "variant": "codex-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 8.386346726190476,
+      "changedPercent": 3.2903645833333335,
+      "viewportChangedPercent": 3.8387586805555554,
+      "changedPixels": 35378,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "8d3ca64d1b8fd1e6773d5b9f7a490b754e851df5e20823a34a388d12211ff089",
+      "nativeSha256": "b2e21aabea05c5da38baae432a91dd25140fccae206798c7838521e026e6a777"
+    },
+    {
+      "cachedGlyphs": 116,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "claude-light-2x.png",
+      "height": 720,
+      "name": "claude",
+      "variant": "claude-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 8.442894345238097,
+      "changedPercent": 3.092540922619048,
+      "viewportChangedPercent": 3.6079644097222223,
+      "changedPixels": 33251,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 16,
+      "webSha256": "531154eed4b57793f75d580eda0da9a6305c7f6d9b4d5f537af8b12c195f1569",
+      "nativeSha256": "0113f9e36c42a170f408f808c3c9e8e775845c633ee227120d0e23529ac60a98"
+    },
+    {
+      "cachedGlyphs": 139,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "palette-light-2x.png",
+      "height": 720,
+      "name": "palette",
+      "variant": "palette-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 21.35267857142857,
+      "changedPercent": 1.8218005952380951,
+      "viewportChangedPercent": 2.1254340277777777,
+      "changedPixels": 19588,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "494dc6bb500ea7529a8333f134ca824b54620f29b8b0f68007f85e02872bb9d5",
+      "nativeSha256": "d11fa9b16cf63b05089b7a16c0b1106a5180dbd380487224e88e96694881fc65"
+    },
+    {
+      "cachedGlyphs": 272,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "unicode-light-2x.png",
+      "height": 720,
+      "name": "unicode",
+      "variant": "unicode-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 10.931175595238095,
+      "changedPercent": 5.047154017857143,
+      "viewportChangedPercent": 5.888346354166667,
+      "changedPixels": 54267,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 269,
+      "webSha256": "588a53105332495cdb5c472b0d5fcf3a1fa8635fbeff53f2f3b90ae2b3fdd115",
+      "nativeSha256": "44241985d881a0b2e4392d238335065e208ae7c629a9c1a1ba1bb4f6888b025d"
+    },
+    {
+      "cachedGlyphs": 281,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "progress-light-2x.png",
+      "height": 720,
+      "name": "progress",
+      "variant": "progress-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 3.9237351190476186,
+      "changedPercent": 1.3266369047619047,
+      "viewportChangedPercent": 1.5477430555555556,
+      "changedPixels": 14264,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 21,
+      "webSha256": "fc4b77ca2ff37fa012bbfb7669176dc66df8b41ce028896fc97496c206df773e",
+      "nativeSha256": "e0cd443c17c91045f9791d244ab41c98424762c2f7ccb1bae24ee69b12ccd9c9"
+    },
+    {
+      "cachedGlyphs": 283,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "alternate-light-2x.png",
+      "height": 720,
+      "name": "alternate",
+      "variant": "alternate-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 2.7465587797619047,
+      "changedPercent": 1.0141369047619049,
+      "viewportChangedPercent": 1.1831597222222223,
+      "changedPixels": 10904,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": null,
+      "beforeDiagnosticReplacements": 0,
+      "webSha256": "517299ffb365dcf68a4de775deb0ea7118323a85c2e36c643f2b31a2aba2937c",
+      "nativeSha256": "8a0995bfa302009e223bbe5914903934f292af3eaa84c88b2114c4451811a5ff"
+    },
+    {
+      "cachedGlyphs": 288,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "scroll-links-sync-light-2x.png",
+      "height": 720,
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 7.321335565476191,
+      "changedPercent": 3.157645089285714,
+      "viewportChangedPercent": 3.6839192708333335,
+      "changedPixels": 33951,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 2,
+      "webSha256": "254796ee92c2bf588dc6a83f1b8dbf73ed0ec819c46e8e5757ad193f52685412",
+      "nativeSha256": "528ccd00491f9aaf9bca9260beac080386b2e7143cf07a4ce00352420c095fb9"
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-claude-light-2x.png",
+      "height": 720,
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 3.4675409226190474,
+      "changedPercent": 1.2894345238095237,
+      "viewportChangedPercent": 1.5043402777777777,
+      "changedPixels": 13864,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 4,
+      "webSha256": "e17cc0cad8a67b8e99eb259977caa7688801ab479e54f3da936e515d8a44d6d7",
+      "nativeSha256": "39e5f0e25a8dbf5f3fb1a96a19b25033a1e1b6228bcf495eb267174675612400"
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-preflight-light-2x.png",
+      "height": 720,
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 3.4104352678571423,
+      "changedPercent": 1.2606956845238095,
+      "viewportChangedPercent": 1.4708116319444444,
+      "changedPixels": 13555,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 3,
+      "webSha256": "4c190be65502497b359261f90b1e0e48ee622596a80c0ebc9e45ff2d6cdeec0b",
+      "nativeSha256": "8da90c9029419e75efd548cd3237b6a09dacaa66b775a9ed4ac6d4b59cd6e9c1"
+    },
+    {
+      "cachedGlyphs": 293,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "AppleSymbols",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-codex-light-2x.png",
+      "height": 720,
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-light-2x",
+      "width": 1280,
+      "webSize": [
+        1280,
+        720
+      ],
+      "nativeSize": [
+        1280,
+        720
+      ],
+      "beforeSize": [
+        1280,
+        840
+      ],
+      "comparisonCanvas": [
+        1280,
+        840
+      ],
+      "beforeChangedPercent": 4.794921875,
+      "changedPercent": 1.8157552083333335,
+      "viewportChangedPercent": 2.118381076388889,
+      "changedPixels": 19523,
+      "tolerance": 12,
+      "geometryMatch": true,
+      "beforeLegacyError": "W3.1 text supports printable ASCII only",
+      "beforeDiagnosticReplacements": 5,
+      "webSha256": "5a2f509a0bf7b0fc2dbe01f01aed620744453573dc8ac15648db0123a2152def",
+      "nativeSha256": "25ec6f3a9952d5514156b84016c7fbbde693f40a6af3af684255de9f86e4a363"
+    }
+  ],
+  "perScene": [
+    {
+      "scene": "codex",
+      "beforeMeanPercent": 9.102546812996032,
+      "afterMeanPercent": 3.834400318287037,
+      "afterWorstPercent": 4.665798611111112,
+      "afterViewportMeanPercent": 4.548529730902778,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 0
+    },
+    {
+      "scene": "claude",
+      "beforeMeanPercent": 9.358070333167989,
+      "afterMeanPercent": 3.8474444031084656,
+      "afterWorstPercent": 4.850622106481482,
+      "afterViewportMeanPercent": 4.564100477430555,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 4
+    },
+    {
+      "scene": "palette",
+      "beforeMeanPercent": 21.634765625,
+      "afterMeanPercent": 2.2537770750661377,
+      "afterWorstPercent": 2.7745225694444446,
+      "afterViewportMeanPercent": 2.672987196180556,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 0
+    },
+    {
+      "scene": "unicode",
+      "beforeMeanPercent": 12.128562644675926,
+      "afterMeanPercent": 5.73088210978836,
+      "afterWorstPercent": 6.716941550925926,
+      "afterViewportMeanPercent": 6.793050130208333,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 4
+    },
+    {
+      "scene": "progress",
+      "beforeMeanPercent": 4.208604600694445,
+      "afterMeanPercent": 1.6280304439484126,
+      "afterWorstPercent": 1.9921874999999998,
+      "afterViewportMeanPercent": 1.931396484375,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 4
+    },
+    {
+      "scene": "alternate",
+      "beforeMeanPercent": 3.0071950438161377,
+      "afterMeanPercent": 1.2782763930224867,
+      "afterWorstPercent": 1.5928819444444444,
+      "afterViewportMeanPercent": 1.5168728298611112,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 0
+    },
+    {
+      "scene": "scroll-links-sync",
+      "beforeMeanPercent": 8.147869130291005,
+      "afterMeanPercent": 3.8038556134259256,
+      "afterWorstPercent": 4.593822337962963,
+      "afterViewportMeanPercent": 4.513102213541667,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 4
+    },
+    {
+      "scene": "osc7501-claude",
+      "beforeMeanPercent": 3.813928674768518,
+      "afterMeanPercent": 1.6469158192791005,
+      "afterWorstPercent": 2.109013310185185,
+      "afterViewportMeanPercent": 1.9539930555555556,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 4
+    },
+    {
+      "scene": "osc7501-preflight",
+      "beforeMeanPercent": 3.756270151289683,
+      "afterMeanPercent": 1.6168051421957672,
+      "afterWorstPercent": 2.080078125,
+      "afterViewportMeanPercent": 1.9183485243055556,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 4
+    },
+    {
+      "scene": "osc7501-codex",
+      "beforeMeanPercent": 5.344584470072752,
+      "afterMeanPercent": 2.3196588748346563,
+      "afterWorstPercent": 2.996961805555556,
+      "afterViewportMeanPercent": 2.751980251736111,
+      "geometryMatches": 4,
+      "beforeRenderFailures": 4
+    }
+  ]
+}

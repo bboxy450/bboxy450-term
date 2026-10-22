@@ -1,0 +1,107 @@
+$ rustc --edition=2024 --crate-name t2_prefix_geometry -L dependency=target/debug/deps --extern bboxybook=target/debug/libbboxybook.rlib --extern serde_json=target/debug/deps/libserde_json-8c08f8c1dd2ce75e.rlib -o target/t2-prefix/geometry -
+source:
+use std::{fs,path::PathBuf};
+fn main() -> bboxybook::Result<()> {
+ let args:Vec<_>=std::env::args().collect(); let out=PathBuf::from(&args[2]);fs::create_dir_all(&out)?;
+ let cases:Vec<bboxybook::gallery::Case>=serde_json::from_slice(&fs::read(&args[1])?)?;
+ let surfaces=bboxybook::overlays::surface_snapshots(&cases)?;
+ fs::write(out.join("surface-layouts.json"),serde_json::to_vec_pretty(&surfaces)?)?;
+ let mut s=bboxybook::components::snapshots(&cases)?;
+ s.extend(bboxybook::styles::snapshots(&cases)?);s.extend(bboxybook::atoms::snapshots(&cases)?);
+ s.extend(bboxybook::seat_rows::snapshots(&cases)?);s.extend(bboxybook::tabs::snapshots(&cases)?);
+ s.extend(bboxybook::swarms::snapshots(&cases)?);s.extend(bboxybook::panes::snapshots(&cases)?);
+ s.extend(bboxybook::title_bars::snapshots(&cases)?);s.extend(bboxybook::launchers::snapshots(&cases)?);
+ s.extend(bboxybook::streams::snapshots(&cases)?);s.extend(bboxybook::graphs::snapshots(&cases)?);
+ s.extend(bboxybook::settings::snapshots(&cases)?);s.extend(bboxybook::paths::snapshots(&cases)?);
+ fs::write(out.join("layouts.json"),serde_json::to_vec_pretty(&s)?)?;
+ println!("{} native geometry records for {} prefix cases, using the same public functions as parity::render",s.len(),cases.len());Ok(())
+}
+error[E0603]: function `surface_snapshots` is private
+  --> <anon>:5:36
+   |
+ 5 |  let surfaces=bboxybook::overlays::surface_snapshots(&cases)?;
+   |                                    ^^^^^^^^^^^^^^^^^ private function
+   |
+note: the function `surface_snapshots` is defined here
+  --> crates/bboxybook/src/overlays.rs:68:1
+   |
+68 | pub(crate) fn surface_snapshots(cases: &[Case]) -> Result<Vec<Value>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: function `snapshots` is private
+   --> <anon>:7:35
+    |
+  7 |  let mut s=bboxybook::components::snapshots(&cases)?;
+    |                                   ^^^^^^^^^ private function
+    |
+note: the function `snapshots` is defined here
+   --> crates/bboxybook/src/components.rs:510:1
+    |
+510 | pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: function `snapshots` is private
+   --> <anon>:8:30
+    |
+  8 |  s.extend(bboxybook::styles::snapshots(&cases)?);s.extend(bboxybook::atoms::snapshots(&cases)?);
+    |                              ^^^^^^^^^ private function
+    |
+note: the function `snapshots` is defined here
+   --> crates/bboxybook/src/styles.rs:160:1
+    |
+160 | pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: function `snapshots` is private
+   --> <anon>:8:77
+    |
+  8 |  s.extend(bboxybook::styles::snapshots(&cases)?);s.extend(bboxybook::atoms::snapshots(&cases)?);
+    |                                                                             ^^^^^^^^^ private function
+    |
+note: the function `snapshots` is defined here
+   --> crates/bboxybook/src/atoms.rs:322:1
+    |
+322 | pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: function `snapshots` is private
+   --> <anon>:9:33
+    |
+  9 |  s.extend(bboxybook::seat_rows::snapshots(&cases)?);s.extend(bboxybook::tabs::snapshots(&cases)?);
+    |                                 ^^^^^^^^^ private function
+    |
+note: the function `snapshots` is defined here
+   --> crates/bboxybook/src/seat_rows.rs:332:1
+    |
+332 | pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: function `snapshots` is private
+   --> <anon>:9:79
+    |
+  9 |  s.extend(bboxybook::seat_rows::snapshots(&cases)?);s.extend(bboxybook::tabs::snapshots(&cases)?);
+    |                                                                               ^^^^^^^^^ private function
+    |
+note: the function `snapshots` is defined here
+   --> crates/bboxybook/src/tabs.rs:253:1
+    |
+253 | pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: function `snapshots` is private
+   --> <anon>:10:30
+    |
+ 10 |  s.extend(bboxybook::swarms::snapshots(&cases)?);s.extend(bboxybook::panes::snapshots(&cases)?);
+    |                              ^^^^^^^^^ private function
+    |
+note: the function `snapshots` is defined here
+   --> crates/bboxybook/src/swarms.rs:286:1
+    |
+286 | pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0603`.
+
+compile_exit_status=1
