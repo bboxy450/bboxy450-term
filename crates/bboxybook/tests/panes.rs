@@ -59,3 +59,36 @@ fn legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_delet
         assert!(!body.contains(old));
     }
 }
+
+#[test]
+fn legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip() {
+    use bbt_ui_model::{
+        SwarmId,
+        draw::{Color, DrawCtx, DrawList},
+        layout::Rect,
+    };
+    let ctx = bbt_ui::Context::new(gallery::theme("dark"), gallery::density("touch"));
+    let seat = bboxybook::fixtures::seat(
+        &json!({
+            "key":"sc0", "name":"Vesper Greywind", "harness":"claude", "role":"oracle",
+            "title":"swarm control", "state":"active", "grade":"reported", "color":"#FFC53D"
+        }),
+        SwarmId::from_u128(1),
+        ctx.theme,
+    );
+    let hsl = seat.color.resolve("sc0", ctx.theme);
+    let rgba = Color::hsl(hsl.hue, hsl.saturation / 100., hsl.lightness / 100.).0;
+    println!("valid hex #FFC53D -> HSL {hsl:?} -> RGBA {rgba:?}");
+    bbt_ui::Paint::solid(bbt_ui::Color::Rgba(rgba))
+        .resolve(ctx)
+        .unwrap();
+    let mut draw = DrawList::default();
+    panes::paint_legacy_pane(
+        &seat,
+        Rect::new(14., 14., 700., 222.),
+        false,
+        &DrawCtx::new(ctx.theme, ctx.density),
+        &mut draw,
+    );
+    draw.validate().unwrap();
+}

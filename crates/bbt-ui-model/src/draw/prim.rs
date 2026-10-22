@@ -75,7 +75,13 @@ impl Color {
         } else {
             (r - g) / d + 4.0
         } * 60.0;
-        [h, d / (1.0 - (2.0 * l - 1.0).abs()).max(f32::EPSILON), l]
+        // Cancellation near full chroma can make unit saturation exceed one
+        // by an ULP, which then escapes the RGB gamut on the return trip.
+        [
+            h,
+            (d / (1.0 - (2.0 * l - 1.0).abs()).max(f32::EPSILON)).clamp(0., 1.),
+            l,
+        ]
     }
 }
 
@@ -193,4 +199,35 @@ pub enum Prim {
         radii: [f32; 4],
     },
     Unclip,
+}
+
+#[cfg(test)]
+mod color_tests {
+    use super::Color;
+    #[test]
+    fn valid_rgb_boundary_colours_round_trip_inside_the_unit_gamut() {
+        for value in [
+            "FFC53D", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff", "ffffff",
+            "000000", "010101", "fefefe", "0044ff", "ff4400", "44ff00",
+        ] {
+            let before = Color::hex(value);
+            let [h, s, l] = before.to_hsl();
+            assert!((0.0..=1.).contains(&s), "{value}: saturation {s}");
+            let after = Color::hsl(h, s, l);
+            assert!(
+                after.0.into_iter().all(|v| (0.0..=1.).contains(&v)),
+                "{value}: {:?}",
+                after.0
+            );
+            assert!(
+                before
+                    .0
+                    .iter()
+                    .zip(after.0)
+                    .all(|(a, b)| (*a - b).abs() < 0.000001),
+                "{value}: {:?}",
+                after.0
+            );
+        }
+    }
 }

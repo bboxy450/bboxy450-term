@@ -1,0 +1,23 @@
+ROLE: EXECUTOR — Nyx Copperwing. Baseline legacy-pane panic, assigned in DM 1343f44c.
+Valid lab input #FFC53D round-tripped through Color::to_hsl as saturation
+100.000015%, then Color::hsl returned red 1.0000001. Style's unit-channel gate
+rejected it with the misleading message 'style alpha must be between zero and
+one'. This is native f32 cancellation, not an invalid lab opacity.
+
+Fix at the conversion: bound mathematically unit saturation in Color::to_hsl.
+Style validation and input alpha are unchanged. No renderer or policy tuning.
+Pure RGB boundary-colour regression plus the exact legacy-pane reproduction.
+
+Before: cargo test -p bboxybook --test panes legacy_pane_accepts --locked
+ -- --nocapture — exit 101, RGBA [1.0000001, .77254903, .23921567, 1].
+After: same command — exit 0, one passed; saturation 100%, RGBA
+ [.99999994, .7725491, .23921573, 1]. Full legacy Pane layout now succeeds.
+cargo test -p bbt-ui-model --lib valid_rgb_boundary --locked — exit 0, one passed.
+Logs: target/bboxybook/documents/{pane-alpha-probe,pane-alpha-fixed,color-tests}.log.
+
+The preceding clean dash-CI run built and tested the workspace, then hit ENOSPC
+on one of 1,664 screenshots. Stopped its known renderer PID 61305 after verifying
+cwd=/tmp/nyx-ci-dash; script exit 143. It is incomplete, not passed. Clean CI of
+this signed colour fix will re-run with the fixed baseline and sufficient disk.
+The 1,992-image dash regression remains byte-identical; that proof is independent
+of this new colour fix. Nothing pushed by this Executor.
