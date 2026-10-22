@@ -10,7 +10,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
 | Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **standing by**: lab complete (30 pages, design system v54, layer-reference pages for L2/L3/L6); awaiting the operator's review points. Previous queue: **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); no checkpoints until the lab is complete (operator reviews once at the end); after pass 9: new pages documents.html, events.html, launcher.html, graph.html, stream.html, titlebar.html (operator ask), then passes 10-19, then window transparency | nothing |
-| Nyx Copperwing | Executor | Codex | **W3.2d.1b close L1/L2 gaps (sRGB chrome blending, shadow kernel, glow, frosted)**, then d.3 atoms; d.1 ✔ (582d1ba), d.2 ✔ (6f26d0a); W3.2c steps 1–3 deferred until L7 modules are re-based | nothing |
+| Nyx Copperwing | Executor | Codex | **W3.2d.3 atoms (L5)**; d.1 ✔, d.2 ✔, d.1b ✔ (cd17d64: materials 8/32, Style 56/88 over tolerance); W3.2c steps 1–3 deferred until L7 modules are re-based | nothing |
 | Rook Ashwhisker | Executor | Codex | **W2.2 logic: store objects, registry, .bboxy index, state streams, bus last** | nothing (authorized 2026-10-21) |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
@@ -58,7 +58,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 | State | Items |
 |---|---|
-| RUNNING | W3.2d.1b (Nyx); W2.2 (Rook) |
+| RUNNING | W3.2d.3 (Nyx); W2.2 (Rook) |
 | OPEN, claimable now | W4.1, W1.2, W2.3 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
