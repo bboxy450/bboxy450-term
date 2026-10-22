@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paths · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="ui.js"></script>
+</head><body><script>
+const el = Lab.el;
+// Retained vector paths (move, line, cubic) with stroke width, colour, opacity, dash, cap and join; stroke only.
+// Columns are raster scales (1x, 2x: the same record drawn at device pixel ratio 2), rows are themes. ?scale=1|2 deep-links one column.
+const SCALES = [1, 2];
+const scales = () => { const q = +new URLSearchParams(location.search).get('scale'); return SCALES.includes(q) ? [q] : SCALES; };
+const DEMO = {
+  // a graph edge: one cubic from a card's right port to another's left port, with a faint ghost at 40% opacity
+  cubic: () => UI.Stack({ gap: 8 },
+    UI.Path({ size: [240, 80], points: [{ move: [4, 8] }, { cubic: [[120, 8], [120, 72], [236, 72]] }], stroke: { width: 1.5, color: 'fg_dim', cap: 'round' } }),
+    UI.Path({ size: [240, 80], points: [{ move: [4, 72] }, { cubic: [[96, 72], [144, 8], [236, 8]] }], stroke: { width: 1.5, color: 'accent', opacity: 0.4, cap: 'round' } })),
+  // dashed lines: butt-capped long dash, round-capped dots, and a dashed cubic
+  dashed: () => UI.Stack({ gap: 8 },
+    UI.Path({ size: [240, 8], points: [{ move: [4, 4] }, { line: [236, 4] }], stroke: { width: 1, color: 'accent', dash: [6, 4] } }),
+    UI.Path({ size: [240, 8], points: [{ move: [4, 4] }, { line: [236, 4] }], stroke: { width: 2, color: 'fg_dim', dash: [0, 6], cap: 'round' } }),
+    UI.Path({ size: [240, 64], points: [{ move: [4, 56] }, { cubic: [[80, 56], [160, 8], [236, 8]] }], stroke: { width: 1.5, color: 'fg', dash: [4, 3], cap: 'butt' } })),
+  // weighted strokes 0.5 to 4, then the three joins on an 8 px chevron
+  weights: () => UI.Stack({ gap: 8 },
+    ...[0.5, 1, 1.5, 2, 3, 4].map(w => UI.Path({ size: [240, 8], points: [{ move: [4, 4] }, { line: [236, 4] }], stroke: { width: w, color: 'fg' } })),
+    UI.Stack({ dir: 'row', gap: 16 }, ...['miter', 'round', 'bevel'].map(j => UI.Path({ size: [64, 48], points: [{ move: [12, 42] }, { line: [32, 12] }, { line: [52, 42] }], stroke: { width: 8, color: 'fg_dim', join: j, cap: 'butt' } })))),
+};
+Lab.page({ title: 'paths', wide: true, note: 'Retained vector paths, the web reference for native stroked edges: move, line and cubic segments; stroke width, colour (theme token or literal), opacity, dash array, cap and join. Stroke only; circles and pills stay Box. Columns are raster scale 1x and 2x, rows are themes; ?state=&theme=&scale= deep-links one case.',
+  states: Object.keys(DEMO),
+  render(s, body) {
+    const grid = el('div', { class: 'ui-grid', style: 'grid-template-columns:repeat(' + SCALES.length + ', minmax(0, 1fr));overflow-x:auto' });
+    for (const theme of UI.themes()) for (const k of scales()) grid.append(UI.themeScope(theme, UI.Text(theme + ' · ' + k + 'x', { step: 'micro', mono: true, dim: true }), el('div', { class: 'path-host', 'data-scale': k, style: 'margin-top:8px;zoom:' + k }, DEMO[s]())));
+    body.append(grid);
+  } });
+</script></body></html>

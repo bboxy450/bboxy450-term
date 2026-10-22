@@ -87,6 +87,19 @@
   // public constructor options, consumed as-is by native (never child measurements):
   //   Text  { step, weight, mono, dim, color, caps, track, align: start | center | end }
   //   Stack { dir: column | row, gap, rowGap, columnGap, align: cross axis, justify: start | center | space-between, wrap }
+  // Path { points: [{move:[x,y]}, {line:[x,y]}, {cubic:[[cx1,cy1],[cx2,cy2],[x,y]]}], size: [w,h],
+  //        stroke: { width, color: theme token (fg, fg_dim, accent, line) or literal, opacity, dash: [on, off, ...], cap: butt | round | square, join: miter | round | bevel } }
+  // A retained vector edge, stroke only: circles and pills stay Box. Native tessellates the same record (lyon, analytic AA).
+  const SVG = 'http://www.w3.org/2000/svg', PATH_COLOR = { fg: '--fg', fg_dim: '--fg-dim', accent: '--accent', line: '--line' };
+  function Path(o) {
+    const [w, h] = o.size, st = o.stroke || {}, svg = document.createElementNS(SVG, 'svg'), path = document.createElementNS(SVG, 'path');
+    const d = (o.points || []).map(p => p.move ? 'M' + p.move : p.line ? 'L' + p.line : 'C' + p.cubic.join(' ')).join(' ');
+    svg.setAttribute('class', 'ui-path'); svg.setAttribute('width', w); svg.setAttribute('height', h); svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h); svg.style.display = 'block'; svg.style.overflow = 'visible';
+    const a = { d, fill: 'none', stroke: PATH_COLOR[st.color] ? 'var(' + PATH_COLOR[st.color] + ')' : st.color || 'currentColor', 'stroke-width': st.width ?? 1, 'stroke-opacity': st.opacity ?? 1, 'stroke-linecap': st.cap || 'butt', 'stroke-linejoin': st.join || 'miter' };
+    if (st.dash && st.dash.length) a['stroke-dasharray'] = st.dash.join(' ');
+    for (const k in a) path.setAttribute(k, a[k]);
+    svg.append(path); return svg;
+  }
   function Text(text, o) { o = o || {}; const t = el('span', { class: 'ui-text' }, text); t.style.fontSize = 'var(--t-' + (o.step || 'body') + ')'; if (o.weight) t.style.fontWeight = o.weight; if (o.mono) t.style.fontFamily = 'var(--font-mono)'; if (o.dim) t.style.color = 'var(--fg-dim)'; if (o.color) t.style.color = o.color; if (o.caps) { t.style.textTransform = 'uppercase'; t.style.letterSpacing = (o.track || .22) + 'em'; } if (o.align) t.style.textAlign = o.align; return t; }
   function Stack(o, ...kids) { o = o || {}; const s = el('div', { class: 'ui-stack' }, ...kids); s.style.display = 'flex'; s.style.flexDirection = o.dir === 'row' ? 'row' : 'column'; s.style.gap = o.gap != null ? px(o.gap) : 'var(--gap)'; if (o.rowGap != null) s.style.rowGap = px(o.rowGap); if (o.columnGap != null) s.style.columnGap = px(o.columnGap); if (o.align) s.style.alignItems = o.align; if (o.justify) s.style.justifyContent = o.justify; if (o.wrap) s.style.flexWrap = 'wrap'; return s; }
   function Spacer() { const s = el('span', { class: 'ui-spacer' }); s.style.flex = '1'; return s; }
@@ -104,5 +117,5 @@
   const Q = new URLSearchParams(location.search);
   const themes = () => Q.get('theme') && T.color[Q.get('theme')] ? [Q.get('theme')] : ['dark', 'light'];
   const densities = () => Q.get('density') && T.density[Q.get('density')] ? [Q.get('density')] : ['touch', 'comfortable', 'cozy', 'compact'];
-  window.UI = { textOpts, themes, densities, themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
+  window.UI = { textOpts, themes, densities, themeScope, densityScope, material, MATERIAL, STYLES, styleCss, STEPS, Box, Path, Text, Stack, Spacer, Badge, Button, List, Table, Input, Overlay, Modal };
 })();
