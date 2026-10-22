@@ -691,6 +691,14 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .seat-row .held.blocked { color: var(--fg-dim); background: transparent; border: 1px dashed var(--line); line-height: 12px; }
 .seat-row .mutemark { --icon: 11px; color: var(--c-waiting); display: inline-flex; flex: none; }
 .seat-row.muted .name { opacity: .7; }
+.strip .stop { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; opacity: .55; cursor: pointer; flex: none; }
+.strip .stop i { width: 8px; height: 8px; border-radius: 1.5px; background: currentColor; }
+.strip .stop:hover { opacity: 1; }
+.strip.isent { position: relative; }
+.strip.isent::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--c-errored); transform-origin: left; animation: isweep 1.1s var(--ease, ease) var(--isd, 0ms) forwards; pointer-events: none; }
+@keyframes isweep { 0% { transform: scaleX(0); opacity: 1; } 70% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+.isent-chip { font-size: 9.5px; line-height: 14px; padding: 0 5px; border-radius: 5px; white-space: nowrap; color: var(--c-errored); background: color-mix(in srgb, var(--c-errored) 14%, transparent); animation: restarted-out 3s var(--ease, ease) forwards; flex: none; }
+.strip .isent-chip { color: #fff; background: color-mix(in srgb, #000 28%, transparent); }
 .strip .mute { --icon: 12px; display: inline-flex; opacity: .55; cursor: pointer; }
 .strip .mute:hover, .strip .mute.on { opacity: 1; }
 .strip .mute.on { color: #FFE08A; }

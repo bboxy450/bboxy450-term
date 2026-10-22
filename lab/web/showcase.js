@@ -180,6 +180,10 @@
     render();
   }
   addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f) toggleMute(f); } });
+  // Stop (seat_interrupt): the operator may interrupt any seat they can act on; a one-shot "interrupt sent" on strip and row and a red
+  // sweep. It is a request: the seat's state changes only when the seat reports it. ⌘. interrupts the focused seat.
+  function interruptSeat(seat) { if (seat.interruptSent) return; seat.interruptSent = Date.now(); render(); setTimeout(() => { seat.interruptSent = null; render(); }, 3000); }
+  addEventListener('keydown', e => { if (e.metaKey && e.key === '.' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f && !f.settings && !f.graph) interruptSeat(f); } });
   // O: the Oracle spawns a seat over MCP. A dashed pending row with a spinner until applied, then the seat takes a tab of its own.
   // Demo cycle: every fourth spawn is rejected (reason shown), every fifth ends unknown (spelled, not retried).
   let spawnN = 0;
@@ -206,7 +210,7 @@
     if ((e.key !== 'd' && e.key !== 'D') || e.metaKey || e.ctrlKey || e.altKey || spot || daemon) return;
     daemon = 'lost'; render();
     setTimeout(() => {
-      const s = seats[1]; s.generation = (s.generation || 3) + 1; s.restarted = true; daemon = 'back'; render();
+      const s = seats[1]; s.generation = (s.generation || 3) + 1; s.restarted = Date.now(); daemon = 'back'; render();
       setTimeout(() => { daemon = null; render(); }, 1000);
       setTimeout(() => { s.restarted = false; const t = tabOf(s.key); streamLine(t ? t.sp : space(), s.name + ' restarted · process generation ' + s.generation); render(); }, 4000);
     }, 2600);
@@ -398,7 +402,7 @@
   function splitDom(t) {
     if (t.key && t.graph) { const sp = space(); const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘G', onClose: closeGraph }), C.graphPage({ seats: seats.filter(x => !x.settings && !x.graph && (tabOf(x.key) || {}).sp === sp), epics: sp.epics, swarm: sp.name, history: sp.history, provenance: sp.provenance, subscriptions: sp.subscriptions })); p.dataset.key = t.key; return p; }
     if (t.key && t.settings) { const p = el('div', { class: 'pane settings-pane ' + (t.key === focused ? 'focused' : 'unfocused'), style: '--seat:' + t.color }, C.titleStrip(t, { shortcut: '⌘,', onClose: closeSettings }), C.settingsPage({ section: t.section, onChange: (sec, k, v) => { if (sec === 'appearance') settingsSeat.section = 'Appearance'; applySetting(sec, k, v); } })); p.dataset.key = t.key; return p; }
-    if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute, reconnecting: daemon === 'lost', reconnected: daemon === 'back' });
+    if (t.key) return C.pane(t, { focused: t.key === focused, unfocused: t.key !== focused, shortcut: '⌘' + (stageKeys.indexOf(t.key) + 1), onClose: closeSeat, onMute: toggleMute, onInterrupt: interruptSeat, reconnecting: daemon === 'lost', reconnected: daemon === 'back' });
     const A = splitDom(t.a), B = splitDom(t.b);
     A.style.flex = t.ratio || 0.5; B.style.flex = 1 - (t.ratio || 0.5);
     const box = el('div', { class: 'split ' + t.dir });

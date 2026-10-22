@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 25,
+  "version": 26,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -232,7 +232,7 @@
       "means": "an interrupt was sent",
       "source": "seat_interrupt → adapter Now/steer; permission belongs to the caller",
       "drawing": "one-shot \"interrupt sent\" notice on the row and strip; not a promise that the seat stopped; the operator may interrupt any seat they are allowed to act on",
-      "status": "decided, drawn, not built"
+      "status": "built: one-shot, 2 px red bar sweeps along the strip bottom and fades, \"interrupt sent\" chip on strip and row fades over 3 s; seat state unchanged until the seat reports; timestamped so re-renders resume rather than replay; title-strip.html?state=interrupt-sent"
     },
     "authority": {
       "means": "this seat's signing authority is not good",
@@ -345,7 +345,7 @@
       "purpose": "interrupt the seat",
       "source": "seat_interrupt, Oracle/operator only",
       "anatomy": "a square stop glyph in the strip next to the mute toggle; hidden for worker roles",
-      "status": "drawn, not built"
+      "status": "built: 8 px rounded square on currentColor in the strip before the mute toggle, 55% until hover; present only when the caller may interrupt (operator, Oracle class); ⌘. on the focused seat; titleStrip opts.onInterrupt, title-strip.html?state=stop-operator, worker-view"
     },
     "listener_count": {
       "purpose": "external clients on the seat socket",

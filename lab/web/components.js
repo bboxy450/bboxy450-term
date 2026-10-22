@@ -139,8 +139,9 @@
     if (seat.muted) { row.classList.add('muted'); row.append(el('span', { class: 'mutemark', title: 'muted: 1:1 with the operator' }, harnessIcon('muted'))); }
     row.append(el('span', { class: 'title' }, seat.title || ''));
     const right = el('span', { class: 'right' });
+    if (seat.interruptSent) right.append(el('span', { class: 'isent-chip', style: 'animation-delay:' + since(seat.interruptSent), title: 'interrupt sent · not a promise that it stopped' }, 'interrupt sent'));
     // process generation changed (mux state streams): one-shot chip, the stream line follows after 4 s
-    if (seat.restarted) right.append(el('span', { class: 'restarted', title: 'process generation changed' + (seat.generation ? ' · now ' + seat.generation : '') }, 'restarted'));
+    if (seat.restarted) right.append(el('span', { class: 'restarted', style: 'animation-delay:' + since(seat.restarted), title: 'process generation changed' + (seat.generation ? ' · now ' + seat.generation : '') }, 'restarted'));
     // held work (messaging.md swarm mute): muted → everything waits; after unmute only items still blocked by current authority stay, with reason and original id
     const held = seat.held || [];
     if (held.length) {
@@ -463,6 +464,8 @@
     const cap = range && range.from ? 'earlier output evicted · retained from ' + range.from : 'earlier output unavailable';
     return el('div', { class: 'gap-mark', title: cap + (range && range.of ? ' · ' + range.of : '') }, el('i'), el('span', {}, cap), el('i'));
   }
+  // one-shot notices survive re-renders: a timestamp value resumes the animation at its elapsed point (true = start now)
+  const since = v => typeof v === 'number' ? '-' + Math.max(0, Date.now() - v) + 'ms' : '0ms';
   function titleStrip(seat, opts) {
     opts = opts || {};
     const s = el('div', { class: 'strip', style: 'background:' + seatColor(seat) }, el('span', { class: 'close', title: 'close seat', onclick: e => { e.stopPropagation(); if (opts.onClose) opts.onClose(seat); } }));
@@ -471,6 +474,9 @@
     if (seat.role) s.append(roleMark(seat.role));
     s.append(el('span', { class: 'title' }, (seat.title || '') + (seat.state === 'waiting' ? ' · waiting for ' + (seat.waitKind || 'an answer') : '')));
     if (opts.shortcut) s.append(kbd(opts.shortcut));
+    // stop (seat_interrupt, Oracle/operator only: the caller passes onInterrupt only when allowed). A request, not a promise.
+    if (seat.interruptSent) { s.classList.add('isent'); s.style.setProperty('--isd', since(seat.interruptSent)); s.append(el('span', { class: 'isent-chip', style: 'animation-delay:' + since(seat.interruptSent), title: 'interrupt sent · the seat decides when it stops' }, 'interrupt sent')); }
+    if (opts.onInterrupt) s.append(el('span', { class: 'stop', title: 'interrupt (⌘.) · a request, the seat decides', onclick: e => { e.stopPropagation(); opts.onInterrupt(seat); } }, el('i')));
     if (opts.onMute) s.append(el('span', { class: 'mute' + (seat.muted ? ' on' : ''), title: seat.muted ? 'unmute (⌘M)' : 'mute: 1:1 with the operator (⌘M)', onclick: e => { e.stopPropagation(); opts.onMute(seat); } }, harnessIcon(seat.muted ? 'muted' : 'unmuted')));
     s.append(glyph(seat.state, seat));
     return s;
