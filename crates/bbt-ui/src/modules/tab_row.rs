@@ -83,7 +83,7 @@ impl TabRow {
         };
         let prefix = format!("seat{index}/");
         let mut head = if margin > 0. {
-            row.element_with_radius(ctx, bbt_ui_model::STYLE.radius.badge as f32)
+            row.element_in_swarm(ctx)
         } else {
             row.element(ctx)
         };
@@ -100,7 +100,13 @@ impl TabRow {
         self.element_with_margin(ctx, 0.)
     }
     pub fn element_in_swarm(&self, ctx: ui::Context) -> c::Element {
-        self.element_with_margin(ctx, bbt_ui_model::STYLE.spacing.s1 as f32)
+        self.element_with_margin(
+            ctx,
+            ui::Style::new(ui::Preset::CardRow)
+                .resolve(ctx)
+                .expect("card row Style")
+                .margin[3],
+        )
     }
     fn element_with_margin(&self, ctx: ui::Context, margin: f32) -> c::Element {
         let d = ctx.density.tokens();
@@ -190,7 +196,7 @@ impl TabRow {
             right.push(
                 named(
                     "header/right/kbd",
-                    label(shortcut, d.font_small as f32, true, ui::Color::Muted),
+                    super::seat_row::keyboard_badge(shortcut, false, false, 400),
                 )
                 .into(),
             );
@@ -231,10 +237,16 @@ impl TabRow {
         let header = named(
             "header",
             box_row(
-                style(
-                    Some(d.tab_h as f32),
-                    [0., d.pad_x as f32, 0., d.pad_x as f32],
-                ),
+                if margin > 0. {
+                    let mut style = ui::Style::new(ui::Preset::CardRow);
+                    style.overrides.height = Some(ui::Length::Px(d.tab_h as f32));
+                    style
+                } else {
+                    style(
+                        Some(d.tab_h as f32),
+                        [0., d.pad_x as f32, 0., d.pad_x as f32],
+                    )
+                },
                 d.gap as f32,
                 children,
             ),

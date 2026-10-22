@@ -109,6 +109,39 @@ fn noise_chip(value: &str, color: ui::Color, alpha: f32, border: bool, mono: boo
     }
     el
 }
+pub(crate) fn keyboard_badge(
+    value: impl Into<String>,
+    focused: bool,
+    transparent: bool,
+    weight: u16,
+) -> c::Element {
+    let mut style = plain(Some(16.), [1., 5., 1., 5.], STYLE.radius.tag as f32);
+    if !transparent {
+        style.overrides.fill = Some(paint(
+            ui::Color::Muted,
+            if focused {
+                STYLE.tint.badge_selected_alpha as f32
+            } else {
+                STYLE.tint.badge_alpha as f32
+            },
+        ));
+    }
+    let mut text = label(
+        value,
+        STYLE.r#type.small as f32,
+        weight,
+        true,
+        if focused {
+            ui::Color::Foreground
+        } else {
+            ui::Color::Muted
+        },
+    );
+    if let c::Element::Text(t) = &mut text {
+        t.runs[0].style.line_height = 14. / STYLE.r#type.small as f32;
+    }
+    row_box(style, 0., vec![text.into()])
+}
 pub fn role_color(role: &str) -> ui::Color {
     rgba(match role {
         "oracle" => TOKENS.color.role.oracle,
@@ -199,12 +232,21 @@ impl SeatRow {
     pub fn element(&self, ctx: ui::Context) -> c::Element {
         self.element_with_radius(ctx, TOKENS.radius.chip as f32)
     }
+    pub fn element_in_swarm(&self, ctx: ui::Context) -> c::Element {
+        let style = ui::Style::new(ui::Preset::CardRow)
+            .resolve(ctx)
+            .expect("card row Style");
+        self.element_with_metrics(ctx, style.radii[0], style.padding[1])
+    }
     pub fn element_with_radius(&self, ctx: ui::Context, radius: f32) -> c::Element {
+        self.element_with_metrics(ctx, radius, ctx.density.tokens().pad_x as f32)
+    }
+    fn element_with_metrics(&self, ctx: ui::Context, radius: f32, padding: f32) -> c::Element {
         let d = ctx.density.tokens();
         let color = self.color(ctx);
         let mut style = plain(
             Some(self.row_height.unwrap_or(d.row_h as f32)),
-            [0., d.pad_x as f32, 0., d.pad_x as f32],
+            [0., padding, 0., padding],
             radius,
         );
         let state_color = match self.activity {
@@ -212,15 +254,12 @@ impl SeatRow {
             Activity::Errored => rgba(TOKENS.color.state.errored),
             _ => color,
         };
-        let fill = if self.focused {
-            paint(ui::Color::Accent, 0.16)
-        } else {
-            match self.activity {
-                Activity::Waiting(_) => paint(state_color, 0.10),
-                Activity::Errored => paint(state_color, 0.08),
-                _ => ui::Paint::solid(ui::Color::Transparent),
-            }
-        };
+        let fill =
+            if self.focused && !matches!(self.activity, Activity::Waiting(_) | Activity::Errored) {
+                paint(ui::Color::Foreground, STYLE.tint.selection_alpha as f32)
+            } else {
+                ui::Paint::solid(ui::Color::Transparent)
+            };
         style.overrides.fill = Some(fill);
         let a = match self.activity {
             Activity::Active => TOKENS.glow.active_alpha_min,
@@ -279,7 +318,8 @@ impl SeatRow {
             "zsh" => rgba("#111827"),
             _ => ui::Color::Surface2,
         };
-        let mut tile = plain(Some(d.icon as f32), [0.; 4], d.icon as f32 * 0.22);
+        let mut tile = plain(Some(16.), [0.; 4], STYLE.radius.tag as f32);
+        tile.overrides.width = Some(ui::Length::Px(16.));
         tile.overrides.fill = Some(ui::Paint::solid(tile_color));
         children.push(
             named(
@@ -288,11 +328,9 @@ impl SeatRow {
                     tile,
                     0.,
                     vec![
-                        named(
-                            "tile/hicon",
-                            icon(&self.harness, d.icon as f32, ui::Color::Foreground),
-                        )
-                        .into(),
+                        c::Element::Spacer.into(),
+                        named("tile/hicon", icon(&self.harness, 10., ui::Color::OnAccent)).into(),
+                        c::Element::Spacer.into(),
                     ],
                 ),
             )
@@ -485,13 +523,7 @@ impl SeatRow {
             right.push(named("badge", row_box(s, 0., vec![text.into()])).into());
         }
         if let Some(shortcut) = &self.shortcut {
-            right.push(
-                named(
-                    "kbd",
-                    label(shortcut, d.font_small as f32, 400, true, ui::Color::Muted),
-                )
-                .into(),
-            );
+            right.push(named("kbd", keyboard_badge(shortcut, self.focused, false, 400)).into());
         }
         right.push(
             named(

@@ -6,14 +6,14 @@ use std::collections::BTreeSet;
 #[test]
 fn style_matrix_is_canonical_and_every_preset_renders_on_the_native_device() {
     let cases = styles::cases();
-    assert_eq!(cases.len(), 88); // Ten original styles plus Style-owned pane-glow.
+    assert_eq!(cases.len(), 112); // Fourteen Style records, across four densities and two themes.
     assert_eq!(
         cases
             .iter()
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        88
+        112
     );
     assert!(
         cases

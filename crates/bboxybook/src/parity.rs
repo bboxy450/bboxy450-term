@@ -89,6 +89,7 @@ pub fn compare(root: &Path, cases: &[Case]) -> Result<()> {
 }
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 pub struct CasePolicy {
+    pub historical: bool,
     pub text: bool,
     pub channel_tolerance: u8,
     pub changed_pixel_budget: f64,
@@ -126,6 +127,7 @@ impl CasePolicy {
                 .any(|p| matches!(p, bbt_ui_model::draw::Prim::Text { .. }))
         };
         Ok(Self {
+            historical: f.is_some_and(|f| f["reference"] == "baseline"),
             text,
             channel_tolerance: diff::CHANNEL_TOLERANCE,
             changed_pixel_budget: if text { 0.02 } else { diff::CHANGED_BUDGET },
@@ -149,10 +151,15 @@ impl CasePolicy {
         } else {
             ""
         };
-        if self.text {
+        let label = if self.text {
             "text: 2% + rect/baseline ≤0.5px".into()
         } else {
             format!("{scope}pixels: 0.1%")
+        };
+        if self.historical {
+            format!("historical v2 · {label}")
+        } else {
+            label
         }
     }
     fn status(self, score: f64, geometry: Option<&Geometry>) -> &'static str {
@@ -311,13 +318,19 @@ pub fn compare_paths(
         rows.push(row);
     }
     rows.sort_by(|a, b| {
-        (b.status != "within policy")
-            .cmp(&(a.status != "within policy"))
+        a.policy
+            .historical
+            .cmp(&b.policy.historical)
+            .then((b.status != "within policy").cmp(&(a.status != "within policy")))
             .then(b.score.total_cmp(&a.score))
             .then(b.error.total_cmp(&a.error))
             .then(a.case.relative().cmp(&b.case.relative()))
     });
-    let review = rows.iter().filter(|r| r.status != "within policy").count();
+    let review = rows
+        .iter()
+        .filter(|r| !r.policy.historical && r.status != "within policy")
+        .count();
+    let historical = rows.iter().filter(|r| r.policy.historical).count();
     let component_layer = cases.iter().all(|c| {
         c.fixture
             .as_ref()
@@ -353,7 +366,7 @@ pub fn compare_paths(
     } else {
         "Pinned base ux-prototype-v2; supplemental committed lab revision and capture policy in capture.json. Legacy text cases without geometry are unproven, regardless of their pixel score."
     };
-    let policy = "Per-case policy: channel tolerance 8; text-bearing cases require every rect and Text baseline within 0.5px plus ≤2% changed pixels; pixel-only cases keep ≤0.1%. Missing geometry never passes. The policy gates evidence, not human acceptance.";
+    let policy = "Per-case policy: channel tolerance 8; text-bearing cases require every rect and Text baseline within 0.5px plus ≤2% changed pixels; pixel-only cases keep ≤0.1%. Missing geometry never passes. The policy gates evidence, not human acceptance. Frozen v2 cases are labelled historical diagnostics; raw results remain visible and do not gate the current design.";
     let mut md = format!(
         "# bboxybook parity\n\n{} cases; {} require review. {}\n\nSources: {}\n\n| Case | Policy | Geometry | Changed | Mean error | Status | Web | Native | Diff |\n|---|---|---|---:|---:|---|---|---|---|\n",
         rows.len(),
@@ -368,6 +381,12 @@ pub fn compare_paths(
         rows.len(),
         review
     );
+    if historical > 0 {
+        write!(
+            html,
+            "<p>{historical} historical v2 cases are diagnostic only.</p>"
+        )?;
+    }
     if component_layer || cases.iter().all(|c| c.component == "style") {
         html.push_str("<p><a href=layouts.json>Rects and baselines</a></p>");
         if root.join("gallery/index.html").exists() {
@@ -421,6 +440,12 @@ pub fn compare_paths(
         )?;
     }
     html.push_str("</table>");
+    if historical > 0 {
+        writeln!(
+            md,
+            "\n{historical} historical v2 cases are diagnostic only.\n"
+        )?;
+    }
     for (i, row) in rows.iter().enumerate() {
         let key = row.case.relative();
         write!(
@@ -507,8 +532,52 @@ mod tests {
     }
 
     #[test]
+    fn historical_diffs_stay_visible_without_gating_the_current_design() -> Result<()> {
+        let temp = std::env::temp_dir().join(format!(
+            "bboxybook-history-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        ));
+        let mut case = crate::materials::cases().remove(0);
+        case.width = 1;
+        case.height = 1;
+        for (side, pixel) in [("web", [0, 0, 0, 255]), ("native", [255, 255, 255, 255])] {
+            let path = temp.join(side).join(case.relative());
+            fs::create_dir_all(path.parent().unwrap())?;
+            bbt_render::write_png(&path, &pixel, 1, 1)?;
+        }
+        case.fixture = Some(serde_json::json!({"reference":"baseline"}));
+        compare_paths(
+            &temp.join("history"),
+            &[case.clone()],
+            "../web",
+            "../native",
+        )?;
+        let rows: serde_json::Value =
+            serde_json::from_slice(&fs::read(temp.join("history/report.json"))?)?;
+        assert_eq!(rows[0]["policy"]["historical"], true);
+        assert_eq!(rows[0]["status"], "review pixels");
+        assert_eq!(rows[0]["changed_fraction"], 1.);
+        assert!(
+            fs::read_to_string(temp.join("history/report.md"))?
+                .contains("1 cases; 0 require review")
+        );
+        case.fixture = None;
+        compare_paths(&temp.join("current"), &[case], "../web", "../native")?;
+        assert!(
+            fs::read_to_string(temp.join("current/report.md"))?
+                .contains("1 cases; 1 require review")
+        );
+        fs::remove_dir_all(temp)?;
+        Ok(())
+    }
+
+    #[test]
     fn text_policy_requires_rects_and_baselines_even_when_pixels_pass() {
         let p = CasePolicy {
+            historical: false,
             text: true,
             channel_tolerance: 8,
             changed_pixel_budget: 0.02,

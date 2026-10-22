@@ -217,8 +217,8 @@ compositing, filtering and glow gaps.
 cargo run -p bboxybook --locked -- styles
 ```
 
-This writes `target/bboxybook/style/index.html`, with 88 canonical pairs:
-the original ten styles plus the explicit filled `pane-glow` Style, each
+This writes `target/bboxybook/style/index.html`, with 112 canonical pairs:
+the original styles, `pane-glow`, `swarm-card`, `card-row` and `new-swarm`, each
 across four densities and two themes. Keys are `style/<state>-<density>-<theme>`.
 `styles.json` records the actual serialised token references/overrides and
 resolved numeric values. `bbt-ui` has no renderer dependency; it uses the
@@ -381,10 +381,15 @@ rectangles/fonts remain diagnostics only. Pane previews
 are shared web context, outside this module's parity claim. The old card and
 sidebar painters now delegate to the retained compositions.
 
-The current card uses the shared Card Style: token radius, translucent surface
+The current card uses the SwarmCard Style: token radius, translucent surface
 and outside hairline. Unfocused contents use CSS luminance saturation; the
 bumper retains its identity colour. This filter applies opacity per paint,
 not as an isolated GPU group. Text supports min-content width, literal-hyphen
 wrap points and a caller-supplied line clamp for pending captions. Visibility,
 focus, pending outcomes, lifecycle and scrolling remain caller data; there is
 no input controller or autonomous state change in this step.
+
+Frozen `ux-prototype-v2` module cases are historical diagnostics once the design
+has moved on. Capture preserves that reference identity in the fixture; reports
+label it, retain the raw pixel/geometry result, and exclude it from the current
+lab gate. Current cases keep the existing pixel and geometry policies.

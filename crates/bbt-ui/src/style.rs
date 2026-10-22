@@ -9,6 +9,9 @@ pub enum Preset {
     Card,
     Row,
     Band,
+    SwarmCard,
+    CardRow,
+    NewSwarm,
     Pill,
     Chip,
     Modal,
@@ -19,11 +22,13 @@ pub enum Preset {
     PaneGlow,
 }
 impl Preset {
-    // The original ten references plus the explicit Style/Box-owned filled glow case.
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 14] = [
         Self::Card,
         Self::Row,
         Self::Band,
+        Self::SwarmCard,
+        Self::CardRow,
+        Self::NewSwarm,
         Self::Pill,
         Self::Chip,
         Self::Modal,
@@ -38,6 +43,9 @@ impl Preset {
             Self::Card => "card",
             Self::Row => "row",
             Self::Band => "band",
+            Self::SwarmCard => "swarm-card",
+            Self::CardRow => "card-row",
+            Self::NewSwarm => "new-swarm",
             Self::Pill => "pill",
             Self::Chip => "chip",
             Self::Modal => "modal",
@@ -385,9 +393,13 @@ impl Style {
         let opacity = unit(o.opacity.unwrap_or(1.))?;
         let mut radii = [0.; 4];
         let mut padding = [0.; 4];
+        let mut margin = [0.; 4];
+        let mut body_padding = [0.; 4];
         for i in 0..4 {
             radii[i] = base.radii[i].resolve(ctx.density)?;
             padding[i] = base.padding[i].resolve(ctx.density)?;
+            margin[i] = base.margin[i].resolve(ctx.density)?;
+            body_padding[i] = base.body_padding[i].resolve(ctx.density)?;
         }
         let border = base
             .border
@@ -399,7 +411,10 @@ impl Style {
                 })
             })
             .transpose()?;
-        let fill = if self.tokens == Preset::Row && ctx.selected && o.fill.is_none() {
+        let fill = if matches!(self.tokens, Preset::Row | Preset::CardRow)
+            && ctx.selected
+            && o.fill.is_none()
+        {
             Paint {
                 color: Color::Foreground,
                 alpha: Alpha::Selection,
@@ -441,6 +456,9 @@ impl Style {
             height: base.height.map(|n| n.resolve(ctx.density)).transpose()?,
             width: o.width.map(|n| n.resolve(ctx.density)).transpose()?,
             padding,
+            margin,
+            body_padding,
+            bumper: base.bumper,
             text: ResolvedText {
                 size: base.text.size.unwrap_or(base.text.step.pixels()),
                 weight: base.text.weight,
@@ -554,6 +572,12 @@ pub struct ResolvedStyle {
     pub height: Option<f32>,
     pub width: Option<f32>,
     pub padding: [f32; 4],
+    /// External insets consumed by the composing module.
+    pub margin: [f32; 4],
+    /// SwarmCard body insets; independent of the card frame padding.
+    pub body_padding: [f32; 4],
+    /// Open and closed swarm identity bumper heights.
+    pub bumper: [f32; 2],
     pub text: ResolvedText,
     pub opacity: f32,
     pub dim: Option<Dim>,
@@ -569,6 +593,9 @@ struct Base {
     shadow: Shadow,
     height: Option<Length>,
     padding: [Length; 4],
+    margin: [Length; 4],
+    body_padding: [Length; 4],
+    bumper: [f32; 2],
     text: Text,
 }
 fn defaults(p: Preset) -> Base {
@@ -581,6 +608,9 @@ fn defaults(p: Preset) -> Base {
         shadow: Shadow::None,
         height: None,
         padding: [Px(0.); 4],
+        margin: [Px(0.); 4],
+        body_padding: [Px(0.); 4],
+        bumper: [0.; 2],
         text: Text::default(),
     };
     let mut radius = Radius::Row;
@@ -612,19 +642,46 @@ fn defaults(p: Preset) -> Base {
             b.text.step = TypeStep::Row;
         }
         Preset::Band => {
-            radius = Radius::Chip;
+            radius = Radius::Tile;
             b.material = Material::Gloss;
             b.fill = Paint::solid(Color::Swarm);
-            b.height = Some(Length::StripHeight);
-            b.padding = xy(Px(0.), Length::PadX);
+            b.height = Some(Px(DESIGN.spacing.band as f32));
+            b.padding = xy(Px(0.), Spacing(6));
             b.text = Text {
-                step: TypeStep::Small,
+                step: TypeStep::Note,
                 weight: 600,
                 paint: Paint::solid(Color::OnAccent),
-                tracking_em: 0.22,
+                tracking_em: 0.16,
                 uppercase: true,
                 ..Text::default()
             };
+        }
+        Preset::SwarmCard | Preset::NewSwarm => {
+            radius = Radius::Card;
+            b.fill = Paint {
+                color: Color::Surface,
+                alpha: Alpha::Value(DESIGN.material.card_alpha as f32),
+            };
+            b.border = Some(Border {
+                outside: true,
+                ..hair
+            });
+            b.text.step = TypeStep::Row;
+            if p == Preset::SwarmCard {
+                b.padding = [Spacing(2), Spacing(2), Px(0.), Spacing(2)];
+                b.body_padding = [Spacing(1), Px(0.), Spacing(2), Px(0.)];
+                b.bumper = [4., 3.]; // UI.STYLES['swarm-card'].bumper
+            } else {
+                b.height = Some(Px(DESIGN.spacing.new_swarm as f32));
+                b.text.weight = 500;
+                b.text.paint = Paint::solid(Color::Muted);
+            }
+        }
+        Preset::CardRow => {
+            b.height = Some(Length::RowHeight);
+            b.padding = xy(Px(0.), Spacing(4));
+            b.margin = xy(Px(0.), Spacing(1));
+            b.text.step = TypeStep::Row;
         }
         Preset::Pill | Preset::Chip => {
             radius = if p == Preset::Pill {

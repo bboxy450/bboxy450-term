@@ -148,8 +148,8 @@ focus colour. These modules own no input, clock, renderer or controller.
 
 ## L7 SwarmCard and Sidebar
 
-SwarmCard composes the shared card Style, gloss header, accepted tab/seat
-subtrees, pending rows, shadows and a clipped identity bumper. Sidebar adds a
+SwarmCard composes the `SwarmCard`, `Band` and `CardRow` Styles, accepted
+tab/seat subtrees, pending rows, shadows and a clipped identity bumper. Sidebar adds a
 fixed viewport and caller-owned scroll offset. A collapsed thousand-seat card
 builds only its bounded roll-up. Content keeps source order and supplied state.
 
@@ -157,3 +157,10 @@ builds only its bounded roll-up. Content keeps source order and supplied state.
 to a retained subtree without affecting layout. It leaves the older dim
 transform unchanged. Opacity remains per paint, with no isolated GPU group.
 The host supplies all navigation, focus, lifecycle and input handling.
+
+The 7.3b Style records match lab revision `759fdde`. Resolved `SwarmCard`
+geometry supplies the inner/body padding and open/closed bumper heights;
+`CardRow` supplies the external inset, row radius and padding; `NewSwarm`
+supplies the action height and text. Band geometry and tracking also resolve
+from its shared record. Standalone rows retain their small corners; rows in a
+swarm use `CardRow`. No module reads descendant web rectangles to place content.

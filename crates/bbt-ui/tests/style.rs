@@ -1,5 +1,5 @@
 use bbt_ui::*;
-use bbt_ui_model::{STYLE as DESIGN, TOKENS};
+use bbt_ui_model::STYLE as DESIGN;
 
 #[test]
 fn token_references_and_nontrivial_overrides_round_trip_and_resolve_late() {
@@ -111,7 +111,7 @@ fn presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border()
     );
     assert_eq!(
         Style::new(Preset::Band).resolve(ctx).unwrap().height,
-        Some(TOKENS.strip.height as f32)
+        Some(DESIGN.spacing.band as f32)
     );
     let light = Context::new(Theme::Light, Density::Cozy);
     assert_ne!(

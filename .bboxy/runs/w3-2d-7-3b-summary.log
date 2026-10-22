@@ -1,0 +1,126 @@
+ROLE: EXECUTOR — Nyx Copperwing
+W3.2d.7.3b — shared lab records, typography and dependent compositions
+
+Reference: 759fddebe72be745c4d84656b0984b5140a9712b, per Oracle 0691b0aa; 3f9eed7 was the initial capture.
+Oracle b27f389a: current lab is the gate; v2 is a labelled historical diagnostic, retaining raw results.
+
+Evidence:
+crates/bbt-ui/src/style.rs:644 — Band reads tile radius, band height, note/600/.16em text; new SwarmCard, CardRow and NewSwarm records own their geometry.
+crates/bbt-ui/src/modules/swarm_card.rs:114 — Band record drives header type and geometry; frame/body insets and bumpers resolve from SwarmCard; CardRow drives row insets.
+crates/bbt-ui/src/modules/seat_row.rs:235 — explicit in-swarm CardRow profile, fixed 16px tile/10px icon, boxed shortcut; standalone rows retain their small corners.
+crates/bbt-ui/src/modules/sidebar.rs:20 — token gutter, scroll-top inset and shared NewSwarm Style; theme sidebar ground and hairline.
+crates/bbt-ui/src/modules/tab_row.rs — shared CardRow and shortcut composition, with independent tab height.
+crates/bbt-ui/src/widgets.rs:511 — Table keeps an explicit inside layout border instead of inheriting Card’s outside ring; header bottom rule is inside too.
+crates/bboxybook/src/styles.rs:144 — text is centred in the Style content box, including asymmetric padding.
+crates/bboxybook/src/components.rs:90 — Text capture parser honours the declared tracking value.
+crates/bboxybook/capture.mjs:84 — captured manifests retain baseline/current reference identity.
+crates/bboxybook/src/parity.rs:331 — historical cases keep raw statuses and policy limits but do not count against the current gate; regression test at :535.
+
+Current lab: 744 cases; {'review pixels': 131, 'unproven geometry': 56, 'within policy': 557}.
+SwarmCard/Sidebar: 72 cases; {'review pixels': 4, 'within policy': 68}.
+Every measured current rectangle/baseline passes. 21,806 rects, 6,654 baselines; max rect 0.5px, max baseline 0.0078125px.
+SwarmCard/Sidebar: 11,984 rects, 2,920 baselines; max rect 0.4375px, max baseline 0.0078125px.
+Policy: channel tolerance 8; text <=2% pixels AND every rect/baseline <=0.5px; pixel-only <=0.1%. Glyph cases without geometry remain unproven.
+Historical v2: 240 diagnostic cases; raw {'review geometry': 152, 'within policy': 88}; excluded from current gate by the Oracle decision.
+
+Counts by current component:
+components — 72; {'review pixels': 8, 'within policy': 64}
+documents — 8; {'review pixels': 8}
+glyph — 56; {'unproven geometry': 56}
+harness-icon — 56; {'review pixels': 56}
+launcher — 8; {'review pixels': 8}
+materials — 32; {'review pixels': 8, 'within policy': 24}
+mini-grid — 64; {'within policy': 64}
+seat-row — 224; {'review pixels': 39, 'within policy': 185}
+sidebar — 40; {'review pixels': 4, 'within policy': 36}
+space-header — 32; {'within policy': 32}
+style — 112; {'within policy': 112}
+tab-row — 40; {'within policy': 40}
+
+Basic Box/Text/Stack 0/24 review. Table 0/8 review after the inside-border correction. Primitive Overlay/Modal 0/16 review. TabRow/MiniGrid 0/104 review.
+Before alignment: preserved pre-change executable against 3f9eed7 had 48/72 current module geometry reviews. Its binary provenance is recorded in target/bboxybook/alignment-73b/before/source.txt; it was not clean-rebuilt in this pass. Final reference moved to 759fdde on Oracle instruction, so this is not a same-reference rendering-only delta.
+
+Galleries:
+scoped: target/bboxybook/alignment-73b-final/swarms/index.html
+current complete: target/bboxybook/alignment-73b-final/index.html
+historical only: target/bboxybook/alignment-73b-final/historical-v2/index.html
+Style: target/bboxybook/alignment-73b-final/style-refresh/index.html
+
+Ten worst scoped triplets (web/native in the parent gallery; diffs under swarms/diff):
+sidebar/100-seats-cozy-light.png — review pixels; 2.180583%; rect 0.4375000px; baseline 0.0078125px
+sidebar/100-seats-compact-light.png — review pixels; 2.157380%; rect 0.4375000px; baseline 0.0078125px
+sidebar/100-seats-compact-dark.png — review pixels; 2.082446%; rect 0.4375000px; baseline 0.0078125px
+sidebar/100-seats-cozy-dark.png — review pixels; 2.067569%; rect 0.4375000px; baseline 0.0078125px
+sidebar/100-seats-comfortable-light.png — within policy; 1.964927%; rect 0.4218750px; baseline 0.0078125px
+sidebar/1000-seats-cozy-light.png — within policy; 1.937356%; rect 0.4375000px; baseline 0.0078125px
+sidebar/1000-seats-compact-light.png — within policy; 1.911696%; rect 0.4375000px; baseline 0.0078125px
+sidebar/100-seats-comfortable-dark.png — within policy; 1.860511%; rect 0.4218750px; baseline 0.0078125px
+sidebar/1000-seats-compact-dark.png — within policy; 1.760190%; rect 0.4375000px; baseline 0.0078125px
+sidebar/1000-seats-cozy-dark.png — within policy; 1.753366%; rect 0.4375000px; baseline 0.0078125px
+
+Broad lower-layer worst per component:
+components/button-comfortable-dark.png — review pixels; 2.291694%
+documents/as-modal-comfortable-light.png — review pixels; 0.413533%
+glyph/grades-reported-shim-inferred-touch-light.png — unproven geometry; 1.546768%
+harness-icon/claude-comfortable-light.png — review pixels; 0.647787%
+launcher/root-comfortable-light.png — review pixels; 0.567435%
+materials/glow-comfortable-dark.png — review pixels; 0.211202%
+mini-grid/depth-3-comfortable-light.png — within policy; 0.085806%
+seat-row/bug-rows-compact-dark.png — review pixels; 2.876078%
+sidebar/100-seats-cozy-light.png — review pixels; 2.180583%
+space-header/expanded-compact-light.png — within policy; 1.026862%
+style/pane-glow-comfortable-light.png — within policy; 0.342611%
+tab-row/expanded-cozy-light.png — within policy; 1.642633%
+
+Actual commands/results:
+BBOXYBOOK_REFERENCE_HEAD=759fdde node crates/bboxybook/capture.mjs target/bboxybook/alignment-73b-final target/bboxybook/alignment-73b-final/requested.json — exit 0; 984/984, zero failures, isolated Chrome 156 at 1x.
+bboxybook render --manifest ... — all native jobs exit 0, Apple M4/Metal. Final set is 984 PNGs with 824 matching geometry snapshots; affected PNGs and snapshots were refreshed together.
+bboxybook compare ... current-cases.json — exit 0; 744 current cases, 187 reviews (131 pixels, 56 unproven geometry), zero measured geometry failures.
+bboxybook compare ... swarms/cases.json — exit 0; 72 current cases, 4 pixel-only reviews.
+bboxybook compare ... historical-cases.json — exit 0; 240 historical cases labelled, raw results preserved.
+cargo test -p bbt-ui -p bboxybook -p bbt-render --locked — exit 0; 84 tests.
+cargo test -p bbt-ui-model --test showcase_overrides --locked — exit 0; 2 guards.
+cargo test -p bboxybook --lib --locked — exit 0; 8 tests, rerun after report formatting.
+cargo clippy -p bbt-ui -p bboxybook -p bbt-render --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0; same existing lint exceptions.
+cargo fmt, node --check capture-inputs.js / capture.mjs, git diff --check — each exit 0; see static.log.
+
+Artifact reuse proof:
+759fdde refresh compared all 984 web PNGs and constructor/diagnostic inputs to 3f9eed7; changes were confined to new Style text and sidebars. Existing row radius correction had its own 336-case and 40-case native refresh. Final Style 112, sidebar 72 and Table 8 refreshes include matching layouts. Unchanged artifacts were reused, not counted as new renders.
+L5: all 112 web PNGs AND all 112 native PNGs byte-identical to accepted target/bboxybook/d1c-icons. Missing glyph geometry is an existing evidence gap exposed by the later policy.
+Overlay: all 32 web and native PNGs byte-identical to accepted target/bboxybook/overlays. Widget web 32/32 unchanged; 24 native unchanged, 8 Table images intentionally corrected.
+
+Visual evidence consumed:
+Final web/native/diff: sidebar/100-seats-cozy-light.
+Final web/native: sidebar/phone-sheet-cozy-dark; components/table-cozy-light; style/swarm-card-cozy-dark; style/new-swarm-cozy-light.
+Initial 3f9eed7 web/native: sidebar/10-seats-cozy-dark; space-header/collapsed-with-waiting-cozy-light; pending-spawns-touch-light. Waiting SeatRow pilot web/native/diff exposed the standalone-radius mismatch, corrected before final rendering.
+
+Gaps / deliberately untouched:
+Four dense sidebar cases remain above the 2% pixel budget; worst 2.180583%, all geometry passing. CoreText/icon masks, glyph/edge AA, waiting-name shadow and border arc residues remain; no L1/L2 shader changes in this pass.
+Broad current report includes unchanged accepted L2/icon/button/floating-shell pixel residues and 56 glyph cases without independent geometry. No missing geometry is presented as passing.
+Filter opacity remains per paint, not isolated group opacity. Phantom-specific styling has no coverage in this matrix (none of its constructor fixtures contain participants).
+Pane previews are shared web context, not a native Pane claim. No interaction, lifecycle, live focus, W3.2d.7.4, Safari/Linux or 2x module check in this pass. No operator browser opened/reloaded; no fps measured.
+No dependency/Cargo.lock changes. Only allowed crate paths and run logs changed. Worktree/commit evidence is supplied in the final signed handoff; no push by this Executor.
+
+Files changed:
+crates/bboxybook/README.md
+crates/bboxybook/capture.mjs
+crates/bboxybook/src/components.rs
+crates/bboxybook/src/parity.rs
+crates/bboxybook/src/styles.rs
+crates/bboxybook/tests/styles.rs
+crates/bbt-ui/README.md
+crates/bbt-ui/src/modules/seat_row.rs
+crates/bbt-ui/src/modules/sidebar.rs
+crates/bbt-ui/src/modules/swarm_card.rs
+crates/bbt-ui/src/modules/tab_row.rs
+crates/bbt-ui/src/style.rs
+crates/bbt-ui/src/widgets.rs
+crates/bbt-ui/tests/style.rs
+.bboxy/runs/w3-2d-7-3b-capture.log
+.bboxy/runs/w3-2d-7-3b-checks.log
+.bboxy/runs/w3-2d-7-3b-clippy.log
+.bboxy/runs/w3-2d-7-3b-jobs.log
+.bboxy/runs/w3-2d-7-3b-policy.log
+.bboxy/runs/w3-2d-7-3b-showcase-guard.log
+.bboxy/runs/w3-2d-7-3b-static.log
+.bboxy/runs/w3-2d-7-3b-summary.log

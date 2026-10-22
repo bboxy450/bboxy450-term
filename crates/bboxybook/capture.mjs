@@ -80,6 +80,8 @@ try{
       if(!rect.width||!rect.height||rect.width>8192||rect.height>8192)throw Error(`unsupported capture bounds ${JSON.stringify(rect)}`);
       if(cdp.errors.length)throw Error(`script exceptions: ${JSON.stringify(cdp.errors)}`);
       c.fixture=await cdp.eval(`bboxyCaptureInputs(${JSON.stringify(c.selector)})`);
+      // Preserve reference identity when captured fixtures become the next manifest.
+      c.fixture.reference=reference===baseline?'baseline':'current';
       if(surfaceLayer){
         const context=await cdp.call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{...rect,scale:1}});
         const file=path.join(out,'context',relative);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,Buffer.from(context.data,'base64'));
