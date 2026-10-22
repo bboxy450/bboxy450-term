@@ -8,7 +8,7 @@ const el = Lab.el;
 Lab.page({ title: '⌘T picker', checker: true, note: 'Vertical, keyboard-first. Type a prefix to filter (cl, co, pi, om, z). ↑↓ moves, Enter picks. Role beside each harness comes from settings defaults. zsh last, below a divider. Footer reveals the rolled character name and its colour; ↻ rerolls. Live: type in it.',
   states: ['open', 'typed "c"', 'typed "co"', 'typed "z"', 'no match', 'rerolled', 'cap · swarm', 'cap · machine'],
   render(s, body) {
-    const q = { 'typed "c"': 'c', 'typed "co"': 'co', 'typed "z"': 'z', 'no match': 'x' }[s] || '';
+    const q = { 'typed "c"': 'c', 'typed "co"': 'co', 'typed "z"': 'z', 'no match': 'zzqx' }[s] || '';
     if (s.startsWith('cap')) {
       const nav = [{ id: 'goto', label: 'Go to', sub: 'a seat or a swarm', harness: 'sidebarfoxopen', kind: 'Navigate', tile: '#6B7190', section: 'Navigate', children: [] }, { id: 'settings', label: 'Settings', sub: 'raise the cap here', harness: 'gear', kind: 'Open', tile: '#6B7190', section: 'Navigate', settingsOpen: true }];
       const cap = s === 'cap · swarm' ? { scope: 'swarm', name: 'term', used: 8, limit: 8, counts: '6 running · 1 starting · 1 in grace' } : { scope: 'machine', name: 'this Mac', used: 64, limit: 64, counts: '61 running · 3 in grace, across 5 swarms' };
