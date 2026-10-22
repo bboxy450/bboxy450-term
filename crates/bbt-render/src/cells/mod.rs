@@ -1,6 +1,8 @@
 //! Packed glyph instances; colours and flags retain separate fields.
 use bytemuck::{Pod, Zeroable};
 
+pub mod terminal;
+
 /// The upstream layout is 36 bytes with four f32 UVs. Pixel UVs fit in u16,
 /// retaining all fields in the brief's 32 bytes without a C/GL dependency.
 #[repr(C)]

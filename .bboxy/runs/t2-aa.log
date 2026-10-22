@@ -1,0 +1,12 @@
+$ cargo test -p bbt-render --test terminal metal_grayscale_blending_preserves_coverage_in_both_polarities -- --exact
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.02s
+     Running tests/terminal.rs (target/debug/deps/terminal-cb48d678b654e646)
+
+running 1 test
+test metal_grayscale_blending_preserves_coverage_in_both_polarities ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.14s
+
+
+exit_status=0

@@ -1,0 +1,188 @@
+$ rustfmt --edition 2024 --config skip_children=true crates/bbt-render/src/cells/terminal/gpu.rs
+
+exit_status=0
+
+$ cargo test -p bbt-render -p bboxy-firehose
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.44s
+     Running unittests src/lib.rs (target/debug/deps/bboxy_firehose-a296d4fb1a0e9a79)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/bboxy_firehose-595922f1adcc853c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (target/debug/deps/cli-91d13eeb6e11b756)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.89s
+
+     Running tests/corpus.rs (target/debug/deps/corpus-b683336bbcda1612)
+
+running 3 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.84s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-cfd9af21d64341a8)
+
+running 27 tests
+test chrome::diff::tests::tolerance_is_not_an_exact_byte_comparison ... ok
+test atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks ... ok
+test atlas::tests::color_atlas_growth_preserves_all_four_premultiplied_channels ... ok
+test chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected ... ok
+test chrome::materials::tests::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges ... ok
+test chrome::materials::tests::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels ... ok
+test cells::terminal::gpu::tests::emoji_joining_preserves_parser_positions_and_style_boundaries ... ok
+test chrome::paths::tests::cubic_dash_geometry_is_finite_and_invalid_input_is_rejected ... ok
+test chrome::paths::tests::zero_length_round_dashes_render_dots_and_crossings_composite_once ... ok
+test chrome::group::tests::empty_and_identity_groups_are_transparent_and_use_the_same_device_at_scale ... ok
+test chrome::group::tests::outer_and_child_clips_survive_group_splits_and_do_not_leak_to_following_paint ... ok
+test chrome::group::tests::css_saturation_unpremultiplies_before_filter_and_preserves_destination_alpha ... ok
+test chrome::group::tests::isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing ... ok
+test chrome::text::tests::numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold ... ok
+test chrome::group::tests::overlapping_children_dim_once_and_nested_groups_keep_painter_order ... ok
+test chrome::text::tests::coretext_shapes_unicode_and_ellipsizes_at_the_given_width ... ok
+test chrome::text::tests::italic_uses_real_family_faces_and_keeps_exact_ui_weight ... ok
+test chrome::tests::sdf_rounding_stroke_and_clip_survive_gpu_readback ... ok
+test chrome::paths::tests::gpu_path_preserves_order_clip_alpha_and_retained_geometry ... ok
+test chrome::text::tests::quarter_pixel_phases_change_coverage_without_changing_logical_metrics ... ok
+test chrome::text::tests::zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied ... ok
+test chrome::text::tests::ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face ... ok
+test chrome::text::tests::optical_size_and_logical_shaping_do_not_change_with_backing_scale ... ok
+test chrome::tests::glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct ... ok
+test chrome::tests::growth_in_a_later_group_preserves_the_earlier_encoded_texture ... ok
+test chrome::tests::colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops ... ok
+test chrome::tests::immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/chrome_x_height.rs (target/debug/deps/chrome_x_height-b3b41816857620a1)
+
+running 1 test
+test coretext_x_height_uses_the_requested_logical_font_and_rejects_invalid_size ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/smoke.rs (target/debug/deps/smoke-50b988dc96c0f5a8)
+
+running 3 tests
+test asymmetric_glyph_is_upright ... ok
+test metal_quad_and_80_by_24_cell_backgrounds ... ok
+test coretext_ink_lands_only_in_expected_ascii_cells ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+     Running tests/terminal.rs (target/debug/deps/terminal-be6a45e35561e3b5)
+
+running 4 tests
+test integer_cells_double_with_backing_scale_and_reject_invalid_settings ... ok
+test coretext_fallback_styles_and_emoji_have_real_coverage ... ok
+test procedural_edges_join_and_second_frame_reuses_every_glyph ... ok
+test cursor_shapes_and_bad_snapshots_are_observable ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+
+     Running tests/variants.rs (target/debug/deps/variants-4f6df6058c4987be)
+
+running 1 test
+test generate_smoke_font_size_scale_theme_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.58s
+
+   Doc-tests bboxy_firehose
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_render
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit_status=0
+
+$ cargo run -p bboxy-firehose --example terminal_gallery -- crates/bboxy-firehose/reference/gallery/native
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.72s
+     Running `target/debug/examples/terminal_gallery crates/bboxy-firehose/reference/gallery/native`
+rendered codex-dark-1x
+rendered claude-dark-1x
+rendered palette-dark-1x
+rendered unicode-dark-1x
+rendered progress-dark-1x
+rendered alternate-dark-1x
+rendered scroll-links-sync-dark-1x
+rendered osc7501-claude-dark-1x
+rendered osc7501-preflight-dark-1x
+rendered osc7501-codex-dark-1x
+rendered codex-light-1x
+rendered claude-light-1x
+rendered palette-light-1x
+rendered unicode-light-1x
+rendered progress-light-1x
+rendered alternate-light-1x
+rendered scroll-links-sync-light-1x
+rendered osc7501-claude-light-1x
+rendered osc7501-preflight-light-1x
+rendered osc7501-codex-light-1x
+rendered codex-dark-2x
+rendered claude-dark-2x
+rendered palette-dark-2x
+rendered unicode-dark-2x
+rendered progress-dark-2x
+rendered alternate-dark-2x
+rendered scroll-links-sync-dark-2x
+rendered osc7501-claude-dark-2x
+rendered osc7501-preflight-dark-2x
+rendered osc7501-codex-dark-2x
+rendered codex-light-2x
+rendered claude-light-2x
+rendered palette-light-2x
+rendered unicode-light-2x
+rendered progress-light-2x
+rendered alternate-light-2x
+rendered scroll-links-sync-light-2x
+rendered osc7501-claude-light-2x
+rendered osc7501-preflight-light-2x
+rendered osc7501-codex-light-2x
+
+exit_status=0
+
+$ python3 crates/bboxy-firehose/reference/gallery.py
+codex: before=9.103% after=3.834% worst=4.666% geometry=4/4 baseline_failures=0/4
+claude: before=9.358% after=3.847% worst=4.851% geometry=4/4 baseline_failures=4/4
+palette: before=21.635% after=2.254% worst=2.775% geometry=4/4 baseline_failures=0/4
+unicode: before=12.129% after=5.731% worst=6.717% geometry=4/4 baseline_failures=4/4
+progress: before=4.209% after=1.628% worst=1.992% geometry=4/4 baseline_failures=4/4
+alternate: before=3.007% after=1.278% worst=1.593% geometry=4/4 baseline_failures=0/4
+scroll-links-sync: before=8.148% after=3.804% worst=4.594% geometry=4/4 baseline_failures=4/4
+osc7501-claude: before=3.814% after=1.647% worst=2.109% geometry=4/4 baseline_failures=4/4
+osc7501-preflight: before=3.756% after=1.617% worst=2.080% geometry=4/4 baseline_failures=4/4
+osc7501-codex: before=5.345% after=2.320% worst=2.997% geometry=4/4 baseline_failures=4/4
+
+exit_status=0
+

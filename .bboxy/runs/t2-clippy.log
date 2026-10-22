@@ -1,0 +1,127 @@
+$ cargo clippy -p bbt-render -p bboxy-firehose --all-targets
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui-model)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:210:29
+    |
+210 |     for tri in mesh.indices.chunks_exact(3) {
+    |                             ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:259:31
+    |
+259 |     for tri in result.indices.chunks_exact(3) {
+    |                               ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:366:13
+    |
+366 | /             if !cache.contains_key(&ch) {
+367 | |                 let glyph = match font.rasterize(ch)? {
+368 | |                     Some(raster) => Some(PlacedGlyph {
+369 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+375 | |                 cache.insert(ch, glyph);
+376 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `#[warn(clippy::map_entry)]` on by default
+help: try
+    |
+366 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+367 +                 let glyph = match font.rasterize(ch)? {
+368 +                     Some(raster) => Some(PlacedGlyph {
+369 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+370 +                         left: raster.left,
+371 +                         top: raster.top,
+372 +                     }),
+373 +                     None => None,
+374 +                 };
+375 +                 e.insert(glyph);
+376 +             }
+    |
+
+warning: `bbt-render` (lib) generated 3 warnings (run `cargo clippy --fix --lib -p bbt-render -- ` to apply 3 suggestions)
+warning: using `chunks_exact` with a constant chunk size
+  --> crates/bbt-render/tests/smoke.rs:15:18
+   |
+15 |     assert!(rgba.chunks_exact(4).all(|p| p == [17, 83, 201, 255]));
+   |                  ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+   = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: `bbt-render` (test "smoke") generated 1 warning (run `cargo clippy --fix --test "smoke" -p bbt-render -- ` to apply 1 suggestion)
+warning: using `chunks_exact` with a constant chunk size
+  --> crates/bbt-render/tests/terminal.rs:41:14
+   |
+41 |             .chunks_exact(4)
+   |              ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+   = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: using `chunks_exact` with a constant chunk size
+  --> crates/bbt-render/tests/terminal.rs:47:14
+   |
+47 |             .chunks_exact(4)
+   |              ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/tests/terminal.rs:162:18
+    |
+162 |                 .chunks_exact(4)
+    |                  ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/tests/terminal.rs:163:28
+    |
+163 |                 .zip(empty.chunks_exact(4))
+    |                            ^^^^^^^^^^^^^^^
+    |
+help: consider using `as_chunks::<4>()` instead
+   --> crates/bbt-render/tests/terminal.rs:163:28
+    |
+163 |                 .zip(empty.chunks_exact(4))
+    |                            ^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: `bbt-render` (test "terminal") generated 4 warnings (run `cargo clippy --fix --test "terminal" -p bbt-render -- ` to apply 3 suggestions)
+warning: items after a test module
+   --> crates/bbt-render/src/cells/terminal/gpu.rs:519:1
+    |
+519 |   mod tests {
+    |   ^^^^^^^^^
+...
+561 | / fn upload(
+562 | |     context: &DeviceContext,
+563 | |     atlas: &GlyphAtlas,
+564 | |     version: u64,
+565 | |     uploaded: &mut Option<Uploaded>,
+566 | |     color: bool,
+567 | | ) {
+    | |_^
+...
+624 |   fn pipeline(device: &wgpu::Device, label: &str, source: &str, text: bool) -> wgpu::RenderPipeline {
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#items_after_test_module
+    = note: `#[warn(clippy::items_after_test_module)]` on by default
+    = help: move the items to before the test module was defined
+
+warning: `bbt-render` (lib test) generated 4 warnings (3 duplicates) (run `cargo clippy --fix --lib -p bbt-render --tests -- ` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.96s
+
+exit_status=0

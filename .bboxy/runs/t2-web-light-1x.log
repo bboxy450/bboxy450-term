@@ -1,0 +1,14 @@
+$ node crates/bboxy-firehose/reference/capture.mjs --strict
+codex: captured; core/xterm differing cells=0, cursor=match
+claude: captured; core/xterm differing cells=0, cursor=match
+palette: captured; core/xterm differing cells=0, cursor=match
+unicode: captured; core/xterm differing cells=0, cursor=match
+progress: captured; core/xterm differing cells=0, cursor=match
+alternate: captured; core/xterm differing cells=0, cursor=match
+scroll-links-sync: captured; core/xterm differing cells=0, cursor=match
+osc7501-claude: captured; core/xterm differing cells=0, cursor=match
+osc7501-preflight: captured; core/xterm differing cells=0, cursor=match
+osc7501-codex: captured; core/xterm differing cells=0, cursor=match
+10/10 scenes captured; 10/10 semantic viewport matches; variant=light-1x
+
+exit_status=0

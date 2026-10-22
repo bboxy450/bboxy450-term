@@ -12,7 +12,7 @@
 <script src="vendor/addon-unicode11.js"></script>
 <script>
 let terminal;
-window.openFixture = async (light) => {
+window.openFixture = async (light, fixedGrid = false) => {
   terminal?.dispose();
   document.querySelector('#terminal').replaceChildren();
   const background = light ? '#f2f4f8' : '#0f141d';
@@ -29,6 +29,17 @@ window.openFixture = async (light) => {
   terminal.open(document.querySelector('#terminal'));
   terminal.blur();
   await document.fonts.ready;
+  if (fixedGrid) {
+    document.querySelector('#terminal').style.padding = '0';
+    const measured = terminal._core._charSizeService;
+    // DOM xterm rounds letterSpacing; supply integer grid metrics first, then
+    // let its renderer compute CSS spacing. The 13px font is never rescaled.
+    measured.width = 8;
+    terminal.options.letterSpacing = 1;
+    terminal.options.letterSpacing = 0;
+    terminal.options.lineHeight = 15 / measured.height;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }
 };
 window.feedFixture = (base64) => new Promise(resolve => {
   const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
