@@ -1,0 +1,9 @@
+{
+  "path": "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci",
+  "du_allocated_bytes_removed": 5580668928,
+  "unique_physical_volume_delta": "not isolated; APFS sharing/concurrent peer allocations not measured",
+  "kept": "all accepted galleries and other agents directories",
+  "gate_finished": "serial ci-local exit 0"
+}
+
+Idle own incremental cache pruned after normal gate; du allocated bytes 628412416; physical volume delta not isolated. No live cargo process in own worktree.

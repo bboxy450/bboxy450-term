@@ -1,0 +1,487 @@
+Source dc9951006021ecf802f960c73e1765af67cb9cf6
+Clean detached worktree /tmp/ci-aster-c1b-proto-dc99510
+CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci
+$ git status --porcelain
+EXIT 0
+$ git verify-commit HEAD
+gpg: Signature made Thu Oct 22 14:31:55 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0
+$ sh scripts/ci-local.sh
+layering: held
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling serde_core v1.0.229
+   Compiling cfg-if v1.0.5
+   Compiling log v0.4.34
+   Compiling serde v1.0.229
+   Compiling objc2-encode v4.1.0
+   Compiling cfg_aliases v0.2.2
+   Compiling memchr v2.8.3
+   Compiling objc2 v0.6.5
+   Compiling typenum v1.20.1
+   Compiling zerocopy v0.8.63
+   Compiling foldhash v0.2.0
+   Compiling smallvec v1.16.3
+   Compiling hashbrown v0.17.1
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling simd-adler32 v0.3.10
+   Compiling thiserror v2.0.21
+   Compiling adler2 v2.0.1
+   Compiling num-traits v0.2.19
+   Compiling crc32fast v1.5.3
+   Compiling itoa v1.0.18
+   Compiling float-cmp v0.9.0
+   Compiling strict-num v0.1.1
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+   Compiling equivalent v1.0.3
+   Compiling arrayref v0.3.9
+   Compiling indexmap v2.14.2
+   Compiling miniz_oxide v0.9.1
+   Compiling block2 v0.6.2
+   Compiling zmij v1.0.23
+   Compiling unicode-width v0.2.2
+   Compiling parking_lot_core v0.9.12
+   Compiling flate2 v1.1.10
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling jobserver v0.1.35
+   Compiling siphasher v1.0.4
+   Compiling shlex v2.0.1
+   Compiling scopeguard v1.2.0
+   Compiling serde_json v1.0.154
+   Compiling find-msvc-tools v0.1.15
+   Compiling lock_api v0.4.14
+   Compiling cc v1.9.0
+   Compiling pkg-config v0.3.34
+   Compiling arrayvec v0.7.8
+   Compiling parking_lot v0.12.5
+   Compiling bitflags v2.13.2
+   Compiling simplecss v0.2.2
+   Compiling dispatch2 v0.3.1
+   Compiling pico-args v0.5.0
+   Compiling rustc-hash v1.1.0
+   Compiling version_check v0.9.5
+   Compiling imagesize v0.15.0
+   Compiling winnow v1.0.4
+   Compiling data-url v0.3.2
+   Compiling bytemuck v1.25.2
+   Compiling objc2-core-foundation v0.3.2
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling generic-array v0.14.7
+   Compiling polycool v0.4.0
+   Compiling hybrid-array v0.4.15
+   Compiling naga v30.0.1
+   Compiling bit-vec v0.9.1
+   Compiling winnow v0.7.15
+   Compiling pin-project-lite v0.2.17
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling raw-window-handle v0.6.2
+   Compiling kurbo v0.13.1
+   Compiling bit-set v0.10.0
+   Compiling tiny-skia-path v0.12.0
+   Compiling codespan-reporting v0.13.1
+   Compiling objc-sys v0.3.5
+   Compiling getrandom v0.3.4
+   Compiling zerocopy-derive v0.8.63
+   Compiling static_assertions v1.1.0
+   Compiling once_cell v1.21.4
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling png v0.18.1
+   Compiling crypto-common v0.2.2
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling svgtypes v0.16.1
+   Compiling naga-types v30.0.1
+   Compiling block-buffer v0.12.1
+   Compiling wgpu-types v30.0.1
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling roxmltree v0.21.1
+   Compiling aho-corasick v1.1.5
+   Compiling wgpu-hal v30.0.1
+   Compiling objc2-foundation v0.3.2
+   Compiling regex-syntax v0.8.11
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.10.2
+   Compiling digest v0.11.3
+   Compiling usvg v0.48.1
+   Compiling tiny-skia v0.12.0
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling rgb v0.8.53
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-ui-model)
+   Compiling libloading v0.8.9
+   Compiling bytes v1.12.1
+   Compiling profiling v1.0.18
+   Compiling cursor-icon v1.2.0
+   Compiling rand_core v0.9.5
+   Compiling objc2 v0.5.3
+   Compiling objc2-metal v0.3.2
+   Compiling regex-automata v0.4.18
+   Compiling resvg v0.48.1
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling euclid v0.22.14
+   Compiling errno v0.3.14
+   Compiling cpufeatures v0.3.1
+   Compiling wgpu-core v30.0.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling cfg_aliases v0.1.1
+   Compiling crossbeam-utils v0.8.23
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling semver v1.0.28
+   Compiling thiserror v1.0.69
+   Compiling litrs v1.0.1
+   Compiling rustc_version v0.4.1
+   Compiling lyon_geom v1.0.20
+   Compiling document-features v0.2.12
+   Compiling nix v0.28.0
+   Compiling core-foundation v0.9.4
+   Compiling signal-hook-registry v1.4.8
+   Compiling digest v0.10.7
+   Compiling block2 v0.5.1
+   Compiling tokio-macros v2.7.2
+   Compiling foreign-types-macros v0.2.4
+   Compiling thiserror-impl v1.0.69
+   Compiling half v2.7.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.4
+   Compiling regex v1.13.1
+   Compiling wgpu v30.0.1
+   Compiling httparse v1.10.1
+   Compiling vcpkg v0.2.15
+   Compiling anyhow v1.0.104
+   Compiling zstd-safe v8.2.0
+   Compiling dispatch v0.2.0
+   Compiling foreign-types-shared v0.3.1
+   Compiling bitflags v1.3.2
+   Compiling foreign-types v0.5.0
+   Compiling objc2-foundation v0.2.2
+   Compiling core-graphics-types v0.1.3
+   Compiling libsqlite3-sys v0.38.2
+   Compiling tokio v1.54.1
+   Compiling rand v0.9.5
+   Compiling lyon_path v1.0.19
+   Compiling objc2-core-graphics v0.3.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling chacha20 v0.10.2
+   Compiling serde-big-array v0.5.1
+   Compiling winit v0.30.13
+   Compiling float_next_after v1.0.0
+   Compiling tracing-core v0.1.36
+   Compiling base64 v0.22.1
+   Compiling lyon_tessellation v1.0.22
+   Compiling objc2-quartz-core v0.3.2
+   Compiling bbt-core v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-core)
+   Compiling tracing v0.1.44
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling ulid v1.2.1
+   Compiling filedescriptor v0.8.3
+   Compiling core-graphics v0.23.2
+   Compiling sha1 v0.11.0
+   Compiling http v1.5.0
+   Compiling futures-macro v0.3.34
+   Compiling cpufeatures v0.2.17
+   Compiling serial2 v0.2.38
+   Compiling objc2-app-kit v0.2.2
+   Compiling futures-task v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling futures-core v0.3.34
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling signature v3.0.0
+   Compiling shell-words v1.1.1
+   Compiling downcast-rs v1.2.1
+   Compiling smol_str v0.2.2
+   Compiling dpi v0.1.2
+   Compiling slab v0.4.12
+   Compiling zeroize v1.9.1
+   Compiling data-encoding v2.11.1
+   Compiling pollster v0.4.0
+   Compiling futures-util v0.3.34
+   Compiling zstd v0.14.3
+   Compiling tungstenite v0.30.0
+   Compiling portable-pty v0.9.0
+   Compiling ed25519 v3.0.0
+   Compiling walkdir v2.5.0
+   Compiling hashbrown v0.15.5
+   Compiling sha2 v0.10.9
+   Compiling bbt-rt v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-rt)
+   Compiling bboxybook v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bboxybook)
+   Compiling hmac v0.12.1
+   Compiling sha2 v0.11.1
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-ui)
+   Compiling notify-types v2.1.0
+   Compiling fsevent-sys v4.1.0
+   Compiling hashlink v0.12.2
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling fallible-iterator v0.3.0
+   Compiling fixedbitset v0.5.7
+   Compiling unsafe-libyaml v0.2.11
+   Compiling ryu v1.0.23
+   Compiling ed25519-dalek v3.0.0
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-supervisor)
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling tokio-tungstenite v0.30.0
+   Compiling hkdf v0.12.4
+   Compiling bbt-proto v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-proto)
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bboxy450-term)
+   Compiling rusqlite v0.40.2
+   Compiling objc2-app-kit v0.3.2
+   Compiling bboxy-firehose v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bboxy-firehose)
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling bbt-mux v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-mux)
+   Compiling bbt-render v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 34.61s
+   Compiling regex-syntax v0.8.11
+   Compiling aho-corasick v1.1.5
+   Compiling rustix v1.1.5
+   Compiling fastrand v2.5.0
+   Compiling bbt-render v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-render)
+   Compiling bboxy-firehose v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bboxy-firehose)
+   Compiling bbt-proto v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-proto)
+   Compiling bbt-rt v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-rt)
+   Compiling bbt-core v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-core)
+   Compiling tempfile v3.27.0
+   Compiling regex-automata v0.4.18
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-ui)
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-mux)
+   Compiling regex v1.13.1
+   Compiling bboxybook v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bboxy450-term)
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-aster-c1b-proto-dc99510/crates/bbt-ui-model)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 25.25s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/bboxy_firehose-3758343410ca642f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/bboxy_firehose-b9b609b6d7720eea)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/cli-42519929e6670e3b)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+     Running tests/corpus.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/corpus-caef5a6bf3c35d77)
+
+running 3 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/bboxy450_term-e43b7289b441c8e1)
+
+running 3 tests
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/bboxybook-7d7f521b1b17ff33)
+
+running 10 tests
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.32s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/bboxybook-1536ab8485480f35)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/atoms-65042d9da64e92f1)
+
+running 3 tests
+test icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage ... ok
+test icon_size_gallery_renders_at_one_and_two_device_pixels_per_point ... ok
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+
+     Running tests/blending.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/blending-79bbef7216eb1609)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/clipping.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/clipping-15b53e6476b0d0c8)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.47s
+
+     Running tests/components.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/components-d6d109bb60de176e)
+
+running 4 tests
+test component_cases_are_canonical_and_box_gallery_covers_materials_and_radii ... ok
+test retained_image_preserves_asset_colour_rounding_and_group_filtering ... ok
+test a_retained_group_keeps_material_coverage_and_filters_the_completed_layer ... ok
+test retained_scroll_content_moves_but_never_paints_outside_the_viewport ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.06s
+
+     Running tests/documents.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/documents-6e95e8a9c9b7a884)
+
+running 2 tests
+test document_matrix_covers_all_types_and_both_modal_presentations_and_source ... ok
+test native_document_layout_consumes_public_records_not_css_or_child_geometry ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/fixtures.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/fixtures-b812f64c64498da9)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.74s
+
+     Running tests/graphs.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/graphs-cff9e6ceefa5d7c1)
+
+running 4 tests
+test former_graph_and_provenance_hand_painters_are_removed ... ok
+test graph_matrix_covers_each_live_card_and_the_empty_swarm ... ok
+test channel_layout_never_consumes_browser_svg_diagnostics ... ok
+test graph_layout_is_driven_by_records_not_browser_child_positions ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+     Running tests/icon_filter.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/icon_filter-d1b7e0f5711203b4)
+
+running 1 test
+test icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/launchers.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/launchers-ab86a9d2d45958e7)
+
+running 3 tests
+test matrix_has_every_current_lab_state_and_separate_historical_keys ... ok
+test a_machine_subtitle_with_room_stays_on_one_line ... ok
+test geometry_uses_constructor_values_instead_of_child_dom_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.41s
+
+     Running tests/materials.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/materials-e9102debe51b020d)
+
+running 3 tests
+test source_over_glow_keeps_destination_alpha ... ok
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.69s
+
+     Running tests/overlays.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/overlays-6f7b5e2d782af087)
+
+running 2 tests
+test layer_matrix_distinguishes_full_primitives_from_module_surfaces ... ok
+test overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/panes.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/panes-c645a6ae294d5ca3)
+
+running 4 tests
+test legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted ... ok
+test pane_registry_pairs_every_current_and_historical_case_without_collisions ... ok
+test legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip ... ok
+test native_panes_ignore_child_web_bounds_and_font_diagnostics ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/parity_gate.rs (/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-ci/debug/deps/parity_gate-f8305fdd1b563e07)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... FAILED
+test strict_geometry_review_exits_one_after_writing_the_report ... FAILED
+test historical_geometry_review_exits_zero ... FAILED
+test geometry_review_without_strict_flag_remains_advisory ... FAILED
+test missing_or_incomplete_geometry_exits_one ... ok
+
+failures:
+
+---- pixel_only_review_exits_zero_and_is_counted_as_advisory stdout ----
+Error: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- strict_geometry_review_exits_one_after_writing_the_report stdout ----
+
+thread 'strict_geometry_review_exits_one_after_writing_the_report' (7982209) panicked at crates/bboxybook/tests/parity_gate.rs:90:9:
+assertion `left == right` failed: parity: 1 cases, 1 review; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxybook-parity-gate-62815-1792704845695196000/index.html
+parity gate: pass (1 pixel reviews advisory)
+
+  left: Some(0)
+ right: Some(1)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- historical_geometry_review_exits_zero stdout ----
+Error: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- geometry_review_without_strict_flag_remains_advisory stdout ----
+
+thread 'geometry_review_without_strict_flag_remains_advisory' (7982204) panicked at crates/bboxybook/tests/parity_gate.rs:91:9:
+parity: 1 cases, 0 review; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxybook-parity-gate-62815-1792704845695123000/index.html
+parity gate: pass (0 pixel reviews advisory)
+
+
+
+failures:
+    geometry_review_without_strict_flag_remains_advisory
+    historical_geometry_review_exits_zero
+    pixel_only_review_exits_zero_and_is_counted_as_advisory
+    strict_geometry_review_exits_one_after_writing_the_report
+
+test result: FAILED. 2 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+error: test failed, to rerun pass `-p bboxybook --test parity_gate`
+
+EXIT 101

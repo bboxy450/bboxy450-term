@@ -1,0 +1,157 @@
+$ cargo test -p bbt-mux -p bbt-proto
+   Compiling zerocopy v0.8.63
+   Compiling serde v1.0.229
+   Compiling parking_lot_core v0.9.12
+   Compiling hashbrown v0.17.1
+   Compiling tokio v1.54.1
+   Compiling thiserror v1.0.69
+   Compiling thiserror v2.0.21
+   Compiling futures-util v0.3.34
+   Compiling filedescriptor v0.8.3
+   Compiling tungstenite v0.30.0
+   Compiling parking_lot v0.12.5
+   Compiling portable-pty v0.9.0
+   Compiling indexmap v2.14.2
+   Compiling hashlink v0.12.2
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+   Compiling rusqlite v0.40.2
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling petgraph v0.8.3
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-rt)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling rand v0.9.5
+   Compiling ulid v1.2.1
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.90s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-5d70ced734f27b72)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/adapters.rs (target/debug/deps/adapters-7b1980fea295e43f)
+
+running 11 tests
+test adapters_custom_harness_cadence_and_reported_idle_never_create_readiness ... ok
+test adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows ... ok
+test adapters_codex_native_readiness_and_hooks_only_subagents ... ok
+test adapters_native_claude_socket_writes_priority_without_claiming_consumption ... ok
+test adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields ... ok
+test adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reuse ... ok
+test adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect ... ok
+test adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping ... ok
+test adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary ... ok
+test adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallback ... ok
+test adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/logic.rs (target/debug/deps/logic-d90e044f2351a326)
+
+running 11 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test ring_capture_throughput_with_logic_running_and_stopped ... ignored, cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+test a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity ... ok
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 9 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 40.88s
+
+     Running tests/measurements.rs (target/debug/deps/measurements-0917334e50b086f3)
+
+running 2 tests
+test file_descriptors_at_200_live_seats_and_sqlite_objects ... ignored, finite 200-live-seat descriptor measurement
+test recursive_cte_vs_petgraph_and_thousand_subscriber_fanout ... ignored, finite synthetic 10k-document / 100k-link measurement
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (target/debug/deps/messaging-9775f1c723c21a03)
+
+running 15 tests
+test live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence ... ok
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route ... ok
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes ... ok
+test recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen ... ok
+test ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger ... ok
+test batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo ... ok
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... ok
+test live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.53s
+
+     Running tests/ring.rs (target/debug/deps/ring-9c41fa7edebdb186)
+
+running 9 tests
+test ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation ... ok
+test ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor ... ok
+test ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes ... ok
+test ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell ... ok
+test ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay ... ok
+test ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again ... ok
+test ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects ... ok
+test ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index ... ok
+test ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.08s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-540df5f8425c4481)
+
+running 9 tests
+test grammar_matches_tokens_and_rejects_mid_path_tail_wildcards ... ok
+test registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart ... ok
+test request_reply_has_no_responders_and_fanout_is_not_replayed ... ok
+test index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite ... ok
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+test explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work ... ok
+test mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes ... ok
+test independent_streams_latest_snapshots_queue_gaps_and_nonretained_output ... ok
+test sqlite_objects_blobs_and_alarms_round_trip_across_reopen ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+     Running tests/ui_guard.rs (target/debug/deps/ui_guard-fcec4e43da0833b7)
+
+running 1 test
+test ui_thread_is_rejected_before_creating_a_database_directory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_proto-c97aa54874e63f8c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_mux
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+EXIT 0

@@ -1,0 +1,67 @@
+C1b watched grids — Aster Cinderwing, exec4
+Base: df53a5c, git rebase --no-autostash origin/main exit 0, clean after rebase.
+Assignment 209cb1fa-e53d-4b7d-a908-1202a50044d9; main-ready 16619f51-7914-469d-b4b2-d341f36dbd64.
+Scope addition bd84535a-8baf-4f6b-b498-ba888040cffb: registry.rs move/re-export only, mux manifest.
+Sable IO/app seam pending; no app files edited at this stage.
+Moved viewport wire types verbatim (including Screen::from_term) and registry data types/SeatRecord constructor into new bbt-proto, with compatibility re-exports. Registry storage code and logic untouched.
+Independent gates so far: cargo check -p bbt-mux -p bbt-proto exit 0; layering exit 0; 5 existing terminal tests exit 0; new prepared pane offset/clip/atlas growth Metal test exit 0; terminal_gallery exit 0 and all 40 PNG SHA-256 hashes byte-identical to accepted T2a.
+Registry storage/logic and ViewStream/Replica implementation text verified byte-identical to df53a5c; viewport declarations copied verbatim.
+
+PROTOCOL EXTRACTION FIRST HANDOFF (not full C1b):
+Source dc9951006021ecf802f960c73e1765af67cb9cf6, signed and verified, parent 584d189 after git rebase --no-autostash origin/main exit 0.
+Original protocol source f6713f1 rebased to dc99510; cells source d5e649c rebased to c8e7189, not included in this first handoff.
+Protocol-only source changes ten paths, no renderer/app/UI changes. GUI schema is Sable's follow-up in proto/gui.rs per d64e1953 / C1 spec 65dfc10 §2a.
+Detached exact-source CI: /tmp/ci-aster-c1b-proto-dc99510, private CARGO_TARGET_DIR target/c1b-proto-ci.
+sh scripts/ci-local.sh — exit 101 at four new P1 parallel fixture collisions; no bboxybook code changed. c1b-proto-ci.log.
+cargo test -p bboxybook --test parity_gate -- --test-threads=1 — exit 0, 6 passed. c1b-p1-serial.log.
+Oracle 1ced8d60 authorizes recording the parallel external flake plus serial proof for this extraction; Velvet owns the unique-directory fix.
+RUST_TEST_THREADS=1 sh scripts/ci-local.sh — exit 0, 446 passed, four pre-existing ignored; layering, build, workspace tests, UI IO lint held. c1b-proto-ci-serial.log. --parity not run for this protocol-only source change.
+Removed the completed own private CI target after both gates exited: du allocation 5,580,668,928 bytes. Unique physical volume delta not isolated; no claim of exact physical bytes freed. c1b-proto-cleanup.log. Removed own clean temporary CI worktree; no peer dirs touched.
+Command inventory: c1b-command-inventory.log retains exact local source pointers and observed exits, including failed path probes and CI 101. No private messages/raw transcripts copied.
+Full C1b still needs app module typecheck/wiring, real IO echo-hi, operator input/resize and full renderer parity. Not claimed done by this first extraction handoff.
+
+FINAL PROTOCOL EXTRACTION (supersedes earlier source/gate):
+Source 37fa9e32e5011840b40d01e85c1265738a4f957f, parent 7124881, rebased after fixed P1 fixture landed (0783f7c). git rebase and verify-commit exits 0.
+Normal sh scripts/ci-local.sh in clean detached /tmp/ci-aster-c1b-proto-37fa9e3 with own target and RUST_TEST_THREADS unset: exit 0; [452, 0, 5] [passed,failed,ignored]. c1b-proto-ci-normal.log. No waiver used for final gate. No --parity because source changes only protocol extraction/dependency/order.
+Private normal CI target and clean worktree removed after completion; du allocated bytes removed 4969951232; unique physical free-space delta not isolated. Accepted galleries and peer directories retained. c1b-proto-final.log.
+Source 37fa9e3 ONLY is the first requested handoff. Cells 6f32bbc and untracked app modules are not handed off yet. GUI/socket schema stays with Sable. Echo-hi/operator input/resize/live UI/parity remain unchecked for the rest of C1b.
+
+Audit tooling incident after final CI completed: a replay selector chose its own wrapper and recursively started own Python helpers. Original wrapper exited 1 (child SIGTERM) after correction. Disabled wrapper file, stopped exact /Python target/c1b-audit.py processes only via pkill -TERM exit 0; verified 0 remaining (pgrep exit 1, verification wrapper exit 0). Initial two ps-filter stop attempts exited 0 but matched no helpers; not claimed successful. No CI command ran during the incident; peer resource impact not measured. Replaced with bounded first-original selection and in-process data-only inventory generation (no spawned helper), exit 0.
+
+Protocol accepted 9462e6c3, merged 0ce4b01. Rebased remaining live cells to 8ab015e; app modules untracked/in progress. Static TerminalRenderer:Send check failed E0277 exit 101 because objc2 CTFont lacks Send/Sync. Removed the exploratory assertion; no production workaround. Requested text/terminal_macos.rs scope. Apple Core Text docs https://developer.apple.com/documentation/coretext confirm immutable font objects may be shared across operations/work queues/threads, while layout objects remain call-local.
+
+Font scope authorized 800d8e10: terminal_macos.rs Send-only marker with Apple safety link and exhaustive type/field guard. First cross-thread fixture compile exited 101 E0373 (borrowed cases); changed capture to move. Then cargo test -p bbt-render --lib cells::terminal::gpu::tests exited 0, 3 passed (including static TerminalRenderer:Send/PreparedGrid:Send+Sync and exact raster regression). Actual OS-main probe built with cargo/rustc and exited 0: 32/32 main/worker raster pairs byte-identical, asserting pthread_main_np on both threads; source and all command exits in c1b-font-main.log. No Sync marker added.
+
+C1b-lib source d973716 on c6d6a11 after rebase, signed cells 5d428c6 / font guard be4deec / app library d973716. New app modules are real library exports; cargo test -p bboxy450-term --lib exit 0, 4 passed; app library UI IO clippy exit 0; layering exit 0. First standalone actual-source module run 3 pass/1 malformed DECSCUSR fixture failure (101), corrected CSI 6 SP q based on vendor vte/ansi.rs:1732; rerun 4/4 exit 0. Field palette ranges clarified inclusive without behavioral changes.
+Oracle b4e6eb07 sets this handoff to C1b-lib: gated library/cells land first; echo-hi is UNPROVEN pending C1a, then a separately briefed joint echo/kill-logic/resize acceptance. Sable 97b77e2a approves additive app lib.rs exports and core/proto deps. No cockpit/live/main edits.
+Headless app pane preview source/commands/output c1b-pane-preview.log; cargo/rustc/preview exit 0. One-device RGBA8 base texture with compatible sRGB view, Grids->Model->worker prepare->actual app draw_pane at offset. Read target/c1b-pane-comparison.png at original size: xterm web | app | difference on unicode-dark-1x. Cropped app pane is pixel-identical to accepted T2 native; web changed pixels 8.06033% at max channel delta >12 (existing font/emoji/sprite reference residue, no improvement claim). Real PTY/IO/window and iTerm2/Ghostty comparison remain unproven. c1b-pane-comparison.log.
+
+New process/disk ownership rule received 3993 / 2871c8e9: no future process-name/pattern termination; only own started-and-recorded PIDs, only own created dirs. Current own private native renderer PID 36211 recorded in c1b-processes.log from the exact private executable/render arguments; no termination. Final CI target/worktree were created by this session. The earlier audit-incident pattern termination is historical, logged, and will not be repeated.
+
+FINAL C1b-lib gates:
+Runtime/source HEAD f32a07f99b699aa04cfd20d2d02bf93f012f82fd (signed successor; only cfg(test) changes after d973716).
+Clean normal ci-local at f32a07f: EXIT 0. Exact clean strict all-targets cargo clippy for app: EXIT 0. Logs c1b-ci-successor.log and c1b-ci-strict.log. Normal gate may emit existing dependency warnings; strict --no-deps app check passes.
+Oracle 4d227c13 explicitly permits reuse of d973716 full parity for this test-only successor. git diff --quiet d973716 f32a07f -- crates/bbt-render crates/bboxybook lab design EXIT 0; seven relevant subtrees identical, c1b-testfix-proof.log.
+Full clean sh scripts/ci-local.sh --parity at d973716: EXIT 1. 1664 web PNGs, 1664 native PNGs, 1664 diff PNGs completed. Strict gate fails 648 missing geometry records across chrome components; no measured geometry mismatch present in report. 181 nonhistorical pixel-review cases are advisory. Total 829 nonhistorical review cases. Source/report counts in c1b-parity-summary.log, complete report in c1b-parity-report.log, full CI output in c1b-ci-parity.log. No waiver assumed; Oracle notified by DM 8b49a487.
+C1b-lib acceptance remains pending disposition of the out-of-scope geometry evidence failure; the required --parity exit 0 is NOT claimed. No layout/chrome patch made. No third unchanged capture run started.
+Exact preview image read: target/c1b-pane-comparison.png at original size; xterm reference | app draw_pane | difference, unicode-dark-1x. 40 terminal images retained at target/c1b-terminal. Full 1664-case gallery retained at target/c1b-parity-d973716; these have not all been image-read by this agent.
+Unproven: real IO/PTY echo-hi, operator input, resize/kill-logic integration, real window, R5 stalls, iTerm2/Ghostty comparison. These belong to the separately briefed joint C1 integration after C1a. C1a socket/bootstrap, GUI schema, mux ring/logic/supervisor, chrome/text and materials deliberately left alone.
+
+ORACLE DISPOSITION 56419841-361b-43d6-a554-260ab6defd67 (supersedes pending decision above): hand off C1b-lib at f32a07f with normal clean CI, strict lint, 40 byte-identical terminal PNGs, and d973716 parity subtree proof. Full parity is explicitly blocked by P3 tooling gap (648 null geometry, 0 measured mismatches). P3 default-full-run geometry emission assigned to Velvet. No baseline full-parity/key-set match claim is needed under this amended disposition; the requested existing-report search found none >=1500 cases. No new baseline run started.
+Completed private parity target removed after gate exit 1: allocated bytes removed 2915168256. Earlier f32 private normal/strict target allocated bytes removed 2513338368. Physical free-space delta not isolated. Own temporary CI worktree removed EXIT 0. Completed galleries retained.
+Closing source verification: git verify-commit f32a07f EXIT 0 (machine key); git diff --check c6d6a11..HEAD EXIT 0. Final nine implementation paths remain inside scoped allowance; evidence-only changes follow source HEAD.
+
+FINAL source mechanisms (C1b-lib only, source f32a07f):
+crates/bbt-render/src/cells/terminal/gpu.rs:56 — immutable PreparedGrid owns prepared bindings/buffers; encode at :70 loads existing target and records viewport/scissor GPU commands only. prepare at :326 does atlas/font/upload work on worker; offline render_to_rgba at :450 wraps the same path plus readback. Offset/clip/retained-atlas GPU regression at :673.
+crates/bbt-render/src/cells/terminal.rs:7 — exports PreparedGrid for app-pane composition.
+crates/bbt-render/src/cells/terminal/bg.wgsl:8 — interpolated local pixel coordinates preserve terminal cell backgrounds when viewport has an offset; dedicated terminal shader leaves legacy background path alone.
+crates/bbt-render/src/text/terminal_macos.rs:23 — documented immutable CoreText font Send-only safety contract; :29 Send marker; :31 exhaustive field/type guard. No Sync marker. Cross-thread exact bytes proven separately in c1b-font-main.log.
+crates/bboxy450-term/src/grids.rs:11 — per-watched-seat Replica maps; :25 applies atomic protocol updates with stable Arc for unchanged Screen; :52 diffs Watch/Unwatch; :79 screen accessor; :83 forget invalidates baseline.
+crates/bboxy450-term/src/model.rs:26 — public UI model plus Arc Screens/prepared frames; :46 applies canonical seat state; :66 builds UI metadata while retaining pane/layout state and unchanged Arcs; :271 worker PanePreparer; :293 reuses unchanged frames; :332 actual draw_pane records prepared cells into caller sRGB-compatible view; :407 converts public Screen rows/styles/cursor/palette to terminal Grid.
+crates/bboxy450-term/src/lib.rs:2 — exports grids/model as agreed additive C1a seam.
+crates/bboxy450-term/Cargo.toml:12 — direct core/proto downward dependencies; Cargo.lock records those direct app edges.
+Runtime signed commits: 5d428c6bf1fabf70c78018b422497406e30679b4 (prepared cells), be4deecacde896128da72ba7e3eef6455fed4331 (font Send-only), d97371612ae34b58423a29b0ae39573e3e4ac1fa (watched model library), f32a07f99b699aa04cfd20d2d02bf93f012f82fd (test-only strict lint fix). No push or merge by this agent.
+Earlier protocol extraction 37fa9e3 was already accepted/merged 0ce4b01; it is ancestry, not a second new handoff.
+
+Final format verification: initial bare rustfmt --check invocation EXIT 1 because it defaults to pre-2024 edition; corrected rustfmt --edition 2024 --check on all six owned Rust files EXIT 0, no source edits. Final inventory regenerated as data only, no replay/subprocess, EXIT 0; closing evidence commit and handoff commands reported separately.
+Closing staged diff check initially EXIT 2 for one whitespace-only context line in embedded testfix diff log; normalized trailing whitespace in that evidence log, no source change. Corrected staged diff check follows.

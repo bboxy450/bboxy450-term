@@ -1,0 +1,65 @@
+$ cargo test -p bboxy450-term --lib
+   Compiling objc2-foundation v0.3.2
+   Compiling polycool v0.4.0
+   Compiling tiny-skia-path v0.12.0
+   Compiling flate2 v1.1.10
+   Compiling tokio v1.54.1
+   Compiling roxmltree v0.21.1
+   Compiling rgb v0.8.53
+   Compiling core-foundation v0.9.4
+   Compiling objc2-foundation v0.2.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui)
+   Compiling kurbo v0.13.1
+   Compiling core-graphics-types v0.1.3
+   Compiling png v0.18.1
+   Compiling core-graphics v0.23.2
+   Compiling svgtypes v0.16.1
+   Compiling tiny-skia v0.12.0
+   Compiling usvg v0.48.1
+   Compiling objc2-metal v0.3.2
+   Compiling objc2-app-kit v0.3.2
+   Compiling resvg v0.48.1
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+   Compiling objc2-app-kit v0.2.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-rt)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-supervisor)
+   Compiling objc2-core-graphics v0.3.2
+   Compiling winit v0.30.13
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+warning: multiple ranges are one apart
+   --> crates/bboxy450-term/src/model.rs:365:9
+    |
+365 |         232..256 => {
+    |         ^^^^^^^^
+    |         |
+    |         this range doesn't match `256_usize` because `..` is an exclusive range
+    |         help: use an inclusive range instead: `232_usize..=256_usize`
+...
+369 |         257 => {
+    |         --- this could appear to continue range `232_usize..256_usize`, but `256_usize` isn't matched by either of them
+    |
+    = note: `#[warn(non_contiguous_range_endpoints)]` on by default
+
+warning: `bboxy450-term` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 23.05s
+     Running unittests src/lib.rs (target/debug/deps/bboxy450_term-69dec405862594ab)
+
+running 4 tests
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+
+EXIT 0

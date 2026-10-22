@@ -1,0 +1,14 @@
+Exact clean f32a07f successor; same private target/profiles as normal gate.
+$ cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-aster-c1b-f32a07f/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/private/tmp/ci-aster-c1b-f32a07f/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/private/tmp/ci-aster-c1b-f32a07f/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-aster-c1b-f32a07f/crates/bboxy450-term)
+    Checking bbt-ui v0.0.1 (/private/tmp/ci-aster-c1b-f32a07f/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/private/tmp/ci-aster-c1b-f32a07f/crates/bbt-render)
+    Checking bbt-supervisor v0.0.1 (/private/tmp/ci-aster-c1b-f32a07f/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/private/tmp/ci-aster-c1b-f32a07f/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/private/tmp/ci-aster-c1b-f32a07f/crates/bbt-mux)
+    Finished `dev` profile [unoptimized] target(s) in 8.77s
+
+EXIT 0
