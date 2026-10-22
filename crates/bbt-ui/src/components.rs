@@ -8,6 +8,11 @@ use bbt_ui_model::{
 
 pub trait Measure: TextMeasure {
     fn font_metrics(&self, style: &MeasureStyle) -> [f32; 2];
+    /// Logical x-height for CSS inline-middle alignment. Hosts with a font
+    /// backend override the em-based fallback used by simple test measures.
+    fn x_height(&self, style: &MeasureStyle) -> f32 {
+        style.size * 0.5
+    }
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Extent {
@@ -189,7 +194,11 @@ pub enum Element {
         saturation: f32,
         opacity: f32,
     },
-    /// Stable semantic label for independent geometry snapshots and hit targets.
+    /// CSS vertical-align: middle relative to the parent font x-height.
+    InlineMiddle {
+        content: std::boxed::Box<Element>,
+        parent: crate::style::Text,
+    },
     Baseline {
         content: std::boxed::Box<Element>,
         offset: f32,
@@ -576,6 +585,15 @@ impl Element {
                 }
                 content.natural(width, ctx, m)
             }
+            Self::InlineMiddle { content, parent } => {
+                let (size, _) = content.natural(width, ctx, m)?;
+                let style = resolve_text(*parent, ctx)?;
+                let x = m.x_height(&font(&style));
+                if !x.is_finite() || x < 0. {
+                    return Err("invalid font x-height");
+                }
+                Ok((size, size[1] * 0.5 + x * 0.5))
+            }
             Self::Baseline { content, offset } => {
                 let (size, baseline) = content.natural(width, ctx, m)?;
                 Ok((size, baseline + offset))
@@ -700,6 +718,11 @@ impl Element {
                 },
                 vec![content.layout_in(rect, ctx, m)?],
             ),
+            Self::InlineMiddle { content, .. } => {
+                let mut child = content.layout_in(rect, ctx, m)?;
+                child.baseline = base;
+                return Ok(child);
+            }
             Self::Baseline { content, offset } => {
                 let mut child = content.layout_in(rect, ctx, m)?;
                 child.baseline += offset;
@@ -1155,9 +1178,9 @@ fn layout_children(
 
 fn fn_content_inset(element: &Element, ctx: Context) -> crate::style::Result<f32> {
     match element {
-        Element::Named { content, .. } | Element::Baseline { content, .. } => {
-            fn_content_inset(content, ctx)
-        }
+        Element::Named { content, .. }
+        | Element::Baseline { content, .. }
+        | Element::InlineMiddle { content, .. } => fn_content_inset(content, ctx),
         Element::Box(b) => {
             let p = inset(&b.style.resolve(ctx)?);
             Ok(p.left + p.right)
@@ -1814,6 +1837,7 @@ pub fn namespace(element: &mut Element, prefix: &str) {
         }
         Element::Filter { content, .. }
         | Element::Baseline { content, .. }
+        | Element::InlineMiddle { content, .. }
         | Element::Overlay(Overlay { content, .. })
         | Element::ScrollView(ScrollView { content, .. }) => namespace(content, prefix),
         Element::Layers { base, overlays } => {
