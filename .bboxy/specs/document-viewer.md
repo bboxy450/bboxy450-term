@@ -4,7 +4,7 @@ Owner: Vesper Greywind <ORACLE>. 2026-10-21. DECIDED by the operator: "native ma
 
 ## What it is
 
-A **document tab**: ⌘-click on a path ending in `.md` in any pane (or an OSC 8 hyperlink, or a wikilink in the stream, or a work item in the sidebar and Graph tab) opens the file rendered natively by our wgpu renderer in a tab of the current swarm, with the frontmatter header, provenance strip and graph rail from the lab's documents page when the file is a `.bboxy/` item, or a plain document view when it is any other Markdown. No webview, no browser, no JavaScript.
+A **document modal** (operator, 2026-10-21: "it should be a modal; the usage pattern is open, scroll, copy maybe, close, feed into the harness"): ⌘-click on a path ending in `.md` in any pane (or an OSC 8 hyperlink, or a wikilink in the stream, or a work item in the sidebar and Graph tab) opens the file rendered natively by our wgpu renderer in a centred modal over the blurred window, the launcher's material and size class, with the frontmatter header, provenance strip and graph rail from the lab's documents page when the file is a `.bboxy/` item, or a plain document view for any other Markdown. Keyboard: scroll with arrows, space and page keys, ⌘F find, ⌘C copies the selection as Markdown source (not rendered text), ⌘A selects all, ⌘⇧C copies the path, **⏎ or ⌘⏎ feeds the document (or the selection) into the focused seat's harness as a message through the adapter and closes**, Esc closes. The modal never steals the seat's keyboard focus for longer than it is open; closing returns focus exactly where it was. A "pin as tab" action exists for the rare long read, but the modal is the default. No webview, no browser, no JavaScript.
 
 ## Path detection in panes
 
