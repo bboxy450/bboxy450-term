@@ -1,0 +1,130 @@
+ROLE: EXECUTOR — Nyx Copperwing. W3.2d.7.8 GraphTab.
+Worktree: /Users/feral/mydev/bboxy450-term. Brief: tasks/2026-10-21-w3-2d-7-modules.md.
+
+Mechanism / scope:
+bbt-ui/src/modules/graph_tab.rs:172 — typed public agents, work items, artifacts,
+subscriptions, provenance, history and channel records; six retained cards.
+graph_tab.rs:1266 — host viewport width only; all child flow/geometry is native.
+graph_tab.rs:1301 — channel tree built from records and font metrics, at 1:1;
+Path for cubic/dashed/weighted/paused links and bridges; Box for dots/pills;
+Text at shared type steps. u=0.3 pill placement; scroll at a narrow viewport.
+graph_tab.rs:1872 — pure slug/display/relation/weight parsing for wikilink chips.
+Signed digest flags, roles, tasks and subscriptions are displayed as supplied;
+no index, verification, command, grant or routing authority lives in the module.
+Provenance caps six items/newest six log lines; history newest twelve, reversed.
+
+bboxybook/src/graphs.rs:61 — public records and outer viewport drive layout;
+child DOM/SVG bounds/fonts are diagnostics only. Public harness records provide
+tile colours. Native clip applies only the enclosing fixture viewport.
+graphs.rs:159 — independent named geometry/baseline snapshots.
+bboxybook/capture-inputs.js:160 — export public graph constructors and semantic
+diagnostics. SVG central anchors plus Canvas font metrics measure baselines;
+SVG path internals never feed the native diagram. External frame clip is shared.
+main/lib/parity/capture.mjs — current graph gallery, snapshots and pairing;
+CSS glyph pose frozen at 0ms. The same retained model replaces the three old
+hand-painted graph/provenance/subscription adapters in fixtures.rs/modules.rs.
+bbt-ui/tests/graphs.rs and bboxybook/tests/graphs.rs — ten focused tests, including
+proof that changing/removing browser child/SVG diagnostics cannot change native
+layout, while public records do; channel canvas stays 1:1 across viewport widths.
+Both crate READMEs document module ownership, scope and the gallery command.
+
+Support landed separately and accepted:
+ d8f2b86 — real x-height / InlineMiddle; w3-2d-7-8-x-height.log.
+ 39d7245 — retained GPU atlases; w3-2d-7-8-atlas.log.
+ d10585f — retained vector paths; w3-2d-7-8-paths.log.
+Source decision c7eb6a2b: no optical-size API; the lab's scaled 700-unit SVG was
+not intended design. Wren fixed it in signed 5bafc39. Current handoff consumes
+that 1:1 lab record and ordinary TextStyle, with no new L1/L3 font feature.
+
+Final verification (raw output in target/bboxybook/graphs/final/):
+BBOXYBOOK_GALLERY=graphs BBOXYBOOK_REFERENCE_HEAD=5bafc39 \
+ PARITY_OUT=target/bboxybook/graphs/final scripts/parity.sh
+ exit 0; web 64/64 with zero failures; native 64; capture.json pins
+ 5bafc39a6cef82e03ec41a1ce293a799a5cdb991. Index: final/index.html.
+ Geometry: 64/64 complete and passing, 4,992 rects, 3,056 baselines;
+ max rect error 0.0732421875px, max baseline error 0.0546875px.
+ Pixel policy: 48/64 within, 16 review pixels (all Provenance / Work Tree).
+ Worst 2.0722900755%, against the unchanged 2% text budget. No geometry reviews.
+ Channel card alone: both themes pass; baselines exact, max rect 0.0662px.
+
+cargo test -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook --locked
+ exit 0, 194 passed; debug-tests.log.
+cargo test -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook --release --locked
+ exit 0, 194 passed; release-tests.log.
+The chained check command then exited 101 on one needless-borrow clippy warning.
+Removed that borrow (no paint/geometry change) and re-ran:
+cargo clippy -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook \
+ --all-targets --locked -- -D warnings -A clippy::map_entry \
+ -A clippy::chunks_exact_to_as_chunks
+ exit 0; clippy-final.log. scripts/ui-lint.sh exit 0; ui-lint.log (existing
+ non-gating map-entry/chunks suggestions). node --check both capture scripts
+ and git diff --check exit 0. No budgets, goldens or reference files changed here.
+
+Image read:
+- full-cozy-dark web/native: cards, agents, work tree, subscriptions, viewport
+  clipping and channels line up;
+- channels-cozy-dark and light web/native: 1:1 labels, dots, cubic links, traffic,
+  bridge and separated pills; small dot/cap antialiasing remains;
+- provenance-cozy-dark and light web/native/diff; work-tree-cozy-dark diff:
+  remaining text edges and small outline masks, with measured geometry passing.
+For these two cards, all four densities have byte-identical web/native/diff
+triplets within each theme; checked by SHA-256. Thus the ten worst names below
+are four density aliases of the same viewed content, not ten distinct defects.
+
+Historical probe:
+The initial 136-case capture produced 64 current + 72 failures: ux-prototype-v2
+has no C.graphPage / C.provenanceCard / C.subscriptionsCard constructors. Raw
+partial capture stays in graphs/cards/capture.{log,json}. Those 72 entries remain
+historical, unproven; no replacement references invented, current gallery is 64.
+
+Not checked: hosted CI, non-Metal backends, live Graph input/navigation, backing
+indexes, signatures or subscriptions. Static display is this brief; caller owns
+updates/actions. No new full lower-gallery image replay for this module-only
+change; support commits separately proved 1,808 unchanged images. No app/mux,
+design/lab, Cargo or renderer source changes in this Graph commit.
+
+Git sync before handoff: pull --no-rebase --ff-only exited 128 (divergence),
+HEAD=3de2ae1 with Rook's a00e53e/3de2ae1; origin had seven other commits. No merge,
+rebase, stash or push by this Executor; Oracle receives the signed Graph delta.
+
+Ten worst triplets (base target/bboxybook/graphs/final/):
+graph/provenance-comfortable-dark.png — 2.07229008%
+ web/graph/provenance-comfortable-dark.png
+ native/graph/provenance-comfortable-dark.png
+ diff/graph/provenance-comfortable-dark.png
+graph/provenance-compact-dark.png — 2.07229008%
+ web/graph/provenance-compact-dark.png
+ native/graph/provenance-compact-dark.png
+ diff/graph/provenance-compact-dark.png
+graph/provenance-cozy-dark.png — 2.07229008%
+ web/graph/provenance-cozy-dark.png
+ native/graph/provenance-cozy-dark.png
+ diff/graph/provenance-cozy-dark.png
+graph/provenance-touch-dark.png — 2.07229008%
+ web/graph/provenance-touch-dark.png
+ native/graph/provenance-touch-dark.png
+ diff/graph/provenance-touch-dark.png
+graph/provenance-comfortable-light.png — 2.06622315%
+ web/graph/provenance-comfortable-light.png
+ native/graph/provenance-comfortable-light.png
+ diff/graph/provenance-comfortable-light.png
+graph/provenance-compact-light.png — 2.06622315%
+ web/graph/provenance-compact-light.png
+ native/graph/provenance-compact-light.png
+ diff/graph/provenance-compact-light.png
+graph/provenance-cozy-light.png — 2.06622315%
+ web/graph/provenance-cozy-light.png
+ native/graph/provenance-cozy-light.png
+ diff/graph/provenance-cozy-light.png
+graph/provenance-touch-light.png — 2.06622315%
+ web/graph/provenance-touch-light.png
+ native/graph/provenance-touch-light.png
+ diff/graph/provenance-touch-light.png
+graph/work-tree-comfortable-dark.png — 2.05949060%
+ web/graph/work-tree-comfortable-dark.png
+ native/graph/work-tree-comfortable-dark.png
+ diff/graph/work-tree-comfortable-dark.png
+graph/work-tree-compact-dark.png — 2.05949060%
+ web/graph/work-tree-compact-dark.png
+ native/graph/work-tree-compact-dark.png
+ diff/graph/work-tree-compact-dark.png

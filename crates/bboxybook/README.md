@@ -551,3 +551,23 @@ Vector paths: `bboxybook paths --out target/bboxybook/paths` pairs the 48
 The renderer retains lyon geometry and composites each stroke once, with analytic
 pixel coverage. Per renderer §4.4a, paths use 0.5% pixels plus exact centreline
 bounds and segment endpoints; other case policies are unchanged.
+
+## L7 GraphTab (W3.2d.7.8)
+
+`bboxybook graphs` renders the 64 current `graph.html` cases: full view, six
+cards and empty swarm, across four densities and both themes.
+
+```sh
+BBOXYBOOK_GALLERY=graphs BBOXYBOOK_REFERENCE_HEAD=5bafc39 PARITY_OUT=target/bboxybook/graphs/final scripts/parity.sh
+```
+
+Public records, harness definitions and enclosing viewports drive native
+composition. Child DOM/SVG rectangles and baselines are diagnostics only.
+The fixture's external rounded viewport supplies its ancestor clip. The
+channel graph follows the font-measured 1:1 reference, including cubic links,
+paused links, traffic weights, bridges, and filter/rate pills at curve u=0.3.
+
+The 72 v2 GraphTab/provenance/subscription entries remain a historical probe
+inventory; the tag has no corresponding C constructors, so their capture is
+unproven and they are not a current gate. No references are invented for them.
+The old hand-painted graph adapters now call the retained composition.

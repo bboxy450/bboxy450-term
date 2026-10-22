@@ -248,3 +248,17 @@ Flow wraps centred presence and rejected notices; Text centres audit lines.
 Epics use supplied expansion/status, and the external lane shows the newest five
 events first. The caller owns scrolling, selection/mute actions, scheduling,
 subscriptions, message routing and animation. No command is sent by this module.
+
+## L7 GraphTab
+
+`graph_tab::GraphTab` projects the supplied agents, work tree, subscriptions,
+channel tree, provenance and artifact history through retained components.
+`element_width` receives the enclosing viewport width; the channel drawing
+uses native font measurements at 1:1 and scrolls when the viewport is narrower.
+Its links are L6 Paths, its dots/pills are Box, and its labels are ordinary Text.
+
+Work status, authority, signed-digest flags, subscriptions and activity are
+host records. This module owns no index, verification, routing or commands.
+Provenance keeps the first six items and newest six log entries; artifact
+history keeps the newest twelve. Annotated wikilinks preserve slug, display,
+relation and weight. The caller owns navigation, updates and subscriptions.

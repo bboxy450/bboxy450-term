@@ -157,6 +157,60 @@
       }
       return diagnostics;
     };
+    if(window.bboxyGraphFixture){
+      const graphCall=calls.find(c=>c.name==='graphPage'&&c.node?.isConnected&&root.contains(c.node));
+      const standalone=!graphCall&&calls.find(c=>['provenanceCard','subscriptionsCard'].includes(c.name)&&c.node?.isConnected&&root.contains(c.node));
+      if(!graphCall&&!standalone)throw Error('Graph constructor missing');
+      const node=(graphCall||standalone).node,view=graphCall?graphCall.args[0]:standalone.name==='provenanceCard'?{provenance:standalone.args[0],only:['provenance']}:{subscriptions:standalone.args[0],only:['subscriptions']};
+      view.harnesses=C.LAUNCH.filter(l=>l.harness).map(l=>({name:l.harness,tile:l.tile}));
+      const diagnostics=[],add=(key,n,isText=false)=>{if(!n)throw Error('Missing graph diagnostic '+key);diagnostics.push(isText?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});};
+      if(graphCall)add('graph',node);
+      const cards=graphCall?[...node.children]:[node];
+      for(const card of cards){
+        const head=card.querySelector('.s-card-h'),title=head.firstElementChild.textContent;
+        const k=title.startsWith('Agents')?'agents':title.startsWith('Graph')?'work':title.startsWith('Subscriptions')?'subscriptions':title.startsWith('Channels')?'channels':title.startsWith('Provenance')?'provenance':'history';
+        add(k,card);add(k+'/head',head);add(k+'/title',head.firstElementChild,true);
+        if(k==='agents'){
+          const rows=[...card.querySelectorAll('.g-row')];
+          rows.forEach((r,i)=>{const p=i?'agents/r'+(i-1):'agents/header';add(p,r);[...r.children].forEach((cell,j)=>{if(!i)add(p+'/c'+j,cell,true);else if(j===0){add(p+'/seat',cell);add(p+'/tile',cell.querySelector('.tile'));add(p+'/name',cell.querySelector('b'),true);add(p+'/glyph',cell.querySelector('.glyph'));}else add(p+'/'+['seat','role','now','blocked'][j],cell,true);});});
+        }else if(k==='work'){
+          const tree=card.querySelector('.g-tree');add('work/tree',tree);let at=0;const rows=[...tree.children];
+          (view.epics||[]).forEach((ep,ei)=>{let p='work/e'+ei,r=rows[at++];add(p,r);['kind','title','count'].forEach((v,j)=>add(p+'/'+v,r.children[j],true));
+            (ep.items||[]).forEach((it,wi)=>{const p='work/e'+ei+'/i'+wi,r=rows[at++];add(p,r);for(const [cls,name]of [['g-branch','branch'],['tglyph','mark'],['ekind','kind'],['g-title','title'],['eass','assignee'],['g-dep','waits']]){const n=r.querySelector('.'+cls);if(n)add(p+'/'+name,n,!n.querySelector('.hicon'));}const inv=r.querySelector('.invchip');if(inv)add(p+'/invariant',inv);
+              for(let bi=0;bi<(it.binds||[]).length;bi++){const b=rows[at++],q=p+'/b'+bi;add(q,b);['branch','mark','title','rel'].forEach((v,j)=>add(q+'/'+v,b.children[j],!b.children[j].querySelector('.hicon')));}
+              for(let ai=0;ai<(it.artifacts||[]).length;ai++){const a=rows[at++],q=p+'/a'+ai;add(q,a);['branch','mark','kind','ref','responsible'].forEach((v,j)=>{if(a.children[j])add(q+'/'+v,a.children[j],true)});}
+            });
+          });
+        }else if(k==='subscriptions'){
+          [...card.querySelectorAll('.sub-row')].forEach((r,i)=>{const p=k+'/r'+i;add(p,r);add(p+'/seat',r.firstElementChild,true);add(p+'/patterns',r.lastElementChild);[...r.querySelectorAll('.sub-pat')].forEach((pt,j)=>{const q=p+'/p'+j;add(q,pt);add(q+'/pattern',pt.querySelector('code'),true);if(pt.querySelector('i'))add(q+'/auto',pt.querySelector('i'),true)});});
+        }else if(k==='channels'){
+          add(k+'/wrap',card.querySelector('.cg-wrap'));add(k+'/tree',card.querySelector('.chgraph'));add(k+'/key',card.querySelector('.cg-key'));
+          const svgText=(key,n)=>{if(!n)throw Error('missing channel label '+key);const r=bounds(n),matrix=n.getScreenCTM(),p=n.getStartPositionOfChar(0).matrixTransform(matrix),css=getComputedStyle(n),ctx=document.createElement('canvas').getContext('2d');ctx.font=css.fontStyle+' '+css.fontWeight+' '+(parseFloat(css.fontSize)*Math.hypot(matrix.a,matrix.b))+'px '+css.fontFamily;const fm=ctx.measureText(n.textContent);diagnostics.push({key,kind:'text',value:n.textContent,rect:r,font_diagnostics:{baseline:p.y-origin.y-r.y+(fm.fontBoundingBoxAscent-fm.fontBoundingBoxDescent)/2,source:'SVG central anchor + device-space Canvas font metrics; diagnostic only'}});};
+          [...card.querySelectorAll('.cg-folder')].forEach((n,i)=>svgText(k+'/folder'+i,n));
+          let fi=0;(view.channels.folders||[]).forEach((f,i)=>{if(f.filter)svgText(k+'/filter'+i,card.querySelectorAll('.cg-note')[fi++]);});
+          [...card.querySelectorAll('.cg-sink')].forEach((n,i)=>svgText(k+'/sink'+i+'/name',n));
+          [...card.querySelectorAll('.cg-path')].forEach((n,i)=>svgText(k+'/sink'+i+'/path',n));
+          const labels=[...card.querySelectorAll('.cg-pill-t')];let at=0;
+          (view.channels.links||[]).forEach((l,i)=>{if(l.filter||l.rate)svgText(k+'/pill'+i+'/text',labels[at++]);});
+          (view.channels.bridges||[]).forEach((br,i)=>svgText(k+'/bridge'+i+'/text',labels[at++]));
+        }else if(k==='history'){
+          [...card.querySelectorAll('.g-hist')].forEach((r,i)=>{const p=k+'/r'+i;add(p,r);['time','seat','event','mark','ref','grade'].forEach((v,j)=>add(p+'/'+v,r.children[j],true));});
+        }else if(k==='provenance'){
+          [...card.querySelectorAll('.p-item')].forEach((r,i)=>{const p=k+'/i'+i;add(p,r);add(p+'/head',r.querySelector('.p-head'));add(p+'/kind',r.querySelector('.ekind'),true);add(p+'/title',r.querySelector('b'),true);add(p+'/by',r.querySelector('.p-by'),true);
+            const der=r.querySelector('.p-derived');if(der){add(p+'/derived',der);add(p+'/derived/label',der.firstElementChild,true);add(p+'/links',der.lastElementChild);[...der.querySelectorAll('.wl')].forEach((link,j)=>{const q=p+'/links/l'+j;add(q,link);add(q+'/slug',link.firstElementChild);if(link.lastElementChild!==link.firstElementChild)add(q+'/rel',link.lastElementChild);});}
+            const dig=r.querySelector('.p-digest');if(dig){add(p+'/digest',dig);['label','content','signature'].forEach((v,j)=>add(p+'/digest/'+v,dig.children[j],true));}
+          });
+          const loghead=card.querySelector('.p-loghead');if(loghead){add(k+'/loghead',loghead);/* text range separate from its padded row */}
+          [...card.querySelectorAll('.p-log')].forEach((r,i)=>{const p=k+'/log'+i;add(p,r);['hash','time','text'].forEach((v,j)=>add(p+'/'+v,r.children[j],true));});
+        }
+      }
+      node.dataset.bboxyGraph='';
+      const parent=node.parentElement,pc=getComputedStyle(parent),externalClip=graphCall&&['hidden','auto','scroll'].includes(pc.overflowY)?(()=>{
+        const r=bounds(parent),t=parseFloat(pc.borderTopWidth)||0,b=parseFloat(pc.borderBottomWidth)||0,l=parseFloat(pc.borderLeftWidth)||0,rr=parseFloat(pc.borderRightWidth)||0;
+        return {rect:{x:r.x+l,y:r.y+t,w:r.w-l-rr,h:r.h-t-b},radii:radii(pc).map(v=>Math.max(0,v-Math.max(t,l,b,rr)))};
+      })():null;
+      return JSON.parse(JSON.stringify({version:1,layer:'graphs',frames:[{view,standalone:!!standalone,host:bounds(node),clip:externalClip,parts:diagnostics}]},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
+    }
     if(window.bboxyStreamFixture){
       const frames=[...root.querySelectorAll('.stream,.stream-dock')].filter(n=>!n.parentElement.closest('.stream,.stream-dock')).map(node=>{
         const dock=node.classList.contains('stream-dock'),framed=!dock||!node.parentElement.matches('.body'),frame=dock&&framed?node.parentElement:node;

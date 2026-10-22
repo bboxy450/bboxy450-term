@@ -1198,34 +1198,7 @@ pub fn draw(id: &str, state: &str, r: Rect, ctx: &DrawCtx, out: &mut DrawList) -
             }
             .draw(Rect::new(r.x, r.y, 190.0, 24.0), ctx, out);
         }
-        "provenance_card" => info_card(
-            Rect::new(r.x, r.y, 700.0, r.h),
-            "Provenance",
-            &[
-                "SPEC  Renderer",
-                "created by  Vesper Greywind     updated by  Nyx Copperwing",
-                "renderer  derives:0.8      terminal-core  constrains:1.0",
-                "a723f1c9  ✓ signed by Boxy's GPG primary",
-                "Activity log · hash chained",
-                "13:40  Nyx Copperwing  created  renderer.md",
-                "23:59  Daily checkpoint · signed",
-            ],
-            ctx,
-            out,
-        ),
-        "subscriptions_card" => info_card(
-            Rect::new(r.x, r.y, 700.0, r.h),
-            "Subscriptions",
-            &[
-                "Vesper Greywind   task/*  AUTO · delegated tasks",
-                "seat/*/state     doc/specs/**",
-                "Nyx Copperwing   task/w2-1  AUTO · delegated task",
-                "doc/specs/mux-daemon  AUTO · derived_from",
-                "artifact/*/for:w2-1",
-            ],
-            ctx,
-            out,
-        ),
+        "provenance_card" | "subscriptions_card" => crate::graphs::paint_legacy(r,id,ctx,out),
         "external_lane" => info_card(
             Rect::new(r.x, r.y, 700.0, r.h),
             "External events",
@@ -1237,41 +1210,7 @@ pub fn draw(id: &str, state: &str, r: Rect, ctx: &DrawCtx, out: &mut DrawList) -
             ctx,
             out,
         ),
-        "graph_tab" => {
-            info_card(
-                Rect::new(r.x, r.y, r.w.min(760.0), 160.0),
-                "Agents",
-                &[
-                    "Vesper Greywind · oracle · reviewing",
-                    "Nyx Copperwing · executor · running · Renderer harness",
-                    "Rook Ashwhisker · executor · blocked on transport",
-                ],
-                ctx,
-                out,
-            );
-            info_card(
-                Rect::new(r.x, r.y + 180.0, r.w.min(760.0), 180.0),
-                "Work tree",
-                &[
-                    "EPIC Renderer   2/4",
-                    "  ✓ SPEC Terminal core",
-                    "  ◕ TASK Native gallery · Nyx",
-                    "    IMAGE target/bboxybook/sidebar.png · responsible Nyx",
-                ],
-                ctx,
-                out,
-            );
-            info_card(
-                Rect::new(r.x, r.y + 380.0, r.w.min(760.0), 160.0),
-                "Artifact history",
-                &[
-                    "13:40  Nyx  created  renderer.md  reported",
-                    "13:52  Nyx  claimed  smoke.png  reported",
-                ],
-                ctx,
-                out,
-            );
-        }
+        "graph_tab" => crate::graphs::paint_legacy(r,id,ctx,out),
         "banner" => {
             text(
                 out,
