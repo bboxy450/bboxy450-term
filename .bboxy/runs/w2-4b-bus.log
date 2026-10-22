@@ -1,0 +1,49 @@
+W2.4b after: exec7 8a291a8 + uncommitted W2.4b diff ( 4 files changed, 261 insertions(+), 60 deletions(-)); Thu Oct 22 16:11:15 PDT 2026; load: load averages: 7.19 10.69 15.19
+$ GATE_RUN_DIR=<scratch> GATE_SEATS=100 GATE_SECONDS=600 sh scripts/gates.sh bus
+
+running 1 test
+GATE bus value=9095.000 unit=ms budget=none MEASURED ptmx_max=999 seats=100 synthetic=1 recipients=99 messages=30 rate=10/s delivered=2970/2970 p50_ms=3096 max_ms=9096 drained_s=12.0 send_p50_ms=7 send_max_ms=11 pump_p99_ms=21.9 pump_max_ms=23.2 setup_s=0.1 disk_peak_mib=29.3
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 12.08s
+
+exit=0
+$ GATE_RUN_DIR=<scratch> GATE_SEATS=100 GATE_SECONDS=600 sh scripts/gates.sh bus
+
+running 1 test
+GATE bus value=9095.000 unit=ms budget=none MEASURED ptmx_max=999 seats=100 synthetic=1 recipients=99 messages=30 rate=10/s delivered=2970/2970 p50_ms=3096 max_ms=9097 drained_s=12.0 send_p50_ms=7 send_max_ms=11 pump_p99_ms=32.0 pump_max_ms=33.4 setup_s=0.1 disk_peak_mib=29.3
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 12.07s
+
+exit=0
+$ GATE_RUN_DIR=<scratch> GATE_SEATS=100 GATE_SECONDS=600 sh scripts/gates.sh bus
+
+running 1 test
+GATE bus value=9095.000 unit=ms budget=none MEASURED ptmx_max=999 seats=100 synthetic=1 recipients=99 messages=30 rate=10/s delivered=2970/2970 p50_ms=3096 max_ms=9097 drained_s=12.0 send_p50_ms=7 send_max_ms=11 pump_p99_ms=26.2 pump_max_ms=41.2 setup_s=0.1 disk_peak_mib=29.3
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 12.07s
+
+exit=0
+$ GATE_RUN_DIR=<scratch> GATE_SEATS=1000 GATE_SECONDS=600 sh scripts/gates.sh bus
+
+running 1 test
+GATE bus value=119912.000 unit=ms budget=none MEASURED ptmx_max=999 seats=1000 synthetic=1 recipients=999 messages=30 rate=10/s delivered=29970/29970 p50_ms=45079 max_ms=123797 drained_s=127.0 send_p50_ms=63 send_max_ms=96 pump_p99_ms=372.4 pump_max_ms=440.4 setup_s=1.2 disk_peak_mib=314.3
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 128.20s
+
+exit=0
+$ GATE_RUN_DIR=<scratch> GATE_SEATS=1000 GATE_SECONDS=600 sh scripts/gates.sh bus
+
+running 1 test
+GATE bus value=114627.000 unit=ms budget=none MEASURED ptmx_max=999 seats=1000 synthetic=1 recipients=999 messages=30 rate=10/s delivered=29970/29970 p50_ms=45040 max_ms=118488 drained_s=121.0 send_p50_ms=67 send_max_ms=98 pump_p99_ms=247.0 pump_max_ms=412.2 setup_s=1.4 disk_peak_mib=314.3
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 122.41s
+
+exit=0
+$ GATE_RUN_DIR=<scratch> GATE_SEATS=1000 GATE_SECONDS=600 sh scripts/gates.sh bus
+
+running 1 test
+GATE bus value=125339.000 unit=ms budget=none MEASURED ptmx_max=999 seats=1000 synthetic=1 recipients=999 messages=30 rate=10/s delivered=29970/29970 p50_ms=47949 max_ms=129082 drained_s=131.8 send_p50_ms=64 send_max_ms=100 pump_p99_ms=485.1 pump_max_ms=784.7 setup_s=1.2 disk_peak_mib=314.3
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 132.97s
+
+exit=0
