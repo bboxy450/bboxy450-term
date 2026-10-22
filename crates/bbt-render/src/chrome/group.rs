@@ -1,6 +1,7 @@
 //! Isolated offscreen layers on the chrome device, composed in CSS sRGB space.
 use super::{ChromeRenderer, ChromeTarget};
 use crate::Result;
+use bbt_ui_model::draw::LinearAlphaMask;
 use wgpu::util::DeviceExt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -99,7 +100,21 @@ impl ChromeRenderer {
         target: ChromeTarget<'_>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<()> {
+        self.composite_group_with_mask(layer, filter, None, target, encoder)
+    }
+    /// Optional ramp in draw-list logical pixels, applied once to group alpha.
+    pub fn composite_group_with_mask(
+        &mut self,
+        layer: &wgpu::TextureView,
+        filter: Filter,
+        mask: Option<LinearAlphaMask>,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<()> {
         filter.validate()?;
+        if let Some(mask) = mask {
+            mask.validate()?;
+        }
         if layer.texture().size().width != target.width
             || layer.texture().size().height != target.height
         {
@@ -111,9 +126,23 @@ impl ChromeRenderer {
             .group_pipelines
             .entry(format)
             .or_insert_with(|| pipeline(device, format));
+        let mut values = [0.; 12];
+        values[0] = filter.opacity;
+        values[1] = filter.saturation;
+        if let Some(mask) = mask {
+            values[2] = 1.;
+            values[4..8].copy_from_slice(&[
+                mask.start[0] * target.scale,
+                mask.start[1] * target.scale,
+                mask.end[0] * target.scale,
+                mask.end[1] * target.scale,
+            ]);
+            values[8] = mask.alpha0;
+            values[9] = mask.alpha1;
+        }
         let params = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("group opacity and saturation"),
-            contents: bytemuck::cast_slice(&[filter.opacity, filter.saturation, 0., 0.]),
+            contents: bytemuck::cast_slice(&values),
             usage: wgpu::BufferUsages::UNIFORM,
         });
         let bindings = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -164,7 +193,20 @@ impl ChromeRenderer {
         size: [u32; 2],
         filter: Filter,
     ) -> Result<Vec<u8>> {
+        self.composite_group_rgba_with_mask(layer, backdrop, size, filter, None)
+    }
+    pub fn composite_group_rgba_with_mask(
+        &mut self,
+        layer: &[u8],
+        backdrop: &[u8],
+        size: [u32; 2],
+        filter: Filter,
+        mask: Option<LinearAlphaMask>,
+    ) -> Result<Vec<u8>> {
         filter.validate()?;
+        if let Some(mask) = mask {
+            mask.validate()?;
+        }
         let [width, height] = size;
         if width == 0 || height == 0 || width > 8192 || height > 8192 {
             return Err("invalid group RGBA size".into());
@@ -217,9 +259,10 @@ impl ChromeRenderer {
             );
         }
         let mut encoder = device.create_command_encoder(&Default::default());
-        self.composite_group(
+        self.composite_group_with_mask(
             &source.create_view(&Default::default()),
             filter,
+            mask,
             ChromeTarget {
                 width,
                 height,
@@ -246,6 +289,7 @@ mod tests {
             primitives: list.primitives,
             opacity,
             saturation,
+            mask: None,
         }
     }
     fn sample(pixels: &[u8], x: usize, y: usize) -> &[u8] {
@@ -415,6 +459,88 @@ mod tests {
                 .iter()
                 .zip(&corrected)
                 .all(|(a, b)| a.abs_diff(*b) <= 1)
+        );
+    }
+    #[test]
+    fn linear_mask_filters_the_completed_layer_once_at_1x_and_2x() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let mask = LinearAlphaMask {
+            start: [8., 0.],
+            end: [24., 0.],
+            alpha0: 1.,
+            alpha1: 0.,
+        };
+        for scale in [1., 2.] {
+            let size = (32. * scale) as u32;
+            let mut children = DrawList::default();
+            children.rect(Rect::new(0., 0., 32., 32.), 0., Color::hex("ff000080"));
+            children.rect(Rect::new(4., 0., 28., 32.), 0., Color::hex("0000ff80"));
+            let unmasked = renderer
+                .render_to_rgba(&children, size, size, scale)
+                .unwrap();
+            let list = DrawList {
+                primitives: vec![Prim::Group {
+                    primitives: children.primitives,
+                    opacity: 0.6,
+                    saturation: 1.,
+                    mask: Some(mask),
+                }],
+                ..Default::default()
+            };
+            let pixels = renderer.render_to_rgba(&list, size, size, scale).unwrap();
+            for x in [2, 10, 16, 22, 28] {
+                let px = (x as f32 * scale) as usize;
+                let at = (16 * scale as usize * size as usize + px) * 4;
+                let t = (((px as f32 + 0.5) / scale - 8.) / 16.).clamp(0., 1.);
+                for i in 0..4 {
+                    let expected = (unmasked[at + i] as f32 * 0.6 * (1. - t)).round() as u8;
+                    assert!(
+                        pixels[at + i].abs_diff(expected) <= 2,
+                        "scale {scale}, x {x}, channel {i}: {} != {expected}",
+                        pixels[at + i]
+                    );
+                }
+            }
+        }
+    }
+    #[test]
+    fn mask_bridge_preserves_destination_alpha_and_the_old_api() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let layer = [128, 0, 0, 128].repeat(8);
+        let behind = [0, 0, 64, 64].repeat(8);
+        let filter = Filter {
+            opacity: 0.5,
+            saturation: 1.,
+        };
+        let old = renderer
+            .composite_group_rgba(&layer, &behind, [8, 1], filter)
+            .unwrap();
+        assert_eq!(
+            old,
+            renderer
+                .composite_group_rgba_with_mask(&layer, &behind, [8, 1], filter, None)
+                .unwrap()
+        );
+        let mask = LinearAlphaMask {
+            start: [2., 0.],
+            end: [6., 0.],
+            alpha0: 1.,
+            alpha1: 0.,
+        };
+        let faded = renderer
+            .composite_group_rgba_with_mask(&layer, &behind, [8, 1], filter, Some(mask))
+            .unwrap();
+        assert_eq!(&faded[..4], &old[..4]);
+        assert_eq!(&faded[28..], &behind[28..]);
+        assert!(faded[16 + 3] > 64 && faded[16 + 3] < old[16 + 3]);
+        let invalid = LinearAlphaMask {
+            end: mask.start,
+            ..mask
+        };
+        assert!(
+            renderer
+                .composite_group_rgba_with_mask(&layer, &behind, [8, 1], filter, Some(invalid))
+                .is_err()
         );
     }
 }

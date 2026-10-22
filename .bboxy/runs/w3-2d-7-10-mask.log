@@ -1,0 +1,42 @@
+ROLE: EXECUTOR — Nyx Copperwing. Optional linear group alpha mask.
+Authorized support item: DMs f552f588 and 2421eece. No shader tuning or policy change.
+
+Mechanism: LinearAlphaMask carries start/end/alpha0/alpha1, finite/valid unit
+alphas and distinct endpoints. Draw-list Group retains it; Box defaults to None
+and translates/scales local coordinates without changing layout. Renderer samples
+the clamped linear ramp and multiplies the completed isolated group's alpha
+once, with sRGB source-over and preserved destination alpha. Existing Filter and
+composite_group / composite_group_rgba APIs retain their None behaviour.
+The app's only source change is the approved Paint::Group forwarding arm.
+Retained and flat bboxybook hosts forward the same record.
+
+Public lab reference b2e95f2395a25792fbaae74ab306a59547d1490a: UI.Group options.
+Capture wraps Group and exports the public record. The checker is external
+unmasked context, not a painted overlay. Native uses supplied size, native font
+metrics and components; child bounds are diagnostics only. A fixed-width host
+and Card-based zero-fill wrapper honour the reference's declared size and natural
+content height; no library sizing rule changed.
+
+Focused checks:
+cargo test -p bbt-render --lib chrome::group --locked — exit 0, 7 passed;
+ new overlap/alpha/old-API tests cover 1x and 2x. group-tests.log.
+cargo test -p bbt-ui --test masks --locked — exit 0, one passed;
+ unchanged rect/baseline, local translation, scaling and invalid mask rejection.
+cargo clippy -p bbt-ui-model -p bbt-render -p bbt-ui -p bboxybook
+ --all-targets --locked -- -D warnings -A clippy::map_entry
+ -A clippy::chunks_exact_to_as_chunks — exit 0; clippy2.log.
+Initial attempts caught an unsupported WGSL keyword and a missing test-pattern
+field; corrected, not counted as passed. Terminal path untouched.
+
+Gallery target/bboxybook/documents/mask/final/index.html:
+ web 8/8, zero capture failures; native render + compare exit 0.
+ 8/8 within the unchanged text-case policy, all geometry passes.
+ max rect 0.00927734375 px; pixels 0.123–0.125%, chiefly label/text masks.
+ Read edge-fade-cozy-light web/native/diff and cozy-dark web/native: opaque and
+ translucent content fade through to the checker at horizontal, vertical and
+ diagonal ramps; there is no fill-colour overlay.
+
+The full 1,992-image default-output regression is still running at commit time;
+its result and clean committed-worktree CI remain pending. No claim of completion
+or zero regressions yet. Logs under target/bboxybook/documents/mask/.
+No dependency, golden, lab, design, budget or terminal-cell change. Nothing pushed.

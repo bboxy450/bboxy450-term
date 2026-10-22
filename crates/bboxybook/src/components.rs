@@ -46,6 +46,17 @@ impl c::Measure for Metrics {
     }
 }
 
+pub fn mask_cases() -> Vec<Case> {
+    cases()
+        .into_iter()
+        .filter(|c| c.slug == "box")
+        .map(|mut c| {
+            c.state = "edge-fade".into();
+            c.slug = "edge-fade".into();
+            c
+        })
+        .collect()
+}
 pub fn cases() -> Vec<Case> {
     let mut out = vec![];
     for state in ["box", "text", "stack", "flow", "text-align"] {
@@ -76,7 +87,19 @@ fn items(v: &Value, ctx: ui::Context) -> Result<Vec<c::Item>> {
     v.as_array()
         .ok_or("component children missing")?
         .iter()
-        .map(|v| Ok(element(v, ctx)?.into()))
+        .map(|v| {
+            let mut item: c::Item = element(v, ctx)?.into();
+            if v["no_shrink"] == true {
+                item.extent = c::Extent::Content {
+                    grow: 0.,
+                    shrink: 0.,
+                    min: 0.,
+                    max: None,
+                    max_fraction: None,
+                };
+            }
+            Ok(item)
+        })
         .collect()
 }
 pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
@@ -168,6 +191,64 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
                 })
             }
         }
+        "group" | "mask-backdrop" | "mask-content" => {
+            let mut style = transparent_style();
+            let size = if v["kind"] == "group" {
+                &v["options"]["size"]
+            } else {
+                &v["size"]
+            };
+            if let Some(size) = size.as_array() {
+                style.overrides.width = Some(ui::Length::Px(
+                    size[0].as_f64().ok_or("invalid Group width")? as f32,
+                ));
+                style.overrides.height = Some(ui::Length::Px(
+                    size[1].as_f64().ok_or("invalid Group height")? as f32,
+                ));
+            }
+            if v["kind"] == "mask-content" {
+                style.overrides.padding = Some([ui::Length::Px(8.); 4]);
+            }
+            let mut b = c::Box::new(style, items(&v["children"], ctx)?);
+            b.direction = Axis::Column;
+            b.align = c::Alignment::Stretch;
+            b.gap = ui::Length::Px(if v["kind"] == "mask-content" { 6. } else { 0. });
+            let m = &v["options"]["mask"];
+            if !m.is_null() {
+                let point = |name: &str| -> Result<[f32; 2]> {
+                    Ok([
+                        m[name][0].as_f64().ok_or("invalid mask point")? as f32,
+                        m[name][1].as_f64().ok_or("invalid mask point")? as f32,
+                    ])
+                };
+                b.mask = Some(c::LinearAlphaMask {
+                    start: point("start")?,
+                    end: point("end")?,
+                    alpha0: num(m, "alpha0")?,
+                    alpha1: num(m, "alpha1")?,
+                });
+                b.clip = true;
+            }
+            let element = c::Element::Box(b);
+            if v["kind"] == "mask-backdrop" {
+                let w = size[0].as_f64().ok_or("missing backdrop width")? as f32;
+                let mut wrapper = c::Box::new(
+                    transparent_style(),
+                    vec![c::Item {
+                        element,
+                        extent: c::Extent::Fixed(w),
+                    }],
+                );
+                wrapper.gap = ui::Length::Px(0.);
+                wrapper.align = c::Alignment::Start;
+                c::Element::Named {
+                    name: "__mask_width".into(),
+                    content: Box::new(c::Element::Box(wrapper)),
+                }
+            } else {
+                element
+            }
+        }
         "box" => {
             let input = &v["style"];
             let style = if let Some(name) = input.as_str() {
@@ -184,6 +265,17 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
                     s.overrides.height = Some(ui::Length::Px(h as f32));
                 }
                 s
+            } else if input["material"] == "flat" && input["fill"] == "accent" {
+                let mut s = transparent_style();
+                s.overrides.fill = Some(ui::Paint::solid(ui::Color::Accent));
+                s.overrides.radii = Some([ui::Length::Px(num(input, "radius")?); 4]);
+                s.overrides.padding = Some([
+                    ui::Length::Px(input["padding"][0].as_f64().ok_or("invalid padding")? as f32),
+                    ui::Length::Px(input["padding"][1].as_f64().ok_or("invalid padding")? as f32),
+                    ui::Length::Px(input["padding"][0].as_f64().unwrap() as f32),
+                    ui::Length::Px(input["padding"][1].as_f64().unwrap() as f32),
+                ]);
+                s
             } else if input["fill"] == "transparent" {
                 ui::Style::new(ui::Preset::Row)
             } else {
@@ -194,6 +286,18 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
         "overlay" | "modal" => return crate::overlays::element(v, ctx),
         _ => return crate::widgets::element(v, ctx),
     })
+}
+fn transparent_style() -> ui::Style {
+    let mut s = ui::Style::new(ui::Preset::Card);
+    s.overrides.fill = Some(ui::Paint::solid(ui::Color::Transparent));
+    s.overrides.padding = Some([ui::Length::Px(0.); 4]);
+    s.overrides.radii = Some([ui::Length::Px(0.); 4]);
+    s.overrides.border = Some(ui::Border {
+        width: ui::Length::Px(0.),
+        paint: ui::Paint::solid(ui::Color::Transparent),
+        outside: false,
+    });
+    s
 }
 fn num(v: &Value, k: &str) -> Result<f32> {
     v[k].as_f64()
@@ -219,7 +323,15 @@ pub fn layout_case(case: &Case) -> Result<c::Layout> {
     validate_wrapping(&layout, &fix["component"]["tree"])?;
     Ok(layout)
 }
+fn gallery_node(layout: &c::Layout) -> &c::Layout {
+    if matches!(&layout.kind,c::LayoutKind::Named(n)if n=="__mask_width") {
+        &layout.children[0].children[0]
+    } else {
+        layout
+    }
+}
 fn validate_wrapping(layout: &c::Layout, reference: &Value) -> Result<()> {
+    let layout = gallery_node(layout);
     if reference["options"]["wrap"] == true
         && layout
             .children
@@ -276,6 +388,7 @@ pub fn execute_at(
                 ops,
                 opacity,
                 saturation,
+                mask,
             } => {
                 if !underlay.primitives.is_empty() {
                     pixels = materials::render_composed_to_rgba(
@@ -288,7 +401,7 @@ pub fn execute_at(
                 let layer = renderer.with_group_layer(|renderer| {
                     execute_at(renderer, ops, vec![0; pixels.len()], size, ctx, time_ms)
                 })?;
-                pixels = renderer.composite_group_rgba(
+                pixels = renderer.composite_group_rgba_with_mask(
                     &layer,
                     &pixels,
                     size,
@@ -296,6 +409,7 @@ pub fn execute_at(
                         opacity,
                         saturation,
                     },
+                    mask,
                 )?;
             }
             c::Paint::Underlay(list) => underlay.primitives.extend(list.primitives),
@@ -393,6 +507,7 @@ pub(crate) fn append_draw(ops: Vec<c::Paint>, out: &mut DrawList) -> Result<()> 
                 ops,
                 opacity,
                 saturation,
+                mask,
             } => {
                 let mut inner = DrawList::default();
                 append_draw(ops, &mut inner)?;
@@ -400,6 +515,7 @@ pub(crate) fn append_draw(ops: Vec<c::Paint>, out: &mut DrawList) -> Result<()> 
                     primitives: inner.primitives,
                     opacity,
                     saturation,
+                    mask,
                 });
             }
             c::Paint::Material { .. } => {
@@ -470,6 +586,7 @@ fn snapshot(
     crop: [f32; 2],
     worst: &mut f32,
 ) -> Result<Value> {
+    let layout = gallery_node(layout);
     let r = layout.rect;
     let native = [r.x - crop[0], r.y - crop[1], r.w, r.h];
     let web = [

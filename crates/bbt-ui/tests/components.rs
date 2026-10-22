@@ -177,6 +177,7 @@ fn box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout(
             ops,
             opacity,
             saturation,
+            ..
         },
     ] = ops.as_slice()
     else {
@@ -241,6 +242,7 @@ fn nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_at
             ops,
             opacity: 0.7,
             saturation: 0.1,
+            ..
         },
     ] = ops.as_slice()
     else {
@@ -251,6 +253,7 @@ fn nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_at
             ops,
             opacity: 0.5,
             saturation: 0.4,
+            ..
         },
     ] = ops.as_slice()
     else {

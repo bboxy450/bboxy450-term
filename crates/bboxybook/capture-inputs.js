@@ -27,7 +27,7 @@
   Object.defineProperty(window,'UI',{configurable:true,get:()=>ui,set(value){
     ui=value;const original=value.material;
     value.material=function(name,options){const result=original(name,options);materials.push({kind:name,params:result.params});return result;};
-    for (const name of ['Path','Text','Stack','Spacer','Button','List','Table','Input','Overlay','Modal']) {
+    for (const name of ['Group','Path','Text','Stack','Spacer','Button','List','Table','Input','Overlay','Modal']) {
       const original=value[name];
       value[name]=function(...args){const node=original(...args);uiNodes.set(node,{kind:name.toLowerCase(),args});return node;};
     }
@@ -101,11 +101,17 @@
       return {kind:'stack',rect:{x,y,w:Math.max(...rects.map(r=>r.x+r.w))-x,h:Math.max(...rects.map(r=>r.y+r.h))-y},children:nodes.map(n=>({kind:'box',rect:bounds(n),children:[textDiag(n.querySelector('.ui-text'))]}))};
     };
     const exportUi=node=>{
-      const call=uiNodes.get(node);if(!call)throw Error('unrecorded UI component');
+      const call=uiNodes.get(node);
+      if(!call){
+        if(node.classList.contains('ui-checker'))return {kind:'mask-backdrop',size:[parseFloat(node.style.width),parseFloat(node.style.height)],rect:bounds(node),children:[...node.children].map(exportUi)};
+        if(node.classList.contains('ef-rows'))return {kind:'mask-content',rect:bounds(node),children:[...node.children].map(exportUi)};
+        throw Error('unrecorded UI component');
+      }
       const result={kind:call.kind,rect:bounds(node)};
       if(call.kind==='text')Object.assign(result,textDiag(node),{value:call.args[0],options:call.args[1]||{}});
       else if(call.kind==='box'){result.style=call.style;result.children=call.children.map(exportUi);}
-      else if(call.kind==='stack'){result.options=call.args[0]||{};result.children=call.args.slice(1).map(exportUi);}
+      else if(call.kind==='group'){result.options=call.args[0]||{};result.children=call.args.slice(1).map(exportUi);}
+      else if(call.kind==='stack'){result.options=call.args[0]||{};result.children=call.args.slice(1).map(n=>({...exportUi(n),...(node.closest('.ef-rows')&&n.classList.contains('ui-box')?{no_shrink:true}:{})}));}
       else if(call.kind==='overlay'){result.children=call.args.map(exportUi);}
       else if(call.kind==='modal'){
         result.title=call.args[0];result.body=exportUi(call.args[1]);result.actions=(call.args[2]||[]).map(exportUi);

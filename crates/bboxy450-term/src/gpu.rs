@@ -548,6 +548,7 @@ fn encode_ops(
                 ops,
                 opacity,
                 saturation,
+                mask,
             } => {
                 if !pending.primitives.is_empty() {
                     renderer.draw_overlay(
@@ -571,12 +572,13 @@ fn encode_ops(
                 renderer.with_group_layer(|renderer| {
                     encode_ops(renderer, pass, &layer, &behind, ops, timing, encoder)
                 })?;
-                renderer.composite_group(
+                renderer.composite_group_with_mask(
                     &layer_view,
                     group::Filter {
                         opacity,
                         saturation,
                     },
+                    mask,
                     target(&view, scale),
                     encoder,
                 )?;

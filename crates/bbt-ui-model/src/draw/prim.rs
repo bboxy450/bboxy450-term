@@ -86,6 +86,40 @@ impl Color {
 }
 
 pub type Pt = [f32; 2];
+/// Clamped linear alpha ramp. Draw-list coordinates are logical pixels;
+/// retained Boxes translate their group-local endpoints at paint time.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LinearAlphaMask {
+    pub start: Pt,
+    pub end: Pt,
+    pub alpha0: f32,
+    pub alpha1: f32,
+}
+impl LinearAlphaMask {
+    pub fn validate(self) -> Result<(), &'static str> {
+        let dx = self.end[0] - self.start[0];
+        let dy = self.end[1] - self.start[1];
+        let length2 = dx * dx + dy * dy;
+        if self.start.iter().chain(&self.end).any(|v| !v.is_finite())
+            || !length2.is_finite()
+            || length2 <= 0.
+            || !self.alpha0.is_finite()
+            || !self.alpha1.is_finite()
+            || !(0.0..=1.0).contains(&self.alpha0)
+            || !(0.0..=1.0).contains(&self.alpha1)
+        {
+            return Err("invalid group linear alpha mask");
+        }
+        Ok(())
+    }
+    pub fn translated(self, offset: Pt) -> Self {
+        Self {
+            start: std::array::from_fn(|i| self.start[i] + offset[i]),
+            end: std::array::from_fn(|i| self.end[i] + offset[i]),
+            ..self
+        }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TypeScale {
     Input,
@@ -156,6 +190,7 @@ pub enum Prim {
         primitives: Vec<Prim>,
         opacity: f32,
         saturation: f32,
+        mask: Option<LinearAlphaMask>,
     },
     Rect {
         rect: Rect,

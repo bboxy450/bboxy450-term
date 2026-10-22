@@ -74,6 +74,7 @@ impl DrawList {
                     primitives,
                     opacity,
                     saturation,
+                    mask,
                 } => {
                     if !opacity.is_finite()
                         || !(0.0..=1.0).contains(opacity)
@@ -81,6 +82,9 @@ impl DrawList {
                         || !(0.0..=4.0).contains(saturation)
                     {
                         return Err("invalid draw-list group filter");
+                    }
+                    if let Some(mask) = mask {
+                        mask.validate()?;
                     }
                     Self::validate_primitives(primitives, groups + 1)?;
                 }
@@ -108,6 +112,7 @@ mod tests {
                 primitives,
                 opacity,
                 saturation,
+                mask: None,
             }],
             ..Default::default()
         };

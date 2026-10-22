@@ -342,6 +342,7 @@ fn append_ops(ops: Vec<c::Paint>, out: &mut bbt_ui_model::draw::DrawList) {
                 ops,
                 opacity,
                 saturation,
+                mask,
             } => {
                 let mut inner = bbt_ui_model::draw::DrawList::default();
                 append_ops(ops, &mut inner);
@@ -349,6 +350,7 @@ fn append_ops(ops: Vec<c::Paint>, out: &mut bbt_ui_model::draw::DrawList) {
                     primitives: inner.primitives,
                     opacity,
                     saturation,
+                    mask,
                 });
             }
             c::Paint::Material {

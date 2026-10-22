@@ -277,6 +277,7 @@ fn append_ops(ops: Vec<c::Paint>, out: &mut DrawList) {
                 ops,
                 opacity,
                 saturation,
+                mask,
             } => {
                 let mut inner = DrawList::default();
                 append_ops(ops, &mut inner);
@@ -284,6 +285,7 @@ fn append_ops(ops: Vec<c::Paint>, out: &mut DrawList) {
                     primitives: inner.primitives,
                     opacity,
                     saturation,
+                    mask,
                 });
             }
             c::Paint::Material { .. } => {}

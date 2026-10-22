@@ -1,7 +1,7 @@
 //! L6 retained Box, Text, Stack and ScrollView. Layout is pure; paint is ordered
 //! draw-list/material data. The host supplies fonts, a viewport and scroll offsets.
 use crate::{Context, Length, Material, ResolvedStyle, ResolvedText, Style};
-pub use bbt_ui_model::draw::{LineCap, LineJoin, PathCommand, PathStroke};
+pub use bbt_ui_model::draw::{LineCap, LineJoin, LinearAlphaMask, PathCommand, PathStroke};
 use bbt_ui_model::{
     draw::{Color, DrawCtx, DrawList, Prim, TextStyle, TypeScale},
     layout::{self, Align, Axis, Insets, Rect, Size, TextMeasure, TextStyle as MeasureStyle},
@@ -102,6 +102,8 @@ pub struct Box {
     /// Force an isolated layer even at full opacity. Nonidentity opacity/dim
     /// always isolate, as CSS does; the default needs no extra layer.
     pub group: bool,
+    /// Group-local alpha ramp, applied to the completed isolated layer.
+    pub mask: Option<LinearAlphaMask>,
     /// Visual transform only; the unscaled box still occupies its flow slot.
     pub scale: f32,
     /// Inline formatting includes the Style text's inherited line-height strut.
@@ -119,6 +121,7 @@ impl Box {
             align: Alignment::Center,
             clip: false,
             group: false,
+            mask: None,
             scale: 1.,
             inline: false,
             cross_overflow: false,
@@ -290,6 +293,7 @@ pub enum LayoutKind {
         style: std::boxed::Box<ResolvedStyle>,
         clip: bool,
         group: bool,
+        mask: Option<LinearAlphaMask>,
     },
     Text {
         runs: Vec<PositionedRun>,
@@ -875,6 +879,9 @@ impl Element {
                 )?,
             ),
             Self::Box(b) => {
+                if let Some(mask) = b.mask {
+                    mask.validate()?;
+                }
                 let style = b.style.resolve(ctx)?;
                 let mut children = layout_children(
                     &b.children,
@@ -902,6 +909,7 @@ impl Element {
                         style: std::boxed::Box::new(style),
                         clip: b.clip,
                         group: b.group,
+                        mask: b.mask,
                     },
                     children,
                 )
@@ -940,6 +948,7 @@ impl Element {
                         style: std::boxed::Box::new(s),
                         clip: o.clip,
                         group: false,
+                        mask: None,
                     },
                     vec![child],
                 )
@@ -1027,7 +1036,11 @@ fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
             scale: path_scale, ..
         } => *path_scale *= scale,
         LayoutKind::Image { radius, .. } => *radius *= scale,
-        LayoutKind::Box { style, .. } => {
+        LayoutKind::Box { style, mask, .. } => {
+            if let Some(mask) = mask {
+                mask.start = mask.start.map(|v| v * scale);
+                mask.end = mask.end.map(|v| v * scale);
+            }
             style.radii = style.radii.map(|r| r * scale);
             for border in style
                 .border
@@ -1438,6 +1451,7 @@ pub enum Paint {
         ops: Vec<Paint>,
         opacity: f32,
         saturation: f32,
+        mask: Option<LinearAlphaMask>,
     },
     Draw(DrawList),
     Underlay(DrawList),
@@ -1484,6 +1498,7 @@ pub fn paint_with_ancestor_clips(layout: &Layout, mut draw: DrawCtx, clips: &[Cl
             ops: out,
             opacity: dim.opacity,
             saturation: dim.saturate,
+            mask: None,
         }]
     } else {
         out
@@ -1503,11 +1518,14 @@ fn paint_node(node: &Layout, draw: DrawCtx, opacity: f32, clips: &[Clip], out: &
             ops,
             opacity: *filter_alpha,
             saturation: *saturation,
+            mask: None,
         });
         return;
     }
-    if let LayoutKind::Box { style, group, .. } = &node.kind
-        && (*group || style.opacity != 1. || style.dim.is_some())
+    if let LayoutKind::Box {
+        style, group, mask, ..
+    } = &node.kind
+        && (*group || mask.is_some() || style.opacity != 1. || style.dim.is_some())
     {
         let mut ops = Vec::new();
         paint_contents(node, draw, opacity, clips, &mut ops);
@@ -1515,6 +1533,7 @@ fn paint_node(node: &Layout, draw: DrawCtx, opacity: f32, clips: &[Clip], out: &
             ops,
             opacity: style.opacity * style.dim.map_or(1., |d| d.opacity),
             saturation: style.dim.map_or(1., |d| d.saturate),
+            mask: mask.map(|m| m.translated([node.rect.x, node.rect.y])),
         });
         return;
     }

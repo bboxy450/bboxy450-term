@@ -88,6 +88,7 @@ fn a_retained_group_keeps_material_coverage_and_filters_the_completed_layer() {
             ops: ops(),
             opacity: 0.45,
             saturation: 0.,
+            mask: None,
         }],
         base,
         [64, 64],

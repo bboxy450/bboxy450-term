@@ -192,6 +192,7 @@ fn css_filter_uses_luminance_saturation_and_preserves_layout() {
             ops,
             opacity,
             saturation,
+            ..
         },
     ] = ops.as_slice()
     else {

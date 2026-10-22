@@ -126,7 +126,7 @@ fn run() -> Result<()> {
         ));
     }
     if command == "manifest" {
-        let cases=match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref(){Some("paths")=>bboxybook::paths::cases(),Some("graphs")=>bboxybook::graphs::cases(),Some("settings")=>bboxybook::settings::cases(),Some("flow")=>bboxybook::components::cases(),Some("streams")=>{let mut c=bboxybook::streams::cases();c.extend(bboxybook::streams::legacy_cases());c},None=>gallery::cases(),Some(_)=>return Err("unknown BBOXYBOOK_GALLERY".into())};
+        let cases=match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref(){Some("paths")=>bboxybook::paths::cases(),Some("graphs")=>bboxybook::graphs::cases(),Some("settings")=>bboxybook::settings::cases(),Some("masks")=>bboxybook::components::mask_cases(),Some("flow")=>bboxybook::components::cases(),Some("streams")=>{let mut c=bboxybook::streams::cases();c.extend(bboxybook::streams::legacy_cases());c},None=>gallery::cases(),Some(_)=>return Err("unknown BBOXYBOOK_GALLERY".into())};
         println!("{}", serde_json::to_string_pretty(&cases)?);
         return Ok(());
     }

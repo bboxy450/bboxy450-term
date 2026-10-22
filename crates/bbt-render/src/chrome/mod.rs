@@ -140,6 +140,7 @@ impl ChromeRenderer {
                 primitives,
                 opacity,
                 saturation,
+                mask,
             } = primitive
             {
                 for _ in &clips {
@@ -180,12 +181,13 @@ impl ChromeRenderer {
                         encoder,
                     )
                 })?;
-                self.composite_group(
+                self.composite_group_with_mask(
                     &layer_view,
                     group::Filter {
                         opacity: *opacity,
                         saturation: *saturation,
                     },
+                    *mask,
                     ChromeTarget {
                         width,
                         height,
@@ -867,6 +869,7 @@ mod tests {
             primitives: label.primitives,
             opacity: 0.7,
             saturation: 0.4,
+            mask: None,
         });
         let first = cached.render_to_rgba(&list, 220, 60, 1.).unwrap();
         let writes = cached.glyph_gpu.as_ref().unwrap().writes;
@@ -945,6 +948,7 @@ mod tests {
             primitives: later.primitives,
             opacity: 0.6,
             saturation: 1.,
+            mask: None,
         });
         let pixels = cached.render_to_rgba(&list, 256, 80, 1.).unwrap();
         assert_eq!(cached.glyph_gpu.as_ref().unwrap().generation, 2);
@@ -993,6 +997,7 @@ mod tests {
                             primitives: glyphs.primitives,
                             opacity,
                             saturation: 1.,
+                            mask: None,
                         });
                     }
                     let pixels = renderer.render_to_rgba(&list, 256, 48, 1.).unwrap();
