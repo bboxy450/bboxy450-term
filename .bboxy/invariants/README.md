@@ -7,11 +7,11 @@ runs layering and ui-lint before every handoff and parity-geometry under `--pari
 
 | Invariant | Check | Last result |
 |---|---|---|
-| [[layering]] every crate depends only on crates below it | `sh scripts/layering.sh` | held at a9ab5c1, 2026-10-22 |
-| [[ui-never-waits]] the UI thread never waits on IO | `sh scripts/ui-lint.sh` | held at c0f13f3, 2026-10-22 |
-| [[modules-through-components]] L7 modules draw only through components | `cargo test -p bbt-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows` | Oracle's local CI, 2026-10-22 |
+| [[layering]] every crate depends only on crates below it | `sh scripts/layering.sh` | runner pass at 0bab92f, 2026-10-22 |
+| [[ui-never-waits]] the UI thread never waits on IO | `sh scripts/ui-lint.sh` | runner pass at 0bab92f, 2026-10-22 |
+| [[modules-through-components]] L7 modules draw only through components | `cargo test -p bbt-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows` | runner pass at 0bab92f, 2026-10-22 |
 | [[parity-geometry]] web and native geometry agree for every parity case | `sh scripts/parity.sh` (slow; under `ci-local.sh --parity`) | P1 on main at 8e66b3a, 2026-10-22 |
-| [[signed-main]] every commit on main carries a good signature | `git log --format='%G?' HEAD \| grep -vc '^G$'` is 0 and the log is non-empty, on the handed-off commit | 398/398 at a9ab5c1, 2026-10-22 |
+| [[signed-main]] every commit on main carries a good signature | `git log --format='%G?' HEAD \| grep -vc '^G$'` is 0 and the log is non-empty, on the handed-off commit | runner pass at 0bab92f, 2026-10-22 |
 
 A violation halts the work that broke it: the task goes `blocked` with
 `[[invariant|violates]]`, and the halt names the invariant, the evidence and
