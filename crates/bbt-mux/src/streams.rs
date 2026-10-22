@@ -255,7 +255,7 @@ impl Replica {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HistoryGap {
     pub requested_from: u64,
     pub requested_to: u64,

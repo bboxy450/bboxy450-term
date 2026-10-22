@@ -1,0 +1,12 @@
+$ cargo build --workspace --locked
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling tokio v1.54.1
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxy450-term)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-rt)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.41s
+
+exit=0

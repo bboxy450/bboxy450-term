@@ -9,7 +9,8 @@ use std::sync::{
 };
 use std::time::{Duration, Instant};
 
-use bbt_core::{Checkpoint, Term};
+use crate::ring::{Playback, Saved as RingSaved};
+use bbt_core::Checkpoint;
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
@@ -22,7 +23,7 @@ use crate::store::{
     Blobs, Result, Store, blobs::LocalBlobs, events::Draft, invalid, now_ms, object_dir,
     sqlite::SqliteStore,
 };
-use crate::streams::{HistoryGap, Screen, Snapshot, View};
+use crate::streams::{Screen, Snapshot, View};
 use crate::{
     Action, Attachment, Client, Event, Failure, Frame, LaunchSpec, Message, Reply, SeatInfo,
 };
@@ -142,6 +143,7 @@ impl SupervisorConnection for SocketSupervisor {
 pub struct LogicConfig {
     pub run_dir: PathBuf,
     pub repository: PathBuf,
+    pub ring: crate::ring::Settings,
 }
 
 enum Command {
@@ -151,6 +153,13 @@ enum Command {
         oneshot::Sender<Result<SeatInfo>>,
     ),
     Snapshot(Ulid, u64, oneshot::Sender<Result<Snapshot>>),
+    History(
+        Ulid,
+        u64,
+        u64,
+        u64,
+        oneshot::Sender<Result<crate::ring::History>>,
+    ),
     Close(Ulid, u64, Ulid, Position, u64, oneshot::Sender<Result<()>>),
     Undo(Ulid, u64, u64, u64, oneshot::Sender<Result<Position>>),
     Record(Ulid, oneshot::Sender<Result<SeatRecord>>),
@@ -241,16 +250,19 @@ impl LogicClient {
             .map_err(|_| invalid("logic stopped"))?;
         rx.await.map_err(|_| invalid("undo outcome unknown"))?
     }
-    pub fn history_gap(&self, from: u64, to: u64) -> HistoryGap {
-        HistoryGap {
-            requested_from: from,
-            requested_to: to,
-            retained_from: None,
-            retained_to: None,
-            reason:
-                "byte ring and semantic history are supplied by W1.2; no earlier range is claimed"
-                    .into(),
-        }
+    pub async fn history(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        from: u64,
+        to: u64,
+    ) -> Result<crate::ring::History> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::History(seat, generation, from, to, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
     }
 }
 
@@ -329,7 +341,7 @@ impl Drop for Logic {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Saved {
+struct LegacySaved {
     version: u32,
     generation: u64,
     sequence: u64,
@@ -339,13 +351,22 @@ struct Saved {
     gap: Option<String>,
 }
 struct ViewState {
-    term: Term,
-    sequence: u64,
-    title: String,
-    cwd: Option<String>,
-    gap: Option<String>,
-    generation: u64,
+    state: Playback,
     view_generation: Ulid,
+    checkpoint_bytes: u64,
+    checkpoint_sequence: u64,
+    changed_at: Instant,
+}
+impl std::ops::Deref for ViewState {
+    type Target = Playback;
+    fn deref(&self) -> &Playback {
+        &self.state
+    }
+}
+impl std::ops::DerefMut for ViewState {
+    fn deref_mut(&mut self) -> &mut Playback {
+        &mut self.state
+    }
 }
 
 struct Worker {
@@ -433,9 +454,12 @@ impl Worker {
     }
     fn attach(&mut self, info: SeatInfo) -> Result<()> {
         check_size(info.size.cols as usize, info.size.rows as usize)?;
-        let reply = self.connection.request(Action::Attach {
+        let directory = object_dir(&self.config.run_dir, &format!("seat-{}", info.seat))?;
+        let reply = self.connection.request(Action::AttachRing {
             seat: info.seat,
             generation: info.generation,
+            directory: directory.join(format!("ring-{}", info.generation)),
+            settings: self.config.ring.clone(),
         })?;
         let Reply::Attached {
             attachment,
@@ -443,47 +467,92 @@ impl Worker {
             ..
         } = reply
         else {
-            return Err(invalid("attach failed"));
+            return Err(invalid("ring attach failed"));
         };
-        let directory = object_dir(&self.config.run_dir, &format!("seat-{}", info.seat))?;
-        let store = SqliteStore::open(&directory)?;
-        let mut term = Term::new(info.size.cols as usize, info.size.rows as usize, 0);
-        let (mut sequence, mut title, mut cwd, mut gap) = (0, String::new(), None, None);
-        if let Some(hash) = store.get("checkpoint")? {
-            let hash = std::str::from_utf8(&hash)?;
-            let saved: Saved = serde_json::from_slice(&LocalBlobs::open(&directory)?.get(hash)?)?;
-            if saved.version != 1 {
-                return Err(invalid("unsupported logic checkpoint version"));
+        let Reply::RingRecovery { status, checkpoint } =
+            self.connection.request(Action::RingRecovery {
+                attachment: attachment.clone(),
+            })?
+        else {
+            return Err(invalid("ring recovery reply mismatch"));
+        };
+        let mut state = if let Some(bytes) = checkpoint {
+            Playback::restore(RingSaved::decode(&bytes)?)
+        } else {
+            let mut state = Playback::new(info.seat, info.generation, info.size);
+            // Migrate W2.2's bridge without claiming its missing byte history.
+            if let Some(hash) = SqliteStore::open(&directory)?.get("checkpoint")? {
+                let old: LegacySaved = serde_json::from_slice(
+                    &LocalBlobs::open(&directory)?.get(std::str::from_utf8(&hash)?)?,
+                )?;
+                if old.version != 1 {
+                    return Err(invalid("unsupported legacy checkpoint version"));
+                }
+                if old.generation == info.generation {
+                    state.term.restore(old.checkpoint);
+                    state.sequence = old.sequence;
+                    state.title = old.title;
+                    state.cwd = old.cwd;
+                    state.gap = old.gap;
+                }
             }
-            if saved.generation == info.generation {
-                term.restore(saved.checkpoint);
-                sequence = saved.sequence;
-                title = saved.title;
-                cwd = saved.cwd;
-                gap = saved.gap;
+            if first_available_sequence > state.sequence + 1 {
+                state.gap = Some(format!(
+                    "unavailable pre-ring capture sequences {}..{}",
+                    state.sequence + 1,
+                    first_available_sequence - 1
+                ));
+            }
+            state.sequence = status.committed_sequence;
+            self.connection.request(Action::PublishCheckpoint {
+                attachment: attachment.clone(),
+                checkpoint: state.saved().encode()?,
+            })?;
+            state
+        };
+        let mut checkpoint_bytes = state.byte_end;
+        let mut checkpoint_sequence = state.sequence;
+        while state.sequence < status.committed_sequence {
+            let Reply::RingHistory { history } = self.connection.request(Action::ReadRing {
+                attachment: attachment.clone(),
+                from: state.sequence + 1,
+                to: status.committed_sequence,
+            })?
+            else {
+                return Err(invalid("ring replay reply mismatch"));
+            };
+            if history.gap.is_some() || history.records.is_empty() {
+                return Err(invalid("ring recovery continuity gap"));
+            }
+            for record in history.records {
+                state.apply(&record.event)?;
+            }
+            if state.byte_end.saturating_sub(checkpoint_bytes) >= self.config.ring.checkpoint_bytes
+                || state.sequence.saturating_sub(checkpoint_sequence) >= 256
+            {
+                self.connection.request(Action::PublishCheckpoint {
+                    attachment: attachment.clone(),
+                    checkpoint: state.saved().encode()?,
+                })?;
+                checkpoint_bytes = state.byte_end;
+                checkpoint_sequence = state.sequence;
             }
         }
-        if first_available_sequence > sequence + 1 {
-            gap = Some(format!(
-                "unavailable capture sequences {}..{}",
-                sequence + 1,
-                first_available_sequence - 1
-            ));
-            sequence = first_available_sequence - 1;
+        if state.sequence != status.committed_sequence {
+            return Err(invalid("ring recovery cursor mismatch"));
         }
+        self.attachments.insert(info.seat, attachment.clone());
         self.views.insert(
             info.seat,
             ViewState {
-                term,
-                sequence,
-                title,
-                cwd,
-                gap,
-                generation: info.generation,
+                state,
                 view_generation: Ulid::new(),
+                checkpoint_bytes,
+                checkpoint_sequence,
+                changed_at: Instant::now(),
             },
         );
-        self.attachments.insert(info.seat, attachment.clone());
+        self.save(info.seat)?;
         self.endpoints.remove(&info.seat);
         let path = self.endpoint_root.join(format!("{}.sock", info.seat));
         let mut capability = [0; 32];
@@ -597,20 +666,42 @@ impl Worker {
             ),
         })
     }
-    fn save(&self, id: Ulid) -> Result<()> {
+    fn history(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        from: u64,
+        to: u64,
+    ) -> Result<crate::ring::History> {
+        let attachment = self
+            .attachments
+            .get(&id)
+            .filter(|a| a.generation == generation)
+            .ok_or_else(|| invalid("stale history generation"))?
+            .clone();
+        let Reply::RingHistory { history } = self.connection.request(Action::ReadRing {
+            attachment,
+            from,
+            to,
+        })?
+        else {
+            return Err(invalid("history reply mismatch"));
+        };
+        Ok(*history)
+    }
+    fn save(&mut self, id: Ulid) -> Result<()> {
         let view = &self.views[&id];
-        let directory = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
-        let bytes = serde_json::to_vec(&Saved {
-            version: 1,
-            generation: view.generation,
-            sequence: view.sequence,
-            checkpoint: view.term.checkpoint(),
-            title: view.title.clone(),
-            cwd: view.cwd.clone(),
-            gap: view.gap.clone(),
+        let sequence = view.sequence;
+        if sequence == view.checkpoint_sequence {
+            return Ok(());
+        }
+        self.connection.request(Action::PublishCheckpoint {
+            attachment: self.attachments[&id].clone(),
+            checkpoint: view.saved().encode()?,
         })?;
-        let hash = LocalBlobs::open(&directory)?.put(&bytes)?;
-        SqliteStore::open(&directory)?.put("checkpoint", hash.as_bytes())?;
+        let view = self.views.get_mut(&id).unwrap();
+        view.checkpoint_bytes = view.byte_end;
+        view.checkpoint_sequence = sequence;
         Ok(())
     }
     fn event(&mut self, event: Event) -> Result<()> {
@@ -627,37 +718,22 @@ impl Worker {
         if view.generation != generation || seq <= view.sequence {
             return Ok(());
         }
-        if seq != view.sequence + 1 {
-            view.gap = Some(format!(
-                "unavailable capture sequences {}..{}",
-                view.sequence + 1,
-                seq - 1
-            ));
+        view.state.apply(&event)?;
+        view.changed_at = Instant::now();
+        if let Event::Resized { size, .. } = &event {
+            check_size(size.cols as usize, size.rows as usize)?;
+            view.view_generation = Ulid::new();
         }
-        match &event {
-            Event::Output { bytes, .. } => {
-                view.term.advance(bytes);
-                for event in view.term.take_events() {
-                    match event {
-                        bbt_core::Event::Title(title) => view.title = title,
-                        bbt_core::Event::ResetTitle => view.title.clear(),
-                        _ => (),
-                    }
-                }
-            }
-            Event::Resized { size, .. } => {
-                check_size(size.cols as usize, size.rows as usize)?;
-                view.term.resize(size.cols as usize, size.rows as usize);
-                view.view_generation = Ulid::new();
-            }
-            Event::Exited { .. } => {
-                if self.registry.get(id).is_ok() {
-                    self.registry.exited(id, generation)?;
-                }
-            }
+        if matches!(event, Event::Exited { .. }) && self.registry.get(id).is_ok() {
+            self.registry.exited(id, generation)?;
         }
-        view.sequence = seq;
-        self.save(id)?;
+        let view = &self.views[&id];
+        if view.byte_end.saturating_sub(view.checkpoint_bytes) >= self.config.ring.checkpoint_bytes
+            || view.sequence.saturating_sub(view.checkpoint_sequence) >= 256
+            || !matches!(event, Event::Output { .. })
+        {
+            self.save(id)?;
+        }
         let kind = match event {
             Event::Output { .. } => "output",
             Event::Resized { .. } => "resized",
@@ -681,6 +757,10 @@ impl Worker {
                     break;
                 };
                 match command {
+                    Command::History(id, generation, from, to, reply) => {
+                        let result = self.history(id, generation, from, to);
+                        let _ = reply.send(result);
+                    }
                     Command::Snapshot(id, generation, reply) => {
                         let _ = reply.send(self.snapshot(id, generation));
                     }
@@ -761,6 +841,18 @@ impl Worker {
             if let Some(event) = self.connection.receive(Duration::from_millis(10))? {
                 self.event(event)?;
             }
+            let idle: Vec<_> = self
+                .views
+                .iter()
+                .filter(|(_, v)| {
+                    v.sequence > v.checkpoint_sequence
+                        && v.changed_at.elapsed() >= Duration::from_millis(self.config.ring.idle_ms)
+                })
+                .map(|(id, _)| *id)
+                .collect();
+            for id in idle {
+                self.save(id)?;
+            }
             if scan_at.elapsed() >= Duration::from_millis(100) {
                 if self.watch.failed() {
                     return Err(invalid(
@@ -772,6 +864,9 @@ impl Worker {
                 }
                 scan_at = Instant::now();
             }
+        }
+        for id in self.views.keys().copied().collect::<Vec<_>>() {
+            self.save(id)?;
         }
         Ok(())
     }

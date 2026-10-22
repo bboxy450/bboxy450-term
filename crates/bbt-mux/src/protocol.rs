@@ -159,6 +159,24 @@ pub enum Action {
         seat: Ulid,
         generation: u64,
     },
+    AttachRing {
+        seat: Ulid,
+        generation: u64,
+        directory: PathBuf,
+        settings: crate::ring::Settings,
+    },
+    RingRecovery {
+        attachment: Attachment,
+    },
+    ReadRing {
+        attachment: Attachment,
+        from: u64,
+        to: u64,
+    },
+    PublishCheckpoint {
+        attachment: Attachment,
+        checkpoint: Vec<u8>,
+    },
     Input {
         attachment: Attachment,
         input_id: Ulid,
@@ -251,6 +269,16 @@ pub enum Reply {
     },
     Input {
         receipt: InputReceipt,
+    },
+    RingRecovery {
+        status: crate::ring::Status,
+        checkpoint: Option<Vec<u8>>,
+    },
+    RingHistory {
+        history: Box<crate::ring::History>,
+    },
+    CheckpointCommitted {
+        sequence: u64,
     },
     Resized {
         size: SeatSize,

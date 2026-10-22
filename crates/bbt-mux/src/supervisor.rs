@@ -341,7 +341,10 @@ impl Actor {
             let ready = self.seats.values().any(|seat| {
                 seat.read_ready
                     && seat.pending_event.is_none()
-                    && seat.writer.is_some()
+                    && seat
+                        .ring
+                        .as_ref()
+                        .map_or(seat.writer.is_some(), crate::ring::Ring::can_capture)
                     && !seat.exit_published
             });
             match self
@@ -440,6 +443,98 @@ impl Actor {
                         .unwrap_or(seat.next_seq),
                 })
             }
+            Action::AttachRing {
+                seat,
+                generation,
+                directory,
+                settings,
+            } => {
+                let seat = self.seat_mut(seat, generation)?;
+                if !directory.is_absolute() {
+                    return Err(Failure::new(
+                        FailureCode::Invalid,
+                        "ring directory must be absolute",
+                    ));
+                }
+                if let Some(ring) = &seat.ring {
+                    if ring.directory() != directory || ring.settings() != &settings {
+                        return Err(Failure::new(
+                            FailureCode::Invalid,
+                            "ring owner/configuration conflicts",
+                        ));
+                    }
+                } else {
+                    let ring = crate::ring::Ring::open(
+                        &directory,
+                        seat.spec.seat,
+                        generation,
+                        seat.next_seq - 1,
+                        settings,
+                    )
+                    .map_err(pty_error)?;
+                    if ring.status().committed_sequence != seat.next_seq - 1 {
+                        return Err(Failure::new(
+                            FailureCode::StaleGeneration,
+                            "retained ring is from an earlier supervisor/process; resume needs a new generation",
+                        ));
+                    }
+                    seat.ring = Some(ring);
+                }
+                let attachment = Attachment {
+                    seat: seat.spec.seat,
+                    generation,
+                    writer_lease: Ulid::new(),
+                };
+                seat.writer = Some((client, attachment.writer_lease));
+                Ok(Reply::Attached {
+                    attachment,
+                    info: seat.info(),
+                    first_available_sequence: seat.ring.as_ref().unwrap().status().first_sequence,
+                })
+            }
+            Action::RingRecovery { attachment } => {
+                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
+                seat.check_writer(client, &attachment)?;
+                let ring = seat
+                    .ring
+                    .as_ref()
+                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "no ring configured"))?;
+                Ok(Reply::RingRecovery {
+                    status: ring.status(),
+                    checkpoint: ring.latest_checkpoint().map_err(pty_error)?,
+                })
+            }
+            Action::ReadRing {
+                attachment,
+                from,
+                to,
+            } => {
+                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
+                seat.check_writer(client, &attachment)?;
+                let ring = seat
+                    .ring
+                    .as_ref()
+                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "no ring configured"))?;
+                Ok(Reply::RingHistory {
+                    history: Box::new(ring.history(from, to).map_err(pty_error)?),
+                })
+            }
+            Action::PublishCheckpoint {
+                attachment,
+                checkpoint,
+            } => {
+                let seat = self.seat_mut(attachment.seat, attachment.generation)?;
+                seat.check_writer(client, &attachment)?;
+                let ring = seat
+                    .ring
+                    .as_mut()
+                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "no ring configured"))?;
+                let sequence = crate::ring::Saved::decode(&checkpoint)
+                    .map_err(pty_error)?
+                    .sequence;
+                ring.checkpoint(checkpoint).map_err(pty_error)?;
+                Ok(Reply::CheckpointCommitted { sequence })
+            }
             Action::Input {
                 attachment,
                 input_id,
@@ -476,15 +571,22 @@ impl Actor {
                         "drain pending records before resize",
                     ));
                 }
+                if seat.ring.as_ref().is_some_and(|ring| !ring.can_control()) {
+                    return Err(Failure::new(
+                        FailureCode::Busy,
+                        "ring full: checkpoint required before resize",
+                    ));
+                }
                 seat.master.resize(pty_size(size)).map_err(pty_error)?;
                 seat.size = size;
-                let sequence = seat.sequence();
-                seat.pending_event = Some(Event::Resized {
+                let sequence = seat.next_seq;
+                let event = Event::Resized {
                     seat: attachment.seat,
                     generation: attachment.generation,
                     seq: sequence,
                     size,
-                });
+                };
+                seat.capture(event).map_err(pty_error)?;
                 Ok(Reply::Resized { size, sequence })
             }
             Action::Kill { attachment } => {
@@ -780,6 +882,7 @@ struct Seat {
     termination_escalated: bool,
     grace: Option<(Ulid, Instant)>,
     close_ids: HashMap<Ulid, (u64, bool)>,
+    ring: Option<crate::ring::Ring>,
 }
 
 impl Seat {
@@ -830,6 +933,7 @@ impl Seat {
             termination_escalated: false,
             grace: None,
             close_ids: HashMap::new(),
+            ring: None,
         })
     }
 
@@ -970,6 +1074,19 @@ impl Seat {
         {
             self.pending_event = None;
         }
+        if self.ring.is_some() && self.writer.is_none() {
+            // Already committed; the replacement logic replays from the ring.
+            self.pending_event = None;
+        }
+    }
+
+    fn capture(&mut self, event: Event) -> io::Result<()> {
+        if let Some(ring) = self.ring.as_mut() {
+            ring.append_event(&event).map_err(io::Error::other)?;
+        }
+        self.sequence();
+        self.pending_event = Some(event);
+        Ok(())
     }
 
     fn tick(&mut self, actor: &mut Actor) -> io::Result<()> {
@@ -1007,24 +1124,34 @@ impl Seat {
         // One pending output chunk per seat bounds capture without a ring. A
         // stalled/detached logic applies kernel PTY backpressure, not silent loss.
         for _ in 0..4 {
+            if let Some(ring) = self.ring.as_mut() {
+                ring.prepare_capture().map_err(io::Error::other)?;
+            }
             if !self.read_ready
                 || self.pending_event.is_some()
-                || self.writer.is_none()
+                || self
+                    .ring
+                    .as_ref()
+                    .map_or(self.writer.is_none(), |ring| !ring.can_capture())
                 || self.exit_published
             {
                 break;
             }
             let mut bytes = [0; OUTPUT_CHUNK_BYTES];
+            let capacity = self
+                .ring
+                .as_ref()
+                .map_or(OUTPUT_CHUNK_BYTES, crate::ring::Ring::capture_capacity);
             // SAFETY: master owns fd; bytes is writable for its stated length.
-            let count = unsafe { libc::read(self.fd, bytes.as_mut_ptr().cast(), bytes.len()) };
+            let count = unsafe { libc::read(self.fd, bytes.as_mut_ptr().cast(), capacity) };
             if count > 0 {
-                let seq = self.sequence();
-                self.pending_event = Some(Event::Output {
+                let seq = self.next_seq;
+                self.capture(Event::Output {
                     seat: self.spec.seat,
                     generation: self.spec.generation,
                     seq,
                     bytes: bytes[..count as usize].into(),
-                });
+                })?;
                 self.publish_pending(actor);
                 continue;
             }
@@ -1044,14 +1171,18 @@ impl Seat {
             && !self.read_ready
             && self.pending_event.is_none()
             && !self.exit_published
+            && self
+                .ring
+                .as_ref()
+                .is_none_or(crate::ring::Ring::can_control)
         {
-            let seq = self.sequence();
-            self.pending_event = Some(Event::Exited {
+            let seq = self.next_seq;
+            self.capture(Event::Exited {
                 seat: self.spec.seat,
                 generation: self.spec.generation,
                 seq,
                 status,
-            });
+            })?;
             self.exit_published = true;
             self.publish_pending(actor);
         }

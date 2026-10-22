@@ -17,6 +17,7 @@ pub mod index;
 pub mod logic;
 pub mod protocol;
 pub mod registry;
+pub mod ring;
 pub mod seat_socket;
 pub mod store;
 pub mod streams;

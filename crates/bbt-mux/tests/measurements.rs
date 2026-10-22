@@ -134,6 +134,7 @@ fn file_descriptors_at_200_live_seats_and_sqlite_objects() {
     let logic = Logic::start(
         supervisor.connect().unwrap(),
         LogicConfig {
+            ring: Default::default(),
             run_dir: temp.path().join("run"),
             repository: repo,
         },

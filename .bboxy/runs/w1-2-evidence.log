@@ -1,0 +1,79 @@
+W1.2 byte ring evidence — 2026-10-22T09:41:52.496139-07:00
+Executor Rook Ashwhisker; /Users/feral/mydev/bboxy450-term; Boxy <bboxy450@gmail.com>
+Brief .bboxy/tasks/2026-10-21-w1-2-byte-ring.md; W2.2 accepted on main as 8484e0a.
+Allowed crates/bbt-mux/**, Cargo.lock, .bboxy/runs/w1-2-*.log; no scope expansion.
+No Cargo dependency or lock changes. No bbt-core changes. Shared UI/renderer/runtime changes belong to peers and are not staged by me.
+Oracle decision 1f9ae660-7ce8-4bea-8521-8e647f778a9b: logical rows = parser-observed hard line breaks, separate view epoch on resize/alternate/clear, explicitly unindexed tail; no physical-row counter or core extension. Cold eviction to content-addressed blobs.
+
+Mechanism pointers:
+crates/bbt-mux/src/ring.rs:25 — pub struct Settings
+crates/bbt-mux/src/ring.rs:64 — pub struct RowTracker
+crates/bbt-mux/src/ring.rs:124 — pub struct Saved
+crates/bbt-mux/src/ring.rs:251 — pub fn apply(
+crates/bbt-mux/src/ring.rs:346 — pub fn open(
+crates/bbt-mux/src/ring.rs:509 — pub fn checkpoint(
+crates/bbt-mux/src/ring.rs:551 — fn append(
+crates/bbt-mux/src/ring.rs:594 — fn compact_for(
+crates/bbt-mux/src/ring.rs:692 — fn publish_boundary(
+crates/bbt-mux/src/ring.rs:730 — fn retire_orphans(
+crates/bbt-mux/src/ring.rs:784 — pub fn history(
+crates/bbt-mux/src/ring.rs:827 — pub fn replay(
+crates/bbt-mux/src/ring.rs:910 — fn scan(
+crates/bbt-mux/src/logic.rs:458 — Action::AttachRing
+crates/bbt-mux/src/logic.rs:692 — fn save(
+crates/bbt-mux/src/logic.rs:844 — let idle:
+crates/bbt-mux/src/supervisor.rs:522 — Action::PublishCheckpoint
+crates/bbt-mux/src/supervisor.rs:1083 — fn capture(
+crates/bbt-mux/src/supervisor.rs:1128 — ring.prepare_capture()
+crates/bbt-mux/src/seat_socket.rs:218 — Action::GetHistory
+crates/bbt-mux/tests/ring.rs:44 — fn ring_red_sgr
+crates/bbt-mux/tests/ring.rs:67 — fn ring_checkpoint_preserves
+crates/bbt-mux/tests/ring.rs:92 — fn ring_rejects_uncommitted
+crates/bbt-mux/tests/ring.rs:129 — fn ring_eviction
+crates/bbt-mux/tests/ring.rs:183 — fn ring_ten_thousand
+crates/bbt-mux/tests/ring.rs:216 — fn ring_logical_rows
+crates/bbt-mux/tests/logic.rs:516 — fn ring_full_during
+crates/bbt-mux/tests/logic.rs:649 — fn ring_idle_checkpoint
+
+Acceptance:
+1. Supervisor owns per-seat/per-generation ring under the runtime object directory. Fixed 56-byte little-endian version/kind/seat/generation/sequence/byte-offset/length/CRC32C header, raw output and typed resize/exit, compressed checkpoints. CRC32C test vector 123456789=e3069283. Header length bounded before payload allocation; marker reads capped at4097 bytes. Private0700 runtime directory; no ring content in repository/Git.
+2. Records fsync before CRC-protected committed marker; marker and directory synced. Independent previous marker; fallback rejects torn/uncommitted suffix and reports recovered cursor. Suffix preserved as cold blob before truncation. Checkpoint-byte offset/capture cursor/generation checked before append. Full parser/UTF8/CSI/OSC/sync state and both screens preserved. Checkpoints after64KiB(default)+record boundary,200ms idle(default),resize/exit,or256 new records; replay also publishes intermediate checkpoints.
+3. Active hot file default4MiB(setting), includes checkpoints/index/header. Compaction starts at a committed checkpoint, preserves at least newest two plus every following capture; older checkpoints stay while budget permits. Previous boundary can pin one more file of that size; temporary compaction file can add one more until publication. Retired/orphan hot logs go to zstd content-addressed cold blobs with cold.jsonl digest references. Cold is unbounded by the hot cap under never-delete. Metadata/index memory bounded by retained record count; no measured aggregate memory/performance claim.
+4. Capture before live delivery; when detached, supervisor continues to committed ring without a per-seat memory backlog. It reserves checkpoint space and pauses PTY reads when no safe boundary exists. A restored logic publishes checkpoints while catching up, which makes eviction/capture resumable. Live test fills256KiB configured window while logic absent, observes paused status/unindexed tail, restores same child, drains655360+ bytes through to red AFTER-TAIL without a capture gap; older history has an explicit hot-eviction gap.
+5. Ring recovery uses newest valid checkpoint plus bounded pages to an exact capture boundary. Playback uses fresh Term and drains generated effects without writing PTY responses, clipboard or messages. Generation-checked ReadRing/GetHistory returns records, optional logical indexes, next capture cursor and explicit requested/retained gap metadata. Logical row index counts LF/VT/FF and IND/NEL escapes outside OSC; resize, alternate, clear/reset advance epoch; no soft-wrap or guessed physical rows. Unparsed tail stays row:null until checkpoint/index publication.
+6. Tests cover red SGR+4096 chars with red tail, incomplete CSI/UTF8/OSC and mode2026 checkpoints, replay/live cell equality, torn suffix rollback and subsequent append/reopen, checkpoint-boundary eviction with2+ checkpoints/cold copies,10k logical lines byte-for-byte paginated history, index epochs and unindexed tail, invalid generation/length/CRC and real live backpressure/restart/idle publication.
+
+Actual verification:
+cargo test -p bbt-mux --locked ring — exit0; w1-2-final-ring.log and w1-2-final-ring-02.log. Filter includes7 ring module tests,2 live logic ring tests and1 existing tamper test whose name matches ring.
+cargo test -p bbt-mux --locked — exit0; w1-2-final-tests-02.log,37 passed (2 codec+8 logic+7 ring+9 store/index+10 supervisor+1 UI guard),3 ignored helper/old measurement entries. Actual subprocess hard-kill test still passes twice against the same zsh.
+cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit0; w1-2-final-clippy-02.log.
+cargo build --workspace --locked — exit0; w1-2-final-build.log. No native GUI/parity claim; peer UI work is live.
+cargo fmt -p bbt-mux -- --check — exit0; w1-2-final-fmt-02.log.
+git diff --check -- crates/bbt-mux — exit0; final staged path check also required before commit.
+
+Corrections/failures:
+w1-2-logic-01.log exit101: old socket test expected Gap-only; new retained History page also carries an explicit gap. Assertion updated to check History+gap+real records; subsequent full logic runs pass.
+Initial cargo fmt failed on a mechanical LogicConfig fixture insertion, corrected. Initial cargo check after compaction-reserve refactor exited101 on stale helper signature; fixed signature to Result<bool> with reserve argument. No unresolved compile/clippy/test failure.
+A capture checkpoint reserve and intermediate replay checkpoints close the full-ring deadlock: catch-up can establish newer safe boundaries even while PTY reads are paused. The live test proves that path; no silent byte discard.
+
+Limits / deliberately untouched:
+File sync_all/directory sync used; no F_FULLFSYNC, power-cut, filesystem fault-injection matrix or media durability guarantee. Torn suffix and marker fallback tested at file level. Supervisor process death still ends owned PTYs; real harness session resume/new-generation orchestration remains later work.
+History API pages retained capture records with logical coordinates; arbitrary rendered-row reconstruction/search/GUI scrolling and cold-history hydration remain consumers to implement. Cold bytes and digest references are retained, not silently fetched or deleted.
+Signed account-grant enforcement, native adapters/readiness/input, transport/cloud/remote, production key custody, daily provenance checkpoints and raw terminal reply handling are unchanged/later integrations.
+No macOS14/Linux/mobile or hosted CI,1000-running-seat,throughput,memory or maxfiles measurement for W1.2. W2.2 measurements are historical, not re-run/reclaimed here.
+Checkpoint migration envelope version1 only; no general untrusted checkpoint decoder or format migration guarantee. Compressed128KiB/decoded16MiB/index4096 and bounded viewport limits reject oversize state explicitly.
+Hot compaction retains previous committed file plus a temporary replacement as documented; cold storage grows under never-delete. No physical rendered row IDs or precise line counts inferred from byte ranges.
+No real credentials/keys/model transcripts or user trust settings accessed; only synthetic disposable PTY fixtures. No new runtime. No peer source edits or broad staging/stash.
+
+Source SHA256 for scoped changed/new files:
+1e7c54d7919836b1c72d3e4c59f1f88975399f987dbe12557fdae3278ea703f4  crates/bbt-mux/README.md
+4978004968a25af10e5c84196cc3a1fc8d8fb888218e3c66f3035896ac93ac0e  crates/bbt-mux/src/lib.rs
+2e6e222b3b168e6246af1f93d50acdda3a4824bcaafccbf9c330f3e5960f7a30  crates/bbt-mux/src/logic.rs
+5a980e9e30957ed71d05bad2279f23a5f3a95ebd871f936aa1faa258373ca7ee  crates/bbt-mux/src/protocol.rs
+6ebc520cfe49ea5406995b0720830ca8c099a18ec520414122b51214e1ca2457  crates/bbt-mux/src/ring.rs
+26fff8ce577c3d14173d597f2b649faa3df5bab415b2d7c87feff741680f89c0  crates/bbt-mux/src/seat_socket.rs
+6758e9fd1b85edc7b0dc59a2103281a1cab6cdc6dc7ff824911b0dc96068bd1c  crates/bbt-mux/src/streams.rs
+68ae5f09fe9043e8d8c31ff89b8237b74ce455aa941e53cc00a2a213904baf88  crates/bbt-mux/src/supervisor.rs
+e2cefb525780a5204fbb596ab9f51b169b38533aeaf12103b9e0150a3581866a  crates/bbt-mux/tests/logic.rs
+a1cc6e1332556357b3fbd35c7a0381d28b0328700f1a49cdd509e9de06583798  crates/bbt-mux/tests/measurements.rs
+c334bd3613041cbb71c468116c278ee8b9fdc517d0ff6d1267aa6513e8d5b684  crates/bbt-mux/tests/ring.rs

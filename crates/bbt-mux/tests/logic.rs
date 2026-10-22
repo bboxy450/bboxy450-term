@@ -23,6 +23,7 @@ fn fixture(root: &Path) -> LogicConfig {
     let repository = root.join(".bboxy");
     std::fs::create_dir_all(&repository).unwrap();
     LogicConfig {
+        ring: Default::default(),
         run_dir: root.join("run"),
         repository,
     }
@@ -347,10 +348,10 @@ fn real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap
         action: SocketAction::GetHistory { from: 0, to: 100 },
         ..request
     };
-    assert_eq!(
-        runtime.block_on(socket_request(&endpoint.path, &request))["kind"],
-        "Gap"
-    );
+    let history = runtime.block_on(socket_request(&endpoint.path, &request));
+    assert_eq!(history["kind"], "History");
+    assert!(history["history"]["gap"].is_object());
+    assert!(!history["history"]["records"].as_array().unwrap().is_empty());
     runtime.block_on(async {
         let stream = tokio::net::UnixStream::connect(&endpoint.path)
             .await
@@ -480,6 +481,7 @@ fn external_logic_fixture() {
     let logic = Logic::start(
         supervisor,
         LogicConfig {
+            ring: Default::default(),
             run_dir: input["run"].as_str().unwrap().into(),
             repository: input["repository"].as_str().unwrap().into(),
         },
@@ -508,4 +510,179 @@ fn external_logic_fixture() {
     loop {
         std::thread::park();
     }
+}
+
+#[test]
+fn ring_full_during_logic_absence_backpressures_then_replays_the_red_tail_without_a_gap() {
+    use bbt_mux::ring::Saved;
+    let temp = tempfile::tempdir().unwrap();
+    let runtime = runtime();
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let mut config = fixture(temp.path());
+    config.ring.capacity_bytes = 256 * 1024;
+    config.ring.checkpoint_bytes = 32 * 1024;
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        config.clone(),
+        SigningKey::from_bytes(&[26; 32]),
+        runtime.handle(),
+    )
+    .unwrap();
+    let gate = temp.path().join("gate");
+    let mut spec = LaunchSpec::new("/bin/zsh", temp.path());
+    spec.env
+        .insert("BBOXY_TEST_GATE".into(), gate.to_string_lossy().to_string());
+    spec.args=vec!["-f".into(),"-c".into(),r#"printf 'BEFORE\n'; while [[ ! -f "$BBOXY_TEST_GATE" ]]; do sleep 0.02; done; printf '\033[31m'; p=${(l:1024::x:)}; for i in {1..640}; do printf '%s' "$p"; done; printf '\nAFTER-TAIL\n'; read -r ignored"#.into()];
+    let seat = spec.seat;
+    let info = runtime
+        .block_on(logic.client.spawn(
+            SeatRecord::new(seat, Ulid::new(), "ring fixture", "zsh"),
+            spec,
+        ))
+        .unwrap();
+    let until = Instant::now() + Duration::from_secs(5);
+    loop {
+        let snapshot = runtime.block_on(logic.client.snapshot(seat, 1)).unwrap();
+        if snapshot.screen.cells.iter().flatten().any(|c| c.c == 'B') {
+            break;
+        }
+        assert!(Instant::now() < until);
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    logic.shutdown().unwrap();
+    std::fs::write(&gate, b"go").unwrap();
+    let root = config.run_dir.join(format!("seat-{seat}/ring-1"));
+    let until = Instant::now() + Duration::from_secs(10);
+    loop {
+        let length = std::fs::read(root.join("committed"))
+            .ok()
+            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b[..b.len() - 4]).ok())
+            .and_then(|v| v["length"].as_u64())
+            .unwrap_or(0);
+        if length >= config.ring.capacity_bytes * 3 / 4 - 256 {
+            break;
+        }
+        assert!(
+            Instant::now() < until,
+            "supervisor did not capture while logic was absent"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let client = supervisor.connect().unwrap();
+    let attachment = client.attach(seat, 1).unwrap();
+    let Reply::RingRecovery { status, checkpoint } = client
+        .request(Action::RingRecovery {
+            attachment: attachment.clone(),
+        })
+        .unwrap()
+    else {
+        panic!()
+    };
+    assert!(status.paused);
+    assert!(status.hot_bytes <= config.ring.capacity_bytes);
+    let saved = Saved::decode(&checkpoint.unwrap()).unwrap();
+    assert!(status.committed_sequence > saved.sequence);
+    let Reply::RingHistory { history } = client
+        .request(Action::ReadRing {
+            attachment,
+            from: saved.sequence + 1,
+            to: status.committed_sequence,
+        })
+        .unwrap()
+    else {
+        panic!()
+    };
+    assert!(history.records.iter().any(|r| r.row.is_none()));
+    let logic = Logic::start(
+        client,
+        config,
+        SigningKey::from_bytes(&[26; 32]),
+        runtime.handle(),
+    )
+    .unwrap();
+    let until = Instant::now() + Duration::from_secs(20);
+    let snapshot = loop {
+        let snapshot = runtime.block_on(logic.client.snapshot(seat, 1)).unwrap();
+        let text: String = snapshot
+            .screen
+            .cells
+            .iter()
+            .flatten()
+            .map(|c| c.c)
+            .collect();
+        if text.contains("AFTER-TAIL") {
+            break snapshot;
+        }
+        assert!(
+            Instant::now() < until,
+            "capture failed to resume after checkpoint publication"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    assert!(snapshot.screen.gap.is_none());
+    assert!(
+        snapshot
+            .screen
+            .cells
+            .iter()
+            .flatten()
+            .any(|c| c.c == 'A' && c.fg == bbt_core::Color::Named(bbt_core::NamedColor::Red))
+    );
+    let history = runtime
+        .block_on(logic.client.history(seat, 1, 1, snapshot.sequence))
+        .unwrap();
+    assert!(history.gap.is_some()); // Old hot history was safely evicted, not a capture loss.
+    assert!(history.status.byte_end >= 655360);
+    logic.shutdown().unwrap();
+    let Reply::Seats { seats } = supervisor
+        .connect()
+        .unwrap()
+        .request(Action::ListOwnedSeats)
+        .unwrap()
+    else {
+        panic!()
+    };
+    assert_eq!(seats[0].pid, info.pid);
+}
+
+#[test]
+fn ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold() {
+    let temp = tempfile::tempdir().unwrap();
+    let runtime = runtime();
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let mut config = fixture(temp.path());
+    config.ring.idle_ms = 30;
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        config,
+        SigningKey::from_bytes(&[27; 32]),
+        runtime.handle(),
+    )
+    .unwrap();
+    let spec = launch();
+    let seat = spec.seat;
+    runtime
+        .block_on(
+            logic
+                .client
+                .spawn(SeatRecord::new(seat, Ulid::new(), "idle ring", "zsh"), spec),
+        )
+        .unwrap();
+    let snapshot = settled(&runtime, &logic, seat);
+    let until = Instant::now() + Duration::from_secs(5);
+    loop {
+        let history = runtime
+            .block_on(logic.client.history(seat, 1, 1, snapshot.sequence))
+            .unwrap();
+        assert!(history.status.byte_end < 64 * 1024);
+        if history.records.iter().all(|r| r.row.is_some()) {
+            break;
+        }
+        assert!(
+            Instant::now() < until,
+            "idle output was not checkpointed/indexed"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    logic.shutdown().unwrap();
 }

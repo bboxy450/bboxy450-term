@@ -1,7 +1,8 @@
 # bbt-mux — supervisor and restartable logic
 
 W2.1 owns PTYs; W2.2 adds durable objects, the seat registry, the repository
-index, the bus and generation-bound viewport sockets. `Logic::start` accepts a
+index, the bus and generation-bound viewport sockets. W1.2 adds supervisor-owned
+byte rings, committed parser/model checkpoints and retained history. `Logic::start` accepts a
 W2.1 in-process client or `logic::SocketSupervisor` for a separate process. It
 receives the application's existing Tokio handle; production code creates no
 runtime. Bootstrap, database work and terminal parsing belong to IO owners,
@@ -17,6 +18,7 @@ The UI uses bounded asynchronous `LogicClient` messages.
 | `store/sqlite` | Per-object SQLite WAL/FULL databases, version 1, key/value, SQL and alarms. Connections are operation-scoped rather than held open for every object. |
 | `store/blobs` | SHA-256 addressed, zstd-compressed local blobs, fsynced temporary file and rename, digest verification and a 64 MiB decompression bound. |
 | `store/events` | Immutable, Ed25519-signed, hash-chained event rows; permanent event-ID deduplication and conflict rejection; chain verification on reopen. |
+| `ring` | CRC32C framed capture, fsynced committed boundaries, checkpoint-aware hot retention, cold blobs, isolated replay and logical-row indexes. |
 | `registry` | Account-owned ULID seat records, signed-role shape, location, mute, harness session and task references, close revisions and exact restore positions. |
 | `index` | FSEvents/inotify invalidation, Markdown/YAML parsing, weighted wikilinks, SQLite mirror and durable event outbox, five petgraph projections. |
 | `bus` | One bounded router over per-object event streams, consumer policies, replay, coalescing, explicit acknowledgments and request/reply. |
@@ -56,14 +58,63 @@ Undo must match process generation, close revision and layout revision; an
 expired, replaced or conflicting seat is not silently restored. Reconnecting
 logic reconciles exits and re-submits any outstanding close intent.
 
-Logic checkpoints contain the complete terminal model/parser plus title, cwd,
-capture cursor and generation. A content-addressed blob is committed before its
-pointer. Reattaching the same process restores that checkpoint and assigns a
-new view generation. If the supervisor no longer has intervening bytes, a
-capture-gap marker names the missing sequence range. There is no fabricated
-replay or blank-screen success. W1.2 supplies the supervisor byte ring and
-semantic history; this checkpoint bridge does not preserve all bytes emitted
-while logic is dead. Supervisor death still ends its PTYs.
+The supervisor captures output/resize/exit into each seat generation's ring
+before delivering it. Logic produces the complete parser/model checkpoint on
+the supplied IO runtime; a fresh logic instance restores the newest committed
+checkpoint and replays captured records through a fixed boundary before serving
+its consolidated viewport. It neither respawns the child nor re-emits old PTY
+replies, clipboard effects or messages. A legacy W2.2 checkpoint can seed a new
+ring with an explicit pre-ring history gap. Supervisor death still ends its PTYs;
+a new supervisor refuses to treat an old generation's ring as a continuing child.
+
+### Ring format, retention and recovery (W1.2)
+
+`LogicConfig.ring` sets the active hot-file budget (default 4 MiB), checkpoint
+output interval (64 KiB) and idle delay (200 ms). Checkpoints also follow resize,
+exit and at most 256 new capture records, bounding index publication for tiny
+writes. Startup admits a private ring for the seat generation before capture,
+then commits its initial checkpoint. Capture continues while logic is absent.
+If there is no safe checkpoint boundary, PTY reads pause; a reserved checkpoint
+budget lets catching-up logic publish replacements and resume capture.
+
+A record has a fixed 56-byte little-endian header: magic/version/kind, payload
+length, capture sequence, process generation, seat ULID, byte start and CRC32C
+(Castagnoli, over header excluding the CRC field plus payload). Output payloads
+are raw bytes; resize/exit are typed JSON; checkpoints are zstd-compressed,
+versioned full parser/model snapshots with cursor, both screens, palette, title,
+CWD metadata and the logical index. Checkpoint records refer to their exact
+last-applied capture cursor and do not invent a new capture event. Header,
+length, cursor, byte offset, generation and checksum are validated before replay.
+Records are capped at 1 MiB; checkpoints at 128 KiB compressed / 16 MiB decoded;
+viewport dimensions and logical index entries are bounded too.
+
+Append order is complete record → `sync_all` → CRC-protected committed marker
+→ marker/directory sync. The independently valid previous marker remains.
+Compaction writes a new file first and publishes its marker before retiring
+anything. Recovery rejects uncommitted or torn suffixes, falls back to the
+previous valid boundary and reports the recovered cursor; suffix bytes go to
+cold storage before truncation. Invalid committed data without a valid previous
+boundary is an error, never a blank recovered screen. Strict media/power-loss
+ordering (`F_FULLFSYNC`) and real power-cut testing are not claimed.
+
+Eviction starts with a complete checkpoint and retains at least the newest two
+checkpoints plus every later capture record; older checkpoints remain while
+budget permits. `capacity_bytes` bounds the current hot file including encoded
+checkpoint/index records. The previous boundary may pin one additional file of
+at most that budget (plus one temporary file during compaction). Retired and
+orphaned owned log files are compressed into content-addressed cold blobs with
+a `cold.jsonl` digest reference before removal from the hot namespace. Cold
+retention follows never-delete and is outside the hot budget. Record metadata
+and the logical index are bounded by the hot record count, not a 1000-seat memory
+or throughput promise. Ring files stay under private runtime state, never Git.
+
+The semantic index maps capture sequences to cumulative **logical hard-line**
+ranges: parser-observed LF/VT/FF and IND/NEL escape operations, excluding bytes
+inside OSC payloads. These are not rendered/reflowed physical rows. Resize,
+alternate-screen changes, clear and reset advance a separate view epoch.
+Each parsed record receives an index point; checkpoint publication makes those
+points durable. The supervisor's not-yet-parsed tail explicitly has no row
+index. W1.2 does not infer missing line counts from raw byte sizes.
 
 ## Event bus and repository index
 
@@ -127,8 +178,11 @@ A viewer retains one acknowledged baseline, one sent snapshot and one latest
 pending frame. Deltas carry changed rows and cursor/modes/palette/style/title/
 cwd metadata. `Applied` must match the sent view generation and sequence;
 wrong/stale baselines are rejected atomically. Resize changes view generation
-and requires a snapshot. `GetHistory` returns an explicit W1.2-pending gap,
-never claims unavailable scrollback. Native OSC cwd/status observation, hooks,
+and requires a snapshot. `GetHistory{from,to}` uses inclusive generation-bound
+capture sequences and returns a bounded `History` page with records, optional
+logical-row metadata, a next cursor and an explicit gap plus the supplied hot
+retained range when requested history was evicted. Cold history retrieval and
+rendering arbitrary historical rows are later integrations. Native OSC cwd/status observation, hooks,
 terminal query replies and renderer/GUI wiring remain integration work.
 
 ## Verification and measurements
@@ -137,7 +191,12 @@ terminal query replies and renderer/GUI wiring remain integration work.
 replay/redelivery/gaps, registry undo, graph recovery, watcher-to-bus task events,
 provenance signatures, real seat sockets and W2.1 PTY/lease/backpressure tests.
 The subprocess fixture hard-kills logic, reattaches through the supervisor
-socket and verifies the same live zsh PID and exact screen. The viewport test
+socket and verifies the same live zsh PID and exact screen. W1.2 adds red-SGR
+restore, incomplete parser checkpoints, torn suffix/CRC rejection, checkpoint
+boundary eviction, 10k-line history roundtrip and cell-for-cell replay checks.
+The live ring test fills a bounded ring while logic is absent, then proves
+checkpoint publication unblocks capture and restores the final red tail without
+a capture gap. A separate test verifies idle checkpoint/index publication. The viewport test
 also checks a metadata-only palette/cursor delta and flattened wire format.
 
 Run the two finite measurements explicitly:
@@ -156,7 +215,7 @@ Measured locally on 2026-10-22 (no OS limit changes):
   harness wake, network or GUI load measurement.
 
 Actual command output, failures/corrections and acceptance pointers live in
-`.bboxy/runs/w2-2-*.log`; W2.1's earlier evidence is in `.bboxy/runs/w2-1-*.log`.
+`.bboxy/runs/w2-2-*.log`; W1.2 output is in `.bboxy/runs/w1-2-*.log`; W2.1's earlier evidence is in `.bboxy/runs/w2-1-*.log`.
 Not validated: real power loss, supervisor restart, native harness input or
 state integrations, cloud/SSH, account grants, production key custody, 1000
 running seats, macOS 14/Linux/mobile, hosted CI or renderer parity. No user
