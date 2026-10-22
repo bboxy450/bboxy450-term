@@ -173,7 +173,7 @@ impl Scene {
             },
         }
     }
-    pub fn layout(&self, size: [f32; 2]) -> Result<Vec<c::Layout>, String> {
+    pub fn layout(&self, size: [f32; 2], effects: bool) -> Result<Vec<c::Layout>, String> {
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         let title = STYLE.spacing.title_bar as f32;
         let sidebar_width = 300_f32.min(size[0] * 0.35);
@@ -237,6 +237,11 @@ impl Scene {
         ];
         for (id, rect) in solve_split(&self.tree, bounds, TOKENS.layout.gutter as f32).panes {
             let seat = self.seats[id.0.0 as usize].clone();
+            let pane_ctx = ui::Context {
+                seat: seat.color.unwrap_or(ctx.seat),
+                focused: seat.focused,
+                ..ctx
+            };
             let pane = Pane {
                 strip: Strip::new(seat),
                 lines: vec![],
@@ -246,12 +251,12 @@ impl Scene {
                 unfocused: false,
                 reconnecting: false,
                 reconnected: false,
-                glow_seed: None,
+                glow_seed: effects.then_some(id.0.0 as u32),
                 opacity: 1.,
             };
             layouts.push(
-                pane.element(ctx)
-                    .layout(rect, ctx, &self.metrics)
+                pane.element(pane_ctx)
+                    .layout(rect, pane_ctx, &self.metrics)
                     .map_err(|e| e.to_string())?,
             );
         }
