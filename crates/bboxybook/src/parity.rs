@@ -11,6 +11,8 @@ pub fn replay_images(out: &Path, cases: &[Case]) -> Result<usize> {
     for (i, case) in cases.iter().enumerate() {
         let rgba = if case.fixture.as_ref().is_some_and(|f|f["layer"]=="paths") {
             crate::paths::render_case(&mut renderer,case)?
+        } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="graphs") {
+            crate::graphs::render_case(&mut renderer,case)?
         } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="streams") {
             crate::streams::render_case(&mut renderer, case)?
         } else if case
@@ -94,6 +96,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     snapshots.extend(crate::title_bars::snapshots(cases)?);
     snapshots.extend(crate::launchers::snapshots(cases)?);
     snapshots.extend(crate::streams::snapshots(cases)?);
+    snapshots.extend(crate::graphs::snapshots(cases)?);
     snapshots.extend(crate::paths::snapshots(cases)?);
     if !snapshots.is_empty() {
         fs::write(
@@ -137,13 +140,13 @@ impl CasePolicy {
         let f = case.fixture.as_ref();
         let surface_only = f.is_some_and(|f| f["layer"] == "floating-surfaces");
         let vector = f.is_some_and(|f| f["layer"] == "paths");
-        let text = if case.component == "materials" || surface_only || vector {
+        let text = if case.component == "materials" || surface_only || f.is_some_and(|f|f["layer"]=="paths") {
             false
         } else if case.component == "style"
             || f.is_some_and(|f| {
                 matches!(
                     f["layer"].as_str(),
-                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams")
+                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams" | "graphs")
                 )
             })
         {
@@ -166,8 +169,10 @@ impl CasePolicy {
             channel_tolerance: diff::CHANNEL_TOLERANCE,
             changed_pixel_budget: if vector { 0.005 } else if text { 0.02 } else { diff::CHANGED_BUDGET },
             geometry_tolerance_px: if vector { Some(0.) } else { text.then_some(0.5) },
-            scope: if vector {
+            scope: if f.is_some_and(|f|f["layer"]=="paths") {
                 "L6 Path strokes in caller-owned slots; public points tessellated natively; 1x/2x"
+            } else if f.is_some_and(|f|f["layer"]=="graphs") {
+                "GraphTab cards; public records, independent native geometry; demo backdrop shared"
             } else if f.is_some_and(|f|f["layer"]=="streams") {
                 "StreamDock/message rows; public entries, independent native geometry; demo backdrop shared"
             } else if f.is_some_and(|f| f["layer"] == "launchers") {

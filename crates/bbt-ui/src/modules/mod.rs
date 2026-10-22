@@ -10,3 +10,4 @@ pub mod stream_dock;
 pub mod swarm_card;
 pub mod tab_row;
 pub mod title_bar;
+pub mod graph_tab;

@@ -16,6 +16,11 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("gallery");
+    if command == "graphs" {
+        let out=PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/bboxybook/graphs".into()));
+        if args.iter().any(|a|a=="--geometry-only") { let path=value(&args,"--manifest").ok_or("--geometry-only requires --manifest")?; let cases:Vec<gallery::Case>=serde_json::from_str(&fs::read_to_string(path)?)?;fs::create_dir_all(&out)?;fs::write(out.join("layouts.json"),serde_json::to_vec_pretty(&bboxybook::graphs::snapshots(&cases)?)?)?;return Ok(()); }
+        return bboxybook::graphs::render(&out);
+    }
     if command == "paths" {
         return bboxybook::paths::render(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/bboxybook/paths".into())));
     }
@@ -104,7 +109,7 @@ fn run() -> Result<()> {
         ));
     }
     if command == "manifest" {
-        let cases=match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref(){Some("paths")=>bboxybook::paths::cases(),Some("flow")=>bboxybook::components::cases(),Some("streams")=>{let mut c=bboxybook::streams::cases();c.extend(bboxybook::streams::legacy_cases());c},None=>gallery::cases(),Some(_)=>return Err("unknown BBOXYBOOK_GALLERY".into())};
+        let cases=match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref(){Some("paths")=>bboxybook::paths::cases(),Some("graphs")=>bboxybook::graphs::cases(),Some("flow")=>bboxybook::components::cases(),Some("streams")=>{let mut c=bboxybook::streams::cases();c.extend(bboxybook::streams::legacy_cases());c},None=>gallery::cases(),Some(_)=>return Err("unknown BBOXYBOOK_GALLERY".into())};
         println!("{}", serde_json::to_string_pretty(&cases)?);
         return Ok(());
     }
