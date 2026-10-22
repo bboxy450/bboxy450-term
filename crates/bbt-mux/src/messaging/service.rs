@@ -15,9 +15,7 @@ use super::{
 use crate::{
     adapters::{State, WakeOutcome},
     registry::{Class, Registry, SeatRecord},
-    store::{
-        Result, Store, digest, events::Draft, invalid, object_dir, sqlint, sqlite::SqliteStore,
-    },
+    store::{Result, digest, events::Draft, invalid, object_dir, sqlint, sqlite::SqliteStore},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -31,6 +29,44 @@ struct Grant {
     #[serde(default)]
     operator_direct: bool,
     author: String,
+}
+#[derive(Serialize, Deserialize)]
+struct HeldSend {
+    seat: Ulid,
+    generation: u64,
+    swarm: Ulid,
+    role: crate::registry::Role,
+    epoch: u64,
+    issuer_state: Option<Vec<u8>>,
+    request: SendRequest,
+    operator: bool,
+    routes: Vec<Route>,
+}
+fn pin_issuer(account: &SqliteStore, keys: &dyn SeatKeys) -> Result<()> {
+    let Some(issuer) = keys.ready_issuer() else {
+        return Ok(());
+    };
+    let issuer = serde_json::to_vec(&issuer)?;
+    let mut db = account.connection()?;
+    let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    let old: Option<Vec<u8>> = tx
+        .query_row(
+            "SELECT value FROM kv WHERE key='messaging/issuer'",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?;
+    if let Some(old) = old {
+        if old != issuer {
+            return Err(invalid(
+                "local messaging issuer changed; explicit re-enrollment required",
+            ));
+        }
+    } else {
+        tx.execute("INSERT INTO kv VALUES('messaging/issuer',?1)", [&issuer])?;
+    }
+    tx.commit()?;
+    Ok(())
 }
 struct Swarm {
     tree: Tree,
@@ -91,9 +127,9 @@ impl Messaging {
         let (swarm, actor) = self.actor(seat, generation)?;
         let actor = if operator { Actor::Operator } else { actor };
         match request {
-            Request::Send { message } => Ok(Response::Stored {
-                message: Box::new(self.send_inner(seat, generation, message, now, operator)?),
-            }),
+            Request::Send { message } => {
+                self.send_inner(seat, generation, message, now, operator, None)
+            }
             Request::List {
                 thread,
                 channel,
@@ -209,17 +245,9 @@ impl Messaging {
         account.connection()?.execute_batch("CREATE TABLE IF NOT EXISTS msg_counters(seat TEXT NOT NULL,generation INTEGER NOT NULL,sequence INTEGER NOT NULL,PRIMARY KEY(seat,generation));
             CREATE TABLE IF NOT EXISTS msg_policies(seat TEXT PRIMARY KEY,epoch INTEGER NOT NULL,role BLOB NOT NULL,muted INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_grants(id TEXT PRIMARY KEY,data BLOB NOT NULL);
-            CREATE TABLE IF NOT EXISTS msg_notices(id TEXT PRIMARY KEY,envelope BLOB NOT NULL,request BLOB NOT NULL,sent INTEGER NOT NULL DEFAULT 0);")?;
-        let issuer = serde_json::to_vec(&keys.issuer())?;
-        if let Some(old) = account.get("messaging/issuer")? {
-            if old != issuer {
-                return Err(invalid(
-                    "local messaging issuer changed; explicit re-enrollment required",
-                ));
-            }
-        } else {
-            account.put("messaging/issuer", &issuer)?;
-        }
+            CREATE TABLE IF NOT EXISTS msg_notices(id TEXT PRIMARY KEY,envelope BLOB NOT NULL,request BLOB NOT NULL,sent INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE IF NOT EXISTS msg_held(position INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT UNIQUE NOT NULL,data BLOB NOT NULL,reason TEXT NOT NULL,state TEXT NOT NULL);")?;
+        pin_issuer(&account, keys.as_ref())?;
         let registry = Registry::new(account.clone());
         let mut messaging = Self {
             root: root.into(),
@@ -341,7 +369,13 @@ impl Messaging {
         request: SendRequest,
         now: u64,
     ) -> Result<StoredMessage> {
-        self.send_inner(from, generation, request, now, false)
+        match self.send_inner(from, generation, request, now, false, None)? {
+            super::api::Response::Stored { message } => Ok(*message),
+            super::api::Response::Held { reason, .. } => {
+                Err(invalid(format!("signing held: {reason}")))
+            }
+            _ => unreachable!(),
+        }
     }
     fn send_inner(
         &mut self,
@@ -350,7 +384,8 @@ impl Messaging {
         mut request: SendRequest,
         now: u64,
         operator: bool,
-    ) -> Result<StoredMessage> {
+        releasing: Option<&HeldSend>,
+    ) -> Result<super::api::Response> {
         request.validate()?;
         if matches!(request.kind, MessageKind::Presence | MessageKind::Task) {
             return Err(invalid(
@@ -373,7 +408,9 @@ impl Messaging {
             ));
         }
         if let Some(old) = self.swarm(record.swarm)?.ledger.existing(&request, from)? {
-            return Ok(old);
+            return Ok(super::api::Response::Stored {
+                message: Box::new(old),
+            });
         }
         if let Some(reply) = request.reply_to {
             let old = self.swarm(record.swarm)?.ledger.by_id(reply)?;
@@ -406,6 +443,90 @@ impl Messaging {
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let epoch = policy(&tx, &record)?;
         let operator_direct = operator && super::tree::sink(&request.destination).is_ok();
+        let pending = HeldSend {
+            seat: from,
+            generation,
+            swarm: record.swarm,
+            role: record.role.clone(),
+            epoch,
+            issuer_state: tx
+                .query_row(
+                    "SELECT value FROM kv WHERE key='identity/issuer'",
+                    [],
+                    |r| r.get(0),
+                )
+                .optional()?,
+            request: request.clone(),
+            operator,
+            routes: routes.clone(),
+        };
+        if let Some(original) = releasing {
+            if original.swarm != pending.swarm
+                || original.role != pending.role
+                || original.epoch != epoch
+                || original.issuer_state != pending.issuer_state
+                || original.routes != routes
+            {
+                return Err(invalid("held send authority changed; resubmit explicitly"));
+            }
+        } else {
+            let old: Option<(Vec<u8>, String)> = tx
+                .query_row(
+                    "SELECT data,reason FROM msg_held WHERE id=?1",
+                    [request.id.to_string()],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?;
+            if let Some((bytes, reason)) = old {
+                let old: HeldSend = serde_json::from_slice(&bytes)?;
+                if old.seat != from
+                    || old.generation != generation
+                    || old.operator != operator
+                    || serde_json::to_vec(&old.request)? != serde_json::to_vec(&request)?
+                {
+                    return Err(invalid(
+                        "held send id reused with different content or authority",
+                    ));
+                }
+                return Ok(super::api::Response::Held {
+                    id: request.id,
+                    reason,
+                });
+            }
+            let queued: i64 = tx.query_row(
+                "SELECT count(*) FROM msg_held WHERE state='held'",
+                [],
+                |r| r.get(0),
+            )?;
+            let reason = self
+                .keys
+                .signing_hold()
+                .or_else(|| {
+                    self.keys
+                        .ready_issuer()
+                        .is_none()
+                        .then(|| "identity pending".into())
+                })
+                .or_else(|| (queued > 0).then(|| "earlier signing work held".into()));
+            if let Some(reason) = reason {
+                if queued >= 128 {
+                    return Err(invalid("held signing queue is full"));
+                }
+                tx.execute(
+                    "INSERT INTO msg_held(id,data,reason,state) VALUES(?1,?2,?3,'held')",
+                    params![
+                        request.id.to_string(),
+                        serde_json::to_vec(&pending)?,
+                        reason
+                    ],
+                )?;
+                tx.commit()?;
+                return Ok(super::api::Response::Held {
+                    id: request.id,
+                    reason,
+                });
+            }
+        }
         let envelope = mint(
             &tx,
             self.keys.as_ref(),
@@ -428,7 +549,75 @@ impl Messaging {
             .accept(&request, &envelope, &routes, held, now)?;
         // Recipient mutes and paused subscriptions apply at once (held before the next pump).
         self.reconcile(now)?;
-        Ok(message)
+        Ok(super::api::Response::Stored {
+            message: Box::new(message),
+        })
+    }
+    /// Install a verified ready provider, then consume durable unsigned work in
+    /// admission order. Changed authority is refused by name, never upgraded.
+    pub fn resume_signing(&mut self, keys: Arc<dyn SeatKeys>, now: u64) -> Result<usize> {
+        pin_issuer(&self.account, keys.as_ref())?;
+        let changed = !Arc::ptr_eq(&self.keys, &keys);
+        self.keys = keys;
+        // W2.4b memoization must not retain resolutions from a held verifier.
+        if changed {
+            for swarm in self.swarms.values_mut() {
+                swarm.seen.clear();
+                swarm.resolved.clear();
+            }
+        }
+        if self.keys.ready_issuer().is_none() || self.keys.signing_hold().is_some() {
+            return Ok(0);
+        }
+        let mut released = 0;
+        loop {
+            let next: Option<(String, Vec<u8>)> = self
+                .account
+                .connection()?
+                .query_row(
+                    "SELECT id,data FROM msg_held WHERE state='held' ORDER BY position LIMIT 1",
+                    [],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?;
+            let Some((id, bytes)) = next else {
+                break;
+            };
+            let queued: HeldSend = serde_json::from_slice(&bytes)?;
+            let result = self.send_inner(
+                queued.seat,
+                queued.generation,
+                queued.request.clone(),
+                now,
+                queued.operator,
+                Some(&queued),
+            );
+            let (state, reason) = match result {
+                Ok(super::api::Response::Stored { .. }) => {
+                    released += 1;
+                    ("released", "custody restored".to_owned())
+                }
+                Ok(_) => break,
+                Err(error) => {
+                    if self.keys.signing_hold().is_some() {
+                        break;
+                    }
+                    if !error
+                        .downcast_ref::<std::io::Error>()
+                        .is_some_and(|error| error.kind() == std::io::ErrorKind::InvalidData)
+                    {
+                        return Err(error); // Storage failure retains the unsigned queue entry.
+                    }
+                    ("refused", format!("held send refused: {error}"))
+                }
+            };
+            self.account.connection()?.execute(
+                "UPDATE msg_held SET state=?2,reason=?3 WHERE id=?1",
+                params![id, state, reason],
+            )?;
+        }
+        self.reconcile(now)?;
+        Ok(released)
     }
     fn check_recipients(&self, swarm: Ulid, routes: &[Route]) -> Result<()> {
         for route in routes {

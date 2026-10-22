@@ -75,7 +75,7 @@ fn raise_nofile() -> (u64, u64) {
             assert_eq!(libc::setrlimit(libc::RLIMIT_NOFILE, &lim), 0);
         }
     }
-    (lim.rlim_cur as u64, lim.rlim_max as u64)
+    (lim.rlim_cur, lim.rlim_max)
 }
 
 fn open_fds() -> usize {

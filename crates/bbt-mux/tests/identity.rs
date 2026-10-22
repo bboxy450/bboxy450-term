@@ -567,7 +567,10 @@ fn identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs() {
     f.chain.verify(&message).unwrap();
     let proof = f.chain.proof(&message.role_grant_id).unwrap();
     assert_eq!(proof.grant.payload.role, f.seat.role);
-    assert_eq!(proof.grant.payload.destinations, [message.context.clone()]);
+    assert_eq!(
+        proof.grant.payload.destinations.as_slice(),
+        std::slice::from_ref(&message.context)
+    );
     assert_eq!(
         proof.grant.payload.expires_at - proof.grant.payload.not_before,
         24 * 3600
@@ -1242,5 +1245,168 @@ fn identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count() 
     );
     println!(
         "ID1c: week-before-expiry renewal, dev custody label, expired/missing-key holds and exact live local-generation count surfaced without root signing"
+    );
+}
+
+#[test]
+fn identity_hold_range_stays_ephemeral_until_throwaway_device_enrollment_then_closes() {
+    use bbt_mux::{
+        Config, Supervisor,
+        identity::{
+            ChainSeatKeys, HoldClosure, HoldWindow, LocalIssuerOutcome, local_dev_issuer_with_store,
+        },
+        logic::{Logic, LogicConfig},
+        store::events::Draft,
+    };
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    struct Custody {
+        keys: SharedKeys,
+        locked: AtomicBool,
+    }
+    impl DeviceKeyStore for Custody {
+        fn custody(&self) -> bbt_mux::identity::Custody {
+            bbt_mux::identity::Custody::Memory
+        }
+        fn load(&self, id: Ulid) -> bbt_mux::identity::Result<Option<SigningKey>> {
+            if self.locked.load(Ordering::Relaxed) {
+                return Err(PendingReason::KeychainUnavailable(-25308));
+            }
+            self.keys.load(id)
+        }
+        fn create(&self, id: Ulid, key: &SigningKey) -> bbt_mux::identity::Result<()> {
+            self.keys.create(id, key)
+        }
+    }
+    let directory = tempfile::tempdir().unwrap();
+    let repository = directory.path().join(".bboxy");
+    fs::create_dir(&repository).unwrap();
+    let custody = Arc::new(Custody {
+        keys: SharedKeys::default(),
+        locked: AtomicBool::new(true),
+    });
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let logic = Logic::start_custodied_with_store(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: directory.path().into(),
+            repository,
+            ring: Default::default(),
+        },
+        custody.clone(),
+        runtime.handle(),
+    )
+    .unwrap();
+    let held = runtime.block_on(logic.client.identity_status()).unwrap();
+    assert_eq!(held.open_ephemeral_holds, 1);
+    assert!(held.custody_held_since.is_some());
+    let event = runtime
+        .block_on(logic.client.bus.publish(
+            "account",
+            Draft::new(
+                "account/hold-fixture/state",
+                "fixture",
+                serde_json::json!({"alive":true}),
+            ),
+        ))
+        .unwrap();
+    event.verify().unwrap();
+    assert!(event.event.source.starts_with("ephemeral-hold/"));
+    logic.shutdown().unwrap();
+    let account = SqliteStore::open(&directory.path().join("account")).unwrap();
+    let windows = account.list("identity/bus-signers/").unwrap();
+    let (path, bytes) = &windows[0];
+    let window: HoldWindow = serde_json::from_slice(bytes).unwrap();
+    assert!(window.ranges.as_ref().is_some_and(|r| !r.is_empty()));
+    assert!(account.list("identity/hold-closures/").unwrap().is_empty());
+    custody.locked.store(false, Ordering::Relaxed);
+    let local = match local_dev_issuer_with_store(directory.path(), custody.as_ref()) {
+        LocalIssuerOutcome::Ready(key) => *key,
+        other => panic!("{other:?}"),
+    };
+    // No real root: this fixture owns a disposable GNUPGHOME and its agent.
+    let root = Fixture::new();
+    let before = snapshot(root.home.path());
+    let BootstrapOutcome::Certified(device) = root.bootstrap.run(&account, custody.as_ref(), now())
+    else {
+        panic!("throwaway enrollment")
+    };
+    let chain = ChainSeatKeys::open(
+        account.clone(),
+        custody.clone(),
+        &root.bootstrap.fingerprint,
+        local,
+    )
+    .unwrap();
+    let mut corrupt = window.clone();
+    corrupt.ranges.as_mut().unwrap()[0].last_hash = "00".repeat(32);
+    account
+        .put(path, &serde_json::to_vec(&corrupt).unwrap())
+        .unwrap();
+    assert!(
+        chain
+            .close_open_holds(directory.path())
+            .unwrap_err()
+            .to_string()
+            .contains("hash mismatch")
+    );
+    assert!(account.list("identity/hold-closures/").unwrap().is_empty());
+    // Simulate an abandoned process that did not seal its range. Recovery must
+    // reconstruct it from signed stream bytes rather than trusting endpoints.
+    let mut abandoned = window.clone();
+    abandoned.ended_at = None;
+    abandoned.ranges = None;
+    account
+        .put(path, &serde_json::to_vec(&abandoned).unwrap())
+        .unwrap();
+    assert_eq!(chain.close_open_holds(directory.path()).unwrap(), 1);
+    let bytes = account
+        .get(&format!("identity/hold-closures/{}", window.run))
+        .unwrap()
+        .unwrap();
+    let closure: bbt_mux::identity::Signed<HoldClosure> = serde_json::from_slice(&bytes).unwrap();
+    closure.verify_device(&device).unwrap();
+    assert_eq!(closure.payload.window.public_key, window.public_key);
+    assert_eq!(closure.payload.window.ranges, window.ranges);
+    let mut forged = closure.clone();
+    forged.payload.window.public_key = "00".repeat(32);
+    assert!(forged.verify_device(&device).is_err());
+    assert_eq!(
+        chain.close_open_holds(directory.path()).unwrap(),
+        0,
+        "closure is idempotent"
+    );
+    custody.locked.store(true, Ordering::Relaxed);
+    let mut recovered = bbt_mux::identity::IdentityRuntime::open_custodied_with_store(
+        directory.path(),
+        custody.clone(),
+        runtime.handle().clone(),
+    )
+    .unwrap();
+    assert_eq!(
+        recovered.status().unwrap().state,
+        bbt_mux::identity::IdentityState::Held
+    );
+    custody.locked.store(false, Ordering::Relaxed);
+    recovered.retry_custody().unwrap();
+    assert_eq!(
+        recovered.status().unwrap().state,
+        bbt_mux::identity::IdentityState::Certified
+    );
+    assert_eq!(recovered.status().unwrap().open_ephemeral_holds, 0);
+    assert_eq!(
+        recovered.keys().issuer().kind,
+        bbt_mux::messaging::wire::IssuerKind::GpgRoot
+    );
+    assert_eq!(snapshot(root.home.path()), before);
+    println!(
+        "ID1d: no-device hold remains ephemeral; throwaway enrollment closes older abandoned range; exact hash range reconstructed/verified; device closure signature and tamper negative; fixture keyring unchanged"
     );
 }

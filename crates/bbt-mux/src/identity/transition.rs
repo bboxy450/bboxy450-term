@@ -243,10 +243,10 @@ fn check_epoch<'a>(
         .collect::<Result<Vec<_>>>()?
         .into_iter()
         .max();
-    if let Some(latest) = latest {
-        if state.map(|s| counter(&s.cutover_epoch)).transpose()? != Some(latest) {
-            return Err(invalid("issuer journal rollback"));
-        }
+    if let Some(latest) = latest
+        && state.map(|s| counter(&s.cutover_epoch)).transpose()? != Some(latest)
+    {
+        return Err(invalid("issuer journal rollback"));
     }
     Ok(())
 }

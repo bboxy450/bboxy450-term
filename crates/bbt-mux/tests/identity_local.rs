@@ -47,7 +47,7 @@ impl DeviceKeyStore for Memory {
 }
 fn ready(outcome: LocalIssuerOutcome) -> SigningKey {
     match outcome {
-        LocalIssuerOutcome::Ready(key) => key,
+        LocalIssuerOutcome::Ready(key) => *key,
         LocalIssuerOutcome::Pending(reason) => panic!("unexpected hold: {reason}"),
     }
 }
@@ -64,7 +64,7 @@ fn stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs() {
         Config, Supervisor,
         logic::{Logic, LogicConfig},
     };
-    let machine = Memory::default();
+    let machine = Arc::new(Memory::default());
     let root = tempfile::tempdir().unwrap();
     let repository = root.path().join(".bboxy");
     std::fs::create_dir(&repository).unwrap();
@@ -79,23 +79,23 @@ fn stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs() {
         repository,
         ring: Default::default(),
     };
-    let first = ready(local_dev_issuer_with_store(root.path(), &machine));
+    let first = ready(local_dev_issuer_with_store(root.path(), machine.as_ref()));
     let issuer = public(&first);
-    let logic = Logic::start(
+    let logic = Logic::start_custodied_with_store(
         supervisor.connect().unwrap(),
         config.clone(),
-        first,
+        machine.clone(),
         runtime.handle(),
     )
     .unwrap();
     let before = store(root.path()).get("messaging/issuer").unwrap().unwrap();
     logic.shutdown().unwrap();
-    let second = ready(local_dev_issuer_with_store(root.path(), &machine));
+    let second = ready(local_dev_issuer_with_store(root.path(), machine.as_ref()));
     assert_eq!(public(&second), issuer);
-    let logic = Logic::start(
+    let logic = Logic::start_custodied_with_store(
         supervisor.connect().unwrap(),
         config,
-        second,
+        machine.clone(),
         runtime.handle(),
     )
     .unwrap();
@@ -111,9 +111,19 @@ fn stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs() {
         bbt_mux::messaging::wire::IssuerKind::LocalDev
     );
     logic.shutdown().unwrap();
+    assert!(
+        store(root.path())
+            .list("identity/bus-signers/")
+            .unwrap()
+            .is_empty(),
+        "ready startup creates no fake hold"
+    );
     let other = tempfile::tempdir().unwrap();
     assert_eq!(
-        public(&ready(local_dev_issuer_with_store(other.path(), &machine))),
+        public(&ready(local_dev_issuer_with_store(
+            other.path(),
+            machine.as_ref()
+        ))),
         issuer
     );
     assert_eq!(machine.creates.load(Ordering::Relaxed), 1);
@@ -183,7 +193,7 @@ fn unavailable_and_missing_custody_hold_without_replacement_or_secret_file() {
     }
     scan(root.path(), &seed);
     assert!(
-        !format!("{:?}", LocalIssuerOutcome::Ready(key))
+        !format!("{:?}", LocalIssuerOutcome::Ready(Box::new(key)))
             .contains(&seed.iter().map(|b| format!("{b:02x}")).collect::<String>())
     );
     println!(
@@ -220,5 +230,420 @@ fn old_random_pin_is_not_silently_replaced() {
     );
     println!(
         "ID1d: lost pre-custody random pin remains unchanged; a different machine key is refused by name"
+    );
+}
+
+#[test]
+fn concurrent_creators_read_one_atomic_winner() {
+    struct Racing {
+        memory: Memory,
+        first_loads: AtomicUsize,
+        both: std::sync::Barrier,
+    }
+    impl DeviceKeyStore for Racing {
+        fn custody(&self) -> Custody {
+            Custody::Memory
+        }
+        fn load(&self, id: Ulid) -> bbt_mux::identity::Result<Option<SigningKey>> {
+            if self.first_loads.fetch_add(1, Ordering::SeqCst) < 2 {
+                // Both creators must observe absence before either adds.
+                self.both.wait();
+                return Ok(None);
+            }
+            self.memory.load(id)
+        }
+        fn create(&self, id: Ulid, key: &SigningKey) -> bbt_mux::identity::Result<()> {
+            self.memory.create(id, key)
+        }
+    }
+    let machine = Arc::new(Racing {
+        memory: Memory::default(),
+        first_loads: AtomicUsize::new(0),
+        both: std::sync::Barrier::new(2),
+    });
+    let a = tempfile::tempdir().unwrap();
+    let b = tempfile::tempdir().unwrap();
+    let run = |root: std::path::PathBuf, machine: Arc<Racing>| {
+        std::thread::spawn(move || {
+            public(&ready(local_dev_issuer_with_store(&root, machine.as_ref())))
+        })
+    };
+    let x = run(a.path().into(), machine.clone());
+    let y = run(b.path().into(), machine.clone());
+    assert_eq!(x.join().unwrap(), y.join().unwrap());
+    assert_eq!(machine.memory.creates.load(Ordering::Relaxed), 2);
+    assert_eq!(machine.memory.keys.lock().unwrap().len(), 1);
+    println!("ID1d: two concurrent creators, one stored key; losing creator reads the winner");
+}
+
+#[test]
+fn held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_routes() {
+    use bbt_mux::{
+        identity::IdentityRuntime,
+        messaging::{
+            Messaging,
+            api::{Request, Response},
+            tree::{Actor, Node},
+            wire::SendRequest,
+        },
+        registry::{Class, Registry, SeatRecord},
+    };
+    let machine = Arc::new(Memory::default());
+    *machine.blocked.lock().unwrap() = Some(PendingReason::KeychainUnavailable(-25308));
+    let root = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let mut identity = IdentityRuntime::open_custodied_with_store(
+        root.path(),
+        machine.clone(),
+        runtime.handle().clone(),
+    )
+    .unwrap();
+    let registry = Registry::new(store(root.path()));
+    let swarm = Ulid::new();
+    let mut seats = Vec::new();
+    for name in [
+        "changed role",
+        "changed generation",
+        "changed route",
+        "valid",
+    ] {
+        let seat = SeatRecord::new(Ulid::new(), swarm, name, "zsh");
+        registry.insert(&seat).unwrap();
+        seats.push(seat);
+    }
+    let mut messaging = Messaging::open(root.path(), identity.keys()).unwrap();
+    let mut ids = Vec::new();
+    for seat in &seats {
+        messaging.sync_seat(seat).unwrap();
+        let message = SendRequest::text(format!("seats/{}/inbox", seat.id), seat.name.clone());
+        ids.push(message.id);
+        assert!(matches!(
+            messaging
+                .request(seat.id, 1, Request::Send { message }, false, None, 1)
+                .unwrap(),
+            Response::Held { .. }
+        ));
+    }
+    assert_eq!(
+        store(root.path())
+            .connection()
+            .unwrap()
+            .query_row("SELECT count(*) FROM msg_counters", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        0,
+        "no unsigned placeholder envelope or sender sequence"
+    );
+    drop(messaging);
+    let mut messaging = Messaging::open(root.path(), identity.keys()).unwrap();
+    registry
+        .update(seats[0].id, |s| {
+            s.role.class = Class::Oracle;
+            s.role.name = "oracle".into();
+            Ok(())
+        })
+        .unwrap();
+    registry
+        .update(seats[1].id, |s| {
+            s.generation = 2;
+            Ok(())
+        })
+        .unwrap();
+    // A changed route remains readable but must not acquire new delivery power.
+    let path = format!("seats/{}/inbox", seats[2].id);
+    let mut sink = messaging.tree(swarm).unwrap().get(&path).unwrap().clone();
+    sink.paused = true;
+    messaging
+        .tree(swarm)
+        .unwrap()
+        .put(Actor::Operator, sink)
+        .unwrap();
+    // Touch a folder as well to prove no accidental exact-tree revision reliance.
+    messaging
+        .tree(swarm)
+        .unwrap()
+        .put(Actor::Operator, Node::folder("channels/unrelated"))
+        .unwrap();
+    *machine.blocked.lock().unwrap() = None;
+    identity.retry_custody().unwrap();
+    assert_eq!(messaging.resume_signing(identity.keys(), 2).unwrap(), 1);
+    let db = store(root.path());
+    let db = db.connection().unwrap();
+    let rows: Vec<(String, String)> = db
+        .prepare("SELECT state,reason FROM msg_held ORDER BY position")
+        .unwrap()
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    assert_eq!(
+        rows.iter().map(|x| x.0.as_str()).collect::<Vec<_>>(),
+        vec!["refused", "refused", "refused", "released"]
+    );
+    assert!(rows[0].1.contains("authority changed"));
+    assert!(rows[1].1.contains("stale messaging process generation"));
+    assert!(rows[2].1.contains("authority changed"));
+    let page = messaging.list(seats[3].id, None, None, 0, 10).unwrap();
+    assert_eq!(page.items.len(), 1);
+    assert_eq!(page.items[0].envelope.id, ids[3]);
+    println!(
+        "ID1d: unsigned queue survives owner reopen; changed role/epoch, generation and routes are refused; later valid work releases in order"
+    );
+}
+
+#[test]
+fn bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes() {
+    use bbt_mux::{
+        bus::Broker,
+        store::{
+            Events,
+            events::{Draft, EventLog},
+        },
+    };
+    let root = tempfile::tempdir().unwrap();
+    let run = Ulid::new();
+    let ephemeral = SigningKey::from_bytes(&[31; 32]);
+    let mut bus = Broker::open(root.path(), ephemeral.clone()).unwrap();
+    bus.identity_signer(ephemeral.clone(), Some(run));
+    let draft = Draft::new(
+        "account/test/state",
+        "fixture",
+        serde_json::json!({"value":1}),
+    );
+    let first = bus.publish("account", draft.clone()).unwrap();
+    let last = bus
+        .publish(
+            "account",
+            Draft::new(
+                "account/test/state",
+                "fixture",
+                serde_json::json!({"value":2}),
+            ),
+        )
+        .unwrap();
+    let ranges = bus.identity_signer(SigningKey::from_bytes(&[32; 32]), None);
+    assert_eq!(ranges.len(), 1);
+    assert_eq!(ranges[0].first, first.seq);
+    assert_eq!(ranges[0].first_hash, first.hash().unwrap());
+    assert_eq!(ranges[0].last, last.seq);
+    assert_eq!(ranges[0].last_hash, last.hash().unwrap());
+    assert!(
+        first
+            .event
+            .source
+            .starts_with(&format!("ephemeral-hold/{run}/"))
+    );
+    first.verify().unwrap();
+    assert_eq!(
+        bus.publish("account", draft.clone()).unwrap(),
+        first,
+        "replay cannot rewrite the old signer after recovery"
+    );
+    let mut forged = draft;
+    forged.payload = serde_json::json!({"value":999});
+    assert!(bus.publish("account", forged).is_err());
+    let normal = bus
+        .publish(
+            "account",
+            Draft::new(
+                "account/test/state",
+                "fixture",
+                serde_json::json!({"value":3}),
+            ),
+        )
+        .unwrap();
+    assert_eq!(normal.event.source, "fixture");
+    assert_ne!(
+        normal.provenance.signer,
+        ephemeral.verifying_key().to_bytes()
+    );
+    assert_eq!(
+        EventLog::open(&root.path().join("account"))
+            .unwrap()
+            .verify_chain()
+            .unwrap(),
+        3
+    );
+    println!(
+        "ID1d: signed hold markers and exact stream endpoints; atomic rekey; old bytes deduplicate; conflicting replay refused; mixed-signer hash chain verifies"
+    );
+}
+
+#[test]
+fn pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order() {
+    use bbt_mux::{
+        Config, LaunchSpec, Supervisor,
+        bus::{Consumer, Delivery},
+        identity::{HoldWindow, IdentityState},
+        logic::{Logic, LogicConfig},
+        messaging::{
+            api::{Request, Response},
+            wire::SendRequest,
+        },
+        registry::SeatRecord,
+    };
+    use std::time::{Duration, Instant};
+    let machine = Arc::new(Memory::default());
+    *machine.blocked.lock().unwrap() = Some(PendingReason::KeychainUnavailable(-25308));
+    let root = tempfile::tempdir().unwrap();
+    let repository = root.path().join(".bboxy");
+    std::fs::create_dir(&repository).unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let logic = Logic::start_custodied_with_store(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: root.path().into(),
+            repository,
+            ring: Default::default(),
+        },
+        machine.clone(),
+        runtime.handle(),
+    )
+    .unwrap();
+    let initial = runtime.block_on(logic.client.identity_status()).unwrap();
+    assert_eq!(initial.state, IdentityState::Pending);
+    assert!(initial.custody_held_since.is_some());
+    assert_eq!(initial.open_ephemeral_holds, 1);
+    assert_eq!(machine.creates.load(Ordering::Relaxed), 0);
+    assert!(
+        store(root.path())
+            .get("messaging/issuer")
+            .unwrap()
+            .is_none()
+    );
+    let sub = runtime
+        .block_on(
+            logic
+                .client
+                .bus
+                .subscribe(Consumer::gui("account/identity/state")),
+        )
+        .unwrap();
+    let mut spec = LaunchSpec::new("/bin/zsh", root.path());
+    spec.args=vec!["-f".into(),"-c".into(),"printf 'HELD-PTY-ALIVE\\n'; read -r line; printf 'RECOVERED-%s\\n' \"$line\"; read -r done".into()];
+    let seat = SeatRecord::new(spec.seat, Ulid::new(), "held fixture", "zsh");
+    runtime
+        .block_on(logic.client.spawn(seat.clone(), spec))
+        .unwrap();
+    let until = Instant::now() + Duration::from_secs(5);
+    loop {
+        let snap = runtime.block_on(logic.client.snapshot(seat.id, 1)).unwrap();
+        let text: String = snap.screen.cells.iter().flatten().map(|c| c.c).collect();
+        if text.contains("HELD-PTY-ALIVE") {
+            break;
+        }
+        assert!(Instant::now() < until);
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let mut ids = Vec::new();
+    for text in ["first held", "second held"] {
+        let message = SendRequest::text(format!("seats/{}/inbox", seat.id), text);
+        ids.push(message.id);
+        let response = runtime
+            .block_on(
+                logic
+                    .client
+                    .messaging(seat.id, 1, Request::Send { message }),
+            )
+            .unwrap();
+        assert!(matches!(response,Response::Held{id,..} if Some(&id)==ids.last()));
+    }
+    assert_eq!(
+        store(root.path())
+            .connection()
+            .unwrap()
+            .query_row(
+                "SELECT count(*) FROM msg_held WHERE state='held'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+        2
+    );
+    *machine.blocked.lock().unwrap() = None;
+    let until = Instant::now() + Duration::from_secs(35);
+    let mut saw_ready = false;
+    while Instant::now() < until {
+        let deliveries = runtime.block_on(logic.client.bus.poll(&sub, 16)).unwrap();
+        for event in deliveries {
+            if let Delivery::Event { envelope, .. } = event {
+                let status: bbt_mux::identity::IdentityStatus =
+                    serde_json::from_value(envelope.event.payload).unwrap();
+                if status.state == IdentityState::LocalDev {
+                    saw_ready = true;
+                }
+            }
+        }
+        if saw_ready {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    assert!(saw_ready, "30s custody recovery transition missing");
+    assert!(
+        store(root.path())
+            .get("identity/local-issuer-hold")
+            .unwrap()
+            .is_none()
+    );
+    let Response::Messages { page } = runtime
+        .block_on(logic.client.messaging(
+            seat.id,
+            1,
+            Request::List {
+                thread: None,
+                channel: None,
+                after: 0,
+                limit: 16,
+            },
+        ))
+        .unwrap()
+    else {
+        panic!("messages")
+    };
+    assert_eq!(
+        page.items.iter().map(|m| m.envelope.id).collect::<Vec<_>>(),
+        ids
+    );
+    assert_eq!(
+        page.items
+            .iter()
+            .map(|m| m.envelope.sender_sequence)
+            .collect::<Vec<_>>(),
+        vec![1, 2]
+    );
+    let windows = store(root.path()).list("identity/bus-signers/").unwrap();
+    let window: HoldWindow = serde_json::from_slice(&windows[0].1).unwrap();
+    assert_eq!(window.kind, "ephemeral-hold");
+    assert!(!window.boot_id.is_empty());
+    assert!(window.ended_at.is_some());
+    let ranges = window.ranges.unwrap();
+    assert!(
+        ranges
+            .iter()
+            .any(|r| r.stream == "account" && r.last >= r.first)
+    );
+    assert!(
+        store(root.path())
+            .list("identity/hold-closures/")
+            .unwrap()
+            .is_empty(),
+        "no primary means no device attribution"
+    );
+    let status = runtime.block_on(logic.client.identity_status()).unwrap();
+    assert_eq!(status.open_ephemeral_holds, 1);
+    assert_eq!(status.custody_held_since, None);
+    logic.shutdown().unwrap();
+    println!(
+        "ID1d: live PTY during pending custody; unsigned sends durable; actual 30s retry, status event, ordered release; no-primary range stays visibly ephemeral"
     );
 }

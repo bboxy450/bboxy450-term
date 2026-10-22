@@ -9,6 +9,14 @@ use crate::store::{Result, invalid};
 
 pub trait SeatKeys: Send + Sync {
     fn issuer(&self) -> Issuer;
+    /// A pending custody provider has no issuer to pin. Its public hint from
+    /// issuer() is never authority for signing or activation.
+    fn ready_issuer(&self) -> Option<Issuer> {
+        Some(self.issuer())
+    }
+    fn signing_hold(&self) -> Option<String> {
+        None
+    }
     fn leaf(&self, seat: Ulid, generation: u64) -> Result<SigningKey>;
     fn verify(&self, envelope: &Envelope) -> Result<()>;
     /// The IO owner supplies the current registry record and existing account

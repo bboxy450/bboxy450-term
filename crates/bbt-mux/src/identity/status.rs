@@ -40,6 +40,10 @@ pub struct IdentityStatus {
     pub device_renewal_due_at: Option<u64>,
     pub device_renewal_required: bool,
     pub seats_still_local_dev: usize,
+    #[serde(default)]
+    pub custody_held_since: Option<u64>,
+    #[serde(default)]
+    pub open_ephemeral_holds: usize,
 }
 impl IdentityStatus {
     pub(super) fn hold(&mut self, reason: PendingReason) {
@@ -66,6 +70,9 @@ pub struct IdentityRuntime {
     pub(super) account: SqliteStore,
     pub(super) keys: Arc<dyn SeatKeys>,
     pub(super) chain: Option<Arc<ChainSeatKeys>>,
+    pub(super) retry: Option<super::custodied::Retry>,
+    pub(super) pending: Option<PendingReason>,
+    pub(super) bus_key: Option<ed25519_dalek::SigningKey>,
 }
 impl IdentityRuntime {
     pub fn keys(&self) -> Arc<dyn SeatKeys> {
@@ -79,15 +86,37 @@ impl IdentityRuntime {
     pub fn status_at(&self, now: u64) -> Result<IdentityStatus> {
         bbt_rt::assert_not_ui_thread();
         if let Some(chain) = &self.chain {
-            return chain.status_at(now);
+            let mut status = chain.status_at(now)?;
+            super::hold::decorate(&self.account, &mut status)?;
+            return Ok(status);
         }
         let mut status = read(&self.account, now)?;
+        super::local::decorate(&self.account, &mut status)?;
+        if let Some(reason) = self.pending {
+            status.hold(reason);
+        }
         if status.bootstrapped && status.pending_reason.is_none() {
             // Bootstrap is an explicit operator operation. If it ran after
             // this worker opened, report the pending activation honestly.
             status.hold(PendingReason::ActivationRequired);
         }
+        super::hold::decorate(&self.account, &mut status)?;
         Ok(status)
+    }
+    pub(crate) fn bus_signer(&self) -> Result<Option<ed25519_dalek::SigningKey>> {
+        if self.keys.signing_hold().is_some() {
+            return Ok(None);
+        }
+        if let Some(chain) = &self.chain {
+            return Ok(chain.event_signer().ok());
+        }
+        Ok(self.bus_key.clone())
+    }
+    pub(crate) fn close_open_holds(&self, root: &std::path::Path) -> Result<usize> {
+        self.chain
+            .as_ref()
+            .map(|chain| chain.close_open_holds(root))
+            .unwrap_or(Ok(0))
     }
 }
 
@@ -159,6 +188,8 @@ pub(super) fn read(account: &SqliteStore, now: u64) -> Result<IdentityStatus> {
         device_renewal_due_at: None,
         device_renewal_required: false,
         seats_still_local_dev: local_count(account, state.as_ref())?,
+        custody_held_since: None,
+        open_ephemeral_holds: 0,
     };
     if state
         .as_ref()

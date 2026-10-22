@@ -8,6 +8,7 @@ use ed25519_dalek::SigningKey;
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
+use ulid::Ulid;
 
 use crate::store::{
     Events, Result, Store,
@@ -385,10 +386,26 @@ impl Stream {
     }
 }
 
+/// Exact retained-stream endpoints covered by one ephemeral run key.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HoldRange {
+    pub stream: String,
+    pub first: u64,
+    pub first_hash: String,
+    pub last: u64,
+    pub last_hash: String,
+}
+#[derive(Clone)]
+struct HoldSigning {
+    run: Ulid,
+    ranges: BTreeMap<String, HoldRange>,
+}
 /// All streams share this router; each object retains its own sequence and DB.
 pub struct Broker {
     root: PathBuf,
     key: SigningKey,
+    hold: Option<HoldSigning>,
+    custody_signers: bool,
     catalog: SqliteStore,
     streams: BTreeMap<String, Stream>,
     consumers: BTreeMap<String, Consumer>,
@@ -402,6 +419,8 @@ impl Broker {
         let mut broker = Self {
             root: root.into(),
             key,
+            hold: None,
+            custody_signers: false,
             catalog,
             streams: BTreeMap::new(),
             consumers: BTreeMap::new(),
@@ -459,7 +478,29 @@ impl Broker {
         self.consumers.insert(id.clone(), consumer);
         Ok(id)
     }
-    pub fn publish(&mut self, stream: &str, event: Draft) -> Result<Envelope> {
+    /// The single bus owner seals the old range before installing the new key.
+    /// No event can fall between range sealing and the key transition.
+    pub fn identity_signer(&mut self, key: SigningKey, hold: Option<Ulid>) -> Vec<HoldRange> {
+        let ranges = self
+            .hold
+            .take()
+            .map(|h| h.ranges.into_values().collect())
+            .unwrap_or_default();
+        self.key = key;
+        self.custody_signers = true;
+        self.hold = hold.map(|run| HoldSigning {
+            run,
+            ranges: BTreeMap::new(),
+        });
+        ranges
+    }
+    pub fn hold_ranges(&self) -> Vec<HoldRange> {
+        self.hold
+            .as_ref()
+            .map(|h| h.ranges.values().cloned().collect())
+            .unwrap_or_default()
+    }
+    pub fn publish(&mut self, stream: &str, mut event: Draft) -> Result<Envelope> {
         validate_subject(&event.subject, false)?;
         if let Some(reply) = &event.reply_to {
             validate_subject(reply, false)?;
@@ -469,6 +510,36 @@ impl Broker {
         }
         self.ensure_stream(stream)?;
         let previous = self.streams[stream].log.last_sequence()?;
+        if self.custody_signers && !fanout(&event.subject) {
+            // An outbox may replay across a hold/rekey or a crashed process.
+            // Retain the original signed bytes after checking the full draft;
+            // a different signer must not rewrite an already-journaled event.
+            let old: Option<Vec<u8>> = sqlite::open(&self.streams[stream].log.path)?
+                .query_row(
+                    "SELECT payload FROM events WHERE id=?1",
+                    [event.id.to_string()],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if let Some(bytes) = old {
+                let old: Envelope = serde_json::from_slice(&bytes)?;
+                old.verify()?;
+                let mut draft = old.event.clone();
+                if let Some(marked) = draft.source.strip_prefix("ephemeral-hold/")
+                    && let Some((run, source)) = marked.split_once('/')
+                    && run.parse::<Ulid>().is_ok()
+                {
+                    draft.source = source.into();
+                }
+                if draft != event {
+                    return Err(invalid("event id conflicts with retained event"));
+                }
+                return Ok(old);
+            }
+        }
+        if let Some(hold) = &self.hold {
+            event.source = format!("ephemeral-hold/{}/{}", hold.run, event.source);
+        }
         let envelope = if fanout(&event.subject) {
             Envelope::signed(event, 0, String::new(), &self.key)?
         } else {
@@ -476,6 +547,23 @@ impl Broker {
         };
         if envelope.seq != 0 && envelope.seq <= previous {
             return Ok(envelope);
+        }
+        if envelope.seq != 0
+            && let Some(hold) = &mut self.hold
+        {
+            let hash = envelope.hash()?;
+            let range = hold
+                .ranges
+                .entry(stream.into())
+                .or_insert_with(|| HoldRange {
+                    stream: stream.into(),
+                    first: envelope.seq,
+                    first_hash: hash.clone(),
+                    last: envelope.seq,
+                    last_hash: hash.clone(),
+                });
+            range.last = envelope.seq;
+            range.last_hash = hash;
         }
         let responders = self
             .streams
@@ -488,7 +576,10 @@ impl Broker {
             let response = Envelope::signed(
                 Draft::new(
                     reply,
-                    "bus",
+                    self.hold
+                        .as_ref()
+                        .map(|h| format!("ephemeral-hold/{}/bus", h.run))
+                        .unwrap_or_else(|| "bus".into()),
                     serde_json::json!({"status":"no_responders","request":envelope.event.id}),
                 ),
                 0,
@@ -542,6 +633,8 @@ enum Command {
     Poll(String, usize, oneshot::Sender<Result<Vec<Delivery>>>),
     Ack(String, String, u64, oneshot::Sender<Result<()>>),
     Unsubscribe(String, oneshot::Sender<Result<()>>),
+    IdentitySigner(SigningKey, Option<Ulid>, oneshot::Sender<Vec<HoldRange>>),
+    HoldRanges(oneshot::Sender<Vec<HoldRange>>),
     Shutdown(oneshot::Sender<()>),
 }
 
@@ -574,6 +667,12 @@ impl BusHandle {
                     }
                     Command::Unsubscribe(name, reply) => {
                         let _ = reply.send(broker.unsubscribe(&name));
+                    }
+                    Command::IdentitySigner(key, hold, reply) => {
+                        let _ = reply.send(broker.identity_signer(key, hold));
+                    }
+                    Command::HoldRanges(reply) => {
+                        let _ = reply.send(broker.hold_ranges());
                     }
                     Command::Shutdown(reply) => {
                         let _ = reply.send(());
@@ -635,6 +734,27 @@ impl BusHandle {
             .await
             .map_err(|_| invalid("router stopped"))?;
         rx.await.map_err(|_| invalid("router stopped"))?
+    }
+    pub async fn identity_signer(
+        &self,
+        key: SigningKey,
+        hold: Option<Ulid>,
+    ) -> Result<Vec<HoldRange>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::IdentitySigner(key, hold, tx))
+            .await
+            .map_err(|_| invalid("router stopped"))?;
+        rx.await
+            .map_err(|_| invalid("signer transition outcome unknown"))
+    }
+    pub async fn hold_ranges(&self) -> Result<Vec<HoldRange>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::HoldRanges(tx))
+            .await
+            .map_err(|_| invalid("router stopped"))?;
+        rx.await.map_err(|_| invalid("router stopped"))
     }
     pub async fn shutdown(&self) -> Result<()> {
         let (tx, rx) = oneshot::channel();

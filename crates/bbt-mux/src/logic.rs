@@ -338,7 +338,48 @@ pub struct Logic {
     stop: Arc<AtomicBool>,
     thread: Option<std::thread::JoinHandle<Result<()>>>,
 }
+enum IdentityMode {
+    Explicit(Box<SigningKey>),
+    Custodied(Option<Arc<dyn crate::identity::DeviceKeyStore + Send + Sync>>),
+}
 impl Logic {
+    /// Production construction: custody may be pending while PTYs, the GUI
+    /// and public history remain live. No caller substitutes a fresh issuer.
+    pub fn start_custodied(
+        connection: impl SupervisorConnection + 'static,
+        config: LogicConfig,
+        handle: &tokio::runtime::Handle,
+    ) -> Result<Self> {
+        Self::start_with_custody(connection, config, None, handle)
+    }
+    /// Isolated custody seam for IO tests; production uses start_custodied.
+    pub fn start_custodied_with_store(
+        connection: impl SupervisorConnection + 'static,
+        config: LogicConfig,
+        store: Arc<dyn crate::identity::DeviceKeyStore + Send + Sync>,
+        handle: &tokio::runtime::Handle,
+    ) -> Result<Self> {
+        Self::start_with_custody(connection, config, Some(store), handle)
+    }
+    fn start_with_custody(
+        connection: impl SupervisorConnection + 'static,
+        config: LogicConfig,
+        store: Option<Arc<dyn crate::identity::DeviceKeyStore + Send + Sync>>,
+        handle: &tokio::runtime::Handle,
+    ) -> Result<Self> {
+        bbt_rt::assert_not_ui_thread();
+        let mut seed = [0; 32];
+        getrandom::fill(&mut seed)?;
+        let bus_key = SigningKey::from_bytes(&seed);
+        seed.fill(0);
+        Self::start_inner(
+            connection,
+            config,
+            bus_key,
+            IdentityMode::Custodied(store),
+            handle,
+        )
+    }
     /// Bootstrap is blocking and belongs on an IO/bootstrap worker. Steady-state
     /// clients and seat sockets use bounded async messages on the supplied R1 handle.
     pub fn start(
@@ -347,8 +388,55 @@ impl Logic {
         key: SigningKey,
         handle: &tokio::runtime::Handle,
     ) -> Result<Self> {
+        Self::start_inner(
+            connection,
+            config,
+            key.clone(),
+            IdentityMode::Explicit(Box::new(key)),
+            handle,
+        )
+    }
+    fn start_inner(
+        connection: impl SupervisorConnection + 'static,
+        config: LogicConfig,
+        key: SigningKey,
+        identity: IdentityMode,
+        handle: &tokio::runtime::Handle,
+    ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
-        let broker = Broker::open(&config.run_dir, key.clone())?;
+        let custodied = matches!(&identity, IdentityMode::Custodied(_));
+        let identity = match identity {
+            IdentityMode::Explicit(local) => {
+                crate::identity::IdentityRuntime::open(&config.run_dir, *local, handle.clone())?
+            }
+            IdentityMode::Custodied(Some(store)) => {
+                crate::identity::IdentityRuntime::open_custodied_with_store(
+                    &config.run_dir,
+                    store,
+                    handle.clone(),
+                )?
+            }
+            IdentityMode::Custodied(None) => {
+                crate::identity::IdentityRuntime::open_custodied(&config.run_dir, handle.clone())?
+            }
+        };
+        let ready = if custodied {
+            identity.bus_signer()?
+        } else {
+            Some(key.clone())
+        };
+        let bus_window = if ready.is_none() {
+            Some(crate::identity::begin_bus_window(&config.run_dir, &key)?)
+        } else {
+            None
+        };
+        let key = ready.unwrap_or(key);
+        let mut broker = Broker::open(&config.run_dir, key.clone())?;
+        if let Some(run) = bus_window {
+            broker.identity_signer(key, Some(run));
+        } else if custodied {
+            broker.identity_signer(key, None);
+        }
         let bus = BusHandle::start(handle, broker, 128)?;
         let (tx, rx) = mpsc::channel(128);
         let client = LogicClient {
@@ -369,7 +457,8 @@ impl Logic {
                     bus,
                     runtime,
                     worker_client,
-                    key,
+                    identity,
+                    bus_window,
                 ) {
                     Ok(worker) => worker,
                     Err(error) => {
@@ -379,8 +468,9 @@ impl Logic {
                 };
                 let _ = ready_tx.send(Ok(()));
                 let result = worker.run(rx, stopping);
+                let seal = worker.seal_active_hold();
                 let _ = worker.handle.block_on(worker.bus.shutdown());
-                result
+                result.and(seal)
             })?;
         match ready_rx.recv_timeout(Duration::from_secs(30))? {
             Ok(()) => Ok(Self {
@@ -477,6 +567,8 @@ struct Worker {
     endpoint_root: PathBuf,
     messaging: crate::messaging::Messaging,
     identity: crate::identity::IdentityRuntime,
+    bus_window: Option<Ulid>,
+    last_identity: Option<Vec<u8>>,
     deliveries: tokio::task::JoinSet<Delivery>,
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
 }
@@ -487,7 +579,8 @@ impl Worker {
         bus: BusHandle,
         handle: tokio::runtime::Handle,
         client: LogicClient,
-        key: SigningKey,
+        identity: crate::identity::IdentityRuntime,
+        bus_window: Option<Ulid>,
     ) -> Result<Self> {
         let registry = Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
         let index = Index::open(
@@ -507,8 +600,6 @@ impl Worker {
         std::fs::DirBuilder::new()
             .mode(0o700)
             .create(&endpoint_root)?;
-        let identity =
-            crate::identity::IdentityRuntime::open(&config.run_dir, key, handle.clone())?;
         let messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
         let mut worker = Self {
             connection,
@@ -525,6 +616,8 @@ impl Worker {
             endpoint_root,
             messaging,
             identity,
+            bus_window,
+            last_identity: None,
             deliveries: tokio::task::JoinSet::new(),
             control_journals: BTreeMap::new(),
         };
@@ -539,6 +632,7 @@ impl Worker {
             worker.control_journal(record.id)?;
         }
         worker.publish_control_audits()?;
+        worker.refresh_identity()?;
         Ok(worker)
     }
     fn control_actor(
@@ -1486,10 +1580,55 @@ impl Worker {
             ),
         )
     }
+    fn seal_active_hold(&mut self) -> Result<()> {
+        if let Some(run) = self.bus_window.take() {
+            let ranges = self.handle.block_on(self.bus.hold_ranges())?;
+            crate::identity::seal_bus_window(&self.config.run_dir, run, ranges)?;
+        }
+        Ok(())
+    }
+    fn refresh_identity(&mut self) -> Result<()> {
+        self.identity.retry_custody()?;
+        if let Some(key) = self.identity.bus_signer()? {
+            if let Some(run) = self.bus_window.take() {
+                let ranges = self.handle.block_on(self.bus.identity_signer(key, None))?;
+                crate::identity::seal_bus_window(&self.config.run_dir, run, ranges)?;
+            }
+            // Attribution can stay visibly ephemeral while device custody is
+            // briefly unavailable; retry it on the next identity pass.
+            let _ = self.identity.close_open_holds(&self.config.run_dir);
+        } else if self.bus_window.is_none() {
+            let mut seed = [0; 32];
+            getrandom::fill(&mut seed)?;
+            let key = SigningKey::from_bytes(&seed);
+            seed.fill(0);
+            let run = crate::identity::begin_bus_window(&self.config.run_dir, &key)?;
+            self.handle
+                .block_on(self.bus.identity_signer(key, Some(run)))?;
+            self.bus_window = Some(run);
+        }
+        self.messaging
+            .resume_signing(self.identity.keys(), now_ms())?;
+        let status = self.identity.status()?;
+        let bytes = serde_json::to_vec(&status)?;
+        if self.last_identity.as_ref() != Some(&bytes) {
+            self.publish(
+                "account",
+                Draft::new(
+                    "account/identity/state",
+                    "logic",
+                    serde_json::to_value(status)?,
+                ),
+            )?;
+            self.last_identity = Some(bytes);
+        }
+        Ok(())
+    }
     fn run(&mut self, mut commands: mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
         let mut adapters_at = Instant::now();
         let mut messages_at = Instant::now();
+        let mut identity_at = Instant::now();
         while !stop.load(Ordering::Acquire) {
             for _ in 0..32 {
                 let Ok(command) = commands.try_recv() else {
@@ -1703,6 +1842,10 @@ impl Worker {
             if adapters_at.elapsed() >= Duration::from_millis(200) {
                 self.refresh_adapters()?;
                 adapters_at = Instant::now();
+            }
+            if identity_at.elapsed() >= Duration::from_secs(30) {
+                self.refresh_identity()?;
+                identity_at = Instant::now();
             }
             if messages_at.elapsed() >= Duration::from_millis(100) {
                 self.pump_messages()?;

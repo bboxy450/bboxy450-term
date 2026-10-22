@@ -63,6 +63,10 @@ pub enum Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Response {
+    Held {
+        id: Ulid,
+        reason: String,
+    },
     Stored {
         message: Box<StoredMessage>,
     },

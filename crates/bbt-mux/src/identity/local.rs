@@ -1,5 +1,5 @@
 //! The local-dev issuer is a machine/epoch custody item, never a seed file.
-use std::{fmt, path::Path, sync::Mutex};
+use std::{fmt, path::Path};
 
 use ed25519_dalek::SigningKey;
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub enum LocalIssuerOutcome {
-    Ready(SigningKey),
+    Ready(Box<SigningKey>),
     Pending(E),
 }
 impl fmt::Debug for LocalIssuerOutcome {
@@ -48,10 +48,6 @@ struct Context {
     custody: Option<Custody>,
 }
 
-// Serialize creation within one logic process. Keychain create is add-only;
-// concurrent processes resolve an already-created item by reading the winner.
-static CREATE: Mutex<()> = Mutex::new(());
-
 /// IO-only production construction seam. A pending result must be surfaced as
 /// a hold; callers must never substitute another signing key.
 pub fn local_dev_issuer(run_dir: &Path) -> LocalIssuerOutcome {
@@ -78,7 +74,7 @@ pub fn local_dev_issuer_with_store(
 }
 fn outcome(result: Result<SigningKey>) -> LocalIssuerOutcome {
     match result {
-        Ok(key) => LocalIssuerOutcome::Ready(key),
+        Ok(key) => LocalIssuerOutcome::Ready(Box::new(key)),
         Err(reason) => LocalIssuerOutcome::Pending(reason),
     }
 }
@@ -92,6 +88,24 @@ fn record(account: &SqliteStore) -> Result<Option<Record>> {
         .map_err(|_| E::StorageUnavailable)?
         .map(|bytes| serde_json::from_slice::<Record>(&bytes).map_err(|_| E::InvalidProof))
         .transpose()
+}
+pub(super) fn decorate(
+    account: &SqliteStore,
+    status: &mut super::IdentityStatus,
+) -> crate::store::Result<()> {
+    if !status.bootstrapped {
+        let custody = if let Some(record) = record(account)? {
+            Some(record.custody)
+        } else {
+            account
+                .get("identity/local-issuer-hold")?
+                .map(|bytes| serde_json::from_slice::<Hold>(&bytes).map(|hold| hold.custody))
+                .transpose()?
+        };
+        status.custody = custody;
+        status.custody_label = custody.map(|c| c.label().into());
+    }
+    Ok(())
 }
 fn context(account: &SqliteStore) -> Result<Context> {
     let old = record(account)?;
@@ -178,7 +192,6 @@ fn key_id(epoch: u64) -> Ulid {
     Ulid::from_bytes(id)
 }
 fn load(account: &SqliteStore, keys: &dyn DeviceKeyStore) -> Result<SigningKey> {
-    let _guard = CREATE.lock().map_err(|_| E::StorageUnavailable)?;
     let context = context(account)?;
     let result = obtain(account, keys, &context);
     if let Err(reason) = result.as_ref() {

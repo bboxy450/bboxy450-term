@@ -37,7 +37,7 @@ struct Memory {
     renewal: BTreeMap<(Ulid, u64, String), (Envelope, SeatRecord)>,
 }
 pub struct ChainSeatKeys {
-    account: SqliteStore,
+    pub(super) account: SqliteStore,
     identity: DeviceIdentity,
     initial_head: Signed<AccountHead>,
     pinned: String,
@@ -199,6 +199,38 @@ impl ChainSeatKeys {
             Ok(Some(_)) => {}
         }
         self.renewal_hold().map(|_| E::SeatRenewalUnavailable)
+    }
+    pub(super) fn event_signer(&self) -> Result<SigningKey> {
+        self.device_current((self.clock)())?;
+        let key = self
+            .custody
+            .load(self.identity.grant.payload.device_id)?
+            .ok_or_else(|| invalid("device key unavailable"))?;
+        if public(&key.verifying_key().to_bytes()) != self.identity.grant.payload.device_pubkey {
+            return Err(invalid("device key mismatch"));
+        }
+        Ok(key)
+    }
+    pub(super) fn sign_hold_closure(
+        &self,
+        window: super::HoldWindow,
+    ) -> Result<Signed<super::HoldClosure>> {
+        let key = self.event_signer()?;
+        let grant = &self.identity.grant.payload;
+        let closure = Signed::issue_device(
+            "HoldClosure",
+            super::HoldClosure {
+                version: 1,
+                device_id: grant.device_id,
+                device_pubkey: grant.device_pubkey.clone(),
+                device_epoch: grant.device_epoch.clone(),
+                closed_at: crate::store::now_ms(),
+                window,
+            },
+            &key,
+        )?;
+        closure.verify_device(&self.identity)?;
+        Ok(closure)
     }
     pub fn renewal_hold(&self) -> Option<String> {
         self.renewal_hold.lock().ok().and_then(|h| h.clone())
@@ -842,17 +874,33 @@ pub fn seat_keys(
 }
 impl super::IdentityRuntime {
     pub fn open(run_dir: &Path, local: SigningKey, handle: tokio::runtime::Handle) -> Result<Self> {
+        Self::open_with_store(run_dir, local, handle, None)
+    }
+    pub(super) fn open_with_store(
+        run_dir: &Path,
+        local: SigningKey,
+        handle: tokio::runtime::Handle,
+        custody: Option<Arc<dyn DeviceKeyStore + Send + Sync>>,
+    ) -> Result<Self> {
         let account = SqliteStore::open(&object_dir(run_dir, "account")?)?;
-        let Some(state) = transition::read(&account)? else {
-            if account.get("identity/head")?.is_some() {
+        let state = transition::read(&account)?;
+        if state
+            .as_ref()
+            .is_none_or(|s| s.kind == IssuerKind::LocalDev)
+        {
+            if state.is_none() && account.get("identity/head")?.is_some() {
                 return Err(invalid("bootstrapped identity lacks its issuer journal"));
             }
             return Ok(Self {
                 account,
-                keys: Arc::new(LocalSeatKeys::new(local)),
+                keys: Arc::new(LocalSeatKeys::new(local.clone())),
                 chain: None,
+                retry: None,
+                pending: None,
+                bus_key: Some(local),
             });
-        };
+        }
+        let state = state.ok_or_else(|| invalid("missing issuer state"))?;
         let pinned = state
             .root_fingerprint
             .as_deref()
@@ -865,10 +913,13 @@ impl super::IdentityRuntime {
             .ok_or_else(|| invalid("no active device"))?
             .device_id;
         let identity: DeviceIdentity = read(&account, &format!("identity/device/{id}"))?;
-        let custody = KeychainDeviceKeys::resume(identity.custody)?;
+        let custody = match custody {
+            Some(custody) => custody,
+            None => Arc::new(KeychainDeviceKeys::resume(identity.custody)?),
+        };
         let chain = Arc::new(ChainSeatKeys::open(
             account.clone(),
-            Arc::new(custody),
+            custody,
             pinned,
             local,
         )?);
@@ -897,6 +948,9 @@ impl super::IdentityRuntime {
                 task,
             }),
             chain: Some(chain),
+            retry: None,
+            pending: None,
+            bus_key: None,
         })
     }
 }
@@ -913,6 +967,11 @@ impl Drop for MaintainedKeys {
 impl SeatKeys for MaintainedKeys {
     fn issuer(&self) -> Issuer {
         self.chain.issuer()
+    }
+    fn signing_hold(&self) -> Option<String> {
+        self.chain
+            .signing_hold(crate::store::now_ms() / 1000)
+            .map(|reason| reason.to_string())
     }
     fn leaf(&self, seat: Ulid, generation: u64) -> Result<SigningKey> {
         self.chain.leaf(seat, generation)
