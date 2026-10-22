@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>stream · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="fixtures.js"></script>
+</head><body><script>
+const el = Lab.el;
+Lab.page({ title: 'stream', note: 'The swarm stream dock at the foot of the sidebar: epic groups (collapsible, specs and tasks with status), the external lane (github, ci, cloud, cron, webhook), then the newest messages with role rail, priority, delivery ticks and centred presence notices. Clicking a shadow filters the dock to that participant. Same epicGroup(), externalLane(), messageRow() as the showcase.',
+  states: ['swarm stream', 'epic groups', 'epic collapsed', 'external lane', 'messages', 'filtered to one participant', 'empty'],
+  render(s, body) {
+    const frame = el('div', { style: 'width:300px;background:var(--sidebar-bg);border-radius:var(--r-pill);border:1px solid var(--hair);overflow:hidden' });
+    const dock = el('div', { class: 'stream-dock', style: 'max-height:none' });
+    let extOpen = true, epics = FIX.epics.map(e => ({ ...e, open: s !== 'epic collapsed' ? e.open : false }));
+    const draw = () => {
+      dock.innerHTML = '';
+      const all = s === 'swarm stream';
+      if (all || s === 'epic groups' || s === 'epic collapsed') for (const ep of epics) dock.append(C.epicGroup(ep, { onToggle: draw }));
+      if (all || s === 'external lane') dock.append(C.externalLane(FIX.external, { open: extOpen, onToggle: () => { extOpen = !extOpen; draw(); } }));
+      let msgs = (all || s === 'messages') ? FIX.stream : s === 'filtered to one participant' ? FIX.stream.filter(m => m.fromKey === 'k9') : [];
+      if (s === 'filtered to one participant') dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, 'Kestrel Nine'), el('button', {}, '× all')));
+      if (all) msgs = msgs.slice(-4);
+      for (const m of msgs) dock.append(C.messageRow(m));
+      if (s === 'empty') dock.append(el('div', { class: 'lab-note', style: 'padding:10px' }, 'an empty swarm shows no dock at all; the sidebar ends at the footer'));
+    };
+    draw(); frame.append(dock); body.append(frame);
+  } });
+</script></body></html>

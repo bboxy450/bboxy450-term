@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 34,
+  "version": 35,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -509,13 +509,15 @@
       ]
     },
     "stream_dock": {
-      "purpose": "this swarm's messages",
-      "anatomy": "last four messages as rows (role rail · <ROLE> · text · time · unread dot) and centred presence notices; filter chip when a shadow is selected",
+      "purpose": "the swarm stream at the foot of the sidebar",
+      "anatomy": "epic groups, external lane, newest messages with role rail, priority, tick ladder, centred presence notices; filter by participant",
       "rules": [
         "hidden until the first message",
         "foreign Oracle gets no priority chip",
         "messages never ripple"
-      ]
+      ],
+      "status": "built",
+      "page": "stream.html?state=swarm-stream|epic-groups|epic-collapsed|external-lane|messages|filtered-to-one-participant|empty; dock CSS in lab.css, data in fixtures.js"
     },
     "pane": {
       "purpose": "a seat's screen",

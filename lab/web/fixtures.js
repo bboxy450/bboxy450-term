@@ -56,4 +56,14 @@ window.FIX = {
       { id: 'w12', kind: 'task', title: 'W1.2 byte ring', state: 'open' },
     ] },
   ],
+  // the swarm stream: messages with delivery evidence, presence notices
+  stream: [
+    { presence: true, text: 'Rook Ashwhisker joined · cloud eu-2', time: '14:02' },
+    { from: 'Vesper Greywind', fromKey: 'v', role: 'oracle', time: '14:03', text: 'Rook: W2.2 is yours. Read events.md Bus design first.', evidence: 'application-acknowledged' },
+    { from: 'Rook Ashwhisker', fromKey: 'r', role: 'executor', time: '14:05', text: 'claimed W2.2, store traits first', evidence: 'native-written' },
+    { from: 'Nyx Copperwing', fromKey: 'n', role: 'executor', time: '14:09', text: 'parity triplets: 41 of 52 within threshold, inspecting the rest', evidence: 'recipient-stored', unread: true },
+    { presence: true, text: 'Nyx Copperwing muted · 1:1 with the operator', time: '14:11' },
+    { from: 'Wren Thistledown', fromKey: 'w', role: 'creativity', time: '14:12', text: 'landed: events.html, the bus at a glance', evidence: 'native-unknown' },
+    { from: 'Kestrel Nine', fromKey: 'k9', role: 'executor', foreign: true, time: '14:14', text: 'relay bench green on eu-2, 41 ms p50', unread: true },
+  ],
 };

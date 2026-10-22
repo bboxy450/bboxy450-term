@@ -246,3 +246,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### The Graph tab has its own page, and demo data lives in one place
 **Rule:** `graph.html` shows the Graph tab whole and card by card (agents, work tree, subscriptions, provenance, artifact history) plus an empty swarm; `graphPage()` takes `only` to render a subset. The showcase's demo data (artifact history, subscriptions, external events, provenance) moved into `fixtures.js`, together with a seats-and-epics set for the dedicated pages, so every page reads the same fixtures. **Where:** `graphPage(opts.only)` in `components.js`; `fixtures.js` loaded by `showcase.html`, `graph.html`; design system v34.
+
+### The stream dock has its own page
+**Rule:** `stream.html` shows the dock at sidebar width: the whole swarm stream, epic groups open and collapsed, the external lane, messages alone, filtered to one participant, and empty. Presence notices centre their wrapped text in the narrow dock. The dock CSS moved from `showcase.html` into `lab.css` and the stream messages into `fixtures.js`. **Where:** `epicGroup()`, `externalLane()`, `messageRow()`; `stream.html`; design system v35 `modules.stream_dock`.
