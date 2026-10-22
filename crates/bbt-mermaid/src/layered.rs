@@ -856,9 +856,9 @@ impl Ctx<'_> {
             // Transpose adjacent pairs while it helps.
             for _ in 0..4 {
                 let mut improved = false;
-                for r in 0..nranks {
-                    for i in 0..layers[r].len().saturating_sub(1) {
-                        let (v, w) = (layers[r][i], layers[r][i + 1]);
+                for layer in layers.iter_mut() {
+                    for i in 0..layer.len().saturating_sub(1) {
+                        let (v, w) = (layer[i], layer[i + 1]);
                         let pair = |a: usize, b: usize| -> usize {
                             let mut c = 0;
                             for side in [&pred, &succ] {
@@ -877,7 +877,7 @@ impl Ctx<'_> {
                             c
                         };
                         if pair(w, v) < pair(v, w) {
-                            layers[r].swap(i, i + 1);
+                            layer.swap(i, i + 1);
                             pos[v] = i + 1;
                             pos[w] = i;
                             improved = true;

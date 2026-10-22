@@ -2,6 +2,8 @@
 //!
 //!     cargo run -p bbt-mermaid --example dump_svg -- OUT_DIR FIXTURE_DIR...
 
+#![allow(clippy::disallowed_methods)] // a dev tool reading fixture files, not UI code
+
 use bbt_mermaid::{
     Arrow, Geometry, Label, MonoMeasure, Point, Shape, Stroke, Style, TextRole, render,
 };
