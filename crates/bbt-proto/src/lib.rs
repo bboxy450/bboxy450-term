@@ -1,6 +1,13 @@
 //! Shared terminal viewport and GUI wire schema. No transport or renderer.
+pub mod gui;
 pub mod registry;
+pub mod seat_state;
 pub mod streams;
 pub use bbt_ui_model::{SeatId, SwarmId, TabId};
+pub use gui::{GuiAction, GuiReply, GuiRequest, Row};
 pub use registry::SeatRecord;
+pub use seat_state::{
+    Activity, Grade, GuiSeat, Lifecycle, ProcessStatus, Role, RoleClass, SeatState, SpawnSpec,
+    SubagentRow, WaitKind, Where,
+};
 pub use streams::{Delta, Screen, Snapshot, Update, View};
