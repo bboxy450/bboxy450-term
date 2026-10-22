@@ -66,6 +66,7 @@ All from the same index; none hand-maintained once the index exists. The code gr
 | **task graph** | epics, specs, tasks | `parent`/`child`, `depends`/`blocks` | ordering, what is blocked, what is claimable |
 | **execution graph** | seats × tasks | `assignee`, `delegated_by`, status, live seat state | the sidebar's task rows, the Oracle's view of who is on what, this repo's `graph.md` generated |
 | **code graph** (operator, 2026-10-21: "codegraphs!") | symbols (functions, types, modules, files) in the seat's worktree | defines, references, calls, imports/depends; weight = reference count | "what calls this", "what breaks if this changes", impact of a task's `allowed_paths`, wikilinks from markdowns to code symbols (`[[code:crate::module::fn]]`) |
+| **channel graph** | swarm, subchannels, subgroups, seats | membership and may-send-to (allowed), traffic weight (actual) | where attention goes; the Oracle reshapes it |
 | **messaging graph** | seats, swarms, channels | who messaged whom; weight = count decayed by recency; role class on the edge | stream filters, "who is talking to whom", starvation and silence detection |
 
 ## What the terminal does with them
