@@ -922,10 +922,12 @@ impl Worker {
         else {
             return Err(invalid("ring attach failed"));
         };
-        let Reply::RingRecovery { status, checkpoint } =
-            self.connection.request(Action::RingRecovery {
+        let Reply::RingRecovery { status, checkpoint } = self.capture_request(
+            info.seat,
+            Action::RingRecovery {
                 attachment: attachment.clone(),
-            })?
+            },
+        )?
         else {
             return Err(invalid("ring recovery reply mismatch"));
         };
@@ -958,10 +960,13 @@ impl Worker {
             }
             state.sequence = first_available_sequence - 1;
             state.byte_end = status.byte_start;
-            self.connection.request(Action::PublishCheckpoint {
-                attachment: attachment.clone(),
-                checkpoint: state.saved().encode()?,
-            })?;
+            self.capture_request(
+                info.seat,
+                Action::PublishCheckpoint {
+                    attachment: attachment.clone(),
+                    checkpoint: state.saved().encode()?,
+                },
+            )?;
             state
         };
         let checkpoint_bytes = state.byte_end;
@@ -969,11 +974,14 @@ impl Worker {
         let tap = OscTap::install(&mut state.term);
         let mut live_frames = Vec::new();
         while state.sequence < status.captured_sequence {
-            let Reply::RingHistory { history } = self.connection.request(Action::ReadRing {
-                attachment: attachment.clone(),
-                from: state.sequence + 1,
-                to: status.captured_sequence,
-            })?
+            let Reply::RingHistory { history } = self.capture_request(
+                info.seat,
+                Action::ReadRing {
+                    attachment: attachment.clone(),
+                    from: state.sequence + 1,
+                    to: status.captured_sequence,
+                },
+            )?
             else {
                 return Err(invalid("ring replay reply mismatch"));
             };
@@ -1275,11 +1283,14 @@ impl Worker {
             .filter(|a| a.generation == generation)
             .ok_or_else(|| invalid("stale history generation"))?
             .clone();
-        let Reply::RingHistory { history } = self.connection.request(Action::ReadRing {
-            attachment,
-            from,
-            to,
-        })?
+        let Reply::RingHistory { history } = self.capture_request(
+            id,
+            Action::ReadRing {
+                attachment,
+                from,
+                to,
+            },
+        )?
         else {
             return Err(invalid("history reply mismatch"));
         };
@@ -1291,10 +1302,20 @@ impl Worker {
         if sequence == view.checkpoint_sequence {
             return Ok(());
         }
-        self.connection.request(Action::PublishCheckpoint {
-            attachment: self.attachments[&id].clone(),
-            checkpoint: view.saved().encode()?,
-        })?;
+        let result = self.capture_request(
+            id,
+            Action::PublishCheckpoint {
+                attachment: self.attachments[&id].clone(),
+                checkpoint: view.saved().encode()?,
+            },
+        );
+        if result.as_ref().is_err_and(is_capture_busy) {
+            // Keep the previous checkpoint cursor and retry on the next idle
+            // pass. The supervisor still owns the raw records; Busy is not an
+            // acknowledged checkpoint and must not terminate every seat's logic.
+            return Ok(());
+        }
+        result?;
         let view = self.views.get_mut(&id).unwrap();
         view.checkpoint_bytes = view.byte_end;
         view.checkpoint_sequence = sequence;
@@ -1841,11 +1862,21 @@ impl Worker {
         )?;
         self.gui_seat(info.seat)
     }
+    fn capture_request(&mut self, _seat: Ulid, action: Action) -> Result<Reply> {
+        debug_assert!(matches!(
+            action,
+            Action::RingRecovery { .. }
+                | Action::ReadRing { .. }
+                | Action::PublishCheckpoint { .. }
+        ));
+        retry_capture(|| self.connection.request(action.clone()))
+    }
     fn run(&mut self, mut commands: mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
         let mut adapters_at = Instant::now();
         let mut messages_at = Instant::now();
         let mut identity_at = Instant::now();
+        let mut pending_event = None;
         while !stop.load(Ordering::Acquire) {
             for _ in 0..32 {
                 let Ok(command) = commands.try_recv() else {
@@ -2114,8 +2145,18 @@ impl Worker {
                     }
                 }
             }
-            if let Some(event) = self.connection.receive(Duration::from_millis(10))? {
-                self.event(event)?;
+            if pending_event.is_none() {
+                pending_event = self.connection.receive(Duration::from_millis(10))?;
+            }
+            if let Some(event) = pending_event.take() {
+                if let Err(error) = self.event(event.clone()) {
+                    if !is_capture_busy(&error) {
+                        return Err(error);
+                    }
+                    // A recovery read may have exhausted its bounded retry.
+                    // Preserve this event while continuing to service commands.
+                    pending_event = Some(event);
+                }
             }
             if adapters_at.elapsed() >= Duration::from_millis(200) {
                 self.refresh_adapters()?;
@@ -2159,6 +2200,23 @@ impl Worker {
         }
         Ok(())
     }
+}
+fn is_capture_busy(error: &crate::store::Error) -> bool {
+    error
+        .downcast_ref::<crate::Failure>()
+        .is_some_and(|error| error.code == crate::FailureCode::Busy)
+}
+
+#[allow(clippy::disallowed_methods)] // Bounded backoff on the blocking logic IO owner, never the UI.
+fn retry_capture(mut request: impl FnMut() -> Result<Reply>) -> Result<Reply> {
+    for attempt in 0..6 {
+        let result = request();
+        if !result.as_ref().is_err_and(is_capture_busy) || attempt == 5 {
+            return result;
+        }
+        std::thread::sleep(Duration::from_millis(2 << attempt));
+    }
+    unreachable!()
 }
 impl Drop for Worker {
     fn drop(&mut self) {
