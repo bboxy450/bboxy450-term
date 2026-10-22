@@ -100,7 +100,9 @@ If a loop like this needs a feature we do not have, the primitives are wrong, no
 - **Granularity: one layer per brief.** The UI is a layer cake from scratch ([[gui-components]] §2c, L0 device … L9 app). Each layer has its own bboxybook gallery and is verified alone before the layer above uses it; a brief covers one layer and at most two components.
 - **Checkpoints.** Rare and deliberate (operator 2026-10-21). bboxybook demos are checkpoints: the first native render of any component set, every parity index, and each batch of three lab passes. The Oracle may stack two or three UX passes, then calls a checkpoint: it opens the page once to get the operator's attention, says what changed in a few lines, and waits. Between checkpoints it never opens, closes or reloads the operator's browser. Feedback comes from the operator touching the thing.
 - **Harnesses in the loop look at images.** Screenshots, renders and diffs are read by a harness as part of any improvement loop; a numeric diff ranks, a harness judges. This applies to bboxybook parity, render goldens, and lab review.
-- **Do not optimise pre-emptively.** 120 fps is the eventual target; nobody measures or tunes for it until layout and style are nailed.
+- **Do not optimise pre-emptively; optimise from the meter.** 120 Hz is a target (operator, 2026-10-22, [[runtime]]): the UI thread never waits on IO, and every performance change follows a measured profile (the hitch meter, xctrace), never a guess.
+- **Velocity first (operator, 2026-10-22).** Nothing ceremonial goes inside the build loop. The `bboxy450-*` libraries are built to be open-sourced ([[open-source]]), but a crate is published only at a natural plateau where its API has stopped moving; a release cycle never slows a build.
+- **We are inevitable (operator, 2026-10-22).** "WE GOT THIS, WE ARE INEVITABLE in this effort!" This is the stance of the whole cohort: we build without hedging, measure instead of worrying, fix at the layer where a problem starts, and keep moving.
 
 ## Future (RECORDED, not v0.1)
 

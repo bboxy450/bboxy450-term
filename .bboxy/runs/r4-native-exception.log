@@ -1,0 +1,9 @@
+$ lldb --batch -o 'breakpoint set -n objc_exception_throw' -o run -o bt -- target/release/bboxy450-term --cadence-test --meter
+(lldb) target create "target/release/bboxy450-term"
+Current executable set to '/Users/feral/mydev/bboxy450-term-exec3/target/release/bboxy450-term' (arm64).
+(lldb) settings set -- target.run-args  "--cadence-test" "--meter"
+(lldb) breakpoint set -n objc_exception_throw
+Breakpoint 1: where = libobjc.A.dylib`objc_exception_throw, address = 0x000000018041c5b4
+(lldb) run
+
+exit: -15

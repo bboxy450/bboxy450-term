@@ -1,4 +1,6 @@
 //! Surface ownership stays with winit; device setup runs on the shared IO runtime.
+use crate::budget::GpuSample;
+use crate::display_link::Drawable;
 use bbt_render::{
     chrome::{ChromeRenderer, ChromeTarget, group, materials as m},
     device::DeviceContext,
@@ -8,9 +10,86 @@ use bbt_ui_model::{
     STYLE, TOKENS,
     draw::{Color, DrawList},
 };
+use block2::RcBlock;
+use objc2::rc::Retained;
+use objc2::runtime::ProtocolObject;
+use objc2_foundation::NSRange;
+use objc2_metal::{
+    MTLBlitCommandEncoder, MTLCommandBuffer, MTLCommandEncoder, MTLCommandQueue, MTLDevice,
+    MTLResourceOptions, MTLTexture, MTLTextureType,
+};
+use objc2_quartz_core::CAMetalDrawable;
 use std::time::{Duration, Instant};
+use std::{
+    ptr::NonNull,
+    sync::mpsc::{self, Receiver, SyncSender},
+};
+
+enum Acquired {
+    Surface(wgpu::SurfaceTexture),
+    Metal {
+        texture: wgpu::Texture,
+        drawable: Drawable,
+    },
+}
+impl Acquired {
+    fn texture(&self) -> &wgpu::Texture {
+        match self {
+            Self::Surface(frame) => &frame.texture,
+            Self::Metal { texture, .. } => texture,
+        }
+    }
+    fn present(self, context: &DeviceContext) -> Result<(), String> {
+        match self {
+            Self::Surface(frame) => context.queue.present(frame),
+            Self::Metal { drawable, .. } => {
+                // SAFETY: this exact Metal queue/device rendered the imported
+                // drawable. A later command buffer on the same serial queue
+                // presents only after wgpu's submitted work; it retains drawable.
+                let queue = unsafe { context.queue.as_hal::<wgpu::hal::api::Metal>() }
+                    .ok_or("Metal queue unavailable")?;
+                let command = queue
+                    .as_raw()
+                    .commandBuffer()
+                    .ok_or("Metal present command unavailable")?;
+                command.presentDrawable(
+                    AsRef::<ProtocolObject<dyn objc2_metal::MTLDrawable>>::as_ref(&*drawable),
+                );
+                command.commit();
+            }
+        }
+        Ok(())
+    }
+}
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+fn timing_marker(
+    queue: &wgpu::Queue,
+) -> Result<Retained<ProtocolObject<dyn MTLCommandBuffer>>, String> {
+    // SAFETY: use this device's serial Metal queue without changing wgpu state.
+    // The command buffer retains its four-byte scratch buffer until completion.
+    let queue =
+        unsafe { queue.as_hal::<wgpu::hal::api::Metal>() }.ok_or("Metal queue unavailable")?;
+    let queue = queue.as_raw();
+    let scratch = queue
+        .device()
+        .newBufferWithLength_options(4, MTLResourceOptions::StorageModeShared)
+        .ok_or("GPU timing scratch unavailable")?;
+    let command = queue
+        .commandBuffer()
+        .ok_or("GPU timing command unavailable")?;
+    let blit = command
+        .blitCommandEncoder()
+        .ok_or("GPU timing blit unavailable")?;
+    blit.fillBuffer_range_value(&scratch, NSRange::new(0, 4), 0);
+    blit.endEncoding();
+    Ok(command)
+}
+#[derive(Clone, Copy)]
+struct FrameTime {
+    scale: f32,
+    time_ms: f32,
+}
 pub struct Gpu {
     pub surface: wgpu::Surface<'static>,
     pub config: wgpu::SurfaceConfiguration,
@@ -18,6 +97,8 @@ pub struct Gpu {
     materials: m::Pass,
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
+    gpu_sender: SyncSender<GpuSample>,
+    gpu_samples: Receiver<GpuSample>,
 }
 
 fn texture(device: &wgpu::Device, size: [u32; 2]) -> wgpu::Texture {
@@ -113,6 +194,7 @@ impl Gpu {
             crate::assets::images()?,
         )
         .map_err(|e| e.to_string())?;
+        let (gpu_sender, gpu_samples) = mpsc::sync_channel(crate::budget::SAMPLES);
         Ok(Self {
             surface,
             config,
@@ -120,6 +202,8 @@ impl Gpu {
             materials,
             target,
             backdrop,
+            gpu_sender,
+            gpu_samples,
         })
     }
     pub fn configure(&self) {
@@ -139,6 +223,13 @@ impl Gpu {
     pub fn adapter_name(&self) -> &str {
         &self.renderer.context.adapter_info.name
     }
+    pub fn maximum_drawables(&self) -> Option<usize> {
+        // SAFETY: this is the configured Metal surface; the guard owns its
+        // lifetime and we only read the layer while a nonblocking lock is held.
+        let surface = unsafe { self.surface.as_hal::<wgpu::hal::api::Metal>() }?;
+        let layer = surface.render_layer().try_lock()?;
+        Some(layer.maximumDrawableCount())
+    }
     pub fn capture(&self, path: std::path::PathBuf, logger: crate::log::Logger) {
         crate::capture::save(
             &self.renderer.context.device,
@@ -147,6 +238,11 @@ impl Gpu {
             path,
             logger,
         );
+    }
+    pub fn collect_gpu(&self, budget: &mut crate::budget::Budget) {
+        for sample in self.gpu_samples.try_iter() {
+            budget.gpu(sample);
+        }
     }
     /// Prepare first-use text and pipelines on IO, before handing state to UI.
     pub fn warm(&mut self, ops: Vec<Paint>, scale: f32) -> Result<(), String> {
@@ -163,7 +259,10 @@ impl Gpu {
             &self.target,
             &self.backdrop,
             ops,
-            scale,
+            FrameTime {
+                scale,
+                time_ms: 450.,
+            },
             &mut encoder,
         )
         .map_err(|e| e.to_string())?;
@@ -174,20 +273,70 @@ impl Gpu {
         &mut self,
         ops: Vec<Paint>,
         scale: f32,
+        time_ms: f32,
+        drawable: Option<Drawable>,
+        frame_id: u64,
     ) -> Result<Option<(Duration, Duration)>, String> {
         let acquire = Instant::now();
-        let frame = match self.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(frame)
-            | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
-            wgpu::CurrentSurfaceTexture::Lost | wgpu::CurrentSurfaceTexture::Outdated => {
-                self.configure();
+        let frame = if let Some(drawable) = drawable {
+            let raw = drawable.texture();
+            if raw.width() != self.config.width as usize
+                || raw.height() != self.config.height as usize
+            {
                 return Ok(None);
             }
-            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
-                return Ok(None);
-            }
-            wgpu::CurrentSurfaceTexture::Validation => {
-                return Err("surface validation error".into());
+            let size = wgpu::Extent3d {
+                width: self.config.width,
+                height: self.config.height,
+                depth_or_array_layers: 1,
+            };
+            // SAFETY: this drawable comes from this configured surface's layer
+            // and exact Metal device. Format, dimensions and usage match; we
+            // discard prior contents and clear before drawing. wgpu retains the
+            // imported texture and the native present command retains drawable.
+            let texture = unsafe {
+                let hal = wgpu::hal::metal::Device::texture_from_raw(
+                    raw,
+                    self.config.format,
+                    MTLTextureType::Type2D,
+                    1,
+                    1,
+                    size.into(),
+                    None,
+                );
+                self.renderer
+                    .context
+                    .device
+                    .create_texture_from_hal::<wgpu::hal::api::Metal>(
+                        hal,
+                        &wgpu::TextureDescriptor {
+                            label: Some("CAMetalDisplayLink drawable"),
+                            size,
+                            mip_level_count: 1,
+                            sample_count: 1,
+                            dimension: wgpu::TextureDimension::D2,
+                            format: self.config.format,
+                            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                            view_formats: &self.config.view_formats,
+                        },
+                        wgpu::TextureUses::UNINITIALIZED,
+                    )
+            };
+            Acquired::Metal { texture, drawable }
+        } else {
+            match self.surface.get_current_texture() {
+                wgpu::CurrentSurfaceTexture::Success(frame)
+                | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => Acquired::Surface(frame),
+                wgpu::CurrentSurfaceTexture::Lost | wgpu::CurrentSurfaceTexture::Outdated => {
+                    self.configure();
+                    return Ok(None);
+                }
+                wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
+                    return Ok(None);
+                }
+                wgpu::CurrentSurfaceTexture::Validation => {
+                    return Err("surface validation error".into());
+                }
             }
         };
         let wait = acquire.elapsed();
@@ -205,11 +354,11 @@ impl Gpu {
             &self.target,
             &self.backdrop,
             ops,
-            scale,
+            FrameTime { scale, time_ms },
             &mut encoder,
         )
         .map_err(|e| e.to_string())?;
-        let surface_view = frame.texture.create_view(&Default::default());
+        let surface_view = frame.texture().create_view(&Default::default());
         clear(&surface_view, &mut encoder);
         self.renderer
             .composite_group(
@@ -228,10 +377,38 @@ impl Gpu {
                 &mut encoder,
             )
             .map_err(|e| e.to_string())?;
+        // wgpu 30 prohibits mixing its encoding API with as_hal_mut. Native
+        // queue markers bracket the submission (including staging uploads),
+        // yielding a conservative GPU span without inspecting private state.
+        let gpu_start = timing_marker(&self.renderer.context.queue)?;
+        gpu_start.commit();
         self.renderer.context.queue.submit([encoder.finish()]);
+        let gpu_end = timing_marker(&self.renderer.context.queue)?;
+        let sender = self.gpu_sender.clone();
+        let completed = RcBlock::new(
+            move |command: NonNull<ProtocolObject<dyn MTLCommandBuffer>>| {
+                // SAFETY: Metal keeps this command buffer alive during its callback.
+                // The handler captures only a bounded nonblocking sender, no UI state.
+                let command = unsafe { command.as_ref() };
+                let start = gpu_start.GPUStartTime();
+                let end = command.GPUEndTime();
+                if start > 0. && end >= start && start.is_finite() && end.is_finite() {
+                    let _ = sender.try_send(GpuSample {
+                        frame: frame_id,
+                        time: Duration::from_secs_f64(end - start),
+                    });
+                }
+            },
+        );
+        // SAFETY: Metal copies the handler, which retains the start command and
+        // captures only a thread-safe bounded sender; no UI state crosses over.
+        unsafe {
+            gpu_end.addCompletedHandler(RcBlock::as_ptr(&completed));
+        }
+        gpu_end.commit();
         let encoded = encode.elapsed();
         let present = Instant::now();
-        self.renderer.context.queue.present(frame);
+        frame.present(&self.renderer.context)?;
         Ok(Some((encoded, wait + present.elapsed())))
     }
 }
@@ -242,9 +419,10 @@ fn encode_ops(
     destination: &wgpu::Texture,
     backdrop: &wgpu::Texture,
     ops: Vec<Paint>,
-    scale: f32,
+    timing: FrameTime,
     encoder: &mut wgpu::CommandEncoder,
 ) -> bbt_render::Result<()> {
+    let FrameTime { scale, time_ms } = timing;
     let view = destination.create_view(&Default::default());
     let mut underlay = DrawList::default();
     let mut pending = DrawList::default();
@@ -347,7 +525,7 @@ fn encode_ops(
                         target: target(&view, scale),
                         backdrop: &backdrop.create_view(&Default::default()),
                         items: &items,
-                        time_ms: 450.,
+                        time_ms,
                         theme: ui::Theme::Dark,
                     },
                 )?;
@@ -377,7 +555,7 @@ fn encode_ops(
                 let layer_view = layer.create_view(&Default::default());
                 clear(&layer_view, encoder);
                 renderer.with_group_layer(|renderer| {
-                    encode_ops(renderer, pass, &layer, &behind, ops, scale, encoder)
+                    encode_ops(renderer, pass, &layer, &behind, ops, timing, encoder)
                 })?;
                 renderer.composite_group(
                     &layer_view,

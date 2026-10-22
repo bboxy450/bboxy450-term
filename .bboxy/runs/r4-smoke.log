@@ -1,0 +1,31 @@
+$ target/release/bboxy450-term --smoke --meter
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 29.966ms cpu=31.717ms drain=0.001 layout=1.669 draw=0.082 encode=29.966 present_wait=0.024
+first frame: 15 native panes presented
+hitch frame=2 phase=encode 30.718ms cpu=32.556ms drain=0.001 layout=1.749 draw=0.089 encode=30.718 present_wait=0.017
+hitch frame=3 phase=encode 30.777ms cpu=32.646ms drain=0.001 layout=1.785 draw=0.084 encode=30.777 present_wait=0.008
+hitch frame=4 phase=encode 31.267ms cpu=33.110ms drain=0.001 layout=1.758 draw=0.083 encode=31.267 present_wait=0.012
+hitch frame=5 phase=encode 31.896ms cpu=33.789ms drain=0.001 layout=1.796 draw=0.096 encode=31.896 present_wait=0.011
+hitch frame=6 phase=encode 37.991ms cpu=39.815ms drain=0.000 layout=1.734 draw=0.089 encode=37.991 present_wait=0.023
+hitch frame=7 phase=encode 35.892ms cpu=37.704ms drain=0.001 layout=1.723 draw=0.087 encode=35.892 present_wait=0.010
+hitch frame=8 phase=encode 33.614ms cpu=35.401ms drain=0.001 layout=1.697 draw=0.089 encode=33.614 present_wait=0.009
+hitch frame=9 phase=encode 34.121ms cpu=35.987ms drain=0.002 layout=1.771 draw=0.093 encode=34.121 present_wait=0.010
+hitch frame=10 phase=encode 32.922ms cpu=34.843ms drain=0.001 layout=1.824 draw=0.096 encode=32.922 present_wait=0.012
+hitch frame=11 phase=encode 34.394ms cpu=36.223ms drain=0.001 layout=1.737 draw=0.091 encode=34.394 present_wait=0.012
+hitch frame=12 phase=encode 37.388ms cpu=39.206ms drain=0.000 layout=1.732 draw=0.086 encode=37.388 present_wait=0.010
+hitch frame=13 phase=encode 33.995ms cpu=35.780ms drain=0.002 layout=1.695 draw=0.088 encode=33.995 present_wait=0.010
+hitch frame=14 phase=encode 32.071ms cpu=33.876ms drain=0.001 layout=1.714 draw=0.090 encode=32.071 present_wait=0.011
+hitch frame=15 phase=encode 32.652ms cpu=34.431ms drain=0.001 layout=1.693 draw=0.084 encode=32.652 present_wait=0.009
+hitch frame=16 phase=encode 33.420ms cpu=35.191ms drain=0.001 layout=1.686 draw=0.084 encode=33.420 present_wait=0.010
+hitch frame=17 phase=encode 33.285ms cpu=35.098ms drain=0.001 layout=1.722 draw=0.090 encode=33.285 present_wait=0.011
+hitch frame=18 phase=encode 33.214ms cpu=34.952ms drain=0.000 layout=1.654 draw=0.084 encode=33.214 present_wait=0.006
+hitch frame=19 phase=encode 34.402ms cpu=36.212ms drain=0.000 layout=1.720 draw=0.089 encode=34.402 present_wait=0.010
+hitch frame=20 phase=encode 33.892ms cpu=35.720ms drain=0.002 layout=1.738 draw=0.088 encode=33.892 present_wait=0.011
+hitch frame=21 phase=encode 34.440ms cpu=36.243ms drain=0.001 layout=1.713 draw=0.089 encode=34.440 present_wait=0.009
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=35.191ms p99=39.815ms samples=21 warm_encode_p50=33.420ms warm_encode_p99=37.991ms
+
+exit: 0

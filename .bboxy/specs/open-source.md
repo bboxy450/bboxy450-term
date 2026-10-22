@@ -29,6 +29,8 @@ Every public crate:
 
 ## 3. Release
 
+**Velocity first (operator, 2026-10-22):** releasing must never slow the build. No release cycle runs inside the build loop; the Oracle publishes a crate only when it reaches a natural plateau where its API has stopped moving. Until then, keep the public/private boundary (§1) and the docs standard (§2) in mind while building, so a release is a small step when it comes.
+
 One crate at a time, when its docs meet §2, its tests pass and its API is one we are willing to keep. Version 0.1.0.
 - Public repo `github.com/bboxy450/<crate>`. The monorepo stays private; each release is one signed snapshot commit of the crate directory plus LICENSE-MIT and LICENSE-APACHE (license `MIT OR Apache-2.0`).
 - The signing, publishing and announcing order is the one in `~/.agents/AGENTS.md`: `cargo package`, detached `gpg` signature of the `.crate`, signed tag, `cargo publish` as bboxy450, push tags, `gh release` with the `.crate` and `.asc`, announce on `#bboxy450-crates`.

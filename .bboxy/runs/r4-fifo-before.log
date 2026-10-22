@@ -1,0 +1,83 @@
+$ target/release/bboxy450-term --cadence-test --meter
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+hitch frame=1 phase=encode 31.795ms cpu=33.565ms drain=0.001 layout=1.678 draw=0.091 encode=31.795 present_wait=1.119
+first frame: 15 native panes presented
+hitch frame=2 phase=encode 34.847ms cpu=36.673ms drain=0.002 layout=1.704 draw=0.120 encode=34.847 present_wait=0.421
+hitch frame=3 phase=encode 37.187ms cpu=38.954ms drain=0.001 layout=1.674 draw=0.092 encode=37.187 present_wait=0.376
+hitch frame=4 phase=encode 39.187ms cpu=40.901ms drain=0.001 layout=1.625 draw=0.088 encode=39.187 present_wait=0.082
+hitch frame=5 phase=encode 33.514ms cpu=35.196ms drain=0.001 layout=1.589 draw=0.091 encode=33.514 present_wait=0.040
+hitch frame=6 phase=encode 38.731ms cpu=40.436ms drain=0.001 layout=1.616 draw=0.088 encode=38.731 present_wait=0.064
+hitch frame=7 phase=encode 36.447ms cpu=38.208ms drain=0.001 layout=1.652 draw=0.109 encode=36.447 present_wait=0.056
+hitch frame=8 phase=encode 33.595ms cpu=35.383ms drain=0.001 layout=1.690 draw=0.097 encode=33.595 present_wait=0.071
+hitch frame=9 phase=encode 39.588ms cpu=41.283ms drain=0.001 layout=1.604 draw=0.090 encode=39.588 present_wait=0.057
+hitch frame=10 phase=encode 34.245ms cpu=35.890ms drain=0.001 layout=1.554 draw=0.090 encode=34.245 present_wait=0.034
+hitch frame=11 phase=encode 37.494ms cpu=39.170ms drain=0.001 layout=1.584 draw=0.091 encode=37.494 present_wait=2.427
+hitch frame=12 phase=encode 38.606ms cpu=40.313ms drain=0.001 layout=1.616 draw=0.090 encode=38.606 present_wait=0.748
+hitch frame=13 phase=encode 33.286ms cpu=34.938ms drain=0.001 layout=1.559 draw=0.092 encode=33.286 present_wait=0.039
+hitch frame=14 phase=encode 36.554ms cpu=38.187ms drain=0.001 layout=1.539 draw=0.092 encode=36.554 present_wait=4.608
+hitch frame=15 phase=encode 35.866ms cpu=37.491ms drain=0.001 layout=1.536 draw=0.088 encode=35.866 present_wait=1.498
+hitch frame=16 phase=encode 35.716ms cpu=37.388ms drain=0.001 layout=1.582 draw=0.090 encode=35.716 present_wait=2.633
+hitch frame=17 phase=encode 37.030ms cpu=38.659ms drain=0.001 layout=1.540 draw=0.088 encode=37.030 present_wait=2.481
+hitch frame=18 phase=encode 37.556ms cpu=39.172ms drain=0.001 layout=1.529 draw=0.086 encode=37.556 present_wait=1.297
+hitch frame=19 phase=encode 33.792ms cpu=35.410ms drain=0.001 layout=1.527 draw=0.090 encode=33.792 present_wait=0.640
+hitch frame=20 phase=encode 35.256ms cpu=36.878ms drain=0.001 layout=1.537 draw=0.083 encode=35.256 present_wait=4.802
+hitch frame=21 phase=encode 36.050ms cpu=37.614ms drain=0.001 layout=1.480 draw=0.084 encode=36.050 present_wait=3.058
+hitch frame=22 phase=encode 34.817ms cpu=36.471ms drain=0.001 layout=1.561 draw=0.092 encode=34.817 present_wait=2.378
+hitch frame=23 phase=encode 34.445ms cpu=36.060ms drain=0.001 layout=1.526 draw=0.088 encode=34.445 present_wait=3.367
+hitch frame=24 phase=encode 34.860ms cpu=36.476ms drain=0.001 layout=1.520 draw=0.096 encode=34.860 present_wait=3.898
+hitch frame=25 phase=encode 33.897ms cpu=35.568ms drain=0.001 layout=1.581 draw=0.089 encode=33.897 present_wait=3.459
+hitch frame=26 phase=encode 36.609ms cpu=38.193ms drain=0.001 layout=1.500 draw=0.083 encode=36.609 present_wait=4.710
+hitch frame=27 phase=encode 36.938ms cpu=38.522ms drain=0.001 layout=1.502 draw=0.082 encode=36.938 present_wait=1.511
+hitch frame=28 phase=encode 34.947ms cpu=36.585ms drain=0.001 layout=1.550 draw=0.087 encode=34.947 present_wait=1.498
+hitch frame=29 phase=encode 34.868ms cpu=36.531ms drain=0.001 layout=1.571 draw=0.090 encode=34.868 present_wait=3.238
+hitch frame=30 phase=encode 33.957ms cpu=35.655ms drain=0.001 layout=1.608 draw=0.089 encode=33.957 present_wait=3.221
+hitch frame=31 phase=encode 35.023ms cpu=36.610ms drain=0.001 layout=1.502 draw=0.084 encode=35.023 present_wait=4.467
+hitch frame=32 phase=encode 34.682ms cpu=36.207ms drain=0.001 layout=1.448 draw=0.076 encode=34.682 present_wait=3.629
+hitch frame=33 phase=encode 33.997ms cpu=35.579ms drain=0.001 layout=1.494 draw=0.087 encode=33.997 present_wait=3.539
+hitch frame=34 phase=encode 35.150ms cpu=36.786ms drain=0.001 layout=1.551 draw=0.084 encode=35.150 present_wait=4.389
+hitch frame=35 phase=encode 34.688ms cpu=36.359ms drain=0.001 layout=1.576 draw=0.094 encode=34.688 present_wait=3.197
+hitch frame=36 phase=encode 34.686ms cpu=36.201ms drain=0.001 layout=1.435 draw=0.080 encode=34.686 present_wait=3.583
+hitch frame=37 phase=encode 34.328ms cpu=35.943ms drain=0.001 layout=1.520 draw=0.094 encode=34.328 present_wait=3.678
+hitch frame=38 phase=encode 38.148ms cpu=39.722ms drain=0.001 layout=1.489 draw=0.083 encode=38.148 present_wait=4.026
+hitch frame=39 phase=encode 42.142ms cpu=43.718ms drain=0.001 layout=1.491 draw=0.085 encode=42.142 present_wait=0.122
+hitch frame=40 phase=encode 40.688ms cpu=42.420ms drain=0.001 layout=1.636 draw=0.095 encode=40.688 present_wait=0.046
+hitch frame=41 phase=encode 37.889ms cpu=39.520ms drain=0.001 layout=1.542 draw=0.087 encode=37.889 present_wait=7.278
+hitch frame=42 phase=encode 40.623ms cpu=42.253ms drain=0.001 layout=1.545 draw=0.084 encode=40.623 present_wait=0.161
+hitch frame=43 phase=encode 41.957ms cpu=43.602ms drain=0.001 layout=1.542 draw=0.103 encode=41.957 present_wait=0.050
+hitch frame=44 phase=encode 39.935ms cpu=41.531ms drain=0.001 layout=1.506 draw=0.088 encode=39.935 present_wait=7.594
+hitch frame=45 phase=encode 42.313ms cpu=43.895ms drain=0.001 layout=1.495 draw=0.087 encode=42.313 present_wait=0.058
+hitch frame=46 phase=encode 39.135ms cpu=40.747ms drain=0.001 layout=1.520 draw=0.091 encode=39.135 present_wait=7.815
+hitch frame=47 phase=encode 38.544ms cpu=40.143ms drain=0.001 layout=1.512 draw=0.085 encode=38.544 present_wait=0.039
+hitch frame=48 phase=encode 44.770ms cpu=46.368ms drain=0.001 layout=1.514 draw=0.083 encode=44.770 present_wait=0.052
+hitch frame=49 phase=encode 41.319ms cpu=42.903ms drain=0.001 layout=1.491 draw=0.092 encode=41.319 present_wait=0.038
+hitch frame=50 phase=encode 41.647ms cpu=43.235ms drain=0.001 layout=1.501 draw=0.086 encode=41.647 present_wait=2.666
+hitch frame=51 phase=encode 42.969ms cpu=44.633ms drain=0.001 layout=1.568 draw=0.095 encode=42.969 present_wait=0.053
+hitch frame=52 phase=encode 47.888ms cpu=49.520ms drain=0.001 layout=1.539 draw=0.092 encode=47.888 present_wait=5.531
+hitch frame=53 phase=encode 38.382ms cpu=40.040ms drain=0.001 layout=1.565 draw=0.093 encode=38.382 present_wait=0.043
+hitch frame=54 phase=encode 42.217ms cpu=43.777ms drain=0.001 layout=1.479 draw=0.080 encode=42.217 present_wait=3.655
+hitch frame=55 phase=encode 41.335ms cpu=42.943ms drain=0.001 layout=1.512 draw=0.094 encode=41.335 present_wait=0.059
+hitch frame=56 phase=encode 40.522ms cpu=42.132ms drain=0.001 layout=1.521 draw=0.087 encode=40.522 present_wait=6.383
+hitch frame=57 phase=encode 42.684ms cpu=44.286ms drain=0.001 layout=1.505 draw=0.096 encode=42.684 present_wait=0.060
+hitch frame=58 phase=encode 38.920ms cpu=40.536ms drain=0.001 layout=1.526 draw=0.089 encode=38.920 present_wait=6.808
+hitch frame=59 phase=encode 38.020ms cpu=39.660ms drain=0.001 layout=1.547 draw=0.091 encode=38.020 present_wait=0.050
+hitch frame=60 phase=encode 38.583ms cpu=40.186ms drain=0.001 layout=1.528 draw=0.073 encode=38.583 present_wait=0.036
+hitch frame=61 phase=encode 41.287ms cpu=42.840ms drain=0.001 layout=1.472 draw=0.081 encode=41.287 present_wait=0.036
+hitch frame=62 phase=encode 41.702ms cpu=43.273ms drain=0.001 layout=1.485 draw=0.086 encode=41.702 present_wait=9.814
+hitch frame=63 phase=encode 42.090ms cpu=43.670ms drain=0.000 layout=1.493 draw=0.087 encode=42.090 present_wait=0.049
+hitch frame=64 phase=encode 39.338ms cpu=40.976ms drain=0.001 layout=1.546 draw=0.091 encode=39.338 present_wait=5.965
+hitch frame=65 phase=encode 41.132ms cpu=42.751ms drain=0.001 layout=1.523 draw=0.095 encode=41.132 present_wait=0.041
+hitch frame=66 phase=encode 37.986ms cpu=39.667ms drain=0.001 layout=1.591 draw=0.089 encode=37.986 present_wait=0.055
+hitch frame=67 phase=encode 41.252ms cpu=42.864ms drain=0.001 layout=1.507 draw=0.104 encode=41.252 present_wait=10.142
+hitch frame=68 phase=encode 41.514ms cpu=43.136ms drain=0.001 layout=1.526 draw=0.095 encode=41.514 present_wait=0.048
+hitch frame=69 phase=encode 38.409ms cpu=40.035ms drain=0.001 layout=1.540 draw=0.086 encode=38.409 present_wait=6.955
+hitch frame=70 phase=encode 41.133ms cpu=42.743ms drain=0.001 layout=1.522 draw=0.087 encode=41.133 present_wait=0.046
+hitch frame=71 phase=encode 41.665ms cpu=43.309ms drain=0.001 layout=1.547 draw=0.096 encode=41.665 present_wait=0.053
+hitch frame=72 phase=encode 38.422ms cpu=40.073ms drain=0.001 layout=1.566 draw=0.084 encode=38.422 present_wait=7.124
+cadence fifo: frames=71 seconds=3.009017 hz=23.596 CPU_p50=39.667ms CPU_p99=49.520ms
+hitch frame=73 phase=encode 38.226ms cpu=39.805ms drain=0.000 layout=1.497 draw=0.083 encode=38.226 present_wait=0.038
+idle probe begins: frames=73 last_update=0
+R2 smoke PASS: idle 10.002s frames=0 updates=0 CPU p50=39.722ms p99=49.520ms samples=73
+
+exit: 0

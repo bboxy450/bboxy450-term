@@ -1,0 +1,343 @@
+# R4 execution ledger — Sable Embertail
+Assignment 8626c5e1: app, new renderer surface files only if needed, Cargo.lock and r4 logs; no mux/chrome edits. Startup fetch/rebase exit 0; R2b accepted.
+Live system_profiler SPDisplaysDataType -json exit 0: Apple M4, DELL S3222HN, 1920x1080 @75.00Hz; only display shown, serial identifiers omitted. Dell primary documentation reports 48-75Hz (https://www.dell.com/support/kbdoc/cs-cs/000191572/Dell-32-Curved-Monitor-S3222HN-Usage-and-Troubleshooting-Guide). 120Hz panel absent.
+Read brief R4, objc2 generated CAMetalDisplayLink/CAFrameRateRange, wgpu Surface::as_hal and metal surface layer APIs; read-only invocations exit 0. Runtime bindings/CLI measurement precede native display-link implementation.
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo fmt -p bboxy450-term
+
+exit: 0
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo build -p bboxy450-term --release --locked
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `release` profile [optimized + debuginfo] target(s) in 8.84s
+
+exit: 0
+
+$ target/release/bboxy450-term --cadence-test --meter
+Output r4-fifo-before.log
+exit: 0
+
+$ cargo fmt -p bboxy450-term
+
+exit: 0
+
+$ cargo check -p bboxy450-term
+    Updating crates.io index
+     Locking 1 package to highest Rust 1.99 compatible version
+      Adding objc2-app-kit v0.3.2
+    Checking objc2-foundation v0.3.2
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking objc2-metal v0.3.2
+    Checking objc2-app-kit v0.3.2
+    Checking objc2-core-graphics v0.3.2
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-hal v30.0.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+warning: unused import: `ClassType`
+ --> crates/bboxy450-term/src/display_link.rs:5:5
+  |
+5 |     ClassType, DefinedClass, MainThreadMarker, MainThreadOnly, available, define_class, msg_send,
+  |     ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0599]: the associated function or constant `alloc` exists for struct `CAMetalDisplayLink`, but its trait bounds were not satisfied
+   --> crates/bboxy450-term/src/display_link.rs:239:83
+    |
+239 |               let link = CAMetalDisplayLink::initWithMetalLayer(CAMetalDisplayLink::alloc(), &layer);
+    |                                                                                     ^^^^^ associated function or constant cannot be called on `CAMetalDisplayLink` due to unsatisfied trait bounds
+    |
+   ::: /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc2-0.6.5/src/macros/extern_class.rs:251:9
+    |
+251 | /         $v struct $class $(<$($generic $(: $($bounds)+)? $(= $default)?),*>)? {
+252 | |             __superclass: $crate::__fallback_if_not_set! {
+253 | |                 ($($superclass)?)
+...   |
+261 | |             $(__generics: $crate::__macro_helpers::PhantomData<($(*mut $generic),+)>,)?
+262 | |         }
+    | |_________- doesn't satisfy `<_ as ClassType>::ThreadKind = dyn MainThreadOnly` or `CAMetalDisplayLink: MainThreadOnly`
+    |
+    = note: the following trait bounds were not satisfied:
+            `<CAMetalDisplayLink as ClassType>::ThreadKind = dyn MainThreadOnly`
+            which is required by `CAMetalDisplayLink: MainThreadOnly`
+            `<&CAMetalDisplayLink as ClassType>::ThreadKind = dyn MainThreadOnly`
+            which is required by `&CAMetalDisplayLink: MainThreadOnly`
+            `&CAMetalDisplayLink: ClassType`
+            which is required by `&CAMetalDisplayLink: MainThreadOnly`
+            `<&mut CAMetalDisplayLink as ClassType>::ThreadKind = dyn MainThreadOnly`
+            which is required by `&mut CAMetalDisplayLink: MainThreadOnly`
+            `&mut CAMetalDisplayLink: ClassType`
+            which is required by `&mut CAMetalDisplayLink: MainThreadOnly`
+    = help: items from traits can only be used if the trait is in scope
+help: trait `AnyThread` which provides `alloc` is implemented but not in scope; perhaps you want to import it
+    |
+  3 + use objc2::AnyThread;
+    |
+
+error[E0599]: no method named `commandBuffer` found for reference `&ProtocolObject<(dyn MTLCommandQueue + 'static)>` in the current scope
+  --> crates/bboxy450-term/src/gpu.rs:40:22
+   |
+38 |                   let command = queue
+   |  _______________________________-
+39 | |                     .as_raw()
+40 | |                     .commandBuffer()
+   | |                     -^^^^^^^^^^^^^ method not found in `&ProtocolObject<(dyn MTLCommandQueue + 'static)>`
+   | |_____________________|
+   |
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `MTLCommandQueue` which provides `commandBuffer` is implemented but not in scope; perhaps you want to import it
+   |
+ 2 + use objc2_metal::MTLCommandQueue;
+   |
+
+error[E0599]: no method named `texture` found for struct `Retained<ProtocolObject<dyn CAMetalDrawable>>` in the current scope
+   --> crates/bboxy450-term/src/gpu.rs:234:32
+    |
+234 |             let raw = drawable.texture();
+    |                                ^^^^^^^ method not found in `Retained<ProtocolObject<dyn CAMetalDrawable>>`
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `CAMetalDrawable` which provides `texture` is implemented but not in scope; perhaps you want to import it
+    |
+  2 + use objc2_quartz_core::CAMetalDrawable;
+    |
+
+For more information about this error, try `rustc --explain E0599`.
+warning: `bboxy450-term` (bin "bboxy450-term") generated 1 warning
+error: could not compile `bboxy450-term` (bin "bboxy450-term") due to 3 previous errors; 1 warning emitted
+
+exit: 101
+
+$ cargo fmt -p bboxy450-term
+
+exit: 0
+
+$ cargo check -p bboxy450-term
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+error[E0425]: cannot find value `FRAME_SAMPLES` in crate `bbt_rt`
+  --> crates/bboxy450-term/src/budget.rs:17:36
+   |
+17 |         if self.0.len() == bbt_rt::FRAME_SAMPLES {
+   |                                    ^^^^^^^^^^^^^ not found in `bbt_rt`
+
+error[E0425]: cannot find value `FRAME_SAMPLES` in crate `bbt_rt`
+   --> crates/bboxy450-term/src/gpu.rs:168:68
+    |
+168 |         let (gpu_sender, gpu_samples) = mpsc::sync_channel(bbt_rt::FRAME_SAMPLES);
+    |                                                                    ^^^^^^^^^^^^^ not found in `bbt_rt`
+
+error[E0282]: type annotations needed
+  --> crates/bboxy450-term/src/gpu.rs:50:50
+   |
+50 |                 command.presentDrawable(drawable.as_ref().as_ref());
+   |                                                  ^^^^^^
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+50 -                 command.presentDrawable(drawable.as_ref().as_ref());
+50 +                 command.presentDrawable(<Retained<ProtocolObject<dyn CAMetalDrawable>> as AsRef<T>>::as_ref(&drawable).as_ref());
+   |
+
+error[E0599]: no method named `GPUStartTime` found for reference `&ProtocolObject<dyn MTLCommandBuffer>` in the current scope
+   --> crates/bboxy450-term/src/gpu.rs:357:37
+    |
+357 |                 let start = command.GPUStartTime();
+    |                                     ^^^^^^^^^^^^ method not found in `&ProtocolObject<dyn MTLCommandBuffer>`
+
+error[E0599]: no method named `GPUEndTime` found for reference `&ProtocolObject<dyn MTLCommandBuffer>` in the current scope
+   --> crates/bboxy450-term/src/gpu.rs:358:35
+    |
+358 |                 let end = command.GPUEndTime();
+    |                                   ^^^^^^^^^^ method not found in `&ProtocolObject<dyn MTLCommandBuffer>`
+
+Some errors have detailed explanations: E0282, E0425, E0599.
+For more information about an error, try `rustc --explain E0282`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term") due to 5 previous errors
+
+exit: 101
+
+$ cargo fmt -p bboxy450-term
+
+exit: 0
+
+$ cargo check -p bboxy450-term --locked
+error: cannot update the lock file /Users/feral/mydev/bboxy450-term-exec3/Cargo.lock because --locked was passed to prevent this
+help: to generate the lock file without accessing the network, remove the --locked flag and use --offline instead.
+
+exit: 101
+
+$ cargo check -p bboxy450-term --offline
+    Checking objc2-metal v0.3.2
+    Checking objc2-core-graphics v0.3.2
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-hal v30.0.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.20s
+
+exit: 0
+
+$ cargo test -p bboxy450-term --locked
+   Compiling objc2-foundation v0.3.2
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling objc2-metal v0.3.2
+   Compiling objc2-app-kit v0.3.2
+   Compiling objc2-core-graphics v0.3.2
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 17.74s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-88dc0c5c8dba8b06)
+
+running 3 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.67s
+
+exit: 0
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo fmt -p bboxy450-term
+
+exit: 0
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo build -p bboxy450-term --release --locked
+   Compiling objc2-foundation v0.3.2
+   Compiling objc2-metal v0.3.2
+   Compiling objc2-app-kit v0.3.2
+   Compiling objc2-core-graphics v0.3.2
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `release` profile [optimized + debuginfo] target(s) in 28.43s
+
+exit: 0
+
+$ target/release/bboxy450-term --cadence-test --meter
+Output .bboxy/runs/r4-metal-before.log
+exit: -6
+
+$ target/release/bboxy450-term --cadence-test --meter --pacing cv
+Output .bboxy/runs/r4-cv-before.log
+exit: 101
+
+$ lldb --batch -o 'breakpoint set -n objc_exception_throw' -o run -o bt -- target/release/bboxy450-term --cadence-test --meter
+Output .bboxy/runs/r4-native-exception.log
+exit: -15
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo fmt -p bboxy450-term
+
+exit: 0
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo check -p bboxy450-term --locked
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+warning: unnecessary `unsafe` block
+  --> crates/bboxy450-term/src/gpu.rs:85:5
+   |
+85 |     unsafe { blit.fillBuffer_range_value(&scratch, NSRange::new(0, 4), 0) };
+   |     ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: `#[warn(unused_unsafe)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bboxy450-term` (bin "bboxy450-term") generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.61s
+
+exit: 0
+
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo build -p bboxy450-term --release --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+warning: unnecessary `unsafe` block
+  --> crates/bboxy450-term/src/gpu.rs:85:5
+   |
+85 |     unsafe { blit.fillBuffer_range_value(&scratch, NSRange::new(0, 4), 0) };
+   |     ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: `#[warn(unused_unsafe)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bboxy450-term` (bin "bboxy450-term") generated 1 warning
+    Finished `release` profile [optimized + debuginfo] target(s) in 4.17s
+
+exit: 0
+
+$ target/release/bboxy450-term --cadence-test --meter
+Output .bboxy/runs/r4-metal-before-corrected.log
+exit: 0
+
+Debugging note: first native run aborted SIGABRT/-6 before frame 1; CoreVideo isolation exposed wgpu 30 raw/WGPU encoder mixing panic (exit101). LLDB launcher remained stopped before execution and was terminated by SIGINT then SIGTERM to owned PIDs 7032/7019; debugger subprocess exit -15, no exception backtrace obtained. Removed raw encoder mixing and second Metal-layer acquisition. Corrected native run succeeds; original foreign exception cause remains unproven. GPU timing now conservatively brackets submission+uploads with native queue markers, not private wgpu command-buffer access.
+Nyx meter-summary.patch reviewed and applied manually around the updated EndIdle block; credit in commit message.
+
+$ cargo fmt -p bboxy450-term
+
+exit: 0
+
+$ cargo test -p bboxy450-term --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.96s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-88dc0c5c8dba8b06)
+
+running 3 tests
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit: 0
+
+$ cargo clippy -p bboxy450-term --all-targets --no-deps --locked -- -D warnings
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.65s
+
+exit: 0
+
+$ git diff --check
+
+exit: 0
+
+Native corrected pre-atlas result: 21.273 Hz (64 animation frames/3.008485 s), CPU p50 46.734/p99 55.811 ms; 63/63 steady intervals late. GPU span p50 43.845/p99 48.939 ms, 64 paired/0 missing. Idle 10.001 s: 0 frames and 0 callbacks. CPU/GPU budget FAIL before atlas fix; no acceptance claimed.
+Queue/timing contract sources read: https://developer.apple.com/library/archive/documentation/Miscellaneous/Conceptual/MetalProgrammingGuide/Cmd-Submiss/Cmd-Submiss.html (same-queue execution order); https://developer.apple.com/documentation/metal/mtlcommandbuffer/gpustarttime (completion-handler timestamps). Markers include queue/marker gaps, a conservative bound rather than exact single-command-buffer GPU duration.
+Identity checks: user.name Boxy; user.email bboxy450@gmail.com; user.signingkey 9B07E849480C68328CA20684844ECC0587DE7AB0; commit.gpgsign=true; each git config query exit0. Read-only source/registry/status/diff/date/inbox inspections exit0 except missing zsh glob paths in exploratory rg calls, documented above by terminal output; no source changed by those reads. R4 provisional signed commit will be rebased before final atlas-budget validation.
