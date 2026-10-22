@@ -249,3 +249,6 @@ Signal semantics: locate ripple only on click or keyboard focus (pane ripple fro
 
 ### The stream dock has its own page
 **Rule:** `stream.html` shows the dock at sidebar width: the whole swarm stream, epic groups open and collapsed, the external lane, messages alone, filtered to one participant, and empty. Presence notices centre their wrapped text in the narrow dock. The dock CSS moved from `showcase.html` into `lab.css` and the stream messages into `fixtures.js`. **Where:** `epicGroup()`, `externalLane()`, `messageRow()`; `stream.html`; design system v35 `modules.stream_dock`.
+
+### The title bar has its own page, one component
+**Rule:** `titlebar.html` shows the app title bar: default, sidebar closed (the fox-ear toggle hollow), a long crumb that ellipsizes, a narrow window, and an unfocused window (dimmed dots, desaturated portrait). `titleBar()` builds it for both the page and the showcase; its CSS moved into `lab.css` as `.titlebar.app-bar`, so the toolbar-icon page keeps its small mock bar. **Where:** `titleBar()` in `components.js`; design system v36.

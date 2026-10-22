@@ -22,11 +22,6 @@
   .pane.drop-top::after { opacity: 1; bottom: 50%; } .pane.drop-bottom::after { opacity: 1; top: 50%; }
 
   /* --- title bar: panel material, hairline below --- */
-  .titlebar { border: 0; border-bottom: 1px solid var(--hair); border-radius: 0; background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: inset 0 1px 0 var(--hi); flex: none; height: var(--title-bar-h); padding: 0 14px; gap: 10px; font-size: var(--t-body); }
-  .titlebar .ttl { font-weight: var(--t-weight_title, 500); }
-  .titlebar .logo { width: 18px; height: 18px; }
-  .titlebar .tbtn { border-radius: var(--r-badge); }
-  .titlebar .tbtn.on { background: var(--sel); color: var(--fg); }
   .tbtn.theme { --icon: 18px; }
 
   /* --- sidebar: frosted ground, resizable edge --- */

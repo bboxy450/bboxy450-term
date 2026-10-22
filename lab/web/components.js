@@ -679,6 +679,15 @@
     { id: 'omp', label: 'omp', sub: 'executor by default', harness: 'omp', kind: 'Harness', tile: '#0EA5E9', section: 'Harnesses' },
     { id: 'zsh', label: 'zsh', sub: '~', harness: 'zsh', kind: 'Shell', tile: '#111827', section: 'Shells' },
   ];
+  // App title bar (design system › elements.title_bar): window dots · sidebar toggle (the fox ear) · the identity PNG · app name ·
+  // crumb (swarm · seat) · spacer · theme icon. Height from style.json spacing.title_bar.
+  function titleBar(opts) {
+    opts = opts || {};
+    const toggle = el('span', { class: 'tbtn' + (opts.sidebarOpen !== false ? ' on' : ''), title: 'toggle sidebar (⌘S)', onclick: () => opts.onToggleSidebar && opts.onToggleSidebar() }, harnessIcon(opts.sidebarOpen !== false ? 'sidebarfoxopen' : 'sidebarfox'));
+    const crumb = el('span', { class: 'crumb', id: opts.crumbId || null }, opts.crumb || '');
+    const theme = opts.themeBtn || el('span', { class: 'tbtn theme', title: 'toggle light / dark', onclick: () => opts.onTheme && opts.onTheme() }, harnessIcon(opts.theme === 'light' ? 'moon' : 'sun'));
+    return el('div', { class: 'titlebar app-bar' + (opts.blurred ? ' blurred' : '') }, el('span', { class: 'win' }, el('i'), el('i'), el('i')), toggle, logo(18), el('span', { class: 'ttl' }, opts.title || 'bboxy450-term'), crumb, el('span', { class: 'spacer' }), theme);
+  }
   // ⌘T launcher items (design system › modal): launchables ▸ placements; SSH ▸ machine ▸ harness ▸ placement; Cloud ▸ region ▸
   // harness ▸ placement; Go to ▸ every seat and swarm; Graph; Settings ▸ section. Shared by the showcase and launcher.html.
   function launcherItems(ctx) {
@@ -1040,5 +1049,5 @@
     return root;
   }
 
-  window.C = { launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

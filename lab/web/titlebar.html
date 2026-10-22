@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>title bar · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+</head><body><script>
+const el = Lab.el;
+Lab.page({ title: 'title bar', wide: true, note: 'Our own title bar, no native chrome: three window dots, the sidebar toggle (the fox ear: filled column = sidebar shown), the identity PNG, the app name, the crumb (swarm · focused seat), a spacer, the theme icon (sun in dark, moon in light). Frosted panel material, height ' + STYLE.spacing.title_bar + ' px from style.json spacing.title_bar. Same titleBar() as the showcase.',
+  states: ['default', 'sidebar closed', 'long crumb', 'narrow window', 'window unfocused'],
+  render(s, body) {
+    const wrap = el('div', { style: 'border:1px solid var(--hair);border-radius:var(--r-pill);overflow:hidden;background:var(--bg);' + (s === 'narrow window' ? 'max-width:420px' : '') });
+    let open = s !== 'sidebar closed';
+    const crumb = s === 'long crumb' ? '· the-very-long-swarm-name · Mireille Bellweather-Lockridge' : '· term · Vesper Greywind';
+    const draw = () => { wrap.innerHTML = ''; wrap.append(C.titleBar({ sidebarOpen: open, crumb, theme: Lab.prefs.theme, blurred: s === 'window unfocused', onToggleSidebar: () => { open = !open; draw(); } }), el('div', { style: 'height:90px' })); };
+    draw(); body.append(wrap);
+  } });
+</script></body></html>

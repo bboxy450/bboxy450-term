@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 35,
+  "version": 36,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -418,7 +418,8 @@
       "rules": [
         "no second set of dots anywhere",
         "one theme icon, no label, no cycle"
-      ]
+      ],
+      "implementation": "titleBar() in components.js, shared by the showcase and titlebar.html?state=default|sidebar-closed|long-crumb|narrow-window|window-unfocused; .titlebar.app-bar CSS in lab.css"
     },
     "sidebar": {
       "purpose": "the map",
