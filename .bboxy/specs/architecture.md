@@ -190,7 +190,7 @@ flowchart BT
   classDef next stroke-dasharray: 5 5
 ```
 
-Order `bbt-rt bbt-core bboxy-firehose bbt-ui-model bbt-render bbt-ui bboxybook bbt-mux bboxy450-term`, gated by [[layering]]. bbt-mux depends on bbt-core and bbt-rt only; the app depends on everything. Decisions #1 (`bbt-supervisor` out of bbt-mux) and #6 (`bbt-proto`) add two crates to the order when they land. Public set and docs standard: [[open-source]]; renderer design: [[renderer]]; components: [[gui-components]]; the parity loop: [[runbook-web-to-native]].
+Order `bbt-rt bbt-core bboxy-firehose bbt-ui-model bbt-render bbt-ui bboxybook bbt-supervisor bbt-mux bboxy450-term`, gated by [[layering]]. Decision #1 landed on 2026-10-22 (S1, Rook): `bbt-supervisor` holds the mio supervisor, PTYs, leases and the ring writer; `bbt-mux` re-exports `SocketSupervisor` and `SupervisorConnection` from it (`M/logic.rs:29`). bbt-mux depends on bbt-core and bbt-rt only; the app depends on everything. Decision #6 (`bbt-proto`) adds one more crate to the order when C1a lands. Public set and docs standard: [[open-source]]; renderer design: [[renderer]]; components: [[gui-components]]; the parity loop: [[runbook-web-to-native]].
 
 ## 10. Direction (operator, 2026-10-22)
 
