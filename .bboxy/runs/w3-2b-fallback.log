@@ -1,0 +1,10 @@
+Chromium unavailable; 0 committed references, 2 missing.
+
+{
+  "status": "unproven",
+  "reason": "local Chromium absent",
+  "matched": 0,
+  "missing": 2,
+  "cases": 2
+}
+exit_status: 0

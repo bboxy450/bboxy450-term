@@ -264,11 +264,13 @@ impl Gallery {
             .create_command_encoder(&Default::default());
         renderer.draw(
             &list,
-            config.width,
-            config.height,
-            scale,
-            &target,
-            config.format,
+            bbt_render::chrome::ChromeTarget {
+                width: config.width,
+                height: config.height,
+                scale,
+                view: &target,
+                format: config.format,
+            },
             &mut encoder,
         )?;
         renderer.context.queue.submit([encoder.finish()]);
@@ -286,11 +288,11 @@ impl Gallery {
 }
 impl ApplicationHandler for Gallery {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_none() {
-            if let Err(e) = self.init(event_loop) {
-                self.error = Some(e.to_string());
-                event_loop.exit();
-            }
+        if self.window.is_none()
+            && let Err(e) = self.init(event_loop)
+        {
+            self.error = Some(e.to_string());
+            event_loop.exit();
         }
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {

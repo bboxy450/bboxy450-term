@@ -27,12 +27,10 @@ fn main() {
             &mut pix.as_mut(),
         );
         let mut data = pix.data().to_vec();
-        for p in data.chunks_exact_mut(4) {
+        for p in data.as_chunks_mut::<4>().0 {
             let a = u32::from(p[3]);
-            if a > 0 {
-                for c in &mut p[..3] {
-                    *c = (u32::from(*c) * 255 / a).min(255) as u8;
-                }
+            for c in &mut p[..3] {
+                *c = (u32::from(*c) * 255).checked_div(a).unwrap_or(0).min(255) as u8;
             }
         }
         let path = out.join(format!("icon-{}.rgba", &c[1]));

@@ -6,7 +6,7 @@ use bbt_ui_model::{
 };
 use serde::{Deserialize, Serialize};
 
-pub const DESIGN: &str = include_str!("../../../design/bboxy-design-system.json");
+pub const DESIGN: &str = include_str!("../fixtures/design-system-v22.json");
 pub const DENSITIES: [Density; 4] = [
     Density::Touch,
     Density::Comfortable,
@@ -229,7 +229,7 @@ pub fn entries() -> Vec<Entry> {
             ],
             false,
         ),
-        entry("logo", "logo.html", &["identity png"], true),
+        entry("logo", "@component", &["identity png"], true),
         entry(
             "toolbar-icon",
             "toolbar-icon.html",
@@ -385,7 +385,7 @@ pub fn draw(case: &Case) -> Result<DrawList> {
     if case.checker {
         for y in (0..case.height).step_by(8) {
             for x in (0..case.width).step_by(8) {
-                if (x / 8 + y / 8) % 2 == 0 {
+                if (x / 8 + y / 8) % 2 == 1 {
                     list.rect(
                         Rect::new(x as f32, y as f32, 8.0, 8.0),
                         0.0,
@@ -417,6 +417,10 @@ mod tests {
     #[test]
     fn registry_covers_exactly_the_built_design_entries() {
         let design: serde_json::Value = serde_json::from_str(DESIGN).unwrap();
+        assert_eq!(
+            design["version"], 22,
+            "coverage baseline must be updated deliberately"
+        );
         let registry: BTreeSet<_> = entries().into_iter().map(|e| e.id).collect();
         let mut missing = vec![];
         for group in ["elements", "modules"] {

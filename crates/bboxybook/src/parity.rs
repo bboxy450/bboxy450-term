@@ -37,6 +37,9 @@ pub fn compare_paths(
     web_prefix: &str,
     native_prefix: &str,
 ) -> Result<()> {
+    // A relative reference containing `..` still needs this directory to exist
+    // when the OS traverses it, including on the first gallery run.
+    fs::create_dir_all(root)?;
     struct Row {
         case: Case,
         score: f64,
@@ -178,4 +181,31 @@ pub fn compare_paths(
         root.join("index.html").display()
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn first_report_resolves_relative_reference_directories() -> Result<()> {
+        let suffix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos();
+        let temp =
+            std::env::temp_dir().join(format!("bboxybook-report-{}-{suffix}", std::process::id()));
+        let mut case = gallery::cases().remove(0);
+        case.width = 1;
+        case.height = 1;
+        let image = temp.join("images").join(case.relative());
+        fs::create_dir_all(image.parent().unwrap())?;
+        bbt_render::write_png(&image, &[17, 83, 201, 255], 1, 1)?;
+        let report = temp.join("review");
+        assert!(!report.exists());
+        compare_paths(&report, &[case], "../images", "../images")?;
+        assert!(
+            fs::read_to_string(report.join("report.md"))?.contains("1 cases; 0 require review")
+        );
+        fs::remove_dir_all(temp)?;
+        Ok(())
+    }
 }

@@ -38,7 +38,13 @@ pub fn height(id: &str, state: &str, d: Density) -> u32 {
         "provenance_card" | "subscriptions_card" => 400,
         "swarm_card" => 330,
         "pane" => 250,
-        "nested_subagent_rows" => if state=="overflow"{208}else{84},
+        "nested_subagent_rows" => {
+            if state == "overflow" {
+                208
+            } else {
+                84
+            }
+        }
         _ => 150,
     }
 }
@@ -1401,13 +1407,104 @@ pub fn draw(id: &str, state: &str, r: Rect, ctx: &DrawCtx, out: &mut DrawList) -
             }
         }
         "toolbar-icon" => {
-            for (i, name) in ["sidebarfox", "sidebarfoxopen"].iter().enumerate() {
+            if state == "in our title bar" {
+                titlebar(Rect::new(r.x, r.y, 640.0, 38.0), ctx, out);
+                out.rect(
+                    Rect::new(r.x, r.y + 38.0, 640.0, 120.0),
+                    0.0,
+                    Color::hex(ctx.theme.palette().bg),
+                );
+            } else if state == "in the menubar" {
+                out.rect(Rect::new(r.x, r.y, 520.0, 24.0), 6.0, Color::hex("#1C1C1E"));
                 icon(
                     out,
-                    Rect::new(r.x + i as f32 * 64.0, r.y, 32.0, 32.0),
-                    name,
-                    ctx.fg(),
+                    Rect::new(r.x + 10.0, r.y + 4.0, 16.0, 16.0),
+                    "sidebarfoxopen",
+                    Color::WHITE,
                 );
+                text(
+                    out,
+                    Rect::new(r.x + 310.0, r.y + 4.0, 200.0, 18.0),
+                    "◐ 3 waiting   Wed 12:14",
+                    12.0,
+                    Color::WHITE.alpha(0.7),
+                    400,
+                );
+            } else {
+                let name = if state.contains("open") {
+                    "sidebarfoxopen"
+                } else if state == "ear pair" {
+                    "ears"
+                } else {
+                    "sidebarfox"
+                };
+                let mut x = r.x;
+                let sizes: &[f32] = if state == "sizes ladder" {
+                    &[12.0, 16.0, 20.0, 24.0]
+                } else {
+                    &[12.0, 16.0, 20.0, 24.0, 32.0, 64.0]
+                };
+                let baseline = if state == "sizes ladder" { 24.0 } else { 64.0 };
+                for size in sizes {
+                    if state == "sizes ladder" {
+                        for (i, mark) in ["sidebarfox", "sidebarfoxopen", "gear"].iter().enumerate()
+                        {
+                            icon(
+                                out,
+                                Rect::new(
+                                    x + i as f32 * (size + 8.0),
+                                    r.y + baseline - size,
+                                    *size,
+                                    *size,
+                                ),
+                                mark,
+                                ctx.fg(),
+                            );
+                        }
+                        text(
+                            out,
+                            Rect::new(x + size + 8.0, r.y + baseline + 6.0, 32.0, 14.0),
+                            size.to_string(),
+                            10.0,
+                            ctx.muted(),
+                            400,
+                        );
+                        x += size * 3.0 + 16.0 + 28.0;
+                    } else {
+                        let width = (*size).max(12.0);
+                        icon(
+                            out,
+                            Rect::new(x, r.y + baseline - size, *size, *size),
+                            name,
+                            ctx.fg(),
+                        );
+                        text(
+                            out,
+                            Rect::new(x, r.y + baseline + 6.0, width.max(22.0), 14.0),
+                            size.to_string(),
+                            10.0,
+                            ctx.muted(),
+                            400,
+                        );
+                        x += width + 28.0;
+                    }
+                }
+                if state != "sizes ladder" {
+                    icon(
+                        out,
+                        Rect::new(x, r.y + baseline - 32.0, 32.0, 32.0),
+                        name,
+                        Color::hex(ctx.theme.palette().accent),
+                    );
+                    text(
+                        out,
+                        Rect::new(x, r.y + baseline + 6.0, 50.0, 14.0),
+                        "tinted",
+                        10.0,
+                        ctx.muted(),
+                        400,
+                    );
+                }
             }
         }
         "tokens" => tokens(r, state, ctx, out),

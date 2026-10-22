@@ -14,7 +14,9 @@ fn every_registered_component_renders_on_metal() -> Result<()> {
         let rgba = renderer.render_to_rgba(&list, case.width, case.height, 1.0)?;
         assert_eq!(rgba.len(), (case.width * case.height * 4) as usize);
         assert!(
-            rgba.chunks_exact(4)
+            rgba.as_chunks::<4>()
+                .0
+                .iter()
                 .any(|p| p[0] != rgba[0] || p[1] != rgba[1] || p[2] != rgba[2]),
             "{} rendered only ground",
             entry.id

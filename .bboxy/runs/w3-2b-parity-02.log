@@ -1,0 +1,40 @@
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.79s
+captured 100/1664
+captured 200/1664
+captured 300/1664
+captured 400/1664
+captured 500/1664
+captured 600/1664
+captured 700/1664
+captured 800/1664
+captured 900/1664
+captured 1000/1664
+captured 1100/1664
+captured 1200/1664
+captured 1300/1664
+captured 1400/1664
+captured 1500/1664
+captured 1600/1664
+web: 1664/1664 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/1664
+rendered 200/1664
+rendered 300/1664
+rendered 400/1664
+rendered 500/1664
+rendered 600/1664
+rendered 700/1664
+rendered 800/1664
+rendered 900/1664
+rendered 1000/1664
+rendered 1100/1664
+rendered 1200/1664
+rendered 1300/1664
+rendered 1400/1664
+rendered 1500/1664
+rendered 1600/1664
+rendered 1664 PNGs to target/parity/native
+parity: 1664 cases, 1406 review; target/parity/index.html
+
+exit_status: 0

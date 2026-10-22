@@ -16,6 +16,14 @@ use pipeline::Instance;
 use std::{collections::HashMap, sync::mpsc, time::Duration};
 use wgpu::util::DeviceExt;
 
+pub struct ChromeTarget<'a> {
+    pub width: u32,
+    pub height: u32,
+    pub scale: f32,
+    pub view: &'a wgpu::TextureView,
+    pub format: wgpu::TextureFormat,
+}
+
 pub struct ChromeRenderer {
     pub context: DeviceContext,
     atlas: GlyphAtlas,
@@ -39,13 +47,16 @@ impl ChromeRenderer {
     pub fn draw(
         &mut self,
         list: &DrawList,
-        width: u32,
-        height: u32,
-        scale: f32,
-        target: &wgpu::TextureView,
-        format: wgpu::TextureFormat,
+        target: ChromeTarget<'_>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<()> {
+        let ChromeTarget {
+            width,
+            height,
+            scale,
+            view: target,
+            format,
+        } = target;
         list.validate().map_err(RenderError::from)?;
         if width == 0 || height == 0 || !scale.is_finite() || !(0.5..=4.0).contains(&scale) {
             return Err("invalid chrome viewport".into());
@@ -324,7 +335,17 @@ impl ChromeRenderer {
             .context
             .device
             .create_command_encoder(&Default::default());
-        self.draw(list, width, height, scale, &view, format, &mut encoder)?;
+        self.draw(
+            list,
+            ChromeTarget {
+                width,
+                height,
+                scale,
+                view: &view,
+                format,
+            },
+            &mut encoder,
+        )?;
         let stride = (width * 4).div_ceil(256) * 256;
         let buffer = self.context.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("chrome readback"),

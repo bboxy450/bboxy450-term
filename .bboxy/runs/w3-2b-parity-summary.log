@@ -1,0 +1,144 @@
+{
+  "matrix": 1664,
+  "over_tolerance": 1406,
+  "components_with_mismatches": [
+    "artifact_row",
+    "badge",
+    "band",
+    "banner",
+    "bumper",
+    "closed_strip",
+    "crumb",
+    "divider",
+    "drop_zone",
+    "epic_group",
+    "external_lane",
+    "gap_marker",
+    "ghost",
+    "glow_canvas",
+    "glyph",
+    "graph_tab",
+    "hairline",
+    "harness-icon",
+    "kbd",
+    "launcher",
+    "logo",
+    "message-row",
+    "mini_grid",
+    "mute_toggle",
+    "nested_subagent_rows",
+    "new_seat_row",
+    "new_swarm_button",
+    "pane",
+    "pill",
+    "provenance_card",
+    "responsible_chip",
+    "seat_row",
+    "settings_tab",
+    "showcase-15",
+    "showcase-3",
+    "sidebar",
+    "stream_dock",
+    "subscriptions_card",
+    "swarm_card",
+    "tab_row",
+    "task_row",
+    "tile",
+    "title_bar",
+    "title_strip",
+    "tokens",
+    "toolbar-icon",
+    "touched_count",
+    "where_mark",
+    "wikilink_chip"
+  ],
+  "worst_ten": [
+    {
+      "case": "graph_tab/unfocused-touch-dark.png",
+      "changed": "93.70%",
+      "status": "review"
+    },
+    {
+      "case": "graph_tab/unfocused-compact-dark.png",
+      "changed": "93.65%",
+      "status": "review"
+    },
+    {
+      "case": "graph_tab/unfocused-comfortable-dark.png",
+      "changed": "93.65%",
+      "status": "review"
+    },
+    {
+      "case": "graph_tab/unfocused-cozy-dark.png",
+      "changed": "93.65%",
+      "status": "review"
+    },
+    {
+      "case": "sidebar/10-seats-compact-dark.png",
+      "changed": "91.67%",
+      "status": "review"
+    },
+    {
+      "case": "sidebar/10-seats-cozy-dark.png",
+      "changed": "91.16%",
+      "status": "review"
+    },
+    {
+      "case": "sidebar/10-seats-comfortable-dark.png",
+      "changed": "90.90%",
+      "status": "review"
+    },
+    {
+      "case": "sidebar/10-seats-comfortable-light.png",
+      "changed": "89.84%",
+      "status": "review"
+    },
+    {
+      "case": "sidebar/10-seats-touch-dark.png",
+      "changed": "89.76%",
+      "status": "review"
+    },
+    {
+      "case": "sidebar/10-seats-touch-light.png",
+      "changed": "89.11%",
+      "status": "review"
+    }
+  ],
+  "index": "target/parity/index.html",
+  "capture": {
+    "status": "captured",
+    "baseline": "cf0227793e495025af5192a666aa9d72fb5b84f7",
+    "supplementalReference": "@component entries and settings_tab/new harness use frozen committed HEAD lab components",
+    "revision": "f436bc37ea93bb9abf55b24dfcccb53ee6632c62",
+    "browser": "Chrome/156.0.8078.48",
+    "profile": "isolated ephemeral profile",
+    "deviceScaleFactor": 1,
+    "freeze": "CSS animation playback paused; no transcript normalization; original web page content retained",
+    "supplementalWebHashes": {
+      "components.js": "4566b4abf6cf0c1437ac5425c6016f0adbadbe2b5331036e0b84b7fd679281ce",
+      "lab.css": "568514f04bda478c6861c9ee32201c7457fdcfc66a904862aa10ebe25d2898e0",
+      "lab.js": "3e0f957520053ea4770bfcb4cd8b81c0886ab4095575a29aab78d7cf8d395981",
+      "tokens.js": "4a2389f9699079f28b2578c5cabb8e2b6fb1388ea0ecff4b24e1de6b94a68dc9",
+      "showcase.js": "034b0c03ae3320053dd087c57c6077fe26e1e880675a83a661a231a8186d0deb",
+      "showcase.html": "e1ddd9819f8b988bf89a66cc7902eaa15d6852257b02e9eb8bfc495d44a30645"
+    },
+    "cases": 1664,
+    "failures": [],
+    "corrections": [
+      {
+        "case": "settings_tab/new harness",
+        "count": 8,
+        "reason": "post-v2 state absent from v2 page; routed to frozen HEAD and validated against its state strip",
+        "revision": "f436bc37ea93bb9abf55b24dfcccb53ee6632c62"
+      }
+    ]
+  },
+  "tests": {
+    "workspace_before_report_regression": 170,
+    "final_bboxybook": 4
+  },
+  "strict_lint_exceptions": [
+    "bbt-render/src/headless.rs:364 map_entry",
+    "bbt-render/tests/smoke.rs:15 chunks_exact_to_as_chunks"
+  ]
+}

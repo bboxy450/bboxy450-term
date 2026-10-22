@@ -1,0 +1,27 @@
+
+running 2 tests
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... FAILED
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+failures:
+
+---- gallery::tests::registry_covers_exactly_the_built_design_entries stdout ----
+
+thread 'gallery::tests::registry_covers_exactly_the_built_design_entries' (4089148) panicked at crates/bboxybook/src/gallery.rs:433:9:
+built entries absent from gallery: ["reconnect_overlay"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    gallery::tests::registry_covers_exactly_the_built_design_entries
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.57s
+     Running unittests src/lib.rs (target/debug/deps/bboxybook-0da14ffccfe931a4)
+error: test failed, to rerun pass `-p bboxybook --lib`
+
+exit_status: 101

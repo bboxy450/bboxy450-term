@@ -1,0 +1,54 @@
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+error: this function has too many arguments (8/7)
+  --> crates/bbt-render/src/chrome/mod.rs:39:5
+   |
+39 | /     pub fn draw(
+40 | |         &mut self,
+41 | |         list: &DrawList,
+42 | |         width: u32,
+...  |
+47 | |         encoder: &mut wgpu::CommandEncoder,
+48 | |     ) -> Result<()> {
+   | |___________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#too_many_arguments
+   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:364:13
+    |
+364 | /             if !cache.contains_key(&ch) {
+365 | |                 let glyph = match font.rasterize(ch)? {
+366 | |                     Some(raster) => Some(PlacedGlyph {
+367 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+373 | |                 cache.insert(ch, glyph);
+374 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `-D clippy::map-entry` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+help: try
+    |
+364 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+365 +                 let glyph = match font.rasterize(ch)? {
+366 +                     Some(raster) => Some(PlacedGlyph {
+367 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+368 +                         left: raster.left,
+369 +                         top: raster.top,
+370 +                     }),
+371 +                     None => None,
+372 +                 };
+373 +                 e.insert(glyph);
+374 +             }
+    |
+
+error: could not compile `bbt-render` (lib test) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bbt-render` (lib) due to 2 previous errors
+
+exit_status: 101

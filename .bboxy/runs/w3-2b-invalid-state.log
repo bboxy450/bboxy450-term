@@ -1,0 +1,5 @@
+web: 0/1 captured; 1 failures
+glyph/unsupported-state-for-test-touch-dark.png Error: reference page does not support state: unsupported-state-for-test
+
+probe_exit: 1 (expected 1)
+assertion_exit: 0

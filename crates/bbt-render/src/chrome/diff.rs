@@ -14,7 +14,7 @@ pub fn compare(a: &[u8], b: &[u8]) -> Result<Difference, &'static str> {
     let mut rgba = Vec::with_capacity(a.len());
     let mut changed = 0usize;
     let mut error = 0u64;
-    for (a, b) in a.chunks_exact(4).zip(b.chunks_exact(4)) {
+    for (a, b) in a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0) {
         let delta: [u8; 4] = std::array::from_fn(|i| a[i].abs_diff(b[i]));
         let hit = delta.iter().any(|n| *n > CHANNEL_TOLERANCE);
         changed += usize::from(hit);

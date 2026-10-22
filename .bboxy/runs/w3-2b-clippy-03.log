@@ -1,0 +1,30 @@
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+error: using `chunks_exact_mut` with a constant chunk size
+  --> crates/bboxybook/build.rs:30:23
+   |
+30 |         for p in data.chunks_exact_mut(4) {
+   |                       ^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks_mut` instead: `as_chunks_mut::<4>().0`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+   = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: manual checked division
+  --> crates/bboxybook/build.rs:32:16
+   |
+32 |             if a > 0 {
+   |                ^^^^^ check performed here
+33 |                 for c in &mut p[..3] {
+34 |                     *c = (u32::from(*c) * 255 / a).min(255) as u8;
+   |                          ------------------------- division performed here
+   |
+   = help: consider using `checked_div`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#manual_checked_ops
+   = note: `-D clippy::manual-checked-ops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_checked_ops)]`
+
+error: could not compile `bboxybook` (build script) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+exit_status: 101

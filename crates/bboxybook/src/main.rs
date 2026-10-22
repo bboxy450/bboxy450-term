@@ -45,6 +45,7 @@ fn run() -> Result<()> {
                     for case in &mut cases {if let Some(r)=reference.iter().find(|r|r.relative()==case.relative()){case.width=r.width;case.height=r.height;}}
                     println!("Using existing target/parity web captures; scripts/parity.sh refreshes them.");
                     parity::render(&out,&cases)?;parity::compare_paths(&report,&cases,"../../parity/web","..")?;
+                    if shared.join("capture.json").exists(){fs::copy(shared.join("capture.json"),report.join("capture.json"))?;}
                 } else {
                     fs::create_dir_all(&report)?;
                     fs::write(report.join("requested.json"),serde_json::to_vec_pretty(&cases)?)?;
@@ -55,7 +56,7 @@ fn run() -> Result<()> {
                 }
             } else { parity::render(&out,&cases)?; }
         },
-        "compare"=>parity::compare(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/parity".into())),&cases)?,
+        "compare"=>parity::compare_paths(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/parity".into())),&cases,&value(&args,"--web-root").unwrap_or_else(||"web".into()),&value(&args,"--native-root").unwrap_or_else(||"native".into()))?,
         "sidebar"|"showcase"=>{let component=if command=="showcase"{format!("showcase-{}",value(&args,"--scene").unwrap_or_else(||"3".into()))}else{"sidebar".into()};cases.retain(|c|c.component==component);parity::render(&PathBuf::from("target/bboxybook"),&cases)?;},
         _=>return Err("usage: bboxybook [gallery | manifest | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
     }

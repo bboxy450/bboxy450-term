@@ -1,0 +1,842 @@
+{
+  "name": "bboxy design system",
+  "version": 22,
+  "date": "2026-10-21",
+  "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
+  "sources": {
+    "tokens": "design/tokens.toml",
+    "style": "design/style.json",
+    "lab": "lab/web/showcase.html",
+    "spec": ".bboxy/specs/ux-prototype.md",
+    "reasoning": ".bboxy/ux-flow.md"
+  },
+  "principles": [
+    "every pixel is precious: no outer padding, 2 px gutters, chrome takes no space it does not use",
+    "one material, one radius scale, one type scale, one spacing grid, one motion curve",
+    "colour means identity only (seat, swarm, role); state is glyph and glow; selection is a tint",
+    "one signal per meaning, one meaning per signal; nothing animates without a cause",
+    "click changes what you see; hover only highlights (panes may take focus on dwell)",
+    "a swarm is a world: its own seats, tabs, shadows, stream, panes",
+    "rows never reorder; nothing in the sidebar moves on focus",
+    "destructive actions are reversible by a window, not a dialog"
+  ],
+  "foundations": {
+    "material": {
+      "ref": "style.material",
+      "frosted": "surface at 78% with 30 px blur and 1.4 saturate for panels; 72% for cards",
+      "edges": "hairline = line at 70%; never a solid border except pane borders (identity)",
+      "highlight": "inset 1 px top highlight at 8% white on panels",
+      "shadow": "only under floating things (panel, pill, ghost); cards and rows cast none"
+    },
+    "radius": {
+      "ref": "style.radius",
+      "panel": 20,
+      "card": 12,
+      "row": 10,
+      "tile": 8,
+      "badge": 6,
+      "pill": 999,
+      "pane": 0
+    },
+    "type": {
+      "ref": "style.type",
+      "family": "system sans; mono for digits, keys, paths",
+      "scale": {
+        "input": 22,
+        "banner": 26,
+        "title": 16,
+        "subtitle": 15,
+        "kind": 14,
+        "body": 13,
+        "row": 12.5,
+        "section": 12,
+        "badge": 12,
+        "caption": 11,
+        "band": 10.5
+      },
+      "weights": {
+        "title": 500,
+        "name": 600,
+        "section": 500,
+        "banner": 600
+      },
+      "band_tracking": ".16em uppercase"
+    },
+    "spacing": {
+      "ref": "style.spacing + tokens.layout",
+      "grid": 8,
+      "gutter": 2,
+      "cohort_gap": 8,
+      "row_height": {
+        "cozy": 24,
+        "compact": 20,
+        "comfortable": 28,
+        "touch": 44
+      },
+      "strip_height": 22,
+      "band_height": 24
+    },
+    "colour": {
+      "ref": "tokens.color",
+      "ground": {
+        "window": "bg",
+        "sidebar": "sidebar (lighter than bg in dark, darker in light)",
+        "card": "surface",
+        "pane": "bg"
+      },
+      "identity": {
+        "seat": "hash of key → 36 hues × 2 lightness bands, operator override",
+        "swarm": "random from key, swatch cycles it",
+        "role": {
+          "oracle": "gold",
+          "executor": "electric",
+          "creativity": "violet",
+          "unsigned": "grey"
+        },
+        "harness_tile": {
+          "claude": "#D97757",
+          "codex": "#1F2937",
+          "pi": "#7C3AED",
+          "omp": "#0EA5E9",
+          "zsh": "#111827"
+        }
+      },
+      "state": {
+        "idle": "grey",
+        "waiting": "amber",
+        "errored": "red",
+        "active": "the seat colour"
+      },
+      "tints": {
+        "selection": "fg 9%",
+        "hover": "fg 6%",
+        "badge": "fg_dim 18%",
+        "badge_selected": "fg_dim 30%"
+      }
+    },
+    "motion": {
+      "ref": "style.motion + tokens.motion",
+      "appear": "160 ms, cubic-bezier(.2,.8,.2,1)",
+      "hover": "120 ms",
+      "waiting_pulse": "1 Hz",
+      "active_breathe": "1.8 s",
+      "ripple": "900 ms expanding ring",
+      "row_bounce": "520 ms scale + outline",
+      "cell_breathe": "1.2 s on a lit preview cell"
+    },
+    "density": {
+      "ref": "tokens.density",
+      "default": "cozy",
+      "scale_reading": "compact for 1000 seats",
+      "touch": "phone"
+    },
+    "theme": {
+      "start": "OS preference",
+      "toggle": "one icon in the title bar: sun in dark, moon in light",
+      "light_glow": "halo darkens toward the seat colour instead of adding light"
+    }
+  },
+  "signals": {
+    "border_glow": {
+      "means": "seat state",
+      "fires": "continuously",
+      "never": "focus, hover, messages",
+      "readings": {
+        "idle": "mild static",
+        "active": "breathing, many particles",
+        "waiting": "amber 1 Hz",
+        "errored": "red static"
+      },
+      "focus": "brighter at every state (×1.6)",
+      "sidebar_budget": "radius 4, 30% alpha, particles only when active, none when idle"
+    },
+    "focus_brightness": {
+      "means": "keyboard focus is here",
+      "fires": "focus",
+      "never": "hover highlight"
+    },
+    "state_glyph": {
+      "means": "seat state",
+      "set": {
+        "active": "●",
+        "idle": "○",
+        "waiting": "◐",
+        "errored": "✕"
+      },
+      "waiting_pulses": true
+    },
+    "locate": {
+      "means": "that one, over there",
+      "row_click": "ring from the pane centre",
+      "pane_click": "row bounces its border",
+      "keyboard": "both",
+      "stage_switch": "fires after the new screen renders",
+      "never": "hover, timers, messages, state change"
+    },
+    "unread_dot": {
+      "means": "a message for this seat is unread",
+      "colour": "highest-priority unread role",
+      "cleared_by": "focus or click",
+      "never": "ripple"
+    },
+    "presence_notice": {
+      "means": "someone muted or unmuted",
+      "where": "centred line in the swarm stream"
+    },
+    "hover": {
+      "means": "pointer is here",
+      "rows": "tint only",
+      "panes": "tint, then dwell focus after 150 ms (blocked 1 s after typing)"
+    },
+    "dim": {
+      "means": "not focused",
+      "panes": "strip and content desaturate 0.10, opacity 0.45, background wash 28%; border keeps the seat colour",
+      "swarms": "same tokens on band and rows; bumper keeps the colour"
+    },
+    "state_grade": {
+      "means": "how sure the state is",
+      "source": "harness-adapters §3: reported | shim | inferred",
+      "drawing": "reported = solid glyph; shim = solid with a thin ring; inferred = hollow or dashed glyph; the glow follows the glyph (inferred glows at half alpha)",
+      "status": "built: grade comes from the harness record's state source (osc7501 → reported, hooks → shim, output cadence → inferred); inferred glows at half"
+    },
+    "waiting_kind": {
+      "means": "what the seat waits for",
+      "source": "OSC 7501: permission | question | auth",
+      "drawing": "three variants of ◐: permission = ◐ with a key dot, question = ◐ with a ?, auth = ◐ with a lock; amber for all; the strip subtitle names the kind",
+      "status": "built: kind from the pane's prompt (Allow → permission, auth/login/token → auth, ? → question); strip title spells it; key 3 cycles it in the demo"
+    },
+    "delivery_evidence": {
+      "means": "how far a message got",
+      "source": "messaging.md: sender-stored, recipient-stored, native-queued, native-written, native-unknown, application-acknowledged",
+      "drawing": "a tick ladder at the right of a message row: ·  ✓  ✓✓  ✓✓✓ for stored → written → acknowledged; unknown is a distinct hollow mark, never red, never a failure",
+      "status": "built: after the time on the row head; sender-stored ·, recipient-stored ✓, native-queued ✓✓ with the second tick at 38%, native-written ✓✓, application-acknowledged ✓✓✓ in accent, native-unknown ✓ then a dashed hollow ring (fg-dim, never red); the tooltip spells the state; tickLadder() in components.js, message-row.html?state=evidence"
+    },
+    "held_count": {
+      "means": "swarm traffic held while muted",
+      "drawing": "muted row shows a small \"held N\" badge; on unmute only still-authorised eligible items release, the rest stay with their reason and original ids, so the badge may not reach zero at once",
+      "status": "built: \"held N\" pill in the seat row's right cluster, amber while muted (tooltip: in/out counts, eligible items release on unmute); after unmute only blocked items stay, as a dashed dim pill whose tooltip lists original id and reason; the unmute stream line says released N, M still held; seat-row.html?state=muted · held"
+    },
+    "restarted_notice": {
+      "means": "the seat process generation changed",
+      "source": "mux-daemon state streams",
+      "drawing": "one-shot \"restarted\" chip on the row for 4 s, then a stream line",
+      "status": "decided (one-shot notice), drawn, not built"
+    },
+    "pending_row": {
+      "means": "the Oracle is spawning this seat",
+      "source": "MCP mutation status accepted | applied | rejected | unknown",
+      "drawing": "a dashed-outline row with a rolled name and a spinner glyph until applied; rejected shows the reason in a closed-strip-like row; partial and unknown stay dashed with the outcome spelled; never turned into a failure, never an automatic second paste or Enter",
+      "status": "drawn, not built"
+    },
+    "interrupt_signal": {
+      "means": "an interrupt was sent",
+      "source": "seat_interrupt → adapter Now/steer; permission belongs to the caller",
+      "drawing": "one-shot \"interrupt sent\" notice on the row and strip; not a promise that the seat stopped; the operator may interrupt any seat they are allowed to act on",
+      "status": "decided, drawn, not built"
+    },
+    "authority": {
+      "means": "this seat's signing authority is not good",
+      "source": "identity.md: expired | revoked | forked",
+      "drawing": "a small struck-key mark after the name and a muted strip subtitle naming the cause; controls that need the seat's signature are disabled with the same reason; independent of the state glyph",
+      "status": "drawn, not built"
+    }
+  },
+  "elements": {
+    "tile": {
+      "purpose": "an icon with an identity",
+      "anatomy": "radius.tile square in the harness colour, white glyph",
+      "sizes": {
+        "launcher": 30,
+        "row": 16
+      },
+      "ref": "LAUNCH[].tile"
+    },
+    "badge": {
+      "purpose": "a number or a key",
+      "anatomy": "radius.badge square, badge tint, mono digits",
+      "uses": [
+        "⌘N on rows and strips",
+        "row numbers in the launcher",
+        "counts on bands"
+      ],
+      "selected": "badge_selected tint"
+    },
+    "kbd": {
+      "purpose": "a key hint",
+      "anatomy": "mono, badge tint, radius 5, inside pills and legends"
+    },
+    "glyph": {
+      "purpose": "seat state",
+      "anatomy": "● ○ ◐ ✕ at density.glyph, coloured by state; active takes the seat colour"
+    },
+    "role_mark": {
+      "purpose": "the seat's role",
+      "anatomy": "♔ oracle ♟ executor ♝ creativity, role colour"
+    },
+    "swatch": {
+      "purpose": "change a colour",
+      "anatomy": "10 px circle in the colour with a white ring; click cycles"
+    },
+    "hairline": {
+      "purpose": "separate without weight",
+      "anatomy": "1 px, line at 70%"
+    },
+    "pill": {
+      "purpose": "floating actions with keys",
+      "anatomy": "radius.pill, panel material, shadow.pill, label · kbd pairs with thin separators"
+    },
+    "crumb": {
+      "purpose": "where you are inside a nested list",
+      "anatomy": "selection-tinted chip with a trailing ›, before the input"
+    },
+    "chevron": {
+      "purpose": "this row opens",
+      "anatomy": "› at the right edge of a parent row, replacing the number"
+    },
+    "band": {
+      "purpose": "name a swarm",
+      "anatomy": "24 px gloss band in the swarm colour, tracked uppercase, count, swatch; set into the card top",
+      "hover": "lightens its own colour, never white"
+    },
+    "bumper": {
+      "purpose": "carry the swarm colour at the bottom",
+      "anatomy": "4 px solid strip, 3 px when shut"
+    },
+    "close_dot": {
+      "purpose": "close a seat",
+      "anatomy": "macOS red dot at the left of the strip; greys when unfocused; × on hover"
+    },
+    "mute_toggle": {
+      "purpose": "mute or unmute a seat",
+      "anatomy": "speaker icon in the strip before the glyph; lit amber when muted"
+    },
+    "muted_mark": {
+      "purpose": "this seat is muted",
+      "anatomy": "small amber muted icon after the name; name at 70%"
+    },
+    "mini_grid": {
+      "purpose": "the split tree of a tab",
+      "anatomy": "nested cells with real ratios; focused cell accent; waiting and errored cells tinted; single-seat tabs show none",
+      "large": "launcher banner, phone home"
+    },
+    "ghost": {
+      "purpose": "what is being dragged",
+      "anatomy": "pill with the seat name in the seat colour following the pointer"
+    },
+    "drop_zone": {
+      "purpose": "where a drop will split",
+      "anatomy": "the hovered half of a pane tinted with selection; also used by ⌘D previews (breathing)"
+    },
+    "divider": {
+      "purpose": "resize a split",
+      "anatomy": "the 2 px gutter with an 8 px grab zone; col/row-resize cursor; nothing drawn"
+    },
+    "cursor": {
+      "purpose": "typing lands here",
+      "anatomy": "block cursor at the end of the focused pane's text, blinking 1 Hz; static elsewhere"
+    },
+    "gap_marker": {
+      "purpose": "scrollback was evicted here",
+      "source": "ring eviction",
+      "anatomy": "a hairline across the pane body with a centred caption built from the supplied retained range (\"retained from <range>\" or \"earlier output unavailable\"); never an invented line count",
+      "status": "built: at the top of the retained output in the pane body, two hairlines around a mono caption, \"earlier output evicted · retained from <range.from>\" or \"earlier output unavailable\"; the tooltip may add the supplied record id; gapMarker() in components.js, pane.html?state=gap · retained"
+    },
+    "stop_action": {
+      "purpose": "interrupt the seat",
+      "source": "seat_interrupt, Oracle/operator only",
+      "anatomy": "a square stop glyph in the strip next to the mute toggle; hidden for worker roles",
+      "status": "drawn, not built"
+    },
+    "listener_count": {
+      "purpose": "external clients on the seat socket",
+      "source": "seats are sockets",
+      "anatomy": "a tiny plug glyph with a count at the row's right when > 0",
+      "status": "decided (broker telemetry, counts only, no identities), drawn, not built"
+    },
+    "tick_ladder": {
+      "purpose": "delivery evidence on a message",
+      "anatomy": "see signals.delivery_evidence",
+      "status": "built (see signals.delivery_evidence)"
+    },
+    "where_mark": {
+      "purpose": "where the seat runs",
+      "anatomy": "a prefix before the harness tile on rows and strips: cloud glyph for cloud seats, server glyph for ssh seats, nothing for local; tooltip names the host",
+      "status": "built"
+    },
+    "bug_row": {
+      "purpose": "a bug work item under its seat or in the tree",
+      "source": "work-items.md item type bug",
+      "anatomy": "task row anatomy with a red bug glyph (⬣) instead of the status glyph and a \"breaks <invariant>\" link when a violates link exists",
+      "status": "drawn, not built"
+    },
+    "invariant_chip": {
+      "purpose": "name the invariant a spec or task binds, or a bug breaks",
+      "source": "work-items.md item type invariant; typed links violates / constrains",
+      "anatomy": "a small outlined chip \"inv · <title>\" on spec and task lines (constrains) and a red one on bug lines (violates); in the graph tree an invariant is its own line with the items it binds beneath",
+      "status": "drawn, not built"
+    },
+    "artifact_row": {
+      "purpose": "a provenance leaf under its task",
+      "source": "work-items.md Artifacts (type artifact: kind, ref, digest, produced_by, for, derived_from)",
+      "anatomy": "indented under the task row: kind glyph (▤ markdown ⎇ pr ▣ binary ▢ file ▧ image ◆ release) · KIND chip · ref in mono · short digest · responsible-seat chip",
+      "status": "built"
+    },
+    "responsible_chip": {
+      "purpose": "which seat claimed responsibility for an artifact",
+      "source": "artifact_claim",
+      "anatomy": "outlined pill with the seat's first name in the seat colour; absent on unclaimed (auto-created) records",
+      "status": "built"
+    },
+    "touched_count": {
+      "purpose": "how many artifacts a seat has touched",
+      "source": "terminal-detected artifact events attributed to the seat",
+      "anatomy": "small archive glyph + count badge on the seat row, before the unread dot",
+      "status": "built"
+    },
+    "wikilink_chip": {
+      "purpose": "a rendered wikilink with its relation and weight",
+      "source": "provenance.md: [[slug]], [[slug|display]], [[slug]]{rel:w}",
+      "anatomy": "a two-part chip: slug or display in accent on the left, the relation badge (and weight) in mono on the right; relation colours: derives accent, constrains amber, violates red; the pure forms render without the badge",
+      "status": "built"
+    }
+  },
+  "modules": {
+    "title_bar": {
+      "purpose": "the window's one set of controls",
+      "anatomy": "three window dots · sidebar toggle · portrait mark · app name · crumb (swarm · seat) · spacer · theme icon",
+      "material": "panel material, hairline below, 38 px",
+      "rules": [
+        "no second set of dots anywhere",
+        "one theme icon, no label, no cycle"
+      ]
+    },
+    "sidebar": {
+      "purpose": "the map",
+      "anatomy": "swarm cards stacked, new-swarm button, stream dock at the bottom",
+      "ground": "colour.ground.sidebar",
+      "width": "drag the right edge, 160–520, persisted",
+      "rules": [
+        "no footer row",
+        "no space dots",
+        "nothing moves on focus"
+      ]
+    },
+    "swarm_card": {
+      "purpose": "one world",
+      "anatomy": "card material · band · tab rows · seat rows · closed strips · new-seat row · Shadows group · bumper",
+      "states": {
+        "open": "shows its rows",
+        "shut": "band only, roll-up glyphs worst-first (max 6), waiting badge",
+        "focused": "full contrast",
+        "unfocused": "dim tokens, bumper keeps colour"
+      },
+      "rules": [
+        "band click toggles open/shut only",
+        "focus never opens or shuts",
+        "several may be open",
+        "8 px apart",
+        "double-click the band renames; a new swarm is born with its name field open"
+      ]
+    },
+    "seat_row": {
+      "purpose": "one seat on the map",
+      "anatomy": "tile · name (seat colour) · role mark · muted mark · title · ⌘N badge · glyph",
+      "height": "density.row_h",
+      "states": [
+        "focused: selection tint",
+        "hover: hover tint",
+        "muted",
+        "phantom: grey, no pane"
+      ],
+      "rules": [
+        "never reorders",
+        "click focuses and locates its pane",
+        "drag onto a pane splits",
+        "hover never focuses"
+      ]
+    },
+    "tab_row": {
+      "purpose": "one tab of a swarm",
+      "anatomy": "name · roll-up glyphs when collapsed · ⌘N badge · mini-grid",
+      "rules": [
+        "single-seat tabs render as their seat row with no grid"
+      ]
+    },
+    "new_seat_row": {
+      "purpose": "launch into this swarm",
+      "anatomy": "+ new seat · ⌘T badge; last seat row of every open swarm",
+      "rules": [
+        "present in every open swarm so nothing jiggles"
+      ]
+    },
+    "closed_strip": {
+      "purpose": "a seat in grace after close",
+      "anatomy": "× · grey tile · struck name · countdown · undo ⌘Z",
+      "rules": [
+        "60 s grace",
+        "undo or ⌘Z restores in place with its split position; undo may come back expired, process-replaced or layout-conflict and says so",
+        "no confirm dialog",
+        "after the window only the live pane is gone: retained history survives; archive / resume UX is an open pick"
+      ]
+    },
+    "shadows_group": {
+      "purpose": "other people's harnesses in this swarm's channels",
+      "anatomy": "section label Shadows · grey seat rows with state glyph and grey breathing glow",
+      "rules": [
+        "no pane, no logs",
+        "click filters the stream",
+        "never focus, never ripple",
+        "a message pulses the row once"
+      ],
+      "status": "deferred with global messaging; module kept"
+    },
+    "new_swarm_button": {
+      "purpose": "create a world",
+      "anatomy": "card-shaped 40 px button, + new swarm",
+      "rules": [
+        "the only creator",
+        "new swarm starts with one zsh seat and opens its name field"
+      ]
+    },
+    "stream_dock": {
+      "purpose": "this swarm's messages",
+      "anatomy": "last four messages as rows (role rail · <ROLE> · text · time · unread dot) and centred presence notices; filter chip when a shadow is selected",
+      "rules": [
+        "hidden until the first message",
+        "foreign Oracle gets no priority chip",
+        "messages never ripple"
+      ]
+    },
+    "pane": {
+      "purpose": "a seat's screen",
+      "anatomy": "strip · body · border in the seat colour",
+      "states": {
+        "focused": "full contrast, blinking cursor, glow boosted",
+        "unfocused": "dim tokens",
+        "will-split": "target half breathes in accent"
+      },
+      "rules": [
+        "square corners, 2 px apart",
+        "hover dwell focuses after 150 ms",
+        "click focuses and bounces its row",
+        "drag by the strip to move"
+      ]
+    },
+    "title_strip": {
+      "purpose": "name the pane",
+      "anatomy": "22 px in the seat colour: close dot · tile-less harness icon · name · role mark · title · ⌘N badge · mute toggle · glyph",
+      "rules": [
+        "names never wrap",
+        "same drawing as the row so the mapping is instant"
+      ]
+    },
+    "launcher": {
+      "see": "modules.modal"
+    },
+    "banner": {
+      "purpose": "say what the launcher will do",
+      "anatomy": "panel material above the modal: large diagram · big title · subtitle",
+      "variants": {
+        "split": "real pane layout with the new cell breathing: Split right / Split down · of <seat>",
+        "new_tab": "the swarm's tab strip with a new lit tab: New tab · in <swarm>"
+      }
+    },
+    "glow_canvas": {
+      "purpose": "all border glow and ripples",
+      "anatomy": "one full-window WebGL2 pass above the DOM, premultiplied alpha, zero layout space",
+      "budget": "evaluate only rects whose halo reaches the pixel; sidebar rows on a smaller budget"
+    },
+    "reconnect_overlay": {
+      "purpose": "the GUI lost the daemon",
+      "source": "mux-daemon state streams",
+      "anatomy": "the stale frame stays, dimmed with the dim tokens, under a centred pill \"reconnecting…\" with a spinner; the glow freezes; on reconnect the frame redraws and the pill fades",
+      "rules": [
+        "never blank the pane",
+        "no modal"
+      ],
+      "status": "drawn, not built"
+    },
+    "row_menu": {
+      "purpose": "per-seat actions that are not worth a strip icon",
+      "anatomy": "right-click or ⌘-click a row: Assign role ▸, Permissions ▸, Copy socket path, Mute/Unmute, Interrupt, Close",
+      "rules": [
+        "Oracle/operator only for role, permissions, interrupt",
+        "interrupt permission belongs to the acting caller, not the target"
+      ],
+      "status": "drawn, not built"
+    },
+    "launcher_cap_notice": {
+      "purpose": "spawn cap per swarm reached",
+      "anatomy": "launch rows dim and the banner subtitle names which cap (swarm, machine or account; reserved, starting and grace processes count); template launches may land partial or unknown and say so; reconnect never respawns",
+      "status": "drawn, not built"
+    },
+    "purge_modal": {
+      "purpose": "skip grace, terminate, and move the seat's ring, checkpoints and events to cold storage (never delete)",
+      "source": "mcp-control-plane purge decision (GUI only, never MCP) + storage.md never-delete",
+      "anatomy": "the launcher material, red title \"Purge seat\", the seat name must be typed to enable the button; subtext \"terminates now and moves its history to cold storage · nothing is deleted\"",
+      "rules": [
+        "the one place a confirm dialog exists, because it ends the process without grace",
+        "the word delete never appears"
+      ],
+      "status": "drawn, not built"
+    },
+    "audit_lines": {
+      "purpose": "the Oracle's actions in the open",
+      "source": "Oracle audit log as a stream kind",
+      "anatomy": "centred lines in the swarm stream like presence notices: \"Oracle spawned X\", \"Oracle closed X\", \"Oracle interrupted X\"",
+      "status": "decided: a projection of the audit log scoped to swarm members; drawn, not built"
+    },
+    "first_run": {
+      "purpose": "identity bootstrap",
+      "source": "identity.md §bootstrap (I2 accepted)",
+      "anatomy": "one screen in the launcher material: the secret keys found in the GnuPG keyring (uid, full fingerprint, expiry, algorithm); select one; pin it by signing the bootstrap record through gpg-agent (pinentry, never our field); then the window. No key is created, no words are shown as a root; if no key exists the screen points at gpg to make one.",
+      "deferred": [
+        "device enrollment flows",
+        "Google linking"
+      ],
+      "status": "drawn, not built"
+    },
+    "settings_tab": {
+      "purpose": "settings, as a tab in the current swarm",
+      "opens_from": [
+        "⌘,",
+        "Settings row in the launcher (with a section sublist)"
+      ],
+      "anatomy": "pane with a strip (gear, Settings, config.toml, ⌘,) · left nav (search + sections) · cards in the card material",
+      "sections": {
+        "Account": "portrait · name · signed-in pill · ed25519 fingerprint · email · Sign in with Google · Show paper recovery · enrolled devices · enroll a device",
+        "Cloud": "provider rows with region and a connect toggle",
+        "Machines": "ssh hosts from ~/.ssh/config with user@host and key",
+        "Roles": "one card per role: default system prompt (textarea), may-send-to (terminal-enforced)",
+        "Harnesses": "one card per harness: default role, wake method, hooks",
+        "Appearance": "theme, density, gutter, glow, subtitle",
+        "Shortcuts": "the key table"
+      },
+      "rules": [
+        "read-mostly: values come from config.toml; a changed row shows the accent dot and a reset",
+        "closing the tab needs no grace",
+        "Google sign-in and device enrollment are real buttons with deferred flows (cloud)"
+      ],
+      "status": "built (designer pass 2026-10-21): hero, subkeys, signatures, provider tiles, machine rows, role cards with class, harness tiles, appearance previews; appearance applies live",
+      "identity_rules": [
+        "the app never holds or exports the primary secret: no create-root-key, no export; point at gpg",
+        "device enrollment copes with the primary being elsewhere: it produces a signed request, it never pretends",
+        "unlock is pinentry and the gpg-agent cache; no password field of ours, no remember-password",
+        "revocation wording: revoked here, peers learn on next contact; never revoked everywhere",
+        "recovery restores identity only; seats, history and grants are not recovered by the key",
+        "the fingerprint is the full 40 hex grouped in 4s; a short id is never the identity",
+        "messages and presence are signed by leaf keys; signed by Boxy means the chain verifies to Boxy's key",
+        "Google is a link for cloud, drawn as a link, never a sign-in",
+        "per-seat commit signing is assumed, not decided: switchable, default off",
+        "devices and seats are certified leaf keys, not subkeys",
+        "expired, revoked or forked authority blocks controls and messages on its own axis, apart from seat state",
+        "a revocation certificate revokes, never restores; recovery needs the protected GPG secret backup or an external paperkey plus its matching public certificate, and restores identity only",
+        "attribution proves the signing chain to the pinned primary, never which model authored the content and never a permission to execute it",
+        "authority can be cached as available while the primary is offline; enrollment may stay awaiting the primary signature"
+      ],
+      "account": "hero: portrait beside the key block; full fingerprint large in mono; ed25519 · signing chip; unlocked · gpg-agent cache; uid line; copy fingerprint; trust path GPG primary → certified device key → certified seat key; primary held by gpg-agent · pinned from your keyring · never exported; device cards are certified leaf keys with revoke (local; peers learn on next contact); enroll card produces a signed request when the primary is elsewhere; Signatures card; Link Google for cloud as a link; paper recovery = the GPG paperkey fallback with the identity-only caption",
+      "roles": "per account, assigned per seat in any swarm; built-in oracle / executor / creativity chipped built-in, editable, not deletable; + new role card: name, colour, mark, default system prompt, may-send-to, priority class (oracle | worker) editable on every card with the caption \"changing class re-issues this role's seat grants\"; receivers trust the signed class, never the name",
+      "harnesses": "built-in tiles chipped built-in; + new harness tile: name, command, tile colour, icon, default role (built-in + custom), wake method (default pty), state source (default output cadence), hooks; user-added harnesses run through the generic PTY adapter and appear in the launcher; the Wake row of a custom or draft tile on pty spells the input guard: hooks off → 'never submits on its own' (operator handoff, harness-adapters R7), hooks on → 'types after an idle hook'",
+      "appearance": "theme as window thumbnails, density as four row previews at real heights, gutter segmented 2 / 4, glow and subtitle toggles; all apply live"
+    },
+    "nested_subagent_rows": {
+      "purpose": "a harness's subagents under its seat row",
+      "source": "OSC 7501 (Claude) / hooks (Codex)",
+      "anatomy": "optional per harness: indented rows with description and working/idle glyph; absent when the harness gives nothing",
+      "status": "built: running only (active, waiting) under the seat row and before its tasks; branch hairline, glyph in the parent seat colour, description, mono detail; grade from the source (7501 reported for Claude, hooks shim for Codex); waiting carries its kind mark; past 8 shows 7 and +N running; ended subagents leave; subagentRows() in components.js, seat-row.html?state=subagents · claude"
+    },
+    "task_row": {
+      "purpose": "a delegated work item under its seat",
+      "source": "work-items.md + task_delegate",
+      "anatomy": "indented under the seat row: status glyph (○ open ◔ claimed ◑ running ◕ reported ● accepted ✓ done ✕ rejected ⊘ blocked) · title · \"waits on X\" when blocked · accept pill when reported (Oracle/operator) · status chip in mono",
+      "rules": [
+        "statuses are the frontmatter statuses; the file is the contract",
+        "rows never reorder",
+        "a task also writes a line in the swarm stream on delegate, each status change and accept"
+      ],
+      "status": "built"
+    },
+    "epic_group": {
+      "purpose": "an epic and its specs and tasks in the swarm stream dock",
+      "source": "work-items.md",
+      "anatomy": "collapsible header: caret · EPIC chip · title · done/total; lines: status glyph · kind chip (spec | task) · title · assignee · \"waits on X\" when blocked",
+      "rules": [
+        "shut by default once accepted; open while work is live",
+        "blocked shows its dependency",
+        "never deletes an item: done and rejected are states"
+      ],
+      "status": "built"
+    },
+    "graph_tab": {
+      "purpose": "who is on what, and the work tree, generated from seats and work items",
+      "opens_from": [
+        "⌘G",
+        "Graph row in the launcher (aliases who, status, board)"
+      ],
+      "anatomy": "Agents card: seat (tile · name in seat colour · state glyph) · role · now (live task with its status glyph, or the seat state and waiting kind) · blocked on; Graph card: epics with done/total, then ├─ └─ branches of specs and tasks with status glyph, kind chip, title, assignee, and ◀ waits on X for dependencies; Artifact history card: last twelve events newest first (time · seat in its colour · created / modified / claimed · kind glyph · ref · grade reported | inferred)",
+      "rules": [
+        "read-only projection of the same data the dock and the rows use",
+        "the Oracle's graph.md is the hand-kept version of this; the terminal generates it from frontmatter",
+        "rows link to seats (click focuses later)",
+        "artifacts hang under their task in the tree as ├─ leaves with the responsible chip"
+      ],
+      "status": "built"
+    },
+    "provenance_card": {
+      "purpose": "where an item came from and who touched it, with proof",
+      "source": "provenance.md",
+      "anatomy": "in the Graph tab: per item: kind chip · title · created by / updated by in seat colours; derived from as annotated wikilink chips; digest pair as a short content hash with ✓ signed · by whom or unsigned; then the activity log from .bboxy/log/ as hash-chained lines (chain prefix · time · text) with the daily checkpoint line in green naming its signer",
+      "rules": [
+        "signed by the operator primary now, device key later",
+        "a missing signature reads unsigned, never broken",
+        "the provenance graph is the sixth graph; this card is its per-item view"
+      ],
+      "status": "built"
+    },
+    "subscriptions_card": {
+      "purpose": "what each seat listens to on the bus",
+      "source": "events.md: subscriptions by pattern; delegated seats auto-follow their task doc and its derived_from docs; the Oracle follows every task it delegated",
+      "anatomy": "in the Graph tab: seat in its colour · pattern chips in mono (task/*, seat/*/state, doc/specs/**, artifact/*/for:…); auto-subscriptions carry an AUTO badge and a tooltip naming why",
+      "status": "built"
+    },
+    "external_lane": {
+      "purpose": "events from outside the swarm in the stream",
+      "source": "events.md external producers: GitHub webhooks, CI, cloud providers, cron, operator webhooks",
+      "anatomy": "collapsible lane at the bottom of the stream dock: EXTERNAL chip · count; lines with a source chip (github, ci, cloud, cron, webhook in their colours) · text · time; newest first, five shown",
+      "rules": [
+        "external lines never ripple or focus",
+        "the source chip is the only colour; text stays in the stream type"
+      ],
+      "status": "built"
+    }
+  },
+  "modal": {
+    "name": "launcher",
+    "purpose": "one place to launch, place and go: harnesses and shells now, browser tabs, vnc and ssh later",
+    "opens_from": {
+      "⌘T": "new tab (banner: tab strip)",
+      "⌘D": "split right of the focused seat (banner: layout)",
+      "⌘⇧D": "split below (banner: layout)",
+      "+ new seat row": "new tab in that swarm"
+    },
+    "anatomy": [
+      "backdrop: window dimmed 35% and blurred 14 px",
+      "banner above the panel",
+      "panel: 760 px, radius.panel, panel material, shadow.floating, hairline ring, inner highlight, appears in 160 ms",
+      "input row: crumbs · 22 px search field",
+      "sections: 12 px medium muted labels",
+      "rows: tile · title · subtitle · kind · number badge or chevron",
+      "footer: colour swatch · rolled name · reroll · action pill"
+    ],
+    "rows": {
+      "launchable": "a harness or shell; Enter launches with the default placement; → opens its placements",
+      "placement": "New tab / Split right / Split down under a launchable",
+      "goto": "a parent row opening to every seat and swarm",
+      "seat": "name · swarm · title; Enter focuses with locate",
+      "swarm": "name · seat count in the swarm colour; Enter opens and jumps",
+      "remote": "SSH ▸ machine (from ~/.ssh/config) ▸ harness ▸ placement; Cloud ▸ region ▸ harness ▸ placement; the launched seat carries where + host"
+    },
+    "keyboard": {
+      "↑↓": "move, wrapping",
+      "→": "dive into a parent",
+      "←": "climb out when the field is empty",
+      "Backspace": "climb out when the field is empty",
+      "↵": "pick; on a parent without a default, dive",
+      "⌥↵": "new tab instead of the preset split",
+      "⌘↵": "split right",
+      "⌘⇧↵": "split down",
+      "⌘R": "reroll the name",
+      "1-9": "pick the nth visible row when the field is empty",
+      "Esc": "climb out, then close",
+      "click outside": "close"
+    },
+    "typing": {
+      "filter": "label prefix, any word, subtitle, id",
+      "flatten": "\"<parent> <rest>\" filters inside the parent: goto nyx, go nyx, codex split, ssh codex, cloud claude, ssh rig codex",
+      "aliases": {
+        "Go to": [
+          "goto",
+          "go",
+          "jump"
+        ],
+        "harness rows": [
+          "their harness id"
+        ]
+      }
+    },
+    "rules": [
+      "the banner says what will happen before Enter; with a split preset the target half of the pane behind breathes too",
+      "the chosen seat is placed, focused, located, and its cursor blinks; the native app warps the pointer to the pane centre",
+      "rows are data: adding a launchable or a destination is a row, not new UI",
+      "demo keys (1-4, M, P) are suspended while the modal is open",
+      "the list never scrolls the window; the panel scrolls",
+      "the name is rolled from the fantasy / sci-fi / furry pools; reroll never changes the choice"
+    ],
+    "matching": {
+      "purpose": "typing finds the thing you mean, not the string you typed",
+      "tiers": [
+        "1 prefix: label words and aliases (goto, go, jump; harness ids)",
+        "2 facets: every item carries tags; seats carry harness, where (local|ssh|cloud), host, role, state, swarm, muted; \"codex\", \"ssh\", \"cloud\", \"oracle\", \"waiting\" filter Go to by facet",
+        "3 subtitle substring",
+        "4 fuzzy: subsequence on the label for words of 3+ letters (\"nyxc\" → Nyx Copperwing)",
+        "5 semantic (real app only): the Jev encoder embeds every row (label + subtitle + tags) once and the query per keystroke; cosine over 384-d vectors; rows above 0.55 join the list below the lexical tiers; also re-ranks ties"
+      ],
+      "words": "typed words are ANDed: \"codex ssh\" = Codex seats over ssh; a word that names a parent descends instead (ssh rig codex)",
+      "ranking": "tier of the first word, then original order; the list never jumps on a keystroke beyond what the tier change requires",
+      "jev": {
+        "what": "the local small neural encoder ICQ ships for `icq how`: pocket-encoder/minilm-l3-q4-g32-v1, 384 dimensions, attention-masked mean pooling, L2 normalised, 128 tokens, no daemon, no network, no download",
+        "use_in_launcher": "embed each row text once when the list is built (seats change rarely); embed the query on each keystroke after a 40 ms debounce; cosine against all rows; merge with lexical tiers by reciprocal rank fusion; show at most 5 semantic-only rows under a \"Related\" section so lexical hits stay on top",
+        "use_elsewhere": [
+          "Go to by meaning: \"the one doing the gpu research\" → Rook",
+          "stream search: find messages by meaning across a swarm",
+          "command palette later: verbs by meaning (\"shut this\" → close seat)",
+          "sidebar Shadows and stream ordering by relevance to the focused seat, opt-in"
+        ],
+        "limits": "queries over 128 tokens truncate; names from the fantasy / sci-fi / furry pools are out of vocabulary for the encoder, so names stay lexical (tier 1) and semantic covers titles, roles, states and messages",
+        "cost": "one forward pass per keystroke on a 3-layer MiniLM; sub-millisecond on M-series; rows cached",
+        "not_in_web_demo": true,
+        "ordering": {
+          "what": "with an empty field, rows are ordered by closeness to the context, not by a fixed list",
+          "context_vector": "the focused seat (name, title, harness, role, state, where), the swarm name, the last three launcher picks, the last three stream messages, and the time since the seat last changed state; embedded as one short text, refreshed when any of those change",
+          "suggestions_section": "the top three rows by cosine to the context vector become the Suggestions section; the rest keep their section order; a row never moves within its section on a keystroke",
+          "examples": [
+            "focused seat is a waiting Codex over ssh → Suggestions: Go to ▸ that seat, SSH ▸ rig ▸ Codex, Split right",
+            "last three picks were cloud launches → Cloud rises above SSH",
+            "stream is full of gpu talk → the gpu-research seat rises in Go to"
+          ],
+          "with_a_query": "lexical tiers decide membership; Jev breaks ties inside a tier and orders the Related section",
+          "frequency_is_not_jev": "plain counts order placements (if you mostly split right, Split right is first); Jev orders by meaning, counts order by habit; counts win inside a tier when both apply",
+          "never": "reorder while the user is holding a key or within 300 ms of the last keystroke; reorder rows the user can reach by number keys without re-numbering them"
+        }
+      }
+    }
+  },
+  "interactions": {
+    "focus": "click a row or a pane; Tab / Shift+Tab across panes; arrow keys move to the nearest pane in that direction (⌘⌥ arrows while typing, plain arrows otherwise); pane dwell 150 ms; a seat in another tab or swarm switches the stage; open/shut of swarms is separate",
+    "locate": "directional: row click → pane ring; pane click → row bounce; keyboard → both; after a stage switch too",
+    "split": "launcher ⌘↵ / ⌘⇧↵, ⌘D / ⌘⇧D presets, placements sublist, or drag a row or strip onto a pane half (50/50); dragged seats move",
+    "resize": "sidebar edge 160–520 px; any gutter 10–90%",
+    "close": "red dot → 60 s grace strip → undo / ⌘Z restores in place; then gone",
+    "mute": "⌘M or strip toggle; muted mark; presence notices on mute and unmute",
+    "rename_swarm": "double-click the band; Enter commits, Escape cancels",
+    "recolour_swarm": "click the swatch",
+    "message": "unread dot on the row; stream dock; shadow pulse once",
+    "theme": "one icon flips light and dark; OS sets the start",
+    "assign_role": "row menu, Oracle/operator; the role mark changes in place",
+    "permissions": "row menu, Oracle/operator; which channels and DMs the seat may send to",
+    "copy_socket_path": "row menu; seats are sockets",
+    "interrupt": "stop action in the strip or row menu; Oracle/operator; interrupt signal",
+    "purge": "GUI-only modal, typed seat name"
+  },
+  "gaps": [
+    "settings page and toolbar icon exist as lab pages, not wired into the showcase",
+    "the lab cannot warp the OS pointer; native only",
+    "17 spec implications are drawn in this file with status \"drawn, not built\"; each is one lab pass",
+    "machine and region lists are demo values; the real app reads ~/.ssh/config and the cloud account"
+  ],
+  "milestones": {
+    "ux-prototype-v1": "b7538ed · first operator review",
+    "ux-prototype-v2": "implementation starting point: settings, launcher nesting, splits, remote, mute, grace close, glyph family, design system v9"
+  },
+  "mcp_note": "worker-class seats have four MCP tools (self_status, message_send, message_status, operation_get); seeing or steering other seats needs delegated oracle-class authority; the UI draws nothing that implies more"
+}
