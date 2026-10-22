@@ -6,6 +6,7 @@ pub struct TextStyle {
     pub size: f32,
     pub weight: u16,
     pub mono: bool,
+    pub italic: bool,
     pub tracking_em: f32,
 }
 impl TextStyle {
@@ -14,6 +15,7 @@ impl TextStyle {
             size: density.tokens().font as f32,
             weight: 400,
             mono: false,
+            italic: false,
             tracking_em: 0.0,
         }
     }

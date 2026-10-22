@@ -350,6 +350,8 @@ pub struct Text {
     /// CSS .ui-text line-height, pending a named design token.
     pub line_height: f32,
     pub mono: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub italic: bool,
     pub uppercase: bool,
 }
 impl Default for Text {
@@ -362,6 +364,7 @@ impl Default for Text {
             tracking_em: 0.,
             line_height: 1.35,
             mono: false,
+            italic: false,
             uppercase: false,
         }
     }
@@ -533,6 +536,7 @@ impl Style {
                 tracking_em: base.text.tracking_em,
                 line_height: base.text.line_height,
                 mono: base.text.mono,
+                italic: base.text.italic,
                 uppercase: base.text.uppercase,
             },
             opacity,
@@ -597,6 +601,8 @@ pub struct ResolvedText {
     pub tracking_em: f32,
     pub line_height: f32,
     pub mono: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub italic: bool,
     pub uppercase: bool,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -886,4 +892,8 @@ fn positioned_shadow(
         blur,
         color,
     }))
+}
+
+fn is_false(value: &bool) -> bool {
+    !value
 }

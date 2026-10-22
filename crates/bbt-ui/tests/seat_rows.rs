@@ -108,6 +108,7 @@ fn seat_identity_authority_and_activity_stay_independent_when_name_shrinks() {
                     size: 12.5,
                     weight: 600,
                     mono: false,
+                    italic: false,
                     tracking_em: 0.
                 }
             )

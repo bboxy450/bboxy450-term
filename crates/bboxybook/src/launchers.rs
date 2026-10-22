@@ -232,6 +232,7 @@ fn banner_range(names: &BTreeMap<&str, &c::Layout>, key: &str) -> Option<(Rect, 
             size: first.style.size,
             weight: first.style.weight,
             mono: first.style.mono,
+            italic: first.style.italic,
             tracking_em: first.style.tracking_em,
         })
         .map(f32::round);

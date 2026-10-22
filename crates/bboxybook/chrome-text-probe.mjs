@@ -40,6 +40,7 @@ for (const mono of [false, true]) for (const weight of [400, 500, 600, 700]) {
       text: 'Hamburgefonts 0123 AV fi', id: phases.length});
   }
 }
+const italic = raw.map(c => ({...c, italic: true}));
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'bboxy-raster-'));
 const browser = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
@@ -90,7 +91,7 @@ try {
   await call('DOM.enable');
   await call('CSS.enable');
   const platformFonts = [];
-  for (const [prefix, cases] of [['', raw], ['palette-', palette], ['phase-', phases]]) {
+  for (const [prefix, cases] of [['', raw], ['palette-', palette], ['phase-', phases], ['italic-', italic]]) {
     const height = Math.ceil(cases.length / 4) * 48;
     for (const scale of [1, 2]) {
       await call('Emulation.setDeviceMetricsOverride', {width: 1360, height,
@@ -106,7 +107,7 @@ try {
           cell.style.cssText = 'left:' + ((c.id % 4) * 340) + 'px;top:' + (Math.floor(c.id / 4) * 48) + 'px;background:' + c.bg;
           const text = document.createElement('span');
           text.className = 'text'; text.id = 's' + c.id;
-          text.style.cssText = 'left:' + (8 + c.phase) + 'px;color:' + c.fg + ';font-family:' + (c.mono ? fonts.mono : fonts.chrome) + ';font-size:' + c.size + 'px;font-weight:' + c.weight;
+          text.style.cssText = 'left:' + (8 + c.phase) + 'px;color:' + c.fg + ';font-family:' + (c.mono ? fonts.mono : fonts.chrome) + ';font-size:' + c.size + 'px;font-weight:' + c.weight + ';font-style:' + (c.italic ? 'italic' : 'normal');
           text.append(document.createTextNode(c.text));
           const baseline = document.createElement('i');
           baseline.className = 'base'; text.append(baseline);
@@ -124,11 +125,11 @@ try {
         clip: {x: 0, y: 0, width: 1360, height, scale: 1}});
       await fs.writeFile(path.join(out, `${prefix}web-${scale}x.png`), Buffer.from(shot.data, 'base64'));
       await fs.writeFile(path.join(out, `${prefix}cases-${scale}x.json`), JSON.stringify(measurements, null, 2));
-      if (!prefix) {
+      if (!prefix || prefix === 'italic-') {
         const doc = await call('DOM.getDocument');
         for (const index of [0, 24, 48, 72, 96, 120, 144, 168]) {
           const node = await call('DOM.querySelector', {nodeId: doc.root.nodeId, selector: '#s' + index});
-          platformFonts.push({scale, id: index,
+          platformFonts.push({scale, kind: prefix || 'raw', id: index,
             ...await call('CSS.getPlatformFontsForNode', {nodeId: node.nodeId})});
         }
       }
@@ -138,7 +139,7 @@ try {
     fonts: platformFonts, token_sha256: createHash('sha256').update(source).digest('hex'),
     font_families: tokens.font, profile: 'isolated ephemeral', errors}, null, 2));
   if (errors.length) throw Error(`${errors.length} browser exceptions`);
-  console.log('Captured raw 192 + palette 96 + fractional-origin 64 cases at 1x and 2x; zero exceptions');
+  console.log('Captured raw 192 + palette 96 + fractional-origin 64 + italic 192 cases at 1x and 2x; zero exceptions');
 } finally {
   if (ws) ws.close();
   browser.kill('SIGTERM');

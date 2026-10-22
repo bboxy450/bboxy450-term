@@ -99,6 +99,7 @@ pub struct TextStyle {
     pub scale: TypeScale,
     pub weight: u16,
     pub mono: bool,
+    pub italic: bool,
     pub tracking_em: f32,
     pub uppercase: bool,
 }
@@ -108,6 +109,7 @@ impl Default for TextStyle {
             scale: TypeScale::Body,
             weight: 400,
             mono: false,
+            italic: false,
             tracking_em: 0.0,
             uppercase: false,
         }

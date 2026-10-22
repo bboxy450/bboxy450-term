@@ -17,7 +17,7 @@ fn main() -> bboxybook::Result<()> {
     );
     let mut renderer = ChromeRenderer::new(vec![])?;
     let mut results = vec![];
-    for prefix in ["", "palette-", "phase-"] {
+    for prefix in ["", "palette-", "phase-", "italic-"] {
         for scale in [1u32, 2] {
             let cases: Vec<Value> = serde_json::from_slice(&fs::read(
                 out.join(format!("{prefix}cases-{scale}x.json")),
@@ -33,6 +33,7 @@ fn main() -> bboxybook::Result<()> {
                     scale: TypeScale::Custom(n("size")),
                     weight: n("weight") as u16,
                     mono: case["mono"] == true,
+                    italic: case["italic"] == true,
                     ..Default::default()
                 };
                 let text = case["text"].as_str().unwrap();

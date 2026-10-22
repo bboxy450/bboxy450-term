@@ -1,0 +1,73 @@
+W3.2d.7.7 prerequisite — italic text, before Flow and StreamDock
+Oracle authorization:71048fd8-1e65-45de-b2c5-8c4c9f1498b4.
+Host measured 2026-10-22: macOS27.0.1, Apple M4/Metal, Chrome156.0.8078.48.
+
+Mechanism:
+crates/bbt-ui/src/style.rs:354 — Text.italic defaults false, omitted when false
+  from serialized Style records, so existing documents retain their shape.
+crates/bbt-ui-model/src/layout/solve.rs:9 — measurement carries the same flag.
+crates/bbt-ui-model/src/draw/prim.rs:102 — retained draw text carries the flag.
+crates/bbt-ui/src/components.rs:1453 — resolved Text passes italic into paint;
+  measurement and bboxybook font adapters carry it too, not just raster paint.
+crates/bbt-render/src/chrome/text.rs:67 — upright requests return through the
+  original font path. Italic requests normalized numeric slant0.2 + italic bit;
+  a same-family symbolic lookup handles discrete families ignoring numeric slant.
+  UI wght is reapplied exactly. Synthetic oblique is used only if both lookups
+  find no real italic. No terminal font/cell path was edited.
+crates/bbt-render/src/chrome/text.rs:323 — face/matrix/weight/coverage and
+  backing-scale regression. Actual names on this host:
+  UI weights400/500/600/700: .SFNS-RegularItalic, wght400/500/600/700,
+  angle12.5°, identity matrix. Menlo400/500: Menlo-Italic;600/700:
+  Menlo-BoldItalic, angle-11°, identity matrix. No synthetic slant was used.
+  Chrome reports the same italic family; its700 face name is .SFNS-BoldItalic.
+crates/bbt-ui/tests/italic.rs — old JSON reads false, true roundtrips and
+  reaches measurement and emitted draw records.
+
+Probe:
+node crates/bboxybook/chrome-text-probe.mjs target/bboxybook/italic/probe-final
+  exit0, no browser exceptions. Adds192 italic samples at EACH of1x and2x.
+cargo run -p bboxybook --example chrome-text-probe --locked -- target/bboxybook/italic/probe-final
+  exit0. UI and mono fonts; weights400/500/600/700; sizes11/12.5/16;
+  black/white backgrounds and quarter origins. Shared baselines isolate raster.
+  Aggregate changed pixels (delta>8):6928/3133440=0.221099% at1x;
+  19728/12533760=0.157399% at2x. CPU masks and Metal composites agree.
+  All384 italic cases below2%; worst1.151961% at1x,1.099877% at2x.
+  Every final browser font string was checked to be italic; platform faces
+  were captured. The initial italic capture omitted the CSS font-style setter;
+  that invalid comparison is retained under italic/probe, not consumed.
+  Final artifacts: italic/probe-final/{chrome,summary}.json and italic-cells.json.
+  Chrome/native crops inspected: target/bboxybook/italic/inspected.png.
+
+Default regression:
+Five immutable optimized-CLI render jobs, all exit0; actual argv/exits in
+  target/bboxybook/italic/regression/status.json. Lower+TitleBar1264 cases;
+  Launcher224 cases in four disjoint56-case manifests. No interrupted job.
+python3 target/bboxybook/italic/finish-regression.py — exit0.
+  All1488 PNGs byte-identical to accepted7.6b artifacts;1096 current,
+  392 historical. Current review counts lower81->81, TitleBar0->0,
+  Launcher/Picker0->0. Zero new reviews. Same fixtures, references and policy.
+  All1048 required geometry cases pass. Worst rect0.5px, baseline0.0078125px.
+  The final lint cleanup collapsed a nested condition inside the italic-only
+  branch; the upright path measured by this replay is unchanged. Final source
+  tests and Clippy below ran after that cleanup.
+Gallery: target/bboxybook/italic/index.html
+Machine evidence: target/bboxybook/italic/regression-summary.json
+
+Isolated support checks (own StreamDock references/tests were parked by path
+  and digest under target/bboxybook/italic/parked-stream-wip, not Git-stashed):
+cargo test -p bbt-render -p bbt-ui -p bboxybook --locked
+  exit0,127 passed; italic/isolated-tests.log.
+cargo test -p bbt-render -p bbt-ui -p bboxybook --release --locked
+  exit0,127 passed; italic/isolated-release.log.
+cargo test -p bbt-ui-model --locked
+  exit0,33 passed; italic/model-tests.log.
+cargo clippy -p bbt-render -p bbt-ui -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+  exit0; only the two prior exclusions, no new allowance; isolated-clippy.log.
+cargo check --workspace --all-targets --locked — exit0; workspace-check.log.
+All48 terminal smoke PNGs match the prior hashes; italic/terminal-check.json.
+
+Limits: true faces proved only on this host at1x/2x; macOS14, Linux/mobile,
+  hosted CI and the synthetic-fallback branch were not exercised. No default
+  design, pixel budget, golden, dependency, terminal raster or shader changed.
+The accepted waiting-compact-dark residue remains a glyph item per Oracle
+  2187888b; no further text tuning or rim pass in this support commit.

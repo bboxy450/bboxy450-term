@@ -20,6 +20,7 @@ impl AtomCtx<'_> {
                 size: style.pixels(),
                 weight: style.weight,
                 mono: style.mono,
+                italic: style.italic,
                 tracking_em: style.tracking_em,
             },
         )

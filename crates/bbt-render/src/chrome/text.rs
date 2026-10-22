@@ -15,7 +15,7 @@ pub struct LineMask {
 
 // The UI font has a CSS wght axis. Menlo uses CoreText's discrete faces.
 #[cfg(target_os = "macos")]
-fn native_font(
+fn upright_font(
     style: TextStyle,
 ) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
     use objc2_core_foundation::{CFDictionary, CFNumber, CFString, CFType};
@@ -61,6 +61,79 @@ fn native_font(
     let attrs = CFDictionary::from_slices(&keys, &values);
     let descriptor = unsafe { CTFontDescriptor::with_attributes(attrs.as_opaque()) };
     Ok(unsafe { CTFont::with_font_descriptor(&descriptor, size, std::ptr::null()) })
+}
+
+#[cfg(target_os = "macos")]
+fn native_font(
+    style: TextStyle,
+) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
+    use objc2_core_foundation::{CFDictionary, CFNumber, CFType, CGAffineTransform};
+    use objc2_core_text::{
+        CTFont, CTFontSymbolicTraits, kCTFontSlantTrait, kCTFontSymbolicTrait,
+        kCTFontTraitsAttribute,
+    };
+    let base = upright_font(style)?;
+    if !style.italic {
+        return Ok(base);
+    }
+    // Request a real slanted face numerically. Discrete families such as Menlo
+    // may ignore that value; the same-family symbolic lookup is the next step.
+    let slant = CFNumber::new_f64(0.2);
+    let italic = CFNumber::new_i32(1);
+    let keys = unsafe { [kCTFontSlantTrait, kCTFontSymbolicTrait] };
+    let traits =
+        CFDictionary::<_, CFNumber>::from_slices(&keys, &[slant.as_ref(), italic.as_ref()]);
+    let values: [&CFType; 1] = [traits.as_ref()];
+    let attrs = CFDictionary::from_slices(&[unsafe { kCTFontTraitsAttribute }], &values);
+    let descriptor = unsafe {
+        base.font_descriptor()
+            .copy_with_attributes(attrs.as_opaque())
+    };
+    let numeric = unsafe {
+        CTFont::with_font_descriptor(&descriptor, f64::from(style.pixels()), std::ptr::null())
+    };
+    let mut face =
+        if unsafe { numeric.symbolic_traits() }.contains(CTFontSymbolicTraits::TraitItalic) {
+            Some(numeric)
+        } else {
+            unsafe {
+                base.copy_with_symbolic_traits(
+                    0.,
+                    std::ptr::null(),
+                    CTFontSymbolicTraits::TraitItalic,
+                    CTFontSymbolicTraits::TraitItalic,
+                )
+            }
+        };
+    face = face.filter(|font| {
+        unsafe { font.symbolic_traits() }.contains(CTFontSymbolicTraits::TraitItalic)
+    });
+    if !style.mono
+        && let Some(font) = face.as_ref()
+    {
+        // Selecting the real italic family must retain the exact CSS wght axis.
+        let axis = CFNumber::new_i32(i32::from_be_bytes(*b"wght"));
+        let descriptor = unsafe {
+            font.font_descriptor()
+                .copy_with_variation(&axis, f64::from(style.weight.clamp(100, 900)))
+        };
+        face = Some(unsafe {
+            CTFont::with_font_descriptor(&descriptor, f64::from(style.pixels()), std::ptr::null())
+        });
+    }
+    if let Some(font) = face {
+        return Ok(font);
+    }
+    // No real family face exists. Synthetic oblique is confined to this fallback.
+    let matrix = CGAffineTransform {
+        a: 1.,
+        b: 0.,
+        c: 12f64.to_radians().tan(),
+        d: 1.,
+        tx: 0.,
+        ty: 0.,
+    };
+    Ok(unsafe { base.copy_with_attributes(0., &matrix, None) })
 }
 
 #[cfg(target_os = "macos")]
@@ -246,6 +319,68 @@ pub fn rasterize_at(_: &str, _: TextStyle, _: Option<f32>, _: f32, _: f32) -> Re
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn italic_uses_real_family_faces_and_keeps_exact_ui_weight() {
+        use objc2_core_foundation::{CFDictionary, CFNumber, CFRetained};
+        use objc2_core_text::CTFontSymbolicTraits;
+        for mono in [false, true] {
+            for weight in [400, 500, 600, 700] {
+                let style = TextStyle {
+                    mono,
+                    weight,
+                    italic: true,
+                    ..Default::default()
+                };
+                let font = native_font(style).unwrap();
+                let matrix = unsafe { font.matrix() };
+                eprintln!(
+                    "italic mono={mono} weight={weight} name={} angle={} matrix={matrix:?}",
+                    unsafe { font.post_script_name() },
+                    unsafe { font.slant_angle() }
+                );
+                assert!(
+                    unsafe { font.symbolic_traits() }.contains(CTFontSymbolicTraits::TraitItalic)
+                );
+                assert_ne!(unsafe { font.slant_angle() }, 0.);
+                assert_eq!(
+                    [matrix.a, matrix.b, matrix.c, matrix.d],
+                    [1., 0., 0., 1.],
+                    "true face, not synthetic oblique"
+                );
+                if !mono {
+                    let variation = unsafe {
+                        CFRetained::cast_unchecked::<CFDictionary<CFNumber, CFNumber>>(
+                            font.variation().unwrap(),
+                        )
+                    };
+                    assert_eq!(
+                        variation
+                            .get(&CFNumber::new_i32(i32::from_be_bytes(*b"wght")))
+                            .and_then(|v| v.as_f64())
+                            .or((weight == 400).then_some(400.)),
+                        Some(f64::from(weight))
+                    );
+                }
+                let upright = rasterize(
+                    "Hamburgefonts AV fi",
+                    TextStyle {
+                        italic: false,
+                        ..style
+                    },
+                    None,
+                    1.,
+                )
+                .unwrap();
+                let italic = rasterize("Hamburgefonts AV fi", style, None, 1.).unwrap();
+                assert_ne!(upright.mask, italic.mask);
+                let retina = rasterize("Hamburgefonts AV fi", style, None, 2.).unwrap();
+                assert_eq!(
+                    [italic.advance, italic.ascent, italic.descent],
+                    [retina.advance, retina.ascent, retina.descent]
+                );
+            }
+        }
+    }
     #[test]
     fn optical_size_and_logical_shaping_do_not_change_with_backing_scale() {
         use bbt_ui_model::draw::TypeScale;

@@ -11,7 +11,8 @@ node crates/bboxybook/chrome-text-probe.mjs target/bboxybook/chrome-text
 cargo run -p bboxybook --example chrome-text-probe --locked -- target/bboxybook/chrome-text
 ```
 
-The isolated browser captures 192 black/white, 96 token-palette and 64 fractional-origin samples at
+The isolated browser captures 192 black/white, 96 token-palette, 64 fractional-origin
+and 192 italic samples at
 1× and 2×, using the lab's actual font lists. Shared explicit baselines isolate
 raster coverage from layout; production components never consume these probe
 measurements. The native example writes the production grayscale masks, Metal
@@ -24,6 +25,13 @@ and logical optical sizing. The cache preserves the fractional line origin;
 each glyph snaps only after adding that origin. Its masks blend source-over in sRGB, including
 inside isolated groups, matching the measured macOS CSS reference. The terminal
 cell font and blending paths are separate and unchanged.
+
+`Text.italic` defaults to false (old serialized Style records stay valid). It
+passes through measurement and draw records to CoreText. A numeric slant trait
+requests a true family face, then same-family symbolic matching handles discrete
+faces such as Menlo. The exact UI weight axis is retained. Synthetic oblique is
+used only when neither lookup finds a true italic. The probe records Chrome
+faces; the native face test prints selected names, angles and matrices.
 
 ```sh
 cargo run -p bboxybook --locked                         # windowed gallery

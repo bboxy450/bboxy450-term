@@ -22,6 +22,7 @@ fn font(style: &MeasureStyle) -> TextStyle {
         scale: TypeScale::Custom(style.size),
         weight: style.weight,
         mono: style.mono,
+        italic: style.italic,
         tracking_em: style.tracking_em,
         ..Default::default()
     }
@@ -84,6 +85,7 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
                 ))?,
                 weight: o["weight"].as_u64().unwrap_or(400) as u16,
                 mono: o["mono"].as_bool().unwrap_or(false),
+                italic: o["italic"].as_bool().unwrap_or(false),
                 uppercase: o["caps"].as_bool().unwrap_or(false),
                 ..Default::default()
             };

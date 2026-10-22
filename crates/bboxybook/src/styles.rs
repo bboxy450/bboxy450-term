@@ -172,6 +172,7 @@ pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
             scale: TypeScale::Custom(s.text.size),
             weight: s.text.weight,
             mono: s.text.mono,
+            italic: s.text.italic,
             tracking_em: s.text.tracking_em,
             uppercase: s.text.uppercase,
         };
@@ -314,6 +315,7 @@ fn paint_box(
             scale: TypeScale::Custom(s.text.size),
             weight: s.text.weight,
             mono: s.text.mono,
+            italic: s.text.italic,
             tracking_em: s.text.tracking_em,
             uppercase: s.text.uppercase,
         },

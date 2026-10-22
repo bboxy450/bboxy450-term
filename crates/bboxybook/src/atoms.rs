@@ -35,6 +35,7 @@ impl TextMeasure for Metrics {
                 scale: TypeScale::Custom(style.size),
                 weight: style.weight,
                 mono: style.mono,
+                italic: style.italic,
                 tracking_em: style.tracking_em,
                 ..Default::default()
             },

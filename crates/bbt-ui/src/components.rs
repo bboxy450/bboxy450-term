@@ -270,6 +270,7 @@ fn font(s: &ResolvedText) -> MeasureStyle {
         size: s.size,
         weight: s.weight,
         mono: s.mono,
+        italic: s.italic,
         tracking_em: s.tracking_em,
     }
 }
@@ -1449,6 +1450,7 @@ fn paint_contents(
                         scale: TypeScale::Custom(run.style.size),
                         weight: run.style.weight,
                         mono: run.style.mono,
+                        italic: run.style.italic,
                         tracking_em: run.style.tracking_em,
                         uppercase: false,
                     },
