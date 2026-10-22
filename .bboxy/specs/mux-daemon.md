@@ -143,6 +143,16 @@ Captured/published and durable cursors are separate. Logic restart while the sup
 
 Ring/checkpoint/index storage and replay work are bounded per seat and in aggregate. If logic is absent or behind and the ring has no safely evictable checkpoint boundary, supervisor **pauses PTY reads** and reports backpressure. It retains master fds and children; OS PTY buffers may then block child output. Resume capture when logic catches up and commits an evictable boundary. Do not silently discard unreconstructable bytes to keep the pipe moving.
 
+### Durability tiers (W1.2d, decision #21, Architect 2026-10-22)
+
+Measured by Seraph's C1d gates: a per-seat commit every 20 ms with a full flush (`F_FULLFSYNC`), a marker write and a directory sync on the single writer thread kills logic at about 45 seats under the firehose, and a full writer queue was treated as fatal. The contract from here, which W1.2d builds to:
+
+- **Tick commit is ordered, not durable.** Once per writer tick (20 ms), across all seats: one group write of every seat's pending records, then one ordering barrier per touched file (`F_BARRIERFSYNC` on macOS, `fdatasync` elsewhere) **before** the committed-boundary marker advances. No full flush per tick.
+- **Durable points take the full flush.** `F_FULLFSYNC` (or the platform's full flush) plus the directory sync only at checkpoint publication, segment seal, orderly shutdown, and a cadence of every 5 s or 16 MiB of accepted output per machine, whichever comes first.
+- **Loss bounds, stated.** Process crash (supervisor or logic): zero committed bytes lost; queued-but-unwritten bytes at most one tick per seat, because a full queue pauses that seat's PTY reads (backpressure to the harness) instead of dropping. Power cut or kernel panic: everything after the last durable point, at most 5 s or 16 MiB per machine; never a torn record, because the CRC and marker rules above are unchanged and the barrier makes a marker that outruns its data impossible. The lost span shows as the pane's gap marker on restart, as for supervisor death.
+- **Busy is backpressure, never fatal.** Writer queue full → the supervisor stops reading that seat's PTY until the queue drains; logic treats `Busy` as transient with backoff; the UI shows "capture paused" on the seat only if it persists longer than 1 s.
+- **Gate.** `bboxy-firehose` at the machine's measured maximum seats for 60 s: logic alive throughout, writer p99 commit latency reported, and a `SIGKILL` of the supervisor mid-run replays with zero CRC errors and loss of at most one tick per seat (fixture bytes written minus bytes replayed). That command becomes `.bboxy/invariants/ring-durability.md` when W1.2d lands.
+
 ## Restart and reattachment
 
 | Event | Required sequence |
