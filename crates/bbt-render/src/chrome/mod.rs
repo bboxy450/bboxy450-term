@@ -1,6 +1,7 @@
 //! One ordered, instanced chrome pass on the caller's device; no window ownership.
 pub mod diff;
 pub mod icons;
+pub mod materials;
 pub mod pipeline;
 pub mod text;
 use crate::{
@@ -346,6 +347,15 @@ impl ChromeRenderer {
             },
             &mut encoder,
         )?;
+        self.readback(&texture, encoder, width, height)
+    }
+    fn readback(
+        &self,
+        texture: &wgpu::Texture,
+        mut encoder: wgpu::CommandEncoder,
+        width: u32,
+        height: u32,
+    ) -> Result<Vec<u8>> {
         let stride = (width * 4).div_ceil(256) * 256;
         let buffer = self.context.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("chrome readback"),
@@ -355,7 +365,7 @@ impl ChromeRenderer {
         });
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
-                texture: &texture,
+                texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,

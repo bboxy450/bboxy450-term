@@ -1,0 +1,24 @@
+W3.2d.1 L2 materials
+Gallery: target/bboxybook/materials/index.html
+Reference revision: 7cb8161fa5fee5276a0f3b455a03cfaf2b0d8ab2
+32 paired cases; four radii per case; web exceptions/failures = 0
+28 over tolerance, 4 within; new L2 matrix, no earlier L2 baseline. After correcting fractional crop origin: 32 -> 28 over tolerance.
+Legacy component matrix is unchanged in scope; last verified W3.2c count 1398 / 1664, not remeasured in this layer.
+Native backdrop and diagnostic labels are a common captured texture. Every material surface is shaded natively; no native text/layout parity is claimed by this L2 comparison.
+Shaders: flat, gloss, frosted (separable Gaussian, 3 sigma support, float intermediates), glow (dark additive, light multiply, preserves alpha, clock/state/focus/particles).
+Inspected: eight initial material squares; paired flat dark, gloss dark, glow dark. Gloss reads like the lab band. Residuals: edge AA/blending; frosted ring/highlight and colour/compositing; glow emitter geometry/phase and border/halo strength differ. Full pixel parity is not achieved.
+No FPS measurements; no hosted CI, Linux/mobile or macOS 14-floor checks; no upper-layer Style/components or app input changes.
+Ten worst canonical triplets (under web/, native/, diff/):
+| materials/glow-touch-dark.png | 19.11% | 0.0293 | review | [web](web/materials/glow-touch-dark.png) | [native](native/materials/glow-touch-dark.png) | [diff](diff/materials/glow-touch-dark.png) |
+| materials/glow-cozy-dark.png | 19.11% | 0.0292 | review | [web](web/materials/glow-cozy-dark.png) | [native](native/materials/glow-cozy-dark.png) | [diff](diff/materials/glow-cozy-dark.png) |
+| materials/glow-comfortable-dark.png | 19.11% | 0.0292 | review | [web](web/materials/glow-comfortable-dark.png) | [native](native/materials/glow-comfortable-dark.png) | [diff](diff/materials/glow-comfortable-dark.png) |
+| materials/glow-compact-dark.png | 19.11% | 0.0292 | review | [web](web/materials/glow-compact-dark.png) | [native](native/materials/glow-compact-dark.png) | [diff](diff/materials/glow-compact-dark.png) |
+| materials/glow-comfortable-light.png | 15.53% | 0.0139 | review | [web](web/materials/glow-comfortable-light.png) | [native](native/materials/glow-comfortable-light.png) | [diff](diff/materials/glow-comfortable-light.png) |
+| materials/glow-cozy-light.png | 15.53% | 0.0139 | review | [web](web/materials/glow-cozy-light.png) | [native](native/materials/glow-cozy-light.png) | [diff](diff/materials/glow-cozy-light.png) |
+| materials/glow-touch-light.png | 15.53% | 0.0139 | review | [web](web/materials/glow-touch-light.png) | [native](native/materials/glow-touch-light.png) | [diff](diff/materials/glow-touch-light.png) |
+| materials/glow-compact-light.png | 15.53% | 0.0139 | review | [web](web/materials/glow-compact-light.png) | [native](native/materials/glow-compact-light.png) | [diff](diff/materials/glow-compact-light.png) |
+| materials/frosted-comfortable-dark.png | 5.35% | 0.0015 | review | [web](web/materials/frosted-comfortable-dark.png) | [native](native/materials/frosted-comfortable-dark.png) | [diff](diff/materials/frosted-comfortable-dark.png) |
+| materials/frosted-compact-dark.png | 5.35% | 0.0015 | review | [web](web/materials/frosted-compact-dark.png) | [native](native/materials/frosted-compact-dark.png) | [diff](diff/materials/frosted-compact-dark.png) |
+Shader SHA256: 8df9657c545fa1ba2f196965a353c73a8f44d87fed679ce4a5b370cb27baa891
+
+Decision gap before L3: UI.material(glow) includes a surface background plus 1.5px border, while the L2 Glow provider paints only the effect. Choose whether these belong to the L2 material or the Style/Box composition. Native halo strength and emitter/clock also differ from the web reference.

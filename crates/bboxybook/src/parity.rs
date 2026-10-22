@@ -8,8 +8,12 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     let mut renderer = ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}", renderer.context.adapter_info);
     for (i, case) in cases.iter().enumerate() {
-        let list = gallery::draw(case)?;
-        let rgba = renderer.render_to_rgba(&list, case.width, case.height, 1.0)?;
+        let rgba = if case.component == "materials" {
+            crate::materials::render_case(&mut renderer, case)?
+        } else {
+            let list = gallery::draw(case)?;
+            renderer.render_to_rgba(&list, case.width, case.height, 1.0)?
+        };
         let path = out.join(case.relative());
         fs::create_dir_all(path.parent().unwrap())?;
         bbt_render::write_png(&path, &rgba, case.width, case.height)?;
@@ -97,16 +101,26 @@ pub fn compare_paths(
         .iter()
         .filter(|r| r.score > diff::CHANGED_BUDGET)
         .count();
+    let material_layer = cases.iter().all(|c| c.component == "materials");
+    let sources = if material_layer {
+        "L2 named material shaders. The captured CSS backdrop, diagnostic text and outer square rectangles are common fixtures; only the four material surfaces are painted natively. This isolates L2 and does not assess native text/layout. Canonical key: materials/<state>-<density>-<theme>. Glow is a fixed native frame versus the web emitter; exact particle/phase parity is unproven."
+    } else {
+        "Pinned design baseline `ux-prototype-v2`; current lab/design revision recorded in capture.json. Post-v2 components are explicit fixture previews. Native terminal bodies are blank; glow, blur, cursor animation and input controllers are later briefs."
+    };
     let mut md = format!(
-        "# bboxybook parity\n\n{} cases; {} require review. Policy: channel tolerance {}, changed-pixel budget {:.1}%. Scores rank image review, not acceptance.\n\nSources: pinned design baseline `ux-prototype-v2`; current lab/design revision recorded in capture.json. Post-v2 components are explicit fixture previews. Native terminal bodies are blank; glow, blur, cursor animation and input controllers are later briefs.\n\n| Component / state / density / theme | Changed | Mean error | Status | Web | Native | Diff |\n|---|---:|---:|---|---|---|---|\n",
+        "# bboxybook parity\n\n{} cases; {} require review. Policy: channel tolerance {}, changed-pixel budget {:.1}%. Scores rank image review, not acceptance.\n\nSources: {}\n\n| Component / state / density / theme | Changed | Mean error | Status | Web | Native | Diff |\n|---|---:|---:|---:|---|---|---|\n",
         rows.len(),
         review,
         diff::CHANNEL_TOLERANCE,
-        diff::CHANGED_BUDGET * 100.0
+        diff::CHANGED_BUDGET * 100.0,
+        sources,
     );
     let mut html = String::from(
         "<!doctype html><meta charset=utf-8><title>bboxybook parity</title><style>body{background:#10121c;color:#eee;font:14px system-ui;margin:24px}a{color:#9bc3ff}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #383c55;text-align:left}img{max-width:100%;height:auto}article{margin:24px 0;padding:12px;background:#1a1d2b}section{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}h3{font-size:14px}figure{margin:0}figcaption{margin:6px 0;color:#aab}</style><h1>bboxybook parity</h1>",
     );
+    if material_layer {
+        write!(html, "<p>{}</p>", escape(sources))?;
+    }
     write!(
         html,
         "<p>{} cases · {} require review · worst first. <a href=report.md>Iteration report</a>. Missing references are unproven. Tolerance {} / changed budget {:.1}%.</p><table><tr><th>Case</th><th>Changed</th><th>Mean error</th><th>Status</th></tr>",

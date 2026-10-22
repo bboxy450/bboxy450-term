@@ -1,5 +1,6 @@
 pub mod fixtures;
 pub mod gallery;
+pub mod materials;
 pub mod modules;
 pub mod parity;
 pub mod window;

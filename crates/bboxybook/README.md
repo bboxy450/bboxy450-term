@@ -123,3 +123,33 @@ Strict all-target Clippy also reports pre-existing findings outside this brief:
 `bbt-render/tests/smoke.rs:15` (`chunks_exact_to_as_chunks`). The scoped lint
 verification excludes those two diagnostics explicitly; those files were not
 changed. See `.bboxy/runs/w3-2b-clippy-*.log` for actual command results.
+# L2 materials
+
+`cargo run -p bboxybook --locked -- materials` writes the 32 canonical cases and
+`target/bboxybook/materials/index.html`: flat, gloss, frosted, glow × density × theme, each at radii 0, 6, 12, 20.
+The provider is `bbt_render::chrome::materials::Pass`; it takes the caller's
+device, target and distinct sampled backdrop. Legacy module drawing is unchanged.
+
+Gloss follows the lab band's sRGB gradient (12% white → base at 55% → 18% black)
+with top highlight and bottom inset shade. Frosted runs horizontal/vertical
+Gaussian passes into linear float textures, with 3σ support, then saturation and
+tint. Glow has activity/focus/clock/particle parameters, adds on dark, multiplies
+on light, and preserves destination alpha. The native glow frame captures 450 ms.
+
+Pairs use the web page `materials.html` and keys such as
+`materials/gloss-cozy-dark`. The harness captures the page with its material
+squares hidden to make a common backdrop texture, including diagnostic labels.
+Native shaders paint only the captured square rectangles over that texture.
+This isolates material pixels from the later component/layout layers. The
+backdrop fixture and crop are recorded in `cases.json`; Chromium is required.
+
+`tests/materials.rs` checks GPU pixels: exact flat colour, gloss gradient,
+backdrop smoothing, dark/light glow blend, static idle/error and changing
+active/waiting frames. This layer does not establish CSS pixel parity, desktop
+blur support or performance. No higher component layer consumes it yet.
+
+
+The paired L2 run currently has 28/32 over tolerance. Edge AA/compositing,
+frosted ring/highlight and colour, and glow strength/particles remain visible.
+The web glow reference also supplies a surface fill and 1.5px border; the
+provider is effect-only. Ownership of those two parts awaits the layer review.

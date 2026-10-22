@@ -1,0 +1,681 @@
+//! L2 materials, independent of components/Style. All passes use the caller's
+//! existing device and a distinct sampled backdrop; no window/device ownership.
+use super::{ChromeRenderer, ChromeTarget};
+use crate::{Result, device::DeviceContext};
+use bbt_ui_model::{
+    Theme,
+    draw::{Color, DrawList},
+    layout::Rect,
+};
+use bytemuck::{Pod, Zeroable};
+use wgpu::util::DeviceExt;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    Flat,
+    Gloss,
+    Frosted,
+    Glow,
+}
+impl Kind {
+    pub const ALL: [Self; 4] = [Self::Flat, Self::Gloss, Self::Frosted, Self::Glow];
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Flat => "flat",
+            Self::Gloss => "gloss",
+            Self::Frosted => "frosted",
+            Self::Glow => "glow",
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Gloss {
+    pub color: Color,
+    pub top_white: f32,
+    pub bottom_black: f32,
+    pub highlight: f32,
+    pub bottom_shade: f32,
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Frosted {
+    pub tint: Color,
+    pub blur_radius: f32,
+    pub saturation: f32,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Activity {
+    Idle,
+    Active,
+    Waiting,
+    Errored,
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Glow {
+    pub color: Color,
+    pub waiting: Color,
+    pub errored: Color,
+    pub activity: Activity,
+    pub focus: f32,
+    pub focused_boost: f32,
+    pub radius: f32,
+    pub seed: f32,
+    pub idle_alpha: f32,
+    pub active_alpha: [f32; 2],
+    pub waiting_alpha: [f32; 2],
+    pub errored_alpha: f32,
+    pub active_period_ms: f32,
+    pub waiting_period_ms: f32,
+    pub particles: u32,
+    pub speed: f32,
+    pub particle_size: f32,
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Material {
+    Flat(Color),
+    Gloss(Gloss),
+    Frosted(Frosted),
+    Glow(Glow),
+}
+impl Material {
+    pub fn kind(self) -> Kind {
+        match self {
+            Self::Flat(_) => Kind::Flat,
+            Self::Gloss(_) => Kind::Gloss,
+            Self::Frosted(_) => Kind::Frosted,
+            Self::Glow(_) => Kind::Glow,
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Surface {
+    pub rect: Rect,
+    pub radii: [f32; 4],
+    pub clip: Option<Rect>,
+    pub material: Material,
+}
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable, Default)]
+struct Instance {
+    rect: [f32; 4],
+    color: [f32; 4],
+    radii: [f32; 4],
+    p0: [f32; 4],
+    p1: [f32; 4],
+    p2: [f32; 4],
+    p3: [f32; 4],
+    p4: [f32; 4],
+    p5: [f32; 4],
+    clip: [f32; 4],
+}
+impl Surface {
+    fn instance(self, scale: f32, width: u32, height: u32) -> Result<Instance> {
+        let mut i = Instance {
+            rect: [
+                self.rect.x * scale,
+                self.rect.y * scale,
+                self.rect.w * scale,
+                self.rect.h * scale,
+            ],
+            radii: self.radii.map(|r| r * scale),
+            clip: self
+                .clip
+                .map(|r| [r.x * scale, r.y * scale, r.w * scale, r.h * scale])
+                .unwrap_or([0., 0., width as f32, height as f32]),
+            ..Default::default()
+        };
+        match self.material {
+            Material::Flat(c) => i.color = c.0,
+            Material::Gloss(g) => {
+                i.color = g.color.0;
+                i.p1 = [g.top_white, g.bottom_black, g.highlight, g.bottom_shade];
+            }
+            Material::Frosted(f) => {
+                i.color = f.tint.0;
+                i.p0 = [0., f.blur_radius * scale, f.saturation, 0.];
+                if !(0.0..=256.).contains(&f.blur_radius) || !(0.0..=4.).contains(&f.saturation) {
+                    return Err("invalid frosted parameters".into());
+                }
+            }
+            Material::Glow(g) => {
+                i.color = match g.activity {
+                    Activity::Waiting => g.waiting.0,
+                    Activity::Errored => g.errored.0,
+                    _ => g.color.0,
+                };
+                i.p0[3] = g.radius * scale * 4.;
+                i.p2 = [
+                    match g.activity {
+                        Activity::Idle => 0.,
+                        Activity::Active => 1.,
+                        Activity::Waiting => 2.,
+                        Activity::Errored => 3.,
+                    },
+                    g.focus,
+                    g.focused_boost,
+                    g.radius * scale,
+                ];
+                i.p3 = [
+                    g.idle_alpha,
+                    g.active_alpha[0],
+                    g.active_alpha[1],
+                    g.waiting_alpha[0],
+                ];
+                i.p4 = [
+                    g.waiting_alpha[1],
+                    g.errored_alpha,
+                    g.particles.min(48) as f32,
+                    g.speed * scale,
+                ];
+                i.p5 = [
+                    g.particle_size * scale,
+                    g.active_period_ms,
+                    g.waiting_period_ms,
+                    g.seed,
+                ];
+                if g.radius < 0.
+                    || g.active_period_ms <= 0.
+                    || g.waiting_period_ms <= 0.
+                    || g.particle_size <= 0.
+                    || g.focus < 0.
+                    || g.focus > 1.
+                {
+                    return Err("invalid glow parameters".into());
+                }
+            }
+        }
+        if bytemuck::cast_slice::<Instance, f32>(&[i])
+            .iter()
+            .any(|n| !n.is_finite())
+            || self.rect.w <= 0.
+            || self.rect.h <= 0.
+            || self.radii.iter().any(|r| *r < 0.)
+            || i.color.iter().any(|c| !(0.0..=1.).contains(c))
+        {
+            return Err("invalid material surface".into());
+        }
+        Ok(i)
+    }
+}
+pub struct Frame<'a> {
+    pub target: ChromeTarget<'a>,
+    pub backdrop: &'a wgpu::TextureView,
+    pub items: &'a [Surface],
+    pub time_ms: f32,
+    pub theme: Theme,
+}
+pub struct Pass {
+    layout: wgpu::BindGroupLayout,
+    pipelines: [wgpu::RenderPipeline; 5],
+    blur: [wgpu::RenderPipeline; 2],
+    sampler: wgpu::Sampler,
+    format: wgpu::TextureFormat,
+}
+impl Pass {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("L2 material bindings"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("L2 materials"),
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
+        });
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("named flat/gloss/frosted/glow shaders"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("materials.wgsl").into()),
+        });
+        let preserve_alpha = wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::Zero,
+            dst_factor: wgpu::BlendFactor::One,
+            operation: wgpu::BlendOperation::Add,
+        };
+        let pipelines = std::array::from_fn(|index| {
+            let entry = ["flat", "gloss", "frosted", "glow", "glow"][index];
+            let blend = match index {
+                3 => wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::One,
+                        dst_factor: wgpu::BlendFactor::One,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: preserve_alpha,
+                },
+                4 => wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::Dst,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: preserve_alpha,
+                },
+                _ => wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+            };
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(entry),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs"),
+                    buffers: &[],
+                    compilation_options: Default::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some(entry),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: Some(blend),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: Default::default(),
+                }),
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                multiview_mask: None,
+                cache: None,
+            })
+        });
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("material backdrop"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        let blur = std::array::from_fn(|axis| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(if axis == 0 {
+                    "frosted Gaussian horizontal"
+                } else {
+                    "frosted Gaussian vertical"
+                }),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs_blur"),
+                    buffers: &[],
+                    compilation_options: Default::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some(if axis == 0 { "blur_x" } else { "blur_y" }),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: wgpu::TextureFormat::Rgba16Float,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: Default::default(),
+                }),
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                multiview_mask: None,
+                cache: None,
+            })
+        });
+        Self {
+            layout,
+            pipelines,
+            blur,
+            sampler,
+            format,
+        }
+    }
+    pub fn draw(
+        &self,
+        context: &DeviceContext,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: Frame<'_>,
+    ) -> Result<()> {
+        let Frame {
+            target,
+            backdrop,
+            items,
+            time_ms,
+            theme,
+        } = frame;
+        if target.width == 0
+            || target.height == 0
+            || target.format != self.format
+            || !target.scale.is_finite()
+            || !(0.5..=4.).contains(&target.scale)
+            || !time_ms.is_finite()
+        {
+            return Err("invalid material frame".into());
+        }
+        if items.is_empty() {
+            return Ok(());
+        }
+        let instances: Vec<_> = items
+            .iter()
+            .map(|s| s.instance(target.scale, target.width, target.height))
+            .collect::<Result<_>>()?;
+        let data = context
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("material parameters"),
+                contents: bytemuck::cast_slice(&instances),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+        let view = context
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("material viewport and clock"),
+                contents: bytemuck::cast_slice(&[
+                    target.width as f32,
+                    target.height as f32,
+                    time_ms,
+                    0.,
+                ]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+        let bind_backdrop = |backdrop: &wgpu::TextureView| {
+            context
+                .device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("material frame"),
+                    layout: &self.layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: view.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: data.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: wgpu::BindingResource::TextureView(backdrop),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 3,
+                            resource: wgpu::BindingResource::Sampler(&self.sampler),
+                        },
+                    ],
+                })
+        };
+        let bind = bind_backdrop(backdrop);
+        let mut filtered = Vec::new();
+        for (index, item) in items.iter().enumerate() {
+            if !matches!(item.material,Material::Frosted(f) if f.blur_radius>0.) {
+                filtered.push(None);
+                continue;
+            }
+            let texture = || {
+                context.device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("frosted linear intermediate"),
+                    size: wgpu::Extent3d {
+                        width: target.width,
+                        height: target.height,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba16Float,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[],
+                })
+            };
+            let horizontal = texture();
+            let vertical = texture();
+            let x = horizontal.create_view(&Default::default());
+            let y = vertical.create_view(&Default::default());
+            let bind_x = bind_backdrop(&x);
+            for (axis, output, source) in [(0, &x, &bind), (1, &y, &bind_x)] {
+                let mut blur = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("frosted separable Gaussian"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: output,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                });
+                blur.set_pipeline(&self.blur[axis]);
+                blur.set_bind_group(0, source, &[]);
+                blur.draw(0..3, index as u32..index as u32 + 1);
+            }
+            filtered.push(Some(bind_backdrop(&y)));
+        }
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("L2 named materials"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target.view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        for (index, item) in items.iter().enumerate() {
+            pass.set_bind_group(0, filtered[index].as_ref().unwrap_or(&bind), &[]);
+            let pipeline = match item.material.kind() {
+                Kind::Flat => 0,
+                Kind::Gloss => 1,
+                Kind::Frosted => 2,
+                Kind::Glow => {
+                    if theme == Theme::Light {
+                        4
+                    } else {
+                        3
+                    }
+                }
+            };
+            pass.set_pipeline(&self.pipelines[pipeline]);
+            pass.draw(0..6, index as u32..index as u32 + 1);
+        }
+        Ok(())
+    }
+}
+pub enum Backdrop<'a> {
+    DrawList(&'a DrawList),
+    Rgba(&'a [u8]),
+}
+pub struct Scene<'a> {
+    pub backdrop: Backdrop<'a>,
+    pub items: &'a [Surface],
+    pub width: u32,
+    pub height: u32,
+    pub scale: f32,
+    pub time_ms: f32,
+    pub theme: Theme,
+}
+pub fn render_to_rgba(renderer: &mut ChromeRenderer, scene: Scene<'_>) -> Result<Vec<u8>> {
+    let Scene {
+        backdrop,
+        items,
+        width,
+        height,
+        scale,
+        time_ms,
+        theme,
+    } = scene;
+    if width == 0 || height == 0 || width > 8192 || height > 8192 {
+        return Err("invalid materials target size".into());
+    }
+    let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+    let make = |label| {
+        renderer
+            .context
+            .device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some(label),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            })
+    };
+    let behind = make("L2 sampled backdrop");
+    let texture = make("L2 material output");
+    let behind_view = behind.create_view(&Default::default());
+    let view = texture.create_view(&Default::default());
+    let mut encoder = renderer
+        .context
+        .device
+        .create_command_encoder(&Default::default());
+    match backdrop {
+        Backdrop::DrawList(list) => renderer.draw(
+            list,
+            ChromeTarget {
+                width,
+                height,
+                scale,
+                view: &behind_view,
+                format,
+            },
+            &mut encoder,
+        )?,
+        Backdrop::Rgba(pixels) => {
+            if pixels.len() != (width as usize * height as usize * 4) {
+                return Err("invalid backdrop RGBA size".into());
+            }
+            renderer.context.queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &behind,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                pixels,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(width * 4),
+                    rows_per_image: Some(height),
+                },
+                wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+    }
+    encoder.copy_texture_to_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: &behind,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyTextureInfo {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let pass = Pass::new(&renderer.context.device, format);
+    pass.draw(
+        &renderer.context,
+        &mut encoder,
+        Frame {
+            target: ChromeTarget {
+                width,
+                height,
+                scale,
+                view: &view,
+                format,
+            },
+            backdrop: &behind_view,
+            items,
+            time_ms,
+            theme,
+        },
+    )?;
+    renderer.readback(&texture, encoder, width, height)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn nonfinite_and_negative_material_parameters_are_rejected() {
+        let s = Surface {
+            rect: Rect::new(0., 0., 10., 10.),
+            radii: [1.; 4],
+            clip: None,
+            material: Material::Frosted(Frosted {
+                tint: Color::WHITE,
+                blur_radius: f32::NAN,
+                saturation: 1.,
+            }),
+        };
+        assert!(s.instance(1., 20, 20).is_err());
+        let s = Surface {
+            material: Material::Flat(Color::WHITE),
+            rect: Rect::new(0., 0., -1., 10.),
+            ..s
+        };
+        assert!(s.instance(1., 20, 20).is_err());
+    }
+}

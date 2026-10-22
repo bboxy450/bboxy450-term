@@ -15,6 +15,11 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("gallery");
+    if command == "materials" {
+        return bboxybook::materials::render(&PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/materials".into()),
+        ));
+    }
     if command == "manifest" {
         println!("{}", serde_json::to_string_pretty(&gallery::cases())?);
         return Ok(());
