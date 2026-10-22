@@ -74,6 +74,48 @@ sequenceDiagram
 - **Resize** clamps in logic to 512×256 instead of ending the logic thread ([[architecture]] §8, `M/logic.rs:966-967`).
 - **Drawing.** A pane draws `Screen` rows through the cells pipeline (`RD/cells`). Glyph coverage beyond ASCII, shaping and fonts are T3 in [[2026-10-22-t-terminal-fidelity]], not C1. Damage: redraw only panes whose `Arc<Screen>` pointer changed.
 
+## 2a. The seam between C1a and C1b (2026-10-22, unblock)
+
+Two Executors build in parallel against these signatures; neither waits for the other. **C1a never reads or writes `Screen` contents; C1b never touches the socket.**
+
+| Owner | Owns | Delivers |
+|---|---|---|
+| C1a (Sable) | process spawn and restart supervision; the `gui.sock` client (framing, admission, reconnect); the IO task loop; the `UiMsg` additions (`Input`, `Resize`, `Watched`); the `bbt-proto` crate with the moved wire types and the GUI schema; publishing `Latest<Arc<Model>>` | `bbt-proto::{GuiAction, GuiReply}` and the loop below |
+| C1b (Aster) | `crates/bboxy450-term/src/grids.rs` and `model.rs`: Replica map, watched-set diff, the back Model assembly, the pane draw through the cells pipeline | the `Grids` API below |
+
+```rust
+// bbt-proto (C1a). Update, Screen, View, SeatRecord move here from bbt-mux unchanged.
+pub enum GuiAction { ListSeats, Watch { seat: SeatId, view: View }, Unwatch { seat: SeatId },
+    Applied { seat: SeatId, view: View, sequence: u64 }, Input { seat: SeatId, id: Ulid, bytes: Vec<u8> },
+    Resize { seat: SeatId, cols: u16, rows: u16 }, Spawn { spec: SpawnSpec }, ScheduleClose { seat: SeatId },
+    UndoClose { seat: SeatId, close_id: Ulid }, GetHistory { seat: SeatId, from: u64, to: u64 } }
+pub enum GuiReply { Seats(Vec<SeatRecord>), Update { seat: SeatId, update: Update }, State { seat: SeatId, record: SeatRecord },
+    Ok { op: Ulid }, Error { op: Ulid, reason: String }, History { seat: SeatId, rows: Vec<Row> } }
+
+// crates/bboxy450-term/src/grids.rs (C1b)
+pub struct Grids { /* Replica per watched seat, Arc<Screen> per seat */ }
+impl Grids {
+    pub fn new() -> Self;
+    /// Some(screen) when the seat's visible screen changed; the caller publishes, then acks.
+    pub fn apply(&mut self, seat: SeatId, update: &Update) -> Result<Option<Arc<Screen>>>;
+    /// Diff against the current watched set; the caller sends the resulting actions.
+    pub fn set_watched(&mut self, panes: &[(SeatId, View)]) -> Vec<GuiAction>;
+    pub fn screen(&self, seat: SeatId) -> Option<Arc<Screen>>;
+    pub fn forget(&mut self, seat: SeatId);   // on exit or after Unwatch
+}
+// crates/bboxy450-term/src/model.rs (C1b)
+pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model;   // reuses Arcs that did not change
+pub fn draw_pane(screen: &Screen, rect: Rect, ctx: &mut DrawCtx);              // cells pipeline, ASCII today
+```
+
+The IO loop (C1a), per `GuiReply`:
+1. `Update{seat, update}` → `grids.apply` → if `Some`, `model = build(..)`, `latest.publish(Arc::new(model))`, mark dirty → then send `Applied{seat, view, sequence}` with the update's own view and sequence. Never ack before publishing.
+2. `Seats` and `State` → `build` and publish; no ack.
+3. On `UiMsg::Watched(panes)` → `grids.set_watched` → send each action.
+4. On `UiMsg::Input` and `UiMsg::Resize` → send; replies `Ok`/`Error` are logged, never block.
+
+Until `bbt-proto` compiles, C1b builds against `bbt_mux::streams::{Update, Screen, View}` and `bbt_mux::registry::SeatRecord` through a `pub use` shim in the app; the swap to `bbt_proto` is one import change.
+
 ## 3. Restart and resume (decision #11)
 
 ```mermaid
