@@ -270,12 +270,18 @@
     }, 2600);
   });
   // Appearance settings apply live: density, theme and gutter re-render the window; glow toggles the shader canvas.
+  // window transparency (renderer.md §1b): the page shows a wallpaper, panes carry the alpha, chrome and text stay opaque.
+  // ?opacity=0.7&blur=1 deep-link it; Settings › Appearance changes it live.
+  { const q = new URLSearchParams(location.search), o = parseFloat(q.get('opacity')); if (o >= TOKENS.window.opacity_min && o <= 1) C.SET.appearance.opacity = o; if (q.get('blur')) C.SET.appearance.blur = q.get('blur') !== '0'; }
+  applyWindow();
+  function applyWindow() { const a = C.SET.appearance, r = document.documentElement; r.style.setProperty('--win-a', a.opacity); r.style.setProperty('--win-blur', a.blurRadius + 'px'); r.classList.toggle('transparent', a.opacity < 1 || a.blur); r.classList.toggle('win-blur', !!a.blur); }
   function applySetting(section, key, value) {
     if (section !== 'appearance') return;
     if (key === 'density') { density = value; }
     if (key === 'theme') { themeMode = value; Lab.store.set('showcase.theme', value); drawThemeBtn(); }
     if (key === 'gutter') { document.documentElement.style.setProperty('--gutter', value + 'px'); }
     if (key === 'glow') { document.getElementById('glow').style.display = value ? '' : 'none'; }
+    if (key === 'opacity' || key === 'blur' || key === 'blurRadius') { applyWindow(); if (key === 'opacity') return; }
     const keep = settingsSeat.section; applyTheme(); settingsSeat.section = keep; render();
   }
   // key E: an external event arrives (GitHub / CI / cloud / cron cycle)

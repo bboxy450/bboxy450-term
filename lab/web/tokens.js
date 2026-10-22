@@ -148,6 +148,12 @@ window.TOKENS = {
     "border_active": 2,
     "border_idle": 1,
     "height": 22
+  },
+  "window": {
+    "blur": false,
+    "blur_radius": 20,
+    "opacity": 1.0,
+    "opacity_min": 0.5
   }
 };
 window.STYLE = {

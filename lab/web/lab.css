@@ -1165,3 +1165,19 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .first-run .fr-done .k { width: 56px; flex: none; color: var(--fg-dim); font-family: var(--font-mono); font-size: 10.5px; }
 .first-run .fr-done code { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .first-run .fr-cmd { font-family: var(--font-mono); font-size: 11.5px; background: var(--bg); border: 1px solid var(--hair, var(--line)); border-radius: var(--r-row, 8px); padding: 10px 12px; margin: 10px 0 0; white-space: pre-wrap; }
+
+/* window transparency (renderer.md §1b): a wallpaper stands in for the desktop; panes carry the alpha; chrome and text stay opaque */
+:root { --win-a: 1; --win-blur: 20px; --wallpaper: repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 36px), repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 36px), radial-gradient(60% 70% at 15% 20%, #3b2aa8 0%, transparent 60%), radial-gradient(50% 60% at 85% 30%, #e0447a 0%, transparent 60%), radial-gradient(70% 70% at 60% 95%, #0fb5a0 0%, transparent 60%), linear-gradient(135deg, #10123a, #1b0f2e); }
+html.theme-light { --wallpaper: repeating-linear-gradient(0deg, rgba(20,20,60,.08) 0 1px, transparent 1px 36px), repeating-linear-gradient(90deg, rgba(20,20,60,.08) 0 1px, transparent 1px 36px), radial-gradient(60% 70% at 15% 20%, #9db4ff 0%, transparent 60%), radial-gradient(50% 60% at 85% 30%, #ffb3cf 0%, transparent 60%), radial-gradient(70% 70% at 60% 95%, #9ff0df 0%, transparent 60%), linear-gradient(135deg, #eef0ff, #f8eefc); }
+html.transparent, html.transparent body { background: var(--wallpaper) fixed; }
+html.transparent .stage .pane { background: color-mix(in srgb, var(--bg) calc(var(--win-a) * 100%), transparent); }
+html.transparent.win-blur .stage .pane { -webkit-backdrop-filter: blur(var(--win-blur)); backdrop-filter: blur(var(--win-blur)); }
+.wo { display: inline-flex; align-items: center; gap: 10px; }
+.wo input[type=range] { width: 120px; accent-color: var(--accent); }
+.wo .wo-pct { font-family: var(--font-mono); font-size: 11px; width: 3.2em; font-weight: 500; }
+.win-prev { position: relative; width: 64px; height: 40px; border-radius: 6px; overflow: hidden; background: var(--wallpaper); box-shadow: 0 0 0 1px var(--hair, var(--line)); flex: none; }
+.win-prev .wp-side { position: absolute; left: 0; top: 0; bottom: 0; width: 16px; background: var(--sidebar-bg); }
+.win-prev .wp-pane { position: absolute; left: 18px; right: 2px; top: 2px; bottom: 2px; border-radius: 3px; background: color-mix(in srgb, var(--bg) calc(var(--wa, 1) * 100%), transparent); display: flex; flex-direction: column; gap: 3px; padding: 5px; }
+.win-prev.blur .wp-pane { backdrop-filter: blur(4px); }
+.win-prev .wp-pane i { display: block; height: 2px; width: 70%; background: var(--fg-dim); border-radius: 1px; }
+.win-prev .wp-pane i:nth-child(2) { width: 45%; } .win-prev .wp-pane i:nth-child(3) { width: 58%; }

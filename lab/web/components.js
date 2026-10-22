@@ -1083,7 +1083,7 @@
       pi: { role: 'executor', wake: 'pty', hooks: false, command: 'pi', tile: LT('pi'), icon: 'pi', stateFrom: 'output cadence' },
       omp: { role: 'executor', wake: 'pty', hooks: false, command: 'omp', tile: LT('omp'), icon: 'omp', stateFrom: 'output cadence' },
     },
-    appearance: { theme: 'auto', density: 'cozy', gutter: 2, glow: true, subtitle: false },
+    appearance: { theme: 'auto', density: 'cozy', gutter: 2, glow: true, subtitle: false, opacity: TOKENS.window.opacity, blur: TOKENS.window.blur, blurRadius: TOKENS.window.blur_radius },
     shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab'], ['Focus previous pane', '⇧Tab']],
   };
   const SET = JSON.parse(JSON.stringify(SET_DEF));
@@ -1260,6 +1260,14 @@
           row('Theme', 'starts from the OS', themes, v.theme !== d.theme, rsA('theme')),
           row('Density', 'row height on the map', dens, v.density !== d.density, rsA('density')),
           row('Gutter', 'between panes', seg(['2 px', '4 px'], v.gutter + ' px', x => setA('gutter')(parseInt(x, 10))), v.gutter !== d.gutter, rsA('gutter')),
+          (() => { // window transparency: drag previews live without redrawing the page; release commits
+            const pct = el('b', { class: 'wo-pct' }, Math.round(v.opacity * 100) + '%');
+            const prev = el('span', { class: 'win-prev' + (v.blur ? ' blur' : ''), style: '--wa:' + v.opacity }, el('i', { class: 'wp-side' }), el('i', { class: 'wp-pane' }, el('i'), el('i'), el('i')));
+            const slider = el('input', { type: 'range', min: String(TOKENS.window.opacity_min * 100), max: '100', step: '5', value: String(Math.round(v.opacity * 100)), oninput: e => { v.opacity = +e.target.value / 100; pct.textContent = e.target.value + '%'; prev.style.setProperty('--wa', v.opacity); emit('appearance', 'opacity', v.opacity); }, onchange: () => draw() });
+            return row('Window opacity', 'panes only; chrome and text stay opaque', el('span', { class: 'wo' }, prev, slider, pct), v.opacity !== d.opacity, rsA('opacity'));
+          })(),
+          row('Blur behind', 'what is behind the window, like iTerm2', toggle(v.blur, setA('blur')), v.blur !== d.blur, rsA('blur')),
+          v.blur ? row('Blur radius', null, seg(['10 px', '20 px', '40 px'], v.blurRadius + ' px', x => setA('blurRadius')(parseInt(x, 10))), v.blurRadius !== d.blurRadius, rsA('blurRadius')) : null,
           row('Border glow', 'particles in the seat colour', toggle(v.glow, setA('glow')), v.glow !== d.glow, rsA('glow')),
           row('Last-output subtitle', 'second line on seat rows', toggle(v.subtitle, setA('subtitle')), v.subtitle !== d.subtitle, rsA('subtitle')),
         ]));

@@ -142,6 +142,12 @@ saturate = 0.10               # 1 = full colour, 0 = grey; applied to strip and 
 opacity = 0.45                # content and strip opacity on unfocused panes
 wash = 0.28                   # how much fg_dim is mixed into the unfocused pane background (operator: +20% grey)
 
+[window]
+opacity = 1.0                 # window alpha behind panes, 0.5 to 1.0 (renderer.md §1b); chrome and text stay opaque
+opacity_min = 0.5
+blur = false                  # blur what is behind the window (NSVisualEffectView on macOS)
+blur_radius = 20              # px
+
 [motion]
 pulse_ms = 1000               # waiting-on-input, 1 Hz
 ripple_ms = 400

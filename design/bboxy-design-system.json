@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 44,
+  "version": 45,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -134,6 +134,11 @@
       "start": "OS preference",
       "toggle": "one icon in the title bar: sun in dark, moon in light",
       "light_glow": "halo darkens toward the seat colour instead of adding light"
+    },
+    "window": {
+      "source": "renderer.md §1b; tokens [window] opacity 1.0, opacity_min 0.5, blur false, blur_radius 20",
+      "rule": "the window composites over the desktop: pane backgrounds carry the alpha (0.5 to 1.0), chrome and text stay opaque, glow and dim composite over; optional blur of what is behind, 10/20/40 px; subpixel text is impossible over transparency (grayscale already decided)",
+      "status": "built: Settings › Appearance Window opacity (live preview over a wallpaper, slider drags live, release commits), Blur behind, Blur radius; showcase ?opacity=0.5..1&blur=1 with a wallpaper standing in for the desktop; html.transparent / .win-blur in lab.css"
     }
   },
   "signals": {
