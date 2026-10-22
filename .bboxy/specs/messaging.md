@@ -197,7 +197,7 @@ Model and effort follow what each role spends attention on:
 
 Defaults are per-role settings (model, effort, subscriptions) injected at launch; the operator overrides per seat. The goal is little to no messaging distraction for workers: wake events reach a worker only for its own task, a DM addressed to it, or an Oracle-class interrupt. Everything else waits in its inbox until the seat is idle, and the Oracle absorbs the rest.
 
-## Subchannels and subgroups (operator, 2026-10-21)
+## Subchannels and subgroups (operator, 2026-10-21) — superseded in detail by [[channel-tree]]
 
 The swarm stream splits so attention stays narrow. On the bus they are just subjects ([[events]] Bus design):
 

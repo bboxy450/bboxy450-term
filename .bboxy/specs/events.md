@@ -78,3 +78,5 @@ Changes to the sections above, which now read with these amendments:
 7. **Not built:** clusters, gateways, leaf nodes, Raft, queue groups (v0.1 has no competing consumers), KV and object store as streams (we have `Store` and `Blobs`).
 
 Crates: `rusqlite`, `tokio` (mpsc and the router task), `ulid`, `ed25519-dalek`, `serde_json`, `zstd` for large payloads. Build: W2.2 step 3 (Rook).
+
+**Channel tree** ([[channel-tree]]): subscriptions for messaging are entries in a filesystem-like tree under `bboxy450://`; publishing to `channels/x/*` or `/**` resolves to sinks; routing is symlinks with filters and rates. The bus mechanics above are unchanged; the tree decides which named consumers a write fans out to.
