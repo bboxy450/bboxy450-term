@@ -492,6 +492,8 @@
     requestAnimationFrame(() => { const w = draw.classList.contains('dg-wrap') ? draw : draw.querySelector('.dg-wrap'); if (w && w.scrollWidth > w.clientWidth + 1) w.classList.add('wide'); });
     return fig;
   }
+  // Illustrative layout only (renderer.md §4.4c): diagram bodies are laid out by the Rust engine bbt-mermaid and are not a
+  // parity reference here; the figure card around them (diagramFigure) still is.
   function diagram(src) {
     let g; try { g = parseMermaid(src); } catch (e) { return el('div', { class: 'dg-raw' }, el('div', { class: 'dg-note' }, 'not drawn · ' + e.message + ' · shown as source'), el('pre', {}, src)); }
     const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
