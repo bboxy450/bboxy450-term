@@ -1,0 +1,14 @@
+Local registry Cargo.toml license declarations for the 12 newly added W2.3 packages (not a legal audit):
+chacha20 0.10.2 — MIT OR Apache-2.0
+const-oid 0.10.2 — Apache-2.0 OR MIT
+data-encoding 2.11.1 — MIT
+futures-macro 0.3.34 — MIT OR Apache-2.0
+futures-sink 0.3.34 — MIT OR Apache-2.0
+http 1.5.0 — MIT OR Apache-2.0
+httparse 1.10.1 — MIT OR Apache-2.0
+rand 0.10.3 — MIT OR Apache-2.0
+rand_core 0.10.1 — MIT OR Apache-2.0
+sha1 0.11.0 — MIT OR Apache-2.0
+tokio-tungstenite 0.30.0 — MIT
+tungstenite 0.30.0 — MIT OR Apache-2.0
+No existing dependency versions upgraded. Nyx owns the separate lyon additions.

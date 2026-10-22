@@ -217,6 +217,92 @@ terminal query replies and renderer/GUI wiring remain integration work.
 
 ## Verification and measurements
 
+### Harness adapters (W2.3)
+
+`adapters::HarnessRecord` is an open-string record for command, tile, icon,
+default role, wake method, state source and hooks. `Session` instantiates the
+`Adapter` trait; built-in Claude, Codex and zsh records select native behavior.
+Custom records retain inferred cadence state and operator handoff for submission.
+`LogicClient::spawn_harness` creates private launch overlays, persists the native
+session mapping and retains overlay files through close grace. Actual exit
+retires them; a logic restart preserves the live child's files. Ambiguous spawn
+does not delete an overlay that a possibly running process may still need.
+
+Claude gets an additive role prompt and an absolute `bboxy450-term hook` command
+in a 0600 settings overlay. Codex gets `developer_instructions` and inline hooks,
+with current CamelCase event names (the decoder also accepts the earlier snake
+spellings). No user files, trust hashes or bypass flags change. Hook approval is
+the operator's native Codex review. Zsh gets a private `ZDOTDIR` which sources the
+user's files and adds OSC 133 A/B/C/D and OSC 7. B is emitted at the actual prompt
+end, C before execution. Overlay cleanup waits for process exit, not pane close.
+
+Each live term has an unknown-OSC callback. OSC 7501 probes receive the same
+payload with BEL on the same supervisor writer lease; replies queue behind an
+existing write and keep their stable input IDs. A new launch observes its first
+captured bytes once, including a probe arriving before view attachment. Restart
+replay never emits probe replies or rebuilds fresh readiness from old output.
+7501 is reported grade; 7502 is shim grade; cadence/21337 are inferred. Running
+subagent rows keep start order and leave on clear/idle; Codex gets child rows
+only from hooks. The PTY of arrival owns a hook regardless of its `seat=` label.
+Live adapter changes publish `seat/<id>/state` on the existing R1-backed bus.
+
+Claude's owned sessions file must match PID, process start and native session.
+Logic polls that record off the UI thread. Known Codex thread IDs get read-only
+status snapshots on the supplied R1 handle, and `native_event` accepts bound
+app-server notifications; generated snapshots are identified as such internally.
+Neither channel reads transcripts. Display idle/done is never a ready token:
+readiness needs the native file/API or our zsh prompt marker, plus the input
+arbiter's foreground/draft/termios/render checks. Tokens expire, bind all process
+and attachment fields, and are consumed before a paste. The PTY helper journals
+a stable ID before calling the sole writer; partial/unknown results stay unknown
+and are not pasted again. Multiline/tab text without bracketed paste and terminal
+control bytes require handoff rather than accidental command submission.
+
+Native attach checks the process identity and endpoint. Claude writes a bounded
+JSON line with next/later/now; Codex initializes the Unix WebSocket, verifies the
+exact loaded thread and uses queue/add or a turn-ID-fenced steer. Now requires
+the acting caller's interrupt authority; the target's role grants none. Written
+and queued are evidence levels, never model consumption. The message layer must
+persist native outcomes before retry/restart; the adapter does not automatically
+fall back after an ambiguous write. MCP/GUI input arbitration is a later client
+of these APIs, not an additional writer in this brief.
+
+The private hook entry runs before window/runtime/GPU setup. It accepts bounded
+stdin (or Codex notify JSON argv), emits raw selected fields under `raw`, caps
+background tasks at 32 plus total, writes at most 4 KiB to `/dev/tty`, and sends
+larger/unavailable-tty payloads through the generation/capability-bound seat
+socket up to 64 KiB. It exits quietly, has a 50 ms IO deadline, and never spools.
+
+Codex protocol checks use the installed generated schema and the official
+[app-server documentation](https://learn.chatgpt.com/docs/app-server) for
+initialization, thread status and expected-turn steering. Hook spelling and
+parent `session_id` versus child `agent_id` follow the official
+[hook documentation](https://learn.chatgpt.com/docs/hooks); a parent session is
+never guessed to be a missing subagent ID. `w2-3-codex-schema.log` records the
+installed schema fields without runtime session data.
+
+Exercised: the retained Claude 7501 capture through the real term callback;
+matching/mismatching sessions-file fixtures and pending-dialog rejection with
+zero writes; a real zsh prompt and preexec; private launch/cleanup under logic;
+same-PTY probe response before two seconds and suppression after restart;
+capability admission; local native fixture sockets for Claude priorities, Codex
+queue/steer/unknown replies; input-token fencing/journaling; and the actual hook
+executable's silence, latency and large-payload fallback. No live Claude/Codex
+model session was created for this task.
+
+Not exercised live: role-prompt/snapshot behavior on Claude resume, settings
+merge/policy, hook trust/inline configuration on installed Codex, actual Codex
+subagent events, native socket auth/acceptance, queue behavior while a model is
+active, native idle subscriptions or model-consumption correlation, harness
+resume/enrollment, operator-draft/foreground synchronization or a consumable
+native ready handshake. Arbiter negative facts must come from the input broker;
+the fixture values do not certify a real TUI's readiness. Off-PTY hook fallback
+path/capability changes on logic restart need refresh; old inherited environment
+cannot discover the replacement socket. Shell prompt themes that replace
+precmd/preexec hooks or `ZDOTDIR`, C1 OSC support in upstream term-core,
+Linux/macOS14, and 1000-seat adapter load remain unvalidated. None of these gaps
+authorizes a trust bypass or submission after an unknown outcome.
+
 `cargo test -p bbt-mux --locked` covers storage/signatures/corruption, consumer
 replay/redelivery/gaps, registry undo, graph recovery, watcher-to-bus task events,
 provenance signatures, real seat sockets and W2.1 PTY/lease/backpressure tests.

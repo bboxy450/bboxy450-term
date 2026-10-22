@@ -507,6 +507,11 @@ impl ApplicationHandler<UiEvent> for App {
     }
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    if hook_args.first().is_some_and(|arg| arg == "hook") {
+        bbt_mux::adapters::hook::run_cli(&hook_args[1..]);
+        return Ok(());
+    }
     let event_loop = EventLoop::<UiEvent>::with_user_event().build()?;
     let proxy = event_loop.create_proxy();
     let inbox = bbt_rt::init_ui(Wake(proxy.clone()));

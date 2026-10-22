@@ -1,0 +1,26 @@
+COMMAND: cargo check -p bbt-mux --locked
+    Checking const-oid v0.10.2
+    Checking rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling thiserror v2.0.21
+   Compiling httparse v1.10.1
+    Checking http v1.5.0
+   Compiling futures-macro v0.3.34
+    Checking futures-task v0.3.34
+    Checking futures-core v0.3.34
+    Checking data-encoding v2.11.1
+    Checking chacha20 v0.10.2
+    Checking slab v0.4.12
+    Checking futures-sink v0.3.34
+    Checking digest v0.11.3
+    Checking sha1 v0.11.0
+    Checking sha2 v0.11.1
+    Checking curve25519-dalek v5.0.0
+    Checking futures-util v0.3.34
+    Checking rand v0.10.3
+    Checking tungstenite v0.30.0
+    Checking ed25519-dalek v3.0.0
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.75s
+exit 0

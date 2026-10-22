@@ -12,6 +12,7 @@
 #[cfg(not(unix))]
 compile_error!("bbt-mux currently requires Unix PTYs and Unix sockets");
 
+pub mod adapters;
 pub mod bus;
 pub mod index;
 pub mod logic;

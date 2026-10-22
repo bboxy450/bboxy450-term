@@ -1,0 +1,54 @@
+W2.3 — harness adapters, ready for Oracle review
+Rook Ashwhisker <EXECUTOR>; 2026-10-22; macOS native debug build.
+Brief: .bboxy/tasks/2026-10-21-w2-3-adapters-claude-codex-zsh.md.
+Scope: crates/bbt-mux/**, Cargo.lock, w2-3 logs. Oracle DM d2e48124-8210-45be-8189-c8425bc59933 also authorizes exactly the app Cargo.toml bbt-mux edge and early hook dispatch in main.rs. No other app changes.
+
+Files / mechanisms
+crates/bbt-mux/src/adapters/mod.rs:39 — open-string HarnessRecord and built-in records; :171 Adapter trait with launch, ordered observations, native attachment/wake, guard and resume. Native attachments bind process start/session/seat/generation/attachment generation.
+crates/bbt-mux/src/adapters/launch.rs:57 — private launch overlays, additive role prompts, per-launch Claude settings and Codex config, absolute one-binary hook path, private ZDOTDIR. No user settings, trust hashes or bypass flags modified.
+crates/bbt-mux/src/adapters/observe.rs:103 — owned Session state, reported/shim/inferred precedence, sticky waiting, running-only subagents and bounded history; :418 actual Term::on_unknown_osc callback collector. Probe echo is BEL terminated. Codex 7501 reports never invent child rows.
+crates/bbt-mux/src/adapters/native.rs:72 — owned, bounded sessions-file reader matches PID/start/session; :102 native idle versus pending dialog; :154 bound Codex status/turn/approval normalization; :349 bounded native wake, exact-thread verification and queue/expected-turn steer, distinct written/queued/unknown evidence.
+crates/bbt-mux/src/adapters/guard.rs:36 — native-positive readiness plus arbiter negative checks, short-lived consumed token; :80 journal before sole-writer callback and no retyping ambiguous/partial IDs. Literal control bytes or unbracketed multiline/tab input are rejected.
+crates/bbt-mux/src/adapters/hook.rs:23 — raw selected fields preserved, background array capped at 32 with total; <=4 KiB OSC 7502 or <=64 KiB socket fallback; :329 quiet 50 ms IO-deadline CLI. Capability/generation authenticate off-PTY; env seat labels do not redirect PTY attribution.
+crates/bbt-mux/src/logic.rs:541 — distinguish new launch's initial live capture from restart replay so the first probe is answered, old probes are not; :768 persist discovered native session IDs for restart; :1033 queue protocol replies behind the current supervisor write; :1052 native file/API observations run off the UI thread on the supplied R1 handle. No second runtime.
+crates/bbt-mux/src/seat_socket.rs — capability/generation-admitted Hook action, then common normalized state; state publishes on seat/<id>/state.
+crates/bboxy450-term/src/main.rs:309 — private hook entry returns before window/event-loop/runtime/GPU setup. Cargo.toml adds one bbt-mux path dependency.
+crates/bbt-mux/README.md:220 — mechanisms, source URLs, exercised evidence and every unexercised spec claim listed.
+Cargo.lock — exactly 12 new native-WebSocket packages, no removed/upgraded versions. Nyx separately committed lyon changes; those remain untouched. Local license declarations are in w2-3-dependencies.log.
+
+Acceptance / actual assertions
+tests/adapters.rs:52 — retained 482-byte Claude capture, real Term callback, working child + exact id/title -> clear removes running row -> main done; actual BEL probe echo; done alone never authorizes input.
+:95 — matching fixture sessions file, waiting permission means zero write calls; reused PID/start or wrong native session rejected.
+:130 — positive native token consumed; operator epoch fences stale token; pending journal exists before write; PartialUnknown retained and original ID never typed again, unbracketed tab rejected.
+:199 — Codex API status/approval readiness; 7501 cannot add children, hooks can; full native UUID child IDs accepted; missing child ID never becomes the parent's session ID.
+:271 — overlay is 0600, absolute quoted executable path, no user config mutation or bypass; selected raw tool_input preserved; >4 KiB goes to fallback. Codex overlay uses current CamelCase keys.
+:345 — real /bin/zsh seat produces 133 B and OSC 7; real preexec produces C.
+:419 — local Claude fixture socket: read-only attach, later priority frame, native-written only; stale rebind refuses delivery.
+:465 — local Codex Unix WebSocket: initialize/initialized/exact-thread read, queue ID/content correlation, default input fields tolerated, unknown on disconnect; caller-gated expected-turn steer.
+:508 — logic launch API, prompt state, overlay retained while live and retired on actual exit; wrong fallback capability disconnected, correct capability admitted.
+:631 — actual supervisor child waits for BEL echo on its own PTY before reporting active, within a 2 s deadline. Discovered native session ID persists over logic restart, restored status unobserved and no replayed probe response.
+:731 — web log fixture through a generic adapter: cadence is inferred, even a later reported idle does not grant generic-harness autonomous input.
+
+Commands / results (actual output retained)
+cargo test -p bbt-mux --locked adapters -- --nocapture — exit 0, 11 tests; w2-3-ready-adapters.log after final native-session persistence change.
+cargo test -p bbt-mux --locked -- --nocapture — exit 0, 51 passed / 3 ignored; w2-3-handoff-mux.log is the final-source complete run. The 20 MiB W1.2b writer still completes before restart (8.1134 s, max write 0.2687 s), cold startup 5.8532 s, full digest/tail/no-gap assertions pass.
+cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit 0, w2-3-ready-clippy.log.
+cargo fmt -p bbt-mux -- --check — exit 0, w2-3-handoff-fmt.log.
+cargo build --workspace --locked — exit 0, w2-3-ready-build.log.
+Actual private hook executable: empty/malformed/small inputs exit 0 with zero stdout/stderr; 0.465797 s cold load, ~0.005 s warm. 5287-byte socket fallback preserves raw 5000-byte message and verifies capability/generation; 0.005477 s. Malformed non-ASCII capability also exits quietly, 0.520222 s cold. See w2-3-hook-cli.log and w2-3-hook-malformed-capability.log.
+Installed versions read-only: Codex 0.163.0, Claude 2.1.304. Codex app-server schema generator exit 0; w2-3-codex-schema.log and w2-3-surfaces.log. No live model session created.
+
+Failures / corrections
+w2-3-adapters-01.log exit 101 — fixture passed Vec instead of &[u8], corrected; 02 passed 8 tests.
+w2-3-adapters-03.log exit 101 — live first probe was swallowed as historical startup replay. Fixed new-launch/live_start path without replaying restart effects; 04 passed 10 tests.
+Initial mux all-target clippy invocation exit 101 — one collapsible_if in own hook projection, fixed without lint suppression; subsequent stored all-target lint logs exit 0.
+Offline cargo metadata initially exited 101 on uncached platform-only inotify after writing the new lock resolution; native builds/checks with the lock pass. No existing version upgrades.
+Current official hook docs + installed SessionStart key corrected older spec snake_case names in the launcher; decoder keeps both spellings. No spec edited outside task scope.
+
+Gaps / deliberately not claimed
+Live Claude/Codex role-prompt and resume snapshot semantics, overlay merging/policy/trust, actual Codex child-hook events, messaging-socket auth/acceptance, active-turn queue behavior, idle subscription/model-consumption acknowledgement and native ULID-message acceptance are unexercised. Native fixtures validate our framing and evidence accounting, not harness compatibility certification.
+Input arbiter supplies foreground/draft/termios/render facts. The positive-proof/negative-check contract and refusal are tested, not a real TUI check/write handshake or GUI/MCP input integration. The message layer must persist native outcomes before retry/restart; adapter memory is not that durable ledger.
+Off-PTY hook fallback's inherited path/capability needs refresh after logic restart; small PTY hooks and native snapshots still work, no spool promised. Shell prompt themes replacing integration hooks/ZDOTDIR, raw C1 delivery in upstream term-core, Linux/macOS14 and 1000-seat adapter load remain unvalidated. No core extension or user config change.
+Shared UI/render/lab/style edits remain untouched. Only owned paths are staged in the signed handoff; no push by this Executor. Commit SHA/signature/scope checks are in the DM, avoiding a self-referential log.
+Pre-commit git fetch origin exited 0; git merge --ff-only origin/main exited 1 because incoming R4 changes overlap Cargo.lock and the two app files while the shared worktree is dirty (local 5bafc39, incoming c221ca4). No stash/reset/merge resolution attempted. Preserve the verified scoped snapshot as a signed commit for Oracle integration; no unverified upstream code is folded into these test claims.
+Final reply-validation hardening follows signed snapshot a00e53e: malformed RPC error objects remain NativeUnknown after a mutation attempt, rather than a definite rejection. Tests include error:null after queue submission. Required 11 adapters and mux all-target lint reran, both exit 0 (w2-3-rpc-error-{adapters,clippy}.log). The 51-test regression and workspace build above were before this narrow parser-error correction; no new merge/CI validation claimed.

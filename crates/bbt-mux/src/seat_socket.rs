@@ -29,6 +29,9 @@ pub struct Request {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Action {
+    Hook {
+        event: crate::adapters::hook::ShimEvent,
+    },
     Attach,
     Snapshot,
     Subscribe,
@@ -212,6 +215,7 @@ async fn session_inner(
                 // on every request, not merely against this listener's pathname.
                 let snapshot=client.snapshot(seat,generation).await?;
                 let result:Result<serde_json::Value>=match request.action {
+                    Action::Hook{event}=>Ok(serde_json::json!({"kind":"HookObserved","status":client.hook(seat,generation,event).await?})),
                     Action::Attach|Action::Snapshot=>Ok(serde_json::json!({"kind":"Snapshot","snapshot":snapshot})),
                     Action::Subscribe=>{subscribed=true;view.reset();view.offer(snapshot)?;Ok(serde_json::json!({"kind":"Subscribed"}))}
                     Action::Applied{view:identity,sequence}=>view.applied(identity,sequence).map(|()|serde_json::json!({"kind":"Applied"})),

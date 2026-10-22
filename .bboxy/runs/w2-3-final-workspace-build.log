@@ -1,0 +1,6 @@
+COMMAND: cargo build --workspace --locked
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.87s
+exit 0

@@ -1,0 +1,2 @@
+COMMAND: cargo fmt -p bbt-mux -- --check
+exit 0
