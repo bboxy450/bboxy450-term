@@ -1,0 +1,57 @@
+Actual OS main vs worker raster regression; main and worker asserted via pthread_main_np.
+PROBE SOURCE:
+use bbt_render::{FontConfig, text::terminal::Fonts};
+#[link(name = "System")]
+unsafe extern "C" { fn pthread_main_np() -> i32; }
+fn main() {
+    assert_eq!(unsafe { pthread_main_np() }, 1, "baseline must run on OS main thread");
+    let cases = [("F",1),("e\u{301}",1),("中",2),("👩\u{200d}💻",2)];
+    let mut count = 0;
+    for scale in [1,2] {
+        let fonts = Fonts::new(&FontConfig {scale,..Default::default()},None,false).unwrap();
+        let capture = move |fonts: &Fonts| {
+            let mut result = Vec::new();
+            for (text,span) in cases {
+                for (bold,italic) in [(false,false),(true,false),(false,true),(true,true)] {
+                    let g = fonts.rasterize(text,bold,italic,span).unwrap().unwrap();
+                    result.push((g.width,g.height,g.left,g.top,g.format,g.pixels,g.faces));
+                }
+            }
+            result
+        };
+        let before = capture(&fonts);
+        let after = std::thread::spawn(move || {
+            assert_eq!(unsafe {pthread_main_np()},0,"worker must differ from main thread");
+            capture(&fonts)
+        }).join().unwrap();
+        assert_eq!(before,after,"main/worker raster differs at scale {scale}");
+        count += before.len();
+    }
+    println!("OS main vs worker: {count}/32 raster pairs byte-identical (4 glyph clusters, 4 styles, 2 scales)");
+}
+
+$ cargo build -p bbt-render --message-format=json
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling polycool v0.4.0
+   Compiling serde_json v1.0.154
+   Compiling roxmltree v0.21.1
+   Compiling tiny-skia v0.12.0
+   Compiling kurbo v0.13.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui-model)
+   Compiling svgtypes v0.16.1
+   Compiling usvg v0.48.1
+   Compiling resvg v0.48.1
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 19.40s
+EXIT 0
+$ rustc --edition=2024 /Users/feral/mydev/bboxy450-term-exec4/target/c1b-font-main.rs -L dependency=/Users/feral/mydev/bboxy450-term-exec4/target/debug/deps --extern bbt_render=/Users/feral/mydev/bboxy450-term-exec4/target/debug/libbbt_render.rlib -o /Users/feral/mydev/bboxy450-term-exec4/target/c1b-font-main
+EXIT 0
+$ /Users/feral/mydev/bboxy450-term-exec4/target/c1b-font-main
+OS main vs worker: 32/32 raster pairs byte-identical (4 glyph clusters, 4 styles, 2 scales)
+EXIT 0

@@ -1,0 +1,8 @@
+{
+  "scene": "unicode-dark-1x",
+  "web_changed_pixel_percent_at_max_channel_gt_12": 8.06032986111111,
+  "app_vs_accepted_T2_native_pixels_identical": true,
+  "preview_sha256": "8ce97e9eafafcbc03a21fa926495e3d5e7faa6fb423ca8c4463517853881be2d",
+  "comparison": "target/c1b-pane-comparison.png",
+  "limits": "headless library fixture; no real PTY/IO/window claim"
+}

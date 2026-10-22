@@ -1,0 +1,46 @@
+Actual source module regressions; corrected DECSCUSR fixture to CSI Ps SP q. Prior run 3 pass/1 fixture failure retained in c1b-module-tests-first.log.
+crates/bboxy450-term/src/grids.rs sha256 dcbe32bf34efee34396de997376e47c19ba76700763cbbfe7cfa1a2276b34cb8
+crates/bboxy450-term/src/model.rs sha256 3f46b64f23fac0267ee53b1a8a35c75327903788f8b4430cebd7af5581716af3
+$ rustc --test --edition=2024 /Users/feral/mydev/bboxy450-term-exec4/target/c1b-modules.rs -L dependency=/Users/feral/mydev/bboxy450-term-exec4/target/debug/deps -o /Users/feral/mydev/bboxy450-term-exec4/target/c1b-modules --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec4/target/debug/libbbt_core.rlib --extern bbt_proto=/Users/feral/mydev/bboxy450-term-exec4/target/debug/libbbt_proto.rlib --extern bbt_mux=/Users/feral/mydev/bboxy450-term-exec4/target/debug/libbbt_mux.rlib --extern bbt_rt=/Users/feral/mydev/bboxy450-term-exec4/target/debug/libbbt_rt.rlib --extern bbt_render=/Users/feral/mydev/bboxy450-term-exec4/target/debug/libbbt_render.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec4/target/debug/libbbt_ui_model.rlib --extern wgpu=/Users/feral/mydev/bboxy450-term-exec4/target/debug/deps/libwgpu-b2652c7ef057b5fb.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec4/target/debug/deps/libserde_json-be297a31a9a8c59e.rlib
+warning: multiple ranges are one apart
+   --> /Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term/src/model.rs:365:9
+    |
+365 |         232..256 => {
+    |         ^^^^^^^^
+    |         |
+    |         this range doesn't match `256_usize` because `..` is an exclusive range
+    |         help: use an inclusive range instead: `232_usize..=256_usize`
+...
+369 |         257 => {
+    |         --- this could appear to continue range `232_usize..256_usize`, but `256_usize` isn't matched by either of them
+    |
+    = note: `#[warn(non_contiguous_range_endpoints)]` on by default
+
+warning: struct `DrawCtx` is never constructed
+   --> /Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term/src/model.rs:324:12
+    |
+324 | pub struct DrawCtx<'a> {
+    |            ^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `draw_pane` is never used
+   --> /Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term/src/model.rs:332:8
+    |
+332 | pub fn draw_pane(screen: &Screen, rect: Rect, ctx: &mut DrawCtx<'_>) {
+    |        ^^^^^^^^^
+
+warning: 3 warnings emitted
+
+EXIT 0
+$ /Users/feral/mydev/bboxy450-term-exec4/target/c1b-modules --nocapture
+
+running 4 tests
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+EXIT 0

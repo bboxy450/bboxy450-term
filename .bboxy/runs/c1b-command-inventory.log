@@ -1,0 +1,801 @@
+C1b command inventory — exact-session tool source and observed results.
+Local source: /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl
+Bounded start line 2349; through source line 4212.
+Each pointer and SHA-256 binds the exact tool program. This generator reads data only: no source evaluation or replay.
+Literal commands are shown where recoverable; computed commands, long stdin and private message payloads retain local source pointers/hashes.
+Observed exits/session IDs remain in returned order; batch associations are not guessed. Shell-group exits apply to the whole group.
+Full CI subprocess commands/results are retained in the c1b logs. No raw transcript or peer payload copied.
+Closing evidence staging/commit/verify/status and final handoff DM happen after this bounded snapshot; their observed statuses are in the handoff.
+
+1. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2350 — exec tool-program sha256 a4b272b3320e3be1e8f03acc0a3b656d6a732dcb5ab7b9876c810197d0be9224
+   ICQ send/preview — exact expression/payload local; prefix sha256 577bcaeead0736bfebac4250a75aa80d3eceb036d68155a3aacb19a871ae3c2c
+   "rg --files -g AGENTS.md -g CLAUDE.md -g '*c1*' .bboxy\nrg -n 'Sable|Aster|C1a|C1b' .bboxy/graph.md\ncat .bboxy/tasks/README.md\ngit status --short --branch\ngit log -8 --format='%h %s' origin/main"
+   "cat /Users/feral/.agents/skills/substrate/SKILL.md\ncat /Users/feral/.agents/skills/substrate/references/01_operator_frame.md\ncat /Users/feral/.agents/skills/substrate/references/02_substrate_toolkit.md\ncat /Users/feral/.agents/skills/substrate/references/03_voice_register.md\ncat /Users/feral/.agents/skills/edge-boy/SKILL.md"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+2. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2359 — exec tool-program sha256 a24a5f9f2d13831331de8cb040bd9bc4689b78a5dcf5da0473ae9292788ae5c8
+   ICQ send/preview — exact expression/payload local; prefix sha256 968bee9c6a678518b0a3ea6cf343a15929a91c869be2063efa85aa99ea6b53e5
+   "rg --files crates/bboxy450-term/src crates/bbt-rt/src\nsed -n '1,300p' crates/bbt-mux/src/streams.rs\nsed -n '1,210p' crates/bbt-mux/src/registry.rs"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+3. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2368 — exec tool-program sha256 1c91386e65c12ad423cd6c6456501848b0cd58f575a0ea0dc6d40cd944bbcba2
+   ICQ send/preview — exact expression/payload local; prefix sha256 ee0ac8e0c4f409911a3296ffa1c1637ae3f7877a48a2cd907f2e176d8866ace7
+   "icq inbox --after 3455 --limit 50"
+   "sed -n '1,230p' crates/bbt-rt/src/lib.rs\ncat crates/bbt-rt/src/commands.rs\ncat crates/bbt-rt/src/queues.rs\nsed -n '1,210p' crates/bbt-ui-model/src/model/window.rs\ncat scripts/layering.sh"
+   "sed -n '1,220p' crates/bboxy450-term/src/main.rs\nsed -n '1,260p' crates/bboxy450-term/src/gpu.rs\nrg -n 'live|io_task|Gui|C1a' /Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term/src -g '*.rs'\ncat crates/bbt-mux/Cargo.toml\ncat crates/bboxy450-term/Cargo.toml"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0, "exit_code":0
+
+4. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2379 — exec tool-program sha256 6b0e98e060a3bb02b496d1671621a306ff66ce9a38ebde5da5d51a0f25ec9137
+   "sed -n '1,200p' scripts/layering.sh\nsed -n '110,220p' crates/bbt-ui-model/src/model/window.rs\nsed -n '1,170p' crates/bbt-mux/src/seat_socket.rs\nsed -n '1,130p' crates/bbt-ui-model/src/model/seat.rs\nsed -n '1,220p' crates/bbt-render/src/cells/terminal/gpu.rs"
+   "sed -n '220,500p' crates/bbt-render/src/cells/terminal/gpu.rs\nsed -n '1,170p' crates/bbt-render/examples/terminal_gallery.rs\nsed -n '1,200p' crates/bboxy450-term/src/scene.rs\nsed -n '1,150p' crates/bboxy450-term/src/main.rs"
+   "icq inbox --after 3502 --limit 50 --wait 20"
+   observed returns: "exit_code":0, "session_id":72350
+
+5. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2387 — exec tool-program sha256 fb282fe35d268b0ec18e63be9527ef40cf9f6dae6a126b12f1d5eddb3d765517
+   "sed -n '262,455p' crates/bbt-render/src/cells/terminal/gpu.rs"
+   observed returns: "session_id":72350, "exit_code":0
+
+6. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2397 — exec tool-program sha256 8ea43d99eaf1a7085800bbf4e8c09eb2f427c9f55e97543b17d134c8b7c38b91
+   ICQ send/preview — exact expression/payload local; prefix sha256 11f6a63c35bac53913994589445edbb669231b947244b4fe3a18fa79c82d3eec
+   "git log --all -5 --format='%h %s'\nrg -n 'enum Action|Spawn|Resize|Input|Snapshot|Subscribe|fn snapshot|view_generation' crates/bbt-mux/src/logic.rs | head -75\ncat crates/bbt-render/src/cells/bg.wgsl\ncat crates/bbt-render/src/cells/terminal/terminal.wgsl"
+   observed returns: "exit_code":0, "exit_code":0
+
+7. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2405 — exec tool-program sha256 7c67da3699b958d779e9f1d8f208cc43a958099dc5a36b50b417dfad39e72b12
+   ICQ send/preview — exact expression/payload local; prefix sha256 1c40ab51c9f9905a31e1a0b9f22b48741d123e50c096097d3ab598c29ab8e792
+   "icq inbox --after 3502 --limit 50 --wait 20"
+   observed returns: "exit_code":0, "exit_code":0, "session_id":47831
+
+8. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2412 — exec tool-program sha256 ebfa2e8fc59bb8e092a7afb3374d7cd07b697c246ff058aabaf153b719ebb261
+   observed returns: "exit_code":0
+
+9. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2432 — exec tool-program sha256 b13508182376fdbbd43ec565390db677e5c3d1564e5068443e0146887aa37230
+   "icq inbox --after 3502 --limit 50"
+   "git status --short --branch\ngit log -4 --format='%h %s' origin/main\nrg --files /Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term/src /Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux/src | rg '(gui|live|model|client)'"
+   observed returns: "exit_code":0, "exit_code":1
+
+10. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2440 — exec tool-program sha256 ba846b6b158f038a52e5d4ade28cd0317d50932298b535704b3084613f715773
+   "icq inbox --after 3514 --limit 50 --wait 20"
+   observed returns: "session_id":43252
+
+11. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2447 — exec tool-program sha256 bda033daa14eec06081cd6b669ff9b10f5a0d2e77d33aa2eed73613eb4d44ed7
+   observed returns: "exit_code":0
+
+12. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2497 — exec tool-program sha256 708587aac31726b8bb7aff70104d4cf22637e7b9021ee3be40bf2d24ce248761
+   "icq inbox --after 3514 --limit 50"
+   "git status --short --branch\ngit log -4 --format='%h %s' origin/main\nrg --files -g AGENTS.md -g CLAUDE.md /Users/feral/mydev/bboxy450-term-exec4 /Users/feral/mydev | head -60"
+   observed returns: "exit_code":0, "exit_code":0
+
+13. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2505 — exec tool-program sha256 178c67642b8823a98bcd2dca5d3e3873ba217e7677f904a9e3faa63ba97f449e
+   "git rebase --no-autostash origin/main"
+   ICQ send/preview — exact expression/payload local; prefix sha256 61032268fdbca687db1acb53937c542864d8709ae541132ed37fe7272f1f5ccf
+   observed returns: "exit_code":0, "exit_code":0
+
+14. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2513 — exec tool-program sha256 19c12fff3701133206dbb4085abf322aa4e91f9a777431f68685ac3f40b9dcf8
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   ICQ send/preview — exact expression/payload local; prefix sha256 4eb0b3e5b760479c4cb6f11f53f8dbd0db591fef4912fbd23aaf98e6600d4aef
+   "sed -n '1,95p' crates/bbt-mux/src/store/mod.rs\nsed -n '300,420p' crates/bbt-mux/src/streams.rs\nsed -n '1,120p' crates/bbt-supervisor/src/protocol.rs\ncat crates/bbt-core/Cargo.toml"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+15. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2522 — exec tool-program sha256 31fd7f45bae2392ab35bf4d97f655e6e321dbc356e976a09f10840194e21302f
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   ICQ send/preview — exact expression/payload local; prefix sha256 d84392e7651b3c8c4b40441298b598df4c7ca34d8465e0ecfe35d736742cc500
+   "rg -n 'Cell|Column|Dimensions|Line|Term|Serialize|Ulid' crates/bbt-mux/src/streams.rs\nrg -n 'Serialize|Deserialize' crates/bbt-mux/src/registry.rs\ngit config user.name\ngit config user.email\ngit config user.signingkey\ngit config commit.gpgsign"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+16. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2531 — exec tool-program sha256 fd6559cf281909befcccb121fbcef576ce8d7005c3fe2fb1735fe33cf246e456
+   ICQ send/preview — exact expression/payload local; prefix sha256 e7088dc127bca5cf633b7aa80861d36348273b3ea7e3b764bf8357dc31886691
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 f619bd133b08509d35bab57d2def8f8ff84e31d044441c7390cbdbee24131e47
+   "cargo check -p bbt-mux -p bbt-proto"
+   observed returns: "exit_code":0, "exit_code":0, "session_id":53447
+
+17. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2542 — exec tool-program sha256 ff938ab7976dd7d8bc2a7d2de0e4b2fdcb1c0723119c8f9515df4ed8a611e858
+   "icq inbox --after 3570 --limit 50"
+   "sed -n '530,650p' crates/bbt-render/src/cells/terminal/gpu.rs\nsed -n '1,80p' crates/bbt-render/src/device.rs\nsed -n '1,250p' crates/bbt-render/tests/terminal.rs"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+18. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2550 — exec tool-program sha256 e574d415667db7aae322c6fa95964558fad7cc5e10a7fd3a5c4f1031a09c4fdc
+   "cat /Users/feral/mydev/bboxy450-term/AGENTS.md\nsed -n '1,220p' .bboxy/specs/runtime.md\nsed -n '1,150p' .bboxy/specs/renderer.md"
+   "icq inbox --after 3601 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0
+
+19. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2560 — exec tool-program sha256 0d0d762938f297d3da9ef24b3eb88da613546507a908d169e94a19c2bd44d15d
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 13cd1a2bc6dc099f95638d67872edcfd07a5c6d83db0ef4e22f7dd51f587e394
+   "cargo test -p bbt-render --test terminal"
+   "git worktree list --porcelain"
+   observed returns: "exit_code":0, "session_id":14801, "exit_code":0
+
+20. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2568 — exec tool-program sha256 b5ac24a605ed2842bf1c53ce3639bad96494990470df825a7079d3b3f40dd0b6
+   "cat /Users/feral/mydev/bboxy450-term-oracle/AGENTS.md"
+   "icq inbox --after 3601 --limit 50"
+   "git diff --stat\nsh scripts/layering.sh"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0, "session_id":14801
+
+21. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2580 — exec tool-program sha256 c5f9b21cec8bd843308eb27f7fd84f47cba40b5ce2d4a644ace2da6955bc0ddb
+   "cat scripts/ui-lint.sh\ncat crates/bbt-mux/src/streams.rs\nsed -n '1,85p' crates/bbt-render/Cargo.toml"
+   observed returns: "exit_code":0, "exit_code":0
+
+22. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2589 — exec tool-program sha256 23c2776006a12b3fe8e9f4e067fbb06dc0e7664f4d6ddc6f4de69deb173412f7
+   "sed -n '440,495p' crates/bbt-render/src/cells/terminal/gpu.rs\nicq inbox --after 3601 --limit 50"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 32cdc9b762bd2e752561d703117141e149d38bd3f4c7758582ad727ff56f0e81
+   observed returns: "exit_code":0, "session_id":4011
+
+23. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2599 — exec tool-program sha256 875a0bb798716e2084f565f653dbf5a40ac0c05e898c3e67e815633cb967fe09
+   "sed -n '495,530p' crates/bbt-render/src/cells/terminal/gpu.rs\nsed -n '1,95p' crates/bbt-render/src/text/terminal_macos.rs\nrg -n 'Send|Sync' crates/bbt-render/src/text/terminal_macos.rs crates/bbt-render/src/text/terminal.rs\nicq inbox --after 3606 --limit 50 --wait 20"
+   observed returns: "session_id":93820, "exit_code":0
+
+24. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2606 — exec tool-program sha256 694205ea82cfc2b75462b7ee51014968a49c92ee987b4cd20ed9e1c11e8bc516
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 7000dfba54e991088347eb85ca10098711647fd3b85535545745fd9a2432d949
+   "cargo test -p bbt-render --lib prepared_frame_encodes -- --nocapture"
+   observed returns: "exit_code":0, "session_id":39704
+
+25. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2617 — exec tool-program sha256 54744562369cab3162f09b16b70d0384e261e578422f18a9a8e56e126567720e
+   "rg --files /Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term/src /Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux/src | rg '(gui|live|session|process)'"
+   "icq inbox --after 3606 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":1, "exit_code":0
+
+26. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2629 — exec tool-program sha256 e84b91f88aadf822b3275feba5943224251f7518fcaa687dfb952b8a0d57e1ef
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   "rustfmt --edition 2024 --config skip_children=true crates/bbt-proto/src/lib.rs crates/bbt-proto/src/registry.rs crates/bbt-proto/src/streams.rs crates/bbt-mux/src/registry.rs crates/bbt-mux/src/streams.rs crates/bbt-render/src/cells/terminal.rs crates/bbt-render/src/cells/terminal/gpu.rs"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 cd9c5767847dbcb43365efc43f1c8abdf20fef2af4da23e6ff8dea53bcd67939
+   observed returns: "exit_code":0, "exit_code":0, "session_id":42369
+
+27. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2637 — exec tool-program sha256 6de20bdb85a353b6c3398878c4f9d0e3a62d6a8c023c6e7626d3bcd16f2d1957
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   ICQ send/preview — exact expression/payload local; prefix sha256 11f6a63c35bac53913994589445edbb669231b947244b4fe3a18fa79c82d3eec
+   "date -u '+%Y-%m-%d %H:%M:%S UTC'\ngit diff --check"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+28. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2646 — exec tool-program sha256 da1f9600b969c0a98e45b190bda69ce0829746090cefecf4d4c3c55f7e82c7f7
+   ICQ send/preview — exact expression/payload local; prefix sha256 1c40ab51c9f9905a31e1a0b9f22b48741d123e50c096097d3ab598c29ab8e792
+   "icq inbox --after 3606 --limit 50 --wait 20"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 ef7db9596cda9fee4fad4c77d4e488401109f048fb9e6e7e6ad8b6af72355828
+   observed returns: "exit_code":0, "session_id":42369, "session_id":43819, "exit_code":0
+
+29. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2655 — exec tool-program sha256 e97617f8b3d0ab4db998d0fd1e662aa057b8d9218f2bfd4905a6500bed24c005
+   "tail -22 .bboxy/runs/c1b-protocol-tests.log"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+30. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2667 — exec tool-program sha256 3bd7c1ff863a50d399432ceb687968429e1d3eb403959f5ba187bc67922bbe39
+   "git status --short\nrg 'test result:' .bboxy/runs/c1b-protocol-tests.log\ngit diff -- Cargo.lock"
+   "git add Cargo.toml Cargo.lock scripts/layering.sh crates/bbt-proto/Cargo.toml crates/bbt-proto/src/lib.rs crates/bbt-proto/src/registry.rs crates/bbt-proto/src/streams.rs crates/bbt-mux/Cargo.toml crates/bbt-mux/src/registry.rs crates/bbt-mux/src/streams.rs"
+   "git commit -m 'Extract shared terminal viewport and seat wire types into bbt-proto'"
+   "git verify-commit HEAD\ngit log -1 --format='%H %G? %GF %s'\ngit status --short"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0, "exit_code":0
+
+31. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2679 — exec tool-program sha256 13ff9422746a831ce1e9188b1e25ee6e51455f330389e5c784a0c2666550d451
+   "cargo test -p bbt-render --lib prepared_frame_encodes -- --nocapture"
+   "icq inbox --after 3606 --limit 50"
+   observed returns: "session_id":51200, "exit_code":0
+
+32. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2703 — exec tool-program sha256 59da557c5abe3346b3af748497c874101fc37d81d6f890136c214300a77ac012
+   long stdin/shell starting "cat > crates/bboxy450-term/src/grids.rs <<'EOF'" — exact source above; command sha256 d74399961c83830085bbc43b375f969cfda1731b8cf36ceab92ded3a162dd9f1
+   "icq inbox --after 3636 --limit 50 --wait 20"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+33. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2711 — exec tool-program sha256 eb5dd358e6d03ae1a4c1ff6d62b702552315024bbb219ab1ed455a93ba11f4d6
+   "git show 65dfc10:.bboxy/specs/c1-live-seats.md"
+   "cat scripts/ci-local.sh\ndf -k ."
+   observed returns: "exit_code":0, "exit_code":0
+
+34. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2721 — exec tool-program sha256 ec85dcbf0cf025e029726915d9b837286f9bd83368ce56f12f6d92483d7b7eb4
+   "sed -n '315,350p' crates/bbt-render/src/cells/terminal/gpu.rs\nsed -n '1,110p' crates/bbt-ui-model/src/model/swarm.rs\ncat crates/bbt-ui-model/src/model/ids.rs\ngit log -3 --format='%h %s' origin/main"
+   "icq inbox --after 3651 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0
+
+35. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2729 — exec tool-program sha256 9d9d781649c2f5b98e1a672d6ec2de60b6f326361651d88f83c10eff7f8338f9
+   "cargo clippy -p bbt-render --locked -- -D clippy::disallowed_methods"
+   "git add crates/bbt-render/src/cells/terminal.rs crates/bbt-render/src/cells/terminal/gpu.rs crates/bbt-render/src/cells/terminal/bg.wgsl"
+   "git commit -m 'Prepare terminal cell frames off thread and encode them into live panes'"
+   "git rebase --no-autostash origin/main"
+   observed returns: "session_id":72468, "exit_code":0, "exit_code":0, "exit_code":0
+
+36. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2740 — exec tool-program sha256 2b4cb614ef1af3f0f67893acc4eda589fdab7e9e0139c6fe471d4a4ddc06bb0f
+   "git log -3 --format='%H %G? %s'\ngit status --short"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 801629d42b4a00835763ad5ac8349f37f32405a25c69552c107db8cb01c1699e
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 51ad472dfb12f242c2bddee3e96d99a4f36ad1d82cee0f9ff9425b2ab76c8591
+   observed returns: "exit_code":0, "exit_code":0, "session_id":30298, "exit_code":0
+
+37. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2765 — exec tool-program sha256 8d6246cd33b24b560f0ee8900edd28f12391d1f1ad75cea553794fbefd7037e4
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   "sed -n '1,145p' crates/bbt-ui-model/src/model/tab.rs\nsed -n '1,120p' crates/bbt-ui-model/src/layout/geometry.rs\ntail -8 .bboxy/runs/c1b-proto-ci.log"
+   "icq inbox --after 3660 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+38. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2774 — exec tool-program sha256 a2bf056dc9cd7d04513adffaf455ce9c1506f7e1674ff6c17f3f37c3333308ba
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   "rg -n -A 55 -B 5 'failures:|panicked|FAILED|error:|Assertion' .bboxy/runs/c1b-proto-ci.log\ncat crates/bboxybook/tests/parity_gate.rs"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":101
+
+39. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2786 — exec tool-program sha256 fcb6b75c87614588e2f85fa10e64888586eafee03f2cac1a55637576d10474ca
+   ICQ send/preview — exact expression/payload local; prefix sha256 968bee9c6a678518b0a3ea6cf343a15929a91c869be2063efa85aa99ea6b53e5
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 205e4aa5a4ee0a45d9267c23d3167fe923956d0144038130bce6e14dd6b2b315
+   observed returns: "exit_code":0, "exit_code":0, "session_id":3445
+
+40. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2794 — exec tool-program sha256 161f27aec6279aa75877eae68b8ff13405a7757e4b328e0458e79150fffb7dc8
+   ICQ send/preview — exact expression/payload local; prefix sha256 ee0ac8e0c4f409911a3296ffa1c1637ae3f7877a48a2cd907f2e176d8866ace7
+   "cat .bboxy/runs/c1b-p1-serial.log"
+   observed returns: "exit_code":0, "exit_code":0, "session_id":3445, "exit_code":0
+
+41. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2806 — exec tool-program sha256 7dd950b893c3f3091e4700f614847d3911cc7c3444e79ac7bd739263a37553fb
+   long stdin/shell starting "cat > crates/bboxy450-term/src/grids.rs <<'EOF'" — exact source above; command sha256 2b9f783275c555da77707d7ff1b78e643825bcdbf3556a47fdd069207aec9ebc
+   "icq inbox --after 3660 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+42. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2814 — exec tool-program sha256 a51a9c9bd3faf7e028f02f1af4d446ca5939a3600cdba8686d77fa1e684ea59e
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 38a8bc7492e1112650357c0f0c24832399f09f12236e93efa98db21aa3428563
+   "rg --files crates/bbt-ui-model/src/layout | head -18\ncat crates/bbt-core/src/term/color.rs | head -90\nrg -n 'enum Cursor|CursorShape|cursor_style|colors' crates/bbt-core/src/term/mod.rs | head -22"
+   observed returns: "session_id":94084, "exit_code":0
+
+43. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2827 — exec tool-program sha256 f281b3c7c4bc8bac7e2e63052723bc55e6491510d49494261572a1c4dc6a91d7
+   "rg --files crates/bbt-core/src | head -22\nrg -n 'struct Rect|struct Tab' crates/bbt-ui-model/src/layout/mod.rs crates/bbt-ui-model/src/model/tab.rs\nrg --files /Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term/src /Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux/src /Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto/src"
+   "tail -12 .bboxy/runs/c1b-proto-ci-serial.log\nicq inbox --after 3660 --limit 50"
+   observed returns: "exit_code":2, "exit_code":0, "session_id":94084
+
+44. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2835 — exec tool-program sha256 0023b5b0e0297b02ff0cce2a1aea550ff9d469004bbf328e98cfd45641dd309b
+   "sed -n '1,240p' /Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term/src/cockpit.rs\nsed -n '1,220p' /Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term/src/live.rs\ncat /Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term/src/lib.rs"
+   "sed -n '1,135p' crates/bbt-core/src/vendor/alacritty/term/color.rs\ncat crates/bbt-ui-model/src/layout/mod.rs\nrg -n 'cursor_style|enum CursorShape|enum CursorStyle' crates/bbt-core/src/vendor/alacritty/term/mod.rs crates/bbt-core/src/vendor/vte/ansi.rs"
+   observed returns: "exit_code":0, "exit_code":0
+
+45. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2849 — exec tool-program sha256 877204239d091f0a18cf5d9acf3456301854127b260975bd81864ff6b2a9a5e4
+   "sed -n '1,95p' crates/bbt-ui-model/src/layout/size.rs\nsed -n '830,880p' crates/bbt-core/src/vendor/vte/ansi.rs\nrg -n 'fn now_ms|type Error' crates/bbt-supervisor/src/store.rs crates/bbt-supervisor/src/store/mod.rs\ntail -8 .bboxy/runs/c1b-proto-ci-serial.log"
+   "icq inbox --after 3682 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "session_id":94084
+
+46. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2861 — exec tool-program sha256 91867c93cac3b89af825b0869f8775488a422c22f09cb7cf8d76257bab1294d3
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   "rg -n -A 85 'pub enum NamedColor' crates/bbt-core/src/vendor/vte/ansi.rs\nsed -n '1,85p' crates/bbt-core/src/lib.rs"
+   observed returns: "exit_code":0, "exit_code":0
+
+47. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2878 — exec tool-program sha256 86367157dca071990e8098d75971dd715dc97cea94a297d5f7ec3ecd89b8eee9
+   long stdin/shell starting "cat > crates/bboxy450-term/src/model.rs <<'EOF'" — exact source above; command sha256 0a66af1e5c83a750dfaee7b125ecb0ca2a0e0804851eda06c8b617d114413ce7
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+48. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2892 — exec tool-program sha256 ceebbb43711cad91b58d39a874bd6bcd11e07c5e5b630b67cb820ef3eef39c6f
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 e273f563a243e2e8b9ef84fb5d3e356dfcd884d1d7f4c0f6bcaa5f65cc2fcd4d
+   "nl -ba crates/bbt-proto/src/lib.rs\nnl -ba crates/bbt-mux/src/registry.rs | head -16\nnl -ba crates/bbt-mux/src/streams.rs | head -14\nrg -n 'test result:|ci-local:|EXIT' .bboxy/runs/c1b-proto-ci-serial.log\ngit diff-tree --no-commit-id --name-only -r dc99510"
+   observed returns: "exit_code":0, "exit_code":0
+
+49. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2900 — exec tool-program sha256 1c1230feb082cd115322d3b058e05bca2c9147000acdd4a3a6adece608d29bc6
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 5d509044c8c8c1bf6cf7716263f19a8cc693771216bffd3baab48df8028fb8b9
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 4792a1f69c1aeb331558153fa4903934f1b6c25aa539f4008c57030067a1edce
+   "git worktree remove /tmp/ci-aster-c1b-proto-dc99510"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+50. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2909 — exec tool-program sha256 d02743d40ffbac61d6c6f1f689845198c5f8c2a033d2bad0a81e8c8709de90bd
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 605b41e493aaaf677bfa3d2c0f874957bf2baa5eeaf1a1c20fb8034ec05f68de
+   "git verify-commit dc9951006021ecf802f960c73e1765af67cb9cf6"
+   observed returns: "exit_code":0, "exit_code":0
+
+51. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2919 — exec tool-program sha256 f20aaddd57c4c3ec467950031fb4d162a0532b92ad8dfb0863e0167e84044201
+   ICQ send/preview — exact expression/payload local; prefix sha256 e876aae98840a669c5b2f0e5c268cebca841a13750ba6bb062702a44d7fcd3a7
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 89db411793cfbebb22b1207e446f54e1fe7cdc10fc38e8d9f3e512f4644d7135
+   "icq inbox --after 3687 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+52. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2934 — exec tool-program sha256 aa412744c7657448f583f7ac48649053e4246393a3ca394e15c4a55b7d213ff8
+   "git rebase --no-autostash origin/main"
+   "git log -3 --format='%H %G? %s'\ncat AGENTS.md\nsed -n '95,230p' .bboxy/specs/c1-live-seats.md"
+   "git status --short"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+53. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2943 — exec tool-program sha256 b6a6673ea3d6f87030af5babc03e586fa45eed76f1754efdc231c0d896066cfb
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 bfae9bb58a3ed44ff6055b7b5ed9945143908ea7d58efa0755b2ebacbe42752e
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 aa30e18145acf52776bc0fb447c090720e7de056aaa7aba52149446b687e112a
+   observed returns: "session_id":5810, "exit_code":0
+
+54. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2952 — exec tool-program sha256 8990537263f260ed72fbe3edb3971b4efd62f561fec4c6c6856cdfe9ac22a128
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 c94e9799e141f64c58058c8529c5e44864bdc033aa386016406c249d25082eed
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   "icq inbox --after 3718 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+55. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2961 — exec tool-program sha256 9b899b37f699474d00c7be51c053d3baad7193231cfdb20bd2b551ec4bd98e1d
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   "cat crates/bbt-ui-model/src/model/split.rs\nrg -n 'context:|pub fn new' crates/bboxy450-term/src/model.rs\ntail -6 .bboxy/runs/c1b-proto-ci-normal.log"
+   observed returns: "exit_code":0, "exit_code":0
+
+56. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:2973 — exec tool-program sha256 c0f7681ceb70e3da97158f68e0214fb505e947423bacb117641235de32aed596
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 bef5e26b633dc819f608329ce87c445bd385b3bbc6253ae7651f7736a498b135
+   "rg -n 'pub fn new|context: Arc|pub fn build|pub fn draw_pane|pub fn prepare' crates/bboxy450-term/src/model.rs\ntail -8 .bboxy/runs/c1b-proto-ci-normal.log"
+   "icq inbox --after 3731 --limit 50 --wait 20"
+   observed returns: "exit_code":0, "exit_code":0, "session_id":88776
+
+57. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3001 — exec tool-program sha256 2913909477aa8ac610c479f52eada877f7decfdc91b302c2b3bef0ef371026da
+   "tail -12 .bboxy/runs/c1b-proto-ci-normal.log\nrg --files /Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto/src"
+   "icq inbox --after 3731 --limit 50"
+   observed returns: "exit_code":2, "exit_code":0, "exit_code":0, "session_id":5810
+
+58. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3015 — exec tool-program sha256 795558eed1a8fc16647cae3d68d625c8876ce9e5c0e8d1e9e99d63516348f31a
+   "rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/model.rs"
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   observed returns: "exit_code":0, "exit_code":0
+
+59. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3028 — exec tool-program sha256 a056039dacd36cc786071cd4074433ecb2d2a338fbcbda84f1a7a0314341b5c6
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   "tail -9 .bboxy/runs/c1b-proto-ci-normal.log\nicq inbox --after 3760 --limit 50"
+   observed returns: "exit_code":0, "session_id":5810, "exit_code":0
+
+60. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3037 — exec tool-program sha256 985243909e2710436635983578f256d97d835f4529357805454a42b99e83f24c
+   observed returns: "exit_code":0
+
+61. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3049 — exec tool-program sha256 4e97b11d85914ab1535ffe63237879f3deb7977d4d7ab1acf1e53ec0cf5c91cd
+   "git verify-commit 37fa9e32e5011840b40d01e85c1265738a4f957f"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 dc0eb7b92f546427a898ae66baf3686aab5373d488ded0bb63051dc401a1d0a4
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 266a32473e0f4fb9479d705e85053b2bd32e730e3f7446192c2886078c33ad1a
+   observed returns: "exit_code":0, "exit_code":0, "session_id":45812
+
+62. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3059 — exec tool-program sha256 b5e4f94674c56c01478bdb9a111166ac7894f46fe2c8d02f7f9c1abaee68ea3c
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 ec5369e12fa1027dab61afd77ae9e988b85b0c0060a81a5a98f7fa8a6d8c418c
+   observed returns: "exit_code":0, "session_id":45812
+
+63. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3066 — exec tool-program sha256 47963bde04b7fbaf25d015829094cf129ca5a5897cd8a3141a5d5d4a9fb12f6e
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 75cdfa9febaf4dee852d62ae573c8c21df14173cf8a6c2d35a5789a2717a5be3
+   observed returns: "exit_code":0, "session_id":45812
+
+64. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3075 — exec tool-program sha256 6a6ef639ecdec063bcb91457f00ad1c06d9843e26a8d65e7f410a27a97294a19
+   "cat target/c1b-audit.py\npgrep -fl c1b-audit"
+   observed returns: "exit_code":0
+
+65. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3086 — exec tool-program sha256 507a01c7a627f1f98f4d8afa414c3ffb4f0b7b22485c8337cfd99cc7b4b7994c
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 c149cb3d2d1dbe28a91248348b8f507913dd368bf98f20576617d8a5a8e50c54
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 e4cfba3626dcdeb3e8110fdc5354f0d8e1b91d00e41306e722a11c09d9e6a944
+   observed returns: "exit_code":0, "exit_code":1, "exit_code":0
+
+66. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3097 — exec tool-program sha256 9d9909c358a45c630000417c47bf5cfc96ab559756897e468ac201638e0c9773
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 bc01e8b345226c0b9c86d42058d77bcdab1a9f2fce1782e87a1a77ef11af077f
+   ICQ send/preview — exact expression/payload local; prefix sha256 11f6a63c35bac53913994589445edbb669231b947244b4fe3a18fa79c82d3eec
+   observed returns: "exit_code":0, "exit_code":0
+
+67. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3105 — exec tool-program sha256 c44fc835b1973e5be3b11edb61cf0c10ce14caec28d65da255e0e49e3059ec24
+   "nl -ba Cargo.toml | head -48\nrg -n 'name = \"bbt-proto\"|name = \"bbt-mux\"| \"bbt-proto\"' Cargo.lock"
+   observed returns: "exit_code":0
+
+68. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3112 — exec tool-program sha256 410cbd0cc7d739cd1b946268a4dc7bc3c8add89f48ad095bad2cb3519be9cffb
+   ICQ send/preview — exact expression/payload local; prefix sha256 11f6a63c35bac53913994589445edbb669231b947244b4fe3a18fa79c82d3eec
+   observed returns: "exit_code":0
+
+69. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3117 — exec tool-program sha256 0dd20aecf3e30938f1e8e734e60ccd67f29d63fdadef6b5e2ced5edd0f99e5bf
+   ICQ send/preview — exact expression/payload local; prefix sha256 1c40ab51c9f9905a31e1a0b9f22b48741d123e50c096097d3ab598c29ab8e792
+   "icq inbox --after 3760 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0
+
+70. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3139 — exec tool-program sha256 021ba8382adf7b8ef1eef35436abef04d32965a0f8178a3b0a135d4ca4412471
+   long stdin/shell starting "cat >> crates/bboxy450-term/src/model.rs <<'EOF'" — exact source above; command sha256 36fd39ef8f0ebb98122d88152999b030e6dca9d78df51e8b3d0f0de6bbf6db25
+   "icq inbox --after 3782 --limit 50 --wait 20"
+   observed returns: "exit_code":0, "session_id":98673
+
+71. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3157 — exec tool-program sha256 74841adbba24a045266bc34070e9bdde8386ccaf951928df73b41d3a9f1de159
+   "cargo test -p bbt-render --lib prepared_frame_encodes -- --nocapture"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 55b3f1ec10c83ab56babc32394de440c81a11d53a8a31ea9d6dab5e5860910c6
+   "icq inbox --after 3782 --limit 50"
+   observed returns: "session_id":91939, "exit_code":0, "exit_code":0
+
+72. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3169 — exec tool-program sha256 2aca96f1f8905e0538d5f817d36dcbd31e52d6fad53da465ff0ce380b3ab208b
+   "git diff --stat\ngit status --short"
+   observed returns: "exit_code":101, "exit_code":0
+
+73. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3180 — exec tool-program sha256 8709dcb3cffc4dfa4fa0c2e07eb4ce607f3c5851a687930b3df39874f9aea85c
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 648fca10b6b5c3912e298de5976c28a21db3defcd577e162d806886749fa1031
+   observed returns: "exit_code":0
+
+74. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3190 — exec tool-program sha256 8ae8cccd233b0a1bfc3ab16c56f694280aede30b8f799b4ab3dec6e64f5c2f76
+   ICQ send/preview — exact expression/payload local; prefix sha256 11f6a63c35bac53913994589445edbb669231b947244b4fe3a18fa79c82d3eec
+   "git log -2 --format='%H %G? %s'\ngit status --short"
+   "icq inbox --after 3790 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+75. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3203 — exec tool-program sha256 b8335e52d73151b7ef5e1b46e3c59a25e3d12855c1f56f863a85c6aa55c676b7
+   ICQ send/preview — exact expression/payload local; prefix sha256 1c40ab51c9f9905a31e1a0b9f22b48741d123e50c096097d3ab598c29ab8e792
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 b2d5bb1294552f402a54ee0c82e3454fc87479fc57255b506a7779bc5c62016f
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+76. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3212 — exec tool-program sha256 2b60d28b297e461d89740b861139c69f18c8c1ac85fb993e7da0993ef7c72fea
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   "icq inbox --after 3804 --limit 50 --wait 20"
+   observed returns: "exit_code":0, "session_id":48046
+
+77. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3228 — exec tool-program sha256 5e2087c33cd23063038031c50c5d731811cfb1fba52a8807c7340a80e3017656
+   "icq inbox --after 3804 --limit 50 --wait 20"
+   observed returns: "exit_code":0, "exit_code":0
+
+78. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3247 — exec tool-program sha256 1d27bb55431db2a63942c5afa734ab074860369c4ce3704a3c526d521a77392a
+   "rustfmt --edition 2024 --config skip_children=true crates/bbt-render/src/text/terminal_macos.rs crates/bbt-render/src/cells/terminal/gpu.rs\ncargo test -p bbt-render --lib cells::terminal::gpu::tests -- --nocapture"
+   "icq inbox --after 3830 --limit 50"
+   observed returns: "session_id":70091, "exit_code":0
+
+79. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3264 — exec tool-program sha256 fa61b6d10f87dc1fc4e37fdf67a402390936862481a8ffd7015440284bd17a9c
+   "icq inbox --after 3830 --limit 50"
+   observed returns: "exit_code":101, "exit_code":0
+
+80. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3271 — exec tool-program sha256 40c2bdac79718cba12e6f4df1b2f45ad98c694888355b3ff82a6d96e506f3939
+   "cargo test -p bbt-render --lib cells::terminal::gpu::tests -- --nocapture"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 754a8073105ff3011a48954ec24a7e42220fb55a413bd6257730e68123b4ec98
+   observed returns: "session_id":85778, "exit_code":0
+
+81. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3284 — exec tool-program sha256 6dc4a4ccffde2d0695be9084b35cedbef443488f6101ddd9f6e14cb2b62386a6
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 e947a634cd7e8557730804dd25d621f337977a02048595304cfcd3d5c3991108
+   "icq inbox --after 3830 --limit 50"
+   observed returns: "exit_code":0, "session_id":72391, "exit_code":0
+
+82. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3308 — exec tool-program sha256 ff8064ea5038c37160890f53612920eb40c631dd1ba147f676ca421a4713c4d2
+   "tail -8 .bboxy/runs/c1b-font-main.log\nrg -n 'use ulid' crates/bboxy450-term/src/grids.rs crates/bboxy450-term/src/model.rs\nrg --files /Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto/src"
+   "icq inbox --after 3830 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+83. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3332 — exec tool-program sha256 edc009e2b03fb7cec15fa33560ad35f84a518c6f28239b7e5c87135090aea81e
+   "sed -n '1,180p' /Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto/src/seat_state.rs\nsed -n '1,120p' /Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto/src/gui.rs\ncat /Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto/src/lib.rs"
+   "git diff --check\nicq inbox --after 3830 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0
+
+84. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3346 — exec tool-program sha256 ae4ae77f2457201d3b39eef7b0b949e8f7dcd0d0fbac6828c2ee2828db072b14
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 8e90818161ad8a8909335f1e047a724c9dc910a1075540e19daf74fb12ca28e2
+   "git add crates/bbt-render/src/text/terminal_macos.rs crates/bbt-render/src/cells/terminal/gpu.rs"
+   "git commit -m 'Allow immutable terminal fonts to move across IO workers'"
+   "git verify-commit HEAD\ngit log -2 --format='%H %G? %s'"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0, "exit_code":0
+
+85. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3364 — exec tool-program sha256 1a375a2aabe836ce1af4b0600946778111dd702324348f42dafd239d59bf5454
+   ICQ send/preview — exact expression/payload local; prefix sha256 968bee9c6a678518b0a3ea6cf343a15929a91c869be2063efa85aa99ea6b53e5
+   observed returns: "exit_code":0, "exit_code":0
+
+86. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3370 — exec tool-program sha256 e404f3ea2d90240ec8f07caaf2d67b72fa47c0f6820a21c65385451f4c37ff8b
+   ICQ send/preview — exact expression/payload local; prefix sha256 ee0ac8e0c4f409911a3296ffa1c1637ae3f7877a48a2cd907f2e176d8866ace7
+   "icq inbox --after 3830 --limit 50 --wait 20"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+87. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3389 — exec tool-program sha256 fd0277a59dd253802824fce1ebbf405d822c5e3b445c77e4ab9f438427eaf8dd
+   "rg -n -A 35 -B 5 'GuiReply::Update|Grids|Applied|PanePreparer' /Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term/src/live.rs"
+   "git diff --check\nicq inbox --after 3866 --limit 50 --wait 20"
+   observed returns: "exit_code":0, "exit_code":0
+
+88. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3405 — exec tool-program sha256 070fec6f776736eff4bc9e6e94891da0376b84564d28ed8e3d8aa6975d4cfcfe
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   "git status --short\nicq inbox --after 3882 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0
+
+89. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3421 — exec tool-program sha256 87c42fb5ab968887bea7f450620786431dd4a442538d1642b72c874276a173ec
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   "git rebase --no-autostash origin/main"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 a95b1c0b35231b7ea30d8dfa13fd42900a4f3634ddada017f72a0198517f6e2f
+   observed returns: "exit_code":0, "exit_code":0, "session_id":89091
+
+90. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3433 — exec tool-program sha256 b61a3c6ea39c8f25e2bb5b7d83b73a397924b2e67cbbbae4ca05e099eae99b21
+   "tail -45 .bboxy/runs/c1b-module-tests.log\nicq inbox --after 3890 --limit 50"
+   observed returns: "session_id":89091, "exit_code":0
+
+91. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3441 — exec tool-program sha256 ad29b583c99a19b6f013c0d47fc724c963a121b21621ae2124e12a838e83e369
+   "tail -32 .bboxy/runs/c1b-module-tests.log"
+   observed returns: "exit_code":101, "exit_code":0
+
+92. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3457 — exec tool-program sha256 cfe54cab3de05f2c239b1ff45e2907c2d6be52e001edd3469d89b83e9e5deac0
+   "sed -n '1725,1758p' crates/bbt-core/src/vendor/vte/ansi.rs"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 01e4aaa7ee45b8cdb5562ae44b2bd9819ab4e09ee9c41a35334b46b7c8cadf26
+   "icq inbox --after 3900 --limit 50"
+   observed returns: "exit_code":0, "session_id":19272, "exit_code":0
+
+93. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3472 — exec tool-program sha256 5db3dc82df18f69225ea56b0e97c1b94f983ac1838376859762cf393a9707d9f
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 0346b810ebcfe2707eaaadd7905d9116c51e6b76f6d5681538ed56494ca71c45
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 f37311b87c2ac47524d4ed86cdd811b91f782fc8b415523b75d11ab9f2b4310a
+   "tail -14 .bboxy/runs/c1b-module-tests.log\nicq inbox --after 3912 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "session_id":62709, "exit_code":0
+
+94. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3489 — exec tool-program sha256 d145a5e09087f70218fad3243ddb40b062262e951325a3d9ab6698c5b2425511
+   "tail -16 .bboxy/runs/c1b-app-lib-tests.log\nsh scripts/layering.sh\ngit diff --stat"
+   "icq inbox --after 3912 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+95. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3501 — exec tool-program sha256 c8000dfd91d108a7da32e8bbd357fc0025a1c38f4697c7790f54774cb1ade608
+   "rg -n -A 14 -B 3 'warning:' .bboxy/runs/c1b-app-lib-tests.log"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 a79246fa0574969296e2a65ffd177d690876cee3b6a5a0f7fd7890df1d06044b
+   ICQ send/preview — exact expression/payload local; prefix sha256 11f6a63c35bac53913994589445edbb669231b947244b4fe3a18fa79c82d3eec
+   observed returns: "exit_code":0, "session_id":96824, "exit_code":0
+
+96. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3512 — exec tool-program sha256 8932c1e78926fe8e380ce3314c6c47c4fd1ba8690fd89bfc8fe85e242e3dcc66
+   ICQ send/preview — exact expression/payload local; prefix sha256 1c40ab51c9f9905a31e1a0b9f22b48741d123e50c096097d3ab598c29ab8e792
+   "git diff --check\nicq inbox --after 3912 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+97. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3524 — exec tool-program sha256 77cd3f3da97a997703a768011c6da31f6cab1e3ce633fb128e102179ea9064ed
+   "git add Cargo.lock crates/bboxy450-term/Cargo.toml crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/grids.rs crates/bboxy450-term/src/model.rs"
+   "git commit -m 'Build watched replica models and prepare terminal panes on IO'"
+   "git rebase --no-autostash origin/main"
+   "git log -4 --format='%H %G? %s'\ngit status --short\ncat scripts/ci-local.sh\ncat scripts/parity.sh"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0, "exit_code":0
+
+98. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3538 — exec tool-program sha256 4085b53b6da11cfab87c38c3536bdaee19c2031f6a693af34f23fb5af1bf3963
+   "head -26 crates/bboxybook/capture.mjs\ncat scripts/invariants.sh"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 aa067430ecd018532a1581dc50eeaecbaaa900bda7b18f7cb8e4778426446e96
+   "icq inbox --after 3912 --limit 50"
+   observed returns: "exit_code":0, "exit_code":1, "exit_code":0
+
+99. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3551 — exec tool-program sha256 d1c51e66ca659335c978797860dae48435340eb7ad7bca831dbf307794d9545b
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 ac29ecc55b04d73140381518587fc37861a2966940ddcfb361ec706e15c07c9d
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   observed returns: "session_id":92714, "exit_code":0
+
+100. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3564 — exec tool-program sha256 b5b6d6b120f127f5bf68774dab76e390b1447622954412c7129eccd093237fbc
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   "tail -8 .bboxy/runs/c1b-ci-parity.log\nicq inbox --after 3931 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "session_id":92714
+
+101. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3588 — exec tool-program sha256 80e5acc9d7ba960fa032af24a213869bc2d992770bb3aa889c220c1485b12a7a
+   "sed -n '164,190p' crates/bbt-render/examples/terminal_gallery.rs\nrg --files crates/bboxy-firehose/reference/gallery/native | head -8"
+   "tail -7 .bboxy/runs/c1b-ci-parity.log"
+   observed returns: "exit_code":0, "exit_code":0
+
+102. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3596 — exec tool-program sha256 3028e09bb9d67522186adf3b4e8e11bd42622c7b2ededb74f22820f9fd4bad95
+   long stdin/shell starting "cat > target/c1b-pane-preview.rs <<'EOF'" — exact source above; command sha256 45ad074c0bed6bc8816dba82081fc47754da8cd18f228cd6f6cc5e6fde5fe645
+   "tail -8 .bboxy/runs/c1b-ci-parity.log\nicq inbox --after 3931 --limit 50"
+   observed returns: "session_id":40258, "exit_code":0
+
+103. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3606 — exec tool-program sha256 df2bdf1416b05a4c2b18e2f5fccec020be8d640f245c18b98b44f4ee5e4913b1
+   "tail -18 .bboxy/runs/c1b-pane-preview.log\nrg -n 'SCENES|fn scene_bytes' crates/bboxy-firehose/src/lib.rs\nrg -n 'pub fn write_png' crates/bbt-render/src/*.rs"
+   observed returns: "exit_code":0, "exit_code":0
+
+104. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3615 — exec tool-program sha256 841f1fd5f2f71833ba64b505b8e094de7732d1acfab8a683d8eb6cab58b0c943
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 53e031f83af162e6d06c8f1a9db677a2a6e80e3ba639d7a1229df4226cbb8344
+   observed returns: "exit_code":0
+
+105. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3627 — exec tool-program sha256 176677d1464883fab4e117cd6a50ce58784a4cd0c99f943bda2af31511170a06
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 ed86051b471dd3eeae01c679060b5da32759d37923b9748fed68d1e06ffa39f3
+   "icq inbox --after 3931 --limit 50"
+   observed returns: "exit_code":0, "session_id":92714, "exit_code":0
+
+106. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3637 — exec tool-program sha256 08a3023c6d1503981cfe2610b044e344555ead9684b4933b07bcb3a92550887c
+   "rg -n 'pub struct PreparedGrid|pub fn encode|pub fn prepare|pub fn render_to_rgba|immutable_fonts_move|prepared_frame_encodes' crates/bbt-render/src/cells/terminal/gpu.rs\nrg -n 'unsafe impl Send|const _: fn' crates/bbt-render/src/text/terminal_macos.rs\nrg -n 'pub struct Grids|pub fn apply|pub fn set_watched|pub fn screen|pub fn forget' crates/bboxy450-term/src/grids.rs\nrg -n 'pub struct Model|pub fn apply_seat_states|pub fn build|pub struct PanePreparer|pub fn prepare|pub struct DrawCtx|pub fn draw_pane|pub fn screen_grid' crates/bboxy450-term/src/model.rs"
+   "tail -12 .bboxy/runs/c1b-ci-parity.log\nicq inbox --after 3931 --limit 50"
+   observed returns: "session_id":92714, "exit_code":0, "exit_code":0
+
+107. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3647 — exec tool-program sha256 1928b44d611160f78c602401a5a7e7ecd6214c5212c92102428158d7869cc187
+   "rustfmt --check --edition 2024 --config skip_children=true crates/bbt-render/src/cells/terminal.rs crates/bbt-render/src/cells/terminal/gpu.rs crates/bbt-render/src/text/terminal_macos.rs crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/grids.rs crates/bboxy450-term/src/model.rs\ngit diff --check"
+   "git verify-commit 5d428c6bf1fabf70c78018b422497406e30679b4\ngit verify-commit be4deecacde896128da72ba7e3eef6455fed4331\ngit verify-commit d97371612ae34b58423a29b0ae39573e3e4ac1fa"
+   "tail -5 .bboxy/runs/c1b-ci-parity.log"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+108. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3660 — exec tool-program sha256 2bc16566b28daa6096a6b3ad8d1a8fce4da855355b4be2788dcdcd85ab11f9a2
+   "tail -8 .bboxy/runs/c1b-ci-parity.log\nicq inbox --after 3931 --limit 50"
+   observed returns: "session_id":92714, "exit_code":0
+
+109. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3669 — exec tool-program sha256 24d5ddb688bfe9c22272a8a8395315fb8ddf222775d75f7c50c25c4020ef7531
+   "tail -14 .bboxy/runs/c1b-ci-parity.log\ngit diff --name-only c6d6a11971f55fececd99d432aee0046845a59ab..d97371612ae34b58423a29b0ae39573e3e4ac1fa"
+   observed returns: "session_id":92714, "exit_code":0
+
+110. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3680 — exec tool-program sha256 cccffaa20d4780140dbb7cc03562b9c0c766a117c917f3e9b3ea03e4cccaac16
+   "tail -12 .bboxy/runs/c1b-ci-parity.log\nicq inbox --after 3931 --limit 50"
+   observed returns: "session_id":92714, "exit_code":0
+
+111. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3689 — exec tool-program sha256 96f930451fefb31df31d1a82c0a87cf7722db1841894a017c47b576baeedf198
+   long stdin/shell starting "date -u '+%Y-%m-%d %H:%M:%S UTC'" — exact source above; command sha256 aa646b7489162da012adfc2637e207cfa2731700d0f0a5086bb4b611fca28ee1
+   observed returns: "exit_code":0, "session_id":92714
+
+112. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3700 — exec tool-program sha256 bc4da68df82f99b850ead3d1686babcc4d884c93119297fdd50ceae970a0e52b
+   "tail -7 .bboxy/runs/c1b-ci-parity.log\nicq inbox --after 3971 --limit 50"
+   observed returns: "session_id":92714, "exit_code":0
+
+113. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3718 — exec tool-program sha256 938a582034a9922860c1deea246014de91aca85280fc4dc5c96ba73955891180
+   "tail -8 .bboxy/runs/c1b-ci-parity.log\nicq inbox --after 3971 --limit 50"
+   observed returns: "exit_code":0, "session_id":92714
+
+114. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3731 — exec tool-program sha256 4945490bf4ff3dabe2bdfff856d86708b9985c627100cb1860efa8c8f273a0f0
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 1904dac916e57a0696948b3f1174abb59a843239e33a697e479804e7e712cfec
+   "tail -6 .bboxy/runs/c1b-ci-parity.log"
+   observed returns: "exit_code":1, "exit_code":0
+
+115. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3741 — exec tool-program sha256 2c351fec3fb1a89e7f4f2ea33b372189775f4d20786248346f1aa73f6b97514c
+   "git show origin/main:AGENTS.md"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 013fb1285bfca940752269f669172c498932445af129312d7b2e2682b449fc71
+   observed returns: "exit_code":0, "exit_code":0
+
+116. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3756 — exec tool-program sha256 c2d0cf66186f7c1fe2d5e393144976dbbecfd10f04d6d0330d4d017650d45365
+   "tail -6 .bboxy/runs/c1b-ci-parity.log\nicq inbox --after 3993 --limit 50"
+   observed returns: "exit_code":0, "session_id":92714
+
+117. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3769 — exec tool-program sha256 24d47d6296da4bd081e598374585cbebb0a2d1623eda460a584b7951b1c15307
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 303f6e16fbbb210d24d6c56410872583f52197bd85110130381a3995ac816b30
+   ICQ send/preview — exact expression/payload local; prefix sha256 968bee9c6a678518b0a3ea6cf343a15929a91c869be2063efa85aa99ea6b53e5
+   observed returns: "session_id":76474, "exit_code":0, "exit_code":0
+
+118. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3783 — exec tool-program sha256 b9386e41cc82e2abb2279fd7225893de2d15d735723d162ee321ab34e0782034
+   ICQ send/preview — exact expression/payload local; prefix sha256 ee0ac8e0c4f409911a3296ffa1c1637ae3f7877a48a2cd907f2e176d8866ace7
+   "tail -6 .bboxy/runs/c1b-ci-parity.log\ngit diff d97371612ae34b58423a29b0ae39573e3e4ac1fa..origin/main --stat -- crates/bbt-render crates/bboxybook crates/bbt-ui crates/bbt-ui-model crates/bbt-core design lab/web\nicq inbox --after 4000 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0, "exit_code":0
+
+119. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3796 — exec tool-program sha256 713b0a41d557c89303153434b5ba2664b8c45d526f715ff1baf4f1223e9143ad
+   "git add crates/bboxy450-term/src/model.rs"
+   "git commit -m 'Keep offline pane test IO scoped and avoid fixture clones'"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 8ce6eb3149f102a22bcc2adef4782c12cb618088144eb1baf82945a079aa85f6
+   "icq inbox --after 4000 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0, "exit_code":0
+
+120. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3808 — exec tool-program sha256 416785b4b016de2be4b746e27a8d6bf459dfb029e3725a9a183d23c6aeea471d
+   "git diff --quiet d97371612ae34b58423a29b0ae39573e3e4ac1fa f32a07f99b699aa04cfd20d2d02bf93f012f82fd -- crates/bbt-render crates/bboxybook lab design"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 03959e59852775a97afc01f56242f0151e6418760155c106c4def3887a0660b2
+   ICQ send/preview — exact expression/payload local; prefix sha256 075f623d98168e02bd831625a38d66d06f501c3cbabafda0c1759cdfa8568164
+   observed returns: "exit_code":0, "session_id":41410, "exit_code":0
+
+121. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3816 — exec tool-program sha256 37855476712edd25c99165c783e936c6f79fb84c3a4c147fbda5d3f23a2dfeac
+   ICQ send/preview — exact expression/payload local; prefix sha256 2c05f39b2502f999eb3bace0b3cf650475c5200cdb1b6f0253204911f76d07a7
+   "tail -5 .bboxy/runs/c1b-ci-parity.log\ntail -4 .bboxy/runs/c1b-ci-successor.log"
+   observed returns: "exit_code":0, "exit_code":0
+
+122. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3831 — exec tool-program sha256 0e0fee4adf8987f64da32495086156bc66db8a715cda6f3388426b3275bf0add
+   "tail -7 .bboxy/runs/c1b-ci-parity.log\ntail -6 .bboxy/runs/c1b-ci-successor.log\nicq inbox --after 4008 --limit 50"
+   observed returns: "exit_code":0, "session_id":92714
+
+123. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3842 — exec tool-program sha256 e6fc9f310807cd08717f9d8c9bf701fee6fa6522a075ab5c2def149c1e529ba0
+   "tail -20 .bboxy/runs/c1b-ci-parity.log\ntail -6 .bboxy/runs/c1b-ci-successor.log"
+   observed returns: "session_id":92714, "exit_code":0
+
+124. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3849 — exec tool-program sha256 fc0c46ceba54f30bc29146da665713b410684545195f683d0c3e4d17d34d8cf0
+   "tail -9 .bboxy/runs/c1b-ci-parity.log\ntail -6 .bboxy/runs/c1b-ci-successor.log\nicq inbox --after 4008 --limit 50"
+   observed returns: "session_id":92714, "exit_code":0
+
+125. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3863 — exec tool-program sha256 3ddf9b832ae63609093bf994432934cba56013f3528ec478e132671aeb89846f
+   "tail -10 .bboxy/runs/c1b-ci-parity.log\ntail -6 .bboxy/runs/c1b-ci-successor.log"
+   observed returns: "exit_code":0, "session_id":92714, "session_id":41410
+
+126. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3872 — exec tool-program sha256 3348abef6d0d5e93bdda2eb1a2d53ae654d791a86c252a224d07517d104d3d7c
+   "tail -22 .bboxy/runs/c1b-ci-parity.log\ntail -8 .bboxy/runs/c1b-ci-successor.log\nicq inbox --after 4008 --limit 50"
+   observed returns: "session_id":92714, "exit_code":0
+
+127. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3884 — exec tool-program sha256 07bc47faecb969e0e056402d7e7a0d7e60c28980767f2cfbdc57cd24a1072e8a
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 ad168474e495ac412929d2c70c75bcdd71159b711e25dc6542133e7a01b6e3a0
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 c689f2b34f377fb4ac0f764f856b74bd4dd076c2504fd136e3b0cfc4096f3879
+   observed returns: "exit_code":0, "session_id":47287, "exit_code":0
+
+128. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3892 — exec tool-program sha256 ef9ddfad31fb28445565ec5f14561a62fb9857fe625a5d89bc93134c7ca00cb8
+   "tail -22 .bboxy/runs/c1b-ci-parity.log\ntail -6 .bboxy/runs/c1b-ci-strict.log\nicq inbox --after 4008 --limit 50"
+   observed returns: "exit_code":0, "session_id":92714, "exit_code":0
+
+129. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3901 — exec tool-program sha256 fb458d238e4029edd1bde84adf1c33140fca39e0663868817cffd55a0dc8e71f
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 30e8791ca7666b67c6414b5873a8d5e97b7793559a0d1d26efe3afcea5735b48
+   "tail -8 .bboxy/runs/c1b-ci-parity.log"
+   observed returns: "exit_code":0, "exit_code":0
+
+130. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3913 — exec tool-program sha256 804f0c78ed01b249407a5ff378f375f8668419c9c1545afed5a951d2f8dcee2f
+   long stdin/shell starting "date -u '+%Y-%m-%d %H:%M:%S UTC'" — exact source above; command sha256 e63cf7eb28ca0a907899d2c5892e2e589af4fb20d5040ca922beb79e6c6f3403
+   "tail -16 .bboxy/runs/c1b-ci-parity.log"
+   observed returns: "exit_code":0, "session_id":92714, "exit_code":0
+
+131. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3931 — exec tool-program sha256 07f924a768f4b21fe5ebffa328faf174990b05daa388bd5c22ccc335f9fc309e
+   "tail -14 .bboxy/runs/c1b-ci-parity.log\nicq inbox --after 4008 --limit 50"
+   observed returns: "session_id":92714, "exit_code":0
+
+132. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3942 — exec tool-program sha256 e71b09578a1f74697cb345af1bd7a66672e45f6313d45af931d0a770cab5789d
+   long stdin/shell starting "ps -p 69929 -o pid=,pcpu=,etime=" — exact source above; command sha256 366c1b2c2e38e0441ac9b525d0997e248c272b1d2ef31a2b3604cc21b7f52722
+   observed returns: "exit_code":0
+
+133. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3960 — exec tool-program sha256 afd51f6f5c1d7903a6d2c4d23d60ecff523c4aa9fdf043965c79974acb8e20df
+   long stdin/shell starting "tail -12 .bboxy/runs/c1b-ci-parity.log" — exact source above; command sha256 966e6eb114ef7d0d2ef163f1a8db4a2eaab2a763ec302ade8c2edb6ca35b9cdb
+   observed returns: "exit_code":0, "session_id":92714
+
+134. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3971 — exec tool-program sha256 b8f5e8ecf3960d870afca146e7c51e184ab962ae6b0f57375abceec2f101f485
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 7e3fb123c59faa9f47322c3fc073dcf307d04ca2ff21f9273e779e5c4e7ab802
+   observed returns: "exit_code":0
+
+135. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3985 — exec tool-program sha256 69e247c0c4abdcb6c12ca3d0c154a06660290e06529a8f247e63e46fce5a096d
+   long stdin/shell starting "tail -10 .bboxy/runs/c1b-ci-parity.log" — exact source above; command sha256 f1e928c9de846a6fb359d97dccfa0441f40de66b2fae696f1523c5545b4f95d2
+   observed returns: "exit_code":0, "session_id":92714
+
+136. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:3992 — exec tool-program sha256 da4e0b5ca297cfd4fd61870a71116b95febba89addadd5f66ccc2c1ac05a89ae
+   long stdin/shell starting "rg -n -A 10 'fn relative' crates/bboxybook/src/gallery.rs" — exact source above; command sha256 dac070c9fe7bb44c13e2895355dae6191f089862e708468701fe1e98007b978c
+   observed returns: "exit_code":0
+
+137. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4006 — exec tool-program sha256 0087c674718ac8f63a368635d535fa7acb98c34757da1297a5dc250009775147
+   long stdin/shell starting "tail -8 .bboxy/runs/c1b-ci-parity.log" — exact source above; command sha256 98013005e929fda3f36242fdf139b40ac53b66989f3c51cea64aa633d70a8cad
+   observed returns: "exit_code":0, "session_id":92714
+
+138. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4017 — exec tool-program sha256 623bea83d9ac685a9cec4cbe6627e3d176aa3c7396cbe76da63802b88b24823a
+   ICQ send/preview — exact expression/payload local; prefix sha256 11f6a63c35bac53913994589445edbb669231b947244b4fe3a18fa79c82d3eec
+   observed returns: "exit_code":0
+
+139. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4030 — exec tool-program sha256 5885aae227037ad39410468f5984e0fe39d96d96a7ee191084937f6f9c2fdf20
+   "tail -n 12 .bboxy/runs/c1b-ci-parity.log"
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 0b0b8fbfe3423f9b2d8563f440b062b680495c1bed392dbf4fe314279b7144a9
+   observed returns: "exit_code":0, "exit_code":0
+
+140. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4040 — exec tool-program sha256 4bd88bc29acb7326fdd16b1c66430be331f5fbcbd8aa55377aa43bce8b033c03
+   "cat /Users/feral/.agents/skills/icq/SKILL.md"
+   "git status --short\n git log -5 --format='%h %G? %s'"
+   "sed -n '1,220p' .bboxy/runs/c1b-evidence.log"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+141. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4049 — exec tool-program sha256 edd9cfbfe20dc3fcca28b7504794dea53fa6724998c8f963d91f420d32d44183
+   "icq inbox --after 4075 --limit 50"
+   "date -u\n git verify-commit f32a07f99b699aa04cfd20d2d02bf93f012f82fd\n git diff --check c6d6a11971f55fececd99d432aee0046845a59ab..HEAD"
+   observed returns: "session_id":92714, "exit_code":0, "exit_code":0
+
+142. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4057 — exec tool-program sha256 e2b2d9b0fba9ce67e8f4ebe799b01f445fb5a48a68c7b7a7219689df708b6aab
+   "sed -n '1,125p' .bboxy/runs/c1b-command-inventory.log\n tail -n 18 .bboxy/runs/c1b-ci-parity.log\n cat .bboxy/runs/c1b-testfix-proof.log\n cat .bboxy/runs/c1b-pane-comparison.log"
+   "ps -p 69929 -o pid=,ppid=,etime=,%cpu=,args="
+   observed returns: "exit_code":0, "exit_code":1
+
+143. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4068 — exec tool-program sha256 d6dfc552ddd32d027ae121955cbbe2d42beae31ebd6c93c17c2efdd4a0595fde
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 db1cb69149a518ea781622ae9e9d24f67d931b7bf645a5286b9210ec2ea64816
+   ICQ send/preview — exact expression/payload local; prefix sha256 4a59266968cb10e50520d43571fb40c0c2f12979d63743fbe1093954ce257220
+   observed returns: "exit_code":1, "exit_code":0, "exit_code":0
+
+144. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4076 — exec tool-program sha256 ff0b9f7ee317ebb61bfce19497d3b85d9325dcb19888e9b876a2e21748c65db9
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 2ce49e7ad6cded40aaded879cbfa0f6954ad55954099c198c35a53b4587f84b2
+   ICQ send/preview — exact expression/payload local; prefix sha256 e2dbbaa8206dba0f1b1e21e227d2b96fc8f7afa37150d729c58aa8033a275c2c
+   observed returns: "exit_code":0, "exit_code":0
+
+145. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4084 — exec tool-program sha256 ce747ed5fb779f9a58730cef38335092b7c70151c636836c5f4963fe456e5eb5
+   ICQ send/preview — exact expression/payload local; prefix sha256 46d4e2675c0f5f73857ffe55d7f3763b645bc6ded94a2b9e352d65b4da01381b
+   "rg -n 'geometry failures|unproven geometry|strict_geometry|strict-geometry|geometry_report' crates/bboxybook/src\n rg --files target/c1b-parity-d973716 | rg '(geometry|report)' | head -45\n sed -n '1,80p' target/c1b-parity-d973716/report.md"
+   observed returns: "exit_code":0, "exit_code":0
+
+146. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4092 — exec tool-program sha256 a23b9540863a265da9acac69f0f31f7a7b8909173821d5b2c5a464d19287b267
+   long stdin/shell starting "sed -n '185,260p' crates/bboxybook/src/parity.rs" — exact source above; command sha256 3069b98104c3c7b2dd4accaa0dcad47dfa2c495d6bacb7b1c6b2053531c2ee86
+   "icq inbox --after 4095 --limit 30"
+   observed returns: "exit_code":0, "exit_code":0
+
+147. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4100 — exec tool-program sha256 ea8b9164f7c238073b1a2a0ab71199c8a36d0553d0676ee1e09416c9cc859380
+   "tail -n 24 .bboxy/runs/c1b-ci-successor.log\n tail -n 12 .bboxy/runs/c1b-ci-strict.log\n du -sh .bboxy/runs/c1b-*.log\n sed -n '1,90p' .bboxy/runs/c1b-processes.log\n sed -n '320,430p' crates/bboxybook/src/parity.rs"
+   "git diff --name-only c6d6a11971f55fececd99d432aee0046845a59ab..HEAD\n git diff --quiet d97371612ae34b58423a29b0ae39573e3e4ac1fa f32a07f99b699aa04cfd20d2d02bf93f012f82fd -- crates/bbt-render crates/bboxybook lab design"
+   observed returns: "exit_code":0, "exit_code":0
+
+148. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4108 — exec tool-program sha256 6843b84549cba908139ffd10050ba73c79f46b3f7ff6bc4d47b0f1aa472f8ac6
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 2d092389276e4628906a6df5a6c839315448e04f5b48c8e10ae7368ee951750f
+   observed returns: "exit_code":0
+
+149. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4117 — exec tool-program sha256 93fc2942949b4db12b012b4a48b91b45f4a8d6f7b4e7e52c8d5b3fc5c13d37d4
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 7223d734674a7a546d32830ccd94cdeffae3fd49d923dfb709c568de31c37a64
+   observed returns: "exit_code":0
+
+150. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4124 — exec tool-program sha256 28815cc616c05d893be46ed2f477dedb4c736716b2d3af49721408e02861e5f0
+   "git status --porcelain\n git rev-parse HEAD"
+   "du -sk target/c1b-ci-d973716\n ps -p 36211,69929 -o pid=,etime=,args="
+   ICQ send/preview — exact expression/payload local; prefix sha256 e2dbbaa8206dba0f1b1e21e227d2b96fc8f7afa37150d729c58aa8033a275c2c
+   observed returns: "exit_code":0, "exit_code":1, "exit_code":0
+
+151. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4133 — exec tool-program sha256 b3ddb61fe71e144e251ff7617c5c4bec09c74e2d10baa10b2c5dc44a35a88d58
+   ICQ send/preview — exact expression/payload local; prefix sha256 46d4e2675c0f5f73857ffe55d7f3763b645bc6ded94a2b9e352d65b4da01381b
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 8d3e0798fa2d73a297e9b46b3cb2d7156068d3fd76ccb4f3d78687f73cb46aa2
+   "git worktree remove /tmp/ci-aster-c1b-d973716"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+152. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4142 — exec tool-program sha256 f4060abb3a26c249813b0ea7bd3fe817586a4cfb0c417b53712f0bbcefaafbd0
+   ICQ send/preview — exact expression/payload local; prefix sha256 f68f7c92cc69f184e8df24b46e6b3787e493d3ac42e8716941ecab9fda7b1b3f
+   observed returns: "exit_code":0
+
+153. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4149 — exec tool-program sha256 323d2c7bf15d658c36ebe0c5448b0934a6de2f3645f6c510395ec085274d7308
+   "rg -n '^pub |^impl |pub fn |fn screen_grid|unsafe impl Send|const _:|fn prepared|fn.*thread|fn worker|mod tests' crates/bboxy450-term/src/grids.rs crates/bboxy450-term/src/model.rs crates/bbt-render/src/cells/terminal.rs crates/bbt-render/src/cells/terminal/gpu.rs crates/bbt-render/src/text/terminal_macos.rs\n cat crates/bboxy450-term/src/lib.rs\n nl -ba crates/bboxy450-term/Cargo.toml | head -35\n nl -ba crates/bbt-render/src/cells/terminal/bg.wgsl | head -50"
+   "icq inbox --after 4095 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0
+
+154. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4157 — exec tool-program sha256 6d6c2883794cdac093bf174ad1ced2d3134a8472d11441302fbcb6231924006d
+   ICQ send/preview — exact expression/payload local; prefix sha256 968bee9c6a678518b0a3ea6cf343a15929a91c869be2063efa85aa99ea6b53e5
+   observed returns: "exit_code":0, "exit_code":0
+
+155. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4165 — exec tool-program sha256 d989030a0ad8810165b04bbcdfc5683cd008b1b46dec894282f4fab03c983ec2
+   ICQ send/preview — exact expression/payload local; prefix sha256 ee0ac8e0c4f409911a3296ffa1c1637ae3f7877a48a2cd907f2e176d8866ace7
+   "rg --files -g 'report.json' /Users/feral/mydev/bboxy450-term-exec6/target /Users/feral/mydev/bboxy450-term/target /Users/feral/mydev/bboxy450-term-exec3/target /Users/feral/mydev/bboxy450-term-oracle/target"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+156. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4174 — exec tool-program sha256 169e60af3df2aefaf17662ec1c5a7e094b6d0d216cf4240daf8d7fc036a84e4e
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 d54355a881da66820a93e555db1edde16dd63221177ebbdda132cd4f878430e4
+   "icq inbox --after 4135 --limit 40 --wait 20"
+   observed returns: "exit_code":0, "exit_code":0
+
+157. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4184 — exec tool-program sha256 ba1e6644cee437954e473f9bd419f6445367558a37636ad7f4c911914bb06286
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 b048c1f78feba40e7230c7efc85dfb6586fa2b106d9c592d198f824a4e3f98a7
+   ICQ send/preview — exact expression/payload local; prefix sha256 968bee9c6a678518b0a3ea6cf343a15929a91c869be2063efa85aa99ea6b53e5
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0
+
+158. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4193 — exec tool-program sha256 9be7924e0ada2d83b01db95d4e0238b1049ee61039474184c7d85391fd993118
+   ICQ send/preview — exact expression/payload local; prefix sha256 ee0ac8e0c4f409911a3296ffa1c1637ae3f7877a48a2cd907f2e176d8866ace7
+   long stdin/shell starting "python3 - <<'PY'" — exact source above; command sha256 725b0a8addfb2cb163c9bb56a0931b4749c45d879456fd9c711ebf21fb2dd471
+   "rustfmt --check crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/grids.rs crates/bboxy450-term/src/model.rs crates/bbt-render/src/cells/terminal.rs crates/bbt-render/src/cells/terminal/gpu.rs crates/bbt-render/src/text/terminal_macos.rs"
+   "icq inbox --after 4140 --limit 50"
+   observed returns: "exit_code":0, "exit_code":0, "exit_code":0, "exit_code":1, "exit_code":0
+
+159. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4204 — exec tool-program sha256 530e794c33ce6d4d013918c4e333322a38f6d6dc5dbe6ce4b79b5e6b9e9fd342
+   "rustfmt --edition 2024 --check crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/grids.rs crates/bboxy450-term/src/model.rs crates/bbt-render/src/cells/terminal.rs crates/bbt-render/src/cells/terminal/gpu.rs crates/bbt-render/src/text/terminal_macos.rs"
+   observed returns: "exit_code":0
+
+160. /Users/feral/.codex/sessions/2026/10/22/rollout-2026-10-22T11-28-47-01a164df-7182-7a30-8dfa-e5f382c57f62.jsonl:4211 — exec tool-program sha256 4e39e89281511110154ee6cdec21f5f82f6d9c7b225c78914fc7603994d407c5
+   ICQ send/preview — exact expression/payload local; prefix sha256 0777295d64905669c43c6778721340db481dea035b94f36c319249a9f04281cf
+   observed returns: no return yet in bounded snapshot

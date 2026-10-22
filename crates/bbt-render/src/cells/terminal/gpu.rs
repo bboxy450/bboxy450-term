@@ -50,6 +50,78 @@ pub struct Image {
     pub height: u32,
 }
 
+/// An immutable frame prepared off the UI thread. Encoding only records GPU
+/// commands: no fonts, parser access, readback, polling, locks or CPU wait.
+/// The target view must use Rgba8UnormSrgb on the preparing device.
+pub struct PreparedGrid {
+    pub width: u32,
+    pub height: u32,
+    bg: wgpu::RenderPipeline,
+    text: wgpu::RenderPipeline,
+    bg_bind: wgpu::BindGroup,
+    text_bind: wgpu::BindGroup,
+    buffer: Option<wgpu::Buffer>,
+    instances: u32,
+}
+
+impl PreparedGrid {
+    /// Draw at a device-pixel origin, clipped to the visible pane body. Existing
+    /// pixels outside the clip are preserved. One frame may be reused in panes.
+    pub fn encode(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        origin: [u32; 2],
+        clip: [u32; 4],
+    ) {
+        let size = target.texture().size();
+        let x = clip[0].max(origin[0]);
+        let y = clip[1].max(origin[1]);
+        let right = clip[0]
+            .saturating_add(clip[2])
+            .min(origin[0].saturating_add(self.width))
+            .min(size.width);
+        let bottom = clip[1]
+            .saturating_add(clip[3])
+            .min(origin[1].saturating_add(self.height))
+            .min(size.height);
+        if right <= x || bottom <= y {
+            return;
+        }
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("terminal live cells"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        pass.set_viewport(
+            origin[0] as f32,
+            origin[1] as f32,
+            self.width as f32,
+            self.height as f32,
+            0.,
+            1.,
+        );
+        pass.set_scissor_rect(x, y, right - x, bottom - y);
+        pass.set_pipeline(&self.bg);
+        pass.set_bind_group(0, &self.bg_bind, &[]);
+        pass.draw(0..6, 0..1);
+        if let Some(buffer) = &self.buffer {
+            pass.set_pipeline(&self.text);
+            pass.set_bind_group(0, &self.text_bind, &[]);
+            pass.set_vertex_buffer(0, buffer.slice(..));
+            pass.draw(0..6, 0..self.instances);
+        }
+    }
+}
+
 /// Retained font/glyph/sprite cache and two atlases. No parser or app dependency.
 pub struct TerminalRenderer {
     options: Options,
@@ -73,12 +145,7 @@ impl TerminalRenderer {
         Ok(Self {
             options,
             fonts,
-            bg: pipeline(
-                &context.device,
-                "cells.bg",
-                include_str!("../bg.wgsl"),
-                false,
-            ),
+            bg: pipeline(&context.device, "cells.bg", include_str!("bg.wgsl"), false),
             text: pipeline(
                 &context.device,
                 "cells.text+deco",
@@ -254,12 +321,9 @@ impl TerminalRenderer {
         Ok(instances)
     }
 
-    /// Offline GPU readback using the caller's shared device and a parser-free snapshot.
-    #[allow(
-        clippy::disallowed_methods,
-        reason = "headless terminal capture explicitly waits for GPU readback; not a UI API"
-    )]
-    pub fn render_to_rgba(&mut self, context: &DeviceContext, grid: &Grid) -> Result<Image> {
+    /// Rasterize and upload changed glyphs on the preparing worker. The returned
+    /// immutable frame retains its atlas views across later growth/re-preparation.
+    pub fn prepare(&mut self, context: &DeviceContext, grid: &Grid) -> Result<PreparedGrid> {
         grid.validate()?;
         let m = self.metrics();
         let width = u32::from(grid.columns) * m.cell_width;
@@ -366,6 +430,26 @@ impl TerminalRenderer {
                     usage: wgpu::BufferUsages::VERTEX,
                 })
         });
+        Ok(PreparedGrid {
+            width,
+            height,
+            bg: self.bg.clone(),
+            text: self.text.clone(),
+            bg_bind,
+            text_bind,
+            buffer,
+            instances: instances.len() as u32,
+        })
+    }
+
+    /// Offline readback wrapper around the same prepare/encode path as the app.
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "headless terminal capture explicitly waits for GPU readback; not a UI API"
+    )]
+    pub fn render_to_rgba(&mut self, context: &DeviceContext, grid: &Grid) -> Result<Image> {
+        let prepared = self.prepare(context, grid)?;
+        let (width, height) = (prepared.width, prepared.height);
         let texture = context.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("terminal headless target"),
             size: wgpu::Extent3d {
@@ -386,43 +470,7 @@ impl TerminalRenderer {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("terminal frame"),
             });
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("terminal cells.bg"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &target,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            pass.set_pipeline(&self.bg);
-            pass.set_bind_group(0, &bg_bind, &[]);
-            pass.draw(0..6, 0..1);
-        }
-        if let Some(buffer) = &buffer {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("terminal cells.text+deco"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &target,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            pass.set_pipeline(&self.text);
-            pass.set_bind_group(0, &text_bind, &[]);
-            pass.set_vertex_buffer(0, buffer.slice(..));
-            pass.draw(0..6, 0..instances.len() as u32);
-        }
+        prepared.encode(&mut encoder, &target, [0, 0], [0, 0, width, height]);
         let stride = (width * 4).div_ceil(256) * 256;
         let readback = context.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("terminal readback"),
@@ -619,6 +667,188 @@ fn pipeline(device: &wgpu::Device, label: &str, source: &str, text: bool) -> wgp
 mod tests {
     use super::*;
     use crate::cells::terminal::Cell;
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn prepared_frame_encodes_pane_offsets_clips_and_survives_atlas_growth() {
+        fn send_sync<T: Send + Sync>() {}
+        send_sync::<PreparedGrid>();
+        fn send<T: Send>() {}
+        send::<TerminalRenderer>();
+        let context = pollster::block_on(DeviceContext::new()).unwrap();
+        let mut renderer = TerminalRenderer::new(&context, Options::default()).unwrap();
+        let grid = Grid {
+            columns: 2,
+            rows: 1,
+            cells: vec![
+                Cell {
+                    text: "F".into(),
+                    background: [90, 20, 30, 255],
+                    ..Default::default()
+                },
+                Cell {
+                    text: "g".into(),
+                    background: [20, 90, 30, 255],
+                    ..Default::default()
+                },
+            ],
+            cursor: None,
+        };
+        let reference = renderer.render_to_rgba(&context, &grid).unwrap();
+        let frame = renderer.prepare(&context, &grid).unwrap();
+        let old_size = renderer.gray.size();
+        let growth = Grid {
+            columns: 95,
+            rows: 1,
+            cells: (' '..='~')
+                .map(|c| Cell {
+                    text: c.to_string(),
+                    ..Default::default()
+                })
+                .collect(),
+            cursor: None,
+        };
+        renderer.prepare(&context, &growth).unwrap();
+        assert!(renderer.gray.size() > old_size);
+        let (width, height) = (80, 48);
+        let texture = context.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("live pane clip test"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let blue: Vec<u8> = [0, 0, 255, 255].repeat((width * height) as usize);
+        context.queue.write_texture(
+            texture.as_image_copy(),
+            &blue,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(width * 4),
+                rows_per_image: Some(height),
+            },
+            texture.size(),
+        );
+        let mut encoder = context.device.create_command_encoder(&Default::default());
+        let target = texture.create_view(&Default::default());
+        frame.encode(&mut encoder, &target, [8, 4], [9, 5, 10, 12]);
+        // The same immutable frame can draw a second pane without a uniform write.
+        frame.encode(
+            &mut encoder,
+            &target,
+            [40, 24],
+            [40, 24, frame.width, frame.height],
+        );
+        // A resize can leave the previous grid larger than the target for one
+        // frame. Clip to the attachment as well as the pane, without waiting.
+        frame.encode(&mut encoder, &target, [75, 40], [0, 0, width, height]);
+        let stride = (width * 4).div_ceil(256) * 256;
+        let readback = context.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: u64::from(stride * height),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        encoder.copy_texture_to_buffer(
+            texture.as_image_copy(),
+            wgpu::TexelCopyBufferInfo {
+                buffer: &readback,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(stride),
+                    rows_per_image: Some(height),
+                },
+            },
+            texture.size(),
+        );
+        let submission = context.queue.submit([encoder.finish()]);
+        let (tx, rx) = mpsc::sync_channel(1);
+        readback.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            tx.send(r).unwrap();
+        });
+        context
+            .device
+            .poll(wgpu::PollType::Wait {
+                submission_index: Some(submission),
+                timeout: Some(Duration::from_secs(10)),
+            })
+            .unwrap();
+        rx.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
+        let mapped = readback.slice(..).get_mapped_range().unwrap();
+        for y in 0..height {
+            for x in 0..width {
+                let local = if (9..19).contains(&x) && (5..17).contains(&y) {
+                    Some((x - 8, y - 4))
+                } else if (40..40 + frame.width).contains(&x)
+                    && (24..24 + frame.height).contains(&y)
+                {
+                    Some((x - 40, y - 24))
+                } else if x >= 75 && y >= 40 {
+                    Some((x - 75, y - 40))
+                } else {
+                    None
+                };
+                let expected = local.map_or(&blue[..4], |(x, y)| {
+                    let i = ((y * frame.width + x) * 4) as usize;
+                    &reference.rgba[i..i + 4]
+                });
+                let i = (y * stride + x * 4) as usize;
+                assert_eq!(&mapped[i..i + 4], expected, "pane pixel {x},{y}");
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn immutable_fonts_move_to_worker_with_identical_rasterization() {
+        let cases = [("F", 1), ("e\u{301}", 1), ("中", 2), ("👩\u{200d}💻", 2)];
+        for scale in [1, 2] {
+            let fonts = Fonts::new(
+                &crate::FontConfig {
+                    scale,
+                    ..Default::default()
+                },
+                None,
+                false,
+            )
+            .unwrap();
+            let capture = move |fonts: &Fonts| {
+                let mut images = Vec::new();
+                for (text, span) in cases {
+                    for (bold, italic) in
+                        [(false, false), (true, false), (false, true), (true, true)]
+                    {
+                        let glyph = fonts.rasterize(text, bold, italic, span).unwrap().unwrap();
+                        images.push((
+                            glyph.width,
+                            glyph.height,
+                            glyph.left,
+                            glyph.top,
+                            glyph.format,
+                            glyph.pixels,
+                            glyph.faces,
+                        ));
+                    }
+                }
+                images
+            };
+            let caller = capture(&fonts);
+            let worker = std::thread::spawn(move || capture(&fonts)).join().unwrap();
+            assert_eq!(
+                caller, worker,
+                "font rasterization changed after moving threads at {scale}x"
+            );
+        }
+    }
 
     #[test]
     fn emoji_joining_preserves_parser_positions_and_style_boundaries() {

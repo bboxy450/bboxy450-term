@@ -1,0 +1,8 @@
+{
+  "removed": "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-ci-d973716",
+  "allocated_bytes_removed": 2915168256,
+  "gate_exit": 1,
+  "physical_free_delta": "not isolated; no exact physical freed-byte claim",
+  "retained": "target/c1b-parity-d973716, target/c1b-terminal, target/c1b-pane-comparison.png, target/c1b-pane-unicode.png",
+  "ownership": "created by this session; own recorded PIDs 36211/69929 have exited; no peer directories touched"
+}

@@ -1,0 +1,14 @@
+{
+  "source": "37fa9e32e5011840b40d01e85c1265738a4f957f",
+  "ci_exit": 0,
+  "test_counts_pass_fail_ignore": [
+    452,
+    0,
+    5
+  ],
+  "log_sha256": "e6d1a15b9b143d0cba15a421e1fcf9805cdece1d55eb338ef99f06af1dc57813",
+  "removed_private_ci_target": "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-proto-normal-ci",
+  "du_allocated_bytes_removed": 4969951232,
+  "unique_physical_volume_delta": "not isolated",
+  "removed_clean_ci_worktree": "/tmp/ci-aster-c1b-proto-37fa9e3"
+}

@@ -1,0 +1,9 @@
+{
+  "source": "f32a07f99b699aa04cfd20d2d02bf93f012f82fd",
+  "ci_exit": 0,
+  "strict_all_targets_exit": 0,
+  "removed_created_target": "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-ci-f32a07f",
+  "du_allocated_bytes_removed": 2513338368,
+  "unique_physical_volume_delta": "not isolated",
+  "removed_created_ci_worktree": "/tmp/ci-aster-c1b-f32a07f"
+}

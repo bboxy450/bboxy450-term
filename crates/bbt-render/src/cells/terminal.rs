@@ -4,7 +4,7 @@ use crate::{Color, FontConfig, Result};
 
 mod gpu;
 mod sprites;
-pub use gpu::{Image, TerminalRenderer};
+pub use gpu::{Image, PreparedGrid, TerminalRenderer};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Underline {
