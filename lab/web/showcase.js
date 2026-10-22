@@ -180,6 +180,25 @@
     render();
   }
   addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f) toggleMute(f); } });
+  // O: the Oracle spawns a seat over MCP. A dashed pending row with a spinner until applied, then the seat takes a tab of its own.
+  // Demo cycle: every fourth spawn is rejected (reason shown), every fifth ends unknown (spelled, not retried).
+  let spawnN = 0;
+  addEventListener('keydown', e => {
+    if ((e.key !== 'o' && e.key !== 'O') || e.metaKey || e.ctrlKey || e.altKey || spot) return;
+    const sp = space(), n = ++spawnN, h = ['codex', 'claude', 'pi', 'codex'][n % 4];
+    const p = { op: C.hash32('op' + n).toString(16).slice(0, 8), name: C.rollName(C.rng('spawn' + n)), harness: h, by: 'Vesper Greywind', status: 'accepted' };
+    sp.pending = sp.pending || []; sp.pending.push(p); open.add(sp.key); render();
+    setTimeout(() => {
+      if (n % 4 === 0) { p.status = 'rejected'; p.reason = 'spawn cap for this swarm is 8'; render(); return; }
+      if (n % 5 === 0) { p.status = 'unknown'; render(); return; }
+      sp.pending = sp.pending.filter(x => x !== p);
+      const seat = { key: 'o' + n + Date.now().toString(36), name: p.name, harness: h, role: C.DEFAULT_ROLE[h], title: '', state: 'active', pal: (seats.length + 3) % 15, where: 'local' };
+      Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true });
+      Object.defineProperty(seat, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true });
+      seats.push(seat); startReplay(seat, seats.length - 1); placeSeat(seat, 'tab');
+      streamLine(sp, 'Oracle spawned ' + seat.name + ' · ' + h);
+    }, 1800);
+  });
   // D: the GUI loses the daemon. Every pane keeps its stale frame, dimmed, glow frozen, "reconnecting…"; on reconnect the
   // frames redraw, the pill fades, and a seat whose process generation changed shows "restarted" for 4 s, then a stream line.
   let daemon = null;
@@ -399,6 +418,7 @@
     if (focused && !stageKeys.includes(focused) && !phantoms.some(p => p.key === focused)) focused = stageKeys[0] || null;
     const birth = editName; editName = null;
     const sb = C.sidebar(model, { openSpaces: [...open], openTabs: model.spaces.flatMap(s => s.tabs.map(t => s.key + '/' + t.name)), focusedKey: focused, currentSpace: space().key,
+      onDismissPending: p => { for (const sp of model.spaces) sp.pending = (sp.pending || []).filter(x => x !== p); render(); },
       onToggleSpace: toggleSpace, onNewSpace: newSpace, onNewSeat: sp => openSpotlight(sp), onUndo: undoClose, onAccept: acceptTask, onRename: () => render(), editName: birth,
       onColor: sp => { const hues = [0, 30, 50, 90, 150, 190, 220, 260, 300, 330]; sp.hueI = ((sp.hueI == null ? -1 : sp.hueI) + 1) % hues.length; sp.color = 'hsl(' + hues[sp.hueI] + ' 70% ' + (theme() === 'light' ? 42 : 58) + '%)'; render(); } });
     const stage = el('div', { class: 'stage' }, (() => { if (!stageTree) return el('div'); const root = splitDom(stageTree); root.style.height = '100%'; return root; })());

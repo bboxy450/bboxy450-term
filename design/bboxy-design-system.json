@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 24,
+  "version": 25,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -226,7 +226,7 @@
       "means": "the Oracle is spawning this seat",
       "source": "MCP mutation status accepted | applied | rejected | unknown",
       "drawing": "a dashed-outline row with a rolled name and a spinner glyph until applied; rejected shows the reason in a closed-strip-like row; partial and unknown stay dashed with the outcome spelled; never turned into a failure, never an automatic second paste or Enter",
-      "status": "drawn, not built"
+      "status": "built: tab-level row between closed strips and new seat; accepted = dashed outline, spinner, rolled name, \"spawning · by <Oracle>\"; partial and unknown = dashed with a dashed ring and the outcome spelled on a second line; rejected = closed-strip tint, red ×, the reason; dismiss on the name line; applied removes the row and the seat takes its tab with a stream line; pendingRow() in components.js, sidebar.html?state=pending-spawns, showcase key O"
     },
     "interrupt_signal": {
       "means": "an interrupt was sent",

@@ -6,7 +6,7 @@
 </head><body><script>
 const el = Lab.el;
 Lab.page({ title: 'sidebar', wide: true, note: 'Pill stack. 10 seats open by default; 100 and 1000 collapse by space then tab with rolled-up state and the footer count. Click headers to expand. Phone reading: the same sidebar as a bottom sheet. Toggle density in the top bar.',
-  states: ['10 seats', '100 seats', '1000 seats', 'phone sheet'],
+  states: ['10 seats', '100 seats', '1000 seats', 'phone sheet', 'pending spawns'],
   render(s, body) {
     if (s === 'phone sheet') {
       const model = C.makeModel(10, 'phone');
@@ -22,6 +22,18 @@ Lab.page({ title: 'sidebar', wide: true, note: 'Pill stack. 10 seats open by def
       handle.addEventListener('pointermove', e => { if (!sb.classList.contains('dragging')) return; const dy = e.clientY - startY; if (Math.abs(dy) > 3) moved = true; setT(startT + dy); });
       handle.addEventListener('pointerup', e => { sb.classList.remove('dragging'); const dy = e.clientY - startY; const open = moved ? (startT + dy) < (h - 44) / 2 : !sb.classList.contains('open'); sb.classList.toggle('open', open); sb.style.transform = ''; });
       frame.append(el('div', { class: 'stage', style: 'display:block' }, C.pane({ ...focused }, { focused: true, height: 520 })), sb);
+      body.append(frame); return;
+    }
+    if (s === 'pending spawns') {
+      const model = C.makeModel(10, 'sb10'), sp = model.spaces[0], focused = sp.tabs[0].seats[0];
+      sp.pending = [
+        { name: 'Odile Marsh', harness: 'codex', status: 'accepted', by: 'Vesper Greywind', op: '3fa91c2e' },
+        { name: 'Tobin Reed', harness: 'claude', status: 'partial', outcome: 'process started · harness not attached yet' },
+        { name: 'Ysolde Pike', harness: 'pi', status: 'unknown' },
+        { name: 'Bram Calder', harness: 'codex', status: 'rejected', reason: 'spawn cap for this swarm is 8' },
+      ];
+      const frame = el('div', { class: 'sb-frame' }), stage = el('div', { class: 'stage', style: 'display:block' }, C.pane(focused, { focused: true }));
+      frame.append(C.sidebar(model, { openSpaces: [sp.key], focusedKey: focused.key, allSpaces: true, onDismissPending: () => {} }), stage);
       body.append(frame); return;
     }
     const n = parseInt(s), model = C.makeModel(n, 'sb' + n);

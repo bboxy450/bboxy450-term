@@ -150,7 +150,7 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 4 | held count | mute | BUILT: muted row shows an amber "held N"; unmute releases only eligible items and the stream line counts them; blocked items stay as a dashed "held N" with id and reason |
 | 5 | reconnect | mux state streams | BUILT: stale frame dimmed, glow frozen, under a "reconnecting…" pill that fades on reconnect; one-shot "restarted" chip for 4 s on generation change, then a stream line |
 | 6 | scrollback gap | ring eviction | BUILT: hairline with a centred caption, "earlier output evicted · retained from <from>" or "earlier output unavailable"; never an invented count |
-| 7 | pending row | MCP mutation status | dashed row with spinner until applied; rejected shows the reason |
+| 7 | pending row | MCP mutation status | BUILT: dashed row with spinner until applied; partial and unknown stay dashed with the outcome spelled; rejected is a closed-strip row with the reason; dismiss, never an automatic retry |
 | 8 | audit lines | Oracle audit log | DECIDED: a projection of the audit log, swarm-member scope; centred stream lines |
 | 9 | interrupt | seat_interrupt | stop glyph in the strip (Oracle/operator), red bar sweep |
 | 10 | spawn cap | per swarm | launch rows dim, banner says cap reached; Go to still works |
