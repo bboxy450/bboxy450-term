@@ -2,6 +2,7 @@ pub mod atoms;
 pub mod components;
 pub mod fixtures;
 pub mod gallery;
+pub mod launchers;
 pub mod materials;
 pub mod modules;
 pub mod overlays;

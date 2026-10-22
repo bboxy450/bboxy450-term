@@ -11,6 +11,12 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
         let rgba = if case
             .fixture
             .as_ref()
+            .is_some_and(|f| f["layer"] == "launchers")
+        {
+            crate::launchers::render_case(&mut renderer, case)?
+        } else if case
+            .fixture
+            .as_ref()
             .is_some_and(|f| f["layer"] == "titlebars")
         {
             crate::title_bars::render_case(&mut renderer, case)?
@@ -76,6 +82,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     snapshots.extend(crate::swarms::snapshots(cases)?);
     snapshots.extend(crate::panes::snapshots(cases)?);
     snapshots.extend(crate::title_bars::snapshots(cases)?);
+    snapshots.extend(crate::launchers::snapshots(cases)?);
     if !snapshots.is_empty() {
         fs::write(
             out.join("layouts.json"),
@@ -123,7 +130,7 @@ impl CasePolicy {
             || f.is_some_and(|f| {
                 matches!(
                     f["layer"].as_str(),
-                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars")
+                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers")
                 )
             })
         {
@@ -146,7 +153,9 @@ impl CasePolicy {
             channel_tolerance: diff::CHANNEL_TOLERANCE,
             changed_pixel_budget: if text { 0.02 } else { diff::CHANGED_BUDGET },
             geometry_tolerance_px: text.then_some(0.5),
-            scope: if f.is_some_and(|f| f["layer"] == "titlebars") {
+            scope: if f.is_some_and(|f| f["layer"] == "launchers") {
+                "Launcher/picker and placement banner; enclosing backdrop remains shared context"
+            } else if f.is_some_and(|f| f["layer"] == "titlebars") {
                 "TitleBar composition; external rounded window and empty content remain shared context"
             } else if f.is_some_and(|f| f["layer"] == "panes") {
                 "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context"
@@ -362,6 +371,12 @@ pub fn compare_paths(
             .is_some_and(|f| f["layer"] == "floating-surfaces")
     }) {
         "L6 floating components plus explicitly marked surface-only launcher/document shells. Module children are hidden; the unrendered content is an external fixed-height slot. Full web context is retained in context/. Native computes shell position, width, fill, blur, shadow and border. surface-layouts.json records independent rectangle diagnostics; module contents are not claimed as implemented."
+    } else if cases.iter().all(|c| {
+        c.fixture
+            .as_ref()
+            .is_some_and(|f| f["layer"] == "launchers")
+    }) {
+        "L7 Launcher/picker and placement banner compositions. Public item trees, query/path/cap/name/action inputs are shared. Native independently projects lexical tiers and nested scope, then computes all child layout from tokens and CoreText. The outer backdrop is external fixture context, already exercised in L6 Overlay. Current launcher/picker pages gate; launcher-v2 is historical. Child bounds and actual text-range baselines are diagnostics only. Input/launching controllers are not claimed."
     } else if cases
         .iter()
         .all(|c| c.fixture.as_ref().is_some_and(|f| f["layer"] == "seat-row"))

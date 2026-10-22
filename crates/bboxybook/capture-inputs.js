@@ -37,7 +37,7 @@
       components = value;
       for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
         'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard',
-      'externalLane', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar']) {
+      'externalLane', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker']) {
         const original = value[name];
         if (typeof original !== 'function') continue;
         value[name] = function (...args) {
@@ -152,6 +152,46 @@
       }
       return diagnostics;
     };
+    if(window.bboxyLauncherFixture){
+      const call=calls.find(c=>c.name==='picker'&&c.node?.isConnected&&root.contains(c.node));
+      if(!call)throw Error('Launcher constructor missing');
+      const node=call.node,opts=call.args[0]||{};
+      const kids=it=>typeof it.children==='function'?it.children():it.children;
+      const tree=(items,depth=0)=>{if(depth>8)throw Error('Launcher tree exceeds eight levels');return items.map(it=>({
+        id:it.id,label:it.label,sub:it.sub||'',harness:it.harness,kind:it.kind||it.hint||'',tile:it.tile||null,section:it.section||null,aliases:it.aliases||[],tags:it.tags||[],
+        navigation:!!(it.seat||it.swarm||it.graphOpen||it.settingsOpen||it.section==='Navigate'||it.section==='Swarms'||it.kind==='Navigate'||it.kind==='Open'),
+        children:it.children?tree(kids(it)||[],depth+1):null,
+      }));};
+      const nm=C.rollName(C.rng('roll'+(opts.seed||1))),input=node.querySelector('input');
+      const diagnostics=parts(node,'picker');
+      diagnostics.push({...inputDiag(input).children[0],key:'picker/inrow/input/text'});
+      if(node.closest('.spot-back')){
+        const nums=[...node.querySelectorAll('.opt .num')];let index=0;
+        for(const p of diagnostics.filter(p=>p.key.match(/^picker\/div\/opt\d*\/num$/))){
+          const n=nums[index++],range=document.createRange();range.selectNodeContents(n);
+          const r=range.getBoundingClientRect(),b=n.getBoundingClientRect(),css=getComputedStyle(n),cv=document.createElement('canvas'),ctx=cv.getContext('2d');ctx.font=css.font;
+          p.font_diagnostics={font:css.font,baseline:r.y-b.y+ctx.measureText(n.textContent).fontBoundingBoxAscent,source:'inline-flex-text-range'};
+        }
+      }
+
+      node.dataset.bboxyLauncher='';
+      const banner=node.parentElement.querySelector('.spot-banner');
+      const grid=banner&&calls.find(c=>c.name==='miniGrid'&&c.node?.isConnected&&banner.contains(c.node));
+      if(banner){
+        banner.dataset.bboxyLauncher='';parts(banner,'banner',diagnostics);
+        const of=banner.querySelector('.of'),raw=[...of.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim());
+        for(let i=diagnostics.length-1;i>=0;i--)if(diagnostics[i].key==='banner/txt/of/text')diagnostics.splice(i,1);
+        for(let i=0;i<raw.length;i++){
+          const node=raw[i],range=document.createRange();range.selectNodeContents(node);const r=range.getBoundingClientRect(),css=getComputedStyle(of),cv=document.createElement('canvas'),ctx=cv.getContext('2d');ctx.font=css.font;
+          const key='banner/txt/of/text'+(i||'');
+          diagnostics.push({key,kind:'text',value:node.textContent,rect:{x:r.x-origin.x,y:r.y-origin.y,w:r.width,h:r.height},font_diagnostics:{baseline:ctx.measureText(node.textContent).fontBoundingBoxAscent,source:'text-range-font-ascent'}});
+        }
+      }
+      return {version:1,layer:'launchers',spotlight:!!node.closest('.spot-back'),host:bounds(node),
+        args:{items:tree(opts.items||C.LAUNCH),query:opts.query||'',path:opts.path||[],placeholder:opts.placeholder||'new seat · type to filter',cap:opts.cap||null,name:nm,swatch:color(C.seatColor({key:nm}),node),actions:Array.isArray(opts.actions)?opts.actions:[['Open','↵'],['Into','→'],['Back','←'],['Reroll','⌘R']]},
+        banner:grid?{host:bounds(banner),tree:grid.args[0],focused_key:grid.args[1],title:banner.querySelector('.txt .big').textContent,anchor_color:color(C.seatColor(grid.args[0].a),node)}:null,
+        parts:diagnostics};
+    }
     if(window.bboxyTitleBarFixture){
       const call=calls.find(c=>c.name==='titleBar'&&c.node?.isConnected&&root.contains(c.node));
       const node=call?.node||root.querySelector('.titlebar');if(!node)throw Error('TitleBar root missing');

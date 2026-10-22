@@ -1,0 +1,156 @@
+//! Placement preview composed with the accepted MiniGrid and L6 elements.
+use super::{
+    mini_grid::{MiniGrid, Node},
+    seat_row::named,
+    strip::plain,
+};
+use crate::{self as ui, components as c};
+use bbt_ui_model::{STYLE, layout::Axis};
+
+#[derive(Debug, Clone)]
+pub struct Banner {
+    pub tree: Node,
+    pub focused_key: String,
+    pub title: String,
+    pub anchor: String,
+    pub anchor_color: [f32; 4],
+}
+impl Banner {
+    pub fn element(&self, ctx: ui::Context) -> c::Element {
+        let mut grid = MiniGrid {
+            tree: self.tree.clone(),
+            focused_key: Some(self.focused_key.clone()),
+            size: [168., 104.],
+            big: true,
+        }
+        .element_named(ctx, "banner/mg");
+        fn preview(e: &mut c::Element, focus: bool, accent: [f32; 4]) {
+            match e {
+                c::Element::Named { name, content } => {
+                    let cell = name.rsplit('/').next().unwrap().starts_with("cell");
+                    let mut focused = focus;
+                    if let c::Element::Box(b) = content.as_mut() {
+                        if cell {
+                            focused =
+                                b.style.overrides.fill == Some(ui::Paint::solid(ui::Color::Accent));
+                            if focused {
+                                b.style.overrides.opacity = Some(0.55);
+                                b.style.overrides.shadow = Some(ui::Shadow::Custom {
+                                    blur: 18.,
+                                    color: [accent[0], accent[1], accent[2], 0.7],
+                                });
+                            } else {
+                                b.style.overrides.fill = Some(ui::Paint {
+                                    color: ui::Color::Foreground,
+                                    alpha: ui::Alpha::Value(0.14),
+                                });
+                            }
+                        } else {
+                            b.style.overrides.fill = Some(ui::Paint {
+                                color: ui::Color::Line,
+                                alpha: ui::Alpha::Hairline,
+                            });
+                            if name == "banner/mg" {
+                                b.style.overrides.radii =
+                                    Some([ui::Length::Px(STYLE.radius.tile as f32); 4]);
+                            }
+                        }
+                    }
+                    preview(content, focused, accent);
+                }
+                c::Element::Box(b) => {
+                    for child in &mut b.children {
+                        preview(&mut child.element, focus, accent)
+                    }
+                }
+                c::Element::Text(t) => {
+                    for run in &mut t.runs {
+                        run.style.paint = ui::Paint::solid(if focus {
+                            ui::Color::OnAccent
+                        } else {
+                            ui::Color::Muted
+                        });
+                        run.style.weight = if focus { 600 } else { 400 };
+                    }
+                }
+                _ => {}
+            }
+        }
+        preview(
+            &mut grid,
+            false,
+            ui::Paint::solid(ui::Color::Accent)
+                .resolve(ctx)
+                .expect("palette accent"),
+        );
+        let mut title = c::Text::new(
+            &self.title,
+            ui::Text {
+                size: Some(26.),
+                weight: 600,
+                tracking_em: -0.01,
+                line_height: 1.1,
+                ..Default::default()
+            },
+        );
+        title.wrap = true;
+        let mut caption = c::Text::new(
+            "of ",
+            ui::Text {
+                size: Some(STYLE.r#type.subtitle as f32),
+                paint: ui::Paint::solid(ui::Color::Muted),
+                line_height: 1.4,
+                ..Default::default()
+            },
+        );
+        caption.wrap = false;
+        caption.runs.push(c::TextRun {
+            value: self.anchor.clone(),
+            style: ui::Text {
+                size: Some(STYLE.r#type.subtitle as f32),
+                weight: 600,
+                paint: ui::Paint::solid(ui::Color::Rgba(self.anchor_color)),
+                line_height: 1.4,
+                ..Default::default()
+            },
+        });
+        caption.runs.push(c::TextRun {
+            value: " · the new seat lands in the lit cell".into(),
+            style: ui::Text {
+                size: Some(STYLE.r#type.subtitle as f32),
+                paint: ui::Paint::solid(ui::Color::Muted),
+                line_height: 1.4,
+                ..Default::default()
+            },
+        });
+        let mut line = c::Box::new(
+            plain(None, [6., 0., 0., 0.], 0.),
+            vec![named("banner/txt/of", c::Element::Text(caption)).into()],
+        );
+        line.direction = Axis::Column;
+        line.align = c::Alignment::Stretch;
+        line.gap = ui::Length::Px(0.);
+        let words = named(
+            "banner/txt",
+            c::Element::Stack(c::Stack {
+                direction: Axis::Column,
+                gap: ui::Length::Px(0.),
+                align: c::Alignment::Stretch,
+                children: vec![
+                    named("banner/txt/big", c::Element::Text(title)).into(),
+                    c::Element::Box(line).into(),
+                ],
+            }),
+        );
+        let mut style = ui::Style::new(ui::Preset::Modal);
+        style.overrides.padding = Some([
+            ui::Length::Px(16.),
+            ui::Length::Px(22.),
+            ui::Length::Px(16.),
+            ui::Length::Px(22.),
+        ]);
+        let mut panel = c::Box::new(style, vec![grid.into(), words.into()]);
+        panel.gap = ui::Length::Px(22.);
+        named("banner", c::Element::Box(panel))
+    }
+}

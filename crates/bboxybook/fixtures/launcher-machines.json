@@ -1,0 +1,111 @@
+{
+  "args": {
+    "items": [
+      {
+        "id": "ssh",
+        "label": "SSH",
+        "sub": "pick a machine, then a harness",
+        "harness": "ssh",
+        "kind": "Remote",
+        "tile": "#374151",
+        "section": "Remote",
+        "aliases": [
+          "ssh"
+        ],
+        "tags": [],
+        "navigation": false,
+        "children": [
+          {
+            "id": "ssh:rig",
+            "label": "rig",
+            "sub": "rig.local · M2 Ultra",
+            "harness": "ssh",
+            "kind": "Machine",
+            "tile": "#374151",
+            "section": null,
+            "aliases": [],
+            "tags": [],
+            "navigation": false,
+            "children": []
+          },
+          {
+            "id": "ssh:alpha",
+            "label": "alpha",
+            "sub": "alpha.tail · Linux x86",
+            "harness": "ssh",
+            "kind": "Machine",
+            "tile": "#374151",
+            "section": null,
+            "aliases": [],
+            "tags": [],
+            "navigation": false,
+            "children": []
+          },
+          {
+            "id": "ssh:studio",
+            "label": "studio",
+            "sub": "studio.local · M1 Max",
+            "harness": "ssh",
+            "kind": "Machine",
+            "tile": "#374151",
+            "section": null,
+            "aliases": [],
+            "tags": [],
+            "navigation": false,
+            "children": []
+          }
+        ]
+      }
+    ],
+    "query": "",
+    "path": [
+      "ssh"
+    ],
+    "placeholder": "launch or go to · type to search",
+    "cap": null,
+    "name": "Fenn Calloway",
+    "swatch": [
+      0.8274509803921568,
+      0.13333333333333333,
+      0.13333333333333333,
+      1
+    ],
+    "actions": [
+      [
+        "Open",
+        "↵"
+      ],
+      [
+        "Into",
+        "→"
+      ],
+      [
+        "Back",
+        "←"
+      ],
+      [
+        "Reroll",
+        "⌘R"
+      ]
+    ]
+  },
+  "host": {
+    "x": 243,
+    "y": 42,
+    "w": 760,
+    "h": 264.1875
+  },
+  "spotlight": true,
+  "layer": "launchers",
+  "backdrop": {
+    "crop": {
+      "x": 17,
+      "y": 256.1875,
+      "width": 1246,
+      "height": 588
+    }
+  },
+  "parts": [],
+  "banner": null,
+  "source": "Public SSH machine fixture from lab/web/components.js launcherItems; reference d0731f9. Descendant harnesses omitted; parent markers retained."
+}

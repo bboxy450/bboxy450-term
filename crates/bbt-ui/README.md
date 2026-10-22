@@ -219,3 +219,18 @@ from the shared design. Narrow widths wrap the title at literal hyphens and
 ellipsize the crumb while control slots keep their size. An unfocused window
 filters only its portrait and dots, matching the lab. Action handling and
 window ownership remain with the caller.
+
+## L7 Launcher
+
+`Launcher` takes an item tree, query, path, selection, cap, rolled name/colour
+and action hints. Its pure projection preserves stable lexical tiers and AND
+matching, descends typed parent aliases and retains explicit breadcrumbs.
+The same row composition covers harnesses, placements, remote hosts/regions,
+seats/swarms, Settings and Resume. Caps dim completed row groups and hide launch
+number badges while navigation remains available. No command is executed.
+
+The panel composes Box/Text/Stack/Icon, isolated filters and the existing
+materials in the Spotlight and compact presentations. `launcher_banner::Banner`
+composes MiniGrid with a placement caption; its text uses contiguous styled runs
+so inline spacing and baselines survive. The caller owns overlay placement,
+input, navigation mutations, launching and name generation.

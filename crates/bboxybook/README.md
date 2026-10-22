@@ -442,3 +442,37 @@ error 0.45px, baselines exact, worst changed fraction 1.208%. Historical cases
 keep the older geometry and are explicitly unproven/diagnostic, not a gate.
 Text/icon masks and corner-edge antialiasing remain visible in the triplets;
 the deferred L1 raster work is unchanged. See `.bboxy/runs/w3-2d-7-5-summary.log`.
+
+## L7 Launcher (W3.2d.7.6)
+
+`cargo run -p bboxybook --locked -- launchers` captures and renders 176 current
+cases (14 Spotlight states and eight compact picker states, four densities,
+both themes), plus 48 separately named historical v2 cases. Its output is
+`target/bboxybook/launchers/index.html`. The legacy hand painter delegates to
+the retained composition; its flat host omits backdrop sampling.
+
+Constructor item trees include evaluated local child providers, aliases and
+facets. Native code resolves filtering, virtual descent, breadcrumbs, cap
+selection and layout independently. Shared input includes rolled name/colour,
+public caption/action strings and outer bounds. DOM child rectangles/fonts
+never place native content. The external overlay backdrop remains common
+fixture context; L6 separately exercises that material. Input controllers and
+launching remain later work.
+
+`launchers --geometry-only --manifest CAPTURED_CASES --out DIR` writes independent
+`layouts.json` without rendering pixels. Inline-flex number badges use an
+actual text-range probe, because a marker becomes a separate centered flex
+item. Placement-caption raw text also uses ranges, preserving the original
+inline spaces. Native range diagnostics aggregate its shaped runs and native
+font metrics. Missing geometry remains unproven under the existing policy.
+
+The 7.6 result is 144/176 current cases within policy: compact picker 64/64,
+Spotlight 80/112. All 176 geometry records pass (11,328 rect pairs, 6,336
+baselines; maxima 0.2464px and 0.0079px). The 32 remaining pixel reviews are
+Go to, both placement presets and the cap, across themes/densities; worst
+2.3384%. Text/icon masks, rims and frosted edges remain visible. Pixel location
+analysis suggests the deferred raster work; it does not prove every cause.
+The 48 historical cases are diagnostic (24 within policy, 24 unproven geometry).
+The merged review is `target/bboxybook/launchers/final/index.html`; its capture
+metadata records the eight recaptured empty-result variants after lab fix
+`8636a28`. No review budget or golden changed.

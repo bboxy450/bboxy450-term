@@ -1,0 +1,87 @@
+Capture and render logs, all commands exit0:
+captured 100/224
+captured 200/224
+web: 224/224 captured; 0 failures
+
+web: 8/8 captured; 0 failures
+
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/224
+rendered 200/224
+native/web layout snapshots: target/bboxybook/launchers/final/native/layouts.json
+rendered 224 PNGs to target/bboxybook/launchers/final/native
+
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/bboxybook/launchers/no-match/native/layouts.json
+rendered 8 PNGs to target/bboxybook/launchers/no-match/native
+
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/112
+native/web layout snapshots: target/bboxybook/launchers/colour/native/layouts.json
+rendered 112 PNGs to target/bboxybook/launchers/colour/native
+
+Final compare:
+parity: 224 cases, 32 review; target/bboxybook/launchers/final/index.html
+
+Pixel attribution (location only):
+[
+  {
+    "key": "launcher/go-to-seats-and-swarms-cozy-light.png",
+    "changed": 24765,
+    "text_slot_fraction": 0.7096709065213003,
+    "icon_slot_fraction": 0.03626085200888351,
+    "outside_fraction": 0.25406824146981627,
+    "method": "native visible text-run/icon slots, expanded 1px; location attribution, not causal proof"
+  },
+  {
+    "key": "launcher/preset-split-right-cozy-light.png",
+    "changed": 29714,
+    "text_slot_fraction": 0.6757084202732718,
+    "icon_slot_fraction": 0.030557986134482063,
+    "outside_fraction": 0.2937335935922461,
+    "method": "native visible text-run/icon slots, expanded 1px; location attribution, not causal proof"
+  },
+  {
+    "key": "launcher/preset-split-down-cozy-light.png",
+    "changed": 29601,
+    "text_slot_fraction": 0.6744704570791528,
+    "icon_slot_fraction": 0.030674639370291544,
+    "outside_fraction": 0.2948549035505557,
+    "method": "native visible text-run/icon slots, expanded 1px; location attribution, not causal proof"
+  },
+  {
+    "key": "launcher/cap-reached-cozy-light.png",
+    "changed": 24350,
+    "text_slot_fraction": 0.7358521560574949,
+    "icon_slot_fraction": 0.03470225872689938,
+    "outside_fraction": 0.22944558521560576,
+    "method": "native visible text-run/icon slots, expanded 1px; location attribution, not causal proof"
+  }
+]
+Rim attribution:
+[
+  {
+    "key": "launcher/go-to-seats-and-swarms-cozy-light.png",
+    "outside_text_icon": 6292,
+    "within_2px_panel_rim": 3394,
+    "rim_fraction_of_remaining": 0.5394151303242213
+  },
+  {
+    "key": "launcher/preset-split-right-cozy-light.png",
+    "outside_text_icon": 8728,
+    "within_2px_panel_rim": 5296,
+    "rim_fraction_of_remaining": 0.6067827681026581
+  },
+  {
+    "key": "launcher/preset-split-down-cozy-light.png",
+    "outside_text_icon": 8728,
+    "within_2px_panel_rim": 5296,
+    "rim_fraction_of_remaining": 0.6067827681026581
+  },
+  {
+    "key": "launcher/cap-reached-cozy-light.png",
+    "outside_text_icon": 5587,
+    "within_2px_panel_rim": 3604,
+    "rim_fraction_of_remaining": 0.6450689099695722
+  }
+]

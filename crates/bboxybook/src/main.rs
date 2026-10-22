@@ -15,6 +15,27 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("gallery");
+    if command == "launchers" {
+        let out = PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/launchers".into()),
+        );
+        if args.iter().any(|a| a == "--geometry-only") {
+            let path = value(&args, "--manifest")
+                .ok_or("--geometry-only requires a captured --manifest")?;
+            let cases: Vec<gallery::Case> = serde_json::from_str(&fs::read_to_string(path)?)?;
+            fs::create_dir_all(&out)?;
+            fs::write(
+                out.join("layouts.json"),
+                serde_json::to_vec_pretty(&bboxybook::launchers::snapshots(&cases)?)?,
+            )?;
+            println!(
+                "Launcher geometry only; no pixels rendered: {}",
+                out.display()
+            );
+            return Ok(());
+        }
+        return bboxybook::launchers::render(&out);
+    }
     if command == "title-bars" {
         return bboxybook::title_bars::render(&PathBuf::from(
             value(&args, "--out").unwrap_or_else(|| "target/bboxybook/title-bars".into()),
@@ -118,7 +139,7 @@ fn run() -> Result<()> {
         },
         "compare"=>parity::compare_paths(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/parity".into())),&cases,&value(&args,"--web-root").unwrap_or_else(||"web".into()),&value(&args,"--native-root").unwrap_or_else(||"native".into()))?,
         "sidebar"|"showcase"=>{let component=if command=="showcase"{format!("showcase-{}",value(&args,"--scene").unwrap_or_else(||"3".into()))}else{"sidebar".into()};cases.retain(|c|c.component==component);parity::render(&PathBuf::from("target/bboxybook"),&cases)?;},
-        _=>return Err("usage: bboxybook [gallery | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | styles | manifest | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
+        _=>return Err("usage: bboxybook [gallery | launchers | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | styles | manifest | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
     }
     Ok(())
 }

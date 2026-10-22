@@ -1,0 +1,58 @@
+ROLE: EXECUTOR — Nyx Copperwing
+W3.2d.7.6 Launcher
+
+Scope: retained Launcher/picker + preset banner compositions; native fixture/capture/parity wiring; no renderer/model/dependency, input-controller or network changes.
+Prerequisites: signed L3 Positioned shadow 61d4d3f (verification correction 59b3d61), signed L6 intrinsic-minimum/wrap-roundoff support c067695. Those commits are already ancestors of Wren's pushed 8636a28. No push by this Executor.
+
+Evidence:
+- crates/bbt-ui/src/modules/launcher.rs:34 — caller-owned item tree, query/path, selection, cap, name/swatch/actions, presentation mode.
+- launcher.rs:93 — pure stable lexical tiers, AND word matching, typed parent descent and explicit breadcrumbs; never launches a process or mutates the caller path.
+- launcher.rs:838 — retained header, rows, cap notice, footer and material; completed cap rows isolated at .38; launch number badges hidden, navigation retained.
+- crates/bbt-ui/src/modules/launcher_banner.rs:19 — accepted MiniGrid plus styled inline caption; fixed 0ms preview pose.
+- crates/bboxybook/src/launchers.rs:107 — public constructor data + external bounds drive layout. Child DOM rects/font diagnostics never position native elements.
+- launchers.rs:269 — independent rect/baseline snapshots. Numeric badge probes measure text ranges, not the unrelated center of a zero-height flex marker. Banner raw-text ranges preserve whitespace.
+- crates/bboxybook/src/modules.rs:1351 — old 100-line hand painter replaced by retained delegate.
+- five UI projection/colour/guard tests; three host registry/tampered-DOM/CoreText tests; static public machine fixture; captured current item trees; CLI launchers and geometry-only.
+
+Final matrix:
+224 cases = 176 current (112 Spotlight + 64 compact) + 48 historical v2.
+Current: 144 within policy, 32 review pixels, ZERO geometry failures or missing geometry.
+Compact: 64/64 within policy. Spotlight: 80/112 within policy; Go to (8), right/down presets (16), cap reached (8) need pixel review.
+11,328 rect pairs and 6,336 baselines across all 176 current cases; max rect 0.2463379px, max baseline 0.0078125px. Worst current changed fraction 2.338306%. Existing channel tolerance 8, text budget 2%, geometry tolerance .5px unchanged.
+Historical: 24 within policy, 24 unproven geometry; they remain visible and do not gate current design.
+Gallery: /Users/feral/mydev/bboxy450-term/target/bboxybook/launchers/final/index.html; adjacent report.md/report.json, layouts.json, capture.json, cases.json.
+
+Commands / actual outcomes:
+- cargo build -p bboxybook --locked — exit0 (final rendering binary).
+- node crates/bboxybook/capture.mjs .../final-reference .../requested.json — exit0; 224/224, zero JS failures. References frozen before the small empty-result fix.
+- Wren fixed picker no-match query x (which matched executor subtitles) to zzqx in 8636a28. Captured eight affected variants to no-match/ — exit0, 8/8, zero failures. Native mirror changed to zzqx.
+- bboxybook render final/native with 224-case manifest — exit0, 224 Metal PNGs and snapshots.
+- bboxybook render no-match/native — exit0, eight corrected-input PNGs/snapshots. Only those entries replaced; old eight retained in final/before-empty-fixture-fix/.
+- First full comparison: 88/176 current pixel reviews, zero geometry failures. Visual inspection identified reversed compact selection blend weights (module bug). Corrected to surface72% + accent28%; reroll glyph to white80% + navy20%; targeted colour/projection suite 5 green.
+- bboxybook render colour/native — exit0, 112 affected compact + historical cases, snapshots. Spotlight pixels unchanged. Prior images/report preserved under final/before-colour-fix/.
+- bboxybook compare final — exit0, pixel reviews 88 -> 32. Complete mixed-reference manifest/capture provenance retained; no PNG substituted for native implementation.
+- cargo test -p bbt-ui -p bboxybook --locked — final exit0, 105 passed; all registered native previews render on Metal.
+- cargo clippy -p bbt-ui -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — final exit0. Only the two pre-existing allowances.
+- cargo fmt -p bbt-ui -p bboxybook --check; git diff --check; node --check capture-inputs.js and capture.mjs — exit0.
+- Each L3 and L6 support default regression: 328/328 lower-gallery PNGs byte-identical to accepted 7.4b (see support logs).
+
+Images inspected (web/native/diff): compact typed-co light+dark; compact cap-machine light; empty-result light; SSH/rig/Codex placements dark; Go to light; split-down preview light (split-right dark inspected earlier); Spotlight cap dark. Original images and inspected-* triplets retained in final/.
+
+Residue and limits:
+- Four representative Spotlight review cases measured with native visible text-run/icon slots expanded by 1px. Text slots contain 67.4–73.6% of changed pixels; icon slots 3.1–3.6%. Panel rims within 2px account for another 13.7–17.8%. Together roughly 88–92%; cause of the remaining 8–12% is unproven. Location attribution is not causal proof.
+- L1 text/icon masks and panel/frosted edges remain visible; lower raster tuning was explicitly deferred by the Oracle until after modules and is untouched. No tolerance change.
+- Overlay backdrop and external lab notes remain shared fixture context (L6 Overlay separately checked). The flat old gallery cannot sample Frosted; full module host executes existing materials.
+- Input/focus/launch callbacks, real SSH/cloud/resume/cap enforcement, other backends/platforms, macOS14 and hosted CI were not exercised. No FPS measurement or operator browser opened/reloaded.
+- No broad 1,200-case rerender: support layers prove 328 defaults unchanged; module run includes all 224 required current/historical cases.
+
+Ten worst current triplets (same relative key in final/web, final/native and final/diff):
+1. launcher/go-to-seats-and-swarms-comfortable-light.png — 2.338306% changed; rect 0.246338px; baseline 0.007812px
+2. launcher/go-to-seats-and-swarms-compact-light.png — 2.338306% changed; rect 0.246338px; baseline 0.007812px
+3. launcher/go-to-seats-and-swarms-cozy-light.png — 2.338306% changed; rect 0.246338px; baseline 0.007812px
+4. launcher/go-to-seats-and-swarms-touch-light.png — 2.338306% changed; rect 0.246338px; baseline 0.007812px
+5. launcher/go-to-seats-and-swarms-comfortable-dark.png — 2.329431% changed; rect 0.246338px; baseline 0.007812px
+6. launcher/go-to-seats-and-swarms-compact-dark.png — 2.329431% changed; rect 0.246338px; baseline 0.007812px
+7. launcher/go-to-seats-and-swarms-cozy-dark.png — 2.329431% changed; rect 0.246338px; baseline 0.007812px
+8. launcher/go-to-seats-and-swarms-touch-dark.png — 2.329431% changed; rect 0.246338px; baseline 0.007812px
+9. launcher/preset-split-right-comfortable-light.png — 2.277699% changed; rect 0.215118px; baseline 0.007812px
+10. launcher/preset-split-right-compact-light.png — 2.277699% changed; rect 0.215118px; baseline 0.007812px
