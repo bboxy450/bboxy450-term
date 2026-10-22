@@ -1,4 +1,4 @@
-//! Baked RGBA assets, provided by bboxybook's build step, share one atlas.
+//! Straight RGBA inputs are stored premultiplied for linear atlas filtering.
 use crate::Result;
 use std::collections::HashMap;
 pub struct Image {
@@ -21,7 +21,7 @@ impl IconAtlas {
             rects: HashMap::new(),
         };
         let (mut x, mut y, mut row) = (0, 0, 0);
-        for image in images {
+        for mut image in images {
             if image.width == 0
                 || image.height == 0
                 || image.width >= size
@@ -29,6 +29,12 @@ impl IconAtlas {
                 || image.rgba.len() != (image.width * image.height * 4) as usize
             {
                 return Err("invalid icon image".into());
+            }
+            for pixel in image.rgba.as_chunks_mut::<4>().0 {
+                let alpha = u32::from(pixel[3]);
+                for channel in &mut pixel[..3] {
+                    *channel = ((u32::from(*channel) * alpha + 127) / 255) as u8;
+                }
             }
             if x + image.width + 1 > size {
                 x = 0;

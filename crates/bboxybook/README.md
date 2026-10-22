@@ -236,6 +236,24 @@ module previews and their coverage registry are untouched.
 The separate native-only previews establish rendering/coverage for Hairline,
 Badge, Chip, Pill, Swatch, Spinner and Checkerboard; they do not claim CSS parity
 for those seven atoms. No L6 widgets or module composition are built here. The
-font-mask/outline AA and nearest-sampled icon atlas remain visible in the L5
-comparison, with unchanged thresholds. GPU text and asset ownership remain in
-L1; this pass does not change its shaders.
+initial L5 comparison keeps font-mask/outline AA and nearest-sampled icon
+differences visible under unchanged thresholds. GPU text and asset ownership
+remain in L1; d.3 does not change its shaders. The separate d.1c pass below
+corrects icon sampling.
+
+
+## L1 icon filtering (W3.2d.1c)
+
+`target/bboxybook/d1c-icons/index.html` pairs the L5 matrix after Wren's
+`5561530` reference correction (inferred opacity multiplies the pulse).
+`before/index.html` compares the same corrected references with the d.3 native
+PNGs; atom bounds and hidden-atom backdrop bytes are checked equal before reuse.
+
+Chrome images/icons use a linear sampler, clamped inside each atlas asset.
+`IconAtlas` converts straight RGBA inputs to premultiplied RGB before storage;
+the shader interpolates that data and returns straight colour to source-over.
+This prevents hidden RGB in transparent pixels or adjacent atlas assets from
+colouring a filtered edge. Text masks and terminal cell sampling are unchanged.
+The GPU regression in `tests/icon_filter.rs` checks half-blue interpolation
+beside transparent red, alpha preservation on the fixture, and no green bleed
+from a neighbouring asset. This pass makes no performance claim.

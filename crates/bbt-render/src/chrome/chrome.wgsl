@@ -4,6 +4,7 @@ struct Instance {rect:vec4f,fill:vec4f,stroke:vec4f,radii:vec4f,params:vec4f,uv:
 @group(0) @binding(2) var masks:texture_2d<f32>;
 @group(0) @binding(3) var images:texture_2d<f32>;
 @group(0) @binding(4) var text_backdrop:texture_2d<f32>;
+@group(0) @binding(5) var image_sampler:sampler;
 struct Vertex {@builtin(position) pos:vec4f,@location(0) point:vec2f,@location(1) @interpolate(flat) index:u32}
 @vertex fn vs(@builtin(vertex_index) v:u32,@builtin(instance_index) i:u32)->Vertex {
     let corners=array<vec2f,6>(vec2f(0,0),vec2f(1,0),vec2f(0,1),vec2f(0,1),vec2f(1,0),vec2f(1,1));
@@ -22,7 +23,13 @@ fn srgb1(c:f32)->f32 {return select(c*12.92,1.055*pow(max(c,0.0),1.0/2.4)-0.055,
     if kind==1u {let t=clamp((p.y-i.rect.y)/i.rect.w,0.0,1.0);c=select(mix(i.fill,vec4f(1,1,1,i.fill.a),(1.0-t/0.55)*0.12),vec4f(i.fill.rgb*(1.0-(t-0.55)/0.45*0.18),i.fill.a),t>0.55);}
     if kind==2u||kind==3u {
         let unit=clamp((p-i.rect.xy)/max(i.rect.zw,vec2f(0.001)),vec2f(0),vec2f(0.99999));let pixel=vec2i(i.uv.xy+unit*i.uv.zw);
-        if kind==2u {a*=textureLoad(masks,pixel,0).r;} else {let image=textureLoad(images,pixel,0);c*=image;}
+        if kind==2u {a*=textureLoad(masks,pixel,0).r;} else {
+            let point=clamp(i.uv.xy+unit*i.uv.zw,i.uv.xy+vec2f(0.5),i.uv.xy+i.uv.zw-vec2f(0.5));
+            let image=textureSampleLevel(images,image_sampler,point/vec2f(textureDimensions(images)),0.0);
+            // Interpolate premultiplied RGB, then return straight colour to the
+            // chrome source-over blend. Hidden RGB must not fringe the edge.
+            c*=vec4f(image.rgb/max(image.a,0.000001),image.a);
+        }
     }
     if i.params.y>0.0&&kind<2u {let edge=clamp(d+i.params.y+0.5,0.0,1.0);c=mix(c,i.stroke,edge);}
     if i.params.w>0.0&&p.y<i.rect.y+1.5&&d<0.0 {c=vec4f(mix(c.rgb,vec3f(1),i.params.w),c.a);}

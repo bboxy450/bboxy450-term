@@ -1,0 +1,51 @@
+W3.2d.1c — linear chrome icon-atlas filtering
+observed_at=2026-10-21T20:04:11.590000-07:00
+base_head=5561530b8d02a8541c70f688e081dd4577dd6158
+Assignment: Oracle f91b40a1-ba19-4a68-9708-f6a460475730; separate L1 pass after accepted L5 atoms. Linear icon filtering; terminal cells keep nearest sampling.
+
+Mechanisms:
+crates/bbt-render/src/chrome/mod.rs:335 — linear min/mag sampler bound only to the chrome image atlas.
+crates/bbt-render/src/chrome/icons.rs:33 — straight input RGBA converted to premultiplied storage, including transparent pixels.
+crates/bbt-render/src/chrome/chrome.wgsl:27 — linear sample clamped to each asset centre range; interpolate premultiplied RGB and divide by alpha before the existing straight source-over blend.
+crates/bbt-render/src/chrome/chrome.wgsl:26 — text masks still use textureLoad; terminal pass files untouched.
+crates/bboxybook/tests/icon_filter.rs — midpoint between transparent red and opaque blue must be half-blue (126..129), zero red/green; opaque blue edge does not sample adjacent green asset.
+
+Verification:
+.bboxy/runs/w3-2d-1c-icons-verified-tests.log: cargo test -p bbt-ui -p bboxybook -p bbt-render --locked exit 0, 30 passed; fmt check exit 0; all-target Clippy with the two existing documented exceptions exit 0; native gallery --smoke exit 0, three surface frames.
+.bboxy/runs/w3-2d-1c-icons-gallery.log: cargo build and fresh capture exit 0; 112/112 web references, zero failures; 112 native Metal Apple M4 PNGs and both comparisons exit 0.
+Initial targeted test compile returned 101 (index closure inferred i32); corrected to explicit usize and the targeted GPU test passed. Final suite includes it.
+All 112 atom rectangles, output dimensions and hidden-atom backdrop bytes match d.3 before the old native PNGs are reused for the baseline comparison. Only the corrected web waiting-grade pixels differ.
+
+Reference: {"browser": "Chrome/156.0.8078.48", "cases": 112, "deviceScaleFactor": 1, "failures": [], "freeze": "CSS animation playback paused; L2/L3 canvas rAF clock fixed at 450ms with seeded counter-hash Math.random; L5 glyph CSS pulse fixed at 0ms; no transcript normalization; original web content retained", "revision": "5561530b8d02a8541c70f688e081dd4577dd6158"}
+Corrected inferred waiting opacity measured in the grades cozy/dark case = 0.72 at fixed 0ms pulse phase (native already has that grade).
+
+Review:
+target/bboxybook/d1c-icons/index.html
+target/bboxybook/d1c-icons/before/index.html
+target/bboxybook/d1c-icons/linear-review.png — inspected web/nearest/linear close-ups for Claude at12/16px and Codex at64px.
+
+Parity outcome, unchanged tolerance 8 and changed-pixel budget 0.1%:
+112 cases; 103 require review. Policy: channel tolerance 8, changed-pixel budget 0.1%. Scores rank image review, not acceptance.
+112 cases; 103 require review. Policy: channel tolerance 8, changed-pixel budget 0.1%. Scores rank image review, not acceptance.
+Before/after both 103/112 over tolerance, with 56/56 icons over. No reduction claimed. Linear interpolation is proven by GPU pixels and softens minified edge transitions, but does not reproduce CSS vector rasterisation.
+Worst icon changed fraction increases from 0.51% to 0.65%; its rounded mean error is 0.0007 -> 0.0006. More edge pixels cross the per-channel tolerance after filtering. Counts and the enlarged triplets remain visible for review.
+
+Ten worst final triplets (web/native/diff under the review index):
+| glyph/grades-reported-shim-inferred-touch-light.png | 1.55% | 0.0014 | review | [web](web/glyph/grades-reported-shim-inferred-touch-light.png) | [native](native/glyph/grades-reported-shim-inferred-touch-light.png) | [diff](diff/glyph/grades-reported-shim-inferred-touch-light.png) |
+| glyph/grades-reported-shim-inferred-touch-dark.png | 1.46% | 0.0016 | review | [web](web/glyph/grades-reported-shim-inferred-touch-dark.png) | [native](native/glyph/grades-reported-shim-inferred-touch-dark.png) | [diff](diff/glyph/grades-reported-shim-inferred-touch-dark.png) |
+| glyph/grades-reported-shim-inferred-comfortable-light.png | 1.10% | 0.0008 | review | [web](web/glyph/grades-reported-shim-inferred-comfortable-light.png) | [native](native/glyph/grades-reported-shim-inferred-comfortable-light.png) | [diff](diff/glyph/grades-reported-shim-inferred-comfortable-light.png) |
+| glyph/grades-reported-shim-inferred-comfortable-dark.png | 1.08% | 0.0009 | review | [web](web/glyph/grades-reported-shim-inferred-comfortable-dark.png) | [native](native/glyph/grades-reported-shim-inferred-comfortable-dark.png) | [diff](diff/glyph/grades-reported-shim-inferred-comfortable-dark.png) |
+| glyph/grades-reported-shim-inferred-cozy-dark.png | 0.90% | 0.0007 | review | [web](web/glyph/grades-reported-shim-inferred-cozy-dark.png) | [native](native/glyph/grades-reported-shim-inferred-cozy-dark.png) | [diff](diff/glyph/grades-reported-shim-inferred-cozy-dark.png) |
+| glyph/grades-reported-shim-inferred-cozy-light.png | 0.90% | 0.0006 | review | [web](web/glyph/grades-reported-shim-inferred-cozy-light.png) | [native](native/glyph/grades-reported-shim-inferred-cozy-light.png) | [diff](diff/glyph/grades-reported-shim-inferred-cozy-light.png) |
+| glyph/grades-reported-shim-inferred-compact-light.png | 0.73% | 0.0004 | review | [web](web/glyph/grades-reported-shim-inferred-compact-light.png) | [native](native/glyph/grades-reported-shim-inferred-compact-light.png) | [diff](diff/glyph/grades-reported-shim-inferred-compact-light.png) |
+| harness-icon/claude-comfortable-light.png | 0.65% | 0.0006 | review | [web](web/harness-icon/claude-comfortable-light.png) | [native](native/harness-icon/claude-comfortable-light.png) | [diff](diff/harness-icon/claude-comfortable-light.png) |
+| harness-icon/claude-compact-light.png | 0.65% | 0.0006 | review | [web](web/harness-icon/claude-compact-light.png) | [native](native/harness-icon/claude-compact-light.png) | [diff](diff/harness-icon/claude-compact-light.png) |
+| harness-icon/claude-cozy-light.png | 0.65% | 0.0006 | review | [web](web/harness-icon/claude-cozy-light.png) | [native](native/harness-icon/claude-cozy-light.png) | [diff](diff/harness-icon/claude-cozy-light.png) |
+
+Limits:
+64px baked SVG atlas versus browser SVG rasterisation, font masks and grade-circle/dash AA remain open. No per-size vector rasterisation/mipmaps added in this short sampler pass.
+No tolerance/golden change, terminal sampling change, L5 geometry change, dependency, root Cargo or design edit.
+Not checked: full legacy 1,664-case parity, hosted CI, Linux/mobile/macOS 14, FPS/performance, native desktop blur integration.
+Sources and scoped logs are committed for Oracle review; target/ PNGs and indexes are local artifacts.
+
+— Nyx Copperwing <EXECUTOR>

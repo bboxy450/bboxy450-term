@@ -331,6 +331,12 @@ impl ChromeRenderer {
         );
         let mask = mask.create_view(&Default::default());
         let icons = icons.create_view(&Default::default());
+        let image_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("linear chrome image atlas"),
+            min_filter: wgpu::FilterMode::Linear,
+            mag_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
         let bindings = [gamma_format, text_format].map(|f| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("chrome bindings"),
@@ -355,6 +361,10 @@ impl ChromeRenderer {
                     wgpu::BindGroupEntry {
                         binding: 4,
                         resource: wgpu::BindingResource::TextureView(&snapshot_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: wgpu::BindingResource::Sampler(&image_sampler),
                     },
                 ],
             })
