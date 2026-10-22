@@ -1,0 +1,95 @@
+command: target/debug/bboxybook render --manifest target/bboxybook/d1b-edges/materials/cases.json --out target/bboxybook/d1b-edges/materials/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 32 PNGs to target/bboxybook/d1b-edges/materials/native
+exit_status=0
+command: target/debug/bboxybook compare --manifest target/bboxybook/d1b-edges/materials/cases.json --out target/bboxybook/d1b-edges/materials
+parity: 32 cases, 8 review; target/bboxybook/d1b-edges/materials/index.html
+exit_status=0
+# bboxybook parity
+
+32 cases; 8 require review. Policy: channel tolerance 8, changed-pixel budget 0.1%. Scores rank image review, not acceptance.
+
+Sources: L2 named material shaders. The captured CSS backdrop, diagnostic text and outer square rectangles are common fixtures; only the four material surfaces are painted natively. This isolates L2 and does not assess native text/layout. Canonical key: materials/<state>-<density>-<theme>. Glow is a fixed native frame versus the web emitter; exact particle/phase parity is unproven.
+
+| Component / state / density / theme | Changed | Mean error | Status | Web | Native | Diff |
+|---|---:|---:|---:|---|---|---|
+| materials/glow-comfortable-dark.png | 0.21% | 0.0001 | review | [web](web/materials/glow-comfortable-dark.png) | [native](native/materials/glow-comfortable-dark.png) | [diff](diff/materials/glow-comfortable-dark.png) |
+| materials/glow-compact-dark.png | 0.21% | 0.0001 | review | [web](web/materials/glow-compact-dark.png) | [native](native/materials/glow-compact-dark.png) | [diff](diff/materials/glow-compact-dark.png) |
+| materials/glow-cozy-dark.png | 0.21% | 0.0001 | review | [web](web/materials/glow-cozy-dark.png) | [native](native/materials/glow-cozy-dark.png) | [diff](diff/materials/glow-cozy-dark.png) |
+| materials/glow-touch-dark.png | 0.21% | 0.0001 | review | [web](web/materials/glow-touch-dark.png) | [native](native/materials/glow-touch-dark.png) | [diff](diff/materials/glow-touch-dark.png) |
+| materials/glow-comfortable-light.png | 0.18% | 0.0001 | review | [web](web/materials/glow-comfortable-light.png) | [native](native/materials/glow-comfortable-light.png) | [diff](diff/materials/glow-comfortable-light.png) |
+| materials/glow-compact-light.png | 0.18% | 0.0001 | review | [web](web/materials/glow-compact-light.png) | [native](native/materials/glow-compact-light.png) | [diff](diff/materials/glow-compact-light.png) |
+| materials/glow-cozy-light.png | 0.18% | 0.0001 | review | [web](web/materials/glow-cozy-light.png) | [native](native/materials/glow-cozy-light.png) | [diff](diff/materials/glow-cozy-light.png) |
+| materials/glow-touch-light.png | 0.18% | 0.0001 | review | [web](web/materials/glow-touch-light.png) | [native](native/materials/glow-touch-light.png) | [diff](diff/materials/glow-touch-light.png) |
+
+command: target/debug/bboxybook render --manifest target/bboxybook/d1b-edges/style/cases.json --out target/bboxybook/d1b-edges/style/native
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 88 PNGs to target/bboxybook/d1b-edges/style/native
+exit_status=0
+command: target/debug/bboxybook compare --manifest target/bboxybook/d1b-edges/style/cases.json --out target/bboxybook/d1b-edges/style
+parity: 88 cases, 56 review; target/bboxybook/d1b-edges/style/index.html
+exit_status=0
+# bboxybook parity
+
+88 cases; 56 require review. Policy: channel tolerance 8, changed-pixel budget 0.1%. Scores rank image review, not acceptance.
+
+Sources: L3 Style, resolved from compile-time tokens plus serialisable overrides (styles.json). The CSS backdrop/diagnostic labels and external box origin/width are common fixtures; native code resolves height/padding and paints material, fill, border, shadow and text. This is a low-level review fixture, not an L6 component/layout or legacy module rebase. Glow/frosted differences carried from L2 remain open; the shadow kernel, text rasterisation, border AA and compositing also differ from CSS. Canonical key: style/<state>-<density>-<theme>.
+
+| Component / state / density / theme | Changed | Mean error | Status | Web | Native | Diff |
+|---|---:|---:|---:|---|---|---|
+| style/pane-glow-comfortable-light.png | 0.34% | 0.0005 | review | [web](web/style/pane-glow-comfortable-light.png) | [native](native/style/pane-glow-comfortable-light.png) | [diff](diff/style/pane-glow-comfortable-light.png) |
+| style/pane-glow-compact-light.png | 0.34% | 0.0005 | review | [web](web/style/pane-glow-compact-light.png) | [native](native/style/pane-glow-compact-light.png) | [diff](diff/style/pane-glow-compact-light.png) |
+| style/pane-glow-cozy-light.png | 0.34% | 0.0005 | review | [web](web/style/pane-glow-cozy-light.png) | [native](native/style/pane-glow-cozy-light.png) | [diff](diff/style/pane-glow-cozy-light.png) |
+| style/pane-glow-touch-light.png | 0.34% | 0.0005 | review | [web](web/style/pane-glow-touch-light.png) | [native](native/style/pane-glow-touch-light.png) | [diff](diff/style/pane-glow-touch-light.png) |
+| style/pane-glow-comfortable-dark.png | 0.32% | 0.0002 | review | [web](web/style/pane-glow-comfortable-dark.png) | [native](native/style/pane-glow-comfortable-dark.png) | [diff](diff/style/pane-glow-comfortable-dark.png) |
+| style/pane-glow-compact-dark.png | 0.32% | 0.0002 | review | [web](web/style/pane-glow-compact-dark.png) | [native](native/style/pane-glow-compact-dark.png) | [diff](diff/style/pane-glow-compact-dark.png) |
+| style/pane-glow-cozy-dark.png | 0.32% | 0.0002 | review | [web](web/style/pane-glow-cozy-dark.png) | [native](native/style/pane-glow-cozy-dark.png) | [diff](diff/style/pane-glow-cozy-dark.png) |
+| style/pane-glow-touch-dark.png | 0.32% | 0.0002 | review | [web](web/style/pane-glow-touch-dark.png) | [native](native/style/pane-glow-touch-dark.png) | [diff](diff/style/pane-glow-touch-dark.png) |
+| style/row-compact-light.png | 0.17% | 0.0004 | review | [web](web/style/row-compact-light.png) | [native](native/style/row-compact-light.png) | [diff](diff/style/row-compact-light.png) |
+| style/row-cozy-light.png | 0.17% | 0.0004 | review | [web](web/style/row-cozy-light.png) | [native](native/style/row-cozy-light.png) | [diff](diff/style/row-cozy-light.png) |
+| style/row-compact-dark.png | 0.17% | 0.0004 | review | [web](web/style/row-compact-dark.png) | [native](native/style/row-compact-dark.png) | [diff](diff/style/row-compact-dark.png) |
+| style/row-cozy-dark.png | 0.17% | 0.0004 | review | [web](web/style/row-cozy-dark.png) | [native](native/style/row-cozy-dark.png) | [diff](diff/style/row-cozy-dark.png) |
+| style/row-comfortable-light.png | 0.17% | 0.0004 | review | [web](web/style/row-comfortable-light.png) | [native](native/style/row-comfortable-light.png) | [diff](diff/style/row-comfortable-light.png) |
+| style/row-comfortable-dark.png | 0.17% | 0.0004 | review | [web](web/style/row-comfortable-dark.png) | [native](native/style/row-comfortable-dark.png) | [diff](diff/style/row-comfortable-dark.png) |
+| style/row-touch-light.png | 0.16% | 0.0004 | review | [web](web/style/row-touch-light.png) | [native](native/style/row-touch-light.png) | [diff](diff/style/row-touch-light.png) |
+| style/row-touch-dark.png | 0.16% | 0.0004 | review | [web](web/style/row-touch-dark.png) | [native](native/style/row-touch-dark.png) | [diff](diff/style/row-touch-dark.png) |
+| style/strip-comfortable-dark.png | 0.14% | 0.0002 | review | [web](web/style/strip-comfortable-dark.png) | [native](native/style/strip-comfortable-dark.png) | [diff](diff/style/strip-comfortable-dark.png) |
+| style/strip-comfortable-light.png | 0.14% | 0.0002 | review | [web](web/style/strip-comfortable-light.png) | [native](native/style/strip-comfortable-light.png) | [diff](diff/style/strip-comfortable-light.png) |
+| style/strip-compact-dark.png | 0.14% | 0.0002 | review | [web](web/style/strip-compact-dark.png) | [native](native/style/strip-compact-dark.png) | [diff](diff/style/strip-compact-dark.png) |
+| style/strip-compact-light.png | 0.14% | 0.0002 | review | [web](web/style/strip-compact-light.png) | [native](native/style/strip-compact-light.png) | [diff](diff/style/strip-compact-light.png) |
+| style/strip-cozy-dark.png | 0.14% | 0.0002 | review | [web](web/style/strip-cozy-dark.png) | [native](native/style/strip-cozy-dark.png) | [diff](diff/style/strip-cozy-dark.png) |
+| style/strip-cozy-light.png | 0.14% | 0.0002 | review | [web](web/style/strip-cozy-light.png) | [native](native/style/strip-cozy-light.png) | [diff](diff/style/strip-cozy-light.png) |
+| style/strip-touch-dark.png | 0.14% | 0.0002 | review | [web](web/style/strip-touch-dark.png) | [native](native/style/strip-touch-dark.png) | [diff](diff/style/strip-touch-dark.png) |
+| style/strip-touch-light.png | 0.14% | 0.0002 | review | [web](web/style/strip-touch-light.png) | [native](native/style/strip-touch-light.png) | [diff](diff/style/strip-touch-light.png) |
+| style/card-comfortable-light.png | 0.13% | 0.0003 | review | [web](web/style/card-comfortable-light.png) | [native](native/style/card-comfortable-light.png) | [diff](diff/style/card-comfortable-light.png) |
+| style/card-compact-light.png | 0.13% | 0.0003 | review | [web](web/style/card-compact-light.png) | [native](native/style/card-compact-light.png) | [diff](diff/style/card-compact-light.png) |
+| style/card-cozy-light.png | 0.13% | 0.0003 | review | [web](web/style/card-cozy-light.png) | [native](native/style/card-cozy-light.png) | [diff](diff/style/card-cozy-light.png) |
+| style/card-touch-light.png | 0.13% | 0.0003 | review | [web](web/style/card-touch-light.png) | [native](native/style/card-touch-light.png) | [diff](diff/style/card-touch-light.png) |
+| style/card-comfortable-dark.png | 0.13% | 0.0003 | review | [web](web/style/card-comfortable-dark.png) | [native](native/style/card-comfortable-dark.png) | [diff](diff/style/card-comfortable-dark.png) |
+| style/card-compact-dark.png | 0.13% | 0.0003 | review | [web](web/style/card-compact-dark.png) | [native](native/style/card-compact-dark.png) | [diff](diff/style/card-compact-dark.png) |
+| style/card-cozy-dark.png | 0.13% | 0.0003 | review | [web](web/style/card-cozy-dark.png) | [native](native/style/card-cozy-dark.png) | [diff](diff/style/card-cozy-dark.png) |
+| style/card-touch-dark.png | 0.13% | 0.0003 | review | [web](web/style/card-touch-dark.png) | [native](native/style/card-touch-dark.png) | [diff](diff/style/card-touch-dark.png) |
+| style/modal-comfortable-light.png | 0.12% | 0.0008 | review | [web](web/style/modal-comfortable-light.png) | [native](native/style/modal-comfortable-light.png) | [diff](diff/style/modal-comfortable-light.png) |
+| style/modal-compact-light.png | 0.12% | 0.0008 | review | [web](web/style/modal-compact-light.png) | [native](native/style/modal-compact-light.png) | [diff](diff/style/modal-compact-light.png) |
+| style/modal-cozy-light.png | 0.12% | 0.0008 | review | [web](web/style/modal-cozy-light.png) | [native](native/style/modal-cozy-light.png) | [diff](diff/style/modal-cozy-light.png) |
+| style/modal-touch-light.png | 0.12% | 0.0008 | review | [web](web/style/modal-touch-light.png) | [native](native/style/modal-touch-light.png) | [diff](diff/style/modal-touch-light.png) |
+| style/button-primary-comfortable-dark.png | 0.12% | 0.0002 | review | [web](web/style/button-primary-comfortable-dark.png) | [native](native/style/button-primary-comfortable-dark.png) | [diff](diff/style/button-primary-comfortable-dark.png) |
+| style/button-primary-compact-dark.png | 0.12% | 0.0002 | review | [web](web/style/button-primary-compact-dark.png) | [native](native/style/button-primary-compact-dark.png) | [diff](diff/style/button-primary-compact-dark.png) |
+| style/button-primary-cozy-dark.png | 0.12% | 0.0002 | review | [web](web/style/button-primary-cozy-dark.png) | [native](native/style/button-primary-cozy-dark.png) | [diff](diff/style/button-primary-cozy-dark.png) |
+| style/button-primary-touch-dark.png | 0.12% | 0.0002 | review | [web](web/style/button-primary-touch-dark.png) | [native](native/style/button-primary-touch-dark.png) | [diff](diff/style/button-primary-touch-dark.png) |
+| style/button-primary-comfortable-light.png | 0.12% | 0.0002 | review | [web](web/style/button-primary-comfortable-light.png) | [native](native/style/button-primary-comfortable-light.png) | [diff](diff/style/button-primary-comfortable-light.png) |
+| style/button-primary-compact-light.png | 0.12% | 0.0002 | review | [web](web/style/button-primary-compact-light.png) | [native](native/style/button-primary-compact-light.png) | [diff](diff/style/button-primary-compact-light.png) |
+| style/button-primary-cozy-light.png | 0.12% | 0.0002 | review | [web](web/style/button-primary-cozy-light.png) | [native](native/style/button-primary-cozy-light.png) | [diff](diff/style/button-primary-cozy-light.png) |
+| style/button-primary-touch-light.png | 0.12% | 0.0002 | review | [web](web/style/button-primary-touch-light.png) | [native](native/style/button-primary-touch-light.png) | [diff](diff/style/button-primary-touch-light.png) |
+| style/modal-comfortable-dark.png | 0.11% | 0.0005 | review | [web](web/style/modal-comfortable-dark.png) | [native](native/style/modal-comfortable-dark.png) | [diff](diff/style/modal-comfortable-dark.png) |
+| style/modal-compact-dark.png | 0.11% | 0.0005 | review | [web](web/style/modal-compact-dark.png) | [native](native/style/modal-compact-dark.png) | [diff](diff/style/modal-compact-dark.png) |
+| style/modal-cozy-dark.png | 0.11% | 0.0005 | review | [web](web/style/modal-cozy-dark.png) | [native](native/style/modal-cozy-dark.png) | [diff](diff/style/modal-cozy-dark.png) |
+| style/modal-touch-dark.png | 0.11% | 0.0005 | review | [web](web/style/modal-touch-dark.png) | [native](native/style/modal-touch-dark.png) | [diff](diff/style/modal-touch-dark.png) |
+| style/input-comfortable-light.png | 0.11% | 0.0002 | review | [web](web/style/input-comfortable-light.png) | [native](native/style/input-comfortable-light.png) | [diff](diff/style/input-comfortable-light.png) |
+| style/input-compact-light.png | 0.11% | 0.0002 | review | [web](web/style/input-compact-light.png) | [native](native/style/input-compact-light.png) | [diff](diff/style/input-compact-light.png) |
+| style/input-cozy-light.png | 0.11% | 0.0002 | review | [web](web/style/input-cozy-light.png) | [native](native/style/input-cozy-light.png) | [diff](diff/style/input-cozy-light.png) |
+| style/input-touch-light.png | 0.11% | 0.0002 | review | [web](web/style/input-touch-light.png) | [native](native/style/input-touch-light.png) | [diff](diff/style/input-touch-light.png) |
+| style/input-comfortable-dark.png | 0.10% | 0.0002 | review | [web](web/style/input-comfortable-dark.png) | [native](native/style/input-comfortable-dark.png) | [diff](diff/style/input-comfortable-dark.png) |
+| style/input-compact-dark.png | 0.10% | 0.0002 | review | [web](web/style/input-compact-dark.png) | [native](native/style/input-compact-dark.png) | [diff](diff/style/input-compact-dark.png) |
+| style/input-cozy-dark.png | 0.10% | 0.0002 | review | [web](web/style/input-cozy-dark.png) | [native](native/style/input-cozy-dark.png) | [diff](diff/style/input-cozy-dark.png) |
+| style/input-touch-dark.png | 0.10% | 0.0002 | review | [web](web/style/input-touch-dark.png) | [native](native/style/input-touch-dark.png) | [diff](diff/style/input-touch-dark.png) |

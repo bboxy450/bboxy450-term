@@ -116,6 +116,7 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &Case) -> Result<Vec<u8>
         rect,
         &resolved,
         context(case),
+        item["glow"]["seed"].as_f64().unwrap_or(7.) as f32,
         item["text"]["value"]
             .as_str()
             .ok_or("missing Style fixture text")?,
@@ -179,6 +180,7 @@ fn paint_box(
     rect: Rect,
     s: &ResolvedStyle,
     ctx: Context,
+    seed: f32,
     label: &str,
 ) -> Result<Vec<u8>> {
     let mut underlay = DrawList::default();
@@ -191,9 +193,9 @@ fn paint_box(
             inner_highlight: None,
             shadow: Some((
                 shadow.offset[1],
-                // CSS box-shadow sigma = blur radius / 2:
+                // The chrome pass maps CSS blur radius to sigma = blur / 2:
                 // https://www.w3.org/TR/css-backgrounds-3/#shadow-blur
-                shadow.blur * 0.5,
+                shadow.blur,
                 Color(shadow.color).alpha(s.opacity),
             )),
         });
@@ -273,6 +275,7 @@ fn paint_box(
             unreachable!()
         };
         g.color = Color(ctx.seat).alpha(s.opacity);
+        g.seed = seed;
         let items = [Surface {
             rect,
             radii: s.radii,
@@ -302,6 +305,7 @@ pub fn preview(renderer: &mut ChromeRenderer, style: &Style, ctx: Context) -> Re
         Rect::new(40., 40., 280., s.height.unwrap_or(80.)),
         &s,
         ctx,
+        7.,
         "Style",
     )
 }

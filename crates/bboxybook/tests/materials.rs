@@ -168,3 +168,83 @@ fn material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels() {
         );
     }
 }
+
+#[test]
+fn backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed() {
+    use bbt_ui_model::{draw::DrawList, layout::Rect};
+    let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+    let mut backdrop = DrawList::default();
+    backdrop.rect(Rect::new(0., 0., 80., 80.), 0., Color::hex("#D00000"));
+    let rect = Rect::new(20., 20., 40., 40.);
+    backdrop.rect(rect, 0., Color::hex("#102080"));
+    let items = [Surface {
+        rect,
+        radii: [0.; 4],
+        clip: None,
+        material: Material::Frosted(Frosted {
+            tint: Color::TRANSPARENT,
+            blur_radius: 16.,
+            saturation: 1.,
+        }),
+    }];
+    let image = render_to_rgba(
+        &mut renderer,
+        Scene {
+            backdrop: Backdrop::DrawList(&backdrop),
+            items: &items,
+            width: 80,
+            height: 80,
+            scale: 1.,
+            time_ms: 0.,
+            theme: Theme::Dark,
+        },
+    )
+    .unwrap();
+    for (x, y) in [(21, 30), (58, 30), (30, 21), (30, 58), (40, 40)] {
+        let pixel = &image[(y * 80 + x) * 4..][..4];
+        for (&actual, expected) in pixel.iter().zip([16, 32, 128, 255]) {
+            assert!(
+                actual.abs_diff(expected) <= 1,
+                "mirror edge leaked outside red: {pixel:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn source_over_glow_keeps_destination_alpha() {
+    use bbt_ui_model::layout::Rect;
+    let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+    let pixels: Vec<u8> = (0..80 * 80)
+        .flat_map(|i| [16, 32, 64, (i % 200 + 20) as u8])
+        .collect();
+    let items = [Surface {
+        rect: Rect::new(20., 20., 40., 40.),
+        radii: [6.; 4],
+        clip: None,
+        material: gallery::material(Kind::Glow, Theme::Dark),
+    }];
+    let result = render_to_rgba(
+        &mut renderer,
+        Scene {
+            backdrop: Backdrop::Rgba(&pixels),
+            items: &items,
+            width: 80,
+            height: 80,
+            scale: 1.,
+            time_ms: 450.,
+            theme: Theme::Dark,
+        },
+    )
+    .unwrap();
+    assert!(
+        result
+            .chunks_exact(4)
+            .zip(pixels.chunks_exact(4))
+            .all(|(a, b)| a[3] == b[3])
+    );
+    assert_ne!(
+        result, pixels,
+        "the effect must draw colour while preserving alpha"
+    );
+}

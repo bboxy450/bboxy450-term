@@ -34,6 +34,7 @@ pub fn material(kind: Kind, theme: Theme) -> Material {
             focused_boost: g.focused_boost as f32,
             radius: g.pane_radius as f32,
             seed: 7.,
+            halo_alpha: 0.45,
             idle_alpha: g.idle_alpha as f32,
             active_alpha: [g.active_alpha_min as f32, g.active_alpha_max as f32],
             waiting_alpha: [g.waiting_alpha_min as f32, g.waiting_alpha_max as f32],
@@ -199,6 +200,7 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &crate::gallery::Case) -
                     unreachable!()
                 };
                 g.color = color(&value["color"])?;
+                g.seed = value["glow"]["seed"].as_f64().unwrap_or(g.seed as f64) as f32;
                 g.radius = number(params, "radius", g.radius);
                 g.particles = number(params, "particles", g.particles as f32) as u32;
                 g.speed = number(params, "speed", g.speed);

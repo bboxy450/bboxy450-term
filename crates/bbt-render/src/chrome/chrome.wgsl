@@ -3,6 +3,7 @@ struct Instance {rect:vec4f,fill:vec4f,stroke:vec4f,radii:vec4f,params:vec4f,uv:
 @group(0) @binding(1) var<storage,read> items:array<Instance>;
 @group(0) @binding(2) var masks:texture_2d<f32>;
 @group(0) @binding(3) var images:texture_2d<f32>;
+@group(0) @binding(4) var text_backdrop:texture_2d<f32>;
 struct Vertex {@builtin(position) pos:vec4f,@location(0) point:vec2f,@location(1) @interpolate(flat) index:u32}
 @vertex fn vs(@builtin(vertex_index) v:u32,@builtin(instance_index) i:u32)->Vertex {
     let corners=array<vec2f,6>(vec2f(0,0),vec2f(1,0),vec2f(0,1),vec2f(0,1),vec2f(1,0),vec2f(1,1));
@@ -10,18 +11,13 @@ struct Vertex {@builtin(position) pos:vec4f,@location(0) point:vec2f,@location(1
     let p=item.rect.xy-vec2f(margin)+corners[v]*(item.rect.zw+vec2f(margin*2.0));
     return Vertex(vec4f(p.x/view.x*2.0-1.0,1.0-p.y/view.y*2.0,0,1),p,i);
 }
-fn sdf(p:vec2f,r:vec4f,radii:vec4f)->f32 {
-    let q=p-r.xy-r.zw*0.5;var radius=radii.x;
-    if q.x>0.0 {radius=radii.y;} if q.y>0.0 {radius=select(radii.w,radii.z,q.x>0.0);}
-    radius=min(radius,min(r.z,r.w)*0.5);let d=abs(q)-r.zw*0.5+vec2f(radius);
-    return min(max(d.x,d.y),0.0)+length(max(d,vec2f(0)))-radius;
-}
 fn linear(c:vec3f)->vec3f {return select(c/12.92,pow((c+vec3f(0.055))/1.055,vec3f(2.4)),c>vec3f(0.04045));}
+fn srgb1(c:f32)->f32 {return select(c*12.92,1.055*pow(max(c,0.0),1.0/2.4)-0.055,c>0.0031308);}
 @fragment fn fs(v:Vertex)->@location(0) vec4f {
     let i=items[v.index];let p=v.point;
-    if sdf(p,i.clip,i.clip_radii)>0.0 {discard;}
-    let kind=u32(i.params.x);let d=sdf(p,i.rect,i.radii);var c=i.fill;var a=clamp(0.5-d,0.0,1.0);
-    if kind==4u {return vec4f(linear(c.rgb),c.a*exp(-pow(max(d,0.0)/max(i.params.z,0.01),2.0)*0.5));}
+    if rounded_sdf(p,i.clip,i.clip_radii)>0.0 {discard;}
+    let kind=u32(i.params.x);let d=rounded_sdf(p,i.rect,i.radii);var c=i.fill;var a=clamp(0.5-d,0.0,1.0);
+    if kind==4u {let knockout=clamp(0.5+rounded_sdf(p,i.uv,i.stroke),0.0,1.0);return vec4f(c.rgb,c.a*gaussian_box(p,i.rect,i.radii,i.params.z)*knockout);}
     if kind==5u {let ab=i.uv.zw-i.uv.xy;let t=clamp(dot(p-i.uv.xy,ab)/max(dot(ab,ab),0.0001),0.0,1.0);a=clamp(0.5-(length(p-i.uv.xy-t*ab)-i.params.y*0.5),0.0,1.0);}
     if kind==1u {let t=clamp((p.y-i.rect.y)/i.rect.w,0.0,1.0);c=select(mix(i.fill,vec4f(1,1,1,i.fill.a),(1.0-t/0.55)*0.12),vec4f(i.fill.rgb*(1.0-(t-0.55)/0.45*0.18),i.fill.a),t>0.55);}
     if kind==2u||kind==3u {
@@ -30,5 +26,12 @@ fn linear(c:vec3f)->vec3f {return select(c/12.92,pow((c+vec3f(0.055))/1.055,vec3
     }
     if i.params.y>0.0&&kind<2u {let edge=clamp(d+i.params.y+0.5,0.0,1.0);c=mix(c,i.stroke,edge);}
     if i.params.w>0.0&&p.y<i.rect.y+1.5&&d<0.0 {c=vec4f(mix(c.rgb,vec3f(1),i.params.w),c.a);}
-    return vec4f(linear(c.rgb),c.a*a);
+    var alpha=c.a*a;
+    if kind==2u {
+        let fg=linear(c.rgb);let bg=linear(textureLoad(text_backdrop,vec2i(p),0).rgb);
+        let weights=vec3f(0.2126,0.7152,0.0722);let lf=dot(fg,weights);let lb=dot(bg,weights);
+        if abs(lf-lb)>0.001 {let wanted=linear(vec3f(srgb1(lf)*alpha+srgb1(lb)*(1.0-alpha))).x;alpha=clamp((wanted-lb)/(lf-lb),0.0,1.0);}
+        return vec4f(fg,alpha);
+    }
+    return vec4f(c.rgb,alpha);
 }

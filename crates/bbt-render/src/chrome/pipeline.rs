@@ -14,7 +14,14 @@ pub struct Instance {
 pub fn create(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
     let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("chrome SDF"),
-        source: wgpu::ShaderSource::Wgsl(include_str!("chrome.wgsl").into()),
+        source: wgpu::ShaderSource::Wgsl(
+            format!(
+                "{}\n{}",
+                include_str!("shapes.wgsl"),
+                include_str!("chrome.wgsl")
+            )
+            .into(),
+        ),
     });
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("chrome"),

@@ -1,0 +1,16 @@
+command: cargo fmt -p bbt-render -p bboxybook -p bbt-ui -- --check
+exit_status=0
+command: cargo clippy -p bbt-ui -p bboxybook -p bbt-render --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxybook)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.14s
+exit_status=0
+command: target/debug/bboxybook gallery --smoke
+gallery smoke: 3 surface frames, density/theme/component switched
+exit_status=0
+command: target/debug/bboxybook compare --manifest target/bboxybook/d1b-edges/materials/cases.json --out target/bboxybook/d1b-edges/materials
+parity: 32 cases, 8 review; target/bboxybook/d1b-edges/materials/index.html
+exit_status=0
+command: target/debug/bboxybook compare --manifest target/bboxybook/d1b-edges/style/cases.json --out target/bboxybook/d1b-edges/style
+parity: 88 cases, 56 review; target/bboxybook/d1b-edges/style/index.html
+exit_status=0

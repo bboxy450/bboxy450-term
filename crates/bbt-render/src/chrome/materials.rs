@@ -58,7 +58,10 @@ pub struct Glow {
     pub focus: f32,
     pub focused_boost: f32,
     pub radius: f32,
+    /// Counter-hash stream position, integral and exactly representable in f32.
     pub seed: f32,
+    /// Independent CSS outer-halo opacity; state/focus drive the emitter.
+    pub halo_alpha: f32,
     pub idle_alpha: f32,
     pub active_alpha: [f32; 2],
     pub waiting_alpha: [f32; 2],
@@ -109,12 +112,20 @@ struct Instance {
 }
 impl Surface {
     fn instance(self, scale: f32, width: u32, height: u32) -> Result<Instance> {
+        let physical = [
+            self.rect.x * scale,
+            self.rect.y * scale,
+            self.rect.w * scale,
+            self.rect.h * scale,
+        ];
+        let x = physical[0].round();
+        let y = physical[1].round();
         let mut i = Instance {
             rect: [
-                self.rect.x * scale,
-                self.rect.y * scale,
-                self.rect.w * scale,
-                self.rect.h * scale,
+                x,
+                y,
+                (physical[0] + physical[2]).round() - x,
+                (physical[1] + physical[3]).round() - y,
             ],
             radii: self.radii.map(|r| r * scale),
             clip: self
@@ -132,6 +143,7 @@ impl Surface {
             Material::Frosted(f) => {
                 i.color = f.tint.0;
                 i.p0 = [0., f.blur_radius * scale, f.saturation, 0.];
+                i.p2 = physical;
                 if !(0.0..=256.).contains(&f.blur_radius) || !(0.0..=4.).contains(&f.saturation) {
                     return Err("invalid frosted parameters".into());
                 }
@@ -143,6 +155,8 @@ impl Surface {
                     _ => g.color.0,
                 };
                 i.p0[3] = g.radius * scale * 4.;
+                i.p0[2] = g.halo_alpha;
+                i.p1 = physical;
                 i.p2 = [
                     match g.activity {
                         Activity::Idle => 0.,
@@ -173,6 +187,9 @@ impl Surface {
                     g.seed,
                 ];
                 if g.radius < 0.
+                    || !(0.0..=1.).contains(&g.halo_alpha)
+                    || !(0.0..=16777215.).contains(&g.seed)
+                    || g.seed.fract() != 0.
                     || g.active_period_ms <= 0.
                     || g.waiting_period_ms <= 0.
                     || g.particle_size <= 0.
@@ -260,7 +277,14 @@ impl Pass {
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("named flat/gloss/frosted/glow shaders"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("materials.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "{}\n{}",
+                    include_str!("shapes.wgsl"),
+                    include_str!("materials.wgsl")
+                )
+                .into(),
+            ),
         });
         let preserve_alpha = wgpu::BlendComponent {
             src_factor: wgpu::BlendFactor::Zero,
@@ -269,24 +293,13 @@ impl Pass {
         };
         let pipelines = std::array::from_fn(|index| {
             let entry = ["flat", "gloss", "frosted", "glow", "glow"][index];
-            let blend = match index {
-                3 => wgpu::BlendState {
-                    color: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::One,
-                        dst_factor: wgpu::BlendFactor::One,
-                        operation: wgpu::BlendOperation::Add,
-                    },
+            let blend = if index >= 3 {
+                wgpu::BlendState {
+                    color: wgpu::BlendComponent::OVER,
                     alpha: preserve_alpha,
-                },
-                4 => wgpu::BlendState {
-                    color: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::Dst,
-                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    alpha: preserve_alpha,
-                },
-                _ => wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+                }
+            } else {
+                wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING
             };
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(entry),
@@ -403,7 +416,7 @@ impl Pass {
                     target.width as f32,
                     target.height as f32,
                     time_ms,
-                    0.,
+                    target.scale,
                 ]),
                 usage: wgpu::BufferUsages::UNIFORM,
             });
@@ -442,7 +455,7 @@ impl Pass {
             }
             let texture = || {
                 context.device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some("frosted linear intermediate"),
+                    label: Some("frosted sRGB-value intermediate"),
                     size: wgpu::Extent3d {
                         width: target.width,
                         height: target.height,
@@ -566,7 +579,7 @@ pub fn render_layered_to_rgba(
     if width == 0 || height == 0 || width > 8192 || height > 8192 {
         return Err("invalid materials target size".into());
     }
-    let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+    let format = wgpu::TextureFormat::Rgba8Unorm;
     let make = |label| {
         renderer
             .context
@@ -586,7 +599,7 @@ pub fn render_layered_to_rgba(
                     | wgpu::TextureUsages::TEXTURE_BINDING
                     | wgpu::TextureUsages::COPY_SRC
                     | wgpu::TextureUsages::COPY_DST,
-                view_formats: &[],
+                view_formats: &[format.add_srgb_suffix()],
             })
     };
     let behind = make("L2 sampled backdrop");

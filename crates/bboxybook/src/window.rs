@@ -76,14 +76,14 @@ impl Gallery {
         let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))?;
         let size = window.inner_size();
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
             format,
             width: size.width.max(1),
             height: size.height.max(1),
             present_mode: wgpu::PresentMode::Fifo,
             desired_maximum_frame_latency: 2,
             alpha_mode: caps.alpha_modes[0],
-            view_formats: vec![],
+            view_formats: vec![format.remove_srgb_suffix()],
             color_space: wgpu::SurfaceColorSpace::Srgb,
         };
         surface.configure(&device, &config);

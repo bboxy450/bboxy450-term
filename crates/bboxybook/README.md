@@ -132,9 +132,11 @@ device, target and distinct sampled backdrop. Legacy module drawing is unchanged
 
 Gloss follows the lab band's sRGB gradient (12% white → base at 55% → 18% black)
 with top highlight and bottom inset shade. Frosted runs horizontal/vertical
-Gaussian passes into linear float textures, with 3σ support, then saturation and
-tint. Glow has activity/focus/clock/particle parameters, adds on dark, multiplies
-on light, and preserves destination alpha. The native glow frame captures 450 ms.
+Gaussian passes over sRGB values in float textures, with mirror edges at the
+border box, then saturation. Style owns tint. Glow follows CSS source-over
+compositing on both themes and preserves destination alpha. The capture harness
+fixes its clock at 450 ms and supplies the same counter-hash seed to native and
+web emitters, including particle radius, life, twinkle and motion.
 
 Pairs use the web page `materials.html` and keys such as
 `materials/gloss-cozy-dark`. The harness captures the page with its material
@@ -151,9 +153,9 @@ blur support or performance. No higher component layer consumes it yet.
 
 The L2 provider is effect-only. The revised web reference (3afef72) also
 separates glow's fill/border and frosted's tint/ring into Style. The refreshed
-matrix at `target/bboxybook/materials-effect-only/index.html` is 28/32 over
-tolerance: edge AA/compositing, frosted colour/filtering and glow
-strength/particles remain open. Their shaders were not tuned in L3.
+matrix at `target/bboxybook/materials-effect-only/index.html` was 28/32 over
+tolerance at the L3 handoff. The conformance pass below addresses its
+compositing, filtering and glow gaps.
 
 ## L3 Style
 
@@ -174,11 +176,39 @@ height, padding, fill, border, shadow and text resolve through Style. Shadows
 are destination underlays, kept out of the material's sampled backdrop.
 Fill/border/text are separate foregrounds; the effect-only glow is last.
 The [CSS shadow contract](https://www.w3.org/TR/css-backgrounds-3/#shadow-blur)
-maps its blur radius to half that value as Gaussian sigma. The existing SDF
-shadow approximation still differs from CSS's blurred box mask.
+maps its blur radius to half that value as Gaussian sigma. The conformance pass
+below replaces the distance falloff with a blurred box mask.
 
 This is an isolated L3 gallery, not the retained L6 Box/Text widget or a module
-rebase. Legacy previews retain their v22 coverage registry. L2 glow/frosted,
-shadow-kernel, border AA, text-mask and colour/compositing gaps remain visible
+rebase. Legacy previews retain their v22 coverage registry. Remaining border/particle AA and text-mask differences stay visible
 in the report. Full group dim/opacity behaviour is deferred to components;
 L3 stores and resolves those fields. No new input, layout or focus work lands.
+
+
+## L1/L2 conformance pass (W3.2d.1b)
+
+Chrome/fx use UNORM views to blend gamma-encoded sRGB values like CSS. Text
+keeps an sRGB view and luminance-corrected coverage, with a snapshot of the
+preceding background for each contiguous text run. Painter order is preserved.
+The window and headless targets expose both compatible views; a three-frame
+window smoke checks the surface path. No performance claim is made.
+
+`chrome/shapes.wgsl` is shared by the L1 shadow and L2 glow halo. It integrates
+the Gaussian-blurred rounded box mask, with the original border-box knocked out
+for an outer shadow. CSS blur radius maps to sigma = blur/2 in L1. Backdrop blur
+uses sRGB values and border-box mirror edges, per the
+[CSS filtering operation](https://drafts.csswg.org/filter-effects-2/#backdrop-filter-operation).
+Background paint bounds snap to device pixels before corner AA; text and the
+canvas particle coordinate frame retain their subpixel positions.
+
+Review the final paired outputs at:
+
+- `target/bboxybook/d1b-edges/materials/index.html`: 8/32 over tolerance (was 28).
+- `target/bboxybook/d1b-edges/style/index.html`: 56/88 over tolerance (was 76).
+
+Both use the unchanged tolerance 8 and 0.1% changed-pixel budget. Flat/gloss/
+frosted are within; the remaining material cases are canvas/SDF particle edge
+rasterisation (about 0.2%). Style's remaining text-mask/edge differences are
+listed separately, not hidden by a threshold or golden update. Exact phase and
+random state are fixtures; the web emitter code/design is not rewritten.
+`w3-2d-1b-*` logs record each before/after phase and reference revision.

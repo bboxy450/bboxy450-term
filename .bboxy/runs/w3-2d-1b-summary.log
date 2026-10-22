@@ -1,0 +1,77 @@
+W3.2d.1b — L1/L2 CSS conformance handoff
+observed_at=2026-10-21T19:39:54.007070-07:00
+base_head=9442fad7eb31f79fdbb0bf4244772d20dec3ced0
+
+Scope: chrome/fx blending, CSS shadows, L2 glow and backdrop filtering; no atoms, components, module rebase, input/focus, dependencies or design edits.
+Oracle decision d831694b-02ae-4e6c-9b01-b3fc3764c1c4; source-over clarification 6ca00414-ec05-427d-8099-6ba2a3d27d12.
+
+Over-tolerance counts (same per-channel tolerance 8 and changed budget 0.1%):
+phase | materials | Style
+D2 handoff | 28/32 | 76/88
+gamma blend | 28/32 | 64/88
+Gaussian shadow | 28/32 | 64/88
+fixed emitter reference | 28/32 | 64/88
+matched source-over emitter | 28/32 | 64/88
+border-box mirrored backdrop | 24/32 | 64/88
+device-pixel paint bounds | 8/32 | 56/88
+
+Fresh fixed-clock reference captured before effect tuning. Native was rerendered for both matrices after each implementation phase; the web PNGs were reused unchanged after the fresh capture.
+Intermediate run logs preserve their then-current captions; final captions were refreshed by compare-only after README/report wording updates (no new pixel changes).
+
+Evidence mechanisms:
+crates/bbt-render/src/chrome/mod.rs:274 — compatible UNORM chrome and sRGB text views; contiguous runs retain painter order; text snapshots preceding colour for corrected coverage.
+crates/bbt-render/src/chrome/chrome.wgsl:29 — luminance-corrected grayscale text alpha, preserving the linear text contract.
+crates/bbt-render/src/chrome/mod.rs:155 — CSS blur radius converted to sigma = blur/2.
+crates/bbt-render/src/chrome/shapes.wgsl:15 — Gaussian convolution of rounded-rectangle mask (analytic rectangle CDF; 32 midpoint corner integration samples).
+crates/bbt-render/src/chrome/chrome.wgsl:20 — outer box-shadow knocks out the original, unshifted border box.
+crates/bbt-render/src/chrome/materials.rs:289 — glow RGB source-over for both themes; destination alpha preserved.
+crates/bbt-render/src/chrome/materials.wgsl:48 — shared counter-hash stream, emitter geometry/life/twinkle/phase; CSS fixed halo separate from emitter alpha.
+crates/bbt-render/src/chrome/materials.wgsl:30 — backdrop blur mirrors at element border-box; filtering uses numeric sRGB values before saturation.
+crates/bbt-render/src/chrome/mod.rs:93 — background paint bounds snapped to device pixels, with subpixel text/particle frame retained.
+crates/bboxybook/capture-inputs.js:9 — L2/L3 only: fixed counter seed and 450ms rAF phase, exported per-canvas seed; other page captures unchanged.
+crates/bboxybook/tests/blending.rs:8 — 50% white over black=128 (not 188), corrected half-alpha gray text, painter order and CSS edge snapping.
+crates/bboxybook/tests/shadow.rs:8 — independent math.erf-derived Gaussian values and unshifted knockout.
+crates/bboxybook/tests/materials.rs — GPU mirror/no-outside-colour-bleed and destination-alpha preservation tests.
+
+Primary CSS filtering reference: https://drafts.csswg.org/filter-effects-2/#backdrop-filter-operation (sRGB filter values, border-box mirror edges).
+
+Verification:
+.bboxy/runs/w3-2d-1b-verified-tests.log — cargo test -p bbt-ui -p bboxybook -p bbt-render --locked, exit 0: bboxybook 12 + bbt-render 9 + bbt-ui 3 = 24 passed, zero failures. cargo build -p bboxybook --locked exit 0.
+.bboxy/runs/w3-2d-1b-final-checks.log — fmt check exit 0; all-target Clippy -D warnings with the two documented pre-existing exceptions map_entry and chunks_exact_to_as_chunks exit 0; native gallery --smoke exit 0 (3 surface frames, density/theme/component switched); both final compare commands exit 0.
+.bboxy/runs/w3-2d-1b-static-checks.log — node --check on capture-inputs.js and capture.mjs exit 0; git diff --check exit 0.
+.bboxy/runs/w3-2d-1b-edges.log — Metal adapter Apple M4; native 32/32 + 88/88 renders and compares exit 0.
+
+Capture/determinism:
+materials: {"browser": "Chrome/156.0.8078.48", "cases": 32, "deviceScaleFactor": 1, "failures": [], "freeze": "CSS animation playback paused; L2/L3 canvas rAF clock fixed at 450ms with seeded counter-hash Math.random; no transcript normalization; original web content retained", "revision": "9442fad7eb31f79fdbb0bf4244772d20dec3ced0", "status": "captured"}
+style: {"browser": "Chrome/156.0.8078.48", "cases": 88, "deviceScaleFactor": 1, "failures": [], "freeze": "CSS animation playback paused; L2/L3 canvas rAF clock fixed at 450ms with seeded counter-hash Math.random; no transcript normalization; original web content retained", "revision": "9442fad7eb31f79fdbb0bf4244772d20dec3ced0", "status": "captured"}
+Four density-independent Glow dark references have identical SHA256: {"comfortable": "aeb30b1479e93a7f966b274cc4704746babf66becf24e1c0a26f732fb51dcfde", "compact": "aeb30b1479e93a7f966b274cc4704746babf66becf24e1c0a26f732fb51dcfde", "cozy": "aeb30b1479e93a7f966b274cc4704746babf66becf24e1c0a26f732fb51dcfde", "touch": "aeb30b1479e93a7f966b274cc4704746babf66becf24e1c0a26f732fb51dcfde"}
+Glow square seeds per case: [12345, 12505, 12665, 12825]
+
+Final review indexes:
+target/bboxybook/d1b-edges/materials/index.html
+target/bboxybook/d1b-edges/style/index.html
+Inspected web/native/diff: materials/glow-cozy-dark, materials/frosted-cozy-dark, style/pane-glow-cozy-dark, style/row-cozy-dark, style/modal-cozy-light (contact sheet target/bboxybook/d1b-edges/final-review.png).
+Observed residuals: thin particle-circle/border-corner edges and glyph masks, rather than broad fill/halo/filter colour errors. Flat/gloss/frosted all meet tolerance. Glow remains 0.21% dark /0.18% light; Style worst is pane-glow 0.34%. Raster edge/text-mask equivalence is left open under assignment item 4.
+
+Ten worst final triplets (web | native | diff paths under each index; scores rounded as in report):
+style/pane-glow-comfortable-light.png | changed=0.34% | mean=0.0005 | root=target/bboxybook/d1b-edges/style
+style/pane-glow-compact-light.png | changed=0.34% | mean=0.0005 | root=target/bboxybook/d1b-edges/style
+style/pane-glow-cozy-light.png | changed=0.34% | mean=0.0005 | root=target/bboxybook/d1b-edges/style
+style/pane-glow-touch-light.png | changed=0.34% | mean=0.0005 | root=target/bboxybook/d1b-edges/style
+style/pane-glow-comfortable-dark.png | changed=0.32% | mean=0.0002 | root=target/bboxybook/d1b-edges/style
+style/pane-glow-compact-dark.png | changed=0.32% | mean=0.0002 | root=target/bboxybook/d1b-edges/style
+style/pane-glow-cozy-dark.png | changed=0.32% | mean=0.0002 | root=target/bboxybook/d1b-edges/style
+style/pane-glow-touch-dark.png | changed=0.32% | mean=0.0002 | root=target/bboxybook/d1b-edges/style
+materials/glow-comfortable-dark.png | changed=0.21% | mean=0.0001 | root=target/bboxybook/d1b-edges/materials
+materials/glow-compact-dark.png | changed=0.21% | mean=0.0001 | root=target/bboxybook/d1b-edges/materials
+
+Limits / deliberately not checked:
+No full legacy 1,664-case parity rerun; no module rebase or atom implementation. L2 uses captured backdrop/labels and square geometry; L3 uses captured external origin/width and backdrop, with native Style-resolved size/paint/text. These isolate layers, not full native layout.
+No FPS or performance measurement; snapshot-copy cost not characterised. No hosted CI run, Linux/mobile/macOS 14 run, native desktop backdrop blur integration or fullscreen/app smoke.
+No threshold/golden changes; no lab/design source edits; no dependencies or root Cargo changes.
+Local target/ PNGs and indexes are review artifacts, not committed. The scoped source/log commit is for Oracle review and push.
+
+Git synchronization: first pull --ff-only with autostash disabled returned 128 because inherited pull.rebase=merges required a clean tree. Retried with explicit --no-rebase --ff-only, exit 0: only the Oracle source-over decision in ux-pick.md fast-forwarded; no stash, rebase or peer edits.
+pre_commit_head=e2ede5054a2c7a91efbfc906ccf0273c55ec0969
+
+— Nyx Copperwing <EXECUTOR>
