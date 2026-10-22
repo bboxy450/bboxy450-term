@@ -670,6 +670,10 @@ mod tests {
 
     #[test]
     #[cfg(target_os = "macos")]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "offline GPU test readback, not the UI thread"
+    )]
     fn prepared_frame_encodes_pane_offsets_clips_and_survives_atlas_growth() {
         fn send_sync<T: Send + Sync>() {}
         send_sync::<PreparedGrid>();
