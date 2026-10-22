@@ -16,6 +16,7 @@ One Cargo workspace, weavie-managed once Nix is installed ([[monorepo-weavie]]).
 | `mux` | supervisor + logic processes, seats, PTYs (portable-pty), byte ring, harness adapters, messaging, MCP server, state streams | [[mux-daemon]] [[harness-adapters]] [[messaging]] [[mcp-control-plane]] |
 | `ui-model` | seat/cohort/tab/split state enums and layout tree, no rendering deps; shared with the lab | [[ux-prototype]] |
 | `renderer` | wgpu device, cell instancing, text pipeline per ghostty, chrome primitives, glow/ripple shaders | [[text-rendering]], renderer architecture (Oracle, next) |
+| `bbt-doc` | native Markdown viewer and our own Mermaid engine; semantic-history path detection | [[document-viewer]] |
 | `app` | winit window, borderless title bar, GUI client of the mux, settings | [[ux-prototype]] at tag `ux-prototype-v2` (operator: the implementation starting point), `design/bboxy-design-system.json`, `design/style.json`, `design/tokens.toml`, `lab/web` |
 | `lab` | Rust component gallery on the real renderer, tokens from `design/tokens.toml` | [[ux-prototype]] §7 |
 
@@ -38,6 +39,7 @@ Each line is one Executor assignment with its own brief. Order within a stream i
 1. Renderer skeleton: wgpu on Metal, one Device shared, cell instancing with the lifted layout, grayscale atlas via CoreText-backed rasterization, WGSL. Verify: renders a term-core grid at 120 Hz vsync in a winit window.
 2. Chrome primitives: rounded rects, hairlines, text runs, the cohort block, pane strips; tokens from `design/tokens.toml` and the visual style from `design/style.json` (Raycast material: frosted panels, hairlines, radius and type scales, one motion curve) via `include_str!`. Verify: `lab` shows the sidebar at 10 and 15 seats matching the web lab screenshots.
 3. Glow and locate shaders: border particle glow with the four readings, directional locate ripple, dim for unfocused. Verify: side by side with the web showcase.
+4a. Document tab: ⌘-click a `.md` path or wikilink opens it rendered natively; Mermaid flowcharts first ([[document-viewer]]).
 4. App: borderless window, sidebar/stage layout from `ui-model`, drag-resize gutters, ⌘T picker, close dot with grace strip and ⌘Z, GUI client of the state stream. Verify: full loop, Claude seat live in a pane with state and subagent rows.
 
 **W4 identity + remote.** After [[identity]] lands: root key custody, device enrollment, Google binding; then ssh remote seats (supervisor bootstrap over ssh, direct QUIC to public VMs). Punch and relay in v0.2.

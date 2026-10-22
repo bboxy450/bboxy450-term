@@ -25,7 +25,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 specs (done): messaging, subagent-detection, mux-daemon, harness-adapters,
               mcp-control-plane, terminal-core, identity, renderer, ux-prototype(v2),
               work-items (epics/specs/tasks/bugs/notes/invariants/artifacts), provenance,
-              networking, gui-components, storage, events
+              networking, gui-components, storage, events, document-viewer
 specs (done +2): gui-components ✔ ──▶ W3.2a brief ✔ [OPEN]; networking ✔ ──▶ W4.1 brief ✔ [OPEN]
 
 W1.1 term-core fork ✔ (Nyx, 0e2342c, 117 tests)
@@ -60,7 +60,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 | OPEN, claimable now | W4.1, W1.2, W2.3 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
-| NOT YET BRIEFED | W2.7 code indexer (tree-sitter code graph, code_search, code_graph), W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |
+| NOT YET BRIEFED | W3.5 bbt-doc markdown viewer + Mermaid engine ([[document-viewer]]), W2.7 code indexer (tree-sitter code graph, code_search, code_graph), W2.4, W2.5 (incl. task_delegate), W2.6 ext events, W3.2c, W3.3, W3.4 |
 | PARTIAL | H Codex capture (operator trust) |
 | REDUNDANT, optional | Rook's `-exec` passes on A and H |
 
