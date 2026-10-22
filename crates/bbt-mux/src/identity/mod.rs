@@ -9,6 +9,7 @@ mod certificate;
 mod chain;
 mod journal;
 mod keychain;
+mod local;
 mod seats;
 mod status;
 mod transition;
@@ -16,6 +17,7 @@ mod transition;
 pub use chain::{ChainSeatKeys, seat_keys};
 pub use journal::{AccountHead, Bootstrap, BootstrapOutcome, DeviceGrant, DeviceIdentity, Signed};
 pub use keychain::{Custody, DeviceKeyStore, KeychainDeviceKeys};
+pub use local::{LocalIssuerOutcome, local_dev_issuer, local_dev_issuer_with_store};
 pub use seats::{KeyStatus, RosterEntry, SeatGrant, SeatProof, SeatRoster};
 pub use status::{IdentityRuntime, IdentityState, IdentityStatus};
 pub use transition::{IssuerState, reset_identity};
@@ -41,6 +43,8 @@ pub enum PendingReason {
     ActivationRequired,
     DeviceGrantExpired,
     SeatRenewalUnavailable,
+    LocalIssuerMissing,
+    LocalIssuerMismatch,
 }
 impl PendingReason {
     pub fn label(self) -> &'static str {
@@ -59,6 +63,12 @@ impl PendingReason {
             Self::ActivationRequired => "restart logic to activate the certified identity",
             Self::DeviceGrantExpired => "device grant expired; operator renewal required",
             Self::SeatRenewalUnavailable => "seat grant renewal held",
+            Self::LocalIssuerMissing => {
+                "local-dev issuer key unavailable; use a fresh run directory or explicitly reset identity"
+            }
+            Self::LocalIssuerMismatch => {
+                "local-dev issuer differs from pinned history; explicit identity reset required"
+            }
         }
     }
 }

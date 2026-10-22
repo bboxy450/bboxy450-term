@@ -68,6 +68,61 @@ impl KeychainDeviceKeys {
         options.set_access_synchronized(Some(false));
         options
     }
+    #[cfg(target_os = "macos")]
+    fn add_protected(&self, device: Ulid, seed: &[u8]) -> security_framework::base::Result<()> {
+        use core_foundation::{
+            base::TCFType, boolean::CFBoolean, data::CFData, dictionary::CFDictionary,
+            string::CFString,
+        };
+        use security_framework::access_control::{ProtectionMode, SecAccessControl};
+        use security_framework_sys::{item::*, keychain_item::SecItemAdd};
+        let access = SecAccessControl::create_with_protection(
+            Some(ProtectionMode::AccessibleWhenUnlockedThisDeviceOnly),
+            0,
+        )?;
+        // SAFETY: Security.framework's CFString attribute constants live for the
+        // process. The owned CF values remain alive throughout SecItemAdd.
+        let pairs = unsafe {
+            vec![
+                (
+                    CFString::wrap_under_get_rule(kSecClass),
+                    CFString::wrap_under_get_rule(kSecClassGenericPassword).as_CFType(),
+                ),
+                (
+                    CFString::wrap_under_get_rule(kSecAttrService),
+                    CFString::new(&self.service).as_CFType(),
+                ),
+                (
+                    CFString::wrap_under_get_rule(kSecAttrAccount),
+                    CFString::new(&device.to_string()).as_CFType(),
+                ),
+                (
+                    CFString::wrap_under_get_rule(kSecUseDataProtectionKeychain),
+                    CFBoolean::true_value().as_CFType(),
+                ),
+                (
+                    CFString::wrap_under_get_rule(kSecAttrSynchronizable),
+                    CFBoolean::false_value().as_CFType(),
+                ),
+                (
+                    CFString::wrap_under_get_rule(kSecAttrAccessControl),
+                    access.as_CFType(),
+                ),
+                (
+                    CFString::wrap_under_get_rule(kSecValueData),
+                    CFData::from_buffer(seed).as_CFType(),
+                ),
+            ]
+        };
+        let attributes = CFDictionary::from_CFType_pairs(&pairs);
+        // SAFETY: attributes owns a valid dictionary; no result object is requested.
+        let status = unsafe { SecItemAdd(attributes.as_concrete_TypeRef(), std::ptr::null_mut()) };
+        if status == 0 {
+            Ok(())
+        } else {
+            Err(security_framework::base::Error::from_code(status))
+        }
+    }
     /// Reopen the recorded tier after restart; never migrate an existing key
     /// implicitly when app signing/entitlements change.
     pub fn resume(custody: Custody) -> Result<Self> {
@@ -178,7 +233,6 @@ impl DeviceKeyStore for KeychainDeviceKeys {
         }
         #[cfg(target_os = "macos")]
         {
-            use security_framework::access_control::{ProtectionMode, SecAccessControl};
             let mut seed = key.to_bytes();
             let result = self.operation(|tier| {
                 if tier == Custody::LoginKeychain {
@@ -186,14 +240,9 @@ impl DeviceKeyStore for KeychainDeviceKeys {
                     // adding synchronizable/DP-only SecItem attributes would
                     // route unsigned executables back to the protected store.
                     return security_framework::os::macos::keychain::SecKeychain::default()?
-                        .set_generic_password(&self.service, &device.to_string(), &seed);
+                        .add_generic_password(&self.service, &device.to_string(), &seed);
                 }
-                let mut options = self.options(device, tier);
-                options.set_access_control(SecAccessControl::create_with_protection(
-                    Some(ProtectionMode::AccessibleWhenUnlockedThisDeviceOnly),
-                    0,
-                )?);
-                security_framework::passwords::set_generic_password_options(&seed, options)
+                self.add_protected(device, &seed)
             });
             seed.fill(0);
             result
