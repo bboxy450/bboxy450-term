@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>checks · deliberately bad</title>
+<!-- Self-test for run.mjs: one violation per check, under the real lab.css. Not a lab page (lives in checks/, not in the list). -->
+<link rel="stylesheet" href="../lab.css">
+<script src="../tokens.js"></script>
+<style>
+  .ring:focus-visible { outline: auto; }
+  .ua { all: revert; }
+  .bar { overflow: auto; height: 20px; scrollbar-width: auto; scrollbar-color: auto; }
+</style>
+</head><body>
+<span style="font-size:7px">type-below: 7px text</span>
+<div style="transform:scale(.5);transform-origin:0 0"><span style="font-size:12px">type-below: 12px at half scale</span></div>
+<svg viewBox="0 0 100 20" width="200" height="40"><text x="4" y="14" style="font-size:12px">svg-scaled 2x</text></svg>
+<select style="appearance:auto"><option>ua-select</option></select>
+<textarea style="resize:both">ua-textarea</textarea>
+<input type="checkbox" style="appearance:auto">
+<details><summary style="display:list-item">ua-summary</summary>x</details>
+<button class="ua">ua-button</button>
+<button class="ring">ua-focus</button>
+<div class="bar"><div style="height:100px">ua-scrollbar</div></div>
+</body></html>

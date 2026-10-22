@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+# lab checks first (true-size type, no UA chrome; renderer.md §4.4b): fail fast before any capture
+scripts/lab-check.sh
 parity_out="${PARITY_OUT:-target/parity}"
 mkdir -p "$parity_out"
 cargo build -p bboxybook --locked
