@@ -1473,8 +1473,12 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 .dgfig-h .seg { margin-left: auto; display: inline-flex; padding: 2px; border-radius: var(--r-round); background: var(--badge); }
 .dgfig-h .seg button, .dgfig-h .exp { font: inherit; border: 0; background: transparent; color: var(--fg-dim); padding: 1px var(--s4); border-radius: var(--r-round); cursor: pointer; }
 .dgfig-h .seg button.on { background: var(--surface); color: var(--fg); box-shadow: 0 0 0 var(--hair-w) var(--hair); }
-.dgfig-b { overflow-x: auto; padding: var(--s4); }
-.dgfig-b.wide { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+.dgfig-b { overflow-x: auto; padding: var(--s2) var(--s4) var(--s4); }
+.dgfig .dg-wrap.wide { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+.dg .dg-node.link { cursor: pointer; }
+.dg .dg-node.link .dg-t { fill: var(--accent); }
+.dg .dg-node.link:hover .dg-t { text-decoration: underline; }
+.dg .dg-node.link:hover rect, .dg .dg-node.link:hover path { stroke: var(--accent); }
 .dgfig-src { margin: 0; font-family: var(--font-mono); font-size: var(--t-caption); line-height: 1.5; color: var(--fg); white-space: pre; }
 
 /* ---------- no browser-default chrome: every control below is drawn by us, the same on every OS and browser ---------- */

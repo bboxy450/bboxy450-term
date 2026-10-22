@@ -444,7 +444,7 @@
     if (/^(flowchart|graph)\b/.test(head)) {
       const dir = /\b(lr|rl)\b/.test(head) ? 'LR' : 'TD', nodes = new Map(), edges = [];
       const node = tok => { const m = tok.trim().match(/^([A-Za-z0-9_]+)(?:(\[\[?|\(\(?|\{)(.*?)(\]\]?|\)\)?|\}))?(?::::(\w+))?$/); if (!m) throw new Error('node: ' + tok);
-        const id = m[1], n = nodes.get(id) || { id, label: id, shape: 'rect' }; if (m[3] != null) { n.label = m[3]; n.shape = m[2] === '(' ? 'stadium' : m[2] === '((' ? 'circle' : m[2] === '{' ? 'diamond' : 'rect'; if (m[2] === '[' && /^\(.*\)$/.test(m[3])) { n.label = m[3].slice(1, -1); n.shape = 'store'; } } if (m[5]) n.cls = m[5]; nodes.set(id, n); return id; };
+        const id = m[1], n = nodes.get(id) || { id, label: id, shape: 'rect' }; if (m[3] != null) { n.label = m[3]; n.shape = m[2] === '(' ? 'stadium' : m[2] === '((' ? 'circle' : m[2] === '{' ? 'diamond' : 'rect'; if (m[2] === '[' && /^\(.*\)$/.test(m[3])) { n.label = m[3].slice(1, -1); n.shape = 'store'; } if (m[2] === '[[') n.link = m[3]; } if (m[5]) n.cls = m[5]; nodes.set(id, n); return id; };
       for (const l of lines) {
         const cm = l.match(/^class\s+([\w,]+)\s+(\w+)$/); if (cm) { cm[1].split(',').forEach(id => { node(id); nodes.get(id).cls = cm[2]; }); continue; }
         const parts = l.split(/\s*(-->|-\.->|==>)\s*(?:\|([^|]*)\|\s*)?/);
@@ -473,6 +473,24 @@
       return { type: 'seq', parts, msgs, cls };
     }
     throw new Error('unsupported diagram: ' + head);
+  }
+  // Diagram figure (7.10 DocumentModal pick, diagrams.html 'in the modal · shapes'): every Mermaid block in a document is this
+  // card. Header: kind · node count · Drawing / Source · ⤢ (opts.onExpand: the pan-and-zoom canvas for big graphs). Body: the
+  // drawing at true size, scrolling sideways under a fade when wider than the column. [[slug]] nodes are live links.
+  const DG_KIND = { flow: 'flowchart', seq: 'sequence' };
+  function diagramFigure(src, opts) {
+    opts = opts || {};
+    const draw = diagram(src); if (draw.classList.contains('dg-raw')) return draw;
+    let g = {}; try { g = parseMermaid(src); } catch (e) {}
+    const head = src.trim().split(/\s/)[0], kind = /^state/.test(head) ? 'state' : /^sequence/.test(head) ? 'sequence' : 'flowchart';
+    const n = g.nodes ? g.nodes.filter(x => x.label).length : (g.parts || []).length, unit = kind === 'sequence' ? ' participants' : ' nodes';
+    const body = el('div', { class: 'dgfig-b' }, draw), pre = el('pre', { class: 'dgfig-src' }, src.trim());
+    const seg = k => el('button', { class: k === 'Drawing' ? 'on' : '', onclick: () => { body.replaceChildren(k === 'Drawing' ? draw : pre); fig.querySelectorAll('.dgfig-h .seg button').forEach(b => b.classList.toggle('on', b.textContent === k)); } }, k);
+    const fig = el('figure', { class: 'dgfig' }, el('div', { class: 'dgfig-h' }, el('span', { class: 'kind' }, kind), el('span', { class: 'cnt' }, n + unit), el('span', { class: 'seg' }, seg('Drawing'), seg('Source')),
+      el('button', { class: 'exp', title: 'open on its own canvas: pan, zoom, minimap', onclick: () => opts.onExpand && opts.onExpand(src) }, '⤢')), body);
+    // the fade marks hidden width; it shows only while the drawing is wider than the column
+    requestAnimationFrame(() => { const w = draw.classList.contains('dg-wrap') ? draw : draw.querySelector('.dg-wrap'); if (w && w.scrollWidth > w.clientWidth + 1) w.classList.add('wide'); });
+    return fig;
   }
   function diagram(src) {
     let g; try { g = parseMermaid(src); } catch (e) { return el('div', { class: 'dg-raw' }, el('div', { class: 'dg-note' }, 'not drawn · ' + e.message + ' · shown as source'), el('pre', {}, src)); }
@@ -552,7 +570,9 @@
       else if (n.shape === 'circle') mk('circle', { cx: p.x, cy: p.y, r: p.w / 2 }, gr);
       else if (n.shape === 'store') { mk('rect', { x: p.x - p.w / 2, y: p.y - p.h / 2, width: p.w, height: p.h, rx: 12 }, gr); mk('path', { d: `M${p.x - p.w / 2 + 4},${p.y - p.h / 2 + 7} Q${p.x},${p.y - p.h / 2 + 13} ${p.x + p.w / 2 - 4},${p.y - p.h / 2 + 7}`, style: 'fill:none' }, gr); }
       else mk('rect', { x: p.x - p.w / 2, y: p.y - p.h / 2, width: p.w, height: p.h, rx: n.shape === 'stadium' ? p.h / 2 : 8 }, gr);
-      if (n.label) txt(p.x, p.y, n.label, 'dg-t', gr); }
+      if (n.label) txt(p.x, p.y, n.label, 'dg-t', gr);
+      // live link node: A[[slug]] names a document; click (⌘-click in a pane) opens it in the modal stack via a bubbling doclink event
+      if (n.link) { gr.classList.add('link'); const t = document.createElementNS(NS, 'title'); t.textContent = 'opens [[' + n.link + ']]'; gr.append(t); gr.addEventListener('click', () => gr.dispatchEvent(new CustomEvent('doclink', { detail: n.link, bubbles: true }))); } }
     svg.querySelectorAll('text.pill').forEach(t => { const w = t.textContent.length * 5.8 + 10; const r = mk('rect', { x: +t.getAttribute('x') - w / 2, y: +t.getAttribute('y') - 8, width: w, height: 16, rx: 8, class: 'dg-pill' }); svg.append(r, t); });
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W);
     return el('div', { class: 'dg-wrap' }, svg);
@@ -563,7 +583,7 @@
   function mdLite(src) {
     const out = el('div', { class: 'md' }); let list = null, code = null;
     for (const line of src.split('\n')) {
-      if (line.startsWith('```')) { if (list && !code) { out.append(list); list = null; } if (code) { out.append(code.mermaid ? diagram(code.textContent) : code); code = null; } else { code = el('pre', {}, ''); code.mermaid = /mermaid/.test(line); } continue; }
+      if (line.startsWith('```')) { if (list && !code) { out.append(list); list = null; } if (code) { out.append(code.mermaid ? diagramFigure(code.textContent) : code); code = null; } else { code = el('pre', {}, ''); code.mermaid = /mermaid/.test(line); } continue; }
       if (code) { code.textContent += (code.textContent ? '\n' : '') + line; continue; }
       const li = line.match(/^\s*[-*] (.*)/), h = line.match(/^(#{1,3}) (.*)/);
       if (!li && list) { out.append(list); list = null; }
@@ -1452,5 +1472,5 @@
     return root;
   }
 
-  window.C = { selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
