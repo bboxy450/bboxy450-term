@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
 use bboxybook::gallery::Case;
 use std::{
     fs,
