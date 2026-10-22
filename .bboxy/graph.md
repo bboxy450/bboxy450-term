@@ -99,7 +99,7 @@ DMs over the channel. One-to-one traffic (briefs, handoffs, reviews, corrections
 
 ## Shared-worktree rule (Wren's flag, 2026-10-21)
 
-One worktree, four writers. Everyone stages **by path**, never `git add -A` or `-a`; the Oracle stages only `.bboxy/` (and the specific files it touched). Each agent commits its own in-flight files; an Oracle snapshot of someone else's WIP happens only on the operator's explicit "save everything" and is labelled wip.
+One worktree, four writers. Everyone stages **by path**, never `git add -A` or `-a`; never `git stash`, `checkout -- .`, `reset` or `rebase --autostash` in the shared tree (a stash sweeps others' in-flight files, even briefly). Each agent commits its own in-flight files; an Oracle snapshot of someone else's WIP happens only on the operator's explicit "save everything" and is labelled wip. **The Oracle commits from its own worktree** `~/mydev/bboxy450-term-oracle` (branch `oracle`, rebased on `origin/main`, pushed as `oracle:main`), so no Oracle git operation ever touches the shared tree; peers see `.bboxy/` changes when they pull. To compare against an older version use `git show HEAD:path > <scratch>` or a detached temporary worktree.
 
 ## Rules for this file
 
