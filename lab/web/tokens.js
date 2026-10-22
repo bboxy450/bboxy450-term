@@ -279,6 +279,8 @@ window.STYLE = {
     "badge": 12,
     "body": 13,
     "caption": 11,
+    "doc_heading": 13.5,
+    "doc_title": 19,
     "family": "system sans (SF, Inter)",
     "input": 22,
     "kind": 14,

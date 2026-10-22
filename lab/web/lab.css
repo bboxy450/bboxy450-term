@@ -897,7 +897,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .doc-status.blocked, .doc-status.rejected { color: var(--c-errored); border-color: color-mix(in srgb, var(--c-errored) 50%, transparent); }
 .doc-status.done, .doc-status.accepted, .doc-status.decided, .doc-status.fixed, .doc-status.active { color: var(--c-idle, #2EE6A8); border-color: color-mix(in srgb, currentColor 45%, transparent); }
 .doc-path { margin-left: auto; color: var(--fg-dim); font-size: var(--t-note); }
-.doc-head h1 { font-size: 19px; margin: var(--s3) 0 0; font-weight: 650; letter-spacing: -.01em; }
+.doc-head h1 { font-size: var(--t-doc_title); margin: var(--s3) 0 0; font-weight: 650; letter-spacing: -.01em; }
 .doc-super { margin-top: var(--s4); font-size: var(--t-section); color: var(--fg-dim); padding: var(--s3) var(--s5); border-radius: var(--r-row, 6px); background: color-mix(in srgb, var(--fg-dim) 10%, transparent); }
 .doc-broken { margin-top: var(--s4); font-size: var(--t-section); color: var(--c-errored); padding: var(--s3) var(--s5); border-radius: var(--r-row, 6px); border: var(--hair-w) dashed color-mix(in srgb, var(--c-errored) 60%, transparent); }
 .doc-fm { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s2) var(--s7); padding: var(--s5) var(--s6); border-radius: var(--r-row, 8px); background: color-mix(in srgb, var(--surface) 70%, transparent); border: var(--hair-w) solid var(--hair, var(--line)); font-size: var(--t-section); margin-bottom: var(--s7); }
@@ -906,7 +906,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .doc-fm .v code { font-size: var(--t-note); color: var(--fg); }
 .doc-fm .seatchip { font-weight: 600; }
 .md { line-height: 1.6; max-width: var(--doc-measure); }  /* a pixel token, never ch: ch is the browser's font metric */
-.md h2, .md h3, .md h4 { font-size: 13.5px; margin: var(--s7) 0 var(--s2); }
+.md h2, .md h3, .md h4 { font-size: var(--t-doc_heading); margin: var(--s7) 0 var(--s2); }
 .md p { margin: var(--s2) 0 var(--s4); }
 .md ul { margin: var(--s2) 0 var(--s5); padding-left: var(--s9); }
 .md pre { font-family: var(--font-mono); font-size: var(--t-caption); background: var(--surface); border: var(--hair-w) solid var(--hair, var(--line)); border-radius: var(--r-row, 6px); padding: var(--s4) var(--s5); overflow-x: auto; }

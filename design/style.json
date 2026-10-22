@@ -61,7 +61,9 @@
     "tiny": 9.5,
     "small": 10,
     "note": 10.5,
-    "label": 11.5
+    "label": 11.5,
+    "doc_heading": 13.5,
+    "doc_title": 19
   },
   "spacing": {
     "grid": 8,
