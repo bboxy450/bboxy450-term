@@ -9,6 +9,7 @@ rust-version.workspace = true
 description = "bboxy450-term: bboxy450-term"
 
 [dependencies]
+bbt-mux = { path = "../bbt-mux" }
 bbt-rt = { path = "../bbt-rt" }
 bbt-render = { path = "../bbt-render" }
 bbt-ui = { path = "../bbt-ui" }

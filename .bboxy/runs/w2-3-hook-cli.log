@@ -1,0 +1,5 @@
+private hook empty: exit 0, stdout=0 stderr=0, elapsed=0.465797s, no UI/runtime setup
+private hook malformed: exit 0, stdout=0 stderr=0, elapsed=0.005760s, no UI/runtime setup
+private hook small: exit 0, stdout=0 stderr=0, elapsed=0.005081s, no UI/runtime setup
+private hook >4KiB fallback: exit 0, stdout=0 stderr=0, capability/generation/raw checked, frame_bytes=5287, elapsed=0.005477s
+exit 0

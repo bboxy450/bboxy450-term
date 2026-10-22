@@ -9,6 +9,7 @@ use std::sync::{
 };
 use std::time::{Duration, Instant};
 
+use crate::adapters::{Adapter, Binding, HarnessRecord, OscTap, Session};
 use crate::ring::{Playback, Saved as RingSaved};
 use bbt_core::Checkpoint;
 use ed25519_dalek::SigningKey;
@@ -147,6 +148,25 @@ pub struct LogicConfig {
 }
 
 enum Command {
+    Launch(
+        Box<SeatRecord>,
+        HarnessRecord,
+        crate::adapters::launch::LaunchOptions,
+        oneshot::Sender<Result<SeatInfo>>,
+    ),
+    Hook(
+        Ulid,
+        u64,
+        crate::adapters::hook::ShimEvent,
+        oneshot::Sender<Result<crate::adapters::Status>>,
+    ),
+    Status(Ulid, u64, oneshot::Sender<Result<crate::adapters::Status>>),
+    Native(
+        Ulid,
+        u64,
+        serde_json::Value,
+        oneshot::Sender<Result<crate::adapters::Status>>,
+    ),
     Spawn(
         Box<SeatRecord>,
         LaunchSpec,
@@ -180,6 +200,59 @@ pub struct LogicClient {
     pub bus: BusHandle,
 }
 impl LogicClient {
+    pub async fn spawn_harness(
+        &self,
+        record: SeatRecord,
+        harness: HarnessRecord,
+        options: crate::adapters::launch::LaunchOptions,
+    ) -> Result<SeatInfo> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::Launch(Box::new(record), harness, options, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await
+            .map_err(|_| invalid("launch outcome unknown; query original seat ID"))?
+    }
+    pub async fn hook(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        event: crate::adapters::hook::ShimEvent,
+    ) -> Result<crate::adapters::Status> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::Hook(seat, generation, event, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
+    pub async fn adapter_status(
+        &self,
+        seat: Ulid,
+        generation: u64,
+    ) -> Result<crate::adapters::Status> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::Status(seat, generation, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
+    /// Called by the bound native reader, never interpreted as a new operation.
+    pub async fn native_event(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        event: serde_json::Value,
+    ) -> Result<crate::adapters::Status> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::Native(seat, generation, event, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
     pub async fn spawn(&self, record: SeatRecord, spec: LaunchSpec) -> Result<SeatInfo> {
         let (tx, rx) = oneshot::channel();
         self.tx
@@ -351,11 +424,24 @@ struct LegacySaved {
     gap: Option<String>,
 }
 struct ViewState {
+    adapter: Session,
+    tap: OscTap,
+    replies: VecDeque<(Ulid, Vec<u8>)>,
+    native_reader: Option<NativeReader>,
     state: Playback,
     view_generation: Ulid,
     checkpoint_bytes: u64,
     checkpoint_sequence: u64,
     changed_at: Instant,
+}
+struct NativeReader {
+    session: String,
+    task: tokio::task::JoinHandle<()>,
+}
+impl Drop for NativeReader {
+    fn drop(&mut self) {
+        self.task.abort();
+    }
 }
 impl std::ops::Deref for ViewState {
     type Target = Playback;
@@ -425,7 +511,7 @@ impl Worker {
         };
         if let Reply::Seats { seats } = worker.connection.request(Action::ListOwnedSeats)? {
             for info in seats {
-                worker.attach(info)?;
+                worker.attach(info, false)?;
             }
         }
         worker.scan()?;
@@ -452,7 +538,7 @@ impl Worker {
         }
         Ok(())
     }
-    fn attach(&mut self, info: SeatInfo) -> Result<()> {
+    fn attach(&mut self, info: SeatInfo, live_start: bool) -> Result<()> {
         check_size(info.size.cols as usize, info.size.rows as usize)?;
         let directory = object_dir(&self.config.run_dir, &format!("seat-{}", info.seat))?;
         let reply = self.connection.request(Action::AttachRing {
@@ -513,6 +599,8 @@ impl Worker {
         };
         let checkpoint_bytes = state.byte_end;
         let checkpoint_sequence = state.sequence;
+        let tap = OscTap::install(&mut state.term);
+        let mut live_frames = Vec::new();
         while state.sequence < status.captured_sequence {
             let Reply::RingHistory { history } = self.connection.request(Action::ReadRing {
                 attachment: attachment.clone(),
@@ -527,15 +615,76 @@ impl Worker {
             }
             for record in history.records {
                 state.apply(&record.event)?;
+                if let Ok(frames) = tap.drain()
+                    && live_start
+                {
+                    for frame in frames {
+                        if live_frames.len() < 128 {
+                            live_frames.push((state.sequence, frame));
+                        }
+                    }
+                }
             }
         }
         if state.sequence != status.captured_sequence {
             return Err(invalid("ring recovery cursor mismatch"));
         }
         self.attachments.insert(info.seat, attachment.clone());
+        let record = self.registry.get(info.seat).ok();
+        let kind = record
+            .as_ref()
+            .map_or("unknown", |r| r.harness_kind.as_str());
+        let harness = if let Some(bytes) = SqliteStore::open(&directory)?.get("adapter_record")? {
+            serde_json::from_slice(&bytes)?
+        } else {
+            HarnessRecord::builtin(kind).unwrap_or_else(|_| HarnessRecord {
+                kind: kind.into(),
+                name: kind.into(),
+                command: vec![kind.into()],
+                tile: String::new(),
+                icon: String::new(),
+                default_role: crate::registry::Role {
+                    name: "executor".into(),
+                    class: crate::registry::Class::Worker,
+                },
+                wake_method: crate::adapters::WakeMethod::Operator,
+                state_source: crate::adapters::StateSource::Cadence,
+                hooks: false,
+            })
+        };
+        let mut adapter = Session::new(
+            harness,
+            Binding {
+                seat: info.seat,
+                generation: info.generation,
+                pid: info.pid,
+                process_start: crate::adapters::native::process_start(info.pid)
+                    .unwrap_or_else(|_| "exited".into()),
+                session: record
+                    .as_ref()
+                    .and_then(|r| r.harness_session_id.clone())
+                    .unwrap_or_else(|| format!("process-{}", info.pid)),
+                attachment_generation: 1,
+            },
+        )?;
+        for (sequence, params) in live_frames {
+            adapter.on_osc(&params, sequence, now_ms());
+        }
+        if let Some(exit) = &info.exited {
+            adapter.exit(state.sequence, now_ms(), exit.code);
+        }
+        let replies = adapter
+            .take_replies()
+            .into_iter()
+            .map(|bytes| (Ulid::new(), bytes))
+            .collect();
         self.views.insert(
             info.seat,
             ViewState {
+                adapter,
+                tap,
+                replies,
+                native_reader: None,
                 state,
                 view_generation: Ulid::new(),
                 checkpoint_bytes,
@@ -543,33 +692,13 @@ impl Worker {
                 changed_at: Instant::now(),
             },
         );
+        self.persist_native_session(info.seat)?;
         // Historical frames have no live effects or visible intermediate state.
         // Cold capture no longer needs checkpoint progress to keep reading, so
         // publish one recovered tail instead of syncing every replay page.
+        self.flush_protocol_replies(info.seat)?;
         self.save(info.seat)?;
-        self.endpoints.remove(&info.seat);
-        let path = self.endpoint_root.join(format!("{}.sock", info.seat));
-        let mut capability = [0; 32];
-        getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
-        let endpoint = crate::seat_socket::SeatEndpoint::bind(
-            &self.handle,
-            &path,
-            self.client.clone(),
-            info.seat,
-            info.generation,
-            capability,
-        )?;
-        self.endpoints.insert(
-            info.seat,
-            (
-                EndpointInfo {
-                    path,
-                    generation: info.generation,
-                    capability,
-                },
-                endpoint,
-            ),
-        );
+        self.ensure_endpoint(info.seat, info.generation)?;
         if let Ok(record) = self.registry.get(info.seat) {
             if record.generation != info.generation {
                 self.registry.update(info.seat, |r| {
@@ -579,6 +708,7 @@ impl Worker {
             }
             if info.exited.is_some() {
                 self.registry.exited(info.seat, info.generation)?;
+                self.cleanup_overlay(info.seat)?;
             } else if record.lifecycle == Lifecycle::ClosedGrace
                 && let Some(close) = record.close
             {
@@ -591,11 +721,110 @@ impl Worker {
         }
         Ok(())
     }
+    fn ensure_endpoint(&mut self, id: Ulid, generation: u64) -> Result<EndpointInfo> {
+        if let Some((info, _)) = self.endpoints.get(&id)
+            && info.generation == generation
+        {
+            return Ok(info.clone());
+        }
+        self.endpoints.remove(&id);
+        let path = self.endpoint_root.join(format!("{id}.sock"));
+        let mut capability = [0; 32];
+        getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
+        let endpoint = crate::seat_socket::SeatEndpoint::bind(
+            &self.handle,
+            &path,
+            self.client.clone(),
+            id,
+            generation,
+            capability,
+        )?;
+        let info = EndpointInfo {
+            path,
+            generation,
+            capability,
+        };
+        self.endpoints.insert(id, (info.clone(), endpoint));
+        Ok(info)
+    }
+    fn cleanup_overlay(&self, id: Ulid) -> Result<()> {
+        let root = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
+        let store = SqliteStore::open(&root)?;
+        if let Some(bytes) = store.get("adapter_overlay")?
+            && !bytes.is_empty()
+        {
+            let name = std::str::from_utf8(&bytes)?;
+            if !name.starts_with("launch-") || name[7..].parse::<Ulid>().is_err() {
+                return Err(invalid("invalid retained overlay name"));
+            }
+            let path = root.join("overlays").join(name);
+            if path.exists() {
+                std::fs::remove_dir_all(path)?;
+            }
+            store.put("adapter_overlay", b"")?;
+        }
+        Ok(())
+    }
+    fn persist_native_session(&self, id: Ulid) -> Result<()> {
+        let adapter = &self.views[&id].adapter;
+        if matches!(adapter.record.kind.as_str(), "claude" | "codex")
+            && !adapter.binding.session.starts_with("process-")
+        {
+            let session = &adapter.binding.session;
+            if let Ok(record) = self.registry.get(id)
+                && record.harness_session_id.as_ref() != Some(session)
+            {
+                self.registry.update(id, |record| {
+                    record.harness_session_id = Some(session.clone());
+                    Ok(())
+                })?;
+            }
+        }
+        Ok(())
+    }
+    fn launch(
+        &mut self,
+        mut record: SeatRecord,
+        harness: HarnessRecord,
+        options: crate::adapters::launch::LaunchOptions,
+    ) -> Result<SeatInfo> {
+        if record.harness_kind != harness.kind {
+            return Err(invalid("seat/harness kind mismatch"));
+        }
+        let endpoint = self.ensure_endpoint(record.id, record.generation)?;
+        let root = object_dir(&self.config.run_dir, &format!("seat-{}", record.id))?;
+        let plan = crate::adapters::launch::plan(
+            &harness,
+            &crate::adapters::LaunchContext {
+                seat: &record,
+                cwd: &options.cwd,
+                role_prompt: &options.role_prompt,
+                executable: &options.executable,
+                overlay_parent: &root.join("overlays"),
+                user_home: &options.user_home,
+                user_zdotdir: options.user_zdotdir.as_deref(),
+                socket: &endpoint.path,
+                capability: endpoint.capability,
+                resume: options.resume,
+            },
+        )?;
+        record.harness_session_id = plan.harness_session_id;
+        let store = SqliteStore::open(&root)?;
+        store.put("adapter_record", &serde_json::to_vec(&harness)?)?;
+        store.put(
+            "adapter_overlay",
+            plan.overlay.file_name().unwrap().as_encoded_bytes(),
+        )?;
+        // On an ambiguous spawn keep the overlay; deleting it could break a child
+        // that actually started. Reconciliation uses the original durable seat ID.
+        self.spawn(record, plan.spec)
+    }
     fn spawn(&mut self, record: SeatRecord, spec: LaunchSpec) -> Result<SeatInfo> {
         check_size(spec.size.cols as usize, spec.size.rows as usize)?;
         if record.id != spec.seat || record.generation != spec.generation {
             return Err(invalid("launch and record identity mismatch"));
         }
+        let new_record = self.registry.get(record.id).is_err();
         match self.registry.get(record.id) {
             Ok(old) if old != record => return Err(invalid("seat record conflicts")),
             Ok(_) => (),
@@ -609,7 +838,7 @@ impl Worker {
             .get(&info.seat)
             .is_none_or(|view| view.generation != info.generation)
         {
-            self.attach(info.clone())?;
+            self.attach(info.clone(), new_record)?;
         }
         self.publish(
             &format!("seat-{}", info.seat),
@@ -716,15 +945,43 @@ impl Worker {
             self.catch_up(id, seq - 1)?;
         }
         let view = self.views.get_mut(&id).unwrap();
+        let before = view.adapter.status.clone();
         view.state.apply(&event)?;
+        let now = now_ms();
+        view.adapter.output(now);
+        match view.tap.drain() {
+            Ok(frames) => {
+                for params in frames {
+                    view.adapter.on_osc(&params, seq, now);
+                }
+            }
+            Err(_) => view.adapter.invalidate(),
+        }
+        for bytes in view.adapter.take_replies() {
+            if view.replies.len() < 32 {
+                view.replies.push_back((Ulid::new(), bytes));
+            }
+        }
         view.changed_at = Instant::now();
         if let Event::Resized { size, .. } = &event {
             check_size(size.cols as usize, size.rows as usize)?;
             view.view_generation = Ulid::new();
         }
+        self.persist_native_session(id)?;
         if matches!(event, Event::Exited { .. }) && self.registry.get(id).is_ok() {
             self.registry.exited(id, generation)?;
         }
+        if let Event::Exited { status, .. } = &event {
+            self.views
+                .get_mut(&id)
+                .unwrap()
+                .adapter
+                .exit(seq, now, status.code);
+            self.views.get_mut(&id).unwrap().native_reader = None;
+            self.views.get_mut(&id).unwrap().replies.clear();
+            self.cleanup_overlay(id)?;
+        }
+        self.flush_protocol_replies(id)?;
         let view = &self.views[&id];
         if view.byte_end.saturating_sub(view.checkpoint_bytes) >= self.config.ring.checkpoint_bytes
             || view.sequence.saturating_sub(view.checkpoint_sequence) >= 256
@@ -745,6 +1002,10 @@ impl Worker {
         draft.seat = Some(id);
         draft.generation = Some(generation);
         self.publish(&format!("seat-{id}"), draft)?;
+        let status = self.views[&id].adapter.status.clone();
+        if !status.same_value(&before) {
+            self.publish_adapter(id, status)?;
+        }
         Ok(())
     }
     fn catch_up(&mut self, id: Ulid, through: u64) -> Result<()> {
@@ -763,18 +1024,186 @@ impl Worker {
                     view.view_generation = Ulid::new();
                 }
                 view.state.apply(&record.event)?;
+                // Recovery must not replay probe responses or hook/native effects.
+                let _ = view.tap.drain();
             }
             view.changed_at = Instant::now();
         }
     }
+    fn flush_protocol_replies(&mut self, id: Ulid) -> Result<()> {
+        loop {
+            let Some((input_id, bytes)) = self.views[&id].replies.front().cloned() else {
+                return Ok(());
+            };
+            match self.connection.request(Action::Input {
+                attachment: self.attachments[&id].clone(),
+                input_id,
+                bytes,
+            }) {
+                Ok(Reply::Input { receipt }) if receipt.state != crate::InputState::Pending => {
+                    self.views.get_mut(&id).unwrap().replies.pop_front();
+                }
+                // Stable IDs query/dedupe an in-flight reply. No new paste or
+                // protocol response can interleave the supervisor's active write.
+                _ => return Ok(()),
+            }
+        }
+    }
+    fn refresh_adapters(&mut self) -> Result<()> {
+        let now = now_ms();
+        for id in self.views.keys().copied().collect::<Vec<_>>() {
+            let view = self.views.get_mut(&id).unwrap();
+            let before = view.adapter.status.clone();
+            if view.adapter.status.source != "exit" {
+                if view.adapter.record.kind == "claude" {
+                    let root = std::env::var_os("CLAUDE_CONFIG_DIR")
+                        .map(PathBuf::from)
+                        .or_else(|| {
+                            std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".claude"))
+                        });
+                    if let Some(root) = root {
+                        let path = root
+                            .join("sessions")
+                            .join(format!("{}.json", view.adapter.binding.pid));
+                        match crate::adapters::native::read_claude_bound(
+                            &path,
+                            &view.adapter.binding,
+                        ) {
+                            Ok(file) => {
+                                let _ = view.adapter.observe_claude_session(
+                                    &file,
+                                    view.state.sequence,
+                                    now,
+                                );
+                            }
+                            Err(_) => view.adapter.invalidate(),
+                        }
+                    }
+                }
+                if view.adapter.record.kind == "codex"
+                    && !view.adapter.binding.session.starts_with("process-")
+                    && view
+                        .native_reader
+                        .as_ref()
+                        .is_none_or(|r| r.session != view.adapter.binding.session)
+                {
+                    let root = std::env::var_os("CODEX_HOME")
+                        .map(PathBuf::from)
+                        .or_else(|| {
+                            std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".codex"))
+                        });
+                    if let Some(root) = root {
+                        let path = root.join("app-server-control/app-server-control.sock");
+                        let session = view.adapter.binding.session.clone();
+                        let thread = session.clone();
+                        let generation = view.generation;
+                        let client = self.client.clone();
+                        let task=self.handle.spawn(async move {
+                            loop {
+                                if let Ok(status)=crate::adapters::native::codex_status(&path,&thread).await {
+                                    let event=serde_json::json!({"source":"snapshot","method":"thread/status/changed","params":{"threadId":thread,"status":status}});
+                                    if client.native_event(id,generation,event).await.is_err(){break;}
+                                }
+                                tokio::time::sleep(Duration::from_millis(200)).await;
+                            }
+                        });
+                        view.native_reader = Some(NativeReader { session, task });
+                    }
+                }
+                view.adapter.tick(view.state.sequence, now);
+            }
+            let status = view.adapter.status.clone();
+            if !status.same_value(&before) {
+                self.publish_adapter(id, status)?;
+            }
+            self.flush_protocol_replies(id)?;
+        }
+        Ok(())
+    }
+    fn publish_adapter(&self, id: Ulid, status: crate::adapters::Status) -> Result<()> {
+        self.publish(
+            &format!("seat-{id}"),
+            Draft::new(
+                format!("seat/{id}/state"),
+                "adapter",
+                serde_json::to_value(status)?,
+            ),
+        )
+    }
     fn run(&mut self, mut commands: mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
+        let mut adapters_at = Instant::now();
         while !stop.load(Ordering::Acquire) {
             for _ in 0..32 {
                 let Ok(command) = commands.try_recv() else {
                     break;
                 };
                 match command {
+                    Command::Launch(record, harness, options, reply) => {
+                        let result = self.launch(*record, harness, options);
+                        let _ = reply.send(result);
+                    }
+                    Command::Status(id, generation, reply) => {
+                        let result = self
+                            .views
+                            .get(&id)
+                            .filter(|v| v.generation == generation)
+                            .map(|v| v.adapter.status.clone())
+                            .ok_or_else(|| invalid("stale adapter generation"));
+                        let _ = reply.send(result);
+                    }
+                    Command::Hook(id, generation, event, reply) => {
+                        let before = self.views.get(&id).map(|v| v.adapter.status.clone());
+                        let result = self
+                            .views
+                            .get_mut(&id)
+                            .filter(|v| v.generation == generation)
+                            .ok_or_else(|| invalid("stale hook generation"))
+                            .and_then(|view| {
+                                if serde_json::to_vec(&event)?.len()
+                                    > crate::adapters::hook::MAX_RAW
+                                {
+                                    return Err(invalid("hook payload bound"));
+                                }
+                                if let Some(obs) = crate::adapters::hook::project(
+                                    &mut view.adapter,
+                                    &event,
+                                    view.state.sequence,
+                                    now_ms(),
+                                ) {
+                                    view.adapter.apply(obs);
+                                }
+                                Ok(view.adapter.status.clone())
+                            });
+                        if let (Some(before), Ok(status)) = (&before, &result)
+                            && !status.same_value(before)
+                        {
+                            self.publish_adapter(id, status.clone())?;
+                        }
+                        if result.is_ok() {
+                            self.persist_native_session(id)?;
+                        }
+                        let _ = reply.send(result);
+                    }
+                    Command::Native(id, generation, event, reply) => {
+                        let before = self.views.get(&id).map(|v| v.adapter.status.clone());
+                        let result = self
+                            .views
+                            .get_mut(&id)
+                            .filter(|v| v.generation == generation)
+                            .ok_or_else(|| invalid("stale native generation"))
+                            .and_then(|view| {
+                                view.adapter
+                                    .on_native(&event, view.state.sequence, now_ms())?;
+                                Ok(view.adapter.status.clone())
+                            });
+                        if let (Some(before), Ok(status)) = (&before, &result)
+                            && !status.same_value(before)
+                        {
+                            self.publish_adapter(id, status.clone())?;
+                        }
+                        let _ = reply.send(result);
+                    }
                     Command::History(id, generation, from, to, reply) => {
                         let result = self.history(id, generation, from, to);
                         let _ = reply.send(result);
@@ -858,6 +1287,10 @@ impl Worker {
             }
             if let Some(event) = self.connection.receive(Duration::from_millis(10))? {
                 self.event(event)?;
+            }
+            if adapters_at.elapsed() >= Duration::from_millis(200) {
+                self.refresh_adapters()?;
+                adapters_at = Instant::now();
             }
             let idle: Vec<_> = self
                 .views

@@ -1,0 +1,24 @@
+COMMAND: cargo build -p bboxy450-term --locked
+   Compiling thiserror v2.0.21
+   Compiling lyon_geom v1.0.20
+   Compiling futures-macro v0.3.34
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui-model)
+   Compiling naga-types v30.0.1
+   Compiling tungstenite v0.30.0
+   Compiling lyon_path v1.0.19
+   Compiling futures-util v0.3.34
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-ui)
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling lyon_tessellation v1.0.22
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.75s
+exit 0

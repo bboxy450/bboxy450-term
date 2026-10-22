@@ -1,0 +1,5 @@
+codex --version — exit 0 — codex-cli 0.163.0
+claude --version — exit 0 — 2.1.304 (Claude Code)
+Installed ~/.codex/hooks.json event names inspected only: SessionStart. No commands, config values, credentials or transcripts exported.
+Official current hook source: https://learn.chatgpt.com/docs/hooks — CamelCase event keys; SubagentStart.agent_id is distinct from parent session_id.
+Official app-server source: https://learn.chatgpt.com/docs/app-server — initialization, thread/status/changed, turn/steer expectedTurnId. Queue schema independently generated from installed CLI.

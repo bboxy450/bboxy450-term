@@ -1,0 +1,53 @@
+COMMAND: cargo test -p bbt-mux --locked adapters_positive_ready -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.86s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-23c4b3abb80c1945)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/adapters.rs (target/debug/deps/adapters-1d2e108aa86a1db3)
+
+running 1 test
+test adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.01s
+
+     Running tests/logic.rs (target/debug/deps/logic-aa2ead41be02cb3c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+     Running tests/measurements.rs (target/debug/deps/measurements-ed20bfbe78bc14ee)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/ring.rs (target/debug/deps/ring-7ab5732bcb1521d4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-cb53d638f7a33e72)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/supervisor.rs (target/debug/deps/supervisor-0dd7d75e29706649)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+     Running tests/ui_guard.rs (target/debug/deps/ui_guard-a090b0554e9f561f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+exit 0

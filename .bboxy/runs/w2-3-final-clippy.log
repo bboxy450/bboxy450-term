@@ -1,0 +1,4 @@
+COMMAND: cargo clippy -p bbt-mux --all-targets --locked -- -D warnings
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term/crates/bbt-mux)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.24s
+exit 0
