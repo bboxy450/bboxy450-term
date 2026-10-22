@@ -1,0 +1,13 @@
+flowchart LR
+  OP([operator]) --> APP["GUI app<br/>A/main.rs:509<br/>fixture scene, no client"]
+  APP -. "C1: spawns, restarts" .-> SUP
+  APP -. "C1: gui socket" .-> LOGIC
+  SUP["supervisor<br/>thread bbt-supervisor, mio<br/>M/supervisor.rs:58<br/>today: tests start it"] <-- "control socket<br/>Frame{Request} / Frame{Message}" --> LOGIC["logic<br/>thread bbt-logic + tokio<br/>M/logic.rs:350<br/>today: tests start it"]
+  SUP -- PTY --> H["harness child<br/>claude, codex, zsh"]
+  H -- "OSC 7501, 133, 7" --> SUP
+  H -- "runs on hook events" --> HOOK["hook<br/>bboxy450-term hook<br/>M/adapters/hook.rs:329"]
+  HOOK -- "OSC 7502 to /dev/tty" --> SUP
+  HOOK -. "fallback NDJSON" .-> SS
+  LOGIC -- binds --> SS["seat socket<br/>/tmp/bbt-uid-ulid/seat.sock"]
+  LOGIC -- "sessions file, app-server ws" --> H
+  LOGIC --> STORE[("objects: SQLite, rings, blobs, events")]

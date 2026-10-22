@@ -1,0 +1,7 @@
+flowchart LR
+  H["harness in its seat<br/>claude, codex"] <-- "stdio MCP<br/>initialize, ping, tools/list, tools/call" --> B["bridge<br/>bboxy450-term mcp<br/>env: BBOXY_SOCK, _CAPABILITY, _SEAT_ID, _GENERATION"]
+  B <-- "seat socket, NDJSON<br/>Action::Catalogue, Action::Call" --> L["logic<br/>catalogue, actor, grants, dispatch, audit"]
+  L --> M["messaging (W2.4)<br/>api::Request"]
+  L --> I["index<br/>.bboxy projections"]
+  L --> S["supervisor<br/>Input, Spawn"]
+  L --> A[("seat stream<br/>seat/{id}/control audit")]

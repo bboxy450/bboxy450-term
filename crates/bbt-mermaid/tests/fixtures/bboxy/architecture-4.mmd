@@ -1,0 +1,12 @@
+flowchart BT
+  rt[bbt-rt]
+  core[bbt-core]
+  um[bbt-ui-model]
+  render[bbt-render] --> um
+  ui[bbt-ui] --> um
+  book[bboxybook] --> render & ui & um
+  mux[bbt-mux] --> core & rt
+  app[bboxy450-term] --> mux & render & rt & ui & um
+  proto["bbt-proto: decision #6, born with C1"]:::next
+  sup["bbt-supervisor: decision #1, after W2.4"]:::next
+  classDef next stroke-dasharray: 5 5

@@ -1,0 +1,13 @@
+sequenceDiagram
+  participant U as operator (Settings → Identity)
+  participant L as logic
+  participant K as Keychain
+  participant G as gpg-agent
+  U->>L: pin primary (fingerprint from the keyring)
+  L->>K: generate device key, store item
+  L->>L: build device certificate (rPGP), DeviceGrant, AccountHead epoch 1
+  L->>G: PKSIGN certification digest (SIGKEY pinned keygrip)
+  G-->>U: pinentry once (or cached)
+  L->>G: PKSIGN DeviceGrant, PKSIGN AccountHead
+  L->>L: verify all three, commit identity/head and identity/device in the account object
+  L-->>U: identity card: certified, device grant valid 30 days
