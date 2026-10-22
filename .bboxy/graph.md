@@ -93,6 +93,10 @@ everyone ──(#bboxy450-crates)──▶ everyone  crate release announcements
 
 The Oracle maintains this section and, in the real terminal, edits it with `graph_set_edge` ([[mcp-control-plane]] Orientation tools); any seat calls `orient` to learn its job, current task and what is next; the Oracle calls `graph_read execution` to see who has what. `graph.md` is the authority until the mux's index exists ([[work-items]] graphs), at which point this section becomes a policy the mux enforces per swarm (may-send-to in the role grants).
 
+## Attention budget (operator, 2026-10-21)
+
+Oracle: cheaper model, low effort, absorbs all updates, tracks state. Executors: higher effort, minimal messages. Creativity: highest model and effort, near-zero messaging. Workers get only their brief, DMs addressed to them, and batched decisions that touch their work. See [[messaging]] Attention budget.
+
 ## Messaging rule (operator, 2026-10-21, tightened)
 
 **DMs by default. The channel is for large chunks only.** Everything goes by `icq dm` to the one agent concerned and the Oracle: claims, pass-by-pass landed reports, questions, handoffs, corrections. `#bboxy450-term` carries only: a workstream finished and accepted (a W-brief done, the lab complete, a checkpoint opened), a decision that changes everyone's work (vocabulary, a spec reversal, a process rule), and roll calls. No per-pass "landed" lines on the channel; those go to the Oracle by DM, batched when passes are small. The Oracle posts the channel summary when a chunk lands.
