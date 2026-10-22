@@ -1,0 +1,218 @@
+$ cargo clippy -p bboxybook --all-targets --locked -- -D clippy::disallowed_methods
+env: owned pkg0-dev target, jobs=2, incremental=0, dev/test debug=0
+    Checking bitflags v2.13.2
+    Checking objc2-encode v4.1.0
+    Checking libc v0.2.191
+   Compiling cfg_aliases v0.2.2
+    Checking arrayvec v0.7.8
+   Compiling objc2 v0.6.5
+    Checking cfg-if v1.0.5
+   Compiling num-traits v0.2.19
+   Compiling crc32fast v1.5.3
+    Checking libm v0.2.16
+   Compiling bytemuck_derive v1.12.1
+    Checking bytemuck v1.25.2
+    Checking dispatch2 v0.3.1
+    Checking block2 v0.6.2
+    Checking log v0.4.34
+    Checking objc2-core-foundation v0.3.2
+    Checking foldhash v0.2.0
+    Checking smallvec v1.16.3
+   Compiling thiserror v2.0.21
+    Checking hashbrown v0.17.1
+   Compiling syn v2.0.119
+    Checking objc2-foundation v0.3.2
+   Compiling zerocopy v0.8.63
+    Checking equivalent v1.0.3
+    Checking indexmap v2.14.2
+   Compiling zerocopy-derive v0.8.63
+    Checking objc2-metal v0.3.2
+   Compiling simd-adler32 v0.3.10
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+    Checking objc2-core-graphics v0.3.2
+   Compiling naga v30.0.1
+    Checking raw-window-handle v0.6.2
+    Checking unicode-width v0.2.2
+    Checking bit-vec v0.9.1
+   Compiling adler2 v2.0.1
+    Checking half v2.7.1
+    Checking bit-set v0.10.0
+    Checking codespan-reporting v0.13.1
+    Checking unicode-ident v1.0.27
+    Checking once_cell v1.21.4
+   Compiling float-cmp v0.9.0
+    Checking scopeguard v1.2.0
+   Compiling objc-sys v0.3.5
+    Checking static_assertions v1.1.0
+    Checking wgpu-types v30.0.1
+    Checking lock_api v0.4.14
+   Compiling strict-num v0.1.1
+    Checking parking_lot_core v0.9.12
+   Compiling polycool v0.4.0
+   Compiling miniz_oxide v0.9.1
+    Checking objc2-quartz-core v0.3.2
+   Compiling wgpu-hal v30.0.1
+   Compiling arrayref v0.3.9
+   Compiling kurbo v0.13.1
+   Compiling tiny-skia-path v0.12.0
+    Checking raw-window-metal v1.1.0
+   Compiling flate2 v1.1.10
+    Checking parking_lot v0.12.5
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+    Checking libloading v0.8.9
+    Checking wgpu-naga-bridge v30.0.1
+    Checking memchr v2.8.3
+    Checking profiling v1.0.18
+   Compiling siphasher v1.0.4
+   Compiling serde_core v1.0.229
+   Compiling svgtypes v0.16.1
+   Compiling png v0.18.1
+    Checking objc2 v0.5.3
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+   Compiling simplecss v0.2.2
+    Checking euclid v0.22.14
+   Compiling roxmltree v0.21.1
+   Compiling aho-corasick v1.1.5
+   Compiling wgpu-core v30.0.1
+   Compiling imagesize v0.15.0
+   Compiling regex-syntax v0.8.11
+    Checking core-foundation-sys v0.8.7
+   Compiling pico-args v0.5.0
+   Compiling litrs v1.0.1
+   Compiling data-url v0.3.2
+   Compiling usvg v0.48.1
+   Compiling document-features v0.2.12
+   Compiling regex-automata v0.4.18
+    Checking core-foundation v0.9.4
+    Checking lyon_geom v1.0.20
+    Checking block2 v0.5.1
+    Checking wgpu-core-deps-apple v30.0.1
+   Compiling tiny-skia v0.12.0
+   Compiling rgb v0.8.53
+   Compiling wgpu v30.0.1
+   Compiling foreign-types-macros v0.2.4
+    Checking foreign-types-shared v0.3.1
+    Checking bitflags v1.3.2
+   Compiling serde v1.0.229
+    Checking dispatch v0.2.0
+    Checking objc2-foundation v0.2.2
+    Checking core-graphics-types v0.1.3
+    Checking foreign-types v0.5.0
+   Compiling resvg v0.48.1
+    Checking lyon_path v1.0.19
+   Compiling regex v1.13.1
+   Compiling winit v0.30.13
+    Checking float_next_after v1.0.0
+    Checking tracing-core v0.1.36
+    Checking pin-project-lite v0.2.17
+    Checking tracing v0.1.44
+    Checking lyon_tessellation v1.0.22
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Checking objc2-app-kit v0.2.2
+    Checking core-graphics v0.23.2
+    Checking objc2-core-text v0.3.2
+    Checking zmij v1.0.23
+    Checking dpi v0.1.2
+    Checking pollster v0.4.0
+    Checking cursor-icon v1.2.0
+    Checking smol_str v0.2.2
+    Checking itoa v1.0.18
+    Checking serde_json v1.0.154
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:238:29
+    |
+238 |     for tri in mesh.indices.chunks_exact(3) {
+    |                             ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:287:31
+    |
+287 |     for tri in result.indices.chunks_exact(3) {
+    |                               ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:366:13
+    |
+366 | /             if !cache.contains_key(&ch) {
+367 | |                 let glyph = match font.rasterize(ch)? {
+368 | |                     Some(raster) => Some(PlacedGlyph {
+369 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+375 | |                 cache.insert(ch, glyph);
+376 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `#[warn(clippy::map_entry)]` on by default
+help: try
+    |
+366 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+367 +                 let glyph = match font.rasterize(ch)? {
+368 +                     Some(raster) => Some(PlacedGlyph {
+369 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+370 +                         left: raster.left,
+371 +                         top: raster.top,
+372 +                     }),
+373 +                     None => None,
+374 +                 };
+375 +                 e.insert(glyph);
+376 +             }
+    |
+
+warning: `bbt-render` (lib) generated 3 warnings (run `cargo clippy --fix --lib -p bbt-render -- -D clippy::disallowed_methods` to apply 3 suggestions)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+warning: using `chunks_exact` with a constant chunk size
+  --> crates/bboxybook/tests/styles.rs:84:23
+   |
+84 |                 image.chunks_exact(4).all(|p| p[3] == 255),
+   |                       ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+   = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: `bboxybook` (test "styles") generated 1 warning (run `cargo clippy --fix --test "styles" -p bboxybook -- -D clippy::disallowed_methods` to apply 1 suggestion)
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bboxybook/tests/materials.rs:242:14
+    |
+242 |             .chunks_exact(4)
+    |              ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bboxybook/tests/materials.rs:243:25
+    |
+243 |             .zip(pixels.chunks_exact(4))
+    |                         ^^^^^^^^^^^^^^^
+    |
+help: consider using `as_chunks::<4>()` instead
+   --> crates/bboxybook/tests/materials.rs:243:25
+    |
+243 |             .zip(pixels.chunks_exact(4))
+    |                         ^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+warning: `bboxybook` (test "materials") generated 2 warnings (run `cargo clippy --fix --test "materials" -p bboxybook -- -D clippy::disallowed_methods` to apply 1 suggestion)
+warning: using `chunks_exact` with a constant chunk size
+   --> crates/bboxybook/tests/atoms.rs:165:31
+    |
+165 |                 assert!(image.chunks_exact(4).all(|p| p[3] == 255));
+    |                               ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+warning: `bboxybook` (test "atoms") generated 1 warning (run `cargo clippy --fix --test "atoms" -p bboxybook -- -D clippy::disallowed_methods` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized] target(s) in 53.21s
+
+exit: 0
+elapsed_seconds: 53.313
