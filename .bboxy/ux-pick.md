@@ -74,7 +74,7 @@ GPU particle glow around the seat border in the seat colour. Four readings, one 
 | errored | static, red tint |
 | focused | brighter than the same state unfocused |
 
-Particles, not a flat blur: a sparse emitter along the border, count and speed scale with activity (PTY output cadence or hook state), colour is the seat colour. Rendered per on-screen seat only. The sidebar row carries a reduced glow: its own budget (radius 4, 30% of pane alpha, particles only when active, no glow at idle) so the sidebar stays quiet while row and pane still breathe together when active.
+Compositing: source-over, as in the lab's CSS and canvas (decided 2026-10-21 during W3.2d.1b; supersedes the earlier dark-add / light-multiply rule). Particles, not a flat blur: a sparse emitter along the border, count and speed scale with activity (PTY output cadence or hook state), colour is the seat colour. Rendered per on-screen seat only. The sidebar row carries a reduced glow: its own budget (radius 4, 30% of pane alpha, particles only when active, no glow at idle) so the sidebar stays quiet while row and pane still breathe together when active.
 
 ## Seat keys and git (ASSUMED, operator to confirm)
 
