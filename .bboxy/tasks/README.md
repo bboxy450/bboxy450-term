@@ -21,7 +21,7 @@
 | I2 | identity.md rewrite on the GPG root | Nyx DONE, accepted | DONE |
 | W3.1 | [[2026-10-21-w3-1-renderer-harness]] headless render harness, smoke, first text | Nyx DONE, verified: fcc8eca, 5 tests, 48 PNGs, CI green | DONE |
 | W2.1 | [[2026-10-21-w2-1-mux-supervisor]] supervisor, PTYs, lease protocol | Nyx DONE, verified: f6cab17, 12 tests | DONE |
-| W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | Rook Ashwhisker <EXECUTOR> | DONE ✔ c69fe4c, W1.2b ✔ b12dfcb; W1.2c latency RUNNING |
+| W1.2 | [[2026-10-21-w1-2-byte-ring]] byte ring, checkpoints, restart | Rook Ashwhisker <EXECUTOR> | DONE ✔ c69fe4c, W1.2b ✔ b12dfcb; W1.2c ✔ 01d5ea4 |
 | W2.3 | [[2026-10-21-w2-3-adapters-claude-codex-zsh]] adapters: Claude, Codex, zsh | Rook Ashwhisker <EXECUTOR> | DONE ✔ d60ee06 |
 | W3.2a | [[2026-10-21-w3-2a-ui-model]] ui-model: tokens, model types, layout engine | Nyx DONE, verified: 28 tests, no runtime deps | DONE |
 | W3.2b | [[2026-10-21-w3-2b-bboxybook]] bboxybook: draw atoms, chrome pass, modules, native storybook with parity | Nyx DONE at checkpoint ef6c7ff | DONE |
@@ -29,6 +29,7 @@
 | W4.1 | [[2026-10-21-w4-1-transport-trait]] Transport trait, loopback, quinn endpoint auth | — | DEFERRED (cockpit first) |
 | W2.2 | [[2026-10-21-w2-2-logic-bus-index]] logic: store traits, registry, event bus, .bboxy index, state streams | Rook Ashwhisker <EXECUTOR> | DONE ✔ 4988ac3 (merged 8484e0a) |
 | C | [[2026-10-22-c-cockpit]] cockpit: F1–F5 fidelity backlog → C1 live seats (Sable); 7.9 → 7.10 → W3.2c → L8 → L9 (Nyx); W1.2c → W2.4 messaging → W2.5 MCP + tasks → W2.5b seat wiring (MCP, hooks, skill per seat) → W2.6 provenance/events → D1 dummy ssh/cloud (Rook); lab refs (Wren) | cohort | RUNNING |
+| W2.4 | [[2026-10-22-w2-4-local-messaging]] local messaging: envelopes, channel tree, priority, harness delivery | Rook Ashwhisker <EXECUTOR> | RUNNING |
 | T1–T3 | [[2026-10-22-t-terminal-fidelity]] firehose → R3 → fonts ∥ fidelity → R5 | Aster Cinderwing <EXECUTOR> (exec4) | T1 RUNNING |
 | O1–O6 | [[2026-10-22-o-open-source]] publish bboxy450-rt, -ui-core, -render, -ui, -book ([[open-source]]) | deferred: publish at a plateau, velocity first | DEFERRED |
 | R1–R5 | [[2026-10-22-r-runtime]] runtime: async IO off the UI thread, 120 Hz ([[runtime]]) | Sable Embertail <EXECUTOR> | R1 ✔ 29d5e62; R2 ✔ be604d4; R2b ✔ 82c821b; R4 ✔ 18e0593 (budget open); R4b RUNNING |
