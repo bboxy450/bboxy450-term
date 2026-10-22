@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 36,
+  "version": 37,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -408,6 +408,11 @@
       "source": "provenance.md: [[slug]], [[slug|display]], [[slug]]{rel:w}",
       "anatomy": "a two-part chip: slug or display in accent on the left, the relation badge (and weight) in mono on the right; relation colours: derives accent, constrains amber, violates red; the pure forms render without the badge",
       "status": "built"
+    },
+    "path_hover": {
+      "purpose": "open what a pane names",
+      "anatomy": "holding ⌘ underlines the path, path:line or path:line:col token under the pointer in accent with a faint tint, and a small \"⌘-click opens\" pill follows the token",
+      "status": "built: .term .path.hover in lab.css; pane.html?state=hover-path"
     }
   },
   "modules": {
@@ -742,6 +747,11 @@
         "the source chip is the only colour; text stays in the stream type"
       ],
       "status": "built"
+    },
+    "diagram": {
+      "purpose": "Mermaid diagrams inside documents, drawn by us (document-viewer.md)",
+      "anatomy": "flowchart TD/LR, sequence, state; rounded nodes tinted by :::role/state class, stadium, diamond, circle, store; hairline edges with rounded orthogonal bends and arrowheads, dashed -.->, heavy ==>; labels on pills above the lines; layered layout with virtual waypoints so edges never cross nodes, barycentre ordering, each back edge in its own lane on the side nearer its target, leaving from the top when its layer blocks the side; sequence: lifelines, messages, self-messages, notes, lost (-x); unsupported syntax shows the source with a note",
+      "status": "built: parseMermaid(), diagram() in components.js; mdLite renders ```mermaid fences; diagrams.html?state=flowchart-td|flowchart-lr|sequence|state|unsupported-syntax; documents.html?state=with-a-diagram"
     }
   },
   "modal": {

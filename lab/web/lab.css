@@ -1038,3 +1038,30 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .titlebar.app-bar.blurred { color: var(--fg-dim); }
 .titlebar.app-bar.blurred .win i { background: color-mix(in srgb, var(--line) 60%, transparent); }
 .titlebar.app-bar.blurred .logo { filter: saturate(.4); opacity: .8; }
+
+/* diagrams (Mermaid subset drawn in the chrome look) */
+.dg-wrap { overflow-x: auto; padding: 6px 0; }
+.dg { display: block; max-width: 100%; height: auto; font-family: var(--font-chrome); }
+.dg .dg-t { fill: var(--fg); font-size: 12px; }
+.dg .dg-t.small { font-size: 10.5px; fill: var(--fg-dim); }
+.dg .dg-t.lost { fill: var(--c-errored); font-size: 14px; font-weight: 700; }
+.dg .dg-node rect, .dg .dg-node path, .dg .dg-node circle:not(.dg-dot):not(.dg-ring) { fill: color-mix(in srgb, var(--n) 10%, var(--surface)); stroke: color-mix(in srgb, var(--n) 70%, transparent); stroke-width: 1.2; }
+.dg .dg-node.tinted rect, .dg .dg-node.tinted path { fill: color-mix(in srgb, var(--n) 20%, var(--surface)); stroke: var(--n); }
+.dg .dg-dot { fill: var(--fg); }
+.dg .dg-ring { fill: none; stroke: var(--fg); stroke-width: 1.4; }
+.dg .dg-edge { fill: none; stroke: color-mix(in srgb, var(--fg-dim) 85%, transparent); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+.dg .dg-edge.dashed { stroke-dasharray: 4 4; }
+.dg .dg-edge.thick { stroke-width: 2.4; stroke: var(--fg); }
+.dg .dg-edge.back { stroke: color-mix(in srgb, var(--fg-dim) 65%, transparent); }
+.dg .dg-head { fill: color-mix(in srgb, var(--fg-dim) 95%, transparent); }
+.dg .dg-pill { fill: var(--bg); stroke: var(--hair, var(--line)); stroke-width: 1; }
+.dg .dg-life { stroke: var(--hair, var(--line)); stroke-width: 1.2; stroke-dasharray: 3 4; }
+.dg .dg-notebox { fill: color-mix(in srgb, var(--c-waiting) 12%, var(--surface)); stroke: color-mix(in srgb, var(--c-waiting) 45%, transparent); }
+.dg-raw .dg-note { font-size: 11px; color: var(--c-waiting); margin-bottom: 4px; }
+.dg-raw pre { font-family: var(--font-mono); font-size: 11px; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r-row, 6px); padding: 8px 10px; margin: 0; }
+
+/* ⌘-hover on a path token in a pane (document-viewer.md path detection) */
+.pane .term .path { color: var(--fg); }
+.pane .term .path.hover { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; text-decoration-thickness: 1.5px; text-decoration-skip-ink: none; cursor: pointer; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 2px; }
+.pane .term .path-tip { display: inline-block; margin-left: 8px; font-family: var(--font-chrome); font-size: 10px; color: var(--fg); background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--hair, var(--line)); border-radius: 999px; padding: 0 8px; vertical-align: 1px; }
+.pane .term .path-tip kbd { font-family: var(--font-chrome); color: var(--fg-dim); }

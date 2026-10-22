@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>diagrams · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+</head><body><script>
+const el = Lab.el;
+const SRC = {
+  'flowchart TD': `flowchart TD
+  op((operator)):::accent --> V[Vesper Greywind]:::oracle
+  V -->|delegate| N[Nyx Copperwing]:::executor
+  V -->|delegate| R[Rook Ashwhisker]:::executor
+  V -.->|brief| W[Wren Thistledown]:::creativity
+  N --> P{parity ok?}
+  P -->|yes| A(accept)
+  P -->|no| N
+  R --> A`,
+  'flowchart LR': `flowchart LR
+  seat[seat socket] --> logic[mux logic]
+  logic --> bus[(events.sqlite)]
+  bus -->|stored| gui[GUI]
+  bus -->|wake| harness[harness adapter]
+  logic ==> sup[supervisor]
+  sup --> pty((PTY))`,
+  'sequence': `sequenceDiagram
+  participant O as Vesper:::oracle
+  participant M as mux
+  participant N as Nyx:::executor
+  O->>M: task_delegate W3.2b
+  M->>M: frontmatter claimed
+  M->>N: wake · delegate
+  Note over M,N: input guard checks the prompt
+  N-->>M: report · commit 01aa2ff
+  M-->>O: receipt application-acknowledged
+  O-x N: interrupt (seat decides)`,
+  'state': `stateDiagram-v2
+  [*] --> idle
+  idle --> active: 7501 working
+  active --> waiting: blocked
+  waiting --> active: answered
+  active --> idle: done
+  active --> errored: error
+  errored --> idle: restarted`,
+  'unsupported syntax': `gantt
+  title W3 renderer
+  section W3.2
+  bboxybook :a1, 2026-10-21, 3d`,
+};
+SRC['flowchart TD'] = SRC['flowchart TD'].replace('op((operator)):::accent', 'op((operator)):::accent');
+Lab.page({ title: 'diagrams', wide: true, note: 'Mermaid, built ourselves (document-viewer.md): a subset parser and a layered layout drawn with the chrome look. Rounded nodes tinted in role and state colours (:::oracle, :::executor, :::creativity, :::accent), hairline edges with rounded bends and arrowheads, dashed for -.->, heavy for ==>, labels on pills, back edges routed around the side. Sequence: lifelines, messages, notes, a lost message (-x). Unsupported syntax renders the source with a note, never a broken diagram. This is the design the native viewer renders.',
+  states: Object.keys(SRC),
+  render(s, body) {
+    body.append(el('div', { style: 'background:var(--bg);border-radius:var(--r-pill);padding:18px;border:1px solid var(--hair)' }, C.diagram(SRC[s]), el('details', { style: 'margin-top:10px;font-size:11px;color:var(--fg-dim)' }, el('summary', {}, 'source'), el('pre', { style: 'font-family:var(--font-mono);font-size:11px' }, SRC[s]))));
+  } });
+</script></body></html>

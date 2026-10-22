@@ -403,13 +403,136 @@
       el('div', { class: 'cons-grid' }, ...kv('filter', el('span', { class: 'pats' }, ...c.filter.map(f => el('code', {}, f)))), ...kv('start', c.start), ...kv('ack', c.ack + (c.ack === 'explicit' ? ' · ack_wait ' + (c.ack_wait || '30s') + ' · max_deliver ' + (c.max_deliver || 5) : '')),
         ...kv('deliver', c.deliver), ...kv('cursor', el('code', {}, 'seq ' + c.cursor)), ...kv('pending', el('span', { class: 'qbar' }, el('span', { class: 'track' }, el('i', { style: 'width:' + Math.round(fill * 100) + '%' + (fill > .85 ? ';background:var(--c-waiting)' : '') })), el('b', {}, (c.pending || 0) + ' / ' + c.queue_max)))));
   }
+  // Diagrams (document-viewer.md, Mermaid subset built ourselves): flowchart TD/LR, sequence, state. Parsed here, laid out in
+  // layers, drawn with the chrome look: rounded nodes tinted in role/seat colours, hairline edges with rounded bends, arrowheads,
+  // labels on the type scale. Unsupported syntax renders the raw block with a note, never a broken diagram.
+  const DG_ROLE = { oracle: 'var(--role-oracle)', executor: 'var(--role-executor)', creativity: 'var(--role-creativity)', idle: 'var(--c-idle)', waiting: 'var(--c-waiting)', errored: 'var(--c-errored)', accent: 'var(--accent)' };
+  function parseMermaid(src) {
+    const lines = src.split('\n').map(l => l.replace(/%%.*$/, '').trim()).filter(Boolean);
+    const head = (lines.shift() || '').toLowerCase();
+    if (/^(flowchart|graph)\b/.test(head)) {
+      const dir = /\b(lr|rl)\b/.test(head) ? 'LR' : 'TD', nodes = new Map(), edges = [];
+      const node = tok => { const m = tok.trim().match(/^([A-Za-z0-9_]+)(?:(\[\[?|\(\(?|\{)(.*?)(\]\]?|\)\)?|\}))?(?::::(\w+))?$/); if (!m) throw new Error('node: ' + tok);
+        const id = m[1], n = nodes.get(id) || { id, label: id, shape: 'rect' }; if (m[3] != null) { n.label = m[3]; n.shape = m[2] === '(' ? 'stadium' : m[2] === '((' ? 'circle' : m[2] === '{' ? 'diamond' : 'rect'; if (m[2] === '[' && /^\(.*\)$/.test(m[3])) { n.label = m[3].slice(1, -1); n.shape = 'store'; } } if (m[5]) n.cls = m[5]; nodes.set(id, n); return id; };
+      for (const l of lines) {
+        const cm = l.match(/^class\s+([\w,]+)\s+(\w+)$/); if (cm) { cm[1].split(',').forEach(id => { node(id); nodes.get(id).cls = cm[2]; }); continue; }
+        const parts = l.split(/\s*(-->|-\.->|==>)\s*(?:\|([^|]*)\|\s*)?/);
+        if (parts.length === 1) { node(l); continue; }
+        let prev = node(parts[0]);
+        for (let i = 1; i < parts.length; i += 3) { const to = node(parts[i + 2]); edges.push({ from: prev, to, label: parts[i + 1] || '', dashed: parts[i] === '-.->', thick: parts[i] === '==>' }); prev = to; }
+      }
+      return { type: 'flow', dir, nodes: [...nodes.values()], edges };
+    }
+    if (/^statediagram/.test(head)) {
+      const nodes = new Map(), edges = []; let sN = 0;
+      const st = (tok, side) => { tok = tok.trim(); if (tok === '[*]') { const id = side === 'from' ? '__start' : '__end' + (sN++); nodes.set(id, { id, label: '', shape: side === 'from' ? 'start' : 'end' }); return id; } const m = tok.match(/^(\w+)(?::::(\w+))?$/); if (!m) throw new Error('state: ' + tok); if (!nodes.has(m[1])) nodes.set(m[1], { id: m[1], label: m[1], shape: 'stadium' }); if (m[2]) nodes.get(m[1]).cls = m[2]; return m[1]; };
+      for (const l of lines) { const m = l.match(/^(.+?)\s*-->\s*([^:]+?)(?:\s*:\s*(.*))?$/); if (!m) throw new Error('state line: ' + l); edges.push({ from: st(m[1], 'from'), to: st(m[2], 'to'), label: m[3] || '' }); }
+      return { type: 'flow', dir: 'TD', nodes: [...nodes.values()], edges };
+    }
+    if (/^sequencediagram/.test(head)) {
+      const parts = [], msgs = [], cls = {};
+      const P = n => { n = n.trim(); if (!parts.includes(n)) parts.push(n); return n; };
+      for (const l of lines) {
+        let m;
+        if ((m = l.match(/^(participant|actor)\s+(\w+)(?:\s+as\s+(.+?))?(?::::(\w+))?$/))) { P(m[2]); if (m[4]) cls[m[2]] = m[4]; if (m[3]) cls['label:' + m[2]] = m[3]; continue; }
+        if ((m = l.match(/^note\s+over\s+([\w,\s]+):\s*(.*)$/i))) { msgs.push({ note: m[2], over: m[1].split(',').map(x => P(x)) }); continue; }
+        if ((m = l.match(/^(\w+)\s*(-->>|->>|-->|->|-x)\s*(\w+)\s*:\s*(.*)$/))) { msgs.push({ from: P(m[1]), to: P(m[3]), text: m[4], dashed: m[2].startsWith('--'), lost: m[2] === '-x' }); continue; }
+        throw new Error('sequence line: ' + l);
+      }
+      return { type: 'seq', parts, msgs, cls };
+    }
+    throw new Error('unsupported diagram: ' + head);
+  }
+  function diagram(src) {
+    let g; try { g = parseMermaid(src); } catch (e) { return el('div', { class: 'dg-raw' }, el('div', { class: 'dg-note' }, 'not drawn · ' + e.message + ' · shown as source'), el('pre', {}, src)); }
+    const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
+    const mk = (tag, a, parent) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); (parent || svg).append(e); return e; };
+    const txt = (x, y, t, cls, parent) => { const e = mk('text', { x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: cls || 'dg-t' }, parent); e.textContent = t; return e; };
+    const tw = t => Math.max(24, t.length * 6.6);
+    const defs = mk('defs', {}); const mkr = mk('marker', { id: 'dg-arrow', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, defs); mk('path', { d: 'M1,1.5 L9,5 L1,8.5 Z', class: 'dg-head' }, mkr);
+    svg.setAttribute('class', 'dg'); svg.style.setProperty('--n', 'var(--fg-dim)');
+    if (g.type === 'seq') {
+      const colW = 150, top = 14, rowH = 40, W = g.parts.length * colW, xs = {}; g.parts.forEach((p, i) => xs[p] = colW / 2 + i * colW);
+      const H = top + 40 + g.msgs.length * rowH + 50;
+      const box = (p, y) => { const lab = g.cls['label:' + p] || p, w = tw(lab) + 18, c = DG_ROLE[g.cls[p]] || 'var(--fg-dim)'; const gr = mk('g', { class: 'dg-node', style: '--n:' + c }); mk('rect', { x: xs[p] - w / 2, y, width: w, height: 28, rx: 8 }, gr); txt(xs[p], y + 14, lab, 'dg-t', gr); };
+      g.parts.forEach(p => { mk('line', { x1: xs[p], y1: top + 28, x2: xs[p], y2: H - 42, class: 'dg-life' }); box(p, top); box(p, H - 42); });
+      g.msgs.forEach((m, i) => { const y = top + 56 + i * rowH;
+        if (m.note) { const xa = Math.min(...m.over.map(p => xs[p])), xb = Math.max(...m.over.map(p => xs[p])), w = Math.max(xb - xa + 40, tw(m.note) + 20); mk('rect', { x: (xa + xb) / 2 - w / 2, y: y - 13, width: w, height: 24, rx: 6, class: 'dg-notebox' }); txt((xa + xb) / 2, y - 1, m.note, 'dg-t small'); return; }
+        const x1 = xs[m.from], x2 = xs[m.to];
+        if (m.from === m.to) { mk('path', { d: `M${x1},${y} h34 q6,0 6,6 v8 q0,6 -6,6 h-34`, class: 'dg-edge' + (m.dashed ? ' dashed' : ''), 'marker-end': 'url(#dg-arrow)' }); txt(x1 + 44 + tw(m.text) / 2, y + 10, m.text, 'dg-t small'); return; }
+        mk('line', { x1, y1: y, x2: x2 + (x2 > x1 ? -2 : 2), y2: y, class: 'dg-edge' + (m.dashed ? ' dashed' : ''), 'marker-end': m.lost ? '' : 'url(#dg-arrow)' });
+        if (m.lost) txt(x2 + (x2 > x1 ? -6 : 6), y, '×', 'dg-t lost');
+        txt((x1 + x2) / 2, y - 9, m.text, 'dg-t small'); });
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W); return el('div', { class: 'dg-wrap' }, svg);
+    }
+    // layered layout (Sugiyama-lite): DFS marks back edges; rank = longest path over forward edges; long edges get virtual
+    // waypoints so they route around nodes; layers ordered by barycentre sweeps; each back edge gets its own lane outside.
+    const rank = {}, out = {}, seen = {};
+    g.nodes.forEach(n => { rank[n.id] = 0; out[n.id] = []; }); g.edges.forEach(e => out[e.from].push(e));
+    const visit = id => { seen[id] = 1; for (const e of out[id]) { if (seen[e.to] === 1) e.back = true; else if (!seen[e.to]) visit(e.to); } seen[id] = 2; };
+    const indeg = {}; g.nodes.forEach(n => indeg[n.id] = 0); g.edges.forEach(e => indeg[e.to]++);
+    g.nodes.filter(n => !indeg[n.id]).concat(g.nodes).forEach(n => { if (!seen[n.id]) visit(n.id); });
+    for (let pass = 0; pass < g.nodes.length; pass++) for (const e of g.edges) if (!e.back && rank[e.to] < rank[e.from] + 1) rank[e.to] = rank[e.from] + 1;
+    const LR = g.dir === 'LR', size = n => n.shape === 'start' || n.shape === 'end' ? [18, 18] : n.shape === 'circle' ? [Math.max(tw(n.label) + 24, 40), Math.max(tw(n.label) + 24, 40)] : n.shape === 'diamond' ? [tw(n.label) + 38, 48] : [tw(n.label) + 22, 32];
+    const V = {}, layers = [];
+    const put = v => (layers[v.r] = layers[v.r] || []).push(v);
+    g.nodes.forEach(n => { const z = size(n); V[n.id] = { id: n.id, n, w: z[0], h: z[1], r: rank[n.id] }; put(V[n.id]); });
+    const succ = {}, pred = {}, link = (x, y) => { (succ[x] = succ[x] || []).push(y); (pred[y] = pred[y] || []).push(x); };
+    g.edges.forEach((e, i) => { if (e.back) return; e.chain = [e.from]; for (let r = rank[e.from] + 1; r < rank[e.to]; r++) { const id = '~' + i + '_' + r; V[id] = { id, virtual: true, w: LR ? 2 : 10, h: LR ? 10 : 2, r }; put(V[id]); e.chain.push(id); } e.chain.push(e.to); for (let k = 1; k < e.chain.length; k++) link(e.chain[k - 1], e.chain[k]); });
+    const bary = (L, nb, ref) => { const idx = Object.fromEntries((ref || []).map((v, i) => [v.id, i])); L.forEach((v, i) => { const ps = (nb[v.id] || []).filter(x => x in idx).map(x => idx[x]); v.b = ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : i; }); L.sort((x, y) => x.b - y.b); };
+    for (let sweep = 0; sweep < 3; sweep++) { for (let r = 1; r < layers.length; r++) if (layers[r]) bary(layers[r], pred, layers[r - 1]); for (let r = layers.length - 2; r >= 0; r--) if (layers[r]) bary(layers[r], succ, layers[r + 1]); }
+    const gapMain = LR ? 74 : 58, gapCross = LR ? 22 : 28; let main = 14, crossMax = 0;
+    layers.forEach(L => { if (!L) return; const thick = Math.max(...L.map(v => LR ? v.w : v.h)), tot = L.reduce((a, v) => a + (LR ? v.h : v.w), 0) + gapCross * (L.length - 1); crossMax = Math.max(crossMax, tot); let c = 0; L.forEach(v => { v.m = main + thick / 2; v.c = c + (LR ? v.h : v.w) / 2; v.tot = tot; c += (LR ? v.h : v.w) + gapCross; }); main += thick + gapMain; });
+    Object.values(V).forEach(v => { v.c += (crossMax - v.tot) / 2 + 14; v.x = LR ? v.m : v.c; v.y = LR ? v.c : v.m; });
+    const pos = V, R = 8, backs = g.edges.filter(e => e.back), mid = 14 + crossMax / 2;
+    backs.forEach(e => { e.side = LR ? 'bottom' : V[e.to].x < mid - 1 ? 'left' : 'right'; });
+    const nLeft = backs.filter(e => e.side === 'left').length, nRight = backs.filter(e => e.side === 'right').length, padL = nLeft ? 20 + nLeft * 14 : 0;
+    if (padL) Object.values(V).forEach(v => { v.x += padL; });
+    const W = (LR ? main - gapMain : crossMax) + 28 + padL + (!LR && nRight ? 24 + nRight * 14 : 0), H = (LR ? crossMax : main - gapMain) + 28 + (LR && backs.length ? 20 + backs.length * 14 : 0);
+    // orthogonal step between two points along the main axis, rounded corners
+    const step = (ax, ay, bx, by) => { if (LR) { if (Math.abs(ay - by) < 1) return ` H${bx}`; const mx = (ax + bx) / 2, r = Math.min(R, Math.abs(by - ay) / 2, Math.abs(mx - ax)), sy = Math.sign(by - ay); return ` H${mx - r} Q${mx},${ay} ${mx},${ay + sy * r} V${by - sy * r} Q${mx},${by} ${mx + r},${by} H${bx}`; }
+      if (Math.abs(ax - bx) < 1) return ` V${by}`; const my = (ay + by) / 2, r = Math.min(R, Math.abs(bx - ax) / 2, Math.abs(my - ay)), sx = Math.sign(bx - ax); return ` V${my - r} Q${ax},${my} ${ax + sx * r},${my} H${bx - sx * r} Q${bx},${my} ${bx},${my + r} V${by}`; };
+    for (const e of g.edges) {
+      if (e.back) continue;
+      const pts = e.chain.map(id => V[id]), a = pts[0], b = pts[pts.length - 1];
+      let x = LR ? a.x + a.w / 2 : a.x, y = LR ? a.y : a.y + a.h / 2, d = `M${x},${y}`;
+      for (let k = 1; k < pts.length; k++) { const q = pts[k], last = k === pts.length - 1; const tx = LR ? (last ? q.x - q.w / 2 - 2 : q.x) : q.x, ty = LR ? q.y : (last ? q.y - q.h / 2 - 2 : q.y); d += step(x, y, tx, ty); x = tx; y = ty; }
+      mk('path', { d, class: 'dg-edge' + (e.dashed ? ' dashed' : '') + (e.thick ? ' thick' : ''), 'marker-end': 'url(#dg-arrow)' });
+      if (e.label) { const q = pts[1]; const lx = LR ? (a.x + a.w / 2 + (q.x - (q.virtual ? 0 : q.w / 2))) / 2 : q.x, ly = LR ? q.y : (a.y + a.h / 2 + q.y - (q.virtual ? 0 : q.h / 2)) / 2 + (q.virtual ? 0 : 6); txt(lx, ly, e.label, 'dg-t small pill'); }
+    }
+    backs.forEach((e, i) => { const a = V[e.from], b = V[e.to];
+      if (LR) { const yb = 14 + crossMax + 14 + i * 14, ya = a.y + a.h / 2, yt = b.y + b.h / 2 + 2; mk('path', { d: `M${a.x},${ya} V${yb - R} Q${a.x},${yb} ${a.x - R},${yb} H${b.x + R} Q${b.x},${yb} ${b.x},${yb - R} V${yt}`, class: 'dg-edge back' + (e.dashed ? ' dashed' : ''), 'marker-end': 'url(#dg-arrow)' }); if (e.label) txt((a.x + b.x) / 2, yb, e.label, 'dg-t small pill'); }
+      else {
+        const right = e.side === 'right', k = backs.filter(x => x.side === e.side).indexOf(e), lane = right ? padL + 14 + crossMax + 16 + k * 14 : padL - 6 - k * 14, dir = right ? 1 : -1;
+        // exit sideways only when no node of the source's layer sits between it and the lane; otherwise leave from the top into the inter-layer gap
+        const blocked = (layers[a.r] || []).some(v => !v.virtual && v !== a && (right ? v.x > a.x : v.x < a.x));
+        const xt = b.x + dir * (b.w / 2 + 2);
+        let d;
+        if (!blocked) { const xa = a.x + dir * a.w / 2; d = `M${xa},${a.y} H${lane - dir * R} Q${lane},${a.y} ${lane},${a.y - R} V${b.y + R} Q${lane},${b.y} ${lane - dir * R},${b.y} H${xt}`; }
+        else { const ya = a.y - a.h / 2, yg = ya - 12 - k * 4; d = `M${a.x},${ya} V${yg + R} Q${a.x},${yg} ${a.x + dir * R},${yg} H${lane - dir * R} Q${lane},${yg} ${lane},${yg - R} V${b.y + R} Q${lane},${b.y} ${lane - dir * R},${b.y} H${xt}`; }
+        mk('path', { d, class: 'dg-edge back' + (e.dashed ? ' dashed' : ''), 'marker-end': 'url(#dg-arrow)' }); if (e.label) txt(lane, (a.y + b.y) / 2 - (blocked ? 6 : 0), e.label, 'dg-t small pill');
+      }
+    });
+    // labels on edges sit above lines: move pill texts to the end, nodes last
+    for (const n of g.nodes) { const p = pos[n.id], c = DG_ROLE[n.cls] || (n.cls ? 'var(--accent)' : 'var(--fg-dim)'); const gr = mk('g', { class: 'dg-node' + (n.cls ? ' tinted' : ''), style: '--n:' + c });
+      if (n.shape === 'start') mk('circle', { cx: p.x, cy: p.y, r: 7, class: 'dg-dot' }, gr);
+      else if (n.shape === 'end') { mk('circle', { cx: p.x, cy: p.y, r: 8, class: 'dg-ring' }, gr); mk('circle', { cx: p.x, cy: p.y, r: 4.5, class: 'dg-dot' }, gr); }
+      else if (n.shape === 'diamond') mk('path', { d: `M${p.x},${p.y - p.h / 2} L${p.x + p.w / 2},${p.y} L${p.x},${p.y + p.h / 2} L${p.x - p.w / 2},${p.y} Z`, 'stroke-linejoin': 'round' }, gr);
+      else if (n.shape === 'circle') mk('circle', { cx: p.x, cy: p.y, r: p.w / 2 }, gr);
+      else if (n.shape === 'store') { mk('rect', { x: p.x - p.w / 2, y: p.y - p.h / 2, width: p.w, height: p.h, rx: 12 }, gr); mk('path', { d: `M${p.x - p.w / 2 + 4},${p.y - p.h / 2 + 7} Q${p.x},${p.y - p.h / 2 + 13} ${p.x + p.w / 2 - 4},${p.y - p.h / 2 + 7}`, style: 'fill:none' }, gr); }
+      else mk('rect', { x: p.x - p.w / 2, y: p.y - p.h / 2, width: p.w, height: p.h, rx: n.shape === 'stadium' ? p.h / 2 : 8 }, gr);
+      if (n.label) txt(p.x, p.y, n.label, 'dg-t', gr); }
+    svg.querySelectorAll('text.pill').forEach(t => { const w = t.textContent.length * 5.8 + 10; const r = mk('rect', { x: +t.getAttribute('x') - w / 2, y: +t.getAttribute('y') - 8, width: w, height: 16, rx: 8, class: 'dg-pill' }); svg.append(r, t); });
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W);
+    return el('div', { class: 'dg-wrap' }, svg);
+  }
   // Document view (work-items.md): frontmatter as a header, Markdown body with annotated wikilinks, a provenance strip, and a right
   // rail with the item's neighbourhood in the markdown graph (weights as stroke). Broken frontmatter shows as broken, never skipped.
   const DOC_HUE = { epic: '#B07BFF', spec: '#58A6FF', task: '#2EE6A8', bug: '#FF6B6B', note: '#9AA3C7', invariant: '#F2C14E', artifact: '#4FD1C5' };
   function mdLite(src) {
     const out = el('div', { class: 'md' }); let list = null, code = null;
     for (const line of src.split('\n')) {
-      if (line.startsWith('```')) { if (code) { out.append(code); code = null; } else code = el('pre', {}, ''); continue; }
+      if (line.startsWith('```')) { if (code) { out.append(code.mermaid ? diagram(code.textContent) : code); code = null; } else { code = el('pre', {}, ''); code.mermaid = /mermaid/.test(line); } continue; }
       if (code) { code.textContent += (code.textContent ? '\n' : '') + line; continue; }
       const li = line.match(/^\s*[-*] (.*)/), h = line.match(/^(#{1,3}) (.*)/);
       if (!li && list) { out.append(list); list = null; }
@@ -634,7 +757,7 @@
       waiting: 'Allow Bash(git push)?\n  <b>› Yes</b>\n    No\n<span class="cur"></span>',
       errored: 'error[E0599]: no method named `glow`\n  --> src/sidebar.rs:88:14\n<b>$</b> <span class="cur"></span>',
     };
-    const t = el('div', { class: 'term', html: lines[seat.state] });
+    const t = el('div', { class: 'term', html: seat.term || lines[seat.state] });
     if (seat.gap) t.prepend(gapMarker(seat.gap));
     return t;
   }
@@ -1049,5 +1172,5 @@
     return root;
   }
 
-  window.C = { titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
