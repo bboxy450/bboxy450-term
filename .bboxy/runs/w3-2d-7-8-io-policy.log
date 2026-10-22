@@ -21,3 +21,9 @@ scripts/ui-lint.sh
 
 This is lint metadata only, with no IO implementation or image change.
 GraphTab and x-height implementation are separate unstaged work.
+
+Follow-up correction: chrome-text-probe.rs is an example, and its authorized
+file-level fixture-IO annotation was left unstaged in d9c4853. The reported
+all-target check used that working-tree annotation. It is now submitted as a
+separate exact-path follow-up; the earlier commit alone did not contain it.
+No additional exception or policy change is introduced.

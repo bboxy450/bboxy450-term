@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
 //! Isolate raster from layout with explicit shared baselines. No production
 //! component consumes these browser measurements. Run the adjacent JS capture,
 //! then `cargo run -p bboxybook --example chrome-text-probe -- OUT`.
