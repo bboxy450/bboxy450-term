@@ -465,10 +465,11 @@ fn adapters_native_claude_socket_writes_priority_without_claiming_consumption() 
 fn adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect() {
     use futures_util::{SinkExt, StreamExt};
     use tokio_tungstenite::tungstenite::Message;
-    for (disconnect, priority) in [
-        (false, Priority::Next),
-        (true, Priority::Next),
-        (false, Priority::Now),
+    for (disconnect, priority, malformed) in [
+        (false, Priority::Next, false),
+        (true, Priority::Next, false),
+        (false, Priority::Now, false),
+        (false, Priority::Next, true),
     ] {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("native.sock");
@@ -485,6 +486,7 @@ fn adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect()
                     if expected=="initialized"{continue;}
                     let result=if expected=="thread/read" {json!({"thread":{"id":thread,"status":{"type":"idle"}}})}
                         else if expected==method {mutation=Some(value.clone());if disconnect{break;}
+                            if malformed {ws.send(Message::Text(json!({"id":value["id"],"error":null}).to_string().into())).await.unwrap();break;}
                             if priority==Priority::Now {assert_eq!(value["params"]["expectedTurnId"],"turn1");json!({"turnId":"turn1"})}
                             else {let mut input=value["params"]["input"].clone();input[0]["text_elements"]=json!([]);json!({"queuedSubmission":{"id":"q1","clientUserMessageId":value["params"]["clientUserMessageId"],"input":input}})}
                         }
@@ -497,7 +499,7 @@ fn adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect()
             if priority==Priority::Now {assert_eq!(native::wake(&binding,&endpoint,Ulid::new(),"not-authorized",priority,false).await.evidence,Evidence::RecipientStored);}
             let outcome=native::wake(&binding,&endpoint,Ulid::new(),"fixture",priority,true).await;
             assert_eq!(server.await.unwrap()["params"]["input"][0]["text"],"fixture");
-            assert_eq!(outcome.evidence,if disconnect{Evidence::NativeUnknown}else{Evidence::NativeQueued});
+            assert_eq!(outcome.evidence,if disconnect||malformed{Evidence::NativeUnknown}else{Evidence::NativeQueued});
         });
     }
 }

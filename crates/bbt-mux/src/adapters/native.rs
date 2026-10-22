@@ -280,7 +280,10 @@ async fn reply(socket: &mut Socket, id: u64) -> Result<Value> {
         if value["id"] != id {
             return Err(invalid("native reply ID mismatch"));
         }
-        if value.get("error").is_some() {
+        if let Some(error) = value.get("error") {
+            if !error.is_object() || !error["code"].is_i64() || !error["message"].is_string() {
+                return Err(invalid("malformed native RPC error; admission unknown"));
+            }
             return Err(Rejected.into());
         }
         return value
