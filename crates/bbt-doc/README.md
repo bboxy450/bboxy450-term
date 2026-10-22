@@ -10,9 +10,11 @@ and HTML stay readable as source. `body_element` feeds the `DocumentModal`
 body seam; `modal_element` projects a real file's header and metadata too.
 Metadata that resembles a signature is never promoted to verified evidence.
 
-Mermaid from actual Markdown is a Source-only figure. Supplied 7.10 semantic
-fixture figures remain available to the parity gallery; W3.5b supplies the
-native Mermaid producer. Code is monospace without highlighting, and image
+Mermaid uses `bbt-mermaid`'s public geometry with native font measurement,
+retained shapes, filled/open arrowheads, clusters and sequence frames. The
+shared figure card draws at true size and scrolls sideways. Unsupported syntax
+shows Source with its error. Supplied 7.10 semantic fixture figures remain
+available to the parity gallery. Code is monospace without highlighting, and image
 references retain their alt text and destination without loading images.
 
 ```sh
@@ -28,4 +30,5 @@ Its `report.json` records natural heights and unclipped horizontal overflow;
 
 The corpus test reads every Markdown file under the real `.bboxy/` and fails
 malformed or unclosed YAML with `path:line` from the same parser used by the
-reader. The reader still shows broken metadata and the document body as source.
+reader. A metadata block also requires `id` and `type` for the work-item index.
+The reader still shows broken metadata and the document body as source.

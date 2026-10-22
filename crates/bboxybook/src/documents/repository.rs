@@ -169,7 +169,7 @@ pub fn render(root: &Path, out: &Path) -> Result<()> {
     let [width, height] = [1246u32, 900u32];
     let mut report = vec![];
     let mut html = String::from(
-        "<!doctype html><meta charset=utf-8><title>bbt-doc · repository</title><style>body{font:14px system-ui;background:#10131c;color:#dde4fa;margin:24px}section{margin:24px 0}img{width:100%;max-width:1246px;border:1px solid #65718c}a{color:#8ebaff}summary{cursor:pointer}</style><h1>Native repository documents</h1><p>Tracked .bboxy Markdown · top, middle and end viewports · Mermaid Source-only.</p>",
+        "<!doctype html><meta charset=utf-8><title>bbt-doc · repository</title><style>body{font:14px system-ui;background:#10131c;color:#dde4fa;margin:24px}section{margin:24px 0}img{width:100%;max-width:1246px;border:1px solid #65718c}a{color:#8ebaff}summary{cursor:pointer}</style><h1>Native repository documents</h1><p>Tracked .bboxy Markdown · top, middle and end viewports · native Mermaid at true size.</p>",
     );
     for relative in paths {
         // Each document is an independent offline case. Do not let hundreds of

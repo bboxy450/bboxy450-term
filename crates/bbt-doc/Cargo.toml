@@ -9,6 +9,7 @@ rust-version.workspace = true
 description = "Native Markdown documents on bboxy's retained UI and text pipeline"
 
 [dependencies]
+bbt-mermaid = { path = "../bbt-mermaid" }
 bbt-ui = { path = "../bbt-ui" }
 bbt-ui-model = { path = "../bbt-ui-model" }
 pulldown-cmark = { version = "=0.13.4", default-features = false }

@@ -38,6 +38,13 @@ pub struct Diagram {
     pub show_source: bool,
     pub scroll_x: f32,
 }
+/// A producer's true-size retained canvas. The shared figure owns its header,
+/// Source state, clipping, scrolling and overflow fade.
+pub struct Figure<'a> {
+    pub kind: &'a str,
+    pub count: usize,
+    pub canvas: &'a dyn Fn() -> (c::Element, [f32; 2]),
+}
 #[derive(Clone)]
 struct Vertex {
     id: String,
@@ -688,10 +695,28 @@ impl Diagram {
         } else {
             "flowchart"
         };
+        self.retained_figure(
+            key,
+            width,
+            ctx,
+            Figure {
+                kind,
+                count: g.nodes.iter().filter(|n| !n.label.is_empty()).count(),
+                canvas: &|| self.canvas(g, key, ctx, m),
+            },
+        )
+    }
+    pub fn retained_figure(
+        &self,
+        key: &str,
+        width: f32,
+        ctx: ui::Context,
+        figure: Figure<'_>,
+    ) -> c::Element {
         let mut header = vec![
             nowrap(
                 format!("{key}/kind"),
-                kind,
+                figure.kind,
                 ui::Text {
                     line_height: 1.6,
                     ..font(11., 400, true, ui::Color::Foreground)
@@ -701,8 +726,13 @@ impl Diagram {
             nowrap(
                 format!("{key}/count"),
                 format!(
-                    "{} nodes",
-                    g.nodes.iter().filter(|n| !n.label.is_empty()).count()
+                    "{} {}",
+                    figure.count,
+                    if figure.kind == "sequence" {
+                        "participants"
+                    } else {
+                        "nodes"
+                    }
                 ),
                 ui::Text {
                     line_height: 1.6,
@@ -843,7 +873,7 @@ impl Diagram {
                 ],
             )
         } else {
-            let (canvas, sz) = self.canvas(g, key, ctx, m);
+            let (canvas, sz) = (figure.canvas)();
             let vw = (width - 16.).max(0.);
             let content = col(
                 format!("{key}/canvas-pad"),

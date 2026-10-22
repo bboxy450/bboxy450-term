@@ -19,6 +19,9 @@ pub struct Frontmatter {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Markdown {
     pub source: String,
+    /// Byte offset after the BOM and any closed frontmatter block.
+    #[serde(default)]
+    pub body_start: usize,
     pub frontmatter: Frontmatter,
     pub blocks: Vec<Block>,
 }

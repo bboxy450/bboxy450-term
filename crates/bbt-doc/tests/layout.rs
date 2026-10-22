@@ -69,7 +69,109 @@ fn document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables() {
 }
 
 #[test]
-fn real_mermaid_is_a_source_card_and_wide_code_scrolls_without_scaling() {
+fn table_columns_keep_unbroken_words_and_scroll_when_their_minima_do_not_fit() {
+    let doc = parse(
+        "| Term | Description |\n| --- | --- |\n| harness | A considerably longer description that wraps naturally over many lines. |\n| **front**matter | metadata |\n",
+    );
+    for width in [120., 240., 576.] {
+        let layout = doc
+            .body_element(ctx(), &Fonts, width, &[])
+            .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
+            .unwrap();
+        let cell = named(&layout, "block0/row1/cell0").unwrap();
+        let word_width = Fonts.width(
+            "harness",
+            &TextStyle {
+                size: ui::TypeStep::Body.pixels(),
+                weight: 400,
+                mono: false,
+                italic: false,
+                tracking_em: 0.,
+            },
+        );
+        assert!(cell.rect.w >= word_width + 16.);
+        let rendered = texts(named(&layout, "block0/row1/cell0/text").unwrap());
+        assert_eq!(rendered.trim(), "harness");
+        let styled = named(&layout, "block0/row2/cell0/text").unwrap();
+        let ys: Vec<_> = match &styled.kind {
+            c::LayoutKind::Named(_) => match &styled.children[0].kind {
+                c::LayoutKind::Text { runs, .. } => runs.iter().map(|run| run.rect.y).collect(),
+                _ => panic!("styled cell text"),
+            },
+            _ => unreachable!(),
+        };
+        assert!(
+            ys.iter().all(|y| (*y - ys[0]).abs() < 0.01),
+            "a word spanning style runs stays together"
+        );
+        if width == 120. {
+            assert!(
+                named(&layout, "block0/rows").unwrap().rect.w > width,
+                "min-content columns use the explicit horizontal viewport"
+            );
+        }
+    }
+}
+
+#[test]
+fn matching_leading_h1_is_hidden_only_with_a_header_and_original_source_stays_intact() {
+    for dash in ["-", "‒", "–", "—", "―"] {
+        let source = format!("\n \n# BBOXy450-term  {dash}  vision\n\n## Cockpit first\n\nBody\n");
+        let doc = parse(&source);
+        let with_header = doc
+            .body_element_with_title(Some("bboxy450-term — vision"), ctx(), &Fonts, 576., &[])
+            .layout(Rect::new(0., 0., 576., 0.), ctx(), &Fonts)
+            .unwrap();
+        assert!(!texts(&with_header).contains("BBOXy450"));
+        assert!(texts(&with_header).contains("Cockpit first"));
+        let alone = doc
+            .body_element(ctx(), &Fonts, 576., &[])
+            .layout(Rect::new(0., 0., 576., 0.), ctx(), &Fonts)
+            .unwrap();
+        assert!(texts(&alone).contains("BBOXy450"));
+        assert_eq!(doc.source, source);
+    }
+    for source in [
+        "# Why a cockpit\nBody",
+        "## Vision\nBody",
+        "[ref]: https://example.test\n\n# Vision\nBody",
+        "# **Vision**\nBody",
+        " # Vision\nBody",
+        "# Vision ###\nBody",
+    ] {
+        let doc = parse(source);
+        let view = doc
+            .body_element_with_title(Some("Vision"), ctx(), &Fonts, 576., &[])
+            .layout(Rect::new(0., 0., 576., 0.), ctx(), &Fonts)
+            .unwrap();
+        assert!(
+            texts(&view).contains(if source.starts_with("# Why") {
+                "Why a cockpit"
+            } else {
+                "Vision"
+            }),
+            "{source}"
+        );
+    }
+    let source = "\u{feff}---\r\nid: fox\r\ntype: spec\r\ntitle: Vision\r\n---\r\n\r\n# VISION\r\n\r\n# Vision\r\nBody\r\n";
+    let doc = parse(source);
+    assert!(doc.source[doc.body_start..].starts_with("\r\n# VISION"));
+    let view = doc
+        .modal_element("vision.md", false, [1246., 900.], ctx(), &Fonts)
+        .layout(Rect::new(0., 0., 1246., 0.), ctx(), &Fonts)
+        .unwrap();
+    let t = texts(&view);
+    assert!(!t.contains("VISION"));
+    assert_eq!(
+        t.matches("Vision").count(),
+        2,
+        "header plus the second heading; remove only one H1"
+    );
+    assert_eq!(doc.source, source);
+}
+
+#[test]
+fn real_mermaid_is_a_drawing_card_and_wide_code_scrolls_without_scaling() {
     let src = format!(
         "```mermaid\nflowchart TD\n A --> B\n```\n\n```rust\n{}\n```\n",
         "long_token_".repeat(100)
@@ -80,8 +182,8 @@ fn real_mermaid_is_a_source_card_and_wide_code_scrolls_without_scaling() {
         .layout(Rect::new(0., 0., 300., 0.), ctx(), &Fonts)
         .unwrap();
     let value = texts(&layout);
-    assert!(value.contains("mermaid") && value.contains("Source") && value.contains("A --> B"));
-    assert!(!value.contains("Drawing"));
+    assert!(value.contains("flowchart") && value.contains("Source") && value.contains("Drawing"));
+    assert!(!value.contains("A --> B"));
     fn scroll(l: &c::Layout) -> bool {
         matches!(l.kind, c::LayoutKind::ScrollView { .. }) || l.children.iter().any(scroll)
     }

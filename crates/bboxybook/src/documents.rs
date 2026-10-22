@@ -25,6 +25,8 @@ pub const STATES: &[&str] = &[
     "broken frontmatter",
     "as modal",
     "modal · plain markdown",
+    "title in body",
+    "different first heading",
 ];
 pub fn cases() -> Vec<Case> {
     let mut all = vec![];
@@ -86,7 +88,17 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
             let available = [seat_rows::number(host, "w")?, seat_rows::number(host, "h")?];
             let markdown = bbt_doc::parse(&view.document.body);
             let element = view.element_with_body(ctx, &metrics, available, &|width| {
-                markdown.body_element(ctx, &metrics, width, &view.diagrams)
+                markdown.body_element_with_title(
+                    Some(if view.document.title.is_empty() {
+                        &view.document.path
+                    } else {
+                        &view.document.title
+                    }),
+                    ctx,
+                    &metrics,
+                    width,
+                    &view.diagrams,
+                )
             });
             let width = if view.modal {
                 980_f32.min(view.viewport[0] * 0.94).min(available[0])

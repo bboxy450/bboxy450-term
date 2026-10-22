@@ -15,6 +15,7 @@ pub fn parse(source: &str) -> Markdown {
     let blocks = Reader { events, at: 0 }.blocks(None);
     Markdown {
         source: source.into(),
+        body_start: offset,
         frontmatter,
         blocks,
     }
