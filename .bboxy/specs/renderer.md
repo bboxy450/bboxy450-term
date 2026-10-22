@@ -16,6 +16,10 @@ One `wgpu::Device` per process, Metal on macOS. Everything is drawn into one sur
 
 All geometry is retained between frames; only changed buffers upload. Damage tracking per seat row (alacritty) decides whether a frame is drawn at all. The glow is the only continuous animator and only for on-screen seats ([[ux-pick]] budget rule).
 
+## 1a. Blending (decided 2026-10-21 after W3.2d.2)
+
+Chrome and fx passes blend in sRGB (gamma) space so the native UI matches the CSS reference; text keeps linear-corrected blending ([[text-rendering]]). Shadows use a Gaussian kernel with sigma = blur/2 to match CSS box-shadow.
+
 ## 1b. Window transparency (operator, 2026-10-21, "semi transparency like iTerm2; our renderer supports it")
 
 The window is composited over the desktop with a per-window alpha and an optional background blur, like iTerm2's transparency and blur. Mechanism on macOS: a non-opaque `CAMetalLayer` (`isOpaque = false`, `wantsExtendedDynamicRangeContent` off), surface format `Bgra8UnormSrgb` with alpha, the window's `backgroundColor` clear and `isOpaque = false`, and `NSVisualEffectView` behind the layer for blur when the operator enables it (winit exposes transparency and the AppKit handle; the effect view is one AppKit call). The pane background pass writes alpha = the seat's background opacity token; chrome and text stay opaque so text contrast is never lost. Consequences the design must honour: **subpixel text is impossible over transparency**, which is already the grayscale decision in §2; the unfocused dim and the glow composite correctly over alpha because the fx pass runs last; the particle glow stays additive on dark and uses the darken path on light ([[ux-prototype]] §glow). Settings: window opacity (0.5–1.0), blur on/off and radius, per-swarm override. Tokens: `window.opacity`, `window.blur`. Linux: Wayland alpha surfaces work; blur is compositor-specific and off by default. bboxybook gets a `--transparent` flag that renders over a checkerboard so parity shots show the alpha.
