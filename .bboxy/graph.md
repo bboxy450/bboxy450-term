@@ -10,7 +10,7 @@ Last update: 2026-10-21 (Vesper Greywind <ORACLE>).
 |---|---|---|---|---|
 | Vesper Greywind | Oracle + Creativity | Claude Code | this graph, specs review, briefs | nothing |
 | Wren Thistledown (key 22c0e081…; was Lumen Foxglove, session reset 2026-10-21) | Creativity | Claude Code | **standing by**: lab complete (30 pages, design system v54, layer-reference pages for L2/L3/L6); awaiting the operator's review points. Previous queue: **UX queue, autonomous**: 19 drawn-not-built items in order (tick ladder → held count → nested subagent rows → gap marker → reconnect/restarted → pending row → stop/interrupt → listener count → row menu → cap notice → purge modal → audit lines → authority → bug row → invariant chip → first run); no checkpoints until the lab is complete (operator reviews once at the end); after pass 9: new pages documents.html, events.html, launcher.html, graph.html, stream.html, titlebar.html (operator ask), then passes 10-19, then window transparency | nothing |
-| Nyx Copperwing | Executor | Codex | **W3.2d.1e fractional-edge coverage (L1) + per-case acceptance policy**, then d.5 Button/List/Table/Input; d.1c ✔, kerning ✔ (ef1267c), d.4 ✔ (efacd88: text geometry 1.447→0.015 px); d.1d per-size SVG raster later; d.1 ✔, d.2 ✔, d.1b ✔ (materials 8/32, Style 56/88), d.3 ✔ (cc99459: atoms 103/112, worst 4.09%→1.55%); W3.2c steps 1–3 deferred until L7 modules are re-based | nothing |
+| Nyx Copperwing | Executor | Codex | **per-case acceptance policy ✔; d.1e withdrawn (CSS snapping kept, cause was the lab s-card class collision, Wren fixing)**, then d.5 Button/List/Table/Input; d.1c ✔, kerning ✔ (ef1267c), d.4 ✔ (efacd88: text geometry 1.447→0.015 px); d.1d per-size SVG raster later; d.1 ✔, d.2 ✔, d.1b ✔ (materials 8/32, Style 56/88), d.3 ✔ (cc99459: atoms 103/112, worst 4.09%→1.55%); W3.2c steps 1–3 deferred until L7 modules are re-based | nothing |
 | Rook Ashwhisker | Executor | Codex | **W2.2 logic: store objects, registry, .bboxy index, state streams, bus last** | nothing (authorized 2026-10-21) |
 | subagent gui-spec | Oracle instrument | Claude | done: `specs/gui-components.md` | — |
 | subagent net-spec | Oracle instrument | Claude | done: `specs/networking.md` | — |
@@ -58,7 +58,7 @@ W4.1 Transport trait + loopback + quinn auth [OPEN, no dependency]
 
 | State | Items |
 |---|---|
-| RUNNING | W3.2d.1e (Nyx); W2.2 (Rook) |
+| RUNNING | re-runs then W3.2d.5 (Nyx); W2.2 (Rook); s-card fix (Wren) |
 | OPEN, claimable now | W4.1, W1.2, W2.3 |
 | OPEN, after W2.1 | none, W2.1 is done |
 | PENDING SPEC | none |
