@@ -1,7 +1,7 @@
 //! The logic owner mediates keys, current grants, inboxes and the local bus.
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use ulid::Ulid;
@@ -35,6 +35,40 @@ struct Grant {
 struct Swarm {
     tree: Tree,
     ledger: Ledger,
+    /// Last reconcile pass: pending rowid -> (stored-bytes hash, message, recipient),
+    /// each message's resolution and each recipient's mute. A receipt whose bytes,
+    /// message resolution and recipient are all unchanged would reconcile to itself.
+    seen: HashMap<u64, (u128, u64, Ulid)>,
+    resolved: HashMap<u64, Option<Resolved>>,
+    muted: HashMap<Ulid, std::result::Result<bool, String>>,
+}
+
+/// A message's sender class, operator-direct flag and routes by (seat, agent), or the reason it cannot route.
+type Resolved = std::result::Result<(Class, bool, HashMap<(Ulid, Option<String>), Route>), String>;
+
+fn hash128(bytes: &[u8]) -> u128 {
+    // Two independent multiply-rotate lanes over 8-byte words, then a
+    // splitmix finish: fast enough to scan every pending row each pump.
+    fn mix(mut z: u64) -> u64 {
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^ (z >> 31)
+    }
+    let mut a = 0x9e37_79b9_7f4a_7c15 ^ bytes.len() as u64;
+    let mut b: u64 = 0xc2b2_ae3d_27d4_eb4f;
+    let (words, rest) = bytes.as_chunks::<8>();
+    for w in words {
+        let w = u64::from_le_bytes(*w);
+        a = (a ^ w).wrapping_mul(0x0000_0100_0000_01b3).rotate_left(31);
+        b = (b.wrapping_add(w))
+            .wrapping_mul(0xff51_afd7_ed55_8ccd)
+            .rotate_left(27)
+            ^ a;
+    }
+    let mut tail = [0u8; 8];
+    tail[..rest.len()].copy_from_slice(rest);
+    let w = u64::from_le_bytes(tail);
+    (u128::from(mix(a ^ w)) << 64) | u128::from(mix(b.wrapping_add(w) ^ a))
 }
 pub struct Messaging {
     root: PathBuf,
@@ -245,6 +279,9 @@ impl Messaging {
                 Swarm {
                     tree: Tree::open(store.clone(), id)?,
                     ledger: Ledger::open(store, id)?,
+                    seen: HashMap::new(),
+                    resolved: HashMap::new(),
+                    muted: HashMap::new(),
                 },
             );
         }
@@ -389,6 +426,7 @@ impl Messaging {
             .swarm(record.swarm)?
             .ledger
             .accept(&request, &envelope, &routes, held, now)?;
+        // Recipient mutes and paused subscriptions apply at once (held before the next pump).
         self.reconcile(now)?;
         Ok(message)
     }
@@ -650,64 +688,72 @@ impl Messaging {
                     break;
                 }
             }
+            // One pass sees one tree, registry and key set (only receipts change
+            // below), so each message is validated and resolved once and each
+            // recipient looked up once, not once per pending receipt. A receipt
+            // whose stored bytes, message resolution and recipient mute all match
+            // the previous pass would reconcile to itself, so it is not decoded.
+            let mut messages: HashMap<u64, (Option<Resolved>, bool)> = HashMap::new();
+            let mut targets: HashMap<Ulid, (std::result::Result<bool, String>, bool)> =
+                HashMap::new();
+            let mut seen = HashMap::new();
             let mut after = 0;
             loop {
-                let pending = self.swarm(swarm_id)?.ledger.pending(after, 4096)?;
+                let pending = self.swarm(swarm_id)?.ledger.pending_raw(after, 4096)?;
                 if pending.is_empty() {
                     break;
                 }
-                for (_, receipt) in &pending {
-                    let message = self
-                        .swarm(swarm_id)?
-                        .ledger
-                        .message(receipt.message_sequence)?;
-                    if matches!(message.envelope.body, Body::Presence { .. }) {
-                        continue;
-                    }
-                    let resolved = (|| -> Result<(Route, Class, Option<String>)> {
-                        let (sender, class, direct) = self.validate(&message.envelope)?;
-                        if sender.muted && !direct {
-                            return Err(invalid("sender muted"));
+                for (rowid, bytes) in &pending {
+                    let hash = hash128(bytes);
+                    let prev = self.swarm(swarm_id)?.seen.get(rowid).copied();
+                    if let Some((h, sequence, recipient)) = prev
+                        && h == hash
+                    {
+                        let message_same = self.resolve_once(swarm_id, sequence, &mut messages)?;
+                        let recipient_same = self.muted_once(swarm_id, recipient, &mut targets).1;
+                        if message_same && recipient_same {
+                            seen.insert(*rowid, (hash, sequence, recipient));
+                            continue;
                         }
-                        let routes = self.swarm(swarm_id)?.tree.resolve(
-                            if direct {
-                                Actor::Operator
-                            } else {
-                                Actor::Seat {
-                                    seat: sender.id,
-                                    class: sender.role.class,
-                                }
-                            },
-                            &message.envelope.context,
-                            message.envelope.kind,
-                            class,
-                            message.envelope.priority,
-                        )?;
-                        let route = routes
-                            .into_iter()
-                            .find(|r| r.seat == receipt.recipient && r.agent == receipt.agent)
-                            .ok_or_else(|| invalid("route removed or no longer eligible"))?;
-                        let target = self.registry.get(receipt.recipient)?;
-                        let held = if target.muted && !direct {
-                            Some("recipient muted".into())
-                        } else if route.arrivals.iter().all(|a| a.paused) {
-                            Some("subscription paused".into())
-                        } else {
-                            None
-                        };
-                        Ok((route, class, held))
-                    })();
+                    }
+                    let receipt: Receipt = serde_json::from_slice(bytes)?;
+                    seen.insert(*rowid, (hash, receipt.message_sequence, receipt.recipient));
+                    self.resolve_once(swarm_id, receipt.message_sequence, &mut messages)?;
+                    let Some(resolved) = &messages[&receipt.message_sequence].0 else {
+                        continue;
+                    };
+                    let resolved = match resolved {
+                        Err(e) => Err(e.clone()),
+                        Ok((class, direct, by)) => match by
+                            .get(&(receipt.recipient, receipt.agent.clone()))
+                        {
+                            None => Err(invalid("route removed or no longer eligible").to_string()),
+                            Some(route) => self
+                                .muted_once(swarm_id, receipt.recipient, &mut targets)
+                                .0
+                                .map(|muted| {
+                                    let held = if muted && !*direct {
+                                        Some("recipient muted".into())
+                                    } else if route.arrivals.iter().all(|a| a.paused) {
+                                        Some("subscription paused".into())
+                                    } else {
+                                        None
+                                    };
+                                    (route.clone(), *class, held)
+                                }),
+                        },
+                    };
                     match resolved {
                         Ok((route, class, held)) => self.swarm(swarm_id)?.ledger.update_policy(
-                            receipt.clone(),
+                            receipt,
                             Some(&route),
                             held,
                             class,
                         )?,
                         Err(e) => self.swarm(swarm_id)?.ledger.update_policy(
-                            receipt.clone(),
+                            receipt,
                             None,
-                            Some(e.to_string()),
+                            Some(e),
                             Class::Worker,
                         )?,
                     }
@@ -717,8 +763,83 @@ impl Messaging {
                     break;
                 }
             }
+            let sw = self.swarm(swarm_id)?;
+            sw.seen = seen;
+            sw.resolved = messages.into_iter().map(|(k, (r, _))| (k, r)).collect();
+            sw.muted = targets.into_iter().map(|(k, (m, _))| (k, m)).collect();
         }
         Ok(())
+    }
+    /// Resolves message `sequence` into `memo` once per pass; true when it equals the last pass's.
+    fn resolve_once(
+        &mut self,
+        swarm_id: Ulid,
+        sequence: u64,
+        memo: &mut HashMap<u64, (Option<Resolved>, bool)>,
+    ) -> Result<bool> {
+        if let Some(hit) = memo.get(&sequence) {
+            return Ok(hit.1);
+        }
+        let message = self.swarm(swarm_id)?.ledger.message(sequence)?;
+        let entry = if matches!(message.envelope.body, Body::Presence { .. }) {
+            None
+        } else {
+            Some(
+                (|| -> Result<_> {
+                    let (sender, class, direct) = self.validate(&message.envelope)?;
+                    if sender.muted && !direct {
+                        return Err(invalid("sender muted"));
+                    }
+                    let routes = self.swarm(swarm_id)?.tree.resolve(
+                        if direct {
+                            Actor::Operator
+                        } else {
+                            Actor::Seat {
+                                seat: sender.id,
+                                class: sender.role.class,
+                            }
+                        },
+                        &message.envelope.context,
+                        message.envelope.kind,
+                        class,
+                        message.envelope.priority,
+                    )?;
+                    // First route per (seat, agent), as a linear `find` picks.
+                    let mut by = HashMap::new();
+                    for r in routes {
+                        by.entry((r.seat, r.agent.clone())).or_insert(r);
+                    }
+                    Ok((class, direct, by))
+                })()
+                .map_err(|e| e.to_string()),
+            )
+        };
+        let same = self.swarm(swarm_id)?.resolved.get(&sequence) == Some(&entry);
+        memo.insert(sequence, (entry, same));
+        Ok(same)
+    }
+    /// This pass's mute of `recipient`, and whether it equals the last pass's.
+    fn muted_once(
+        &mut self,
+        swarm_id: Ulid,
+        recipient: Ulid,
+        memo: &mut HashMap<Ulid, (std::result::Result<bool, String>, bool)>,
+    ) -> (std::result::Result<bool, String>, bool) {
+        if let Some(hit) = memo.get(&recipient) {
+            return hit.clone();
+        }
+        let muted = self
+            .registry
+            .get(recipient)
+            .map(|t| t.muted)
+            .map_err(|e| e.to_string());
+        let same = self
+            .swarm(swarm_id)
+            .ok()
+            .and_then(|s| s.muted.get(&recipient))
+            == Some(&muted);
+        memo.insert(recipient, (muted.clone(), same));
+        (muted, same)
     }
     pub fn ready(&mut self, now: u64) -> Result<Vec<(Ulid, Ulid)>> {
         self.recover_notices()?;

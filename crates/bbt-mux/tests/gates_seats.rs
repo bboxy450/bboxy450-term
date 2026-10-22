@@ -7,6 +7,11 @@
 //! 32kB/s), `GATE_SECONDS` (load time, 20), `GATE_RUN_DIR` (parent of the
 //! run directory, /tmp), `GATE_BUDGET`.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "measurement fixture IO, not the UI thread"
+)]
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -420,6 +425,22 @@ fn gate_bus() {
     pumps.sort_by(f64::total_cmp);
     sends.sort_by(f64::total_cmp);
     let disk = disk_bytes(run.path());
+    let row_bytes: f64 = rusqlite::Connection::open(
+        run.path()
+            .join(format!("swarm-{swarm}"))
+            .join("object.sqlite"),
+    )
+    .and_then(|db| {
+        db.query_row(
+            "SELECT COALESCE(AVG(LENGTH(data)),0) FROM msg_deliveries",
+            [],
+            |r| r.get(0),
+        )
+    })
+    .unwrap_or(0.0);
+    if std::env::var("GATE_DEBUG").is_ok() {
+        eprintln!("delivery_row_bytes={row_bytes:.0}");
+    }
     assert!(!lat.is_empty(), "no deliveries");
     budget(
         "bus",
