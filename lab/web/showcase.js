@@ -85,45 +85,19 @@
   const open = new Set([model.spaces[0].key]);   // which cohort blocks are open: band click toggles, focus never touches it
   for (const sp of model.spaces) { sp.participants = sp.participants || []; sp.stream = []; sp.epics = []; sp.history = []; }
   const now = () => new Date().toTimeString().slice(0, 5);
-  model.spaces[0].history.push(
-    { time: '13:40', seat: 'Nyx Copperwing', seatColor: '#FF4FA3', event: 'created', kind: 'pr', ref: 'bboxy450-term#14', grade: 'reported' },
-    { time: '13:41', seat: 'CI', event: 'created', kind: 'image', ref: 'target/render/smoke/jetbrains-mono-16px-2x-dark.png', grade: 'reported' },
-    { time: '13:52', seat: 'Nyx Copperwing', seatColor: '#FF4FA3', event: 'claimed', kind: 'pr', ref: 'bboxy450-term#14', grade: 'reported' },
-    { time: '14:03', seat: 'Rook Ashwhisker', seatColor: '#2EE6A8', event: 'modified', kind: 'markdown', ref: '.bboxy/research/gpu-terminals-rust.md', grade: 'inferred' });
+  model.spaces[0].history.push(...FIX.history.map(x => ({ ...x })));
   seats[1].touched = 2; seats[3].touched = 1;
   // running subagents nest under their seat (Claude via OSC 7501 id/title, Codex via subagent hooks); ended ones leave the sidebar
   seats[0].subagents = [{ id: 'a1', description: 'Explore render goldens', state: 'active', detail: 'Grep · bbt-render' }, { id: 'a2', description: 'Review W3.2a diff', state: 'waiting', kind: 'permission', detail: 'Bash · cargo test' }];
   seats[1].subagents = [{ id: 'c1', description: 'worker: ring checksum', state: 'active' }];
-  seats[3].gap = { from: '09:14:07' };
-  seats[0].listeners = 2; seats[1].listeners = 1;  // clients on the seat socket: counts only  // a long-running cloud seat whose ring evicted its oldest output
+  seats[3].gap = { from: '09:14:07' };  // a long-running cloud seat whose ring evicted its oldest output
+  seats[0].listeners = 2; seats[1].listeners = 1;  // clients on the seat socket: counts only
   // subscriptions and external events (events.md): auto-subscriptions follow delegation; external arrives from webhooks, CI, cloud, cron
-  model.spaces[0].subscriptions = [
-    { seat: 'Vesper Greywind', color: '#FFC53D', patterns: [{ pattern: 'task/*', auto: true, why: 'the Oracle follows every task it delegated' }, { pattern: 'seat/*/state' }, { pattern: 'doc/specs/**' }] },
-    { seat: 'Nyx Copperwing', color: '#FF4FA3', patterns: [{ pattern: 'task/w2-1', auto: true, why: 'its delegated task' }, { pattern: 'doc/specs/mux-daemon', auto: true, why: 'derived_from of the task' }, { pattern: 'doc/specs/events', auto: true, why: 'derived_from of the task' }, { pattern: 'artifact/*/for:w2-1' }] },
-    { seat: 'Rook Ashwhisker', color: '#2EE6A8', patterns: [{ pattern: 'task/w4-1', auto: true, why: 'its delegated task' }, { pattern: 'doc/specs/networking', auto: true, why: 'derived_from of the task' }] },
-  ];
-  model.spaces[0].external = [
-    { source: 'github', text: 'PR #14 review requested · bboxy450/bboxy450-term', time: '13:45' },
-    { source: 'ci', text: 'macos-15 · render smoke · passed (51 PNGs)', time: '13:58' },
-    { source: 'cloud', text: 'eu-2 · seat rig-codex reconnected', time: '14:10' },
-    { source: 'cron', text: 'daily checkpoint signed · .bboxy/log/', time: '23:59' },
-  ];
+  model.spaces[0].subscriptions = FIX.subscriptions.map(x => ({ ...x }));
+  model.spaces[0].external = FIX.external.map(x => ({ ...x }));
   let extOpen = true;
   // provenance fixture: items with weighted derived_from in the annotation form, signed digests, a hash-chained log
-  model.spaces[0].provenance = {
-    items: [
-      { type: 'spec', title: 'renderer.md', created_by: 'Vesper Greywind', createdColor: '#FFC53D', updated_by: 'Nyx Copperwing', updatedColor: '#FF4FA3', derived_from: '[[gpu-terminals-rust]]{derives:0.6} [[ux-prototype|ux spec]]{constrains:0.3} [[kittens-events]]{derives:0.1}', digest: { content: 'b3f9c0d2a7e14c88', signed: true, by: 'Boxy (primary)' } },
-      { type: 'task', title: 'W3.1 renderer harness', created_by: 'Vesper Greywind', createdColor: '#FFC53D', updated_by: 'Nyx Copperwing', updatedColor: '#FF4FA3', derived_from: '[[renderer]]{derives:1.0}', digest: { content: '7a21ee90cc4f1b03', signed: true, by: 'Boxy (primary)' } },
-      { type: 'bug', title: 'glyphs upside down in smoke', created_by: 'Nyx Copperwing', createdColor: '#FF4FA3', derived_from: '[[renderer]]{violates:1.0} [[inv-upright-text|upright text]]{violates:1.0}', digest: { content: '0d4c51f2b9a3e6d7', signed: false } },
-    ],
-    log: [
-      { hash: 'a91f3c2e', time: '13:40', text: 'Nyx Copperwing created pr bboxy450-term#14' },
-      { hash: 'c47b08d1', time: '13:52', text: 'Nyx Copperwing claimed bboxy450-term#14' },
-      { hash: 'e2d9a570', time: '14:03', text: 'Rook Ashwhisker modified gpu-terminals-rust.md' },
-      { hash: 'f00c3b9e', time: '14:30', text: 'Vesper Greywind accepted W3.1' },
-      { hash: '5be71a44', time: '23:59', checkpoint: true, by: 'Boxy (primary)' },
-    ],
-  };
+  model.spaces[0].provenance = JSON.parse(JSON.stringify(FIX.provenance));
   model.spaces[0].epics.push(
     { id: 'e1', title: 'W3 renderer', open: true, items: [
       { id: 's1', type: 'spec', title: 'renderer.md', state: 'accepted' },

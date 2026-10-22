@@ -312,14 +312,17 @@
       });
     }
     tree.append(pre);
-    root.append(agents, tree);
-    if (opts.subscriptions) root.append(subscriptionsCard(opts.subscriptions));
-    if (opts.provenance) root.append(provenanceCard(opts.provenance));
+    // opts.only: render a subset of cards (graph.html deep links); default all
+    const want = k => !opts.only || opts.only.includes(k);
+    if (want('agents')) root.append(agents);
+    if (want('work')) root.append(tree);
+    if (opts.subscriptions && want('subscriptions')) root.append(subscriptionsCard(opts.subscriptions));
+    if (opts.provenance && want('provenance')) root.append(provenanceCard(opts.provenance));
     const hist = opts.history || [];
     if (hist.length) {
       const h = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Artifact history · ' + hist.length)));
       for (const ev of hist.slice(-12).reverse()) h.append(el('div', { class: 'g-hist' }, el('span', { class: 'htime' }, ev.time), el('span', { class: 'hseat', style: 'color:' + (ev.seatColor || 'var(--fg)') }, ev.seat), el('span', { class: 'hev ' + ev.event }, ev.event), el('span', { class: 'aglyph' }, ART_GLYPH[ev.kind] || '▢'), el('span', { class: 'href' }, ev.ref), el('span', { class: 'hgrade ' + (ev.grade || 'inferred') }, ev.grade || 'inferred')));
-      root.append(h);
+      if (want('history')) root.append(h);
     }
     return root;
   }

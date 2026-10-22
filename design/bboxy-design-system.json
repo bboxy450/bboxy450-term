@@ -1,6 +1,6 @@
 {
   "name": "bboxy design system",
-  "version": 33,
+  "version": 34,
   "date": "2026-10-21",
   "owner": "operator (bboxy450); written by Lumen Foxglove <CREATIVITY> from the lab",
   "sources": {
@@ -710,7 +710,8 @@
         "rows link to seats (click focuses later)",
         "artifacts hang under their task in the tree as ├─ leaves with the responsible chip"
       ],
-      "status": "built"
+      "status": "built",
+      "page": "graph.html?state=full|agents|work-tree|subscriptions|provenance|artifact-history|empty-swarm; graphPage(opts.only) renders a subset; data from fixtures.js shared with the showcase"
     },
     "provenance_card": {
       "purpose": "where an item came from and who touched it, with proof",
