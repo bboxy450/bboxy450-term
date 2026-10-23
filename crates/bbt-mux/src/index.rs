@@ -1,6 +1,7 @@
 //! Repository-local Markdown mirror and weighted graph projections.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::sync::{
     Arc,
@@ -18,6 +19,12 @@ use ulid::Ulid;
 use crate::store::{Result, Store, digest, events::Draft, invalid, sqlite::SqliteStore};
 
 const MAX_DOCUMENT: u64 = 2 * 1024 * 1024;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct FileState {
+    len: u64,
+    modified: std::time::SystemTime,
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Link {
@@ -184,6 +191,11 @@ pub struct Index {
     store: SqliteStore,
     pub documents: BTreeMap<String, Document>,
     pub graphs: BTreeMap<GraphKind, DiGraph<String, Link>>,
+    // A reopened index cold-reconciles its root. Persisted documents alone do
+    // not prove that an on-disk file still has the same contents.
+    file_states: BTreeMap<String, FileState>,
+    #[cfg(test)]
+    document_reads: usize,
 }
 
 impl Index {
@@ -195,6 +207,9 @@ impl Index {
             store,
             documents: BTreeMap::new(),
             graphs: BTreeMap::new(),
+            file_states: BTreeMap::new(),
+            #[cfg(test)]
+            document_reads: 0,
         };
         index.store.connection()?.execute_batch("CREATE TABLE IF NOT EXISTS document_outbox(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,payload BLOB NOT NULL)")?;
         for (_, bytes) in index.store.list("doc/")? {
@@ -209,6 +224,7 @@ impl Index {
         let mut paths = Vec::new();
         collect(&self.root, &mut paths)?;
         let mut seen = BTreeSet::new();
+        let mut changed = false;
         let mut events = {
             let db = self.store.connection()?;
             let mut statement = db.prepare("SELECT payload FROM document_outbox ORDER BY seq")?;
@@ -220,18 +236,39 @@ impl Index {
                 .map(|bytes| Ok(serde_json::from_slice(&bytes)?))
                 .collect::<Result<Vec<Draft>>>()?
         };
-        for path in paths {
+        for (path, metadata) in paths {
             let relative = path.strip_prefix(&self.root)?.to_string_lossy().to_string();
+            let state = FileState {
+                len: metadata.len(),
+                modified: metadata.modified()?,
+            };
+            if self.file_states.get(&relative) == Some(&state) {
+                seen.insert(relative);
+                continue;
+            }
+            #[cfg(test)]
+            {
+                self.document_reads += 1;
+            }
+            let mut bytes = Vec::new();
+            std::fs::File::open(&path)?
+                .take(MAX_DOCUMENT + 1)
+                .read_to_end(&mut bytes)?;
+            if bytes.len() as u64 > MAX_DOCUMENT {
+                oversized(&path, bytes.len() as u64);
+                continue;
+            }
             seen.insert(relative.clone());
-            let text = std::fs::read_to_string(&path)?;
-            let doc = Document::parse(&relative, &text);
+            let text = String::from_utf8(bytes)?;
             if self
                 .documents
                 .get(&relative)
-                .is_some_and(|old| old.digest == doc.digest)
+                .is_some_and(|old| old.digest == digest(text.as_bytes()))
             {
+                self.file_states.insert(relative, state);
                 continue;
             }
+            let doc = Document::parse(&relative, &text);
             let event_start = events.len();
             let kind = if self.documents.contains_key(&relative) {
                 "modified"
@@ -273,7 +310,9 @@ impl Index {
                 )?;
             }
             tx.commit()?;
+            self.file_states.insert(relative.clone(), state);
             self.documents.insert(relative, doc);
+            changed = true;
         }
         let removed: Vec<_> = self
             .documents
@@ -304,9 +343,13 @@ impl Index {
                     )?;
                 }
                 tx.commit()?;
+                changed = true;
             }
         }
-        self.rebuild_graphs();
+        self.file_states.retain(|path, _| seen.contains(path));
+        if changed {
+            self.rebuild_graphs();
+        }
         Ok(events)
     }
     /// Called only after the bus confirms append; retry uses the same event ID.
@@ -503,7 +546,14 @@ impl Index {
     }
 }
 
-fn collect(directory: &Path, paths: &mut Vec<PathBuf>) -> Result<()> {
+fn oversized(path: &Path, bytes: u64) {
+    eprintln!(
+        "IndexDocumentTooLarge: skipped {} ({bytes} bytes, limit {MAX_DOCUMENT})",
+        path.display()
+    );
+}
+
+fn collect(directory: &Path, paths: &mut Vec<(PathBuf, std::fs::Metadata)>) -> Result<()> {
     for entry in std::fs::read_dir(directory)? {
         let entry = entry?;
         let kind = entry.file_type()?;
@@ -513,13 +563,12 @@ fn collect(directory: &Path, paths: &mut Vec<PathBuf>) -> Result<()> {
         if kind.is_dir() {
             collect(&entry.path(), paths)?;
         } else if entry.path().extension().is_some_and(|e| e == "md") {
-            if entry.metadata()?.len() > MAX_DOCUMENT {
-                return Err(invalid(format!(
-                    "document exceeds 2 MiB: {}",
-                    entry.path().display()
-                )));
+            let metadata = entry.metadata()?;
+            if metadata.len() > MAX_DOCUMENT {
+                oversized(&entry.path(), metadata.len());
+                continue;
             }
-            paths.push(entry.path());
+            paths.push((entry.path(), metadata));
         }
     }
     Ok(())
@@ -535,18 +584,36 @@ pub struct FileWatch {
 impl FileWatch {
     pub fn start(root: &Path) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
+        let root = root.canonicalize()?;
+        let watched_root = root.clone();
         let dirty = Arc::new(AtomicBool::new(true));
         let failed = Arc::new(AtomicBool::new(false));
         let d = dirty.clone();
         let f = failed.clone();
         let mut watcher =
             notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
-                d.store(true, Ordering::Release);
-                if event.is_err() {
-                    f.store(true, Ordering::Release);
+                match event {
+                    Ok(event) => {
+                        // Reconciliation reads must not trigger another scan.
+                        if matches!(event.kind, notify::EventKind::Access(_)) {
+                            return;
+                        }
+                        if event.paths.is_empty()
+                            || event
+                                .paths
+                                .iter()
+                                .any(|path| path.starts_with(&watched_root))
+                        {
+                            d.store(true, Ordering::Release);
+                        }
+                    }
+                    Err(_) => {
+                        f.store(true, Ordering::Release);
+                        d.store(true, Ordering::Release);
+                    }
                 }
             })?;
-        watcher.watch(root, RecursiveMode::Recursive)?;
+        watcher.watch(&root, RecursiveMode::Recursive)?;
         Ok(Self {
             _watcher: watcher,
             dirty,
@@ -558,5 +625,185 @@ impl FileWatch {
     }
     pub fn failed(&self) -> bool {
         self.failed.load(Ordering::Acquire)
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "Disposable filesystem index/watcher fixtures."
+)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, Instant, UNIX_EPOCH};
+
+    fn scan_and_ack(index: &mut Index) -> Vec<Draft> {
+        let events = index.scan().unwrap();
+        for event in &events {
+            index.acknowledge(event.id).unwrap();
+        }
+        events
+    }
+
+    fn stamp(path: &Path, seconds: u64) {
+        std::fs::File::options()
+            .write(true)
+            .open(path)
+            .unwrap()
+            .set_modified(UNIX_EPOCH + Duration::from_secs(seconds))
+            .unwrap();
+    }
+
+    #[test]
+    fn unchanged_documents_are_not_reread_and_same_length_edits_are_indexed() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        let state = temp.path().join("state");
+        let mut index = Index::open(&root, SqliteStore::open(&state).unwrap()).unwrap();
+        let path = root.join("note.md");
+        std::fs::write(&path, "first [[peer]]").unwrap();
+        stamp(&path, 10);
+        assert_eq!(scan_and_ack(&mut index).len(), 2);
+        assert_eq!(index.document_reads, 1);
+        for _ in 0..20 {
+            assert!(scan_and_ack(&mut index).is_empty());
+        }
+        assert_eq!(
+            index.document_reads, 1,
+            "unchanged metadata must bypass file open/read"
+        );
+        std::fs::write(&path, "other [[peer]]").unwrap();
+        stamp(&path, 20);
+        assert_eq!(scan_and_ack(&mut index).len(), 2);
+        assert_eq!(index.documents["note.md"].body, "other [[peer]]");
+        assert_eq!(index.document_reads, 2);
+        // A metadata-only change reads once, without reparsing or publishing.
+        stamp(&path, 30);
+        assert!(scan_and_ack(&mut index).is_empty());
+        assert_eq!(index.document_reads, 3);
+        assert!(scan_and_ack(&mut index).is_empty());
+        assert_eq!(index.document_reads, 3);
+        drop(index);
+        let mut index = Index::open(&root, SqliteStore::open(&state).unwrap()).unwrap();
+        assert!(scan_and_ack(&mut index).is_empty());
+        assert_eq!(
+            index.document_reads, 1,
+            "restart must cold-reconcile persisted documents"
+        );
+        std::fs::remove_file(&path).unwrap();
+        assert_eq!(scan_and_ack(&mut index).len(), 2);
+        assert!(index.documents.is_empty());
+        assert!(index.file_states.is_empty());
+    }
+
+    #[test]
+    fn oversized_documents_are_skipped_without_blocking_valid_edits() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        let mut index = Index::open(
+            &root,
+            SqliteStore::open(&temp.path().join("state")).unwrap(),
+        )
+        .unwrap();
+        let large = root.join("large.md");
+        std::fs::File::create(&large)
+            .unwrap()
+            .set_len(MAX_DOCUMENT + 1)
+            .unwrap();
+        std::fs::write(root.join("good.md"), "valid").unwrap();
+        assert_eq!(scan_and_ack(&mut index).len(), 2);
+        assert_eq!(index.documents.len(), 1);
+        assert_eq!(index.documents["good.md"].body, "valid");
+        assert_eq!(
+            index.document_reads, 1,
+            "oversized metadata is rejected before reading"
+        );
+        std::fs::write(&large, "small again").unwrap();
+        assert_eq!(scan_and_ack(&mut index).len(), 2);
+        assert_eq!(index.documents["large.md"].body, "small again");
+        std::fs::File::options()
+            .write(true)
+            .open(&large)
+            .unwrap()
+            .set_len(MAX_DOCUMENT + 1)
+            .unwrap();
+        std::fs::write(root.join("good.md"), "edited valid").unwrap();
+        assert_eq!(scan_and_ack(&mut index).len(), 4);
+        assert!(!index.documents.contains_key("large.md"));
+        assert_eq!(index.documents["good.md"].body, "edited valid");
+    }
+
+    fn wait_for_change(watch: &FileWatch) {
+        let until = Instant::now() + Duration::from_secs(5);
+        while !watch.changed() {
+            assert!(!watch.failed(), "filesystem watcher failed");
+            assert!(Instant::now() < until, "in-root edit was not observed");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    fn settle(watch: &FileWatch) {
+        let until = Instant::now() + Duration::from_secs(5);
+        let mut quiet_since = Instant::now();
+        while quiet_since.elapsed() < Duration::from_millis(500) {
+            assert!(!watch.failed(), "filesystem watcher failed");
+            assert!(Instant::now() < until, "filesystem watcher did not settle");
+            if watch.changed() {
+                quiet_since = Instant::now();
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        let mut index = Index::open(
+            &root,
+            SqliteStore::open(&temp.path().join("state")).unwrap(),
+        )
+        .unwrap();
+        std::fs::create_dir_all(temp.path().join("target/deep")).unwrap();
+        std::fs::create_dir_all(temp.path().join(".git/objects")).unwrap();
+        let watch = FileWatch::start(&root).unwrap();
+        assert!(watch.changed());
+        let path = root.join("note.md");
+        std::fs::write(&path, "initial").unwrap();
+        wait_for_change(&watch);
+        scan_and_ack(&mut index);
+        settle(&watch);
+        let reads = index.document_reads;
+        for i in 0..32 {
+            std::fs::write(
+                temp.path().join(format!("target/deep/{i}.md")),
+                "build output",
+            )
+            .unwrap();
+            std::fs::write(
+                temp.path().join(format!(".git/objects/{i}.md")),
+                "git output",
+            )
+            .unwrap();
+        }
+        std::fs::write(temp.path().join("README.md"), "outside the index").unwrap();
+        let until = Instant::now() + Duration::from_secs(1);
+        let mut scans = 0;
+        while Instant::now() < until {
+            assert!(!watch.failed());
+            if watch.changed() {
+                scans += 1;
+                scan_and_ack(&mut index);
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(scans, 0, "sibling writes must not trigger a scan");
+        assert_eq!(index.document_reads, reads);
+        assert_eq!(index.documents.len(), 1);
+        std::fs::write(&path, "edited inside .bboxy").unwrap();
+        wait_for_change(&watch);
+        assert_eq!(scan_and_ack(&mut index).len(), 2);
+        assert_eq!(index.documents["note.md"].body, "edited inside .bboxy");
+        assert_eq!(index.document_reads, reads + 1);
     }
 }

@@ -33,8 +33,8 @@ struct Fixture {
 impl Fixture {
     fn new() -> Self {
         let temp = tempfile::tempdir().unwrap();
-        let repository = temp.path().join(".bboxy");
-        std::fs::create_dir_all(repository.join("tasks")).unwrap();
+        let repository = temp.path().join("repository");
+        std::fs::create_dir_all(repository.join(".bboxy/tasks")).unwrap();
         let swarm = Ulid::new();
         let task = Ulid::new();
         let foreign_task = Ulid::new();
@@ -49,7 +49,7 @@ impl Fixture {
             (task, own.id, "Own fixture task"),
             (foreign_task, outside.id, "Foreign fixture task"),
         ] {
-            std::fs::write(repository.join(format!("tasks/{id}.md")),format!("---\nid: {id}\ntype: task\ntitle: {title}\nstatus: running\nassignee: {seat}\nverify: 'true'\n---\nSynthetic fixture brief only.\n")).unwrap();
+            std::fs::write(repository.join(format!(".bboxy/tasks/{id}.md")),format!("---\nid: {id}\ntype: task\ntitle: {title}\nstatus: running\nassignee: {seat}\nverify: 'true'\n---\nSynthetic fixture brief only.\n")).unwrap();
         }
         let config = LogicConfig {
             run_dir: temp.path().join("run"),

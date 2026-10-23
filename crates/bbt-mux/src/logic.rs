@@ -801,10 +801,10 @@ impl Worker {
         let connections = Connections::open(providers)?;
         let registry = Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
         let index = Index::open(
-            &config.repository,
+            &config.repository.join(".bboxy"),
             SqliteStore::open(&object_dir(&config.run_dir, "index")?)?,
         )?;
-        let watch = FileWatch::start(&config.repository)?;
+        let watch = FileWatch::start(&config.repository.join(".bboxy"))?;
         // macOS sockaddr_un has a short path bound. A fresh private namespace
         // also avoids stealing any prior logic instance's listener on restart.
         use std::os::unix::fs::DirBuilderExt;
