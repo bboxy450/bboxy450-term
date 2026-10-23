@@ -1,0 +1,14 @@
+[
+  {
+    "stage": 3,
+    "child_pid": 55116,
+    "child_exit": 0,
+    "wall_seconds": 61.103589083009865
+  },
+  {
+    "stage": 4,
+    "child_pid": 56695,
+    "child_exit": 101,
+    "wall_seconds": 1.192838707996998
+  }
+]

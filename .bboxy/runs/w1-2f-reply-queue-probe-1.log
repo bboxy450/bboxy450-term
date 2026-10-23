@@ -1,0 +1,29 @@
+SOURCE=1cd4a528ae97eed07ad80a7406e9d583b84b6ed7
+COMMAND=['cargo', 'test', '-p', 'bbt-mux', '--test', 'socket_backlog', '--locked', '--', '--exact', 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic', '--nocapture', '--test-threads=1']
+OWN_CARGO_PID=66786
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 12.91s
+     Running tests/socket_backlog.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/socket_backlog-b85444e384592457)
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... socket backlog: owned_pid=66950 seat=01M5KTZ9R6Z4TBZA2BNF8JM7ZY
+socket backlog: 10000 requests completed in 717.153333ms
+supervisor reply queue full: request=01M5KTZAK7B0E8XWJVQQN3ZVQQ
+socket backlog supervisor request Discriminant(6) failed: Custom { kind: InvalidData, error: "supervisor disconnected" }
+
+thread 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic' (12737478) panicked at crates/bbt-mux/tests/socket_backlog.rs:148:9:
+socket backlog failure: observation=Ok(Err(Custom { kind: InvalidData, error: "logic stopped" })), actor_exit=Err(Custom { kind: InvalidData, error: "supervisor disconnected" }), requests=10000, replayed=6, exit_sequence=0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    socket_request_flood_replays_exact_output_and_delivers_exit_to_logic
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.94s
+
+error: test failed, to rerun pass `-p bbt-mux --test socket_backlog`
+CHILD_EXIT=101
+WALL_SECONDS=14.103

@@ -1,0 +1,24 @@
+SOURCE=7dbd3d6349c6ac93101ea234e4cd1f5843b1fe68
+COMMAND=['cargo', 'test', '-p', 'bbt-mux', '--test', 'logic_exit', '--locked', '--', '--nocapture']
+OWN_CARGO_PID=19806
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 54.94s
+     Running tests/logic_exit.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/logic_exit-0cef417e9411080f)
+
+running 1 test
+
+thread 'queued_and_later_callers_keep_the_worker_error_and_panic_cause' (12984586) panicked at crates/bbt-mux/tests/logic_exit.rs:108:13:
+lost underlying cause: logic stopped
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test queued_and_later_callers_keep_the_worker_error_and_panic_cause ... FAILED
+
+failures:
+
+failures:
+    queued_and_later_callers_keep_the_worker_error_and_panic_cause
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p bbt-mux --test logic_exit`
+CHILD_EXIT=101

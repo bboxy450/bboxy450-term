@@ -1,0 +1,17 @@
+SOURCE=32b7b07a9d585a1c4ad51b87a1ecf492a867438d
+COMMAND=['cargo', 'test', '-p', 'bbt-mux', '--test', 'socket_backlog', '--locked', '--', '--exact', 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic', '--nocapture', '--test-threads=1']
+OWN_CARGO_PID=46001
+   Compiling bbt-mux v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 2.00s
+     Running tests/socket_backlog.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/socket_backlog-b85444e384592457)
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... socket backlog: owned_pid=46234 seat=01M5KTCDPEJQJTBZN1E3YFE9WN
+socket backlog: 10000 requests completed in 7.148007125s
+socket backlog: requests=10000, exact_bytes=67108877, sha256=9ce315ede056aaa42a4a7f6dba33c1e82ae80b2d8932f01221b8af579187f844, exit_sequence=4316, logic_replayed_records=4314
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 73.66s
+
+CHILD_EXIT=0
+WALL_SECONDS=75.930
