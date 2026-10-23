@@ -559,7 +559,11 @@ briefs Executors from the specs, never from this note.
     [[work-items]]: proposal → red-team comments by a Claude Executor seat
     → decision → spec, every record signed and digest-pinned so the whole
     argument lives in provenance. The plugin research and spec are the first
-    red-team subject once the research lands.
+    red-team subject once the research lands. Outside the cockpit,
+    comments and proposals are commit-signed files with an inferred author
+    grade; seat-leaf signing and a claim upgrade them to reported when the
+    reviewer runs as a seat (Oracle's gap, same day). Rejected: a second
+    signing path for ICQ sessions (the cockpit is the path).
 
 ## Specs to touch (Architect, in this order)
 
