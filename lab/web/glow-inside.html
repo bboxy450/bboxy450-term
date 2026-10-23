@@ -47,6 +47,8 @@ const VARIANTS = [
     say: L => `A 2 px rim just inside the border, crests sliding round it. The thinnest reading that still moves. Gains ${L - GAP} px per pair; the lane setting does not apply.` },
   { id: 'underline', mode: 4, gap: GAP, title: 'Wild card: a breathing header underline',
     say: L => `A 2 px line under the title strip that breathes and carries a travelling crest. Reads like a progress pulse. Gains ${L - GAP} px per pair.` },
+  { id: 'top-silk', mode: 6, gap: GAP, title: 'Header top: silk along the top edge, breathing',
+    say: L => `The silk moved inside and kept only as a ${Math.min(L, 8)} px glow along the top of the title strip, fading down into it, breathing like the underline. Body and sides stay clean. Gains ${L - GAP} px per pair.` },
   { id: 'ember', mode: 5, gap: GAP, title: 'Wild card: an ember on the edge',
     say: L => `One soft ember travels the inside edge with a fading tail: busier seats run it faster, waiting seats glow amber. Gains ${L - GAP} px per pair.` },
 ];
@@ -104,6 +106,9 @@ void main(){
       float m = (1. - smoothstep(-.6, 0., d));
       float x = (p.x - R.x)/R.z, crest = exp(-pow((fract(x - t*.18) - .5)/.12, 2.));
       if (m > 0.) I = (.35 + .25*(.5 - .5*cos(time/1800.*TAU)) + .6*crest)*m;
+    } else if (uMode == 6) {                // top silk: [0, In] down from the strip's top edge, silk + the underline's breath
+      float y = p.y - R.y, m = (1. - smoothstep(-.6, 0., d))*(1. - smoothstep(uIn - .6, uIn, y));
+      if (m > 0.) I = 1.25*silk(clamp(y/uIn, 0., 1.), p.x - R.x, R.z, t)*(.75 + .25*(.5 - .5*cos(time/1800.*TAU)))*m;
     } else {                                // ember: one travelling ember with a tail, inside the padding
       float m = smoothstep(0., .6, -d)*(1. - smoothstep(uIn - .6, uIn, -d));
       float head = fract(t*.09 + uP[i].z*.0001)*P, back = mod(head - s, P);
@@ -113,7 +118,7 @@ void main(){
     I *= amp * mix(1., 1.3, uP[i].y);
     if (act == 2.) I *= .6 + .4*(.5 - .5*cos(time/1600.*TAU));
     I = clamp(I, 0., 1.)*uCol[i].a;
-    vec3 c = uMode == 2 ? mix(uCol[i].rgb, vec3(1.), .3) : uCol[i].rgb;   // a touch of white so it reads on a seat-coloured strip
+    vec3 c = uMode == 2 || uMode == 6 ? mix(uCol[i].rgb, vec3(1.), .3) : uCol[i].rgb;   // a touch of white so it reads on a seat-coloured strip
     acc = vec4(c*I, I) + acc*(1. - I);
   }
   o = acc;
@@ -146,14 +151,15 @@ function stage(v) {
     const root = getComputedStyle(document.documentElement), rect = [], col = [], par = [];
     let inner = lane;
     for (const { s, p } of panes) {
-      const target = v.mode === 2 || v.mode === 4 ? p.querySelector('.strip') : v.mode === 1 || v.mode === 5 ? p.querySelector('.term') : p;
+      const target = v.mode === 2 || v.mode === 4 || v.mode === 6 ? p.querySelector('.strip') : v.mode === 1 || v.mode === 5 ? p.querySelector('.term') : p;
       let r = target.getBoundingClientRect(), x = r.left - cr.left, y = r.top - cr.top, rw = r.width, rh = r.height;
       if (v.mode === 4) { y += rh - 2; rh = 2; }   // the strip's foot
       rect.push(x, y, rw, rh);
       const c = rgb(s.state === 'waiting' ? root.getPropertyValue('--c-waiting') : s.state === 'errored' ? root.getPropertyValue('--c-errored') : C.seatColor(s));
       col.push(c[0], c[1], c[2], 1);
-      par.push(ACT[s.state] || 0, s.focused ? 1 : 0, C.hash32(s.key) % 10000, v.mode === 0 || v.mode === 3 ? parseFloat(getComputedStyle(p).borderTopLeftRadius) || 0 : v.mode === 2 || v.mode === 4 ? 0 : 4);
+      par.push(ACT[s.state] || 0, s.focused ? 1 : 0, C.hash32(s.key) % 10000, v.mode === 0 || v.mode === 3 || v.mode === 6 ? parseFloat(getComputedStyle(p).borderTopLeftRadius) || 0 : v.mode === 2 || v.mode === 4 ? 0 : 4);
       if (v.mode === 1 || v.mode === 5) inner = Math.min(inner, parseFloat(getComputedStyle(target).paddingLeft) || lane);   // never over text cells
+      if (v.mode === 6) inner = Math.min(lane, 8);
     }
     const { gl, U } = S; S.cv.width = w; S.cv.height = h;
     gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.useProgram(S.prog);
@@ -171,7 +177,7 @@ function stage(v) {
 function card(v) { return el('div', { class: 'gi-card' }, el('h3', {}, v.title), stage(v), el('p', {}, v.say(lane))); }
 
 Lab.page({ title: 'glow inside', wide: true,
-  note: 'Can the activity glow live inside the pane, to save the lane between panes? Six readings of the same seats (Vesper focused and active, Nyx and Aster active, Rook waiting, Sable and zsh idle). Variants inside the pane pack panes 2 px apart, so the space they win shows as bigger panes in the same frame. The lane slider is the Settings glow lane (2 to 8 px). Needs WebGL2.',
+  note: 'Can the activity glow live inside the pane, to save the lane between panes? Seven readings of the same seats (Vesper focused and active, Nyx and Aster active, Rook waiting, Sable and zsh idle). Variants inside the pane pack panes 2 px apart, so the space they win shows as bigger panes in the same frame. The lane slider is the Settings glow lane (2 to 8 px). Needs WebGL2.',
   states: ['gallery', ...VARIANTS.map(v => v.id)],
   render(s, body) {
     const slider = el('input', { type: 'range', min: T.glow.lane_min, max: T.glow.lane_max, step: 1, value: lane });
