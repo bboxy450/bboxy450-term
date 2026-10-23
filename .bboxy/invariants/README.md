@@ -18,6 +18,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[mermaid-fixtures]] every .bboxy Mermaid block has a fixture the engine lays out | `cargo test -p bbt-mermaid --locked every_bboxy_mermaid_block_has_a_fixture -- --exact` | held, 2026-10-22 |
 | [[kitty-keyboard]] every key encoded once, kitty protocol against the seat's live mode | `cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact \| grep -q 'ok. 1 passed; 0 failed'` | held at the K1 merge 71d7204, 2026-10-23; in the default set |
 | [[rim-never-covers-text]] the glow rim never covers a text cell | `cargo test -p bbt-ui --locked --lib rim_never_covers_text -- --exact \| grep -q 'ok. 1 passed; 0 failed'` (pending G1) | none yet |
+| [[rim-size-is-layout]] rim size moves only the gutter and the stage inset | `cargo test -p bbt-ui --locked --lib rim_never_covers_text -- --exact \| grep -q 'ok. 1 passed; 0 failed'` (pending G1) | none yet |
 | [[glow-never-moves-layout]] glow settings never move layout | `cargo test -p bbt-ui --locked --lib glow_never_moves_layout -- --exact \| grep -q 'ok. 1 passed; 0 failed'` (pending G1) | none yet |
 | [[signed-main]] every commit on main carries a good signature | `git log --format='%G?' HEAD \| grep -vc '^G$'` is 0 and the log is non-empty, on the handed-off commit | runner pass at 0bab92f, 2026-10-22 |
 

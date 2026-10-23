@@ -439,6 +439,18 @@ briefs Executors from the specs, never from this note.
     geometry moves; a depth below the rim width clips the rim. Rejected:
     growing depth past the 8 px padding (the cell edge rule); a literal 4
     in any shader; raising `depth_min` (the operator may want a thin rim).
+    **Amended again within the hour** (operator, 2026-10-23, verbatim and in order: "2px can come 1px on the inside, 1px on the outside so border feels more alive", "rim size configurable from 2 to 8 px, half of size on each side!", "do half, half, maybe? for balance", "half / half / gap grows with the rim, outer halves meet this is the way to go!", "solidify and commit and make sure it gets implemented in real native ui"), from
+    Wren's demo of three shapes: the rim is centred on the border, R/2 out
+    and R/2 in, `layout.gutter = R` so neighbouring outer halves meet, the
+    stage inset is R/2, the Settings row is "Rim size" 2–8 default 4
+    (unstated; Wren's and the Architect's default, the "2 extra pixels"
+    over the old 2), depth fixed at 8. Rim size is a layout setting by
+    design: `glow-never-moves-layout` narrows to depth and the new
+    `rim-size-is-layout` bounds what the slider may move (gutter and inset
+    only); the fixed 2 px gutter yields. Rejected by the operator's eye: (B)
+    half/half in a fixed 2 px gutter with overlapping halves; (C) 1 px out
+    and the rest in. Native lands it as G3 ("make sure it gets implemented
+    in real native ui").
 
 36. **Code adapted from Apache-only sources lives in `bbt-core`, never in a
     dual crate (2026-10-23; from LIC1 and K1).** The kitty key encoder is a
