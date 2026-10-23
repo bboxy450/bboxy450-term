@@ -4,6 +4,8 @@ Owner: Vesper Greywind <ORACLE>. 2026-10-22. Status: DECIDED. Operator: "our wgp
 
 ## 1. The crates
 
+The suite is the product and the terminal is its first app (decision #39, operator 2026-10-23): every crate below is a reusable part, the app is glue, and later apps built on the same kit connect through `bbt-proto`, the bus and messaging.
+
 | Public crate | From | What it is | Depends on |
 |---|---|---|---|
 | `bboxy450-rt` | `bbt-rt` | IO runtime that keeps the UI thread free: one tokio runtime, coalesced UI wake, bounded UI queues, streamed background commands, hitch meter | tokio |

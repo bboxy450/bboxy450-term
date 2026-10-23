@@ -94,6 +94,10 @@ Something like Karpathy's **autoresearch** must be natively possible with no new
 
 If a loop like this needs a feature we do not have, the primitives are wrong, not the loop. This is the test every spec is held to. Note: the operator's own `paperhands` is an autoresearch system; it should run inside bboxy450-term as a swarm without special support.
 
+## The suite is the product; the terminal is its first app (operator, 2026-10-23)
+
+"All those libraries are reusable parts, all those crates are reusable part of #bboxy450-* suite, term is just a way we glue them together, later on we will build more apps using our GUI kit that all connects together!" The app crate is glue; anything in it that a second app could use moves down a layer; apps connect through `bbt-proto`, the bus and messaging under one identity chain. Decision #39, enforced by [[layering]].
+
 ## The visual foundation outranks everything (operator, 2026-10-22)
 
 "Visual parity and visual fidelity and our visual component library and GPU renderers: top priority. With that we can build anything we want down the line."

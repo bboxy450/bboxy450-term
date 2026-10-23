@@ -483,7 +483,11 @@ briefs Executors from the specs, never from this note.
     ID1d issuer record and `role_epoch` the local-dev epoch, never a minted
     grant; the operator destination is the sink `operator/inbox` in every
     swarm tree with recipient reference `operator:<device_id>`, delivering
-    to the retained `operator/inbox/message`; replies address the same sink.
+    to the retained `operator/inbox/message`; replies address the same sink. (f) Every GUI messaging request names
+    one `swarm_id`; `Send` and `Receipts` must agree with the swarm inferred
+    from destination or message id; no account-wide union on the wire, the
+    GUI composes per-swarm pages and per-swarm read-marks (rejected: an
+    invented cross-swarm cursor; picking the first swarm).
     Rejected: an app-owned cursor tail instead of a durable consumer (loses
     restart-resume); ack on write (loses rows on a crash between poll and
     socket); unread from the consumer cursor (a restart would mark everything
@@ -491,6 +495,24 @@ briefs Executors from the specs, never from this note.
     making `inbox/>` retained (changes every seat's delivery semantics for the
     operator's convenience); a native label-mapping table for the lab's
     `assigned`/`done` (two vocabularies for one state).
+
+39. **The suite is the product; the terminal is its first app (operator,
+    2026-10-23, verbatim: "all those libraries are reusable parts, all those
+    crates are reusable part of #bboxy450-* suite, term is just a way we
+    glue them together, later on we will build more apps using our GUI kit
+    that all connects together!").** Consequences: the app crate is glue
+    (cockpit, live binding, main) and nothing else; when a module in the
+    app could serve a second app it moves down a layer in the same brief;
+    the kit is `rt`, `yarn`, `ui-core`, `render`, `ui`, `doc`, `mermaid`,
+    `term-core`, `pty`; the connective tissue between apps is `proto`, the
+    bus and messaging under the same identity chain, so a second app is
+    another client of a logic process, or its own logic on the same bus,
+    never a fork of the terminal. [[layering]] is the enforcement that
+    already exists; the app's line count against the crates is an advisory
+    drift signal, read at each architecture round, not a gate. Rejected: a
+    monolithic app with internal modules (every later app re-extracts
+    them); a plugin host as the suite's shape now (#12 keeps plugins for
+    providers, later).
 
 ## Specs to touch (Architect, in this order)
 
