@@ -139,7 +139,7 @@
     opts = opts || {};
     const row = el('div', { class: 'seat-row ' + seat.state + (seat.life ? ' life-' + seat.life : '') + (opts.focused ? ' focused' : ''), style: '--seat:' + seatColor(seat) });
     const tileCol = (LAUNCH.find(l => l.harness === seat.harness) || {}).tile || 'var(--surface-2)';
-    if (seat.where && seat.where !== 'local') row.append(el('span', { class: 'where ' + seat.where, title: seat.where === 'cloud' ? 'runs in the cloud' + (seat.host ? ' · ' + seat.host : '') : 'over ssh' + (seat.host ? ' · ' + seat.host : '') }, harnessIcon(seat.where)));
+    if (seat.where && seat.where !== 'local') row.append(el('span', { class: 'where ' + seat.where + (seat.link ? ' ' + linkOf(seat.link).kind : ''), title: (seat.where === 'cloud' ? 'runs in the cloud' : 'over ssh') + (seat.host ? ' · ' + seat.host : '') + (seat.link ? ' · ' + linkSay(seat.link) : '') }, harnessIcon(seat.where)));
     row.append(el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(seat.harness)), el('span', { class: 'name', style: 'color:' + seatColor(seat) }, seat.name));
     if (seat.role) row.append(roleMark(seat.role));
     if (seat.authority) row.append(authMark(seat));
@@ -994,10 +994,21 @@
     p.append(titleStrip(seat, opts), seat.life === 'starting' ? bootView(seat) : fakeTerm(seat));
     if (seat.life === 'exited') { p.classList.add('exited'); p.append(exitBar(seat, opts)); }
     // the GUI lost the daemon: keep the stale frame, dim it, freeze the glow, centred pill; never blank, never modal
-    if (opts.reconnecting || opts.reconnected) { if (opts.reconnecting) p.classList.add('stale'); p.append(el('div', { class: 'reconnect' + (opts.reconnected ? ' out' : '') }, el('i', { class: 'spin' }), opts.reconnected ? 'reconnected' : 'reconnecting…')); }
+    // a remote seat's own link (ssh, cloud) uses the same pill, naming the host and the provider's reason
+    const lk = seat.link && seat.where && seat.where !== 'local' ? linkOf(seat.link) : null;
+    if (lk && (lk.kind === 'connecting' || linkDown(seat.link))) opts = { ...opts, reconnecting: (seat.host || seat.where) + ' · ' + (lk.kind === 'connecting' ? 'reconnecting…' : linkSay(seat.link)) };
+    if (opts.reconnecting || opts.reconnected) { if (opts.reconnecting) p.classList.add('stale'); p.append(el('div', { class: 'reconnect' + (opts.reconnected ? ' out' : '') }, el('i', { class: 'spin' }), opts.reconnected ? 'reconnected' : typeof opts.reconnecting === 'string' ? opts.reconnecting : 'reconnecting…')); }
     p.dataset.key = seat.key;
     return syncPulse(p, seat.state);
   }
+
+  // Host link (bbt-mux provider LinkState, its serde shape): 'Offline' | 'Connecting' | { Connected: { rtt_ms } } |
+  // { Degraded: { rtt_ms } } | { Disconnected: { reason } }. One dot and one line of text. A host that is offline or
+  // disconnected never launches (D1b: down hosts never execute); its row stays listed and says why.
+  const linkOf = st => typeof st === 'string' ? { kind: st.toLowerCase() } : (([k, v]) => ({ kind: k.toLowerCase(), ...v }))(Object.entries(st)[0]);
+  const linkDown = st => ['offline', 'disconnected'].includes(linkOf(st).kind);
+  function linkSay(st) { const l = linkOf(st); return l.kind === 'connected' ? l.rtt_ms + ' ms' : l.kind === 'degraded' ? 'slow · ' + l.rtt_ms + ' ms' : l.kind === 'disconnected' ? l.reason : l.kind === 'connecting' ? 'connecting…' : 'offline'; }
+  function linkDot(st, text) { const d = el('span', { class: 'link ' + linkOf(st).kind, title: linkSay(st) }, el('i')); if (text !== false) d.append(el('span', {}, linkSay(st))); return d; }
 
   // Perf overlay (⌘⌥F, runtime.md meter): the hud panel. A sparkline of the last 120 frames, each bar stacked by phase (drain,
   // layout, draw, encode on the CPU, present wait above), a dashed budget line at the display interval, the phase legend doubling
@@ -1078,10 +1089,11 @@
     // remote: SSH ▸ harness ▸ placement, Cloud ▸ harness ▸ placement. 'ssh codex' and 'cloud claude' type straight through.
     // SSH ▸ machine ▸ harness ▸ placement; Cloud ▸ region ▸ harness ▸ placement. Machines come from ~/.ssh/config in the
     // real app; here a demo list. 'ssh rig codex' types straight through all three levels.
-    const HOSTS = { ssh: [['rig', 'rig.local · M2 Ultra'], ['alpha', 'alpha.tail · Linux x86'], ['studio', 'studio.local · M1 Max']], cloud: [['eu-2', 'Hetzner · Falkenstein'], ['us-1', 'Fly · Ashburn'], ['gpu-a', 'Lambda · A100']] };
+    const HOSTS = { ssh: [['rig', 'rig.local · M2 Ultra', { Connected: { rtt_ms: 4 } }], ['alpha', 'alpha.tail · Linux x86', { Degraded: { rtt_ms: 380 } }], ['studio', 'studio.local · M1 Max', 'Offline']],
+      cloud: [['eu-2', 'Hetzner · Falkenstein', { Connected: { rtt_ms: 31 } }], ['us-1', 'Fly · Ashburn', 'Connecting'], ['gpu-a', 'Lambda · A100', { Disconnected: { reason: 'link dropped' } }]] };
     const harnessesAt = (where, host) => LAUNCH.map(l => ({ ...l, id: where + ':' + host + ':' + l.id, sub: l.sub + ' · ' + host, enterPicks: true, aliases: [l.harness], where, host, children: () => placements(l).map(pl => ({ ...pl, where, host })) }));
     const remoteRow = (id, label, where, tile) => ({ id, label, aliases: [where], sub: where === 'cloud' ? 'pick a region, then a harness' : 'pick a machine, then a harness', harness: where, kind: 'Remote', tile, section: 'Remote',
-      children: () => HOSTS[where].map(([host, desc]) => ({ id: where + ':' + host, label: host, sub: desc, harness: where, kind: where === 'cloud' ? 'Region' : 'Machine', tile, where, host, children: () => harnessesAt(where, host) })) });
+      children: () => HOSTS[where].map(([host, desc, link]) => ({ id: where + ':' + host, label: host, sub: desc, harness: where, kind: where === 'cloud' ? 'Region' : 'Machine', tile, where, host, link, down: linkDown(link), children: linkDown(link) ? null : () => harnessesAt(where, host) })) });
     const remoteRows = [remoteRow('ssh', 'SSH', 'ssh', '#374151'), remoteRow('cloud', 'Cloud', 'cloud', '#2E6BFF')];
     const goRow = { id: 'goto', label: 'Go to', aliases: ['goto', 'go', 'jump'], sub: 'a seat or a swarm', harness: 'sidebarfoxopen', kind: 'Navigate', tile: '#6B7190', section: 'Navigate', children: () => [...goSeats(), ...goSwarms()] };
     const settingsRow = { id: 'settings', label: 'Settings', aliases: ['prefs', 'preferences', 'config'], sub: 'account · cloud · machines · roles · harnesses · appearance', harness: 'gear', kind: 'Open', tile: '#6B7190', section: 'Navigate', settingsOpen: true, enterPicks: true, children: () => ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Shortcuts'].map(sct => ({ id: 'settings:' + sct.toLowerCase(), label: sct, harness: 'gear', kind: 'Section', tile: '#6B7190', settingsOpen: true, section: sct })) };
@@ -1138,7 +1150,7 @@
     const isNav = it => !!(it.seat || it.swarm || it.graphOpen || it.settingsOpen || it.section === 'Navigate' || it.section === 'Swarms' || it.kind === 'Navigate' || it.kind === 'Open');
     const capped = it => !!opts.cap && !isNav(it);
     const flashCap = () => { const b = list.querySelector('.capnote'); if (b) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); } };
-    const pick = (it, ev) => { if (!it) return; if (capped(it) && !it.children) return flashCap(); if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
+    const pick = (it, ev) => { if (!it || it.down) return; if (capped(it) && !it.children) return flashCap(); if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
     function draw() {
       list.innerHTML = ''; crumbs.innerHTML = '';
       for (const c of path()) crumbs.append(el('span', { class: 'crumb' }, c.label));
@@ -1149,10 +1161,10 @@
       let lastSec = null;
       items.forEach((it, i) => {
         if (it.section && it.section !== lastSec) { list.append(el('div', { class: 'sec' }, it.section)); lastSec = it.section; }
-        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : '') + (it.children ? ' parent' : '') + (capped(it) ? ' capped' : ''), onclick: e => pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
+        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : '') + (it.children ? ' parent' : '') + (capped(it) ? ' capped' : '') + (it.down ? ' down' : ''), onclick: e => pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
         // plain text in every row; the only emphasis is the selection band (operator, Raycast reference)
         const label = el('span', { class: 'lbl' }, it.label);
-        o.append(label, el('span', { class: 'sub' }, it.sub || ''), el('span', { class: 'kind' }, it.kind || it.hint || ''));
+        o.append(label, el('span', { class: 'sub' }, it.sub || ''), it.link ? el('span', { class: 'kind' }, linkDot(it.link)) : el('span', { class: 'kind' }, it.kind || it.hint || ''));
         o.append(it.children ? el('span', { class: 'chev', title: '→ opens' }, '›') : el('span', { class: 'num' }, String(i + 1)));
         list.append(o);
       });
@@ -1273,8 +1285,9 @@
       devices: [['this Mac', 'root custodian', '2026-10-12'], ['rig', 'enrolled', '2026-10-19']],
       sign: { commits: true, messages: true, seatCommits: false },
     },
-    cloud: [['Hetzner', 'eu-2 · Falkenstein', true, '#D50C2D'], ['Fly', 'us-1 · Ashburn', true, '#7B3FE4'], ['Lambda', 'gpu-a · A100', false, '#2563EB']],
-    machines: [['rig', 'feral@rig.local', 'M2 Ultra · 64 GB', '~/.ssh/id_ed25519', true], ['alpha', 'feral@alpha.tail', 'Linux x86 · 128 GB', '~/.ssh/id_ed25519', true], ['studio', 'feral@studio.local', 'M1 Max · 32 GB', '~/.ssh/id_ed25519', false]],
+    // the fifth field is the host's LinkState (see linkOf)
+    cloud: [['Hetzner', 'eu-2 · Falkenstein', true, '#D50C2D', { Connected: { rtt_ms: 31 } }], ['Fly', 'us-1 · Ashburn', true, '#7B3FE4', 'Connecting'], ['Lambda', 'gpu-a · A100', false, '#2563EB', 'Offline']],
+    machines: [['rig', 'feral@rig.local', 'M2 Ultra · 64 GB', '~/.ssh/id_ed25519', { Connected: { rtt_ms: 4 } }], ['alpha', 'feral@alpha.tail', 'Linux x86 · 128 GB', '~/.ssh/id_ed25519', { Degraded: { rtt_ms: 380 } }], ['studio', 'feral@studio.local', 'M1 Max · 32 GB', '~/.ssh/id_ed25519', 'Offline']],
     // roles: built-ins are editable, not deletable; custom roles carry custom:true. cls = priority class (delivery order and badging)
     roles: {
       oracle: { prompt: 'You are the Oracle. Supervise, verify, never implement. Sign every message Name <ORACLE>.', send: 'all channels · all DMs', color: 'var(--role-oracle)', mark: '♔', cls: 'oracle' },
@@ -1380,15 +1393,15 @@
 
       if (cur === 'Cloud' || needle) add('Cloud', card('Cloud providers', [
         el('div', { class: 'tiles' },
-          ...SET.cloud.map(([p, r, on, col], i) => { const ch = on !== SET_DEF.cloud[i][2]; return el('div', { class: 'ptile' + (ch ? ' changed' : '') },
-            el('div', { class: 'ph' }, el('span', { class: 'tile', style: 'background:' + col }, p[0]), el('div', { class: 'pt' }, el('b', {}, p), el('small', {}, r)), dot(on)),
-            el('div', { class: 'pf' }, el('span', {}, on ? 'connected' : 'not connected'), diff(ch, () => { SET.cloud[i][2] = SET_DEF.cloud[i][2]; draw(); }), toggle(on, v => { SET.cloud[i][2] = v; draw(); }))); }),
+          ...SET.cloud.map(([p, r, on, col, link], i) => { const ch = on !== SET_DEF.cloud[i][2]; return el('div', { class: 'ptile' + (ch ? ' changed' : '') },
+            el('div', { class: 'ph' }, el('span', { class: 'tile', style: 'background:' + col }, p[0]), el('div', { class: 'pt' }, el('b', {}, p), el('small', {}, r)), on ? linkDot(link, false) : dot(false)),
+            el('div', { class: 'pf' }, el('span', {}, on ? linkSay(link) : 'not connected'), diff(ch, () => { SET.cloud[i][2] = SET_DEF.cloud[i][2]; draw(); }), toggle(on, v => { SET.cloud[i][2] = v; draw(); }))); }),
           el('button', { class: 'ptile add' }, '+ connect a provider')),
         note('Regions appear under Cloud in the launcher. Credentials live in the keychain, never in config.toml.'),
       ]));
 
       if (cur === 'Machines' || needle) add('Machines', card('SSH machines', [
-        ...SET.machines.map(([h, u, hw, k, up]) => el('div', { class: 'mrow' }, dot(up, up ? 'reachable' : 'unreachable'), el('div', { class: 'mt' }, el('b', {}, h), el('code', {}, u)), el('span', { class: 'hw' }, hw), el('span', { class: 'kbd' }, k))),
+        ...SET.machines.map(([h, u, hw, k, link]) => el('div', { class: 'mrow' }, linkDot(link, false), el('div', { class: 'mt' }, el('b', {}, h), el('code', {}, u + ' · ' + linkSay(link))), el('span', { class: 'hw' }, hw), el('span', { class: 'kbd' }, k))),
         el('button', { class: 'mrow add' }, '+ add a machine'),
         note('Read from ~/.ssh/config. Machines appear under SSH in the launcher.'),
       ]));
@@ -1492,5 +1505,5 @@
     return root;
   }
 
-  window.C = { bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
