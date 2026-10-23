@@ -134,6 +134,15 @@ pub struct Grid<T> {
 
     /// Maximum number of lines in history.
     max_scroll_limit: usize,
+
+    /// Stable row origin for a bounded history client. Defaults preserve older
+    /// serialized grids; no extra rows are retained by this counter.
+    #[serde(default, skip_serializing_if = "zero_scroll_rows")]
+    scrolled_rows: u64,
+}
+
+fn zero_scroll_rows(rows: &u64) -> bool {
+    *rows == 0
 }
 
 impl<T: GridCell + Default + PartialEq> Grid<T> {
@@ -146,7 +155,24 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
             cursor: Cursor::default(),
             lines,
             columns,
+            scrolled_rows: 0,
         }
+    }
+
+    pub(crate) fn set_spare_rows(&mut self, rows: usize) {
+        self.raw.set_spare_rows(rows);
+    }
+
+    pub(crate) fn retained_heap_bytes(&self, extra: impl Fn(&T) -> usize + Copy) -> usize {
+        self.raw.retained_heap_bytes(extra)
+            + extra(&self.cursor.template)
+            + extra(&self.saved_cursor.template)
+    }
+
+    pub(crate) fn rows_scrolled(&self) -> u64 {
+        // Older checkpoints have history but no counter. Their oldest retained
+        // row becomes origin zero; the next scroll continues from that origin.
+        self.scrolled_rows.max(self.history_size() as u64)
     }
 
     /// Update the size of the scrollback history.
@@ -270,6 +296,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
 
         // Only rotate the entire history if the active region starts at the top.
         if region.start == 0 {
+            self.scrolled_rows = self.rows_scrolled().saturating_add(positions as u64);
             // Create scrollback for the new lines.
             self.increase_scroll_limit(positions);
 

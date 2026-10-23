@@ -59,7 +59,7 @@ fn fixed_box(mut style: ui::Style, width: f32) -> c::Element {
     style.overrides.width = Some(ui::Length::Px(width));
     c::Element::Box(c::Box::new(style, vec![]))
 }
-fn line(key: &str, caption: String, resumed: bool) -> c::Element {
+fn line(key: &str, caption: String, resumed: bool, row_height: f32) -> c::Element {
     let color = if resumed {
         ui::Color::Accent
     } else {
@@ -75,7 +75,7 @@ fn line(key: &str, caption: String, resumed: bool) -> c::Element {
                 true,
                 color,
                 1.,
-                1.5,
+                1.,
             );
             if let c::Element::Text(t) = &mut label {
                 t.runs[0].style.tracking_em = 0.02;
@@ -107,22 +107,37 @@ fn line(key: &str, caption: String, resumed: bool) -> c::Element {
             });
         }
     }
-    let row = named(
-        key,
-        c::Element::Stack(c::Stack {
-            direction: Axis::Row,
-            gap: ui::Length::Spacing(4),
-            align: c::Alignment::Center,
-            children,
-        }),
+    let row = c::Element::Stack(c::Stack {
+        direction: Axis::Row,
+        gap: ui::Length::Spacing(4),
+        align: c::Alignment::Center,
+        children,
+    });
+    let mut b = c::Box::new(
+        plain(Some(row_height), [0.; 4], 0.),
+        vec![c::Item {
+            element: row,
+            extent: c::Extent::Content {
+                grow: 1.,
+                shrink: 1.,
+                min: 0.,
+                max: None,
+                max_fraction: None,
+            },
+        }],
     );
-    column(vec![
-        row.into(),
-        c::Item {
-            element: c::Element::Spacer,
-            extent: c::Extent::Fixed(STYLE.spacing.s3 as f32),
-        },
-    ])
+    b.gap = ui::Length::Px(0.);
+    b.clip = true;
+    named(key, c::Element::Box(b))
+}
+
+/// A hairline/caption/hairline notice occupying exactly one terminal row.
+/// The host supplies its actual row height; a missing timestamp is unavailable.
+pub fn gap_marker(key: &str, from: Option<&str>, row_height: f32) -> c::Element {
+    let caption = from
+        .map(|from| format!("earlier output evicted · retained from {from}"))
+        .unwrap_or_else(|| "earlier output unavailable".into());
+    line(key, caption, false, row_height)
 }
 fn span(value: &Span) -> c::Element {
     let size = STYLE.r#type.section as f32;
@@ -263,7 +278,7 @@ impl Pane {
         let content = TOKENS.strip.height as f32
             + 2. * STYLE.spacing.s4 as f32
             + self.lines.len() as f32 * STYLE.r#type.section as f32 * 1.5
-            + notices as f32 * (STYLE.r#type.small as f32 * 1.5 + STYLE.spacing.s3 as f32)
+            + notices as f32 * STYLE.r#type.section as f32 * 1.5
             + 2. * border;
         self.min_height.max(content)
     }
@@ -271,11 +286,14 @@ impl Pane {
         let seat = &self.strip.seat;
         let mut blocks = vec![];
         if let Some(from) = &self.gap_from {
-            let caption = from
-                .as_ref()
-                .map(|from| format!("earlier output evicted · retained from {from}"))
-                .unwrap_or_else(|| "earlier output unavailable".into());
-            blocks.push(line("pane/term/gap-mark", caption, false).into());
+            blocks.push(
+                gap_marker(
+                    "pane/term/gap-mark",
+                    from.as_deref(),
+                    STYLE.r#type.section as f32 * 1.5,
+                )
+                .into(),
+            );
         }
         if let Some(resumed) = &self.resumed {
             blocks.push(
@@ -294,6 +312,7 @@ impl Pane {
                             .unwrap_or("new shell, old output above")
                     ),
                     true,
+                    STYLE.r#type.section as f32 * 1.5,
                 )
                 .into(),
             );
@@ -567,6 +586,56 @@ mod tests {
             // The lab's five 18px rows, 16px padding and 22px strip occupy
             // a 130px border box at every activity (two constant 1px edges).
             assert_eq!(pane.height(), 130., "activity {activity:?}");
+        }
+        pane.gap_from = Some(None);
+        assert_eq!(pane.height(), 148., "a gap occupies one 18px terminal row");
+        pane.resumed = Some(Resumed {
+            generation: 2,
+            command: None,
+        });
+        assert_eq!(
+            pane.height(),
+            166.,
+            "resumed occupies a second terminal row"
+        );
+    }
+
+    #[test]
+    fn gap_marker_fits_one_row_and_centers_its_hairlines_without_a_spacer() {
+        use bbt_ui_model::layout::{Rect, TextMeasure, TextStyle};
+        struct Metrics;
+        impl TextMeasure for Metrics {
+            fn width(&self, text: &str, style: &TextStyle) -> f32 {
+                text.chars().count() as f32 * style.size * 0.5
+            }
+        }
+        impl c::Measure for Metrics {
+            fn font_metrics(&self, style: &TextStyle) -> [f32; 2] {
+                [style.size * 0.8, style.size * 0.2]
+            }
+        }
+        fn find<'a>(layout: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
+            if matches!(&layout.kind,c::LayoutKind::Named(name) if name==key) {
+                return Some(layout);
+            }
+            layout.children.iter().find_map(|child| find(child, key))
+        }
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        for height in [18., 24.] {
+            let layout = gap_marker("gap", None, height)
+                .layout(Rect::new(8., 30., 400., height), ctx, &Metrics)
+                .unwrap();
+            assert_eq!(
+                find(&layout, "gap").unwrap().rect,
+                Rect::new(8., 30., 400., height)
+            );
+            for side in ["gap/i", "gap/i1"] {
+                let line = find(&layout, side).unwrap().rect;
+                assert_eq!(line.h, 1.);
+                assert_eq!(line.y + line.h * 0.5, 30. + height * 0.5);
+            }
+            let caption = find(&layout, "gap/span").unwrap().rect;
+            assert_eq!(caption.y + caption.h * 0.5, 30. + height * 0.5);
         }
     }
 }

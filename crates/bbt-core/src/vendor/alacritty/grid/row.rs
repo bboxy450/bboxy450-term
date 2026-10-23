@@ -29,6 +29,13 @@ impl<T: PartialEq> PartialEq for Row<T> {
     }
 }
 
+impl<T> Row<T> {
+    pub(crate) fn retained_heap_bytes(&self, extra: impl Fn(&T) -> usize) -> usize {
+        self.inner.capacity() * std::mem::size_of::<T>()
+            + self.inner.iter().map(extra).sum::<usize>()
+    }
+}
+
 impl<T: Default> Row<T> {
     /// Create a new terminal row.
     pub fn new(columns: usize) -> Row<T> {

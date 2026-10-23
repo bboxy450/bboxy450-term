@@ -12,6 +12,13 @@ use crate::index::Line;
 /// Maximum number of buffered lines outside of the grid for performance optimization.
 const MAX_CACHE_SIZE: usize = 1_000;
 
+fn default_spare_rows() -> usize {
+    MAX_CACHE_SIZE
+}
+fn default_spares(rows: &usize) -> bool {
+    *rows == MAX_CACHE_SIZE
+}
+
 /// A ring buffer for optimizing indexing and rotation.
 ///
 /// The [`Storage::rotate`] and [`Storage::rotate_down`] functions are fast modular additions on
@@ -49,6 +56,11 @@ pub struct Storage<T> {
     /// As long as `len` is bigger than `inner`, it is also possible to grow the scrollback buffer
     /// without any additional insertions.
     len: usize,
+
+    /// History clients can disable speculative allocation; old checkpoints keep
+    /// the upstream default and ordinary terminal construction is unchanged.
+    #[serde(default = "default_spare_rows", skip_serializing_if = "default_spares")]
+    spare_rows: usize,
 }
 
 impl<T: PartialEq> PartialEq for Storage<T> {
@@ -76,7 +88,23 @@ impl<T> Storage<T> {
             zero: 0,
             visible_lines,
             len: visible_lines,
+            spare_rows: MAX_CACHE_SIZE,
         }
+    }
+
+    pub(crate) fn set_spare_rows(&mut self, rows: usize) {
+        self.spare_rows = rows;
+        self.truncate();
+        self.inner.shrink_to_fit();
+    }
+
+    pub(crate) fn retained_heap_bytes(&self, extra: impl Fn(&T) -> usize + Copy) -> usize {
+        self.inner.capacity() * mem::size_of::<Row<T>>()
+            + self
+                .inner
+                .iter()
+                .map(|row| row.retained_heap_bytes(extra))
+                .sum::<usize>()
     }
 
     /// Increase the number of lines in the buffer.
@@ -112,7 +140,7 @@ impl<T> Storage<T> {
         self.len -= shrinkage;
 
         // Free memory.
-        if self.inner.len() > self.len + MAX_CACHE_SIZE {
+        if self.inner.len() > self.len + self.spare_rows {
             self.truncate();
         }
     }
@@ -123,6 +151,9 @@ impl<T> Storage<T> {
         self.rezero();
 
         self.inner.truncate(self.len);
+        if self.spare_rows == 0 {
+            self.inner.shrink_to_fit();
+        }
     }
 
     /// Dynamically grow the storage buffer at runtime.
@@ -134,7 +165,10 @@ impl<T> Storage<T> {
         if self.len + additional_rows > self.inner.len() {
             self.rezero();
 
-            let realloc_size = self.inner.len() + max(additional_rows, MAX_CACHE_SIZE);
+            let realloc_size = self.inner.len() + max(additional_rows, self.spare_rows);
+            if self.spare_rows == 0 {
+                self.inner.reserve_exact(realloc_size - self.inner.len());
+            }
             self.inner.resize_with(realloc_size, || Row::new(columns));
         }
 
@@ -362,6 +396,7 @@ mod tests {
             zero: 0,
             visible_lines: 3,
             len: 3,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         // Grow buffer.
@@ -373,6 +408,7 @@ mod tests {
             zero: 0,
             visible_lines: 4,
             len: 4,
+            spare_rows: MAX_CACHE_SIZE,
         };
         expected
             .inner
@@ -405,6 +441,7 @@ mod tests {
             zero: 1,
             visible_lines: 3,
             len: 3,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         // Grow buffer.
@@ -416,6 +453,7 @@ mod tests {
             zero: 0,
             visible_lines: 4,
             len: 4,
+            spare_rows: MAX_CACHE_SIZE,
         };
         expected
             .inner
@@ -445,6 +483,7 @@ mod tests {
             zero: 1,
             visible_lines: 3,
             len: 3,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         // Shrink buffer.
@@ -456,6 +495,7 @@ mod tests {
             zero: 1,
             visible_lines: 2,
             len: 2,
+            spare_rows: MAX_CACHE_SIZE,
         };
         assert_eq!(storage.visible_lines, expected.visible_lines);
         assert_eq!(storage.inner, expected.inner);
@@ -481,6 +521,7 @@ mod tests {
             zero: 0,
             visible_lines: 3,
             len: 3,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         // Shrink buffer.
@@ -492,6 +533,7 @@ mod tests {
             zero: 0,
             visible_lines: 2,
             len: 2,
+            spare_rows: MAX_CACHE_SIZE,
         };
         assert_eq!(storage.visible_lines, expected.visible_lines);
         assert_eq!(storage.inner, expected.inner);
@@ -530,6 +572,7 @@ mod tests {
             zero: 2,
             visible_lines: 6,
             len: 6,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         // Shrink buffer.
@@ -548,6 +591,7 @@ mod tests {
             zero: 2,
             visible_lines: 2,
             len: 2,
+            spare_rows: MAX_CACHE_SIZE,
         };
         assert_eq!(storage.visible_lines, expected.visible_lines);
         assert_eq!(storage.inner, expected.inner);
@@ -582,6 +626,7 @@ mod tests {
             zero: 2,
             visible_lines: 1,
             len: 2,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         // Truncate buffer.
@@ -593,6 +638,7 @@ mod tests {
             zero: 0,
             visible_lines: 1,
             len: 2,
+            spare_rows: MAX_CACHE_SIZE,
         };
         assert_eq!(storage.visible_lines, expected.visible_lines);
         assert_eq!(storage.inner, expected.inner);
@@ -617,6 +663,7 @@ mod tests {
             zero: 2,
             visible_lines: 1,
             len: 2,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         // Truncate buffer.
@@ -628,6 +675,7 @@ mod tests {
             zero: 0,
             visible_lines: 1,
             len: 2,
+            spare_rows: MAX_CACHE_SIZE,
         };
         assert_eq!(storage.visible_lines, expected.visible_lines);
         assert_eq!(storage.inner, expected.inner);
@@ -674,6 +722,7 @@ mod tests {
             zero: 2,
             visible_lines: 0,
             len: 6,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         // Shrink buffer.
@@ -692,6 +741,7 @@ mod tests {
             zero: 2,
             visible_lines: 0,
             len: 3,
+            spare_rows: MAX_CACHE_SIZE,
         };
         assert_eq!(storage.inner, shrinking_expected.inner);
         assert_eq!(storage.zero, shrinking_expected.zero);
@@ -713,6 +763,7 @@ mod tests {
             zero: 2,
             visible_lines: 0,
             len: 4,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         assert_eq!(storage.inner, growing_expected.inner);
@@ -735,6 +786,7 @@ mod tests {
             zero: 2,
             visible_lines: 0,
             len: 6,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         // Initialize additional lines.
@@ -757,6 +809,7 @@ mod tests {
             zero: 0,
             visible_lines: 0,
             len: 9,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         assert_eq!(storage.len, expected_storage.len);
@@ -771,6 +824,7 @@ mod tests {
             zero: 2,
             visible_lines: 0,
             len: 3,
+            spare_rows: MAX_CACHE_SIZE,
         };
 
         storage.rotate(2);

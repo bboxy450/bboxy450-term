@@ -11,6 +11,7 @@ use bboxy450_term::{
     cockpit::{self, Session},
     grids::Grids,
     model::{self, Model, PanePreparer},
+    scrollback::History,
 };
 use bbt_mux::{
     Ulid,
@@ -162,7 +163,68 @@ fn queue_action(outgoing: &mut VecDeque<GuiAction>, action: GuiAction) {
     {
         return;
     }
+    if matches!(action, GuiAction::Applied { .. })
+        && let Some(index) = outgoing
+            .iter()
+            .position(|old| matches!(old, GuiAction::GetHistory { .. }))
+    {
+        outgoing.insert(index, action);
+        return;
+    }
     outgoing.push_back(action);
+}
+
+fn return_live(history: &mut History, model: &mut Arc<Model>, seat: SeatId) -> bool {
+    history.forget(seat);
+    if model.history.contains_key(&seat) {
+        Arc::make_mut(model).history.remove(&seat);
+        true
+    } else {
+        false
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ActionReply {
+    Operation,
+    Seats,
+    Hosts,
+    History(SeatId),
+}
+
+/// gui_session produces one terminal result per action in request order.
+/// State/grid pushes may interleave, so they never consume this bounded FIFO.
+/// This supplies correlation for GetHistory's legacy, operation-less Error.
+#[derive(Default)]
+struct ActionReplies(VecDeque<ActionReply>);
+impl ActionReplies {
+    fn full(&self) -> bool {
+        self.0.len() >= 128
+    }
+    fn sent(&mut self, action: &GuiAction) {
+        debug_assert!(!self.full());
+        self.0.push_back(match action {
+            GuiAction::ListSeats => ActionReply::Seats,
+            GuiAction::ListHosts => ActionReply::Hosts,
+            GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
+            _ => ActionReply::Operation,
+        });
+    }
+    fn take(&mut self, reply: &GuiReply) -> Option<ActionReply> {
+        let expected = self.0.front()?;
+        let matches = match reply {
+            GuiReply::Ok { .. } | GuiReply::Spawned { .. } => *expected == ActionReply::Operation,
+            GuiReply::Error { op, .. } => *op != Ulid::nil(),
+            GuiReply::Seats(_) => *expected == ActionReply::Seats,
+            GuiReply::Hosts(_) => *expected == ActionReply::Hosts,
+            GuiReply::History { seat, .. } => *expected == ActionReply::History(*seat),
+            _ => false,
+        };
+        if matches { self.0.pop_front() } else { None }
+    }
+    fn clear(&mut self) {
+        self.0.clear();
+    }
 }
 
 const CONTROL_RETRY: Duration = Duration::from_millis(100);
@@ -387,6 +449,8 @@ async fn run(
     let mut lost = false;
     let mut retained = VecDeque::new();
     let mut controls = PaneControls::default();
+    let mut history = History::default();
+    let mut action_replies = ActionReplies::default();
     let mut in_flight = None;
     let mut closing = false;
     // Accept one UI command's actions at a time. Watch diffs are finite;
@@ -397,9 +461,31 @@ async fn run(
         let mut writer_blocked = false;
         if !lost {
             controls.queue_due(&grids, &mut outgoing, Instant::now());
+            history.retain(|seat, view, screen| {
+                grids
+                    .baseline(seat)
+                    .is_some_and(|(current, _)| current == view)
+                    && grids.screen(seat).is_some_and(|current| {
+                        (current.cols, current.rows) == (screen.cols, screen.rows)
+                    })
+                    && seats
+                        .get(&Ulid(seat.0.0))
+                        .is_some_and(|seat| seat.record.generation == view.generation)
+            });
+            if !outgoing
+                .iter()
+                .any(|action| matches!(action, GuiAction::GetHistory { .. }))
+                && let Some(action) = history.next_action(Instant::now())
+            {
+                queue_action(&mut outgoing, action);
+            }
             while let Some(action) = outgoing.front() {
+                if action_replies.full() {
+                    break;
+                }
                 match session.send(action.clone()).await {
                     Ok(()) => {
+                        action_replies.sent(action);
                         controls.sent(action, Instant::now());
                         outgoing.pop_front();
                     }
@@ -411,16 +497,23 @@ async fn run(
                         logger.write(format!("GUI writer stopped: {error}"));
                         backend_lost(Some(error.to_string()));
                         lost = true;
+                        history.disconnected();
+                        action_replies.clear();
                         if Arc::make_mut(&mut model).spawns_disconnected(&error.to_string()) {
                             updates.publish(model.clone());
                         }
                         outgoing.retain(|action| !matches!(action, GuiAction::Spawn { .. }));
+                        outgoing.retain(|action| !matches!(action, GuiAction::GetHistory { .. }));
                         break;
                     }
                 }
             }
         }
-        let retry_at = controls.deadline(&grids, &outgoing);
+        let retry_at = controls
+            .deadline(&grids, &outgoing)
+            .into_iter()
+            .chain(history.deadline())
+            .min();
         let writer_ready = session.writer_ready();
         let result:Result<()>=async {
             tokio::select! {
@@ -454,10 +547,32 @@ async fn run(
                     },
                     UiMsg::Messaging {id,swarm_id,request}=>queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}),
                     UiMsg::Task {id,request}=>queue_action(&mut outgoing,GuiAction::Task {id:*id,request:request.clone()}),
-                    UiMsg::Input {seat,generation,id,bytes}=>queue_action(&mut outgoing, GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()}),
+                    UiMsg::Input {seat,generation,id,bytes}=> {
+                        if return_live(&mut history,&mut model,*seat) {
+                            publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        }
+                        queue_action(&mut outgoing, GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()});
+                    },
                     UiMsg::Resize {seat,generation,cols,rows}=> {
                         if seats.get(&Ulid(seat.0.0)).is_some_and(|metadata| metadata.state.generation==*generation) {
+                            if grids.screen(*seat).is_some_and(|screen| (screen.cols,screen.rows) != (usize::from(*cols),usize::from(*rows)))
+                                && return_live(&mut history,&mut model,*seat) {
+                                publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            }
                             controls.resize(*seat,*generation,*cols,*rows,&grids,&mut outgoing);
+                        }
+                    }
+                    UiMsg::Scroll {seat,generation,request}=> {
+                        if let (Some((view,sequence)),Some(screen)) = (grids.baseline(*seat),grids.screen(*seat))
+                            && view.generation == *generation {
+                            if let Err(reason) = history.request(*seat,view,sequence,screen,*request) {
+                                logger.write(format!("history {seat}: {reason}"));
+                                history.forget(*seat);
+                            }
+                            if !history.contains(*seat) && model.history.contains_key(seat) {
+                                Arc::make_mut(&mut model).history.remove(seat);
+                                publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            }
                         }
                     }
                     UiMsg::Watched(panes)=> {
@@ -476,8 +591,23 @@ async fn run(
                 _=&mut commands.stop=>closing=true,
                 _=tokio::time::sleep_until(tokio::time::Instant::from_std(retry_at.unwrap_or_else(Instant::now))), if retry_at.is_some() && !lost=>{},
                 ready=writer_ready, if writer_blocked && !lost=>{ready?;},
+                _=async {}, if history.has_work() && !lost=> {
+                    if let Some((seat,result)) = history.step() {
+                        match result {
+                            Ok(Some(screen))=> {Arc::make_mut(&mut model).history.insert(seat,screen);},
+                            Ok(None)=> {Arc::make_mut(&mut model).history.remove(&seat);},
+                            Err(reason)=> {
+                                Arc::make_mut(&mut model).history.remove(&seat);
+                                logger.write(format!("history {seat}: {reason}"));
+                            }
+                        }
+                        publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                    }
+                },
                 event=session.event()=>match event.unwrap_or_else(|error| cockpit::Event::Disconnected(error.to_string())) {
-                    cockpit::Event::Reply(reply)=>match *reply {
+                    cockpit::Event::Reply(reply)=> {
+                    let terminal_reply = action_replies.take(&reply);
+                    match *reply {
                         GuiReply::Hosts(hosts)=> {
                             if model.hosts != hosts {
                                 Arc::make_mut(&mut model).hosts = hosts;
@@ -511,6 +641,7 @@ async fn run(
                             let id=SeatId::from_u128(seat.record.id.0);
                             if matches!(seat.state.process,ProcessStatus::Exited {..}|ProcessStatus::Retained) {
                                 grids.forget(id);
+                                return_live(&mut history,&mut model,id);
                                 controls.forget(id,&mut outgoing);
                                 queue_action(&mut outgoing, GuiAction::Unwatch {seat:id});
                             }
@@ -546,34 +677,52 @@ async fn run(
                         }
                         GuiReply::Ok {op}=>logger.write(format!("GUI operation {op} accepted")),
                         GuiReply::Error {op,reason}=> {
+                            if matches!(terminal_reply,Some(ActionReply::History(_)))
+                                && let Some(seat) = history.rejected(reason.starts_with("Busy:"),Instant::now())
+                                && return_live(&mut history,&mut model,seat) {
+                                publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            }
                             controls.refused(&reason,Instant::now());
                              if Arc::make_mut(&mut model).spawn_rejected(op,reason.clone()) {
                                  publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                              }
                             logger.write(format!("GUI operation {op} rejected: {reason}"));
                         }
-                        GuiReply::History {..}=>logger.write("history reply deferred to C1c"),
                         GuiReply::Messaging {op,..}=>logger.write(format!("messaging operation {op} replied; UI projection belongs to L9-M-c")),
                         GuiReply::Task {op,..}=>logger.write(format!("task operation {op} replied; UI projection belongs to L9-M-c")),
-                    },
+                        GuiReply::History {seat,records,next}=> {
+                            if terminal_reply == Some(ActionReply::History(seat))
+                                && let Err(reason) = history.accept(seat,records,next) {
+                                let changed = return_live(&mut history,&mut model,seat);
+                                logger.write(format!("history {seat}: {reason}"));
+                                if changed {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
+                            }
+                        },
+                    }},
                     cockpit::Event::Exited {process,status}=> {
                         let reason=format!("{process} exited: {status}");
                         logger.write(&reason);
                          if !lost { backend_lost(Some(reason.clone())); }
                         lost=true;
+                        history.disconnected();
+                        action_replies.clear();
                          if Arc::make_mut(&mut model).spawns_disconnected(&reason) {
                              updates.publish(model.clone());
                          }
                          outgoing.retain(|action| !matches!(action,GuiAction::Spawn {..}));
+                         outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
                     }
                     cockpit::Event::Disconnected(reason)=> {
                         logger.write(format!("GUI disconnected: {reason}"));
                          if !lost { backend_lost(Some(reason.clone())); }
                         lost=true;
+                        history.disconnected();
+                        action_replies.clear();
                          if Arc::make_mut(&mut model).spawns_disconnected(&reason) {
                              updates.publish(model.clone());
                          }
                          outgoing.retain(|action| !matches!(action,GuiAction::Spawn {..}));
+                         outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
                     }
                 }
             }
@@ -585,10 +734,13 @@ async fn run(
                 backend_lost(Some(error.to_string()));
             }
             lost = true;
+            history.disconnected();
+            action_replies.clear();
             if Arc::make_mut(&mut model).spawns_disconnected(&error.to_string()) {
                 updates.publish(model.clone());
             }
             outgoing.retain(|action| !matches!(action, GuiAction::Spawn { .. }));
+            outgoing.retain(|action| !matches!(action, GuiAction::GetHistory { .. }));
             if let Some(message) = in_flight.take() {
                 if let UiMsg::Watched(panes) = &message {
                     for (seat, _) in panes {
@@ -609,6 +761,91 @@ async fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scroll_history_errors_are_correlated_behind_operations_and_async_pushes() {
+        let seat = SeatId::from_u128(9);
+        let mut replies = ActionReplies::default();
+        replies.sent(&GuiAction::Input {
+            seat,
+            generation: 1,
+            id: Ulid::new(),
+            bytes: b"x".to_vec(),
+        });
+        replies.sent(&GuiAction::GetHistory {
+            seat,
+            from: 1,
+            to: 10,
+        });
+        assert_eq!(
+            replies.take(&GuiReply::Identity(GuiIdentity {
+                state: bbt_proto::GuiIdentityState::LocalDev,
+                reason: None
+            })),
+            None
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Error {
+                op: Ulid::nil(),
+                reason: "async snapshot error".into()
+            }),
+            None
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Error {
+                op: Ulid::new(),
+                reason: "Busy: input refused".into()
+            }),
+            Some(ActionReply::Operation)
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Error {
+                op: Ulid::new(),
+                reason: "Busy: history refused".into()
+            }),
+            Some(ActionReply::History(seat))
+        );
+        assert!(replies.0.is_empty());
+        for _ in 0..128 {
+            replies.sent(&GuiAction::ListSeats);
+        }
+        assert!(replies.full());
+        assert_eq!(replies.take(&GuiReply::Hosts(vec![])), None);
+        for _ in 0..128 {
+            assert_eq!(
+                replies.take(&GuiReply::Seats(vec![])),
+                Some(ActionReply::Seats)
+            );
+        }
+        assert!(!replies.full());
+    }
+
+    #[test]
+    fn scroll_history_reads_yield_to_already_published_applied_actions() {
+        let seat = SeatId::from_u128(9);
+        let mut outgoing = VecDeque::from([GuiAction::GetHistory {
+            seat,
+            from: 1,
+            to: 10,
+        }]);
+        let view = control_view(seat, 1);
+        queue_action(
+            &mut outgoing,
+            GuiAction::Applied {
+                seat,
+                view,
+                sequence: 10,
+            },
+        );
+        assert!(matches!(
+            outgoing.pop_front(),
+            Some(GuiAction::Applied { sequence: 10, .. })
+        ));
+        assert!(matches!(
+            outgoing.pop_front(),
+            Some(GuiAction::GetHistory { from: 1, .. })
+        ));
+    }
 
     fn control_view(seat: SeatId, generation: u64) -> View {
         View {
@@ -1040,6 +1277,202 @@ mod tests {
             })
             .await
             .unwrap();
+    }
+
+    /// Scroll through the real admitted socket, IO replay and prepared model.
+    /// The fixture starts with numbered output, so the capture's first row is
+    /// line 1 rather than a shell prompt or an echoed test command.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "headless scroll integration owns its runtime, Metal device and child processes"
+    )]
+    async fn real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input() {
+        let root = tempfile::Builder::new()
+            .prefix("c1c3-io-")
+            .tempdir()
+            .unwrap();
+        let repository = root.path().join("repository");
+        let shell_config = root.path().join("zsh-config");
+        tokio::fs::create_dir(&repository).await.unwrap();
+        tokio::fs::create_dir(&shell_config).await.unwrap();
+        tokio::fs::write(
+            shell_config.join(".zshrc"),
+            "for ((i=1;i<=20000;i++)); do printf 'line %05d\\r\\n' \"$i\"; done\nexec /bin/cat\n",
+        )
+        .await
+        .unwrap();
+        let binary = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("bboxy450-term");
+        assert!(
+            binary.is_file(),
+            "build the app before its real-process scroll test"
+        );
+        let executable = root.path().join("test-app");
+        tokio::fs::write(
+            &executable,
+            format!(
+                "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec '{}' \"$@\"\n",
+                binary.to_string_lossy().replace('\'', "'\\''")
+            ),
+        )
+        .await
+        .unwrap();
+        tokio::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700))
+            .await
+            .unwrap();
+        let session = Session::start(cockpit::Config {
+            executable,
+            socket: root.path().join("run/mux.sock"),
+            run_dir: root.path().join("run"),
+            repository: repository.clone(),
+            shell_config: Some(shell_config),
+        })
+        .await
+        .unwrap();
+        let pids = format!(
+            "owned scroll supervisor={} logic={}\n",
+            session.supervisor.id().unwrap(),
+            session.logic.id().unwrap()
+        );
+        tokio::fs::write(root.path().join("owned-pids.log"), &pids)
+            .await
+            .unwrap();
+        eprint!("{pids}");
+        let context = Arc::new(DeviceContext::new().await.unwrap());
+        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
+        let updates = Arc::new(Latest::new(dirty.source(0)));
+        let (sender, commands) = command_channel();
+        let (render, rendering) = oneshot::channel();
+        render
+            .send(RenderContext {
+                context,
+                scale: 1.,
+                theme: bbt_ui_model::tokens::Theme::Dark,
+            })
+            .ok()
+            .unwrap();
+        let task_updates = updates.clone();
+        let task = tokio::spawn(async move {
+            run(
+                task_updates,
+                commands,
+                Logger::new(),
+                session,
+                repository,
+                rendering,
+                |reason| {
+                    assert!(reason.is_none(), "unexpected backend loss: {reason:?}");
+                },
+            )
+            .await
+        });
+        sender.send(UiMsg::SpawnZsh).await.unwrap();
+        let mut current = Arc::new(Model::default());
+        until(&updates, &mut current, |m| m.ui.seats.len() == 1).await;
+        let (&seat, metadata) = current.ui.seats.first_key_value().unwrap();
+        let view = View {
+            seat: Ulid(seat.0.0),
+            generation: metadata.process_generation,
+            view_generation: Ulid::new(),
+        };
+        sender
+            .send(UiMsg::Watched(vec![(seat, view)]))
+            .await
+            .unwrap();
+        until(&updates, &mut current, |m| {
+            m.screens
+                .get(&seat)
+                .is_some_and(|s| lines(s).iter().any(|line| line == "line 20000"))
+        })
+        .await;
+        let live = current.screens[&seat].clone();
+        let live_frame = current.frames[&seat].clone();
+        let started = Instant::now();
+        sender
+            .send(UiMsg::Scroll {
+                seat,
+                generation: view.generation,
+                request: bboxy450_term::scrollback::Request::top(),
+            })
+            .await
+            .unwrap();
+        until(&updates, &mut current, |m| {
+            m.history
+                .get(&seat)
+                .is_some_and(|h| lines(&h.screen)[0] == "line 00001")
+        })
+        .await;
+        assert_eq!(
+            current.screens[&seat].cells, live.cells,
+            "historical publication must preserve the live Replica"
+        );
+        assert!(
+            !Arc::ptr_eq(&live_frame, &current.frames[&seat]),
+            "the published frame must prepare the historical cells"
+        );
+        eprintln!(
+            "PASS actual GetHistory/IO/Metal preparation: first row line1 after {:?}",
+            started.elapsed()
+        );
+        sender
+            .send(UiMsg::Scroll {
+                seat,
+                generation: view.generation,
+                request: bboxy450_term::scrollback::Request {
+                    anchor: bboxy450_term::scrollback::Anchor::Live,
+                    lines: 1,
+                },
+            })
+            .await
+            .unwrap();
+        until(&updates, &mut current, |m| {
+            m.history
+                .get(&seat)
+                .is_some_and(|h| h.screen.cells[1..] == live.cells[..live.rows - 1])
+        })
+        .await;
+        assert_eq!(current.history[&seat].screen.modes, live.modes);
+        eprintln!(
+            "PASS actual capture-prefix seek: historical/live rows join without a duplicated or missing row"
+        );
+        input(&sender, seat, view.generation, b"after scroll\r").await;
+        until(&updates, &mut current, |m| {
+            !m.history.contains_key(&seat)
+                && lines(&m.screens[&seat])
+                    .iter()
+                    .any(|line| line == "after scroll")
+        })
+        .await;
+        // A fresh historical viewport is also discarded when the pane is no
+        // longer watched; the screen and parser are never retained by UI input.
+        sender
+            .send(UiMsg::Scroll {
+                seat,
+                generation: view.generation,
+                request: bboxy450_term::scrollback::Request::top(),
+            })
+            .await
+            .unwrap();
+        until(&updates, &mut current, |m| m.history.contains_key(&seat)).await;
+        sender.send(UiMsg::Watched(vec![])).await.unwrap();
+        until(&updates, &mut current, |m| {
+            m.history.is_empty() && m.screens.is_empty()
+        })
+        .await;
+        eprintln!("PASS input returns live and unwatch releases historical display");
+        drop(sender);
+        tokio::time::timeout(Duration::from_secs(10), task)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        eprintln!("PASS scroll integration shutdown: owned children reaped");
     }
 
     /// Exercise the same IO owner the native app starts, with real children,

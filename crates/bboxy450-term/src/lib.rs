@@ -5,6 +5,7 @@ pub mod hosts;
 pub mod keyboard;
 pub mod launcher;
 pub mod model;
+pub mod scrollback;
 
 #[cfg(test)]
 #[test]

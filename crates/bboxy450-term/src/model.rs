@@ -54,6 +54,9 @@ pub struct Model {
     pub hosts: Vec<bbt_proto::GuiHost>,
     pub ui: ui::Model,
     pub screens: BTreeMap<SeatId, Arc<Screen>>,
+    /// Historical display only. Live modes, replicas and acknowledgements keep
+    /// using screens; the UI never owns a history parser or a fetched page.
+    pub history: BTreeMap<SeatId, Arc<crate::scrollback::Historical>>,
     pub frames: BTreeMap<SeatId, Arc<PreparedGrid>>,
     pub states: BTreeMap<SeatId, SeatState>,
     /// Signing holds affect messaging, never whether terminal panes stay live.
@@ -67,6 +70,7 @@ impl Default for Model {
         Self {
             ui: ui::Model::new(vec![], vec![]).expect("empty model"),
             screens: BTreeMap::new(),
+            history: BTreeMap::new(),
             frames: BTreeMap::new(),
             states: BTreeMap::new(),
             identity: None,
@@ -516,10 +520,27 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         .filter(|(id, _)| model.seats.contains_key(id))
         .map(|(id, state)| (*id, state.clone()))
         .collect();
+    let history =
+        previous
+            .history
+            .iter()
+            .filter(|(id, historical)| {
+                screens.get(id).is_some_and(|live| {
+                    (live.cols, live.rows) == (historical.screen.cols, historical.screen.rows)
+                        && model.seats.get(id).is_some_and(|seat| {
+                            previous.ui.seats.get(id).is_some_and(|old| {
+                                old.process_generation == seat.process_generation
+                            })
+                        })
+                })
+            })
+            .map(|(id, screen)| (*id, screen.clone()))
+            .collect();
     let mut next = Model {
         hosts: previous.hosts.clone(),
         ui: model,
         screens,
+        history,
         frames,
         states,
         identity: previous.identity.clone(),
@@ -580,6 +601,10 @@ impl PanePreparer {
         let theme = model.ui.window.theme;
         let mut frames = BTreeMap::new();
         for (&seat, screen) in &model.screens {
+            let screen = model
+                .history
+                .get(&seat)
+                .map_or(screen, |historical| &historical.screen);
             let focused = model.ui.window.stage.focused == Some(seat);
             let reuse = self.cached.get(&seat).is_some_and(|old| {
                 Arc::ptr_eq(&old.screen, screen) && old.focused == focused && old.theme == theme

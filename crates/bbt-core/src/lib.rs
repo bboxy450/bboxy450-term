@@ -88,6 +88,74 @@ impl Term {
         }
     }
 
+    /// Construct a replay terminal without the upstream 1000-row allocation
+    /// cache. A zero spare-row budget allocates only actual retained rows.
+    /// Ordinary live terminals keep the unchanged [`Term::new`] policy.
+    pub fn new_with_spare_rows(
+        cols: usize,
+        rows: usize,
+        history_size: usize,
+        spare_rows: usize,
+    ) -> Self {
+        let mut term = Self::new(cols, rows, history_size);
+        term.model.set_spare_rows(spare_rows);
+        term.processor.release_spare_capacity();
+        term
+    }
+
+    /// Conservative retained allocation size for replay budget accounting.
+    /// Includes both grids, spare capacity, parser/sync buffers and cell extras;
+    /// shared cell extras are counted per reference. Drain [`Term::take_events`]
+    /// first. Returns None while effects or an opaque user callback are retained.
+    /// The inline Term size is included for owners that keep it on their heap.
+    pub fn retained_heap_bytes(&self) -> Option<usize> {
+        let queued = self.sink.0.lock();
+        if self.osc_hook.is_some() || !self.events.is_empty() || !queued.is_empty() {
+            return None;
+        }
+        Some(
+            std::mem::size_of::<Self>()
+                + std::mem::size_of::<Mutex<Vec<Event>>>()
+                + 2 * std::mem::size_of::<usize>()
+                + (queued.capacity() + self.events.capacity()) * std::mem::size_of::<Event>()
+                + self.model.retained_heap_bytes()
+                + self.processor.retained_heap_bytes(),
+        )
+    }
+
+    /// Stable half-open row range resident in the active history and viewport.
+    /// Rows evicted by the history limit remain addressable by replaying bytes
+    /// into a fresh terminal; this method does not fetch or keep those bytes.
+    pub fn history_bounds(&self) -> std::ops::Range<u64> {
+        let grid = self.grid();
+        let origin = grid.rows_scrolled();
+        origin.saturating_sub(grid.history_size() as u64)
+            ..origin.saturating_add(grid.screen_lines() as u64)
+    }
+
+    /// Copy a bounded row window, including history above the live viewport.
+    /// Return None for a nonresident range, so callers seek instead of silently
+    /// showing a different row. The UI toolkit and scroll policy stay outside.
+    pub fn history_window(&self, first: u64, rows: usize) -> Option<Vec<Vec<Cell>>> {
+        let bounds = self.history_bounds();
+        let end = first.checked_add(rows as u64)?;
+        if first < bounds.start || end > bounds.end {
+            return None;
+        }
+        let grid = self.grid();
+        let origin = grid.rows_scrolled();
+        Some(
+            (first..end)
+                .map(|row| {
+                    let line = Line((i128::from(row) - i128::from(origin)) as i32);
+                    (0..grid.columns())
+                        .map(|col| grid[line][Column(col)].clone())
+                        .collect()
+                })
+                .collect(),
+        )
+    }
+
     /// Parse a chunk without requiring escape or UTF-8 boundaries.
     pub fn advance(&mut self, bytes: &[u8]) {
         self.processor.advance(&mut self.model, bytes);

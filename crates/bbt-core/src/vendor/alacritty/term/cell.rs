@@ -161,6 +161,25 @@ impl Default for Cell {
 }
 
 impl Cell {
+    /// Conservative owned heap referenced by this cell, beyond its inline size.
+    /// Shared attributes and links are counted for each cell reference so owners
+    /// of copied row windows can enforce a bound without undercounting them.
+    pub fn retained_extra_bytes(&self) -> usize {
+        let Some(extra) = &self.extra else {
+            return 0;
+        };
+        let mut bytes = std::mem::size_of::<CellExtra>() + 2 * std::mem::size_of::<usize>();
+        if let Some(link) = &extra.hyperlink {
+            bytes += std::mem::size_of::<HyperlinkInner>()
+                + 2 * std::mem::size_of::<usize>()
+                + link.inner.id.capacity()
+                + link.inner.uri.capacity();
+        }
+        // Count every reference, including shared links. This overestimates
+        // shared allocations instead of allowing a memory budget to undercount.
+        bytes
+    }
+
     /// Zerowidth characters stored in this cell.
     #[inline]
     pub fn zerowidth(&self) -> Option<&[char]> {

@@ -80,6 +80,13 @@ impl Grids {
         self.screens.get(&seat).cloned()
     }
 
+    /// Applied model sequence is the capture cursor. History freezes its upper
+    /// bound here, rather than chasing output that arrives during replay.
+    pub fn baseline(&self, seat: SeatId) -> Option<(View, u64)> {
+        let snapshot = self.replicas.get(&seat)?.snapshot.as_ref()?;
+        Some((snapshot.view, snapshot.sequence))
+    }
+
     pub fn forget(&mut self, seat: SeatId) {
         self.watched.remove(&seat);
         self.replicas.remove(&seat);

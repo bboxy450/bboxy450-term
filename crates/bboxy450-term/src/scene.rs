@@ -655,6 +655,48 @@ impl Scene {
         ops.extend(self.overlay(size, hud));
         ops
     }
+    /// Notices use the same row coordinates and clip as the prepared cell grid.
+    /// These are layout/paint commands only; replay and pages remain on IO.
+    pub fn history_foreground(
+        &self,
+        model: &bboxy450_term::model::Model,
+        bounds: &[(SeatId, Rect)],
+        scale: f32,
+    ) -> Result<Vec<c::Paint>, String> {
+        let mut ops = vec![];
+        if !scale.is_finite() || scale <= 0. {
+            return Ok(ops);
+        }
+        let ctx = ui::Context::new(model.ui.window.theme, ui::Density::Cozy);
+        for (seat, body) in bounds {
+            let (Some(history), Some(frame)) = (model.history.get(seat), model.frames.get(seat))
+            else {
+                continue;
+            };
+            if history.screen.rows == 0 {
+                continue;
+            }
+            let row_height = frame.height as f32 / scale / history.screen.rows as f32;
+            let width = (frame.width as f32 / scale).min(body.w);
+            for gap in &history.gaps {
+                if gap.row >= history.screen.rows {
+                    continue;
+                }
+                let y = body.y + gap.row as f32 * row_height;
+                let height = row_height.min((body.bottom() - y).max(0.));
+                if width <= 0. || height <= 0. {
+                    continue;
+                }
+                let key = format!("pane/history/{seat}/{}/gap", gap.from);
+                let marker = bbt_ui::modules::pane::gap_marker(&key, None, height);
+                let layout = marker
+                    .layout(Rect::new(body.x, y, width, height), ctx, &self.metrics)
+                    .map_err(|error| format!("history marker: {error}"))?;
+                ops.extend(c::paint(&layout, ctx));
+            }
+        }
+        Ok(ops)
+    }
     /// The perf HUD (Cmd+Opt+F), top right as the lab's perf.html floats it over the app.
     pub fn overlay(&self, size: [f32; 2], hud: Option<&PerfHud>) -> Vec<c::Paint> {
         let Some(hud) = hud else { return vec![] };
