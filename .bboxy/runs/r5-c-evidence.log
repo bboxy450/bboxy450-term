@@ -1,0 +1,387 @@
+{
+  "task": "R5c fixture-only GUI drain",
+  "source": "2f4af72ddcbf132a3c231ca54ee30e8e9dc73d49",
+  "source_signature": "G, verified after rebase",
+  "base": "b639348e02aa25194d862962c74d7ce8e80becce",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec4",
+  "files_changed": {
+    "crates/bboxy450-term/src/stall/load.rs:248": "GuiTask owns independent apply/publish/Applied drain; drop cancels task and transport",
+    "crates/bboxy450-term/src/stall/load.rs:270": "Error op, consumer file:line and server path retained; unknown control operation stays explicitly uncorrelated",
+    "crates/bboxy450-term/src/stall/load.rs:288": "transport Full retains front action while incoming continues to drain",
+    "crates/bboxy450-term/src/stall/load.rs:529": "Replica/preparer/model live in GUI task; latest readiness/paused booleans flow to load coordinator",
+    "crates/bboxy450-term/src/stall/load.rs:944": "128 Unix-socket Updates/ordered Applied while side future is held",
+    "crates/bboxy450-term/src/stall/load.rs:1027": "injected deadline Errors preserve nil/non-nil op, callsite and path"
+  },
+  "checks": {
+    "strict_clippy_initial": {
+      "exit": 101,
+      "cause": "unused mut after moving preparer; Tokio test runtime block_on lint",
+      "correction": "remove unused mut; allow only the2 non-UI test functions with reason"
+    },
+    "strict_clippy_corrected": {
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "elapsed_s": 3.859265334001975
+    },
+    "focused_unit": {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "--locked",
+        "stall::",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "elapsed_s": 186.41248649999034
+    },
+    "focused_contract": {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "r5_stall",
+        "--locked",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "elapsed_s": 26.674978124996414
+    },
+    "ci": {
+      "exit": 0,
+      "elapsed_s": 781.8163243749877,
+      "source": "2f4af72ddcbf132a3c231ca54ee30e8e9dc73d49",
+      "utc": "2026-10-23T19:24:10.124190+00:00"
+    },
+    "ci_proof_lines": {
+      "822": "test stall::load::tests::gui_errors_keep_the_operation_and_identify_the_consumer_path ... ok",
+      "823": "test stall::load::tests::gui_keeps_applying_and_acknowledging_while_side_finish_is_held ... ok",
+      "1230": "test synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io ... ok",
+      "2905": "idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=3.080ms p99=54.773ms samples=21 warm_encode_p50=2.160ms warm_encode_p99=2.391ms",
+      "2970": "invariants: 8 checks, 0 failures, 6 slow checks skipped",
+      "2971": "ci-local: all gates passed"
+    },
+    "ci_cleanup": {
+      "unique_file_allocated_bytes_removed": 2747686912,
+      "target": "/Users/feral/mydev/bboxy450-term-exec4/target/r5c-ci-2f4af72-1792782668310136000",
+      "target_removed": true,
+      "worktree_remove_exit": 0,
+      "worktree_remove_stdout": "",
+      "worktree_remove_stderr": "",
+      "free_bytes_after": 28091711488
+    },
+    "source_tree_after_rebase_unchanged_for_load_rs": true,
+    "render_ui_book_lab_gpu_scene_live_model_cockpit_diff_quiet_exit": 0
+  },
+  "live_audit": {
+    "source_base": "72f155c3d23da72d85cd52da130ddfcc6b377055",
+    "files": {
+      "crates/bboxy450-term/src/live.rs": "99713ee7e19b32776020a5ea18ea12c9e4787ea9920b5f4c3ea0f7fa2f967432",
+      "crates/bboxy450-term/src/cockpit.rs": "04344ae669dce5cd915918fdb8fed3a28674c1488589751e8c680cad21697387"
+    },
+    "findings": {
+      "live.rs:477": "Session::event polled in select alongside commands, retry timer and writer capacity",
+      "live.rs:401 + cockpit.rs:433-455": "send is async but body contains no await; try_send only",
+      "cockpit.rs:734-747": "independent socket reader, bounded delivery channel",
+      "live.rs:369": "render context await before normal loop",
+      "live.rs:598": "shutdown await after normal loop",
+      "live.rs:149": "synchronous preparation shares IO task; CPU/backpressure stalls not excluded"
+    },
+    "conclusion": "No analogous unrelated awaited side work found in normal active loop; source audit only. No product edit.",
+    "verified_at_source": "2f4af72ddcbf132a3c231ca54ee30e8e9dc73d49",
+    "source_hashes_still_equal": true
+  },
+  "full_gate_slot": {
+    "started_before_rule_was_read": true,
+    "Oracle_exception": "08894fee-5538-4cd3-a902-ecafc94c209c allows finish",
+    "future_rule": "request Oracle slot before full ci-local/--parity; maximum3"
+  },
+  "scope_deliberately_untouched": [
+    "live.rs/cockpit.rs production behavior",
+    "server/mux/proto/wire schema",
+    "renderer/UI pixels/layout",
+    "2s server writer deadline",
+    "20s fixture settle limit",
+    "CPU/input/bus/frame timing limits"
+  ],
+  "unproven": [
+    "967/50 after fix: no new scale run; needs fresh Oracle window",
+    "three-run timing median and verdict; old two attempts aborted with no report",
+    "physical input-to-photon/native120Hz/quinn/OS-wide wait tracing",
+    "historical default synthetic flake assertion: discarded panic/artifacts, dirty source; no speculative fix"
+  ],
+  "prior_scale_attempts_record": ".bboxy/runs/r5-frame-71d7204.log",
+  "raw_artifacts": "/private/tmp/aster-r5c-tn39vsw2",
+  "raw_file_hashes": [
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/manifest.json",
+      "bytes": 960,
+      "sha256": "0c96d103bbfebb9e9af7b60e99153201d257076d244fe38e68e33055bc52e8d8"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/strict-clippy-1.log",
+      "bytes": 13957,
+      "sha256": "d38d8cef5cf108284f20a8f65e2653b7013bd547f3dbb5bc637e451ce17a1fb4"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/strict-clippy-1-result.json",
+      "bytes": 191,
+      "sha256": "a7dbf42d94967457a95b3b4d45bf3293e26eff33bc2a6ff22ed2547bbd02fb29"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/strict-clippy-2.log",
+      "bytes": 412,
+      "sha256": "a15e3bac97a3afe76fef34912d164689bcfbbf830e2428936fc69ecd301ebd03"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/strict-clippy-2-result.json",
+      "bytes": 188,
+      "sha256": "4d857195bd9d485052c0efda9e0d9fe66850dbdb58ab979de94f3fb57de30f35"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/focused-unit.log",
+      "bytes": 10645,
+      "sha256": "152a6372c8d9abdd8a2c89b257c193a9de609765f9eb190b5116c7d2ccb03266"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/focused-unit-result.json",
+      "bytes": 220,
+      "sha256": "452e3c923af922b36cc9fa4ad816d7f8d08c22f8a323ef0b382208e180fab0a3"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/focused-contract.log",
+      "bytes": 521,
+      "sha256": "f345330d2af77f4fcbbb76be9cee3e0f6765dd926644dae7a81c029869aa9d1e"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/focused-contract-result.json",
+      "bytes": 201,
+      "sha256": "7249788792db88889ccab3ce781d850845cb44d416bd57f7a35551ea6eebb084"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/ci-manifest.json",
+      "bytes": 720,
+      "sha256": "f648d587c839715b058e18b5742795a09048fa5dbde6ee5e599a8f4c3e84205e"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/ci-result.json",
+      "bytes": 151,
+      "sha256": "ef60e2da4a96900d3d1f1c274ed67fa7dffb2400caf59972bf97fcd1389b63ce"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/ci-cleanup.json",
+      "bytes": 306,
+      "sha256": "a901c09c06f97fc83baf089898e978604fc2e035a51fb88798f7c5ff5644b99a"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/ci.log",
+      "bytes": 158775,
+      "sha256": "69714bcff76842c1453e9b928b1979c4f6a596dc223c5898e9eb3f2471dc6167"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/commit-commands.json",
+      "bytes": 2820,
+      "sha256": "c13ac485c8082ec6b7ba95bab258e34d98e076db0f37ae5ead0fda7fa952b484"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/live-audit.json",
+      "bytes": 1052,
+      "sha256": "6805c83dc2d53f22b52836cf5bcf98b2f04d11aac87feacfa3ca77ffcf875aa6"
+    },
+    {
+      "path": "/private/tmp/aster-r5c-tn39vsw2/default-flake-retained-evidence.json",
+      "bytes": 657,
+      "sha256": "59d463f3f447ea6d74036d61a0dccb698072612c87aaed3ee5f9ea96eb74d1fa"
+    }
+  ],
+  "command_ledger": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "git",
+        "add",
+        "crates/bboxy450-term/src/stall/load.rs"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "git",
+        "commit",
+        "-m",
+        "Keep R5 fixture GUI replies draining during side workloads"
+      ],
+      "exit": 0,
+      "output": "[exec4 e1ccdf0] Keep R5 fixture GUI replies draining during side workloads\n 1 file changed, 304 insertions(+), 51 deletions(-)\n"
+    },
+    {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit": 0,
+      "output": "e1ccdf09aab2078d2ca69825ba3582ed31c1890f\n"
+    },
+    {
+      "command": [
+        "git",
+        "fetch",
+        "origin"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "git",
+        "rebase",
+        "--gpg-sign",
+        "origin/main"
+      ],
+      "exit": 0,
+      "output": "Rebasing (1/1)\nSuccessfully rebased and updated refs/heads/exec4.\n"
+    },
+    {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit": 0,
+      "output": "2f4af72ddcbf132a3c231ca54ee30e8e9dc73d49\n"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--quiet",
+        "e1ccdf09aab2078d2ca69825ba3582ed31c1890f",
+        "2f4af72ddcbf132a3c231ca54ee30e8e9dc73d49",
+        "--",
+        "crates/bboxy450-term/src/stall/load.rs"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "git",
+        "show",
+        "--no-patch",
+        "--format=%H%n%G?%n%s",
+        "2f4af72ddcbf132a3c231ca54ee30e8e9dc73d49"
+      ],
+      "exit": 0,
+      "output": "2f4af72ddcbf132a3c231ca54ee30e8e9dc73d49\nG\nKeep R5 fixture GUI replies draining during side workloads\n"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--quiet"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--quiet"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--name-only",
+        "origin/main...HEAD"
+      ],
+      "exit": 0,
+      "output": "crates/bboxy450-term/src/stall/load.rs\n"
+    },
+    {
+      "command": [
+        "git",
+        "merge-base",
+        "origin/main",
+        "HEAD"
+      ],
+      "exit": 0,
+      "output": "b639348e02aa25194d862962c74d7ce8e80becce\n"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--quiet",
+        "b639348e02aa25194d862962c74d7ce8e80becce",
+        "HEAD",
+        "--",
+        "crates/bbt-render",
+        "crates/bbt-ui",
+        "crates/bboxybook",
+        "lab",
+        "design",
+        "crates/bboxy450-term/src/gpu.rs",
+        "crates/bboxy450-term/src/scene.rs",
+        "crates/bboxy450-term/src/live.rs",
+        "crates/bboxy450-term/src/model.rs",
+        "crates/bboxy450-term/src/cockpit.rs"
+      ],
+      "exit": 0,
+      "output": ""
+    }
+  ],
+  "command_coverage_note": "Build/test/git mutations have recorded actual exits; exploratory multi-command source reads have tool-cell outer status only, not separate statuses for every subcommand.",
+  "prior_reference_build_retirement": {
+    "utc": "2026-10-23T19:10:23.864188+00:00",
+    "removed_target": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-frame-71d7204-1792780432088529000",
+    "source": "71d7204 original release; R5c development checks in debug",
+    "all_own_cargo_checks_exited": true,
+    "unique_file_allocated_bytes_removed": 2397020160,
+    "files_removed": 9644,
+    "retained_binary": "/private/tmp/aster-r5-triple-_j_8szf4/bboxy450-term-71d7204",
+    "binary_sha256": "680a883a16cab99d1645c0262891ebd19d8c3db91558996e43f79ae37e828ffb",
+    "retained_binary_allocated_bytes": 31739904,
+    "net_unique_file_allocated_bytes_retired": 2365280256,
+    "disk_free_bytes_after": 29295411200
+  },
+  "main_moved_during_ci": [
+    "dfc2077 Merge: cockpit duplex test reads while it writes, no longer load-sensitive (Rook)",
+    "6b61505 arch: decision 40 (c),(d): replay anchor is capture start at current dimensions; the hard cap beats the viewport floor",
+    "6b79c50 arch: decision 40, scrollback replay bounds: rolling parsed window, total-heap cap with dimension-aware lines, bounded storage API in bbt-core",
+    "bb61767 Read fake-peer input concurrently during the duplex reply burst"
+  ],
+  "latest_main": "dfc207737a8e7722fdbabf0287483cdac9060859",
+  "main_new_commits_touch_stall_load_rs_diff_exit": 0
+}
