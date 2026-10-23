@@ -1,0 +1,12 @@
+$ git worktree add --detach /tmp/ci-kestrel-d1a-694db58a 694db58a4ef55555fbd0191d4d4fdf83403d064f
+Preparing worktree (detached HEAD 694db58)
+HEAD is now at 694db58 provider: record final journal routing preflight evidence
+exit=0
+clean detached commit assertion: exit=0
+$ BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=/tmp/target-kestrel-d1a-694db58a CARGO_INCREMENTAL=0 CARGO_PROFILE_{DEV,TEST}_{DEBUG=0,OPT_LEVEL=1,DEBUG_ASSERTIONS=true} sh scripts/ci-local.sh ; cwd=/tmp/ci-kestrel-d1a-694db58a
+owned gate pid/pgid=52711
+ci-local exit=0 elapsed=355.524s
+deleted owned private CARGO_TARGET_DIR: exit=0
+$ git worktree remove --force /tmp/ci-kestrel-d1a-694db58a
+exit=0
+cleanup exit=0
