@@ -1,0 +1,23 @@
+C1a-2 — full-duplex GUI writer (Sable Embertail <EXECUTOR>)
+Assignment: Vesper DM b381200c-1693-4925-ac24-54b2a5605def, confirmed c5737777-4035-4403-93ab-1e9c7627e1cb.
+Writing worktree: ~/mydev/bboxy450-term-exec3; branch exec3-c1a-2 based on origin/main9577b61 (39cdb5c plus the accepted lab-only perf-HUD commit; actual parent verified before gate). C1c-1 checkpoint e1a74f2 stays on exec3, not included here.
+Scope: cockpit.rs GUI transport and unit fixtures only, plus this command/evidence record. Wire types, logic, live.rs and UI remain untouched.
+
+Mechanism:
+- json_frame preserves NDJSON, version/capability and the <1MiB frame bound before enqueue. Oversize is a local error, not a writer-task failure.
+- GuiIo owns independent reader and writer tasks. Incoming remains bounded8; outgoing is bounded64. Only the writer owns OwnedWriteHalf and awaits socket writes. Frames leave FIFO.
+- Session::send retains its async signature for callers but contains no await: it uses try_send. A full queue returns public typed cockpit::Busy; the caller retains the exact original action/ID/bytes and drains events before retrying.
+- Session::writer_ready returns an owned, Send capacity future that does not borrow Session, so the IO owner can select it alongside event(). It wakes without an inbound reply. No new Event variant or wire field.
+- Writer-task error/death becomes Event::Disconnected even if the read side is alive. Dropping the connection aborts both tasks. receive() also observes connection/child death via event(), preserving the separately held private control pipes.
+- Aster owns the C1i retry outbox for Input/Resize and generated Watch/Unwatch/Applied. Busy must be handled as pressure; Applied is enqueued only after prepare/publish. This change adds the transport primitive only.
+
+Preflight commands and actual output/status: c1a-2-commands.log.
+- New transport tests: 3 passed, exit0/29.097s including build. 1000 ordered inputs and1000 replies; fake peer writes all1000 4KiB replies before reading any input; bounded writer filled (Busy1008); no socket deadline; elapsed1.186s.
+- Complete app test command: exit0/37.262s; 18 passed,0 failed,0 ignored (7lib+5bin+5process+1custody). Custody uses memory/injected fixture key; no real Keychain mutation.
+- Strict workspace/all-target clippy: exit0/7.133s.
+- After adding the owned writer_ready future: transport3/3, exit0/2.525s; 1000/1000, Busy1079, no deadline, elapsed633.771ms.
+- cargo fmt, git diff --check: exit0.
+
+Final gate: run sh scripts/ci-local.sh in a clean detached checkout of the signed final commit, own CARGO_TARGET_DIR and BBOXY_TEST_CUSTODY=memory. Exact SHA, result, raw-log path/hash and post-gate clean state are supplied by DM after completion (to avoid changing the tested commit).
+Not checked: native Unicode/firehose command burst (Aster's C1i validation after integrating Busy/outbox handling); GUI recovery and stale-generation policy (C1c-1); visual parity (transport-only change; no visual sources touched).
+Left alone: reader bound8, request/reply framing and admission, 2s per-write deadline, logic/server protocol, UI/renderer/model/live code, child restart behavior, Rook journal work, main pushes/merges, all other agents' paths/processes.
