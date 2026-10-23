@@ -1,0 +1,28 @@
+{
+  "source": "bedb0c9a0f68eaea2b98c9ec55ec7cc34f6327a3",
+  "report": "target/t2-visual-parity-bedb0c9/report.json",
+  "sha256": "9cab3c6d04b7eea75f56c96c70bcdc7d0fef87e0d4737d0f63a68cb938633a38",
+  "cases": 1664,
+  "gated_unproven_geometry": 648,
+  "gated_measured_geometry_mismatches": 0,
+  "all_geometry_null": true,
+  "comparisons": [
+    {
+      "report": "target/c1i-parity-a0c667f/report.json",
+      "sha256": "b1ab68d2f5aa224316587f742973a01d5f9825e35826ecb595ede23ade6fd59a",
+      "cases": 1664,
+      "gated_unproven_geometry": 648,
+      "current_only": [],
+      "baseline_only": []
+    },
+    {
+      "report": "target/c1b-parity-d973716/report.json",
+      "sha256": "b364a6fbe2b88bd4cae1d4acd356b9cce78283749ae48b6f48d2966aee1a7cd4",
+      "cases": 1664,
+      "gated_unproven_geometry": 648,
+      "current_only": [],
+      "baseline_only": []
+    }
+  ],
+  "meaning": "Missing geometry evidence; key-set equality proves same unproven cases, not geometric or pixel identity. Old C1i/C1b waiver is not assumed for this handoff."
+}

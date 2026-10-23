@@ -1,0 +1,57 @@
+[
+  {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "cwd": "/tmp/ci-aster-t2-visual-3cv4df68",
+    "exit": 0,
+    "stdout": "bedb0c9a0f68eaea2b98c9ec55ec7cc34f6327a3\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "status",
+      "--porcelain=v1"
+    ],
+    "cwd": "/tmp/ci-aster-t2-visual-3cv4df68",
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "du",
+      "-sk",
+      "/Users/feral/mydev/bboxy450-term-exec4/target/t2-visual-ci-bedb0c9"
+    ],
+    "cwd": null,
+    "exit": 0,
+    "stdout": "2438300\t/Users/feral/mydev/bboxy450-term-exec4/target/t2-visual-ci-bedb0c9\n",
+    "stderr": ""
+  },
+  {
+    "command": "shutil.rmtree(/Users/feral/mydev/bboxy450-term-exec4/target/t2-visual-ci-bedb0c9)",
+    "exit": 0,
+    "allocated_bytes_removed": 2496819200
+  },
+  {
+    "command": [
+      "git",
+      "worktree",
+      "remove",
+      "/tmp/ci-aster-t2-visual-3cv4df68"
+    ],
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "parity_preserved": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-visual-parity-bedb0c9",
+    "gate_actual_exit": 1,
+    "elapsed_seconds": 1094.014434874989
+  }
+]
