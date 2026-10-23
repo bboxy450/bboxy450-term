@@ -190,6 +190,8 @@ enum ActionReply {
     Seats,
     Hosts,
     History(SeatId),
+    Messaging(Ulid),
+    Task(Ulid),
 }
 
 /// gui_session produces one terminal result per action in request order.
@@ -207,6 +209,8 @@ impl ActionReplies {
             GuiAction::ListSeats => ActionReply::Seats,
             GuiAction::ListHosts => ActionReply::Hosts,
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
+            GuiAction::Messaging { id, .. } => ActionReply::Messaging(*id),
+            GuiAction::Task { id, .. } => ActionReply::Task(*id),
             _ => ActionReply::Operation,
         });
     }
@@ -214,7 +218,12 @@ impl ActionReplies {
         let expected = self.0.front()?;
         let matches = match reply {
             GuiReply::Ok { .. } | GuiReply::Spawned { .. } => *expected == ActionReply::Operation,
-            GuiReply::Error { op, .. } => *op != Ulid::nil(),
+            GuiReply::Error { op, .. } => match expected {
+                ActionReply::Messaging(id) | ActionReply::Task(id) => op == id,
+                _ => *op != Ulid::nil(),
+            },
+            GuiReply::Messaging { op, .. } => *expected == ActionReply::Messaging(*op),
+            GuiReply::Task { op, .. } => *expected == ActionReply::Task(*op),
             GuiReply::Seats(_) => *expected == ActionReply::Seats,
             GuiReply::Hosts(_) => *expected == ActionReply::Hosts,
             GuiReply::History { seat, .. } => *expected == ActionReply::History(*seat),
@@ -772,6 +781,90 @@ async fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots() {
+        use bbt_proto::messaging::{Request, Response, TaskRequest, TaskResponse};
+        let messaging = Ulid::new();
+        let task = Ulid::new();
+        let actions = [
+            GuiAction::Messaging {
+                id: messaging,
+                swarm_id: SwarmId::from_u128(1),
+                request: Request::Unsubscribe {
+                    path: "fixture/channel/link".into(),
+                },
+            },
+            GuiAction::Task {
+                id: task,
+                request: TaskRequest::Accept {
+                    task_path: ".bboxy/tasks/fixture.md".into(),
+                },
+            },
+        ];
+        let mut replies = ActionReplies::default();
+        for action in &actions {
+            replies.sent(action);
+        }
+        assert_eq!(
+            replies.take(&GuiReply::Messaging {
+                op: task,
+                response: Response::Applied
+            }),
+            None
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Task {
+                op: messaging,
+                response: TaskResponse::Applied
+            }),
+            None
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Error {
+                op: Ulid::new(),
+                reason: "unrelated".into()
+            }),
+            None
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Ok { op: messaging }),
+            None,
+            "inner Applied is not an outer Ok"
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Messaging {
+                op: messaging,
+                response: Response::Applied
+            }),
+            Some(ActionReply::Messaging(messaging))
+        );
+        assert_eq!(replies.0.len(), 1);
+        assert_eq!(
+            replies.take(&GuiReply::Task {
+                op: task,
+                response: TaskResponse::Applied
+            }),
+            Some(ActionReply::Task(task))
+        );
+        assert!(replies.0.is_empty());
+        for action in &actions {
+            replies.sent(action);
+        }
+        for (op, expected) in [
+            (messaging, ActionReply::Messaging(messaging)),
+            (task, ActionReply::Task(task)),
+        ] {
+            assert_eq!(
+                replies.take(&GuiReply::Error {
+                    op,
+                    reason: "Busy: fixture".into()
+                }),
+                Some(expected)
+            );
+        }
+        assert!(replies.0.is_empty());
+    }
 
     #[test]
     fn scroll_history_errors_are_correlated_behind_operations_and_async_pushes() {
