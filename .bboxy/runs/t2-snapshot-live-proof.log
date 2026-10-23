@@ -1,0 +1,26 @@
+20/20 live hashes match --check after metadata optimization; driver EXIT0.
+Before source8661f0f (harness on a52d3a2), after source429cb59 before rebase; all inputs seed42 via real PTY and app Input. Both contain same terminal renderer source.
+codex-dark-1x hash=af10134782b46681 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+claude-dark-1x hash=383d92c5c132719a original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+palette-dark-1x hash=374de81d0f7b8aa6 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+unicode-dark-1x hash=c585318383de0833 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+progress-dark-1x hash=a1a8923034c9b2f3 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+alternate-dark-1x hash=7ae14925efd425d2 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+scroll-links-sync-dark-1x hash=e8c8282603029a40 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+osc7501-claude-dark-1x hash=bc12654d7d8da675 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+osc7501-preflight-dark-1x hash=61637783be3702b6 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+osc7501-codex-dark-1x hash=b822608a1187611d original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+codex-light-1x hash=af10134782b46681 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+claude-light-1x hash=383d92c5c132719a original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+palette-light-1x hash=374de81d0f7b8aa6 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+unicode-light-1x hash=c585318383de0833 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+progress-light-1x hash=a1a8923034c9b2f3 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+alternate-light-1x hash=7ae14925efd425d2 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+scroll-links-sync-light-1x hash=e8c8282603029a40 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+osc7501-claude-light-1x hash=bc12654d7d8da675 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+osc7501-preflight-light-1x hash=61637783be3702b6 original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+osc7501-codex-light-1x hash=b822608a1187611d original-pixel pane IDENTICAL to read baseline; cleanup remainingempty app_exit=-15
+Raw comparison is exact original640x360 pane pixels, including focused cursor; no resampling/masking.
+Unthrottled cadence deferred per Oracle fa7fc0d7; no pacing change or whole-app cadence gain claimed.
+Rebase to main3de59b4 dropped the unaccepted verification-harness parent from this speed handoff; harness preserved at own backup branch exec4-t2-audit8661f0f. Core fix remains same source.
+COMMAND_EXIT0
