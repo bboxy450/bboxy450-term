@@ -651,8 +651,9 @@ briefs Executors from the specs, never from this note.
     "each block in our UI GPUGUI system should have ability to define this
     type of dynamic border and border swell and such! thats important, our
     blocks should be sexy out of the box!").** Rim and swell become style
-    properties of any `bbt-ui` block (`border.rim`, `border.swell`), one
-    rim pass over the block rect with per-block alive uniforms through the
+    properties of any `bbt-ui` block (`Style.border { rim, swell }`,
+    replacing the pane-only `style.overrides.glow` that `Pane` sets at
+    `modules/pane.rs:398`), one rim pass over the block rect with per-block alive uniforms through the
     R12-2 arenas; shader in `bbt-render`, style types in `bbt-ui-model`,
     defaults in `bbt-ui` (panes, strips, seat rows, tabs, cards), nothing in
     the app (#39). Only the pane gutter and stage inset follow rim size;

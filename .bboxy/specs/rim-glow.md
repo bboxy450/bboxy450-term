@@ -11,7 +11,7 @@ links:
   - { to: "[[rim-never-covers-text]]", rel: invariant }
   - { to: "[[glow-never-moves-layout]]", rel: invariant }
 created: 2026-10-23T16:39:50Z
-updated: 2026-10-23T22:28:21Z
+updated: 2026-10-23T22:29:53Z
 ---
 # Rim glow
 
@@ -70,7 +70,7 @@ Verbatim, from Wren's "focus swell" demo at 10/20/30/40 px: "can we change focus
 
 Verbatim: "and same swell and same border effect as on terminal blocks should be on the left, each block in our UI GPUGUI system should have ability to define this type of dynamic border and border swell and such! thats important, our blocks should be sexy out of the box!"
 
-- **Where it lives.** The rim and the swell are a **style property of any `bbt-ui` block**, not pane code: `border.rim { size, source }` and `border.swell { reach, ms }` on the block's style, with the same `materials.wgsl` rim pass run over the block's rect; the "alive" inputs (activity, seat colour, focus, pulse phase) arrive per block through the R12-2 arenas as uniforms. Shader in `bbt-render`, style types in `bbt-ui-model` (shared with the lab), defaults in `bbt-ui`; nothing in the app ([[layering]], decision #39).
+- **Where it lives.** The rim and the swell are a **style property of any `bbt-ui` block**, not pane code: `border.rim { size, source }` and `border.swell { reach, ms }` on the block's style, with the same `materials.wgsl` rim pass run over the block's rect; the "alive" inputs (activity, seat colour, focus, pulse phase) arrive per block through the R12-2 arenas as uniforms. Shader in `bbt-render`, style types in `bbt-ui-model` (shared with the lab), defaults in `bbt-ui`; nothing in the app ([[layering]], decision #39). **What it replaces:** today `Pane` sets the rim as a style override, `style.overrides.glow = Some(ui::Glow { … })` (`crates/bbt-ui/src/modules/pane.rs:398`), and only panes have one; that override becomes `Style.border: Border { rim: Option<Rim>, swell: Option<Swell> }` on every block, filled per block kind from the tokens, so `Pane` stops writing it and the rim pass reads `border` off every block rect. `ui::Glow` as a pane-only override is retired in G5.
 - **Defaults.** Panes and their strips, sidebar seat rows, tabs and cards carry the rim and the swell out of the box; a block opts out by style, never by code.
 - **Layout rule for blocks that are not panes.** Only the pane gutter and the stage inset follow the rim size ([[rim-size-is-layout]]). Every other block draws its outer half into the spacing it already has and is clipped there; its inner half and bloom stay inside its own padding, so a block with less padding than the bloom shows a shallower bloom, never glow over its content.
 - **Order.** Lands after G3 as **G5**: the capability, the defaults on rows, tabs and cards, Wren's references for each, one paired commit under strict geometry.
