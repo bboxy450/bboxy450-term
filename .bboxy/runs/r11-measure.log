@@ -1,0 +1,46 @@
+# R11 measurement (custody-clean, AGENTS.md a585ece)
+# binaries: CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true cargo build --release -p bboxy450-term, clean worktrees, own targets (deleted)
+#   before = main 1d9102b sha256 98516cd6140be9a8   after = R11 0b5a40b (rebased: 8b75d7a, no bbt-render change on main since) sha256 fda208de01cb7d46
+# run: BBOXY_TEST_CUSTODY=memory BBOXY_VERIFY_INPUT='while :; do seq $RANDOM $((RANDOM+60)); sleep 0.02; done
+' <app> --meter --spawn-zsh 4 --capture-after 14 --capture <png> --run-dir <mktemp 0700>
+#      sample <pid> 8 at t=5 s; HUD read from the t=14 s capture; app, supervisor, logic stopped by recorded PID; run dir deleted
+# custody: all four footers read 'unsigned, local only' (LocalDev = memory custody): r11-custody-footers.png
+#   (the app logs 'identity status' only on a change, so the log has no custody line)
+
+pair  build   Hz    encode_p50  CPU_p50  CPU_p99  GPU   late   shape_at/main-busy samples
+1     before  38    8.92        9.34     13.74    3.74  0/120  550 / 1116
+1     after   idle* 3.84        4.16      8.74    4.57  0/120    2 /  462
+2     before  34    10.19       10.66    14.95    3.97  0/120  442 /  813
+2     after   37    4.41        4.76      8.33    4.63  0/120    4 /  485
+* capture fell in an output gap (last frame 171 ms ago); the 120-frame window is valid
+
+targets (Oracle): encode p50 < 4 ms: met in pair 1 (3.84), missed in pair 2 (4.41).
+                  CPU p99 < 8.33 ms: missed in both (8.74, 8.33; 8.33 is not < 8.33).
+  Earlier plain --release pairs (NOT custody-clean, Keychain custody, superseded) read encode 3.79 / 2.53, p99 7.93 / 6.65;
+  debug assertions add cost of their own, so the custody-clean profile reads higher for both builds.
+
+after-build main-thread profile (pair 2, 485 busy samples):
+   361  74.4%  gpu::Gpu::draw
+     150  30.9%  command_encoder::CommandEncoder::finish
+       150  30.9%  dispatch::CommandEncoderInterface::finish
+         150  30.9%  global::Global::command_encoder_finish
+     147  30.3%  bboxy450_term::gpu::encode_ops
+        92  19.0%  chrome::ChromeRenderer::draw_overlay
+          58  12.0%  chrome::ChromeRenderer::draw_flat_with_load
+          34   7.0%  chrome::ChromeRenderer::draw_with_load
+        48   9.9%  materials::Pass::draw_into
+          35   7.2%  Device::DeviceExt::create_buffer_init
+      44   9.1%  CommandBuffer::xd5mAH6::bboxy450_term
+        43   8.9%  dispatch::QueueInterface::submit
+          43   8.9%  global::Global::queue_submit
+    71  14.6%  App::redraw::_0B7
+      71  14.6%  scene::Scene::overlay
+        52  10.7%  components::Element::layout
+          30   6.2%  components::Element::layout_in
+          22   4.5%  components::Element::natural_in
+        13   2.7%  bbt_ui::components::paint
+          13   2.7%  bbt_ui::components::paint_with_ancestor_clips
+    37   7.6%  scene::Scene::layout
+      30   6.2%  components::Element::layout
+        29   6.0%  components::Element::layout_in
+          29   6.0%  components::Element::layout_in
