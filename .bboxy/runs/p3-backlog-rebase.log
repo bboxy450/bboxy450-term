@@ -1,0 +1,103 @@
+Old exact24f28c5 clean CI actual exit101/679.105s, sole failedtarget bbt-mux --test socket_backlog. Build andstrict alltargetClippy passed. No waiver used for handoff: Oracle933d5783 landedrootfix936de7a andwithdrewtheexception.
+
+{
+  "source_sha": "24f28c5cee103ad359f26bd810135d1e0e249186",
+  "phase": "aborted",
+  "wrapper_pid": 94196,
+  "started_utc": "2026-10-23T08:43:33.721525+00:00",
+  "target": "/tmp/velvet-p3-target-24f28c5",
+  "report": "/Users/feral/mydev/bboxy450-term-exec6/target/p3-parity-24f28c5",
+  "log": "/tmp/velvet-p3-ci-24f28c5.log",
+  "ci_pid": 94211,
+  "exit": 101,
+  "elapsed_seconds": 679.105,
+  "named_external": "bbt-mux --test socket_backlog; Oracle b208bee9 names Rook known bug",
+  "ci_elapsed_seconds": 679.105,
+  "unreached_stages": [
+    {
+      "command": "cargo test --workspace --locked --no-fail-fast",
+      "exit": 101,
+      "elapsed_seconds": 135.083
+    },
+    {
+      "command": "sh scripts/ui-lint.sh",
+      "exit": 0,
+      "elapsed_seconds": 5.352
+    },
+    {
+      "command": "cargo run -p bboxy450-term --locked -- --smoke",
+      "exit": 0,
+      "elapsed_seconds": 14.189
+    }
+  ],
+  "child_pid": 19310,
+  "preserved_binary_sha256": "6459b82da0ca9a0b69fd48e74a6a297e107c89043884813799be5c10abd01074",
+  "target_deleted": true,
+  "wrapper_exit_signal": 9,
+  "aborted_utc": "2026-10-23T09:00:05.044118+00:00",
+  "abort_reason": "Oracle933d5783 withdrewsocketwaiver; rebasefixed936de7afornextfullgate",
+  "stop_record": "/tmp/velvet-p3-stop-24f28c5.json"
+}
+
+Criticalrawloglines:
+1809: test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.85s
+1811: error: test failed, to rerun pass `-p bbt-mux --test socket_backlog`
+1813: actual ci exit: 101
+2941: test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.37s
+2943: error: test failed, to rerun pass `-p bbt-mux --test socket_backlog`
+3542: separate actual exit: 101
+3556: separate actual exit: 0
+3571: separate actual exit: 0
+3664: CONTINUATION INTENTIONALLY STOPPED after Oracle933d5783 withdrew the socket waiver. Original ci-local exit101 remains real; no full parity result. Recorded owned process tree terminated; private target deleted. See /tmp/velvet-p3-stop-24f28c5.json
+
+Verifiedowned-processstoprecord:
+{
+  "reason": "Oracle933d5783 rootfix936de7a withdrawswaiver; originalCI24fraw101socket_backlog. Stopoldcontinuationbeforefullparity and rebasefixedmain.",
+  "utc": "2026-10-23T08:57:34.033965+00:00",
+  "wrapper_pid": 94196,
+  "wrapper_command": "/opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python /tmp/velvet-p3-final-ci.py /tmp/velvet-p3-ci-24f28c5 24f28c5cee103ad359f26bd810135d1e0e249186 /tmp/velvet-p3-target-24f28c5 /Users/feral/mydev/bboxy450-term-exec6/target/p3-parity-24f28c5 /tmp/velvet-p3-ci-24f28c5.log",
+  "current_child_pid": 19310,
+  "old_ci_exit": 101,
+  "phase": "sh scripts/invariants.sh --parity",
+  "owned_descendants": [
+    {
+      "pid": 19310,
+      "ppid": 94196,
+      "command": "sh scripts/invariants.sh --parity",
+      "depth": 0
+    },
+    {
+      "pid": 19574,
+      "ppid": 19310,
+      "command": "sh scripts/parity.sh",
+      "depth": 1
+    },
+    {
+      "pid": 20616,
+      "ppid": 19574,
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo build -p bboxybook --locked",
+      "depth": 2
+    },
+    {
+      "pid": 21270,
+      "ppid": 20616,
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name kurbo --edition=2024 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/kurbo-0.13.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"default\" --cfg feature=\"std\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"default\", \"euclid\", \"libm\", \"mint\", \"schemars\", \"serde\", \"std\")) -C metadata=6772a4db8b719946 -C extra-filename=-10755ef367a3086a --out-dir /tmp/velvet-p3-target-24f28c5/debug/deps -C strip=debuginfo -L dependency=/tmp/velvet-p3-target-24f28c5/debug/deps --extern arrayvec=/tmp/velvet-p3-target-24f28c5/debug/deps/libarrayvec-4bc39124b4b4d5e5.rmeta --extern polycool=/tmp/velvet-p3-target-24f28c5/debug/deps/libpolycool-edcbb7ef5d734ea5.rmeta --extern smallvec=/tmp/velvet-p3-target-24f28c5/debug/deps/libsmallvec-7940268cf0009a38.rmeta --cap-lints allow",
+      "depth": 3
+    },
+    {
+      "pid": 20856,
+      "ppid": 20616,
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name naga --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/naga-30.0.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"default\" --cfg feature=\"msl-out\" --cfg feature=\"wgsl-in\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"arbitrary\", \"default\", \"deserialize\", \"dot-out\", \"fs\", \"glsl-in\", \"glsl-out\", \"hlsl-out\", \"hlsl-out-if-target-windows\", \"msl-out\", \"msl-out-if-target-apple\", \"serialize\", \"spv-in\", \"spv-out\", \"stderr\", \"termcolor\", \"wgsl-in\", \"wgsl-out\")) -C metadata=e1020d63bd1ee697 -C extra-filename=-89dc98aac64fd5a1 --out-dir /tmp/velvet-p3-target-24f28c5/debug/deps -C strip=debuginfo -L dependency=/tmp/velvet-p3-target-24f28c5/debug/deps --extern arrayvec=/tmp/velvet-p3-target-24f28c5/debug/deps/libarrayvec-4bc39124b4b4d5e5.rmeta --extern bit_set=/tmp/velvet-p3-target-24f28c5/debug/deps/libbit_set-8912d2f317594dbb.rmeta --extern bitflags=/tmp/velvet-p3-target-24f28c5/debug/deps/libbitflags-72aef4e76ddb210c.rmeta --extern cfg_if=/tmp/velvet-p3-target-24f28c5/debug/deps/libcfg_if-280618cc35ec8b09.rmeta --extern codespan_reporting=/tmp/velvet-p3-target-24f28c5/debug/deps/libcodespan_reporting-738b2495d2f29796.rmeta --extern half=/tmp/velvet-p3-target-24f28c5/debug/deps/libhalf-3aee0819c86b880a.rmeta --extern hashbrown=/tmp/velvet-p3-target-24f28c5/debug/deps/libhashbrown-83ba00cd91bbf2ec.rmeta --extern indexmap=/tmp/velvet-p3-target-24f28c5/debug/deps/libindexmap-d3eb9fec01b6847b.rmeta --extern libm=/tmp/velvet-p3-target-24f28c5/debug/deps/liblibm-79fe5ebc0b7ed2a8.rmeta --extern log=/tmp/velvet-p3-target-24f28c5/debug/deps/liblog-1c70e5cdc71f0ae6.rmeta --extern naga_types=/tmp/velvet-p3-target-24f28c5/debug/deps/libnaga_types-1cfe25144abcf7be.rmeta --extern num_traits=/tmp/velvet-p3-target-24f28c5/debug/deps/libnum_traits-16ad1bb639aea1b3.rmeta --extern once_cell=/tmp/velvet-p3-target-24f28c5/debug/deps/libonce_cell-f6a3570b99c508cd.rmeta --extern rustc_hash=/tmp/velvet-p3-target-24f28c5/debug/deps/librustc_hash-b8b939d894f58684.rmeta --extern thiserror=/tmp/velvet-p3-target-24f28c5/debug/deps/libthiserror-3cbc1aed85383f6e.rmeta --extern unicode_ident=/tmp/velvet-p3-target-24f28c5/debug/deps/libunicode_ident-00b44d78d3a7aec9.rmeta --cap-lints allow --cfg msl_out --cfg no_std --check-cfg cfg(dot_out) --check-cfg cfg(glsl_out) --check-cfg cfg(hlsl_out) --check-cfg cfg(msl_out) --check-cfg cfg(spv_out) --check-cfg cfg(wgsl_out) --check-cfg cfg(std) --check-cfg cfg(no_std)",
+      "depth": 3
+    }
+  ],
+  "stopped_recorded_descendants": 5,
+  "wrapper_stopped_by": "SIGKILL after descendants; own-target cleanup follows after absence verification",
+  "all_recorded_pids_absent": true,
+  "target_deleted": true
+}
+
+WrapperwasintentionallySIGKILLedafterrecordeddescendantsterminated (tool exit137); continuationinvariantsdidnotcomplete, numericchildexitnotclaimed. No fullparityverdict on24f. OwnprivateCargoTargetdeletedandcleandetachedsourceworktreeremoved.
+
+Rebase --gpg-sign onto830511f (includes936de7a) exit0. No bboxybook, Settingsmodule or Settingslab/style reference changes fromc8dba61to830511f; freshSettings72evidence remains preserved andwillalso runwithinnewfullcapture. Rebasedheadbeforethisevidencelog: 83067bc152bee9081bb6799fc8fecadbef6ae59f
+NextfullCIwrapperhasNO socketwaiver/fallback.
