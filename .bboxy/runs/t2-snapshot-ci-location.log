@@ -1,0 +1,7 @@
+{
+  "sha": "61382c8a863afb5705157b9b092c286b2db14a85",
+  "worktree": "/tmp/ci-aster-t2-snapshot-m9xhw6ru",
+  "target": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-snapshot-ci-61382c8",
+  "clean_before_gate": true,
+  "gate_pid": 46017
+}

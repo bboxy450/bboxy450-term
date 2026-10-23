@@ -1,0 +1,15 @@
+EXACT_COMMIT=61382c8a863afb5705157b9b092c286b2db14a85
+COMMAND ['sh', 'scripts/ui-lint.sh']
+OWNED_COMMAND_PID=63153
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-aster-t2-snapshot-m9xhw6ru/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/private/tmp/ci-aster-t2-snapshot-m9xhw6ru/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/private/tmp/ci-aster-t2-snapshot-m9xhw6ru/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-aster-t2-snapshot-m9xhw6ru/crates/bboxy450-term)
+    Checking bbt-render v0.0.1 (/private/tmp/ci-aster-t2-snapshot-m9xhw6ru/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/private/tmp/ci-aster-t2-snapshot-m9xhw6ru/crates/bbt-ui)
+    Checking bbt-supervisor v0.0.1 (/private/tmp/ci-aster-t2-snapshot-m9xhw6ru/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/private/tmp/ci-aster-t2-snapshot-m9xhw6ru/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/private/tmp/ci-aster-t2-snapshot-m9xhw6ru/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 7.91s
+
+ACTUAL_EXIT=0 ELAPSED_SECONDS=8.02715833298862

@@ -1,0 +1,40 @@
+[
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--workspace",
+      "--locked",
+      "--",
+      "--skip",
+      "socket_request_flood_replays_exact_output_and_delivers_exit_to_logic"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "sh",
+      "scripts/ui-lint.sh"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "run",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--",
+      "--smoke"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "sh",
+      "scripts/invariants.sh"
+    ],
+    "exit": 0
+  }
+]

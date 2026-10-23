@@ -1,0 +1,13 @@
+Speed metadata handoff evidence. Oracle103fddfe explicitly accepts61382c8 with socket_backlog as the sole named external failure.
+Exact clean CI source61382c8a863afb5705157b9b092c286b2db14a85 based main3de59b4.
+BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=<own private target> sh scripts/ci-local.sh ACTUAL_EXIT101,290.849s. Layering/workspace build/strict workspace all-target clippy passed. Workspace stopped at socket_backlog.rs129 logic stopped after10000 requests; Rook43a0074b diagnoses reply-queue saturation, separate fix in progress. No clean-CI0 claim.
+On same clean checkout and same target/profile, authorized remaining stages:
+cargo test --workspace --locked -- --skip socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ACTUAL_EXIT0,149.755s. Diagnostic explicit skip, not the unfiltered gate.
+sh scripts/ui-lint.sh EXIT0,8.027s.
+cargo run -p bboxy450-term --locked -- --smoke EXIT0,14.934s; idle10.002s frames0 callbacks0.
+sh scripts/invariants.sh EXIT0,34.868s;6 checks,0 failures,4 named slow skips.
+Regression: cargo test -p bbt-proto --locked streams::tests -- --nocapture EXIT0,2 tests.
+Paired optimized legacy/new constructor benchmark EXIT0, same executable and exact equality assertion.38x57 p50 1.655708ms->0.004334ms;77x57 3.487625ms->0.007209ms. Raw logs and benchmark source digest in t2-snapshot-summary.log.
+Live check after optimization:20/20 seed42 hashes exact and640x360 crops pixel-identical to already-read before. Hash driverEXIT0. App cleanupSIGTERM -15 recorded, no remaining PIDs.
+Git fetch/rebase EXIT0; exact-path gitadd/commits EXIT0, good machine signatures. No push or merge. Audit/harness source3048be5 is a separate unaccepted commit above61382c8; exclude it from this speed handoff. This evidence commit changes logs only and does not replace exact-gate source61382c8.
+Not checked: healthy unthrottled cadence until Rook's fix, live2x, external iTerm2/Ghostty captures; no stream poll/Applied/publish changes, no renderer/font changes in the speed source commit.
