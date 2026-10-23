@@ -19,6 +19,10 @@ use crate::protocol::{Frame, Message, Request, VERSION};
 
 pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
 pub(crate) const MAX_SOCKET_QUEUE_BYTES: usize = 4 * MAX_FRAME_BYTES;
+// The serial supervisor client has one outstanding request. Keep room for its
+// largest legal reply (body plus length prefix); output can wait/replay. Any
+// future pipelining must scale this reserve or bound its request admission.
+const MAX_EVENT_QUEUE_BYTES: usize = MAX_SOCKET_QUEUE_BYTES - (MAX_FRAME_BYTES + 4);
 
 fn invalid(message: impl std::fmt::Display) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message.to_string())
@@ -313,8 +317,13 @@ impl SocketPeer {
     }
 
     pub fn enqueue(&mut self, message: Message) -> io::Result<bool> {
+        let limit = if matches!(&message, Message::Reply { .. }) {
+            MAX_SOCKET_QUEUE_BYTES
+        } else {
+            MAX_EVENT_QUEUE_BYTES
+        };
         let bytes = encode(&Frame::new(message))?;
-        if self.queued_bytes + bytes.len() > MAX_SOCKET_QUEUE_BYTES {
+        if self.queued_bytes + bytes.len() > limit {
             return Ok(false);
         }
         self.queued_bytes += bytes.len();

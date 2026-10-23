@@ -32,6 +32,8 @@ fn a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeo
         events: Default::default(),
         replies: Default::default(),
         lease: None,
+        pending_request: None,
+        broken: false,
     };
     let native = client
         .stream
