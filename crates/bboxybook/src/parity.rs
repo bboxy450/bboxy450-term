@@ -215,6 +215,9 @@ impl CasePolicy {
         })
     }
     fn label(self) -> String {
+        if self.scope == "legacy diagnostic pixels only" {
+            return format!("legacy diagnostic pixels: {:.1}%", self.changed_pixel_budget * 100.);
+        }
         let scope = if self.scope.starts_with("container") {
             "surfaces only · "
         } else {
@@ -334,6 +337,26 @@ pub fn compare_paths_with_gate(
     native_prefix: &str,
     strict_geometry: bool,
 ) -> Result<()> {
+    compare_report(root, cases, web_prefix, native_prefix, strict_geometry, false)
+}
+
+pub fn compare_historical_paths(
+    root: &Path,
+    cases: &[Case],
+    web_prefix: &str,
+    native_prefix: &str,
+) -> Result<()> {
+    compare_report(root, cases, web_prefix, native_prefix, false, true)
+}
+
+fn compare_report(
+    root: &Path,
+    cases: &[Case],
+    web_prefix: &str,
+    native_prefix: &str,
+    strict_geometry: bool,
+    legacy: bool,
+) -> Result<()> {
     fs::create_dir_all(root)?;
     let surface_path = root.join(native_prefix).join("surface-layouts.json");
     if surface_path.exists() {
@@ -371,10 +394,17 @@ pub fn compare_paths_with_gate(
         let geometry = layouts
             .iter()
             .find(|v| v["key"] == rel)
+            .filter(|_| !legacy)
             .map(|v| Geometry::from_tree(&v["tree"]));
+        let mut policy = CasePolicy::for_case(case)?;
+        if legacy {
+            policy.historical = true;
+            policy.geometry_tolerance_px = None;
+            policy.scope = "legacy diagnostic pixels only";
+        }
         let mut row = Row {
             case: case.clone(),
-            policy: CasePolicy::for_case(case)?,
+            policy,
             geometry,
             score: 1.,
             error: 1.,
@@ -414,7 +444,7 @@ pub fn compare_paths_with_gate(
     });
     let review = rows
         .iter()
-        .filter(|r| !r.policy.historical && r.status != "within policy")
+        .filter(|r| (legacy || !r.policy.historical) && r.status != "within policy")
         .count();
     let historical = rows.iter().filter(|r| r.policy.historical).count();
     let geometry_failures = rows
@@ -430,11 +460,13 @@ pub fn compare_paths_with_gate(
             .as_ref()
             .is_some_and(|f| f["layer"] == "components")
     });
-    let sources = if cases.iter().any(|c| {
+    let sources = if legacy {
+        "The original 1664-case registry is retained as a non-gating historical diagnostic. Only pixels are compared: no native geometry is inferred or claimed, and these rows are not the current-design gate. Original reference identities remain in capture.json."
+    } else if cases.iter().any(|c| {
         c.fixture
             .as_ref()
             .is_some_and(|f| f["layer"] == "floating-surfaces")
-    }) {
+    }) && cases.iter().all(|c| c.fixture.as_ref().is_some_and(|f| matches!(f["layer"].as_str(), Some("components" | "floating-surfaces")))) {
         "L6 floating components plus explicitly marked surface-only launcher/document shells. Module children are hidden; the unrendered content is an external fixed-height slot. Full web context is retained in context/. Native computes shell position, width, fill, blur, shadow and border. surface-layouts.json records independent rectangle diagnostics; module contents are not claimed as implemented."
     } else if cases.iter().all(|c| {
         c.fixture
@@ -480,27 +512,38 @@ pub fn compare_paths_with_gate(
     } else if cases.iter().all(|c| c.component == "style") {
         "L3 Style paints material, fill, border, shadow and text. Native box/text rects and baselines in layouts.json use the same paint-frame helpers and CoreText advances as the render pass. CSS metrics remain independent diagnostics; no native child bounds are copied from them."
     } else {
-        "Pinned base ux-prototype-v2; supplemental committed lab revision and capture policy in capture.json. Legacy text cases without geometry are unproven, regardless of their pixel score."
+        "Per-gallery fixture layers select native composition and independent geometry snapshots. Reference revisions and capture policy are recorded in capture.json. Required geometry remains unproven when missing, regardless of pixel score."
     };
-    let policy = "Per-case policy: channel tolerance 8; text-bearing cases require every rect and Text baseline within 0.5px plus ≤2% changed pixels; vector paths require exact public-input bounds/endpoints plus ≤0.5%; other pixel-only cases keep ≤0.1%. Missing geometry never passes. The policy gates evidence, not human acceptance. Frozen v2 cases are labelled historical diagnostics; raw results remain visible and do not gate the current design.";
+    let policy = if legacy {
+        "LEGACY DIAGNOSTIC — PIXELS ONLY — NON-GATING. Channel tolerance and each case's pixel budget are retained. Geometry is not checked or claimed. The canonical current galleries form the separate strict gate."
+    } else {
+        "Per-case policy: channel tolerance 8; text-bearing cases require every rect and Text baseline within 0.5px plus ≤2% changed pixels; vector paths require exact public-input bounds/endpoints plus ≤0.5%; other pixel-only cases keep ≤0.1%. Missing geometry never passes. The policy gates evidence, not human acceptance. Frozen v2 cases are labelled historical diagnostics; raw results remain visible and do not gate the current design."
+    };
+    let title = if legacy { "bboxybook legacy diagnostic (pixels only)" } else { "bboxybook parity" };
+    let has_legacy = !legacy && root.join("legacy/index.html").exists();
+    let legacy_link = if has_legacy { "\n\n[Legacy pixel diagnostics (non-gating)](legacy/index.html)" } else { "" };
+    let historical_kind = if legacy { "legacy diagnostic" } else { "historical v2" };
     let mut md = format!(
-        "# bboxybook parity\n\n{} cases; {} require review. {}\n\nSources: {}\n\n| Case | Policy | Geometry | Changed | Mean error | Status | Web | Native | Diff |\n|---|---|---|---:|---:|---|---|---|---|\n",
+        "# {title}\n\n{} cases; {} require review. {}\n\nSources: {}{legacy_link}\n\n| Case | Policy | Geometry | Changed | Mean error | Status | Web | Native | Diff |\n|---|---|---|---:|---:|---|---|---|---|\n",
         rows.len(),
         review,
         policy,
         sources
     );
     let mut html = format!(
-        "<!doctype html><meta charset=utf-8><title>bboxybook parity</title><style>body{{background:#10121c;color:#eee;font:14px system-ui;margin:24px}}a{{color:#9bc3ff}}table{{width:100%;border-collapse:collapse}}td,th{{padding:8px;border-bottom:1px solid #383c55;text-align:left}}img{{max-width:100%;height:auto}}article{{margin:24px 0;padding:12px;background:#1a1d2b}}section{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}}h3{{font-size:14px}}figure{{margin:0}}figcaption{{margin:6px 0;color:#aab}}</style><h1>bboxybook parity</h1><p>{}</p><p>{}</p><p>{} cases · {} require review · review cases first, then worst pixels. <a href=report.md>Report</a> · <a href=report.json>Per-case policy/results JSON</a></p>",
+        "<!doctype html><meta charset=utf-8><title>{title}</title><style>body{{background:#10121c;color:#eee;font:14px system-ui;margin:24px}}a{{color:#9bc3ff}}table{{width:100%;border-collapse:collapse}}td,th{{padding:8px;border-bottom:1px solid #383c55;text-align:left}}img{{max-width:100%;height:auto}}article{{margin:24px 0;padding:12px;background:#1a1d2b}}section{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}}h3{{font-size:14px}}figure{{margin:0}}figcaption{{margin:6px 0;color:#aab}}</style><h1>{title}</h1><p>{}</p><p>{}</p><p>{} cases · {} require review · review cases first, then worst pixels. <a href=report.md>Report</a> · <a href=report.json>Per-case policy/results JSON</a></p>",
         escape(policy),
         escape(sources),
         rows.len(),
         review
     );
+    if has_legacy {
+        html.push_str("<p><a href=legacy/index.html>Legacy pixel diagnostics (non-gating)</a></p>");
+    }
     if historical > 0 {
         write!(
             html,
-            "<p>{historical} historical v2 cases are diagnostic only.</p>"
+            "<p>{historical} {historical_kind} cases are diagnostic only.</p>"
         )?;
     }
     if component_layer || cases.iter().all(|c| c.component == "style") {
@@ -520,7 +563,7 @@ pub fn compare_paths_with_gate(
             .as_ref()
             .map(Geometry::label)
             .unwrap_or_else(|| {
-                if row.policy.text {
+                if row.policy.geometry_tolerance_px.is_some() {
                     "missing".into()
                 } else {
                     "not required".into()
@@ -559,7 +602,7 @@ pub fn compare_paths_with_gate(
     if historical > 0 {
         writeln!(
             md,
-            "\n{historical} historical v2 cases are diagnostic only.\n"
+            "\n{historical} {historical_kind} cases are diagnostic only.\n"
         )?;
     }
     for (i, row) in rows.iter().enumerate() {
@@ -618,6 +661,13 @@ pub fn compare_paths_with_gate(
         review,
         root.join("index.html").display()
     );
+    if legacy {
+        println!("legacy diagnostic: {} cases; {review} pixel reviews (non-gating)", rows.len());
+        return Ok(());
+    }
+    let required_geometry = rows.iter().filter(|r| !r.policy.historical && r.policy.geometry_tolerance_px.is_some()).count();
+    let unproven_geometry = rows.iter().filter(|r| !r.policy.historical && r.policy.geometry_status(r.geometry.as_ref()) == Some("unproven geometry")).count();
+    println!("geometry: {required_geometry} required; {} measured; {unproven_geometry} unproven; {} mismatches", required_geometry - unproven_geometry, geometry_failures - unproven_geometry);
     if geometry_failures > 0 {
         if strict_geometry {
             return Err(format!("parity gate: {geometry_failures} geometry failures (fail)").into());
@@ -634,6 +684,37 @@ pub fn compare_paths_with_gate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate() -> Result<()> {
+        let temp = std::env::temp_dir().join(format!(
+            "bboxybook-legacy-pixels-{}", std::process::id()
+        ));
+        fs::create_dir(&temp)?;
+        let mut case = crate::seat_rows::cases().remove(0);
+        case.width = 1;
+        case.height = 1;
+        for (side, pixel) in [("web", [0, 0, 0, 255]), ("native", [255, 255, 255, 255])] {
+            let path = temp.join(side).join(case.relative());
+            fs::create_dir_all(path.parent().unwrap())?;
+            bbt_render::write_png(&path, &pixel, 1, 1)?;
+        }
+        let report = temp.join("legacy");
+        compare_historical_paths(&report, &[case.clone()], "../web", "../native")?;
+        let rows: serde_json::Value = serde_json::from_slice(&fs::read(report.join("report.json"))?)?;
+        assert_eq!(rows[0]["policy"]["historical"], true);
+        assert_eq!(rows[0]["policy"]["scope"], "legacy diagnostic pixels only");
+        assert!(rows[0]["policy"]["geometry_tolerance_px"].is_null());
+        assert!(rows[0]["geometry"].is_null());
+        assert_eq!(rows[0]["status"], "review pixels");
+        assert!(fs::read_to_string(report.join("report.md"))?.contains("PIXELS ONLY — NON-GATING"));
+        assert!(compare_paths_with_gate(&temp.join("current"), &[case], "../web", "../native", true).is_err());
+        let rows: serde_json::Value = serde_json::from_slice(&fs::read(temp.join("current/report.json"))?)?;
+        assert_eq!(rows[0]["policy"]["historical"], false);
+        assert_eq!(rows[0]["status"], "unproven geometry");
+        fs::remove_dir_all(temp)?;
+        Ok(())
+    }
+
     #[test]
     fn first_report_resolves_relative_reference_directories() -> Result<()> {
         let suffix = std::time::SystemTime::now()

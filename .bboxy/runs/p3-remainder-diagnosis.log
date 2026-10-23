@@ -1,0 +1,909 @@
+P3 frozen full gate: 81953ee05b546ea51f5c94324c3e866ca50ad9a0
+Command: BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity
+Clean detached source: /tmp/velvet-p3-ci-81953ee
+Own CARGO_TARGET_DIR: /tmp/velvet-p3-target-81953ee (deleted)
+Actual aggregate exit: 1; elapsed: 2424.623s
+Full log: /tmp/velvet-p3-ci-81953ee.log:2150-2164
+Required geometry: 1536; measured 1536; unproven 0
+Geometry failures: 16 ({'title-strip': 8, 'settings': 8})
+Pixel-only reviews advisory: 326 ({'documents': 48, 'title-strip': 80, 'pane': 48, 'message-row': 24, 'stream': 8, 'settings': 24, 'seat-row': 2, 'graph': 16, 'style': 4, 'launcher-surface': 8, 'harness-icon': 48, 'documents-surface': 8, 'materials': 8})
+Launcher within policy: {'within policy': 176}
+Legacy historical pixel-only: 1664 cases, 859 reviews
+Source unchanged since freeze; not accepted; no tolerances or snapshots weakened.
+Diagnosis: /tmp/velvet-p3-box-model-81953ee.json (node probe exit0)
+Pane arithmetic: /tmp/velvet-p3-pane-cause-81953ee.json (8/8 exact +2px active-border residual)
+Scope/ruling request sent to Oracle: 88163941-56e5-4c58-8a0c-e22a46452c6e
+
+Normative ruling: Oracle074cfae8-fef0-4e1f-b46f-ec2d16a6b335. Range120x16 margin0, lab fix by Wren first; native Pane::height constant border_idle like paint. Rebase main then scopedsettings/title-strip followedbyexactfullgate.
+
+Frozen819 box model probe command: node /tmp/velvet-p3-box-model-probe.mjs — actualexit0
+{
+  "source_sha": "81953ee05b546ea51f5c94324c3e866ca50ad9a0",
+  "profile": "isolated ephemeral",
+  "experiments": [
+    {
+      "scenario": {
+        "page": "settings.html",
+        "state": "Appearance",
+        "settings": true
+      },
+      "before": [
+        {
+          "group": {
+            "tag": "SPAN",
+            "class": "wo",
+            "text": "8 px",
+            "rect": {
+              "x": 1015.8125,
+              "y": 327.8125,
+              "w": 169.1875,
+              "h": 20
+            },
+            "height": "20px",
+            "minHeight": "auto",
+            "width": "169.188px",
+            "margin": "0px",
+            "padding": "0px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "17.55px",
+            "alignItems": "center"
+          },
+          "children": [
+            {
+              "tag": "INPUT",
+              "class": "",
+              "text": "",
+              "rect": {
+                "x": 1017.8125,
+                "y": 329.8125,
+                "w": 120,
+                "h": 16
+              },
+              "height": "16px",
+              "minHeight": "auto",
+              "width": "120px",
+              "margin": "2px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "normal",
+              "alignItems": "normal"
+            },
+            {
+              "tag": "B",
+              "class": "wo-pct",
+              "text": "8 px",
+              "rect": {
+                "x": 1149.8125,
+                "y": 330.390625,
+                "w": 35.1875,
+                "h": 14.84375
+              },
+              "height": "14.8438px",
+              "minHeight": "auto",
+              "width": "35.1875px",
+              "margin": "0px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "14.85px",
+              "alignItems": "normal"
+            }
+          ]
+        },
+        {
+          "group": {
+            "tag": "SPAN",
+            "class": "wo",
+            "text": "100%",
+            "rect": {
+              "x": 941.8125,
+              "y": 371.515625,
+              "w": 243.1875,
+              "h": 40
+            },
+            "height": "40px",
+            "minHeight": "auto",
+            "width": "243.188px",
+            "margin": "0px",
+            "padding": "0px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "17.55px",
+            "alignItems": "center"
+          },
+          "children": [
+            {
+              "tag": "SPAN",
+              "class": "win-prev",
+              "text": "",
+              "rect": {
+                "x": 941.8125,
+                "y": 371.515625,
+                "w": 64,
+                "h": 40
+              },
+              "height": "40px",
+              "minHeight": "auto",
+              "width": "64px",
+              "margin": "0px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "17.55px",
+              "alignItems": "normal"
+            },
+            {
+              "tag": "INPUT",
+              "class": "",
+              "text": "",
+              "rect": {
+                "x": 1017.8125,
+                "y": 383.515625,
+                "w": 120,
+                "h": 16
+              },
+              "height": "16px",
+              "minHeight": "auto",
+              "width": "120px",
+              "margin": "2px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "normal",
+              "alignItems": "normal"
+            },
+            {
+              "tag": "B",
+              "class": "wo-pct",
+              "text": "100%",
+              "rect": {
+                "x": 1149.8125,
+                "y": 384.09375,
+                "w": 35.1875,
+                "h": 14.84375
+              },
+              "height": "14.8438px",
+              "minHeight": "auto",
+              "width": "35.1875px",
+              "margin": "0px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "14.85px",
+              "alignItems": "normal"
+            }
+          ]
+        }
+      ],
+      "after_zero_margin_ephemeral_only": [
+        {
+          "group": {
+            "tag": "SPAN",
+            "class": "wo",
+            "text": "8 px",
+            "rect": {
+              "x": 1019.8125,
+              "y": 329.8125,
+              "w": 165.1875,
+              "h": 16
+            },
+            "height": "16px",
+            "minHeight": "auto",
+            "width": "165.188px",
+            "margin": "0px",
+            "padding": "0px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "17.55px",
+            "alignItems": "center"
+          },
+          "children": [
+            {
+              "tag": "INPUT",
+              "class": "",
+              "text": "",
+              "rect": {
+                "x": 1019.8125,
+                "y": 329.8125,
+                "w": 120,
+                "h": 16
+              },
+              "height": "16px",
+              "minHeight": "auto",
+              "width": "120px",
+              "margin": "0px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "normal",
+              "alignItems": "normal"
+            },
+            {
+              "tag": "B",
+              "class": "wo-pct",
+              "text": "8 px",
+              "rect": {
+                "x": 1149.8125,
+                "y": 330.390625,
+                "w": 35.1875,
+                "h": 14.84375
+              },
+              "height": "14.8438px",
+              "minHeight": "auto",
+              "width": "35.1875px",
+              "margin": "0px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "14.85px",
+              "alignItems": "normal"
+            }
+          ]
+        },
+        {
+          "group": {
+            "tag": "SPAN",
+            "class": "wo",
+            "text": "100%",
+            "rect": {
+              "x": 945.8125,
+              "y": 371.515625,
+              "w": 239.1875,
+              "h": 40
+            },
+            "height": "40px",
+            "minHeight": "auto",
+            "width": "239.188px",
+            "margin": "0px",
+            "padding": "0px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "17.55px",
+            "alignItems": "center"
+          },
+          "children": [
+            {
+              "tag": "SPAN",
+              "class": "win-prev",
+              "text": "",
+              "rect": {
+                "x": 945.8125,
+                "y": 371.515625,
+                "w": 64,
+                "h": 40
+              },
+              "height": "40px",
+              "minHeight": "auto",
+              "width": "64px",
+              "margin": "0px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "17.55px",
+              "alignItems": "normal"
+            },
+            {
+              "tag": "INPUT",
+              "class": "",
+              "text": "",
+              "rect": {
+                "x": 1019.8125,
+                "y": 383.515625,
+                "w": 120,
+                "h": 16
+              },
+              "height": "16px",
+              "minHeight": "auto",
+              "width": "120px",
+              "margin": "0px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "normal",
+              "alignItems": "normal"
+            },
+            {
+              "tag": "B",
+              "class": "wo-pct",
+              "text": "100%",
+              "rect": {
+                "x": 1149.8125,
+                "y": 384.09375,
+                "w": 35.1875,
+                "h": 14.84375
+              },
+              "height": "14.8438px",
+              "minHeight": "auto",
+              "width": "35.1875px",
+              "margin": "0px",
+              "padding": "0px",
+              "border": "0px",
+              "boxSizing": "border-box",
+              "appearance": "none",
+              "lineHeight": "14.85px",
+              "alignItems": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "page": "title-strip.html",
+        "state": "row + pane breathe together",
+        "settings": false
+      },
+      "before": [
+        {
+          "pane": {
+            "tag": "DIV",
+            "class": "pane active",
+            "text": "Vesper Greywind♔gpu research⌘1●$ cargo build --release\n   Compiling wgpu v0.20\n ",
+            "rect": {
+              "x": 290,
+              "y": 42,
+              "w": 914,
+              "h": 130
+            },
+            "height": "130px",
+            "minHeight": "110px",
+            "width": "914px",
+            "margin": "0px",
+            "padding": "0px",
+            "border": "1px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "19.6px",
+            "alignItems": "normal"
+          },
+          "strip": {
+            "tag": "DIV",
+            "class": "strip",
+            "text": "Vesper Greywind♔gpu research⌘1●",
+            "rect": {
+              "x": 291,
+              "y": 43,
+              "w": 912,
+              "h": 22
+            },
+            "height": "22px",
+            "minHeight": "auto",
+            "width": "912px",
+            "margin": "0px",
+            "padding": "0px 8px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "15.4px",
+            "alignItems": "center"
+          },
+          "term": {
+            "tag": "DIV",
+            "class": "term",
+            "text": "$ cargo build --release\n   Compiling wgpu v0.20\n   Compiling glyphon v0.5\n   Com",
+            "rect": {
+              "x": 291,
+              "y": 65,
+              "w": 912,
+              "h": 106
+            },
+            "height": "106px",
+            "minHeight": "auto",
+            "width": "912px",
+            "margin": "0px",
+            "padding": "8px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "18px",
+            "alignItems": "normal"
+          }
+        },
+        {
+          "pane": {
+            "tag": "DIV",
+            "class": "pane idle focused",
+            "text": "Nyx Copperwing♟messaging spec⌘2○$ git status\nOn branch main\nnothing to commit, w",
+            "rect": {
+              "x": 290,
+              "y": 200,
+              "w": 914,
+              "h": 112
+            },
+            "height": "112px",
+            "minHeight": "110px",
+            "width": "914px",
+            "margin": "0px",
+            "padding": "0px",
+            "border": "1px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "19.6px",
+            "alignItems": "normal"
+          },
+          "strip": {
+            "tag": "DIV",
+            "class": "strip",
+            "text": "Nyx Copperwing♟messaging spec⌘2○",
+            "rect": {
+              "x": 291,
+              "y": 201,
+              "w": 912,
+              "h": 22
+            },
+            "height": "22px",
+            "minHeight": "auto",
+            "width": "912px",
+            "margin": "0px",
+            "padding": "0px 8px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "15.4px",
+            "alignItems": "center"
+          },
+          "term": {
+            "tag": "DIV",
+            "class": "term",
+            "text": "$ git status\nOn branch main\nnothing to commit, working tree clean\n$ ",
+            "rect": {
+              "x": 291,
+              "y": 223,
+              "w": 912,
+              "h": 88
+            },
+            "height": "88px",
+            "minHeight": "auto",
+            "width": "912px",
+            "margin": "0px",
+            "padding": "8px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "18px",
+            "alignItems": "normal"
+          }
+        },
+        {
+          "pane": {
+            "tag": "DIV",
+            "class": "pane waiting",
+            "text": "Lumen Foxglove♝ux divergence · waiting for an answer⌘3◐?Allow Bash(git push)?\n  ",
+            "rect": {
+              "x": 290,
+              "y": 340,
+              "w": 914,
+              "h": 112
+            },
+            "height": "112px",
+            "minHeight": "110px",
+            "width": "914px",
+            "margin": "0px",
+            "padding": "0px",
+            "border": "1px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "19.6px",
+            "alignItems": "normal"
+          },
+          "strip": {
+            "tag": "DIV",
+            "class": "strip",
+            "text": "Lumen Foxglove♝ux divergence · waiting for an answer⌘3◐?",
+            "rect": {
+              "x": 291,
+              "y": 341,
+              "w": 912,
+              "h": 22
+            },
+            "height": "22px",
+            "minHeight": "auto",
+            "width": "912px",
+            "margin": "0px",
+            "padding": "0px 8px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "15.4px",
+            "alignItems": "center"
+          },
+          "term": {
+            "tag": "DIV",
+            "class": "term",
+            "text": "Allow Bash(git push)?\n  › Yes\n    No\n",
+            "rect": {
+              "x": 291,
+              "y": 363,
+              "w": 912,
+              "h": 88
+            },
+            "height": "88px",
+            "minHeight": "auto",
+            "width": "912px",
+            "margin": "0px",
+            "padding": "8px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "18px",
+            "alignItems": "normal"
+          }
+        },
+        {
+          "pane": {
+            "tag": "DIV",
+            "class": "pane errored",
+            "text": "Vesper Greywind♔gpu research⌘4✕error[E0599]: no method named `glow`\n  --> src/si",
+            "rect": {
+              "x": 290,
+              "y": 480,
+              "w": 914,
+              "h": 110
+            },
+            "height": "110px",
+            "minHeight": "110px",
+            "width": "914px",
+            "margin": "0px",
+            "padding": "0px",
+            "border": "1px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "19.6px",
+            "alignItems": "normal"
+          },
+          "strip": {
+            "tag": "DIV",
+            "class": "strip",
+            "text": "Vesper Greywind♔gpu research⌘4✕",
+            "rect": {
+              "x": 291,
+              "y": 481,
+              "w": 912,
+              "h": 22
+            },
+            "height": "22px",
+            "minHeight": "auto",
+            "width": "912px",
+            "margin": "0px",
+            "padding": "0px 8px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "15.4px",
+            "alignItems": "center"
+          },
+          "term": {
+            "tag": "DIV",
+            "class": "term",
+            "text": "error[E0599]: no method named `glow`\n  --> src/sidebar.rs:88:14\n$ ",
+            "rect": {
+              "x": 291,
+              "y": 503,
+              "w": 912,
+              "h": 86
+            },
+            "height": "86px",
+            "minHeight": "auto",
+            "width": "912px",
+            "margin": "0px",
+            "padding": "8px",
+            "border": "0px",
+            "boxSizing": "border-box",
+            "appearance": "none",
+            "lineHeight": "18px",
+            "alignItems": "normal"
+          }
+        }
+      ],
+      "after_zero_margin_ephemeral_only": null
+    }
+  ],
+  "browser": "Chrome/156.0.8078.48"
+}
+
+All8 TitleStrip failing-case native geometry and constant-border calculation:
+[
+  {
+    "case": "title-strip/row-pane-breathe-together-touch-dark.png",
+    "bad": [
+      {
+        "part": "pane",
+        "native": [
+          290.0,
+          42.0,
+          914.0,
+          132.0
+        ],
+        "web": [
+          290.0,
+          42.0,
+          914.0,
+          130.0
+        ]
+      },
+      {
+        "part": "pane/term",
+        "native": [
+          291.0,
+          65.0,
+          912.0,
+          108.0
+        ],
+        "web": [
+          291.0,
+          65.0,
+          912.0,
+          106.0
+        ]
+      }
+    ],
+    "constant_1px_border_predicted_height": 130
+  },
+  {
+    "case": "title-strip/row-pane-breathe-together-touch-light.png",
+    "bad": [
+      {
+        "part": "pane",
+        "native": [
+          290.0,
+          42.0,
+          914.0,
+          132.0
+        ],
+        "web": [
+          290.0,
+          42.0,
+          914.0,
+          130.0
+        ]
+      },
+      {
+        "part": "pane/term",
+        "native": [
+          291.0,
+          65.0,
+          912.0,
+          108.0
+        ],
+        "web": [
+          291.0,
+          65.0,
+          912.0,
+          106.0
+        ]
+      }
+    ],
+    "constant_1px_border_predicted_height": 130
+  },
+  {
+    "case": "title-strip/row-pane-breathe-together-comfortable-dark.png",
+    "bad": [
+      {
+        "part": "pane",
+        "native": [
+          290.0,
+          42.0,
+          914.0,
+          132.0
+        ],
+        "web": [
+          290.0,
+          42.0,
+          914.0,
+          130.0
+        ]
+      },
+      {
+        "part": "pane/term",
+        "native": [
+          291.0,
+          65.0,
+          912.0,
+          108.0
+        ],
+        "web": [
+          291.0,
+          65.0,
+          912.0,
+          106.0
+        ]
+      }
+    ],
+    "constant_1px_border_predicted_height": 130
+  },
+  {
+    "case": "title-strip/row-pane-breathe-together-comfortable-light.png",
+    "bad": [
+      {
+        "part": "pane",
+        "native": [
+          290.0,
+          42.0,
+          914.0,
+          132.0
+        ],
+        "web": [
+          290.0,
+          42.0,
+          914.0,
+          130.0
+        ]
+      },
+      {
+        "part": "pane/term",
+        "native": [
+          291.0,
+          65.0,
+          912.0,
+          108.0
+        ],
+        "web": [
+          291.0,
+          65.0,
+          912.0,
+          106.0
+        ]
+      }
+    ],
+    "constant_1px_border_predicted_height": 130
+  },
+  {
+    "case": "title-strip/row-pane-breathe-together-cozy-dark.png",
+    "bad": [
+      {
+        "part": "pane",
+        "native": [
+          290.0,
+          42.0,
+          914.0,
+          132.0
+        ],
+        "web": [
+          290.0,
+          42.0,
+          914.0,
+          130.0
+        ]
+      },
+      {
+        "part": "pane/term",
+        "native": [
+          291.0,
+          65.0,
+          912.0,
+          108.0
+        ],
+        "web": [
+          291.0,
+          65.0,
+          912.0,
+          106.0
+        ]
+      }
+    ],
+    "constant_1px_border_predicted_height": 130
+  },
+  {
+    "case": "title-strip/row-pane-breathe-together-cozy-light.png",
+    "bad": [
+      {
+        "part": "pane",
+        "native": [
+          290.0,
+          42.0,
+          914.0,
+          132.0
+        ],
+        "web": [
+          290.0,
+          42.0,
+          914.0,
+          130.0
+        ]
+      },
+      {
+        "part": "pane/term",
+        "native": [
+          291.0,
+          65.0,
+          912.0,
+          108.0
+        ],
+        "web": [
+          291.0,
+          65.0,
+          912.0,
+          106.0
+        ]
+      }
+    ],
+    "constant_1px_border_predicted_height": 130
+  },
+  {
+    "case": "title-strip/row-pane-breathe-together-compact-dark.png",
+    "bad": [
+      {
+        "part": "pane",
+        "native": [
+          290.0,
+          42.0,
+          914.0,
+          132.0
+        ],
+        "web": [
+          290.0,
+          42.0,
+          914.0,
+          130.0
+        ]
+      },
+      {
+        "part": "pane/term",
+        "native": [
+          291.0,
+          65.0,
+          912.0,
+          108.0
+        ],
+        "web": [
+          291.0,
+          65.0,
+          912.0,
+          106.0
+        ]
+      }
+    ],
+    "constant_1px_border_predicted_height": 130
+  },
+  {
+    "case": "title-strip/row-pane-breathe-together-compact-light.png",
+    "bad": [
+      {
+        "part": "pane",
+        "native": [
+          290.0,
+          42.0,
+          914.0,
+          132.0
+        ],
+        "web": [
+          290.0,
+          42.0,
+          914.0,
+          130.0
+        ]
+      },
+      {
+        "part": "pane/term",
+        "native": [
+          291.0,
+          65.0,
+          912.0,
+          108.0
+        ],
+        "web": [
+          291.0,
+          65.0,
+          912.0,
+          106.0
+        ]
+      }
+    ],
+    "constant_1px_border_predicted_height": 130
+  }
+]

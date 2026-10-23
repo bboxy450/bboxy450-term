@@ -175,22 +175,26 @@ fn run() -> Result<()> {
         ));
     }
     if command == "manifest" {
-        let cases = match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref() {
-            Some("providers") => provider_cases(),
-            Some("paths") => bboxybook::paths::cases(),
-            Some("graphs") => bboxybook::graphs::cases(),
-            Some("settings") => bboxybook::settings::cases(),
-            Some("perf") => bboxybook::perf::cases(),
-            Some("documents") => bboxybook::documents::cases(),
-            Some("masks") => bboxybook::components::mask_cases(),
-            Some("flow") => bboxybook::components::cases(),
-            Some("streams") => {
-                let mut c = bboxybook::streams::cases();
-                c.extend(bboxybook::streams::legacy_cases());
-                c
+        let cases = if args.iter().any(|arg| arg == "--legacy") {
+            gallery::cases()
+        } else {
+            match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref() {
+                Some("providers") => provider_cases(),
+                Some("paths") => bboxybook::paths::cases(),
+                Some("graphs") => bboxybook::graphs::cases(),
+                Some("settings") => bboxybook::settings::cases(),
+                Some("perf") => bboxybook::perf::cases(),
+                Some("documents") => bboxybook::documents::cases(),
+                Some("masks") => bboxybook::components::mask_cases(),
+                Some("flow") => bboxybook::components::cases(),
+                Some("streams") => {
+                    let mut cases = bboxybook::streams::cases();
+                    cases.extend(bboxybook::streams::legacy_cases());
+                    cases
+                }
+                None => gallery::parity_cases(),
+                Some(_) => return Err("unknown BBOXYBOOK_GALLERY".into()),
             }
-            None => gallery::cases(),
-            Some(_) => return Err("unknown BBOXYBOOK_GALLERY".into()),
         };
         println!("{}", serde_json::to_string_pretty(&cases)?);
         return Ok(());
@@ -244,7 +248,16 @@ fn run() -> Result<()> {
                 }
             } else { parity::render(&out,&cases)?; }
         },
-        "compare"=>parity::compare_paths_with_gate(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/parity".into())),&cases,&value(&args,"--web-root").unwrap_or_else(||"web".into()),&value(&args,"--native-root").unwrap_or_else(||"native".into()),args.iter().any(|arg|arg=="--strict-geometry"))?,
+        "compare"=>{
+            let strict=args.iter().any(|arg|arg=="--strict-geometry");
+            let legacy=args.iter().any(|arg|arg=="--legacy");
+            if strict && legacy { return Err("--legacy and --strict-geometry are mutually exclusive".into()); }
+            let out=PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/parity".into()));
+            let web=value(&args,"--web-root").unwrap_or_else(||"web".into());
+            let native=value(&args,"--native-root").unwrap_or_else(||"native".into());
+            if legacy { parity::compare_historical_paths(&out,&cases,&web,&native)?; }
+            else { parity::compare_paths_with_gate(&out,&cases,&web,&native,strict)?; }
+        },
         "sidebar"|"showcase"=>{let component=if command=="showcase"{format!("showcase-{}",value(&args,"--scene").unwrap_or_else(||"3".into()))}else{"sidebar".into()};cases.retain(|c|c.component==component);parity::render(&PathBuf::from("target/bboxybook"),&cases)?;},
         _=>return Err("usage: bboxybook [gallery | paths | streams | launchers | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | shaders | styles | manifest | replay-images --manifest JSON --out DIR | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
     }

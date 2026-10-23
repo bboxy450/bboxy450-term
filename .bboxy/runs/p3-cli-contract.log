@@ -1,0 +1,4 @@
+default current cases=1624, unique paths=1624
+legacy diagnostic cases=1664
+current layers={"atoms": 112, "components": 96, "documents": 120, "floating-surfaces": 16, "graphs": 64, "launchers": 176, "materials": 32, "panes": 136, "paths": 48, "seat-row": 224, "settings": 72, "streams": 200, "style": 112, "swarms": 72, "tabs": 104, "titlebars": 40}
+target/f3-dev/debug/bboxybook compare --legacy --strict-geometry => exit1 bboxybook: --legacy and --strict-geometry are mutually exclusive

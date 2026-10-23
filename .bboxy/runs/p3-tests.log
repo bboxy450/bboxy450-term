@@ -1,0 +1,42 @@
+$ cargo test -p bboxybook --locked
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Finished `test` profile [unoptimized] target(s) in 9.53s
+     Running unittests src/lib.rs (target/f3-dev/debug/deps/bboxybook-4b71880d30e7c2ad)
+/Users/feral/mydev/bboxy450-term-exec6/target/f3-dev/debug/deps/bboxybook-4b71880d30e7c2ad: replacing existing signature
+
+running 13 tests
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test parity::tests::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing ... FAILED
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+
+failures:
+
+---- gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing stdout ----
+
+thread 'gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing' (9167576) panicked at crates/bboxybook/src/gallery.rs:451:9:
+assertion `left == right` failed
+  left: 1608
+ right: 1624
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing
+
+test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.29s
+
+error: test failed, to rerun pass `-p bboxybook --lib`
+
+exit: 101
+elapsed_seconds: 28.384

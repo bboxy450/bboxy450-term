@@ -1,0 +1,162 @@
+D1c diagnostic:16 Launcherhostrows affectedbynewlablinkstatus. Sourcecode/lab/capturehelperidenticalbetween3c nativebinaryand4bbd; gitdiffonly .bboxy/runs/p3-remainder-scope.log. No referenceoverride.
+
+command:node crates/bboxybook/capture.mjs /Users/feral/mydev/bboxy450-term-exec6/target/p3-d1c-launcher-hosts-4bbd23b /Users/feral/mydev/bboxy450-term-exec6/target/p3-d1c-launcher-hosts-4bbd23b/requested.json
+web: 16/16 captured; 0 failures
+actual exit:0
+elapsed_seconds:9.254
+
+command:/Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/bboxybook-3c5916a render --all --out /Users/feral/mydev/bboxy450-term-exec6/target/p3-d1c-launcher-hosts-4bbd23b/native --manifest /Users/feral/mydev/bboxy450-term-exec6/target/p3-d1c-launcher-hosts-4bbd23b/cases.json
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-exec6/target/p3-d1c-launcher-hosts-4bbd23b/native/layouts.json
+rendered 16 PNGs to /Users/feral/mydev/bboxy450-term-exec6/target/p3-d1c-launcher-hosts-4bbd23b/native
+actual exit:0
+elapsed_seconds:10.426
+
+command:/Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/bboxybook-3c5916a compare --strict-geometry --out /Users/feral/mydev/bboxy450-term-exec6/target/p3-d1c-launcher-hosts-4bbd23b --manifest /Users/feral/mydev/bboxy450-term-exec6/target/p3-d1c-launcher-hosts-4bbd23b/cases.json
+parity: 16 cases, 16 review; /Users/feral/mydev/bboxy450-term-exec6/target/p3-d1c-launcher-hosts-4bbd23b/index.html
+geometry: 16 required; 0 measured; 16 unproven; 0 mismatches
+bboxybook: parity gate: 16 geometry failures (fail)
+actual exit:1
+elapsed_seconds:0.47
+
+diagnostic actual exit:1
+elapsed_seconds:20.152
+
+Missingpartsexample, SSHmachinescozydark:
+[
+  {
+    "key": "picker/div/opt/kind",
+    "native": [
+      883.39453125,
+      126.0,
+      54.60546875,
+      19.59375
+    ],
+    "web": [
+      892.140625,
+      125.390625,
+      45.859375,
+      20.796875
+    ]
+  },
+  {
+    "key": "picker/div/opt/kind/link",
+    "native": null,
+    "web": [
+      892.140625,
+      126.59375,
+      45.859375,
+      19.59375
+    ]
+  },
+  {
+    "key": "picker/div/opt/kind/link/i",
+    "native": null,
+    "web": [
+      892.140625,
+      132.390625,
+      8.0,
+      8.0
+    ]
+  },
+  {
+    "key": "picker/div/opt/kind/link/span",
+    "native": null,
+    "web": [
+      906.140625,
+      126.59375,
+      31.859375,
+      19.59375
+    ]
+  },
+  {
+    "key": "picker/div/opt1/kind",
+    "native": [
+      883.39453125,
+      172.0,
+      54.60546875,
+      19.59375
+    ],
+    "web": [
+      834.21875,
+      171.390625,
+      103.78125,
+      20.796875
+    ]
+  },
+  {
+    "key": "picker/div/opt1/kind/link",
+    "native": null,
+    "web": [
+      834.21875,
+      172.59375,
+      103.78125,
+      19.59375
+    ]
+  },
+  {
+    "key": "picker/div/opt1/kind/link/i",
+    "native": null,
+    "web": [
+      834.21875,
+      178.390625,
+      8.0,
+      8.0
+    ]
+  },
+  {
+    "key": "picker/div/opt1/kind/link/span",
+    "native": null,
+    "web": [
+      848.21875,
+      172.59375,
+      89.78125,
+      19.59375
+    ]
+  },
+  {
+    "key": "picker/div/opt2/kind",
+    "native": [
+      887.39453125,
+      218.0,
+      54.60546875,
+      19.59375
+    ],
+    "web": [
+      887.46875,
+      217.390625,
+      54.53125,
+      20.796875
+    ]
+  },
+  {
+    "key": "picker/div/opt2/kind/link",
+    "native": null,
+    "web": [
+      887.46875,
+      218.59375,
+      54.53125,
+      19.59375
+    ]
+  },
+  {
+    "key": "picker/div/opt2/kind/link/i",
+    "native": null,
+    "web": [
+      887.46875,
+      224.390625,
+      8.0,
+      8.0
+    ]
+  },
+  {
+    "key": "picker/div/opt2/kind/link/span",
+    "native": null,
+    "web": [
+      901.46875,
+      218.59375,
+      40.53125,
+      19.59375
+    ]
+  }
+]

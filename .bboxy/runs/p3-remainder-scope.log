@@ -1,0 +1,110 @@
+P3 remainder scoped evidence. Source3c5916a68bec2ebd1c2c218890258b0e15610677, basedonmain0102666.
+
+Evidence file: /tmp/velvet-p3-remainder-scope-3c5916a.log
+source_sha: 3c5916a68bec2ebd1c2c218890258b0e15610677
+fresh capture; scope Settings72 + TitleStrip88 + Pane48, all densities and themes
+
+command: sh scripts/lab-check.sh settings.html title-strip.html pane.html
+lab-check: self-test ok (10 checks fire on checks/bad.html)
+lab-check: 3 pages × 4 densities · 0 findings
+actual exit: 0
+elapsed_seconds: 8.552
+
+command: cargo build -p bboxybook --locked
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Finished `dev` profile [optimized] target(s) in 1m 28s
+actual exit: 0
+elapsed_seconds: 89.045
+
+command: /Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/bboxybook-3c5916a manifest
+actual exit: 0
+elapsed_seconds: 0.245
+
+First scope wrapper exit:1 before capture; only incorrect total-count assertion1688 failed. Actual canonical1696 = old1640 +48Perf +8HUDstyle, all unique,0removed. Scoped208 unchanged. Resume uses same exact3c5916a binary; successful lab-check/build/manifest not repeated.
+
+command: node crates/bboxybook/capture.mjs /Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a /Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/requested.json
+captured 100/208
+captured 200/208
+web: 208/208 captured; 0 failures
+actual exit: 0
+elapsed_seconds: 51.209
+
+command: /Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/bboxybook-3c5916a render --all --out /Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/native --manifest /Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/cases.json
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/208
+bboxybook: invalid length 5, expected fewer elements in array
+actual exit: 1
+elapsed_seconds: 281.664
+
+Evidence file: /tmp/velvet-p3-remainder-dev-cleanup.log
+Own dev target deleted after build/test completed; scope uses preserved standalone binary (otool only system libraries). Bytes freed 842231527; copied binary SHA256 48df3ab113abe5bd7402241f7940ed107f114a31b4b520cfc6d38e64f4aebcca.
+
+Evidence file: /tmp/velvet-p3-title-strip-3c5916a.log
+Fresh isolated TitleStrip88 scope, all densities/themes. Settings waits on inherited D1c Records boundary; no data dropped from joint run.
+source_sha:3c5916a68bec2ebd1c2c218890258b0e15610677
+
+command:node crates/bboxybook/capture.mjs /Users/feral/mydev/bboxy450-term-exec6/target/p3-title-strip-3c5916a /Users/feral/mydev/bboxy450-term-exec6/target/p3-title-strip-3c5916a/requested.json
+web: 88/88 captured; 0 failures
+actual exit:0
+elapsed_seconds:23.317
+
+command:/Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/bboxybook-3c5916a render --all --out /Users/feral/mydev/bboxy450-term-exec6/target/p3-title-strip-3c5916a/native --manifest /Users/feral/mydev/bboxy450-term-exec6/target/p3-title-strip-3c5916a/cases.json
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-exec6/target/p3-title-strip-3c5916a/native/layouts.json
+rendered 88 PNGs to /Users/feral/mydev/bboxy450-term-exec6/target/p3-title-strip-3c5916a/native
+actual exit:0
+elapsed_seconds:172.871
+
+command:/Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/bboxybook-3c5916a compare --strict-geometry --out /Users/feral/mydev/bboxy450-term-exec6/target/p3-title-strip-3c5916a --manifest /Users/feral/mydev/bboxy450-term-exec6/target/p3-title-strip-3c5916a/cases.json
+parity: 88 cases, 88 review; /Users/feral/mydev/bboxy450-term-exec6/target/p3-title-strip-3c5916a/index.html
+geometry: 88 required; 88 measured; 0 unproven; 0 mismatches
+parity gate: pass (88 pixel reviews advisory)
+actual exit:0
+elapsed_seconds:1.635
+
+scope actual exit:0
+elapsed_seconds:197.826
+
+Evidence file: /tmp/velvet-p3-pane-scope-3c5916a.log
+Fresh isolated Pane48 scope to completePane+TitleStrip136 proof; Settings remainsunprovenonD1cRecordsseam.
+source_sha:3c5916a68bec2ebd1c2c218890258b0e15610677
+
+command:node crates/bboxybook/capture.mjs /Users/feral/mydev/bboxy450-term-exec6/target/p3-pane-3c5916a /Users/feral/mydev/bboxy450-term-exec6/target/p3-pane-3c5916a/requested.json
+web: 48/48 captured; 0 failures
+actual exit:0
+elapsed_seconds:15.753
+
+command:/Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/bboxybook-3c5916a render --all --out /Users/feral/mydev/bboxy450-term-exec6/target/p3-pane-3c5916a/native --manifest /Users/feral/mydev/bboxy450-term-exec6/target/p3-pane-3c5916a/cases.json
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-exec6/target/p3-pane-3c5916a/native/layouts.json
+rendered 48 PNGs to /Users/feral/mydev/bboxy450-term-exec6/target/p3-pane-3c5916a/native
+actual exit:0
+elapsed_seconds:45.911
+
+command:/Users/feral/mydev/bboxy450-term-exec6/target/p3-remainder-3c5916a/bboxybook-3c5916a compare --strict-geometry --out /Users/feral/mydev/bboxy450-term-exec6/target/p3-pane-3c5916a --manifest /Users/feral/mydev/bboxy450-term-exec6/target/p3-pane-3c5916a/cases.json
+parity: 48 cases, 48 review; /Users/feral/mydev/bboxy450-term-exec6/target/p3-pane-3c5916a/index.html
+geometry: 48 required; 48 measured; 0 unproven; 0 mismatches
+parity gate: pass (48 pixel reviews advisory)
+actual exit:0
+elapsed_seconds:0.947
+
+scope actual exit:0
+elapsed_seconds:62.613
+
+Evidence file: /tmp/velvet-p3-panes-summary-3c5916a.json
+{
+  "sha": "3c5916a68bec2ebd1c2c218890258b0e15610677",
+  "cases": 136,
+  "geometry_measured": 136,
+  "unproven": 0,
+  "geometry_failures": 0,
+  "statuses": {
+    "review pixels": 136
+  },
+  "max_rect_error": 0.03964233398440342,
+  "max_baseline_error": 0.0078125
+}
+
+Unproven: Settings72 and fullfinalgate. D1c-a matching Records/LinkState change routedbyOracle2f433d49 toKestrel; no nativehostdata discarded or fixturefallback used. Fullcurrentcanonicalmanifest1696 unique (old1640+48Perf+8HUDstyle), historical1664separate.
