@@ -89,6 +89,9 @@ fn timing_marker(
 struct FrameTime {
     scale: f32,
     time_ms: f32,
+    /// The host drew into the target by other means before these ops (an
+    /// external texture, a draw hook): no frosted blur is reused (backdrop_keys).
+    external_before: bool,
 }
 pub struct Gpu {
     pub surface: wgpu::Surface<'static>,
@@ -270,6 +273,7 @@ impl Gpu {
             FrameTime {
                 scale,
                 time_ms: 450.,
+                external_before: false,
             },
             &mut encoder,
         )
@@ -362,7 +366,12 @@ impl Gpu {
             &self.target,
             &self.backdrop,
             ops,
-            FrameTime { scale, time_ms },
+            FrameTime {
+                scale,
+                time_ms,
+                // Only clear() has touched the target this frame.
+                external_before: false,
+            },
             &mut encoder,
         )
         .map_err(|e| e.to_string())?;
@@ -426,16 +435,23 @@ impl Gpu {
 /// time. Equal digests mean an identical backdrop, so the blur is reused
 /// (materials::Frame::backdrop_key). Other ops get None, and so does every op
 /// once the prefix is too large to digest cheaply.
+///
+/// The digest sees only these ops. When the host has already drawn into the
+/// target by other means (an external texture, a draw hook, live cell
+/// textures), `timing.external_before` is true and no frosted op gets a key: it always
+/// recomputes, since content the digest cannot see may have changed.
 fn backdrop_keys(ops: &[Paint], timing: FrameTime, size: wgpu::Extent3d) -> Vec<Option<u64>> {
     use std::hash::{Hash, Hasher};
     const LIMIT: usize = 256 * 1024;
+    // Exhaustive on purpose: a new Paint variant that samples a texture must
+    // decide here whether its pixels are fully described by its Debug form.
     fn timed(op: &Paint) -> bool {
         match op {
             Paint::Material { kind, .. } => {
                 matches!(kind, ui::Material::Glow | ui::Material::Lane)
             }
             Paint::Group { ops, .. } => ops.iter().any(timed),
-            _ => false,
+            Paint::Draw(_) | Paint::Underlay(_) => false,
         }
     }
     let frosted = |op: &Paint| {
@@ -448,6 +464,9 @@ fn backdrop_keys(ops: &[Paint], timing: FrameTime, size: wgpu::Extent3d) -> Vec<
         )
     };
     let mut keys = vec![None; ops.len()];
+    if timing.external_before {
+        return keys;
+    }
     let Some(last) = ops.iter().rposition(frosted) else {
         return keys;
     };
@@ -481,7 +500,7 @@ fn encode_ops(
     timing: FrameTime,
     encoder: &mut wgpu::CommandEncoder,
 ) -> bbt_render::Result<()> {
-    let FrameTime { scale, time_ms } = timing;
+    let FrameTime { scale, time_ms, .. } = timing;
     let view = destination.create_view(&Default::default());
     let mut underlay = DrawList::default();
     let mut pending = DrawList::default();
@@ -654,6 +673,11 @@ fn encode_ops(
                 let layer_view = layer.create_view(&Default::default());
                 clear(&layer_view, encoder);
                 renderer.with_group_layer(|renderer| {
+                    // A group layer starts cleared: only these ops reach it.
+                    let timing = FrameTime {
+                        external_before: false,
+                        ..timing
+                    };
                     encode_ops(renderer, pass, &layer, &behind, ops, timing, encoder)
                 })?;
                 renderer.composite_group_with_mask(
@@ -674,4 +698,71 @@ fn encode_ops(
         renderer.draw_overlay(&pending, target(&view, scale), encoder)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod backdrop_key_tests {
+    use super::*;
+    use bbt_ui_model::layout::Rect;
+
+    fn material(kind: ui::Material) -> Paint {
+        Paint::Material {
+            rect: Rect::new(0., 0., 400., 38.),
+            radii: [0.; 4],
+            kind,
+            color: Color::TRANSPARENT,
+            blur: None,
+            glow: None,
+            clips: vec![],
+        }
+    }
+    fn draw(hex: &str) -> Paint {
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 400., 300.), 0., Color::hex(hex));
+        Paint::Draw(list)
+    }
+    fn keys(ops: &[Paint], time_ms: f32, external: bool) -> Vec<Option<u64>> {
+        let size = wgpu::Extent3d {
+            width: 800,
+            height: 600,
+            depth_or_array_layers: 1,
+        };
+        backdrop_keys(
+            ops,
+            FrameTime {
+                scale: 2.,
+                time_ms,
+                external_before: external,
+            },
+            size,
+        )
+    }
+
+    #[test]
+    fn a_frosted_op_after_host_drawing_is_never_keyed() {
+        let ops = [draw("#0B0B10"), material(ui::Material::Frosted)];
+        assert!(keys(&ops, 0., false)[1].is_some());
+        assert_eq!(keys(&ops, 0., true), vec![None, None]);
+    }
+
+    #[test]
+    fn keys_follow_prior_content_and_only_timed_content_follows_time() {
+        let fixed = [draw("#0B0B10"), material(ui::Material::Frosted)];
+        let k = |ops: &[Paint], t| keys(ops, t, false)[1];
+        // Deterministic, and a static backdrop ignores time (the title bar's steady state).
+        assert_eq!(k(&fixed, 0.), k(&fixed, 0.));
+        assert_eq!(k(&fixed, 0.), k(&fixed, 900.));
+        // Different content under it: a different key.
+        let other = [draw("#2E6BFF"), material(ui::Material::Frosted)];
+        assert_ne!(k(&fixed, 0.), k(&other, 0.));
+        // A time-driven lane before it: the key changes every frame.
+        let timed = [
+            draw("#0B0B10"),
+            material(ui::Material::Lane),
+            material(ui::Material::Frosted),
+        ];
+        assert_ne!(keys(&timed, 0., false)[2], keys(&timed, 900., false)[2]);
+        // Ops that are not frosted get no key.
+        assert_eq!(keys(&timed, 0., false)[..2], [None, None]);
+    }
 }

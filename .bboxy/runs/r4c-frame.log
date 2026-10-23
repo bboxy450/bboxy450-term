@@ -12,3 +12,12 @@ per-pass mean ms/frame (G1+G2 -> R4c):
   (wgpu internal) PendingWrites       0.132 ->  0.045
   app clear                           0.131 ->  0.057
 frosted separable Gaussian: no encoders in steady frames (the title bar's backdrop key is constant, so the cached blur is bound).
+
+RISK (Oracle, on merge 39cdb5c): the backdrop key is a Debug hash of the prior Paint ops (+ time when one is
+time-driven). Anything that reaches the backdrop WITHOUT changing a prior op is invisible to it: a texture
+sampled by an earlier op whose contents change (a live pane cell texture, an image), or pixels drawn outside
+encode_ops (a host draw hook) before the frosted op. Then a frosted surface would show a stale blur. Today the
+only frosted surface, the title bar, paints first over the static background, so nothing like that precedes it.
+Mitigation when it can happen (modals or the launcher over live panes, Aster's retained cell textures): the
+host folds a content generation for every external texture or hook into the key, or passes no key for
+frosted ops that follow them.

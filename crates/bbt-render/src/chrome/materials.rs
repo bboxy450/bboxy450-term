@@ -1052,6 +1052,10 @@ mod tests {
         // A different key over a different backdrop recomputes rather than reusing key 1.
         assert_eq!(render(&mut renderer, &b, Some(2)), fresh_b);
         assert_eq!(render(&mut renderer, &a, Some(1)), fresh_a);
+        // No key (the host drew external content first) always recomputes, even with
+        // a filled cache: a changed backdrop yields exactly a fresh render.
+        assert_eq!(render(&mut renderer, &b, None), fresh_b);
+        assert_eq!(render(&mut renderer, &a, None), fresh_a);
     }
     #[test]
     fn zero_blur_still_samples_the_backdrop_and_fractional_edge_texels() {
