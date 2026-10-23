@@ -1,0 +1,14 @@
+   Compiling rustix v1.1.5
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.21s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-5047c437a26493cf)
+
+running 2 tests
+test verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds ... ok
+test verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.06s
+
+EXIT=0

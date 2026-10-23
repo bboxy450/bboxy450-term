@@ -1,0 +1,38 @@
+[
+  {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose/reference/gallery/web/report-dark-1x.json",
+    "sha256": "19a7b3c286697e3421a3a5044e7ad17f6e83fc5c7f3eb49a93dc3191cf3c11be",
+    "scale": 1,
+    "theme": "dark",
+    "semanticExactScenes": 10,
+    "input_digest_mismatches": [],
+    "scenes": 10
+  },
+  {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose/reference/gallery/web/report-dark-2x.json",
+    "sha256": "43f424f746f913993f4d227d2e608f3177f0c69db669984097911fd9f26b9750",
+    "scale": 2,
+    "theme": "dark",
+    "semanticExactScenes": 10,
+    "input_digest_mismatches": [],
+    "scenes": 10
+  },
+  {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose/reference/gallery/web/report-light-1x.json",
+    "sha256": "e2fb1716d6721f45d4557a12ec95b0b9d612f7ae8d70ce42950b65f7e5686808",
+    "scale": 1,
+    "theme": "light",
+    "semanticExactScenes": 10,
+    "input_digest_mismatches": [],
+    "scenes": 10
+  },
+  {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose/reference/gallery/web/report-light-2x.json",
+    "sha256": "b2ba590ea9efc9b1f35c5da013c52360e4e4aec1f2b5c3f33c3408e246264809",
+    "scale": 2,
+    "theme": "light",
+    "semanticExactScenes": 10,
+    "input_digest_mismatches": [],
+    "scenes": 10
+  }
+]

@@ -1,0 +1,5 @@
+{"case": "codex-light-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+{"case": "palette-light-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+{"case": "scroll-links-sync-light-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+{"case": "osc7501-claude-light-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+EXIT=1

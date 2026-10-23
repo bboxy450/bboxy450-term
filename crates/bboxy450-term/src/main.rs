@@ -10,7 +10,7 @@ mod scene;
 
 use bbt_proto::{SeatId, View};
 use bbt_rt::{HitchMeter, Latest, Phases, UiInbox, UiMsg};
-use bbt_ui_model::layout::Rect;
+use bbt_ui_model::{layout::Rect, tokens::Theme};
 use display_link::{Clock, DisplayLink, Mode};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
@@ -37,6 +37,8 @@ pub enum UiEvent {
     BackendLost(String),
     BackendReady,
     SmokeDeadline,
+    VerifyGridDeadline,
+    VerifyFailed(String),
     Capture,
 }
 struct Wake(EventLoopProxy<UiEvent>);
@@ -175,11 +177,17 @@ impl App {
                     ]
                 },
             );
-            let size = (
-                metadata.process_generation,
-                (rect.w / cell[0]).floor().clamp(1., 512.) as u16,
-                (rect.h / cell[1]).floor().clamp(1., 256.) as u16,
-            );
+            // While fitting the real window, avoid an intermediate PTY resize
+            // that could race the fixture input. Once ready, use actual bounds.
+            let (cols, rows) = self
+                .verify
+                .grid_size
+                .filter(|_| !self.verify.grid_ready)
+                .unwrap_or((
+                    (rect.w / cell[0]).floor().clamp(1., 512.) as u16,
+                    (rect.h / cell[1]).floor().clamp(1., 256.) as u16,
+                ));
+            let size = (metadata.process_generation, cols, rows);
             if self.pane_sizes.get(id) != Some(&size) {
                 sizes.push((*id, size));
             }
@@ -243,7 +251,11 @@ impl App {
                     Window::default_attributes()
                         .with_title("bboxy450-term")
                         .with_inner_size(LogicalSize::new(1600., 960.))
-                        .with_min_inner_size(LogicalSize::new(800., 600.))
+                        .with_min_inner_size(if self.verify.grid_size.is_some() {
+                            LogicalSize::new(1., 1.)
+                        } else {
+                            LogicalSize::new(800., 600.)
+                        })
                         .with_decorations(false),
                 )
                 .map_err(|e| e.to_string())?,
@@ -274,6 +286,7 @@ impl App {
         }
         let prepared = self.prepared.clone();
         let scale = window.scale_factor() as f32;
+        let theme = self.verify.theme.unwrap_or(Theme::Dark);
         let effects = self.animate;
         let fixture = self.fake || self.animate;
         let render_context = self.render_context.take();
@@ -294,6 +307,7 @@ impl App {
                     let _ = sender.send(live::RenderContext {
                         context: gpu.shared_context(),
                         scale,
+                        theme,
                     });
                 }
                 let scene = if fixture {
@@ -484,6 +498,7 @@ impl App {
             .scene
             .layout(logical, self.animation_start.is_some() || self.animate)?;
         let bounds = self.scene.pane_bounds(&layouts);
+        self.fit_verify_grid(&bounds, scale);
         self.watch_panes(&bounds, scale);
         self.pane_bounds = bounds;
         phases.layout = start.elapsed();
@@ -563,6 +578,7 @@ impl App {
             }
             if (!self.fake || self.last_update == 20)
                 && self.capture_pending
+                && (self.verify.grid_size.is_none() || self.verify.grid_ready)
                 && let Some(path) = &self.capture
             {
                 self.capture_pending = false;
@@ -570,6 +586,9 @@ impl App {
                     .as_ref()
                     .unwrap()
                     .capture(path.clone(), self.logger.clone());
+                if self.verify.grid_hash {
+                    self.dump_grid_hash(path.clone(), scale);
+                }
             }
             if self.fake && self.last_update == 20 && !self.idle_scheduled {
                 self.idle_scheduled = true;
@@ -608,6 +627,22 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::Capture => {
                 self.capture_pending = true;
                 self.request_redraw();
+            }
+            UiEvent::VerifyGridDeadline => {
+                if self.verify.grid_size.is_some() && !self.verify.grid_ready && !self.closing {
+                    let error = format!(
+                        "verification-grid-size-unreachable: expected {:?}",
+                        self.verify.grid_size
+                    );
+                    self.logger.write(&error);
+                    self.error = Some(error);
+                    self.request_close(event_loop);
+                }
+            }
+            UiEvent::VerifyFailed(error) => {
+                self.logger.write(&error);
+                self.error = Some(error);
+                self.request_close(event_loop);
             }
             UiEvent::Wake => {
                 if self.smoke && self.gpu.is_none() {
@@ -1121,6 +1156,9 @@ Debug and verification only, never for normal use:
   --capture PNG        write the first presented frame to PNG; Cmd+Shift+S re-captures
   --capture-after SECS re-capture once, SECS after the cockpit's first model
   --spawn-zsh N        open N zsh seats once the cockpit is ready, as N x Cmd+T
+  --theme light|dark   terminal palette for live verification (default: dark)
+  --grid-size COLSxROWS fit one live pane by resizing the real window; 10s deadline
+  --grid-hash          write actual visible-screen hashes to PNG's .grid.json
   BBOXY_VERIFY_INPUT   env: bytes typed into each new seat once, \\n sent as Return
   --smoke, --fake-source, --animate, --cadence-test, --pacing MODE: frozen scenes and pacing probes";
 
@@ -1133,15 +1171,41 @@ struct Verify {
     input: Option<Vec<u8>>,
     typed: std::collections::BTreeSet<SeatId>,
     started: bool,
+    theme: Option<Theme>,
+    grid_size: Option<(u16, u16)>,
+    grid_hash: bool,
+    grid_ready: bool,
+    capture_started: bool,
 }
 impl Verify {
-    fn from_args(args: &[String]) -> Self {
+    fn from_args(args: &[String]) -> Result<Self, String> {
         let value = |flag: &str| {
             args.windows(2)
                 .find(|pair| pair[0] == flag)
                 .map(|pair| pair[1].clone())
         };
-        Self {
+        let required = |flag: &str| -> Result<Option<&str>, String> {
+            args.iter()
+                .position(|arg| arg == flag)
+                .map(|index| {
+                    args.get(index + 1)
+                        .map(String::as_str)
+                        .filter(|value| !value.starts_with("--"))
+                        .ok_or_else(|| format!("verification-missing-value: {flag}"))
+                })
+                .transpose()
+        };
+        let theme = required("--theme")?
+            .map(|theme| match theme {
+                "light" => Ok(Theme::Light),
+                "dark" => Ok(Theme::Dark),
+                _ => Err(format!("verification-invalid-theme: {theme}")),
+            })
+            .transpose()?;
+        let grid_size = required("--grid-size")?
+            .map(parse_verify_grid)
+            .transpose()?;
+        Ok(Self {
             spawn: value("--spawn-zsh")
                 .and_then(|n| n.parse().ok())
                 .unwrap_or(0),
@@ -1151,8 +1215,11 @@ impl Verify {
             input: std::env::var("BBOXY_VERIFY_INPUT")
                 .ok()
                 .map(|text| text.replace("\\n", "\r").into_bytes()),
+            theme,
+            grid_size,
+            grid_hash: args.iter().any(|arg| arg == "--grid-hash"),
             ..Default::default()
-        }
+        })
     }
 }
 impl App {
@@ -1160,16 +1227,31 @@ impl App {
     fn verify(&mut self) {
         if !self.verify.started {
             self.verify.started = true;
+            if self.verify.grid_size.is_some() {
+                let proxy = self.proxy.clone();
+                bbt_rt::handle().spawn(async move {
+                    tokio::time::sleep(Duration::from_secs(10)).await;
+                    let _ = proxy.send_event(UiEvent::VerifyGridDeadline);
+                });
+            }
             for _ in 0..self.verify.spawn {
                 self.queue(live::UiMsg::SpawnZsh);
             }
-            if let Some(after) = self.verify.capture_after {
-                let proxy = self.proxy.clone();
-                bbt_rt::handle().spawn(async move {
-                    tokio::time::sleep(after).await;
-                    let _ = proxy.send_event(UiEvent::Capture);
-                });
-            }
+        }
+        if self.verify.grid_size.is_some() && !self.verify.grid_ready {
+            return;
+        }
+        // Grid verification waits for a real resize before typing. Start its
+        // settling interval here, so fitting cannot consume the capture delay.
+        if !self.verify.capture_started
+            && let Some(after) = self.verify.capture_after
+        {
+            self.verify.capture_started = true;
+            let proxy = self.proxy.clone();
+            bbt_rt::handle().spawn(async move {
+                tokio::time::sleep(after).await;
+                let _ = proxy.send_event(UiEvent::Capture);
+            });
         }
         let Some(bytes) = self.verify.input.clone() else {
             return;
@@ -1191,6 +1273,156 @@ impl App {
             });
         }
     }
+
+    fn fit_verify_grid(&mut self, bounds: &[(SeatId, Rect)], scale: f32) {
+        let Some(wanted) = self.verify.grid_size else {
+            return;
+        };
+        self.verify.grid_ready = false;
+        let [(seat, rect)] = bounds else {
+            return;
+        };
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        let (Some(screen), Some(frame)) = (model.screens.get(seat), model.frames.get(seat)) else {
+            return;
+        };
+        let cell = [
+            frame.width as f32 / screen.cols as f32 / scale,
+            frame.height as f32 / screen.rows as f32 / scale,
+        ];
+        let window = self.window.as_ref().unwrap();
+        let size = window.inner_size();
+        if let Some(size) = fit_grid_window(
+            [size.width as f32 / scale, size.height as f32 / scale],
+            *rect,
+            cell,
+            wanted,
+        ) {
+            // about_to_wait applies this outside the native resize callback.
+            self.pending_resize = Some(size);
+        } else if (screen.cols, screen.rows) == (usize::from(wanted.0), usize::from(wanted.1)) {
+            self.verify.grid_ready = true;
+            self.verify();
+        }
+    }
+
+    fn dump_grid_hash(&self, png: std::path::PathBuf, scale: f32) {
+        let Some(model) = self.live_state.clone() else {
+            return;
+        };
+        let bounds = self.pane_bounds.clone();
+        let frame_number = self.meter.total_frames();
+        let logger = self.logger.clone();
+        let proxy = self.proxy.clone();
+        bbt_rt::handle().spawn(async move {
+            let panes: Vec<_> = bounds
+                .iter()
+                .filter_map(|(seat, rect)| {
+                    let screen = model.screens.get(seat)?;
+                    let frame = model.frames.get(seat)?;
+                    Some(
+                    serde_json::json!({"seat":bbt_mux::Ulid::from(seat.0.0).to_string(),"cols":screen.cols,"rows":screen.rows,
+                    "cursor":screen.cursor,"modes":screen.modes,"fnv1a64":screen_hash(screen),
+                    "crop":[(rect.x*scale).round() as u32,(rect.y*scale).round() as u32,
+                        frame.width.min((rect.w*scale).floor() as u32),
+                        frame.height.min((rect.h*scale).floor() as u32)]}),
+                    )
+                })
+                .collect();
+            let theme = match model.ui.window.theme { Theme::Dark => "dark", Theme::Light => "light" };
+            let report = serde_json::json!({"schema":"bboxy-firehose-screen-v1","png":png,
+                "theme":theme,"scale":scale,"frame":frame_number,"panes":panes});
+            let path = png.with_extension("grid.json");
+            let result = tokio::fs::write(&path, serde_json::to_vec_pretty(&report).unwrap()).await;
+            logger.write(format!("grid-hash {}: {result:?}", path.display()));
+            if let Err(error) = result {
+                let _ = proxy.send_event(UiEvent::VerifyFailed(format!(
+                    "verification-grid-hash-write: {error}"
+                )));
+            }
+        });
+    }
+}
+
+fn parse_verify_grid(value: &str) -> Result<(u16, u16), String> {
+    let size = value
+        .split_once('x')
+        .and_then(|(cols, rows)| Some((cols.parse::<u16>().ok()?, rows.parse::<u16>().ok()?)));
+    size.filter(|&(cols, rows)| (1..=512).contains(&cols) && (1..=256).contains(&rows))
+        .ok_or_else(|| format!("verification-invalid-grid-size: {value}"))
+}
+
+fn fit_grid_window(
+    window: [f32; 2],
+    pane: Rect,
+    cell: [f32; 2],
+    wanted: (u16, u16),
+) -> Option<LogicalSize<f64>> {
+    let actual = [
+        (pane.w / cell[0]).floor() as u16,
+        (pane.h / cell[1]).floor() as u16,
+    ];
+    if actual == [wanted.0, wanted.1] {
+        return None;
+    }
+    // Aim halfway through the integer-cell bin, avoiding rounding oscillation.
+    let fit = |current: f32, body: f32, cell: f32, cells: u16, actual: u16| {
+        f64::from(if cells == actual {
+            current
+        } else {
+            (current + (f32::from(cells) + 0.5) * cell - body).max(1.)
+        })
+    };
+    Some(LogicalSize::new(
+        fit(window[0], pane.w, cell[0], wanted.0, actual[0]),
+        fit(window[1], pane.h, cell[1], wanted.1, actual[1]),
+    ))
+}
+
+/// Exact schema documented in bboxy-firehose/README.md (no pixel/theme data).
+fn screen_hash(screen: &bbt_proto::Screen) -> String {
+    use bbt_core::Color;
+    let color = |color| match color {
+        Color::Indexed(index) => serde_json::json!([0, index]),
+        Color::Named(name) => serde_json::json!([1, name as u16]),
+        Color::Spec(rgb) => serde_json::json!([2, rgb.r, rgb.g, rgb.b]),
+    };
+    let cells: Vec<_> = screen
+        .cells
+        .iter()
+        .flatten()
+        .map(|cell| {
+            serde_json::json!([
+                cell.c as u32,
+                color(cell.fg),
+                color(cell.bg),
+                cell.flags.bits(),
+                cell.zerowidth()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|c| *c as u32)
+                    .collect::<Vec<_>>(),
+                cell.underline_color().map(color),
+                cell.hyperlink()
+                    .map(|link| [link.id().to_owned(), link.uri().to_owned()])
+            ])
+        })
+        .collect();
+    let bytes = serde_json::to_vec(&serde_json::json!([
+        screen.cols,
+        screen.rows,
+        screen.cursor.0,
+        screen.cursor.1,
+        screen.modes,
+        cells
+    ]))
+    .unwrap();
+    let hash = bytes.iter().fold(0xcbf29ce484222325u64, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+    });
+    format!("{hash:016x}")
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -1223,6 +1455,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         bbt_mux::mcp::run_cli()?;
         return Ok(());
     }
+    let verify = Verify::from_args(&hook_args)?;
     let mut event_loop_builder = EventLoop::<UiEvent>::with_user_event();
     #[cfg(target_os = "macos")]
     {
@@ -1262,7 +1495,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .windows(2)
         .find(|pair| pair[0] == "--capture")
         .map(|pair| std::path::PathBuf::from(&pair[1]));
-    let verify = Verify::from_args(&args);
     let logger = log::Logger::new();
     let (render_context, rendering) = tokio::sync::oneshot::channel();
     let live_commands = if fake || animate {
@@ -1338,6 +1570,82 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err(error.into());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod verification_tests {
+    use super::*;
+
+    #[test]
+    fn verification_grid_validation_and_window_fit_use_real_cell_bounds() {
+        assert_eq!(parse_verify_grid("80x24").unwrap(), (80, 24));
+        for invalid in ["0x24", "513x24", "80x257", "80", "80x24x2"] {
+            assert!(
+                parse_verify_grid(invalid)
+                    .unwrap_err()
+                    .starts_with("verification-invalid-grid-size:")
+            );
+        }
+        let args = ["--theme", "light", "--grid-size", "80x24", "--grid-hash"].map(String::from);
+        let verify = Verify::from_args(&args).unwrap();
+        assert_eq!(verify.theme, Some(Theme::Light));
+        assert_eq!(verify.grid_size, Some((80, 24)));
+        assert!(verify.grid_hash);
+        assert!(Verify::from_args(&["--theme".into(), "bogus".into()]).is_err());
+        assert!(Verify::from_args(&["--grid-size".into()]).is_err());
+        let pane = Rect::new(320., 80., 1280., 840.);
+        let next = fit_grid_window([1600., 960.], pane, [8., 15.], (80, 24)).unwrap();
+        assert_eq!(next, LogicalSize::new(964., 487.5));
+        let fitted = Rect::new(
+            pane.x,
+            pane.y,
+            pane.w + next.width as f32 - 1600.,
+            pane.h + next.height as f32 - 960.,
+        );
+        assert!(
+            fit_grid_window(
+                [next.width as f32, next.height as f32],
+                fitted,
+                [8., 15.],
+                (80, 24)
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures() {
+        let expected = include_str!("../../bboxy-firehose/corpus/screen-hashes.txt");
+        for (name, bytes) in [
+            (
+                "palette",
+                include_bytes!("../../bboxy-firehose/corpus/palette.ansi").as_slice(),
+            ),
+            (
+                "unicode",
+                include_bytes!("../../bboxy-firehose/corpus/unicode.ansi").as_slice(),
+            ),
+            (
+                "scroll-links-sync",
+                include_bytes!("../../bboxy-firehose/corpus/scroll-links-sync.ansi").as_slice(),
+            ),
+        ] {
+            let mut term = bbt_core::Term::new(80, 24, 0);
+            term.advance(b"\x1b[?2026l\x1b[?1049l\x1b[0m\x1b[r\x1b[2J\x1b[H");
+            term.advance(bytes);
+            term.advance(b"\x1b[0m\x1b[r\x1b[?2026l\x1b[?25h\x1b[24;1H");
+            let screen = bbt_proto::Screen::from_term(&term, String::new(), None, None);
+            let frozen = expected
+                .lines()
+                .find_map(|line| {
+                    line.split_once(' ')
+                        .filter(|(scene, _)| *scene == name)
+                        .map(|(_, hash)| hash)
+                })
+                .unwrap();
+            assert_eq!(screen_hash(&screen), frozen, "{name}");
+        }
+    }
 }
 
 #[cfg(test)]

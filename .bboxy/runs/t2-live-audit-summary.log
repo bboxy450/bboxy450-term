@@ -1,0 +1,79 @@
+{
+  "source": "4e28f11 + T2 verification-only working changes, no renderer change",
+  "reference": "pinned xterm6 DOM normalized8x15 Menlo13 seed42",
+  "live": "20/20 screen-v1 hashes exact; all20 image-read; 78 changed headless pixels per case, zero outside focused cursor interior",
+  "headless": "40/40 byte-identical accepted native; all20 scale2 cases image-read; not live2x",
+  "cases": [
+    {
+      "scene": "codex",
+      "live1x_dark_percent": 5.243923611111112,
+      "live1x_light_percent": 5.6328125,
+      "headless2x_dark_percent": 3.5463324652777777,
+      "headless2x_light_percent": 3.8387586805555554
+    },
+    {
+      "scene": "claude",
+      "live1x_dark_percent": 5.854600694444445,
+      "live1x_light_percent": 5.072916666666667,
+      "headless2x_dark_percent": 3.7886284722222223,
+      "headless2x_light_percent": 3.6079644097222223
+    },
+    {
+      "scene": "palette",
+      "live1x_dark_percent": 3.36328125,
+      "live1x_light_percent": 2.9800347222222223,
+      "headless2x_dark_percent": 2.2909071180555554,
+      "headless2x_light_percent": 2.1254340277777777
+    },
+    {
+      "scene": "unicode",
+      "live1x_dark_percent": 8.094184027777777,
+      "live1x_light_percent": 7.384548611111111,
+      "headless2x_dark_percent": 5.872829861111111,
+      "headless2x_light_percent": 5.888346354166667
+    },
+    {
+      "scene": "progress",
+      "live1x_dark_percent": 2.424479166666667,
+      "live1x_light_percent": 2.2552083333333335,
+      "headless2x_dark_percent": 1.5658637152777777,
+      "headless2x_light_percent": 1.5477430555555556
+    },
+    {
+      "scene": "alternate",
+      "live1x_dark_percent": 1.9453125000000002,
+      "live1x_light_percent": 1.8016493055555554,
+      "headless2x_dark_percent": 1.205078125,
+      "headless2x_light_percent": 1.1831597222222223
+    },
+    {
+      "scene": "scroll-links-sync",
+      "live1x_dark_percent": 5.360243055555555,
+      "live1x_light_percent": 5.546440972222221,
+      "headless2x_dark_percent": 3.529513888888889,
+      "headless2x_light_percent": 3.6839192708333335
+    },
+    {
+      "scene": "osc7501-claude",
+      "live1x_dark_percent": 2.564670138888889,
+      "live1x_light_percent": 2.1961805555555554,
+      "headless2x_dark_percent": 1.6184895833333333,
+      "headless2x_light_percent": 1.5043402777777777
+    },
+    {
+      "scene": "osc7501-preflight",
+      "live1x_dark_percent": 2.5299479166666665,
+      "live1x_light_percent": 2.1566840277777777,
+      "headless2x_dark_percent": 1.5836588541666667,
+      "headless2x_light_percent": 1.4708116319444444
+    },
+    {
+      "scene": "osc7501-codex",
+      "live1x_dark_percent": 3.630208333333333,
+      "live1x_light_percent": 3.0199652777777777,
+      "headless2x_dark_percent": 2.3070746527777777,
+      "headless2x_light_percent": 2.118381076388889
+    }
+  ]
+}
+SUMMARY_EXIT0

@@ -1,0 +1,21 @@
+{"case": "codex-dark-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "claude-dark-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "palette-dark-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "unicode-dark-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "progress-dark-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "alternate-dark-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "scroll-links-sync-dark-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "osc7501-claude-dark-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+{"case": "osc7501-preflight-dark-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+{"case": "osc7501-codex-dark-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "codex-light-1x", "match_expected": false, "app_exit": 1, "remaining_pids": []}
+{"case": "claude-light-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "palette-light-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+{"case": "unicode-light-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "progress-light-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "alternate-light-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "scroll-links-sync-light-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+{"case": "osc7501-claude-light-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+{"case": "osc7501-preflight-light-1x", "match_expected": false, "app_exit": -15, "remaining_pids": []}
+{"case": "osc7501-codex-light-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+EXIT=1
