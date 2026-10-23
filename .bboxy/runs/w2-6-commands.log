@@ -1,0 +1,66 @@
+
+$ ['git', 'fetch', 'origin']
+EXIT 0; elapsed 1.023s
+
+$ ['git', 'verify-commit', 'e49e4cb']
+gpg: Signature made Fri Oct 23 06:58:43 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0; elapsed 0.063s
+
+$ ['git', 'merge-base', '--is-ancestor', 'a834977fcdf64309658f5cd832177960ec54821f', 'origin/main']
+EXIT 0; elapsed 0.040s
+
+$ ['git', 'rebase', '--gpg-sign', 'origin/main']
+Successfully rebased and updated refs/heads/exec5.
+EXIT 0; elapsed 0.224s
+
+$ ['git', 'rev-parse', 'HEAD', 'origin/main']
+e49e4cb2ea583185aba41ce8319e33b46230b99c
+e49e4cb2ea583185aba41ce8319e33b46230b99c
+EXIT 0; elapsed 0.046s
+
+$ ['git', 'status', '--porcelain', '--untracked-files=no']
+EXIT 0; elapsed 0.111s
+
+COMMAND ['git', 'commit', '-S', '-m', 'feat: record bounded local artifact provenance and signed activity']
+[exec5 689fcc5] feat: record bounded local artifact provenance and signed activity
+ 12 files changed, 3215 insertions(+), 59 deletions(-)
+ create mode 100644 crates/bbt-mux/src/provenance/artifacts.rs
+ create mode 100644 crates/bbt-mux/src/provenance/author.rs
+ create mode 100644 crates/bbt-mux/src/provenance/detector.rs
+ create mode 100644 crates/bbt-mux/src/provenance/engine.rs
+ create mode 100644 crates/bbt-mux/src/provenance/git.rs
+ create mode 100644 crates/bbt-mux/src/provenance/mod.rs
+ create mode 100644 crates/bbt-mux/src/provenance/projection.rs
+ create mode 100644 crates/bbt-mux/tests/provenance.rs
+EXIT 0; elapsed 0.290s
+
+COMMAND ['git', 'rebase', 'origin/main']
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/exec5.
+EXIT 0; elapsed 0.494s
+
+COMMAND ['git', 'log', '-1', '--format=%H %G? %GF']
+3165e308041966293a4129116a0175400c5f49df G 9B07E849480C68328CA20684844ECC0587DE7AB0
+EXIT 0; elapsed 0.056s
+
+COMMAND ['git', 'diff', '--check']
+EXIT 0; elapsed 0.066s
+
+COMMAND ['git', 'fetch', 'origin']
+EXIT 0; elapsed 0.947s
+
+COMMAND ['git', 'rebase', 'origin/main']
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/exec5.
+EXIT 0; elapsed 0.174s
+
+COMMAND ['git', 'log', '-1', '--format=%H %G? %GF']
+76fce0c49afeca9af608780f11d87db7bb879b64 G 9B07E849480C68328CA20684844ECC0587DE7AB0
+EXIT 0; elapsed 0.036s
+
+COMMAND ['git', 'status', '--porcelain=v1', '--untracked-files=no']
+EXIT 0; elapsed 0.027s
+
+Post-gate verification: SHA256 CI log matched 0201480cf16c79a2141e950fa9de2e2ae434c34d85d1c3ead04a3b7f9bbc8772 (exit0); git diff --exit-code0; source signature G/full machine fingerprint0; range-diff3165e308→76fce0c equal0. git fetch origin0; main advanced only by records to3fe8ef4; no rebase after gate. Own PID43881 ps probe1 (already exited); mandatory target/worktree/parent cleanup0.

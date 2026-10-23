@@ -890,6 +890,7 @@ struct Worker {
     deliveries: tokio::task::JoinSet<Delivery>,
     control_deliveries: tokio::task::JoinSet<ControlDelivery>,
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
+    provenance: crate::provenance::engine::Engine,
     stale_gui_requests: u64,
 }
 impl Worker {
@@ -904,10 +905,16 @@ impl Worker {
     ) -> Result<Self> {
         let connections = Connections::open(providers)?;
         let registry = Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
-        let index = Index::open(
+        let mut index = Index::open(
             &config.repository.join(".bboxy"),
             SqliteStore::open(&object_dir(&config.run_dir, "index")?)?,
         )?;
+        index.route_activity(bus.clone(), handle.clone());
+        // Markdown is authority even if a crash preceded the mirror update.
+        // scan retains its durable outbox; the normal startup scan publishes it.
+        let _ = index.scan()?;
+        let provenance =
+            crate::provenance::engine::Engine::open(&index, &config.repository, handle.clone())?;
         let watch = FileWatch::start(&config.repository.join(".bboxy"))?;
         // macOS sockaddr_un has a short path bound. A fresh private namespace
         // also avoids stealing any prior logic instance's listener on restart.
@@ -957,6 +964,7 @@ impl Worker {
             deliveries: tokio::task::JoinSet::new(),
             control_deliveries: tokio::task::JoinSet::new(),
             control_journals: BTreeMap::new(),
+            provenance,
             stale_gui_requests: 0,
         };
         for (host, info) in worker.connections.owned_seats()? {
@@ -1136,10 +1144,36 @@ impl Worker {
         call: &crate::mcp::Call,
         effect: crate::mcp::work_items::Effect,
     ) -> serde_json::Value {
-        let plan = match crate::mcp::work_items::plan(effect, actor, call) {
+        let mut plan = match crate::mcp::work_items::plan(effect, actor, call) {
             Ok(plan) => plan,
             Err(reason) => return crate::mcp::error(call.op_id, "rejected", &reason),
         };
+        if call.tool == "artifact_claim" {
+            if self.provenance.recovering() {
+                return crate::mcp::error(call.op_id, "held", "artifact catalog recovery pending");
+            }
+            let original = call.args["ref"].as_str().unwrap_or_default();
+            let normalized =
+                self.provenance
+                    .normalize(actor.seat_id, actor.process_generation, original);
+            let reference = normalized.as_deref().unwrap_or(original);
+            if !self
+                .provenance
+                .claim_ready(&self.index, reference)
+                .unwrap_or(false)
+            {
+                return crate::mcp::error(call.op_id, "held", "artifact record projection pending");
+            }
+            if let Err(reason) = crate::provenance::artifacts::reconcile_claim(
+                &self.index,
+                &mut plan,
+                actor,
+                call,
+                reference,
+            ) {
+                return crate::mcp::error(call.op_id, "rejected", &reason);
+            }
+        }
         let keys = self.identity.keys();
         if let Some(reason) = keys.signing_hold() {
             return crate::mcp::error(
@@ -1179,7 +1213,19 @@ impl Worker {
             .map(|w| format!(".bboxy/{}", w.path))
             .collect();
         for update in plan.writes {
-            if self.index.apply(update, actor.seat_id, &key).is_err() {
+            let artifact = (update.metadata["type"] == "artifact").then(|| update.metadata.clone());
+            if self
+                .index
+                .apply_author(
+                    update,
+                    &crate::provenance::author::Author::seat(
+                        actor.seat_id,
+                        Some(actor.process_generation),
+                        &key,
+                    ),
+                )
+                .is_err()
+            {
                 return crate::mcp::error(
                     call.op_id,
                     "unknown",
@@ -1187,6 +1233,9 @@ impl Worker {
                         "work-item write outcome unknown; inspect paths {paths:?}; no automatic redispatch"
                     ),
                 );
+            }
+            if let Some(artifact) = artifact {
+                self.provenance.note_claim(&artifact);
             }
         }
         for wake in plan.wakes {
@@ -1874,6 +1923,18 @@ impl Worker {
     fn attach(&mut self, info: SeatInfo, live_start: bool) -> Result<()> {
         check_size(info.size.cols as usize, info.size.rows as usize)?;
         let directory = object_dir(&self.config.run_dir, &format!("seat-{}", info.seat))?;
+        if let (Ok(record), Some(bytes)) = (
+            self.registry.get(info.seat),
+            SqliteStore::open(&directory)?.get("provenance_cwd")?,
+        ) && let Ok(cwd) = serde_json::from_slice::<PathBuf>(&bytes)
+        {
+            self.provenance.register(
+                info.seat,
+                info.generation,
+                &cwd,
+                record.location == crate::registry::Location::Local,
+            );
+        }
         let reply = self.request_for_seat(
             info.seat,
             Action::AttachRing {
@@ -2309,6 +2370,17 @@ impl Worker {
             Err(_) => self.registry.insert(&record)?,
         }
         self.messaging.sync_seat(&record)?;
+        SqliteStore::open(&object_dir(
+            &self.config.run_dir,
+            &format!("seat-{}", record.id),
+        )?)?
+        .put("provenance_cwd", &serde_json::to_vec(&spec.cwd)?)?;
+        self.provenance.register(
+            record.id,
+            record.generation,
+            &spec.cwd,
+            record.location == crate::registry::Location::Local,
+        );
         let Reply::Spawned { info } = self.request_for_seat(record.id, Action::Spawn { spec })?
         else {
             return Err(invalid("spawn reply mismatch"));
@@ -2458,6 +2530,7 @@ impl Worker {
             Ok(frames) => {
                 for params in frames {
                     view.adapter.on_osc(&params, seq, now);
+                    self.provenance.osc(id, generation, &params);
                 }
             }
             Err(_) => view.adapter.invalidate(),
@@ -3326,6 +3399,7 @@ impl Worker {
                             self.publish_adapter(id, status.clone())?;
                         }
                         if result.is_ok() {
+                            self.provenance.hook(id, generation, &event);
                             self.persist_native_session(id)?;
                         }
                         let _ = reply.send(result);
@@ -3530,7 +3604,29 @@ impl Worker {
                         "filesystem watch failed; index reconciliation required",
                     ));
                 }
-                if self.watch.changed() {
+                let active: Vec<_> = self
+                    .views
+                    .iter()
+                    .filter(|(_, view)| {
+                        view.info.exited.is_none()
+                            && view.adapter.status.state == crate::adapters::State::Active
+                    })
+                    .map(|(seat, view)| (*seat, view.generation, view.adapter.status.observed_ms))
+                    .collect();
+                let changed = match self.provenance.step(
+                    &mut self.index,
+                    &self.bus,
+                    &self.handle,
+                    &self.identity,
+                    &active,
+                ) {
+                    Ok(changed) => changed,
+                    Err(error) => {
+                        eprintln!("ProvenancePending: {error}");
+                        false
+                    }
+                };
+                if self.watch.changed() || changed {
                     self.scan()?;
                 }
                 scan_at = Instant::now();

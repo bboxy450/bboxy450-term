@@ -1,0 +1,94 @@
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provenance', '--', '--test-threads=1']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 2m 00s
+     Running tests/provenance.rs (target/debug/deps/provenance-42b5f6af10cb1f26)
+
+running 5 tests
+test claim_before_detection_survives_missing_rebuildable_mirror ... FAILED
+test custody_hold_keeps_observations_ephemeral_until_legitimate_projection_recovers ... ok
+test live_detection_claim_hook_rename_delete_and_restart_preserve_evidence ... ok
+test provenance_corpus_driver ... ignored, explicit corpus driver; caller supplies a disposable output root
+test symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hashes ... ok
+
+failures:
+
+---- claim_before_detection_survives_missing_rebuildable_mirror stdout ----
+
+thread 'claim_before_detection_survives_missing_rebuildable_mirror' (16696476) panicked at crates/bbt-mux/tests/provenance.rs:111:13:
+missing claimed-first.txt: [Object {"authorship": Object {"kind": String("seat"), "process_generation": String("1"), "public_key": String("RjwokXxp0/qrAnbYacYuvPbK7grJSXmDrU15NOr1eUo="), "signer": String("seat:01M5MQJA30M7V4Z83GQAQVJ6SW")}, "claimed": Bool(true), "created": String("2026-10-23T15:55:10.388Z"), "created_by": String("seat:01M5MQJA30M7V4Z83GQAQVJ6SW"), "derived_from": Array [], "digest": String("sha256:a7937b64b8caa58f03721bb6bacf5c78cb235febe0e70b1b84cd99541461a08e"), "digest_grade": String("reported-unverified"), "for": Array [], "grade": String("reported"), "history": Array [Object {"generation": String("1"), "grade": String("reported"), "id": String("01M5MQJA56JVR26TW81MAY39MR"), "kind": String("claimed"), "seat": String("01M5MQJA30M7V4Z83GQAQVJ6SW"), "source": String("mcp/artifact_claim"), "ts": String("1792770910388")}], "id": String("01M5MQJA56JVR26TW81MAY39MR"), "kind": String("file"), "produced_by": String("seat:01M5MQJA30M7V4Z83GQAQVJ6SW"), "provenance": Object {"digest": String("sha256:34a0abf82a0dc504baa8564b4000d202d60fb4c9274511db20c0902b06f3b459"), "frontmatter_digest": String("sha256:bf28546489edafca3231c25a75a58da5a16cba70a5a174b0ddac70fad91dff93"), "log": String(".bboxy/log/2026-10-23.jsonl#1"), "sig": String("7Rxm7WxrgqCTQetpBLcmpGVKzb3FJWk5HDq4vEYnxsSU+T4sjAUt602atvJi/Ge94l/29sGEESVGuB9KG4WUAQ=="), "signer": String("seat:01M5MQJA30M7V4Z83GQAQVJ6SW")}, "ref": String("claimed-first.txt"), "type": String("artifact"), "updated": String("2026-10-23T15:55:10.388Z"), "updated_by": String("seat:01M5MQJA30M7V4Z83GQAQVJ6SW")}]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    claim_before_detection_survives_missing_rebuildable_mirror
+
+test result: FAILED. 3 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 41.17s
+
+error: test failed, to rerun pass `-p bbt-mux --test provenance`
+EXIT 101; elapsed 162.479s
+
+SIGNED_SOURCE 3165e308041966293a4129116a0175400c5f49df
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provenance', '--', '--test-threads=1']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1m 52s
+     Running tests/provenance.rs (target/debug/deps/provenance-42b5f6af10cb1f26)
+
+running 5 tests
+test claim_before_detection_survives_missing_rebuildable_mirror ... ok
+test custody_hold_keeps_observations_ephemeral_until_legitimate_projection_recovers ... ok
+test live_detection_claim_hook_rename_delete_and_restart_preserve_evidence ... ok
+test provenance_corpus_driver ... ignored, explicit corpus driver; caller supplies a disposable output root
+test symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hashes ... ok
+
+test result: ok. 4 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 33.54s
+
+EXIT 0; elapsed 146.243s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provenance', '--no-run', '--message-format=json']
+    Finished `test` profile [optimized] target(s) in 0.27s
+EXIT 0; elapsed 0.402s
+SELECTED_ARTIFACT /Users/feral/mydev/bboxy450-term-exec5/target/debug/deps/provenance-42b5f6af10cb1f26
+
+COMMAND ['/Users/feral/mydev/bboxy450-term-exec5/target/debug/deps/provenance-42b5f6af10cb1f26', '--ignored', '--exact', 'provenance_corpus_driver', '--nocapture']
+
+running 1 test
+CORPUS_ROOT /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6-corpus-51xn3ldc/repository
+test provenance_corpus_driver ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.35s
+
+EXIT 0; elapsed 0.360s
+GENERATED .bboxy/artifacts/01M5MQVCJSCD6XSVVSSQ4KXKCX.md sha256:4929654077bfaf2fc205648f1ec7235fd4102a7e1db2d7e40d6ebb9f7b85db93
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-doc', '--test', 'corpus', 'real_bboxy_frontmatter_parses', '--', '--exact', '--nocapture']
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.2
+   Compiling unicase v2.10.0
+   Compiling bitflags v2.13.2
+   Compiling pulldown-cmark v0.13.4
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling serde_json v1.0.154
+   Compiling unicode-segmentation v1.13.3
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 27.40s
+     Running tests/corpus.rs (target/debug/deps/corpus-80a908cc437286bc)
+
+running 1 test
+frontmatter: 1 Markdown files, 0 parse errors
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+EXIT 0; elapsed 27.566s
+Owned corpus directory cleanup: exit 0

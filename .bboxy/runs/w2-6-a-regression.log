@@ -1,0 +1,456 @@
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 3m 14s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 35 tests
+test identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test logic::pending_tests::down_host_work_is_parked_until_a_provider_up_transition ... ok
+test logic::pending_tests::pending_seats_rotate_without_changing_an_unfinished_target ... ok
+test logic::pending_tests::replacement_generation_discards_only_the_old_generation_work ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test logic::pending_tests::pending_notifications_stay_bounded_and_preserve_resize_and_exit_order ... ok
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test identity::io::debug_tests::debug_without_override_selects_keychain ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test mcp::journal::tests::crashed_admitted_mutation_reopens_unknown_without_redispatch ... ok
+test mcp::journal::tests::mutation_requires_audit_admission_and_releases_the_transaction_before_dispatch ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+test mcp::journal::tests::outcome_audit_failure_keeps_the_original_unknown_intent ... ok
+test provenance::artifacts::tests::inline_history_is_bounded_and_older_rows_stay_out_of_the_document ... ok
+test index::tests::unchanged_documents_are_not_reread_and_same_length_edits_are_indexed ... ok
+test provenance::detector::tests::root_fd_refuses_symlink_parents_and_preserves_full_digest_semantics ... ok
+test index::tests::checked_creation_has_one_winner_and_does_not_overwrite_it ... ok
+test index::tests::oversized_documents_are_skipped_without_blocking_valid_edits ... ok
+test index::tests::checked_writer_keeps_editor_changes_and_refuses_symlink_escapes ... ok
+test provenance::projection::tests::projection_refuses_symlink_destinations ... ok
+test mcp::seats::tests::native_attempt_rechecks_canonical_caller_policy_and_target_binding ... ok
+test seat_socket::gui_tests::repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back ... ok
+test seat_socket::gui_tests::unwatch_removes_pending_work_and_rewatch_schedules_only_once ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+test provenance::artifacts::tests::ambiguous_detection_then_claim_keeps_one_lineage_and_rewrites_task_link ... ok
+test provenance::projection::tests::jsonl_recovers_partial_and_duplicate_rows_without_resigning_history ... ok
+test provenance::detector::tests::hint_overflow_is_bounded_and_reported_hint_survives_coalescing ... ok
+test provenance::detector::rescan_tests::saturated_rescan_reports_incomplete_without_refilling_overflow ... ok
+test provenance::git::tests::bounded_git_snapshot_observes_refs_without_signing_or_running_hooks ... ok
+test provenance::tests::index_and_bus_share_one_order_and_keep_each_actual_signer ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+test index::tests::sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation ... ok
+
+test result: ok. 34 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.60s
+
+     Running tests/adapters.rs (target/debug/deps/adapters-2973c8a52658bd9f)
+
+running 13 tests
+test adapters_custom_harness_cadence_and_reported_idle_never_create_readiness ... ok
+test adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows ... ok
+test adapters_codex_native_readiness_and_hooks_only_subagents ... ok
+test adapters_native_claude_socket_writes_priority_without_claiming_consumption ... ok
+test adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect ... ok
+test adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping ... ok
+test adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields ... ok
+test adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reuse ... ok
+test adapters_literal_paste_requires_positive_readiness_and_submit_false_has_no_enter ... ok
+test adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary ... ok
+test adapters_literal_guard_negatives_write_no_bytes ... ok
+test adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallback ... ok
+test adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running tests/capture_busy.rs (target/debug/deps/capture_busy-6905b92dc94ed58d)
+
+running 2 tests
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+test large_capture_catchup_yields_to_control_between_history_pages ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+     Running tests/capture_fairness.rs (target/debug/deps/capture_fairness-1b0894edff588655)
+
+running 2 tests
+test down_host_replay_parks_and_idle_local_polling_stays_bounded_until_reconnect ... ok
+test four_watched_seats_advance_during_a_large_replay_and_match_serial_screens ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.31s
+
+     Running tests/gates_seats.rs (target/debug/deps/gates_seats-dd34244167736b83)
+
+running 4 tests
+test gate_bus ... ignored, C1d gate 2: sh scripts/gates.sh bus
+test gate_memory ... ignored, C1d gate 1: sh scripts/gates.sh memory
+test gate_poller ... ignored, C1d gate 3: sh scripts/gates.sh poller
+test disk_guard_abort_terminates_owned_children_and_removes_the_run ... ok
+
+test result: ok. 1 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/identity.rs (target/debug/deps/identity-ec077d25845da531)
+
+running 14 tests
+test identity_keychain_device_local_item_and_cleanup ... ignored, uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+test identity_device_without_root_certification_is_refused_before_seat_issuance ... ok
+test identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts ... ok
+test identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs ... ok
+test identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences ... ok
+test identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history ... ok
+test identity_status_is_available_as_data_through_the_bounded_logic_client ... ok
+test identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history ... ok
+test identity_bootstrap_external_certification_and_custody ... ok
+test identity_hold_range_stays_ephemeral_until_throwaway_device_enrollment_then_closes ... ok
+test identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count ... ok
+test identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons ... ok
+
+test result: ok. 13 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/identity_io.rs (target/debug/deps/identity_io-47f47b29a733f435)
+
+running 4 tests
+test memory_custody_process_fixture ... ignored, spawned-process fixture, invoked by debug_process_override_uses_only_memory_custody
+test interaction_required_is_pending_without_a_prompt_or_replacement ... ok
+test debug_process_override_uses_only_memory_custody ... ok
+test stuck_custody_has_a_two_second_bound_and_retry_does_not_add_workers ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+     Running tests/identity_local.rs (target/debug/deps/identity_local-588f7a9f16d2826f)
+
+running 7 tests
+test concurrent_creators_read_one_atomic_winner ... ok
+test unavailable_and_missing_custody_hold_without_replacement_or_secret_file ... ok
+test bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes ... ok
+test old_random_pin_is_not_silently_replaced ... ok
+test held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_routes ... ok
+test stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs ... ok
+test pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.12s
+
+     Running tests/logic.rs (target/debug/deps/logic-882cac3daa7e8d93)
+
+running 13 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test ring_capture_throughput_with_logic_running_and_stopped ... ignored, cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+test ring_capture_twenty_mib_profile_running_and_stopped ... ignored, W1.2f baseline instrumentation: run release ring_capture_twenty_mib_profile --ignored --nocapture
+test ring_cold_replay_twenty_mib_profile ... ignored, W1.2f O0 cold-start profile; producer latency is separately reported and gated
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+test a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity ... ok
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 9 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 15.70s
+
+     Running tests/logic_exit.rs (target/debug/deps/logic_exit-073254548ed3a6ba)
+
+running 1 test
+test queued_and_later_callers_keep_the_worker_error_and_panic_cause ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/mcp.rs (target/debug/deps/mcp-019433207deba1d9)
+
+running 28 tests
+test mcp_installed_claude_and_codex_call_orient ... ignored, live installed-client interop; BBOXY_TEST_EXE must name the built app
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+test mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted ... ok
+test mcp_seat_isolated_process ... ignored, subprocess fixture; parent supplies a disposable HOME and no credential environment
+test mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority ... ok
+test mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content ... ok
+test mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24 ... ok
+test mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results ... ok
+test mcp_message_visibility_and_receipt_pages_preserve_current_w24_scope ... ok
+test mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments ... ok
+test mcp_seat_reads_page_real_capture_and_refuse_stale_view_cursors ... ok
+test mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring ... ok
+test mcp_seat_input_lost_receipt_is_unknown_and_never_repeated_after_restart ... ok
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_seat_mute_is_epoch_checked_signed_and_preserves_read_access ... ok
+test mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check ... ignored, acceptance driver supplies the prebuilt bbt-doc corpus test binary
+test mcp_seat_input_consumes_readiness_and_enter_is_explicit ... ok
+test mcp_work_item_audit_admission_failure_executes_no_frontmatter_write ... ok
+test mcp_unread_is_unknown_and_application_ack_is_a_separate_count ... ok
+test mcp_work_item_signing_hold_keeps_the_original_file_and_terminals ... ok
+test mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts ... ok
+test mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file ... ok
+test mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope ... ok
+test mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed ... ok
+test mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only ... ok
+
+test result: ok. 25 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 7.10s
+
+     Running tests/measurements.rs (target/debug/deps/measurements-a623642d94441055)
+
+running 2 tests
+test file_descriptors_at_200_live_seats_and_sqlite_objects ... ignored, finite 200-live-seat descriptor measurement
+test recursive_cte_vs_petgraph_and_thousand_subscriber_fanout ... ignored, finite synthetic 10k-document / 100k-link measurement
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (target/debug/deps/messaging-61f3de8fb356491b)
+
+running 15 tests
+test live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence ... ok
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route ... ok
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo ... ok
+test recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen ... ok
+test ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception ... ok
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... ok
+test supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+test live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/provenance.rs (target/debug/deps/provenance-42b5f6af10cb1f26)
+
+running 4 tests
+test provenance_corpus_driver ... ignored, explicit corpus driver; caller supplies a disposable output root
+test symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hashes ... ok
+test live_detection_claim_hook_rename_delete_and_restart_preserve_evidence ... ok
+test custody_hold_keeps_observations_ephemeral_until_legitimate_projection_recovers ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 30.11s
+
+     Running tests/provider.rs (target/debug/deps/provider-2d323ebd512d4f1c)
+
+running 3 tests
+test local_provider_preserves_the_existing_link_and_rejects_unknown_hosts ... ok
+test location_namespaces_select_one_link_and_only_the_local_link_waits ... ok
+test logic_routes_real_seats_recovery_history_ownership_and_close_by_location ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/provider_fake.rs (target/debug/deps/provider_fake-e00136120dba3bea)
+
+running 3 tests
+test all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt ... ok
+test fixture_is_the_host_source_and_invalid_scripts_are_rejected ... ok
+test headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.62s
+
+     Running tests/provider_gui.rs (target/debug/deps/provider_gui-5aa6e5f30f566b0f)
+
+running 1 test
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.02s
+
+     Running tests/ring.rs (target/debug/deps/ring-e67a81c874b999b0)
+
+running 9 tests
+test ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation ... ok
+test ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor ... ok
+test ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes ... ok
+test ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell ... ok
+test ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay ... ok
+test ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again ... ok
+test ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects ... ok
+test ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index ... ok
+test ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.75s
+
+     Running tests/seat_wiring.rs (target/debug/deps/seat_wiring-465523ce0dbb8c64)
+
+running 2 tests
+test resumed_generation_gets_a_fresh_overlay_and_keeps_the_native_resume_path ... ok
+test first_logic_launch_wires_both_fixture_clients_without_user_config_writes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/socket_backlog.rs (target/debug/deps/socket_backlog-efa7ed6f34949043)
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 57.74s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-009c72cd53a3027c)
+
+running 9 tests
+test grammar_matches_tokens_and_rejects_mid_path_tail_wildcards ... ok
+test registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart ... ok
+test sqlite_objects_blobs_and_alarms_round_trip_across_reopen ... ok
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+test request_reply_has_no_responders_and_fanout_is_not_replayed ... ok
+test explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work ... ok
+test index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite ... ok
+test mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes ... ok
+test independent_streams_latest_snapshots_queue_gaps_and_nonretained_output ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/ui_guard.rs (target/debug/deps/ui_guard-0164f528eabf3e17)
+
+running 1 test
+test ui_thread_is_rejected_before_creating_a_database_directory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_mux
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0; elapsed 363.592s
+
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+    Checking log v0.4.34
+    Checking smallvec v1.16.3
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+    Checking parking_lot_core v0.9.12
+    Checking parking_lot v0.12.5
+    Checking hashbrown v0.17.1
+   Compiling crc32fast v1.5.3
+    Checking indexmap v2.14.2
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking miniz_oxide v0.9.1
+    Checking zlib-rs v0.6.8
+    Checking flate2 v1.1.10
+    Checking serde_yaml v0.9.34+deprecated
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking objc2-encode v4.1.0
+   Compiling cfg_aliases v0.2.2
+   Compiling objc2 v0.6.5
+    Checking dispatch2 v0.3.1
+    Checking block2 v0.6.2
+   Compiling bytemuck_derive v1.12.1
+    Checking objc2-core-foundation v0.3.2
+    Checking bytemuck v1.25.2
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+   Compiling naga v30.0.1
+    Checking objc2-foundation v0.3.2
+    Checking bit-vec v0.9.1
+    Checking raw-window-handle v0.6.2
+    Checking bit-set v0.10.0
+    Checking half v2.7.1
+    Checking codespan-reporting v0.13.1
+    Checking static_assertions v1.1.0
+    Checking unicode-ident v1.0.27
+    Checking objc2-metal v0.3.2
+    Checking objc2-core-graphics v0.3.2
+    Checking objc2-quartz-core v0.3.2
+    Checking wgpu-types v30.0.1
+   Compiling wgpu-hal v30.0.1
+    Checking float-cmp v0.9.0
+    Checking strict-num v0.1.1
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-naga-bridge v30.0.1
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking polycool v0.4.0
+    Checking libloading v0.8.9
+    Checking arrayref v0.3.9
+    Checking profiling v1.0.18
+    Checking tiny-skia-path v0.12.0
+    Checking kurbo v0.13.1
+   Compiling wgpu-core v30.0.1
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking euclid v0.22.14
+    Checking siphasher v1.0.4
+   Compiling arrayvec v0.7.8
+   Compiling litrs v1.0.1
+    Checking lyon_geom v1.0.20
+   Compiling document-features v0.2.12
+    Checking svgtypes v0.16.1
+    Checking png v0.18.1
+    Checking wgpu-core-deps-apple v30.0.1
+   Compiling wgpu v30.0.1
+    Checking simplecss v0.2.2
+    Checking roxmltree v0.21.1
+    Checking imagesize v0.15.0
+   Compiling cfg-if v1.0.5
+    Checking pico-args v0.5.0
+    Checking data-url v0.3.2
+    Checking usvg v0.48.1
+    Checking tiny-skia v0.12.0
+    Checking lyon_path v1.0.19
+    Checking rgb v0.8.53
+    Checking float_next_after v1.0.0
+    Checking lyon_tessellation v1.0.22
+    Checking resvg v0.48.1
+    Checking objc2-core-text v0.3.2
+    Checking ppv-lite86 v0.2.21
+   Compiling bitflags v2.13.2
+    Checking pollster v0.4.0
+   Compiling objc-sys v0.3.5
+   Compiling aho-corasick v1.1.5
+   Compiling regex-syntax v0.8.11
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling regex-automata v0.4.18
+   Compiling regex v1.13.1
+    Checking objc2 v0.5.3
+    Checking core-foundation v0.9.4
+   Compiling foreign-types-macros v0.2.4
+    Checking foreign-types-shared v0.3.1
+    Checking dispatch v0.2.0
+    Checking block2 v0.5.1
+    Checking bitflags v1.3.2
+    Checking core-graphics-types v0.1.3
+    Checking foreign-types v0.5.0
+    Checking objc2-foundation v0.2.2
+   Compiling winit v0.30.13
+    Checking tracing-core v0.1.36
+    Checking tracing v0.1.44
+    Checking core-graphics v0.23.2
+    Checking mio v1.2.4
+    Checking dpi v0.1.2
+    Checking smol_str v0.2.2
+    Checking tokio v1.54.1
+    Checking objc2-app-kit v0.2.2
+    Checking rand_chacha v0.9.0
+    Checking rand v0.9.5
+    Checking ulid v1.2.1
+   Compiling pulldown-cmark v0.13.4
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking unicase v2.10.0
+    Checking portable-pty v0.9.0
+    Checking rand_chacha v0.3.1
+    Checking unicode-segmentation v1.13.3
+    Checking rand v0.8.8
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking num-bigint-dig v0.8.6
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking tungstenite v0.30.0
+    Checking rsa v0.9.10
+    Checking dsa v0.6.3
+    Checking hashlink v0.12.2
+    Checking rusqlite v0.40.2
+    Checking petgraph v0.8.3
+    Checking pgp v0.21.0
+    Checking notify v8.2.0
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Checking objc2-app-kit v0.3.2
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Finished `dev` profile [optimized] target(s) in 1m 34s
+EXIT 0; elapsed 94.422s

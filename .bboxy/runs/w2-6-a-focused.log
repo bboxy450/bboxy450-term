@@ -1,0 +1,200 @@
+
+COMMAND ['rustfmt', '--edition', '2024', '--config', 'skip_children=true,reorder_modules=false', 'crates/bbt-mux/src/provenance/detector.rs', 'crates/bbt-mux/tests/provenance.rs']
+EXIT 0; elapsed 0.053s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'provenance::']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1m 18s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 5 tests
+test provenance::artifacts::tests::inline_history_is_bounded_and_older_rows_stay_out_of_the_document ... ok
+test provenance::projection::tests::projection_refuses_symlink_destinations ... ok
+test provenance::artifacts::tests::ambiguous_detection_then_claim_keeps_one_lineage_and_rewrites_task_link ... ok
+test provenance::projection::tests::jsonl_recovers_partial_and_duplicate_rows_without_resigning_history ... ok
+test provenance::tests::index_and_bus_share_one_order_and_keep_each_actual_signer ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 26 filtered out; finished in 0.53s
+
+EXIT 0; elapsed 79.356s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provenance', '--', '--test-threads=1']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+warning: method `apply` is never used
+   --> crates/bbt-mux/src/index.rs:528:19
+    |
+211 | impl Index {
+    | ---------- method in this implementation
+...
+528 |     pub(crate) fn apply(&self, update: Update, seat: Ulid, key: &SigningKey) -> Result<()> {
+    |                   ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bbt-mux` (lib) generated 1 warning
+error[E0505]: cannot move out of `p` because it is borrowed
+  --> crates/bbt-mux/tests/provenance.rs:85:46
+   |
+82 |             .map(|p| {
+   |                   - binding `p` declared here
+83 |                 Document::parse(
+   |                 --------------- borrow later used by call
+84 |                     p.file_name().unwrap().to_str().unwrap(),
+   |                     - borrow of `p` occurs here
+85 |                     &std::fs::read_to_string(p).unwrap(),
+   |                                              ^ move out of `p` occurs here
+
+For more information about this error, try `rustc --explain E0505`.
+error: could not compile `bbt-mux` (test "provenance") due to 1 previous error
+EXIT 101; elapsed 82.037s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provenance', '--', '--test-threads=1']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error[E0107]: type alias takes 1 generic argument but 2 generic arguments were supplied
+  --> crates/bbt-mux/src/provenance/detector.rs:92:16
+   |
+92 |     Git(usize, Result<Option<super::git::Snapshot>, String>, u64),
+   |                ^^^^^^ expected 1 generic argument -------- help: remove the unnecessary generic argument
+   |
+note: type alias defined here, with 1 generic parameter: `T`
+  --> crates/bbt-supervisor/src/store/mod.rs:8:10
+   |
+ 8 | pub type Result<T> = std::result::Result<T, Error>;
+   |          ^^^^^^ -
+
+For more information about this error, try `rustc --explain E0107`.
+error: could not compile `bbt-mux` (lib) due to 1 previous error
+EXIT 101; elapsed 19.841s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'provenance::']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1m 10s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 8 tests
+test provenance::artifacts::tests::inline_history_is_bounded_and_older_rows_stay_out_of_the_document ... ok
+test provenance::detector::tests::root_fd_refuses_symlink_parents_and_preserves_full_digest_semantics ... ok
+test provenance::projection::tests::projection_refuses_symlink_destinations ... ok
+test provenance::artifacts::tests::ambiguous_detection_then_claim_keeps_one_lineage_and_rewrites_task_link ... ok
+test provenance::projection::tests::jsonl_recovers_partial_and_duplicate_rows_without_resigning_history ... ok
+test provenance::detector::tests::hint_overflow_is_bounded_and_reported_hint_survives_coalescing ... ok
+test provenance::git::tests::bounded_git_snapshot_observes_refs_without_signing_or_running_hooks ... ok
+test provenance::tests::index_and_bus_share_one_order_and_keep_each_actual_signer ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 26 filtered out; finished in 0.54s
+
+EXIT 0; elapsed 71.765s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provenance', '--', '--test-threads=1']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error[E0308]: mismatched types
+   --> crates/bbt-mux/tests/provenance.rs:61:17
+    |
+ 58 |             Some(store) => Logic::start_custodied_with_store(
+    |                            --------------------------------- arguments to this function are incorrect
+...
+ 61 |                 store,
+    |                 ^^^^^ expected trait `DeviceKeyStore + std::marker::Send + Sync`, found trait `DeviceKeyStore`
+    |
+    = note: expected struct `Arc<(dyn DeviceKeyStore + std::marker::Send + Sync + 'static)>`
+               found struct `Arc<dyn DeviceKeyStore>`
+note: associated function defined here
+   --> crates/bbt-mux/src/logic.rs:515:12
+    |
+515 |     pub fn start_custodied_with_store(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `bbt-mux` (test "provenance") due to 1 previous error
+EXIT 101; elapsed 50.963s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provenance', '--', '--test-threads=1']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 30.83s
+     Running tests/provenance.rs (target/debug/deps/provenance-42b5f6af10cb1f26)
+
+running 4 tests
+test custody_hold_keeps_observations_ephemeral_until_legitimate_projection_recovers ... ok
+test live_detection_claim_hook_rename_delete_and_restart_preserve_evidence ... FAILED
+test provenance_corpus_driver ... ignored, explicit corpus driver; caller supplies a disposable output root
+test symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hashes ... ok
+
+failures:
+
+---- live_detection_claim_hook_rename_delete_and_restart_preserve_evidence stdout ----
+
+thread 'live_detection_claim_hook_rename_delete_and_restart_preserve_evidence' (16556643) panicked at crates/bbt-mux/tests/provenance.rs:111:13:
+missing out.txt: [Object {"aliases": Array [], "attribution_candidates": Array [], "attribution_reason": String("no-active-seat"), "authorship": Object {"custody": Null, "device_id": Null, "kind": String("local-dev"), "public_key": String("wFDFY3pE+oYp//PMzOIwDLNipj2Z2V/FQUUmb0MyRFo="), "root_fingerprint": Null, "signer": String("observer:local-dev:wFDFY3pE+oYp//PMzOIwDLNipj2Z2V/FQUUmb0MyRFo=")}, "bytes": Number(4), "claimed": Bool(true), "claimed_digest": String("sha256:8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8"), "created": String("2026-10-23T15:40:06.085Z"), "created_by": String("observer:local-dev:wFDFY3pE+oYp//PMzOIwDLNipj2Z2V/FQUUmb0MyRFo="), "deleted": Bool(false), "derived_from": Array [], "digest": String("sha256:f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753"), "digest_grade": String("observed"), "for": Array [], "grade": String("reported"), "history": Array [Object {"before_digest": Null, "commit": Null, "digest": String("sha256:8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8"), "event_hash": String("ae7ab6758ad43baea7c54b82b76929ed8e145bbd3b8a94d0ff86213eb652df5b"), "generation": Null, "grade": String("inferred"), "id": String("01M5MPPQ2248DP2PNX2CPWKNXX"), "kind": String("created"), "previous_ref": Null, "reason": Null, "ref": String("out.txt"), "seat": Null, "sequence": String("3"), "signer": String("wFDFY3pE+oYp//PMzOIwDLNipj2Z2V/FQUUmb0MyRFo="), "source": String("provenance/filesystem"), "ts": String("1792770005907")}, Object {"generation": String("1"), "grade": String("reported"), "id": String("01M5MPPQ323AG7279X38K8JQAQ"), "kind": String("claimed"), "seat": String("01M5MPPPTDYMP3DKPNDABP2MN6"), "source": String("mcp/artifact_claim"), "ts": String("1792770006124")}, Object {"before_digest": String("sha256:8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8"), "commit": Null, "digest": String("sha256:f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753"), "event_hash": String("331daf02df94c0ae86a6005c1be99212feea3eabaaf151f06cff22c856bcea1e"), "generation": String("1"), "grade": String("inferred"), "id": String("01M5MPPQA6DJAK8D9SNFANMQ1J"), "kind": String("created"), "previous_ref": Null, "reason": Null, "ref": String("out.txt"), "seat": String("01M5MPPPTDYMP3DKPNDABP2MN6"), "sequence": String("13"), "signer": String("wFDFY3pE+oYp//PMzOIwDLNipj2Z2V/FQUUmb0MyRFo="), "source": String("provenance/filesystem"), "ts": String("1792770006167")}], "id": String("01M5MPPQ229DNN66CSKGG2QPPM"), "kind": String("file"), "observation_reason": Null, "observed": Bool(true), "produced_by": String("seat:01M5MPPPTDYMP3DKPNDABP2MN6"), "provenance": Object {"digest": String("sha256:2af9542bc0897ec83fdfe4b798cce2234c243ce18003db5f629e1b254d3dcb30"), "frontmatter_digest": String("sha256:c059a4e2bc98d0e0716596c67dfbd752c4003bf294dfcae48690ef11292573f0"), "log": String(".bboxy/log/2026-10-23.jsonl#14"), "sig": String("LJUBPvXVxgO/RJoVm5sWbFeR2Uy3uAQr/JqBzqXN7cEasXF14rI5cAssKOYFBB4v2aeO6NPLDsB+zooKITymCw=="), "signer": String("observer:local-dev:wFDFY3pE+oYp//PMzOIwDLNipj2Z2V/FQUUmb0MyRFo=")}, "ref": String("out.txt"), "type": String("artifact"), "updated": String("2026-10-23T15:40:06.346Z"), "updated_by": String("observer:local-dev:wFDFY3pE+oYp//PMzOIwDLNipj2Z2V/FQUUmb0MyRFo=")}]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    live_detection_claim_hook_rename_delete_and_restart_preserve_evidence
+
+test result: FAILED. 2 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 39.55s
+
+error: test failed, to rerun pass `-p bbt-mux --test provenance`
+EXIT 101; elapsed 70.684s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provenance', 'live_detection_claim_hook_rename_delete_and_restart_preserve_evidence', '--', '--exact']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 30.19s
+     Running tests/provenance.rs (target/debug/deps/provenance-42b5f6af10cb1f26)
+
+running 1 test
+test live_detection_claim_hook_rename_delete_and_restart_preserve_evidence ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 1.83s
+
+EXIT 0; elapsed 32.307s
+
+COMMAND ['cargo', 'clippy', '--locked', '-p', 'bbt-mux', '--all-targets', '--', '-D', 'warnings']
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error: this `if` statement can be collapsed
+    --> crates/bbt-mux/src/logic.rs:1923:9
+     |
+1923 | /         if let (Ok(record), Some(bytes)) = (
+1924 | |             self.registry.get(info.seat),
+1925 | |             SqliteStore::open(&directory)?.get("provenance_cwd")?,
+1926 | |         ) {
+...    |
+1935 | |         }
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+     = note: `-D clippy::collapsible-if` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+     |
+1926 ~         )
+1927 ~             && let Ok(cwd) = serde_json::from_slice::<PathBuf>(&bytes) {
+1928 |                 self.provenance.register(
+ ...
+1933 |                 );
+1934 ~             }
+     |
+
+error: use of `unwrap_or_else` to construct default value
+   --> crates/bbt-mux/src/provenance/engine.rs:168:14
+    |
+168 |             .unwrap_or_else(Ulid::new);
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_or_default
+    = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unwrap_or_default)]`
+
+error: could not compile `bbt-mux` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bbt-mux` (lib test) due to 2 previous errors
+EXIT 101; elapsed 7.143s
+
+COMMAND ['cargo', 'clippy', '--locked', '-p', 'bbt-mux', '--all-targets', '--', '-D', 'warnings']
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 20.95s
+EXIT 0; elapsed 21.053s
