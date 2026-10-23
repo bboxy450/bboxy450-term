@@ -15,6 +15,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[seats-1000-bus]] an Oracle broadcast reaches 1000 seats within budget | `GATE_SEATS=1000 GATE_BUDGET=13299 sh scripts/gates.sh bus` (slow) | p99 median 10.6 s at 22f5956, 2026-10-22 |
 | [[seats-400-memory-idle]] 400 idle seats fit in 420 MiB | `GATE_SEATS=400 GATE_RATE=idle GATE_SECONDS=20 GATE_BUDGET=420 sh scripts/gates.sh memory` (slow) | median 333.7 MiB, 2026-10-22 |
 | [[clippy-clean]] zero clippy warnings on every target | `cargo clippy --workspace --all-targets --locked -- -D warnings` (run by ci-local itself; `gate: ci`) | clean at 3adccc6, 2026-10-22 |
+| [[mermaid-fixtures]] every .bboxy Mermaid block has a fixture the engine lays out | `cargo test -p bbt-mermaid --locked every_bboxy_mermaid_block_has_a_fixture -- --exact` | held, 2026-10-22 |
 | [[signed-main]] every commit on main carries a good signature | `git log --format='%G?' HEAD \| grep -vc '^G$'` is 0 and the log is non-empty, on the handed-off commit | runner pass at 0bab92f, 2026-10-22 |
 
 A violation halts the work that broke it: the task goes `blocked` with

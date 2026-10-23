@@ -13,7 +13,7 @@ A GPU-rendered Rust terminal for agent swarms, built by a swarm. Read this first
 |---|---|
 | **Operator** | Direction, taste, priorities. Outranks everyone. |
 | **Oracle** (Vesper Greywind) | Assigns work, writes briefs, verifies every handoff, merges and pushes to main. The only one who pushes **code** to main; the Architect pushes `.bboxy/` specs, decisions and invariants from its own worktree, and Creativity pushes `lab/web/` (each rebased onto origin/main, own commits only). |
-| **Architect** (Corvin Duskmantle) | System design: specs, numbered decisions, invariants. Does not assign or implement. |
+| **Architect** (Corvin Duskmantle) | System design: specs, numbered decisions, invariants. Does not assign or implement. Pushes `.bboxy/` records only after the record checks pass in a clean worktree: `cargo test -p bbt-doc --locked --test corpus` and `cargo test -p bbt-mermaid --locked`; a Mermaid edit in `.bboxy` ships with its fixture (`crates/bbt-mermaid/tests/fixtures/bboxy/<spec>-<n>.mmd`) in the same commit. |
 | **Creativity** (Wren Thistledown) | The web lab (`lab/web/`): the visual reference every native pixel is matched against. |
 | **Executors** (Nyx, Rook, Sable, Aster, Kestrel, Velvet, Seraph) | Implement exactly the assigned brief, verify it, and hand off evidence. |
 
