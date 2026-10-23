@@ -1,0 +1,14 @@
+R4c frame measurement. a06ed28 on main 0a44d70, release; method as g12/r4c (8 s Metal System Trace, --animate --meter, steady 2.5-8 s, frame-number grouping, union of V/F/C; gpu_frames.py).
+$ xcrun xctrace record --template 'Metal System Trace' --time-limit 8s --launch -- bboxy450-term --animate --meter
+load average at start: 31.4 (shared Mac): 265 steady frames vs 413 earlier, from CPU-starved cadence; GPU time per frame is the measured quantity.
+R4c   : 265 frames {'mean': 2.902, 'p50': 2.805, 'p99': 3.587, 'max': 3.73}
+G1+G2 : 413 frames {'mean': 6.995, 'p50': 7.19, 'p99': 8.152, 'max': 8.519}
+R4c base (950d4a9): 413 frames {'mean': 9.158, 'p50': 9.381, 'p99': 10.236, 'max': 11.595}
+per-pass mean ms/frame (G1+G2 -> R4c):
+  frosted separable Gaussian          4.211 ->  0.000
+  CSS gamma chrome and text           2.434 ->  2.279
+  L2 named materials                  0.531 ->  0.554
+  isolated group source-over          0.112 ->  0.141
+  (wgpu internal) PendingWrites       0.132 ->  0.045
+  app clear                           0.131 ->  0.057
+frosted separable Gaussian: no encoders in steady frames (the title bar's backdrop key is constant, so the cached blur is bound).
