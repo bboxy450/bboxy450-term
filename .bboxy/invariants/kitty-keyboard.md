@@ -3,8 +3,6 @@ id: 01M5MQHFVTTTQHQAE0GXFSS0B1
 type: invariant
 title: every key a pane receives is encoded once, by the kitty keyboard protocol against the seat's live mode
 status: active
-slow: true
-gate: pending-k1
 check: cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a key that reaches the PTY by a second path, or encoded against a stale mode, is a terminal that lies to the program inside it
 links:
@@ -12,7 +10,7 @@ links:
   - { to: "[[c1-live-seats]]", rel: constrains }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decision }
 created: 2026-10-23T15:54:43Z
-updated: 2026-10-23T15:54:43Z
+updated: 2026-10-23T17:43:09Z
 ---
 # One key encoder, the kitty keyboard protocol
 
@@ -33,20 +31,25 @@ encoded). bbt-core already keeps the stacks (`C/lib.rs:77` `kitty_keyboard: true
 
 **Check.** `cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The pipe is deliberate: a filter that matches no test exits 0 in
-cargo, so the check demands that exactly this named test ran and passed. K1
-(Sable) creates `kitty_keyboard_invariant`, which must cover: encoding vectors
-for every flag combination against the kitty spec, push/pop/query round trips,
-legacy vectors with no flags, and a source scan over the app proving no code outside the call into
-`bbt_core::keyboard` turns a key event into PTY bytes. Fast (a unit test), so it joins
-the default invariant set the day K1 lands: that commit removes `slow` and
-`gate` from this file (the switch lands with the load, not before it).
+cargo, so the check demands that exactly this named test ran and passed. The exact core-library test covers all 32 flag sets, a real Term's
+push/pop/query and alternate-screen stacks, legacy vectors, and a source guard
+over the app's single adapter/router. The app also tests Term -> Screen.modes ->
+neutral encoder and keeps Command routing local. This fast check is active in
+the default invariant set. Toolkit types and native lock reads stay in the app;
+the Apache-only sequence builder and neutral model stay in bbt-core (#36).
 
 **Cost of a violation.** A key that reaches the PTY by a second path, or is
 encoded against a stale mode, is a terminal that lies to the program inside it:
 a TUI that enabled flag 8 sees a bare byte where it expects an escape, or a
 shell with no flags sees an escape where it expects a byte.
 
-**Evidence.** None yet; the test does not exist. Until K1 lands this invariant
-fails by design under `--slow` and is skipped by default.
+**Evidence.** `crates/bbt-core/src/lib.rs:kitty_keyboard_invariant` calls
+the flag matrix, real core-stack, legacy and source-guard checks in
+`crates/bbt-core/src/keyboard.rs`. `bboxy450-term` tests the thin adapter and its
+published Screen mode bridge. The adapter reads Caps Lock from macOS
+`NSEvent +modifierFlags`; macOS has no Num Lock toggle, so that bit is off.
+`NumericPad` is not Num Lock; explicit neutral lock vectors test both lock bits.
+No GUI key injection is used. K1's real commands, statuses and CI are retained
+in its run logs. Apache attribution and the modified-by line remain in core.
 
 Owner: Corvin Duskmantle <ARCHITECT>.

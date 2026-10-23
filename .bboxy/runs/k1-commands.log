@@ -1,0 +1,610 @@
+K1 command ledger. Child statuses are real; SIGTERM is-15 (the Python wrapper surfaced241).
+ICQ message/inbox payloads remain outside Git; operation/status/hash only below.
+
+3afd1b46925b48789c7f5f132314c4ee 2026-10-23T15:55:01.889285+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git fetch origin
+EXIT 0 elapsed_seconds=1.164251 PID=25972
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-3afd1b46925b48789c7f5f132314c4ee.log SHA256 fffb815c485edbb802d9f0f0b27140366083f61a14d9c0da16a15f9dab6ef562
+
+4b93200650ca4d76b3b26493f9bdbc89 2026-10-23T15:55:03.179456+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git rebase --gpg-sign=9B07E849480C68328CA20684844ECC0587DE7AB0 origin/main
+EXIT 0 elapsed_seconds=0.120653 PID=25999
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-4b93200650ca4d76b3b26493f9bdbc89.log SHA256 20f9baa2c6a0c921bab81abd542a3d3d0b0ba4d032777c2a7572dc93b5a49ded
+
+e4de0c88692c4fd2a0d701d5629c0253 2026-10-23T15:55:38.700381+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ python3 -c 'from pathlib import Path; import urllib.request,hashlib,json; out=Path("/private/tmp/sable-k1-it_bx1w_"); resources={"alacritty-keyboard.rs":"https://raw.githubusercontent.com/alacritty/alacritty/5421470/alacritty/src/input/keyboard.rs","alacritty-license.txt":"https://raw.githubusercontent.com/alacritty/alacritty/5421470/LICENSE-APACHE","alacritty-commit.json":"https://api.github.com/repos/alacritty/alacritty/commits/5421470"}; rows={}; [( (out/name).write_bytes(urllib.request.urlopen(url,timeout=30).read()),rows.update({name:{"url":url,"sha256":hashlib.sha256((out/name).read_bytes()).hexdigest()}})) for name,url in resources.items()]; (out/"upstream.json").write_text(json.dumps(rows,indent=2)+"\n"); print(json.dumps(rows)); print("FULL_COMMIT",json.loads((out/"alacritty-commit.json").read_text())["sha"])'
+EXIT 0 elapsed_seconds=1.277087 PID=26657
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-e4de0c88692c4fd2a0d701d5629c0253.log SHA256 66089a39951e440060e816ba10fc2d3ed44049f842fb2fd90311fcd8199b7a0c
+
+5435ce8ac72945a88632a4759d86d857 2026-10-23T15:56:28.841734+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.559462 PID=28605
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-5435ce8ac72945a88632a4759d86d857.log SHA256 26100693ae50db630ee23730cc5d93ae12678163821c163fe4c4c3a99d2a0964
+
+daa55924113e44abb0c73a6333e2677e 2026-10-23T15:56:29.487973+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.484466 PID=28663
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-daa55924113e44abb0c73a6333e2677e.log SHA256 c57097f07f8f874c4b6f8d3a5ec2a28e4b79322e7b8ff3eae5b2940f2c3480d6
+
+ed12d6bffca94829838aa3b806010521 2026-10-23T15:56:30.046319+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq send '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.618318 PID=28714
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-ed12d6bffca94829838aa3b806010521.log SHA256 471454ac88437a6033b41bbe7389ab03a460f353bff130cda6a7586764c97414
+
+81d5c3dd78554e8d8fe3b4c0967104d8 2026-10-23T15:57:06.848949+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git log -1 --format=%H
+EXIT 0 elapsed_seconds=0.048679 PID=31149
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-81d5c3dd78554e8d8fe3b4c0967104d8.log SHA256 381759b7db0ffbce8910bb868f3e7822edc34c63675fb12919ed49a45252e3cf
+
+af650625262a4e66aaca2bad6636e6f0 2026-10-23T15:58:07.074400+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=1.474818 PID=34992
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-af650625262a4e66aaca2bad6636e6f0.log SHA256 32af95ab265a0e4e275d548ec48f3977de63216365f87a4b704a9f49700f32b7
+
+2dba68edcce9438096234aa137d93542 2026-10-23T16:07:18.740592+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git fetch origin
+EXIT 0 elapsed_seconds=0.980573 PID=53323
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-2dba68edcce9438096234aa137d93542.log SHA256 ade8120f0031dbbea4e0b7ad0a437002c706eafb7d8a87d1b0a3e7bc56ad1ae2
+
+9abc5ea3e4514ae782b59b5f8ec1613a 2026-10-23T16:07:19.809629+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git rebase --gpg-sign=9B07E849480C68328CA20684844ECC0587DE7AB0 origin/main
+EXIT 0 elapsed_seconds=0.116637 PID=53390
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-9abc5ea3e4514ae782b59b5f8ec1613a.log SHA256 cd469cb8e23f463f7bbcfc709fcb0bb5c455adc1f641b61d8bc44c0bcfb5519d
+
+0ba4bf4e171045b685d52cff69a73a21 2026-10-23T16:09:32.798327+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.348612 PID=57622
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-0ba4bf4e171045b685d52cff69a73a21.log SHA256 b8e64e3a5156b828c5942eabfa0c002adf1205f8650441fe0438bf80391dc276
+
+228f18ac1bb24fee8fd0160ddd571bfe 2026-10-23T16:13:24.815156+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq inbox '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.433139 PID=66539
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-228f18ac1bb24fee8fd0160ddd571bfe.log SHA256 42a9ace561fc1ecc072d917fafccfd550d376ef8a330e9a8c952be28ddc42c70
+
+9d1b2de60c714e6382c6fd625cf6eca9 2026-10-23T16:18:59.643264+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rustfmt --edition 2024 crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/main.rs
+EXIT 0 elapsed_seconds=0.200291 PID=80965
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-9d1b2de60c714e6382c6fd625cf6eca9.log SHA256 82321bf5d88bb2005ac0216ce198da00953a5a880f7352c87c527103f8aab6ca
+
+dd75fb8479d44421a7fde2da34c95aeb 2026-10-23T16:19:33.270096+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq inbox '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.423641 PID=83159
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-dd75fb8479d44421a7fde2da34c95aeb.log SHA256 9327eee29be7e3115ba3546c64941d4f3b05bcfc8148aec36642bb3e0ec10bb0
+
+aa3c2a8af31d44bbabc186e77f23f1bb 2026-10-23T16:18:59.940436+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/target cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact --nocapture
+EXIT 101 elapsed_seconds=57.429219 PID=80976
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-aa3c2a8af31d44bbabc186e77f23f1bb.log SHA256 0f66685ad80ef1c58c689214b453246a8ed647ff43d4bc9cfdfdf1fc006d9a7d
+
+694a4783fbf74164a9c5159789165e04 2026-10-23T16:20:24.785655+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/target cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact --nocapture
+EXIT 0 elapsed_seconds=3.338325 PID=84034
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-694a4783fbf74164a9c5159789165e04.log SHA256 e688f60e5ca9f9a50caa6490b8613601d8e0b0831deb03a93de16269c850c963
+
+fa2fc9fc0ada4bee968860c1f733bd0a 2026-10-23T16:21:17.426309+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rustfmt --edition 2024 crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/main.rs
+EXIT 0 elapsed_seconds=0.276221 PID=84733
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-fa2fc9fc0ada4bee968860c1f733bd0a.log SHA256 1c3a5edf7e9c884423a424cea2f7f414ccb37b2279f58ea42700dc3b2d407d24
+
+6b57e134d9c74ab19370c044a0d8071c 2026-10-23T16:22:26.451649+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/target cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 101 elapsed_seconds=33.501586 PID=85936
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-6b57e134d9c74ab19370c044a0d8071c.log SHA256 f264ad0f2d0d8b102bb78e8ab37b58ff471ec8475664cdd26697904babd97a89
+
+f3289b1eaf674d95a26f90e1dc02ad3d 2026-10-23T16:22:59.712158+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.419825 PID=87067
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-f3289b1eaf674d95a26f90e1dc02ad3d.log SHA256 cdfff6a24684bc4d575ee70d5dcc8e429b38eeeb5a30cb564594ffcc08bd0ef5
+
+5a7bb9b36f9243c79d31b1362d2228e0 2026-10-23T16:21:17.787812+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/target cargo test -p bboxy450-term --locked
+EXIT 0 elapsed_seconds=114.591498 PID=84745
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-5a7bb9b36f9243c79d31b1362d2228e0.log SHA256 ccf22b4486e29cc99229fdc4003c6988ab52a2285f6e9e0e56779ffc92d2e917
+
+1498fa957ca24d6d8d298968450ade03 2026-10-23T16:23:30.955186+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/target cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 0 elapsed_seconds=2.209426 PID=90183
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-1498fa957ca24d6d8d298968450ade03.log SHA256 3a045e752bebd2d4d3e326e1091f2269c4cc0246e16d019b9ed26c4698f5a6dc
+
+89d2657b02af4420aaf503d89c9f7c8a 2026-10-23T16:24:24.375322+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq inbox '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.304990 PID=92262
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-89d2657b02af4420aaf503d89c9f7c8a.log SHA256 75a5067f95eee96d65f92768dbc57a9fba0b464ed3c85cd3a798a59ea96b3888
+
+e9dbed3a61854a4189b54af0c1d7f18b 2026-10-23T16:24:24.747870+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rustfmt --edition 2024 crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/main.rs
+EXIT 0 elapsed_seconds=0.146207 PID=92300
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-e9dbed3a61854a4189b54af0c1d7f18b.log SHA256 664c76d59fe3e25433aab8d8b4b353ce076eb23ea3fbb2fd7928b5ddcaf5898a
+
+17be1fdeb2d64a818f8580f9f202c8ea 2026-10-23T16:24:24.942138+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git diff --check
+EXIT 0 elapsed_seconds=0.027969 PID=92303
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-17be1fdeb2d64a818f8580f9f202c8ea.log SHA256 3ce3fc9c63e85ff2796f743039d9c3f4fb7c37f7b0be9cbb928b97bbdbdafede
+
+052b7649d047496284b83972f1d9319f 2026-10-23T16:24:25.047367+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git var GIT_AUTHOR_IDENT
+EXIT 0 elapsed_seconds=0.050283 PID=92313
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-052b7649d047496284b83972f1d9319f.log SHA256 651f42b78682d0234dea967e2cb265ad5ae7604165097c8550e5d60fdd336701
+
+7c8f717fa5914896af3fa6a8cd1b5107 2026-10-23T16:24:25.174075+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git config --get user.signingkey
+EXIT 0 elapsed_seconds=0.023234 PID=92316
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-7c8f717fa5914896af3fa6a8cd1b5107.log SHA256 74d50249c443373f249ca1ce3f798d8109d94447425de4a9df2ed57bbb4fd278
+
+036fc8c62cdd4e189273723df9546571 2026-10-23T16:25:15.934494+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rustfmt --edition 2024 crates/bboxy450-term/src/keyboard.rs
+EXIT 0 elapsed_seconds=0.082928 PID=93905
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-036fc8c62cdd4e189273723df9546571.log SHA256 a981841f391e6a3fb2e60c75f2292c220d428c8a6f7a3fe221b6b4d4cd8e4902
+
+a92b3539324446b085e261f38e4b57b4 2026-10-23T16:25:16.120196+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/target cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact --nocapture
+EXIT 0 elapsed_seconds=7.879814 PID=93915
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-a92b3539324446b085e261f38e4b57b4.log SHA256 74cfe4431187805b424f3e847a1a70a8829a81025094220e29b757132e171c88
+
+59c176038e0b4b8095ea376ce6d3703f 2026-10-23T16:25:53.898779+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git diff --check
+EXIT 0 elapsed_seconds=0.052189 PID=94384
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-59c176038e0b4b8095ea376ce6d3703f.log SHA256 a89e9ed2baaf0c9336135a871c3d088372837500ea8b160eccbc21524126b20f
+
+4ad8c04b403a4b0ea486a0a4ddfe95d7 2026-10-23T16:25:54.058889+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git add crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/main.rs .bboxy/invariants/kitty-keyboard.md
+EXIT 0 elapsed_seconds=0.056651 PID=94387
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-4ad8c04b403a4b0ea486a0a4ddfe95d7.log SHA256 36de74a63940bf5bd9652f76b25e439ffde4ab0e0958a1eed6f57c8b77d84e5f
+
+d9fa53285bdf41bf98b2c509f95c292c 2026-10-23T16:25:54.232387+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git commit -S -m 'feat(app): encode pane keys with Kitty keyboard protocol' -m 'Port the Alacritty 5421470 sequence builder with Apache-2.0 attribution. Encode against focused Screen modes, retain legacy DEC/xterm behavior and local Cmd routing, and activate the exact keyboard invariant with all flag and core-stack checks.'
+EXIT 0 elapsed_seconds=0.427388 PID=94392
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-d9fa53285bdf41bf98b2c509f95c292c.log SHA256 39d4c2cf11b2f878837f650515c95c17d2e05d4ec9e568c3d71b125bdff77b57
+
+410a01f1d16e4712bca750ad048c2338 2026-10-23T16:25:54.742155+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git fetch origin
+EXIT 0 elapsed_seconds=0.943574 PID=94416
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-410a01f1d16e4712bca750ad048c2338.log SHA256 9f058b83dd15e4243ba0d2cbf6bdb72e7474cc85eb4fa453c5f239499497655a
+
+92ce82154ab746feba213893863ac2bb 2026-10-23T16:26:06.687977+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git rebase --gpg-sign=9B07E849480C68328CA20684844ECC0587DE7AB0 origin/main
+EXIT 0 elapsed_seconds=0.278950 PID=94982
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-92ce82154ab746feba213893863ac2bb.log SHA256 3e64acef8afec9c2f0a35c1563b1f8e05440469631c5311a6380eed2aa19d7bb
+
+28826b72130540bfb703280a9f6b00ee 2026-10-23T16:26:07.079947+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git log -1 --show-signature --format=fuller
+EXIT 0 elapsed_seconds=0.066783 PID=94996
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-28826b72130540bfb703280a9f6b00ee.log SHA256 8979a08283027847fbc766691ef4b01f875454990bc49fecdb9f3a525c7c2b08
+
+a779df63c410406798bd9f2c5d593d05 2026-10-23T16:26:07.265557+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.466505 PID=95001
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-a779df63c410406798bd9f2c5d593d05.log SHA256 3b7efa1e69d85c4f465dcdf4abfe2b0236666d029b4b82e0ae856abd14720bde
+
+b5b30fe592184fbc876679fad270ec40 2026-10-23T16:26:07.859396+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git status --short
+EXIT 0 elapsed_seconds=0.090672 PID=95076
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-b5b30fe592184fbc876679fad270ec40.log SHA256 1e50f3cefc3ebf5193c166e132dcee2266c1af34ec2275298b4d694365f7f458
+
+3839d2058dbb49a2ba5737615584d9d5 2026-10-23T16:26:35.647308+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git worktree add --detach /private/tmp/ci-sable-k1-3d9de419 3d9de419264dd7a89f87a47f09a4b8889866ea3d
+EXIT 0 elapsed_seconds=1.164203 PID=95425
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-3839d2058dbb49a2ba5737615584d9d5.log SHA256 6a7cc1da3df2ea4b2fb3f9284485b5cab7c51f81efd2c6f33875d3867c6a959c
+
+45711442b4104826b76a614f09acc5d6 2026-10-23T16:26:37.014335+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git status --porcelain=v1
+EXIT 0 elapsed_seconds=0.540090 PID=95437
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-45711442b4104826b76a614f09acc5d6.log SHA256 0b2a1e4717776ae5efb2f2fbcd603536e1088bbb04e4d9cf1474521a2d2fcb00
+
+5a4b1a0eb9254c488c3ec9aaaa94a112 2026-10-23T16:27:49.181558+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq inbox '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.359267 PID=98178
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-5a4b1a0eb9254c488c3ec9aaaa94a112.log SHA256 1f5edcd0d148031b7541bfd31805f74d5426fd0514d1cd11374ead6dab21b69c
+
+c009cb62ddde43f4a97cf1f785866320 2026-10-23T16:26:37.649408+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 0 elapsed_seconds=88.888174 PID=95454
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-c009cb62ddde43f4a97cf1f785866320.log SHA256 3bf2a41962af25398e22bdb978260234858c7f095e73c157c9ae807ad53d17f9
+
+548b7521db894f1f9b14e70cc06fd28f 2026-10-23T16:28:21.927278+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target sh scripts/ci-local.sh --parity
+EXIT -15 elapsed_seconds=645.404841 PID=98580
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-548b7521db894f1f9b14e70cc06fd28f.log SHA256 46e077f192841937b47c60b35470136d3f72ca704a38447b93c67bfa58b3a207
+
+715826871b3d4cf88069d8105db7ed61 2026-10-23T16:39:07.679401+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rustfmt --edition 2024 crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/main.rs
+EXIT 0 elapsed_seconds=0.969518 PID=17149
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-715826871b3d4cf88069d8105db7ed61.log SHA256 b792b6be94a72e58f4debeae34888c28d76c312e616241b68264695e3bc81ca6
+
+09e72c6d70444c308a008bf05a73d9d4 2026-10-23T16:39:48.825749+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.651679 PID=18629
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-09e72c6d70444c308a008bf05a73d9d4.log SHA256 995973782261c966c80519ef1878cf2b0a4d44d6cb628bde6c1f41096b00c11f
+
+6359c56bb1484cada3a62778f3c72993 2026-10-23T16:39:49.572869+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git add crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/main.rs
+EXIT 0 elapsed_seconds=0.056547 PID=18667
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-6359c56bb1484cada3a62778f3c72993.log SHA256 2c5ed9fc0c2eae468c94296965d198e75bf9533f25621d058ff6e01fd03827ef
+
+276ed2502fc04911b018a95460d6d132 2026-10-23T16:39:49.748819+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git commit --amend --no-edit -S
+EXIT 0 elapsed_seconds=0.324704 PID=18670
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-276ed2502fc04911b018a95460d6d132.log SHA256 f98c858f92e58ecf86047d2d4b3fcea8725770411485850d5c01ee5b5d61a6c9
+
+89c246fe7b0148518767e5fc1931beb5 2026-10-23T16:39:50.183664+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git fetch origin
+EXIT 0 elapsed_seconds=0.926268 PID=18697
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-89c246fe7b0148518767e5fc1931beb5.log SHA256 00c7c665566708c5f6637c231e0f48dbfc75da1e79b7e4a38a21b5ae732f0254
+
+b72c5d7c01444754aaee1fe9be769ab1 2026-10-23T16:39:51.226672+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git rebase --gpg-sign=9B07E849480C68328CA20684844ECC0587DE7AB0 origin/main
+EXIT 0 elapsed_seconds=0.288635 PID=18749
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-b72c5d7c01444754aaee1fe9be769ab1.log SHA256 312901b89871eb4f3ee82d61f181c9f90b980bd614a8cc0da863c1e293c8ba04
+
+1d1fb652b21e4e319d74a08237d25356 2026-10-23T16:40:02.557437+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git rev-parse HEAD 'HEAD^'
+EXIT 0 elapsed_seconds=0.055810 PID=19135
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-1d1fb652b21e4e319d74a08237d25356.log SHA256 50073c266da39993143922be6781daac9d8d70f550b5d6c169e6d434d773b1d0
+
+de1ec64644e74e47993957c53fb3455f 2026-10-23T16:40:02.715988+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git worktree remove /private/tmp/ci-sable-k1-3d9de419
+EXIT 0 elapsed_seconds=0.252149 PID=19140
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-de1ec64644e74e47993957c53fb3455f.log SHA256 2ef63162124183bb5cb1b8588c32ea5317152b11682dd33f697f06cfebbfc116
+
+89e90992c5494cc7830659aa9aaac1ea 2026-10-23T16:40:03.057496+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git worktree add --detach /private/tmp/ci-sable-k1-3d9de419 HEAD
+EXIT 0 elapsed_seconds=0.763196 PID=19155
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-89e90992c5494cc7830659aa9aaac1ea.log SHA256 b73b20d32524d9917d68bf9cfa394cde0f2eb7efa739bf6ea935467fb315f71b
+
+bf2d21f2704b4029888f7c454545a08e 2026-10-23T16:40:03.916357+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo test -p bboxy450-term --locked --bin bboxy450-term launcher_host_tests
+EXIT 0 elapsed_seconds=76.238800 PID=19186
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-bf2d21f2704b4029888f7c454545a08e.log SHA256 8d53d9c3583742fa7f16113eae11484956ae2f3a6ce507581568ca1b84afacda
+
+4e2669deb3c7479db4e5149a850d93eb 2026-10-23T16:41:32.008211+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq inbox '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.376937 PID=22003
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-4e2669deb3c7479db4e5149a850d93eb.log SHA256 8cac8ec25932588d3f47a6f32913e2f68f4fce159e09f53dd71efd1aea5ae436
+
+5bce71b00a1d43bc8700b25e219e65ae 2026-10-23T16:41:41.775183+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact --nocapture
+EXIT 0 elapsed_seconds=18.311701 PID=22649
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-5bce71b00a1d43bc8700b25e219e65ae.log SHA256 402b832ac409bce80c501bbe08df2d00dd7ebbfe0be7681b157d4c1affff0ee3
+
+34aeaaf546ac468183959836ce58a124 2026-10-23T16:42:16.428219+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 0 elapsed_seconds=43.469022 PID=24337
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-34aeaaf546ac468183959836ce58a124.log SHA256 d9acba628d828df685909c8bf2129c4ff113b26c9e1dc43d760017ec87501fd7
+
+1f96cf0ae074459ca0f4ed413b367871 2026-10-23T16:43:18.522111+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git status --porcelain=v1
+EXIT 0 elapsed_seconds=0.614674 PID=26672
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-1f96cf0ae074459ca0f4ed413b367871.log SHA256 a7491c9e9f7af3b6a56fd6617babc4a3353b07414918f71cb428fb9d152955c3
+
+045f157afcff4d61b8105b02241ae341 2026-10-23T16:43:19.228315+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git rev-parse HEAD
+EXIT 0 elapsed_seconds=0.038630 PID=26731
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-045f157afcff4d61b8105b02241ae341.log SHA256 db589971210f0c056dd160a73a39717f47088c4535142c5742ec1d59d98eca71
+
+28e5744debbc409dba2abcba36823778 2026-10-23T16:44:56.232351+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git verify-commit 0a844c198fce6a41623a0ffe1c3140b78f8da98b
+EXIT 0 elapsed_seconds=0.080400 PID=33121
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-28e5744debbc409dba2abcba36823778.log SHA256 5db4a773d0f31d7566b04e03bbfd5f4b01d400bf9ce87580873719bd8712d086
+
+aeb07e9fd47d4445b6be370e02f37782 2026-10-23T16:59:07.753630+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rg -n '^pub fn encode|fn platform_locks|fn build_sequence|fn try_build_textual|fn base_layout_key|fn source_guard|fn flag_matrix|fn terminal_stack|fn route_input|fn terminal_route_uses|fn consumed_local|fn route_key|screen.modes|keyboard_invariant' crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/main.rs
+EXIT 0 elapsed_seconds=0.034067 PID=60727
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-aeb07e9fd47d4445b6be370e02f37782.log SHA256 3595c437444340dbb97b244975b8f7d36edd1315b41ac5c4a98265e1844b7b6b
+
+0be517136e0c46e881009b63d38615fc 2026-10-23T17:06:35.684691+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.915685 PID=76637
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-0be517136e0c46e881009b63d38615fc.log SHA256 6e65231bd3cca18d61d987735d43694b70ba7909a1ae25692fcf2a7aadcd8e44
+
+f3fe46d247104c87907f206dd900e91f 2026-10-23T17:08:53.517736+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq inbox '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.775990 PID=80747
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-f3fe46d247104c87907f206dd900e91f.log SHA256 6173aa4b80207ca93f7d95b99b7db27a7d8528a0871d196f48bcc2e78d111aad
+
+e5648f6f78b0433d8a10a691ab187a76 2026-10-23T16:43:19.374780+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env BBOXY_TEST_CUSTODY=memory PARITY_OUT=/private/tmp/sable-k1-it_bx1w_/parity-final CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target sh scripts/ci-local.sh --parity
+EXIT 0 elapsed_seconds=2484.599311 PID=26747
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-e5648f6f78b0433d8a10a691ab187a76.log SHA256 55d967a7670ab8f421a300077f82fd4a20012b2f5e1a5e354b823802b1b081ab
+
+de7aba1122614ac0b2dcde9b8e8e50bb 2026-10-23T17:27:11.875174+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact --nocapture
+EXIT 101 elapsed_seconds=73.042879 PID=11883
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-de7aba1122614ac0b2dcde9b8e8e50bb.log SHA256 6fbbd52cdcd0564fd6c501bd29f96022f280ea8ad95a2a446acdb2e3d5529339
+
+2acebaa6c2584a5486e7940b7003eb0d 2026-10-23T17:29:05.532707+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rustfmt --edition 2024 crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/main.rs
+EXIT 0 elapsed_seconds=0.142717 PID=15185
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-2acebaa6c2584a5486e7940b7003eb0d.log SHA256 83a1483fd2044e667803f87641d7a4aa75069e41a655580f0a79975478faf9fc
+
+9763a2201d714c80b5baf88d6b24992f 2026-10-23T17:29:05.739661+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact --nocapture
+EXIT 0 elapsed_seconds=5.676303 PID=15197
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-9763a2201d714c80b5baf88d6b24992f.log SHA256 e3161eae4ba9a13f9e08be2319d502e8e4d4171d547549d8788e6edd035acdd6
+
+2ac87aad4b8d44989d2ea4d3c96ab91e 2026-10-23T17:29:59.262349+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git diff --check
+EXIT 0 elapsed_seconds=0.108618 PID=17201
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-2ac87aad4b8d44989d2ea4d3c96ab91e.log SHA256 a82df4ca29d833e86d56fa4aa9ae0e32210573ffcd6c5f40a1a841e3d9ee4fbd
+
+055d4dbc70e64b00bd2d4ee93f76fe90 2026-10-23T17:29:59.440057+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git add crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/main.rs
+EXIT 0 elapsed_seconds=0.055206 PID=17206
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-055d4dbc70e64b00bd2d4ee93f76fe90.log SHA256 5fd8da79ed95681e2938771fd7fd4767c61641ea6d78dcfaebeb859f43049334
+
+fe2a0a32f723443c8a105a8f2016273b 2026-10-23T17:29:59.587889+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git commit -S -m 'fix(app): preserve platform Ctrl text before legacy fallback' -m 'Honor winit modifier-supplement text as Alacritty does. Regress Ctrl+Shift+Slash with supplied DEL and preserve raw/fallback variants; old fixture arguments do not pretend to include OS Ctrl text.'
+EXIT 0 elapsed_seconds=0.508806 PID=17214
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-fe2a0a32f723443c8a105a8f2016273b.log SHA256 ad2d891ab46c23bb07c1c48d42ae66e2e3838da43947395232645221d4c3b9e2
+
+7aa3d875a85a4202865cbb6564f1fd94 2026-10-23T17:31:40.899362+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.621019 PID=21255
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-7aa3d875a85a4202865cbb6564f1fd94.log SHA256 dc58d9e5d6499174316a0de4f48f37eff2635271cca31f9fdddd3e778828d727
+
+90e80703a3e44c71bfdc6081128fc9de 2026-10-23T17:31:41.615819+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git switch --detach af6d765689b33fc697b1dd1e112f127ff8a9eea9
+EXIT 0 elapsed_seconds=0.076023 PID=21294
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-90e80703a3e44c71bfdc6081128fc9de.log SHA256 478e0d5466542754f3b96e73e4355c4d2c28eea9aee72495d6274ec669cb32d2
+
+a7485aa072714fa2b138878be16e191b 2026-10-23T17:31:41.785072+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git status --porcelain=v1
+EXIT 0 elapsed_seconds=0.061925 PID=21301
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-a7485aa072714fa2b138878be16e191b.log SHA256 f5e2611c35f1ae8242095ba02e034b7c6ad956be8ae3750b9c3b9de23c4df77c
+
+2b09212874b346f9930decdedc293fae 2026-10-23T17:31:41.955696+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 0 elapsed_seconds=44.924553 PID=21308
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-2b09212874b346f9930decdedc293fae.log SHA256 6cddfe615693e50a2e06271cef15980d02b03cab540768fa8edd09f806f0c358
+
+52672535ae8e40efb642cb257657bc21 2026-10-23T17:33:54.719414+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq inbox '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.371804 PID=26932
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-52672535ae8e40efb642cb257657bc21.log SHA256 dd7a790df0459bb96795edf309b41b09068a334bc4cc4395ee5d1a7223b3db58
+
+d4b716eb9e244f5cbd85bc6a2ddda160 2026-10-23T17:41:04.200932+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.614460 PID=37565
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-d4b716eb9e244f5cbd85bc6a2ddda160.log SHA256 5bee3e94935e89fb684e3e9104e3d304e6de7372241b0c207e9ad7df219f0541
+
+d845607cc0c8492baba1e18991ef0dbc 2026-10-23T17:43:09.806681+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ python3 /private/tmp/sable-k1-it_bx1w_/neutral-move.py
+EXIT 0 elapsed_seconds=0.152907 PID=40965
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-d845607cc0c8492baba1e18991ef0dbc.log SHA256 d0a3ff07d2472543e5a4d007a7806b4e89c25dd787ee873e2d84f29ab213f671
+
+ca106d822cb14b78b42cd1668952a338 2026-10-23T17:45:10.429820+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rustfmt --edition 2024 --config skip_children=true crates/bbt-core/src/keyboard.rs crates/bbt-core/src/lib.rs crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/lib.rs
+EXIT 0 elapsed_seconds=0.115510 PID=43725
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-ca106d822cb14b78b42cd1668952a338.log SHA256 9fdaf5a2612b193e109197faf0179920e0c7f8cb1b6556bccd1ec1613f535bd1
+
+a0a563ac4b1140a08fe2c5492a093805 2026-10-23T17:33:55.213768+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target sh scripts/ci-local.sh
+EXIT 0 elapsed_seconds=716.011189 PID=26968
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-a0a563ac4b1140a08fe2c5492a093805.log SHA256 f1d55f2960cb4e8271fab7af1962ce832c921dcbe78ba7829f6b3a22a20d8b98
+
+901eb101a3a447c3914a122abf624c19 2026-10-23T17:46:03.761729+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rustfmt --edition 2024 --config skip_children=true crates/bbt-core/src/keyboard.rs crates/bboxy450-term/src/keyboard.rs
+EXIT 0 elapsed_seconds=0.100199 PID=46817
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-901eb101a3a447c3914a122abf624c19.log SHA256 a5db14f3ef7c4ead22c394c7419d7342e5b4fd564907c3038647e9937337becb
+
+c39872cf6f2c4553b49ac1ff430f812b 2026-10-23T17:46:03.970772+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact --nocapture
+EXIT 0 elapsed_seconds=18.867666 PID=46820
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-c39872cf6f2c4553b49ac1ff430f812b.log SHA256 49ff8dd04a0796cff7e0e0fdd1a0a4e0268765e3100b862406d3d74f711761bf
+
+92c164124d1a4603a006fa297f88d35e 2026-10-23T17:46:38.554742+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git diff --check
+EXIT 0 elapsed_seconds=0.067556 PID=47670
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-92c164124d1a4603a006fa297f88d35e.log SHA256 37871550d1b1341ccf6937fc0af37fd03673dfbd04a9f6894a4777643c1172cd
+
+871a5dea7aa24b268e0150536f0da620 2026-10-23T17:47:47.600201+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo test -p bboxy450-term --locked --lib keyboard_adapter_uses_neutral_core_and_live_modes -- --exact --nocapture
+EXIT 0 elapsed_seconds=122.551493 PID=49763
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-871a5dea7aa24b268e0150536f0da620.log SHA256 1a65865da4e5bc120a19239069df43849ea6ae6a9d707ae0ef9a1fb0290fbaf3
+
+f206492352c24c52bcfa55197f5a2e80 2026-10-23T17:49:21.313641+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo test -p bboxy450-term --locked --bin bboxy450-term launcher_host_tests
+EXIT 0 elapsed_seconds=57.872018 PID=52182
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-f206492352c24c52bcfa55197f5a2e80.log SHA256 decf081f2ca9c9ebfd22490739cffc6ebbd63f3177fbc2cfbac047042c2a1b03
+
+4ae1e982baaf46978229ea9572711350 2026-10-23T17:53:03.807845+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git diff --check
+EXIT 0 elapsed_seconds=0.057194 PID=57798
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-4ae1e982baaf46978229ea9572711350.log SHA256 744b74fc3c861b1f1211e94264402788954d3e4d17a406bd3d24de51077b397b
+
+c2f9b12f7c5642009a45cba4400fa408 2026-10-23T17:53:03.968083+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git add crates/bbt-core/src/keyboard.rs crates/bbt-core/src/lib.rs crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/lib.rs .bboxy/invariants/kitty-keyboard.md
+EXIT 0 elapsed_seconds=0.053389 PID=57802
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-c2f9b12f7c5642009a45cba4400fa408.log SHA256 56edcb936b2f4fee6ecd3daf5a2b9125cb94fa4584512218fdd6bf866688a204
+
+83faad09cb1140ec93d0cd03f22f37f5 2026-10-23T17:53:04.128577+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git commit -S -m 'refactor(core): own Kitty encoding in the neutral Apache-only terminal API' -m 'Decision 36: retain the Alacritty Apache notice and modified-by line in bbt-core. Keep winit adaptation, native locks and Command routing in the app. Move the exact invariant to core and test the Screen-to-neutral bridge without adding toolkit dependencies.'
+EXIT 0 elapsed_seconds=0.249138 PID=57807
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-83faad09cb1140ec93d0cd03f22f37f5.log SHA256 2c50dae3ee2f65fe5feb3bdd0d7753cafc54f7206f2e1bc1c624d8c328eaf220
+
+c03488414f8c4786a8c80d729235796a 2026-10-23T17:53:04.466063+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git rev-parse HEAD
+EXIT 0 elapsed_seconds=0.045620 PID=57823
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-c03488414f8c4786a8c80d729235796a.log SHA256 eed6d4e1f74123515918c06e15ce266d435f749eaf6e3dfdd7cdfe4f5a89d634
+
+708af8f8935244ae9e6273d6953907f4 2026-10-23T17:53:04.625169+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git switch --detach exec3
+EXIT 0 elapsed_seconds=0.076402 PID=57827
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-708af8f8935244ae9e6273d6953907f4.log SHA256 04e24b76c375ff79d55ca8059e2093e5882130cb600f6db5a5a04d0f33cea5e2
+
+735a54b4ca614329a2a906b9a2a76621 2026-10-23T17:53:04.805898+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git status --porcelain=v1
+EXIT 0 elapsed_seconds=0.066757 PID=57846
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-735a54b4ca614329a2a906b9a2a76621.log SHA256 d5f48b373c8b4dbd0b7b2b9f958010cf907e08574ca2185461340448e7857e30
+
+11de37cc94ff42dc86f74e5f8d6b6b98 2026-10-23T17:53:04.974139+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 0 elapsed_seconds=66.034438 PID=57853
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-11de37cc94ff42dc86f74e5f8d6b6b98.log SHA256 ce550ba81e078173450511bff50e60e87a45d75a1d51b98505459fa0b60ae47e
+
+c26488d7ba7c4a6ca90dd3ee07c07c84 2026-10-23T17:54:28.882281+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git verify-commit 564849d81454e84d85daa9e2bd042bef362ec09d
+EXIT 0 elapsed_seconds=0.103339 PID=60433
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-c26488d7ba7c4a6ca90dd3ee07c07c84.log SHA256 f9d69e87b7dfd5ec9aba056fb945b64860232ac6f3ff1f9afc48a620d17c6a38
+
+fa401bd02854404aaf1b5d7c132e4423 2026-10-23T17:54:55.626666+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git rev-parse HEAD
+EXIT 0 elapsed_seconds=0.049005 PID=60755
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-fa401bd02854404aaf1b5d7c132e4423.log SHA256 8f69d090b1e7a929c2b5ab5347cfc59d2d55a8c0fef112fb6b2b4cbce421b549
+
+3469b558046c4ac9a8f13a5f9951c662 2026-10-23T17:54:55.759463+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git status --porcelain=v1
+EXIT 0 elapsed_seconds=0.094718 PID=60758
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-3469b558046c4ac9a8f13a5f9951c662.log SHA256 acae0af984d6c1f4c2e676d5646024e567d5803eff99b0013fc73bab296c4a07
+
+fecb2a82e7bf4bffadea2523d2c40b0c 2026-10-23T17:56:59.899636+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq dm '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.605912 PID=63454
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-fecb2a82e7bf4bffadea2523d2c40b0c.log SHA256 594457e6365cd06174d9c2b092c9d2c575dff8565537964299688dbb2d88082a
+
+4a2297b38b4d44e79bddc0fb484f0466 2026-10-23T17:58:52.759264+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ rg -n '^pub fn encode|^fn platform_locks|^pub enum Key|^pub enum NamedKey|^pub enum PhysicalKey|^pub struct Input|fn flag_matrix|fn terminal_stack|fn source_guard|fn kitty_keyboard_invariant|fn keyboard_adapter_uses|fn assert_adapter|fn route_input|fn route_key|screen.modes' crates/bbt-core/src/keyboard.rs crates/bbt-core/src/lib.rs crates/bboxy450-term/src/keyboard.rs crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/main.rs
+EXIT 0 elapsed_seconds=0.082228 PID=65757
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-4a2297b38b4d44e79bddc0fb484f0466.log SHA256 b17bc53b0547f20a1d533c87f57907dc143b3ba01e79c0d7c7551d57b5a64296
+
+e0a5f61309524829a52b2abb77ccfb62 2026-10-23T17:54:56.000155+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ env BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=/private/tmp/sable-k1-it_bx1w_/ci-target sh scripts/ci-local.sh
+EXIT 0 elapsed_seconds=663.939205 PID=60761
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-e0a5f61309524829a52b2abb77ccfb62.log SHA256 a20f9641c270da557e684a85bc78c40dc57f9f0a93b3d87904c6cacf0e204844
+
+e283228283a643dcbfb96912af402314 2026-10-23T18:11:23.881739+00:00
+CWD /private/tmp/ci-sable-k1-3d9de419
+$ git status --porcelain=v1
+EXIT 0 elapsed_seconds=0.097456 PID=84473
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-e283228283a643dcbfb96912af402314.log SHA256 39a7abe74c61aa74549dcebb0186f37b02b158d3581b6eaeee89bc821b7b432b
+
+6266eee6dea84aec94bbffee83673bdc 2026-10-23T18:11:24.118619+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git verify-commit 0a844c198fce6a41623a0ffe1c3140b78f8da98b af6d765689b33fc697b1dd1e112f127ff8a9eea9 564849d81454e84d85daa9e2bd042bef362ec09d
+EXIT 0 elapsed_seconds=0.105935 PID=84497
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-6266eee6dea84aec94bbffee83673bdc.log SHA256 045cd89f12fe5a7194fa72316c3f9fed4226679fe17e567093e9f992e76ebcb7
+
+4af0b221383745d898ea31124d050d1b 2026-10-23T18:12:41.209018+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ python3 /private/tmp/sable-k1-it_bx1w_/cleanup-target.py
+EXIT 0 elapsed_seconds=2.167509 PID=87070
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-4af0b221383745d898ea31124d050d1b.log SHA256 bbe357ddf84a09828ecadff5cc1e901e1fb46e19c6255e76f4e044782f1f7a95
+
+290f0d7c2b544784b00382cb4c250113 2026-10-23T18:12:43.471307+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ git worktree remove /private/tmp/ci-sable-k1-3d9de419
+EXIT 0 elapsed_seconds=0.415521 PID=87169
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-290f0d7c2b544784b00382cb4c250113.log SHA256 ba26ef6e32737bd120f055dba17d02679653abd278386c23a219d8b67f557894
+
+Additional supporting operations, executed through tools with observed statuses:
+- Read-only cat/sed/rg/ls/tail/ps/df/du/git status/rev-parse/diff inspections:0 unless noted below.
+- Initial local alacritty-file rg search:1 (no local copy); zsh .bboxy/decisions/026* read:1 (no matching glob); corrected paths read0.
+- Inline Python source generation/adaptation, source/identity manifests, stats extraction, evidence copies and scratch state updates:0. Final source is in the signed commits; generator retained at /private/tmp/sable-k1-it_bx1w_/neutral-move.py.
+- apply_patch edits to allowed source/invariant files returned success.
+- Old CI stop: only recorded descendants of owned98580, at compiler/UI-lint stage; SIGTERM; shell child-15, wrapper241. Snapshot/signals /private/tmp/sable-k1-it_bx1w_/interrupted-ci-processes.json.
+- ICQ --dry-run previews:0. Payloads are deliberately not copied as transcripts.
+
+efcd87ed62e44a0eba52c0202bbd6e50 2026-10-23T18:15:10.404663+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ python3 /private/tmp/sable-k1-it_bx1w_/finalize-evidence.py
+EXIT 0 elapsed_seconds=0.105909 PID=91060
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-efcd87ed62e44a0eba52c0202bbd6e50.log SHA256 ad3f40ebba5ac3ef6f4efc1fb13dd740ed81c651e9d92e4b0cb811a0f5b2f3f7
+
+bb0b16811b144d54847b1d5f3c19f30a 2026-10-23T18:19:20.441136+00:00
+CWD /Users/feral/mydev/bboxy450-term-exec3
+$ icq inbox '[private coordination arguments omitted]'
+EXIT 0 elapsed_seconds=0.588132 PID=99956
+RAW /private/tmp/sable-k1-it_bx1w_/cmd-bb0b16811b144d54847b1d5f3c19f30a.log SHA256 1af0b85ac80a774de8d3922fab17e1aa3b4039c8b935b4278e54b9d34fceb34d

@@ -14,6 +14,8 @@ use std::time::Instant;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 
+pub mod keyboard;
+
 mod vendor;
 
 pub use vendor::alacritty::{event, grid, index, sync, term};
@@ -197,4 +199,10 @@ impl Dimensions for Size {
     fn columns(&self) -> usize {
         self.cols
     }
+}
+
+#[cfg(test)]
+#[test]
+fn kitty_keyboard_invariant() {
+    keyboard::assert_invariant();
 }

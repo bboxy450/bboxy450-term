@@ -1,0 +1,435 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//! The app's winit boundary: normalize input, read native locks and call bbt-core.
+
+use bbt_core::keyboard as protocol;
+pub use protocol::Locks;
+use std::collections::BTreeSet;
+use winit::{
+    event::{ElementState, KeyEvent, Modifiers as WinitModifiers},
+    keyboard::{
+        Key, KeyCode, KeyLocation, ModifiersKeyState, ModifiersState, NamedKey, PhysicalKey,
+    },
+    platform::modifier_supplement::KeyEventExtModifierSupplement,
+};
+
+/// All modifiers consumed by the pure encoder. Command is reserved by the app.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Modifiers {
+    pub state: ModifiersState,
+    pub locks: Locks,
+}
+
+/// Public winit fields plus its modifier-supplement values, without a private
+/// platform-specific KeyEvent constructor in tests.
+#[derive(Clone, Debug)]
+pub struct Input<'a> {
+    pub logical_key: Key,
+    pub physical_key: PhysicalKey,
+    pub unmodified_key: Key,
+    pub text: Option<&'a str>,
+    pub text_all_modifiers: Option<&'a str>,
+    pub location: KeyLocation,
+    pub state: ElementState,
+    pub repeat: bool,
+    pub modifiers: Modifiers,
+}
+/// UI-owned adaptation state, not terminal state. It keeps a locally consumed
+/// chord's repeat/release out of the PTY even if Command is released first.
+#[derive(Default)]
+pub struct State {
+    held_modifiers: u8,
+    local_keys: BTreeSet<PhysicalKey>,
+}
+impl State {
+    pub fn modifiers_changed(&mut self, modifiers: WinitModifiers) {
+        let states = [
+            modifiers.lshift_state(),
+            modifiers.rshift_state(),
+            modifiers.lalt_state(),
+            modifiers.ralt_state(),
+            modifiers.lcontrol_state(),
+            modifiers.rcontrol_state(),
+            modifiers.lsuper_state(),
+            modifiers.rsuper_state(),
+        ];
+        self.held_modifiers = states.iter().enumerate().fold(0, |bits, (i, state)| {
+            bits | (u8::from(*state == ModifiersKeyState::Pressed) << i)
+        });
+    }
+
+    fn event_modifiers(
+        &mut self,
+        physical: PhysicalKey,
+        state: ElementState,
+        mut mods: ModifiersState,
+    ) -> ModifiersState {
+        let (index, flag) = match physical {
+            PhysicalKey::Code(KeyCode::ShiftLeft) => (0, ModifiersState::SHIFT),
+            PhysicalKey::Code(KeyCode::ShiftRight) => (1, ModifiersState::SHIFT),
+            PhysicalKey::Code(KeyCode::AltLeft) => (2, ModifiersState::ALT),
+            PhysicalKey::Code(KeyCode::AltRight) => (3, ModifiersState::ALT),
+            PhysicalKey::Code(KeyCode::ControlLeft) => (4, ModifiersState::CONTROL),
+            PhysicalKey::Code(KeyCode::ControlRight) => (5, ModifiersState::CONTROL),
+            PhysicalKey::Code(KeyCode::SuperLeft) => (6, ModifiersState::SUPER),
+            PhysicalKey::Code(KeyCode::SuperRight) => (7, ModifiersState::SUPER),
+            _ => return mods,
+        };
+        if state.is_pressed() {
+            self.held_modifiers |= 1 << index;
+        } else {
+            self.held_modifiers &= !(1 << index);
+        }
+        mods.set(flag, self.held_modifiers & (3 << (index & !1)) != 0);
+        mods
+    }
+
+    pub fn event<'a>(&mut self, event: &'a KeyEvent, modifiers: ModifiersState) -> Input<'a> {
+        Input {
+            logical_key: event.logical_key.clone(),
+            physical_key: event.physical_key,
+            unmodified_key: event.key_without_modifiers(),
+            text: event.text.as_deref(),
+            text_all_modifiers: event.text_with_all_modifiers(),
+            location: event.location,
+            state: event.state,
+            repeat: event.repeat,
+            modifiers: Modifiers {
+                state: self.event_modifiers(event.physical_key, event.state, modifiers),
+                locks: platform_locks(),
+            },
+        }
+    }
+
+    pub fn suppressed(&mut self, physical: PhysicalKey, state: ElementState, repeat: bool) -> bool {
+        if state == ElementState::Released {
+            return self.local_keys.remove(&physical);
+        }
+        if !repeat {
+            self.local_keys.remove(&physical);
+            return false;
+        }
+        self.local_keys.contains(&physical)
+    }
+    pub fn consumed(&mut self, physical: PhysicalKey, state: ElementState) {
+        if state.is_pressed() {
+            self.local_keys.insert(physical);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn platform_locks() -> Locks {
+    // SAFETY: NSEvent's class-level +modifierFlags returns NSUInteger without
+    // arguments. AppKit is already linked; the caller is winit's UI callback.
+    let flags: usize = unsafe { objc2::msg_send![objc2::class!(NSEvent), modifierFlags] };
+    macos_locks(flags)
+}
+#[cfg(any(target_os = "macos", test))]
+fn macos_locks(flags: usize) -> Locks {
+    // macOS exposes Caps Lock (1<<16), but no Num Lock toggle. NumericPad
+    // (1<<21) describes keypad/arrow origin and must never become Num Lock.
+    Locks {
+        caps: flags & (1 << 16) != 0,
+        num: false,
+    }
+}
+#[cfg(not(target_os = "macos"))]
+fn platform_locks() -> Locks {
+    Locks::default()
+}
+
+/// Adapt the event to the one neutral encoder. Command remains local to the app.
+pub fn encode(input: &Input<'_>, modes: u64) -> Option<Vec<u8>> {
+    if input.modifiers.state.super_key()
+        || matches!(input.logical_key, Key::Named(NamedKey::Super))
+        || matches!(
+            input.physical_key,
+            PhysicalKey::Code(KeyCode::SuperLeft | KeyCode::SuperRight)
+        )
+    {
+        return None;
+    }
+    let mods = input.modifiers.state;
+    let mut state = protocol::ModifiersState::empty();
+    state.set(protocol::ModifiersState::SHIFT, mods.shift_key());
+    state.set(protocol::ModifiersState::ALT, mods.alt_key());
+    state.set(protocol::ModifiersState::CONTROL, mods.control_key());
+    state.set(protocol::ModifiersState::SUPER, mods.super_key());
+    let key = protocol::Input {
+        logical_key: protocol_key(&input.logical_key),
+        unmodified_key: protocol_key(&input.unmodified_key),
+        physical_key: protocol_physical(input.physical_key),
+        text: input.text,
+        text_all_modifiers: input.text_all_modifiers,
+        location: match input.location {
+            KeyLocation::Standard => protocol::KeyLocation::Standard,
+            KeyLocation::Left => protocol::KeyLocation::Left,
+            KeyLocation::Right => protocol::KeyLocation::Right,
+            KeyLocation::Numpad => protocol::KeyLocation::Numpad,
+        },
+        state: match input.state {
+            ElementState::Pressed => protocol::ElementState::Pressed,
+            ElementState::Released => protocol::ElementState::Released,
+        },
+        repeat: input.repeat,
+        modifiers: protocol::Modifiers {
+            state,
+            locks: input.modifiers.locks,
+        },
+    };
+    protocol::encode(&key, modes)
+}
+fn protocol_key(key: &Key) -> protocol::Key {
+    let named = match key {
+        Key::Character(text) => return protocol::Key::Character(text.to_string()),
+        Key::Named(named) => named,
+        _ => return protocol::Key::Unidentified,
+    };
+    macro_rules! names { ($($name:ident),* $(,)?) => { match named { $(NamedKey::$name=>protocol::NamedKey::$name,)* _=>return protocol::Key::Unidentified } }; }
+    protocol::Key::Named(names!(
+        Alt,
+        ArrowDown,
+        ArrowLeft,
+        ArrowRight,
+        ArrowUp,
+        AudioVolumeDown,
+        AudioVolumeMute,
+        AudioVolumeUp,
+        Backspace,
+        CapsLock,
+        Clear,
+        ContextMenu,
+        Control,
+        Delete,
+        End,
+        Enter,
+        Escape,
+        F1,
+        F10,
+        F11,
+        F12,
+        F13,
+        F14,
+        F15,
+        F16,
+        F17,
+        F18,
+        F19,
+        F2,
+        F20,
+        F21,
+        F22,
+        F23,
+        F24,
+        F25,
+        F26,
+        F27,
+        F28,
+        F29,
+        F3,
+        F30,
+        F31,
+        F32,
+        F33,
+        F34,
+        F35,
+        F4,
+        F5,
+        F6,
+        F7,
+        F8,
+        F9,
+        Home,
+        Hyper,
+        Insert,
+        MediaFastForward,
+        MediaPause,
+        MediaPlay,
+        MediaPlayPause,
+        MediaRecord,
+        MediaRewind,
+        MediaStop,
+        MediaTrackNext,
+        MediaTrackPrevious,
+        Meta,
+        NumLock,
+        PageDown,
+        PageUp,
+        Pause,
+        PrintScreen,
+        ScrollLock,
+        Shift,
+        Space,
+        Super,
+        Tab
+    ))
+}
+fn protocol_physical(key: PhysicalKey) -> protocol::PhysicalKey {
+    let PhysicalKey::Code(code) = key else {
+        return protocol::PhysicalKey::Unidentified;
+    };
+    macro_rules! codes { ($($name:ident),* $(,)?) => { match code { $(KeyCode::$name=>protocol::KeyCode::$name,)* _=>return protocol::PhysicalKey::Unidentified } }; }
+    protocol::PhysicalKey::Code(codes!(
+        Backquote,
+        Backslash,
+        BracketLeft,
+        BracketRight,
+        Comma,
+        ControlLeft,
+        Digit0,
+        Digit1,
+        Digit2,
+        Digit3,
+        Digit4,
+        Digit5,
+        Digit6,
+        Digit7,
+        Digit8,
+        Digit9,
+        Equal,
+        F5,
+        KeyA,
+        KeyB,
+        KeyC,
+        KeyD,
+        KeyE,
+        KeyF,
+        KeyG,
+        KeyH,
+        KeyI,
+        KeyJ,
+        KeyK,
+        KeyL,
+        KeyM,
+        KeyN,
+        KeyO,
+        KeyP,
+        KeyQ,
+        KeyR,
+        KeyS,
+        KeyT,
+        KeyU,
+        KeyV,
+        KeyW,
+        KeyX,
+        KeyY,
+        KeyZ,
+        Minus,
+        Numpad0,
+        Numpad1,
+        Numpad2,
+        Numpad3,
+        Numpad4,
+        Numpad5,
+        Numpad6,
+        Numpad7,
+        Numpad8,
+        Numpad9,
+        NumpadAdd,
+        NumpadComma,
+        NumpadDecimal,
+        NumpadDivide,
+        NumpadEnter,
+        NumpadEqual,
+        NumpadMultiply,
+        NumpadSubtract,
+        Period,
+        Quote,
+        Semicolon,
+        Slash,
+        Space
+    ))
+}
+
+#[cfg(test)]
+pub(crate) fn assert_adapter() {
+    let mut term = bbt_core::Term::new(10, 2, 0);
+    let mut input = Input {
+        logical_key: Key::Named(NamedKey::Escape),
+        unmodified_key: Key::Named(NamedKey::Escape),
+        physical_key: PhysicalKey::Code(KeyCode::Escape),
+        text: None,
+        text_all_modifiers: None,
+        location: KeyLocation::Standard,
+        state: ElementState::Pressed,
+        repeat: false,
+        modifiers: Modifiers::default(),
+    };
+    for flags in 0..32 {
+        term.advance(format!("\x1b[>{flags}u").as_bytes());
+        let screen = bbt_proto::Screen::from_term(&term, String::new(), None, None);
+        let esc = if flags & (1 | 8) != 0 {
+            b"\x1b[27u".as_slice()
+        } else {
+            b"\x1b".as_slice()
+        };
+        assert_eq!(encode(&input, screen.modes), Some(esc.to_vec()));
+        term.advance(b"\x1b[<u");
+    }
+    input.logical_key = Key::Character("?".into());
+    input.unmodified_key = Key::Character("/".into());
+    input.physical_key = PhysicalKey::Code(KeyCode::Slash);
+    input.modifiers.state = ModifiersState::CONTROL | ModifiersState::SHIFT;
+    input.text = Some("?");
+    input.text_all_modifiers = Some("\x7f");
+    assert_eq!(encode(&input, 0), Some(vec![127]));
+    input.logical_key = Key::Character("Ф".into());
+    input.unmodified_key = Key::Character("ф".into());
+    input.physical_key = PhysicalKey::Code(KeyCode::KeyA);
+    input.modifiers.state = ModifiersState::SHIFT;
+    input.text = Some("Ф");
+    input.text_all_modifiers = Some("Ф");
+    assert_eq!(
+        encode(&input, 31 << 18),
+        Some(b"\x1b[1092:1060:97;2;1060u".to_vec())
+    );
+    input.repeat = true;
+    assert_eq!(
+        encode(&input, 31 << 18),
+        Some(b"\x1b[1092:1060:97;2:2;1060u".to_vec())
+    );
+    input.repeat = false;
+    input.state = ElementState::Released;
+    assert_eq!(
+        encode(&input, 31 << 18),
+        Some(b"\x1b[1092:1060:97;2:3u".to_vec())
+    );
+    input.state = ElementState::Pressed;
+    input.logical_key = Key::Named(NamedKey::Enter);
+    input.unmodified_key = input.logical_key.clone();
+    input.physical_key = PhysicalKey::Code(KeyCode::NumpadEnter);
+    input.location = KeyLocation::Numpad;
+    input.modifiers.state = ModifiersState::empty();
+    assert_eq!(encode(&input, 1 << 18), Some(b"\x1b[57414u".to_vec()));
+    input.logical_key = Key::Character("t".into());
+    input.physical_key = PhysicalKey::Code(KeyCode::KeyT);
+    input.modifiers.state = ModifiersState::SUPER;
+    for event in [ElementState::Pressed, ElementState::Released] {
+        input.state = event;
+        assert_eq!(encode(&input, 31 << 18), None);
+    }
+    let physical = PhysicalKey::Code(KeyCode::KeyT);
+    let mut state = State::default();
+    state.consumed(physical, ElementState::Pressed);
+    assert!(state.suppressed(physical, ElementState::Pressed, true));
+    assert!(state.suppressed(physical, ElementState::Released, false));
+    assert!(!state.suppressed(physical, ElementState::Pressed, false));
+    let left = PhysicalKey::Code(KeyCode::ShiftLeft);
+    let right = PhysicalKey::Code(KeyCode::ShiftRight);
+    state.event_modifiers(left, ElementState::Pressed, ModifiersState::empty());
+    state.event_modifiers(right, ElementState::Pressed, ModifiersState::SHIFT);
+    assert!(
+        state
+            .event_modifiers(left, ElementState::Released, ModifiersState::SHIFT)
+            .shift_key()
+    );
+    assert!(
+        !state
+            .event_modifiers(right, ElementState::Released, ModifiersState::SHIFT)
+            .shift_key()
+    );
+    let caps = macos_locks((1 << 16) | (1 << 21));
+    assert!(caps.caps && !caps.num);
+    let keypad = macos_locks(1 << 21);
+    assert!(!keypad.caps && !keypad.num);
+}

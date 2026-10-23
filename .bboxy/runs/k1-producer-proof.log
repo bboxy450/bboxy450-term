@@ -1,0 +1,84 @@
+Approved parity reuse: Oracle02aaf184-d2a8-478e-950c-695ac3337444. No rebase; base420827 retained as ordered.
+
+{
+  "parity_source": "0a844c198fce6a41623a0ffe1c3140b78f8da98b",
+  "approval_dm": "02aaf184-d2a8-478e-950c-695ac3337444",
+  "core_lib_existing_code_sha256": "3785cf25bec63410eeec0cc95483ae67e6a61f7415e0e260f86b9aca644d9f93",
+  "core_lib_normalized_sha256": "3785cf25bec63410eeec0cc95483ae67e6a61f7415e0e260f86b9aca644d9f93",
+  "core_lib_only_module_export_and_cfg_test_entry": true,
+  "unchanged_objects": {
+    "Cargo.toml": "20baf476fcea80d6ef04145e2fcbf151414b9be9",
+    "Cargo.lock": "254b20447ff4d80313f810f4a591d18c830d7403",
+    "crates/bboxybook": "d40cb09cdf5b8cf269299c940ba05a00efdd68b2",
+    "crates/bbt-ui-model": "be360fda181620eace355127679b7d4fb55cf2aa",
+    "crates/bbt-ui": "cab50764d1ecec99b566bfd1967af37828afcc5f",
+    "crates/bbt-doc": "416624532e6c3bceb2d5dccaf91e03c222d2cbfa",
+    "crates/bbt-render": "d36631632752bbf5e9fffd7e800c28be3fb55dab",
+    "lab/web": "2eba857376263a92d8a8963e3100d96e6b53b26b"
+  },
+  "core_added_file": "crates/bbt-core/src/keyboard.rs",
+  "final_source": "564849d81454e84d85daa9e2bd042bef362ec09d",
+  "core_added_file_sha256": "eece4750bb5a6ad89b85c7cb0de57c577a070a89748c927907a8f11fd81434d6",
+  "core_lib_diff": "diff --git a/crates/bbt-core/src/lib.rs b/crates/bbt-core/src/lib.rs\nindex dcefd4a..169f16a 100644\n--- a/crates/bbt-core/src/lib.rs\n+++ b/crates/bbt-core/src/lib.rs\n@@ -14,6 +14,8 @@ use std::time::Instant;\n use parking_lot::Mutex;\n use serde::{Deserialize, Serialize};\n \n+pub mod keyboard;\n+\n mod vendor;\n \n pub use vendor::alacritty::{event, grid, index, sync, term};\n@@ -198,3 +200,9 @@ impl Dimensions for Size {\n         self.cols\n     }\n }\n+\n+#[cfg(test)]\n+#[test]\n+fn kitty_keyboard_invariant() {\n+    keyboard::assert_invariant();\n+}\n"
+}
+
+FINAL SOURCE AND CHECKS
+{
+  "source": "564849d81454e84d85daa9e2bd042bef362ec09d",
+  "command_id": "e0a5f61309524829a52b2abb77ccfb62",
+  "ci_exit": 0,
+  "elapsed_seconds": 663.9392053330084,
+  "ci_sha256": "a20f9641c270da557e684a85bc78c40dc57f9f0a93b3d87904c6cacf0e204844",
+  "workspace_passed": 800,
+  "workspace_failed": 0,
+  "workspace_ignored": 20,
+  "test_groups": 125,
+  "invariants": "7 checks, 0 failures, 4 slow checks skipped",
+  "smoke": "10.002s, frames=0, callbacks=0",
+  "parity_source": "0a844c198fce6a41623a0ffe1c3140b78f8da98b",
+  "parity_approval": "02aaf184-d2a8-478e-950c-695ac3337444",
+  "source_files": {
+    "crates/bbt-core/src/keyboard.rs": "eece4750bb5a6ad89b85c7cb0de57c577a070a89748c927907a8f11fd81434d6",
+    "crates/bbt-core/src/lib.rs": "809d8bbe991749f3f4ddf09358cf9e9321c593c29944376e587a14d4a677b12c",
+    "crates/bboxy450-term/src/keyboard.rs": "fae310d31078cdc01639c0ccbfc23250907d9f8bdc93acda43cd2b04343f0e3c",
+    "crates/bboxy450-term/src/lib.rs": "c85c8b8fe8ddb267c78ac627959e83926bb7dcf321e41d6b7e1eeb86666cba1b",
+    "crates/bboxy450-term/src/main.rs": "e3947acbe7a9b83822763fc378fc7c978599b43f9d3570a5099325d0e3a8e0b9",
+    ".bboxy/invariants/kitty-keyboard.md": "f65f67a6d6c52b946079b60d35a846b9e591ec43bf56dfff401d1b4837d0527c"
+  }
+}
+
+$ git rev-parse HEAD
+CWD /private/tmp/ci-sable-k1-3d9de419
+UTC 2026-10-23T17:54:55.626666+00:00
+OWNED_COMMAND_PID 60755
+564849d81454e84d85daa9e2bd042bef362ec09d
+EXIT 0 elapsed_seconds=0.049 PID=60755
+
+$ git status --porcelain=v1
+CWD /private/tmp/ci-sable-k1-3d9de419
+UTC 2026-10-23T17:54:55.759463+00:00
+OWNED_COMMAND_PID 60758
+EXIT 0 elapsed_seconds=0.095 PID=60758
+
+$ git status --porcelain=v1
+CWD /private/tmp/ci-sable-k1-3d9de419
+UTC 2026-10-23T18:11:23.881739+00:00
+OWNED_COMMAND_PID 84473
+EXIT 0 elapsed_seconds=0.097 PID=84473
+
+$ git verify-commit 0a844c198fce6a41623a0ffe1c3140b78f8da98b af6d765689b33fc697b1dd1e112f127ff8a9eea9 564849d81454e84d85daa9e2bd042bef362ec09d
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T18:11:24.118619+00:00
+OWNED_COMMAND_PID 84497
+gpg: Signature made Fri Oct 23 09:39:51 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+gpg: Signature made Fri Oct 23 10:30:00 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+gpg: Signature made Fri Oct 23 10:53:04 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0 elapsed_seconds=0.106 PID=84497
+
+CLI producer sources unchanged except the permitted core addition/export. Final core lib existing implementation SHA2563785cf25bec63410eeec0cc95483ae67e6a61f7415e0e260f86b9aca644d9f93.

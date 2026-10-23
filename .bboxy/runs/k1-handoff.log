@@ -1,0 +1,47 @@
+K1 — Kitty keyboard protocol; Sable Embertail <EXECUTOR>
+FINAL CODE 564849d81454e84d85daa9e2bd042bef362ec09d (exec3).
+Source chain: 0a844c198fce6a41623a0ffe1c3140b78f8da98b, af6d765689b33fc697b1dd1e112f127ff8a9eea9, 564849d81454e84d85daa9e2bd042bef362ec09d. All three machine signatures verified good, Boxy <bboxy450@gmail.com>, 9B07E849480C68328CA20684844ECC0587DE7AB0.
+Base 4208270695e53d6469bfce2553be0bbec6f80116 retained on Oracle 02aaf184's explicit NO-REBASE disposition. Main moved (F4 and later disjoint work) during the gate; Oracle verifies the merged tree.
+
+FILES / MECHANISMS
+crates/bbt-core/src/keyboard.rs:1 — Apache-2.0 notice, upstream Alacritty 542147067dd016fc5f49120ef0ba605a98a4e3a7 attribution and modified-by-bboxy450 line.
+keyboard.rs:27/:262 — toolkit-neutral key, physical-position, lock/modifier, text and press/repeat/release model. No winit/objc2 dependencies or types.
+keyboard.rs:284 — sole DEC/xterm/Kitty sequence encoder: all five flags, alternate/base keys, associated text, event types, APP_CURSOR/APP_KEYPAD and F1-F12. Legacy Ctrl preserves supplied platform text before the missing-text fallback; Alt retains the existing ESC prefix.
+keyboard.rs:1000/:1278/:1358 — all 32 flag sets, legacy/extended vectors, real Term stack/query tests and app canonical-path source guard.
+crates/bbt-core/src/lib.rs:17/:206 — one production module export, plus exact root kitty_keyboard_invariant test. Existing implementation byte-identical after removing the export/test addition.
+crates/bboxy450-term/src/keyboard.rs:121/:142 — own dual-licensed winit adapter, native Caps read, local Command exclusion, and delegation to core. macOS NumLock is off; NumericPad never implies a toggle.
+keyboard.rs:345 — Term->Screen.modes->neutral encoder bridge, physical/base/associated text, repeat/release/keypad and local-modifier adapter checks.
+crates/bboxy450-term/src/lib.rs:11 — exposes adapter and tests bridge; the exact invariant lives in core per decision 36.
+crates/bboxy450-term/src/main.rs:281/:421/:1681 — focused live mode lookup, one shared router and release forwarding; local navigation/launcher repeats survive while local-to-PTY repeats/releases are suppressed. Existing queue IDs/generations/admission unchanged. No input before a focused Screen supplies modes.
+.bboxy/invariants/kitty-keyboard.md:6 — check points to core; pending slow/gate removed in source commit; evidence and licensing boundary aligned with #36.
+
+GATES / ACCEPTANCE
+PASS — exact cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact: 1 passed, 0 failed (not a zero-match filter). All 32 flag sets, Esc flag 1, Ctrl+Shift+a, Shift+Tab, F5, keypad, flag 2 release gating, flag 16 associated text and explicit locks are covered.
+PASS — a real Term receives CSI>31u; all push/pop/query and alternate-screen stacks tested in core. App bridge reads its real Screen.modes and calls the same neutral encoder.
+PASS — legacy APP_CURSOR arrows/Home/End, APP_KEYPAD, F1-F12, modifier parameters, Alt prefix, control/Unicode vectors. Original operator_keys and terminal_keys expectations retained; only test input adaptation changed.
+PASS — app bridge 1/0 and shared router 8/0 prechecks. Command stays local, including release after Command lifted; decision 26 pane routing and local repeat regression pass.
+PASS — strict all-target workspace Clippy on exact clean 564849d: EXIT 0, 66.034s.
+PASS — clean detached NORMAL ci-local on exact 564849d: EXIT 0, 663.939s, reported workspace summaries 800/0 (20 ignored), 7 invariants/0 failures/4 named slow skips. Default kitty-keyboard: pass. Native idle 10.002s, 0 frames/0 callbacks.
+Final raw CI SHA256 a20f9641c270da557e684a85bc78c40dc57f9f0a93b3d87904c6cacf0e204844 (k1-ci.log is an unmodified copy).
+PASS — full ci-local --parity on 0a844c1: EXIT 0, 2484.599s; 1768 cases, 1664 measured, 0 unproven, 0 mismatches, 194 advisory current pixel reviews. Legacy 1664/859 pixel reviews diagnostic, not gating. Raw SHA256 55d967a7670ab8f421a300077f82fd4a20012b2f5e1a5e354b823802b1b081ab.
+REUSE APPROVED by Oracle 02aaf184, with the explicit producer identity exception for the new core keyboard module/export. k1-producer-proof.log records unchanged render/UI/lab/bboxybook/Cargo objects and restored existing core lib SHA. No fresh parity result is claimed for 564849d.
+
+FAILED / SUPERSEDED RUNS
+Initial invariant 101: a flags 17 test expectation omitted upstream associated text (16 without 8 is unspecified); corrected then 0.
+Initial Clippy 101: lazy bool::then closure; fixed then 0.
+Old 3d9de419 CI deliberately stopped after review found local-repeat filtering too broad. Owned recorded process subtree only; child -15(SIGTERM), wrapper 241. Not acceptance evidence (k1-ci-interrupted.log).
+Ctrl-text regression de7aba1122614ac0b2dcde9b8e8e50bb: 101, actual US31 vs supplied DEL127; af6d765 fixes precedence, subsequent exact test 0. Preserved in k1-prechecks.log.
+Pre-move af6d765 normal CI 0, 716.011s, superseded by required #36 move; raw retained locally and its status/hash in command ledger. Final evidence is 564849d.
+
+NOT CHECKED / DELIBERATELY LEFT ALONE
+No physical keyboard/layout/IME or non-macOS OS-adapter run; no GUI keystroke injection/desktop driving. Native Caps getter compiled; lock semantics tested with explicit data/bitmasks, not injected OS keys. Kitty 16 without 8 follows the pinned port for already escaped keys; the protocol leaves that set unspecified.
+No publishing/packaging or release-custody run. No core vendor implementation, mux/proto, renderer/UI/lab/bboxybook, dependency/lock, scene/pacing, GUI wire/Applied/live IO, launcher placement/controller, paste/raw text-injection edits. No push/merge/task creation.
+
+COMMANDS / CLEANUP / ARTIFACTS
+Commands and real child statuses in k1-commands.log; raw prechecks and failed tests in k1-prechecks.log; final and parity raw CI logs named above. ICQ transcripts stay out of Git.
+Private final CI cache removed after exit 0: 2617253888 allocated bytes counted by unique inode; no outside hardlinks. Available-volume delta is recorded separately, not attributed exclusively. Earlier precheck 1,607,163,904 was a by-path block sum (upper bound), not an exact physical-free measurement. Private CI worktree removed.
+Accepted reference/native galleries and raw logs retained at /private/tmp/sable-k1-it_bx1w_/parity-final and its parent. No peer directories/processes touched.
+
+LATE COORDINATION
+Nyx8ef831dd reports L8-D does not edit route_key/KeyboardInput/ModifiersChanged; no active overlap. R5 and F4/F4b landed while this source remained frozen. No new rebase per Oracle02aaf184.
+Post-ledger evidence staging/commit/verification and final DM receipts are reported in the handoff message (a commit cannot contain its own SHA).
