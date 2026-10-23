@@ -93,6 +93,37 @@ fn field_marks_use_utf16_boundaries_and_keep_preedit_out_of_intrinsic_size() {
     assert!(root(&field).is_err(), "a surrogate pair cannot be split");
     assert_eq!(c::utf16_byte_index("A😀B", 3), Some(5));
     assert_eq!(c::utf16_byte_index("A😀B", 2), None);
+    field.value = "AoldB".into();
+    field.edit = c::Edit {
+        caret: Some(1),
+        replacement: Some([1, 4]),
+        preedit: Some(c::Preedit {
+            text: "界".into(),
+            caret: Some(1),
+        }),
+        ..Default::default()
+    };
+    let preview = root(&field).unwrap();
+    let visible = c::paint(&preview, context())
+        .into_iter()
+        .filter_map(|op| match op {
+            c::Paint::Draw(list) => Some(list),
+            _ => None,
+        })
+        .flat_map(|list| list.primitives)
+        .filter_map(|p| match p {
+            Prim::Text { text, .. } => Some(text.to_string()),
+            _ => None,
+        })
+        .collect::<String>();
+    assert_eq!(
+        visible, "A界B",
+        "marked text replaces the selection only in paint"
+    );
+    assert_eq!(
+        field.value, "AoldB",
+        "the host has not committed the composition"
+    );
 }
 
 #[test]

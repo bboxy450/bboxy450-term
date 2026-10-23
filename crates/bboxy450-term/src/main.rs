@@ -669,11 +669,17 @@ impl App {
         let Some(launcher) = &mut self.launcher else {
             return;
         };
+        let pointer_edit = matches!(command, LauncherCommand::SetCaret { .. });
         let outcome = launcher.handle(command);
         match outcome {
             LauncherOutcome::Close => self.close_launcher(),
             LauncherOutcome::Changed => {
-                self.launcher_layout = None;
+                // Pointer selection changes neither query nor row membership.
+                // Retain those hit regions until redraw so a second motion
+                // before the frame cannot lose the drag's final position.
+                if !pointer_edit {
+                    self.launcher_layout = None;
+                }
                 self.request_redraw();
             }
             LauncherOutcome::Pick { id, modifiers } => {

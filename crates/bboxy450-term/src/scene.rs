@@ -778,6 +778,18 @@ mod launcher_tests {
             let x = layout.query_origin + scene.metrics.width(value, font);
             assert_eq!(scene.query_index(&layout, "A😀B", x), units);
         }
+        controller.handle(Command::SetCaret {
+            at: 0,
+            extend: true,
+        });
+        let selected = scene
+            .launcher_layout([1600., 960.], &controller.launcher)
+            .unwrap();
+        assert_eq!(
+            (layout.panel, layout.query, &layout.rows),
+            (selected.panel, selected.query, &selected.rows),
+            "pointer-selection hit regions survive until the next paint"
+        );
     }
 
     #[test]
