@@ -525,7 +525,14 @@ briefs Executors from the specs, never from this note.
     `Messaging` request per seat with its own id, receipt and ledger row,
     shown as one role send with N receipts; refused with a named reason
     above 32 seats (rejected: an invented role path or a new tree sink;
-    groups remain their own destination from `Ls`).
+    groups remain their own destination from `Ls`). (i) The operator
+    principal alone lists open unassigned tasks, read-only and account-wide
+    (Oracle, L9-M-c, 2026-10-23): `TaskRequest::List { unassigned: true }`,
+    path, title, status, no swarm, paged 128; seats keep the existing
+    refusal; `Delegate` scopes by the chosen assignee. Reason: an unassigned
+    task has no swarm scope under #28 and the operator is the account
+    principal (rejected: a seat-visible unassigned list; a per-swarm
+    unassigned pool).
     Rejected: an app-owned cursor tail instead of a durable consumer (loses
     restart-resume); ack on write (loses rows on a crash between poll and
     socket); unread from the consumer cursor (a restart would mark everything
