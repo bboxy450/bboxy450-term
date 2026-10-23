@@ -3071,7 +3071,11 @@ mod input_tests {
                 live::UiMsg::Watched(panes) => watched = panes,
                 live::UiMsg::SpawnZsh | live::UiMsg::Spawn { .. } => spawns += 1,
                 live::UiMsg::ConsumeSpawn { .. } | live::UiMsg::Scroll { .. } => {}
-                live::UiMsg::Messaging { .. } | live::UiMsg::Task { .. } => {
+                live::UiMsg::Messaging { .. }
+                | live::UiMsg::Task { .. }
+                | live::UiMsg::EventPage { .. }
+                | live::UiMsg::EventCursor { .. }
+                | live::UiMsg::MarkEventsRead { .. } => {
                     panic!("pane admission fixture produced a messaging intent")
                 }
             }

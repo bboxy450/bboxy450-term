@@ -80,6 +80,16 @@ async fn apply(
     writer: &mut OwnedWriteHalf,
     capability: [u8; 32],
 ) -> Option<GuiIdentity> {
+    let reply = match reply {
+        GuiReply::Event { envelope, .. } => match envelope.payload {
+            bbt_proto::events::GuiEventPayload::Identity { identity } => {
+                GuiReply::Identity(identity)
+            }
+            _ => return None,
+        },
+        GuiReply::Error { reason, .. } if reason.starts_with("GuiEventsHeld:") => return None,
+        reply => reply,
+    };
     match reply {
         GuiReply::Identity(identity) => Some(identity),
         GuiReply::Update { seat, update } => {
@@ -159,6 +169,14 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
     let initial = initial.expect("initial identity missing");
     assert_eq!(initial.state, GuiIdentityState::Pending);
     assert!(initial.reason.unwrap().contains("Keychain"));
+    // A custody hold keeps this opt-in attachment pending; the same connection
+    // receives the signed identity notice when custody becomes available.
+    send(
+        &mut write,
+        endpoint.capability,
+        GuiAction::AttachEvents { id: Ulid::new() },
+    )
+    .await;
 
     let spawn_id = Ulid::new();
     let spawn_spec = bbt_proto::SpawnSpec {

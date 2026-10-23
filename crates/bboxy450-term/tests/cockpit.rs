@@ -1,3 +1,6 @@
+#[path = "support/events.rs"]
+mod events;
+use events::StateEvents;
 use std::{os::unix::fs::PermissionsExt, path::Path, time::Duration};
 
 use bboxy450_term::cockpit::{Config, Event, Session};
@@ -52,6 +55,7 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
         .into_iter()
         .map(|seat| seat.record.id)
         .collect();
+    events::attach(session).await.unwrap();
     session
         .send(GuiAction::Spawn {
             id: bbt_mux::Ulid::new(),
@@ -70,7 +74,7 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
         .unwrap();
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            match session.receive().await.unwrap() {
+            match session.receive_state().await.unwrap() {
                 GuiReply::Seat(seat) if !known.contains(&seat.record.id) => break seat,
                 GuiReply::Seat(_)
                 | GuiReply::Spawned { .. }
@@ -113,7 +117,7 @@ async fn real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_conn
     assert!(status.success());
     let changed = tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            if let GuiReply::Seat(seat) = session.receive().await.unwrap()
+            if let GuiReply::Seat(seat) = session.receive_state().await.unwrap()
                 && seat.record.id == first.record.id
                 && matches!(seat.state.process, ProcessStatus::Exited { .. })
             {

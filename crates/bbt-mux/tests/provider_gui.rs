@@ -86,15 +86,34 @@ impl Gui {
         self.write.write_all(&bytes).await.unwrap();
     }
     async fn recv(&mut self) -> GuiReply {
-        let bytes = tokio::time::timeout(
-            Duration::from_secs(5),
-            bbt_mux::seat_socket::read_line(&mut self.read),
-        )
-        .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
-        serde_json::from_slice(&bytes).unwrap()
+        loop {
+            let bytes = tokio::time::timeout(
+                Duration::from_secs(5),
+                bbt_mux::seat_socket::read_line(&mut self.read),
+            )
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+            // Legacy host/seat assertions consume the lane's typed state. These
+            // metadata-only fixtures leave transport ACKs to gui_events coverage.
+            match serde_json::from_slice(&bytes).unwrap() {
+                GuiReply::Event { envelope, .. } => match envelope.payload {
+                    bbt_proto::events::GuiEventPayload::Seat { seat } => {
+                        return GuiReply::Seat(*seat);
+                    }
+                    bbt_proto::events::GuiEventPayload::Host { host, .. } => {
+                        return GuiReply::HostState { host };
+                    }
+                    bbt_proto::events::GuiEventPayload::Identity { identity } => {
+                        return GuiReply::Identity(identity);
+                    }
+                    _ => continue,
+                },
+                GuiReply::EventStatus { .. } | GuiReply::Gap { .. } => continue,
+                reply => return reply,
+            }
+        }
     }
     async fn spawn(&mut self, id: Ulid, spec: bbt_proto::SpawnSpec) -> Result<SeatId, String> {
         self.send(GuiAction::Spawn { id, spec }).await;
@@ -354,6 +373,7 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
     )
     .unwrap();
     let mut gui = rt.block_on(Gui::open(&logic));
+    rt.block_on(gui.send(GuiAction::AttachEvents { id: Ulid::new() }));
     rt.block_on(gui.send(GuiAction::ListHosts));
     let hosts = loop {
         if let GuiReply::Hosts(hosts) = rt.block_on(gui.recv()) {

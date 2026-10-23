@@ -66,9 +66,10 @@ fn position(seat: &GuiSeat) -> Position {
     }
 }
 async fn spawn(session: &mut Session, root: &Path) -> GuiSeat {
+    let operation = Ulid::new();
     session
         .send(GuiAction::Spawn {
-            id: bbt_mux::Ulid::new(),
+            id: operation,
             spec: SpawnSpec {
                 swarm: SwarmId::from_u128(77),
                 harness_kind: "zsh".into(),
@@ -84,8 +85,18 @@ async fn spawn(session: &mut Session, root: &Path) -> GuiSeat {
         .unwrap();
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            if let GuiReply::Seat(seat) = session.receive().await.unwrap() {
-                return seat;
+            match session.receive().await.unwrap() {
+                GuiReply::Spawned { op, seat } if op == operation => {
+                    return session
+                        .list()
+                        .await
+                        .unwrap()
+                        .into_iter()
+                        .find(|item| seat_id(item) == seat)
+                        .unwrap();
+                }
+                GuiReply::Error { op, reason } if op == operation => panic!("spawn: {reason}"),
+                _ => (),
             }
         }
     })
@@ -189,20 +200,48 @@ impl Observer {
         };
         loop {
             if matches!(this.reply().await, GuiReply::Seats(_)) {
-                return this;
+                break;
+            }
+        }
+        // Commands use the Session connection; this observer is the one
+        // device-bound state drain, not a second consumer beside it.
+        let id = Ulid::new();
+        let mut bytes = serde_json::to_vec(&GuiRequest {
+            version: bbt_proto::gui::VERSION,
+            capability: session.endpoint.capability,
+            action: GuiAction::AttachEvents { id },
+        })
+        .unwrap();
+        bytes.push(b'\n');
+        this.write.write_all(&bytes).await.unwrap();
+        loop {
+            match this.reply().await {
+                GuiReply::Ok { op } if op == id => return this,
+                GuiReply::Error { op, reason } if op == id => panic!("observer attach: {reason}"),
+                _ => (),
             }
         }
     }
     async fn reply(&mut self) -> GuiReply {
-        let bytes = tokio::time::timeout(
-            Duration::from_secs(10),
-            bbt_mux::seat_socket::read_line(&mut self.read),
-        )
-        .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
-        serde_json::from_slice(&bytes).unwrap()
+        loop {
+            let bytes = tokio::time::timeout(
+                Duration::from_secs(10),
+                bbt_mux::seat_socket::read_line(&mut self.read),
+            )
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+            match serde_json::from_slice(&bytes).unwrap() {
+                GuiReply::Event { envelope, .. } => match envelope.payload {
+                    bbt_proto::events::GuiEventPayload::Seat { seat } => {
+                        return GuiReply::Seat(*seat);
+                    }
+                    _ => continue,
+                },
+                reply => return reply,
+            }
+        }
     }
     async fn state(&mut self, seat: SeatId, lifecycle: Lifecycle) -> GuiSeat {
         loop {
