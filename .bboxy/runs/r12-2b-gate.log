@@ -1,0 +1,23 @@
+# R12-2b gate (2a8474e on main a1c5466)
+before a1c5466 after 2a8474e
+reusing capture <scratch>/r13-cat (captured on main 92e60dc; both binaries render these same inputs, 1704 cases)
+replay before exit=0 355 s: replayed 1704 images; geometry not requested
+replay after  exit=0 271 s: replayed 1704 images; geometry not requested
+sha256 per PNG: before 1704, after 1704, missing 0, extra 0, byte-different 0
+ci-local --parity exit=0 parity: 1664 cases, 859 review; target/parity/legacy/index.html parity: 1704 cases, 194 review; target/parity/index.html parity gate: pass (194 pixel reviews advisory) ci-local: all gates passed 
+done
+# natives are byte-identical to main's, so the 194 advisory reviews equal main's at a1c5466
+
+# Perf, custody-clean (opt + debug assertions; footers 'unsigned, local only'), throttled seq firehose x4, --meter, sample 8 s
+# before a1c5466 dd812a72ad4d0d23, after 2a8474e e4a0d274e8017575. Main-thread samples.
+pair build  busy  create_buffer_init  maintain  write_buffer  buffer_cost
+1    before 1137 0 55 232 25.2%
+1    after 1066 0 71 108 16.8%
+4    before 1228 0 63 187 20.4%
+4    after 876 0 48 77 14.3%
+3    before 1246 0 73 172 19.7%
+3    after 1118 0 67 50 10.5%
+# pair 2 discarded: its after run drew almost nothing in the window (95 busy samples); rerun as pair 4.
+# Remaining write_buffer is the arena flush itself (ChromeRenderer::flush 62, Pass flush 38 in after1): ~4 writes per frame,
+# each a staging allocation plus memmove of a shadow that is mostly 256-byte offset-alignment padding.
+# HUD per-frame numbers: r12-2b-huds.png (now 74-75 Hz on the 75 Hz panel); noisy, not claimed.
