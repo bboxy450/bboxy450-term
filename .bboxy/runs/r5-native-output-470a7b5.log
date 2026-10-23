@@ -1,0 +1,29 @@
+R5 host load before: [26.11328125, 40.39306640625, 63.9990234375]
+R5 identity witness: custody=Some(Memory) label=Some("memory custody (debug)")
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 53.581ms cpu=53.709ms drain=0.002 layout=0.110 draw=0.015 encode=53.581 present_wait=0.031
+first frame: native scene presented, seats=0
+capture /Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/native-proof/window.png: Ok(())
+R5 owned producer seat=01M5MWRAGJQTFJW2MHNJ3JDFQR pid=8759
+R5 owned producer seat=01M5MWRAJ7D3RC93D777X3AGK7 pid=8761
+R5 owned producer seat=01M5MWRAKTC7S6TE5G6MCS1FR9 pid=8764
+R5 owned producer seat=01M5MWRAN1NX7T1ANFGB3NAJWH pid=8766
+R5 owned producer seat=01M5MWRAP6F7VTDC390MGXH98J pid=8768
+R5 owned producer seat=01M5MWRAR8KPAJXCD5519HJMWJ pid=8782
+R5 owned producer seat=01M5MWRASK44SY0QQVA3VJFC61 pid=8785
+R5 owned producer seat=01M5MWRAVN35B9600HFN8ZBPP9 pid=8793
+R5 owned producer seat=01M5MWRB1SZMPB05KQ3XYKK0PS pid=8806
+R5 owned producer seat=01M5MWRB8K0EQHG96JT6MXZV1V pid=8811
+R5 owned producer seat=01M5MWRBBBHSV2Y0E9EV54X93Y pid=8814
+R5 owned producer seat=01M5MWRBD694K71VVJ6HW7RZJ0 pid=8818
+R5 owned producer seat=01M5MWRBF2AFT8VPX9BRBVGN66 pid=8820
+R5 owned producer seat=01M5MWRBGKCZG0KZJP45204C0P pid=8822
+R5 owned producer seat=01M5MWRBHX2J8S14Y50V8J7KSZ pid=8825
+R5 owned background stdout pid=8867
+task 1 exited Some(0)
+capture /Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/native-proof/window.png: Ok(())
+hitch frame=472 phase=encode 23.102ms cpu=23.832ms drain=0.000 layout=0.608 draw=0.122 encode=23.102 present_wait=0.018
