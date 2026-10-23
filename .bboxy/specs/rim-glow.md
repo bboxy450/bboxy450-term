@@ -11,7 +11,7 @@ links:
   - { to: "[[rim-never-covers-text]]", rel: invariant }
   - { to: "[[glow-never-moves-layout]]", rel: invariant }
 created: 2026-10-23T16:39:50Z
-updated: 2026-10-23T16:39:50Z
+updated: 2026-10-23T21:39:35Z
 ---
 # Rim glow
 
@@ -21,8 +21,8 @@ Lens: the pane is the unit; its border is where identity and activity read. Assu
 
 ## 1. Semantics: the alive rim (parameters as built in the lab, CSS px; native matches them under strict parity)
 
-- **Rim.** The band `[0, 2]` px inside the pane edge. Intensity `(.42 + .58·crest) · (.72 + .28·pulse)`, with `crest = max(a1², .8·a2²)`, `a1` a sine of wavelength `wl(170)` moving at `−.45·t`, `a2` of `wl(110)` moving at `+.30·t`: two waves in opposite directions, so the rim never reads as one thing circling. Wavelengths are **snapped to the perimeter** (`wl(λ) = P / round(P/λ)`, P the border perimeter including the corner arcs) so every wave closes without a seam.
-- **Bloom.** From 2 px to **L** px inside, `exp(−(depth − 2) / (.3·L))`, weight `.3·crest·(.6 + .4·pulse)`. **L is the Settings glow value, 2 to 8, default 8**: "8px alive rim" means the bloom reaches 8 px in.
+- **Rim.** The band `[0, R]` px inside the pane edge, **R = `glow.rim` = 4** (operator, 2026-10-23, verbatim: "just want 2extra pixels of silk glowness, just that", "i want it to be slightly more pronounced"; it was 2 until then, and the shaders read R as a uniform from the token, never a literal). Intensity `(.42 + .58·crest) · (.72 + .28·pulse)`, with `crest = max(a1², .8·a2²)`, `a1` a sine of wavelength `wl(170)` moving at `−.45·t`, `a2` of `wl(110)` moving at `+.30·t`: two waves in opposite directions, so the rim never reads as one thing circling. Wavelengths are **snapped to the perimeter** (`wl(λ) = P / round(P/λ)`, P the border perimeter including the corner arcs) so every wave closes without a seam.
+- **Bloom.** From R to **L** px inside, `exp(−(depth − R) / (.3·L))`, weight `.3·crest·(.6 + .4·pulse)`. **L is the Settings glow value, 2 to 8, default 8**: "8px alive rim" means the bloom reaches 8 px in.
 - **Colour.** The seat colour, hue-rotated along the perimeter by `.55·sin(2π(s/P − .12t)) + .3·sin(2π(s/wl(230) + .2t))` radians about the grey axis, mixed toward white by `.22·crest` on the rim. Waiting and errored rotate their state colours (amber, red) the same way.
 - **Pulse.** `.5 − .5·cos(2π · time / (2600 / (.5 + spd)) ms)`: faster when busy.
 - **Activity table** (amplitude / speed): idle `.32 / .35`; active `1 / 1`; waiting `.9 / .6` amber; errored `.65` red, still. Focused ×**1.3**. Unfocused panes keep the rim at full seat colour while content dims ([[ux-prototype]] dim).
@@ -31,12 +31,12 @@ Lens: the pane is the unit; its border is where identity and activity read. Assu
 
 ## 2. Gutters and edges
 
-- The gutter between panes **no longer follows the glow lane**. `layout.gutter` becomes a fixed **2 px** (the divider), and `glow.lane`, `lane_min`, `lane_max`, `pane_radius` and the particle tokens retire in favour of `glow.rim = 2` (fixed), `glow.depth = 8`, `glow.depth_min = 2`, `glow.depth_max = 8`. Each pane pair gains 6 px at L = 8 (the lab gallery's measurement).
+- The gutter between panes **no longer follows the glow lane**. `layout.gutter` becomes a fixed **2 px** (the divider), and `glow.lane`, `lane_min`, `lane_max`, `pane_radius` and the particle tokens retire in favour of `glow.rim = 4` (a token the shaders read as a uniform; 2 before the operator's two extra pixels on 2026-10-23), `glow.depth = 8`, `glow.depth_min = 2`, `glow.depth_max = 8`. Each pane pair gains 6 px at L = 8 (the lab gallery's measurement).
 - Window edges: panes and the sidebar keep the existing 2 px inset (`sidebar.edge`); the stage inset that followed the lane becomes 2 px as well.
 
 ## 3. The Settings glow row
 
-The Appearance row that read "Glow lane 2–8 px" **keeps its 2–8 px range and its default 8**, and now means **rim depth**: how far the bloom reaches inside the pane (`glow.depth`, L in §1). The 2 px rim itself is fixed. The row never changes layout: the gutter is fixed and the whole effect is drawn inside the pane's padding, so moving the slider repaints and nothing moves ([[glow-never-moves-layout]]). **The cell edge rule (settled 2026-10-23):** the glow band is the half-open strip `[0, min(depth, padding))` inside the border, **clipped to the pane's content padding**, so no pixel of the text cell grid ever receives glow; at L = 8 inside the 8 px padding the bloom's last pixel sits against the first cell edge at about `exp(−2.5) ≈ 8 %` of the bloom weight, which is a fade to the edge, not over it. The padding does **not** grow (the operator wants tighter panes, and layout never follows a glow setting); the invariant measures the **whole band**, rim and bloom, not the 2 px core alone (a core-only check would permit bloom over text). A surface with padding smaller than the depth shows a shallower bloom, never glow over cells.
+The Appearance row that read "Glow lane 2–8 px" **keeps its 2–8 px range and its default 8**, and now means **rim depth**: how far the bloom reaches inside the pane (`glow.depth`, L in §1). The rim width is `glow.rim` (4 px) and is not the row's business; a depth below the rim width clips the rim itself, since the band is always `[0, min(depth, padding))`, so L = 2 or 3 shows a thinner rim and no bloom, the operator's choice, not a bug. The row never changes layout: the gutter is fixed and the whole effect is drawn inside the pane's padding, so moving the slider repaints and nothing moves ([[glow-never-moves-layout]]). **The cell edge rule (settled 2026-10-23):** the glow band is the half-open strip `[0, min(depth, padding))` inside the border, **clipped to the pane's content padding**, so no pixel of the text cell grid ever receives glow; at L = 8 inside the 8 px padding the bloom's last pixel sits against the first cell edge at about `exp(−2.5) ≈ 8 %` of the bloom weight, which is a fade to the edge, not over it. The padding does **not** grow (the operator wants tighter panes, and layout never follows a glow setting); the invariant measures the **whole band**, rim and bloom, not the rim core alone (a core-only check would permit bloom over text). A surface with padding smaller than the depth shows a shallower bloom, never glow over cells.
 
 ## 4. What this supersedes, and what happens to the renderer
 

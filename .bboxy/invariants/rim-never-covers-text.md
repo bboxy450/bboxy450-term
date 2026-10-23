@@ -9,7 +9,7 @@ links:
   - { to: "[[rim-glow]]", rel: constrains }
   - { to: "[[gui-components]]", rel: constrains }
 created: 2026-10-23T16:39:50Z
-updated: 2026-10-23T16:39:50Z
+updated: 2026-10-23T21:39:35Z
 ---
 # The glow rim never covers a text cell
 
@@ -18,7 +18,7 @@ updated: 2026-10-23T16:39:50Z
 `[0, min(depth, padding))` just inside the pane border, clipped to the content
 padding) does not intersect the pane's text cell grid rectangle: no cell pixel
 receives glow at any depth ([[rim-glow]] §1, §3). The whole band is measured,
-never the 2 px core alone.
+never the rim core alone (`glow.rim`, 4 px since 2026-10-23; the width is a token, not a fixed 2).
 
 **Check.** `cargo test -p bbt-ui --locked --lib rim_never_covers_text -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The grep demands that exactly this named test ran and passed

@@ -429,7 +429,16 @@ briefs Executors from the specs, never from this note.
     (permits bloom over text) and growing the padding (layout following a
     glow setting, against the operator's tighter panes). Rejected: keeping
     the lane as an option (two glow models in parity); letting depth move
-    the gutter; drawing over the cell inset.
+    the gutter; drawing over the cell inset. **Amended 2026-10-23, evening**
+    (operator via Wren, verbatim: "yeah what we have as is great, just want
+    2extra pixels of silk glowness, just that" / "i know every pixel
+    matters, but thats visual indicator, ad i want it to be slightly more
+    pronounced"): `glow.rim` 2 → 4 as a token the lab and native shaders
+    read as a uniform; the bloom runs from the rim to L; the band stays
+    `[0, min(depth, padding))`, so both invariants hold unchanged and no
+    geometry moves; a depth below the rim width clips the rim. Rejected:
+    growing depth past the 8 px padding (the cell edge rule); a literal 4
+    in any shader; raising `depth_min` (the operator may want a thin rim).
 
 36. **Code adapted from Apache-only sources lives in `bbt-core`, never in a
     dual crate (2026-10-23; from LIC1 and K1).** The kitty key encoder is a
@@ -550,6 +559,20 @@ briefs Executors from the specs, never from this note.
     to show them is a product bug); counting raw bytes only (the grid is
     the heap that matters); the API in the app (it is terminal model, not
     glue).
+    (e) Architect's read of Sable's C1c-3 at 6c6d06d (2026-10-23): the
+    cap is 4 000 000 bytes (`scrollback.rs:14`), 10k lines (`:15`), the
+    three-viewport floor refuses by name (`:219-221`), restart replays
+    from capture start at the pane's template dimensions (`:283-297`),
+    pages release on live (`:293, 352, 457`), `bbt-core` carries the
+    bounded API (`lib.rs:111, 129`, `Term::new_with_spare_rows`), the 20k
+    fixture joins live exactly (`tests/scrollback.rs:115`); the measured
+    20k seek (54.9 / 131.7 ms) keeps checkpoints off the wire. One
+    divergence: a 512-column / 256-row bound refused under the budget
+    name (`:202-208`); ruled: a refusal name never lies, so the bound is
+    removed or renamed `history_dimensions_unsupported` with its reason
+    in the spec. The 50-seat memory acceptance is met by `Playback`
+    accounting (53.76 MB conservative of 200 MB); RSS and timing at 50
+    watched belong to gate 4.
 
 41. **Plugins: planned and logged, not built (operator, 2026-10-23, verbatim
     in [[plugins]] §0).** A folder of binaries named `<app>-<system>-
