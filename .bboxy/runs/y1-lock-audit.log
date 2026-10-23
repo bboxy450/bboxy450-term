@@ -1,0 +1,38 @@
+{
+  "removed_packages": [],
+  "existing_checksum_changes": [],
+  "added_packages": [
+    [
+      "bbt-yarn",
+      "0.0.1"
+    ],
+    [
+      "bbt-yarn-macros",
+      "0.0.1"
+    ],
+    [
+      "glob",
+      "0.3.4"
+    ],
+    [
+      "target-triple",
+      "1.0.1"
+    ],
+    [
+      "termcolor",
+      "1.4.1"
+    ],
+    [
+      "tokio-util",
+      "0.7.19"
+    ],
+    [
+      "toml",
+      "1.1.8+spec-1.1.0"
+    ],
+    [
+      "trybuild",
+      "1.0.120"
+    ]
+  ]
+}

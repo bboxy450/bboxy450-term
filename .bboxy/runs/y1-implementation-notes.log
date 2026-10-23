@@ -1,0 +1,3 @@
+Initial cargo fmt --check exited 1 at namespace-length wrapping in kernel_source_coverage.rs; cargo fmt applied those whitespace changes.
+License-edit helper initially ran from the macro directory and exited 1 before any edit: FileNotFoundError crates/bbt-yarn/Cargo.toml. Corrected helper to use the explicit own-worktree root. Initial package-macros command started before that metadata correction; final package verification is separate.
+License decisions: 97e5e5c8 held TODO pending resolution; c7487b8c Apache-only was explicitly superseded by 0f992af6 dual MIT OR Apache-2.0. Final manifests and preserved upstream license files follow 0f992af6.

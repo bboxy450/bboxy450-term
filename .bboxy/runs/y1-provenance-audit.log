@@ -1,0 +1,28 @@
+src/reactor.rs: byte-identical upstream runtime; sha256=1eb639b694f80692169a20145c4373aca9facad71025c7bb70acbf0b9acdb4fd
+src/source/mod.rs: byte-identical upstream runtime; sha256=e92f6586af7c414a77ce828cfae985b908fa4b98b61b30c18cf2e9a2d3f61ad9
+src/source/tokio_impl.rs: byte-identical upstream runtime; sha256=4fcdffa86a78507200740656a105f4cb6ceb461dda8a253e20073124acddb33d
+bbt-yarn/LICENSE-MIT: pinned text exact; sha256=905373480080597d230adf07df32d04c5a3407e0ae3b0b413c15a832b61cc398
+bbt-yarn/LICENSE-APACHE: pinned text exact; sha256=470792be84b6ffd17172bec28c999b687288f90ae688ebc0973a8cbdff6b49bd
+bbt-yarn package: self-contained README/licenses and normalized registry dependency; 57 files
+bbt-yarn-macros/LICENSE-MIT: pinned text exact; sha256=905373480080597d230adf07df32d04c5a3407e0ae3b0b413c15a832b61cc398
+bbt-yarn-macros/LICENSE-APACHE: pinned text exact; sha256=470792be84b6ffd17172bec28c999b687288f90ae688ebc0973a8cbdff6b49bd
+bbt-yarn-macros package: self-contained README/licenses and normalized registry dependency; 9 files
+fixture all_guarded: anchors=['KTR014']; preserved
+fixture before_cycle: anchors=['KTR003']; preserved
+fixture drain_nonliteral: anchors=['KTR008']; preserved
+fixture drain_over_limit: anchors=['KTR008']; preserved
+fixture drain_zero: anchors=['KTR008']; preserved
+fixture duplicate_place: anchors=['KTR020']; preserved
+fixture guard_not_bool: anchors=['E0308', 'KTR019']; preserved
+fixture last_followed: anchors=['KTR004']; preserved
+fixture missing_phase: anchors=['KTR011']; preserved
+fixture missing_yield: anchors=['KTR007']; preserved
+fixture non_drainable: anchors=['E0277', 'KTR009']; preserved
+fixture non_kittens_attribute: anchors=['KTR000']; preserved
+fixture nonadmitted_source: anchors=['E0277', 'SRC001']; preserved
+fixture ownership_prevents_second_transfer: anchors=['E0382']; preserved
+fixture readiness_mismatch: anchors=['E0271', 'KTR006']; preserved
+fixture shutdown_below_firehose: anchors=['KTR016']; preserved
+fixture temporary_source: anchors=['KTR015']; preserved
+fixture yield_target_not_backlog: anchors=['E0277', 'KTR010']; preserved
+Exact upstream revision: 293e134526bb2deee96f1197d6268aee64495482

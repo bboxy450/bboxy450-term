@@ -1,0 +1,150 @@
+{"argv": ["cargo", "test", "-p", "bbt-yarn", "-p", "bbt-yarn-macros", "--locked"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "env": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}, "TRYBUILD": null}
+    Finished `test` profile [optimized] target(s) in 0.11s
+     Running unittests src/lib.rs (target/y1/debug/deps/bbt_yarn-04bde971b7846ecc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/embedded_shape.rs (target/y1/debug/deps/embedded_shape-020a704827d13770)
+
+running 5 tests
+test dormant_optional_host_source_does_not_self_wake ... ok
+test embedded_future_stays_within_predeclared_host_model_budget ... ok
+test ownership_returning_completion_reenables_submission_in_after_event ... ok
+test dynamic_absolute_deadline_rearms_after_each_fire ... ok
+test protected_touch_precedes_ready_sensor_and_sensor_remains_buffered ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/grok_shape.rs (target/y1/debug/deps/grok_shape-fb9dc00f1834039e)
+
+running 5 tests
+test twenty_three_arm_forms_compile_without_custom_type_or_recursion_limits ... ok
+test grok_dynamic_voice_arm_and_reconnect_replacement_are_persistent ... ok
+test raw_and_kittens_forms_preserve_application_owned_presenter_scenarios ... ok
+test grok_scripted_thirty_two_item_drain_does_not_reach_a_budget_boundary ... ok
+test raw_tokio_oracle_preserves_the_declared_twenty_three_source_order ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/kernel_source_coverage.rs (target/y1/debug/deps/kernel_source_coverage-85192d27d846aeef)
+
+running 5 tests
+test generated_type_assertions_admit_capabilities_without_mutating_sources ... ok
+test latched_preserves_the_first_event_and_dormant_polls_do_not_self_wake ... ok
+test generated_value_assertions_preserve_guard_handler_and_phase_results ... ok
+test fixed_queue_preserves_fifo_order_across_wrap_full_and_empty_transitions ... ok
+test close_policies_map_items_and_expose_only_the_configured_close_event ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reactor_runtime.rs (target/y1/debug/deps/reactor_runtime-be524adf1cb75688)
+
+running 16 tests
+test closed_optional_mpsc_becomes_dormant_without_self_waking ... ok
+test emit_close_policy_yields_closed_exactly_once ... ok
+test absolute_deadline_survives_a_lost_race_without_relative_reconstruction ... ok
+test drain_bound_and_after_event_are_one_service_window ... ok
+test before_poll_runs_once_across_pending_executor_repolls ... ok
+test buffered_yield_selects_input_before_a_ready_firehose ... ok
+test all_four_retained_expansions_match_on_the_scripted_oracle ... ok
+test core_and_tokio_control_match_poll_order_results_and_wake_registration ... ok
+test handler_error_mid_drain_skips_after_event_after_prior_mutation ... ok
+test latched_event_survives_when_an_earlier_source_wins_before_it_is_polled ... ok
+test exhausted_tokio_budget_ends_both_mpsc_drain_windows_early ... ok
+test optional_deadline_disarms_before_delivering ... ok
+test retained_expansion_future_sizes_are_recorded ... ok
+test retained_one_shot_survives_being_polled_before_another_source_wins ... ok
+test wake_only_guard_change_waits_for_the_next_arbitration ... ok
+test handler_panic_mid_drain_unwinds_without_compensation_or_after_event ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/tokio_source_coverage.rs (target/y1/debug/deps/tokio_source_coverage-cc87edf1cc622f2f)
+
+running 14 tests
+test dropping_a_pending_one_shot_drops_the_retained_operation_once ... ok
+test optional_mpsc_backlog_includes_one_emit_close_event ... ok
+test optional_mpsc_returns_rejected_and_replaced_generations_to_the_caller ... ok
+test optional_deadline_resets_disarms_and_reports_its_absolute_instant ... ok
+test exhausted_budget_defers_mpsc_drain_without_consuming_the_item ... ok
+test dropping_persistent_mpsc_closes_the_receiver_and_drops_buffered_items ... ok
+test cancellation_replaces_registration_and_becomes_dormant_after_delivery ... ok
+test dropping_an_armed_deadline_removes_its_timer_registration ... ok
+test mpsc_repoll_replaces_the_registered_waker_for_both_receiver_variants ... ok
+test dropping_a_cancellation_waiter_does_not_cancel_other_token_owners ... ok
+test optional_one_shot_from_future_disarms_before_returning_ready ... ok
+test optional_one_shot_makes_arming_replacement_and_cancellation_explicit ... ok
+test retained_one_shot_preserves_pending_state_and_replaces_its_registered_waker ... ok
+test persistent_mpsc_normalizes_receivers_and_enforces_static_close_policies ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ui.rs (target/y1/debug/deps/ui-9c0e826f2dcc8d4e)
+
+running 1 test
+   Compiling bbt-yarn-tests v0.0.0 (/Users/feral/mydev/bboxy450-term-rook/target/y1/tests/trybuild/bbt-yarn)
+    Finished `dev` profile [optimized] target(s) in 0.18s
+
+
+test tests/ui/all_guarded.rs [should fail to compile] ... ok
+test tests/ui/before_cycle.rs [should fail to compile] ... ok
+test tests/ui/drain_nonliteral.rs [should fail to compile] ... ok
+test tests/ui/drain_over_limit.rs [should fail to compile] ... ok
+test tests/ui/drain_zero.rs [should fail to compile] ... ok
+test tests/ui/duplicate_place.rs [should fail to compile] ... ok
+test tests/ui/guard_not_bool.rs [should fail to compile] ... ok
+test tests/ui/last_followed.rs [should fail to compile] ... ok
+test tests/ui/missing_phase.rs [should fail to compile] ... ok
+test tests/ui/missing_yield.rs [should fail to compile] ... ok
+test tests/ui/non_drainable.rs [should fail to compile] ... ok
+test tests/ui/non_kittens_attribute.rs [should fail to compile] ... ok
+test tests/ui/nonadmitted_source.rs [should fail to compile] ... ok
+test tests/ui/ownership_prevents_second_transfer.rs [should fail to compile] ... ok
+test tests/ui/readiness_mismatch.rs [should fail to compile] ... ok
+test tests/ui/shutdown_below_firehose.rs [should fail to compile] ... ok
+test tests/ui/temporary_source.rs [should fail to compile] ... ok
+test tests/ui/yield_target_not_backlog.rs [should fail to compile] ... ok
+test tests/ui-pass/constraint_erasure_boundaries.rs [should pass] ... ok
+test tests/ui-pass/doc_comment_rationale.rs [should pass] ... ok
+test tests/ui-pass/raw_runtime_bypass.rs [should pass] ... ok
+
+
+test reactor_mutations_and_negative_controls ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.15s
+
+     Running unittests src/lib.rs (target/y1/debug/deps/bbt_yarn_macros-6066b4b3ecf7a3f3)
+
+running 8 tests
+test tests::persistent_place_normalization_pins_exact_duplicate_detection ... ok
+test tests::negative_controls_preserve_the_honest_boundary ... ok
+test tests::lean_policy_and_phase_contract_rejects_drift ... ok
+test tests::arm_grammar_enforces_one_canonical_declaration ... ok
+test tests::topology_validator_rejects_each_declared_hazard ... ok
+test tests::dependency_path_resolution_supports_renaming_and_fallback ... ok
+test tests::token_entry_pipeline_renders_success_and_actionable_failure ... ok
+test tests::expansion_preserves_all_four_k0_comparison_shapes ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests bbt_yarn
+
+running 2 tests
+test crates/bbt-yarn/src/../README.md - (line 129) ... ok
+test crates/bbt-yarn/src/../README.md - (line 70) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.46s; merged doctests compilation took 0.32s
+   Doc-tests bbt_yarn_macros
+
+running 2 tests
+test crates/bbt-yarn-macros/src/../README.md - (line 47) ... ok
+test crates/bbt-yarn-macros/src/../README.md - (line 36) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.32s; merged doctests compilation took 0.19s
+{"argv": ["cargo", "test", "-p", "bbt-yarn", "-p", "bbt-yarn-macros", "--locked"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "exit": 0, "elapsed_s": 4.61479558298015}

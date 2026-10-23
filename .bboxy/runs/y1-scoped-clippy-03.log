@@ -1,0 +1,5 @@
+{"argv": ["cargo", "clippy", "-p", "bbt-yarn", "-p", "bbt-yarn-macros", "--all-targets", "--locked", "--", "-D", "warnings"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "env": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}, "TRYBUILD": null}
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn)
+    Finished `dev` profile [optimized] target(s) in 5.27s
+{"argv": ["cargo", "clippy", "-p", "bbt-yarn", "-p", "bbt-yarn-macros", "--all-targets", "--locked", "--", "-D", "warnings"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "exit": 0, "elapsed_s": 5.386012584000127}

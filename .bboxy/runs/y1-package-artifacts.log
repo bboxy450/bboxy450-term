@@ -1,0 +1,10 @@
+[
+  {
+    "path": "/private/tmp/rook-y1-upstream-hcdwigiu/packages/bbt-yarn-0.0.1.crate",
+    "sha256": "b968b99852dabda477d5c76bff3b60ce0ee1ae6e1377e45665a3444c949a0e50"
+  },
+  {
+    "path": "/private/tmp/rook-y1-upstream-hcdwigiu/packages/bbt-yarn-macros-0.0.1.crate",
+    "sha256": "a95c9d07340a8884eb9c57bb70a6792f4c64ae3a789f2b656e0b54c9d2f19be0"
+  }
+]

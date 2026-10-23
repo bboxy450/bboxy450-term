@@ -1,0 +1,17 @@
+{"argv": ["cargo", "check", "-p", "bbt-yarn", "--no-default-features", "--lib", "--locked", "--features", "macros"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "env": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1-timing", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "0", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}, "TRYBUILD": null}
+   Compiling proc-macro2 v1.0.107
+   Compiling winnow v1.0.4
+   Compiling quote v1.0.47
+   Compiling hashbrown v0.17.1
+   Compiling unicode-ident v1.0.27
+   Compiling equivalent v1.0.3
+   Compiling indexmap v2.14.2
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling syn v2.0.119
+   Compiling proc-macro-crate v3.5.0
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn)
+    Finished `dev` profile [unoptimized] target(s) in 17.34s
+{"argv": ["cargo", "check", "-p", "bbt-yarn", "--no-default-features", "--lib", "--locked", "--features", "macros"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "exit": 0, "elapsed_s": 17.391024374985136}
