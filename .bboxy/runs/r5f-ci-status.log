@@ -1,0 +1,37 @@
+{
+  "source_sha": "a7d400c337cc44c11a66d2901d204e4ce74a683d",
+  "assignment": "c4afdda7-7a80-4c52-b864-8eff2587418f",
+  "slot_assignment": "aaabc14f-c92c-407c-8f66-9669362e7650",
+  "cache_reuse": "none; exact source uses a fresh private target",
+  "runner_pid": 46242,
+  "argv": [
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/ci-tree",
+  "env": {
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "CARGO_TARGET_DIR": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/ci-target"
+  },
+  "started": "2026-10-23T16:13:21.703590-07:00",
+  "free_before": 82865278976,
+  "disk_floor_bytes": 10737418240,
+  "finished": true,
+  "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/ci.log",
+  "min_free_bytes": 76120268800,
+  "child_pid": 46257,
+  "exit": 0,
+  "elapsed_s": 1052.329147832992,
+  "finished_at": "2026-10-23T16:30:54.029865-07:00",
+  "target_allocated_bytes": 2805858304,
+  "target_removed": true,
+  "free_after_cleanup": 78784561152
+}

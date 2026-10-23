@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 use ulid::Ulid;
 
+use bbt_supervisor::supervisor::capture_diagnostics::{Outcome, Phase, Recorder};
+
 use crate::bus::{Broker, BusHandle};
 use crate::index::{FileWatch, Index};
 use crate::provider::{Connections, HostId, LocalProvider, Provider};
@@ -160,8 +162,21 @@ pub struct LogicClient {
     tx: mpsc::Sender<Command>,
     pub bus: BusHandle,
     exit_cause: Arc<OnceLock<String>>,
+    capture_diagnostics: Arc<Recorder>,
 }
 impl LogicClient {
+    /// Enable fixed-capacity, numeric capture diagnostics on IO before a run.
+    /// Disabled by default; never changes replay, admission or retry policy.
+    pub fn enable_capture_diagnostics(&self) {
+        self.capture_diagnostics.enable();
+    }
+
+    /// Snapshot last-observed cursors and inclusive phase spans without an RPC.
+    /// Copy on IO, before diagnostic requests that would affect the window.
+    pub fn capture_diagnostics(&self) -> bbt_supervisor::supervisor::capture_diagnostics::Snapshot {
+        self.capture_diagnostics.snapshot()
+    }
+
     /// Resume missing local processes after the app has replaced the supervisor.
     /// A logic-only restart must not call this: its PTYs are still owned.
     pub async fn recover_seats(&self) -> Result<()> {
@@ -714,6 +729,7 @@ impl Logic {
             tx,
             bus: bus.clone(),
             exit_cause: Arc::new(OnceLock::new()),
+            capture_diagnostics: Arc::new(Recorder::default()),
         };
         let stop = Arc::new(AtomicBool::new(false));
         let stopping = stop.clone();
@@ -2680,9 +2696,28 @@ impl Worker {
         else {
             return Err(invalid("history reply mismatch"));
         };
+        self.client
+            .capture_diagnostics
+            .seat(id, generation, |row, now| {
+                row.ring_observed_ns = now;
+                row.captured_sequence = history.status.captured_sequence;
+                row.committed_sequence = history.status.committed_sequence;
+            });
         Ok(*history)
     }
     fn save(&mut self, id: Ulid) -> Result<()> {
+        let span = self.client.capture_diagnostics.start(
+            Phase::Checkpoint,
+            id,
+            self.views[&id].generation,
+            0,
+            self.views[&id].sequence,
+        );
+        let result = self.save_inner(id);
+        span.finish(capture_outcome(&result), 0, 0);
+        result
+    }
+    fn save_inner(&mut self, id: Ulid) -> Result<()> {
         let view = &self.views[&id];
         let sequence = view.sequence;
         if sequence == view.checkpoint_sequence {
@@ -2711,6 +2746,23 @@ impl Worker {
     }
     // false retains this event while replay yields to the command queue.
     fn event(&mut self, event: Event) -> Result<bool> {
+        let generation = match &event {
+            Event::Output { generation, .. }
+            | Event::Resized { generation, .. }
+            | Event::Exited { generation, .. } => *generation,
+        };
+        let span = self.client.capture_diagnostics.start(
+            Phase::Event,
+            event.seat(),
+            generation,
+            0,
+            event.sequence().unwrap(),
+        );
+        let result = self.event_inner(event);
+        span.finish(capture_outcome(&result), 0, 0);
+        result
+    }
+    fn event_inner(&mut self, event: Event) -> Result<bool> {
         let id = event.seat();
         let seq = event.sequence().unwrap();
         let generation = match &event {
@@ -2729,7 +2781,23 @@ impl Worker {
         }
         let view = self.views.get_mut(&id).unwrap();
         let before = view.adapter.status.clone();
+        let span = self
+            .client
+            .capture_diagnostics
+            .start(Phase::Parse, id, generation, seq, seq);
         view.state.apply(&event)?;
+        let bytes = match &event {
+            Event::Output { bytes, .. } => bytes.len() as u64,
+            _ => 0,
+        };
+        span.finish(Outcome::Ok, 1, bytes);
+        self.client
+            .capture_diagnostics
+            .seat(id, generation, |row, now| {
+                row.progress(seq, now);
+                row.parsed_events += 1;
+                row.parsed_bytes += bytes;
+            });
         view.info.next_sequence = seq.saturating_add(1);
         match &event {
             Event::Resized { size, .. } => view.info.size = *size,
@@ -2806,26 +2874,58 @@ impl Worker {
             self.save(id)?;
             return Ok(true);
         }
+        let generation = current.generation;
+        let page = self.client.capture_diagnostics.start(
+            Phase::ReplayPage,
+            id,
+            generation,
+            current.sequence + 1,
+            through,
+        );
         let history = self.history(id, current.generation, current.sequence + 1, through)?;
         if history.gap.is_some() || history.records.is_empty() {
             return Err(invalid("capture recovery gap"));
         }
+        let events = history.records.len() as u64;
+        let mut bytes = 0;
+        let parse = self.client.capture_diagnostics.start(
+            Phase::Parse,
+            id,
+            generation,
+            self.views[&id].sequence + 1,
+            through,
+        );
         let view = self.views.get_mut(&id).unwrap();
         for record in history.records {
             if matches!(record.event, Event::Resized { .. }) {
                 view.view_generation = Ulid::new();
             }
             view.state.apply(&record.event)?;
+            if let Event::Output { bytes: output, .. } = &record.event {
+                bytes += output.len() as u64;
+            }
             // Recovery must not replay probe responses or hook/native effects.
             let _ = view.tap.drain();
         }
+        parse.finish(Outcome::Ok, events, bytes);
+        self.client
+            .capture_diagnostics
+            .seat(id, generation, |row, now| {
+                row.progress(view.sequence, now);
+                row.target_sequence = through;
+                row.pages += 1;
+                row.parsed_events += events;
+                row.parsed_bytes += bytes;
+            });
         view.changed_at = Instant::now();
         if view.sequence >= through {
             self.save(id)?;
+            page.finish(Outcome::Ok, events, bytes);
             Ok(true)
         } else {
             // The caller keeps the final live event. Its sequence and this
             // applied cursor survive the command-service turn between pages.
+            page.finish(Outcome::Ok, events, bytes);
             Ok(false)
         }
     }
@@ -3610,7 +3710,41 @@ impl Worker {
                 | Action::ReadRing { .. }
                 | Action::PublishCheckpoint { .. }
         ));
-        retry_capture(|| self.request_for_seat(seat, action.clone()))
+        let (phase, generation, from, to) = match &action {
+            Action::ReadRing {
+                attachment,
+                from,
+                to,
+            } => (Phase::ReadRingRpc, attachment.generation, *from, *to),
+            Action::RingRecovery { attachment } => {
+                (Phase::RecoveryRpc, attachment.generation, 0, 0)
+            }
+            Action::PublishCheckpoint { attachment, .. } => {
+                (Phase::CheckpointRpc, attachment.generation, 0, 0)
+            }
+            // Diagnostics must not add a release-mode admission policy.
+            _ => return retry_capture(|| self.request_for_seat(seat, action.clone())),
+        };
+        // The parent includes bounded Busy backoff; attempt spans contain only
+        // the actual RPC wait. Subtract nested intervals, never add them.
+        let request = self.client.capture_diagnostics.start(
+            Phase::CaptureRequest,
+            seat,
+            generation,
+            from,
+            to,
+        );
+        let result = retry_capture(|| {
+            let span = self
+                .client
+                .capture_diagnostics
+                .start(phase, seat, generation, from, to);
+            let result = self.request_for_seat(seat, action.clone());
+            span.finish(capture_outcome(&result), 0, 0);
+            result
+        });
+        request.finish(capture_outcome(&result), 0, 0);
+        result
     }
     fn run(&mut self, commands: &mut mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
@@ -3622,12 +3756,22 @@ impl Worker {
         let mut provider_recoveries = BTreeSet::new();
         let mut made_progress = false;
         while !stop.load(Ordering::Acquire) {
+            let mut turn =
+                self.client
+                    .capture_diagnostics
+                    .start(Phase::LogicTurn, Ulid::nil(), 0, 0, 0);
             let poll_ready = made_progress && pending_events.has_ready();
             made_progress = false;
+            let command_span =
+                self.client
+                    .capture_diagnostics
+                    .start(Phase::Commands, Ulid::nil(), 0, 0, 0);
+            let mut command_count = 0;
             for _ in 0..32 {
                 let Ok(command) = commands.try_recv() else {
                     break;
                 };
+                command_count += 1;
                 match command {
                     Command::GuiHosts(reply) => {
                         let _ = reply.send(Ok(self.connections.gui_hosts()));
@@ -3959,6 +4103,11 @@ impl Worker {
                     }
                 }
             }
+            command_span.finish(Outcome::Ok, command_count, 0);
+            let receive =
+                self.client
+                    .capture_diagnostics
+                    .start(Phase::Receive, Ulid::nil(), 0, 0, 0);
             for host in self.connections.host_ids() {
                 let event = if poll_ready {
                     self.connections.receive_ready_from(&host)?
@@ -3978,12 +4127,29 @@ impl Worker {
                         && generation == view.generation
                         && event.sequence().unwrap() > view.sequence
                     {
+                        self.client.capture_diagnostics.seat(
+                            event.seat(),
+                            generation,
+                            |row, now| {
+                                row.notified_sequence =
+                                    row.notified_sequence.max(event.sequence().unwrap());
+                                row.progress(view.sequence, now);
+                            },
+                        );
                         pending_events.push(host, event, generation, view.sequence + 1)?;
                     }
                 }
             }
+            receive.finish(Outcome::Ok, 0, 0);
             if let Some((key, event)) = pending_events.next() {
                 let before = self.views.get(&key.1).map(|view| view.sequence);
+                if let Some(view) = self.views.get(&key.1) {
+                    self.client
+                        .capture_diagnostics
+                        .seat(key.1, view.generation, |row, _| {
+                            row.target_sequence = event.sequence().unwrap();
+                        });
+                }
                 let complete = match self.event(event) {
                     Ok(complete) => {
                         made_progress =
@@ -4001,6 +4167,10 @@ impl Worker {
                 // notifications between pages. A long gap cannot hold a host.
                 pending_events.finish(key, complete);
             }
+            let maintenance =
+                self.client
+                    .capture_diagnostics
+                    .start(Phase::Maintenance, Ulid::nil(), 0, 0, 0);
             if providers_at.elapsed() >= Duration::from_millis(200) {
                 self.refresh_providers(&mut provider_recoveries, &mut pending_events)?;
                 providers_at = Instant::now();
@@ -4063,11 +4233,26 @@ impl Worker {
                 }
                 scan_at = Instant::now();
             }
+            maintenance.finish(Outcome::Ok, 0, 0);
+            turn.pending(
+                pending_events.seats.len(),
+                pending_events.ready.len(),
+                pending_events.parked.len(),
+            );
+            turn.finish(Outcome::Ok, 0, 0);
         }
         for id in self.views.keys().copied().collect::<Vec<_>>() {
             self.save(id)?;
         }
         Ok(())
+    }
+}
+fn capture_outcome<T>(result: &Result<T>) -> Outcome {
+    match result {
+        Ok(_) => Outcome::Ok,
+        Err(error) if is_capture_busy(error) => Outcome::Busy,
+        Err(error) if crate::provider::fake::is_link_down(error) => Outcome::Unavailable,
+        Err(_) => Outcome::Error,
     }
 }
 fn is_capture_busy(error: &crate::store::Error) -> bool {

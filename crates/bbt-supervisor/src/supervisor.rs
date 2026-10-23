@@ -29,6 +29,486 @@ const MAX_INPUT_IDS: usize = 4096;
 const TICK: Duration = Duration::from_millis(20);
 const CALL_TIMEOUT: Duration = Duration::from_secs(10);
 const OUTPUT_DELAY: Duration = Duration::from_millis(2);
+
+/// Opt-in, bounded numeric diagnostics shared by the capture owners. Recording
+/// never waits for a reader: contention drops a sample and increments `missed`.
+/// No payload, capability or signing material enters these buffers.
+pub mod capture_diagnostics {
+    use std::collections::{HashMap, VecDeque};
+    use std::sync::{
+        Arc, Mutex, OnceLock, TryLockError,
+        atomic::{AtomicU64, Ordering},
+    };
+    use std::time::Instant;
+
+    use serde::Serialize;
+    use ulid::Ulid;
+
+    const SPANS: usize = 8192;
+    const SEATS: usize = 2048;
+
+    /// Spans are inclusive, not a flat partition. In particular RPC waits
+    /// overlap supervisor query/sweep time, and replay contains parse/checkpoint.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+    #[serde(rename_all = "snake_case")]
+    #[repr(usize)]
+    pub enum Phase {
+        LogicTurn,
+        Commands,
+        Receive,
+        Event,
+        ReplayPage,
+        CaptureRequest,
+        ReadRingRpc,
+        RecoveryRpc,
+        CheckpointRpc,
+        Parse,
+        Checkpoint,
+        Maintenance,
+        SupervisorTurn,
+        SupervisorDispatch,
+        SupervisorQuery,
+        SupervisorSweep,
+    }
+    const PHASES: [Phase; 16] = [
+        Phase::LogicTurn,
+        Phase::Commands,
+        Phase::Receive,
+        Phase::Event,
+        Phase::ReplayPage,
+        Phase::CaptureRequest,
+        Phase::ReadRingRpc,
+        Phase::RecoveryRpc,
+        Phase::CheckpointRpc,
+        Phase::Parse,
+        Phase::Checkpoint,
+        Phase::Maintenance,
+        Phase::SupervisorTurn,
+        Phase::SupervisorDispatch,
+        Phase::SupervisorQuery,
+        Phase::SupervisorSweep,
+    ];
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+    #[serde(rename_all = "snake_case")]
+    pub enum Outcome {
+        Ok,
+        Busy,
+        Unavailable,
+        #[default]
+        Error,
+    }
+
+    #[derive(Clone, Copy, Debug, Serialize)]
+    pub struct Span {
+        pub phase: Phase,
+        pub turn: u64,
+        pub start_ns: u64,
+        pub elapsed_ns: u64,
+        pub seat: Ulid,
+        pub generation: u64,
+        pub from: u64,
+        pub to: u64,
+        pub request_id: Ulid,
+        pub outcome: Outcome,
+        /// Pages for LogicTurn; events for ReplayPage/Parse; seats for Sweep;
+        /// commands for Commands. Other phases leave this zero.
+        pub work: u64,
+        pub bytes: u64,
+        /// Pending seat slots (logic) or pending capture requests (supervisor).
+        pub pending: u64,
+        /// Ready deque length, including entries whose host is parked.
+        pub ready: u64,
+        /// Parked host count, not a number of parked seats.
+        pub parked: u64,
+    }
+
+    /// Completed spans only; a missing sample makes these a lower bound. Read
+    /// `in_flight` as well when a phase has not returned at snapshot time.
+    #[derive(Clone, Debug, Default, Serialize)]
+    pub struct Totals {
+        pub calls: u64,
+        pub elapsed_ns: u64,
+        pub max_ns: u64,
+        pub work: u64,
+        pub bytes: u64,
+        pub errors: u64,
+        pub busy: u64,
+        pub pending_peak: u64,
+    }
+
+    #[derive(Clone, Debug, Serialize)]
+    pub struct InFlight {
+        pub count: u64,
+        /// First start in the current overlapping group; it may precede the
+        /// oldest still-active span. Counts/timestamps are sampled separately.
+        pub group_started_ns: u64,
+    }
+
+    /// A last-observed head is not a fresh ring query. Compare only within the
+    /// same generation, using the timestamps to bound observation age.
+    #[derive(Clone, Debug, Default, Serialize)]
+    pub struct Seat {
+        pub seat: Ulid,
+        pub generation: u64,
+        pub observed_ns: u64,
+        pub notified_sequence: u64,
+        pub target_sequence: u64,
+        pub ring_observed_ns: u64,
+        pub captured_sequence: u64,
+        pub committed_sequence: u64,
+        pub applied_observed_ns: u64,
+        pub applied_sequence: u64,
+        pub last_progress_ns: u64,
+        pub pages: u64,
+        pub parsed_events: u64,
+        pub parsed_bytes: u64,
+    }
+    impl Seat {
+        pub fn progress(&mut self, sequence: u64, now: u64) {
+            if sequence > self.applied_sequence {
+                self.last_progress_ns = now;
+            }
+            self.applied_sequence = sequence;
+            self.applied_observed_ns = now;
+        }
+    }
+
+    #[derive(Clone, Debug, Serialize)]
+    pub struct Snapshot {
+        pub enabled: bool,
+        /// All timestamps use one process-relative monotonic clock. Compare
+        /// logic and supervisor directly only when their process_id matches.
+        pub process_id: u32,
+        /// Completion of the copy. Rows are earlier observations, not a single
+        /// atomic cut; none may appear to come from after this timestamp.
+        pub sampled_ns: u64,
+        pub started_ns: u64,
+        pub turn: u64,
+        pub span_capacity: usize,
+        pub seat_capacity: usize,
+        pub overwritten_spans: u64,
+        pub missed: u64,
+        pub untracked_seat_samples: u64,
+        pub totals: Vec<(Phase, Totals)>,
+        pub in_flight: Vec<(Phase, InFlight)>,
+        pub seats: Vec<Seat>,
+        pub spans: Vec<Span>,
+    }
+
+    struct Buffer {
+        started_ns: u64,
+        overwritten: u64,
+        untracked: u64,
+        totals: [Totals; PHASES.len()],
+        seats: HashMap<Ulid, Seat>,
+        spans: VecDeque<Span>,
+    }
+
+    #[derive(Default)]
+    pub struct Recorder {
+        buffer: OnceLock<Mutex<Buffer>>,
+        turn: AtomicU64,
+        pages: AtomicU64,
+        missed: AtomicU64,
+        active: [AtomicU64; PHASES.len()],
+        active_since: [AtomicU64; PHASES.len()],
+    }
+    impl Recorder {
+        /// Allocate the fixed capacity once, on IO/bootstrap, before the run.
+        pub fn enable(&self) {
+            bbt_rt::assert_not_ui_thread();
+            self.buffer.get_or_init(|| {
+                Mutex::new(Buffer {
+                    started_ns: now_ns(),
+                    overwritten: 0,
+                    untracked: 0,
+                    totals: std::array::from_fn(|_| Totals::default()),
+                    seats: HashMap::with_capacity(SEATS),
+                    spans: VecDeque::with_capacity(SPANS),
+                })
+            });
+        }
+
+        pub fn start(
+            self: &Arc<Self>,
+            phase: Phase,
+            seat: Ulid,
+            generation: u64,
+            from: u64,
+            to: u64,
+        ) -> Guard {
+            if self.buffer.get().is_none() {
+                return Guard(None);
+            }
+            let turn = if matches!(phase, Phase::LogicTurn | Phase::SupervisorTurn) {
+                self.pages.store(0, Ordering::Relaxed);
+                self.turn.fetch_add(1, Ordering::Relaxed) + 1
+            } else {
+                self.turn.load(Ordering::Relaxed)
+            };
+            let start_ns = now_ns();
+            if self.active[phase as usize].fetch_add(1, Ordering::Relaxed) == 0 {
+                self.active_since[phase as usize].store(start_ns, Ordering::Relaxed);
+            }
+            Guard(Some((
+                self.clone(),
+                Span {
+                    phase,
+                    turn,
+                    start_ns,
+                    elapsed_ns: 0,
+                    seat,
+                    generation,
+                    from,
+                    to,
+                    request_id: Ulid::nil(),
+                    outcome: Outcome::Error,
+                    work: 0,
+                    bytes: 0,
+                    pending: 0,
+                    ready: 0,
+                    parked: 0,
+                },
+            )))
+        }
+
+        fn update(&self, f: impl FnOnce(&mut Buffer)) {
+            let Some(buffer) = self.buffer.get() else {
+                return;
+            };
+            match buffer.try_lock() {
+                Ok(mut buffer) => f(&mut buffer),
+                Err(TryLockError::Poisoned(error)) => f(&mut error.into_inner()),
+                Err(TryLockError::WouldBlock) => {
+                    self.missed.fetch_add(1, Ordering::Relaxed);
+                }
+            }
+        }
+
+        pub fn seat(&self, seat: Ulid, generation: u64, f: impl FnOnce(&mut Seat, u64)) {
+            self.update(|buffer| {
+                if !buffer.seats.contains_key(&seat) && buffer.seats.len() == SEATS {
+                    buffer.untracked += 1;
+                    return;
+                }
+                let row = buffer.seats.entry(seat).or_default();
+                if row.generation != generation {
+                    *row = Seat {
+                        seat,
+                        generation,
+                        ..Seat::default()
+                    };
+                }
+                let now = now_ns();
+                row.observed_ns = now;
+                f(row, now);
+            });
+        }
+
+        #[allow(
+            clippy::disallowed_methods,
+            reason = "bounded diagnostic snapshot on IO, never the UI"
+        )]
+        pub fn snapshot(&self) -> Snapshot {
+            bbt_rt::assert_not_ui_thread();
+            let mut snapshot = Snapshot {
+                enabled: self.buffer.get().is_some(),
+                process_id: std::process::id(),
+                sampled_ns: now_ns(),
+                started_ns: 0,
+                turn: self.turn.load(Ordering::Relaxed),
+                span_capacity: SPANS,
+                seat_capacity: SEATS,
+                overwritten_spans: 0,
+                missed: self.missed.load(Ordering::Relaxed),
+                untracked_seat_samples: 0,
+                totals: Vec::new(),
+                in_flight: PHASES
+                    .into_iter()
+                    .map(|phase| {
+                        (
+                            phase,
+                            InFlight {
+                                count: self.active[phase as usize].load(Ordering::Relaxed),
+                                group_started_ns: self.active_since[phase as usize]
+                                    .load(Ordering::Relaxed),
+                            },
+                        )
+                    })
+                    .collect(),
+                seats: Vec::new(),
+                spans: Vec::new(),
+            };
+            if let Some(buffer) = self.buffer.get() {
+                let buffer = buffer
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                snapshot.started_ns = buffer.started_ns;
+                snapshot.overwritten_spans = buffer.overwritten;
+                snapshot.untracked_seat_samples = buffer.untracked;
+                snapshot.totals = PHASES
+                    .into_iter()
+                    .zip(buffer.totals.iter().cloned())
+                    .collect();
+                snapshot.seats = buffer.seats.values().cloned().collect();
+                snapshot.spans = buffer.spans.iter().copied().collect();
+            }
+            snapshot.seats.sort_by_key(|seat| seat.seat);
+            snapshot.sampled_ns = now_ns();
+            snapshot
+        }
+    }
+
+    pub struct Guard(Option<(Arc<Recorder>, Span)>);
+    impl Guard {
+        pub fn request(&mut self, request_id: Ulid) {
+            if let Some((_, span)) = &mut self.0 {
+                span.request_id = request_id;
+            }
+        }
+        pub fn pending(&mut self, pending: usize, ready: usize, parked: usize) {
+            if let Some((_, span)) = &mut self.0 {
+                span.pending = pending as u64;
+                span.ready = ready as u64;
+                span.parked = parked as u64;
+            }
+        }
+        pub fn finish(mut self, outcome: Outcome, work: u64, bytes: u64) {
+            if let Some((_, span)) = &mut self.0 {
+                span.outcome = outcome;
+                span.work = work;
+                span.bytes = bytes;
+            }
+        }
+    }
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            let Some((recorder, mut span)) = self.0.take() else {
+                return;
+            };
+            span.elapsed_ns = now_ns().saturating_sub(span.start_ns);
+            recorder.active[span.phase as usize].fetch_sub(1, Ordering::Relaxed);
+            if span.phase == Phase::ReplayPage && span.work > 0 {
+                recorder.pages.fetch_add(1, Ordering::Relaxed);
+            } else if span.phase == Phase::LogicTurn {
+                span.work = recorder.pages.load(Ordering::Relaxed);
+            }
+            recorder.update(|buffer| {
+                let total = &mut buffer.totals[span.phase as usize];
+                total.calls += 1;
+                total.elapsed_ns += span.elapsed_ns;
+                total.max_ns = total.max_ns.max(span.elapsed_ns);
+                total.work += span.work;
+                total.bytes += span.bytes;
+                total.errors += u64::from(span.outcome != Outcome::Ok);
+                total.busy += u64::from(span.outcome == Outcome::Busy);
+                total.pending_peak = total.pending_peak.max(span.pending);
+                if buffer.spans.len() == SPANS {
+                    buffer.spans.pop_front();
+                    buffer.overwritten += 1;
+                }
+                buffer.spans.push_back(span);
+            });
+        }
+    }
+
+    fn now_ns() -> u64 {
+        static ORIGIN: OnceLock<Instant> = OnceLock::new();
+        ORIGIN
+            .get_or_init(Instant::now)
+            .elapsed()
+            .as_nanos()
+            .min(u64::MAX as u128) as u64
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn bounded_trace_retains_totals_and_reports_overwrite_and_contention() {
+            let recorder = Arc::new(Recorder::default());
+            recorder
+                .start(Phase::Parse, Ulid::nil(), 0, 0, 0)
+                .finish(Outcome::Ok, 9, 10);
+            assert!(!recorder.snapshot().enabled);
+            assert!(recorder.snapshot().spans.is_empty());
+            recorder.enable();
+            for _ in 0..SPANS + 3 {
+                recorder
+                    .start(Phase::ReadRingRpc, Ulid::nil(), 1, 2, 3)
+                    .finish(Outcome::Busy, 1, 4);
+            }
+            let snapshot = recorder.snapshot();
+            assert_eq!(snapshot.spans.len(), SPANS);
+            assert_eq!(snapshot.overwritten_spans, 3);
+            let total = &snapshot.totals[Phase::ReadRingRpc as usize].1;
+            assert_eq!(total.calls, SPANS as u64 + 3);
+            assert_eq!(total.busy, total.calls);
+            assert_eq!(total.bytes, 4 * total.calls);
+            let lock = recorder.buffer.get().unwrap().try_lock().unwrap();
+            recorder
+                .start(Phase::Parse, Ulid::nil(), 1, 0, 0)
+                .finish(Outcome::Ok, 1, 1);
+            drop(lock);
+            assert_eq!(
+                recorder.snapshot().missed,
+                1,
+                "recording waited for a reader"
+            );
+        }
+
+        #[test]
+        fn cursor_generations_and_turn_pages_remain_distinct() {
+            let recorder = Arc::new(Recorder::default());
+            recorder.enable();
+            let seat = Ulid::from(1);
+            let mut turn = recorder.start(Phase::LogicTurn, Ulid::nil(), 0, 0, 0);
+            let active = recorder.snapshot();
+            assert_eq!(active.in_flight[Phase::LogicTurn as usize].1.count, 1);
+            recorder.seat(seat, 1, |row, now| {
+                row.progress(5, now);
+                row.notified_sequence = 10;
+                row.captured_sequence = 20;
+                row.ring_observed_ns = now;
+            });
+            recorder
+                .start(Phase::ReplayPage, seat, 1, 6, 9)
+                .finish(Outcome::Ok, 4, 100);
+            turn.pending(7, 6, 1);
+            turn.finish(Outcome::Ok, 0, 0);
+            let snapshot = recorder.snapshot();
+            assert_eq!(snapshot.in_flight[Phase::LogicTurn as usize].1.count, 0);
+            assert_eq!(snapshot.spans.last().unwrap().work, 1);
+            assert_eq!(snapshot.spans.last().unwrap().pending, 7);
+            assert_eq!(
+                snapshot.seats[0].captured_sequence - snapshot.seats[0].applied_sequence,
+                15
+            );
+            assert!(snapshot.seats[0].observed_ns <= snapshot.sampled_ns);
+            recorder.seat(seat, 2, |row, now| row.progress(1, now));
+            let snapshot = recorder.snapshot();
+            assert_eq!(snapshot.seats[0].generation, 2);
+            assert_eq!(snapshot.seats[0].applied_sequence, 1);
+            assert_eq!(snapshot.seats[0].captured_sequence, 0);
+            for id in 2..=SEATS + 1 {
+                recorder.seat(Ulid::from(id as u128), 1, |_, _| {});
+            }
+            let snapshot = recorder.snapshot();
+            assert_eq!(snapshot.seats.len(), SEATS);
+            assert_eq!(snapshot.untracked_seat_samples, 1);
+            assert!(serde_json::to_vec(&snapshot).is_ok());
+        }
+    }
+}
+fn diagnostic_outcome<T>(result: &Result<T, Failure>) -> capture_diagnostics::Outcome {
+    match result {
+        Ok(_) => capture_diagnostics::Outcome::Ok,
+        Err(error) if error.code == FailureCode::Busy => capture_diagnostics::Outcome::Busy,
+        Err(_) => capture_diagnostics::Outcome::Error,
+    }
+}
 // Non-macOS fallback is unchanged; this pass validates the macOS cockpit only.
 #[cfg(not(target_os = "macos"))]
 const CHILD_POLL_INTERVAL: Duration = Duration::from_millis(100);
@@ -61,6 +541,7 @@ pub struct Supervisor {
     waker: Arc<Waker>,
     thread: Option<JoinHandle<io::Result<()>>>,
     capability: [u8; 32],
+    capture_diagnostics: Arc<capture_diagnostics::Recorder>,
 }
 
 impl Supervisor {
@@ -85,6 +566,7 @@ impl Supervisor {
         let mut capability = [0; 32];
         getrandom::fill(&mut capability).map_err(io::Error::other)?;
         let (tx, rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
+        let capture_diagnostics = Arc::new(capture_diagnostics::Recorder::default());
         let mut actor = Actor {
             capture_writer: CaptureWriter::start(
                 waker.clone(),
@@ -102,6 +584,7 @@ impl Supervisor {
             active: None,
             next_token: 2,
             pending_io: Vec::new(),
+            capture_diagnostics: capture_diagnostics.clone(),
         };
         let thread = thread::Builder::new()
             .name("bbt-supervisor".into())
@@ -111,7 +594,19 @@ impl Supervisor {
             waker,
             thread: Some(thread),
             capability,
+            capture_diagnostics,
         })
+    }
+
+    /// Enable bounded capture spans on IO before a diagnostic run. No RPCs or
+    /// file writes are added, and recording is disabled by default.
+    pub fn enable_capture_diagnostics(&self) {
+        self.capture_diagnostics.enable();
+    }
+
+    /// Copy the bounded buffers on IO; does not drain or reset them.
+    pub fn capture_diagnostics(&self) -> capture_diagnostics::Snapshot {
+        self.capture_diagnostics.snapshot()
     }
 
     /// The startup owner passes this capability out of band, never via argv/logs.
@@ -305,19 +800,21 @@ struct Actor {
     active: Option<(Ulid, Ulid)>,
     next_token: usize,
     pending_io: Vec<PendingIo>,
+    capture_diagnostics: Arc<capture_diagnostics::Recorder>,
     // Dropped after seats, so their queued close/flush jobs are drained first.
     capture_writer: CaptureWriter,
 }
 
 enum Dispatch {
     Ready(Result<Reply, Failure>),
-    Pending(CaptureResponse),
+    Pending(CaptureResponse, capture_diagnostics::Guard),
 }
 struct PendingIo {
     client: Ulid,
     request_id: Ulid,
     reply: Option<mpsc::SyncSender<Result<Reply, Failure>>>,
     response: CaptureResponse,
+    diagnostic: capture_diagnostics::Guard,
 }
 
 impl Drop for Actor {
@@ -341,6 +838,13 @@ impl Actor {
     fn run(&mut self) -> io::Result<()> {
         let mut events = Events::with_capacity(256);
         loop {
+            let mut turn = self.capture_diagnostics.start(
+                capture_diagnostics::Phase::SupervisorTurn,
+                Ulid::nil(),
+                0,
+                0,
+                0,
+            );
             self.complete_io();
             for _ in 0..64 {
                 match self.rx.try_recv() {
@@ -368,12 +872,15 @@ impl Actor {
                             Dispatch::Ready(result) => {
                                 let _ = reply.try_send(result);
                             }
-                            Dispatch::Pending(response) => self.pending_io.push(PendingIo {
-                                client,
-                                request_id,
-                                reply: Some(reply),
-                                response,
-                            }),
+                            Dispatch::Pending(response, diagnostic) => {
+                                self.pending_io.push(PendingIo {
+                                    client,
+                                    request_id,
+                                    reply: Some(reply),
+                                    response,
+                                    diagnostic,
+                                })
+                            }
                         }
                     }
                     Err(mpsc::TryRecvError::Empty) => break,
@@ -381,12 +888,20 @@ impl Actor {
                 }
             }
             // Every seat is driven here; no reader/writer/wait thread per seat.
+            let sweep = self.capture_diagnostics.start(
+                capture_diagnostics::Phase::SupervisorSweep,
+                Ulid::nil(),
+                0,
+                0,
+                0,
+            );
             let ids: Vec<_> = self.seats.keys().copied().collect();
             for id in ids {
                 let mut seat = self.seats.remove(&id).unwrap();
                 seat.tick(self)?;
                 self.seats.insert(id, seat);
             }
+            sweep.finish(capture_diagnostics::Outcome::Ok, self.seats.len() as u64, 0);
             self.flush_sockets();
             let ready = self.seats.values().any(|seat| {
                 seat.read_ready
@@ -444,6 +959,8 @@ impl Actor {
                     },
                 }
             }
+            turn.pending(self.pending_io.len(), 0, 0);
+            turn.finish(capture_diagnostics::Outcome::Ok, 0, 0);
         }
     }
 
@@ -456,6 +973,34 @@ impl Actor {
         ) {
             return Dispatch::Ready(self.dispatch_now(client, frame));
         }
+        let (seat, generation, from, to) = match &frame.body.action {
+            Action::ReadRing {
+                attachment,
+                from,
+                to,
+            } => (attachment.seat, attachment.generation, *from, *to),
+            Action::RingRecovery { attachment } | Action::PublishCheckpoint { attachment, .. } => {
+                (attachment.seat, attachment.generation, 0, 0)
+            }
+            _ => unreachable!(),
+        };
+        let mut dispatch = self.capture_diagnostics.start(
+            capture_diagnostics::Phase::SupervisorDispatch,
+            seat,
+            generation,
+            from,
+            to,
+        );
+        dispatch.request(frame.body.request_id);
+        dispatch.pending(self.pending_io.len(), 0, 0);
+        let mut query = self.capture_diagnostics.start(
+            capture_diagnostics::Phase::SupervisorQuery,
+            seat,
+            generation,
+            from,
+            to,
+        );
+        query.request(frame.body.request_id);
         let result = (|| {
             if frame.version != VERSION {
                 return Err(Failure::new(FailureCode::Version, "unsupported version"));
@@ -501,9 +1046,14 @@ impl Actor {
                 .ok_or_else(|| Failure::new(FailureCode::NotFound, "no ring configured"))?;
             ring.request(query)
         })();
+        let outcome = diagnostic_outcome(&result);
+        dispatch.finish(outcome, 0, 0);
         match result {
-            Ok(response) => Dispatch::Pending(response),
-            Err(error) => Dispatch::Ready(Err(error)),
+            Ok(response) => Dispatch::Pending(response, query),
+            Err(error) => {
+                query.finish(outcome, 0, 0);
+                Dispatch::Ready(Err(error))
+            }
         }
     }
 
@@ -521,6 +1071,7 @@ impl Actor {
             ready.push((self.pending_io.swap_remove(i), result));
         }
         for (pending, result) in ready {
+            pending.diagnostic.finish(diagnostic_outcome(&result), 0, 0);
             if let Some(reply) = pending.reply {
                 let _ = reply.try_send(result);
             } else {
@@ -999,11 +1550,12 @@ impl Actor {
                 let request_id = frame.body.request_id;
                 match self.dispatch(id, frame) {
                     Dispatch::Ready(result) => self.socket_reply(id, request_id, result),
-                    Dispatch::Pending(response) => self.pending_io.push(PendingIo {
+                    Dispatch::Pending(response, diagnostic) => self.pending_io.push(PendingIo {
                         client: id,
                         request_id,
                         reply: None,
                         response,
+                        diagnostic,
                     }),
                 }
                 if !self.clients.contains_key(&id) {
@@ -1801,6 +2353,7 @@ mod capture_read_tests {
             active: None,
             next_token: 2,
             pending_io: Vec::new(),
+            capture_diagnostics: Arc::new(capture_diagnostics::Recorder::default()),
             capture_writer,
         }
     }

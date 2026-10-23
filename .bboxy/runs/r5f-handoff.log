@@ -1,0 +1,68 @@
+R5f: exact-source handoff
+2026-10-23T23:34:27.343609+00:00
+Gated signed source: a7d400c337cc44c11a66d2901d204e4ce74a683d
+Parent at gate start: 32ed8489e0fb4aea08aa07227aa838fc7a77cb5a
+Branch/worktree: rook-r5f-capture-metrics /Users/feral/mydev/bboxy450-term-rook
+Scope: c4afdda7; app bindings 87c04169; evidence 1cdb8f99; slot 2 aaabc14f.
+
+Files and mechanism:
+crates/bbt-supervisor/src/supervisor.rs:36 — default-off numeric recorder; fixed 8192-span/2048-seat capacity, counted overwrite/contention/untracked samples, completed inclusive totals and in-flight counts; copy-completion timestamps on one process-relative clock.
+crates/bbt-supervisor/src/supervisor.rs:603,891,967,1060 — opt-in owner snapshots and sweep/dispatch/query-completion spans; no protocol, writer or durability change.
+crates/bbt-mux/src/logic.rs:169,2664,2697,2754,2860,3683,3726,4144 — snapshots, last-observed ring head/applied cursor, parse/pages/checkpoint/RPC attempt and backoff/command/receive/maintenance spans, pending depth and per-turn pages. Original scheduling, replay, retries and effects preserved.
+crates/bbt-mux/tests/capture_fairness.rs:176 — existing real four-PTY fairness and exact serial-Screen regression runs with both recorders enabled and checks the bounded observations.
+crates/bboxy450-term/src/stall/load.rs:55,68,815,901,1198 — enable on IO bootstrap, save stop observation, freeze both buffers before diagnostic RPCs and emit existing timeout table; readiness/deadlines unchanged. Aster static binding review no blocking finding.
+
+Verification:
+sh scripts/ci-local.sh — exit 0 in clean detached tree /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/ci-tree; private fresh target; CARGO_BUILD_JOBS=2; O1/debug assertions; no incremental/debug info; BBOXY_TEST_CUSTODY=memory.
+Gate sequence (scripts/ci-local.sh uses set -eu): layering, workspace build, strict all-target workspace Clippy -D warnings, workspace tests, UI IO lint, app smoke, invariants all exit 0.
+Normal invariant summary: 11 checks / 0 failures / 5 named slow skips. No --parity or --slow requested or run.
+Exact log acceptance witnesses:
+.bboxy/runs/r5f-ci.log:846 — test stall::load::tests::timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results ... ok
+.bboxy/runs/r5f-ci.log:1860 — test down_host_replay_parks_and_idle_local_polling_stays_bounded_until_reconnect ... ok
+.bboxy/runs/r5f-ci.log:1861 — test four_watched_seats_advance_during_a_large_replay_and_match_serial_screens ... ok
+.bboxy/runs/r5f-ci.log:2079 — test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... ok
+.bboxy/runs/r5f-ci.log:2288 — test supervisor::capture_diagnostics::tests::bounded_trace_retains_totals_and_reports_overwrite_and_contention ... ok
+.bboxy/runs/r5f-ci.log:2290 — test supervisor::capture_diagnostics::tests::cursor_generations_and_turn_pages_remain_distinct ... ok
+.bboxy/runs/r5f-ci.log:2979 — idle probe PASS: idle 10.001s frames=0 callbacks=0 updates=20 CPU p50=2.860ms p99=3.856ms samples=21 warm_encode_p50=1.987ms warm_encode_p99=2.296ms
+.bboxy/runs/r5f-ci.log:3045 — invariants: 11 checks, 0 failures, 5 slow checks skipped
+.bboxy/runs/r5f-ci.log:3046 — ci-local: all gates passed
+
+Elapsed CI seconds: 1052.329148
+Raw CI SHA256: e94fba987fa3b2b393fbdc06d0857631269232518d4171e9c9f93013bd6ba372
+Actual child exit persisted before deleting private target: 0; allocated bytes freed 2805858304; minimum free bytes 76120268800; guard never triggered.
+git verify-commit a7d400c337cc44c11a66d2901d204e4ce74a683d — exit 0; good Boxy machine signature.
+
+Main at post-gate check: 0c7b26d1f3733e791bba9766b9c58a9c36068d26. It advanced from the pinned parent; no automatic rebase/re-gate was performed under AGENTS.md. Includes accepted W2.6b/L9-M-b in logic.rs and GUI/proto/app seams; Oracle owns merge verification. Changed paths:
+.bboxy/decisions/2026-10-22-architecture-round-1.md
+.bboxy/invariants/parity-geometry.md
+.bboxy/research/desktop-notifications-research.md
+.bboxy/runs/w2-6-b-ci-cc1d87c.log
+.bboxy/runs/w2-6-b-development-cc1d87c.log
+.bboxy/runs/w2-6-b-handoff-cc1d87c.log
+.bboxy/runs/w2-6-b-integration-cc1d87c.log
+.bboxy/runs/w2-6-b-parity-cc1d87c.log
+.bboxy/runs/w2-6-b-review-cc1d87c.log
+.bboxy/specs/desktop-notifications.md
+.bboxy/specs/renderer.md
+crates/bboxy450-term/src/cockpit.rs
+crates/bboxy450-term/src/live.rs
+crates/bboxy450-term/src/main.rs
+crates/bboxy450-term/src/model.rs
+crates/bboxy450-term/tests/cockpit.rs
+crates/bboxy450-term/tests/custody.rs
+crates/bboxy450-term/tests/lifecycle.rs
+crates/bboxy450-term/tests/recovery.rs
+crates/bboxy450-term/tests/support/events.rs
+crates/bbt-mux/src/bus.rs
+crates/bbt-mux/src/gui_events.rs
+crates/bbt-mux/src/lib.rs
+crates/bbt-mux/src/logic.rs
+crates/bbt-mux/src/seat_socket.rs
+crates/bbt-mux/tests/gui_events.rs
+crates/bbt-mux/tests/provider_gui.rs
+crates/bbt-proto/src/events.rs
+crates/bbt-proto/src/gui.rs
+crates/bbt-proto/src/lib.rs
+
+Gaps and boundary: instrumentation only. No 967/50 scale window, no live observer-overhead or phase-partition result. A single diagnostic run is still Oracle-scheduled after acceptance. ReadRing batching and watched-seat priority remain alternatives, neither implemented. Spans are inclusive; RPC/supervisor overlap is not additive. Heads are last observed, with timestamps, not fresh timeout queries. Timeout-only export is approved.
+No source, dependencies, Cargo.lock, terminal semantics, capture durability, GUI readiness or deadlines changed outside the allowed instrumentation and tests.

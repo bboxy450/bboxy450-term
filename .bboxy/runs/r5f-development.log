@@ -1,0 +1,74 @@
+R5f capture-path instrumentation: development verification
+2026-10-23T22:38:48.388989+00:00
+Assignment: c4afdda7-7a80-4c52-b864-8eff2587418f
+App binding scope: 87c04169-7abd-4ef9-8a0a-ff8573a7b2cc
+Evidence scope: 1cdb8f99-af68-4370-bb55-be1dc9f0e7e8
+Base: 9171bde89ed845439f6cbb98974d7b8e3e9b7ec2
+Worktree: /Users/feral/mydev/bboxy450-term-rook
+Environment: BBOXY_TEST_CUSTODY=memory; O1; debug assertions; no debug info/incremental; jobs=2
+
+Mechanism: default-disabled fixed-capacity numeric recorder (8192 spans / 2048 seat rows per owner), nonblocking recording, counted contention/overwrites/untracked samples. Completed inclusive spans plus in-flight counts. Process-relative monotonic clock; snapshot timestamp is copy completion. Last-observed heads are not fresh queries.
+Logic: pending depths, pages per turn, per-seat generation/cursor/head timestamps, RPC attempts and bounded backoff parent, parse, checkpoints, maintenance. Supervisor: dispatch/query completion and full-seat sweep spans. No protocol, runtime, durability, scheduling, readiness or deadline change.
+R5: enable both owners once, snapshot after go removal, freeze before timeout probe RPCs, serialize stop/timeout observations in the existing diagnostics table. Timeout-only export is explicitly approved.
+
+metrics-unit: cargo test -p bbt-supervisor --lib capture_diagnostics --locked -- --nocapture
+exit=0 elapsed_s=118.175352
+raw=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/metrics-unit.log sha256=c7d56540a95be7cc45e5de9dbe65ebe2e349d478febb346d803c047d9fb14635
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 41 filtered out; finished in 0.00s
+
+backend-lib: cargo test -p bbt-supervisor -p bbt-mux --lib --locked
+exit=0 elapsed_s=83.652328
+raw=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/backend-lib.log sha256=bc7e270f12b00da944081503d14ca18068bf495dcfbb7e5c384e229acd54e096
+test result: ok. 43 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.65s
+test result: ok. 40 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 10.02s
+
+fairness: cargo test -p bbt-mux --test capture_fairness --locked -- --nocapture
+exit=0 elapsed_s=209.483239
+raw=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/fairness.log sha256=e643d6dae83ac219de5e6646314d2f74e7006aefa12a37f76d870fe026ec73bb
+other three watched seats updated during replay: 304.071708ms, huge_pages=8
+down-host idle 1.002592834s: local_receives=81, remote_receives=81, bound=111, capture_retries=0
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.33s
+
+fairness-final: cargo test -p bbt-mux --test capture_fairness --locked -- --nocapture
+exit=0 elapsed_s=73.990583
+raw=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/fairness-final.log sha256=79c568e22832e0ed0d03017ae5f811d66157dc70f335e26082243825a5e3bac7
+down-host idle 1.001235417s: local_receives=80, remote_receives=80, bound=111, capture_retries=0
+other three watched seats updated during replay: 594.139917ms, huge_pages=13
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.15s
+
+clippy: cargo clippy --workspace --all-targets --locked -- -D warnings
+exit=0 elapsed_s=108.790911
+raw=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/clippy.log sha256=1c4dac6d18827540eb68cb1e69d01fe5df0e3bb981966a9ec598e26f4eec5d2b
+
+app-table: cargo test -p bboxy450-term --locked timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results -- --nocapture
+exit=0 elapsed_s=134.613681
+raw=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/app-table.log sha256=1f8dc14eb24a8a4f5c6010f748734f13fd86c8a41bde40e2845a6fcb958c7f8a
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 62 filtered out; finished in 0.05s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+metrics-final: cargo test -p bbt-supervisor --lib capture_diagnostics --locked
+exit=0 elapsed_s=9.889246
+raw=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/metrics-final.log sha256=f241e8a7f30dbf6d53c5703598f776ee5f79203e74f5eab927da7ea8d51a369d
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 41 filtered out; finished in 0.00s
+
+clippy-final: cargo clippy --workspace --all-targets --locked -- -D warnings
+exit=0 elapsed_s=12.233640
+raw=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5f-sq1gmkyz/clippy-final.log sha256=1f29cfad57d340e9084ce13a29b3359fadb167cad5c750c5e2b5f69be2cb7dd1
+
+The final two recorder tests and strict workspace Clippy follow the snapshot-copy timestamp correction; earlier backend/fairness/app-table checks precede that correction. Exact committed-source CI is the landing gate, still pending at this development record.
+Aster binding review: no blocking finding, /private/tmp/aster-r5-window3-aeniqxeb/r5f-binding-review.json; app patch SHA256 b2970e86034f94d286f31b12de06a47738a7034f1c6fbb38a92cd2dc9db9c916. No independent live overhead/progress evidence claimed.
+All development commands above exited 0. No full gate or R5 scale diagnostic run started. No performance comparison inferred from small-fixture timings.
+Remaining: clean exact-commit normal ci-local in the Oracle slot, then ONE Oracle-scheduled diagnostic run before choosing batching or watched-seat priority.
+Source SHA256:
+crates/bbt-supervisor/src/supervisor.rs 25950aba89c4564fc962e232e97697afe34f7e62e0f94572e7916c227e1d747d
+crates/bbt-mux/src/logic.rs c87e1b4afa034eedf90c54e30e5572128f673710e9f407e79fa6267f7c4277cb
+crates/bbt-mux/tests/capture_fairness.rs 3f02a3cccaad89489b0e0b99be55bb9fc826099a4ea346a0e62208cdf5742fc4
+crates/bboxy450-term/src/stall/load.rs 43ad0c5631b1c2f21fd7ec36f7e5ebbda43ab132b95ea5c15ec5700ca85f51a0

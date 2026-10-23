@@ -21,8 +21,20 @@ struct Core {
     logic: Logic,
     supervisor: Supervisor,
     ring_probe: RingProbe,
+    capture_at_stop: Mutex<Option<CaptureSnapshot>>,
+}
+#[derive(Clone, Serialize)]
+struct CaptureSnapshot {
+    logic: bbt_mux::supervisor::capture_diagnostics::Snapshot,
+    supervisor: bbt_mux::supervisor::capture_diagnostics::Snapshot,
 }
 impl Core {
+    fn capture_diagnostics(&self) -> CaptureSnapshot {
+        CaptureSnapshot {
+            logic: self.logic.client.capture_diagnostics(),
+            supervisor: self.supervisor.capture_diagnostics(),
+        }
+    }
     #[allow(
         clippy::disallowed_methods,
         reason = "R5 bootstrap file IO runs on the blocking pool, never the UI"
@@ -40,6 +52,7 @@ impl Core {
                     ..Default::default()
                 })
                 .map_err(|e| e.to_string())?;
+                supervisor.enable_capture_diagnostics();
                 let connection = supervisor.connect().map_err(|e| e.to_string())?;
                 let ring_probe = RingProbe::new(connection);
                 let logic = Logic::start_custodied(
@@ -52,10 +65,12 @@ impl Core {
                     bbt_rt::handle(),
                 )
                 .map_err(|e| e.to_string())?;
+                logic.client.enable_capture_diagnostics();
                 Ok(Self {
                     logic,
                     supervisor,
                     ring_probe,
+                    capture_at_stop: Mutex::new(None),
                 })
             })
             .await
@@ -795,6 +810,10 @@ async fn settle_timeout(
     gui: &GuiTrace,
 ) -> String {
     let started = Instant::now();
+    // Freeze numeric buffers before the later Snapshot/ReadRing probes affect
+    // them. The two owners are sampled in sequence, not as an atomic cut.
+    let capture_at_timeout = core.capture_diagnostics();
+    let capture_at_stop = io_lock(&core.capture_at_stop).clone();
     let phase = progress.phase();
     let native = progress.native_settle.snapshot();
     let mut received = gui.snapshot();
@@ -879,6 +898,8 @@ async fn settle_timeout(
         "panes_at_timeout": panes,
         "native_last_poll_at_timeout": native,
         "false_settle_predicates": false_settle_predicates(phase, panes, native),
+        "capture_at_stop": capture_at_stop,
+        "capture_at_timeout": capture_at_timeout,
         "notes": [
             "GUI checkpoints frozen at timeout; native flags are from its last poll and counters may be newer",
             "Applied written means socket write_all completed, not server acceptance",
@@ -886,6 +907,8 @@ async fn settle_timeout(
             "ring query examines the final two captured sequences, up to four pages, not all historical output",
             "null means unknown; a gap, failed read or truncated tail never proves marker absence",
             "R5PAUSED is the existing marker; an initial pause is not distinguished from the final pause",
+            "capture spans are inclusive; RPC wait overlaps supervisor work; each snapshot carries its own sample time",
+            "capture heads and applied cursors are last observations, with ages, not diagnostic RPC results",
         ],
         "seats": rows,
     });
@@ -1172,6 +1195,7 @@ async fn exercise(
             tokio::fs::remove_file(config.run_dir.join("go"))
                 .await
                 .map_err(|e| e.to_string())?;
+            *io_lock(&core.capture_at_stop) = Some(core.capture_diagnostics());
             // Producers stop before the idle witness. Their last snapshot is
             // an explicit PAUSED row, so a quiet interval cannot hide backlog.
             if let Some(task) = side.take() {
@@ -1778,10 +1802,13 @@ mod tests {
                     bbt_rt::handle(),
                 )
                 .unwrap();
+                logic.client.enable_capture_diagnostics();
+                supervisor.enable_capture_diagnostics();
                 Core {
                     logic,
                     supervisor,
                     ring_probe,
+                    capture_at_stop: Mutex::new(None),
                 }
             })
             .await
@@ -1827,6 +1854,14 @@ mod tests {
         assert!(error.starts_with("forced diagnostic fixture timeout; table="));
         assert!(error.contains("pane-1") && error.contains("pane-2"));
         assert_eq!(table["seats"].as_array().unwrap().len(), 2);
+        assert!(table["capture_at_stop"].is_null());
+        assert_eq!(table["capture_at_timeout"]["logic"]["enabled"], true);
+        assert_eq!(table["capture_at_timeout"]["supervisor"]["enabled"], true);
+        assert_eq!(
+            table["capture_at_timeout"]["logic"]["process_id"],
+            std::process::id()
+        );
+        assert!(table["capture_at_timeout"]["supervisor"]["spans"].is_array());
         assert_eq!(
             table["seats"][0]["gui_at_timeout"]["received"]["sequence"],
             7
