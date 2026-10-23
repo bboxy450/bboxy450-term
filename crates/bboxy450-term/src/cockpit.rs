@@ -30,6 +30,14 @@ const GUI_WRITE_CAPACITY: usize = 64;
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
 pub enum UiMsg {
+    /// Declarative launch inputs only. IO supplies cwd, swarm and backend role
+    /// defaults before using the existing GUI Spawn action.
+    Spawn {
+        harness_kind: String,
+        name: Option<String>,
+        location: bbt_proto::Where,
+    },
+    /// Compatibility for the existing verification and default-shell callers.
     SpawnZsh,
     Input {
         seat: SeatId,
@@ -44,6 +52,12 @@ pub enum UiMsg {
         rows: u16,
     },
     Watched(Vec<(SeatId, View)>),
+}
+impl UiMsg {
+    /// All launches share one admission budget, including legacy callers.
+    pub fn is_spawn(&self) -> bool {
+        matches!(self, Self::Spawn { .. } | Self::SpawnZsh)
+    }
 }
 
 /// IO bootstrap settings shared with this app's private child processes.
