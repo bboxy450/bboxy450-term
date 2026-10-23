@@ -33,7 +33,10 @@
   function rollName(r) { return pick(r, FIRST) + ' ' + pick(r, LAST); }
 
   const HARNESSES = ['claude', 'codex', 'pi', 'omp', 'zsh'];
-  const DEFAULT_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: null };
+  // What the app launches: every harness starts as an executor, least privilege until Settings › Roles says otherwise.
+  const DEFAULT_ROLE = { claude: 'executor', codex: 'executor', pi: 'executor', omp: 'executor', zsh: null };
+  // Demo cohorts only: a swarm with its oracle, so the lab shows every role mark.
+  const DEMO_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: null };
   const STATES = ['active', 'idle', 'waiting', 'errored'];
   const GLYPH = { active: '●', idle: '○', waiting: '◐', errored: '✕' };
   const ROLE_MARK = { oracle: '♔', architect: '♖', executor: '♟', creativity: '♝', unsigned: '·' };
@@ -92,7 +95,7 @@
   function makeSeat(r, i, opts) {
     const harness = opts && opts.harness || pick(r, ['claude', 'codex', 'codex', 'codex', 'pi', 'omp', 'zsh']);
     const key = 'k' + hash32('seat' + i + (opts && opts.seed || '')).toString(16);
-    return { key, name: harness === 'zsh' ? 'zsh' : rollName(r), harness, role: DEFAULT_ROLE[harness], title: pick(r, TITLES), state: opts && opts.state || pick(r, ['active', 'active', 'idle', 'idle', 'idle', 'waiting', 'errored']) };
+    return { key, name: harness === 'zsh' ? 'zsh' : rollName(r), harness, role: DEMO_ROLE[harness], title: pick(r, TITLES), state: opts && opts.state || pick(r, ['active', 'active', 'idle', 'idle', 'idle', 'waiting', 'errored']) };
   }
   // split tree: {dir:'v'|'h', a, b} | seat
   function makeTree(r, seats) {
@@ -1045,7 +1048,7 @@
   // ⌘T picker: vertical, keyboard-first, typed prefix, name reveal with reroll
   // Launchables: harnesses and zsh today; browser tab, vnc and ssh later. Rows are data, the picker does not care.
   const LAUNCH = [
-    { id: 'claude', label: 'Claude', sub: 'oracle by default', harness: 'claude', kind: 'Harness', tile: '#D97757', section: 'Suggestions' },
+    { id: 'claude', label: 'Claude', sub: 'executor by default', harness: 'claude', kind: 'Harness', tile: '#D97757', section: 'Suggestions' },
     { id: 'codex', label: 'Codex', sub: 'executor by default', harness: 'codex', kind: 'Harness', tile: '#1F2937', section: 'Suggestions' },
     { id: 'pi', label: 'pi', sub: 'executor by default', harness: 'pi', kind: 'Harness', tile: '#7C3AED', section: 'Harnesses' },
     { id: 'omp', label: 'omp', sub: 'executor by default', harness: 'omp', kind: 'Harness', tile: '#0EA5E9', section: 'Harnesses' },
