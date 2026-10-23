@@ -15,6 +15,8 @@ use crate::durability::{sync_directory, sync_file};
 use crate::protocol::{Event, ExitInfo, OUTPUT_CHUNK_BYTES, SeatSize};
 use crate::store::{Blobs, Result, blobs::LocalBlobs, invalid};
 
+#[cfg(test)]
+mod checksum_tests;
 mod journal;
 #[cfg(test)]
 mod paging_tests;
@@ -1402,6 +1404,33 @@ fn load_boundary(path: &Path) -> Result<Boundary> {
     Ok(serde_json::from_slice(&bytes[..end])?)
 }
 fn crc32c_parts(header: &[u8], payload: &[u8]) -> u32 {
+    #[cfg(target_arch = "aarch64")]
+    if std::arch::is_aarch64_feature_detected!("crc") {
+        // SAFETY: Runtime detection establishes the function's CRC feature.
+        return unsafe { crc32c_aarch64(header, payload) };
+    }
+    crc32c_portable(header, payload)
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "crc")]
+unsafe fn crc32c_aarch64(header: &[u8], payload: &[u8]) -> u32 {
+    use std::arch::aarch64::{__crc32cb, __crc32cd};
+    let mut crc = !0u32;
+    for part in [header, payload] {
+        let (words, remainder) = part.as_chunks::<8>();
+        for word in words {
+            crc = __crc32cd(crc, u64::from_le_bytes(*word));
+        }
+        for byte in remainder {
+            crc = __crc32cb(crc, *byte);
+        }
+    }
+    !crc
+}
+
+// Retained both as the portable path and as an independent test reference.
+fn crc32c_portable(header: &[u8], payload: &[u8]) -> u32 {
     let mut crc = !0u32;
     for byte in header.iter().chain(payload) {
         crc = CRC32C[((crc ^ *byte as u32) & 255) as usize] ^ (crc >> 8);
