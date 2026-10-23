@@ -523,7 +523,12 @@ briefs Executors from the specs, never from this note.
     vision's "10k lines or 4 MB" is the raw ring's retention, a different
     thing. A narrow bounded-storage and scroll-row API goes into bbt-core
     (its own code, Apache-only crate) because every app with scrollback
-    needs it (#39), no wire or renderer change. Rejected: an
+    needs it (#39), no wire or renderer change. (c) The replay anchor is
+    the capture start at current dimensions, the wire having no checkpoint
+    or resize payload; checkpoints on the wire only if the 20k-line seek
+    cost measures bad. (d) The 4 MB hard cap beats the three-viewport
+    floor: an unfit dimension returns `history_viewport_exceeds_budget`,
+    live unaffected (Oracle, same day). Rejected: an
     oldest-accessible limit at 10k lines (the ring has the bytes, refusing
     to show them is a product bug); counting raw bytes only (the grid is
     the heap that matters); the API in the app (it is terminal model, not
