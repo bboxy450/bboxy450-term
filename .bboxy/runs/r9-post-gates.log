@@ -1,0 +1,175 @@
+{
+  "measurement": {
+    "cpu_before": {
+      "exit": 0,
+      "samples": [
+        {
+          "user": 87.0,
+          "system": 13.0,
+          "idle": 0.0,
+          "load1": 54.14
+        },
+        {
+          "user": 87.0,
+          "system": 13.0,
+          "idle": 0.0,
+          "load1": 54.14
+        },
+        {
+          "user": 84.0,
+          "system": 16.0,
+          "idle": 0.0,
+          "load1": 55.17
+        },
+        {
+          "user": 85.0,
+          "system": 15.0,
+          "idle": 0.0,
+          "load1": 55.17
+        },
+        {
+          "user": 84.0,
+          "system": 16.0,
+          "idle": 0.0,
+          "load1": 55.17
+        }
+      ],
+      "min_idle": 0.0
+    },
+    "cpu_after": {
+      "exit": 0,
+      "samples": [
+        {
+          "user": 88.0,
+          "system": 12.0,
+          "idle": 0.0,
+          "load1": 58.36
+        },
+        {
+          "user": 89.0,
+          "system": 11.0,
+          "idle": 0.0,
+          "load1": 58.36
+        },
+        {
+          "user": 87.0,
+          "system": 13.0,
+          "idle": 0.0,
+          "load1": 60.97
+        },
+        {
+          "user": 88.0,
+          "system": 12.0,
+          "idle": 0.0,
+          "load1": 60.97
+        },
+        {
+          "user": 84.0,
+          "system": 16.0,
+          "idle": 0.0,
+          "load1": 60.97
+        }
+      ],
+      "min_idle": 0.0
+    },
+    "quiet_observed_before_and_after": false,
+    "caveat": "CPU samples bracket the rerun; no causal guarantee about each sub-millisecond Launcher layout. A busy bracket is not labelled quiet.",
+    "results": [
+      {
+        "workload": "launcher",
+        "exit": 0,
+        "measurement": {
+          "build": "release",
+          "case": "launcher/root-cozy-dark.png",
+          "font_cache_entries": 11,
+          "font_hits_per_layout": 996,
+          "font_metrics_calls_per_layout": 996,
+          "font_misses_per_layout": 0,
+          "frame_budget_ms": 8.33,
+          "iterations": 100,
+          "layout_budget_ms": 2.0,
+          "mode": "warm",
+          "native_shape_calls_per_layout": 0,
+          "p50_layout_budget_multiple": 0.34847950000000005,
+          "p50_ms": 0.6969590000000001,
+          "p50_us": 696.9590000000001,
+          "p99_layout_budget_multiple": 0.6787915,
+          "p99_ms": 1.357583,
+          "p99_us": 1357.583,
+          "scope": "retained tree, instrumented app-equivalent width/font cache; not a complete app frame",
+          "timed": "Element::layout; tree construction, cache clearing and Layout destruction excluded",
+          "warmups": 3,
+          "width_cache_entries": 99,
+          "width_calls_per_layout": 1590,
+          "width_hits_per_layout": 1590,
+          "width_misses_per_layout": 0,
+          "x_height_calls_per_layout": 0
+        }
+      },
+      {
+        "workload": "canonical-sidebar",
+        "exit": 0,
+        "measurement": {
+          "build": "release",
+          "case": "sidebar/1000-seats-cozy-dark.png",
+          "font_cache_entries": 11,
+          "font_hits_per_layout": 1456,
+          "font_metrics_calls_per_layout": 1456,
+          "font_misses_per_layout": 0,
+          "frame_budget_ms": 8.33,
+          "iterations": 100,
+          "layout_budget_ms": 2.0,
+          "mode": "warm",
+          "native_shape_calls_per_layout": 0,
+          "p50_layout_budget_multiple": 0.9016455,
+          "p50_ms": 1.803291,
+          "p50_us": 1803.291,
+          "p99_layout_budget_multiple": 9.737166499999999,
+          "p99_ms": 19.474332999999998,
+          "p99_us": 19474.333,
+          "scope": "retained tree, instrumented app-equivalent width/font cache; not a complete app frame",
+          "timed": "Element::layout; tree construction, cache clearing and Layout destruction excluded",
+          "warmups": 3,
+          "width_cache_entries": 111,
+          "width_calls_per_layout": 2721,
+          "width_hits_per_layout": 2721,
+          "width_misses_per_layout": 0,
+          "x_height_calls_per_layout": 0
+        }
+      },
+      {
+        "workload": "1000-open",
+        "exit": 0,
+        "measurement": {
+          "build": "release",
+          "case": "sidebar/1000-seats-cozy-dark.png",
+          "font_cache_entries": 9,
+          "font_hits_per_layout": 20150,
+          "font_metrics_calls_per_layout": 20150,
+          "font_misses_per_layout": 0,
+          "frame_budget_ms": 8.33,
+          "iterations": 100,
+          "layout_budget_ms": 2.0,
+          "mode": "warm",
+          "native_shape_calls_per_layout": 0,
+          "p50_layout_budget_multiple": 18.073604,
+          "p50_ms": 36.147208,
+          "p50_us": 36147.208,
+          "p99_layout_budget_multiple": 46.3943955,
+          "p99_ms": 92.788791,
+          "p99_us": 92788.791,
+          "scope": "retained tree, instrumented app-equivalent width/font cache; not a complete app frame",
+          "timed": "Element::layout; tree construction, cache clearing and Layout destruction excluded",
+          "warmups": 3,
+          "width_cache_entries": 605,
+          "width_calls_per_layout": 31794,
+          "width_hits_per_layout": 31794,
+          "width_misses_per_layout": 0,
+          "x_height_calls_per_layout": 0
+        }
+      }
+    ]
+  },
+  "conclusion": "Quiet host NOT obtained: all ten one-second CPU samples report 0% idle; load rose about 54 to 61. Post-gate Launcher p99 fell to 1.358 ms; canonical sidebar p99 19.474 ms; 1000-open p99 92.789 ms. Cannot decide quiet-host persistence or causally classify tail noise from this saturated-host rerun. Expanded warm median remains about 36 ms with zero native shaping.",
+  "own_processes": "Full native replay, full CI, and accepted-control renderer all exited before this rerun; no peer process was stopped."
+}
