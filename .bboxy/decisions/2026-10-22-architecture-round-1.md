@@ -423,7 +423,11 @@ briefs Executors from the specs, never from this note.
     silk machinery and changes geometry to the inside perimeter strip, no
     blur; R12-3 retargeted to the rim pass; R4c glow numbers re-measured.
     First written for the plain 2 px variant; superseded the same evening
-    by the operator's choice of `alive-rim` in Wren's lab. Rejected: keeping
+    by the operator's choice of `alive-rim` in Wren's lab. Cell edge rule:
+    the band is clipped to the pane padding and the invariant measures the
+    whole band; padding does not grow; rejected a core-only invariant
+    (permits bloom over text) and growing the padding (layout following a
+    glow setting, against the operator's tighter panes). Rejected: keeping
     the lane as an option (two glow models in parity); letting depth move
     the gutter; drawing over the cell inset.
 
