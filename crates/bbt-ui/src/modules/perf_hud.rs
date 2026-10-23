@@ -4,7 +4,11 @@
 //! these records; the module never reads a clock.
 use super::{seat_row::named, strip::plain};
 use crate::{self as ui, components as c};
-use bbt_ui_model::{STYLE, TOKENS, draw::Color as Rgba, layout::Axis};
+use bbt_ui_model::{
+    STYLE, TOKENS,
+    draw::Color as Rgba,
+    layout::{Axis, Rect},
+};
 use serde::{Deserialize, Serialize};
 
 /// Spark size in px; the budget sits at two thirds of the height, so a hitch clips at the top.
@@ -176,56 +180,49 @@ impl PerfHud {
         head.align = c::Alignment::Baseline;
         head.gap = ui::Length::Spacing(4);
 
-        // Bars stack bottom-up (column-reverse) and clip at the spark's content top.
+        // Bars stack bottom-up (column-reverse) and clip at the spark's content top. All
+        // segments are one Rects node: the same Rect primitives the per-bar boxes painted, in
+        // the same order (top segment first), at the same exact fractional edges, so the
+        // renderer snaps them as it snapped the boxes. A 120-frame window is a few elements.
         let inner = SPARK_H - hair;
-        let last = self.frames.len().saturating_sub(1);
-        let bars = self
-            .frames
-            .iter()
-            .enumerate()
-            .map(|(i, f)| {
-                let mut stack = vec![];
-                if f.idle {
-                    stack.push(fill(Some(2.), None, 0., rgba(dim.alpha(0.35))));
+        let n = self.frames.len();
+        let mut segments: Vec<(Rect, ui::Paint)> = vec![];
+        for (i, f) in self.frames.iter().enumerate() {
+            let x = i as f32 * BAR_W;
+            if f.idle {
+                segments.push((Rect::new(x, inner - 2., BAR_W, 2.), rgba(dim.alpha(0.35))));
+                continue;
+            }
+            let mut bottom = 0.;
+            let mut bar = vec![];
+            for ((name, v), color) in PerfPhases::NAMES.iter().zip(f.phases.values()).zip(colors) {
+                let h = ((v * k) as f32).min(inner - bottom).max(0.);
+                bottom += h;
+                let paint = if f.hitch.as_deref() == Some(*name) {
+                    rgba(waiting)
                 } else {
-                    let mut room = inner;
-                    for ((name, v), color) in
-                        PerfPhases::NAMES.iter().zip(f.phases.values()).zip(colors)
-                    {
-                        let h = ((v * k) as f32).min(room).max(0.);
-                        room -= h;
-                        let paint = if f.hitch.as_deref() == Some(*name) {
-                            rgba(waiting)
-                        } else {
-                            rgba(color)
-                        };
-                        stack.push(fill(Some(h), None, 0., paint));
-                    }
-                }
-                let mut children: Vec<c::Item> = vec![c::Item {
-                    element: c::Element::Spacer,
-                    extent: c::Extent::Fill,
-                }];
-                children.extend(
-                    stack
-                        .into_iter()
-                        .rev()
-                        .map(|s| c::Element::Box(c::Box::new(s, vec![])).into()),
-                );
-                let mut bar = c::Box::new(plain(None, [0.; 4], 0.), children);
-                bar.style.overrides.width = Some(ui::Length::Px(BAR_W));
-                bar.direction = Axis::Column;
-                bar.gap = ui::Length::Px(0.);
-                bar.align = c::Alignment::Stretch;
-                bar.clip = true;
-                let bar = c::Element::Box(bar);
-                if i == 0 || i == last {
-                    named(format!("{key}/bar{i}"), bar).into()
-                } else {
-                    bar.into()
-                }
-            })
-            .collect();
+                    rgba(color)
+                };
+                bar.push((Rect::new(x, inner - bottom, BAR_W, h), paint));
+            }
+            segments.extend(bar.into_iter().rev());
+        }
+        let slot = |i: usize| {
+            let mut bar = c::Box::new(plain(None, [0.; 4], 0.), vec![]);
+            bar.style.overrides.width = Some(ui::Length::Px(BAR_W));
+            named(format!("{key}/bar{i}"), c::Element::Box(bar)).into()
+        };
+        let mut bars: Vec<c::Item> = vec![];
+        if n > 0 {
+            bars.push(slot(0));
+        }
+        if n > 1 {
+            bars.push(c::Item {
+                element: c::Element::Spacer,
+                extent: c::Extent::Fixed((n - 2) as f32 * BAR_W),
+            });
+            bars.push(slot(n - 1));
+        }
         let mut spark_style = plain(Some(SPARK_H), [0.; 4], 0.);
         spark_style.overrides.width = Some(ui::Length::Px(SPARK_W));
         spark_style.overrides.border_sides = Some([false, false, true, false]);
@@ -258,11 +255,21 @@ impl PerfHud {
         });
         let spark = c::Element::Layers {
             base: Box::new(named(format!("{key}/spark"), c::Element::Box(spark))),
-            overlays: vec![c::Placed {
+            overlays: [c::Placed {
+                content: c::Element::Rects(c::Rects {
+                    size: [SPARK_W, inner],
+                    rects: segments.into(),
+                }),
+                left: 0.,
+                bottom: hair,
+            }]
+            .into_iter()
+            .chain([c::Placed {
                 content: named(format!("{key}/budget"), budget),
                 left: 0.,
                 bottom: (self.budget_ms * k) as f32 + hair,
-            }],
+            }])
+            .collect(),
         };
 
         let rows = PerfPhases::NAMES

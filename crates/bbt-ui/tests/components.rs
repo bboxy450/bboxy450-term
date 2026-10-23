@@ -21,6 +21,61 @@ fn context() -> Context {
 }
 
 #[test]
+fn rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin() {
+    let element = c::Element::Rects(c::Rects {
+        size: [6., 43.],
+        rects: vec![
+            (Rect::new(0., 13.6, 2., 19.8), Paint::solid(Color::Accent)),
+            (Rect::new(4., 41., 2., 2.), Paint::solid(Color::Muted)),
+        ]
+        .into(),
+    });
+    let layout = element
+        .layout(Rect::new(26.25, 53.5, 6., 0.), context(), &Metrics)
+        .unwrap();
+    assert_eq!(layout.rect, Rect::new(26.25, 53.5, 6., 43.));
+    assert!(
+        layout.children.is_empty(),
+        "one node, whatever the rect count"
+    );
+    let ops = c::paint(&layout, context());
+    let [c::Paint::Draw(list)] = ops.as_slice() else {
+        panic!("rects draw")
+    };
+    let rects: Vec<_> = list
+        .primitives
+        .iter()
+        .map(|p| match p {
+            Prim::Rect {
+                rect,
+                radii,
+                stroke: None,
+                inner_highlight: None,
+                shadow: None,
+                ..
+            } if *radii == [0.; 4] => *rect,
+            other => panic!("a plain filled rect, not {other:?}"),
+        })
+        .collect();
+    // Exact fractional edges: the renderer snaps them in device space, as for boxes.
+    assert_eq!(
+        rects,
+        [
+            Rect::new(26.25, 67.1, 2., 19.8),
+            Rect::new(30.25, 94.5, 2., 2.)
+        ]
+    );
+    let bad = c::Element::Rects(c::Rects {
+        size: [6., 43.],
+        rects: vec![(Rect::new(0., 0., -1., 2.), Paint::solid(Color::Accent))].into(),
+    });
+    assert!(
+        bad.layout(Rect::new(0., 0., 6., 0.), context(), &Metrics)
+            .is_err()
+    );
+}
+
+#[test]
 fn path_uses_declared_viewport_and_keeps_its_retained_stroke() {
     let element = c::Element::Path(c::Path {
         size: [80., 20.],

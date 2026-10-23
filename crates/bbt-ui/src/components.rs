@@ -19,6 +19,15 @@ pub struct Path {
     pub opacity: f32,
 }
 
+/// Filled axis-aligned rects in a caller-sized slot, laid out as one node: a chart's
+/// bars, for instance. They paint as the same Rect primitives a filled Box emits, so
+/// the renderer snaps their edges exactly as it snaps boxes. Rects are slot-relative.
+#[derive(Debug, Clone)]
+pub struct Rects {
+    pub size: [f32; 2],
+    pub rects: std::sync::Arc<[(Rect, crate::Paint)]>,
+}
+
 pub trait Measure: TextMeasure {
     fn font_metrics(&self, style: &MeasureStyle) -> [f32; 2];
     /// Logical x-height for CSS inline-middle alignment. Hosts with a font
@@ -269,6 +278,7 @@ pub enum Element {
         radius: Length,
     },
     Path(Path),
+    Rects(Rects),
 }
 #[derive(Debug, Clone)]
 pub struct Placed {
@@ -335,6 +345,11 @@ pub enum LayoutKind {
         stroke: PathStroke,
         color: [f32; 4],
         fill: Option<[f32; 4]>,
+        scale: f32,
+    },
+    /// Slot-relative rects with resolved colours.
+    Rects {
+        rects: std::sync::Arc<[(Rect, [f32; 4])]>,
         scale: f32,
     },
 }
@@ -721,6 +736,20 @@ impl Element {
                 }
                 Ok((p.size, p.size[1]))
             }
+            Self::Rects(r) => {
+                if r.size.iter().any(|n| !n.is_finite() || *n < 0.)
+                    || r.rects.iter().any(|(rect, _)| {
+                        [rect.x, rect.y, rect.w, rect.h]
+                            .iter()
+                            .any(|n| !n.is_finite())
+                            || rect.w < 0.
+                            || rect.h < 0.
+                    })
+                {
+                    return Err("invalid rects slot or geometry");
+                }
+                Ok((r.size, r.size[1]))
+            }
             Self::Icon { size, .. } => {
                 let s = size.resolve(ctx.density)?;
                 Ok(([s, s], s))
@@ -932,6 +961,17 @@ impl Element {
                         .map(|f| f.resolve(ctx))
                         .transpose()?
                         .map(|f| Color(f).alpha(p.opacity).0),
+                    scale: 1.,
+                },
+                vec![],
+            ),
+            Self::Rects(r) => (
+                LayoutKind::Rects {
+                    rects: r
+                        .rects
+                        .iter()
+                        .map(|(rect, paint)| Ok((*rect, paint.resolve(ctx)?)))
+                        .collect::<crate::style::Result<_>>()?,
                     scale: 1.,
                 },
                 vec![],
@@ -1414,6 +1454,9 @@ fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
     node.baseline *= scale;
     match &mut node.kind {
         LayoutKind::Path {
+            scale: path_scale, ..
+        }
+        | LayoutKind::Rects {
             scale: path_scale, ..
         } => *path_scale *= scale,
         LayoutKind::Image { radius, .. } => *radius *= scale,
@@ -2189,6 +2232,25 @@ fn paint_contents(
                 image: asset.as_str().into(),
                 radius: *radius,
             });
+            finish(list, clips, out);
+        }
+        LayoutKind::Rects { rects, scale } => {
+            let mut list = list_with_clips(clips);
+            for (r, rgba) in rects.iter() {
+                list.push(Prim::Rect {
+                    rect: Rect::new(
+                        node.rect.x + r.x * scale,
+                        node.rect.y + r.y * scale,
+                        r.w * scale,
+                        r.h * scale,
+                    ),
+                    radii: [0.; 4],
+                    fill: color(*rgba, draw, opacity),
+                    stroke: None,
+                    inner_highlight: None,
+                    shadow: None,
+                });
+            }
             finish(list, clips, out);
         }
         LayoutKind::Path {
