@@ -382,8 +382,8 @@ briefs Executors from the specs, never from this note.
     policy hidden in hand-written loops and this macro makes that policy a
     compiler-checked declaration; starvation waivers are decision records in
     code. Spec [[yarn]]: vendored unchanged from `Gonzih/kittens-old`
-    293e134 (the operator's own code; provenance in the README; license set
-    by the operator at vendoring, MIT OR Apache-2.0 proposed), first in the
+    293e134 (the operator's own code; provenance in the README; license
+    **MIT OR Apache-2.0**, set by the operator as author on 2026-10-23), first in the
     layering order, adopted one loop at a time starting with the app IO task
     where operator input must never starve behind deltas, with a no-raw-
     select source scan per adopted file. Rejected: depending on the
