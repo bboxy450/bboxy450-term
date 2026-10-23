@@ -696,7 +696,8 @@ impl VerificationFrame {
                 );
             }
         }
-        // R12-2b's flush pair belongs here when that API lands.
+        self.materials.flush(&self.renderer.context);
+        self.renderer.flush();
         self.renderer.context.queue.submit([encoder.finish()]);
         let marker = timing_marker(&self.renderer.context.queue)?;
         let handler = RcBlock::new(move |_: NonNull<ProtocolObject<dyn MTLCommandBuffer>>| {
