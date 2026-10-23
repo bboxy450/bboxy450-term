@@ -1,0 +1,383 @@
+F4 freeze-overlap re-gate — Velvet Vulpine <EXECUTOR>
+Date: 2026-10-23T16:44:41.537906+00:00
+Oracle ruling db38c99b-49d4-4b40-8d33-aeb15cd11c5f requires one rebase/regate because L8 C touched components and added64cases.
+Rebased three commits onto accepted main9fdfd94; Wren first unchanged. Range-diff shows only native test-anchor movement after Nyx tests.
+Exact tested SHA3f978038b522675c696728b72bb0dd63973c3e62, clean detached /tmp/velvet-f4-regate-ci-3f97803.
+Command: BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity
+Own CARGO_TARGET_DIR=/tmp/velvet-f4-regate-target-3f97803; O1DEV/TEST, debug_assertionstrue, jobs2; no waivers.
+Actual exit0; elapsed2579.666s; target_deleted=True.
+Raw /tmp/velvet-f4-regate-ci-3f97803.log:2606 native idle10.002s,0frames/0callbacks; :2826 geometry1664required/measured,0unproven/mismatch; :2827 gatepass178pixeladvisory; :2835 allgatespassed; :2837 realexit0; :2840 targetdeleted.
+Build, strictworkspacealltargetClippy-Dwarnings, workspacetests, UIlint, native smoke, labcheck36x4zero, allselectedinvariants pass.7checks,0failures,4slowchecks skipped.
+The18original component tests plus Nyx additions survive rebase; both F4 regressions passed in the complete workspace run.
+Report /Users/feral/mydev/bboxy450-term-exec6/target/f4-parity-3f97803/report.json SHA2568ebd4eb3329a2cc24291d37914d75ca738b16adcdcd31625dc78ca2751ae48b0.
+Tested binary SHA256bd78ccd604bf772c947b0a11d142dad7c81636dbcbfb3a4dfb2c089d07832126.
+Oracle main baseline ruling f39415bc-4e15-43fa-b1dc-81b508f694db selects Nyx accepted ef851ed report,1768cases/194reviews. Later R12-2b byte-identical native and W3.6b non-render.
+Read-only source /Users/feral/mydev/bboxy450-term-nyx/target/l8-edit/parity-ef851ed/report.json; SHA2563321f23e25872e610f662d023935fb26c6b3e66d624200ca85a00e713538da1e.
+Copied only report/cases/capture metadata into own current-main-baseline; no writes in peer tree.
+Command python3 /tmp/velvet-f4-regate-verdict.py target/f4-parity-3f97803 — actualexit0. Calls review-delta and asserts allacceptance lines.
+1768sameunique keys;0added/removed;194->178reviews;16dropped,0introduced;64editingcases32Input+32Launcherallwithinpolicy.
+All144Launcher,128Components,48Perf,120Style,88TitleStripwithinpolicy. DocumentSurface8/0reviews, LauncherSurface8/4reviews; fourdarkremainnamedF4b atunchanged0.1%budget.
+No repeated native before/after attribution, per explicitOraclewaiver. Prior full208changednative/all1656layoutsexact remains under target/f4-parity-deba98d.
+Remainingadvisory modules: documents44;graph16;harness-icon48;launcher-surface4;materials8;message-row24;seat-row2;settings24;stream8.
+No sourcechanges after exact gate. Evidence-only successor may add thislog. F4b/F3 remain unedited until acceptance.
+Notchecked: --slow, ignoredrealKeychain, manualdesktop, fullfractional/DPR2; no codesign; no tolerance/policychanges.
+Othercommands: gitfetch0, gitrebase0, gitrange-diff0, gitdiff--check0, detachedgitstatus0clean; allthreecommits good machine signatures.
+Priorfailedfirstcut7cc Perf8NEWand successfulpaireddeba remainrecorded in f4-shadow-order-pair.log and rawtargets. No failurehidden.
+
+FULL_VERDICT
+{
+  "source_sha": "3f978038b522675c696728b72bb0dd63973c3e62",
+  "report_sha256": "8ebd4eb3329a2cc24291d37914d75ca738b16adcdcd31625dc78ca2751ae48b0",
+  "cases": 1768,
+  "unique_keys": 1768,
+  "required": 1664,
+  "measured": 1664,
+  "unproven": [],
+  "geometry_mismatches": [],
+  "advisory": 178,
+  "introduced_reviews": 0,
+  "dropped_reviews": 16,
+  "added_cases": [],
+  "removed_cases": [],
+  "edit_cases": 64,
+  "edit_reviews": [],
+  "modules": {
+    "components": {
+      "within policy": 128
+    },
+    "documents": {
+      "review pixels": 44,
+      "within policy": 92
+    },
+    "documents-surface": {
+      "within policy": 8
+    },
+    "glyph": {
+      "within policy": 56
+    },
+    "graph": {
+      "review pixels": 16,
+      "within policy": 48
+    },
+    "harness-icon": {
+      "review pixels": 48,
+      "within policy": 8
+    },
+    "launcher": {
+      "within policy": 144
+    },
+    "launcher-surface": {
+      "review pixels": 4,
+      "within policy": 4
+    },
+    "materials": {
+      "review pixels": 8,
+      "within policy": 24
+    },
+    "message-row": {
+      "review pixels": 24,
+      "within policy": 80
+    },
+    "mini-grid": {
+      "within policy": 64
+    },
+    "pane": {
+      "within policy": 48
+    },
+    "paths": {
+      "within policy": 48
+    },
+    "perf": {
+      "within policy": 48
+    },
+    "picker": {
+      "within policy": 64
+    },
+    "seat-row": {
+      "review pixels": 2,
+      "within policy": 230
+    },
+    "settings": {
+      "review pixels": 24,
+      "within policy": 48
+    },
+    "sidebar": {
+      "within policy": 40
+    },
+    "space-header": {
+      "within policy": 32
+    },
+    "stream": {
+      "review pixels": 8,
+      "within policy": 88
+    },
+    "style": {
+      "within policy": 120
+    },
+    "tab-row": {
+      "within policy": 40
+    },
+    "title-strip": {
+      "within policy": 88
+    },
+    "titlebar": {
+      "within policy": 40
+    }
+  },
+  "pass": true
+}
+
+REVIEW_DELTA
+{
+  "before_root": "target/f4-parity-3f97803/current-main-baseline",
+  "after_root": "target/f4-parity-3f97803",
+  "before_report_sha256": "3321f23e25872e610f662d023935fb26c6b3e66d624200ca85a00e713538da1e",
+  "after_report_sha256": "8ebd4eb3329a2cc24291d37914d75ca738b16adcdcd31625dc78ca2751ae48b0",
+  "before_source": "ef851ed8dd318b78335e00c0ede48843929d81fb",
+  "after_source": "3f978038b522675c696728b72bb0dd63973c3e62",
+  "before_cases": 1768,
+  "after_cases": 1768,
+  "added_case_keys": [],
+  "removed_case_keys": [],
+  "before_reviews": 194,
+  "after_reviews": 178,
+  "dropped_reviews": 16,
+  "introduced_reviews": 0,
+  "modules": [
+    {
+      "module": "components",
+      "before_cases": 128,
+      "after_cases": 128,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "documents",
+      "before_cases": 136,
+      "after_cases": 136,
+      "before_reviews": 48,
+      "after_reviews": 44,
+      "dropped_review_keys": [
+        "documents/as-modal-source-comfortable-dark.png",
+        "documents/as-modal-source-compact-dark.png",
+        "documents/as-modal-source-cozy-dark.png",
+        "documents/as-modal-source-touch-dark.png"
+      ],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "documents-surface",
+      "before_cases": 8,
+      "after_cases": 8,
+      "before_reviews": 8,
+      "after_reviews": 0,
+      "dropped_review_keys": [
+        "documents-surface/as-modal-comfortable-dark.png",
+        "documents-surface/as-modal-comfortable-light.png",
+        "documents-surface/as-modal-compact-dark.png",
+        "documents-surface/as-modal-compact-light.png",
+        "documents-surface/as-modal-cozy-dark.png",
+        "documents-surface/as-modal-cozy-light.png",
+        "documents-surface/as-modal-touch-dark.png",
+        "documents-surface/as-modal-touch-light.png"
+      ],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "glyph",
+      "before_cases": 56,
+      "after_cases": 56,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "graph",
+      "before_cases": 64,
+      "after_cases": 64,
+      "before_reviews": 16,
+      "after_reviews": 16,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "harness-icon",
+      "before_cases": 56,
+      "after_cases": 56,
+      "before_reviews": 48,
+      "after_reviews": 48,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "launcher",
+      "before_cases": 144,
+      "after_cases": 144,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "launcher-surface",
+      "before_cases": 8,
+      "after_cases": 8,
+      "before_reviews": 8,
+      "after_reviews": 4,
+      "dropped_review_keys": [
+        "launcher-surface/root-comfortable-light.png",
+        "launcher-surface/root-compact-light.png",
+        "launcher-surface/root-cozy-light.png",
+        "launcher-surface/root-touch-light.png"
+      ],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "materials",
+      "before_cases": 32,
+      "after_cases": 32,
+      "before_reviews": 8,
+      "after_reviews": 8,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "message-row",
+      "before_cases": 104,
+      "after_cases": 104,
+      "before_reviews": 24,
+      "after_reviews": 24,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "mini-grid",
+      "before_cases": 64,
+      "after_cases": 64,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "pane",
+      "before_cases": 48,
+      "after_cases": 48,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "paths",
+      "before_cases": 48,
+      "after_cases": 48,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "perf",
+      "before_cases": 48,
+      "after_cases": 48,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "picker",
+      "before_cases": 64,
+      "after_cases": 64,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "seat-row",
+      "before_cases": 232,
+      "after_cases": 232,
+      "before_reviews": 2,
+      "after_reviews": 2,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "settings",
+      "before_cases": 72,
+      "after_cases": 72,
+      "before_reviews": 24,
+      "after_reviews": 24,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "sidebar",
+      "before_cases": 40,
+      "after_cases": 40,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "space-header",
+      "before_cases": 32,
+      "after_cases": 32,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "stream",
+      "before_cases": 96,
+      "after_cases": 96,
+      "before_reviews": 8,
+      "after_reviews": 8,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "style",
+      "before_cases": 120,
+      "after_cases": 120,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "tab-row",
+      "before_cases": 40,
+      "after_cases": 40,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "title-strip",
+      "before_cases": 88,
+      "after_cases": 88,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    },
+    {
+      "module": "titlebar",
+      "before_cases": 40,
+      "after_cases": 40,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "dropped_review_keys": [],
+      "introduced_review_keys": []
+    }
+  ]
+}
