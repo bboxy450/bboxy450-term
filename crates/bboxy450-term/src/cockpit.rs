@@ -808,42 +808,47 @@ mod gui_io_tests {
         let started = std::time::Instant::now();
         let peer = tokio::spawn(async move {
             let (read, mut write) = peer.into_split();
-            // More than the socket buffers and eight-entry reply queue. This
-            // deliberately refuses to read input until the entire burst is sent.
-            for index in 0..COUNT {
-                write_json(
-                    &mut write,
-                    &GuiReply::Error {
-                        op: bbt_mux::Ulid::from(index as u128 + 1),
-                        reason: format!("reply-{index}:{}", "x".repeat(4096)),
-                    },
-                )
-                .await
-                .unwrap();
-            }
-            let mut reader = BufReader::new(read);
-            for index in 0..COUNT {
-                let bytes = read_line(&mut reader).await.unwrap().unwrap();
-                let request: GuiRequest = serde_json::from_slice(&bytes).unwrap();
-                assert_eq!(
-                    (request.version, request.capability),
-                    (bbt_proto::gui::VERSION, capability)
-                );
-                let GuiAction::Input {
-                    seat,
-                    generation,
-                    id,
-                    bytes,
-                } = request.action
-                else {
-                    panic!("unexpected action")
-                };
-                assert_eq!(seat, SeatId::from_u128(7));
-                assert_eq!(generation, 7);
-                assert_eq!(id, bbt_mux::Ulid::from(index as u128 + 1));
-                assert_eq!(bytes.len(), 4096);
-                assert_eq!(&bytes[..8], &(index as u64).to_le_bytes());
-            }
+            // Exceed the socket buffers and bounded reply queue while both
+            // fake-peer halves progress independently under backpressure.
+            let replies = async {
+                for index in 0..COUNT {
+                    write_json(
+                        &mut write,
+                        &GuiReply::Error {
+                            op: bbt_mux::Ulid::from(index as u128 + 1),
+                            reason: format!("reply-{index}:{}", "x".repeat(4096)),
+                        },
+                    )
+                    .await
+                    .unwrap();
+                }
+            };
+            let inputs = async {
+                let mut reader = BufReader::new(read);
+                for index in 0..COUNT {
+                    let bytes = read_line(&mut reader).await.unwrap().unwrap();
+                    let request: GuiRequest = serde_json::from_slice(&bytes).unwrap();
+                    assert_eq!(
+                        (request.version, request.capability),
+                        (bbt_proto::gui::VERSION, capability)
+                    );
+                    let GuiAction::Input {
+                        seat,
+                        generation,
+                        id,
+                        bytes,
+                    } = request.action
+                    else {
+                        panic!("unexpected action")
+                    };
+                    assert_eq!(seat, SeatId::from_u128(7));
+                    assert_eq!(generation, 7);
+                    assert_eq!(id, bbt_mux::Ulid::from(index as u128 + 1));
+                    assert_eq!(bytes.len(), 4096);
+                    assert_eq!(&bytes[..8], &(index as u64).to_le_bytes());
+                }
+            };
+            tokio::join!(replies, inputs);
         });
         let (mut sent, mut received, mut busy) = (0, 0, 0);
         tokio::time::timeout(Duration::from_secs(10), async {
