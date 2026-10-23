@@ -19,3 +19,5 @@ seat 01M5KQDXAVAYBFH9XSBT15FMQ9 activity=Idle process=Running { pid: 43916 }
 seat 01M5KQDX19NN9BQX0M58YESQDD activity=Idle process=Running { pid: 43854 }
 seat 01M5KQDX6CP16F6QEV092YJ3YZ activity=Idle process=Running { pid: 43878 }
 capture /private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/f5-rel.png: Ok(())
+
+# rerun on 5aa25b3 (rebased over C1i-2 admission, main 0102666), same command: capture landed in an output gap, header idle (last frame 141 ms ago); window: CPU p50 5.38 / p99 9.44 ms, GPU 2.94 ms, encode p50 5.07, late 0 / 120; 2 captures, 0 admission refusals; crop f5-release-hud-rebased.png
