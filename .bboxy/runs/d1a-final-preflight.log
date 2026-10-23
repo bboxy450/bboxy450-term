@@ -1,0 +1,31 @@
+D1a final preflight — 2026-10-22
+Oracle GO: 9ca47fe1-a52a-458a-a120-b284637d4680.
+Source checkpoint: 7d4eceaf2c183e9b3430a52a45557efa18070b46; rebased onto origin/main f248c6b24c88ad84ca0f185f654c1c7216fe2ce7.
+Signed imported dependency cfd489714fcf21c6fde4cafcc4ef905aae88443d was originally used as approved. Its rebased copy df41cdd was explicitly dropped: accepted W1.2d (4b72ddf, main 86384b5) supplies capture_request/retry_capture and page-wise catch_up. No capture_busy test or supervisor source delta remains.
+
+Mechanisms
+crates/bbt-mux/src/provider/mod.rs:19 — HostId preserves Local/SSH/cloud namespaces from SeatRecord.location.
+crates/bbt-mux/src/provider/mod.rs:63 — Provider yields admitted supervisor links and polled events; LocalProvider moves the original link once.
+crates/bbt-mux/src/provider/mod.rs:113 — host-to-link map, local-first polling with the original local 10 ms timeout and zero timeout for all other links.
+crates/bbt-mux/src/logic.rs:479 — explicit-key provider constructor; existing explicit/custodied construction wraps LocalProvider.
+crates/bbt-mux/src/logic.rs:753 — location-based request routing, registry lease released before a link request; preserves unknown local-seat recovery.
+crates/bbt-mux/src/logic.rs:1927 — capture-only rejected-Busy retry invokes the routed request; no ambiguous input/effect retry added.
+crates/bbt-mux/src/logic.rs:1966 — new C1a GUI Input and Resize route through the same seat host.
+crates/bbt-mux/src/logic.rs:2217 — each host retains one pending recovery event; retains false/page result and applied cursor while serving commands/other hosts.
+crates/bbt-mux/tests/provider.rs:193 — two real supervisors with private machine journals; labelled remote/local PTYs echo GUI input, resize, retain location, and route capture/history/ownership/close/undo correctly.
+
+Verification before exact clean gate
+cargo test --locked -p bbt-mux --test provider --test capture_busy -- --nocapture: initial compile 101 from a new test asserting nonexistent InputState::Applied. Corrected that assertion to the actual InputState::PtyWritten.
+Same command after correction: exit 0; provider 3/3; capture_busy 2/2. Control answered during page-wise replay in 102.870125 ms, final sequence 257.
+cargo clippy --workspace --all-targets --locked -- -D warnings: exit 0 (22.91 s), after rebase onto accepted C1a-2 f248c6b.
+Both commands used BBOXY_TEST_CUSTODY=memory, CARGO_INCREMENTAL=0, dev/test debug=0, opt-level=1, debug assertions=true.
+git diff --check: exit 0; every source checkpoint signature G. A final fetch/rebase was up to date.
+The first resume rebase returned 1 for two logic conflicts; resolved by preserving all upstream GUI helpers and W1.2d's Result<bool> pending-event behavior. Continuation and subsequent rebases exited 0. Two source searches named absent guessed test filenames and exited 2; corrected directory searches exited 0. See the full command log, including prior parked-stage history, for failures.
+
+Scope preserved
+No existing mux/app tests edited; no registry/schema/envelope/store/messaging, identity, supervisor, app, renderer, UI, manifest or lockfile changes. No new dependencies. No network, fake providers or remote GUI selection built (D1b/c). No real Keychain or real account root use. No merges or pushes. C1c and W1.2g remain peer work.
+Acceptance 1 still awaits the exact clean workspace gate, which will run all existing mux/app tests unchanged. Full CI output and its real status will be retained separately without changing the exact gated commit.
+d1a-provider-final.log: sha256 0c71220de522eb8e1db9dfe672d3ec7a2e5a0c4339287d96032d1a27283bbd6b
+d1a-provider-final-retry.log: sha256 fca6e730e722a8e956c881f81507eba80e6252c8d43635f28fdf37f9b381bebb
+d1a-workspace-clippy.log: sha256 6381cc9f3d2e70b1d4d52b3619f6e5350b3d4be81257a1b8366ce61963bff466
+d1a-resume-commands.log: sha256 662a7aff258401b57e66a97d3b90b869bbd12009dad288243d835dbde8ea55f7
