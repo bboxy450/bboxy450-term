@@ -443,17 +443,28 @@ impl Launcher {
             true,
         );
         let kind = it.link.as_ref().map_or(kind, |link| {
-            named(
-                format!("{key}/kind"),
-                link.element(
-                    if spot {
-                        STYLE.r#type.kind as f32
-                    } else {
-                        STYLE.r#type.caption as f32
-                    },
-                    true,
-                ),
-            )
+            let size = if spot {
+                STYLE.r#type.kind
+            } else {
+                STYLE.r#type.caption
+            } as f32;
+            let mut style = plain(None, [0.; 4], 0.);
+            style.overrides.text = Some(ui::Text {
+                size: Some(size),
+                line_height: 1.4,
+                ..Default::default()
+            });
+            let mut kind = c::Box::new(
+                style,
+                vec![
+                    link.named_element(size, true, &format!("{key}/kind/link"))
+                        .into(),
+                ],
+            );
+            kind.inline = true;
+            kind.align = c::Alignment::Baseline;
+            kind.gap = ui::Length::Px(0.);
+            named(format!("{key}/kind"), c::Element::Box(kind))
         });
         let end = if parent {
             let mut s = plain(None, [0.; 4], 0.);
@@ -468,7 +479,11 @@ impl Launcher {
                     text(
                         "",
                         "›",
-                        if spot { 18. } else { STYLE.r#type.body as f32 },
+                        if spot {
+                            ctx.density.tokens().icon as f32
+                        } else {
+                            STYLE.r#type.body as f32
+                        },
                         400,
                         ui::Color::Muted,
                         false,

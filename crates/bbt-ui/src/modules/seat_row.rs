@@ -349,6 +349,11 @@ impl SeatRow {
             )
             .into(),
         );
+        if self.where_.is_some() {
+            // The where mark has margin-right:-2px in the lab. Grouping the
+            // prefix expresses that spacing without moving its painted bounds.
+            children = vec![row_box(plain(None, [0.; 4], 0.), d.gap as f32 - 2., children).into()];
+        }
         let name_color = if self.muted {
             ui::Color::Rgba({
                 let mut c = ui::Paint::solid(color).resolve(ctx).unwrap();

@@ -239,11 +239,10 @@ async fn run(
                         }
                         GuiReply::HostState {host}=> {
                             let current = &mut Arc::make_mut(&mut model).hosts;
-                            if let Some(old) = current.iter_mut().find(|old| old.location == host.location) {
-                                if old == &host { return Ok(()); }
-                                *old = host;
-                            } else { current.push(host); }
-                            publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            let changed = if let Some(old) = current.iter_mut().find(|old| old.location == host.location) {
+                                if old == &host { false } else { *old = host; true }
+                            } else { current.push(host); true };
+                            if changed { publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?; }
                         }
                         GuiReply::Identity(next)=> {
                             if identity!=next {

@@ -60,7 +60,21 @@ impl LinkState {
         c::Element::Box(c::Box::new(style, vec![]))
     }
     pub fn element(&self, size: f32, text: bool) -> c::Element {
-        let mut children = vec![self.dot().into()];
+        self.named_element(size, text, "")
+    }
+    /// Retain the lab's inline-flex anatomy for module geometry diagnostics.
+    pub fn named_element(&self, size: f32, text: bool, key: &str) -> c::Element {
+        let named = |suffix: &str, element: c::Element| {
+            if key.is_empty() {
+                element
+            } else {
+                c::Element::Named {
+                    name: format!("{key}{suffix}"),
+                    content: Box::new(element),
+                }
+            }
+        };
+        let mut children = vec![named("/i", self.dot()).into()];
         if text {
             let mut label = c::Text::new(
                 self.label(),
@@ -72,14 +86,27 @@ impl LinkState {
                 },
             );
             label.wrap = false;
-            children.push(c::Element::Text(label).into());
+            children.push(named("/span", c::Element::Text(label)).into());
         }
-        c::Element::Stack(c::Stack {
-            direction: Axis::Row,
-            align: c::Alignment::Center,
-            gap: ui::Length::Px(STYLE.spacing.s3 as f32),
-            children,
-        })
+        // CSS inline-flex takes its baseline from the first flex child (the
+        // dot), including its vertical centring in the label's line box.
+        let height = if text {
+            (size * 1.4 * 64.).floor() / 64.
+        } else {
+            8.
+        };
+        c::Element::Baseline {
+            content: Box::new(named(
+                "",
+                c::Element::Stack(c::Stack {
+                    direction: Axis::Row,
+                    align: c::Alignment::Center,
+                    gap: ui::Length::Px(STYLE.spacing.s3 as f32),
+                    children,
+                }),
+            )),
+            offset: (height - 8.) * 0.5,
+        }
     }
 }
 

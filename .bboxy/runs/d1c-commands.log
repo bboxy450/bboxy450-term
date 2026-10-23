@@ -98,3 +98,17 @@ UI data projection, module LinkState support, legacy cloud/machine decoding, nam
 $ scoped rustfmt --edition 2024 --config skip_children=true (27 named Rust files)
 exit=0
 Focused checks: provider_gui 1/0, links 2/0, settings 5/0, app hosts 1/0; raw d1c-focused.log. Poll after completion returned Unknown process id72891; finished log contains all three actual exit0 records. Latest bounded inbox received cursor5207. Native range helper remains Velvet-owned. Read guessed launcher.rs failed1; correct launchers.rs to follow.
+Signed checkpoint c692e79 committed0. git fetch origin0; git rebase --gpg-sign origin/main initially1 (single adjacent manifest-arm conflict). Resolved providers+perf arms together, scoped rustfmt0, git add exact main.rs0, GIT_EDITOR=true git rebase --continue0 -> signed3add5d0 atop4e28f11. No peer implementation removed.
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+exit=0
+$ BBOXYBOOK_GALLERY=providers sh scripts/parity.sh (own target/d1c-parity)
+exit=1
+$ cargo build --locked -p bboxy450-term
+exit=0
+$ cargo build --locked -p bboxybook
+exit=0
+$ target/debug/bboxybook render --all --out target/d1c-parity/native --manifest target/d1c-parity/cases.json
+exit=0
+$ target/debug/bboxybook compare --strict-geometry --out target/d1c-parity --manifest target/d1c-parity/cases.json
+exit=1
+UI geometry first gate1: 24/40 failed; settings16/16 within policy. Read four SSH/settings web/native images. Corrections: inline-flex dot baseline/anatomy, density chevron font, where-prefix negative margin via grouped gap. Corrected render0/compare1: seat-row+settings24/24 now pass; launcher16 still geometry pending. Source fixes retained before ID1c-a priority split. Oracle3e972033 explicitly leaves pulse/tooltip to L8. Inbox cursor5227. Unknown-source-path rg diagnostics retained in tool transcript; no code removed.
