@@ -24,6 +24,7 @@ Owner: Corvin Duskmantle <ARCHITECT>. Read from the code on 2026-10-22 (shared t
 | hook | `A/main.rs:510-514` → `M/adapters/hook.rs:329-411`, argv `hook --agent {claude\|codex\|codex-notify}` | the harness, via the per-launch overlay (`M/adapters/launch.rs:108-131`, `185-217`) | one event: OSC 7502 to /dev/tty (`hook.rs:77-85`), seat socket fallback (`hook.rs:386-410`), never reads a reply |
 | supervisor | `bboxy450-term supervisor` → `A/cockpit.rs:108-128` → `bbt_supervisor::Supervisor::start` | the app (C1a); tests | its own process with its own bbt-rt runtime (`A/cockpit.rs:103`): mio poll, PTY masters, children, leases, the capture writer |
 | logic | `bboxy450-term logic` → `A/cockpit.rs:153` → `Logic::start` | the app (C1a); tests | its own process with its own bbt-rt runtime: registry, index, file watch, per-seat view state, seat endpoints and the GUI endpoint `{root}/gui.sock` (`M/logic.rs:689-713`); the bus broker task |
+| providers | `M/provider/` | logic | `LocalProvider` (D1a, f308e37) and `FakeProvider` with `FakeLink` from a fixture (D1b, 2750175): ssh hosts and cloud regions in the launcher, remote-labelled seats on real local PTYs, scripted connect, drop and reconnect; no network crate ([[d1-providers]]) |
 | mcp bridge | `bboxy450-term mcp` → `bbt_mux::mcp::run_cli` (`A/main.rs:620`) | the harness, from the launch overlay (W2.5) | stdio MCP to the seat socket ([[w2-5-mcp-and-seat-wiring]]) |
 | harness child | `M/supervisor.rs:990-1013` openpty + spawn | supervisor | its PTY slave; env adds TERM, BBOXY_SEAT_ID, BBOXY_PROCESS_GENERATION (`1003-1008`) |
 
@@ -164,7 +165,7 @@ Paths: `A` = crates/bboxy450-term/src, `R` = crates/bbt-rt/src, `RD` = crates/bb
 ## 8. Gaps between the names and the code
 
 Only those that change a decision or a brief ([[c1-live-seats]] consumes most of them):
-- Closed by C1a (1a0e106): the app starts supervisor and logic as private entries, each on its own runtime, and binds live state over `gui.sock`; the sidebar is live and ⌘T opens a real zsh. Typing into a pane is C1i.
+- Closed by C1a (1a0e106): the app starts supervisor and logic as private entries, each on its own runtime, and binds live state over `gui.sock`; the sidebar is live and ⌘T opens a real zsh. C1i (2750175) added typing into a live pane: `UiMsg::Input` → `GuiAction::Input` → the PTY (`A/live.rs`), so the terminal is used, not only shown.
 - The seat socket has no input action (`M/seat_socket.rs:30-58`). `Adapter::{launch, attach, wake, input_guard}`, `ArbiterView`, `submit_pty` have no production callers (`M/adapters/mod.rs:171-193`, `guard.rs:9-21, 80`); `foreground_pid`, `canonical`, `echo` have no source. The input arbiter is unproven because it is unreachable.
 - Closed by C1b and C1a: `Replica` has its first production user in `A/grids.rs`; the model is built by `A/model.rs` and published as `Latest<Arc<Model>>` from `A/live.rs:47-62`. `Screen::from_term` serialises a whole checkpoint per snapshot every 20 ms per connection (`streams.rs:30-60`): a cost to measure in the 1000-seat gate before optimising.
 - Closed 2026-10-22: messaging is wired into logic (W2.4) and signs with the chain when a root is pinned (ID1b); the seat socket carries `Action::Messaging`. Input over the seat socket is still C1a's.
