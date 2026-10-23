@@ -1,0 +1,40 @@
+{
+  "utc": "2026-10-23T13:37:09Z",
+  "assignment": "Oracle8ff3c44f-20aa-40fe-9298-5dfd2cf81ef6",
+  "scope": "live.rs outgoing/control-refusal retention and regression; server seam coordinated with Sable; Input unchanged",
+  "base": "9f3ddf65c900d8ce79682c734ba37e7d926af695",
+  "completed": [
+    {
+      "command": "git fetch origin",
+      "exit": 0
+    },
+    {
+      "command": "git rebase origin/main",
+      "exit": 0
+    },
+    {
+      "command": "git status --short --branch",
+      "exit": 0,
+      "result": "tracked clean; private old notes and new disk evidence untracked"
+    },
+    {
+      "command": "read AGENTS.md, gui.rs, live.rs, cockpit.rs, seat_socket.rs, specs and test fixtures with cat/sed/rg",
+      "exit": 0,
+      "result": "Resize/Watch op created on server; periodic snapshot Error uses nil; no new source edits yet"
+    },
+    {
+      "command": "own inactive target/cache cleanup (Python with immediate lsof guard)",
+      "exit": 0,
+      "evidence": ".bboxy/runs/t2-disk-cleanup-20261023.log"
+    }
+  ],
+  "received_cursor": 6053,
+  "icq": "disk reply84fbd1e7; T2LANDED90aa92e7; claim4f5e7f01; Sable seam bc079a43; Oracle seam c1fa5691; each preview and send EXIT0. Recipient-stored is not model receipt."
+}
+
+2026-10-23 follow-up command record:
+Read-only source/spec/test searches with rg/sed/nl and git diff/log/status: EXIT0; git diff --check EXIT0. No peer files executed or mutated.
+apply_patch edits succeeded except one test insertion context failure (tool error; first separate source patch already applied); corrected insertion succeeded. No shell command ran from the failed insertion. rustfmt --edition 2024 crates/bboxy450-term/src/live.rs: EXIT0 after each edit.
+Precheck commands and actual exits including deliberate red101: c1i-admission-prechecks.log plus full raw output in c1i-admission-prechecks-raw.log. Initial live7/7, coalesced-order successor8/8, final reviewed8/8; strict app all-target clippy0. Changes between runs were new identified ordering/backoff concerns, not identical reruns.
+Rendering-source proof: git diff --quiet HEAD -- crates/bbt-render crates/bbt-ui crates/bbt-ui-model crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/gpu.rs crates/bboxy450-term/src/main.rs crates/bboxybook lab design: EXIT0.
+ICQ CLI help/each preview/send/inbox EXIT0, except no failures. New received cursor6093. Coordination: Oraclec8b9180e desired-state ruling; Sable90920cf3 unchanged server-only ops/no resume event; own replies ebc774fc,5cdb1332,61178eb2. Nyx scope657c7bb7. No schema/server edits.

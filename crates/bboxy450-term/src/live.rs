@@ -3,6 +3,7 @@ use std::{
     collections::{BTreeMap, VecDeque},
     path::{Path, PathBuf},
     sync::Arc,
+    time::{Duration, Instant},
 };
 
 use crate::{UiEvent, log::Logger};
@@ -17,7 +18,7 @@ use bbt_mux::{
 };
 use bbt_proto::{
     GuiAction, GuiIdentity, GuiReply, GuiSeat, ProcessStatus, SeatId, SpawnSpec, SwarmId, Update,
-    Where,
+    View, Where,
 };
 use bbt_render::{cells::terminal, device::DeviceContext};
 use bbt_rt::Latest;
@@ -154,6 +155,182 @@ fn queue_action(outgoing: &mut VecDeque<GuiAction>, action: GuiAction) {
     outgoing.push_back(action);
 }
 
+const CONTROL_RETRY: Duration = Duration::from_millis(100);
+
+struct DesiredPane {
+    view: Option<View>,
+    size: Option<(u64, u16, u16)>,
+    retry_at: Instant,
+    retry: bool,
+}
+
+/// Resize and Watch are desired state. Their server-generated operation IDs
+/// cannot identify a refused request, so reconcile against the actual Screen.
+/// Keep one retry slot per visible pane and no timer once every pane converges.
+#[derive(Default)]
+struct PaneControls(BTreeMap<SeatId, DesiredPane>);
+impl PaneControls {
+    fn set_watched(
+        &mut self,
+        panes: &[(SeatId, View)],
+        outgoing: &mut VecDeque<GuiAction>,
+        now: Instant,
+    ) {
+        let panes: BTreeMap<_, _> = panes
+            .iter()
+            .copied()
+            .filter(|(seat, view)| seat.0.0 == view.seat.0)
+            .collect();
+        self.0.retain(|seat, _| panes.contains_key(seat));
+        for (seat, view) in panes {
+            let pane = self.0.entry(seat).or_insert(DesiredPane {
+                view: None,
+                size: None,
+                retry_at: now,
+                retry: true,
+            });
+            if pane.view != Some(view) {
+                outgoing.retain(|action| Self::seat(action) != Some(seat));
+                pane.view = Some(view);
+                pane.size = pane
+                    .size
+                    .filter(|&(generation, _, _)| generation == view.generation);
+                pane.retry_at = now;
+                pane.retry = true;
+            }
+        }
+        // A queued control for an old view must not outlive an Unwatch or a
+        // generation change. Input/Applied retain their existing queue order.
+        outgoing.retain(|action| match action {
+            GuiAction::Watch { seat, view } => {
+                self.0.get(seat).is_some_and(|p| p.view == Some(*view))
+            }
+            GuiAction::Resize {
+                seat, generation, ..
+            } => self
+                .0
+                .get(seat)
+                .is_some_and(|p| p.view.is_some_and(|view| view.generation == *generation)),
+            _ => true,
+        });
+    }
+
+    fn resize(
+        &mut self,
+        seat: SeatId,
+        generation: u64,
+        cols: u16,
+        rows: u16,
+        grids: &Grids,
+        outgoing: &mut VecDeque<GuiAction>,
+    ) {
+        // UI coalescing can place a Resize before its Watched message. The
+        // caller admits only known seats, bounding these early intents by the
+        // seat set; the next Watched message prunes invisible panes.
+        let pane = self.0.entry(seat).or_insert(DesiredPane {
+            view: None,
+            size: None,
+            retry_at: Instant::now(),
+            retry: false,
+        });
+        if pane.view.is_none_or(|view| view.generation <= generation) {
+            // Use the same limits as logic; otherwise a clamped request would
+            // remain different from its Screen and retry forever.
+            let cols = cols.clamp(2, 512);
+            pane.size = Some((generation, cols, rows.clamp(1, 256).min(32768 / cols)));
+            // Let an outstanding Watch produce its baseline first. A new size
+            // must not manufacture another Watch while that one is in flight.
+            pane.retry |= grids.screen(seat).is_some();
+            outgoing.retain(
+                |old| !matches!(old, GuiAction::Resize {seat: old_seat, ..} if *old_seat == seat),
+            );
+        }
+    }
+
+    fn forget(&mut self, seat: SeatId, outgoing: &mut VecDeque<GuiAction>) {
+        self.0.remove(&seat);
+        outgoing.retain(|action| Self::seat(action) != Some(seat));
+    }
+
+    fn seat(action: &GuiAction) -> Option<SeatId> {
+        match action {
+            GuiAction::Watch { seat, .. } | GuiAction::Resize { seat, .. } => Some(*seat),
+            _ => None,
+        }
+    }
+
+    fn wanted(seat: SeatId, pane: &DesiredPane, grids: &Grids) -> Option<GuiAction> {
+        let view = pane.view?;
+        match grids.screen(seat) {
+            None => Some(GuiAction::Watch { seat, view }),
+            Some(screen) => pane
+                .size
+                .filter(|&(generation, cols, rows)| {
+                    generation == view.generation
+                        && (usize::from(cols), usize::from(rows)) != (screen.cols, screen.rows)
+                })
+                .map(|(generation, cols, rows)| GuiAction::Resize {
+                    seat,
+                    generation,
+                    cols,
+                    rows,
+                }),
+        }
+    }
+
+    fn queue_due(&self, grids: &Grids, outgoing: &mut VecDeque<GuiAction>, now: Instant) {
+        for (&seat, pane) in &self.0 {
+            if pane.retry
+                && now >= pane.retry_at
+                && !outgoing
+                    .iter()
+                    .any(|action| Self::seat(action) == Some(seat))
+                && let Some(action) = Self::wanted(seat, pane, grids)
+            {
+                queue_action(outgoing, action);
+            }
+        }
+    }
+
+    fn sent(&mut self, action: &GuiAction, now: Instant) {
+        if let Some(pane) = Self::seat(action).and_then(|seat| self.0.get_mut(&seat)) {
+            pane.retry_at = now + CONTROL_RETRY;
+            pane.retry = false;
+        }
+    }
+
+    fn refused(&mut self, reason: &str, now: Instant) {
+        if reason.starts_with("Busy:") {
+            for pane in self.0.values_mut() {
+                if !pane.retry {
+                    pane.retry_at = pane.retry_at.max(now + CONTROL_RETRY);
+                }
+                pane.retry = true;
+            }
+        }
+    }
+
+    fn observed(&mut self, seat: SeatId, grids: &Grids) {
+        if let Some(pane) = self.0.get_mut(&seat) {
+            pane.retry = Self::wanted(seat, pane, grids).is_some();
+        }
+    }
+
+    fn deadline(&self, grids: &Grids, outgoing: &VecDeque<GuiAction>) -> Option<Instant> {
+        self.0
+            .iter()
+            .filter(|(seat, pane)| {
+                pane.retry
+                    && !outgoing
+                        .iter()
+                        .any(|action| Self::seat(action) == Some(**seat))
+                    && Self::wanted(**seat, pane, grids).is_some()
+            })
+            .map(|(_, pane)| pane.retry_at)
+            .min()
+    }
+}
+
 async fn run(
     updates: Arc<Latest<Arc<Model>>>,
     mut commands: Commands,
@@ -199,6 +376,7 @@ async fn run(
     )?;
     let mut lost = false;
     let mut retained = VecDeque::new();
+    let mut controls = PaneControls::default();
     let mut in_flight = None;
     let mut closing = false;
     // Accept one UI command's actions at a time. Watch diffs are finite;
@@ -208,9 +386,11 @@ async fn run(
     while !closing {
         let mut writer_blocked = false;
         if !lost {
+            controls.queue_due(&grids, &mut outgoing, Instant::now());
             while let Some(action) = outgoing.front() {
                 match session.send(action.clone()).await {
                     Ok(()) => {
+                        controls.sent(action, Instant::now());
                         outgoing.pop_front();
                     }
                     Err(error) if error.is::<cockpit::Busy>() => {
@@ -226,6 +406,7 @@ async fn run(
                 }
             }
         }
+        let retry_at = controls.deadline(&grids, &outgoing);
         let writer_ready = session.writer_ready();
         let result:Result<()>=async {
             tokio::select! {
@@ -241,10 +422,17 @@ async fn run(
                         spec:spawn_spec(message,swarm,&cwd).expect("spawn intent branch"),
                     }),
                     UiMsg::Input {seat,generation,id,bytes}=>queue_action(&mut outgoing, GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()}),
-                    UiMsg::Resize {seat,generation,cols,rows}=>queue_action(&mut outgoing, GuiAction::Resize {seat:*seat,generation:*generation,cols:*cols,rows:*rows}),
+                    UiMsg::Resize {seat,generation,cols,rows}=> {
+                        if seats.get(&Ulid(seat.0.0)).is_some_and(|metadata| metadata.state.generation==*generation) {
+                            controls.resize(*seat,*generation,*cols,*rows,&grids,&mut outgoing);
+                        }
+                    }
                     UiMsg::Watched(panes)=> {
                         Arc::make_mut(&mut model).ui.window.stage.focused = panes.first().map(|(seat, _)| *seat);
-                        for action in grids.set_watched(panes) {queue_action(&mut outgoing, action);}
+                        controls.set_watched(panes,&mut outgoing,Instant::now());
+                        for action in grids.set_watched(panes) {
+                            if matches!(action,GuiAction::Unwatch {..}) {queue_action(&mut outgoing, action);}
+                        }
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                     }
                     }
@@ -253,6 +441,7 @@ async fn run(
                     None=>closing=true,
                 },
                 _=&mut commands.stop=>closing=true,
+                _=tokio::time::sleep_until(tokio::time::Instant::from_std(retry_at.unwrap_or_else(Instant::now))), if retry_at.is_some() && !lost=>{},
                 ready=writer_ready, if writer_blocked && !lost=>{ready?;},
                 event=session.event()=>match event.unwrap_or_else(|error| cockpit::Event::Disconnected(error.to_string())) {
                     cockpit::Event::Reply(reply)=>match *reply {
@@ -286,6 +475,7 @@ async fn run(
                             let id=SeatId::from_u128(seat.record.id.0);
                             if matches!(seat.state.process,ProcessStatus::Exited {..}|ProcessStatus::Retained) {
                                 grids.forget(id);
+                                controls.forget(id,&mut outgoing);
                                 queue_action(&mut outgoing, GuiAction::Unwatch {seat:id});
                             }
                             logger.write(format!("seat {} activity={:?} process={:?}",seat.record.id,seat.state.activity,seat.state.process));
@@ -300,6 +490,7 @@ async fn run(
                             match grids.apply(seat,&update) {
                                 Ok(changed)=> {
                                     if changed.is_some() {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
+                                    controls.observed(seat,&grids);
                                     // A valid byte-equivalent update still needs
                                     // its ack; an unwatched in-flight one does not.
                                     if grids.screen(seat).is_some() {
@@ -310,7 +501,10 @@ async fn run(
                             }
                         }
                         GuiReply::Ok {op}=>logger.write(format!("GUI operation {op} accepted")),
-                        GuiReply::Error {op,reason}=>logger.write(format!("GUI operation {op} rejected: {reason}")),
+                        GuiReply::Error {op,reason}=> {
+                            controls.refused(&reason,Instant::now());
+                            logger.write(format!("GUI operation {op} rejected: {reason}"));
+                        }
                         GuiReply::History {..}=>logger.write("history reply deferred to C1c"),
                     },
                     cockpit::Event::Exited {process,status}=> {
@@ -354,6 +548,292 @@ async fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn control_view(seat: SeatId, generation: u64) -> View {
+        View {
+            seat: Ulid(seat.0.0),
+            generation,
+            view_generation: Ulid::nil(),
+        }
+    }
+
+    fn offer_screen(
+        grids: &mut Grids,
+        seat: SeatId,
+        view: View,
+        sequence: u64,
+        term: &bbt_core::Term,
+    ) {
+        grids
+            .apply(
+                seat,
+                &Update::Snapshot {
+                    snapshot: Box::new(bbt_proto::Snapshot {
+                        view,
+                        sequence,
+                        screen: bbt_proto::Screen::from_term(term, String::new(), None, None),
+                    }),
+                },
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn first_refused_resize_converges_without_another_ui_resize() {
+        let seat = SeatId::from_u128(42);
+        let view = control_view(seat, 7);
+        let now = Instant::now();
+        let mut controls = PaneControls::default();
+        let mut outgoing = VecDeque::new();
+        let mut grids = Grids::new();
+        grids.set_watched(&[(seat, view)]);
+        controls.set_watched(&[(seat, view)], &mut outgoing, now);
+        controls.resize(seat, 7, 37, 57, &grids, &mut outgoing);
+        controls.queue_due(&grids, &mut outgoing, now);
+        let watch = outgoing.pop_front().unwrap();
+        assert!(matches!(watch, GuiAction::Watch { .. }));
+        controls.sent(&watch, now);
+        let mut term = bbt_core::Term::new(80, 24, 0);
+        offer_screen(&mut grids, seat, view, 1, &term);
+        controls.observed(seat, &grids);
+
+        let sent = now + CONTROL_RETRY;
+        controls.queue_due(&grids, &mut outgoing, sent);
+        let first = outgoing.pop_front().unwrap();
+        assert!(matches!(
+            first,
+            GuiAction::Resize {
+                cols: 37,
+                rows: 57,
+                ..
+            }
+        ));
+        controls.sent(&first, sent);
+        // The fixture refuses the first Resize without changing the terminal.
+        // Its server-only op is deliberately unrelated to any client input ID.
+        let refusal = GuiReply::Error {
+            op: Ulid::new(),
+            reason: "Busy: capture admission paused".into(),
+        };
+        let GuiReply::Error { reason, .. } = refusal else {
+            unreachable!()
+        };
+        controls.refused(&reason, sent);
+        // A different pane can keep reporting Busy. That must not postpone an
+        // already scheduled reconciliation indefinitely.
+        controls.refused(&reason, sent + CONTROL_RETRY / 2);
+        assert_eq!(
+            (
+                grids.screen(seat).unwrap().cols,
+                grids.screen(seat).unwrap().rows
+            ),
+            (80, 24)
+        );
+        controls.queue_due(
+            &grids,
+            &mut outgoing,
+            sent + CONTROL_RETRY - Duration::from_nanos(1),
+        );
+        assert!(outgoing.is_empty(), "admission refusal must back off");
+
+        // Admission resumes. There is no second UI Resize or resumed event.
+        controls.queue_due(&grids, &mut outgoing, sent + CONTROL_RETRY);
+        let retry = outgoing.pop_front().unwrap();
+        let GuiAction::Resize {
+            generation,
+            cols,
+            rows,
+            ..
+        } = retry
+        else {
+            panic!("latest desired Resize was lost")
+        };
+        assert_eq!((generation, cols, rows), (7, 37, 57));
+        term.resize(usize::from(cols), usize::from(rows));
+        offer_screen(&mut grids, seat, view, 2, &term);
+        let record = bbt_proto::registry::SeatRecord::new(view.seat, Ulid::new(), "zsh", "fixture");
+        let model = model::build(std::slice::from_ref(&record), &grids, &Model::default());
+        assert_eq!(
+            (model.screens[&seat].cols, model.screens[&seat].rows),
+            (37, 57)
+        );
+        assert_eq!(
+            controls.deadline(&grids, &outgoing),
+            None,
+            "converged panes must sleep indefinitely"
+        );
+    }
+
+    #[test]
+    fn refused_watch_retries_stay_bounded_and_coalesce_the_latest_size() {
+        let now = Instant::now();
+        let seat = SeatId::from_u128(42);
+        let view = control_view(seat, 7);
+        let mut controls = PaneControls::default();
+        let mut outgoing = VecDeque::new();
+        let mut grids = Grids::new();
+        grids.set_watched(&[(seat, view)]);
+        controls.set_watched(&[(seat, view)], &mut outgoing, now);
+        // Ten virtual minutes of a paused capture path with repeated layout
+        // changes. A blocked writer still owns only one queued pane control.
+        for attempt in 0..6000 {
+            let at = now + CONTROL_RETRY * attempt;
+            controls.resize(
+                seat,
+                7,
+                30 + (attempt % 40) as u16,
+                57,
+                &grids,
+                &mut outgoing,
+            );
+            controls.queue_due(&grids, &mut outgoing, at);
+            controls.queue_due(&grids, &mut outgoing, at);
+            assert_eq!(outgoing.len(), 1);
+            let watch = outgoing.pop_front().unwrap();
+            assert!(matches!(watch, GuiAction::Watch { .. }));
+            controls.sent(&watch, at);
+            controls.refused("Busy: capture admission paused", at);
+            assert_eq!(controls.0.len(), 1);
+        }
+        offer_screen(&mut grids, seat, view, 1, &bbt_core::Term::new(80, 24, 0));
+        controls.queue_due(&grids, &mut outgoing, now + Duration::from_secs(600));
+        assert!(matches!(
+            outgoing.front(),
+            Some(GuiAction::Resize {
+                cols: 69,
+                rows: 57,
+                ..
+            })
+        ));
+        controls.set_watched(&[], &mut outgoing, now + Duration::from_secs(600));
+        assert!(outgoing.is_empty(), "Unwatch must cancel queued retries");
+        assert!(controls.0.is_empty());
+        assert_eq!(controls.deadline(&grids, &outgoing), None);
+    }
+
+    #[test]
+    fn controls_obey_logic_size_limits_and_discard_old_generations() {
+        let now = Instant::now();
+        let seat = SeatId::from_u128(42);
+        let view = control_view(seat, 7);
+        let mut controls = PaneControls::default();
+        let mut outgoing = VecDeque::new();
+        let mut grids = Grids::new();
+        grids.set_watched(&[(seat, view)]);
+        controls.set_watched(&[(seat, view)], &mut outgoing, now);
+        offer_screen(&mut grids, seat, view, 1, &bbt_core::Term::new(512, 64, 0));
+        controls.resize(seat, 7, u16::MAX, u16::MAX, &grids, &mut outgoing);
+        assert_eq!(controls.deadline(&grids, &outgoing), None);
+        controls.resize(seat, 7, 0, 0, &grids, &mut outgoing);
+        controls.queue_due(&grids, &mut outgoing, now);
+        assert!(matches!(
+            outgoing.front(),
+            Some(GuiAction::Resize {
+                cols: 2,
+                rows: 1,
+                ..
+            })
+        ));
+        let id = Ulid::new();
+        outgoing.push_back(GuiAction::Input {
+            seat,
+            generation: 7,
+            id,
+            bytes: b"typed once\r".to_vec(),
+        });
+        controls.set_watched(&[(seat, control_view(seat, 8))], &mut outgoing, now);
+        controls.resize(seat, 7, 40, 12, &grids, &mut outgoing);
+        assert_eq!(
+            controls.0[&seat].size, None,
+            "old resize must not become new-process intent"
+        );
+        assert_eq!(outgoing.len(), 1);
+        assert!(
+            matches!(outgoing.front(), Some(GuiAction::Input {id:original,bytes,..}) if *original==id && bytes==b"typed once\r")
+        );
+    }
+
+    #[test]
+    fn sent_control_waits_for_an_observation_or_refusal_before_retrying() {
+        let now = Instant::now();
+        let seat = SeatId::from_u128(42);
+        let view = control_view(seat, 7);
+        let mut controls = PaneControls::default();
+        let mut outgoing = VecDeque::new();
+        let mut grids = Grids::new();
+        grids.set_watched(&[(seat, view)]);
+        controls.set_watched(&[(seat, view)], &mut outgoing, now);
+        controls.queue_due(&grids, &mut outgoing, now);
+        let watch = outgoing.pop_front().unwrap();
+        controls.sent(&watch, now);
+        controls.resize(seat, 7, 37, 57, &grids, &mut outgoing);
+        controls.queue_due(&grids, &mut outgoing, now + Duration::from_secs(3600));
+        assert!(outgoing.is_empty(), "do not resend an unanswered Watch");
+        assert_eq!(controls.deadline(&grids, &outgoing), None);
+        controls.refused("StaleGeneration: process restarted", now);
+        assert_eq!(
+            controls.deadline(&grids, &outgoing),
+            None,
+            "permanent rejections must not become a busy loop"
+        );
+        controls.refused("Busy: capture admission paused", now);
+        controls.queue_due(&grids, &mut outgoing, now + CONTROL_RETRY);
+        assert!(matches!(outgoing.front(), Some(GuiAction::Watch { .. })));
+    }
+
+    #[test]
+    fn resize_before_a_coalesced_watch_keeps_its_desired_grid() {
+        let now = Instant::now();
+        let seat = SeatId::from_u128(42);
+        let view = control_view(seat, 7);
+        let mut controls = PaneControls::default();
+        let mut outgoing = VecDeque::new();
+        let mut grids = Grids::new();
+        controls.resize(seat, 7, 37, 57, &grids, &mut outgoing);
+        controls.queue_due(&grids, &mut outgoing, now);
+        assert!(
+            outgoing.is_empty(),
+            "a size alone must not subscribe a hidden pane"
+        );
+        assert_eq!(controls.deadline(&grids, &outgoing), None);
+        grids.set_watched(&[(seat, view)]);
+        controls.set_watched(&[(seat, view)], &mut outgoing, now);
+        controls.queue_due(&grids, &mut outgoing, now);
+        controls.sent(&outgoing.pop_front().unwrap(), now);
+        offer_screen(&mut grids, seat, view, 1, &bbt_core::Term::new(80, 24, 0));
+        controls.observed(seat, &grids);
+        controls.queue_due(&grids, &mut outgoing, now + CONTROL_RETRY);
+        assert!(matches!(
+            outgoing.front(),
+            Some(GuiAction::Resize {
+                cols: 37,
+                rows: 57,
+                ..
+            })
+        ));
+
+        let rewatch = View {
+            view_generation: Ulid::new(),
+            ..view
+        };
+        grids.set_watched(&[(seat, rewatch)]);
+        controls.set_watched(&[(seat, rewatch)], &mut outgoing, now + CONTROL_RETRY);
+        assert!(
+            outgoing.is_empty(),
+            "a new view must cancel its queued old Resize"
+        );
+        assert_eq!(controls.0[&seat].size, Some((7, 37, 57)));
+        controls.queue_due(&grids, &mut outgoing, now + CONTROL_RETRY);
+        assert!(
+            matches!(outgoing.front(), Some(GuiAction::Watch {view: token,..}) if *token==rewatch)
+        );
+
+        let next = control_view(seat, 8);
+        controls.resize(seat, 8, 40, 12, &grids, &mut outgoing);
+        grids.set_watched(&[(seat, next)]);
+        controls.set_watched(&[(seat, next)], &mut outgoing, now + CONTROL_RETRY);
+        assert_eq!(controls.0[&seat].size, Some((8, 40, 12)));
+    }
 
     #[test]
     fn generic_spawn_preserves_inputs_and_uses_io_defaults() {
