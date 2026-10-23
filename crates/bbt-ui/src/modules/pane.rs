@@ -43,8 +43,9 @@ pub struct Pane {
     /// The host freezes/advances the effect clock. A seed identifies the emitter.
     pub glow_seed: Option<u32>,
     pub opacity: f32,
-    /// The host's glow lane (px): the effect's width outside the box.
-    pub lane: f32,
+    /// The host's glow depth (Settings, px): how far the rim's bloom reaches inside the
+    /// border. Paint only: it never moves layout.
+    pub depth: f32,
 }
 fn column(children: Vec<c::Item>) -> c::Element {
     c::Element::Stack(c::Stack {
@@ -332,7 +333,7 @@ impl Pane {
             strip = filter(strip);
             term = filter(term);
         }
-        // G1: a constant border; activity lives only in the lane shader.
+        // A constant border; activity lives only in the rim shader.
         let border = TOKENS.strip.border_idle as f32;
         let mut style = ui::Style::new(ui::Preset::PaneGlow);
         style.overrides.height = Some(ui::Length::Px(self.height()));
@@ -386,14 +387,17 @@ impl Pane {
             halo_alpha: Some((alpha * boost).min(1.)),
             particles: Some(particles),
             focused: seat.focused,
-            lane: Some(self.lane),
+            // The cell edge rule (rim-glow §3): the band stops at the terminal's padding, so
+            // no text cell is ever lit, whatever the setting.
+            depth: Some(self.depth.min(STYLE.spacing.s4 as f32)),
             tint: match seat.color(ctx) {
                 ui::Color::Rgba(c) => Some(c),
                 _ => None,
             },
         });
-        // The lab emitter sits behind the pane. Compose the effect before the
-        // opaque frame so jittered particles cannot paint over terminal text.
+        // The rim lies inside the pane, above its strip and terminal like the lab's rim canvas:
+        // the pane box carries it (a material paints after the box's children). A plain box
+        // of the same size is the layer base.
         let mut fx = style.clone();
         fx.overrides.fill = Some(ui::Paint::solid(ui::Color::Transparent));
         fx.overrides.border = Some(ui::Border {
@@ -401,8 +405,8 @@ impl Pane {
             paint: ui::Paint::solid(ui::Color::Transparent),
             outside: false,
         });
-        style.overrides.material = Some(ui::Material::Flat);
-        style.overrides.glow = None;
+        fx.overrides.material = Some(ui::Material::Flat);
+        fx.overrides.glow = None;
         let effect = c::Element::Box(c::Box::new(fx, vec![]));
         let mut b = c::Box::new(
             style,
@@ -549,7 +553,7 @@ mod tests {
             reconnected: false,
             glow_seed: None,
             opacity: 1.,
-            lane: TOKENS.glow.lane as f32,
+            depth: TOKENS.glow.depth as f32,
         };
         for activity in [
             Activity::Idle,
@@ -563,6 +567,176 @@ mod tests {
             // The lab's five 18px rows, 16px padding and 22px strip occupy
             // a 130px border box at every activity (two constant 1px edges).
             assert_eq!(pane.height(), 130., "activity {activity:?}");
+        }
+    }
+}
+
+/// The two rim-glow invariants ([[rim-never-covers-text]], [[glow-never-moves-layout]]). Their
+/// checks run `cargo test --lib <name> -- --exact`, so the tests themselves sit at the crate
+/// root (lib.rs) and call these.
+#[cfg(test)]
+pub(crate) mod rim_invariants {
+    use super::*;
+    use crate::modules::seat_row::SeatRow;
+    use bbt_ui_model::{
+        WaitKind,
+        layout::{Rect, TextMeasure, TextStyle as MeasureStyle},
+    };
+
+    struct Metrics;
+    impl TextMeasure for Metrics {
+        fn width(&self, text: &str, s: &MeasureStyle) -> f32 {
+            text.chars().count() as f32 * s.size * 0.5
+        }
+    }
+    impl c::Measure for Metrics {
+        fn font_metrics(&self, s: &MeasureStyle) -> [f32; 2] {
+            [s.size * 0.8, s.size * 0.2]
+        }
+    }
+    const ACTIVITIES: [Activity; 4] = [
+        Activity::Idle,
+        Activity::Active,
+        Activity::Waiting(WaitKind::Question),
+        Activity::Errored,
+    ];
+    fn pane(activity: Activity, focused: bool, depth: f32, glow: bool) -> Pane {
+        let mut strip = Strip::new(SeatRow::new("pane", "Vesper Greywind", "claude"));
+        strip.seat.activity = activity;
+        strip.seat.focused = focused;
+        Pane {
+            strip,
+            lines: vec![
+                vec![Span::Text {
+                    key: "line".into(),
+                    value: "$ cargo test".into(),
+                    foreground: true,
+                    hover: false,
+                }];
+                5
+            ],
+            gap_from: None,
+            resumed: None,
+            min_height: 110.,
+            unfocused: !focused,
+            reconnecting: false,
+            reconnected: false,
+            glow_seed: glow.then_some(7),
+            opacity: 1.,
+            depth,
+        }
+    }
+    fn find<'a>(l: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
+        if matches!(&l.kind, c::LayoutKind::Named(n) if n == key) {
+            return Some(l);
+        }
+        l.children.iter().find_map(|c| find(c, key))
+    }
+    fn rects(l: &c::Layout, out: &mut Vec<Rect>) {
+        out.push(l.rect);
+        for c in &l.children {
+            rects(c, out);
+        }
+    }
+    /// Signed distance from a rounded rect (per-corner radii, CSS order), negative inside.
+    fn sdf(p: [f32; 2], r: Rect, radii: [f32; 4]) -> f32 {
+        let (cx, cy) = (r.x + r.w / 2., r.y + r.h / 2.);
+        let radius = match (p[0] < cx, p[1] < cy) {
+            (true, true) => radii[0],
+            (false, true) => radii[1],
+            (false, false) => radii[2],
+            (true, false) => radii[3],
+        }
+        .min(r.w.min(r.h) / 2.);
+        let qx = (p[0] - cx).abs() - r.w / 2. + radius;
+        let qy = (p[1] - cy).abs() - r.h / 2. + radius;
+        qx.max(qy).min(0.) + (qx.max(0.).powi(2) + qy.max(0.).powi(2)).sqrt() - radius
+    }
+
+    pub(crate) fn rim_never_covers_text() {
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let lo = TOKENS.glow.depth_min as i32;
+        let hi = TOKENS.glow.depth_max as i32;
+        // Every depth the setting allows, and one past it: the cap is the pane's own.
+        for depth in (lo..=hi).chain([hi + 4]) {
+            for activity in ACTIVITIES {
+                for focused in [true, false] {
+                    let p = pane(activity, focused, depth as f32, true);
+                    let layout = p
+                        .element(ctx)
+                        .layout(Rect::new(10., 20., 420., 0.), ctx, &Metrics)
+                        .unwrap();
+                    let (rect, radii, band) = c::paint(&layout, ctx)
+                        .into_iter()
+                        .find_map(|op| match op {
+                            c::Paint::Material {
+                                kind: ui::Material::Rim,
+                                rect,
+                                radii,
+                                glow: Some(g),
+                                ..
+                            } => Some((rect, radii, g.depth.unwrap())),
+                            _ => None,
+                        })
+                        .expect("a pane draws its rim");
+                    // The text cell grid: the terminal box inside its padding.
+                    let term = find(&layout, "pane/term").unwrap().rect;
+                    let pad = STYLE.spacing.s4 as f32;
+                    let cells = Rect::new(
+                        term.x + pad,
+                        term.y + pad,
+                        term.w - 2. * pad,
+                        term.h - 2. * pad,
+                    );
+                    // The band is [0, band) inside the border: every cell point lies at
+                    // least `band` inside, checked on the grid's corners and edge midpoints.
+                    for p in [
+                        [cells.x, cells.y],
+                        [cells.right(), cells.y],
+                        [cells.x, cells.bottom()],
+                        [cells.right(), cells.bottom()],
+                        [cells.x + cells.w / 2., cells.y],
+                        [cells.x + cells.w / 2., cells.bottom()],
+                        [cells.x, cells.y + cells.h / 2.],
+                        [cells.right(), cells.y + cells.h / 2.],
+                    ] {
+                        let inside = -sdf(p, rect, radii);
+                        assert!(
+                            inside >= band - 1e-3,
+                            "depth {depth} {activity:?} focused={focused}: a cell edge {inside:.2} px inside, band {band}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn glow_never_moves_layout() {
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        for activity in ACTIVITIES {
+            for focused in [true, false] {
+                let layout = |depth: f32, glow: bool| {
+                    let mut out = vec![];
+                    rects(
+                        &pane(activity, focused, depth, glow)
+                            .element(ctx)
+                            .layout(Rect::new(10., 20., 420., 0.), ctx, &Metrics)
+                            .unwrap(),
+                        &mut out,
+                    );
+                    out
+                };
+                let reference = layout(TOKENS.glow.depth as f32, false);
+                for depth in TOKENS.glow.depth_min as i32..=TOKENS.glow.depth_max as i32 {
+                    for glow in [false, true] {
+                        assert_eq!(
+                            layout(depth as f32, glow),
+                            reference,
+                            "{activity:?} focused={focused}: depth {depth}, glow {glow} moved layout"
+                        );
+                    }
+                }
+            }
         }
     }
 }

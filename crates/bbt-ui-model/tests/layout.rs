@@ -32,7 +32,7 @@ fn scene_fifteen_matches_the_tagged_lab_ratios_at_the_fixture_gutter() {
     let tree = fixture_tree(&fixture["tree"]);
     let bounds = Rect::new(0.0, 0.0, 1600.0, 900.0);
     // The tagged lab rects were captured at a 2 px gutter; the solver is pinned
-    // to that reference. The live gutter is the glow lane (next test).
+    // to that reference, which is also the live fixed gutter (next test).
     let gutter = fixture["gutter"].as_f64().unwrap() as f32;
     assert_eq!(gutter, 2.0);
     let solved = solve_split(&tree, bounds, gutter);
@@ -361,25 +361,25 @@ fn phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame() {
 }
 
 #[test]
-fn scene_fifteen_gutters_are_one_glow_lane_wide() {
-    // The gutter between panes is the glow lane, shared by both neighbours (G2).
-    assert_eq!(TOKENS.layout.gutter, TOKENS.glow.lane);
+fn scene_fifteen_gutters_are_the_fixed_two_pixel_divider() {
+    // The gutter is a fixed 2 px divider, not the glow (rim-glow §2): the rim and its
+    // bloom are drawn inside each pane, so no glow setting reaches the solver.
+    assert_eq!(TOKENS.layout.gutter, 2.);
+    let gutter = TOKENS.layout.gutter as f32;
     let fixture: serde_json::Value =
         serde_json::from_str(include_str!("fixtures/scene15.json")).unwrap();
     let tree = fixture_tree(&fixture["tree"]);
-    for lane in [TOKENS.glow.lane_min as f32, TOKENS.glow.lane as f32] {
-        let solved = solve_split(&tree, Rect::new(0.0, 0.0, 1600.0, 900.0), lane);
-        assert_eq!(solved.panes.len(), 15);
-        for divider in &solved.dividers {
-            match divider.axis {
-                Axis::Row => near(divider.rect.w, lane),
-                Axis::Column => near(divider.rect.h, lane),
-            }
+    let solved = solve_split(&tree, Rect::new(0.0, 0.0, 1600.0, 900.0), gutter);
+    assert_eq!(solved.panes.len(), 15);
+    for divider in &solved.dividers {
+        match divider.axis {
+            Axis::Row => near(divider.rect.w, gutter),
+            Axis::Column => near(divider.rect.h, gutter),
         }
-        for (i, (_, a)) in solved.panes.iter().enumerate() {
-            for (_, b) in &solved.panes[i + 1..] {
-                assert!(!a.intersects(*b), "L={lane}: panes overlap");
-            }
+    }
+    for (i, (_, a)) in solved.panes.iter().enumerate() {
+        for (_, b) in &solved.panes[i + 1..] {
+            assert!(!a.intersects(*b), "panes overlap");
         }
     }
 }

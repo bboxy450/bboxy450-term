@@ -48,7 +48,7 @@ impl Sidebar {
         anchor: Option<&c::ScrollAnchor>,
     ) -> c::Element {
         let border = STYLE.material.hairline_px as f32;
-        // The sidebar's own left inset (the pane gutter now follows the glow lane).
+        // The sidebar's own left inset from the window edge.
         let edge = bbt_ui_model::TOKENS.sidebar.edge as f32;
         let width = self.size[0] - if self.phone { 0. } else { border } - edge;
         let top_height = bbt_ui_model::TOKENS.strip.height as f32;

@@ -586,7 +586,7 @@ fn backdrop_keys(ops: &[Paint], timing: FrameTime, size: wgpu::Extent3d) -> Vec<
     fn timed(op: &Paint) -> bool {
         match op {
             Paint::Material { kind, .. } => {
-                matches!(kind, ui::Material::Glow | ui::Material::Lane)
+                matches!(kind, ui::Material::Glow | ui::Material::Rim)
             }
             Paint::Group { ops, .. } => ops.iter().any(timed),
             Paint::Draw(_) | Paint::Underlay(_) => false,
@@ -790,10 +790,10 @@ fn encode_ops(
                         saturation: blur
                             .map_or(STYLE.material.panel_saturate as f32, |b| b.saturation),
                     }),
-                    ui::Material::Lane => {
-                        // G1-G2: the pane lane, silk at glow.lane px, in the seat colour.
+                    ui::Material::Rim => {
+                        // The pane's alive rim (rim-glow), in the seat colour, to the depth.
                         let s = glow.unwrap_or_default();
-                        m::Material::Lane(m::Lane {
+                        m::Material::Rim(m::Rim {
                             color: s
                                 .tint
                                 .map(Color)
@@ -808,8 +808,7 @@ fn encode_ops(
                                 ui::GlowActivity::Errored => m::Activity::Errored,
                             },
                             focus: if s.focused { 1. } else { 0. },
-                            lane: s.lane.unwrap_or(TOKENS.glow.lane as f32),
-                            effect: m::LaneFx::Silk,
+                            depth: s.depth.unwrap_or(TOKENS.glow.depth as f32),
                             phase_ms: (s.seed % 10_000) as f32,
                         })
                     }
@@ -998,10 +997,10 @@ mod backdrop_key_tests {
         // Different content under it: a different key.
         let other = [draw("#2E6BFF"), material(ui::Material::Frosted)];
         assert_ne!(k(&fixed, 0.), k(&other, 0.));
-        // A time-driven lane before it: the key changes every frame.
+        // A time-driven rim before it: the key changes every frame.
         let timed = [
             draw("#0B0B10"),
-            material(ui::Material::Lane),
+            material(ui::Material::Rim),
             material(ui::Material::Frosted),
         ];
         assert_ne!(keys(&timed, 0., false)[2], keys(&timed, 900., false)[2]);

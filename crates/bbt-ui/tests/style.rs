@@ -84,8 +84,8 @@ fn presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border()
     }
     let ctx = Context::new(Theme::Dark, Density::Cozy);
     let glow = Style::new(Preset::PaneGlow).resolve(ctx).unwrap();
-    // G1-G2: panes draw the silk lane, not the halo glow.
-    assert_eq!(glow.material, Material::Lane);
+    // Panes draw the alive rim (rim-glow), not the halo glow.
+    assert_eq!(glow.material, Material::Rim);
     assert_eq!(
         glow.fill,
         Paint::solid(Color::Surface).resolve(ctx).unwrap()

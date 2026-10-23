@@ -3,8 +3,6 @@ id: 01M5MT43P4APAE4G7AKFKR5GRR
 type: invariant
 title: glow settings never move layout
 status: active
-slow: true
-gate: pending-g1
 check: cargo test -p bbt-ui --locked --lib glow_never_moves_layout -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a glow that touches text makes the terminal unreadable at the edge; a glow that moves layout breaks parity for every pane case
 links:

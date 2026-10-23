@@ -98,15 +98,13 @@ fn random(index:u32)->f32 {
     strength=clamp(strength*i.color.a,0.0,1.0)*mask;
     return vec4f(i.color.rgb*strength,strength);
 }
-// Border lane (G1-G3): a 1:1 port of Wren's lab/web/shaders.html. All distances and
-// wavelengths are CSS px (physical / view.w); u runs 0 at the box edge to 1 at the
-// lane edge; s is the arc length clockwise from the start of the top edge. GLSL
-// pow(x, 2.) is written x*x (GLSL leaves pow undefined for x < 0).
-const LANE_TAU=6.2831853;
-fn lane_perim_len(hs:vec2f,r0:f32)->f32 {let r=max(r0,0.001);let b=hs-r;return 4.0*(b.x+b.y)+LANE_TAU*r;}
-// Continuous through the corners: lane pixels beyond a corner take the corner arc's angle.
-fn lane_perim(q:vec2f,hs:vec2f,r0:f32)->f32 {
-    let r=max(r0,0.001);let b=hs-r;let sx=2.0*b.x;let sy=2.0*b.y;let a=0.25*LANE_TAU*r;
+// The alive rim (rim-glow §1): a 1:1 port of Wren's lab/web/glow.js. All distances and
+// wavelengths are CSS px (physical / view.w); d < 0 inside the box; s is the arc length
+// clockwise from the start of the top edge, continuous through the corner arcs.
+const RIM_TAU=6.2831853;
+fn rim_perim_len(hs:vec2f,r0:f32)->f32 {let r=max(r0,0.001);let b=hs-r;return 4.0*(b.x+b.y)+RIM_TAU*r;}
+fn rim_perim(q:vec2f,hs:vec2f,r0:f32)->f32 {
+    let r=max(r0,0.001);let b=hs-r;let sx=2.0*b.x;let sy=2.0*b.y;let a=0.25*RIM_TAU*r;
     if abs(q.x)<=b.x {return select(sx+2.0*a+sy+(b.x-q.x),q.x+b.x,q.y<0.0);}
     if abs(q.y)<=b.y {return select(2.0*sx+3.0*a+sy+(b.y-q.y),sx+a+(q.y+b.y),q.x>0.0);}
     if q.x>0.0&&q.y<0.0 {let v=q-vec2f(b.x,-b.y);return sx+r*atan2(v.x,-v.y);}
@@ -114,43 +112,32 @@ fn lane_perim(q:vec2f,hs:vec2f,r0:f32)->f32 {
     if q.y>0.0 {let v=q-vec2f(-b.x,b.y);return 2.0*sx+2.0*a+sy+r*atan2(-v.x,v.y);}
     let v=q-vec2f(-b.x,-b.y);return 2.0*sx+3.0*a+2.0*sy+r*atan2(-v.y,-v.x);
 }
-// Wavelength snapped so a whole number of waves fits the perimeter: the arc
-// coordinate wraps P -> 0 at the top-left without a seam (lab 8e90632). floor(x+.5)
-// rounds half up like the lab; WGSL round() is half-to-even.
-fn lane_wl(lambda:f32,p:f32)->f32 {return p/max(1.0,floor(p/lambda+0.5));}
-fn lane_fx(fx:u32,u:f32,s:f32,p:f32,t:f32,amp:f32)->f32 {
-    if fx==0u { // silk: tide's thin moving core over swell's faint rolling bloom
-        let c0=0.40+0.14*sin(LANE_TAU*(s/lane_wl(190.0,p)-t*0.31))+0.07*sin(LANE_TAU*(s/lane_wl(73.0,p)+t*0.43)+1.3);
-        let k=(u-c0)/0.16;let core=exp(-(k*k));
-        let crest=0.5+0.5*sin(LANE_TAU*(s/lane_wl(260.0,p)-t*0.22));
-        let bloom=exp(-u*2.2)*(0.15+0.55*crest*crest);
-        return amp*(core*(0.55+0.45*crest)+bloom);
-    }
-    if fx==1u { // swell: the band hugs the edge; brightness crests roll along it
-        let crest=0.5+0.5*sin(LANE_TAU*(s/lane_wl(230.0,p)-t*0.28));
-        return amp*exp(-u*2.4)*(0.22+0.78*crest*crest);
-    }
-    if fx==2u { // tide: the ribbon displaced by three incommensurate sines
-        let c0=0.44+0.15*sin(LANE_TAU*(s/lane_wl(190.0,p)-t*0.31))+0.08*sin(LANE_TAU*(s/lane_wl(71.0,p)+t*0.47)+1.3)+0.04*sin(LANE_TAU*(s/lane_wl(31.0,p)-t*0.83)+2.1);
-        let w=0.22+0.05*sin(LANE_TAU*(s/lane_wl(260.0,p)+t*0.2));let k=(u-c0)/w;
-        return amp*exp(-(k*k));
-    }
-    // breathe (control): today's uniform breathing glow, confined to the lane
-    return amp*exp(-u*2.0)*(0.55+0.45*(0.5-0.5*cos(t*LANE_TAU/1.8)));
-}
-@fragment fn lane(v:Vertex)->@location(0) vec4f {
+// Wavelength snapped so a whole number of waves fits the perimeter: no seam where s wraps.
+// floor(x+.5) rounds half up like the lab; WGSL round() is half-to-even.
+fn rim_wl(lambda:f32,p:f32)->f32 {return p/max(1.0,floor(p/lambda+0.5));}
+// Rotate about the grey axis (the lab's hue()).
+fn rim_hue(c:vec3f,a:f32)->vec3f {let k=vec3f(0.57735);let ca=cos(a);return c*ca+cross(k,c)*sin(a)+k*dot(k,c)*(1.0-ca);}
+@fragment fn rim(v:Vertex)->@location(0) vec4f {
     let i=items[v.index];let mask=clip_mask(v);if mask<=0.0 {discard;}
-    let k=view.w;let lane=i.p1.w/k;let d=rounded_sdf(v.point,i.rect,i.radii)/k;
-    let in_lane=smoothstep(0.0,0.6,d)*(1.0-smoothstep(lane-0.6,lane,d));  // the effect lives only in [0, L] outside
-    if in_lane<=0.0 {discard;}
+    let k=view.w;let depth=i.p1.w/k;let d=rounded_sdf(v.point,i.rect,i.radii)/k;
+    // The 2 px rim and the bloom to depth: the half-open band [0, depth) inside the border.
+    let core=smoothstep(0.0,0.6,-d)*(1.0-smoothstep(1.6,2.4,-d));
+    let bloom=step(1.6,-d)*exp(-(-d-2.0)/(0.3*depth))*(1.0-smoothstep(depth-1.0,depth,-d));
+    if core+bloom<=0.0 {discard;}
     let hs=i.rect.zw*0.5/k;let q=(v.point-i.rect.xy)/k-hs;let r=i.radii.x/k;
-    let s=lane_perim(q,hs,r);let perimeter=lane_perim_len(hs,r);let u=clamp(d/lane,0.0,1.0);
+    let p=rim_perim_len(hs,r);let s=rim_perim(q,hs,r);
     let act=u32(i.p1.y);
     var spd=0.0;var amp=0.65;
     if act==0u {spd=0.35;amp=0.32;} if act==1u {spd=1.0;amp=1.0;} if act==2u {spd=0.6;amp=0.9;}
     let time=view.z+i.p2.x;let t=time*0.001*spd;
-    var intensity=lane_fx(u32(i.p1.x),u,s,perimeter,t,amp)*in_lane*mix(1.0,1.3,i.p1.z);
-    if act==2u {intensity*=0.6+0.4*(0.5-0.5*cos(time/1600.0*LANE_TAU));}  // waiting breathes on top
+    let a1=0.5+0.5*sin(RIM_TAU*(s/rim_wl(170.0,p)-t*0.45));
+    let a2=0.5+0.5*sin(RIM_TAU*(s/rim_wl(110.0,p)+t*0.30)+1.7);
+    let crest=max(a1*a1,0.8*a2*a2);let pulse=0.5-0.5*cos(time/(2600.0/(0.5+spd))*RIM_TAU);
+    var intensity=(0.42+0.58*crest)*(0.72+0.28*pulse)*core+0.3*crest*(0.6+0.4*pulse)*bloom;
+    var c=rim_hue(i.color.rgb,0.55*sin(RIM_TAU*(s/p-t*0.12))+0.3*sin(RIM_TAU*(s/rim_wl(230.0,p)+t*0.2)));
+    c=clamp(mix(c,vec3f(1.0),0.22*crest*core),vec3f(0.0),vec3f(1.0));
+    intensity*=amp*mix(1.0,1.3,i.p1.z);
+    if act==2u {intensity*=0.6+0.4*(0.5-0.5*cos(time/1600.0*RIM_TAU));}  // waiting breathes on top
     intensity=clamp(intensity,0.0,1.0)*i.color.a*mask;
-    return vec4f(i.color.rgb*intensity,intensity);
+    return vec4f(c*intensity,intensity);
 }

@@ -148,9 +148,6 @@ rim = 2                       # px, the alive rim just inside the pane border: a
 depth = 8                     # px the rim's bloom reaches inside the pane; Settings › Appearance › Glow depth; never moves layout (pane padding >= depth_max)
 depth_min = 2
 depth_max = 8
-lane = 8                      # retiring (rim-glow §2): the outside lane; kept until the native rim (G1) stops reading it, then removed with it
-lane_min = 2
-lane_max = 8
 pane_radius = 14              # px, blur radius at the pane border
 row_radius = 4                # px, sidebar row glow radius; rows sit 20 px apart so halos must not meet
 row_alpha = 0.3               # sidebar rows get this fraction of the pane glow alpha (operator: colours mix into dirt)
