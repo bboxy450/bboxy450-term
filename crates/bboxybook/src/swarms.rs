@@ -199,7 +199,7 @@ pub fn layout_case(case: &Case) -> Result<c::Layout> {
         .layout(
             bounds,
             crate::components::context(case),
-            &crate::components::Metrics,
+            &crate::components::CachedMetrics::default(),
         )
         .map_err(Into::into)
 }
@@ -393,7 +393,7 @@ pub fn paint_sidebar_model(
 ) -> Result<()> {
     let ctx = ui::Context::new(draw.theme, draw.density);
     let e = sidebar(model, opts, [r.w, r.h], false, 0., ctx)?.element(ctx);
-    let layout = e.layout(r, ctx, &crate::components::Metrics)?;
+    let layout = e.layout(r, ctx, &crate::components::CachedMetrics::default())?;
     append(&layout, draw, out);
     Ok(())
 }
@@ -406,7 +406,7 @@ pub fn paint_header_model(
 ) -> Result<()> {
     let ctx = ui::Context::new(draw.theme, draw.density);
     let e = card(v, opts, opts["expanded"] == true, true, ctx)?.header_element(ctx);
-    let layout = e.layout(r, ctx, &crate::components::Metrics)?;
+    let layout = e.layout(r, ctx, &crate::components::CachedMetrics::default())?;
     append(&layout, draw, out);
     Ok(())
 }
@@ -476,7 +476,7 @@ pub fn paint_legacy_card(
     let ctx = ui::Context::new(draw.theme, draw.density);
     let e = legacy_card(name, indices, open, focused, draw).element(ctx);
     let layout = e
-        .layout(r, ctx, &crate::components::Metrics)
+        .layout(r, ctx, &crate::components::CachedMetrics::default())
         .expect("SwarmCard layout");
     append(&layout, draw, out)
 }
@@ -510,7 +510,7 @@ pub fn paint_legacy_sidebar(
     }
     .element(ctx);
     let layout = e
-        .layout(r, ctx, &crate::components::Metrics)
+        .layout(r, ctx, &crate::components::CachedMetrics::default())
         .expect("Sidebar layout");
     append(&layout, draw, out)
 }

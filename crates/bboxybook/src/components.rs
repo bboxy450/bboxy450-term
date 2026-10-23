@@ -14,7 +14,12 @@ use bbt_ui_model::{
     layout::{Axis, Rect, TextMeasure, TextStyle as MeasureStyle},
 };
 use serde_json::{Value, json};
-use std::{fs, path::Path};
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+    fs,
+    path::Path,
+};
 
 pub struct Metrics;
 fn font(style: &MeasureStyle) -> TextStyle {
@@ -43,6 +48,114 @@ impl c::Measure for Metrics {
         let m = bbt_render::chrome::text::measure("Hg", font(style), None)
             .expect("native component font metrics");
         [m.ascent, m.descent]
+    }
+}
+
+// Match the app's scene::Metrics key exactly. Paint and layout still receive
+// the native host's original floats; a cache hit never recomputes a metric.
+type FontKey = (u32, u16, bool, bool, u32);
+type WidthKey = (String, FontKey);
+fn font_key(s: &MeasureStyle) -> FontKey {
+    (
+        s.size.to_bits(),
+        s.weight,
+        s.mono,
+        s.italic,
+        s.tracking_em.to_bits(),
+    )
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct CacheStats {
+    pub width_queries: usize,
+    pub width_misses: usize,
+    pub font_queries: usize,
+    pub font_misses: usize,
+    pub x_height_queries: usize,
+    pub width_entries: usize,
+    pub font_entries: usize,
+}
+
+/// Instance-owned measurement cache, with the same width/font semantics as the
+/// app. Its owner chooses the lifetime: one gallery layout, or a retained scene
+/// in the benchmark. No font objects, bitmaps or process-global entries remain.
+pub struct CachedMetrics<M = Metrics> {
+    inner: M,
+    widths: RefCell<HashMap<WidthKey, f32>>,
+    fonts: RefCell<HashMap<FontKey, [f32; 2]>>,
+    stats: Cell<CacheStats>,
+}
+impl Default for CachedMetrics {
+    fn default() -> Self {
+        Self::new(Metrics)
+    }
+}
+impl<M> CachedMetrics<M> {
+    pub fn new(inner: M) -> Self {
+        Self {
+            inner,
+            widths: RefCell::default(),
+            fonts: RefCell::default(),
+            stats: Cell::default(),
+        }
+    }
+    pub fn stats(&self) -> CacheStats {
+        CacheStats {
+            width_entries: self.widths.borrow().len(),
+            font_entries: self.fonts.borrow().len(),
+            ..self.stats.get()
+        }
+    }
+    /// Reset counters without evicting the warm scene's measurements.
+    pub fn reset_stats(&self) {
+        self.stats.set(CacheStats::default());
+    }
+    pub fn clear(&self) {
+        self.widths.borrow_mut().clear();
+        self.fonts.borrow_mut().clear();
+        self.reset_stats();
+    }
+}
+impl<M: TextMeasure> TextMeasure for CachedMetrics<M> {
+    fn width(&self, text: &str, style: &MeasureStyle) -> f32 {
+        let mut stats = self.stats.get();
+        stats.width_queries += 1;
+        self.stats.set(stats);
+        let key = (text.to_owned(), font_key(style));
+        if let Some(width) = self.widths.borrow().get(&key) {
+            return *width;
+        }
+        let width = self.inner.width(text, style);
+        let mut stats = self.stats.get();
+        stats.width_misses += 1;
+        self.stats.set(stats);
+        self.widths.borrow_mut().insert(key, width);
+        width
+    }
+}
+impl<M: c::Measure> c::Measure for CachedMetrics<M> {
+    fn font_metrics(&self, style: &MeasureStyle) -> [f32; 2] {
+        let mut stats = self.stats.get();
+        stats.font_queries += 1;
+        self.stats.set(stats);
+        let key = font_key(style);
+        if let Some(metrics) = self.fonts.borrow().get(&key) {
+            return *metrics;
+        }
+        let metrics = self.inner.font_metrics(style);
+        let mut stats = self.stats.get();
+        stats.font_misses += 1;
+        self.stats.set(stats);
+        self.fonts.borrow_mut().insert(key, metrics);
+        metrics
+    }
+    // Preserve the existing host's x-height path. The app's two caches do not
+    // include it, and inventing a third cache would change the comparison.
+    fn x_height(&self, style: &MeasureStyle) -> f32 {
+        let mut stats = self.stats.get();
+        stats.x_height_queries += 1;
+        self.stats.set(stats);
+        self.inner.x_height(style)
     }
 }
 
@@ -533,7 +646,11 @@ pub(crate) fn lane(ctx: ui::Context, state: Option<ui::Glow>) -> materials::Lane
     let state = state.unwrap_or_default();
     crate::shaders::lane(
         materials::LaneFx::Silk,
-        state.tint.map(Color).unwrap_or(Color(ctx.seat)).alpha(state.inferred_multiplier),
+        state
+            .tint
+            .map(Color)
+            .unwrap_or(Color(ctx.seat))
+            .alpha(state.inferred_multiplier),
         match state.activity {
             A::Idle => materials::Activity::Idle,
             A::Active => materials::Activity::Active,

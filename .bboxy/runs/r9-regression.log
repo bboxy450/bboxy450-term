@@ -1,0 +1,153 @@
+{
+  "recorded_utc": "2026-10-23T05:53:29.617859+00:00",
+  "code_commit": "01e13778628cfd81c7cdaff103549deb1b8943de",
+  "native_replay": {
+    "exit": 0,
+    "wall_s": 1115.8911090830225,
+    "log": "target/r9/native-replay.log"
+  },
+  "pixels": {
+    "source_commit": "01e13778628cfd81c7cdaff103549deb1b8943de",
+    "expected": 1624,
+    "unique_keys": 1624,
+    "exact": 1624,
+    "changed": [],
+    "layers": {
+      "materials": {
+        "expected": 32,
+        "exact": 32
+      },
+      "style": {
+        "expected": 112,
+        "exact": 112
+      },
+      "atoms": {
+        "expected": 112,
+        "exact": 112
+      },
+      "components": {
+        "expected": 96,
+        "exact": 96
+      },
+      "floating-surfaces": {
+        "expected": 16,
+        "exact": 16
+      },
+      "seat-row": {
+        "expected": 224,
+        "exact": 224
+      },
+      "tabs": {
+        "expected": 104,
+        "exact": 104
+      },
+      "swarms": {
+        "expected": 72,
+        "exact": 72
+      },
+      "panes": {
+        "expected": 136,
+        "exact": 136
+      },
+      "titlebars": {
+        "expected": 40,
+        "exact": 40
+      },
+      "launchers": {
+        "expected": 176,
+        "exact": 176
+      },
+      "streams": {
+        "expected": 200,
+        "exact": 200
+      },
+      "graphs": {
+        "expected": 64,
+        "exact": 64
+      },
+      "settings": {
+        "expected": 72,
+        "exact": 72
+      },
+      "documents": {
+        "expected": 120,
+        "exact": 120
+      },
+      "paths": {
+        "expected": 48,
+        "exact": 48
+      }
+    }
+  },
+  "geometry": [
+    {
+      "file": "layouts.json",
+      "exact": true,
+      "before_bytes": 28031684,
+      "after_bytes": 28031684,
+      "records": 1576,
+      "before_sha256": "759e877fcc3b836a8b1894b62532eaab33f2c284dbcd66491a02dff6933a5d7b",
+      "after_sha256": "759e877fcc3b836a8b1894b62532eaab33f2c284dbcd66491a02dff6933a5d7b"
+    },
+    {
+      "file": "surface-layouts.json",
+      "exact": true,
+      "before_bytes": 5470,
+      "after_bytes": 5470,
+      "records": 16,
+      "before_sha256": "f17bf0b2dad1aa7396b6668127eba9c5f3d17378f554ba5ca3e5f5928ba2bb38",
+      "after_sha256": "f17bf0b2dad1aa7396b6668127eba9c5f3d17378f554ba5ca3e5f5928ba2bb38"
+    }
+  ],
+  "fresh_settings_A_B": {
+    "accepted_control": "target/r8/bboxybook-after",
+    "candidate_commit": "01e13778628cfd81c7cdaff103549deb1b8943de",
+    "fresh_inputs": "/Users/feral/mydev/bboxy450-term-nyx/target/r9/ci-01e1377-parity/cases.json",
+    "pixel_exact": 72,
+    "expected": 72,
+    "geometry_exact": true,
+    "geometry_sha256": "972e6420ed803309988a59d2bdceeca34f0a56cc8fd84bd1450ebd76818f93fb",
+    "changed": [],
+    "failure_keys": [
+      "settings/appearance-touch-dark.png:card0/r2/ctl",
+      "settings/appearance-touch-light.png:card0/r2/ctl",
+      "settings/appearance-comfortable-dark.png:card0/r2/ctl",
+      "settings/appearance-comfortable-light.png:card0/r2/ctl",
+      "settings/appearance-cozy-dark.png:card0/r2/ctl",
+      "settings/appearance-cozy-light.png:card0/r2/ctl",
+      "settings/appearance-compact-dark.png:card0/r2/ctl",
+      "settings/appearance-compact-light.png:card0/r2/ctl"
+    ]
+  },
+  "ci": {
+    "commit": "01e13778628cfd81c7cdaff103549deb1b8943de",
+    "exit": 1,
+    "wall_s": 1186.2112348749943,
+    "log": "/Users/feral/mydev/bboxy450-term-nyx/target/r9/ci-source.log",
+    "parity_gallery": "settings",
+    "worktree": "/tmp/ci-nyx-r9-01e1377",
+    "target": "/tmp/nyx-r9-target-01e1377"
+  },
+  "ci_log_sha256": "874be78c037f0766b33d2bd6e60ab2ab0046503cbfa2a95dc84b83d659311c2a",
+  "ci_limitation": "full CI exit 1: eight baseline Appearance rect failures; required scoped-gate decision requested from Oracle bb28066f-3842-4f3d-b312-07c45462fc13; no gate policy or UI source changed",
+  "visual_read": [
+    "launcher/root-cozy-dark.png: sections, selected band, footer and text intact",
+    "sidebar/1000-seats-cozy-dark.png: canonical swarm/card rows and stage panes intact",
+    "settings/roles-comfortable-light.png: four role cards, controls and prompts intact"
+  ],
+  "cleanup": {
+    "time_utc": "2026-10-23T05:50:20.715267+00:00",
+    "gate_exit": 1,
+    "removed": [
+      {
+        "path": "/tmp/nyx-r9-target-01e1377",
+        "allocated_bytes": 2367098880
+      },
+      {
+        "path": "/tmp/ci-nyx-r9-01e1377/target",
+        "allocated_bytes": 2129920
+      }
+    ],
+    "free_bytes_after": 28715593728
+  }
+}

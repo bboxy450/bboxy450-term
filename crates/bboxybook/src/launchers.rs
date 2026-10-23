@@ -109,7 +109,7 @@ pub fn layout_case(case: &Case) -> Result<c::Layout> {
     root.layout(
         bounds,
         crate::components::context(case),
-        &crate::components::Metrics,
+        &crate::components::CachedMetrics::default(),
     )
     .map_err(Into::into)
 }
@@ -389,7 +389,7 @@ pub fn paint_legacy(r: Rect, state: &str, draw: &DrawCtx, out: &mut DrawList) {
         .layout(
             Rect::new(r.x, r.y, r.w.min(760.), 0.),
             ctx,
-            &crate::components::Metrics,
+            &crate::components::CachedMetrics::default(),
         )
         .expect("legacy Launcher");
     fn flat(n: &mut c::Layout) {
