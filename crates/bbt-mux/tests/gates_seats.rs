@@ -105,6 +105,27 @@ fn disk_bytes(dir: &Path) -> u64 {
         .sum()
 }
 
+const MIN_FREE_DISK: u64 = 10 * 1024 * 1024 * 1024;
+fn free_disk_bytes(dir: &Path) -> u64 {
+    let out = Command::new("df")
+        .args(["-Pk"])
+        .arg(dir)
+        .env("LC_ALL", "C")
+        .output()
+        .expect("df for owned gate directory");
+    assert!(out.status.success(), "df failed before disk guard");
+    let text = String::from_utf8(out.stdout).unwrap();
+    text.lines()
+        .last()
+        .unwrap()
+        .split_whitespace()
+        .nth(3)
+        .unwrap()
+        .parse::<u64>()
+        .unwrap()
+        * 1024
+}
+
 /// The firehose binary next to this test's target profile (`gates.sh` builds it).
 fn firehose() -> PathBuf {
     let exe = std::env::current_exe().unwrap();
@@ -286,6 +307,11 @@ impl Rig {
     /// Spawns `n` firehose seats; on failure stops logic and reports its exit.
     fn firehose_seats(self, n: usize, rate: &str) -> (Self, Vec<Ulid>) {
         let bin = firehose();
+        let free = free_disk_bytes(self.run.path());
+        eprintln!("GATE initial_free_disk_bytes={free} min_free_bytes={MIN_FREE_DISK}");
+        if free < MIN_FREE_DISK {
+            self.abort_disk(free, MIN_FREE_DISK);
+        }
         let staged = rate != "idle" && std::env::var_os("GATE_STAGED").is_some();
         let mut stopped = StagedChildren::default();
         eprintln!(
@@ -326,17 +352,24 @@ impl Rig {
                     }
                     seats.push(info.seat);
                     if (i + 1) % 25 == 0 || i + 1 == n {
+                        let free = free_disk_bytes(self.run.path());
                         eprintln!(
-                            "GATE spawn progress={}/{n} elapsed_s={:.3}",
+                            "GATE spawn progress={}/{n} elapsed_s={:.3} free_disk_bytes={free} min_free_bytes={MIN_FREE_DISK}",
                             i + 1,
                             started.elapsed().as_secs_f64()
                         );
+                        if free < MIN_FREE_DISK {
+                            drop(stopped);
+                            self.abort_disk(free, MIN_FREE_DISK);
+                        }
                     }
                 }
                 Err(e) => {
                     let at = started.elapsed();
-                    let exit = self.logic.shutdown();
-                    panic!("spawn {i} of {n} failed after {at:?}: {e}; logic exit: {exit:?}");
+                    eprintln!("GATE spawn {i} of {n} failed after {at:?}: {e}");
+                    drop(stopped);
+                    self.stop_inner(false);
+                    panic!("spawn {i} of {n} failed after {at:?}: {e}");
                 }
             }
         }
@@ -364,6 +397,18 @@ impl Rig {
     }
 
     fn stop(self) -> u64 {
+        self.stop_inner(std::env::var_os("GATE_KEEP_RUN").is_some())
+    }
+
+    fn abort_disk(self, free: u64, minimum: u64) -> ! {
+        eprintln!(
+            "GATE aborted reason=disk_low free_bytes={free} min_free_bytes={minimum}; stopping owned producers and removing owned run"
+        );
+        self.stop_inner(false);
+        panic!("disk reserve guard aborted gate before ENOSPC");
+    }
+
+    fn stop_inner(self, keep: bool) -> u64 {
         let disk = disk_bytes(self.run.path());
         self.logic.shutdown().unwrap();
         // Stop all owned fixture producers before joining any of them. Killing
@@ -381,7 +426,7 @@ impl Rig {
         }
         drop(client);
         self.supervisor.shutdown().unwrap();
-        if std::env::var_os("GATE_KEEP_RUN").is_some() {
+        if keep {
             eprintln!("GATE retained owned fixture {}", self.run.keep().display());
         }
         disk
@@ -410,6 +455,10 @@ fn gate_memory() {
     let mut heartbeat_max = Duration::ZERO;
     while Instant::now() < deadline {
         std::thread::sleep(Duration::from_secs(1));
+        let free = free_disk_bytes(rig.run.path());
+        if free < MIN_FREE_DISK {
+            rig.abort_disk(free, MIN_FREE_DISK);
+        }
         let heartbeat_started = Instant::now();
         let record = rig
             .runtime
@@ -472,6 +521,40 @@ fn gate_memory() {
         busy_replies, 0,
         "supervisor returned Busy under capture load"
     );
+}
+
+#[test]
+fn disk_guard_abort_terminates_owned_children_and_removes_the_run() {
+    let rig = Rig::start(2);
+    let run = rig.run.path().to_owned();
+    let mut pids = Vec::new();
+    for _ in 0..2 {
+        let mut launch = LaunchSpec::new("/bin/sleep", &run);
+        launch.args = vec!["60".into()];
+        let info = rig
+            .runtime
+            .block_on(rig.logic.client.spawn(
+                SeatRecord::new(launch.seat, rig.swarm, "disk guard fixture", "shell"),
+                launch,
+            ))
+            .unwrap();
+        pids.push(info.pid);
+    }
+    let free = free_disk_bytes(&run);
+    // A raised threshold injects the low-reserve branch without filling a disk.
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        rig.abort_disk(free, free + 1)
+    }));
+    assert!(result.is_err());
+    assert!(!run.exists(), "abort retained the owned capture directory");
+    for pid in pids {
+        // SAFETY: signal zero only checks existence of the recorded fixture PID.
+        assert_eq!(unsafe { libc::kill(pid as libc::pid_t, 0) }, -1);
+        assert_eq!(
+            std::io::Error::last_os_error().raw_os_error(),
+            Some(libc::ESRCH)
+        );
+    }
 }
 
 /// Gate 2: 1000 synthetic seats (decision #19: bus fan-out needs no PTYs), an
