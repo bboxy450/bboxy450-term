@@ -1,0 +1,195 @@
+{
+  "task": "R5 window2 frame measurement attempt",
+  "utc": "2026-10-23T19:49:53.889972+00:00",
+  "source": "b450a9974d38620c515abfed68d9cafc74004592",
+  "oracle_window": "f4e15ea9-290f-4859-a9a4-547d991e6cc7",
+  "manifest": {
+    "source": "b450a9974d38620c515abfed68d9cafc74004592",
+    "utc": "2026-10-23T19:37:07.255735+00:00",
+    "root": "/Users/feral/mydev/bboxy450-term-exec4",
+    "artifacts": "/private/tmp/aster-r5-window2-4xq9yho6",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-window2-b450a99-1792784227255117000",
+    "environment": {
+      "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-window2-b450a99-1792784227255117000",
+      "CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS": "true",
+      "CARGO_PROFILE_RELEASE_DEBUG": "0",
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_BUILD_JOBS": "4",
+      "BBOXY_TEST_CUSTODY": "memory",
+      "GATE_SEATS": "967",
+      "GATE_WATCHED": "50",
+      "GATE_SECONDS": "10"
+    },
+    "budget": "GATE_BUDGET unset as in scripts/gates.sh; CPU4ms/input2intervals/bus10k limits unchanged",
+    "oracle_window": "f4e15ea9-290f-4859-a9a4-547d991e6cc7",
+    "stop_after_first_nonzero_run": true,
+    "tracked_tree_clean": true
+  },
+  "binary": {
+    "source": "b450a9974d38620c515abfed68d9cafc74004592",
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-window2-b450a99-1792784227255117000/release/bboxy450-term",
+    "sha256": "048d1d15b30f78c0ee0c484e2ead3a028c1e5d0b3b90c9e2c97e838cf8ea16e3",
+    "bytes": 31806768,
+    "release_debug_assertions": true,
+    "custody_required": "memory"
+  },
+  "build": {
+    "command": [
+      "cargo",
+      "build",
+      "--release",
+      "--locked",
+      "-q",
+      "-p",
+      "bboxy450-term"
+    ],
+    "exit": 0,
+    "elapsed_s": 109.77451245801058,
+    "utc": "2026-10-23T19:38:57.030820+00:00"
+  },
+  "run1": {
+    "last_error": "Error: \"r5-unsettled-after-producers-stopped\"",
+    "exit": 1,
+    "elapsed_s": 96.3409284579975,
+    "timed_out": false,
+    "host_load_before": [
+      3.82666015625,
+      8.0224609375,
+      11.75
+    ],
+    "host_load_after": [
+      7.724609375,
+      8.29443359375,
+      11.4638671875
+    ],
+    "disk_free_after_bytes": 25137930240,
+    "owned_pid_count": 969,
+    "remaining_owned": []
+  },
+  "actual_custody_line": "R5 identity witness: custody=Some(Memory) label=Some(\"memory custody (debug)\")",
+  "actual_app_start_load_line": "R5 host load before: [3.82666015625, 8.0224609375, 11.75]",
+  "owned_pid_count": 969,
+  "reap_ps_exit": 1,
+  "remaining_owned_pids": [],
+  "fixture_removed": true,
+  "runs2and3": "NOT STARTED: stop after first failed run",
+  "final_metrics_report": "NOT PRODUCED",
+  "median": {
+    "cpu_p99_ms": null,
+    "marker_to_gpu_ms": null,
+    "bus_hz": null,
+    "frame_work_p99_ms": null
+  },
+  "verdict": "Functional settling abort; no timing verdict or valid three-run median",
+  "source_mechanisms": {
+    "stall/load.rs:567-570": "20s since go removal and phase<IDLE aborts the fixture",
+    "stall/load.rs:611-613": "MEASURE advances to SETTLE only if all50 watched Screens contain R5PAUSED",
+    "stall.rs:361-374": "SETTLE reaches IDLE only when pending=false, paused frame GPU completed and frame/callback counters stable",
+    "stall/load.rs:351": "Ready checks frame count only; does not prove producer marker content"
+  },
+  "cause_gaps": [
+    "Error does not record phase or per-pane paused count at abort",
+    "Cannot distinguish waiting for paused Screens from native/GPU quiescence",
+    "No report means CPU/input/bus/frame numbers and byte counters unavailable",
+    "Blank bodies in timed capture are not final per-pane state evidence"
+  ],
+  "gui_errors_in_log": [],
+  "capture_read": true,
+  "capture_observation": "967 sidebar count,50 pane containers; most showR5PAUSED, some bodies blank at capture time",
+  "source_changes": "none; only evidence records to be committed",
+  "limits_changed": false,
+  "cleanup": {
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-window2-b450a99-1792784227255117000",
+    "unique_file_allocated_bytes_removed": 1055596544,
+    "files": 3325,
+    "retained_binary": "/private/tmp/aster-r5-window2-4xq9yho6/bboxy450-term-b450a99",
+    "retained_binary_sha256": "048d1d15b30f78c0ee0c484e2ead3a028c1e5d0b3b90c9e2c97e838cf8ea16e3",
+    "retained_binary_allocated_bytes": 31809536,
+    "net_unique_file_allocated_bytes_retired": 1023787008,
+    "target_removed": true,
+    "disk_free_bytes_after": 23012589568
+  },
+  "raw_artifacts": "/private/tmp/aster-r5-window2-4xq9yho6",
+  "raw_file_hashes": [
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/bboxy450-term-b450a99",
+      "bytes": 31806768,
+      "sha256": "048d1d15b30f78c0ee0c484e2ead3a028c1e5d0b3b90c9e2c97e838cf8ea16e3"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/binary.json",
+      "bytes": 348,
+      "sha256": "6b506cf2314528ab54c758a34f2df0b50dcb9863ab15f7834dadac8cc4aa7b69"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/build-process.json",
+      "bytes": 539,
+      "sha256": "a783b7e16727e29e7e8dd92fa2162391f84912423a92c68e88603dd97ce82ac1"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/build-result.json",
+      "bytes": 215,
+      "sha256": "bc94287dbf635d09a16c4ef119f0e91906e66431a7dd8fdbdf2afb02cb331b10"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/cleanup.json",
+      "bytes": 524,
+      "sha256": "3f42e19d13f9fa11b97553dc89de7e70590e89102ce8a875448f56add5894c80"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/manifest.json",
+      "bytes": 947,
+      "sha256": "fcdcad5477a6c0a68adf8d308af0db6e16ffd6caf22ef5072af6b1cea675a0db"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/readiness.jsonl",
+      "bytes": 155,
+      "sha256": "a70c8acb32eb51b72878dd3fc0a31aefd16eb25028684e7f59669220f4fbaa5b"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/run-1/command.json",
+      "bytes": 826,
+      "sha256": "b6dca47f15ad0c9245685fd3fe8b569b765694423d1f24d5303dc5074a5dbc29"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/run-1/process.json",
+      "bytes": 63,
+      "sha256": "5d3334eae45a82d22a35bda6187b8b6da53500884b23a64e9dbf39482b3757d1"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/run-1/r5-frame.t8icjn/window.png",
+      "bytes": 343665,
+      "sha256": "6ed4a1e516cebc8699dec1a48afe1811ab55173bed69bc14ce7c49e04a7e94d6"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/run-1/reaped.json",
+      "bytes": 10719,
+      "sha256": "a2ff378139a260fabd4068df661e2c89d54726882273ece2c59f5892b6fef77b"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/run-1/result.json",
+      "bytes": 387,
+      "sha256": "7de9de6bfc172ea3f4607b05bf9385453c27b364be5aea9fc29e044f2a3b3822"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/run-1/stderr.log",
+      "bytes": 59285,
+      "sha256": "1a1390b805bdc787d904b1604d747f0b1a8617ad81628685c0e7fa4c10c5123d"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/run-1/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aster-r5-window2-4xq9yho6/run-one.py",
+      "bytes": 4697,
+      "sha256": "93857216be4d82d30b051d067fdf28c80d8294ed49e3d8a1d37170dd84f54234"
+    }
+  ]
+}
