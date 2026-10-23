@@ -454,6 +454,8 @@ fn hard_killed_separate_logic_process_recovers_the_same_zsh_view() {
         // The fixture owner has reaped the exact killed process. Removing its
         // stale test-only endpoint is not production socket takeover policy.
         std::fs::remove_file(&path).unwrap();
+        // C1a's logic also binds gui.sock here.
+        std::fs::remove_file(path.parent().unwrap().join("gui.sock")).unwrap();
         std::fs::remove_dir(path.parent().unwrap()).unwrap();
     }
     let client = supervisor.connect().unwrap();

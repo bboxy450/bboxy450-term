@@ -2631,3 +2631,29 @@ EXIT0
 $ git rebase origin/main
 EXIT0 (accepted base510f0ef, two C1a commits only)
 The trailing journal_directory search returned1/no match: API is not present on this base, not a rebase failure. Final exact clean CI now follows; first failed CI remains retained separately.
+
+Clean exact CI attempt2: signed7ccab14af4911538e16a1b8aa7066d0c62f2f2e4, accepted base510f0ef (ID1e, signing runner removed).
+$ sh scripts/ci-local.sh --parity
+Workspace build/test compile0, app13 tests0 (process5/1.51s, custody1/30.11s). Corpus Markdown4 tests0/161.19s. Later workspace bbt-mux/tests/logic.rs test hard_killed_separate_logic_process_recovers_the_same_zsh_view failed at457 with OS66 DirectoryNotEmpty: C1a adds gui.sock alongside the seat socket in endpoint_root; the old hard-kill fixture reaps its exact child, removes only seat.sock and assumes the root is empty. Mux logic8 passed/1 failed/2 ignored. CI EXIT101/566.963s before UI lint/smoke/invariants/parity. Post-gate tree clean.
+Raw target/c1a-ci-attempt2.log SHA25644a7c5636cae7a451ed7d850b99532fe75fb65b53866de5cdfca7d13cd62d213.
+Requested scope expansion to tests/logic.rs in Oracle DM14c6cc5a, with concrete one-line removal of this test child's gui.sock after child.wait. No source edit outside allowed paths pending that grant. No production takeover changes proposed.
+Own exited target removal0 freed2,618,871,808 allocated bytes; clean detached checkout removal0. Original failed fixture's unlabelled /tmp root was not broadly searched/deleted; no peer dirs/processes touched.
+
+$ env CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-mux --test logic --locked hard_killed_separate_logic_process_recovers_the_same_zsh_view -- --exact --nocapture
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 35.83s
+     Running tests/logic.rs (target/debug/deps/logic-221cf4ff58a682a7)
+
+running 1 test
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.74s
+
+EXIT 0 elapsed_seconds=37.121
+
+$ rustfmt --check --edition 2024 crates/bbt-mux/tests/logic.rs
+EXIT 0 elapsed_seconds=0.209
+
+Oracle08afd5fa explicitly expanded scope to crates/bbt-mux/tests/logic.rs for exactly the gui.sock cleanup line/comment. Applied after exact child.kill/wait and seat-socket removal, before existing directory removal; every assertion retained. Targeted hard-kill regression passed0/0.74s test time (37.121s command including rebuild). Rook notified; no ring/writer/Config edits in this cleanup. A fresh signed head and full clean ci-local --parity gate follow.
