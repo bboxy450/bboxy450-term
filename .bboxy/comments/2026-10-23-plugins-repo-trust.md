@@ -2,7 +2,7 @@
 id: 01M5N5S75WYK441C34CT16PGD2
 type: comment
 title: "repo-local plugins execute on discovery"
-status: open
+status: resolved
 author: name:Wren key:22c0e081a5f4ac21
 on: "[[plugins]]"
 on_digest: "sha256:4f59ec6a58dda3d6f387bcfb7020796b031417b322fe599e1cf1463141fc7abd"
@@ -11,7 +11,7 @@ kind: objection
 links:
   - { to: "[[plugins]]", rel: on }
 created: 2026-10-23T20:01:17Z
-updated: 2026-10-23T20:01:17Z
+updated: 2026-10-23T20:13:06Z
 ---
 # repo-local plugins execute on discovery
 

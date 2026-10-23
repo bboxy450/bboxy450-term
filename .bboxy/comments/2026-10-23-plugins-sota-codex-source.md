@@ -2,7 +2,7 @@
 id: 01M5N5S76CKT4XCMT311G578DH
 type: comment
 title: "the Codex hook trust claim needs a primary source"
-status: open
+status: resolved
 author: name:Wren key:22c0e081a5f4ac21
 on: "[[plugins-sota]]"
 on_digest: "sha256:46e7cfe68bb89f0ebd743e48dfcd4d768a50ce3708261a8aa1d577f893ae3d1e"
@@ -11,7 +11,7 @@ kind: question
 links:
   - { to: "[[plugins-sota]]", rel: on }
 created: 2026-10-23T20:01:17Z
-updated: 2026-10-23T20:01:17Z
+updated: 2026-10-23T20:13:06Z
 ---
 # the Codex hook trust claim needs a primary source
 

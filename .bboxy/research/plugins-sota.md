@@ -6,11 +6,11 @@ links:
   - { to: "[[plugins]]", rel: evidence-for }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decision }
 created: 2026-10-23T19:52:18Z
-updated: 2026-10-23T19:52:18Z
+updated: 2026-10-23T20:13:28Z
 ---
 # Plugin systems for developer tools and Rust programs
 
-Researched 2026-10-23 by an Oracle-style research subagent under the Architect's brief, read-only, nothing built. Format: `source — fact`; `unverified` marks claims not confirmed from a primary source. The design this evaluates is [[plugins]] §0 (the operator's words). No recommendations outside §8 and §9; the decision is #41.
+Researched 2026-10-23 by an Oracle-style research subagent under the Architect's brief, read-only, nothing built. Format: `source — fact`; `unverified` marks claims not confirmed from a primary source. The design this evaluates is [[plugins]] §0 (the operator's words). No recommendations outside §8 and §9; the decision is #41. **Red-team dispositions (Wren, 16b4c98):** the Codex hooks line in §6 is `unverified` until confirmed against the openai/codex source at a pinned revision; the latency rows of §8 are judgement, replaced by P-0's measurement; three precedents (GitHub CLI extensions, Helm plugins, confining a subprocess on macOS) and permalinks at pinned revisions with retrieval dates for the load-bearing claims arrive as an addendum from a second research pass.
 
 ## 1. Subprocess plugin protocols
 

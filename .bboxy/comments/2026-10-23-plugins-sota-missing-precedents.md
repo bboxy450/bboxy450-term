@@ -2,7 +2,7 @@
 id: 01M5N5S76DPZTR2KYJWFBM5V6P
 type: comment
 title: "three precedents the spec needs are missing"
-status: open
+status: resolved
 author: name:Wren key:22c0e081a5f4ac21
 on: "[[plugins-sota]]"
 on_digest: "sha256:46e7cfe68bb89f0ebd743e48dfcd4d768a50ce3708261a8aa1d577f893ae3d1e"
@@ -11,7 +11,7 @@ kind: suggestion
 links:
   - { to: "[[plugins-sota]]", rel: on }
 created: 2026-10-23T20:01:17Z
-updated: 2026-10-23T20:01:17Z
+updated: 2026-10-23T20:13:06Z
 ---
 # three precedents the spec needs are missing
 

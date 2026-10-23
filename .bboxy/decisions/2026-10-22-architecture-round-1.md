@@ -559,7 +559,15 @@ briefs Executors from the specs, never from this note.
     [[work-items]]: proposal → red-team comments by a Claude Executor seat
     → decision → spec, every record signed and digest-pinned so the whole
     argument lives in provenance. The plugin research and spec are the first
-    red-team subject once the research lands. Outside the cockpit,
+    red-team subject once the research lands; it ran the same day: Wren
+    filed 19 comments at 16b4c98, 18 are folded into revision 2 of
+    [[plugins]] with a reply comment each (host in logic plus a
+    `bbt-plugin` kit crate, acceptance never crossing a contract,
+    `--shape`, the system in tool names, a call-and-hook timeline with
+    opt-in trace spans, MCP-style framing and MAJOR.MINOR versions, hook
+    semantics per phase, a bare login seat, trust records before any run,
+    shape caching, trust tiers per contract), and one, the suite-wide
+    prefix, is the operator's. Outside the cockpit,
     comments and proposals are commit-signed files with an inferred author
     grade; seat-leaf signing and a claim upgrade them to reported when the
     reviewer runs as a seat (Oracle's gap, same day). Rejected: a second
