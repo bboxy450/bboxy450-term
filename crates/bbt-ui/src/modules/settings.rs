@@ -2281,7 +2281,7 @@ impl Settings {
             plain(None, [0.; 4], 0.),
             10.,
             vec![
-                fixed(slider(((v.lane - lo) / (hi - lo)).clamp(0., 1.)), 124.),
+                fixed(slider(((v.lane - lo) / (hi - lo)).clamp(0., 1.)), 120.),
                 fixed(
                     b.text("", format!("{} px", v.lane), 11., 500, true, false),
                     35.2,
@@ -2308,7 +2308,7 @@ impl Settings {
             10.,
             vec![
                 fixed(self.opacity_preview(b), 64.),
-                fixed(self.opacity_slider(b), 124.),
+                fixed(self.opacity_slider(b), 120.),
                 fixed(
                     b.text(
                         "",
@@ -2845,13 +2845,13 @@ fn align_box(mut e: c::Element, align: c::Alignment) -> c::Element {
     e
 }
 
-/// A 124 px range control: track and knob at `fraction` (the lab's input type=range).
+/// A 120x16 px, margin-free range control matching the lab's input type=range.
 fn slider(fraction: f32) -> c::Element {
     let base = row(
         "",
         plain(Some(16.), [0.; 4], 0.),
         0.,
-        vec![fixed(c::Element::Spacer, 124.)],
+        vec![fixed(c::Element::Spacer, 120.)],
     );
     let track = row(
         "",
@@ -2870,12 +2870,12 @@ fn slider(fraction: f32) -> c::Element {
         overlays: vec![
             c::Placed {
                 content: track,
-                left: 2.,
+                left: 0.,
                 bottom: 6.,
             },
             c::Placed {
                 content: knob,
-                left: 2. + 104. * fraction,
+                left: 104. * fraction,
                 bottom: 0.,
             },
         ],

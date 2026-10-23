@@ -1,0 +1,397 @@
+Pre-range native fix; Pane fix and Perf canonical registration on source1bc50db; no input changes during run.
+source: 1bc50dbb8ca3765d1cb844cc8963fd96c2a92e11
+command: cargo test -p bboxybook --locked
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling bitflags v2.13.2
+   Compiling objc2-encode v4.1.0
+   Compiling libc v0.2.191
+   Compiling syn v3.0.9
+   Compiling cfg_aliases v0.2.2
+   Compiling cfg-if v1.0.5
+   Compiling objc2 v0.6.5
+   Compiling arrayvec v0.7.8
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling crc32fast v1.5.3
+   Compiling num-traits v0.2.19
+   Compiling bytemuck_derive v1.12.1
+   Compiling foldhash v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling bytemuck v1.25.2
+   Compiling dispatch2 v0.3.1
+   Compiling block2 v0.6.2
+   Compiling equivalent v1.0.3
+   Compiling log v0.4.34
+   Compiling indexmap v2.14.2
+   Compiling objc2-core-foundation v0.3.2
+   Compiling thiserror v2.0.21
+   Compiling smallvec v1.16.3
+   Compiling thiserror-impl v2.0.21
+   Compiling syn v2.0.119
+   Compiling objc2-foundation v0.3.2
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+   Compiling objc2-metal v0.3.2
+   Compiling rustc-hash v1.1.0
+   Compiling simd-adler32 v0.3.10
+   Compiling naga-types v30.0.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling naga v30.0.1
+   Compiling unicode-width v0.2.2
+   Compiling adler2 v2.0.1
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-vec v0.9.1
+   Compiling parking_lot_core v0.9.12
+   Compiling bit-set v0.10.0
+   Compiling codespan-reporting v0.13.1
+   Compiling half v2.7.1
+   Compiling float-cmp v0.9.0
+   Compiling unicode-ident v1.0.27
+   Compiling static_assertions v1.1.0
+   Compiling objc-sys v0.3.5
+   Compiling once_cell v1.21.4
+   Compiling scopeguard v1.2.0
+   Compiling memchr v2.8.3
+   Compiling lock_api v0.4.14
+   Compiling wgpu-types v30.0.1
+   Compiling strict-num v0.1.1
+   Compiling polycool v0.4.0
+   Compiling objc2-quartz-core v0.3.2
+   Compiling miniz_oxide v0.9.1
+   Compiling wgpu-hal v30.0.1
+   Compiling arrayref v0.3.9
+   Compiling kurbo v0.13.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling flate2 v1.1.10
+   Compiling raw-window-metal v1.1.0
+   Compiling parking_lot v0.12.5
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling libloading v0.8.9
+   Compiling siphasher v1.0.4
+   Compiling profiling v1.0.18
+   Compiling svgtypes v0.16.1
+   Compiling png v0.18.1
+   Compiling objc2 v0.5.3
+   Compiling simplecss v0.2.2
+   Compiling euclid v0.22.14
+   Compiling serde_derive v1.0.229
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling wgpu-core v30.0.1
+   Compiling data-url v0.3.2
+   Compiling core-foundation-sys v0.8.7
+   Compiling regex-syntax v0.8.11
+   Compiling imagesize v0.15.0
+   Compiling litrs v1.0.1
+   Compiling pico-args v0.5.0
+   Compiling usvg v0.48.1
+   Compiling document-features v0.2.12
+   Compiling regex-automata v0.4.18
+   Compiling core-foundation v0.9.4
+   Compiling serde v1.0.229
+   Compiling lyon_geom v1.0.20
+   Compiling block2 v0.5.1
+   Compiling tiny-skia v0.12.0
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling rgb v0.8.53
+   Compiling foreign-types-macros v0.2.4
+   Compiling wgpu v30.0.1
+   Compiling dispatch v0.2.0
+   Compiling pulldown-cmark v0.13.4
+   Compiling foreign-types-shared v0.3.1
+   Compiling bitflags v1.3.2
+   Compiling foreign-types v0.5.0
+   Compiling core-graphics-types v0.1.3
+   Compiling objc2-foundation v0.2.2
+   Compiling resvg v0.48.1
+   Compiling lyon_path v1.0.19
+   Compiling regex v1.13.1
+   Compiling winit v0.30.13
+   Compiling tracing-core v0.1.36
+   Compiling pin-project-lite v0.2.17
+   Compiling unsafe-libyaml v0.2.11
+   Compiling float_next_after v1.0.0
+   Compiling unicase v2.10.0
+   Compiling ryu v1.0.23
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling lyon_tessellation v1.0.22
+   Compiling tracing v0.1.44
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+   Compiling objc2-app-kit v0.2.2
+   Compiling core-graphics v0.23.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+   Compiling objc2-core-text v0.3.2
+   Compiling pollster v0.4.0
+   Compiling unicode-segmentation v1.13.3
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mermaid)
+   Compiling smol_str v0.2.2
+   Compiling dpi v0.1.2
+   Compiling cursor-icon v1.2.0
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+   Compiling serde_json v1.0.154
+    Finished `test` profile [optimized] target(s) in 2m 48s
+     Running unittests src/lib.rs (/tmp/velvet-p3-remainder-dev/debug/deps/bboxybook-246c48371d18f395)
+
+running 14 tests
+test documents::diagram_policy_tests::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.37s
+
+     Running unittests src/main.rs (/tmp/velvet-p3-remainder-dev/debug/deps/bboxybook-0c9a44fed0c99b70)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (/tmp/velvet-p3-remainder-dev/debug/deps/atoms-7c879031b73f8d76)
+
+running 3 tests
+test icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage ... ok
+test icon_size_gallery_renders_at_one_and_two_device_pixels_per_point ... ok
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/blending.rs (/tmp/velvet-p3-remainder-dev/debug/deps/blending-05ef873d05f83cb3)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/clipping.rs (/tmp/velvet-p3-remainder-dev/debug/deps/clipping-d2cf9da4204974fd)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/components.rs (/tmp/velvet-p3-remainder-dev/debug/deps/components-99d7f9998fd1227e)
+
+running 4 tests
+test component_cases_are_canonical_and_box_gallery_covers_materials_and_radii ... ok
+test a_retained_group_keeps_material_coverage_and_filters_the_completed_layer ... ok
+test retained_image_preserves_asset_colour_rounding_and_group_filtering ... ok
+test retained_scroll_content_moves_but_never_paints_outside_the_viewport ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/documents.rs (/tmp/velvet-p3-remainder-dev/debug/deps/documents-6f724004fec8b24b)
+
+running 4 tests
+test document_matrix_covers_all_types_and_both_modal_presentations_and_source ... ok
+test native_document_layout_consumes_public_records_not_css_or_child_geometry ... ok
+test document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records ... ok
+test every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.43s
+
+     Running tests/fixtures.rs (/tmp/velvet-p3-remainder-dev/debug/deps/fixtures-37db9162e721b905)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/graphs.rs (/tmp/velvet-p3-remainder-dev/debug/deps/graphs-a1368f07e05c6240)
+
+running 4 tests
+test former_graph_and_provenance_hand_painters_are_removed ... ok
+test graph_matrix_covers_each_live_card_and_the_empty_swarm ... ok
+test channel_layout_never_consumes_browser_svg_diagnostics ... ok
+test graph_layout_is_driven_by_records_not_browser_child_positions ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/icon_filter.rs (/tmp/velvet-p3-remainder-dev/debug/deps/icon_filter-57e88441813dc7b8)
+
+running 1 test
+test icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/launchers.rs (/tmp/velvet-p3-remainder-dev/debug/deps/launchers-da2d0c82c74450b1)
+
+running 3 tests
+test matrix_has_every_current_lab_state_and_separate_historical_keys ... ok
+test a_machine_subtitle_with_room_stays_on_one_line ... ok
+test geometry_uses_constructor_values_instead_of_child_dom_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/materials.rs (/tmp/velvet-p3-remainder-dev/debug/deps/materials-c804decd8f9f0046)
+
+running 3 tests
+test source_over_glow_keeps_destination_alpha ... ok
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/metrics.rs (/tmp/velvet-p3-remainder-dev/debug/deps/metrics-824d21517ea8ae83)
+
+running 3 tests
+test cache_hits_preserve_native_float_bits_and_instance_lifetime ... ok
+test every_app_font_key_field_including_float_bits_is_distinct ... ok
+test cached_coretext_values_match_the_raw_host_bit_for_bit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/overlays.rs (/tmp/velvet-p3-remainder-dev/debug/deps/overlays-7cc82041737a8357)
+
+running 2 tests
+test layer_matrix_distinguishes_full_primitives_from_module_surfaces ... ok
+test overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/panes.rs (/tmp/velvet-p3-remainder-dev/debug/deps/panes-e4c023785c9f0d93)
+
+running 4 tests
+test legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted ... ok
+test pane_registry_pairs_every_current_and_historical_case_without_collisions ... ok
+test legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip ... ok
+test native_panes_ignore_child_web_bounds_and_font_diagnostics ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/parity_gate.rs (/tmp/velvet-p3-remainder-dev/debug/deps/parity_gate-84253b86a9768234)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test historical_geometry_review_exits_zero ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/perf.rs (/tmp/velvet-p3-remainder-dev/debug/deps/perf-84506102df3f4951)
+
+running 2 tests
+test perf_cases_cover_six_states_with_ascii_slugs ... ok
+test hud_width_is_the_spark_and_every_part_is_named ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/render.rs (/tmp/velvet-p3-remainder-dev/debug/deps/render-5aa6f0228170d739)
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
+
+     Running tests/seat_rows.rs (/tmp/velvet-p3-remainder-dev/debug/deps/seat_rows-464fc3bc3f043562)
+
+running 2 tests
+test seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures ... ok
+test child_dom_rectangles_and_css_metrics_are_diagnostics_only ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/settings.rs (/tmp/velvet-p3-remainder-dev/debug/deps/settings-6e589bf4763ace51)
+
+running 3 tests
+test placeholder_settings_hand_painter_is_removed ... ok
+test settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme ... ok
+test settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/shaders.rs (/tmp/velvet-p3-remainder-dev/debug/deps/shaders-21caf1ee6d6a39a0)
+
+running 2 tests
+test lane_quad_and_parameters_are_validated ... ok
+test lane_effects_never_leave_the_lane ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.72s
+
+     Running tests/shadow.rs (/tmp/velvet-p3-remainder-dev/debug/deps/shadow-a310307a8e58c79a)
+
+running 2 tests
+test css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box ... ok
+test positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/streams.rs (/tmp/velvet-p3-remainder-dev/debug/deps/streams-ff23ca449fb91d75)
+
+running 3 tests
+test old_stream_painter_is_deleted_in_favor_of_the_retained_composition ... ok
+test stream_matrix_covers_every_current_state_and_labels_legacy_cases ... ok
+test stream_layout_consumes_public_entries_but_never_browser_child_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/styles.rs (/tmp/velvet-p3-remainder-dev/debug/deps/styles-4ba7b00943df5b7b)
+
+running 2 tests
+test per_node_glow_drives_state_grade_and_seed_without_changing_the_box ... ok
+test style_matrix_is_canonical_and_every_preset_renders_on_the_native_device ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.16s
+
+     Running tests/swarms.rs (/tmp/velvet-p3-remainder-dev/debug/deps/swarms-e5eba15fabe9d58c)
+
+running 3 tests
+test old_swarm_card_and_sidebar_hand_painters_are_gone ... ok
+test swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys ... ok
+test captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/tabs.rs (/tmp/velvet-p3-remainder-dev/debug/deps/tabs-a38a3884cbcc3ceb)
+
+running 3 tests
+test old_module_and_json_painters_delegate_to_the_retained_compositions ... ok
+test all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions ... ok
+test tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/title_bars.rs (/tmp/velvet-p3-remainder-dev/debug/deps/title_bars-27b8ed6b64310df6)
+
+running 2 tests
+test titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only ... ok
+test native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/widgets.rs (/tmp/velvet-p3-remainder-dev/debug/deps/widgets-468fc08b504b76fa)
+
+running 3 tests
+test control_matrix_has_canonical_keys_and_all_constructor_families ... ok
+test transparent_layout_border_does_not_cut_the_background_fill ... ok
+test thousand_row_views_clip_output_and_the_table_header_stays_fixed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.55s
+
+   Doc-tests bboxybook
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+actual exit: 0
+elapsed_seconds: 184.401
