@@ -4,6 +4,7 @@ use bbt_ui::{
     modules::{
         mini_grid::Node,
         pane::Pane,
+        perf_hud::PerfHud,
         seat_row::SeatRow,
         sidebar::Sidebar,
         strip::Strip,
@@ -459,7 +460,7 @@ impl Scene {
         &self,
         layouts: &[c::Layout],
         size: [f32; 2],
-        overlay: Option<&str>,
+        overlay: Option<&PerfHud>,
     ) -> Vec<c::Paint> {
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         let mut background = DrawList::default();
@@ -499,30 +500,19 @@ impl Scene {
             );
             ops.push(c::Paint::Draw(footer));
         }
-        if let Some(overlay) = Self::overlay(size, overlay) {
-            ops.push(overlay);
-        }
+        ops.extend(self.overlay(size, overlay));
         ops
     }
-    pub fn overlay(size: [f32; 2], overlay: Option<&str>) -> Option<c::Paint> {
-        overlay.map(|text| {
-            let mut list = DrawList::default();
-            let rect = Rect::new((size[0] - 460.).max(0.), size[1] - 95., 450., 85.);
-            list.rect(rect, 8., Color::hex("#070D19").alpha(0.95));
-            for (i, line) in text.lines().enumerate() {
-                list.text(
-                    Rect::new(rect.x + 12., rect.y + 8. + i as f32 * 20., 426., 20.),
-                    line,
-                    TextStyle {
-                        mono: true,
-                        scale: TypeScale::Custom(12.),
-                        ..Default::default()
-                    },
-                    Color::hex("#D4E7FF"),
-                );
-            }
-            c::Paint::Draw(list)
-        })
+    /// The perf HUD (Cmd+Opt+F), top right as the lab's perf.html floats it over the app.
+    pub fn overlay(&self, size: [f32; 2], hud: Option<&PerfHud>) -> Vec<c::Paint> {
+        let Some(hud) = hud else { return vec![] };
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let width = PerfHud::width(ctx);
+        let rect = Rect::new((size[0] - 14. - width).max(0.), 40., width, 0.);
+        match hud.element(ctx, "hud").layout(rect, ctx, &self.metrics) {
+            Ok(layout) => c::paint(&layout, ctx),
+            Err(_) => vec![],
+        }
     }
 }
 

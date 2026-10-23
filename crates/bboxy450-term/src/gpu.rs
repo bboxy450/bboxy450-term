@@ -102,7 +102,7 @@ struct FrameTime {
 pub struct Panes<'a> {
     pub model: &'a Model,
     pub bounds: &'a [(SeatId, Rect)],
-    pub overlay: Option<Paint>,
+    pub overlay: Vec<Paint>,
 }
 struct CellTexture {
     screen: Arc<Screen>,
@@ -396,13 +396,13 @@ impl Gpu {
         .map_err(|e| e.to_string())?;
         if let Some(panes) = panes {
             self.draw_cells(&panes, scale, &mut encoder);
-            if let Some(overlay) = panes.overlay {
+            if !panes.overlay.is_empty() {
                 encode_ops(
                     &mut self.renderer,
                     &self.materials,
                     &self.target,
                     &self.backdrop,
-                    vec![overlay],
+                    panes.overlay,
                     FrameTime {
                         scale,
                         time_ms,
