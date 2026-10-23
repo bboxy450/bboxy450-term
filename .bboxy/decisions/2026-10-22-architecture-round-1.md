@@ -236,6 +236,15 @@ briefs Executors from the specs, never from this note.
     for its keychain-ACL stability (it put a signing step and a certificate
     dependency in every cargo test for a benefit ID1e made unnecessary).
 
+25. **The fake provider delays events, not requests (from D1b).**
+    `SupervisorConnection::request` stays synchronous; `FakeLink` simulates
+    RTT only on queued events and host-state transitions via the due-time
+    queue, and a request to a down host fails immediately with the named
+    link-unavailable error, never executing. Reason: dummy providers do not
+    justify a protocol change for cosmetic latency. Rejected: an async
+    request path (touches every caller in logic for a fake); sleeping in
+    the writer thread (blocks all seats).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
