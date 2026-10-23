@@ -40,6 +40,11 @@ const DEMO = {
   list: () => UI.List([{ label: 'Claude', sub: 'oracle by default', icon: 'claude', kbd: '1' }, { label: 'Codex', sub: 'executor by default', icon: 'codex', kbd: '2' }, { label: 'pi', icon: 'pi', kbd: '3' }, { label: 'zsh', icon: 'zsh', kbd: '4' }], { selected: 1, more: 996 }),
   table: () => UI.Table([{ label: 'seat', w: '1.4fr' }, { label: 'role' }, { label: 'now', w: '1.6fr' }], [['Vesper Greywind', 'oracle', 'swarm control'], ['Nyx Copperwing', 'executor', 'W3.2d L2'], ['Rook Ashwhisker', 'executor', 'W2.2 bus'], ['Wren Thistledown', 'creativity', 'lab galleries']], { zebra: true, selected: 1 }),
   input: () => UI.Stack({ gap: 8 }, UI.Input({ state: 'empty', placeholder: 'launch or go to', icon: 'sidebarfoxopen' }), UI.Input({ state: 'value', value: 'ssh rig cod' }), UI.Input({ state: 'focus', value: 'Rook Ash' }), UI.Input({ state: 'invalid', value: 'Rook', error: 'type the full seat name' })),
+  // editing states (editField): public inputs value + edit { caret | select | preedit }; one Input per state so each is one parity key
+  'input · focused empty': () => UI.Input({ value: '', placeholder: 'launch or go to', edit: { caret: 0 } }),
+  'input · caret': () => UI.Input({ value: 'ssh rig cod', edit: { caret: 4 } }),
+  'input · selection': () => UI.Input({ value: 'ssh rig cod', edit: { select: [4, 7] } }),
+  'input · preedit': () => UI.Input({ value: 'ssh ', edit: { caret: 4, preedit: { text: 'nihao', caret: 5 } } }),
   overlay: () => UI.Overlay(UI.Box('chip', UI.Text('anything over a dimmed, blurred backdrop', { step: 'caption' }))),
   modal: () => UI.Overlay(UI.Modal('Purge seat', UI.Text('Terminates now and moves its history to cold storage · nothing is lost', { step: 'caption', dim: true }), [UI.Button('Cancel', { kind: 'ghost' }), UI.Button('Purge', { kind: 'danger' })])),
 };
