@@ -1,0 +1,38 @@
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mermaid)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxybook)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-rt)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-supervisor)
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui-model)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-doc)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/bboxy450-term/src/live.rs:469:9
+    |
+469 |         input(
+    |         ^^^^^
+...
+472 |             b"printf 'REFLOW_abcdefghijklmnopqrstuvwxyz0123456789\\n'\r",
+    |             ------------------------------------------------------------ argument #3 of type `u64` is missing
+    |
+note: function defined here
+   --> crates/bboxy450-term/src/live.rs:328:14
+    |
+328 |     async fn input(sender: &CommandSender, seat: SeatId, generation: u64, bytes: &[u8]) {
+    |              ^^^^^                                       ---------------
+help: provide the argument
+    |
+469 |         input(
+470 |             &sender,
+471 |             seat,
+472 ~             /* u64 */,
+473 ~             b"printf 'REFLOW_abcdefghijklmnopqrstuvwxyz0123456789\\n'\r",
+    |
+
+For more information about this error, try `rustc --explain E0061`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 1 previous error

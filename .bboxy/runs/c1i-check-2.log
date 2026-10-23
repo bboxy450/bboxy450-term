@@ -1,0 +1,13 @@
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+error[E0277]: `Option<std::string::String>` doesn't implement `std::fmt::Display`
+   --> crates/bboxy450-term/src/live.rs:500:40
+    |
+500 |         eprintln!("PASS logic SIGKILL: {reason}; retained Screen/frame; no restoration claimed");
+    |                                        ^^^^^^^^ `Option<std::string::String>` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `Option<std::string::String>`
+    = note: in format strings you may be able to use `{:?}` (or `{:#?}` for pretty-print) instead
+    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `eprintln` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 1 previous error

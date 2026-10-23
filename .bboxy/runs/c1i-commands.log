@@ -1,0 +1,450 @@
+C1i command inventory: recorded commands only; never replayed.
+COMMAND 1
+cat crates/bboxy450-term/src/scene.rs
+EXIT 0
+
+COMMAND 2
+sed -n '1,320p' crates/bboxy450-term/src/gpu.rs
+EXIT 0
+
+COMMAND 3
+sed -n '1,380p' crates/bboxy450-term/src/main.rs
+EXIT 0
+
+COMMAND 4
+sed -n '380,790p' crates/bboxy450-term/src/main.rs && cat crates/bboxy450-term/src/log.rs && sed -n '1,130p' crates/bboxy450-term/tests/cockpit.rs && cat /Users/feral/.agents/skills/icq/SKILL.md
+EXIT 0
+
+COMMAND 5
+sed -n '1,230p' crates/bboxy450-term/src/main.rs
+EXIT 0
+
+COMMAND 6
+sed -n '230,430p' crates/bboxy450-term/src/main.rs
+EXIT 0
+
+COMMAND 7
+sed -n '160,360p' crates/bboxy450-term/src/gpu.rs && sed -n '265,305p' crates/bbt-ui/src/components.rs && sed -n '305,345p' crates/bbt-ui/src/modules/pane.rs && sed -n '1,180p' crates/bboxy450-term/src/model.rs
+EXIT 0
+
+COMMAND 8
+sed -n '360,415p' crates/bboxy450-term/src/gpu.rs && sed -n '430,565p' crates/bboxy450-term/src/main.rs && cat crates/bbt-ui-model/src/model/tab.rs && rg -n 'pub struct ResolvedStyle|padding:' crates/bbt-ui/src/style.rs && sed -n '200,248p' crates/bboxy450-term/src/model.rs && sed -n '1,100p' crates/bbt-rt/src/latest.rs
+EXIT 1
+
+COMMAND 9
+date && git fetch origin && git log -3 --oneline origin/main && icq inbox --after 4750 --limit 12
+EXIT 0
+
+COMMAND 10
+git rebase --no-autostash origin/main && sed -n '15,37p' crates/bboxy450-term/src/scene.rs && sed -n '150,218p' crates/bboxy450-term/src/scene.rs && sed -n '320,365p' crates/bboxy450-term/src/scene.rs && rg -n 'struct Latest|impl.*Latest' crates/bbt-rt/src
+EXIT 0
+
+COMMAND 11
+sed -n '405,442p' crates/bboxy450-term/src/gpu.rs && rg -n 'pub struct DrawCtx|pub fn draw_pane' crates/bboxy450-term/src/model.rs && sed -n '60,97p' crates/bbt-rt/src/queues.rs && icq inbox --after 4750 --limit 10
+EXIT 0
+
+COMMAND 12
+sed -n '328,368p' crates/bboxy450-term/src/model.rs && rg -n 'pub async fn shutdown|pub async fn event|enum Event' crates/bboxy450-term/src/cockpit.rs && sed -n '555,635p' crates/bboxy450-term/src/cockpit.rs && icq inbox --after 4750 --limit 12
+EXIT 0
+
+COMMAND 13
+CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo check -p bboxy450-term --all-targets --locked > .bboxy/runs/c1i-check.log 2>&1; result=$?; cat .bboxy/runs/c1i-check.log; exit $result
+EXIT 0 (exec session 84986)
+
+COMMAND 14
+sed -n '205,365p' crates/bboxy450-term/src/cockpit.rs && cat crates/bboxy450-term/src/grids.rs && sed -n '635,657p' crates/bbt-ui/src/style.rs && cat crates/bbt-proto/src/streams.rs | head -75 && sed -n '1,105p' crates/bboxy450-term/src/capture.rs
+EXIT 0
+
+COMMAND 15
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo build -p bboxy450-term --locked > .bboxy/runs/c1i-build.log 2>&1; result=$?; tail -15 .bboxy/runs/c1i-build.log; exit $result
+EXIT 0 (exec session 46221)
+
+COMMAND 16
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo test -p bboxy450-term --bin bboxy450-term real_io_echo_resize_reflow_and_logic_loss_retains_last_frame --locked -- --nocapture > .bboxy/runs/c1i-real-io.log 2>&1; result=$?; tail -50 .bboxy/runs/c1i-real-io.log; exit $result
+EXIT 101 (exec session 24404)
+
+COMMAND 17
+git diff --stat && sed -n '45,125p' crates/bboxy450-term/src/main.rs && icq inbox --after 4761 --limit 12
+EXIT 0
+
+COMMAND 18
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo test -p bboxy450-term --bin bboxy450-term real_io_echo_resize_reflow_and_logic_loss_retains_last_frame --locked -- --nocapture > .bboxy/runs/c1i-real-io-2.log 2>&1; result=$?; tail -45 .bboxy/runs/c1i-real-io-2.log; exit $result
+EXIT 0 (exec session 23525)
+
+COMMAND 19
+rg -n 'fn height|fn element|extent:' crates/bbt-ui/src/modules/pane.rs && sed -n '90,120p' crates/bbt-ui/src/modules/pane.rs && sed -n '370,414p' crates/bbt-ui/src/modules/pane.rs && git status --short && icq inbox --after 4761 --limit 15
+EXIT 0
+
+COMMAND 20
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo clippy -p bboxy450-term --all-targets --locked -- -D warnings > .bboxy/runs/c1i-clippy.log 2>&1; result=$?; tail -45 .bboxy/runs/c1i-clippy.log; exit $result
+EXIT 101 (exec session 76038)
+
+COMMAND 21
+python3 - <<'PY'
+from pathlib import Path
+p=Path('crates/bboxy450-term/src/main.rs')
+s=p.read_text()
+start=s.index('#[cfg(test)]\nmod input_tests {')
+end=s.index('fn main() ->',start)
+s=s[:start]+s[end:]+'\n'+s[start:end]
+p.write_text(s)
+PY
+cargo fmt -p bboxy450-term
+CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo build -p bboxy450-term --locked > .bboxy/runs/c1i-build-2.log 2>&1; result=$?; tail -8 .bboxy/runs/c1i-build-2.log; exit $result
+EXIT 0 (exec session 60367)
+
+COMMAND 22
+python3 - <<'PY'
+import os, pathlib, plistlib, shutil, subprocess, time, json
+root=pathlib.Path('target')/('c1i-native-'+str(time.time_ns()))
+bundle=root/'AsterC1i.app'
+exe=bundle/'Contents/MacOS/bboxy450-term'
+exe.parent.mkdir(parents=True)
+shutil.copy2('target/debug/bboxy450-term',exe)
+with (bundle/'Contents/Info.plist').open('wb') as f:
+ plistlib.dump({'CFBundleIdentifier':'com.bboxy450.term.aster.c1i','CFBundleExecutable':'bboxy450-term','CFBundleName':'Aster C1i','CFBundlePackageType':'APPL','NSHighResolutionCapable':True},f)
+zd=root/'zsh-config';zd.mkdir()
+(zd/'.zshrc').write_text("PROMPT='c1i % '\nRPROMPT=''\n")
+env=os.environ.copy();env['BBOXY_TEST_CUSTODY']='memory';env['ZDOTDIR']=str(zd.resolve())
+log=(root/'app.log').open('wb')
+p=subprocess.Popen([str(exe.resolve()),'--run-dir',str((root/'run').resolve()),'--pacing','fifo'],env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+record={'pid':p.pid,'bundle':str(bundle.resolve()),'root':str(root.resolve()),'log':str((root/'app.log').resolve())}
+(root/'owned-process.json').write_text(json.dumps(record,indent=2))
+pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a').write(json.dumps(record)+'\n')
+print(json.dumps(record))
+PY
+EXIT 0
+
+COMMAND 23
+cat '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726409439307000/app.log' && ps -p 40550 -o pid=,stat=,etime= && icq inbox --after 4766 --limit 12
+EXIT 0
+
+COMMAND 24
+/usr/bin/sample 40550 1 -file .bboxy/runs/c1i-native-sample.log > .bboxy/runs/c1i-sample-command.log 2>&1; result=$?; head -70 .bboxy/runs/c1i-native-sample.log; exit $result
+EXIT 0 (exec session 52642)
+
+COMMAND 25
+rg -n 'fn request_frame|fn is_metal|fn is_fifo|fn take_tick|fn clear' crates/bboxy450-term/src/display_link.rs && sed -n '330,440p' crates/bboxy450-term/src/display_link.rs && rg -n 'RedrawRequested|window.request_redraw' crates/bboxy450-term/src/main.rs && cat target/c1i-native-1792726409439307000/app.log
+EXIT 0
+
+COMMAND 26
+CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo clippy -p bboxy450-term --all-targets --locked -- -D warnings > .bboxy/runs/c1i-clippy-2.log 2>&1; result=$?; tail -15 .bboxy/runs/c1i-clippy-2.log; exit $result
+EXIT 0 (exec session 68192)
+
+COMMAND 27
+ps -p 40550 -o pid=,stat=,pcpu=,etime= && tail -18 '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726409439307000/app.log' && /usr/bin/sample 40550 1 -file .bboxy/runs/c1i-native-sample-2.log > .bboxy/runs/c1i-sample-command-2.log 2>&1; result=$?; rg -n 'Thread_|main-thread|App.*redraw|sample|wait|try_send|flush_commands' .bboxy/runs/c1i-native-sample-2.log | head -45; exit $result
+EXIT 0 (exec session 40029)
+
+COMMAND 28
+icq inbox --after 4768 --limit 12 && ps -p 40550,40561,40563,40774 -o pid=,ppid=,stat=,command=
+EXIT 0
+
+COMMAND 29
+sed -n '24,62p' .bboxy/runs/c1i-native-sample-2.log && sed -n '258,272p' crates/bbt-ui/src/modules/pane.rs && sed -n '1,120p' .bboxy/specs/c1-live-seats.md
+EXIT 0
+
+COMMAND 30
+sed -n '100,237p' crates/bboxy450-term/src/live.rs
+EXIT 0
+
+COMMAND 31
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo check -p bboxy450-term --all-targets --locked > .bboxy/runs/c1i-check-2.log 2>&1; result=$?; tail -20 .bboxy/runs/c1i-check-2.log; exit $result
+EXIT 101 (exec session 31700)
+
+COMMAND 32
+python3 - <<'PY'
+import json,os,signal,pathlib,time
+r=json.loads(pathlib.Path('target/c1i-native-1792726409439307000/owned-process.json').read_text())
+os.kill(r['pid'],signal.SIGTERM)
+with pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a') as f:f.write('SIGTERM own app '+str(r['pid'])+'; replacing mismatched bundle executable name\n')
+print('sent SIGTERM to own recorded app',r['pid'])
+PY
+ps -p 40550,40561,40563,40774 -o pid=,ppid=,stat=,command=
+EXIT 0
+
+COMMAND 33
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo build -p bboxy450-term --locked > .bboxy/runs/c1i-build-3.log 2>&1; result=$?; tail -8 .bboxy/runs/c1i-build-3.log; exit $result
+EXIT 0 (exec session 25401)
+
+COMMAND 34
+python3 - <<'PY'
+import os,pathlib,plistlib,shutil,subprocess,time,json
+root=pathlib.Path('target')/('c1i-native-'+str(time.time_ns()));bundle=root/'AsterC1i2.app';exe=bundle/'Contents/MacOS/AsterC1i2';exe.parent.mkdir(parents=True)
+shutil.copy2('target/debug/bboxy450-term',exe)
+with (bundle/'Contents/Info.plist').open('wb') as f:plistlib.dump({'CFBundleIdentifier':'com.bboxy450.term.aster.c1i2','CFBundleExecutable':'AsterC1i2','CFBundleName':'AsterC1i2','CFBundleDisplayName':'AsterC1i2','CFBundleVersion':'1','CFBundleShortVersionString':'0.0.1','CFBundlePackageType':'APPL','NSHighResolutionCapable':True},f)
+zd=root/'zsh-config';zd.mkdir();(zd/'.zshrc').write_text("PROMPT='c1i % '\nRPROMPT=''\n")
+env=os.environ.copy();env.update(BBOXY_TEST_CUSTODY='memory',ZDOTDIR=str(zd.resolve()))
+log=(root/'app.log').open('wb');p=subprocess.Popen([str(exe.resolve()),'--run-dir',str((root/'run').resolve())],env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+r={'pid':p.pid,'bundle':str(bundle.resolve()),'root':str(root.resolve()),'log':str((root/'app.log').resolve())};(root/'owned-process.json').write_text(json.dumps(r,indent=2));pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a').write(json.dumps(r)+'\n');print(json.dumps(r))
+PY
+EXIT 0
+
+COMMAND 35
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo test -p bboxy450-term --bin bboxy450-term --locked -- --nocapture > .bboxy/runs/c1i-app-tests.log 2>&1; result=$?; tail -35 .bboxy/runs/c1i-app-tests.log; exit $result
+EXIT 0 (exec session 25185)
+
+COMMAND 36
+python3 - <<'PY'
+import os,signal,pathlib
+pids=[40561,40563]
+with pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a') as f:
+ f.write('Owned first-instance child PIDs from app.log: supervisor=40561 logic=40563; cleanup check\n')
+ for pid in pids:
+  try:os.kill(pid,0)
+  except ProcessLookupError:f.write(f'{pid} absent\n');print(pid,'absent');continue
+  os.kill(pid,signal.SIGTERM);f.write(f'SIGTERM own recorded child {pid}\n');print('SIGTERM own child',pid)
+PY
+ps -p 50512 -o pid=,stat=,etime=
+tail -8 target/c1i-native-1792726971350667000/app.log
+EXIT 0
+
+COMMAND 37
+CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo build -p bboxy450-term --locked > .bboxy/runs/c1i-build-4.log 2>&1; result=$?; tail -8 .bboxy/runs/c1i-build-4.log; exit $result
+EXIT 0 (exec session 37565)
+
+COMMAND 38
+python3 - <<'PY'
+import os,pathlib,plistlib,shutil,subprocess,time,json
+root=pathlib.Path('target')/('c1i-native-'+str(time.time_ns()));bundle=root/'AsterC1i3.app';exe=bundle/'Contents/MacOS/AsterC1i3';exe.parent.mkdir(parents=True)
+shutil.copy2('target/debug/bboxy450-term',exe)
+with (bundle/'Contents/Info.plist').open('wb') as f:plistlib.dump({'CFBundleIdentifier':'com.bboxy450.term.aster.c1i3','CFBundleExecutable':'AsterC1i3','CFBundleName':'AsterC1i3','CFBundleDisplayName':'AsterC1i3','CFBundleVersion':'1','CFBundleShortVersionString':'0.0.1','CFBundlePackageType':'APPL','NSHighResolutionCapable':True},f)
+zd=root/'zsh-config';zd.mkdir();(zd/'.zshrc').write_text("PROMPT='c1i %% '\nRPROMPT=''\n")
+env=os.environ.copy();env.update(BBOXY_TEST_CUSTODY='memory',ZDOTDIR=str(zd.resolve()))
+log=(root/'app.log').open('wb');p=subprocess.Popen([str(exe.resolve()),'--run-dir',str((root/'run').resolve()),'--capture',str((root/'screen.png').resolve())],env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+r={'pid':p.pid,'bundle':str(bundle.resolve()),'root':str(root.resolve()),'log':str((root/'app.log').resolve())};(root/'owned-process.json').write_text(json.dumps(r,indent=2));pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a').write(json.dumps(r)+'\n');print(json.dumps(r))
+PY
+EXIT 0
+
+COMMAND 39
+tail -35 '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727190692361000/app.log' && icq inbox --after 4774 --limit 16
+EXIT 0
+
+COMMAND 40
+cp '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727190692361000/screen.png' '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727190692361000/echo-hi.png' && shasum -a 256 '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727190692361000/echo-hi.png' && rg -n 'fn drag_resize_window|fn set_resizable' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/window.rs && sed -n '330,395p' crates/bboxy450-term/src/gpu.rs
+EXIT 1
+
+COMMAND 41
+rg -n 'drag_resize_window|fn set_resizable|fn request_inner_size' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos && cat crates/bboxy-firehose/src/main.rs | head -90 && df -h .
+EXIT 0
+
+COMMAND 42
+sed -n '1028,1060p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/window_delegate.rs && sed -n '1168,1192p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/window_delegate.rs && rg -n 'fn set_decorations|style_mask' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/window_delegate.rs | head -12 && target/release/bboxy-firehose --list
+EXIT 0
+
+COMMAND 43
+rg -n 'Resizable|decorations' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/window.rs | head -25 && sed -n '280,312p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/window_delegate.rs && icq inbox --after 4776 --limit 12
+EXIT 0
+
+COMMAND 44
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo test -p bboxy450-term --bin bboxy450-term --locked -- --nocapture > .bboxy/runs/c1i-app-tests-2.log 2>&1; result=$?; tail -35 .bboxy/runs/c1i-app-tests-2.log; exit $result
+EXIT 0 (exec session 1052)
+
+COMMAND 45
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo build -p bboxy450-term --locked > .bboxy/runs/c1i-build-5.log 2>&1; result=$?; tail -8 .bboxy/runs/c1i-build-5.log; exit $result
+EXIT 0 (exec session 91387)
+
+COMMAND 46
+python3 - <<'PY'
+import os,pathlib,plistlib,shutil,subprocess,time,json
+root=pathlib.Path('target')/('c1i-native-'+str(time.time_ns()));bundle=root/'AsterC1i4.app';exe=bundle/'Contents/MacOS/AsterC1i4';exe.parent.mkdir(parents=True)
+shutil.copy2('target/debug/bboxy450-term',exe)
+with (bundle/'Contents/Info.plist').open('wb') as f:plistlib.dump({'CFBundleIdentifier':'com.bboxy450.term.aster.c1i4','CFBundleExecutable':'AsterC1i4','CFBundleName':'AsterC1i4','CFBundleDisplayName':'AsterC1i4','CFBundleVersion':'1','CFBundleShortVersionString':'0.0.1','CFBundlePackageType':'APPL','NSHighResolutionCapable':True},f)
+zd=root/'zsh-config';zd.mkdir();(zd/'.zshrc').write_text("PROMPT='c1i %% '\nRPROMPT=''\n")
+env=os.environ.copy();env.update(BBOXY_TEST_CUSTODY='memory',ZDOTDIR=str(zd.resolve()))
+log=(root/'app.log').open('wb');p=subprocess.Popen([str(exe.resolve()),'--run-dir',str((root/'run').resolve()),'--capture',str((root/'screen.png').resolve())],env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+r={'pid':p.pid,'bundle':str(bundle.resolve()),'root':str(root.resolve()),'log':str((root/'app.log').resolve())};(root/'owned-process.json').write_text(json.dumps(r,indent=2));pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a').write(json.dumps(r)+'\n');print(json.dumps(r))
+PY
+EXIT 0
+
+COMMAND 47
+rg --files target/c1b-terminal | head -15 && rg --files target/t2-prefix | rg 'unicode.*web|palette.*web' | head -8 && git diff --check && icq inbox --after 4781 --limit 10
+EXIT 0
+
+COMMAND 48
+CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo clippy --workspace --all-targets --locked -- -D warnings > .bboxy/runs/c1i-workspace-clippy.log 2>&1; result=$?; tail -18 .bboxy/runs/c1i-workspace-clippy.log; exit $result
+EXIT 0 (exec session 13244)
+
+COMMAND 49
+rg --files --hidden --no-ignore target crates/bboxy-firehose/reference | rg '(unicode|palette).*(png|json)$' | head -28
+EXIT 0
+
+COMMAND 50
+tail -65 '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727554569725000/app.log' && ps -p 61132 -o pid=,stat=,etime=
+EXIT 1
+
+COMMAND 51
+rg --files /Users/feral/Library/Logs/DiagnosticReports | rg '(AsterC1i4|bboxy450-term).*ips$' | tail -4 && ps -p 61151,61152,61370 -o pid=,ppid=,stat=,command= && sed -n '1,130p' crates/bboxy450-term/src/display_link.rs
+EXIT 0
+
+COMMAND 52
+python3 - <<'PY'
+import json,pathlib
+p=pathlib.Path('/Users/feral/Library/Logs/DiagnosticReports/AsterC1i4-2026-10-22-205420.ips')
+raw=p.read_text();j=json.loads(raw[raw.index('\n')+1:]);t=j['threads'][j['faultingThread']]
+print('owned crash PID',j.get('pid'),'thread',j['faultingThread'])
+for f in t.get('frames',[])[:60]: print(f.get('symbol',f),f.get('symbolLocation',''))
+PY
+EXIT 0
+
+COMMAND 53
+rg -n 'queue_closure|maybe_queue_event|panic_hook' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/{observer.rs,app_state.rs,event_loop.rs} && sed -n '125,160p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/observer.rs && rg -n 'set_hook|take_hook' crates/bboxy450-term/src /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos
+EXIT 1
+
+COMMAND 54
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo build -p bboxy450-term --locked > .bboxy/runs/c1i-build-6.log 2>&1; result=$?; tail -8 .bboxy/runs/c1i-build-6.log; exit $result
+EXIT 0 (exec session 15641)
+
+COMMAND 55
+python3 - <<'PY'
+import os,signal,pathlib,shutil
+root=pathlib.Path('target/c1i-native-1792727554569725000')
+shutil.copy2(root/'screen.png',root/'echo-hi.png')
+with pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a') as f:
+ f.write('Owned fourth-instance child PIDs from app.log: supervisor=61151 logic=61152; app aborted on resize\n')
+ for pid in [61151,61152]:
+  try:os.kill(pid,signal.SIGTERM);f.write(f'SIGTERM own child {pid}\n')
+  except ProcessLookupError:f.write(f'{pid} absent\n')
+print('retained echo PNG and stopped own orphaned children')
+PY
+EXIT 0
+
+COMMAND 56
+python3 - <<'PY'
+import os,pathlib,plistlib,shutil,subprocess,time,json
+root=pathlib.Path('target')/('c1i-native-'+str(time.time_ns()));name='AsterC1i5';bundle=root/(name+'.app');exe=bundle/'Contents/MacOS'/name;exe.parent.mkdir(parents=True)
+shutil.copy2('target/debug/bboxy450-term',exe)
+with (bundle/'Contents/Info.plist').open('wb') as f:plistlib.dump({'CFBundleIdentifier':'com.bboxy450.term.aster.c1i5','CFBundleExecutable':name,'CFBundleName':name,'CFBundleDisplayName':name,'CFBundleVersion':'1','CFBundleShortVersionString':'0.0.1','CFBundlePackageType':'APPL','NSHighResolutionCapable':True},f)
+zd=root/'zsh-config';zd.mkdir();(zd/'.zshrc').write_text("PROMPT='c1i %% '\nRPROMPT=''\n")
+env=os.environ.copy();env.update(BBOXY_TEST_CUSTODY='memory',ZDOTDIR=str(zd.resolve()),RUST_BACKTRACE='full')
+log=(root/'app.log').open('wb');p=subprocess.Popen([str(exe.resolve()),'--run-dir',str((root/'run').resolve()),'--capture',str((root/'screen.png').resolve())],env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+r={'pid':p.pid,'bundle':str(bundle.resolve()),'root':str(root.resolve()),'log':str((root/'app.log').resolve())};(root/'owned-process.json').write_text(json.dumps(r,indent=2));pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a').write(json.dumps(r)+'\n');print(json.dumps(r))
+PY
+EXIT 0
+
+COMMAND 57
+tail -100 '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727812147187000/app.log' && ps -p 63914 -o pid=,stat=,etime=
+EXIT 1
+
+COMMAND 58
+rg -n 'fn draw_rect|drawRect' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/view.rs && sed -n '1180,1238p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/view.rs && sed -n '294,335p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/app_state.rs && sed -n '166,195p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/observer.rs
+EXIT 0
+
+COMMAND 59
+sed -n '196,216p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/view.rs && sed -n '950,997p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/window_delegate.rs && sed -n '1,140p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/event_handler.rs
+EXIT 0
+
+COMMAND 60
+rg -n 'fn handle_redraw' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/app_state.rs && sed -n '277,299p' /Users/feral/.cargo/registry/src/index.crates.io-*/winit-0.30.13/src/platform_impl/macos/app_state.rs
+EXIT 0
+
+COMMAND 61
+python3 - <<'PY'
+import os,signal,pathlib,plistlib,shutil,subprocess,time,json
+with pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a') as f:
+ f.write('Owned fifth-instance children from app.log: supervisor=63954 logic=63957; app aborted during resize\n')
+ for pid in [63954,63957]:
+  try:os.kill(pid,signal.SIGTERM);f.write(f'SIGTERM own child {pid}\n')
+  except ProcessLookupError:f.write(f'{pid} absent\n')
+root=pathlib.Path('target')/('c1i-native-'+str(time.time_ns()));name='AsterC1i6';bundle=root/(name+'.app');exe=bundle/'Contents/MacOS'/name;exe.parent.mkdir(parents=True);shutil.copy2('target/debug/bboxy450-term',exe)
+with (bundle/'Contents/Info.plist').open('wb') as f:plistlib.dump({'CFBundleIdentifier':'com.bboxy450.term.aster.c1i6','CFBundleExecutable':name,'CFBundleName':name,'CFBundleDisplayName':name,'CFBundleVersion':'1','CFBundlePackageType':'APPL','NSHighResolutionCapable':True},f)
+zd=root/'zsh-config';zd.mkdir();(zd/'.zshrc').write_text("PROMPT='c1i %% '\nRPROMPT=''\n")
+env=os.environ.copy();env.update(BBOXY_TEST_CUSTODY='memory',ZDOTDIR=str(zd.resolve()),RUST_BACKTRACE='full')
+log=(root/'app.log').open('wb');p=subprocess.Popen([str(exe.resolve()),'--run-dir',str((root/'run').resolve()),'--capture',str((root/'screen.png').resolve()),'--pacing','fifo'],env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+r={'pid':p.pid,'bundle':str(bundle.resolve()),'root':str(root.resolve()),'log':str((root/'app.log').resolve())};(root/'owned-process.json').write_text(json.dumps(r,indent=2));pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a').write(json.dumps(r)+'\n');print(json.dumps(r))
+PY
+EXIT 0
+
+COMMAND 62
+lldb --version && icq inbox --after 4781 --limit 12 && sed -n '285,321p' crates/bboxy450-term/src/display_link.rs
+EXIT 0
+
+COMMAND 63
+sed -n '345,373p' crates/bboxy450-term/src/main.rs && rg -n 'GuiAction::(Input|Resize)|UiMsg::(Input|Resize)' crates --glob '*.rs' && sed -n '30,85p' crates/bbt-proto/src/gui.rs && sed -n '175,202p' crates/bboxy450-term/src/cockpit.rs
+EXIT 0
+
+COMMAND 64
+sed -n '382,412p' crates/bboxy450-term/src/main.rs && rg -n 'pub enum UiMsg' crates/bboxy450-term/src/cockpit.rs && sed -n '246,267p' crates/bbt-mux/src/seat_socket.rs && sed -n '533,549p' crates/bbt-mux/src/seat_socket.rs && sed -n '574,593p' crates/bbt-mux/src/seat_socket.rs && sed -n '166,187p' crates/bboxy450-term/tests/custody.rs
+EXIT 0
+
+COMMAND 65
+sed -n '20,49p' crates/bboxy450-term/src/cockpit.rs && sed -n '110,175p' crates/bboxy450-term/src/main.rs && sed -n '118,195p' crates/bbt-proto/src/gui.rs
+EXIT 0
+
+COMMAND 66
+python3 - <<'PY'
+from pathlib import Path
+p=Path('crates/bboxy450-term/src/live.rs');s=p.read_text();s=s.replace('UiMsg::Input {seat,id,bytes}=>session.send(GuiAction::Input {seat:*seat,id:*id,bytes:bytes.clone()})','UiMsg::Input {seat,generation,id,bytes}=>session.send(GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()})');s=s.replace('UiMsg::Resize {seat,cols,rows}=>session.send(GuiAction::Resize {seat:*seat,cols:*cols,rows:*rows})','UiMsg::Resize {seat,generation,cols,rows}=>session.send(GuiAction::Resize {seat:*seat,generation:*generation,cols:*cols,rows:*rows})');s=s.replace('async fn input(sender: &CommandSender, seat: SeatId, bytes: &[u8])','async fn input(sender: &CommandSender, seat: SeatId, generation: u64, bytes: &[u8])');s=s.replace('.send(UiMsg::Input {\n                seat,','.send(UiMsg::Input {\n                seat,\n                generation,');s=s.replace('.send(UiMsg::Resize {\n                seat,','.send(UiMsg::Resize {\n                seat,\n                generation: view.generation,');s=s.replace('input(&sender, seat,', 'input(&sender, seat, view.generation,');p.write_text(s)
+p=Path('crates/bbt-mux/src/seat_socket.rs');s=p.read_text().replace('GuiAction::Input {seat,id,bytes}=>','GuiAction::Input {seat,generation:_,id,bytes}=>').replace('GuiAction::Resize {seat,cols,rows}=>','GuiAction::Resize {seat,generation:_,cols,rows}=>');s=s.replace('action: GuiAction::Input {\n                    seat,','action: GuiAction::Input {\n                    seat,\n                    generation: view.generation,').replace('action: GuiAction::Resize {\n                    seat,','action: GuiAction::Resize {\n                    seat,\n                    generation: view.generation,');p.write_text(s)
+p=Path('crates/bboxy450-term/tests/custody.rs');s=p.read_text().replace('GuiAction::Input {\n            seat,','GuiAction::Input {\n            seat,\n            generation: record.generation,');p.write_text(s)
+PY
+cargo fmt -p bboxy450-term -p bbt-proto -p bbt-mux
+CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo check --workspace --all-targets --locked > .bboxy/runs/c1i-generation-check.log 2>&1; result=$?; tail -30 .bboxy/runs/c1i-generation-check.log; exit $result
+EXIT 101 (exec session 49630)
+
+COMMAND 67
+cp '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727949459320000/screen.png' '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727949459320000/stty-size-1200x760.png' && tail -5 '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727949459320000/app.log' && git diff --stat
+EXIT 0
+
+COMMAND 68
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo build -p bboxy450-term --locked > .bboxy/runs/c1i-build-7.log 2>&1; result=$?; tail -12 .bboxy/runs/c1i-build-7.log; exit $result
+EXIT 0 (exec session 39281)
+
+COMMAND 69
+tail -80 '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727949459320000/app.log' && ps -p 65211 -o pid=,stat=,etime= && icq inbox --after 4797 --limit 15
+EXIT 0
+
+COMMAND 70
+rg -n 'async fn write_json|timeout\(' crates/bboxy450-term/src/cockpit.rs && sed -n '388,425p' crates/bboxy450-term/src/cockpit.rs && head -18 target/c1i-native-1792727949459320000/app.log
+EXIT 0
+
+COMMAND 71
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo build -p bboxy450-term --locked > .bboxy/runs/c1i-build-8.log 2>&1; result=$?; tail -10 .bboxy/runs/c1i-build-8.log; exit $result
+EXIT 0 (exec session 68057)
+
+COMMAND 72
+python3 - <<'PY'
+import os,pathlib,plistlib,shutil,subprocess,time,json
+root=pathlib.Path('target')/('c1i-native-'+str(time.time_ns()));name='AsterC1i7';bundle=root/(name+'.app');exe=bundle/'Contents/MacOS'/name;exe.parent.mkdir(parents=True);shutil.copy2('target/debug/bboxy450-term',exe)
+with (bundle/'Contents/Info.plist').open('wb') as f:plistlib.dump({'CFBundleIdentifier':'com.bboxy450.term.aster.c1i7','CFBundleExecutable':name,'CFBundleName':name,'CFBundleDisplayName':name,'CFBundleVersion':'1','CFBundlePackageType':'APPL','NSHighResolutionCapable':True},f)
+zd=root/'zsh-config';zd.mkdir();(zd/'.zshrc').write_text("PROMPT='c1i %% '\nRPROMPT=''\n")
+env=os.environ.copy();env.update(BBOXY_TEST_CUSTODY='memory',ZDOTDIR=str(zd.resolve()),RUST_BACKTRACE='full')
+log=(root/'app.log').open('wb');p=subprocess.Popen([str(exe.resolve()),'--run-dir',str((root/'run').resolve()),'--capture',str((root/'screen.png').resolve())],env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+r={'pid':p.pid,'bundle':str(bundle.resolve()),'root':str(root.resolve()),'log':str((root/'app.log').resolve())};(root/'owned-process.json').write_text(json.dumps(r,indent=2));pathlib.Path('.bboxy/runs/c1i-native-processes.log').open('a').write(json.dumps(r)+'\n');print(json.dumps(r))
+PY
+EXIT 0
+
+COMMAND 73
+CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo test -p bboxy450-term -p bbt-proto --locked > .bboxy/runs/c1i-tests-generation.log 2>&1; result=$?; tail -30 .bboxy/runs/c1i-tests-generation.log; exit $result
+EXIT 0 (exec session 19774)
+
+COMMAND 74
+cp '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000/screen.png' '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000/metal-1200x760-stty.png' && tail -12 '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000/app.log'
+EXIT 0
+
+COMMAND 75
+cargo fmt -p bboxy450-term && CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo clippy --workspace --all-targets --locked -- -D warnings > .bboxy/runs/c1i-workspace-clippy-2.log 2>&1; result=$?; tail -25 .bboxy/runs/c1i-workspace-clippy-2.log; exit $result
+EXIT 0 (exec session 21066)
+
+COMMAND 76
+cp '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000/screen.png' '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000/metal-1600x960-stty.png' && shasum -a 256 '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000/metal-1200x760-stty.png' '/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000/metal-1600x960-stty.png' && git diff --check && icq inbox --after 4816 --limit 12
+EXIT 0
+
+COMMAND 77
+CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo test -p bboxy450-term --bin bboxy450-term --locked -- --nocapture > .bboxy/runs/c1i-final-bin-tests.log 2>&1; result=$?; tail -18 .bboxy/runs/c1i-final-bin-tests.log; exit $result
+EXIT 0 (exec session 93956)
+
+COMMAND 78
+git diff --check && git add crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/gpu.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/tests/custody.rs crates/bbt-proto/src/gui.rs crates/bbt-mux/src/seat_socket.rs && git commit -m 'Bind live terminal panes to watched screens and operator input' && git fetch origin && git rebase --no-autostash origin/main
+EXIT 0 (exec session 41833)
+
+COMMAND 79
+git status --short && git log -3 --oneline && sed -n '1,190p' scripts/ci-local.sh
+EXIT 0
+
+COMMAND 80
+git verify-commit HEAD && git rev-parse HEAD && git diff c7d2628 HEAD --stat && sed -n '88,104p' crates/bboxy450-term/src/cockpit.rs
+EXIT 0
+
+COMMAND 81
+icq inbox --after 4816 --limit 15 && git status --short --untracked-files=no && git diff 39cdb5c HEAD --stat
+EXIT 0

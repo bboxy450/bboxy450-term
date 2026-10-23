@@ -1,0 +1,23 @@
+COMMAND git verify-commit a5fcbe2f233a8a56c8966319396caa80b05c6042
+gpg: Signature made Thu Oct 22 22:19:17 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0
+
+COMMAND git verify-commit 868449d0cfe6fcb811d8bc0bf282c0ccbc3b3c29
+gpg: Signature made Thu Oct 22 22:19:17 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0
+
+COMMAND git verify-commit 2eda0caf1d48352015e6b776a96ea93a19864dd5
+gpg: Signature made Thu Oct 22 22:19:17 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0
+
+COMMAND git verify-commit a0c667fc99b50c662b6ba301bb600cd54e8ab373
+gpg: Signature made Thu Oct 22 22:19:17 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0

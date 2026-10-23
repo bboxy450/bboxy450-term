@@ -1,0 +1,115 @@
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 5.76s
+     Running unittests src/lib.rs (target/debug/deps/bboxy450_term-2abe3bee3d375908)
+
+running 4 tests
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-8904b9b34a87a919)
+
+running 9 tests
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test scene::lane_tests::the_lane_sets_gutter_and_inset_and_relayouts_at_runtime ... ok
+test scene::lane_tests::pane_rects_are_identical_across_activity_states ... ok
+cockpit ready: supervisor=75009 logic=75060
+seat 01M5KF5WSKH7THYMMBFAD4KASJ activity=Idle process=Running { pid: 75077 }
+seat 01M5KF5WSKH7THYMMBFAD4KASJ activity=Idle process=Running { pid: 75077 }
+GUI operation 01M5KF5X0N8KXPTHEASE22RH5R accepted
+GUI operation 01M5KF5X3KYF5SWVNX2SGK1R75 accepted
+GUI operation 01M5KF5X37ASS1KH9BW5PFNZN3 accepted
+seat 01M5KF5WSKH7THYMMBFAD4KASJ activity=Idle process=Running { pid: 75077 }
+GUI operation 01M5KF5X7FERKRDN2SJ5ZYF60P accepted
+GUI operation 01M5KF5X85Q52PAG6400H05R7Q accepted
+GUI operation 01M5KF5XAK0MSGC54F1Q5BBQ1E accepted
+GUI operation 01M5KF5XB3K4EAGY8XQFW6BB4J accepted
+GUI operation 01M5KF5XAW49DZSFB326TGZC0V accepted
+seat 01M5KF5WSKH7THYMMBFAD4KASJ activity=Idle process=Running { pid: 75077 }
+GUI operation 01M5KF5XH8P1785CQ2133PNFTB accepted
+GUI operation 01M5KF5XJ6F7QGWXAC6P219CT7 accepted
+GUI operation 01M5KF5XJ6D8RFQGYC8CB1DZ30 accepted
+GUI operation 01M5KF5XN6C1HRKSKTE4QH4BH2 accepted
+GUI operation 01M5KF5XP6Y78Z2J0ZTRMWM37G accepted
+GUI operation 01M5KF5XTJ3X3KWWQTK0WK67G2 accepted
+GUI operation 01M5KF5XRYVHDXM93QJN096CZX accepted
+seat 01M5KF5WSKH7THYMMBFAD4KASJ activity=Idle process=Running { pid: 75077 }
+GUI operation 01M5KF5XXW88Z7XF8YNQKPG4ZN accepted
+GUI operation 01M5KF5XZ5CGKHRXGG0DZRN8D8 accepted
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: GUI connection closed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.50s
+
+     Running tests/cockpit.rs (target/debug/deps/cockpit-6f4661edf49f761c)
+
+running 5 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s
+
+     Running tests/custody.rs (target/debug/deps/custody-e47a856cdb9fc328)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.24s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_proto-b24a737ae0b437df)
+
+running 4 tests
+test gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids ... ok
+test gui::tests::identity_status_is_portable_and_contains_only_state_and_reason ... ok
+test gui::tests::input_and_resize_require_an_explicit_displayed_generation ... ok
+test gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy450_term
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

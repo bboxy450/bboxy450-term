@@ -1,0 +1,2 @@
+{"pid": 44563, "command": ["cargo", "clippy", "-p", "bbt-render", "--all-targets", "--locked", "--", "-D", "clippy::disallowed_methods"], "cwd": "/tmp/ci-aster-c1i-lint-97ed4fd", "target": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-lint-ci-97ed4fd", "created_by": "this session Popen; recorded at startup"}
+{"pid": 46232, "command": ["sh", "scripts/ci-local.sh"], "cwd": "/tmp/ci-aster-c1i-lint-97ed4fd", "target": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-lint-ci-97ed4fd", "created_by": "this session Popen; recorded at startup"}

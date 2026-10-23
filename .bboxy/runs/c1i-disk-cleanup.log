@@ -1,0 +1,48 @@
+{
+  "authorization": "9c1e96da-78e2-412d-923c-f46a8e5a6357",
+  "removed": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/debug",
+      "allocated_bytes_removed": 10003410944
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-font-main",
+      "allocated_bytes_removed": 962560
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-modules",
+      "allocated_bytes_removed": 30175232
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-pane-preview",
+      "allocated_bytes_removed": 34029568
+    }
+  ],
+  "allocated_bytes_removed_total": 10068578304,
+  "remaining_target_allocated_bytes": 309284864,
+  "retained": [
+    "/Users/feral/mydev/bboxy450-term-exec4/target/t2-prefix",
+    "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-parity-d973716",
+    "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-terminal",
+    "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-pane-unicode.png",
+    "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-pane-comparison.png",
+    "/Users/feral/mydev/bboxy450-term-exec4/target/release"
+  ],
+  "frozen_binary_sha256_unchanged": "a6fbc1f3ae74497465c57e388f1c9fd6bcea54df45629a66931dae1a7b8acd84",
+  "physical_free_delta": "not isolated; no exact physical freed-byte claim",
+  "ownership": "only this session own exec4 artifacts; no process terminated and no peer directory touched",
+  "checks": "read-only process inventory found no active process using exec4 target; source untouched"
+}
+
+2026-10-22: remove only obsolete executables from my six stopped native test bundles; PNG/log evidence retained.
+/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726409439307000/AsterC1i.app/Contents/MacOS/bboxy450-term: SHA256 1010ce60b24f6b2eb6da188d6a64194e57d1b6a206d608cb3e6e0a16837495fe; removed allocated bytes 74518528
+/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726971350667000/AsterC1i2.app/Contents/MacOS/AsterC1i2: SHA256 a111277f366014a0dd3e13c1f7e848b07d6c10a68232ef9e148903cdd2b0c672; removed allocated bytes 74518528
+/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727190692361000/AsterC1i3.app/Contents/MacOS/AsterC1i3: SHA256 dc388b2f05359e08c7c81f7660f6cc21945e4fe60c716b0ff698653795addfdc; removed allocated bytes 74518528
+/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727554569725000/AsterC1i4.app/Contents/MacOS/AsterC1i4: SHA256 1e8f83c1b2cf9c0afadfbeb65c128a1482b3d80e93696961b4fc99fa0bfa5eb4; removed allocated bytes 74543104
+/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727812147187000/AsterC1i5.app/Contents/MacOS/AsterC1i5: SHA256 6fc211b4f48778ced37f9f27d04ea5764b4ad1bd12ff262208a77a0d6e05b09d; removed allocated bytes 74543104
+/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727949459320000/AsterC1i6.app/Contents/MacOS/AsterC1i6: SHA256 6fc211b4f48778ced37f9f27d04ea5764b4ad1bd12ff262208a77a0d6e05b09d; removed allocated bytes 74543104
+TOTAL obsolete native executable allocated bytes removed: 447184896
+
+Exited a0c667f failed socket-test gate: removed own target /tmp/ci-aster-c1i-a0c667f/target-ci; allocated bytes freed=1956909056.
+
+Final a0c667f gate exited1/951.630s; retained complete parity gallery/report in /Users/feral/mydev/bboxy450-term-exec4/target/c1i-parity-a0c667f; removed own clean CI worktree/target /tmp/ci-aster-c1i-a0c667f; target allocated bytes freed=2376798208; git worktree remove EXIT0.

@@ -1,0 +1,44 @@
+   Compiling rustix v1.1.5
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 4.89s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-8904b9b34a87a919)
+
+running 1 test
+owned supervisor=34307 logic=34363
+cockpit ready: supervisor=34307 logic=34363
+seat 01M5KCX5P8XA972CS9W4X8Q2ZV activity=Idle process=Running { pid: 34367 }
+seat 01M5KCX5P8XA972CS9W4X8Q2ZV activity=Idle process=Running { pid: 34367 }
+GUI operation 01M5KCX5VJAWEMZXZEREZ30JWR accepted
+GUI operation 01M5KCX5XXX82X10NNE0W858C7 accepted
+GUI operation 01M5KCX5XV5RVCT2RN3SCE6ZH4 accepted
+PASS real IO: standalone hi row in Replica, prepared frame published
+GUI operation 01M5KCX603VMRK0ZC6T8B8G2A1 accepted
+GUI operation 01M5KCX60STDRW1E77TN3AVCP7 accepted
+GUI operation 01M5KCX63TTVS5JV4612Z0MY08 accepted
+GUI operation 01M5KCX63T2X1A58DVDSWWKJAR accepted
+GUI operation 01M5KCX64P6AT4B6DDES3H6CMG accepted
+seat 01M5KCX5P8XA972CS9W4X8Q2ZV activity=Idle process=Running { pid: 34367 }
+GUI operation 01M5KCX66BW4VQD7QMX8W3M7KA accepted
+GUI operation 01M5KCX67DY4PHW3QQQ755V1GZ accepted
+GUI operation 01M5KCX674HY54R429ZP9T54QB accepted
+GUI operation 01M5KCX68GXF9EPMJTWFMP95ZP accepted
+GUI operation 01M5KCX6985F0NPRP8JGBSTWNM accepted
+GUI operation 01M5KCX6BTB7PACYZGSF3722ZF accepted
+GUI operation 01M5KCX6CMB4QZQ9VQS0RDYDZ0 accepted
+
+thread 'live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame' (10826396) panicked at crates/bboxy450-term/src/live.rs:261:13:
+model condition timed out; screens: [(SeatId(Ulid(2167272963455717902197225658627361787)), ["789", "feral@Maksims-Mac-mi", "feral@Maksims-Mac-mi", "ni repository %", "", "", "", "", "", "", "", ""])]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+logic: orderly shutdown requested
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... FAILED
+
+failures:
+
+failures:
+    live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 16.66s
+
+error: test failed, to rerun pass `-p bboxy450-term --bin bboxy450-term`

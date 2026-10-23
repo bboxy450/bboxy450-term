@@ -1,0 +1,18 @@
+{
+  "checked_at_utc": "2026-10-23T01:18:51.575208+00:00",
+  "rule": "cb28251c-16a6-4cd1-a58b-0aec6c1fda0e",
+  "recorded_pids_checked": [
+    36211,
+    44563,
+    46232,
+    55392,
+    69929,
+    71326
+  ],
+  "recorded_pids_currently_present": [],
+  "active_own_artifact_processes": [],
+  "process_inventory_exit": 0,
+  "stopped": [],
+  "future_constraint": "Until ID1e on main, no real login keychain; no production-custody app/logic/supervisor tests/gates/probes, no ignored keychain tests; explicit fixture key or memory custody only",
+  "source_change": "none"
+}

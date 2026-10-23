@@ -1,0 +1,43 @@
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxybook)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-doc)
+error[E0027]: pattern does not mention field `generation`
+   --> crates/bboxy450-term/src/cockpit.rs:542:21
+    |
+542 |                 let GuiAction::Input { seat, id, bytes } = request.action else {
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `generation`
+    |
+help: include the missing field in the pattern
+    |
+542 |                 let GuiAction::Input { seat, id, bytes, generation } = request.action else {
+    |                                                       ++++++++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+    |
+542 |                 let GuiAction::Input { seat, id, bytes, generation: _ } = request.action else {
+    |                                                       +++++++++++++++
+help: or always ignore missing fields here
+    |
+542 |                 let GuiAction::Input { seat, id, bytes, .. } = request.action else {
+    |                                                       ++++
+
+error[E0063]: missing field `generation` in initializer of `bbt_proto::GuiAction`
+   --> crates/bboxy450-term/src/cockpit.rs:557:39
+    |
+557 |                     match io.try_send(GuiAction::Input {
+    |                                       ^^^^^^^^^^^^^^^^ missing `generation`
+
+error[E0063]: missing field `generation` in initializer of `bbt_proto::GuiAction`
+   --> crates/bboxy450-term/src/cockpit.rs:609:23
+    |
+609 |             .try_send(GuiAction::Input {
+    |                       ^^^^^^^^^^^^^^^^ missing `generation`
+
+Some errors have detailed explanations: E0027, E0063.
+For more information about an error, try `rustc --explain E0027`.
+error: could not compile `bboxy450-term` (lib test) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...

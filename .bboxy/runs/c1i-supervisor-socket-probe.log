@@ -1,0 +1,10 @@
+Unchanged test binary from exact clean a0c667f gate. One isolated diagnostic rerun.
+COMMAND ['/tmp/ci-aster-c1i-a0c667f/target-ci/debug/deps/bbt_supervisor-4575f2c058197968', 'transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file', '--exact', '--nocapture']
+
+running 1 test
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s
+
+
+EXIT 0
