@@ -395,6 +395,21 @@ briefs Executors from the specs, never from this note.
     later": the design is in [[yarn]] §0; Y1 runs when a loop needs it or
     an Executor is free, not ahead of the cockpit tracks.
 
+34. **Licensing: dual MIT OR Apache-2.0 by default, `bbt-core` Apache-2.0
+    only (operator, 2026-10-23: "lets do dual license, be smart about this,
+    ask architect as well what project will have what license").** The map
+    is [[licensing]] §1. The one exception is forced by provenance: a fork
+    of Apache-2.0-only `alacritty_terminal` cannot be offered under MIT.
+    Every publishing crate carries its own license files; root gets
+    LICENSE-MIT, LICENSE-APACHE and a NOTICE inventory of vendored code;
+    vendored headers stay verbatim. The sweep is an Executor task with
+    `scripts/licenses.sh` as its gate. Supersedes the two earlier yarn
+    answers (MIT only; Apache only): yarn stays dual, as its upstream is.
+    Rejected: Apache-only for the whole project (drops GPLv2
+    compatibility and mismatches the ecosystem for a patent clause a user
+    can already elect); MIT-only (no patent grant, and impossible for
+    bbt-core); relicensing alacritty code (not ours to relicense).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
