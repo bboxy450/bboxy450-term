@@ -247,14 +247,24 @@ pub(crate) fn element(v: &Value, height: Option<f32>, ctx: ui::Context) -> Resul
             let t = &args[0];
             row::TaskRow {
                 title: string(t, "title"),
-                state: string(t, "state"),
+                state: t["status"]
+                    .as_str()
+                    .or_else(|| t["state"].as_str())
+                    .unwrap_or("")
+                    .into(),
                 bug: t["type"] == "bug",
                 violates: t["violates"].as_str().map(Into::into),
                 constrains: t["constrains"].as_str().map(Into::into),
                 waits: t["waits"].as_str().map(Into::into),
-                may_accept: !args[2]["onAccept"].is_null(),
+                may_accept: args[2]["review"].as_bool().unwrap_or(false)
+                    || !args[2]["onAccept"].is_null(),
             }
-            .element(ctx)
+            .element_with_verify(
+                ctx,
+                t["verify"]["exit_code"]
+                    .as_i64()
+                    .and_then(|n| i32::try_from(n).ok()),
+            )
         }
         Some("artifactRow") => {
             let a = &args[0];

@@ -814,6 +814,9 @@ pub struct TaskRow {
 }
 impl TaskRow {
     pub fn element(&self, ctx: ui::Context) -> c::Element {
+        self.element_with_verify(ctx, None)
+    }
+    pub fn element_with_verify(&self, ctx: ui::Context, verify: Option<i32>) -> c::Element {
         let d = ctx.density.tokens();
         let h = d.row_h as f32 - 4.;
         let pad = d.pad_x as f32;
@@ -964,6 +967,33 @@ impl TaskRow {
             );
         }
         let mut right: Vec<c::Item> = vec![];
+        if let Some(exit) = verify {
+            right.push(
+                named(
+                    "tverify",
+                    row_box(
+                        plain(None, [0., STYLE.spacing.s3 as f32, 0., 0.], 0.),
+                        0.,
+                        vec![
+                            label(
+                                format!("exit {exit}"),
+                                STYLE.r#type.tiny as f32,
+                                400,
+                                true,
+                                rgba(if exit == 0 {
+                                    TOKENS.color.ui.ok
+                                } else {
+                                    TOKENS.color.state.errored
+                                }),
+                            )
+                            .into(),
+                        ],
+                    ),
+                )
+                .into(),
+            );
+        }
+
         if self.state == "reported" && self.may_accept {
             let mut st = plain(None, [1., 7., 1., 7.], STYLE.radius.pill as f32);
             st.overrides.fill = Some(ui::Paint::solid(rgba(TOKENS.color.state.waiting)));

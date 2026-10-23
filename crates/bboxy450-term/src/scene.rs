@@ -27,6 +27,19 @@ pub const RIM_MAX: f32 = TOKENS.glow.rim_max as f32;
 
 /// The host retains the very layout it paints; pointer input never reconstructs
 /// browser positions or guesses a row's height.
+pub struct ConversationLayout {
+    pub layout: c::Layout,
+    pub regions: ui::modules::composer::Regions,
+    pub height: f32,
+}
+impl ConversationLayout {
+    pub fn paint(&self) -> Vec<c::Paint> {
+        c::paint(
+            &self.layout,
+            ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+        )
+    }
+}
 pub struct LauncherLayout {
     layout: c::Layout,
     pub panel: Rect,
@@ -426,6 +439,23 @@ impl Scene {
         effects: bool,
         now: Instant,
     ) -> Result<Vec<c::Layout>, String> {
+        self.layout_docked_at(size, effects, 0., now)
+    }
+    pub fn layout_with_dock(
+        &self,
+        size: [f32; 2],
+        effects: bool,
+        dock_height: f32,
+    ) -> Result<Vec<c::Layout>, String> {
+        self.layout_docked_at(size, effects, dock_height, Instant::now())
+    }
+    fn layout_docked_at(
+        &self,
+        size: [f32; 2],
+        effects: bool,
+        dock_height: f32,
+        now: Instant,
+    ) -> Result<Vec<c::Layout>, String> {
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         // Rows, tabs and panes carry each seat's swell and attention (rim-glow §7-8).
         let mut seats = self.seats.clone();
@@ -435,7 +465,7 @@ impl Scene {
         let title = STYLE.spacing.title_bar as f32;
         let sidebar_width = 300_f32.min(size[0] * 0.35);
         let footer_height = if self.identity.is_some() { 24. } else { 0. };
-        let sidebar_height = (size[1] - title - footer_height).max(1.);
+        let sidebar_height = (size[1] - title - footer_height - dock_height).max(1.);
         let bounds = Rect::new(
             sidebar_width,
             title,
@@ -605,6 +635,57 @@ impl Scene {
         ops.extend(self.foreground(size, launcher, overlay));
         ops
     }
+    pub fn conversation_layout(
+        &self,
+        size: [f32; 2],
+        view: &ui::modules::composer::Conversation,
+    ) -> Result<ConversationLayout, String> {
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let width = 300_f32.min(size[0] * 0.35);
+        let footer = if self.identity.is_some() { 24. } else { 0. };
+        let available = (size[1] - STYLE.spacing.title_bar as f32 - footer).max(1.);
+        let height = (available * 0.45).max(200.).min(available);
+        let element = view
+            .element(ctx, [width, height], &self.metrics)
+            .map_err(|e| e.to_string())?;
+        let measured = element
+            .layout(Rect::new(0., 0., width, 0.), ctx, &self.metrics)
+            .map_err(|e| e.to_string())?;
+        let height = measured.rect.h;
+        let layout = element
+            .layout(
+                Rect::new(0., size[1] - footer - height, width, height),
+                ctx,
+                &self.metrics,
+            )
+            .map_err(|e| e.to_string())?;
+        let regions = ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?;
+        Ok(ConversationLayout {
+            layout,
+            regions,
+            height,
+        })
+    }
+    pub fn conversation_position(
+        &self,
+        layout: &ConversationLayout,
+        value: &str,
+        index: usize,
+    ) -> [f32; 2] {
+        layout
+            .regions
+            .position_at(&layout.layout, value, index, &self.metrics)
+    }
+    pub fn conversation_index(
+        &self,
+        layout: &ConversationLayout,
+        value: &str,
+        at: [f32; 2],
+    ) -> usize {
+        layout
+            .regions
+            .index_at(&layout.layout, value, at, &self.metrics)
+    }
     pub fn launcher_layout(
         &self,
         size: [f32; 2],
@@ -752,6 +833,17 @@ impl Scene {
             }
         }
         Ok(ops)
+    }
+    pub fn foreground_with_conversation(
+        &self,
+        size: [f32; 2],
+        launcher: Option<&LauncherLayout>,
+        hud: Option<&PerfHud>,
+        conversation: Option<&ConversationLayout>,
+    ) -> Vec<c::Paint> {
+        let mut ops = conversation.map_or_else(Vec::new, ConversationLayout::paint);
+        ops.extend(self.foreground(size, launcher, hud));
+        ops
     }
     /// The perf HUD (Cmd+Opt+F), top right as the lab's perf.html floats it over the app.
     pub fn overlay(&self, size: [f32; 2], hud: Option<&PerfHud>) -> Vec<c::Paint> {

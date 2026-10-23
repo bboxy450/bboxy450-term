@@ -98,6 +98,7 @@ fn collapsed_epics_and_bounded_newest_first_external_lane_use_model_state() {
             Entry::Epic {
                 data: Epic {
                     title: "closed epic".into(),
+                    delegate: false,
                     open: Some(false),
                     items: vec![WorkItem {
                         title: "hidden child".into(),

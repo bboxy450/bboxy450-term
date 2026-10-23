@@ -42,7 +42,7 @@
       components = value;
       for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
         'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard',
-      'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker', 'settingsPage', 'docView', 'docModal', 'perfHud']) {
+      'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'composer', 'reportCard', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker', 'settingsPage', 'docView', 'docModal', 'perfHud']) {
         const original = value[name];
         if (typeof original !== 'function') continue;
         value[name] = function (...args) {
@@ -309,12 +309,72 @@
       return JSON.parse(JSON.stringify({version:1,layer:'graphs',frames:[{view,standalone:!!standalone,host:bounds(node),clip:externalClip,parts:diagnostics}]},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
     }
     if(window.bboxyStreamFixture){
+      // Constructor diagnostics use semantic names, also used for native hit
+      // regions. They are comparison output only, never native layout inputs.
+      const semantic=(out,key,node,text=false)=>{
+        if(!node)return;
+        out.push(text&&node.textContent?{...textDiag(node),key}:{key,rect:bounds(node)});
+      };
+      const raw=(out,key,node)=>{const n=[...node.childNodes].find(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim());if(n)out.push({...rawTextDiag(n),key});};
+      const contentText=(out,key,node)=>{
+        if(!node||!node.textContent)return;
+        const d=textDiag(node),css=getComputedStyle(node),p=[css.paddingTop,css.paddingRight,css.paddingBottom,css.paddingLeft].map((v,i)=>parseFloat(v)+parseFloat(css[['borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth'][i]]));
+        d.rect={x:d.rect.x+p[3],y:d.rect.y+p[0],w:d.rect.w-p[1]-p[3],h:d.rect.h-p[0]-p[2]};
+        d.font_diagnostics.baseline-=p[0];out.push({...d,key});
+      };
+      const attachment=(out,key,node)=>{
+        semantic(out,key,node);semantic(out,key+'/ak',node.querySelector('.ak'),true);
+        semantic(out,key+'/at',node.querySelector('.at'),true);semantic(out,key+'/meta',node.querySelector('small'),true);
+      };
+      const report=(out,key,node)=>{
+        semantic(out,key,node);
+        for(const [part,sel,text] of [['head','.rh'],['glyph','.rk',true],['title','.rh b',true],['status','.rs'],['summary','.rsum'],['checks','.rsec'],['verify','.rc'],['verify/mark','.ck',true],['verify/command','.rc code',true],['verify/exit','.ex',true],['commit','.rcommit'],['commit/text','.rcommit code',true],['gap','.rgap'],['actions','.racts'],['reject','.rebrief'],['accept','.accept']])semantic(out,key+'/'+part,node.querySelector(sel),text);
+        const commit=out.find(p=>p.key===key+'/commit/text');if(commit)commit.native_inline=true;
+        contentText(out,key+'/summary/text',node.querySelector('.rsum'));contentText(out,key+'/gap/text',node.querySelector('.rgap'));
+        for(const [i,n] of [...node.querySelectorAll('.rev')].entries()){
+          semantic(out,key+'/evidence'+i,n);semantic(out,key+'/evidence'+i+'/criterion',n.querySelector('.rcrit'),true);semantic(out,key+'/evidence'+i+'/reference',n.querySelector('code'),true);
+        }
+        for(const [part,sel] of [['reject','.rebrief'],['accept','.accept']]){const n=node.querySelector(sel);if(n)raw(out,key+'/'+part+'/text',n);}
+      };
+      const composer=(out,key,node)=>{
+        semantic(out,key,node);
+        for(const [part,sel,text] of [['notice','.cnote'],['notice/mark','.cnm'],['notice/text','.cnt',true],['address','.cto'],['address/typed','.ctyped',true],['attachments','.catt'],['text','.ctext',true],['foot','.cfoot'],['attach','.cbtn'],['attach/icon','.cbtn .hicon'],['hint','.chint',true],['kpick','.kpick'],['kind','.kind'],['kind/chevron','.kdn',true],['send','.send'],['priority','.pip'],['send/kbd','.kbd',true],['pick','.cpick'],['kind-menu','.kmenu']])semantic(out,key+'/'+part,node.querySelector(sel),text);
+        const cl=node.querySelector('.cl');if(cl)raw(out,key+'/address/label/text',cl);
+        const pip=node.querySelector('.pip');if(pip)raw(out,key+'/priority/text',pip);
+        const send=node.querySelector('.send');if(send)raw(out,key+'/send/text',send);
+        const kind=node.querySelector('.kind');if(kind)raw(out,key+'/kind/text',kind);
+        for(const [i,n] of [...node.querySelectorAll('.cto > .addr')].entries()){
+          const k=key+'/address/a'+i;semantic(out,k,n);raw(out,k+'/text',n);
+          for(const [part,sel,text] of [['dot','.dot'],['rm','.rm',true],['n','small',true],['x','.x']])semantic(out,k+'/'+part,n.querySelector(sel),text);
+          const x=n.querySelector('.x');if(x)raw(out,k+'/x/text',x);
+        }
+        for(const [i,n] of [...node.querySelectorAll('.catt > .att')].entries())attachment(out,key+'/attachments/a'+i,n);
+        let oi=0;
+        for(const [i,g] of [...node.querySelectorAll('.cgroup')].entries()){
+          const k=key+'/pick/g'+i,h=g.querySelector('.cgh');semantic(out,k,g);semantic(out,k+'/head',h);if(h)raw(out,k+'/head/text',h);
+          for(const n of g.querySelectorAll('.copt')){
+            const k=key+'/pick/o'+oi++;semantic(out,k,n);
+            for(const [part,sel,text] of [['dot','.dot'],['ok','.ok',true],['label','.ol',true],['sub','small',true],['load','.load',true]])semantic(out,k+'/'+part,n.querySelector(sel),text);
+          }
+        }
+        for(const [i,n] of [...node.querySelectorAll('.kopt')].entries()){
+          const k=key+'/kind-menu/k'+i;semantic(out,k,n);semantic(out,k+'/mark',n.querySelector('.kck'),true);semantic(out,k+'/chip',n.querySelector('.kchip'));contentText(out,k+'/chip/text',n.querySelector('.kchip'));semantic(out,k+'/description',n.querySelector('small'),true);
+        }
+        const body=node.querySelector('.ctext'),caret=body.querySelector('.ed-caret');
+        if(caret){const r=bounds(caret);out.push({key:key+'/text/caret',rect:{x:r.x-1,y:r.y,w:2,h:r.h}});}
+        for(const [part,sel] of [['selection','.ed-sel'],['underline','.ed-ime']]){
+          const n=body.querySelector(sel);if(!n)continue;const r=bounds(n);
+          if(part==='underline'){const d=textDiag(n);r.y+=d.font_diagnostics.baseline+3;r.h=1;}
+          out.push({key:key+'/text/'+part,native_prefix:key+'/text/'+part,rect:r});
+        }
+      };
       const frames=[...root.querySelectorAll('.stream,.stream-dock')].filter(n=>!n.parentElement.closest('.stream,.stream-dock')).map(node=>{
-        const dock=node.classList.contains('stream-dock'),framed=!dock||!node.parentElement.matches('.body'),frame=dock&&framed?node.parentElement:node;
-        const list=calls.filter(c=>['messageRow','epicGroup','externalLane','streamTabs'].includes(c.name)&&c.node?.isConnected&&node.contains(c.node));
+        const dock=node.classList.contains('stream-dock'),framed=!dock||!window.bboxyComposeFixture&&!node.parentElement.matches('.body'),frame=dock&&framed?node.parentElement:node;
+        const list=calls.filter(c=>['messageRow','epicGroup','externalLane','streamTabs','composer'].includes(c.name)&&c.node?.isConnected&&node.contains(c.node));
         const entries=list.map(c=>{
-          if(c.name==='messageRow')return {node:c.node,kind:'message',data:c.args[0],show_channel:c.args[1]?.showCh};
-          if(c.name==='epicGroup')return {node:c.node,kind:'epic',data:c.args[0]};
+          if(c.name==='messageRow')return {node:c.node,kind:'message',data:{...c.args[0],review:!!(c.args[1]?.review||c.args[1]?.onAccept)},show_channel:c.args[1]?.showCh};
+          if(c.name==='epicGroup')return {node:c.node,kind:'epic',data:{...c.args[0],delegate:!!(c.args[1]?.delegate||c.args[1]?.onDelegate)}};
+          if(c.name==='composer')return {node:c.node,kind:'composer',data:c.args[0]};
           if(c.name==='externalLane')return {node:c.node,kind:'external',events:c.args[0],open:c.args[1]?.open!==false};
           return {node:c.node,kind:'tabs',channels:c.args[0],selected:c.args[1]?.sel||'all'};
         });
@@ -325,13 +385,19 @@
         if(dock)diagnostics.push({key:'dock',rect:bounds(node)});
         for(let i=0;i<entries.length;i++){
           const entry=entries[i],key='e'+i;
+          if(entry.kind==='composer'){composer(diagnostics,key,entry.node);continue;}
           const all=parts(entry.node,key);
           // Audit lines use one styled inline text flow, not positioned children.
           // Chip and tick content is captured as its semantic box plus text range.
-          const drop=p=>p.key.endsWith('/ripple')||p.key.includes('/aline/')||p.key.includes('/rj-t/');
+          const drop=p=>p.key.endsWith('/ripple')||p.key.includes('/aline/')||p.key.includes('/rj-t/')||p.key.startsWith(key+'/body/report')||p.key.startsWith(key+'/body/attach/');
           const array=all.filter(p=>!drop(p));
           for(const p of array){
             const n=entry.node;
+            if(entry.kind==='message'){
+              p.key=p.key.replace('/head/prio','/head/p1').replace('/head/rcpt','/head/receipts').replace('/body/tol','/body/to');
+              const chip=/\/head\/kchip(\d*)/.exec(p.key);
+              if(chip){const ch=n.querySelectorAll('.head > .kchip')[Number(chip[1]||0)];if(ch?.classList.contains('issuer'))p.key=p.key.replace('/head/kchip'+chip[1],'/head/issuer');else p.key=p.key.replace('/head/kchip'+chip[1],'/head/kchip');}
+            }
             if(p.key.endsWith('/aline'))Object.assign(p,textDiag(n.querySelector('.aline')),{key:p.key});
             if(p.key.endsWith('/rj-t'))Object.assign(p,textDiag(n.querySelector('.rj-t')),{key:p.key});
             // The unknown mark is a CSS border with font-size:0, not a glyph.
@@ -347,6 +413,10 @@
             }
           }
           diagnostics.push(...array);
+          if(entry.kind==='message'){
+            for(const [j,n] of [...entry.node.querySelectorAll('.attach > .att')].entries())attachment(diagnostics,key+'/body/attach/a'+j,n);
+            const r=entry.node.querySelector('.report');if(r)report(diagnostics,key+'/body/report',r);
+          }
           if(entry.node.classList.contains('unread')){
             const css=getComputedStyle(entry.node,'::after'),r=bounds(entry.node),w=parseFloat(css.width),h=parseFloat(css.height);
             if(!Number.isFinite(w+h))throw Error('Unread mark dimensions missing');

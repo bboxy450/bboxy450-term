@@ -4,6 +4,7 @@ pub mod grids;
 pub mod hosts;
 pub mod keyboard;
 pub mod launcher;
+pub mod messaging;
 pub mod model;
 pub mod scrollback;
 

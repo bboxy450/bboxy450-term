@@ -477,6 +477,29 @@ impl PaneControls {
     }
 }
 
+fn operation_admit(model: &mut Arc<Model>, updates: &Latest<Arc<Model>>, op: Ulid) -> bool {
+    let admitted = Arc::make_mut(&mut Arc::make_mut(model).operation_results).requested(op);
+    if !admitted {
+        updates.publish(model.clone());
+    }
+    admitted
+}
+fn operation_reply(
+    model: &mut Arc<Model>,
+    updates: &Latest<Arc<Model>>,
+    op: Ulid,
+    reply: bboxy450_term::messaging::Reply,
+) {
+    if Arc::make_mut(&mut Arc::make_mut(model).operation_results).complete(op, reply) {
+        updates.publish(model.clone());
+    }
+}
+fn operations_disconnected(model: &mut Arc<Model>, updates: &Latest<Arc<Model>>, reason: &str) {
+    if Arc::make_mut(&mut Arc::make_mut(model).operation_results).disconnected(reason) {
+        updates.publish(model.clone());
+    }
+}
+
 async fn run(
     updates: Arc<Latest<Arc<Model>>>,
     mut commands: Commands,
@@ -634,8 +657,8 @@ async fn run(
                         Arc::make_mut(&mut model).consume_spawn(*id);
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                     },
-                    UiMsg::Messaging {id,swarm_id,request}=>queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}),
-                    UiMsg::Task {id,request}=>queue_action(&mut outgoing,GuiAction::Task {id:*id,request:request.clone()}),
+                    UiMsg::Messaging {id,swarm_id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}); } },
+                    UiMsg::Task {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Task {id:*id,request:request.clone()}); } },
                     UiMsg::Input {seat,generation,id,bytes}=> {
                         if return_live(&mut history,&mut model,*seat) {
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
@@ -827,6 +850,7 @@ async fn run(
                             logger.write(format!("GUI operation {op} accepted"));
                         },
                         GuiReply::Error {op,reason}=> {
+                            operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Refused(reason.clone()));
                             if matches!(terminal_reply,Some(ActionReply::History(_)))
                                 && let Some(seat) = history.rejected(reason.starts_with("Busy:"),Instant::now())
                                 && return_live(&mut history,&mut model,seat) {
@@ -839,8 +863,8 @@ async fn run(
                              }
                             logger.write(format!("GUI operation {op} rejected: {reason}"));
                         }
-                        GuiReply::Messaging {op,..}=>logger.write(format!("messaging operation {op} replied; UI projection belongs to L9-M-c")),
-                        GuiReply::Task {op,..}=>logger.write(format!("task operation {op} replied; UI projection belongs to L9-M-c")),
+                        GuiReply::Messaging {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Messaging(response)),
+                        GuiReply::Task {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Task(response)),
                         GuiReply::History {seat,records,next}=> {
                             if terminal_reply == Some(ActionReply::History(seat))
                                 && let Err(reason) = history.accept(seat,records,next) {
@@ -858,7 +882,7 @@ async fn run(
                     cockpit::Event::Exited {process,status}=> {
                         let reason=format!("{process} exited: {status}");
                         logger.write(&reason);
-                         if !lost { backend_lost(Some(reason.clone())); }
+                         if !lost { operations_disconnected(&mut model,&updates,&reason); backend_lost(Some(reason.clone())); }
                         lost=true;
                         history.disconnected();
                         action_replies.clear();
@@ -870,7 +894,7 @@ async fn run(
                     }
                     cockpit::Event::Disconnected(reason)=> {
                         logger.write(format!("GUI disconnected: {reason}"));
-                         if !lost { backend_lost(Some(reason.clone())); }
+                         if !lost { operations_disconnected(&mut model,&updates,&reason); backend_lost(Some(reason.clone())); }
                         lost=true;
                         history.disconnected();
                         action_replies.clear();
@@ -887,6 +911,7 @@ async fn run(
         if let Err(error) = result {
             logger.write(format!("live IO stopped: {error}"));
             if !lost {
+                operations_disconnected(&mut model, &updates, &error.to_string());
                 backend_lost(Some(error.to_string()));
             }
             lost = true;

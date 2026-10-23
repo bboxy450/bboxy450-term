@@ -1,5 +1,6 @@
 //! L6 controls are compositions of retained Box/Text/Stack/ScrollView and icons.
 //! State and viewport offsets are caller-owned; no window, clock or input loop.
+pub mod text_area;
 use crate::{self as ui, components as c};
 use bbt_ui_model::{STYLE, TOKENS, draw::Color as Rgba, layout::Axis};
 

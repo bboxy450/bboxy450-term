@@ -378,6 +378,7 @@ pub struct Model {
     pub identity: Option<bbt_proto::GuiIdentity>,
     /// Correlation survives Latest replacing an intermediate publication.
     pub spawns: BTreeMap<Ulid, SpawnRequest>,
+    pub operation_results: Arc<crate::messaging::Results>,
     pub metadata_initialized: bool,
     pub events: Arc<EventLane>,
 }
@@ -392,6 +393,7 @@ impl Default for Model {
             identity: None,
             hosts: vec![],
             spawns: BTreeMap::new(),
+            operation_results: Arc::default(),
             metadata_initialized: false,
             events: Arc::new(EventLane::default()),
         }
@@ -862,6 +864,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         states,
         identity: previous.identity.clone(),
         spawns: previous.spawns.clone(),
+        operation_results: previous.operation_results.clone(),
         metadata_initialized: true,
         events: previous.events.clone(),
     };

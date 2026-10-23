@@ -1,0 +1,117 @@
+use bbt_ui::{modules::composer::*, text_edit::Command as Edit};
+
+fn address(id: &str) -> Address {
+    Address {
+        kind: "seat".into(),
+        label: id.into(),
+        id: id.into(),
+        destination: format!("seats/{id}/inbox"),
+        ..Default::default()
+    }
+}
+fn composer() -> Controller {
+    Controller::new(Composer {
+        to: vec![address("seat-a")],
+        focus: true,
+        ..Default::default()
+    })
+}
+
+#[test]
+fn preedit_does_not_send_or_filter_and_escape_restores_the_selection() {
+    let mut c = composer();
+    c.replace_choices(vec![PickGroup {
+        title: "Seats".into(),
+        items: vec![address("seat-a"), address("seat-b")],
+    }]);
+    c.handle(Command::Focus(Field::Address));
+    c.handle(Command::Edit(Edit::Insert("seat".into())));
+    assert_eq!(c.view.pick[0].items.len(), 2);
+    c.handle(Command::Edit(Edit::Preedit {
+        text: "🙂".into(),
+        caret: Some(2),
+    }));
+    assert_eq!(c.view.typed, "seat");
+    assert_eq!(c.view.pick[0].items.len(), 2);
+    assert_eq!(c.handle(Command::Choose(1)), Outcome::Local);
+    assert_eq!(c.handle(Command::Send), Outcome::Local);
+    c.handle(Command::Escape);
+    assert_eq!(c.view.typed, "seat");
+    c.handle(Command::Choose(1));
+    assert_eq!(c.view.to[1].destination, "seats/seat-b/inbox");
+}
+
+#[test]
+fn submission_is_a_snapshot_and_a_stored_reply_does_not_erase_new_typing() {
+    let mut c = composer();
+    c.handle(Command::Edit(Edit::Insert("first".into())));
+    let Outcome::Submit(sent) = c.handle(Command::Send) else {
+        panic!("send");
+    };
+    assert_eq!(c.view.text, "first");
+    c.handle(Command::Edit(Edit::Insert(" second".into())));
+    c.stored(&sent);
+    assert_eq!(c.view.text, "first second");
+    let Outcome::Submit(next) = c.handle(Command::Send) else {
+        panic!("send");
+    };
+    c.stored(&next);
+    assert_eq!(c.view.text, "");
+    assert_eq!(c.view.to.len(), 1);
+}
+
+#[test]
+fn unresolved_labels_and_invalid_priority_are_named_refusals() {
+    let mut c = composer();
+    c.view.to[0].destination.clear();
+    c.handle(Command::Edit(Edit::Insert("payload".into())));
+    assert_eq!(
+        c.handle(Command::Send),
+        Outcome::Refused("destination_required")
+    );
+    assert_eq!(
+        c.handle(Command::Priority(128)),
+        Outcome::Refused("priority_out_of_range")
+    );
+    assert_eq!(c.view.priority, 0);
+}
+
+#[test]
+fn kind_chooser_is_local_and_offers_only_the_three_sendable_kinds() {
+    let mut c = composer();
+    c.handle(Command::Edit(Edit::Insert("a decision".into())));
+    c.handle(Command::ToggleKindMenu);
+    assert!(c.view.kind_menu);
+    c.handle(Command::Next { backwards: false });
+    assert_eq!(c.view.kind, "chunk");
+    c.handle(Command::Next { backwards: false });
+    assert_eq!(c.view.kind, "decision");
+    assert_eq!(c.handle(Command::Send), Outcome::Changed);
+    assert!(!c.view.kind_menu);
+    assert_eq!(c.view.text, "a decision");
+    let Outcome::Submit(snapshot) = c.handle(Command::Send) else {
+        panic!("send after choosing");
+    };
+    assert_eq!(snapshot.kind, "decision");
+    assert_eq!(
+        c.handle(Command::Kind("task".into())),
+        Outcome::Refused("message_kind_not_sendable")
+    );
+}
+#[test]
+fn accepting_a_report_requires_reported_status_and_zero_exit() {
+    let mut report = Report {
+        status: "reported".into(),
+        ..Default::default()
+    };
+    assert!(!report.can_accept());
+    report.verify_result = Some(Verification {
+        exit_code: 1,
+        ..Default::default()
+    });
+    assert!(!report.can_accept());
+    report.verify_result.as_mut().unwrap().exit_code = 0;
+    assert!(report.can_accept());
+    report.status = "running".into();
+    assert!(!report.can_accept());
+}
