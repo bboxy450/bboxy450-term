@@ -20,6 +20,7 @@ use tokio::{
 };
 
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+const GUI_WRITE_CAPACITY: usize = 64;
 
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
@@ -88,14 +89,128 @@ pub struct LogicReady {
     pub identity: GuiIdentity,
 }
 
-async fn write_json(writer: &mut (impl AsyncWrite + Unpin), value: &impl Serialize) -> Result<()> {
+fn json_frame(value: &impl Serialize) -> Result<Vec<u8>> {
     let mut bytes = serde_json::to_vec(value)?;
     if bytes.len() >= 1024 * 1024 {
         return Err(invalid("GUI request exceeds 1 MiB framing bound"));
     }
     bytes.push(b'\n');
-    tokio::time::timeout(Duration::from_secs(2), writer.write_all(&bytes)).await??;
+    Ok(bytes)
+}
+async fn write_frame(writer: &mut (impl AsyncWrite + Unpin), bytes: &[u8]) -> Result<()> {
+    tokio::time::timeout(Duration::from_secs(2), writer.write_all(bytes)).await??;
     writer.flush().await?;
+    Ok(())
+}
+async fn write_json(writer: &mut (impl AsyncWrite + Unpin), value: &impl Serialize) -> Result<()> {
+    write_frame(writer, &json_frame(value)?).await
+}
+
+/// The bounded GUI writer is full. The caller retains the original action and
+/// retries it while continuing to drain replies; no socket write was attempted.
+#[derive(Debug)]
+pub struct Busy;
+impl std::fmt::Display for Busy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Busy: GUI writer queue is full")
+    }
+}
+impl std::error::Error for Busy {}
+
+// Both directions must progress independently. A peer may write a burst before
+// reading requests; awaiting a write on the reply-draining task deadlocks it.
+struct GuiIo {
+    capability: [u8; 32],
+    outgoing: mpsc::Sender<Vec<u8>>,
+    incoming: mpsc::Receiver<Result<GuiReply>>,
+    reader_task: tokio::task::JoinHandle<()>,
+    writer_task: tokio::task::JoinHandle<Result<()>>,
+    disconnected: bool,
+}
+impl GuiIo {
+    fn new(stream: UnixStream, capability: [u8; 32]) -> Self {
+        let (read, writer) = stream.into_split();
+        let (sender, incoming) = mpsc::channel(8);
+        let reader_task = tokio::spawn(read_replies(read, sender));
+        let (outgoing, requests) = mpsc::channel(GUI_WRITE_CAPACITY);
+        let writer_task = tokio::spawn(write_requests(writer, requests));
+        Self {
+            capability,
+            outgoing,
+            incoming,
+            reader_task,
+            writer_task,
+            disconnected: false,
+        }
+    }
+    fn try_send(&self, action: GuiAction) -> Result<()> {
+        if self.disconnected {
+            return Err(invalid("GUI connection closed"));
+        }
+        let bytes = json_frame(&GuiRequest {
+            version: 1,
+            capability: self.capability,
+            action,
+        })?;
+        match self.outgoing.try_send(bytes) {
+            Ok(()) => Ok(()),
+            Err(mpsc::error::TrySendError::Full(_)) => Err(Box::new(Busy)),
+            Err(mpsc::error::TrySendError::Closed(_)) => Err(invalid("GUI writer stopped")),
+        }
+    }
+    fn writer_ready(&self) -> impl std::future::Future<Output = Result<()>> + Send + use<> {
+        let outgoing = self.outgoing.clone();
+        async move {
+            drop(
+                outgoing
+                    .reserve_owned()
+                    .await
+                    .map_err(|_| invalid("GUI writer stopped"))?,
+            );
+            Ok(())
+        }
+    }
+    async fn event(&mut self) -> Event {
+        tokio::select! {
+            reply=self.incoming.recv(), if !self.disconnected => {
+                match reply {
+                    Some(Ok(reply)) => Event::Reply(Box::new(reply)),
+                    other => {
+                        self.disconnected = true;
+                        self.writer_task.abort();
+                        Event::Disconnected(match other {
+                            Some(Err(error)) => error.to_string(),
+                            _ => "GUI connection closed".into(),
+                        })
+                    }
+                }
+            }
+            result=&mut self.writer_task, if !self.disconnected => {
+                self.disconnected = true;
+                self.reader_task.abort();
+                Event::Disconnected(match result {
+                    Ok(Err(error)) => format!("GUI writer stopped: {error}"),
+                    Err(error) => format!("GUI writer task stopped: {error}"),
+                    Ok(Ok(())) => "GUI writer stopped".into(),
+                })
+            }
+            else => std::future::pending().await,
+        }
+    }
+}
+impl Drop for GuiIo {
+    fn drop(&mut self) {
+        self.reader_task.abort();
+        self.writer_task.abort();
+    }
+}
+async fn write_requests(
+    mut writer: OwnedWriteHalf,
+    mut requests: mpsc::Receiver<Vec<u8>>,
+) -> Result<()> {
+    while let Some(bytes) = requests.recv().await {
+        write_frame(&mut writer, &bytes).await?;
+    }
     Ok(())
 }
 
@@ -210,12 +325,9 @@ pub struct Session {
     // Keep the control pipes outside Child while observing process exits.
     supervisor_control: Option<tokio::process::ChildStdin>,
     logic_control: Option<tokio::process::ChildStdin>,
-    incoming: mpsc::Receiver<Result<GuiReply>>,
-    reader_task: tokio::task::JoinHandle<()>,
-    writer: OwnedWriteHalf,
+    io: GuiIo,
     supervisor_exited: bool,
     logic_exited: bool,
-    disconnected: bool,
 }
 /// Socket and process notifications consumed by the app's IO owner.
 pub enum Event {
@@ -225,11 +337,6 @@ pub enum Event {
         status: std::process::ExitStatus,
     },
     Disconnected(String),
-}
-impl Drop for Session {
-    fn drop(&mut self) {
-        self.reader_task.abort();
-    }
 }
 impl Session {
     /// Spawn both private processes and connect their admitted GUI endpoint.
@@ -259,9 +366,7 @@ impl Session {
             .ok_or_else(|| invalid("logic exited during startup"))?;
         let endpoint: LogicReady = serde_json::from_slice(&line)?;
         let stream = UnixStream::connect(endpoint.root.join("gui.sock")).await?;
-        let (read, writer) = stream.into_split();
-        let (sender, incoming) = mpsc::channel(8);
-        let reader_task = tokio::spawn(read_replies(read, sender));
+        let io = GuiIo::new(stream, endpoint.capability);
         let supervisor_control = supervisor.stdin.take();
         let logic_control = logic.stdin.take();
         Ok(Self {
@@ -270,48 +375,36 @@ impl Session {
             endpoint,
             supervisor_control,
             logic_control,
-            incoming,
-            reader_task,
-            writer,
+            io,
             supervisor_exited: false,
             logic_exited: false,
-            disconnected: false,
         })
     }
-    /// Send one bounded request; callers retain stable input IDs across retry.
+    /// Non-blocking enqueue of one request. Busy means the caller must retain
+    /// and retry the action while draining events, with the same input ID.
+    /// The async signature preserves the IO-owner API; it performs no await.
     pub async fn send(&mut self, action: GuiAction) -> Result<()> {
-        write_json(
-            &mut self.writer,
-            &GuiRequest {
-                version: 1,
-                capability: self.endpoint.capability,
-                action,
-            },
-        )
-        .await
+        self.io.try_send(action)
+    }
+    /// An owned capacity notification for the IO owner's select, even when no
+    /// reply arrives. It does not borrow Session, so event() stays polled too.
+    pub fn writer_ready(&self) -> impl std::future::Future<Output = Result<()>> + Send + use<> {
+        self.io.writer_ready()
     }
     pub async fn receive(&mut self) -> Result<GuiReply> {
-        self.incoming
-            .recv()
-            .await
-            .ok_or_else(|| invalid("GUI connection closed"))?
+        match self.event().await? {
+            Event::Reply(reply) => Ok(*reply),
+            Event::Disconnected(reason) => Err(invalid(reason)),
+            Event::Exited { process, status } => {
+                Err(invalid(format!("{process} exited: {status}")))
+            }
+        }
     }
     /// Channel receive and Child::wait are cancellation-safe. The dedicated
     /// reader retains partial NDJSON frames when a UI command wins the select.
     pub async fn event(&mut self) -> Result<Event> {
         tokio::select! {
-            reply=self.incoming.recv(), if !self.disconnected => {
-                match reply {
-                    Some(Ok(reply)) => Ok(Event::Reply(Box::new(reply))),
-                    other => {
-                        self.disconnected = true;
-                        Ok(Event::Disconnected(match other {
-                            Some(Err(error)) => error.to_string(),
-                            _ => "GUI connection closed".into(),
-                        }))
-                    }
-                }
-            }
+            event=self.io.event() => Ok(event),
             status=self.supervisor.wait(), if !self.supervisor_exited => {
                 self.supervisor_exited = true;
                 Ok(Event::Exited {process:"supervisor",status:status?})
@@ -407,4 +500,121 @@ async fn stop_child(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "headless GUI transport fixtures own their Tokio runtime"
+)]
+mod gui_io_tests {
+    use super::*;
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline() {
+        const COUNT: usize = 1000;
+        let (stream, peer) = UnixStream::pair().unwrap();
+        let capability = [17; 32];
+        let mut io = GuiIo::new(stream, capability);
+        let started = std::time::Instant::now();
+        let peer = tokio::spawn(async move {
+            let (read, mut write) = peer.into_split();
+            // More than the socket buffers and eight-entry reply queue. This
+            // deliberately refuses to read input until the entire burst is sent.
+            for index in 0..COUNT {
+                write_json(
+                    &mut write,
+                    &GuiReply::Error {
+                        op: bbt_mux::Ulid::from(index as u128 + 1),
+                        reason: format!("reply-{index}:{}", "x".repeat(4096)),
+                    },
+                )
+                .await
+                .unwrap();
+            }
+            let mut reader = BufReader::new(read);
+            for index in 0..COUNT {
+                let bytes = read_line(&mut reader).await.unwrap().unwrap();
+                let request: GuiRequest = serde_json::from_slice(&bytes).unwrap();
+                assert_eq!((request.version, request.capability), (1, capability));
+                let GuiAction::Input { seat, id, bytes } = request.action else {
+                    panic!("unexpected action")
+                };
+                assert_eq!(seat, SeatId::from_u128(7));
+                assert_eq!(id, bbt_mux::Ulid::from(index as u128 + 1));
+                assert_eq!(bytes.len(), 4096);
+                assert_eq!(&bytes[..8], &(index as u64).to_le_bytes());
+            }
+        });
+        let (mut sent, mut received, mut busy) = (0, 0, 0);
+        tokio::time::timeout(Duration::from_secs(10), async {
+            while sent < COUNT || received < COUNT {
+                while sent < COUNT {
+                    let mut bytes = vec![b'a'; 4096];
+                    bytes[..8].copy_from_slice(&(sent as u64).to_le_bytes());
+                    match io.try_send(GuiAction::Input {
+                        seat: SeatId::from_u128(7), id: bbt_mux::Ulid::from(sent as u128 + 1), bytes,
+                    }) {
+                        Ok(()) => sent += 1,
+                        Err(error) if error.is::<Busy>() => {busy += 1; break;}
+                        Err(error) => panic!("enqueue failed: {error}"),
+                    }
+                }
+                if sent == COUNT && received == COUNT {break;}
+                // Retain the unsent action while still draining inbound data.
+                // Capacity notification is only a test wake; production's IO
+                // owner keeps the command in its existing bounded retry queue.
+                let writable = io.writer_ready();
+                tokio::select! {
+                    event=io.event(), if received < COUNT => {
+                        let Event::Reply(reply) = event else {panic!("transport disconnected before the burst completed")};
+                        let GuiReply::Error {op, reason} = *reply else {panic!("reply kind changed")};
+                        assert_eq!(op, bbt_mux::Ulid::from(received as u128 + 1));
+                        assert!(reason.starts_with(&format!("reply-{received}:")));
+                        received += 1;
+                    }
+                    ready=writable, if sent < COUNT => {ready.unwrap();}
+                }
+            }
+            peer.await.unwrap();
+        }).await.expect("full-duplex transport stalled");
+        assert!(busy > 0, "fixture did not fill the bounded writer queue");
+        println!(
+            "full-duplex: {sent} inputs / {received} replies, ordered; Busy {busy}; no write deadline; elapsed {:?}",
+            started.elapsed()
+        );
+    }
+
+    #[tokio::test]
+    async fn writer_task_death_is_disconnected_even_while_the_reader_stays_connected() {
+        let (stream, _peer) = UnixStream::pair().unwrap();
+        let mut io = GuiIo::new(stream, [18; 32]);
+        io.writer_task.abort();
+        let event = tokio::time::timeout(Duration::from_secs(1), io.event())
+            .await
+            .unwrap();
+        assert!(
+            matches!(event, Event::Disconnected(reason) if reason.contains("GUI writer task stopped"))
+        );
+        assert!(io.try_send(GuiAction::ListSeats).is_err());
+    }
+
+    #[tokio::test]
+    async fn oversized_request_is_rejected_before_enqueue_without_stopping_the_writer() {
+        let (stream, peer) = UnixStream::pair().unwrap();
+        let io = GuiIo::new(stream, [19; 32]);
+        let error = io
+            .try_send(GuiAction::Input {
+                seat: SeatId::from_u128(7),
+                id: bbt_mux::Ulid::new(),
+                bytes: vec![255; 300_000],
+            })
+            .unwrap_err();
+        assert!(error.to_string().contains("1 MiB"));
+        io.try_send(GuiAction::ListSeats).unwrap();
+        let line = read_line(&mut BufReader::new(peer)).await.unwrap().unwrap();
+        let request: GuiRequest = serde_json::from_slice(&line).unwrap();
+        assert!(matches!(request.action, GuiAction::ListSeats));
+        assert!(!io.writer_task.is_finished());
+    }
 }
