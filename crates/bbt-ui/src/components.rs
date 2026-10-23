@@ -515,18 +515,34 @@ fn text_lines(
     Ok((placed, [widest, y + above + below], first.unwrap_or(above)))
 }
 type Intrinsic = ([f32; 2], f32);
+/// Lives for one immutable-tree layout (or standalone natural-size query).
+/// Context and measurer are fixed for that pass; width is the only constraint.
+struct LayoutPass<'a> {
+    ctx: Context,
+    measure: &'a dyn Measure,
+    intrinsic: std::collections::HashMap<(*const Element, u32), Intrinsic>,
+}
+impl<'a> LayoutPass<'a> {
+    fn new(ctx: Context, measure: &'a dyn Measure) -> Self {
+        Self {
+            ctx,
+            measure,
+            intrinsic: std::collections::HashMap::new(),
+        }
+    }
+}
 fn child_measure(
     children: &[Item],
     axis: Axis,
     gap: f32,
     alignment: Alignment,
     width: f32,
-    ctx: Context,
-    m: &dyn Measure,
+    pass: &mut LayoutPass<'_>,
+    shrink_auto: bool,
 ) -> crate::style::Result<([f32; 2], Vec<Intrinsic>)> {
     let mut data = children
         .iter()
-        .map(|c| c.element.natural(width, ctx, m))
+        .map(|c| c.element.natural_in(width, pass))
         .collect::<crate::style::Result<Vec<_>>>()?;
     if axis == Axis::Row && width.is_finite() {
         let rects = allocate_children(
@@ -536,14 +552,14 @@ fn child_measure(
             gap,
             alignment,
             Rect::new(0., 0., width, 0.),
-            ctx,
-            m,
+            pass,
+            shrink_auto,
         )?;
         // A shrinkable Text may wrap after its main-axis width is assigned.
         // Re-measure cross size at that width before sizing/alignment of the row.
         for ((child, (size, base)), r) in children.iter().zip(&mut data).zip(rects) {
             if r.w < size[0] {
-                let (wrapped, baseline) = child.element.natural(r.w, ctx, m)?;
+                let (wrapped, baseline) = child.element.natural_in(r.w, pass)?;
                 size[1] = wrapped[1];
                 *base = baseline;
             }
@@ -595,6 +611,21 @@ impl Element {
         ctx: Context,
         m: &dyn Measure,
     ) -> crate::style::Result<([f32; 2], f32)> {
+        self.natural_in(width, &mut LayoutPass::new(ctx, m))
+    }
+    fn natural_in(&self, width: f32, pass: &mut LayoutPass<'_>) -> crate::style::Result<Intrinsic> {
+        // Identity, not text/style equality: distinct nodes can have different
+        // baselines or content. Exact constraint bits preserve existing maths.
+        let key = (std::ptr::from_ref(self), width.to_bits());
+        if let Some(size) = pass.intrinsic.get(&key) {
+            return Ok(*size);
+        }
+        let size = self.measure_in(width, pass)?;
+        pass.intrinsic.insert(key, size);
+        Ok(size)
+    }
+    fn measure_in(&self, width: f32, pass: &mut LayoutPass<'_>) -> crate::style::Result<Intrinsic> {
+        let (ctx, m) = (pass.ctx, pass.measure);
         match self {
             Self::Filter {
                 content,
@@ -608,10 +639,10 @@ impl Element {
                 {
                     return Err("invalid colour filter");
                 }
-                content.natural(width, ctx, m)
+                content.natural_in(width, pass)
             }
             Self::InlineMiddle { content, parent } => {
-                let (size, _) = content.natural(width, ctx, m)?;
+                let (size, _) = content.natural_in(width, pass)?;
                 let style = resolve_text(*parent, ctx)?;
                 let x = m.x_height(&font(&style));
                 if !x.is_finite() || x < 0. {
@@ -620,16 +651,16 @@ impl Element {
                 Ok((size, size[1] * 0.5 + x * 0.5))
             }
             Self::Baseline { content, offset } => {
-                let (size, baseline) = content.natural(width, ctx, m)?;
+                let (size, baseline) = content.natural_in(width, pass)?;
                 Ok((size, baseline + offset))
             }
-            Self::Named { content, .. } => content.natural(width, ctx, m),
-            Self::Layers { base, .. } => base.natural(width, ctx, m),
+            Self::Named { content, .. } => content.natural_in(width, pass),
+            Self::Layers { base, .. } => base.natural_in(width, pass),
             Self::Glyph { size, .. } => Ok(([*size; 2], *size)),
             Self::Text(t) => {
                 let (_, mut size, base) = text_lines(t, width, ctx, m)?;
                 if t.align != Alignment::Start && t.wrap && width.is_finite() {
-                    size[0] = size[0].max(text_lines(t, f32::INFINITY, ctx, m)?.1[0].min(width));
+                    size[0] = size[0].max(self.natural_in(f32::INFINITY, pass)?.0[0].min(width));
                 }
                 Ok((size, base))
             }
@@ -666,14 +697,14 @@ impl Element {
                 let p = inset(&s);
                 let (child, _) = o
                     .content
-                    .natural((width - p.left - p.right).max(0.), ctx, m)?;
+                    .natural_in((width - p.left - p.right).max(0.), pass)?;
                 let h = s.height.unwrap_or(
                     (child[1] + p.top + p.bottom).max(o.min_height.resolve(ctx.density)?),
                 );
                 Ok(([width, h], h))
             }
             Self::Flow(f) => {
-                let (size, base, _) = flow_layout(f, Rect::new(0., 0., width, 0.), ctx, m)?;
+                let (size, base, _) = flow_layout(f, Rect::new(0., 0., width, 0.), pass)?;
                 Ok((size, base))
             }
             Self::Stack(s) => {
@@ -683,8 +714,8 @@ impl Element {
                     s.gap.resolve(ctx.density)?,
                     s.align,
                     width,
-                    ctx,
-                    m,
+                    pass,
+                    false,
                 )?;
                 let b = if s.direction == Axis::Row && s.align == Alignment::Baseline {
                     data.iter().map(|(_, b)| *b).fold(0., f32::max)
@@ -703,8 +734,8 @@ impl Element {
                     b.gap.resolve(ctx.density)?,
                     b.align,
                     (width - p.left - p.right).max(0.),
-                    ctx,
-                    m,
+                    pass,
+                    false,
                 )?;
                 let mut base = data.first().map_or(0., |(_, b)| *b);
                 if b.inline {
@@ -736,11 +767,13 @@ impl Element {
         ctx: Context,
         m: &dyn Measure,
     ) -> crate::style::Result<Layout> {
-        let (size, _) = self.natural(bounds.w, ctx, m)?;
-        self.layout_in(Rect::new(bounds.x, bounds.y, bounds.w, size[1]), ctx, m)
+        let mut pass = LayoutPass::new(ctx, m);
+        let (size, _) = self.natural_in(bounds.w, &mut pass)?;
+        self.layout_in(Rect::new(bounds.x, bounds.y, bounds.w, size[1]), &mut pass)
     }
-    fn layout_in(&self, rect: Rect, ctx: Context, m: &dyn Measure) -> crate::style::Result<Layout> {
-        let (_, base) = self.natural(rect.w, ctx, m)?;
+    fn layout_in(&self, rect: Rect, pass: &mut LayoutPass<'_>) -> crate::style::Result<Layout> {
+        let (ctx, m) = (pass.ctx, pass.measure);
+        let (_, base) = self.natural_in(rect.w, pass)?;
         let (kind, children) = match self {
             Self::Filter {
                 content,
@@ -751,20 +784,20 @@ impl Element {
                     saturation: *saturation,
                     opacity: *opacity,
                 },
-                vec![content.layout_in(rect, ctx, m)?],
+                vec![content.layout_in(rect, pass)?],
             ),
             Self::InlineMiddle { content, .. } => {
-                let mut child = content.layout_in(rect, ctx, m)?;
+                let mut child = content.layout_in(rect, pass)?;
                 child.baseline = base;
                 return Ok(child);
             }
             Self::Baseline { content, offset } => {
-                let mut child = content.layout_in(rect, ctx, m)?;
+                let mut child = content.layout_in(rect, pass)?;
                 child.baseline += offset;
                 return Ok(child);
             }
             Self::Named { name, content } => {
-                let child = content.layout_in(rect, ctx, m)?;
+                let child = content.layout_in(rect, pass)?;
                 return Ok(Layout {
                     rect: child.rect,
                     baseline: child.baseline,
@@ -773,9 +806,9 @@ impl Element {
                 });
             }
             Self::Layers { base, overlays } => {
-                let mut children = vec![base.layout_in(rect, ctx, m)?];
+                let mut children = vec![base.layout_in(rect, pass)?];
                 for p in overlays {
-                    let (size, _) = p.content.natural((rect.w - p.left).max(0.), ctx, m)?;
+                    let (size, _) = p.content.natural_in((rect.w - p.left).max(0.), pass)?;
                     children.push(p.content.layout_in(
                         Rect::new(
                             rect.x + p.left,
@@ -783,8 +816,7 @@ impl Element {
                             size[0],
                             size[1],
                         ),
-                        ctx,
-                        m,
+                        pass,
                     )?);
                 }
                 (LayoutKind::Stack, children)
@@ -871,7 +903,7 @@ impl Element {
                 },
                 vec![],
             ),
-            Self::Flow(f) => (LayoutKind::Stack, flow_layout(f, rect, ctx, m)?.2),
+            Self::Flow(f) => (LayoutKind::Stack, flow_layout(f, rect, pass)?.2),
             Self::Stack(s) => (
                 LayoutKind::Stack,
                 layout_children(
@@ -880,8 +912,7 @@ impl Element {
                     s.gap.resolve(ctx.density)?,
                     s.align,
                     rect,
-                    ctx,
-                    m,
+                    pass,
                     false,
                 )?,
             ),
@@ -896,8 +927,7 @@ impl Element {
                     b.gap.resolve(ctx.density)?,
                     b.align,
                     rect.inset(inset(&style)),
-                    ctx,
-                    m,
+                    pass,
                     b.cross_overflow,
                 )?;
                 if b.inline {
@@ -924,7 +954,7 @@ impl Element {
             Self::Overlay(o) => {
                 let s = o.style.resolve(ctx)?;
                 let inner = rect.inset(inset(&s));
-                let (natural, _) = o.content.natural(inner.w, ctx, m)?;
+                let (natural, _) = o.content.natural_in(inner.w, pass)?;
                 let w = if o.horizontal == Alignment::Stretch {
                     inner.w
                 } else {
@@ -947,8 +977,7 @@ impl Element {
                         w,
                         h,
                     ),
-                    ctx,
-                    m,
+                    pass,
                 )?;
                 (
                     LayoutKind::Box {
@@ -962,7 +991,7 @@ impl Element {
             }
             Self::ScrollView(s) => {
                 let content_w = s.content_width.unwrap_or(rect.w).max(rect.w);
-                let (natural, _) = s.content.natural(content_w, ctx, m)?;
+                let (natural, _) = s.content.natural_in(content_w, pass)?;
                 let content = [content_w, natural[1].max(rect.h)];
                 let offset = [
                     s.offset[0].clamp(0., (content[0] - rect.w).max(0.)),
@@ -975,8 +1004,7 @@ impl Element {
                         content[0],
                         content[1],
                     ),
-                    ctx,
-                    m,
+                    pass,
                 )?;
                 (LayoutKind::ScrollView { content, offset }, vec![child])
             }
@@ -1080,15 +1108,15 @@ fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
 fn flow_layout(
     f: &Flow,
     bounds: Rect,
-    ctx: Context,
-    m: &dyn Measure,
+    pass: &mut LayoutPass<'_>,
 ) -> crate::style::Result<([f32; 2], f32, Vec<Layout>)> {
+    let ctx = pass.ctx;
     let column_gap = f.column_gap.resolve(ctx.density)?;
     let row_gap = f.row_gap.resolve(ctx.density)?;
     let mut data = Vec::new();
     for child in &f.children {
-        let (size, _) = child.element.natural(f32::INFINITY, ctx, m)?;
-        let min = child.element.natural(0., ctx, m)?.0[0];
+        let (size, _) = child.element.natural_in(f32::INFINITY, pass)?;
+        let min = child.element.natural_in(0., pass)?.0[0];
         let basis = match child.extent {
             Extent::Fixed(n) => n,
             Extent::Content { min, max, .. } => {
@@ -1096,17 +1124,18 @@ fn flow_layout(
             }
             _ => size[0],
         };
-        data.push((child.clone(), basis, min));
+        data.push((basis, min));
     }
     let width = if bounds.w.is_finite() {
         bounds.w.max(0.)
     } else {
-        data.iter().map(|(_, w, _)| *w).sum::<f32>()
-            + column_gap * data.len().saturating_sub(1) as f32
+        data.iter().map(|(w, _)| *w).sum::<f32>() + column_gap * data.len().saturating_sub(1) as f32
     };
-    let mut rows: Vec<Vec<Item>> = vec![];
+    // Keep node identities stable: row-local clones would leave dangling cache
+    // keys and could reuse another row's address. Only extents are overridden.
+    let mut rows: Vec<std::ops::Range<usize>> = vec![];
     let mut used = 0.;
-    for (child, basis, min) in data {
+    for (index, (basis, min)) in data.into_iter().enumerate() {
         let hypothetical = if f.wrap {
             basis.min(width.max(min))
         } else {
@@ -1121,25 +1150,26 @@ fn flow_layout(
         if rows.is_empty()
             || (f.wrap && next > width + 0.001 && rows.last().is_some_and(|r| !r.is_empty()))
         {
-            rows.push(vec![]);
+            rows.push(index..index);
             used = 0.;
         }
         if !rows.last().unwrap().is_empty() {
             used += column_gap;
         }
         used += hypothetical;
-        rows.last_mut().unwrap().push(child);
+        rows.last_mut().unwrap().end = index + 1;
     }
     let mut output = vec![];
     let mut y = bounds.y;
     let mut widest = 0f32;
     let mut first = None;
-    for mut row in rows {
+    for range in rows {
+        let row = &f.children[range];
         let max_content = row
             .iter()
             .map(|c| {
                 c.element
-                    .natural(f32::INFINITY, ctx, m)
+                    .natural_in(f32::INFINITY, pass)
                     .map(|(s, _)| match c.extent {
                         Extent::Fixed(n) => n,
                         _ => s[0],
@@ -1151,14 +1181,16 @@ fn flow_layout(
             + column_gap * row.len().saturating_sub(1) as f32;
         // A fitting row takes the exact existing Stack allocation path. Only
         // actual shortages need CSS min-content shrinking.
-        if max_content > width + 0.001 {
-            for child in &mut row {
-                if matches!(child.extent, Extent::Auto) {
-                    child.extent = Extent::MinContent;
-                }
-            }
-        }
-        let (_, metrics) = child_measure(&row, Axis::Row, column_gap, f.align, width, ctx, m)?;
+        let shrink_auto = max_content > width + 0.001;
+        let (_, metrics) = child_measure(
+            row,
+            Axis::Row,
+            column_gap,
+            f.align,
+            width,
+            pass,
+            shrink_auto,
+        )?;
         let above = metrics.iter().map(|(_, b)| *b).fold(0., f32::max);
         let height = if f.align == Alignment::Baseline {
             above + metrics.iter().map(|(s, b)| s[1] - b).fold(0., f32::max)
@@ -1166,14 +1198,14 @@ fn flow_layout(
             metrics.iter().map(|(s, _)| s[1]).fold(0., f32::max)
         };
         let mut rects = allocate_children(
-            &row,
+            row,
             &metrics,
             Axis::Row,
             column_gap,
             f.align,
             Rect::new(bounds.x, y, width, height),
-            ctx,
-            m,
+            pass,
+            shrink_auto,
         )?;
         let used = rects.iter().map(|r| r.w).sum::<f32>()
             + column_gap * rects.len().saturating_sub(1) as f32;
@@ -1190,7 +1222,7 @@ fn flow_layout(
             if f.align == Alignment::Baseline {
                 r.y += above - base;
             }
-            let layout = child.element.layout_in(*r, ctx, m)?;
+            let layout = child.element.layout_in(*r, pass)?;
             first.get_or_insert(layout.rect.y - bounds.y + layout.baseline);
             output.push(layout);
         }
@@ -1207,12 +1239,11 @@ fn layout_children(
     gap: f32,
     alignment: Alignment,
     r: Rect,
-    ctx: Context,
-    m: &dyn Measure,
+    pass: &mut LayoutPass<'_>,
     cross_overflow: bool,
 ) -> crate::style::Result<Vec<Layout>> {
-    let (_, data) = child_measure(children, axis, gap, alignment, r.w, ctx, m)?;
-    let mut rects = allocate_children(children, &data, axis, gap, alignment, r, ctx, m)?;
+    let (_, data) = child_measure(children, axis, gap, alignment, r.w, pass, false)?;
+    let mut rects = allocate_children(children, &data, axis, gap, alignment, r, pass, false)?;
     if cross_overflow && axis == Axis::Row && alignment != Alignment::Stretch {
         for (rect, (size, _)) in rects.iter_mut().zip(&data) {
             rect.h = size[1];
@@ -1233,7 +1264,7 @@ fn layout_children(
     children
         .iter()
         .zip(rects)
-        .map(|(c, r)| c.element.layout_in(r, ctx, m))
+        .map(|(c, r)| c.element.layout_in(r, pass))
         .collect()
 }
 
@@ -1257,13 +1288,15 @@ fn allocate_children(
     gap: f32,
     alignment: Alignment,
     r: Rect,
-    ctx: Context,
-    m: &dyn Measure,
+    pass: &mut LayoutPass<'_>,
+    shrink_auto: bool,
 ) -> crate::style::Result<Vec<Rect>> {
+    let ctx = pass.ctx;
     if axis == Axis::Row
-        && children
-            .iter()
-            .any(|c| matches!(c.extent, Extent::Content { .. } | Extent::MinContent))
+        && children.iter().any(|c| {
+            matches!(c.extent, Extent::Content { .. } | Extent::MinContent)
+                || (shrink_auto && c.extent == Extent::Auto)
+        })
     {
         let available = (r.w - gap * children.len().saturating_sub(1) as f32).max(0.);
         let mut bases = Vec::new();
@@ -1272,13 +1305,18 @@ fn allocate_children(
         let mut mins = Vec::new();
         let mut maxes = Vec::new();
         for (c, (size, _)) in children.iter().zip(data) {
-            let (basis, g, s, min, max) = match c.extent {
+            let extent = if shrink_auto && c.extent == Extent::Auto {
+                Extent::MinContent
+            } else {
+                c.extent
+            };
+            let (basis, g, s, min, max) = match extent {
                 Extent::Fixed(n) => (n, 0., 0., n, n),
                 Extent::MinContent => (
                     size[0],
                     0.,
                     1.,
-                    c.element.natural(0., ctx, m)?.0[0],
+                    c.element.natural_in(0., pass)?.0[0],
                     f32::MAX,
                 ),
                 Extent::Fill => (0., 1., 1., 0., f32::MAX),
@@ -1443,7 +1481,7 @@ fn allocate_children(
             },
         ));
     }
-    Ok(layout::solve_box(&model, r, m))
+    Ok(layout::solve_box(&model, r, pass.measure))
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -194,6 +194,17 @@ pub fn sidebar(
     })
 }
 pub fn layout_case(case: &Case) -> Result<c::Layout> {
+    let (element, bounds) = element_case(case)?;
+    element
+        .layout(
+            bounds,
+            crate::components::context(case),
+            &crate::components::Metrics,
+        )
+        .map_err(Into::into)
+}
+/// Build the same retained tree without including construction in layout timings.
+pub fn element_case(case: &Case) -> Result<(c::Element, Rect)> {
     let f = case.fixture.as_ref().ok_or("swarm fixture missing")?;
     let ctx = crate::components::context(case);
     let host = &f["host"];
@@ -225,17 +236,15 @@ pub fn layout_case(case: &Case) -> Result<c::Layout> {
             .collect::<Result<_>>()?;
         c.element(ctx)
     };
-    e.layout(
+    Ok((
+        e,
         Rect::new(
             seat_rows::number(host, "x")? + seat_rows::number(crop, "x")?,
             seat_rows::number(host, "y")? + seat_rows::number(crop, "y")?,
             w,
             0.,
         ),
-        ctx,
-        &crate::components::Metrics,
-    )
-    .map_err(Into::into)
+    ))
 }
 pub fn render_case(
     renderer: &mut bbt_render::chrome::ChromeRenderer,

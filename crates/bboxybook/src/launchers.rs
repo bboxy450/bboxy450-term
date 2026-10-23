@@ -105,6 +105,16 @@ fn view(f: &Value) -> Result<Launcher> {
     })
 }
 pub fn layout_case(case: &Case) -> Result<c::Layout> {
+    let (root, bounds) = element_case(case)?;
+    root.layout(
+        bounds,
+        crate::components::context(case),
+        &crate::components::Metrics,
+    )
+    .map_err(Into::into)
+}
+/// The retained constructor and host bounds, also used by the layout benchmark.
+pub fn element_case(case: &Case) -> Result<(c::Element, Rect)> {
     let f = case.fixture.as_ref().ok_or("Launcher fixture missing")?;
     let ctx = crate::components::context(case);
     let launcher = view(f)?;
@@ -142,17 +152,15 @@ pub fn layout_case(case: &Case) -> Result<c::Layout> {
         align: c::Alignment::Stretch,
         children,
     });
-    root.layout(
+    Ok((
+        root,
         Rect::new(
             seat_rows::number(host, "x")? + seat_rows::number(crop, "x")?,
             seat_rows::number(host, "y")? + seat_rows::number(crop, "y")?,
             seat_rows::number(host, "w")?,
             0.,
         ),
-        ctx,
-        &crate::components::Metrics,
-    )
-    .map_err(Into::into)
+    ))
 }
 pub fn render_case(
     renderer: &mut bbt_render::chrome::ChromeRenderer,
