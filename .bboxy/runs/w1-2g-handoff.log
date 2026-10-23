@@ -1,0 +1,65 @@
+W1.2g evidence index — socket supervisor notification backlog
+
+Scope: crates/bbt-supervisor/src/client.rs and its new client/tests.rs;
+crates/bbt-mux/tests/socket_backlog.rs is the real-logic regression. No production
+logic, routing, ring, writer, identity, protocol, dependency or runtime edits.
+
+Contract: Vesper af756151 (10,000 requests, byte-exact replay and exit) and
+b8116fe0 (successful AttachRing only; raw/pre-ring FIFO keeps the named 1024
+failure; bound is distinct pending seat+generation+kind; retain lifecycle).
+Base was current main f248c6b, including accepted W1.2d 86384b5.
+
+Mechanism:
+- client.rs:58 PendingEvents keeps ordered delivery plus a slot index. Only
+  ring-backed Output/Resized replace their previous slot; replacement moves to
+  the back so an intervening resize is delivered before later output. Exited
+  events are never replaced. Generations have independent keys.
+- client.rs:89 promotes only the confirmed ring's covered sequence range.
+  Pending notifications can precede their attach reply in the same read, but
+  pre-ring records remain byte-for-byte FIFO. Raw backlog retains its own limit.
+- client.rs:177 confirms only a successful AttachRing reply matching exact
+  seat+generation; raw Attach and failed AttachRing never authorize coalescing.
+- client/tests.rs covers pre-ring bytes, exact generation, raw bound, resize
+  ordering and 500 retained generations (1500 slots), plus 10,000 real socket
+  requests without receive, with raw/failed attach checks before confirmation.
+- socket_backlog.rs runs a real PTY and supervisor socket with explicit fixture
+  signing material and a private 0700 temp root. Logic issues 10,000 List requests
+  while a deterministic producer writes at full rate, replays coalesced spans,
+  observes exit, verifies viewport tail/sequence and reads all capture records
+  with contiguous sequences and an independent expected SHA256.
+
+Development commands/results (before the exact final clean-worktree gates):
+- w1-2g-before.log: initial fixture import compilation 101, corrected to
+  protocol::ExitInfo; not a demonstrated behavior failure.
+- w1-2g-before-02.log: baseline original client compiled, then failed 101 with
+  'supervisor event backlog exceeded; continuity unavailable'.
+- w1-2g-client-01.log: first coalesced 10,000-request test exit 0.
+- w1-2g-client-02.log: three boundary cases passed, mock socket returned EINVAL
+  with the peer closing immediately after its last reply. The fixture now keeps
+  the peer alive until client cleanup, with bounded socket timeouts and a joined
+  thread; production socket disconnect handling/timeouts are unchanged.
+- w1-2g-client-03.log: all four boundary/socket tests exit 0.
+- w1-2g-client-repeat-final.log: final fixture, ten default-parallel runs,
+  40 cases, all child exits 0. Earlier repeat evidence also retained.
+- w1-2g-real-pty-01.log: fixture startup 101 because tempdir mode was not 0700.
+  Fixed the owned fixture root, leaving strict production socket checks intact.
+- w1-2g-real-pty-02.log: real PTY test exit 0, 10,000 requests in 6.26991525 s,
+  exact 67,108,877 bytes (64 MiB plus tail), exit sequence 4358, 75.11 s total.
+  The early log's replayed_records includes the later manual history check;
+  final fixture logs logic_replayed_records before that manual verification.
+- w1-2g-preflight.log: supervisor tests (18 unit + 2 journal + 10 PTY passed,
+  2 fixture units ignored), capture_busy 2/2, scoped strict all-target Clippy
+  and fmt checks all exit 0. No second Tokio runtime or new dependency.
+
+The final 967-seat staged gate and ci-local.sh run occur in a detached clean
+worktree of the signed handoff SHA. Their actual SHA, commands, child exits,
+timings, measurements and cleanup are recorded in separate w1-2g final logs.
+This pre-gate snapshot does not claim those subsequent results.
+
+Limits: raw-only overflow remains an explicit failure by ruling. Discarded
+captured spans require retained ring history; an actual ring gap remains an
+explicit error. Exit is one event per process generation; pending generations
+remain independent until consumed. No production keychain or real model used.
+No new W1.2f throughput or W1.2e reaping claim. No physical power loss or new
+macOS14/Linux/remote-provider coverage. No browser opened, no peer paths/PIDs
+touched. W2.5b remains parked.

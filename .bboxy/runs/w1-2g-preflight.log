@@ -1,0 +1,297 @@
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--locked', '--', '--nocapture']
+OWN_CHILD_PID=86014
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [optimized] target(s) in 13.72s
+     Running unittests src/lib.rs (target/w1-2g-dev/debug/deps/bbt_supervisor-bac4711fa5046bbf)
+
+running 20 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 18 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.37s
+
+     Running tests/journal_config.rs (target/w1-2g-dev/debug/deps/journal_config-6a4e560438ef83c3)
+
+running 2 tests
+test capture_requires_an_explicit_supervisor_journal_directory ... ok
+test supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/supervisor.rs (target/w1-2g-dev/debug/deps/supervisor-9c379a875a6bc41f)
+
+running 10 tests
+test zsh_echo_cwd_environment_and_resize ... ok
+test natural_exit_follows_all_final_output ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+test validation_rejects_stale_and_oversized_input ... ok
+slow subscriber: complete 4 MiB + TAIL recovered with contiguous record sequences
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+50 distinct PTY seats echoed under one Supervisor / one mio::Poll
+test fifty_seats_share_one_supervisor_poller ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test two_seats_interleave_without_cross_talk ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+blocked write: 1022 of 65536 bytes, PartialUnknown retained across logic replacement
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.05s
+
+   Doc-tests bbt_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+supervisor: CHILD_EXIT=0; WALL_SECONDS=15.946
+COMMAND=['cargo', 'test', '-p', 'bbt-mux', '--test', 'capture_busy', '--locked', '--', '--nocapture']
+OWN_CHILD_PID=87019
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1.69s
+     Running tests/capture_busy.rs (target/w1-2g-dev/debug/deps/capture_busy-9cd7fe7bc92a6d7a)
+
+running 2 tests
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+control answered during paged replay: 101.200166ms; pages=1; final sequence=257
+test large_capture_catchup_yields_to_control_between_history_pages ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s
+
+capture-busy: CHILD_EXIT=0; WALL_SECONDS=2.604
+COMMAND=['cargo', 'clippy', '-p', 'bbt-supervisor', '-p', 'bbt-mux', '--all-targets', '--locked', '--', '-D', 'warnings']
+OWN_CHILD_PID=87071
+    Checking cfg-if v1.0.5
+    Checking typenum v1.20.1
+    Checking subtle v2.6.1
+    Checking const-oid v0.9.6
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking base64ct v1.8.3
+    Checking itoa v1.0.18
+    Checking zeroize v1.9.1
+    Checking memchr v2.8.3
+    Checking zmij v1.0.23
+    Checking zerocopy v0.8.63
+    Checking log v0.4.34
+    Checking bytes v1.12.1
+    Checking tap v1.0.1
+    Checking smallvec v1.16.3
+    Checking wyz v0.5.1
+    Checking radium v0.7.0
+    Checking funty v2.0.0
+    Checking base16ct v0.2.0
+    Checking pem-rfc7468 v0.7.0
+    Checking rand_core v0.10.1
+    Checking scopeguard v1.2.0
+    Checking der v0.7.10
+    Checking pin-project-lite v0.2.17
+    Checking lock_api v0.4.14
+    Checking libm v0.2.16
+    Checking base64 v0.22.1
+    Checking const-oid v0.10.2
+    Checking thiserror v1.0.69
+    Checking crossbeam-utils v0.8.23
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking once_cell v1.21.4
+    Checking foldhash v0.2.0
+    Checking bitvec v1.1.1
+    Checking cursor-icon v1.2.0
+    Checking unicode-width v0.2.2
+    Checking hashbrown v0.17.1
+    Checking zstd-safe v8.2.0
+    Checking crossbeam-queue v0.3.14
+    Checking anyhow v1.0.104
+    Checking shell-words v1.1.1
+    Checking spin v0.9.9
+    Checking downcast-rs v1.2.1
+    Checking generic-array v0.14.7
+    Checking hybrid-array v0.4.15
+    Checking lazy_static v1.5.1
+    Checking zstd v0.14.3
+    Checking opaque-debug v0.3.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+    Checking chacha20 v0.10.2
+    Checking core-foundation-sys v0.8.7
+    Checking getrandom v0.2.17
+    Checking cpufeatures v0.2.17
+    Checking spki v0.7.3
+    Checking errno v0.3.14
+    Checking rand_core v0.6.4
+    Checking getrandom v0.3.4
+    Checking socket2 v0.6.5
+    Checking signal-hook-registry v1.4.8
+    Checking pkcs8 v0.10.2
+    Checking rand_core v0.9.5
+    Checking mio v1.2.4
+    Checking getrandom v0.4.3
+    Checking parking_lot_core v0.9.12
+    Checking num-traits v0.2.19
+    Checking filedescriptor v0.8.3
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking inout v0.1.4
+    Checking crypto-bigint v0.5.5
+    Checking crypto-common v0.2.2
+    Checking digest v0.10.7
+    Checking parking_lot v0.12.5
+    Checking cipher v0.4.4
+    Checking hmac v0.12.1
+    Checking sha2 v0.10.9
+    Checking signature v2.2.0
+    Checking hkdf v0.12.4
+    Checking rfc6979 v0.4.0
+    Checking serial2 v0.2.38
+    Checking tokio v1.54.1
+    Checking cpufeatures v0.3.1
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+    Checking universal-hash v0.5.1
+    Checking aes v0.8.4
+    Checking curve25519-dalek v4.1.3
+    Checking polyval v0.6.2
+    Checking dbl v0.3.2
+    Checking keccak v0.1.6
+    Checking byteorder v1.5.0
+    Checking equivalent v1.0.3
+    Checking fastrand v2.5.0
+    Checking indexmap v2.14.2
+    Checking sha3 v0.10.9
+    Checking num-integer v0.1.47
+    Checking cmac v0.7.2
+    Checking ghash v0.5.1
+    Checking num-iter v0.1.46
+    Checking serde v1.0.229
+    Checking serde_json v1.0.154
+    Checking bitflags v2.13.2
+    Checking digest v0.11.3
+    Checking ed25519 v2.2.3
+    Checking sha1 v0.11.0
+    Checking nix v0.28.0
+    Checking rustix v1.1.5
+    Checking blake2 v0.10.6
+    Checking sha1 v0.10.7
+    Checking rand v0.10.3
+    Checking serdect v0.2.0
+    Checking serde-big-array v0.5.1
+    Checking sec1 v0.7.3
+    Checking arrayvec v0.7.8
+    Checking ff v0.13.1
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking group v0.13.0
+    Checking password-hash v0.5.0
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+    Checking thiserror v2.0.21
+    Checking httparse v1.10.1
+    Checking http v1.5.0
+    Checking zlib-rs v0.6.8
+    Checking elliptic-curve v0.13.8
+    Checking signature v3.0.0
+    Checking slab v0.4.12
+    Checking futures-task v0.3.34
+    Checking data-encoding v2.11.1
+    Checking foldhash v0.1.5
+    Checking futures-core v0.3.34
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking walkdir v2.5.0
+    Checking tempfile v3.27.0
+    Checking futures-util v0.3.34
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+    Checking cx448 v0.1.1
+    Checking portable-pty v0.9.0
+    Checking hashbrown v0.15.5
+    Checking tungstenite v0.30.0
+    Checking ed25519 v3.0.0
+    Checking num_enum v0.7.6
+    Checking p256 v0.13.2
+    Checking p521 v0.13.3
+    Checking k256 v0.13.4
+    Checking p384 v0.13.1
+    Checking flate2 v1.1.10
+    Checking libsqlite3-sys v0.38.2
+    Checking ppv-lite86 v0.2.21
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking argon2 v0.5.3
+    Checking curve25519-dalek v5.0.0
+    Checking sha1-checked v0.10.0
+    Checking rand_chacha v0.9.0
+    Checking rand v0.9.5
+    Checking rand_chacha v0.3.1
+    Checking ed25519-dalek v2.2.0
+    Checking rand v0.8.8
+    Checking notify-types v2.1.0
+    Checking sha2 v0.11.1
+    Checking x25519-dalek v2.0.1
+    Checking aes-gcm v0.10.3
+    Checking eax v0.5.0
+    Checking crc24 v0.1.6
+    Checking snafu v0.9.2
+    Checking derive_more v2.1.1
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking aes-kw v0.2.1
+    Checking ocb3 v0.1.0
+    Checking cast5 v0.11.1
+    Checking idea v0.5.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking ulid v1.2.1
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking block-padding v0.3.3
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking fsevent-sys v4.1.0
+    Checking hashlink v0.12.2
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+    Checking fixedbitset v0.5.7
+    Checking unsafe-libyaml v0.2.11
+    Checking num-bigint-dig v0.8.6
+    Checking fallible-streaming-iterator v0.1.9
+    Checking replace_with v0.1.8
+    Checking hex v0.4.3
+    Checking ryu v1.0.23
+    Checking fallible-iterator v0.3.0
+    Checking petgraph v0.8.3
+    Checking ed25519-dalek v3.0.0
+    Checking security-framework v3.7.0
+    Checking notify v8.2.0
+    Checking rusqlite v0.40.2
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+    Checking serde_yaml v0.9.34+deprecated
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+    Checking tokio-tungstenite v0.30.0
+    Checking rsa v0.9.10
+    Checking dsa v0.6.3
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Checking pgp v0.21.0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 18.05s
+clippy: CHILD_EXIT=0; WALL_SECONDS=18.144
+COMMAND=['cargo', 'fmt', '-p', 'bbt-supervisor', '-p', 'bbt-mux', '--', '--check']
+OWN_CHILD_PID=87473
+fmt: CHILD_EXIT=0; WALL_SECONDS=0.305

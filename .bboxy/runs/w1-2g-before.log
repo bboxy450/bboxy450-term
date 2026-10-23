@@ -1,0 +1,81 @@
+   Compiling libc v0.2.191
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling version_check v0.9.5
+   Compiling pkg-config v0.3.34
+   Compiling getrandom v0.3.4
+   Compiling zerocopy v0.8.63
+   Compiling serde v1.0.229
+   Compiling typenum v1.20.1
+   Compiling cfg_aliases v0.1.1
+   Compiling generic-array v0.14.7
+   Compiling thiserror v1.0.69
+   Compiling parking_lot_core v0.9.12
+   Compiling nix v0.28.0
+   Compiling rustix v1.1.5
+   Compiling zstd-safe v8.2.0
+   Compiling smallvec v1.16.3
+   Compiling anyhow v1.0.104
+   Compiling scopeguard v1.2.0
+   Compiling log v0.4.34
+   Compiling getrandom v0.4.3
+   Compiling zmij v1.0.23
+   Compiling lock_api v0.4.14
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+   Compiling memchr v2.8.3
+   Compiling serde_json v1.0.154
+   Compiling shell-words v1.1.1
+   Compiling jobserver v0.1.35
+   Compiling unicode-width v0.2.2
+   Compiling cc v1.9.0
+   Compiling downcast-rs v1.2.1
+   Compiling cursor-icon v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling base64 v0.22.1
+   Compiling fastrand v2.5.0
+   Compiling itoa v1.0.18
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling digest v0.10.7
+   Compiling errno v0.3.14
+   Compiling serial2 v0.2.38
+   Compiling rand_core v0.9.5
+   Compiling parking_lot v0.12.5
+   Compiling cpufeatures v0.2.17
+   Compiling mio v1.2.4
+   Compiling sha2 v0.10.9
+   Compiling thiserror-impl v1.0.69
+   Compiling serde_derive v1.0.229
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling bitflags v2.13.2
+   Compiling filedescriptor v0.8.3
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.5
+   Compiling tempfile v3.27.0
+   Compiling portable-pty v0.9.0
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling ulid v1.2.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+   Compiling zstd v0.14.3
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+error[E0432]: unresolved import `crate::ExitInfo`
+ --> crates/bbt-supervisor/src/client/tests.rs:3:25
+  |
+3 | use crate::{Attachment, ExitInfo, Request, SeatInfo, SeatSize};
+  |                         ^^^^^^^^ no `ExitInfo` in the root
+  |
+  = help: consider importing this struct instead:
+          crate::protocol::ExitInfo
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `bbt-supervisor` (lib test) due to 1 previous error
+CHILD_EXIT=101
