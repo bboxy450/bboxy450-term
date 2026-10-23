@@ -1,0 +1,424 @@
+
+$ ['git', 'diff', '--check']
+EXIT 0; elapsed 0.041s
+
+$ ['rustfmt', '--check', '--edition', '2024', '--config', 'skip_children=true,reorder_modules=false', 'crates/bbt-mux/src/adapters/guard.rs', 'crates/bbt-mux/src/logic.rs', 'crates/bbt-mux/src/mcp/journal.rs', 'crates/bbt-mux/src/mcp/mod.rs', 'crates/bbt-mux/src/mcp/seats.rs', 'crates/bbt-mux/src/mcp/tools.rs', 'crates/bbt-mux/src/messaging/service.rs', 'crates/bbt-mux/tests/adapters.rs', 'crates/bbt-mux/tests/mcp.rs']
+EXIT 0; elapsed 0.191s
+
+$ ['git', 'add', '--', 'crates/bbt-mux/src/adapters/guard.rs', 'crates/bbt-mux/src/logic.rs', 'crates/bbt-mux/src/mcp/journal.rs', 'crates/bbt-mux/src/mcp/mod.rs', 'crates/bbt-mux/src/mcp/seats.rs', 'crates/bbt-mux/src/mcp/tools.rs', 'crates/bbt-mux/src/messaging/service.rs', 'crates/bbt-mux/tests/adapters.rs', 'crates/bbt-mux/tests/mcp.rs', '.bboxy/runs/w2-5e-plan.log', '.bboxy/runs/w2-5e-plan-addendum.log', '.bboxy/runs/w2-5e-build.log', '.bboxy/runs/w2-5e-focused.log', '.bboxy/runs/w2-5e-strict.log', '.bboxy/runs/w2-5e-commands.log']
+EXIT 0; elapsed 0.095s
+
+$ ['git', 'diff', '--cached', '--stat']
+ .bboxy/runs/w2-5e-build.log             | 291 ++++++++++
+ .bboxy/runs/w2-5e-commands.log          |  41 ++
+ .bboxy/runs/w2-5e-focused.log           | 540 +++++++++++++++++++
+ .bboxy/runs/w2-5e-plan-addendum.log     |   1 +
+ .bboxy/runs/w2-5e-plan.log              |  21 +
+ .bboxy/runs/w2-5e-strict.log            | 193 +++++++
+ crates/bbt-mux/src/adapters/guard.rs    |  60 ++-
+ crates/bbt-mux/src/logic.rs             | 630 +++++++++++++++++++++-
+ crates/bbt-mux/src/mcp/journal.rs       |  32 +-
+ crates/bbt-mux/src/mcp/mod.rs           |   3 +-
+ crates/bbt-mux/src/mcp/seats.rs         | 552 +++++++++++++++++++
+ crates/bbt-mux/src/mcp/tools.rs         |   1 +
+ crates/bbt-mux/src/messaging/service.rs |  75 ++-
+ crates/bbt-mux/tests/adapters.rs        | 141 +++++
+ crates/bbt-mux/tests/mcp.rs             | 917 +++++++++++++++++++++++++++++++-
+ 15 files changed, 3454 insertions(+), 44 deletions(-)
+EXIT 0; elapsed 0.036s
+
+$ ['git', 'commit', '-S', '-m', 'feat: add generation-bound guarded seat MCP controls']
+[exec5 cc47223] feat: add generation-bound guarded seat MCP controls
+ 15 files changed, 3454 insertions(+), 44 deletions(-)
+ create mode 100644 .bboxy/runs/w2-5e-build.log
+ create mode 100644 .bboxy/runs/w2-5e-commands.log
+ create mode 100644 .bboxy/runs/w2-5e-focused.log
+ create mode 100644 .bboxy/runs/w2-5e-plan-addendum.log
+ create mode 100644 .bboxy/runs/w2-5e-plan.log
+ create mode 100644 .bboxy/runs/w2-5e-strict.log
+ create mode 100644 crates/bbt-mux/src/mcp/seats.rs
+EXIT 0; elapsed 0.208s
+
+$ ['git', 'fetch', 'origin']
+EXIT 0; elapsed 0.892s
+
+$ ['git', 'rebase', '--gpg-sign', 'origin/main']
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/exec5.
+EXIT 0; elapsed 0.209s
+
+$ ['git', 'rev-parse', 'HEAD', 'origin/main']
+89c9e5505e008fea1b8a0b4c7951eeddc0938df6
+3f18f9f27cf9da8f3210aa2ac34d06d1bf7c7a9a
+EXIT 0; elapsed 0.038s
+
+$ ['git', 'verify-commit', 'HEAD']
+gpg: Signature made Fri Oct 23 06:31:24 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0; elapsed 0.046s
+
+$ ['git', 'status', '--porcelain', '--untracked-files=no']
+EXIT 0; elapsed 0.041s
+
+$ ['git', 'fetch', 'origin']
+EXIT 0; elapsed 1.044s
+
+$ ['git', 'log', '--oneline', '3f18f9f..origin/main']
+33d1f9b merge silk-lane lab reference (Wren ac546a4) + Style Lane harness and public glow phase (Velvet): advisory pixel reviews 334 -> 226
+b864a28 merge R13: headless rendering reuses one materials Pass across cases; full-catalogue replay 499 s -> 175 s, 1704/1704 PNGs byte-identical
+3298118 Record R13 clean ci-local (exit 0) and strict clippy (exit 0) at 78cbca5
+11325d8 Record R13 byte identity: 1704/1704 canonical PNGs identical; replay 499 s -> 175 s
+f389593 R13: headless material renders reuse one Pass per target format
+9f3ddf6 merge lab: deterministic Input/launcher editing states (caret, selection, IME preedit, focused-empty) for L8 C
+0cb3f11 merge T2 layers: density-calibrated double-box rules, continuous underline phase, centered strike, beam/underline cursors byte-identical to xterm; legacy ASCII guard labelled
+57f7136 test: record strict T2 geometry, live captures and exact terminal replay
+e5dd564 test: prove silk phase handoff and legacy particle stability
+455d352 bboxybook: forward the public silk phase to native replay
+95a28b3 lab: text-field editing states for Input and the launcher query
+3123abb test: record the paired Style lane reference proof
+dad4c5d bboxybook: paint the Style lane effect and record pixel triage
+594692b fix: match focused cursor thickness and capture the terminal layer gallery
+24b5cd4 docs: identify the retained legacy ASCII fixture font guard
+69a96c7 fix: align terminal rules and preserve dotted and dashed run phase
+903f26a fix: calibrate double-line sprites and preserve open joins
+ac546a4 lab: panes draw silk in the glow lane; the old pane glow retires
+EXIT 0; elapsed 0.047s
+
+$ ['git', 'diff', '--name-only', '3f18f9f', 'origin/main']
+.bboxy/runs/p3-advisory-triage.log
+.bboxy/runs/p3-glow-phase-after.log
+.bboxy/runs/p3-glow-phase-before.log
+.bboxy/runs/p3-style-lane-native.log
+.bboxy/runs/p3-style-lane-pair.log
+.bboxy/runs/r13-ci.log
+.bboxy/runs/r13-clippy.log
+.bboxy/runs/r13-replay.log
+.bboxy/runs/t2-cursors.log
+.bboxy/runs/t2-decorations.log
+.bboxy/runs/t2-double-box.log
+.bboxy/runs/t2-layer-ci-location.log
+.bboxy/runs/t2-layer-ci-status.log
+.bboxy/runs/t2-layer-ci-summary.log
+.bboxy/runs/t2-layer-ci.log
+.bboxy/runs/t2-layer-cleanup.log
+.bboxy/runs/t2-layer-scene-diffs.log
+.bboxy/runs/t2-layers-artifacts.log
+.bboxy/runs/t2-layers-commands.log
+.bboxy/runs/t2-layers-files.log
+.bboxy/runs/t2-layers-handoff.log
+.bboxy/runs/t2-layers-image-reads.log
+.bboxy/runs/t2-layers-live.log
+.bboxy/runs/t2-layers-location.log
+.bboxy/runs/t2-layers-replay-identity.log
+.bboxy/runs/t2-layers-replay.log
+.bboxy/runs/t2-legacy-ascii.log
+.bboxy/runs/t2-w36-review.log
+crates/bboxy-firehose/README.md
+crates/bboxy-firehose/corpus/cursor-beam.ansi
+crates/bboxy-firehose/corpus/cursor-underline.ansi
+crates/bboxy-firehose/corpus/screen-hashes.txt
+crates/bboxy-firehose/examples/screen_dump.rs
+crates/bboxy-firehose/reference/README.md
+crates/bboxy-firehose/reference/capture.mjs
+crates/bboxy-firehose/reference/gallery.py
+crates/bboxy-firehose/reference/index.html
+crates/bboxy-firehose/reference/layers/before/alternate-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/alternate-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/alternate-light-1x.png
+crates/bboxy-firehose/reference/layers/before/alternate-light-2x.png
+crates/bboxy-firehose/reference/layers/before/claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/claude-light-1x.png
+crates/bboxy-firehose/reference/layers/before/claude-light-2x.png
+crates/bboxy-firehose/reference/layers/before/codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/codex-light-1x.png
+crates/bboxy-firehose/reference/layers/before/codex-light-2x.png
+crates/bboxy-firehose/reference/layers/before/cursor-beam-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/cursor-beam-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/cursor-beam-light-1x.png
+crates/bboxy-firehose/reference/layers/before/cursor-beam-light-2x.png
+crates/bboxy-firehose/reference/layers/before/cursor-underline-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/cursor-underline-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/cursor-underline-light-1x.png
+crates/bboxy-firehose/reference/layers/before/cursor-underline-light-2x.png
+crates/bboxy-firehose/reference/layers/before/manifest.json
+crates/bboxy-firehose/reference/layers/before/osc7501-claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-claude-light-1x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-claude-light-2x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-codex-light-1x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-codex-light-2x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-preflight-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-preflight-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-preflight-light-1x.png
+crates/bboxy-firehose/reference/layers/before/osc7501-preflight-light-2x.png
+crates/bboxy-firehose/reference/layers/before/palette-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/palette-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/palette-light-1x.png
+crates/bboxy-firehose/reference/layers/before/palette-light-2x.png
+crates/bboxy-firehose/reference/layers/before/progress-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/progress-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/progress-light-1x.png
+crates/bboxy-firehose/reference/layers/before/progress-light-2x.png
+crates/bboxy-firehose/reference/layers/before/scroll-links-sync-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/scroll-links-sync-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/scroll-links-sync-light-1x.png
+crates/bboxy-firehose/reference/layers/before/scroll-links-sync-light-2x.png
+crates/bboxy-firehose/reference/layers/before/unicode-dark-1x.png
+crates/bboxy-firehose/reference/layers/before/unicode-dark-2x.png
+crates/bboxy-firehose/reference/layers/before/unicode-light-1x.png
+crates/bboxy-firehose/reference/layers/before/unicode-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/alternate-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/alternate-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/alternate-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/alternate-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/claude-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/claude-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/codex-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/codex-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/cursor-beam-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/cursor-beam-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/cursor-beam-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/cursor-beam-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/cursor-underline-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/cursor-underline-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/cursor-underline-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/cursor-underline-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-claude-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-claude-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-codex-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-codex-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-preflight-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-preflight-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-preflight-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/osc7501-preflight-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/palette-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/palette-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/palette-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/palette-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/progress-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/progress-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/progress-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/progress-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/scroll-links-sync-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/scroll-links-sync-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/scroll-links-sync-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/scroll-links-sync-light-2x.png
+crates/bboxy-firehose/reference/layers/diff/unicode-dark-1x.png
+crates/bboxy-firehose/reference/layers/diff/unicode-dark-2x.png
+crates/bboxy-firehose/reference/layers/diff/unicode-light-1x.png
+crates/bboxy-firehose/reference/layers/diff/unicode-light-2x.png
+crates/bboxy-firehose/reference/layers/index.html
+crates/bboxy-firehose/reference/layers/native/alternate-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/alternate-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/alternate-light-1x.png
+crates/bboxy-firehose/reference/layers/native/alternate-light-2x.png
+crates/bboxy-firehose/reference/layers/native/claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/claude-light-1x.png
+crates/bboxy-firehose/reference/layers/native/claude-light-2x.png
+crates/bboxy-firehose/reference/layers/native/codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/codex-light-1x.png
+crates/bboxy-firehose/reference/layers/native/codex-light-2x.png
+crates/bboxy-firehose/reference/layers/native/cursor-beam-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/cursor-beam-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/cursor-beam-light-1x.png
+crates/bboxy-firehose/reference/layers/native/cursor-beam-light-2x.png
+crates/bboxy-firehose/reference/layers/native/cursor-underline-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/cursor-underline-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/cursor-underline-light-1x.png
+crates/bboxy-firehose/reference/layers/native/cursor-underline-light-2x.png
+crates/bboxy-firehose/reference/layers/native/manifest.json
+crates/bboxy-firehose/reference/layers/native/osc7501-claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-claude-light-1x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-claude-light-2x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-codex-light-1x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-codex-light-2x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-preflight-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-preflight-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-preflight-light-1x.png
+crates/bboxy-firehose/reference/layers/native/osc7501-preflight-light-2x.png
+crates/bboxy-firehose/reference/layers/native/palette-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/palette-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/palette-light-1x.png
+crates/bboxy-firehose/reference/layers/native/palette-light-2x.png
+crates/bboxy-firehose/reference/layers/native/progress-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/progress-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/progress-light-1x.png
+crates/bboxy-firehose/reference/layers/native/progress-light-2x.png
+crates/bboxy-firehose/reference/layers/native/scroll-links-sync-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/scroll-links-sync-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/scroll-links-sync-light-1x.png
+crates/bboxy-firehose/reference/layers/native/scroll-links-sync-light-2x.png
+crates/bboxy-firehose/reference/layers/native/unicode-dark-1x.png
+crates/bboxy-firehose/reference/layers/native/unicode-dark-2x.png
+crates/bboxy-firehose/reference/layers/native/unicode-light-1x.png
+crates/bboxy-firehose/reference/layers/native/unicode-light-2x.png
+crates/bboxy-firehose/reference/layers/proofs/cursor-final-metrics.json
+crates/bboxy-firehose/reference/layers/proofs/cursor-final-read.png
+crates/bboxy-firehose/reference/layers/proofs/decoration-dom-probe.json
+crates/bboxy-firehose/reference/layers/proofs/decoration-reference-clipping-read.png
+crates/bboxy-firehose/reference/layers/proofs/decorations-candidate-metrics.json
+crates/bboxy-firehose/reference/layers/proofs/decorations-candidate-read.png
+crates/bboxy-firehose/reference/layers/proofs/double-box-final-metrics.json
+crates/bboxy-firehose/reference/layers/proofs/double-box-final-read.png
+crates/bboxy-firehose/reference/layers/read/alternate-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/alternate-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/alternate-light-1x.png
+crates/bboxy-firehose/reference/layers/read/alternate-light-2x.png
+crates/bboxy-firehose/reference/layers/read/claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/claude-light-1x.png
+crates/bboxy-firehose/reference/layers/read/claude-light-2x.png
+crates/bboxy-firehose/reference/layers/read/codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/codex-light-1x.png
+crates/bboxy-firehose/reference/layers/read/codex-light-2x.png
+crates/bboxy-firehose/reference/layers/read/cursor-beam-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/cursor-beam-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/cursor-beam-light-1x.png
+crates/bboxy-firehose/reference/layers/read/cursor-beam-light-2x.png
+crates/bboxy-firehose/reference/layers/read/cursor-underline-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/cursor-underline-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/cursor-underline-light-1x.png
+crates/bboxy-firehose/reference/layers/read/cursor-underline-light-2x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-claude-light-1x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-claude-light-2x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-codex-light-1x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-codex-light-2x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-preflight-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-preflight-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-preflight-light-1x.png
+crates/bboxy-firehose/reference/layers/read/osc7501-preflight-light-2x.png
+crates/bboxy-firehose/reference/layers/read/palette-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/palette-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/palette-light-1x.png
+crates/bboxy-firehose/reference/layers/read/palette-light-2x.png
+crates/bboxy-firehose/reference/layers/read/progress-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/progress-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/progress-light-1x.png
+crates/bboxy-firehose/reference/layers/read/progress-light-2x.png
+crates/bboxy-firehose/reference/layers/read/scroll-links-sync-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/scroll-links-sync-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/scroll-links-sync-light-1x.png
+crates/bboxy-firehose/reference/layers/read/scroll-links-sync-light-2x.png
+crates/bboxy-firehose/reference/layers/read/unicode-dark-1x.png
+crates/bboxy-firehose/reference/layers/read/unicode-dark-2x.png
+crates/bboxy-firehose/reference/layers/read/unicode-light-1x.png
+crates/bboxy-firehose/reference/layers/read/unicode-light-2x.png
+crates/bboxy-firehose/reference/layers/report.json
+crates/bboxy-firehose/reference/layers/web/alternate-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/alternate-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/alternate-intermediate-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/alternate-intermediate-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/alternate-intermediate-light-1x.png
+crates/bboxy-firehose/reference/layers/web/alternate-intermediate-light-2x.png
+crates/bboxy-firehose/reference/layers/web/alternate-light-1x.png
+crates/bboxy-firehose/reference/layers/web/alternate-light-2x.png
+crates/bboxy-firehose/reference/layers/web/claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/claude-light-1x.png
+crates/bboxy-firehose/reference/layers/web/claude-light-2x.png
+crates/bboxy-firehose/reference/layers/web/codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/codex-light-1x.png
+crates/bboxy-firehose/reference/layers/web/codex-light-2x.png
+crates/bboxy-firehose/reference/layers/web/cursor-beam-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/cursor-beam-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/cursor-beam-light-1x.png
+crates/bboxy-firehose/reference/layers/web/cursor-beam-light-2x.png
+crates/bboxy-firehose/reference/layers/web/cursor-underline-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/cursor-underline-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/cursor-underline-light-1x.png
+crates/bboxy-firehose/reference/layers/web/cursor-underline-light-2x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-claude-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-claude-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-claude-light-1x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-claude-light-2x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-codex-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-codex-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-codex-light-1x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-codex-light-2x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-preflight-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-preflight-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-preflight-light-1x.png
+crates/bboxy-firehose/reference/layers/web/osc7501-preflight-light-2x.png
+crates/bboxy-firehose/reference/layers/web/palette-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/palette-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/palette-light-1x.png
+crates/bboxy-firehose/reference/layers/web/palette-light-2x.png
+crates/bboxy-firehose/reference/layers/web/progress-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/progress-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/progress-intermediate-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/progress-intermediate-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/progress-intermediate-light-1x.png
+crates/bboxy-firehose/reference/layers/web/progress-intermediate-light-2x.png
+crates/bboxy-firehose/reference/layers/web/progress-light-1x.png
+crates/bboxy-firehose/reference/layers/web/progress-light-2x.png
+crates/bboxy-firehose/reference/layers/web/report-dark-1x.json
+crates/bboxy-firehose/reference/layers/web/report-dark-2x.json
+crates/bboxy-firehose/reference/layers/web/report-light-1x.json
+crates/bboxy-firehose/reference/layers/web/report-light-2x.json
+crates/bboxy-firehose/reference/layers/web/scroll-links-sync-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/scroll-links-sync-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/scroll-links-sync-light-1x.png
+crates/bboxy-firehose/reference/layers/web/scroll-links-sync-light-2x.png
+crates/bboxy-firehose/reference/layers/web/unicode-dark-1x.png
+crates/bboxy-firehose/reference/layers/web/unicode-dark-2x.png
+crates/bboxy-firehose/reference/layers/web/unicode-light-1x.png
+crates/bboxy-firehose/reference/layers/web/unicode-light-2x.png
+crates/bboxy-firehose/src/lib.rs
+crates/bboxy-firehose/src/main.rs
+crates/bboxy-firehose/tests/cli.rs
+crates/bboxy-firehose/tests/corpus.rs
+crates/bboxybook/capture-inputs.js
+crates/bboxybook/src/styles.rs
+crates/bbt-render/examples/terminal_gallery.rs
+crates/bbt-render/src/cells/terminal/gpu.rs
+crates/bbt-render/src/cells/terminal/sprites.rs
+crates/bbt-render/src/chrome/materials.rs
+crates/bbt-render/src/chrome/mod.rs
+crates/bbt-render/src/text/macos.rs
+crates/bbt-render/src/text/mod.rs
+crates/bbt-render/tests/terminal.rs
+lab/web/components.html
+lab/web/components.js
+lab/web/glow.js
+lab/web/lab.css
+lab/web/launcher.html
+lab/web/materials.html
+lab/web/style.html
+lab/web/ui.js
+EXIT 0; elapsed 0.053s
+
+$ ['git', 'status', '--porcelain', '--untracked-files=no']
+EXIT 0; elapsed 0.063s
+
+$ ['git', 'diff', '--check']
+EXIT 0; elapsed 0.048s
+
+$ ['git', 'verify-commit', '89c9e5505e008fea1b8a0b4c7951eeddc0938df6']
+gpg: Signature made Fri Oct 23 06:31:24 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0; elapsed 0.070s
