@@ -12,13 +12,14 @@ links:
   - { to: "[[runbook-web-to-native]]", rel: spec }
   - { to: "[[gui-components]]", rel: constrains }
 created: 2026-10-22T21:31:18Z
-updated: 2026-10-22T21:31:18Z
+updated: 2026-10-23T23:17:54Z
 ---
 # Web and native geometry agree
 
 **Property.** For every case in the canonical catalogue (1704 current screens at
 P3, dd47f4e, 2026-10-23), the native layout geometry matches the web lab's within
-the case policy ([[renderer]] §4.4a; `crates/bboxybook/src/parity.rs` thresholds):
+the case policy ([[renderer]] §4.4a, including the 2026-10-23 rule that mark-only
+atom cases are vectors; `crates/bboxybook/src/parity.rs` thresholds):
 zero mismatches **and zero unproven cases** (a case whose geometry could not be
 measured fails, `parity.rs:242, 669-670`). Any visual change gates on it. Geometry is deterministic, so it is a hard gate. The pixel review
 residue stays judgement: a harness reads the images and advises; it never blocks
