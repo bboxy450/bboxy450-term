@@ -72,6 +72,7 @@ struct App {
     live_state: Option<Arc<bboxy450_term::model::Model>>,
     live_commands: Option<live::CommandSender>,
     pending_commands: VecDeque<live::UiMsg>,
+    admission_refusals: AdmissionRefusals,
     watched: Vec<(SeatId, View)>,
     pane_sizes: BTreeMap<SeatId, (u64, u16, u16)>,
     pane_bounds: Vec<(SeatId, Rect)>,
@@ -116,7 +117,10 @@ impl App {
         if self.closing || self.live_commands.is_none() {
             return;
         }
-        queue_pending(&mut self.pending_commands, message);
+        if let Err(kind) = queue_pending(&mut self.pending_commands, message) {
+            self.admission_refusals.record(kind);
+            self.logger.write(self.admission_refusals.report());
+        }
         self.request_redraw();
     }
     fn flush_commands(&mut self) {
@@ -739,10 +743,23 @@ impl ApplicationHandler<UiEvent> for App {
                 "smoke probe did not finish within 30 seconds".into(),
                 event_loop,
             ),
-            UiEvent::BackendStopped(result) => match result {
-                Ok(()) => event_loop.exit(),
-                Err(error) => self.fail(error, event_loop),
-            },
+            UiEvent::BackendStopped(result) => {
+                if self.admission_refusals.input != 0 || self.admission_refusals.spawn != 0 {
+                    let mut report = self.admission_refusals.report();
+                    if let Err(error) = result {
+                        report = format!("app error: {error}; {report}");
+                        self.error = Some(error);
+                    }
+                    // Unlike best-effort per-event diagnostics, this final
+                    // cumulative count is flushed on IO before Quit is sent.
+                    self.logger.finish(report, self.proxy.clone());
+                } else {
+                    match result {
+                        Ok(()) => event_loop.exit(),
+                        Err(error) => self.fail(error, event_loop),
+                    }
+                }
+            }
             UiEvent::BackendLost(reason) => {
                 self.logger
                     .write(format!("backend lost; retaining last pane frame: {reason}"));
@@ -895,29 +912,98 @@ impl ApplicationHandler<UiEvent> for App {
         }
     }
 }
-fn queue_pending(pending: &mut VecDeque<live::UiMsg>, message: live::UiMsg) {
-    // Native text input arrives as key events. Combine an undelivered run in
-    // this frame, keeping its first id stable across full-queue retries.
-    if let live::UiMsg::Input {
-        seat,
-        generation,
-        bytes,
-        ..
-    } = &message
-        && let Some(live::UiMsg::Input {
-            seat: old_seat,
-            generation: old_generation,
-            bytes: old_bytes,
-            ..
-        }) = pending.back_mut()
-        && seat == old_seat
-        && generation == old_generation
-        && old_bytes.len() + bytes.len() <= 16 * 1024
-    {
-        old_bytes.extend_from_slice(bytes);
-        return;
+const PENDING_INPUT_BYTES: usize = 1024 * 1024;
+const PENDING_INPUT_ENTRIES: usize = 256;
+const PENDING_SPAWNS: usize = 8;
+
+#[derive(Debug, PartialEq, Eq)]
+enum AdmissionRefused {
+    Input,
+    Spawn,
+}
+
+#[derive(Default)]
+struct AdmissionRefusals {
+    input: u64,
+    spawn: u64,
+}
+impl AdmissionRefusals {
+    fn record(&mut self, kind: AdmissionRefused) {
+        let count = match kind {
+            AdmissionRefused::Input => &mut self.input,
+            AdmissionRefused::Spawn => &mut self.spawn,
+        };
+        *count = count.saturating_add(1);
+    }
+    fn report(&self) -> String {
+        format!(
+            "admission refused: input={} spawn={} (pending input limit={} bytes/{} entries; spawn limit={})",
+            self.input, self.spawn, PENDING_INPUT_BYTES, PENDING_INPUT_ENTRIES, PENDING_SPAWNS,
+        )
+    }
+}
+
+fn queue_pending(
+    pending: &mut VecDeque<live::UiMsg>,
+    message: live::UiMsg,
+) -> Result<(), AdmissionRefused> {
+    if let live::UiMsg::Input { bytes, .. } = &message {
+        let mut input_bytes = 0;
+        let mut input_entries = 0;
+        for old in pending.iter() {
+            if let live::UiMsg::Input { bytes, .. } = old {
+                input_bytes += bytes.len();
+                input_entries += 1;
+            }
+        }
+        if bytes.len() > PENDING_INPUT_BYTES.saturating_sub(input_bytes) {
+            return Err(AdmissionRefused::Input);
+        }
+        // A merge does not consume another entry, even at the entry cap.
+        if let live::UiMsg::Input {
+            seat, generation, ..
+        } = &message
+            && let Some(live::UiMsg::Input {
+                seat: old_seat,
+                generation: old_generation,
+                bytes: old_bytes,
+                ..
+            }) = pending.back_mut()
+            && seat == old_seat
+            && generation == old_generation
+            && old_bytes.len() + bytes.len() <= 16 * 1024
+        {
+            old_bytes.extend_from_slice(bytes);
+            return Ok(());
+        }
+        if input_entries >= PENDING_INPUT_ENTRIES {
+            return Err(AdmissionRefused::Input);
+        }
+    }
+    match &message {
+        live::UiMsg::Resize { seat, .. } => pending.retain(
+            |old| !matches!(old, live::UiMsg::Resize { seat: old_seat, .. } if old_seat == seat),
+        ),
+        // Watched carries the whole visible set, including focused-first
+        // ordering. Keep only the latest set and sizes of its visible panes.
+        live::UiMsg::Watched(panes) => pending.retain(|old| match old {
+            live::UiMsg::Watched(_) => false,
+            live::UiMsg::Resize { seat, .. } => panes.iter().any(|(id, _)| id == seat),
+            _ => true,
+        }),
+        live::UiMsg::SpawnZsh
+            if pending
+                .iter()
+                .filter(|old| matches!(old, live::UiMsg::SpawnZsh))
+                .count()
+                >= PENDING_SPAWNS =>
+        {
+            return Err(AdmissionRefused::Spawn);
+        }
+        _ => {}
     }
     pending.push_back(message);
+    Ok(())
 }
 fn flush_pending(
     sender: &tokio::sync::mpsc::Sender<live::UiMsg>,
@@ -1069,6 +1155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         live_state: None,
         live_commands,
         pending_commands: VecDeque::new(),
+        admission_refusals: AdmissionRefusals::default(),
         watched: vec![],
         pane_sizes: BTreeMap::new(),
         pane_bounds: vec![],
@@ -1146,6 +1233,243 @@ mod smoke_tests {
 #[cfg(test)]
 mod input_tests {
     use super::*;
+
+    fn input(seat: SeatId, id: u128, bytes: Vec<u8>) -> live::UiMsg {
+        live::UiMsg::Input {
+            seat,
+            generation: 7,
+            id: bbt_mux::Ulid::from(id),
+            bytes,
+        }
+    }
+
+    #[test]
+    fn admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap() {
+        let seats = [SeatId::from_u128(42), SeatId::from_u128(43)];
+        let mut pending = VecDeque::new();
+        assert_eq!(
+            queue_pending(
+                &mut pending,
+                input(seats[0], 1, vec![0; PENDING_INPUT_BYTES + 1])
+            ),
+            Err(AdmissionRefused::Input)
+        );
+        assert!(pending.is_empty());
+        queue_pending(
+            &mut pending,
+            input(seats[0], 2, vec![b'x'; PENDING_INPUT_BYTES]),
+        )
+        .unwrap();
+        assert_eq!(
+            queue_pending(&mut pending, input(seats[0], 3, b"refused".to_vec())),
+            Err(AdmissionRefused::Input)
+        );
+        assert!(
+            matches!(pending.pop_front().unwrap(), live::UiMsg::Input { id, bytes, .. }
+            if id == bbt_mux::Ulid::from(2) && bytes == vec![b'x'; PENDING_INPUT_BYTES])
+        );
+
+        for index in 0..PENDING_INPUT_ENTRIES {
+            queue_pending(
+                &mut pending,
+                input(seats[index % 2], index as u128 + 1, vec![b'x']),
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            queue_pending(&mut pending, input(seats[0], 300, b"refused".to_vec())),
+            Err(AdmissionRefused::Input)
+        );
+        // The existing last entry can grow without admitting another entry.
+        queue_pending(&mut pending, input(seats[1], 301, b"m".to_vec())).unwrap();
+        assert_eq!(pending.len(), PENDING_INPUT_ENTRIES);
+        assert!(
+            matches!(pending.back().unwrap(), live::UiMsg::Input { id, bytes, .. }
+            if *id == bbt_mux::Ulid::from(256) && bytes == b"xm")
+        );
+    }
+
+    #[test]
+    fn pane_controls_coalesce_to_the_latest_visible_set_and_size() {
+        let seats = [SeatId::from_u128(42), SeatId::from_u128(43)];
+        let view = |seat: SeatId, token| View {
+            seat: bbt_mux::Ulid::from(seat.0.0),
+            generation: 7,
+            view_generation: bbt_mux::Ulid::from(token),
+        };
+        let mut pending = VecDeque::new();
+        queue_pending(
+            &mut pending,
+            live::UiMsg::Watched(vec![
+                (seats[0], view(seats[0], 1)),
+                (seats[1], view(seats[1], 1)),
+            ]),
+        )
+        .unwrap();
+        for seat in seats {
+            queue_pending(
+                &mut pending,
+                live::UiMsg::Resize {
+                    seat,
+                    generation: 7,
+                    cols: 80,
+                    rows: 24,
+                },
+            )
+            .unwrap();
+        }
+        queue_pending(&mut pending, input(seats[0], 1, b"kept".to_vec())).unwrap();
+        queue_pending(
+            &mut pending,
+            live::UiMsg::Resize {
+                seat: seats[0],
+                generation: 8,
+                cols: 120,
+                rows: 30,
+            },
+        )
+        .unwrap();
+        queue_pending(
+            &mut pending,
+            live::UiMsg::Watched(vec![(seats[0], view(seats[0], 2))]),
+        )
+        .unwrap();
+        assert_eq!(pending.len(), 3);
+        assert!(
+            matches!(pending.front().unwrap(), live::UiMsg::Input { bytes, .. } if bytes == b"kept")
+        );
+        assert!(
+            pending.iter().any(|message| matches!(message,
+            live::UiMsg::Resize { seat, generation: 8, cols: 120, rows: 30 } if *seat == seats[0]))
+        );
+        assert!(
+            matches!(pending.back().unwrap(), live::UiMsg::Watched(panes)
+            if panes == &vec![(seats[0], view(seats[0], 2))])
+        );
+        queue_pending(&mut pending, live::UiMsg::Watched(vec![])).unwrap();
+        assert_eq!(pending.len(), 2);
+        assert!(
+            matches!(pending.front().unwrap(), live::UiMsg::Input { bytes, .. } if bytes == b"kept")
+        );
+        assert!(matches!(pending.back().unwrap(), live::UiMsg::Watched(panes) if panes.is_empty()));
+    }
+
+    #[test]
+    fn ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order() {
+        let seats = [SeatId::from_u128(42), SeatId::from_u128(43)];
+        let mut pending = VecDeque::new();
+        let mut refused = AdmissionRefusals::default();
+        let mut expected = Vec::new();
+        let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
+        // 600 simulated seconds, each with 100 input bursts of64 bytes.
+        // No wall-clock sleeps: the disconnected consumer never drains.
+        for second in 0..600 {
+            let focused = second % 2;
+            let panes = [focused, 1 - focused]
+                .map(|index| {
+                    let seat = seats[index];
+                    (
+                        seat,
+                        View {
+                            seat: bbt_mux::Ulid::from(seat.0.0),
+                            generation: 7,
+                            view_generation: bbt_mux::Ulid::from(second as u128 + 1),
+                        },
+                    )
+                })
+                .to_vec();
+            queue_pending(&mut pending, live::UiMsg::Watched(panes)).unwrap();
+            for (index, seat) in seats.into_iter().enumerate() {
+                queue_pending(
+                    &mut pending,
+                    live::UiMsg::Resize {
+                        seat,
+                        generation: 7,
+                        cols: 80 + (second % 20) as u16 + index as u16,
+                        rows: 24,
+                    },
+                )
+                .unwrap();
+            }
+            if let Err(kind) = queue_pending(&mut pending, live::UiMsg::SpawnZsh) {
+                refused.record(kind);
+            }
+            for key in 0..100 {
+                let ordinal = second * 100 + key;
+                let bytes = vec![(ordinal % 251) as u8; 64];
+                match queue_pending(
+                    &mut pending,
+                    input(seats[focused], ordinal as u128 + 1, bytes.clone()),
+                ) {
+                    Ok(()) => expected.extend_from_slice(&bytes),
+                    Err(kind) => refused.record(kind),
+                }
+                let inputs: Vec<_> = pending
+                    .iter()
+                    .filter_map(|message| match message {
+                        live::UiMsg::Input { bytes, .. } => Some(bytes),
+                        _ => None,
+                    })
+                    .collect();
+                assert!(inputs.len() <= PENDING_INPUT_ENTRIES);
+                assert!(
+                    inputs.iter().map(|bytes| bytes.len()).sum::<usize>() <= PENDING_INPUT_BYTES
+                );
+                assert!(pending.len() <= PENDING_INPUT_ENTRIES + PENDING_SPAWNS + seats.len() + 1);
+            }
+            flush_pending(&sender, &mut pending, true).unwrap();
+            assert!(receiver.try_recv().is_err());
+        }
+        assert_eq!(expected.len(), PENDING_INPUT_BYTES);
+        assert_eq!(refused.input, 60_000 - (PENDING_INPUT_BYTES / 64) as u64);
+        assert_eq!(refused.spawn, 600 - PENDING_SPAWNS as u64);
+
+        let mut delivered = Vec::new();
+        let mut sizes = BTreeMap::new();
+        let mut watched = Vec::new();
+        let mut spawns = 0;
+        while !pending.is_empty() {
+            flush_pending(&sender, &mut pending, false).unwrap();
+            match receiver
+                .try_recv()
+                .expect("capacity-one reconnect must make progress")
+            {
+                live::UiMsg::Input {
+                    generation, bytes, ..
+                } => {
+                    assert_eq!(generation, 7);
+                    delivered.extend(bytes);
+                }
+                live::UiMsg::Resize {
+                    seat, cols, rows, ..
+                } => {
+                    sizes.insert(seat, (cols, rows));
+                }
+                live::UiMsg::Watched(panes) => watched = panes,
+                live::UiMsg::SpawnZsh => spawns += 1,
+            }
+        }
+        assert_eq!(delivered, expected);
+        assert_eq!(spawns, PENDING_SPAWNS);
+        assert_eq!(
+            sizes,
+            BTreeMap::from([(seats[0], (99, 24)), (seats[1], (100, 24))])
+        );
+        assert_eq!(watched.len(), 2);
+        assert_eq!(watched[0].0, seats[1]);
+        assert!(
+            watched
+                .iter()
+                .all(|(_, view)| view.view_generation == bbt_mux::Ulid::from(600))
+        );
+        assert!(receiver.try_recv().is_err());
+        eprintln!(
+            "PASS600 simulated seconds:60000 input bursts,{} accepted bytes,{}, ordered reconnect drain",
+            delivered.len(),
+            refused.report()
+        );
+    }
+
     #[test]
     fn text_bursts_keep_byte_order_first_id_and_generation_boundaries() {
         let seat = SeatId::from_u128(42);
@@ -1164,7 +1488,8 @@ mod input_tests {
                     id,
                     bytes,
                 },
-            );
+            )
+            .unwrap();
         }
         assert_eq!(pending.len(), 2);
         assert!(

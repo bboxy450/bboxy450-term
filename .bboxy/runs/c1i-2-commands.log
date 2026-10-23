@@ -1,0 +1,22 @@
+C1i-2 — Aster Cinderwing, exec4
+Assignment de5bc9ee / policy2a56b6a0; C1i accepted2da2393; base origin/main2750175.
+Initial git fetch/rebase EXIT0; carried C1i evidence-only commit336ffe2, signed.
+Only main.rs admission/refusal logging/tests plus c1i-2 logs. No socket/live/GPU/scene edits.
+ICQ CLAIM/LANDED and coordination previews/sends EXIT0; storage receipts do not prove reads.
+Applied two core patches and test patch through apply_patch; no POSIX exit applies.
+COMMAND cargo fmt --all: EXIT0. COMMAND git diff --check: EXIT0.
+
+Scope correction: cargo fmt --all reformatted23 previously clean out-of-scope files. Restored only those exact files from HEAD, EXIT0. No pre-existing tracked WIP existed.
+['crates/bboxybook/examples/chrome-text-probe.rs', 'crates/bboxybook/src/components.rs', 'crates/bboxybook/src/fixtures.rs', 'crates/bboxybook/src/lib.rs', 'crates/bboxybook/src/main.rs', 'crates/bboxybook/src/parity.rs', 'crates/bboxybook/src/paths.rs', 'crates/bboxybook/tests/clipping.rs', 'crates/bboxybook/tests/materials.rs', 'crates/bboxybook/tests/parity_gate.rs', 'crates/bboxybook/tests/render.rs', 'crates/bbt-core/tests/checkpoint.rs', 'crates/bbt-mermaid/examples/dump_svg.rs', 'crates/bbt-mermaid/tests/fixtures.rs', 'crates/bbt-render/src/headless.rs', 'crates/bbt-render/tests/smoke.rs', 'crates/bbt-render/tests/terminal.rs', 'crates/bbt-render/tests/variants.rs', 'crates/bbt-ui-model/build.rs', 'crates/bbt-ui-model/tests/showcase_overrides.rs', 'crates/bbt-ui/src/modules/mod.rs', 'crates/bbt-ui/tests/documents.rs', 'crates/bbt-ui/tests/seat_rows.rs']
+
+COMMAND ['cargo', 'test', '-p', 'bboxy450-term', '--bin', 'bboxy450-term', '--locked', 'input_tests', '--', '--nocapture']
+ENV memory custody, debug0, incremental0
+EXIT 0 elapsed=8.437s
+
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+ENV memory custody, debug0, incremental0
+EXIT 0 elapsed=10.139s
+
+COMMAND rustfmt --edition2024 --config skip_children=true crates/bboxy450-term/src/main.rs: EXIT0. COMMAND git diff --check: EXIT0.
+Read-only diff review/hunk-boundary inspection EXIT0. ICQ peer hunk coordination preview/send EXIT0.
+COMMAND git fetch origin: EXIT0; main advanced to772719b (R9), rebasing before the exact gate.
