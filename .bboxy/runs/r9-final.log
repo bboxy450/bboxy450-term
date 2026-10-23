@@ -1,0 +1,44 @@
+{
+  "time_utc": "2026-10-23T06:09:17.366095+00:00",
+  "source_commit": "01e13778628cfd81c7cdaff103549deb1b8943de",
+  "verified_commit": "82f18db7ac2bd664786af56eae0915d944b9571c",
+  "verified_commit_extra_content": "evidence logs only; R9 runtime code identical to source commit",
+  "ci": {
+    "commit": "82f18db7ac2bd664786af56eae0915d944b9571c",
+    "worktree": "/tmp/ci-nyx-r9-01e1377",
+    "target": "/tmp/nyx-r9-flow-target-82f18db",
+    "parity_out": "/Users/feral/mydev/bboxy450-term-nyx/target/r9/ci-82f18db-flow-parity",
+    "scope": "independent Flow witness; Settings baseline failure remains recorded, Oracle disposition pending",
+    "exit": 0,
+    "wall_s": 720.4237866660114,
+    "log": "/Users/feral/mydev/bboxy450-term-nyx/target/r9/ci-flow.log"
+  },
+  "ci_log_sha256": "aa6450e9817c647e76e8f1ad2141e8f5a7940803eb628eb7420eb1a35aea8f41",
+  "test_results_including_invariant_reruns": {
+    "passed": 598,
+    "failed": 0,
+    "ignored": 13,
+    "records": 110
+  },
+  "flow_parity": {
+    "cases": 40,
+    "geometry_failures": 0,
+    "pixel_reviews": 0
+  },
+  "settings_result": "separate clean Settings CI exit 1: eight baseline Appearance control rects; accepted renderer produces identical 72 PNGs and geometry on the same fresh inputs; no policy waived",
+  "cleanup": {
+    "removed": [
+      {
+        "path": "/tmp/nyx-r9-flow-target-82f18db",
+        "allocated_bytes": 3508297728
+      },
+      {
+        "path": "/tmp/ci-nyx-r9-01e1377/target",
+        "allocated_bytes": 2129920
+      }
+    ],
+    "worktree_removed": "/tmp/ci-nyx-r9-01e1377",
+    "free_bytes_after": 19318046720
+  },
+  "acceptance": "Oracle review/gate disposition pending; no R10 implementation"
+}
