@@ -1281,7 +1281,7 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 .tab-row.closed-strip { background: var(--sel-hover); border-radius: var(--r-row); }
 .tab-row.closed-strip .undo { border: var(--hair-w) solid var(--hair); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); border-radius: var(--r-round); font-size: var(--t-small); }
 /* stage.tiled = the app's split stage: no frame, gutters are the dividers, panes tile square */
-.stage.tiled { flex: 1; padding: var(--gutter); background: transparent; min-width: 0; }
+.stage.tiled { flex: 1; padding: var(--stage-inset);   /* half the rim: one pane's outer half */ background: transparent; min-width: 0; }
 .stage.tiled .pane { background: var(--bg); min-height: 0; min-width: 0; border-radius: 0; }
 .pane .strip .kbd { background: rgba(0,0,0,.22); color: rgba(255,255,255,.85); }
 .pane.settings-pane { display: flex; flex-direction: column; min-width: 0; }

@@ -8,15 +8,15 @@
   const SCENE = q.get('scene') === '15' ? 15 : 3;
   // the alive rim's depth (Settings › Appearance › Glow depth, 2 to 8 px, default glow.depth): how far its bloom reaches
   // inside each pane. It repaints only; the gutter and stage inset are a fixed layout.gutter. ?depth= deep-links it.
-  let depth = q.has('depth') ? Math.min(T.glow.depth_max, Math.max(T.glow.depth_min, +q.get('depth'))) : T.glow.depth;
-  C.SET.appearance.depth = depth;   // Settings shows the deep-linked depth
+  let rim = q.has('rim') ? Math.min(T.glow.rim_max, Math.max(T.glow.rim_min, +q.get('rim'))) : T.glow.rim;
+  C.SET.appearance.rim = rim;   // Settings shows the deep-linked rim size
 
   // ---------- theme: auto (prefers-color-scheme) | dark | light ----------
   let density = 'cozy';   // live from Settings › Appearance
   const mq = matchMedia('(prefers-color-scheme: dark)');
   let themeMode = Lab.store.get('showcase.theme') || 'auto';
   const theme = () => themeMode === 'auto' ? (mq.matches ? 'dark' : 'light') : themeMode;
-  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = density; Lab.applyTokens(); document.documentElement.style.setProperty('--glow-depth', depth + 'px'); }
+  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = density; Lab.applyTokens(); const r = document.documentElement.style; r.setProperty('--glow-rim', rim + 'px'); r.setProperty('--gutter', rim + 'px'); r.setProperty('--stage-inset', rim / 2 + 'px'); }
   mq.addEventListener('change', () => { if (themeMode === 'auto') { applyTheme(); render(); } });
   applyTheme();
 
@@ -283,7 +283,7 @@
     if (section !== 'appearance') return;
     if (key === 'density') { density = value; }
     if (key === 'theme') { themeMode = value; Lab.store.set('showcase.theme', value); drawThemeBtn(); }
-    if (key === 'depth') { depth = value; }   // repaint only: the rim lives inside the pane, nothing moves
+    if (key === 'rim') { rim = value; }   // the gutter and the stage inset follow it: a relayout, then the rim repaints
     if (key === 'glow') { document.getElementById('glow').style.display = value ? '' : 'none'; }
     if (key === 'opacity' || key === 'blur' || key === 'blurRadius') { applyWindow(); if (key === 'opacity') return; }
     const keep = settingsSeat.section; applyTheme(); settingsSeat.section = keep; render();
@@ -713,7 +713,7 @@
     uniform vec4 uRipCol[${MAXRIP}];
     uniform float uMul[${MAXR}];   // per-rect alpha multiplier: panes 1, sidebar rows glow.row_alpha
     uniform float uPane[${MAXR}];  // 1: a pane, drawn as the alive rim inside it; 0: a sidebar row (halo + particles)
-    uniform float uDepth, uDpr;    // the rim's bloom depth in CSS px (Settings › Glow depth), device pixel ratio
+    uniform float uRim, uRimOut, uDepth, uDpr;   // rim size (Settings › Rim size), half of it outside the edge, bloom depth (glow.depth), CSS px; dpr
     uniform float uPulseMs, uActiveMs, uIdleA, uActMin, uActMax, uWaitMin, uWaitMax, uErrA, uBoost, uSpeed, uPSize;
     uniform vec3 uAmber, uRed;
     out vec4 o;
@@ -737,10 +737,11 @@
         float d = abs(dOut + dIn);                    // distance to the border line
         if (uPane[i] > 0.5) {
           // a pane: the alive rim, 2 px inside the border plus a bloom to uDepth px; it never leaves the pane
-          float dep = -min(max(d2.x, d2.y), 0.) / uDpr;                 // CSS px inward from the border (0 outside)
-          if (dOut > 0.) continue;
-          float rim = smoothstep(0., .6, dep) * (1. - smoothstep(1.6, 2.4, dep));
-          float bloom = step(1.6, dep) * exp(-(dep - 2.) / (.3*uDepth)) * (1. - smoothstep(uDepth - 1., uDepth, dep));
+          float dep = (dOut > 0. ? -dOut : -max(d2.x, d2.y)) / uDpr;   // signed CSS px inward from the border (negative outside)
+          if (dep < -uRimOut - 1.) continue;
+          float inner = uRim - uRimOut;
+          float rim = smoothstep(-uRimOut, -uRimOut + .6, dep) * (1. - smoothstep(inner - .4, inner + .4, dep));
+          float bloom = step(inner - .4, dep) * exp(-(dep - inner) / (.3*uDepth)) * (1. - smoothstep(uDepth - 1., uDepth, dep));
           if (rim + bloom <= 0.) continue;
           float pst = uPar[i].x; vec3 pcol = uCol[i].rgb;
           if (pst > 1.5 && pst < 2.5) pcol = uAmber; else if (pst > 2.5) pcol = uRed;
@@ -814,7 +815,7 @@
   const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog);
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
   gl.useProgram(prog);
-  const U = {}; for (const n of ['uRes', 'uTime', 'uBg', 'uN', 'uNR', 'uLight', 'uRect', 'uCol', 'uPar', 'uMul', 'uPane', 'uDepth', 'uDpr', 'uRip', 'uRipCol', 'uPulseMs', 'uActiveMs', 'uIdleA', 'uActMin', 'uActMax', 'uWaitMin', 'uWaitMax', 'uErrA', 'uBoost', 'uSpeed', 'uPSize', 'uAmber', 'uRed']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uRes', 'uTime', 'uBg', 'uN', 'uNR', 'uLight', 'uRect', 'uCol', 'uPar', 'uMul', 'uPane', 'uRim', 'uRimOut', 'uDepth', 'uDpr', 'uRip', 'uRipCol', 'uPulseMs', 'uActiveMs', 'uIdleA', 'uActMin', 'uActMax', 'uWaitMin', 'uWaitMax', 'uErrA', 'uBoost', 'uSpeed', 'uPSize', 'uAmber', 'uRed']) U[n] = gl.getUniformLocation(prog, n);
   gl.uniform3fv(U.uAmber, C.hslToRgb(T.color.state.waiting)); gl.uniform3fv(U.uRed, C.hslToRgb(T.color.state.errored));
   gl.uniform1f(U.uPulseMs, T.motion.pulse_ms); gl.uniform1f(U.uActiveMs, G.active_pulse_ms); gl.uniform1f(U.uIdleA, G.idle_alpha);
   gl.uniform1f(U.uActMin, G.active_alpha_min); gl.uniform1f(U.uActMax, G.active_alpha_max); gl.uniform1f(U.uWaitMin, G.waiting_alpha_min); gl.uniform1f(U.uWaitMax, G.waiting_alpha_max);
@@ -847,7 +848,7 @@
     gl.uniform3fv(U.uBg, C.hslToRgb(T.color[th].bg)); gl.uniform1f(U.uLight, th === 'light' ? 1 : 0);
     gl.uniform2f(U.uRes, cv.width, cv.height); gl.uniform1f(U.uTime, now);
     gl.uniform1i(U.uN, n); gl.uniform4fv(U.uRect, rectBuf); gl.uniform4fv(U.uCol, colBuf); gl.uniform4fv(U.uPar, parBuf); gl.uniform1fv(U.uMul, mulBuf); gl.uniform1fv(U.uPane, paneBuf); const term = document.querySelector('.stage .pane .term'), pad = term ? parseFloat(getComputedStyle(term).paddingLeft) : depth;
-    gl.uniform1f(U.uDepth, Math.min(depth, pad));   // the cell edge rule (rim-glow §3): [0, min(depth, padding)) gl.uniform1f(U.uDpr, dpr);
+    gl.uniform1f(U.uRim, rim); gl.uniform1f(U.uRimOut, rim / 2); gl.uniform1f(U.uDepth, Math.min(T.glow.depth, pad));   // the cell edge rule (rim-glow §3): [0, min(depth, padding)) gl.uniform1f(U.uDpr, dpr);
     ripples.forEach((rp, j) => { ripBuf.set([rp.x * dpr, rp.y * dpr, rp.t0, 0], j * 4); ripCol.set([rp.c[0], rp.c[1], rp.c[2], 1], j * 4); });
     gl.uniform1i(U.uNR, ripples.length); gl.uniform4fv(U.uRip, ripBuf); gl.uniform4fv(U.uRipCol, ripCol);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);

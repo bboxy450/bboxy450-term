@@ -1329,7 +1329,7 @@
       pi: { role: 'executor', wake: 'pty', hooks: false, command: 'pi', tile: LT('pi'), icon: 'pi', stateFrom: 'output cadence' },
       omp: { role: 'executor', wake: 'pty', hooks: false, command: 'omp', tile: LT('omp'), icon: 'omp', stateFrom: 'output cadence' },
     },
-    appearance: { theme: 'auto', density: 'cozy', depth: TOKENS.glow.depth, glow: true, subtitle: false, opacity: TOKENS.window.opacity, blur: TOKENS.window.blur, blurRadius: TOKENS.window.blur_radius },
+    appearance: { theme: 'auto', density: 'cozy', rim: TOKENS.glow.rim, glow: true, subtitle: false, opacity: TOKENS.window.opacity, blur: TOKENS.window.blur, blurRadius: TOKENS.window.blur_radius },
     shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab'], ['Focus previous pane', '⇧Tab']],
   };
   const SET = JSON.parse(JSON.stringify(SET_DEF));
@@ -1505,11 +1505,11 @@
         add('Appearance', card('Appearance', [
           row('Theme', 'starts from the OS', themes, v.theme !== d.theme, rsA('theme')),
           row('Density', 'row height on the map', dens, v.density !== d.density, rsA('density')),
-          (() => { // glow depth (rim-glow §3, operator 2026-10-23): how far the alive rim's bloom reaches inside each pane. It only
-            // repaints: the rim lives in the pane's own padding and the gutter is fixed. Drag previews the value; release commits
-            const val = el('b', { class: 'wo-pct' }, v.depth + ' px');
-            const slider = el('input', { type: 'range', min: String(TOKENS.glow.depth_min), max: String(TOKENS.glow.depth_max), step: '1', value: String(v.depth), oninput: e => { val.textContent = e.target.value + ' px'; }, onchange: e => setA('depth')(+e.target.value) });
-            return row('Glow depth', 'how far the rim glows into each pane · ' + TOKENS.glow.depth_min + ' to ' + TOKENS.glow.depth_max + ' px', el('span', { class: 'wo' }, slider, val), v.depth !== d.depth, rsA('depth'));
+          (() => { // rim size (operator 2026-10-23): the alive rim's thickness, centred on the border, half outside and half inside;
+            // the gap between panes is the rim size so neighbours' halves meet, so changing it relayouts. Drag previews; release commits
+            const val = el('b', { class: 'wo-pct' }, v.rim + ' px');
+            const slider = el('input', { type: 'range', min: String(TOKENS.glow.rim_min), max: String(TOKENS.glow.rim_max), step: '1', value: String(v.rim), oninput: e => { val.textContent = e.target.value + ' px'; }, onchange: e => setA('rim')(+e.target.value) });
+            return row('Rim size', 'the glowing border, half outside and half inside · panes space to fit · ' + TOKENS.glow.rim_min + ' to ' + TOKENS.glow.rim_max + ' px', el('span', { class: 'wo' }, slider, val), v.rim !== d.rim, rsA('rim'));
           })(),
           (() => { // window transparency: drag previews live without redrawing the page; release commits
             const pct = el('b', { class: 'wo-pct' }, Math.round(v.opacity * 100) + '%');
