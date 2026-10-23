@@ -1,0 +1,1567 @@
+{
+  "source": "ef851ed8dd318b78335e00c0ede48843929d81fb",
+  "reference": "14a842e5e3722a0a8bc2db141426582a5c3e1e75",
+  "ci_exit": 0,
+  "current_cases": 1768,
+  "geometry_required": 1664,
+  "geometry_measured": 1664,
+  "geometry_unproven": 0,
+  "geometry_mismatches": 0,
+  "pixel_advisories": 194,
+  "new_cases": 64,
+  "new_reviews": 0,
+  "new_max_rect_px": 0.03515625,
+  "new_max_baseline_px": 0.0078125,
+  "workspace_tests": {
+    "passed": 775,
+    "failed": 0,
+    "ignored": 19
+  },
+  "legacy": {
+    "cases": 1664,
+    "pixel_advisories": 859,
+    "gating": false
+  },
+  "worst_triplets": [
+    {
+      "key": "documents/with-a-diagram-comfortable-light.png",
+      "changed_fraction": 0.10565381547997618,
+      "mean_error": 0.009271951661026222,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.01767730712890625,
+        "rects": 47
+      },
+      "status": "review pixels"
+    },
+    {
+      "key": "documents/with-a-diagram-compact-light.png",
+      "changed_fraction": 0.10565381547997618,
+      "mean_error": 0.009271951661026222,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.01767730712890625,
+        "rects": 47
+      },
+      "status": "review pixels"
+    },
+    {
+      "key": "documents/with-a-diagram-cozy-light.png",
+      "changed_fraction": 0.10565381547997618,
+      "mean_error": 0.009271951661026222,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.01767730712890625,
+        "rects": 47
+      },
+      "status": "review pixels"
+    },
+    {
+      "key": "documents/with-a-diagram-touch-light.png",
+      "changed_fraction": 0.10565255358026186,
+      "mean_error": 0.009271930629364317,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.01767730712890625,
+        "rects": 47
+      },
+      "status": "review pixels"
+    },
+    {
+      "key": "documents/with-a-diagram-comfortable-dark.png",
+      "changed_fraction": 0.10524874567168398,
+      "mean_error": 0.010783644423778981,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.01767730712890625,
+        "rects": 47
+      },
+      "status": "review pixels"
+    },
+    {
+      "key": "documents/with-a-diagram-compact-dark.png",
+      "changed_fraction": 0.10524874567168398,
+      "mean_error": 0.010783644423778981,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.01767730712890625,
+        "rects": 47
+      },
+      "status": "review pixels"
+    },
+    {
+      "key": "documents/with-a-diagram-cozy-dark.png",
+      "changed_fraction": 0.10524874567168398,
+      "mean_error": 0.010783644423778981,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.01767730712890625,
+        "rects": 47
+      },
+      "status": "review pixels"
+    },
+    {
+      "key": "documents/with-a-diagram-touch-dark.png",
+      "changed_fraction": 0.10524874567168398,
+      "mean_error": 0.010783644423778981,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.01767730712890625,
+        "rects": 47
+      },
+      "status": "review pixels"
+    },
+    {
+      "key": "documents/as-modal-comfortable-light.png",
+      "changed_fraction": 0.056817714121084904,
+      "mean_error": 0.00792530975705369,
+      "geometry": {
+        "baselines": 30,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.08508300781238631,
+        "rects": 69
+      },
+      "status": "review pixels"
+    },
+    {
+      "key": "documents/as-modal-compact-light.png",
+      "changed_fraction": 0.056817714121084904,
+      "mean_error": 0.00792530975705369,
+      "geometry": {
+        "baselines": 30,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.08508300781238631,
+        "rects": 69
+      },
+      "status": "review pixels"
+    }
+  ],
+  "new_state_results": [
+    {
+      "changed_fraction": 0.011316480295473944,
+      "geometry": {
+        "baselines": 61,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 106
+      },
+      "key": "launcher/query-focused-empty-compact-dark.png",
+      "mean_error": 0.0038293505620152937,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.011275322950945814,
+      "geometry": {
+        "baselines": 61,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 106
+      },
+      "key": "launcher/query-focused-empty-comfortable-dark.png",
+      "mean_error": 0.0038275207619154284,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.01119569243653269,
+      "geometry": {
+        "baselines": 61,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 106
+      },
+      "key": "launcher/query-focused-empty-cozy-dark.png",
+      "mean_error": 0.003815660394154029,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.011156324541766653,
+      "geometry": {
+        "baselines": 61,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 106
+      },
+      "key": "launcher/query-focused-empty-touch-dark.png",
+      "mean_error": 0.003809928014646541,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.011092799075212363,
+      "geometry": {
+        "baselines": 61,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 106
+      },
+      "key": "launcher/query-focused-empty-compact-light.png",
+      "mean_error": 0.0034336391853849253,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.011058799529732603,
+      "geometry": {
+        "baselines": 61,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 106
+      },
+      "key": "launcher/query-focused-empty-comfortable-light.png",
+      "mean_error": 0.003431721667159467,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.010979169015319479,
+      "geometry": {
+        "baselines": 61,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 106
+      },
+      "key": "launcher/query-focused-empty-cozy-light.png",
+      "mean_error": 0.003419138502043183,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.010939801120553441,
+      "geometry": {
+        "baselines": 61,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 106
+      },
+      "key": "launcher/query-focused-empty-touch-light.png",
+      "mean_error": 0.00341330173796624,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0073800788373134165,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-caret-comfortable-dark.png",
+      "mean_error": 0.0015094989306584058,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0073800788373134165,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-caret-compact-dark.png",
+      "mean_error": 0.0015094989306584058,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0073800788373134165,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-caret-cozy-dark.png",
+      "mean_error": 0.0015094989306584058,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0073800788373134165,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-caret-touch-dark.png",
+      "mean_error": 0.0015094989306584058,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.007363699894082833,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-selection-comfortable-dark.png",
+      "mean_error": 0.0014801854396119067,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.007363699894082833,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-selection-compact-dark.png",
+      "mean_error": 0.0014801854396119067,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.007363699894082833,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-selection-cozy-dark.png",
+      "mean_error": 0.0014801854396119067,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.007363699894082833,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-selection-touch-dark.png",
+      "mean_error": 0.0014801854396119067,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006593889562245444,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-caret-comfortable-light.png",
+      "mean_error": 0.0016022995608088071,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006593889562245444,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-caret-compact-light.png",
+      "mean_error": 0.0016022995608088071,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006593889562245444,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-caret-cozy-light.png",
+      "mean_error": 0.0016022995608088071,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006593889562245444,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-caret-touch-light.png",
+      "mean_error": 0.0016022995608088071,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006581605354822507,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-selection-comfortable-light.png",
+      "mean_error": 0.001576779722054686,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006581605354822507,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-selection-compact-light.png",
+      "mean_error": 0.001576779722054686,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006581605354822507,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-selection-cozy-light.png",
+      "mean_error": 0.001576779722054686,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006581605354822507,
+      "geometry": {
+        "baselines": 13,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 25
+      },
+      "key": "launcher/query-selection-touch-light.png",
+      "mean_error": 0.001576779722054686,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.005073377665673011,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 33
+      },
+      "key": "launcher/query-preedit-comfortable-dark.png",
+      "mean_error": 0.0015378021192425605,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0050651881940577195,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 33
+      },
+      "key": "launcher/query-preedit-compact-dark.png",
+      "mean_error": 0.001535996956299909,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.005039254867275964,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 33
+      },
+      "key": "launcher/query-preedit-cozy-dark.png",
+      "mean_error": 0.001533188181639697,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.005039254867275964,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 33
+      },
+      "key": "launcher/query-preedit-touch-dark.png",
+      "mean_error": 0.0015331386701282973,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004805854926240159,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 33
+      },
+      "key": "launcher/query-preedit-comfortable-light.png",
+      "mean_error": 0.0016907926894674402,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004797665454624868,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 33
+      },
+      "key": "launcher/query-preedit-compact-light.png",
+      "mean_error": 0.0016888711075655517,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004771732127843112,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 33
+      },
+      "key": "launcher/query-preedit-touch-light.png",
+      "mean_error": 0.001685896402434703,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004771732127843112,
+      "geometry": {
+        "baselines": 17,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 33
+      },
+      "key": "launcher/query-preedit-cozy-light.png",
+      "mean_error": 0.0016858950642857464,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0003052019985079013,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.006256103515625,
+        "rects": 6
+      },
+      "key": "components/input-preedit-comfortable-dark.png",
+      "mean_error": 1.4733698511846581e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0003052019985079013,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.006256103515625,
+        "rects": 6
+      },
+      "key": "components/input-preedit-compact-dark.png",
+      "mean_error": 1.4733698511846581e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0003052019985079013,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.006256103515625,
+        "rects": 6
+      },
+      "key": "components/input-preedit-cozy-dark.png",
+      "mean_error": 1.4733698511846581e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0003052019985079013,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.006256103515625,
+        "rects": 6
+      },
+      "key": "components/input-preedit-touch-dark.png",
+      "mean_error": 1.4733698511846581e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00029389822078538646,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0078125,
+        "rects": 5
+      },
+      "key": "components/input-caret-comfortable-dark.png",
+      "mean_error": 1.1414599072735598e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00029389822078538646,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0078125,
+        "rects": 5
+      },
+      "key": "components/input-caret-compact-dark.png",
+      "mean_error": 1.1414599072735598e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00029389822078538646,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0078125,
+        "rects": 5
+      },
+      "key": "components/input-caret-cozy-dark.png",
+      "mean_error": 1.1414599072735598e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00029389822078538646,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0078125,
+        "rects": 5
+      },
+      "key": "components/input-caret-touch-dark.png",
+      "mean_error": 1.1414599072735598e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00029389822078538646,
+      "geometry": {
+        "baselines": 1,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.013671875,
+        "rects": 4
+      },
+      "key": "components/input-focused-empty-comfortable-dark.png",
+      "mean_error": 1.1414599072735598e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00029389822078538646,
+      "geometry": {
+        "baselines": 1,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.013671875,
+        "rects": 4
+      },
+      "key": "components/input-focused-empty-compact-dark.png",
+      "mean_error": 1.1414599072735598e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00029389822078538646,
+      "geometry": {
+        "baselines": 1,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.013671875,
+        "rects": 4
+      },
+      "key": "components/input-focused-empty-cozy-dark.png",
+      "mean_error": 1.1414599072735598e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00029389822078538646,
+      "geometry": {
+        "baselines": 1,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.013671875,
+        "rects": 4
+      },
+      "key": "components/input-focused-empty-touch-dark.png",
+      "mean_error": 1.1414599072735598e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00027129066534035674,
+      "geometry": {
+        "baselines": 3,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0048828125,
+        "rects": 6
+      },
+      "key": "components/input-selection-comfortable-dark.png",
+      "mean_error": 1.1237284912382425e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00027129066534035674,
+      "geometry": {
+        "baselines": 3,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0048828125,
+        "rects": 6
+      },
+      "key": "components/input-selection-compact-dark.png",
+      "mean_error": 1.1237284912382425e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00027129066534035674,
+      "geometry": {
+        "baselines": 3,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0048828125,
+        "rects": 6
+      },
+      "key": "components/input-selection-cozy-dark.png",
+      "mean_error": 1.1237284912382425e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00027129066534035674,
+      "geometry": {
+        "baselines": 3,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0048828125,
+        "rects": 6
+      },
+      "key": "components/input-selection-touch-dark.png",
+      "mean_error": 1.1237284912382425e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00021477177672778243,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.006256103515625,
+        "rects": 6
+      },
+      "key": "components/input-preedit-comfortable-light.png",
+      "mean_error": 1.1071052887051324e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00021477177672778243,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.006256103515625,
+        "rects": 6
+      },
+      "key": "components/input-preedit-compact-light.png",
+      "mean_error": 1.1071052887051324e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00021477177672778243,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.006256103515625,
+        "rects": 6
+      },
+      "key": "components/input-preedit-cozy-light.png",
+      "mean_error": 1.1071052887051324e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00021477177672778243,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.006256103515625,
+        "rects": 6
+      },
+      "key": "components/input-preedit-touch-light.png",
+      "mean_error": 1.1071052887051324e-05,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00020346799900526757,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0078125,
+        "rects": 5
+      },
+      "key": "components/input-caret-comfortable-light.png",
+      "mean_error": 7.940349743315589e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00020346799900526757,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0078125,
+        "rects": 5
+      },
+      "key": "components/input-caret-compact-light.png",
+      "mean_error": 7.940349743315589e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00020346799900526757,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0078125,
+        "rects": 5
+      },
+      "key": "components/input-caret-cozy-light.png",
+      "mean_error": 7.940349743315589e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00020346799900526757,
+      "geometry": {
+        "baselines": 2,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0078125,
+        "rects": 5
+      },
+      "key": "components/input-caret-touch-light.png",
+      "mean_error": 7.940349743315589e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00020346799900526757,
+      "geometry": {
+        "baselines": 1,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.013671875,
+        "rects": 4
+      },
+      "key": "components/input-focused-empty-comfortable-light.png",
+      "mean_error": 7.940349743315589e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00020346799900526757,
+      "geometry": {
+        "baselines": 1,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.013671875,
+        "rects": 4
+      },
+      "key": "components/input-focused-empty-compact-light.png",
+      "mean_error": 7.940349743315589e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00020346799900526757,
+      "geometry": {
+        "baselines": 1,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.013671875,
+        "rects": 4
+      },
+      "key": "components/input-focused-empty-cozy-light.png",
+      "mean_error": 7.940349743315589e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00020346799900526757,
+      "geometry": {
+        "baselines": 1,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.013671875,
+        "rects": 4
+      },
+      "key": "components/input-focused-empty-touch-light.png",
+      "mean_error": 7.940349743315589e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00018086044356023783,
+      "geometry": {
+        "baselines": 3,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0048828125,
+        "rects": 6
+      },
+      "key": "components/input-selection-comfortable-light.png",
+      "mean_error": 7.763035582962414e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00018086044356023783,
+      "geometry": {
+        "baselines": 3,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0048828125,
+        "rects": 6
+      },
+      "key": "components/input-selection-compact-light.png",
+      "mean_error": 7.763035582962414e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00018086044356023783,
+      "geometry": {
+        "baselines": 3,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0048828125,
+        "rects": 6
+      },
+      "key": "components/input-selection-cozy-light.png",
+      "mean_error": 7.763035582962414e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00018086044356023783,
+      "geometry": {
+        "baselines": 3,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0048828125,
+        "rects": 6
+      },
+      "key": "components/input-selection-touch-light.png",
+      "mean_error": 7.763035582962414e-06,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "native component content",
+        "text": true
+      },
+      "status": "within policy"
+    }
+  ]
+}

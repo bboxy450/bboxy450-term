@@ -1,0 +1,132 @@
+L8 checkpoint C — retained query editing
+
+Final code source ef851ed8dd318b78335e00c0ede48843929d81fb, branch nyx-l8-edit.
+Paired reference14a842e5e3722a0a8bc2db141426582a5c3e1e75 (Wren, signed G).
+C commits9a9ed05 +8fd4b3b +ef851ed, all machine-key signed G.
+Oracle GO b3d43363; exact map approval5f26d082; paired-gate approval e03fe259.
+Native implementation and parity capture consume public value/edit inputs only.
+
+Mechanism:
+- bbt-ui/src/components.rs:119 — Edit/Preedit use UTF-16 offsets and reject
+  surrogate splits. EditingText shapes independent runs with existing Measure,
+  lays out selection/caret/underline using existing Text/Box paints. Marked
+  replacement is a preview; committed value and natural field size are retained.
+- widgets.rs:536 and modules/launcher.rs:39 — optional edit shares the original
+  field box/insets; None takes the old paint path. Wren corrected the generic
+  overlay inset and renamed ed-* classes at the source, avoiding selector leaks.
+- app launcher.rs:66 — pure selection/caret/composition state. Ordinary key
+  inserts are held during composition; only Commit replaces the captured range.
+  Preedit never filters or activates; Escape cancels. Existing cap and default
+  spawn behavior remain, with Right dive and empty Left/Backspace climb.
+- main.rs:280 — focus routing keeps terminal keys on PTY before editor dispatch.
+  Winit preedit UTF-8 cursor bytes become UTF-16; IME candidates use the actual
+  retained caret rectangle. Pointer edits retain stable hit regions through
+  redraw, so successive drag events cannot drop the final selection position.
+- scene.rs:554 — query hit tests use current shaping metrics and valid UTF-16
+  boundaries. No browser child position feeds native layout.
+- capture-inputs.js and book components/widgets/launchers — capture visible
+  text, selection, caret pseudo-element and IME underline geometry; register
+  four edit states per page across four densities and two themes (64 new cases).
+  Invisible empty text spans have no text/baseline diagnostic. Hidden original
+  input box and all visible editing marks remain checked.
+
+Development checks:
+- cargo test -p bbt-ui --tests --locked: exit0,106/0.
+- cargo test -p bboxy450-term --bin bboxy450-term --test launcher --locked:
+  exit0,34 app +18 controller tests.
+- Focused IME preview and pointer/candidate tests: exit0 each, after pointer
+  hit-region retention. Strict workspace all-target Clippy: exit0.
+- New64 cases against corrected14a842e: strict comparison exit0;
+  64required/64measured/0unproven/0mismatch;0advisory pixel reviews.
+  Worst rect0.03515625px; baseline0.0078125px; changed pixels at most1.13165%.
+  Read native/web launcher preedit-dark, input selection-light, runtime launcher.
+- No-menu proof:892932 operation bytes exactly unchanged vs accepted33d1f9b;
+  SHA2566d3f1766189b207fe77d67ce4946590e116b259b6ce5a675c66531c2cc9451aa.
+- Development same-feature frozen1704 replay:1704/1704 PNG files identical.
+- Exact8fd product, transferred to tests-only ef851ed (no product diff):
+  1704/1704 decoded RGBA byte-identical. Initial PNG container hashes all differed
+  because a solo book build selects miniz_oxide, workspace pgp enables zlib-rs.
+  Only IDAT differs; flate2 ffi/mod.rs:72-84 selects zlib-rs before miniz.
+  Matching-workspace baseline replay finished:1704/1704 original PNG files byte-identical; no compression-policy exception.
+
+Failures/corrections, retained:
+- First development app routing assertion failed31/1 after new edit commands;
+  corrected Cmd+Opt arrow preservation and the expected Insert/Backspace route.
+- Second development controller test failed17/1 because Right at end reported
+  Changed; a no-op caret/deletion now remains Local.
+- First64 comparison:8 selection baseline failures,32 required; zero-height
+  marker was cross-centred by the lab's .sel class collision. Actual text-range
+  diagnostic and editing text classification fixed it; subsequent64/64 passed.
+- Accidental 'bboxybook render --help' (this manual CLI has no help branch)
+  entered a default render; stopped own recorded PID44300, shell exit143.
+  Its1664 capture finished; it is not an acceptance run and is not consumed.
+- Development --smoke --launcher --capture: exit1, PNG produced but idle deadline
+  after sustained occluded=true (25frames/25callbacks,9native invalidations).
+  Not counted as a smoke pass; final-source retry includes read-only owner/rect
+  metadata, with no titles or desktop input.
+- First exact clean CI8fd4b3b: exit101 at book/tests/launchers.rs:8,
+  expected176 vs actual208. Strict Clippy passed; parity and smoke not reached.
+  Fixed two matrix tests (also Input32→64, Launcher112→144; explicit8 cases per
+  new state), keeping uniqueness and historical keys. ef851ed differs only in
+  those two test files. Failed private target/worktree removed after exit.
+
+Final CI ef851ed: EXIT0, clean detached worktree/private target, full
+sh scripts/ci-local.sh --parity, memory custody, no component/ref override.
+Workspace775/0/19ignored; strict workspace Clippy0; UI IO lint0.
+Current1768 cases:1664required/1664measured/0unproven/0mismatches;
+194 pixel advisories on pre-existing cases; none on the64new cases. New64:0reviews, max rect0.03515625px,
+baseline0.0078125px. Legacy1664/859pixel reviews is historical/non-gating.
+Final --smoke and --smoke --launcher --capture each exit0, idle10.002s,
+0frames/0callbacks. Retried capture SHA256
+2454df536351468353e522203f7be9046d07a7753d7128db961483a00e49ce01.
+Read final runtime capture: steady accent caret at the empty field, retained
+placeholder, unchanged frosted launcher over the scene. Read-only owner/rect
+audit retained locally; final retry was unoccluded. No desktop input or titles.
+Raw CI :2811-2813 records parity; :2821 all gates passed; :2823 CI_EXIT0.
+Private CI target2,531,743,405bytes removed after exit; detached worktree
+removed clean. Artifacts: target/l8-edit/parity-ef851ed/index.html, report.json,
+web/, native/, layouts.json; final capture target/l8-edit/native-launcher-ef851ed.png.
+Intervening main changes will be recorded; this source will not be rebased
+while its gate is active. No pushes/merges by Nyx.
+
+Deliberately untouched: clipboard/undo and animated caret timing; terminal IME,
+PTY bytes, Verify hooks, GPU/shaders and placement wire schema. Caret is steady,
+as in the deterministic reference. Native remote/provider launches stay under
+existing default intents/cap; explicit placement remains L8-D.
+
+Additional verification note: after mandatory CI cleanup, an optional attempt to
+copy the already-removed exact test executable for another serialized-op print
+returned FileNotFound; no test executed in that attempt. The recorded development
+no-menu byte comparison and the passing exact CI no-menu test remain the evidence.
+
+Intervening accepted main: R12-2 GPU buffer arenas a1c5466 and architecture
+record c41b230; after the gate, main also has neutral role-mark button padding
+345beab (same1px6px geometry). Paired base14a842e was explicitly approved by Oracle e03fe259;
+C remained frozen throughout its exact gate. Product8fd4b3b→ef851ed differs
+only in the two matrix-test files; full per-PNG and per-RGBA proof hashes are
+committed beside this record. No Native/UI/renderer difference in that successor.
+
+Disk: removed owned completed dev target1,818,061,296bytes, failed-CI target
+2,109,069,810, workspace-baseline target1,119,467,898, Swift compile cache
+31,792,110, and25 superseded R6-R10 executables252,880,216bytes after lsof
+showed no open files. Kept PNG galleries, proof JSON/logs and active ef target.
+The ef target was removed after its gate as reported above. No peer/shared dirs.
+
+Final worst triplets (changed pixels; already advisory, no policy retune):
+- documents/with-a-diagram-comfortable-light.png: 10.5654%; rect 0.017677px, baseline 0.007812px.
+- documents/with-a-diagram-compact-light.png: 10.5654%; rect 0.017677px, baseline 0.007812px.
+- documents/with-a-diagram-cozy-light.png: 10.5654%; rect 0.017677px, baseline 0.007812px.
+- documents/with-a-diagram-touch-light.png: 10.5653%; rect 0.017677px, baseline 0.007812px.
+- documents/with-a-diagram-comfortable-dark.png: 10.5249%; rect 0.017677px, baseline 0.007812px.
+- documents/with-a-diagram-compact-dark.png: 10.5249%; rect 0.017677px, baseline 0.007812px.
+- documents/with-a-diagram-cozy-dark.png: 10.5249%; rect 0.017677px, baseline 0.007812px.
+- documents/with-a-diagram-touch-dark.png: 10.5249%; rect 0.017677px, baseline 0.007812px.
+- documents/as-modal-comfortable-light.png: 5.6818%; rect 0.085083px, baseline 0.007812px.
+- documents/as-modal-compact-light.png: 5.6818%; rect 0.085083px, baseline 0.007812px.
+
+Evidence digests:
+w3-2c-launcher-edit-ci-ef851ed.log SHA256 b38452648e8d698d7bf4d9b4701e5c0dbd28b1d49915ef6e188c1dd4280e8f11
+w3-2c-launcher-edit-ci-8fd4b3b-failed.log SHA256 97c8fe1b3ca7498daeb7d06b356a93564d399dafb182840dd1646a3a6274fede
+w3-2c-launcher-edit-byte-proof.json SHA256 edc85d74ecd61c2fa852146a20fcaba903925225df2a8ef4e863cba1469c2b5c
+w3-2c-launcher-edit-rgba-proof.json SHA256 6414b37ff3cdb5e45ed3dd07f1e0c199035a00d0dc0c3be151cbd7143d762c12
+w3-2c-launcher-edit-parity.json SHA256 5eb2d260a294aceef1631b1343c06bf99f6caefff5e574b3fcc76b63290cdd90

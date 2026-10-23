@@ -1,0 +1,1316 @@
+
+COMMAND ci-local: sh scripts/ci-local.sh --parity
+layering: held
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling serde v1.0.229
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+   Compiling log v0.4.34
+   Compiling zmij v1.0.23
+   Compiling generic-array v0.14.7
+   Compiling zerocopy v0.8.63
+   Compiling libm v0.2.16
+   Compiling shlex v2.0.1
+   Compiling memchr v2.8.3
+   Compiling autocfg v1.5.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling objc2-encode v4.1.0
+   Compiling smallvec v1.16.3
+   Compiling num-traits v0.2.19
+   Compiling thiserror v2.0.21
+   Compiling crc32fast v1.5.3
+   Compiling base64ct v1.8.3
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling itoa v1.0.18
+   Compiling jobserver v0.1.35
+   Compiling cfg_aliases v0.2.2
+   Compiling objc2 v0.6.5
+   Compiling foldhash v0.2.0
+   Compiling pem-rfc7468 v0.7.0
+   Compiling cc v1.9.0
+   Compiling hashbrown v0.17.1
+   Compiling getrandom v0.2.17
+   Compiling cpufeatures v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling equivalent v1.0.3
+   Compiling serde_json v1.0.154
+   Compiling indexmap v2.14.2
+   Compiling radium v0.7.0
+   Compiling parking_lot_core v0.9.12
+   Compiling tap v1.0.1
+   Compiling unicode-width v0.2.2
+   Compiling bitflags v2.13.2
+   Compiling wyz v0.5.1
+   Compiling funty v2.0.0
+   Compiling dispatch2 v0.3.1
+   Compiling block2 v0.6.2
+   Compiling simd-adler32 v0.3.10
+   Compiling scopeguard v1.2.0
+   Compiling base16ct v0.2.0
+   Compiling sha2-asm v0.6.4
+   Compiling lock_api v0.4.14
+   Compiling objc2-core-foundation v0.3.2
+   Compiling bitvec v1.1.1
+   Compiling semver v1.0.28
+   Compiling adler2 v2.0.1
+   Compiling arrayvec v0.7.8
+   Compiling pkg-config v0.3.34
+   Compiling bytes v1.12.1
+   Compiling once_cell v1.21.4
+   Compiling winnow v1.0.4
+   Compiling rustc_version v0.4.1
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling parking_lot v0.12.5
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling rustc-hash v1.1.0
+   Compiling winnow v0.7.15
+   Compiling float-cmp v0.9.0
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling bytemuck v1.25.2
+   Compiling strict-num v0.1.1
+   Compiling ff v0.13.1
+   Compiling polycool v0.4.0
+   Compiling group v0.13.0
+   Compiling miniz_oxide v0.9.1
+   Compiling naga v30.0.1
+   Compiling objc2-foundation v0.3.2
+   Compiling naga-types v30.0.1
+   Compiling hybrid-array v0.4.15
+   Compiling zeroize_derive v1.5.0
+   Compiling zerocopy-derive v0.8.63
+   Compiling core-foundation-sys v0.8.7
+   Compiling bit-vec v0.9.1
+   Compiling pin-project-lite v0.2.17
+   Compiling arrayref v0.3.9
+   Compiling raw-window-handle v0.6.2
+   Compiling kurbo v0.13.1
+   Compiling bit-set v0.10.0
+   Compiling zeroize v1.9.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling flate2 v1.1.10
+   Compiling der v0.7.10
+   Compiling miniz_oxide v0.8.9
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling fdeflate v0.3.7
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling inout v0.1.4
+   Compiling digest v0.10.7
+   Compiling crypto-bigint v0.5.5
+   Compiling cipher v0.4.4
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling sha2 v0.10.9
+   Compiling hkdf v0.12.4
+   Compiling codespan-reporting v0.13.1
+   Compiling getrandom v0.3.4
+   Compiling serdect v0.2.0
+   Compiling objc-sys v0.3.5
+   Compiling siphasher v1.0.4
+   Compiling spki v0.7.3
+   Compiling static_assertions v1.1.0
+   Compiling zlib-rs v0.6.8
+   Compiling pkcs8 v0.10.2
+   Compiling bbt-ui-model v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-ui-model)
+   Compiling wgpu-types v30.0.1
+   Compiling objc2-metal v0.3.2
+   Compiling sec1 v0.7.3
+   Compiling elliptic-curve v0.13.8
+   Compiling svgtypes v0.16.1
+   Compiling png v0.18.1
+   Compiling rfc6979 v0.4.0
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling simplecss v0.2.2
+   Compiling roxmltree v0.21.1
+   Compiling aho-corasick v1.1.5
+   Compiling wgpu-hal v30.0.1
+   Compiling strsim v0.11.1
+   Compiling data-url v0.3.2
+   Compiling pico-args v0.5.0
+   Compiling ident_case v1.0.1
+   Compiling regex-syntax v0.8.11
+   Compiling fnv v1.0.7
+   Compiling const-oid v0.10.2
+   Compiling imagesize v0.15.0
+   Compiling darling_core v0.20.11
+   Compiling digest v0.11.3
+   Compiling usvg v0.48.1
+   Compiling tiny-skia v0.12.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling regex-automata v0.4.18
+   Compiling rgb v0.8.53
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling objc2-core-graphics v0.3.2
+   Compiling libloading v0.8.9
+   Compiling cursor-icon v1.2.0
+   Compiling profiling v1.0.18
+   Compiling darling_macro v0.20.11
+   Compiling resvg v0.48.1
+   Compiling rand_chacha v0.3.1
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2 v0.5.3
+   Compiling raw-window-metal v1.1.0
+   Compiling rand_core v0.9.5
+   Compiling ecdsa v0.16.9
+   Compiling regex v1.13.1
+   Compiling curve25519-dalek v4.1.3
+   Compiling euclid v0.22.14
+   Compiling num-integer v0.1.47
+   Compiling cpufeatures v0.3.1
+   Compiling errno v0.3.14
+   Compiling wgpu-core v30.0.1
+   Compiling getrandom v0.4.3
+   Compiling spin v0.9.9
+   Compiling litrs v1.0.1
+   Compiling cfg_aliases v0.1.1
+   Compiling crossbeam-utils v0.8.23
+   Compiling num-bigint-dig v0.8.6
+   Compiling thiserror v1.0.69
+   Compiling rand_core v0.10.1
+   Compiling lyon_geom v1.0.20
+   Compiling nix v0.28.0
+   Compiling lazy_static v1.5.1
+   Compiling document-features v0.2.12
+   Compiling signal-hook-registry v1.4.8
+   Compiling num-iter v0.1.46
+   Compiling block2 v0.5.1
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.8.8
+   Compiling darling v0.20.11
+   Compiling primeorder v0.13.6
+   Compiling ctr v0.9.2
+   Compiling aead v0.5.2
+   Compiling universal-hash v0.5.1
+   Compiling core-foundation v0.9.4
+   Compiling thiserror-impl v1.0.69
+   Compiling tokio-macros v2.7.2
+   Compiling foreign-types-macros v0.2.4
+   Compiling mio v1.2.4
+   Compiling socket2 v0.6.5
+   Compiling wgpu v30.0.1
+   Compiling unsafe-libyaml v0.2.11
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling base64 v0.22.1
+   Compiling ryu v1.0.23
+   Compiling vcpkg v0.2.15
+   Compiling foreign-types-shared v0.3.1
+   Compiling unicode-segmentation v1.13.3
+   Compiling httparse v1.10.1
+   Compiling anyhow v1.0.104
+   Compiling opaque-debug v0.3.1
+   Compiling zstd-safe v8.2.0
+   Compiling rustversion v1.0.23
+   Compiling libsqlite3-sys v0.38.2
+   Compiling polyval v0.6.2
+   Compiling foreign-types v0.5.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling core-graphics-types v0.1.3
+   Compiling convert_case v0.10.0
+   Compiling objc2-foundation v0.2.2
+   Compiling tokio v1.54.1
+   Compiling derive_builder_core v0.20.2
+   Compiling rand v0.9.5
+   Compiling lyon_path v1.0.19
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling chacha20 v0.10.2
+   Compiling serde-big-array v0.5.1
+   Compiling aes v0.8.4
+   Compiling dbl v0.3.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling keccak v0.1.6
+   Compiling winit v0.30.13
+   Compiling byteorder v1.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling heck v0.5.0
+   Compiling crc24 v0.1.6
+   Compiling tracing-core v0.1.36
+   Compiling float_next_after v1.0.0
+   Compiling lyon_tessellation v1.0.22
+   Compiling tracing v0.1.44
+   Compiling snafu-derive v0.9.2
+   Compiling derive_more-impl v2.1.1
+   Compiling sha3 v0.10.9
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling cmac v0.7.2
+   Compiling bbt-core v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-core)
+   Compiling objc2-app-kit v0.2.2
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling derive_builder_macro v0.20.2
+   Compiling ulid v1.2.1
+   Compiling filedescriptor v0.8.3
+   Compiling bitfields-impl v1.0.3
+   Compiling core-graphics v0.23.2
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling objc2-core-text v0.3.2
+   Compiling bbt-ui v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-ui)
+   Compiling pkcs1 v0.7.5
+   Compiling serdect v0.3.0
+   Compiling ed25519 v2.2.3
+   Compiling blake2 v0.10.6
+   Compiling sha1 v0.10.7
+   Compiling num_enum_derive v0.7.6
+   Compiling http v1.5.0
+   Compiling futures-macro v0.3.34
+   Compiling password-hash v0.5.0
+   Compiling serial2 v0.2.38
+   Compiling downcast-rs v1.2.1
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling signature v3.0.0
+   Compiling pollster v0.4.0
+   Compiling smol_str v0.2.2
+   Compiling futures-task v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling pulldown-cmark v0.13.4
+   Compiling shell-words v1.1.1
+   Compiling data-encoding v2.11.1
+   Compiling slab v0.4.12
+   Compiling dpi v0.1.2
+   Compiling futures-core v0.3.34
+   Compiling futures-util v0.3.34
+   Compiling tungstenite v0.30.0
+   Compiling portable-pty v0.9.0
+   Compiling hashbrown v0.15.5
+   Compiling ed25519 v3.0.0
+   Compiling walkdir v2.5.0
+   Compiling argon2 v0.5.3
+   Compiling num_enum v0.7.6
+   Compiling sha1-checked v0.10.0
+   Compiling ed25519-dalek v2.2.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling zstd v0.14.3
+   Compiling aes-gcm v0.10.3
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-rt)
+   Compiling snafu v0.9.2
+   Compiling eax v0.5.0
+   Compiling derive_more v2.1.1
+   Compiling camellia v0.1.0
+   Compiling bbt-render v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-render)
+   Compiling blowfish v0.9.1
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling dsa v0.6.3
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling p256 v0.13.2
+   Compiling ocb3 v0.1.0
+   Compiling sha2 v0.11.1
+   Compiling k256 v0.13.4
+   Compiling twofish v0.7.1
+   Compiling idea v0.5.1
+   Compiling cast5 v0.11.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling notify-types v2.1.0
+   Compiling hashlink v0.12.2
+   Compiling fsevent-sys v4.1.0
+   Compiling nom v8.0.0
+   Compiling buffer-redux v1.1.0
+   Compiling replace_with v0.1.8
+   Compiling hex v0.4.3
+   Compiling fixedbitset v0.5.7
+   Compiling fallible-iterator v0.3.0
+   Compiling unicase v2.10.0
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling security-framework v3.7.0
+   Compiling pgp v0.21.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling bbt-supervisor v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-supervisor)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-proto)
+   Compiling bboxybook v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bboxy450-term)
+   Compiling bbt-mermaid v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-mermaid)
+   Compiling objc2-app-kit v0.3.2
+   Compiling bboxy-firehose v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bboxy-firehose)
+   Compiling bbt-doc v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-doc)
+   Compiling rusqlite v0.40.2
+   Compiling bbt-mux v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 2m 43s
+    Checking cfg-if v1.0.5
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking zmij v1.0.23
+    Checking log v0.4.34
+    Checking smallvec v1.16.3
+   Compiling bbt-ui-model v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-ui-model)
+    Checking typenum v1.20.1
+    Checking zeroize v1.9.1
+    Checking zerocopy v0.8.63
+    Checking unicode-width v0.2.2
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking foldhash v0.2.0
+    Checking libm v0.2.16
+    Checking hashbrown v0.17.1
+    Checking equivalent v1.0.3
+    Checking cursor-icon v1.2.0
+    Checking once_cell v1.21.4
+    Checking thiserror v2.0.21
+    Checking simd-adler32 v0.3.10
+    Checking subtle v2.6.1
+    Checking adler2 v2.0.1
+    Checking pin-project-lite v0.2.17
+    Checking crc32fast v1.5.3
+    Checking miniz_oxide v0.9.1
+    Checking zlib-rs v0.6.8
+    Checking const-oid v0.9.6
+    Checking core-foundation-sys v0.8.7
+    Checking unsafe-libyaml v0.2.11
+    Checking ryu v1.0.23
+    Checking objc2-encode v4.1.0
+    Checking indexmap v2.14.2
+    Checking objc2 v0.6.5
+    Checking bytemuck v1.25.2
+    Checking generic-array v0.14.7
+    Checking rustc-hash v1.1.0
+    Checking bit-vec v0.9.1
+    Checking num-traits v0.2.19
+    Checking raw-window-handle v0.6.2
+    Checking bit-set v0.10.0
+    Checking codespan-reporting v0.13.1
+    Checking base64 v0.22.1
+    Checking getrandom v0.2.17
+    Checking rand_core v0.6.4
+    Checking parking_lot_core v0.9.12
+    Checking cpufeatures v0.2.17
+    Checking static_assertions v1.1.0
+    Checking naga-types v30.0.1
+    Checking unicode-ident v1.0.27
+    Checking float-cmp v0.9.0
+    Checking libloading v0.8.9
+    Checking profiling v1.0.18
+    Checking arrayref v0.3.9
+    Checking parking_lot v0.12.5
+    Checking strict-num v0.1.1
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking tiny-skia-path v0.12.0
+    Checking siphasher v1.0.4
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking roxmltree v0.21.1
+    Checking digest v0.10.7
+    Checking flate2 v1.1.10
+    Checking simplecss v0.2.2
+    Checking pico-args v0.5.0
+    Checking euclid v0.22.14
+    Checking data-url v0.3.2
+    Checking base64ct v1.8.3
+    Checking imagesize v0.15.0
+    Checking rgb v0.8.53
+    Checking float_next_after v1.0.0
+    Checking pollster v0.4.0
+    Checking bytes v1.12.1
+    Checking pem-rfc7468 v0.7.0
+    Checking inout v0.1.4
+    Checking objc-sys v0.3.5
+    Checking der v0.7.10
+    Checking cipher v0.4.4
+    Checking objc2 v0.5.3
+    Checking sha2-asm v0.6.4
+    Checking errno v0.3.14
+    Checking core-foundation v0.9.4
+    Checking block2 v0.6.2
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking tap v1.0.1
+    Checking foreign-types-shared v0.3.1
+    Checking wyz v0.5.1
+    Checking sha2 v0.10.9
+    Checking foreign-types v0.5.0
+    Checking radium v0.7.0
+    Checking hmac v0.12.1
+    Checking serde v1.0.229
+    Checking serde_json v1.0.154
+    Checking bitflags v2.13.2
+    Checking core-graphics-types v0.1.3
+    Checking base16ct v0.2.0
+    Checking tracing-core v0.1.36
+    Checking dispatch2 v0.3.1
+    Checking wgpu-types v30.0.1
+    Checking png v0.18.1
+    Checking funty v2.0.0
+    Checking tracing v0.1.44
+    Checking objc2-core-foundation v0.3.2
+    Checking core-graphics v0.23.2
+    Checking bitvec v1.1.1
+    Checking arrayvec v0.7.8
+    Checking serde_yaml v0.9.34+deprecated
+    Checking bbt-ui v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-ui)
+    Checking serde-big-array v0.5.1
+    Checking polycool v0.4.0
+    Checking bbt-core v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-core)
+    Checking kurbo v0.13.1
+    Checking lyon_geom v1.0.20
+    Checking tiny-skia v0.12.0
+    Checking lyon_path v1.0.19
+    Checking lyon_tessellation v1.0.22
+    Checking svgtypes v0.16.1
+    Checking spki v0.7.3
+    Checking pkcs8 v0.10.2
+    Checking block2 v0.5.1
+    Checking objc2-foundation v0.2.2
+    Checking getrandom v0.3.4
+    Checking signature v2.2.0
+    Checking smol_str v0.2.2
+    Checking usvg v0.48.1
+    Checking dpi v0.1.2
+    Checking rand_core v0.9.5
+    Checking serdect v0.2.0
+    Checking signal-hook-registry v1.4.8
+    Checking socket2 v0.6.5
+    Checking mio v1.2.4
+    Checking rand_core v0.10.1
+    Checking sec1 v0.7.3
+    Checking crossbeam-utils v0.8.23
+    Checking tokio v1.54.1
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+    Checking half v2.7.1
+    Checking ppv-lite86 v0.2.21
+    Checking ff v0.13.1
+    Checking rand_chacha v0.9.0
+    Checking group v0.13.0
+    Checking crossbeam-queue v0.3.14
+    Checking rand v0.9.5
+    Checking getrandom v0.4.3
+    Checking bbt-mermaid v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-mermaid)
+    Checking naga v30.0.1
+    Checking objc2-foundation v0.3.2
+    Checking resvg v0.48.1
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking thiserror v1.0.69
+    Checking ulid v1.2.1
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking rfc6979 v0.4.0
+    Checking unicase v2.10.0
+    Checking const-oid v0.10.2
+    Checking pulldown-cmark v0.13.4
+    Checking zstd-safe v8.2.0
+    Checking nix v0.28.0
+    Checking filedescriptor v0.8.3
+    Checking anyhow v1.0.104
+    Checking serial2 v0.2.38
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+    Checking unicode-segmentation v1.13.3
+    Checking digest v0.11.3
+    Checking elliptic-curve v0.13.8
+    Checking zstd v0.14.3
+    Checking rand_chacha v0.3.1
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+    Checking spin v0.9.9
+    Checking lazy_static v1.5.1
+    Checking rand v0.8.8
+    Checking num-iter v0.1.46
+    Checking aead v0.5.2
+    Checking ctr v0.9.2
+    Checking universal-hash v0.5.1
+    Checking opaque-debug v0.3.1
+   Compiling rustix v1.1.5
+    Checking polyval v0.6.2
+    Checking curve25519-dalek v4.1.3
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+    Checking portable-pty v0.9.0
+    Checking chacha20 v0.10.2
+    Checking aes v0.8.4
+    Checking dbl v0.3.2
+    Checking num-bigint-dig v0.8.6
+    Checking keccak v0.1.6
+    Checking byteorder v1.5.0
+    Checking sha3 v0.10.9
+    Checking cmac v0.7.2
+    Checking rand v0.10.3
+    Checking httparse v1.10.1
+    Checking ghash v0.5.1
+    Checking sha1 v0.11.0
+    Checking ed25519 v2.2.3
+    Checking pkcs1 v0.7.5
+    Checking serdect v0.3.0
+    Checking http v1.5.0
+    Checking password-hash v0.5.0
+    Checking blake2 v0.10.6
+    Checking sha1 v0.10.7
+    Checking fastrand v2.5.0
+    Checking futures-task v0.3.34
+    Checking foldhash v0.1.5
+    Checking slab v0.4.12
+    Checking futures-core v0.3.34
+    Checking objc2-metal v0.3.2
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking signature v3.0.0
+    Checking data-encoding v2.11.1
+    Checking ed25519 v3.0.0
+    Checking walkdir v2.5.0
+    Checking futures-util v0.3.34
+    Checking objc2-app-kit v0.2.2
+    Checking dsa v0.6.3
+    Checking rsa v0.9.10
+    Checking bbt-doc v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-doc)
+    Checking hashbrown v0.15.5
+    Checking tungstenite v0.30.0
+    Checking num_enum v0.7.6
+    Checking tempfile v3.27.0
+    Checking sha1-checked v0.10.0
+    Checking argon2 v0.5.3
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking x25519-dalek v2.0.1
+    Checking aes-gcm v0.10.3
+    Checking libsqlite3-sys v0.38.2
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking aes-kw v0.2.1
+    Checking curve25519-dalek v5.0.0
+    Checking eax v0.5.0
+    Checking blowfish v0.9.1
+    Checking camellia v0.1.0
+    Checking snafu v0.9.2
+    Checking crc24 v0.1.6
+    Checking derive_more v2.1.1
+    Checking p521 v0.13.3
+    Checking k256 v0.13.4
+    Checking p256 v0.13.2
+    Checking p384 v0.13.1
+    Checking ocb3 v0.1.0
+    Checking sha2 v0.11.1
+    Checking notify-types v2.1.0
+    Checking cast5 v0.11.1
+    Checking cfb-mode v0.8.2
+    Checking idea v0.5.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+   Compiling bboxybook v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bboxybook)
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking block-padding v0.3.3
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking fsevent-sys v4.1.0
+    Checking hashlink v0.12.2
+    Checking nom v8.0.0
+    Checking bbt-rt v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-rt)
+    Checking buffer-redux v1.1.0
+    Checking hex v0.4.3
+    Checking bbt-supervisor v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-supervisor)
+    Checking fallible-streaming-iterator v0.1.9
+    Checking replace_with v0.1.8
+    Checking fixedbitset v0.5.7
+    Checking fallible-iterator v0.3.0
+    Checking petgraph v0.8.3
+    Checking rusqlite v0.40.2
+    Checking tokio-tungstenite v0.30.0
+    Checking security-framework v3.7.0
+    Checking notify v8.2.0
+    Checking ed25519-dalek v3.0.0
+    Checking bbt-proto v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-proto)
+   Compiling bboxy450-term v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bboxy450-term)
+    Checking bboxy-firehose v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bboxy-firehose)
+    Checking objc2-app-kit v0.3.2
+    Checking aho-corasick v1.1.5
+    Checking regex-syntax v0.8.11
+    Checking winit v0.30.13
+    Checking objc2-core-graphics v0.3.2
+    Checking regex-automata v0.4.18
+    Checking pgp v0.21.0
+    Checking wgpu-naga-bridge v30.0.1
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-hal v30.0.1
+    Checking regex v1.13.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking bbt-mux v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-mux)
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-render)
+    Finished `dev` profile [optimized] target(s) in 59.27s
+   Compiling rustix v1.1.5
+   Compiling fastrand v2.5.0
+   Compiling aho-corasick v1.1.5
+   Compiling regex-syntax v0.8.11
+   Compiling bboxy-firehose v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bboxy-firehose)
+   Compiling bbt-render v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bboxybook)
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-mux)
+   Compiling bbt-supervisor v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-supervisor)
+   Compiling bboxy450-term v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bboxy450-term)
+   Compiling regex-automata v0.4.18
+   Compiling regex v1.13.1
+   Compiling bbt-ui-model v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-ui-model)
+   Compiling bbt-doc v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-doc)
+   Compiling bbt-rt v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-rt)
+   Compiling bbt-mermaid v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-mermaid)
+   Compiling bbt-proto v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-proto)
+   Compiling bbt-core v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-core)
+   Compiling bbt-ui v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8c-q0gi636o/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 1m 11s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/bboxy_firehose-e37029a581a5db6d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/bboxy_firehose-95bd166ff32b6564)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/cli-7c9115fd81009409)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/corpus-2e8cd9d70f8eba0b)
+
+running 4 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test cursor_scenes_are_steady_and_the_next_scene_restores_the_default ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/bboxy450_term-c73f959280942a3a)
+
+running 7 tests
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/bboxy450_term-1777b3d526f86f71)
+
+running 39 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test launcher_host_tests::ime_preedit_converts_utf8_cursor_bytes_to_utf16_without_committing ... ok
+test launcher_host_tests::modal_input_never_reaches_a_pty_and_picks_do_not_repeat ... ok
+test default_spawn_tests::default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test default_spawn_tests::host_picks_preserve_structured_location_without_parsing_labels ... ok
+test launcher_host_tests::stage_switch_waits_for_the_new_outer_pane_before_locate_once ... ok
+test launcher_host_tests::terminal_keys_stay_byte_exact_while_explicit_chords_move_focus ... ok
+test launcher_host_tests::published_screens_do_not_undo_local_focus_or_create_locate ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test launcher_host_tests::actual_controller_filters_picks_climbs_and_preserves_the_named_gaps ... ok
+test live::tests::generic_spawn_preserves_inputs_and_uses_io_defaults ... ok
+test live::tests::sent_control_waits_for_an_observation_or_refusal_before_retrying ... ok
+test live::tests::resize_before_a_coalesced_watch_keeps_its_desired_grid ... ok
+test live::tests::controls_obey_logic_size_limits_and_discard_old_generations ... ok
+test live::tests::refused_watch_retries_stay_bounded_and_coalesce_the_latest_size ... ok
+test smoke_tests::flapping_native_events_never_pass_and_deadline_has_a_named_reason ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test smoke_tests::native_invalidation_restarts_settling_and_old_timers_cannot_end_the_new_window ... ok
+test spawn_admission_tests::generic_and_legacy_spawns_share_the_same_cap ... ok
+test live::tests::first_refused_resize_converges_without_another_ui_resize ... ok
+test verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds ... ok
+test verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures ... ok
+test scene::launcher_tests::ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16 ... ok
+test scene::lane_tests::the_lane_sets_gutter_and_inset_and_relayouts_at_runtime ... ok
+test scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order ... ok
+test scene::launcher_tests::no_launcher_paint_proof ... ok
+test scene::lane_tests::pane_rects_are_identical_across_activity_states ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+cockpit ready: supervisor=195 logic=225
+GUI operation 01M5MKNQBB7E57GKDFSVGADKPJ rejected: not a built-in harness
+seat 01M5MKNQC1E4DG1AWJYEEMPJHQ activity=Idle process=Running { pid: 227 }
+seat 01M5MKNQC1E4DG1AWJYEEMPJHQ activity=Idle process=Running { pid: 227 }
+GUI operation 01M5MKNQH6ETHZCAV1W2YND2Z5 accepted
+GUI operation 01M5MKNQJHTJ8H3NBX6T4ZQDNQ accepted
+GUI operation 01M5MKNQJDFZGWCPWW0YQZGZ10 accepted
+GUI operation 01M5MKNQM75FBBMRD035MBS2QZ accepted
+GUI operation 01M5MKNQM7SJK8HFJT8JEF9Q3P accepted
+GUI operation 01M5MKNQNE82DZJAX6KHC1ZXNJ accepted
+GUI operation 01M5MKNQP187J14GFXFKY02HV2 accepted
+GUI operation 01M5MKNQNQ5FN3MHRYGB53CBKM accepted
+GUI operation 01M5MKNQNQFWKXPJT278M0YB8Z accepted
+GUI operation 01M5MKNQNQ99AW6PB8D4ACEG5G accepted
+GUI operation 01M5MKNQNQ1KKQ364RZ8B6FNS9 accepted
+GUI operation 01M5MKNQNQ9PQF0D54Q2ZMC01G accepted
+GUI operation 01M5MKNQNQDTMNN4H3DR0962CY accepted
+GUI operation 01M5MKNQNQ9XFRJPV6N55G0BAS accepted
+GUI operation 01M5MKNQNQ0KGQWV99F3H2TA28 accepted
+GUI operation 01M5MKNQNQ74GFN1P1VAMN3CY4 accepted
+GUI operation 01M5MKNQNQF3553F35ET4JG6V4 accepted
+GUI operation 01M5MKNQNQMN2VAXHWKV0YX6C7 accepted
+GUI operation 01M5MKNQNQ3819NNBT31D7C3HN accepted
+seat 01M5MKNQC1E4DG1AWJYEEMPJHQ activity=Active process=Running { pid: 227 }
+GUI operation 01M5MKNQNQP8HAM3HM7BNB8CB6 accepted
+GUI operation 01M5MKNQNQ75TQWQJNH2DW4A90 accepted
+GUI operation 01M5MKNQNQGHCD1MVY3TE8KDZ2 accepted
+GUI operation 01M5MKNQNQ33B51E78YATYA2YT accepted
+GUI operation 01M5MKNQNQ491NTSSBCETG1GFQ accepted
+GUI operation 01M5MKNQNQDWM22QQ5KW9P4SQ1 accepted
+GUI operation 01M5MKNQNQ97RBMM0GT4ZTY0FJ accepted
+GUI operation 01M5MKNQNQBNS0EHYAGMH1TM9G accepted
+GUI operation 01M5MKNQNQYNTQNHZSXY2BFYEN accepted
+GUI operation 01M5MKNQNQ3Z5QQAD1A2RZMYEQ accepted
+GUI operation 01M5MKNQNQN03C0617NQ8Z8GVC accepted
+GUI operation 01M5MKNQNQT5MYFJEJR7SPBVZE accepted
+GUI operation 01M5MKNQNQ56SYVRF1BBWZYJE6 accepted
+GUI operation 01M5MKNQNQP14AA9X4EXMKQT6D accepted
+GUI operation 01M5MKNQNQVMPJGRF1NMK5K0FE accepted
+GUI operation 01M5MKNQNQPRD19GQVQDSTRMRQ accepted
+GUI operation 01M5MKNQNQF9AGT24ZPZ6MT2AC accepted
+GUI operation 01M5MKNQNQX4JCFGZCKF291SC8 accepted
+GUI operation 01M5MKNQNQCT2ZCS9GCWECD2B9 accepted
+GUI operation 01M5MKNQNQHRMGDNJNNPBYYRKH accepted
+GUI operation 01M5MKNQNQKQKPMQ479J9RVW32 accepted
+GUI operation 01M5MKNQNQXYWSEB06W6CHRQKC accepted
+GUI operation 01M5MKNQNQKKCV99GG1640SPX5 accepted
+GUI operation 01M5MKNQNQTMYSCCC6A629F8KD accepted
+GUI operation 01M5MKNQNQDY4MWDT9CJRJ5QKS accepted
+GUI operation 01M5MKNQNQNTHBCFDFY391ANQ2 accepted
+GUI operation 01M5MKNQNQWJZYXMV8YFMYV9ZH accepted
+GUI operation 01M5MKNQNQW1EM0Q4TCYC5WJQ3 accepted
+GUI operation 01M5MKNQNQVT5QM43CE2A5TXTJ accepted
+GUI operation 01M5MKNQNQB8BRPWRJ6GV07EMM accepted
+GUI operation 01M5MKNQNQBJSFT5CZW9YD7C77 accepted
+GUI operation 01M5MKNQNQX036DGS1VCR3Z9VS accepted
+GUI operation 01M5MKNQNQHNWZ2NV8812ZC08N accepted
+GUI operation 01M5MKNQNQW7VS8611240JZCYV accepted
+GUI operation 01M5MKNQNQ5FV3V37CQWWHSTJ3 accepted
+GUI operation 01M5MKNQNQRWCFNK86P5MN94R1 accepted
+GUI operation 01M5MKNQNQ295RZN24ZX95H41B accepted
+GUI operation 01M5MKNQNQX9H8GHVPHHCJZ3YD accepted
+GUI operation 01M5MKNQNQ2HM9GB3J4000275P accepted
+GUI operation 01M5MKNQNQ14T2BZQPE3HFP7GD accepted
+GUI operation 01M5MKNQNQ5YAFV77TAV764KAC accepted
+GUI operation 01M5MKNQNQJZA24T0Q2C43QB04 accepted
+GUI operation 01M5MKNQNQ76WDMYWH4ZB1DXT5 accepted
+GUI operation 01M5MKNQNQ9ND6GPC034M6BXBX accepted
+GUI operation 01M5MKNQNQTZHCXTC7YF9XX3AG accepted
+GUI operation 01M5MKNQNQG4EVCZ6Q4VHXD5E4 accepted
+GUI operation 01M5MKNQNQSS5DMH42280R1XB1 accepted
+GUI operation 01M5MKNQNQE8TDVKW5ZFN86XR4 accepted
+GUI operation 01M5MKNQNQPV9Q060TKVYDX7K3 accepted
+GUI operation 01M5MKNQNQRQP9JTYCA4MGVA8Q accepted
+GUI operation 01M5MKNQNQJNB4Y7NJBH4PYQ7A accepted
+GUI operation 01M5MKNQNQ2ABQJD9DEZ4EDTWB accepted
+GUI operation 01M5MKNQNQ4F483ZF0QVYHY6HK accepted
+GUI operation 01M5MKNQNQWHKJB4ZSGEKS66MP accepted
+GUI operation 01M5MKNQNQGNXN1W2N4QH2APKY accepted
+GUI operation 01M5MKNQNQFBZPVVXF16TXHAHY accepted
+GUI operation 01M5MKNQNQXC7MYJFC855A7MSH accepted
+GUI operation 01M5MKNQNQ11JZ4XDHAE7P0BA3 accepted
+GUI operation 01M5MKNQNQXJPSAHXWPGGV5KRE accepted
+GUI operation 01M5MKNQNQAZDYGANWAXEQRKJK accepted
+GUI operation 01M5MKNQNQC1QQ83115BWWN629 accepted
+GUI operation 01M5MKNQNQQHEMQVZA2FD049Q3 accepted
+GUI operation 01M5MKNQNQTQ1PJQYHBY8TMXJE accepted
+GUI operation 01M5MKNQNQXVP7N5DZPGFK3B87 accepted
+GUI operation 01M5MKNQNQT37G44T7N129CMPS accepted
+GUI operation 01M5MKNQNQFDN3SM2M0A5KASZ4 accepted
+GUI operation 01M5MKNQNQ9AZJAXCTZRJNV9YQ accepted
+GUI operation 01M5MKNQNQMAHZDA5PSDHHG4K7 accepted
+GUI operation 01M5MKNQNQ1W1Q0S51Y6JHBVFK accepted
+GUI operation 01M5MKNQNQ5Z78Q4EP9FCEZAEM accepted
+GUI operation 01M5MKNQNQK0VK9R66ZK14ZJSX accepted
+GUI operation 01M5MKNQNQHK5Y7MYWBKH8F0FH accepted
+GUI operation 01M5MKNQNQ3VD6GF9ASQ79VWX4 accepted
+GUI operation 01M5MKNQNQAA3ABZRSVCHHCW1H accepted
+GUI operation 01M5MKNQNQ3VNCTGNMQWRNCZ6N accepted
+GUI operation 01M5MKNQNQBNN66WPFX5ZV8XYC accepted
+GUI operation 01M5MKNQNQBZHJGYHSZMV1GF8N accepted
+GUI operation 01M5MKNQNQNPC4XR5SWW9AHN15 accepted
+GUI operation 01M5MKNQNQ37MXN3PG2YR58EAG accepted
+GUI operation 01M5MKNQNQF9KYY3681V9Q007H accepted
+GUI operation 01M5MKNQNQZ512YQ3V3X460F26 accepted
+GUI operation 01M5MKNQNQEQDNVKACQC4FK3NJ accepted
+GUI operation 01M5MKNQNQEJC00W637WZW8PV5 accepted
+GUI operation 01M5MKNQNQTV2A07TNPA6934EW accepted
+GUI operation 01M5MKNQNQ0Z7ATF4SQPEKQH0M accepted
+GUI operation 01M5MKNQNQ9KQ8ZNE7MK8NDT76 accepted
+GUI operation 01M5MKNQNQYNVKYBZNP5KPEP0A accepted
+GUI operation 01M5MKNQNQ7547SAGBCHGWWQVR accepted
+GUI operation 01M5MKNQNQGHQ9E8XEE4CW4BK5 accepted
+GUI operation 01M5MKNQNQ2QZ2HRGQ3KA7KCEC accepted
+GUI operation 01M5MKNQNQERK2SNE60MTQVG7G accepted
+GUI operation 01M5MKNQNQHWTRV3K7MTZE6BPK accepted
+GUI operation 01M5MKNQNQ5CDESBM8W4CWGX92 accepted
+GUI operation 01M5MKNQNQ18XT1RD5BXPEBJHK accepted
+GUI operation 01M5MKNQNQ5G1ZPKTNR26T3GEM accepted
+GUI operation 01M5MKNQNQ1BQ87AG7RZJ7AZMX accepted
+GUI operation 01M5MKNQNQZQX2K4GEE0KEETJE accepted
+GUI operation 01M5MKNQNQX32ZANQ75VDMPA9A accepted
+GUI operation 01M5MKNQNQSJJTQFC9HBM24WZP accepted
+GUI operation 01M5MKNQNQA118Q5R9Y5Z0981G accepted
+GUI operation 01M5MKNQNQY2GQVMN6TFPGS5GT accepted
+GUI operation 01M5MKNQNQ5G1NDFRADC09G21S accepted
+GUI operation 01M5MKNQNQWC9XBBDQPD75WYRD accepted
+GUI operation 01M5MKNQNQZQKDF9JSSCSA271G accepted
+GUI operation 01M5MKNQNQAKSG8C136SK4FJ88 accepted
+GUI operation 01M5MKNQNQMM7GZ2JS4HTPZ613 accepted
+GUI operation 01M5MKNQNQWNNKA1VD7KJ1RSW8 accepted
+GUI operation 01M5MKNQNQVTXDZRPMAXJ35S10 accepted
+GUI operation 01M5MKNQNQM40WP6PV0N8C6V97 accepted
+GUI operation 01M5MKNQNQN0BFWJAEJDBB1H94 accepted
+GUI operation 01M5MKNQNQBXGVF4D5TS4PQBV4 accepted
+GUI operation 01M5MKNQNQ41131VBBWHBB2QNV accepted
+GUI operation 01M5MKNSC7EK1DKDN3PVHVEKFN accepted
+GUI operation 01M5MKNQNQWFAXFPJ6T0EE7N6N accepted
+GUI operation 01M5MKNQNQP3CYJZ7ZFMTQMRTN accepted
+GUI operation 01M5MKNQNQ19R57S4EHMHNBJ19 accepted
+GUI operation 01M5MKNQNQJSYKAWWQ661NVA5J accepted
+GUI operation 01M5MKNQNQPH270Y0NFF06KJH5 accepted
+GUI operation 01M5MKNQNQEDSRPS2YABNPRZG2 accepted
+GUI operation 01M5MKNQNR48X7X30RDFF78JAJ accepted
+GUI operation 01M5MKNQNR901M0PDVYH0XVZ3S accepted
+GUI operation 01M5MKNQNR40Z83535BKKQ0K8B accepted
+GUI operation 01M5MKNQNRF4GRGKWZQ005XQ5Z accepted
+GUI operation 01M5MKNQNR72P85M9XKP6DB18M accepted
+GUI operation 01M5MKNQNREK6WS2HADKK2R7J1 accepted
+GUI operation 01M5MKNQNRFJHTX7XW27BAMXTM accepted
+GUI operation 01M5MKNQNR27MQ53VWK9VZJYAQ accepted
+GUI operation 01M5MKNQNR8GAMYKB0XGEV14H3 accepted
+GUI operation 01M5MKNQNRWJ8KVQXHB1WTW460 accepted
+GUI operation 01M5MKNQNRCFMC8VX2ZDJ49BJF accepted
+GUI operation 01M5MKNQNRXHP3D57NYZH637FB accepted
+GUI operation 01M5MKNQNRS9MRSSC51NBZ4367 accepted
+GUI operation 01M5MKNQNRMYCAKJ6WNWDBYWNG accepted
+GUI operation 01M5MKNQNRDMDBD4C5HWZDSMJ3 accepted
+GUI operation 01M5MKNQNRAY85VV8VWXSTMJYK accepted
+GUI operation 01M5MKNQNRAGB21W38Z1H6WZ6S accepted
+GUI operation 01M5MKNQNR0J7Z80878QSRD1VC accepted
+GUI operation 01M5MKNQNR3NVZTNHEXD84V9Q9 accepted
+GUI operation 01M5MKNQNR4YXTFP7NF8KZ572K accepted
+GUI operation 01M5MKNQNRGJWQHB66DWBJKE6Z accepted
+GUI operation 01M5MKNQNRKJ0QHV9CJPG8GE9B accepted
+GUI operation 01M5MKNQNRYPG9YANKWG7K22KE accepted
+GUI operation 01M5MKNQNRQ009PDEFDSAH8CZV accepted
+GUI operation 01M5MKNQNR5V7WN65ZDZ6YCPS0 accepted
+GUI operation 01M5MKNQNRWF0XMT9YDK1XW2XH accepted
+GUI operation 01M5MKNQNR22XPY0DS12SGP2BW accepted
+GUI operation 01M5MKNQNRY6NKJ0M7SGJ2M2Q8 accepted
+GUI operation 01M5MKNQNR1GGJGQBK03G3GCYH accepted
+GUI operation 01M5MKNQNRKC4PP2K5KWNBRT2T accepted
+GUI operation 01M5MKNQNRY96ZC71B5NX9MJ9R accepted
+GUI operation 01M5MKNQNR8NA4JJFJ4P5RNZHP accepted
+GUI operation 01M5MKNQNRBV59XZ2WKQVWXCBV accepted
+GUI operation 01M5MKNQNRA2YQT6F9T6CDT2GA accepted
+GUI operation 01M5MKNQNRT8C5F4E9SZ5ZP7H5 accepted
+GUI operation 01M5MKNQNRRS1VNRBSV2CT53SF accepted
+GUI operation 01M5MKNQNR6HF0K36NSNPV6KH3 accepted
+GUI operation 01M5MKNQNRKJ8ZYB5SX3CJ1XJ9 accepted
+GUI operation 01M5MKNQNRP4ME1218MA539A45 accepted
+GUI operation 01M5MKNQNRPWHYE1VZG74CWQAE accepted
+GUI operation 01M5MKNQNRCJGN7QK9VET9QY98 accepted
+GUI operation 01M5MKNQNRGT98Y4VS5EQZ56WT accepted
+GUI operation 01M5MKNQNRE6S4VNSJ7P1XJBPR accepted
+GUI operation 01M5MKNQNRR0GB22CTR8YJWB7E accepted
+GUI operation 01M5MKNQNRAA0KXDKW6FG6H5Q6 accepted
+GUI operation 01M5MKNQNRDD62QZBYF1BQR2YR accepted
+GUI operation 01M5MKNQNRW8DTXMWEJAJD3BGF accepted
+GUI operation 01M5MKNQNRF5PDXDK0DRZ7HYYC accepted
+GUI operation 01M5MKNQNRMFJRFD8CQ3XAVY4E accepted
+GUI operation 01M5MKNQNRW1PHX4QCGF2A9W4Z accepted
+GUI operation 01M5MKNQNRRDPRYTEVXH8YYWNQ accepted
+GUI operation 01M5MKNQNRN04VMPHV5K1F9GTX accepted
+GUI operation 01M5MKNQNR9YD1S35DHHCKZN3F accepted
+GUI operation 01M5MKNQNR2AW1CPT3G5F9XMJY accepted
+GUI operation 01M5MKNQNRVQ4ESWP7X2HGEDDJ accepted
+GUI operation 01M5MKNQNRFPFAZQD0RVWE6ZZZ accepted
+GUI operation 01M5MKNQNR6C7ASM359N5PKK6F accepted
+GUI operation 01M5MKNQNRZ31DH7S5F8GV6BQJ accepted
+GUI operation 01M5MKNQNRHQ1K9NMN6K5H90JB accepted
+GUI operation 01M5MKNQTS6ZKD2R45W6VH89CQ accepted
+GUI operation 01M5MKNQTS5QMSH3H22MXFRJWT accepted
+GUI operation 01M5MKNQTSHKZ1V9TJ1TP56JTG accepted
+GUI operation 01M5MKNQTST0DTNCXXPZ889Y70 accepted
+GUI operation 01M5MKNQTSGWDH16H6D5AKXNEV accepted
+GUI operation 01M5MKNQTSZV1M3AC6FCNNY9Q8 accepted
+GUI operation 01M5MKNQTSW2Z60X8A0E80N5FN accepted
+GUI operation 01M5MKNQTSNCSGQ8X0NXJVVK44 accepted
+GUI operation 01M5MKNQTSZYT5RS6SZ0A5XCDN accepted
+GUI operation 01M5MKNQTS9XM8S5SAFAK9VQFS accepted
+GUI operation 01M5MKNQTS0BABW3D1H2RS9XA9 accepted
+GUI operation 01M5MKNQTSQRKVN34SKTYKFHCP accepted
+GUI operation 01M5MKNQTSCYYXASWA4NFF75P8 accepted
+GUI operation 01M5MKNQTSY1W0WSH1EX91FFFX accepted
+GUI operation 01M5MKNQTSWA4WHA5X5TCHBT1H accepted
+GUI operation 01M5MKNQTSM8SW7R96MBV4K9PP accepted
+GUI operation 01M5MKNQTSFDNK7JP8QXRNAGNH accepted
+GUI operation 01M5MKNQTS886ZNFSKCD3DWNA5 accepted
+GUI operation 01M5MKNQTSKGKQVBK7VJN71RQJ accepted
+GUI operation 01M5MKNQTS65E2XVZ3B7W93AA8 accepted
+GUI operation 01M5MKNQTSP9NFFWXY5EZGED47 accepted
+GUI operation 01M5MKNQTSVXW5R8XAY43MNFXR accepted
+GUI operation 01M5MKNQTSVFXYFQFAFBYK7QVT accepted
+GUI operation 01M5MKNQTS4REK9A2P87JPJ74E accepted
+GUI operation 01M5MKNQTSH6D6BK62MN9YP1PP accepted
+GUI operation 01M5MKNQTS385674SFQ13YKNPT accepted
+GUI operation 01M5MKNQTS83W1K713JN12P63R accepted
+GUI operation 01M5MKNQTSZSSKABYGWK4T9PWT accepted
+GUI operation 01M5MKNR91WRYGPH5X6EPPSNHM accepted
+GUI operation 01M5MKNR91JSC2GWVPVXC9SNBG accepted
+GUI operation 01M5MKNR91CDBZB5KEWDVYNR3X accepted
+GUI operation 01M5MKNR91FQRJ71V3CHJA3EVB accepted
+GUI operation 01M5MKNR910QCB3H07FXES347J accepted
+GUI operation 01M5MKNR910NXTVAAKAMGCFPXM accepted
+GUI operation 01M5MKNR914QG9Z83YCWQNFTW8 accepted
+GUI operation 01M5MKNR91QW65KVE3HB71AYN1 accepted
+GUI operation 01M5MKNR9178R0Z0C03FWQ8JW0 accepted
+GUI operation 01M5MKNR91H9WSHZQT0KYZEBGC accepted
+GUI operation 01M5MKNR913EP6W2FNKQG72KX1 accepted
+GUI operation 01M5MKNR91C4M3G7YZH31PA4JX accepted
+GUI operation 01M5MKNR91FS3QBSYDGQXPTNVQ accepted
+GUI operation 01M5MKNR91T8XF7W5VRQ07Q00W accepted
+GUI operation 01M5MKNR916YNZYVKC7G8MZMSD accepted
+GUI operation 01M5MKNR9114XY0FJFVWRK30V9 accepted
+GUI operation 01M5MKNR91H62D7YN1ZDGMPVRF accepted
+GUI operation 01M5MKNR91P4T0EXDGABPK8A74 accepted
+GUI operation 01M5MKNR91D31R6YC1815K1BMS accepted
+GUI operation 01M5MKNR91HZCS4WS9ES1Q7RXD accepted
+GUI operation 01M5MKNR91TKR0ZKJDTKAW835T accepted
+GUI operation 01M5MKNR91F686N7G1890K21TM accepted
+GUI operation 01M5MKNTQYEBRGY2DRYPER9E0R accepted
+GUI operation 01M5MKNR91BC3VP7K7GM6ZYGDS accepted
+GUI operation 01M5MKNR91GCA7EA74S5FWMTG9 accepted
+GUI operation 01M5MKNR915JCHKZFGZ4C8HTHV accepted
+GUI operation 01M5MKNR91D4VT63KDMQFS0757 accepted
+GUI operation 01M5MKNR91TEMTGEH3X916CKZC accepted
+GUI operation 01M5MKNR91ZEWYPQ1VW0ERWR0W accepted
+GUI operation 01M5MKNR91RA9D96EC6AN19HA5 accepted
+GUI operation 01M5MKNRMV819PCHXKNAF90K4A accepted
+GUI operation 01M5MKNRMVXFZEH9VTSK8TY3WK accepted
+GUI operation 01M5MKNRMV998RY1JYV4A3W594 accepted
+GUI operation 01M5MKNRMVG7TR7J9BVT95Q9W1 accepted
+GUI operation 01M5MKNRMVXNPQGB1D16GMHXHY accepted
+GUI operation 01M5MKNRMV2ZYY40W36CRFJ154 accepted
+GUI operation 01M5MKNRMV9K1EY2QH5KH88N14 accepted
+GUI operation 01M5MKNRMVX4YE7MK2E504JB7M accepted
+GUI operation 01M5MKNRMVNSG7EYTW0GCD5C4W accepted
+GUI operation 01M5MKNRMVV07Y1NT790GGHM23 accepted
+GUI operation 01M5MKNRMVZ3ZTMPRY9GCGN78H accepted
+GUI operation 01M5MKNTZJSE6M5MDVNVN6ZQX2 accepted
+seat 01M5MKNQC1E4DG1AWJYEEMPJHQ activity=Idle process=Running { pid: 227 }
+GUI operation 01M5MKNV0FPCC4QQ0E8KER5XG9 accepted
+GUI operation 01M5MKNV0YZT2MCGEF91FF99BA accepted
+GUI operation 01M5MKNV21D862FTJY3AEZT916 accepted
+GUI operation 01M5MKNV2599HGMN06T8DJXHHD accepted
+GUI operation 01M5MKNV2Z8PDWBT4BMKPKE18W accepted
+seat 01M5MKNQC1E4DG1AWJYEEMPJHQ activity=Idle process=Running { pid: 227 }
+GUI operation 01M5MKNV3D40X64EACVNR5QDGH accepted
+GUI operation 01M5MKNV4E3NAMY7N5R2RT1Q0S accepted
+GUI operation 01M5MKNV3ZK2NHG0MHPJ8BSX5K accepted
+seat 01M5MKNQC1E4DG1AWJYEEMPJHQ activity=Active process=Running { pid: 227 }
+seat 01M5MKNQC1E4DG1AWJYEEMPJHQ activity=Idle process=Running { pid: 227 }
+GUI operation 01M5MKNV78FPTQERZB55YEE0S6 accepted
+GUI operation 01M5MKNV7Q20Q5Y22QW1VQKVEG accepted
+seat 01M5MKNQC1E4DG1AWJYEEMPJHQ activity=Idle process=Running { pid: 227 }
+GUI operation 01M5MKNV8HV2BQFMY8KJX0SAPA accepted
+GUI operation 01M5MKNV8SC69ZZ49PHTHPE2ZQ accepted
+GUI operation 01M5MKNV9F2RFK5SE2MK2XHDWW accepted
+GUI operation 01M5MKNV9VC8M2V8ZXWJVHB363 accepted
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: recovery failed: logic exited during startup
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.01s
+
+     Running tests/cockpit.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/cockpit-8d508e3d131d42ec)
+
+running 5 tests
+logic: orderly shutdown requested
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.69s
+
+     Running tests/custody.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/custody-1180325e10aa3ba7)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.09s
+
+     Running tests/hosts.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/hosts-06c387817605b5de)
+
+running 1 test
+test provider_data_binds_settings_launcher_and_survives_model_rebuilds ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/launcher.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/launcher-670ee66ab4bffdfa)
+
+running 18 tests
+test a_provider_disconnect_invalidates_its_path_and_cannot_dive_again ... ok
+test direct_activation_outside_the_rows_is_local_and_preserves_selection ... ok
+test enter_picks_the_parent_default_and_right_still_opens_placements ... ok
+test digits_pick_or_dive_only_on_an_empty_query_and_preserve_modifiers ... ok
+test a_connecting_host_keeps_the_existing_browseable_projection ... ok
+test escape_climbs_one_explicit_level_before_closing_even_with_a_query ... ok
+test enter_descends_ordinary_parents_and_picks_the_typed_harness_default ... ok
+test cancelling_composition_restores_committed_text_and_the_selection ... ok
+test catalog_refresh_preserves_the_selected_id_across_reordering ... ok
+test each_down_provider_state_refuses_both_pick_and_dive ... ok
+test field_selection_insertion_and_deletion_never_split_a_surrogate_pair ... ok
+test left_and_backspace_leave_nonempty_queries_to_the_text_field ... ok
+test link_state_blocks_activation_even_without_the_legacy_down_flag ... ok
+test preedit_never_filters_or_activates_and_commit_replaces_the_original_selection ... ok
+test reroll_is_a_pure_name_request_and_does_not_discard_navigation ... ok
+test the_cap_refuses_parent_and_leaf_picks_while_navigation_and_right_stay_live ... ok
+test selection_wraps_and_empty_results_are_safe ... ok
+test typed_descent_then_right_commits_the_existing_projection_path ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/lifecycle-67e646ece33504b8)
+
+running 3 tests
+logic worker exited: supervisor disconnectedlogic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.03s
+
+     Running tests/recovery.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/recovery-4a49ffb73d34d094)
+
+running 5 tests
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test shutdown_during_pending_recovery_reaps_children_without_restarting ... ok
+logic worker exited: supervisor disconnectedlogic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressure ... ok
+StaleGeneration: GUI request for seat 01M5MKRPJ32KXAX0JTN9A68V5X rejected: displayed generation 1, current 2; dropped=1
+StaleGeneration: GUI request for seat 01M5MKRPJ32KXAX0JTN9A68V5X rejected: displayed generation 1, current 2; dropped=2
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.47s
+
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/bboxybook-ade3129ab0fc882c)
+
+running 15 tests
+test documents::diagram_policy_tests::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test swarms::diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.72s
+
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/bboxybook-9265e2ca39b65e20)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/atoms-f618475c49275791)
+
+running 3 tests
+test icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage ... ok
+test icon_size_gallery_renders_at_one_and_two_device_pixels_per_point ... ok
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/blending.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/blending-1d27d27686ad07f9)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/clipping.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/clipping-263083728e3478d4)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/components.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/components-f59d0bc0403d9b74)
+
+running 4 tests
+test component_cases_are_canonical_and_box_gallery_covers_materials_and_radii ... ok
+test retained_scroll_content_moves_but_never_paints_outside_the_viewport ... ok
+test a_retained_group_keeps_material_coverage_and_filters_the_completed_layer ... ok
+test retained_image_preserves_asset_colour_rounding_and_group_filtering ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/documents.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/documents-cf277159c7b7def9)
+
+running 4 tests
+test document_matrix_covers_all_types_and_both_modal_presentations_and_source ... ok
+test native_document_layout_consumes_public_records_not_css_or_child_geometry ... ok
+test document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records ... ok
+test every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.69s
+
+     Running tests/fixtures.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/fixtures-f84288539346a72c)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/graphs.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/graphs-2c59f3b369ce7251)
+
+running 4 tests
+test former_graph_and_provenance_hand_painters_are_removed ... ok
+test graph_matrix_covers_each_live_card_and_the_empty_swarm ... ok
+test channel_layout_never_consumes_browser_svg_diagnostics ... ok
+test graph_layout_is_driven_by_records_not_browser_child_positions ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/icon_filter.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/icon_filter-93b2805963cd7bc2)
+
+running 1 test
+test icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/launchers.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8c-ci-target-uk0taopu/debug/deps/launchers-343e47cfb04a7d25)
+
+running 3 tests
+test matrix_has_every_current_lab_state_and_separate_historical_keys ... FAILED
+test geometry_uses_constructor_values_instead_of_child_dom_diagnostics ... ok
+test a_machine_subtitle_with_room_stays_on_one_line ... ok
+
+failures:
+
+---- matrix_has_every_current_lab_state_and_separate_historical_keys stdout ----
+
+thread 'matrix_has_every_current_lab_state_and_separate_historical_keys' (16123723) panicked at crates/bboxybook/tests/launchers.rs:8:5:
+assertion `left == right` failed
+  left: 208
+ right: 176
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    matrix_has_every_current_lab_state_and_separate_historical_keys
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p bboxybook --test launchers`
+
+CI_EXIT=101
