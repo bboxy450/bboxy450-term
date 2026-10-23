@@ -109,6 +109,18 @@ pub(super) fn process_test_store() -> Option<Arc<dyn DeviceKeyStore + Send + Syn
     None
 }
 
+pub(super) fn process_store(
+    custody: Option<Custody>,
+) -> Result<Arc<dyn DeviceKeyStore + Send + Sync>> {
+    if let Some(store) = process_test_store() {
+        return Ok(store);
+    }
+    Ok(Arc::new(match custody {
+        Some(custody) => super::KeychainDeviceKeys::resume(custody)?,
+        None => super::KeychainDeviceKeys::default(),
+    }))
+}
+
 #[cfg(debug_assertions)]
 #[derive(Default)]
 struct MemoryKeys(Mutex<std::collections::BTreeMap<Ulid, SigningKey>>);
@@ -143,5 +155,43 @@ mod release_tests {
     fn release_has_no_process_custody_override() {
         // Run this with BBOXY_TEST_CUSTODY=memory; no native Keychain call is made.
         assert!(super::process_test_store().is_none());
+        assert_eq!(
+            super::process_store(None).unwrap().custody(),
+            super::Custody::DataProtection
+        );
+    }
+}
+
+#[cfg(all(test, debug_assertions))]
+mod debug_tests {
+    #[test]
+    #[ignore = "spawned-process fixture, invoked by debug_without_override_selects_keychain"]
+    fn unset_process_fixture() {
+        assert!(std::env::var_os("BBOXY_TEST_CUSTODY").is_none());
+        // Selection only: this test must not open the operator's real Keychain.
+        assert!(super::process_test_store().is_none());
+        assert_eq!(
+            super::process_store(None).unwrap().custody(),
+            super::Custody::DataProtection
+        );
+    }
+
+    #[test]
+    fn debug_without_override_selects_keychain() {
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--ignored",
+                "--exact",
+                "identity::io::debug_tests::unset_process_fixture",
+            ])
+            .env_remove("BBOXY_TEST_CUSTODY")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }

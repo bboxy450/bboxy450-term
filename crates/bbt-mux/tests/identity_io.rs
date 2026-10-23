@@ -157,6 +157,10 @@ fn memory_custody_process_fixture() {
     let status = identity.status().unwrap();
     assert_eq!(status.state, IdentityState::LocalDev);
     assert_eq!(status.custody, Some(Custody::Memory));
+    assert_eq!(
+        status.custody_label.as_deref(),
+        Some("memory custody (debug)")
+    );
     let LocalIssuerOutcome::Ready(first) = local_dev_issuer(&root) else {
         panic!("memory helper held")
     };
@@ -169,28 +173,44 @@ fn memory_custody_process_fixture() {
         bbt_mux::messaging::wire::public(&first.verifying_key().to_bytes())
     );
     println!("ID1e child: production runtime and public helper use one memory custody store");
+    println!("ID1e child issuer: {}", identity.keys().issuer().key);
 }
 
 #[cfg(debug_assertions)]
 #[test]
 fn debug_process_override_uses_only_memory_custody() {
-    let root = tempfile::tempdir().unwrap();
-    let output = std::process::Command::new(std::env::current_exe().unwrap())
-        .args([
-            "--ignored",
-            "--exact",
-            "memory_custody_process_fixture",
-            "--nocapture",
-        ])
-        .env("BBOXY_TEST_CUSTODY", "memory")
-        .env("BBOXY_ID1E_FIXTURE_ROOT", root.path())
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+    let mut issuers = Vec::new();
+    for _ in 0..2 {
+        let root = tempfile::tempdir().unwrap();
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--ignored",
+                "--exact",
+                "memory_custody_process_fixture",
+                "--nocapture",
+            ])
+            .env("BBOXY_TEST_CUSTODY", "memory")
+            .env("BBOXY_ID1E_FIXTURE_ROOT", root.path())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("one memory custody store"));
+        issuers.push(
+            stdout
+                .lines()
+                .find_map(|line| line.strip_prefix("ID1e child issuer: "))
+                .unwrap()
+                .to_owned(),
+        );
+    }
+    assert_ne!(
+        issuers[0], issuers[1],
+        "memory issuers must be fresh per process"
     );
-    assert!(String::from_utf8_lossy(&output.stdout).contains("one memory custody store"));
 }

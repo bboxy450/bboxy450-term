@@ -18,7 +18,13 @@ impl Custody {
         match self {
             Self::DataProtection => "data protection",
             Self::LoginKeychain => "dev custody",
-            Self::Memory => "test custody",
+            Self::Memory => {
+                #[cfg(debug_assertions)]
+                if super::io::process_test_store().is_some() {
+                    return "memory custody (debug)";
+                }
+                "test custody"
+            }
         }
     }
 }

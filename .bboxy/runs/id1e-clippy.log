@@ -1,14 +1,2 @@
     Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
-error: variable does not need to be mutable
-   --> crates/bbt-mux/tests/messaging.rs:515:9
-    |
-515 |     let mut take = |f: &mut Fixture| {
-    |         ----^^^^
-    |         |
-    |         help: remove this `mut`
-    |
-    = note: `-D unused-mut` implied by `-D warnings`
-    = help: to override `-D warnings` add `#[allow(unused_mut)]`
-
-error: could not compile `bbt-mux` (test "messaging") due to 1 previous error
-warning: build failed, waiting for other jobs to finish...
+    Finished `dev` profile [unoptimized] target(s) in 5.23s

@@ -9,3 +9,10 @@ cargo test -p bbt-mux --locked --test identity_io -- --nocapture — exit 0 — 
 cargo test -p bbt-mux --locked --lib — exit 0 — id1e-unit.log
 cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit 101 — id1e-clippy.log
 Pinned macOS SDK SecBase.h confirms denial statuses -128,-25293,-25308,-25315; source read exit0. Strict all-target clippy exits101 solely on inherited tests/messaging.rs:515 unused_mut; outside ID1e scope, reported to Oracle. No messaging test edits made.
+cargo test -p bbt-mux --locked — exit 0 — id1e-mux.log
+BBOXY_TEST_CUSTODY=memory cargo test -p bbt-mux --release --locked --lib release_has_no_process_custody_override -- --nocapture — exit 0 — id1e-release.log
+Oracle9fc4f52f/Architectf332c06 adds explicit-only debug selection, memory custody (debug) label, fresh process keys, and unset-env keychain selection test. Oracle d1c08b71 authorizes only tests/messaging.rs:515 unused-mut removal; applied exactly that line. Scoped formatting exit0. Initial full mux90 passed+10 ignored and release cfg proof1 passed before these final additions.
+cargo test -p bbt-mux --locked --lib --test identity_io --test identity --test messaging — exit 0 — id1e-final-focused.log
+cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit 0 — id1e-clippy.log
+BBOXY_TEST_CUSTODY=memory cargo test -p bbt-mux --release --locked --lib release_has_no_process_custody_override -- --nocapture — exit 0 — id1e-release.log
+Final focused suite39 passed+3 ignored, strict all-target mux clippy0, release-with-memory-env proof1 passed. All under compact target env, no real Keychain item or root test. First signed checkpoint70e3786 sent to Sable before added Architect conditions; final artifact follows this rebase/gate. All ICQ previews/sends0, bounded inbox reads0, last received cursor4449. One accidental empty /tmp/ignore-id1e scratch created then removed exactly by path; both0, no surviving scratch. No peer paths/processes touched.
