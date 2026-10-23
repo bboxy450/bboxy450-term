@@ -8,7 +8,7 @@ links:
   - { to: "[[layering]]", rel: invariant }
   - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
 created: 2026-10-22T19:02:24Z
-updated: 2026-10-23T23:45:07Z
+updated: 2026-10-23T23:48:12Z
 ---
 # Architecture decisions, round 1
 
@@ -750,6 +750,10 @@ briefs Executors from the specs, never from this note.
     2026-10-23: "everything needs to have a # to it").** `number` in every
     frontmatter, unique across types, `[[#N]]` resolves to it; existing
     records are numbered by the sweep from 49.
+
+49. [[d49-swarm-canvas]] — **the swarm canvas: an endless zoom view of
+    every graph, structured like the Oracle's board, drawn from the store;
+    logged for later (operator, 2026-10-23).**
 
 ## Specs to touch (Architect, in this order)
 

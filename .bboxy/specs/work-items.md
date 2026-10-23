@@ -31,7 +31,7 @@ review: boundary fidelity against [[gui-components]] §2c   # task, optional: ju
 check: sh scripts/layering.sh            # invariant: the command; exit 0 means held
 cost: an upward edge welds a library to the product   # invariant: one line
 created: 2026-10-21T19:04:00Z
-updated: 2026-10-23T23:45:07Z
+updated: 2026-10-23T23:48:12Z
 ---
 ```
 
@@ -94,7 +94,7 @@ All from the same index; none hand-maintained once the index exists. The code gr
 | Delegate | `task_delegate{task: path, seat}` does exactly two things, in this order: (1) rewrites the item's frontmatter to `assignee: seat:<id>` and `status: claimed`, so the file itself names the one seat responsible; (2) sends the seat one message, oracle-class, that reads `ROLE: <role>. Execute this: <path>` followed by the body, through the adapter like any message, with the same evidence states. **Report-back:** the delegating seat (the Oracle) is recorded as `delegated_by: seat:<id>` in the frontmatter; when the responsible seat's report lands (a message carrying the task id, or its `done` state with the task open), the mux sets `status: reported` and sends the delegating seat one oracle-class message `Task <id> reported by <seat>: <first line of report>` plus a sidebar notice on the Oracle's row. Nothing is accepted automatically; the Oracle verifies and calls `task_accept` or `task_reassign`. One responsible seat per task at a time; reassigning rewrites `assignee` and sends the new seat the same message, and the old seat a one-line release. Commits nothing. |
 | Track | Seat events move `status` (`running` on first activity, `reported` when the seat's report lands on the stream with the task id); the Oracle or operator sets `accepted`/`rejected` via `task_accept`. Every transition rewrites the frontmatter only. |
 | Show | A task is a row under its seat in the sidebar with its status glyph; an epic is a collapsible group in the stream dock with its specs and tasks; `blocked` shows what it waits on. |
-| Graph | `.bboxy/graph.md`-style view generated from frontmatter, not hand-maintained once this exists. |
+| Graph | `.bboxy/graph.md`-style view generated from frontmatter, not hand-maintained once this exists. Down the line, the swarm canvas: an endless zoom view of all seven graphs, laid out like the Oracle's board, drawn from the store ([[d49-swarm-canvas]], logged, not briefed). |
 
 ## Artifacts (operator, 2026-10-21)
 

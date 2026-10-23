@@ -1,0 +1,5 @@
+flowchart TB
+  Z0["zoomed out<br/>swarms and epics as lanes, finished work left, dotted = waiting<br/>(the board's layout)"] --> Z1["one lane<br/>tasks, specs, decisions as cards<br/>status by colour, owner chip, #number"]
+  Z1 --> Z2["one card<br/>its links drawn: decides, constrains, evidence, answers, amends<br/>messages and runs that touched it"]
+  Z2 --> Z3["inside a record<br/>bbt-doc renders the Markdown and its Mermaid<br/>comments pinned at their digest"]
+  S["the store: every record with its #<br/>the seven graphs of work-items"] -. "one projection, no second model" .-> Z0
