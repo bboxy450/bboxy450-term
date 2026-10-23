@@ -585,6 +585,14 @@ mod tests {
         let mut current = Arc::new(Model::default());
         sender
             .send(UiMsg::Spawn {
+                harness_kind: "pi".into(),
+                name: None,
+                location: Where::Local,
+            })
+            .await
+            .unwrap();
+        sender
+            .send(UiMsg::Spawn {
                 harness_kind: "zsh".into(),
                 name: Some("generic shell".into()),
                 location: Where::Local,
