@@ -124,6 +124,19 @@ impl Fixture {
     fn registry(&self) -> Registry {
         Registry::new(SqliteStore::open(&self.config.run_dir.join("account")).unwrap())
     }
+    fn mutate(&self, seat: Ulid, op_id: Ulid, tool: &str, mut args: Value) -> Value {
+        args["op_id"] = json!(op_id);
+        let mut bridge = self.bridge(seat);
+        initialize(&mut bridge);
+        let reply = rpc(
+            &mut bridge,
+            2,
+            "tools/call",
+            json!({"name":tool,"arguments":args}),
+        );
+        assert!(reply.get("error").is_none(), "{reply}");
+        reply["result"].clone()
+    }
     fn audits(&self, seat: Ulid, count: usize) -> Vec<bbt_mux::store::events::Envelope> {
         let until = Instant::now() + Duration::from_secs(5);
         loop {
@@ -206,10 +219,14 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 5);
+    assert_eq!(tools.len(), 12);
     assert!(
         tools
             .iter()
+            .filter(|tool| matches!(
+                tool["name"].as_str(),
+                Some("orient" | "self_status" | "seat_list" | "seat_get" | "graph_read")
+            ))
             .all(|tool| tool["annotations"]["readOnlyHint"] == true)
     );
     assert_eq!(

@@ -942,12 +942,61 @@ impl Worker {
         let (actor, record) = self.control_actor(id, generation)?;
         call.validate()?;
         let journal = self.control_journal(id)?;
-        journal.call(&actor, &call, || {
-            match self.control_read(&actor, &record, &call) {
-                Ok(value) => crate::mcp::success(call.op_id, value),
-                Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
+        match crate::mcp::messaging::request(&actor, &call) {
+            Ok(Some(request)) if crate::mcp::messaging::mutation(&call.tool) => {
+                journal.effect(&actor, &call, || {
+                    self.control_message(&record, &call, request)
+                })
             }
-        })
+            Ok(Some(request)) => {
+                // Destination grants can change without changing the seat's
+                // role epoch. Recheck W2.4 before revealing a retained read.
+                let value = self.control_message(&record, &call, request);
+                journal.checked(&actor, &call, value)
+            }
+            prepared => {
+                let result = match prepared {
+                    Err(reason) => Err(reason),
+                    Ok(None) => self.control_read(&actor, &record, &call),
+                    Ok(Some(_)) => unreachable!(),
+                };
+                let value = match result {
+                    Ok(value) => crate::mcp::success(call.op_id, value),
+                    Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
+                };
+                journal.checked(&actor, &call, value)
+            }
+        }
+    }
+    fn control_message(
+        &mut self,
+        record: &SeatRecord,
+        call: &crate::mcp::Call,
+        request: crate::messaging::api::Request,
+    ) -> serde_json::Value {
+        // A peer is never the trusted in-process operator composer.
+        match self
+            .messaging
+            .request(record.id, record.generation, request, false, None, now_ms())
+        {
+            Ok(response) => {
+                crate::mcp::success(call.op_id, crate::mcp::messaging::result(response))
+            }
+            Err(error)
+                if error
+                    .downcast_ref::<std::io::Error>()
+                    .is_some_and(|e| e.kind() == std::io::ErrorKind::InvalidData) =>
+            {
+                crate::mcp::error(call.op_id, "rejected", &error.to_string())
+            }
+            // The backend may already have committed before a storage failure.
+            // Preserve uncertainty rather than imply a safe automatic retry.
+            Err(_) => crate::mcp::error(
+                call.op_id,
+                "unknown",
+                "messaging outcome unavailable; retain the operation ID and check receipts",
+            ),
+        }
     }
     fn control_seat(&self, record: &SeatRecord) -> serde_json::Value {
         serde_json::json!({"record":record,"adapter":self.views.get(&record.id).filter(|v|v.generation==record.generation).map(|v|&v.adapter.status)})

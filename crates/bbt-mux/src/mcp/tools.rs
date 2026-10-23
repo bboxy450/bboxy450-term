@@ -1,4 +1,4 @@
-//! The first read-only catalogue and bounded projections, owned by logic.
+//! Logic's filtered catalogue and bounded read projections.
 
 use std::collections::BTreeSet;
 
@@ -56,12 +56,14 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
             json!(["graph"]),
         ),
     ];
-    json!({"tools":definitions.into_iter().map(|(name,description,properties,required)|json!({
+    let mut tools: Vec<Value> = definitions.into_iter().map(|(name,description,properties,required)|json!({
         "name":name,"description":description,
         "inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false},
         "outputSchema":{"type":"object","additionalProperties":true},
         "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}
-    })).collect::<Vec<_>>()})
+    })).collect();
+    tools.extend(super::messaging::catalogue(actor));
+    json!({"tools":tools})
 }
 
 pub(crate) fn parse<T: DeserializeOwned>(value: &Value) -> std::result::Result<T, String> {

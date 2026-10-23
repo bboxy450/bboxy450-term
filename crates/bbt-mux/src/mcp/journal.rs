@@ -1,4 +1,4 @@
-//! Read-only control results and their durable audit outbox share one transaction.
+//! Durable control results and audit attempts, including admission before effects.
 
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
@@ -21,6 +21,13 @@ struct Entry {
     result: Value,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    Read,
+    Rejected,
+    Effect,
+}
+
 impl Journal {
     pub fn new(store: SqliteStore) -> Self {
         Self { store }
@@ -32,6 +39,84 @@ impl Journal {
         call: &Call,
         dispatch: impl FnOnce() -> Value,
     ) -> Result<Value> {
+        self.record(actor, call, dispatch, Mode::Read)
+            .map(|(value, _)| value)
+    }
+
+    /// Reauthorize reads before consulting an old result. A current denial is
+    /// audited and returned without revealing or replacing an old success.
+    pub fn checked(&self, actor: &Actor, call: &Call, value: Value) -> Result<Value> {
+        if value["isError"] == true {
+            self.record(actor, call, || value, Mode::Rejected)
+                .map(|(value, _)| value)
+        } else {
+            self.call(actor, call, || value)
+        }
+    }
+
+    /// Commit an intent and audit before dispatch, with no SQLite transaction
+    /// held across W2.4. Missing outcomes remain unknown and never redispatch.
+    pub fn effect(
+        &self,
+        actor: &Actor,
+        call: &Call,
+        dispatch: impl FnOnce() -> Value,
+    ) -> Result<Value> {
+        let (retained, fresh) = self.record(actor, call, || error(
+            call.op_id, "unknown", "durable attempt has no recorded outcome; retain the operation ID and check its receipts"
+        ), Mode::Effect)?;
+        if !fresh {
+            return Ok(retained);
+        }
+        let value = dispatch();
+        let result = if serde_json::to_vec(&value)?.len() > MAX_RESULT {
+            error(
+                call.op_id,
+                "unknown",
+                "effect outcome exceeds the response bound; check the original operation's receipts",
+            )
+        } else {
+            value
+        };
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let entry = Entry {
+            actor: actor.clone(),
+            tool: call.tool.clone(),
+            args_digest: digest(&serde_json::to_vec(&call.args)?),
+            result: result.clone(),
+        };
+        if tx.execute(
+            "UPDATE kv SET value=?2 WHERE key=?1",
+            params![
+                format!("control/op/{}", call.op_id),
+                serde_json::to_vec(&entry)?
+            ],
+        )? != 1
+        {
+            return Err(crate::store::invalid(
+                "control admission disappeared; effect outcome is unknown",
+            ));
+        }
+        let event = audit(actor, call, &entry.args_digest, &result, false, false);
+        tx.execute(
+            "INSERT INTO kv VALUES(?1,?2)",
+            params![
+                format!("control/audit/{}", event.id),
+                serde_json::to_vec(&event)?
+            ],
+        )?;
+        tx.commit()?;
+        Ok(result)
+    }
+
+    fn record(
+        &self,
+        actor: &Actor,
+        call: &Call,
+        dispatch: impl FnOnce() -> Value,
+        mode: Mode,
+    ) -> Result<(Value, bool)> {
         let hash = digest(&serde_json::to_vec(&call.args)?);
         let key = format!("control/op/{}", call.op_id);
         // The lookup and result publication use the same write transaction, so
@@ -55,6 +140,8 @@ impl Journal {
                     ),
                     false,
                 )
+            } else if mode == Mode::Rejected {
+                (dispatch(), false)
             } else {
                 (old.result, true)
             }
@@ -71,17 +158,14 @@ impl Journal {
             };
             (value, false)
         };
-        let mut event = Draft::new(
-            format!("seat/{}/control", actor.seat_id),
-            "mcp",
-            json!({"op_id":call.op_id,"tool":call.tool,"actor":actor,
-                "outcome":if replay {"replay"} else if result["isError"]==true {"rejected"} else {"applied"},
-                "args_digest":hash,"replay":replay}),
+        let event = audit(
+            actor,
+            call,
+            &hash,
+            &result,
+            replay,
+            fresh && mode == Mode::Effect,
         );
-        event.seat = Some(actor.seat_id);
-        event.generation = Some(actor.process_generation);
-        // This pass has reads only. Later effectful tools must journal admission
-        // before their effects rather than running an effect in this closure.
         if fresh {
             tx.execute(
                 "INSERT INTO kv VALUES(?1,?2)",
@@ -104,7 +188,7 @@ impl Journal {
             ],
         )?;
         tx.commit()?;
-        Ok(result)
+        Ok((result, fresh))
     }
 
     pub fn pending(&self, limit: usize) -> Result<Vec<Draft>> {
@@ -124,6 +208,26 @@ impl Journal {
         )?;
         Ok(())
     }
+}
+
+fn audit(
+    actor: &Actor,
+    call: &Call,
+    hash: &str,
+    result: &Value,
+    replay: bool,
+    admitted: bool,
+) -> Draft {
+    let mut event = Draft::new(
+        format!("seat/{}/control", actor.seat_id),
+        "mcp",
+        json!({"op_id":call.op_id,"tool":call.tool,"actor":actor,
+            "outcome":if admitted {"admitted"} else if replay {"replay"} else if result["structuredContent"]["status"]=="unknown" {"unknown"} else if result["isError"]==true {"rejected"} else {"applied"},
+            "args_digest":hash,"replay":replay}),
+    );
+    event.seat = Some(actor.seat_id);
+    event.generation = Some(actor.process_generation);
+    event
 }
 
 #[cfg(test)]

@@ -1,0 +1,16 @@
+W2.5c brief e069ab43: Kestrel Voidwing <EXECUTOR>; sole writing worktree exec5. Plan before code. Initial date/status/AGENTS/spec/task/API reads outer exit0. No source edits yet.
+$ git fetch origin
+exit=0
+$ git verify-commit 15f9f4e
+gpg: Signature made Fri Oct 23 02:48:49 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0
+$ git merge-base --is-ancestor 5e42991 origin/main
+exit=0
+$ git rebase --gpg-sign origin/main
+Successfully rebased and updated refs/heads/exec5.
+exit=0
+Scope reads: mcp/{mod,tools,journal,bridge}, logic control_actor/control_call/control_read/Request dispatch, messaging/{api,service,tree,wire,ledger}, tests/{mcp,messaging}, specs/{w2-5-mcp-and-seat-wiring,mcp-control-plane,messaging,channel-tree}, cockpit task clause: grouped read outputs0; final rg --files -g AGENTS.md crates/bbt-mux1 (no nested instructions). No source edits yet at plan.
+ICQ LANDED7fd9c37d and CLAIMd1c1ecf0 preview0/send0; planb05cd392 preview0/send0; Rook seam52a3ba85/Sable seama75479fb previews0/sends0. Approval6069d86e received5606 authorizes10tools, unchangedW2.4DMscope, journal effect path and named Worker control hunks. Operation-ID bridge supplement sent separately pending approval.
+Approval810c8a92 received5658: new mutation op_id argument, existing _meta compatibility and named mismatch rejection. Core source edits confined to approved MCP modules and one Worker control hunk (diff inspected); scoped rustfmt0. No build or acceptance claimed at this checkpoint. Next: signed checkpoint and rebase per newer Oracle channel5639 (dd47f4e).
