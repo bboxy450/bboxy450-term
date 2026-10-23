@@ -1,0 +1,3 @@
+R4c hardening trace (99045b5's code, release; method as g12/r4c). load average 21.1.
+347 frames {'mean': 2.896, 'p50': 2.805, 'p99': 4.12, 'max': 4.276}
+frosted separable Gaussian encoders in steady frames: none (title bar key constant -> cached blur).
