@@ -34,7 +34,7 @@ flowchart LR
 ```
 
 - **The bridge** is a private entry point of the one binary, `bboxy450-term mcp`, like `hook` (specs/README S5). It reads `BBOXY_SOCK`, `BBOXY_CAPABILITY`, `BBOXY_SEAT_ID`, `BBOXY_GENERATION` from the environment the launch overlay already exports (`M/adapters/launch.rs:87-94`). It implements MCP over stdio with exactly `initialize`, `ping`, `tools/list`, `tools/call`; no resources, prompts or sampling in W2.5. `tools/list` forwards to `Action::Catalogue`; `tools/call` forwards to `Action::Call{op_id, tool, args}` and returns logic's JSON result verbatim as the tool result. Stdout carries only MCP frames; stderr is bounded diagnostics; the capability is never printed. Hand-written JSON-RPC, three methods; the `rmcp` SDK only if acceptance test 1 fails on protocol negotiation.
-- **Logic owns the catalogue**: names, schemas, role filter, dispatch. Actor per call: the seat socket's admission (`M/seat_socket.rs:213`: version, capability, seat, generation, then the supervisor-confirmed generation) → the seat record's role and grant epoch → `Actor` (`M/messaging/tree.rs:15`). Oracle-class and worker-class filter both `tools/list` and `tools/call`; a hidden name called directly is refused the same way. Every call writes one audit event `seat/{id}/control` to the seat stream: `{op_id, tool, actor, outcome, args_digest}`, never payloads.
+- **Logic owns the catalogue**: names, schemas, role filter, dispatch. Actor per call: the seat socket's admission (`M/seat_socket.rs:213`: version, capability, seat, generation, then the supervisor-confirmed generation) → the seat record's role and grant epoch → `Actor` (`M/messaging/tree.rs:15`). Oracle-class and worker-class filter both `tools/list` and `tools/call`; a hidden name called directly is refused the same way. As built at 983386a (W2.5c): discovery adds `ch_link`, `ch_pause`, `ch_grant` only when `actor.role.class == Oracle` (`M/mcp/messaging.rs:93`; `catalogue(actor)` reads the class, `M/mcp/tools.rs:14-15`), and dispatch enforces it independently (`M/mcp/messaging.rs:245-249`, "tool requires oracle-class authority"). Every call writes one audit event `seat/{id}/control` to the seat stream: `{op_id, tool, actor, outcome, args_digest}`, never payloads.
 - **Idempotency.** `op_id` is a caller ULID. Logic journals `control/op/{op_id}` → result in the seat object kv; a repeated `op_id` returns the stored result and audits a replay.
 
 ## 2. Catalogue, first cut
@@ -49,7 +49,7 @@ flowchart LR
 | `seat_spawn` | `Worker::launch` (`M/logic.rs:785`) with role and cwd; no layout arguments in W2.5, the app places the seat when it sees `mux/seat_spawned` | O |
 | `message_send`, `message_list`, `message_receipts`, `message_ack` | `messaging::api::Request::{Send, List, Receipts, Acknowledge}` | O E C within grants |
 | `ch_ls`, `ch_subscribe`, `ch_unsubscribe`, `ch_link`, `ch_pause`, `ch_grant` | `Request::{Ls, Subscribe, Unsubscribe, Link, Pause, Grant}` | O; E C for ls, subscribe, unsubscribe |
-| `seat_mute`, `seat_unmute` | `Request::Mute` | O |
+| `seat_mute`, `seat_unmute` | `Request::Mute`; **deferred from W2.5c to W2.5e by Oracle ruling (2026-10-23), operator-side controls** | O |
 | `task_delegate`, `task_reassign`, `task_accept`, `task_reject` | frontmatter rewrite in the task file, then a `Body::Task{event}` message to the seat (`M/messaging/wire.rs:46`) so W2.4 delivery evidence applies. `task_accept` is refused unless `verify_result` is recorded at exit 0 ([[work-items]] Rules) | O |
 | `task_status`, `task_list` | index | O; E C own tasks |
 | `task_report` | frontmatter `status: reported`, evidence block appended, `Body::Task{event: report}` to `delegated_by` | E C own task; O |
@@ -106,4 +106,4 @@ Everything in the deferred list of §2; the GUI's own use of these tools (the ap
 
 ## 7. Order for briefs (the Oracle's call, one concern each)
 
-W2.5a the bridge, `Catalogue` and `Call`, and the read-only tools (`orient`, `self_status`, `seat_list`, `seat_get`, `graph_read`), with acceptance 1. W2.5b the wiring kit: overlay flags, `SKILL.md`, acceptance 2 and 3. W2.5c messaging and channel tools over the W2.4 API, with acceptance 4. W2.5d task and artifact tools: the frontmatter writer, acceptance 2 again end to end, 5. W2.5e guarded input and spawn.
+W2.5a the bridge, `Catalogue` and `Call`, and the read-only tools (`orient`, `self_status`, `seat_list`, `seat_get`, `graph_read`), with acceptance 1. W2.5b the wiring kit: overlay flags, `SKILL.md`, acceptance 2 and 3. W2.5c messaging and channel tools over the W2.4 API, with acceptance 4. W2.5d task and artifact tools: the frontmatter writer, acceptance 2 again end to end, 5. W2.5e guarded input, spawn, and the operator-side controls `seat_mute` and `seat_unmute`.
