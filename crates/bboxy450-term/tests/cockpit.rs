@@ -68,7 +68,10 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
         loop {
             match session.receive().await.unwrap() {
                 GuiReply::Seat(seat) if !known.contains(&seat.record.id) => break seat,
-                GuiReply::Seat(_) | GuiReply::Ok { .. } => {}
+                GuiReply::Seat(_)
+                | GuiReply::Ok { .. }
+                | GuiReply::Hosts(_)
+                | GuiReply::HostState { .. } => {}
                 other => panic!("unexpected spawn response: {other:?}"),
             }
         }

@@ -1,0 +1,17 @@
+D1c exact source=d46d15c613326a6e16906b1a49b8cf38f336eb85
+UTC=2026-10-23T07:25:04.873275+00:00
+$ git worktree add --detach /private/tmp/ci-kestrel-d1c-d46d15c d46d15c613326a6e16906b1a49b8cf38f336eb85
+HEAD is now at d46d15c provider: record GUI spawn and complete 96-case parity acceptance
+Preparing worktree (detached HEAD d46d15c)
+exit=0
+initial clean-worktree status exit=0 bytes=0
+git verify-commit exit=0
+gpg: Signature made Fri Oct 23 00:24:20 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+
+owned CI PID=45788 PGID=45788
+private CARGO_TARGET_DIR deleted immediately after gate exit; exit=0
+gate_exit=101 elapsed=175.598s
+git worktree remove exit=0
+

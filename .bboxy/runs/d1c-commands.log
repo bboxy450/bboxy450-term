@@ -144,3 +144,9 @@ Expanded96 preflight: sh scripts/parity.sh0/199.102s; capture96/96, render96/96,
 $ cargo clippy --workspace --all-targets --locked -- -D warnings (after GUI spawn acceptance extension)
 exit=0
 Final workspace strictclippy0 after GUI test extension. git fetch origin0 before final handoff gate; origin/main still1d9102b, already rebased. Viewed advisory Account native/web pair: same geometry/content, raster/avatar residue; remaining24advisory cases are Account8, Roles8, In-a-tab8. No change to those unrelated renderings; P3 owns broader parity. Native Screenshot uses prior same UI source; upstream rebase adds reaping only.
+Exact clean CI d46d15c failed101/175.031s at app cockpit spawn fixture receiving new HostState Connecting (cockpit4passed/1failed). Raw first log/state preserved. Immediate private target deletion0 and worktree removal0. Exact fixture hunk notified Sable/Oracle: recognize only HostState/Hosts as unrelated multiplexed replies; new-seat/error assertions retained.
+$ cargo test --locked -p bboxy450-term --test cockpit (multiplexed host notification fixture correction)
+exit=0
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (multiplexed host notification fixture correction)
+exit=0
+App fixture correction: cargo test --locked -p bboxy450-term --test cockpit0 (5/0/0) /22.092s; strict workspacealltargetclippy0 /0.747s. Native constructor, generation semantics and assertions unchanged. Scope DMdb7173f9 sent Sable, failure DM1de814cf sent Oracle; receipts stored only. git fetch origin0; origin/main remains1d9102b.
