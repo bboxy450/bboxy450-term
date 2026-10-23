@@ -1,0 +1,12 @@
+{
+  "source": "594692b0547ac802f0f2667dd5464362ddfd72bd",
+  "ci_target": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-layer-ci-594692b",
+  "ci_target_removed": true,
+  "ci_target_allocated_bytes_removed": 2781974528,
+  "measurement": "du -sk before removal; allocated bytes, not net volume free-space change",
+  "worktree": "/tmp/ci-aster-t2-layers-594692b-1792758379000299000",
+  "worktree_remove_exit": 0,
+  "worktree_removed": true,
+  "clean_after_replay": true,
+  "parity_gallery_preserved": true
+}

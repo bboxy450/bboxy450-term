@@ -1,0 +1,12 @@
+Read-only W3.6 review, authorized Oraclec4a3a380 (Sable owner, Aster reviewer). No rerun, peer-file writes or production source edits. Not part of T2 pixel acceptance.
+Source f73d7315e153dbf70d7acbc0ee2e4cb63b99b2bb; patch/binary SHA256 independently match manifest 83f2e32458c6fd43eb0b20acd695b328afe8758a21e82c3206447495637924d2 / 744ec24b275dc954eb9e3ea8fd3c50ffb0720fd6c9963cf70523aec5f9557268.
+/private/tmp/sable-w36-3s_3wl27/ack-diagnostic-manifest.json SHA256 6cc9a3c6553ca456764be3c97913b3e08174694049001415efd9501d7661b7be
+/private/tmp/sable-w36-3s_3wl27/ack-diagnostic.patch SHA256 83f2e32458c6fd43eb0b20acd695b328afe8758a21e82c3206447495637924d2
+/private/tmp/sable-w36-3s_3wl27/analyze_ack.py SHA256 0b9a00cd8c7b71fc6d2a696ee661e2df5cbfd460d0cbdf93a382ed2df498c37e
+/private/tmp/sable-w36-3s_3wl27/applied-path-trace/process.json SHA256 46758241c8e07690c8ed62b35d2e1e877f2e269bcd258c6f73e83e8666bc0c65
+/private/tmp/sable-w36-3s_3wl27/applied-path-trace/ack-summary.json SHA256 91ec2c15d45c80d298bf4a91723c5cbc84ef9499f10ea00d8b9299071a88debf
+Independently read3raw CLOCK_MONOTONIC traces, verified row counts/0overwritten/ownedPID membership, paired(seat,generation,view,sequence) into150 complete monotonic chains,4right-censored,0duplicate starts. Actual writer stamp follows write_frame.await; server read stamp follows read_line+diagnostic JSON parse, before bounded mpsc.send; action stamp after main select admits it.
+Raw sums ms: Update-sent->Applied20192.880; app-written->Applied19877.899 (98.4401%); server-read->action16466.394 (81.5455%); app-written->server-read3410.182 (16.8880%). Server interval includes blocked enqueue and select/tick service, not pure FIFO wait. App apply/prepare/publish summary mean.59504ms,p991.276ms.
+Exact6s accepted Update counts42/40/36/36 ->7.000/6.667/6.000/6.000Hz; use separate fairness trace for earlier7–8 claim. Old Aster8.71/pane was ACK-derived inference on pre-fix source, not a direct comparable measurement. Inflight-ready skips812/967.
+Process record source matches manifest; explicit memory custody witnesses present in two account records; app exit0/remainingPIDs empty. This review did not rerun custody or a live process.
+Commands: cat summary EXIT0; first cat manifest inside trace dir EXIT1 (manifest is in parent); targeted rg --files EXIT0; parent manifest/read patch+analyzer EXIT0; own Python independent hash/chain reconstruction EXIT0. Never executed peer analyzer (it writes peer files), never executed peer binary.
