@@ -172,7 +172,7 @@ flowchart TD
 | memory per seat | 1000 headless seats under the T1 firehose, none watched | RSS of supervisor + logic | **idle: 420 MiB at 400 seats** (measured 2026-10-22: median 333.7 MiB over three runs, about 825 KiB per seat, +25 %); `GATE_SEATS=400 GATE_RATE=idle GATE_SECONDS=20 GATE_BUDGET=420 sh scripts/gates.sh memory`; invariant [[seats-400-memory-idle]]. Under the firehose: pending W1.2d |
 | bus fan-out | 1000 seats, an Oracle burst of 30 messages at 10/s | p99 delivery with the weighted fair queue | **13 299 ms p99** (measured after W2.4c, decision #23: p99 10 639 / 9 334 / 13 013 ms, median 10.6 s, +25 %; 29 970 of 29 970 delivered every run; before batching the median was 119.9 s). `GATE_SEATS=1000 GATE_BUDGET=13299 sh scripts/gates.sh bus`; invariant [[seats-1000-bus]] |
 | supervisor fds and poller | 1000 PTYs under the firehose, open-file limit raised at start | p99 record write latency | set by the first run |
-| sidebar and minimap | 1000 rows, 50 watched panes | frame time under the hitch meter, zero hitches idle | 8.33 ms at 120 Hz |
+| sidebar and minimap | 1000 rows, 50 watched panes | frame time under the hitch meter, zero hitches idle | 8.33 ms at 120 Hz. Partial evidence: R10 (c2d1fee, 2026-10-23) windows the sidebar's fixed-height rows, warm layout at 1000 open seats 44.4 → 0.29 ms; the full frame-time measurement under the meter is still owed |
 
 A budget is a number written into this table by the first measurement ([[runtime]]), then it binds. Measured, not guessed.
 
