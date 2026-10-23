@@ -1,0 +1,50 @@
+#!/bin/sh
+set -u
+printf '%s\n' "$$" > /Users/feral/mydev/bboxy450-term-nyx/target/l8-launcher/extra-b4ac458.pid
+date -u '+start %Y-%m-%dT%H:%M:%SZ'
+git rev-parse HEAD
+git status --porcelain
+(
+    set -eu
+    launcher_out=/Users/feral/mydev/bboxy450-term-nyx/target/l8-launcher/parity-launcher
+    bboxybook_bin=/Users/feral/mydev/bboxy450-term-nyx/target/l8-launcher/bin/bboxybook-b4ac458
+    python3 - "$launcher_out" <<'PYSUB'
+import json,pathlib,re,sys,hashlib
+root=pathlib.Path(sys.argv[1]); source=pathlib.Path('crates/bboxybook/src/launchers.rs').read_text()
+def states(name):
+    body=source.split('pub const '+name+': &[&str] = &[',1)[1].split('];',1)[0]
+    return json.loads('['+body.rstrip().removesuffix(',')+']')
+cases=[]
+for page,values in [('launcher',states('STATES')),('picker',states('PICKER_STATES'))]:
+    for state in values:
+        assert not any(ord(c)>127 and c.isalpha() for c in state)
+        slug=re.sub('[^a-z0-9]+','-',state.lower()).strip('-')
+        for density in ['touch','comfortable','cozy','compact']:
+            for theme in ['dark','light']:
+                cases.append(dict(component=page,state=state,slug=slug,density=density,theme=theme,page=page+'.html',selector='.card > .body',width=1246,height=600,checker=False,fixture={'layer':'launchers'}))
+assert len(cases)==176,len(cases)
+(root/'requested.json').write_text(json.dumps(cases,indent=2))
+print('launcher request from public launchers::cases() constants:',len(cases),'source sha256',hashlib.sha256(source.encode()).hexdigest())
+PYSUB
+    node crates/bboxybook/capture.mjs "$launcher_out" "$launcher_out/requested.json"
+    python3 - "$launcher_out" <<'PYSUB'
+import json,pathlib,sys
+root=pathlib.Path(sys.argv[1]); cases=json.loads((root/'cases.json').read_text())
+assert len(cases)==176,len(cases)
+def walk(items):
+    for item in items:
+        assert isinstance(item['enterPicks'],bool),item['id']
+        yield item
+        yield from walk(item.get('children') or [])
+items=[it for case in cases for it in walk(case['fixture']['args']['items'])]
+parents=[it for it in items if it['enterPicks'] and it.get('children') is not None]
+assert parents
+print('public input pass-through:',len(items),'items with enterPicks;',len(parents),'default-pick parents')
+PYSUB
+    "$bboxybook_bin" render --all --out "$launcher_out/native" --manifest "$launcher_out/cases.json"
+    "$bboxybook_bin" compare --strict-geometry --out "$launcher_out" --manifest "$launcher_out/cases.json"
+)
+extra_result=$?
+printf 'extra Launcher176 exit=%s\n' "$extra_result"
+date -u '+end %Y-%m-%dT%H:%M:%SZ'
+exit "$extra_result"
