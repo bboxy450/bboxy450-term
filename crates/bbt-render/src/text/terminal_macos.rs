@@ -2,7 +2,7 @@ use super::{Format, Glyph};
 use crate::{FontConfig, FontMetrics, Result};
 use objc2_core_foundation::{
     CFArray, CFAttributedString, CFBoolean, CFDictionary, CFNumber, CFRange, CFRetained, CFString,
-    CFType, CGPoint,
+    CFType, CGPoint, CGRect, CGSize,
 };
 use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext, kCGColorSpaceSRGB};
 use objc2_core_text::{
@@ -260,10 +260,53 @@ impl Fonts {
         CGContext::scale_ctm(Some(&context), self.scale, self.scale);
         let advance =
             unsafe { line.typographic_bounds(ptr::null_mut(), ptr::null_mut(), ptr::null_mut()) };
-        let x = (f64::from(self.metrics.cell_width * u32::from(span)) / self.scale - advance) * 0.5
-            + f64::from(pad) / self.scale;
-        let y =
-            f64::from(height - pad) / self.scale - f64::from(self.metrics.baseline) / self.scale;
+        let cell_width = f64::from(self.metrics.cell_width * u32::from(span)) / self.scale;
+        let cell_height = f64::from(self.metrics.cell_height) / self.scale;
+        let padding = f64::from(pad) / self.scale;
+        let (x, y) = if color {
+            // Color-font ink can exceed its point size and the primary font's
+            // line height. Fit the complete shaped cluster, preserving aspect.
+            // SAFETY: line retains its glyph runs; a null context returns local bounds.
+            let bounds = unsafe { line.image_bounds(None) };
+            if bounds.size.width.is_finite()
+                && bounds.size.width > 0.
+                && bounds.size.height.is_finite()
+                && bounds.size.height > 0.
+            {
+                let fit = (cell_width / bounds.size.width)
+                    .min(cell_height / bounds.size.height)
+                    .min(1.);
+                // Keep rasterization fringes inside this cell, never in an
+                // adjacent row. Bounds fitting happens before this final clip.
+                CGContext::clip_to_rect(
+                    Some(&context),
+                    CGRect::new(
+                        CGPoint::new(padding, padding),
+                        CGSize::new(cell_width, cell_height),
+                    ),
+                );
+                CGContext::translate_ctm(
+                    Some(&context),
+                    padding + (cell_width - bounds.size.width * fit) * 0.5 - bounds.origin.x * fit,
+                    padding + (cell_height - bounds.size.height * fit) * 0.5
+                        - bounds.origin.y * fit,
+                );
+                CGContext::scale_ctm(Some(&context), fit, fit);
+                (0., 0.)
+            } else {
+                (
+                    (cell_width - advance) * 0.5 + padding,
+                    f64::from(height - pad) / self.scale
+                        - f64::from(self.metrics.baseline) / self.scale,
+                )
+            }
+        } else {
+            (
+                (cell_width - advance) * 0.5 + padding,
+                f64::from(height - pad) / self.scale
+                    - f64::from(self.metrics.baseline) / self.scale,
+            )
+        };
         let actual_traits = unsafe { font.symbolic_traits() };
         if bold && !color && !actual_traits.contains(CTFontSymbolicTraits::TraitBold) {
             CGContext::set_text_drawing_mode(
@@ -333,6 +376,53 @@ impl Fonts {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn color_emoji_ink_fits_its_cell_box_at_each_density() {
+        for scale in [1, 2] {
+            let fonts = Fonts::new(
+                &FontConfig {
+                    scale,
+                    ..Default::default()
+                },
+                None,
+                false,
+            )
+            .unwrap();
+            let metrics = fonts.metrics();
+            for text in [
+                "🦊",
+                "👩\u{200d}💻",
+                "👨\u{200d}👩\u{200d}👧\u{200d}👦",
+                "🏳️\u{200d}🌈",
+                "👍🏽",
+            ] {
+                let glyph = fonts.rasterize(text, false, false, 2).unwrap().unwrap();
+                assert_eq!(glyph.format, Format::Bgra);
+                let mut ink = 0;
+                for y in 0..glyph.height {
+                    for x in 0..glyph.width {
+                        if glyph.pixels[((y * glyph.width + x) * 4 + 3) as usize] == 0 {
+                            continue;
+                        }
+                        ink += 1;
+                        let px = i32::from(glyph.left) + x as i32;
+                        let py = i32::from(glyph.top) + y as i32;
+                        assert!(
+                            px >= 0
+                                && px < (2 * metrics.cell_width) as i32
+                                && py >= 0
+                                && py < metrics.cell_height as i32,
+                            "{text} {scale}x: ink at ({px}, {py}) outside {}x{}",
+                            2 * metrics.cell_width,
+                            metrics.cell_height,
+                        );
+                    }
+                }
+                assert!(ink > 0, "{text} must not become blank");
+            }
+        }
+    }
 
     #[test]
     fn fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face() {
