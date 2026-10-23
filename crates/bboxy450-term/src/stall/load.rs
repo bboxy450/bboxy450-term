@@ -1185,8 +1185,11 @@ async fn exercise(
             let sender = messages.clone();
             let exe = executable.clone();
             let secs = config.seconds;
+            // The synthetic functional contract checks completion, not throughput.
+            let stdout_timeout =
+                (config.real || config.frame_gate).then_some(Duration::from_secs(10));
             side = Some(AbortTask(tokio::spawn(async move {
-                side_loads(client, p, sender, exe, secs).await
+                side_loads(client, p, sender, exe, secs, stdout_timeout).await
             })));
         }
         if measured.is_some_and(|t| t.elapsed().as_secs_f64() >= config.seconds) && !stop_sent {
@@ -1334,6 +1337,7 @@ async fn side_loads(
     messages: UiSender,
     executable: PathBuf,
     seconds: f64,
+    stdout_timeout: Option<Duration>,
 ) -> Result<SideStats, String> {
     let task = bbt_rt::spawn_command(
         vec![executable.into_os_string(), OsString::from("--r5-stdout")],
@@ -1401,9 +1405,10 @@ async fn side_loads(
     progress
         .fault_ns
         .store(fault.elapsed.as_nanos() as u64, Ordering::Release);
-    let deadline = Instant::now() + Duration::from_secs(10);
+    // Functional synthetic runs use the parent/headless watchdogs and cancellation.
+    let deadline = stdout_timeout.map(|timeout| Instant::now() + timeout);
     while task.status().is_none() {
-        if Instant::now() > deadline {
+        if deadline.is_some_and(|deadline| Instant::now() > deadline) {
             bbt_rt::cancel(&task);
             return Err("r5-stdout-timeout".into());
         }
