@@ -352,10 +352,13 @@ fn gate_memory() {
         (cap.writer_busy_ns - before_capture.writer_busy_ns) as f64 / 1e9 / load_elapsed;
     let busy_replies = rig.busy.load(std::sync::atomic::Ordering::Relaxed);
     eprintln!(
-        "GATE capture seats={n} load_wall_s={load_elapsed:.3} writer_busy_fraction={busy_fraction:.4} busy_replies={busy_replies} heartbeat_max_ms={:.3} commit_p99_upper_ms={:.3} commit_max_ms={:.3}",
+        "GATE capture seats={n} load_wall_s={load_elapsed:.3} writer_busy_fraction={busy_fraction:.4} busy_replies={busy_replies} heartbeat_max_ms={:.3} commit_p99_upper_ms={:.3} commit_max_ms={:.3} durable_rounds={} durable_pauses={} peak_undurable_bytes={}",
         heartbeat_max.as_secs_f64() * 1000.,
         cap.commit_p99_ns as f64 / 1e6,
-        cap.commit_max_ns as f64 / 1e6
+        cap.commit_max_ns as f64 / 1e6,
+        cap.durable_rounds - before_capture.durable_rounds,
+        cap.durable_pauses - before_capture.durable_pauses,
+        cap.peak_undurable_bytes,
     );
     let disk = rig.stop();
     budget(

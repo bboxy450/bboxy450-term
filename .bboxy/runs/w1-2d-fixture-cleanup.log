@@ -6,3 +6,5 @@ AFTER_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs
 OWN_ALLOCATED_BYTES_REMOVED_THIS_PASS=2518560768
 AFTER_967_OWN_STOP_NO_REMAINING_CHILDREN_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-ouCayQ allocated_bytes=15031005184
 OWN_ALLOCATED_BYTES_REMOVED_THIS_PASS=15031005184
+AFTER_400_EXIT_101_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-s7OIN7 allocated_bytes=1317216256
+OWN_ALLOCATED_BYTES_REMOVED_THIS_PASS=1317216256
