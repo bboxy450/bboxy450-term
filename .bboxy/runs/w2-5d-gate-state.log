@@ -1,0 +1,43 @@
+Deleting only this Executor-created idle dev cache after all local checks completed: /Users/feral/mydev/bboxy450-term-exec5/target/debug
+own dev-cache deletion EXIT 0
+$ ['date']
+Fri Oct 23 04:34:44 PDT 2026
+EXIT 0
+$ ['df', '-h', '/Users/feral/mydev/bboxy450-term-exec5']
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1   460Gi   420Gi    12Gi    98%    4.6M  124M    4%   /System/Volumes/Data
+EXIT 0
+OWNED_BASE /private/tmp/ci-kestrel-w2-5d-qqweocky
+SOURCE_SHA b4a6a364a8ea9c3430f83451e93b448d8a4b51f0
+$ ['git', 'worktree', 'add', '--detach', '/private/tmp/ci-kestrel-w2-5d-qqweocky/source', 'b4a6a364a8ea9c3430f83451e93b448d8a4b51f0']
+HEAD is now at b4a6a36 feat: add scoped task and artifact MCP workflows
+Preparing worktree (detached HEAD b4a6a36)
+EXIT 0
+$ ['git', 'status', '--porcelain']
+EXIT 0
+$ ['git', 'rev-parse', 'HEAD']
+b4a6a364a8ea9c3430f83451e93b448d8a4b51f0
+EXIT 0
+$ ['git', 'verify-commit', 'b4a6a364a8ea9c3430f83451e93b448d8a4b51f0']
+gpg: Signature made Fri Oct 23 04:33:05 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0
+ENV {"BBOXY_TEST_CUSTODY": "memory", "CARGO_BUILD_JOBS": "2", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_TARGET_DIR": "/private/tmp/ci-kestrel-w2-5d-qqweocky/target"}
+CI_PID 79226
+CI_EXIT 0; elapsed 901.401s
+own private target deletion EXIT 0
+git worktree remove /private/tmp/ci-kestrel-w2-5d-qqweocky/source
+EXIT 0
+own empty CI base removal EXIT 0
+CI_LOG_SHA256 aa1152132055226f19747c3851c10ab0da8d870e9fde8aecf8d7088f1cad0475
+FINAL_EXIT 0
+
+CORRECTION: the printed FINAL_EXIT 0 above covers CI and cleanup only. The optional post-CI binary-selector assertion raised before its corpus check, so the wrapper process real exit was 1. CI itself was 0; all gates passed. The exact-source corpus rerun is recorded separately in w2-5d-corpus-exact.log.
+
+Original wrapper stderr, real exit1 (tool chunk6b0ffc):
+Traceback (most recent call last):
+  File "<string>", line 43, in <module>
+    assert len(corpus)==len(mcp)==1,(corpus,mcp)
+AssertionError: ([PosixPath('/private/tmp/ci-kestrel-w2-5d-qqweocky/target/debug/deps/corpus-80a908cc437286bc'), PosixPath('/private/tmp/ci-kestrel-w2-5d-qqweocky/target/debug/deps/corpus-2e8cd9d70f8eba0b'), PosixPath('/private/tmp/ci-kestrel-w2-5d-qqweocky/target/debug/deps/corpus-139cbc45a247d3fd')], [PosixPath('/private/tmp/ci-kestrel-w2-5d-qqweocky/target/debug/deps/mcp-4d2b3ba83a32eeb5')])
+Corrected exact-src_path auxiliary runner: final exit0, corpus-exact.log, target/worktree cleanup0.

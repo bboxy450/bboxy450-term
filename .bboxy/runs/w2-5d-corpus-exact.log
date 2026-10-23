@@ -1,0 +1,326 @@
+SOURCE_SHA b4a6a364a8ea9c3430f83451e93b448d8a4b51f0
+OWNED_BASE /private/tmp/accept-kestrel-w2-5d-ffp3rrsw
+CORRECTION: select exact package test source via Cargo JSON, not a corpus-* glob.
+$ ['git', 'worktree', 'add', '--detach', '/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source', 'b4a6a364a8ea9c3430f83451e93b448d8a4b51f0']
+HEAD is now at b4a6a36 feat: add scoped task and artifact MCP workflows
+Preparing worktree (detached HEAD b4a6a36)
+EXIT 0; elapsed 0.305s
+$ ['git', 'status', '--porcelain']
+EXIT 0; elapsed 0.037s
+$ ['git', 'rev-parse', 'HEAD']
+b4a6a364a8ea9c3430f83451e93b448d8a4b51f0
+EXIT 0; elapsed 0.019s
+BUILD ['cargo', 'test', '--locked', '-p', 'bbt-doc', '--test', 'corpus', '--no-run', '--message-format=json']
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling serde_json v1.0.154
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling winnow v1.0.4
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling winnow v0.7.15
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling syn v3.0.9
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-ui-model)
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.3
+   Compiling pulldown-cmark v0.13.4
+   Compiling indexmap v2.14.2
+   Compiling unsafe-libyaml v0.2.11
+   Compiling ryu v1.0.23
+   Compiling unicase v2.10.0
+   Compiling bitflags v2.13.2
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-ui v0.0.1 (/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-ui)
+   Compiling unicode-segmentation v1.13.3
+   Compiling bbt-mermaid v0.0.1 (/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-mermaid)
+   Compiling bbt-doc v0.0.1 (/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 20.23s
+BUILD_EXIT 0; elapsed 20.259s
+ARTIFACT /private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-doc/tests/corpus.rs => /private/tmp/accept-kestrel-w2-5d-ffp3rrsw/target/debug/deps/corpus-80a908cc437286bc SHA256 673ee98d1e53e5ca48bf9222ff85fbc487cc3be3822ab45beb2d070ee71a1212
+BUILD ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'mcp', '--no-run', '--message-format=json']
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling cfg-if v1.0.5
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling subtle v2.6.1
+   Compiling syn v3.0.9
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling crypto-common v0.1.7
+   Compiling const-oid v0.9.6
+   Compiling serde_core v1.0.229
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling serde v1.0.229
+   Compiling jobserver v0.1.35
+   Compiling serde_derive v1.0.229
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling cc v1.9.0
+   Compiling cpufeatures v0.2.17
+   Compiling base64ct v1.8.3
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling radium v0.7.0
+   Compiling zerocopy v0.8.63
+   Compiling spki v0.7.3
+   Compiling pkcs8 v0.10.2
+   Compiling serde_json v1.0.154
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling hmac v0.12.1
+   Compiling base16ct v0.2.0
+   Compiling funty v2.0.0
+   Compiling bitvec v1.1.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling sha2-asm v0.6.4
+   Compiling bitflags v2.13.2
+   Compiling signature v2.2.0
+   Compiling log v0.4.34
+   Compiling semver v1.0.28
+   Compiling pkg-config v0.3.34
+   Compiling bytes v1.12.1
+   Compiling rustc_version v0.4.1
+   Compiling ff v0.13.1
+   Compiling serdect v0.2.0
+   Compiling smallvec v1.16.3
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling thiserror v2.0.21
+   Compiling libm v0.2.16
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling elliptic-curve v0.13.8
+   Compiling sha2 v0.10.9
+   Compiling getrandom v0.3.4
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling rfc6979 v0.4.0
+   Compiling thiserror-impl v2.0.21
+   Compiling errno v0.3.14
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+   Compiling const-oid v0.10.2
+   Compiling ident_case v1.0.1
+   Compiling darling_core v0.20.11
+   Compiling digest v0.11.3
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling foldhash v0.2.0
+   Compiling rand_core v0.10.1
+   Compiling parking_lot_core v0.9.12
+   Compiling getrandom v0.4.3
+   Compiling darling_macro v0.20.11
+   Compiling hashbrown v0.17.1
+   Compiling rand_core v0.9.5
+   Compiling num-integer v0.1.47
+   Compiling ecdsa v0.16.9
+   Compiling curve25519-dalek v4.1.3
+   Compiling rand_chacha v0.3.1
+   Compiling cpufeatures v0.3.1
+   Compiling thiserror v1.0.69
+   Compiling spin v0.9.9
+   Compiling crossbeam-utils v0.8.23
+   Compiling scopeguard v1.2.0
+   Compiling num-bigint-dig v0.8.6
+   Compiling pin-project-lite v0.2.17
+   Compiling cfg_aliases v0.1.1
+   Compiling nix v0.28.0
+   Compiling lock_api v0.4.14
+   Compiling lazy_static v1.5.1
+   Compiling rand v0.8.8
+   Compiling num-iter v0.1.46
+   Compiling rand_chacha v0.9.0
+   Compiling darling v0.20.11
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling aead v0.5.2
+   Compiling mio v1.2.4
+   Compiling ctr v0.9.2
+   Compiling tokio-macros v2.7.2
+   Compiling universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+   Compiling socket2 v0.6.5
+   Compiling httparse v1.10.1
+   Compiling rustversion v1.0.23
+   Compiling anyhow v1.0.104
+   Compiling base64 v0.22.1
+   Compiling unicode-segmentation v1.13.3
+   Compiling vcpkg v0.2.15
+   Compiling opaque-debug v0.3.1
+   Compiling zstd-safe v8.2.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling polyval v0.6.2
+   Compiling convert_case v0.10.0
+   Compiling tokio v1.54.1
+   Compiling parking_lot v0.12.5
+   Compiling derive_builder_core v0.20.2
+   Compiling rand v0.9.5
+   Compiling chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling aes v0.8.4
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling keccak v0.1.6
+   Compiling dbl v0.3.2
+   Compiling core-foundation-sys v0.8.7
+   Compiling once_cell v1.21.4
+   Compiling byteorder v1.5.0
+   Compiling crc24 v0.1.6
+   Compiling cursor-icon v1.2.0
+   Compiling unicode-xid v0.2.6
+   Compiling heck v0.5.0
+   Compiling unicode-width v0.2.2
+   Compiling snafu-derive v0.9.2
+   Compiling bbt-core v0.0.1 (/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-core)
+   Compiling derive_more-impl v2.1.1
+   Compiling indexmap v2.14.2
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling ulid v1.2.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling bitfields-impl v1.0.3
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling futures-macro v0.3.34
+   Compiling num_enum_derive v0.7.6
+   Compiling serial2 v0.2.38
+   Compiling futures-sink v0.3.34
+   Compiling signature v3.0.0
+   Compiling zlib-rs v0.6.8
+   Compiling shell-words v1.1.1
+   Compiling rustix v1.1.5
+   Compiling slab v0.4.12
+   Compiling downcast-rs v1.2.1
+   Compiling futures-task v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling futures-core v0.3.34
+   Compiling same-file v1.0.6
+   Compiling data-encoding v2.11.1
+   Compiling tungstenite v0.30.0
+   Compiling walkdir v2.5.0
+   Compiling futures-util v0.3.34
+   Compiling hashbrown v0.15.5
+   Compiling portable-pty v0.9.0
+   Compiling flate2 v1.1.10
+   Compiling ed25519 v3.0.0
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling aes-gcm v0.10.3
+   Compiling bitfields v1.0.3
+   Compiling zstd v0.14.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-rt)
+   Compiling eax v0.5.0
+   Compiling derive_more v2.1.1
+   Compiling snafu v0.9.2
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling k256 v0.13.4
+   Compiling security-framework-sys v2.17.0
+   Compiling core-foundation v0.10.1
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling dsa v0.6.3
+   Compiling ocb3 v0.1.0
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling p521 v0.13.3
+   Compiling sha2 v0.11.1
+   Compiling hashlink v0.12.2
+   Compiling notify-types v2.1.0
+   Compiling nom v8.0.0
+   Compiling buffer-redux v1.1.0
+   Compiling cast5 v0.11.1
+   Compiling idea v0.5.1
+   Compiling des v0.8.1
+   Compiling twofish v0.7.1
+   Compiling cfb-mode v0.8.2
+   Compiling ripemd v0.1.3
+   Compiling md-5 v0.10.6
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling fixedbitset v0.5.7
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling replace_with v0.1.8
+   Compiling hex v0.4.3
+   Compiling fallible-iterator v0.3.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling rusqlite v0.40.2
+   Compiling pgp v0.21.0
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling security-framework v3.7.0
+   Compiling bbt-proto v0.0.1 (/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-proto)
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-supervisor)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 2m 10s
+BUILD_EXIT 0; elapsed 130.728s
+ARTIFACT /private/tmp/accept-kestrel-w2-5d-ffp3rrsw/source/crates/bbt-mux/tests/mcp.rs => /private/tmp/accept-kestrel-w2-5d-ffp3rrsw/target/debug/deps/mcp-019433207deba1d9 SHA256 d332789a59bd4d545f8a46290820aaba91c09193c847a1f773589cc96d46d3e1
+$ ['/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/target/debug/deps/corpus-80a908cc437286bc', '--exact', 'real_bboxy_frontmatter_parses', '--nocapture']
+
+running 1 test
+frontmatter: 92 Markdown files, 0 parse errors
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.03s
+
+EXIT 0; elapsed 0.261s
+$ ['/private/tmp/accept-kestrel-w2-5d-ffp3rrsw/target/debug/deps/mcp-019433207deba1d9', 'mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check', '--ignored', '--exact', '--nocapture']
+
+running 1 test
+writer corpus child exit Some(0)
+
+running 1 test
+frontmatter: 3 Markdown files, 0 parse errors
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+
+test mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.41s
+
+EXIT 0; elapsed 0.665s
+own acceptance target deletion EXIT 0
+git worktree remove EXIT 0
+own empty acceptance base removal EXIT 0
+FINAL_EXIT 0

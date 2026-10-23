@@ -1,0 +1,43 @@
+Kestrel Voidwing <EXECUTOR> — W2.5d handoff.
+Source: b4a6a364a8ea9c3430f83451e93b448d8a4b51f0 on exec5, based on origin/main e1b14981dad5084d1adef5f124674a1f9aaf7082. Original signed checkpoint 4391c85 was signed-rebased; b4a6a36 signature verified good. No push/merge. Oracle freeze 91622977 explicitly says no rebase after the gate; Vesper verifies the merged tree.
+Scope: approved plan 88880fc8, Oracle approval 228e57bd, every-present-reference clarification 181d2611; decision #28 is on the base. Rook b7ea47ad and Sable 6ecbdf94 cleared exact control/messaging/index seams.
+
+Files and mechanism (source b4a6a36):
+- crates/bbt-mux/src/mcp/work_items.rs:31 — eight-tool schemas/catalogue: task_report, task_status/list, task_delegate/reassign/accept/reject, artifact_claim. Oracle-only tools absent for workers and denied at dispatch.
+- work_items.rs:192,429 — strict typed arguments; current assignee/delegated_by registry references anchor swarm; every present reference must match caller; no references refuse. Workers read/report current assignment only. Target role text never grants Oracle class.
+- work_items.rs:513,654 — frontmatter transitions; reports append evidence without accepting; exact verify command + recorded exit 0 required, with evidence for each listed criterion. Delegation/reassignment clear stale current verification; history remains in body. Task wakes use stable operation-derived IDs.
+- work_items.rs:692 — artifact record attributed to admitted caller, reported grade, optional digest/task, signed record and task backlink. External references are recorded, never fetched.
+- crates/bbt-mux/src/index.rs:467,491,543 — bounded fresh reads, regular-file/symlink/path checks, detected-edit digest preconditions, non-overwriting create, temp+fsync+atomic replacement, caller-leaf DSSE provenance and signed prepared/applied activities. Body and unknown metadata preserved, frontmatter formatting normalized by serialization.
+- crates/bbt-mux/src/logic.rs:936,1009 — named control dispatch/effect helper only: current document authorization, journal admission before effects, actual caller leaf, custody hold before file writes, frontmatter then W2.4 Task wake; partial effects return retained UNKNOWN with paths/message IDs, never automatic redispatch. Existing worker-cause propagation untouched.
+- crates/bbt-mux/src/messaging/service.rs:382 — terminal-only typed Task producer; five Task events; actual sender class, current policy, recipient scope, signatures, ledger dedup and receipts; ordinary message_send still refuses typed Task. No operator=true, no reconcile/held-text policy changes.
+- crates/bbt-mux/src/mcp/{mod.rs:8,bridge.rs:213} — common mutation classification makes argument op_id required, binds/strips it, retains _meta compatibility and mismatch refusal.
+- crates/bbt-mux/src/mcp/{journal.rs:60,tools.rs:104} — retained page authorization prevents old task_list/orient/graph results disclosing a released task; original journal evidence retained. Current frontmatter assignment overrides stale registry task lists.
+- crates/bbt-doc/tests/corpus.rs:53 — test-only BBOXY_DOC_CORPUS_ROOT override; unset still checks the actual repository.
+- crates/bbt-mux/tests/mcp.rs:1370 onward; index.rs unit fixtures — first-turn protocol clients, acceptance/authority/reassignment, signatures, receipts, conflicts/restart, custody/audit holds, partial writes/wakes and actual corpus child.
+- .bboxy/runs/w2-5d-plan.log — approved intent; remaining logs are verification records only.
+
+Acceptance evidence:
+1. Synthetic MCP clients named fixture-Claude/fixture-Codex each initialize then orient then task_report as their first two authenticated calls (mcp.rs:1370); task reaches reported, evidence/commit retained, DSSE verifies under caller leaf; delegator gets signed Body::Task(report), W2.4 receipt and explicit application acknowledgment. Test does not claim a real model read it.
+2. Eight tools: worker catalogue 16 total / Oracle 23 total; controls hidden and denied for workers. Reassignment emits release/delegate, revokes old reads and reports, including retries of original task_status/task_list/orient/graph op_ids (1563). Foreign/mixed/ambiguous scope, forged authority, invalid paths/roles and stale generations refused.
+3. Acceptance (1484) refuses missing result, nonzero result, mismatching command and named missing criterion; matching zero+coverage accepts. A task without criteria needs matching zero only. Later report without verification removes old current verification.
+4. Artifact claim (1713) signs attributed record and task link, preserves body/custom metadata, retries once across restart, changed args conflict, forged produced_by refused; index activity chain verifies.
+5. Side effects: admission failure writes nothing (1863); unavailable injected custody keeps file/4 PTYs (1897); denied wake after report remains UNKNOWN across restart (1772); injected task-write failure after artifact creation leaves a partial claim UNKNOWN, no reexecution (1838). Checked writer keeps an intervening editor change and rejects symlink escape; concurrent creation has one winner.
+6. Actual bbt-doc corpus: local real repository 92 Markdown files/0 errors; fixture corpus 3 Markdown files/0 errors, including the MCP-written reported task and linked artifact, actual child exit0. Explicit ignored corpus-driver test executed 1/0 with prebuilt corpus binary; default native interop remains ignored. Repeated on exact clean b4a6a36: corpus build0/20.259s, MCP build0/130.728s; real corpus92/0 errors exit0/0.261s, writer child corpus3/0 errors and explicit driver1/0 exit0/0.665s; own acceptance target/worktree removal0, wrapper0. Artifact test src_path and binary SHA256 are recorded in corpus-exact.log.
+
+Commands/results:
+- .bboxy/runs/w2-5d-commands.log records setup, inspection exceptions, scope and signed Git commands; remaining logs retain real command argv/exits.
+- build: cargo check --locked -p bbt-mux --all-targets exit0.
+- focused initial run exit101: one new assertion expected orient.tasks array instead of tasks.items; corrected. Initial strict mux Clippy exit101: unused_unit + large_enum_variant; corrected without lint suppression.
+- expanded retained-read red regression exit101 proved an old task_list replay disclosure after reassignment; green targeted rerun exit0.
+- latest strict workspace/all-target Clippy exit0. Latest mux lib + mcp + messaging + storage_bus_index: 60 passed, 0 failed (18+18+15+9), exit0. Two integration ignores: real installed-client interop and explicitly driven corpus fixture; lib subprocess fixture ignore is driven by its parent test.
+- local corpus prebuild exit0; real corpus binary exit0; writer/corpus driver exit0. Full command output retained in w2-5d-{build,clippy,focused,retained-read,corpus}.log.
+- exact detached sh scripts/ci-local.sh on b4a6a36 with own CARGO_TARGET_DIR, BBOXY_TEST_CUSTODY=memory, O1/debug assertions, no incremental/debug info and CARGO_BUILD_JOBS=2: exit0/901.401s, all gates passed. Native smoke idle PASS (10.002s, 0 frames/callbacks); invariants 6 checks/0 failures/4 slow skips. Target/worktree deletion exit0. CI log SHA256 aa1152132055226f19747c3851c10ab0da8d870e9fde8aecf8d7088f1cad0475.
+- Auxiliary post-CI driver exit1: its corpus-* glob matched three executables and asserted before running the extra test. CI was already exit0 and cleanup exit0. The printed FINAL_EXIT 0 in that wrapper covered only CI/cleanup; gate-state log explicitly corrects this. Corrected runner selects Cargo JSON artifact target.src_path in a fresh b4a6a36 worktree; real corpus + writer driver + cleanup all exit0, wrapper0. No source change after the full CI.
+- No --parity: no visual/lab/UI/renderer implementation changed. No --slow. No release, signing of app binaries, Keychain operation or real root enrollment.
+
+Gaps / deliberate boundaries:
+- Real Claude/Codex first-turn orient/task_report remains UNPROVEN unless the operator runs it; fixture protocol behavior is proven. No real model service/credentials used.
+- Reported verification/evidence is recorded and checked structurally; tools do not execute verify commands or replace Oracle review.
+- Filesystem + SQLite + wake are not one transaction. Partial effects stay visibly UNKNOWN and need explicit reconciliation; no blind retry.
+- Optimistic digest checks catch observed editor changes. An uncooperating external rename between final check and replacement remains the work-items concurrent-edit gap; no claim of a shared editor lock.
+- Left spawn/guarded input (W2.5e), artifact detection/release/list/get, GUI, Settings roles and W2.4 existing message/receipt policy alone. Real identity enrollment remains held.

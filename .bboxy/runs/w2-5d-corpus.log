@@ -1,0 +1,40 @@
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-doc', '--test', 'corpus', '--no-run', '--message-format=json']
+   Compiling hashbrown v0.17.1
+   Compiling bitflags v2.13.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling pulldown-cmark v0.13.4
+   Compiling indexmap v2.14.2
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 7.09s
+
+EXIT 0; elapsed 7.148s
+corpus binary /Users/feral/mydev/bboxy450-term-exec5/target/debug/deps/corpus-80a908cc437286bc SHA256 334c072ad72e5f741212174b5ab695ec2f7b72339fcdcf064eb8df672f98bb73
+COMMAND ['/Users/feral/mydev/bboxy450-term-exec5/target/debug/deps/corpus-80a908cc437286bc', '--exact', 'real_bboxy_frontmatter_parses', '--nocapture']
+
+running 1 test
+frontmatter: 92 Markdown files, 0 parse errors
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.04s
+
+EXIT 0; elapsed 0.179s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'mcp', 'mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check', '--', '--ignored', '--exact', '--nocapture']
+    Finished `test` profile [optimized] target(s) in 0.25s
+     Running tests/mcp.rs (target/debug/deps/mcp-019433207deba1d9)
+
+running 1 test
+writer corpus child exit Some(0)
+
+running 1 test
+frontmatter: 3 Markdown files, 0 parse errors
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+
+test mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.36s
+
+EXIT 0; elapsed 0.645s

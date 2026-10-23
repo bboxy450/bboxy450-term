@@ -1,0 +1,257 @@
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', '--test', 'mcp']
+   Compiling sha2-asm v0.6.4
+   Compiling sha2 v0.10.9
+   Compiling dsa v0.6.3
+   Compiling p256 v0.13.2
+   Compiling ed25519-dalek v2.2.0
+   Compiling p521 v0.13.3
+   Compiling p384 v0.13.1
+   Compiling k256 v0.13.4
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling pgp v0.21.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 29.55s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 19 tests
+test identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test identity::io::debug_tests::debug_without_override_selects_keychain ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test mcp::journal::tests::crashed_admitted_mutation_reopens_unknown_without_redispatch ... ok
+test index::tests::oversized_documents_are_skipped_without_blocking_valid_edits ... ok
+test index::tests::unchanged_documents_are_not_reread_and_same_length_edits_are_indexed ... ok
+test mcp::journal::tests::mutation_requires_audit_admission_and_releases_the_transaction_before_dispatch ... ok
+test mcp::journal::tests::outcome_audit_failure_keeps_the_original_unknown_intent ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+test index::tests::checked_writer_keeps_editor_changes_and_refuses_symlink_escapes ... ok
+test index::tests::checked_creation_has_one_winner_and_does_not_overwrite_it ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+test index::tests::sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation ... ok
+
+test result: ok. 18 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.59s
+
+     Running tests/mcp.rs (target/debug/deps/mcp-019433207deba1d9)
+
+running 17 tests
+test mcp_installed_claude_and_codex_call_orient ... ignored, live installed-client interop; BBOXY_TEST_EXE must name the built app
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content ... ok
+test mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check ... ignored, acceptance driver supplies the prebuilt bbt-doc corpus test binary
+test mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24 ... ok
+test mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority ... ok
+test mcp_message_visibility_and_receipt_pages_preserve_current_w24_scope ... ok
+test mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results ... ok
+test mcp_unread_is_unknown_and_application_ack_is_a_separate_count ... ok
+test mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file ... ok
+test mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope ... FAILED
+test mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts ... ok
+test mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only ... ok
+
+failures:
+
+---- mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope stdout ----
+
+thread 'mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope' (14539056) panicked at crates/bbt-mux/tests/mcp.rs:1588:43:
+called `Option::unwrap()` on a `None` value
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope
+
+test result: FAILED. 14 passed; 1 failed; 2 ignored; 0 measured; 0 filtered out; finished in 2.72s
+
+error: test failed, to rerun pass `-p bbt-mux --test mcp`
+EXIT 101; elapsed 34.343s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', '--test', 'mcp', '--test', 'messaging', '--test', 'storage_bus_index']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 23.83s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 19 tests
+test identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test identity::io::debug_tests::debug_without_override_selects_keychain ... ok
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test mcp::journal::tests::crashed_admitted_mutation_reopens_unknown_without_redispatch ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test index::tests::oversized_documents_are_skipped_without_blocking_valid_edits ... ok
+test mcp::journal::tests::mutation_requires_audit_admission_and_releases_the_transaction_before_dispatch ... ok
+test mcp::journal::tests::outcome_audit_failure_keeps_the_original_unknown_intent ... ok
+test index::tests::unchanged_documents_are_not_reread_and_same_length_edits_are_indexed ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+test index::tests::checked_writer_keeps_editor_changes_and_refuses_symlink_escapes ... ok
+test index::tests::checked_creation_has_one_winner_and_does_not_overwrite_it ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+test index::tests::sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation ... ok
+
+test result: ok. 18 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.58s
+
+     Running tests/mcp.rs (target/debug/deps/mcp-019433207deba1d9)
+
+running 20 tests
+test mcp_installed_claude_and_codex_call_orient ... ignored, live installed-client interop; BBOXY_TEST_EXE must name the built app
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+test mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content ... ok
+test mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority ... ok
+test mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24 ... ok
+test mcp_message_visibility_and_receipt_pages_preserve_current_w24_scope ... ok
+test mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check ... ignored, acceptance driver supplies the prebuilt bbt-doc corpus test binary
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results ... ok
+test mcp_unread_is_unknown_and_application_ack_is_a_separate_count ... ok
+test mcp_work_item_audit_admission_failure_executes_no_frontmatter_write ... ok
+test mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file ... ok
+test mcp_work_item_signing_hold_keeps_the_original_file_and_terminals ... ok
+test mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope ... ok
+test mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts ... ok
+test mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only ... ok
+
+test result: ok. 18 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 3.01s
+
+     Running tests/messaging.rs (target/debug/deps/messaging-61f3de8fb356491b)
+
+running 15 tests
+test live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence ... ok
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route ... ok
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo ... ok
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger ... ok
+test muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... ok
+test supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+test live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-009c72cd53a3027c)
+
+running 9 tests
+test grammar_matches_tokens_and_rejects_mid_path_tail_wildcards ... ok
+test registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart ... ok
+test index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite ... ok
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+test sqlite_objects_blobs_and_alarms_round_trip_across_reopen ... ok
+test request_reply_has_no_responders_and_fanout_is_not_replayed ... ok
+test explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work ... ok
+test independent_streams_latest_snapshots_queue_gaps_and_nonretained_output ... ok
+test mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+EXIT 0; elapsed 29.853s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', '--test', 'mcp', '--test', 'messaging', '--test', 'storage_bus_index']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 58.64s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 19 tests
+test identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test identity::io::debug_tests::debug_without_override_selects_keychain ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test index::tests::unchanged_documents_are_not_reread_and_same_length_edits_are_indexed ... ok
+test index::tests::oversized_documents_are_skipped_without_blocking_valid_edits ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test mcp::journal::tests::crashed_admitted_mutation_reopens_unknown_without_redispatch ... ok
+test mcp::journal::tests::outcome_audit_failure_keeps_the_original_unknown_intent ... ok
+test mcp::journal::tests::mutation_requires_audit_admission_and_releases_the_transaction_before_dispatch ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+test index::tests::checked_creation_has_one_winner_and_does_not_overwrite_it ... ok
+test index::tests::checked_writer_keeps_editor_changes_and_refuses_symlink_escapes ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+test index::tests::sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation ... ok
+
+test result: ok. 18 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.59s
+
+     Running tests/mcp.rs (target/debug/deps/mcp-019433207deba1d9)
+
+running 20 tests
+test mcp_installed_claude_and_codex_call_orient ... ignored, live installed-client interop; BBOXY_TEST_EXE must name the built app
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+test mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content ... ok
+test mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority ... ok
+test mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24 ... ok
+test mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results ... ok
+test mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check ... ignored, acceptance driver supplies the prebuilt bbt-doc corpus test binary
+test mcp_message_visibility_and_receipt_pages_preserve_current_w24_scope ... ok
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file ... ok
+test mcp_work_item_audit_admission_failure_executes_no_frontmatter_write ... ok
+test mcp_unread_is_unknown_and_application_ack_is_a_separate_count ... ok
+test mcp_work_item_signing_hold_keeps_the_original_file_and_terminals ... ok
+test mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope ... ok
+test mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts ... ok
+test mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only ... ok
+
+test result: ok. 18 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 3.55s
+
+     Running tests/messaging.rs (target/debug/deps/messaging-61f3de8fb356491b)
+
+running 15 tests
+test live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence ... ok
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route ... ok
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen ... ok
+test batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo ... ok
+test ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger ... ok
+test muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... ok
+test supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+test live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-009c72cd53a3027c)
+
+running 9 tests
+test grammar_matches_tokens_and_rejects_mid_path_tail_wildcards ... ok
+test registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart ... ok
+test index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite ... ok
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+test request_reply_has_no_responders_and_fanout_is_not_replayed ... ok
+test explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work ... ok
+test sqlite_objects_blobs_and_alarms_round_trip_across_reopen ... ok
+test independent_streams_latest_snapshots_queue_gaps_and_nonretained_output ... ok
+test mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+EXIT 0; elapsed 65.306s

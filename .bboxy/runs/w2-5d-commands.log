@@ -1,0 +1,96 @@
+W2.5d brief d4e3592c: Kestrel Voidwing <EXECUTOR>, exec5 only. Task/artifact MCP tools plus frontmatter writer, plan before code; task_report first. No source edits yet.
+$ date
+Fri Oct 23 03:57:13 PDT 2026
+exit=0
+$ git status --porcelain --untracked-files=no
+exit=0
+$ git fetch origin
+exit=0
+$ git verify-commit 983386a
+gpg: Signature made Fri Oct 23 03:55:23 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0
+$ git merge-base --is-ancestor 75e6654 origin/main
+exit=0
+$ git rebase --gpg-sign origin/main
+Successfully rebased and updated refs/heads/exec5.
+exit=0
+
+Inspection / tool commands before source checkpoint (outputs inspected in tool history):
+- sed/cat reads of installed ICQ skill, repo AGENTS, work-items/provenance/MCP specs, cockpit brief and relevant index/identity/messaging/MCP source: shell batches exit 0 except the noted missing-path rg components below.
+- git status --short --branch; git log -4 --oneline; git diff --stat/--numstat/--check and scoped source diff: exit 0.
+- rg --files and bounded rg source/spec searches: exit 0 when matching. Initial guessed tests/index.rs, identity/runtime.rs and identity/controller.rs did not exist: those rg components returned 2; actual files were then found with rg --files. No missing file was created.
+- tail of w2-5d-corpus.log before the acceptance driver had created it returned 1; guarded later reads succeeded. Read-only inspection batches included subsequent successful commands, so their shell status was 0. No dependent mutation used that missing output.
+- df -h /Users/feral/mydev; du -sh target/debug target/w2-5b-smoke-53c7d5b; wc -l and ls -l owned files: exit 0. Initial optional ls glob used 2>/dev/null; existing retained smoke directory found.
+- icq inbox --help / dm --help, every reviewed --dry-run, bounded inbox reads after received cursors 5702,5763,5767,5772,5776,5780,5789: exit 0. Last received cursor currently 5789.
+- ICQ sends (all exit 0, recipient-stored only): W2.5c LANDED a83a89f7; W2.5d CLAIM a4adab8e; plan 88880fc8; Rook seam 93ea7026; Sable seam 1473252e; scope question ae307d6d; Corvin wording 4ace08c1; progress 2ab608d4. Previews were reviewed before identical sends. Raw inbox/previews/receipts are not staged.
+- Scope approvals: Oracle 228e57bd approved the plan and exact paths; 181d2611 resolves every-present-reference scope. Both Rook b7ea47ad and Sable 6ecbdf94 reported no overlap.
+- Source edits via apply_patch reported success; Python Path.write_text used only exact allowed source/log paths and exited 0. Scoped rustfmt --edition 2024 --config skip_children=true,reorder_modules=false exited 0 after each edit group.
+Build/test commands and real statuses are in w2-5d-{build,clippy,focused,retained-read,corpus}.log, failures retained. The first focused failure was a test using orient.tasks as an array instead of orient.tasks.items. The Clippy failure found unused_unit and large_enum_variant, both corrected. The retained-read red test proved a task-list replay disclosure after reassignment; its green rerun includes orient/graph too.
+Environment for all local cargo runs: BBOXY_TEST_CUSTODY=memory, CARGO_INCREMENTAL=0, DEV/TEST DEBUG=0, OPT_LEVEL=1, DEBUG_ASSERTIONS=true. No real Keychain, identity enrollment, model service, credentials, user harness configuration or desktop interaction used. Git commits use the configured machine key; application identity signing never used the real root.
+$ ['git', 'diff', '--check']
+exit=0; elapsed=0.057s
+$ ['git', 'add', '--', 'crates/bbt-doc/tests/corpus.rs', 'crates/bbt-mux/src/index.rs', 'crates/bbt-mux/src/logic.rs', 'crates/bbt-mux/src/mcp/bridge.rs', 'crates/bbt-mux/src/mcp/journal.rs', 'crates/bbt-mux/src/mcp/mod.rs', 'crates/bbt-mux/src/mcp/tools.rs', 'crates/bbt-mux/src/mcp/work_items.rs', 'crates/bbt-mux/src/messaging/service.rs', 'crates/bbt-mux/tests/mcp.rs', '.bboxy/runs/w2-5d-plan.log']
+exit=0; elapsed=0.050s
+$ ['git', 'diff', '--cached', '--check']
+exit=0; elapsed=0.044s
+$ ['git', 'diff', '--cached', '--stat']
+ .bboxy/runs/w2-5d-plan.log              |  10 +
+ crates/bbt-doc/tests/corpus.rs          |   6 +-
+ crates/bbt-mux/src/index.rs             | 265 +++++++++++-
+ crates/bbt-mux/src/logic.rs             | 144 ++++++-
+ crates/bbt-mux/src/mcp/bridge.rs        |   4 +-
+ crates/bbt-mux/src/mcp/journal.rs       |  32 +-
+ crates/bbt-mux/src/mcp/mod.rs           |   5 +
+ crates/bbt-mux/src/mcp/tools.rs         |  45 +-
+ crates/bbt-mux/src/mcp/work_items.rs    | 742 ++++++++++++++++++++++++++++++++
+ crates/bbt-mux/src/messaging/service.rs |  77 ++++
+ crates/bbt-mux/tests/mcp.rs             | 637 ++++++++++++++++++++++++++-
+ 11 files changed, 1942 insertions(+), 25 deletions(-)
+exit=0; elapsed=0.049s
+$ ['git', 'commit', '-m', 'feat: add scoped task and artifact MCP workflows']
+[exec5 4391c85] feat: add scoped task and artifact MCP workflows
+ 11 files changed, 1942 insertions(+), 25 deletions(-)
+ create mode 100644 .bboxy/runs/w2-5d-plan.log
+ create mode 100644 crates/bbt-mux/src/mcp/work_items.rs
+exit=0; elapsed=0.240s
+$ ['git', 'verify-commit', 'HEAD']
+gpg: Signature made Fri Oct 23 04:33:04 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0; elapsed=0.063s
+$ ['git', 'fetch', 'origin']
+exit=0; elapsed=0.856s
+$ ['git', 'rebase', '--gpg-sign', 'origin/main']
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/exec5.
+exit=0; elapsed=0.213s
+$ ['git', 'rev-parse', 'HEAD', 'origin/main']
+b4a6a364a8ea9c3430f83451e93b448d8a4b51f0
+e1b14981dad5084d1adef5f124674a1f9aaf7082
+exit=0; elapsed=0.046s
+$ ['git', 'diff', '--name-only', 'origin/main...HEAD']
+.bboxy/runs/w2-5d-plan.log
+crates/bbt-doc/tests/corpus.rs
+crates/bbt-mux/src/index.rs
+crates/bbt-mux/src/logic.rs
+crates/bbt-mux/src/mcp/bridge.rs
+crates/bbt-mux/src/mcp/journal.rs
+crates/bbt-mux/src/mcp/mod.rs
+crates/bbt-mux/src/mcp/tools.rs
+crates/bbt-mux/src/mcp/work_items.rs
+crates/bbt-mux/src/messaging/service.rs
+crates/bbt-mux/tests/mcp.rs
+exit=0; elapsed=0.037s
+$ ['git', 'status', '--porcelain', '--untracked-files=no']
+exit=0; elapsed=0.040s
+
+Source b4a6a36 signed-rebased onto e1b1498; verify-commit exit0; diff --check exit0; tracked status empty.
+Clean CI command and cleanup recorded in gate-state/ci logs. CI exit0/901.401s. Post-CI optional binary-selector assertion raised (three corpus-* executables), wrapper real exit1, extra check not run there. This is an auxiliary driver failure, not a CI pass claim. Gate-state correction appended exit0. New src_path-based acceptance runner uses a fresh clean b4a6a36 tree and private target; see corpus-exact.log.
+Oracle 91622977: freeze b4a6a36, no rebase; verify merged tree himself; fix selector and rerun extra check.
+Additional read-only date, exact own CI PID ps, targeted rg/tail/WC/log reads, git status/log/diff inspections and SHA256 computation all returned0. The optional error search intentionally accepted rg exit1 (no failure match), not a test exit. BBOXY_DOC_CORPUS_ROOT confirmed unset in parent environment.
+
+Final extra acceptance on clean b4a6a36: Cargo JSON artifact selection by exact tests/corpus.rs and tests/mcp.rs src_path; corpus build0/20.259s, MCP build0/130.728s; real corpus92 files/0 errors exit0/0.261s; exact writer-driver and child corpus3 files/0 errors exit0/0.665s; own target/worktree cleanup0, wrapper0. Commands/output/binary hashes in corpus-exact.log.
+Gate inner commands all exited0 (set-e reached all gates passed): layering.sh; cargo build --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --locked; ui-lint.sh; cargo run -p bboxy450-term --locked -- --smoke; invariants.sh. Default invariants6 checks/0 failures/4 slow skips.
+Evidence finalization Path.write_text and SHA256 reads exit0; record-only Git commit/verification exits are sent in the handoff DM and retained in local handoff-ops log, avoiding self-reference in the evidence commit. No code changes after b4a6a36.
