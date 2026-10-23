@@ -47,6 +47,7 @@ pub struct Launcher {
     pub actions: Vec<(String, String)>,
     pub cap: Option<Cap>,
     pub spotlight: bool,
+    pub edit: Option<c::Edit>,
 }
 pub struct View<'a> {
     pub crumbs: Vec<&'a Item>,
@@ -312,6 +313,24 @@ impl Launcher {
             && let c::Element::Text(t) = content.as_mut()
         {
             t.runs[0].style.paint.alpha = ui::Alpha::Value(0.8);
+        }
+        if let Some(edit) = &self.edit {
+            let c::Element::Named { content, .. } = t else {
+                unreachable!()
+            };
+            let c::Element::Text(text) = *content else {
+                unreachable!()
+            };
+            let mut style = text.runs[0].style;
+            style.paint = ui::Paint::solid(ui::Color::Foreground);
+            t = c::Element::EditingText(c::EditingText {
+                value: self.query.clone(),
+                placeholder: self.placeholder.clone(),
+                style,
+                placeholder_paint: paint(ui::Color::Muted, if spot { 0.8 } else { 1. }),
+                edit: edit.clone(),
+                name: "picker/inrow/input/edit".into(),
+            });
         }
         let mut b = c::Box::new(input, vec![t.into()]);
         b.gap = ui::Length::Px(0.);

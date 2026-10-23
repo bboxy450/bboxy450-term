@@ -145,6 +145,7 @@ fn empty_input_keeps_its_control_height_and_invalid_input_keeps_its_error_captio
         state: w::InputState::Empty,
         icon: None,
         error: Some("type the full name".into()),
+        edit: None,
     };
     let empty = input
         .element(ctx())

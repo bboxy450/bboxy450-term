@@ -58,6 +58,7 @@ fn all_link_states_render_and_unavailable_launcher_rows_cannot_activate() {
             actions: vec![],
             cap: None,
             spotlight: true,
+            edit: None,
         };
         assert_eq!(view.activation().is_none(), down);
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);

@@ -101,6 +101,212 @@ impl Text {
         }
     }
 }
+
+/// Public field indices use UTF-16 code units, as in the lab constructor.
+/// A boundary inside a surrogate pair is invalid rather than silently shifted.
+pub fn utf16_byte_index(value: &str, index: usize) -> Option<usize> {
+    let mut units = 0;
+    for (byte, ch) in value.char_indices() {
+        if units == index {
+            return Some(byte);
+        }
+        units += ch.len_utf16();
+    }
+    (units == index).then_some(value.len())
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Edit {
+    pub caret: Option<usize>,
+    pub select: Option<[usize; 2]>,
+    pub preedit: Option<Preedit>,
+    #[serde(default)]
+    pub blink: bool,
+    /// Host-owned replacement range while the IME has not committed. It is not
+    /// a lab input and never modifies the field's committed value.
+    #[serde(skip)]
+    pub replacement: Option<[usize; 2]>,
+    #[serde(skip)]
+    pub hide_caret: bool,
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Preedit {
+    pub text: String,
+    pub caret: Option<usize>,
+}
+
+/// A single-line field's retained presentation. Committed text determines its
+/// intrinsic size; marked IME text never changes the query or its filter.
+#[derive(Debug, Clone)]
+pub struct EditingText {
+    pub value: String,
+    pub placeholder: String,
+    pub style: crate::style::Text,
+    pub placeholder_paint: crate::Paint,
+    pub edit: Edit,
+    /// Semantic names for hit testing and geometry evidence, not positions.
+    pub name: String,
+}
+impl EditingText {
+    fn boundaries(&self) -> crate::style::Result<(usize, usize)> {
+        let [a, b] = self
+            .edit
+            .replacement
+            .or(self.edit.select)
+            .unwrap_or_else(|| {
+                let at = self.edit.caret.unwrap_or(self.value.encode_utf16().count());
+                [at, at]
+            });
+        if a > b {
+            return Err("field selection is reversed");
+        }
+        let a = utf16_byte_index(&self.value, a).ok_or("invalid field UTF-16 boundary")?;
+        let b = utf16_byte_index(&self.value, b).ok_or("invalid field UTF-16 boundary")?;
+        if let Some(p) = &self.edit.preedit {
+            utf16_byte_index(&p.text, p.caret.unwrap_or(p.text.encode_utf16().count()))
+                .ok_or("invalid preedit UTF-16 boundary")?;
+        }
+        Ok((a, b))
+    }
+
+    fn natural(&self, ctx: Context, m: &dyn Measure) -> crate::style::Result<Intrinsic> {
+        self.boundaries()?;
+        let s = resolve_text(self.style, ctx)?;
+        let value = if self.value.is_empty() {
+            &self.placeholder
+        } else {
+            &self.value
+        };
+        Ok((
+            [m.width(value, &font(&s)), line_height(&s)],
+            baseline(&s, m),
+        ))
+    }
+
+    fn layout(&self, rect: Rect, ctx: Context, m: &dyn Measure) -> crate::style::Result<Layout> {
+        let (a, b) = self.boundaries()?;
+        let s = resolve_text(self.style, ctx)?;
+        let h = line_height(&s);
+        let base = baseline(&s, m);
+        let top = rect.y + (rect.h - h) * 0.5;
+        let mut x = rect.x;
+        let mut children = Vec::new();
+        let named = |part: &str, child: Layout| Layout {
+            rect: child.rect,
+            baseline: child.baseline,
+            kind: LayoutKind::Named(format!("{}/{part}", self.name)),
+            children: vec![child],
+        };
+        let label = |value: &str, x: f32, style: ResolvedText| {
+            let r = Rect::new(x, top, m.width(value, &font(&style)), h);
+            Layout {
+                rect: r,
+                baseline: base,
+                kind: LayoutKind::Text {
+                    runs: vec![PositionedRun {
+                        text: value.into(),
+                        style,
+                        rect: r,
+                        line_height: h,
+                    }],
+                    selectable: false,
+                    ellipsis: false,
+                },
+                children: vec![],
+            }
+        };
+        let mark = |part: &str, r: Rect, paint: crate::Paint, radius: f32| {
+            let mut style = Style::new(crate::Preset::Card);
+            style.overrides.fill = Some(paint);
+            style.overrides.border = Some(crate::Border {
+                width: Length::Px(0.),
+                paint: crate::Paint::solid(crate::Color::Transparent),
+                outside: false,
+            });
+            style.overrides.radii = Some([Length::Px(radius); 4]);
+            Ok::<_, &'static str>(named(
+                part,
+                Layout {
+                    rect: r,
+                    baseline: r.h,
+                    kind: LayoutKind::Box {
+                        style: std::boxed::Box::new(style.resolve(ctx)?),
+                        clip: false,
+                        group: false,
+                        mask: None,
+                    },
+                    children: vec![],
+                },
+            ))
+        };
+        let prefix = label(&self.value[..a], x, s.clone());
+        x += prefix.rect.w;
+        children.push(named("prefix", prefix));
+        if self.edit.select.is_some() && self.edit.preedit.is_none() {
+            let selected = label(&self.value[a..b], x, s.clone());
+            children.push(mark(
+                "selection",
+                selected.rect,
+                crate::Paint {
+                    color: crate::Color::Accent,
+                    alpha: crate::Alpha::Value(0.35),
+                },
+                2.,
+            )?);
+            x += selected.rect.w;
+            children.push(named("selected", selected));
+        } else {
+            let mut caret_x = x;
+            if let Some(p) = &self.edit.preedit {
+                let at =
+                    utf16_byte_index(&p.text, p.caret.unwrap_or(p.text.encode_utf16().count()))
+                        .unwrap();
+                let before = label(&p.text[..at], x, s.clone());
+                caret_x += before.rect.w;
+                children.push(named("preedit-prefix", before));
+                let after = label(&p.text[at..], caret_x, s.clone());
+                x = after.rect.right();
+                children.push(named("preedit-suffix", after));
+                let width = x - children[0].rect.right();
+                children.push(mark(
+                    "underline",
+                    Rect::new(x - width, top + base + 3., width, 1.),
+                    self.style.paint,
+                    0.,
+                )?);
+            }
+            let caret_h = (s.size * 1.2 * 64.).floor() / 64.;
+            let caret_y = if self.edit.preedit.is_some() {
+                top + base - caret_h + s.size * 0.2
+            } else {
+                top + (h - caret_h) * 0.5
+            };
+            if !self.edit.hide_caret {
+                children.push(mark(
+                    "caret",
+                    Rect::new(caret_x - 1., caret_y, 2., caret_h),
+                    crate::Paint::solid(crate::Color::Accent),
+                    1.,
+                )?);
+            }
+        }
+        children.push(named("suffix", label(&self.value[b..], x, s.clone())));
+        if self.value.is_empty() && self.edit.preedit.is_none() && self.edit.select.is_none() {
+            let mut placeholder = s;
+            placeholder.color = self.placeholder_paint.resolve(ctx)?;
+            children.push(named(
+                "placeholder",
+                label(&self.placeholder, x, placeholder),
+            ));
+        }
+        Ok(Layout {
+            rect,
+            baseline: top - rect.y + base,
+            kind: LayoutKind::Stack,
+            children,
+        })
+    }
+}
 #[derive(Debug, Clone)]
 pub struct Box {
     pub style: std::boxed::Box<Style>,
@@ -261,6 +467,7 @@ pub enum Element {
     },
     Box(Box),
     Text(Text),
+    EditingText(EditingText),
     Stack(Stack),
     Flow(Flow),
     ScrollView(ScrollView),
@@ -725,6 +932,7 @@ impl Element {
                 }
                 Ok((size, base))
             }
+            Self::EditingText(t) => t.natural(ctx, m),
             Self::Spacer => Ok(([0., 0.], 0.)),
             Self::Path(p) => {
                 p.stroke.validate(&p.points)?;
@@ -950,6 +1158,7 @@ impl Element {
                     vec![],
                 )
             }
+            Self::EditingText(t) => return t.layout(rect, ctx, m),
             Self::Spacer => (LayoutKind::Spacer, vec![]),
             Self::Path(p) => (
                 LayoutKind::Path {

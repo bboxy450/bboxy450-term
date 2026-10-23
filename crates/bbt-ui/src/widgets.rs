@@ -539,10 +539,11 @@ pub struct Input {
     pub state: InputState,
     pub icon: Option<String>,
     pub error: Option<String>,
+    pub edit: Option<c::Edit>,
 }
 impl Input {
     pub fn element(&self, _ctx: ui::Context) -> c::Element {
-        let empty = self.state == InputState::Empty;
+        let empty = self.edit.is_none() && self.state == InputState::Empty;
         let label_style = normal(
             ui::TypeStep::Body,
             400,
@@ -566,31 +567,60 @@ impl Input {
         control.overrides.height = Some(ui::Length::Px(
             (label_style.step.pixels() * label_style.line_height * 64.).floor() / 64. + 2.,
         ));
-        let mut b = c::Box::new(
-            control,
-            vec![
-                text(
-                    if empty {
-                        &self.placeholder
-                    } else {
-                        &self.value
-                    },
-                    label_style,
-                )
-                .into(),
-            ],
-        );
+        let content = if let Some(edit) = &self.edit {
+            // Editing and ordinary input share the same explicit content inset.
+            c::Element::EditingText(c::EditingText {
+                value: self.value.clone(),
+                placeholder: self.placeholder.clone(),
+                style: label_style,
+                placeholder_paint: ui::Paint::solid(ui::Color::Muted),
+                edit: edit.clone(),
+                name: "input/edit".into(),
+            })
+        } else {
+            text(
+                if empty {
+                    &self.placeholder
+                } else {
+                    &self.value
+                },
+                label_style,
+            )
+        };
+        let item = c::Item {
+            element: content,
+            extent: if self.edit.is_some() {
+                c::Extent::Fill
+            } else {
+                c::Extent::Auto
+            },
+        };
+        let mut b = c::Box::new(control, vec![item]);
         b.clip = true;
         let mut children = vec![];
         if let Some(name) = &self.icon {
             children.push(icon(name, ui::Color::Muted).into());
         }
+        let control = c::Element::Box(b);
+        let control = if self.edit.is_some() {
+            c::Element::Named {
+                name: "input/control".into(),
+                content: Box::new(control),
+            }
+        } else {
+            control
+        };
         children.push(c::Item {
-            element: c::Element::Box(b),
+            element: control,
             extent: c::Extent::Fill,
         });
         let mut s = ui::Style::new(ui::Preset::Input);
-        let color = match self.state {
+        let state = if self.edit.is_some() {
+            InputState::Focus
+        } else {
+            self.state
+        };
+        let color = match state {
             InputState::Focus => Some((ui::Color::Accent, 0.25)),
             InputState::Invalid => Some((
                 ui::Color::Rgba(Rgba::hex(TOKENS.color.state.errored).0),
@@ -605,7 +635,7 @@ impl Input {
         let mut b = c::Box::new(s, children);
         b.gap = ui::Length::Spacing(3);
         let mut children = vec![c::Element::Box(b).into()];
-        if self.state == InputState::Invalid {
+        if state == InputState::Invalid {
             children.push(
                 text(
                     self.error.as_deref().unwrap_or("not a valid value"),

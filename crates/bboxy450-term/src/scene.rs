@@ -31,6 +31,9 @@ pub struct LauncherLayout {
     layout: c::Layout,
     pub panel: Rect,
     pub query: Rect,
+    pub caret: Option<Rect>,
+    query_origin: f32,
+    query_font: MeasureStyle,
     pub rows: Vec<Rect>,
 }
 impl LauncherLayout {
@@ -39,6 +42,12 @@ impl LauncherLayout {
     }
     pub fn contains(&self, at: [f32; 2]) -> bool {
         contains(self.panel, at)
+    }
+    pub fn query_contains(&self, at: [f32; 2]) -> bool {
+        contains(self.query, at)
+    }
+    pub fn candidate_area(&self) -> Rect {
+        self.caret.unwrap_or(self.query)
     }
     fn paint(&self) -> Vec<c::Paint> {
         c::paint(
@@ -570,6 +579,21 @@ impl Scene {
         let query = named(&layout, "picker/inrow/input")
             .ok_or("launcher query missing")?
             .rect;
+        let caret = named(&layout, "picker/inrow/input/edit/caret").map(|n| n.rect);
+        let prefix = named(&layout, "picker/inrow/input/edit/prefix")
+            .or_else(|| named(&layout, "picker/inrow/input/text"));
+        let query_origin = prefix.map_or(query.x, |n| n.rect.x);
+        let query_font = MeasureStyle {
+            size: if launcher.spotlight {
+                STYLE.r#type.input
+            } else {
+                STYLE.r#type.body
+            } as f32,
+            weight: 400,
+            mono: false,
+            italic: false,
+            tracking_em: 0.,
+        };
         let rows = (0..launcher.view().rows.len())
             .map(|index| {
                 let key = if index == 0 {
@@ -586,8 +610,41 @@ impl Scene {
             layout,
             panel,
             query,
+            caret,
+            query_origin,
+            query_font,
             rows,
         })
+    }
+    /// Pointer hit testing uses this host's shaping metrics and UTF-16
+    /// boundaries. It never derives an index from character count or pixels.
+    pub fn query_index(&self, layout: &LauncherLayout, value: &str, x: f32) -> usize {
+        let mut units = 0;
+        let mut boundaries = vec![(0, 0)];
+        for (byte, ch) in value.char_indices() {
+            units += ch.len_utf16();
+            boundaries.push((byte + ch.len_utf8(), units));
+        }
+        let advance = |i: usize| {
+            self.metrics
+                .width(&value[..boundaries[i].0], &layout.query_font)
+        };
+        let wanted = x - layout.query_origin;
+        let (mut lo, mut hi) = (0, boundaries.len() - 1);
+        while lo < hi {
+            let mid = (lo + hi) / 2;
+            if advance(mid) < wanted {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        let index = if lo > 0 && wanted - advance(lo - 1) < advance(lo) - wanted {
+            lo - 1
+        } else {
+            lo
+        };
+        boundaries[index].1
     }
     /// Cells precede these ops in the live path. Leave the frosted launcher
     /// unwrapped so its blur samples the painted window; the meter stays last.
@@ -699,6 +756,29 @@ mod lane_tests {
 #[cfg(test)]
 mod launcher_tests {
     use super::*;
+
+    #[test]
+    fn ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16() {
+        use bboxy450_term::launcher::Command;
+        let scene = Scene::new();
+        let mut controller = crate::new_launcher(None, 0);
+        controller.handle(Command::Query("A😀B".into()));
+        controller.handle(Command::SetCaret {
+            at: 3,
+            extend: false,
+        });
+        let layout = scene
+            .launcher_layout([1600., 960.], &controller.launcher)
+            .unwrap();
+        assert_eq!(layout.candidate_area(), layout.caret.unwrap());
+        assert_eq!(layout.candidate_area().w, 2.);
+        assert!(layout.candidate_area().w < layout.query.w);
+        let font = &layout.query_font;
+        for (value, units) in [("", 0), ("A", 1), ("A😀", 3), ("A😀B", 4)] {
+            let x = layout.query_origin + scene.metrics.width(value, font);
+            assert_eq!(scene.query_index(&layout, "A😀B", x), units);
+        }
+    }
 
     #[test]
     fn retained_launcher_hit_regions_and_unwrapped_foreground_order() {

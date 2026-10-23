@@ -116,6 +116,7 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
             },
             icon: o["icon"].as_str().map(str::to_owned),
             error: o["error"].as_str().map(str::to_owned),
+            edit: serde_json::from_value(o["edit"].clone())?,
         }
         .element(ctx),
         _ => return Err("unsupported L6 widget".into()),
@@ -123,13 +124,22 @@ pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
 }
 pub fn cases() -> Vec<Case> {
     let mut out = vec![];
-    for state in ["button", "list", "table", "input"] {
+    for state in [
+        "button",
+        "list",
+        "table",
+        "input",
+        "input · focused empty",
+        "input · caret",
+        "input · selection",
+        "input · preedit",
+    ] {
         for density in gallery::DENSITIES {
             for theme in gallery::THEMES {
                 out.push(Case {
                     component: "components".into(),
                     state: state.into(),
-                    slug: state.into(),
+                    slug: state.replace(" · ", "-").replace(' ', "-"),
                     density: gallery::density_name(density).into(),
                     theme: gallery::theme_name(theme).into(),
                     page: "components.html".into(),

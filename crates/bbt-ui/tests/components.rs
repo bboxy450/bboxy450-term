@@ -20,6 +20,81 @@ fn context() -> Context {
     Context::new(Theme::Dark, Density::Cozy)
 }
 
+fn edit_part<'a>(node: &'a c::Layout, part: &str) -> &'a c::Layout {
+    if matches!(&node.kind, c::LayoutKind::Named(key) if key == part) {
+        return node;
+    }
+    node.children
+        .iter()
+        .find_map(|child| {
+            fn find<'a>(n: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
+                if matches!(&n.kind,c::LayoutKind::Named(k) if k == key) {
+                    return Some(n);
+                }
+                n.children.iter().find_map(|ch| find(ch, key))
+            }
+            find(child, part)
+        })
+        .unwrap_or_else(|| panic!("missing {part}"))
+}
+
+#[test]
+fn field_marks_use_utf16_boundaries_and_keep_preedit_out_of_intrinsic_size() {
+    let mut field = c::EditingText {
+        value: "A😀B".into(),
+        placeholder: "empty".into(),
+        style: Default::default(),
+        placeholder_paint: Paint::solid(Color::Muted),
+        edit: c::Edit {
+            caret: Some(3),
+            ..Default::default()
+        },
+        name: "field".into(),
+    };
+    let root = |field: &c::EditingText| {
+        c::Element::EditingText(field.clone()).layout(
+            Rect::new(20., 30., 300., 0.),
+            context(),
+            &Metrics,
+        )
+    };
+    let before = root(&field).unwrap();
+    let caret = edit_part(&before, "field/caret");
+    assert_eq!(
+        caret.rect.x,
+        20. + 2. * field.style.step.pixels() * 0.5 - 1.
+    );
+    assert_eq!(caret.rect.w, 2.);
+    field.edit.preedit = Some(c::Preedit {
+        text: "你好".into(),
+        caret: Some(1),
+    });
+    let marked = root(&field).unwrap();
+    assert_eq!(
+        before.rect, marked.rect,
+        "marked text cannot resize the committed query"
+    );
+    assert_eq!(edit_part(&marked, "field/underline").rect.h, 1.);
+    assert!(edit_part(&marked, "field/caret").rect.x > caret.rect.x);
+    field.edit = c::Edit {
+        select: Some([1, 3]),
+        ..Default::default()
+    };
+    let selected = root(&field).unwrap();
+    assert_eq!(
+        edit_part(&selected, "field/selection").rect,
+        edit_part(&selected, "field/selected").rect
+    );
+    assert!(!format!("{selected:?}").contains("field/caret"));
+    field.edit = c::Edit {
+        caret: Some(2),
+        ..Default::default()
+    };
+    assert!(root(&field).is_err(), "a surrogate pair cannot be split");
+    assert_eq!(c::utf16_byte_index("A😀B", 3), Some(5));
+    assert_eq!(c::utf16_byte_index("A😀B", 2), None);
+}
+
 #[test]
 fn rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin() {
     let element = c::Element::Rects(c::Rects {
