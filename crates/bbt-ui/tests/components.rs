@@ -127,6 +127,100 @@ fn field_marks_use_utf16_boundaries_and_keep_preedit_out_of_intrinsic_size() {
 }
 
 #[test]
+fn modal_highlight_stays_on_the_fill_inside_its_outside_border() {
+    let mut style = Style::new(Preset::Modal);
+    style.overrides.width = Some(Length::Px(120.));
+    style.overrides.height = Some(Length::Px(60.));
+    style.overrides.padding = Some([Length::Px(0.); 4]);
+    let resolved = style.resolve(context()).unwrap();
+    assert!(resolved.border.as_ref().unwrap().outside);
+    let expected = bbt_ui_model::draw::Color(resolved.inner_highlight.unwrap());
+    let layout = c::Element::Box(c::Box::new(style, vec![]))
+        .layout(Rect::new(17.25, 23.5, 120., 0.), context(), &Metrics)
+        .unwrap();
+    let highlights: Vec<_> = c::paint(&layout, context())
+        .into_iter()
+        .flat_map(|op| match op {
+            c::Paint::Draw(list) => list.primitives,
+            _ => vec![],
+        })
+        .filter_map(|primitive| match primitive {
+            Prim::Rect {
+                rect,
+                inner_highlight: Some(color),
+                ..
+            } => Some((rect, color)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(highlights, vec![(layout.rect, expected)]);
+}
+
+#[test]
+fn floating_shadow_paints_over_outside_hair_without_a_foreground_duplicate() {
+    for extra_ring in [false, true] {
+        let mut style = Style::new(Preset::Modal);
+        style.overrides.width = Some(Length::Px(120.));
+        style.overrides.height = Some(Length::Px(60.));
+        style.overrides.padding = Some([Length::Px(0.); 4]);
+        if extra_ring {
+            style.overrides.border = Some(bbt_ui::Border {
+                width: Length::Hairline,
+                paint: Paint::solid(Color::Line),
+                outside: false,
+            });
+            style.overrides.rings = Some(vec![bbt_ui::Border {
+                width: Length::Hairline,
+                paint: Paint {
+                    color: Color::Line,
+                    alpha: bbt_ui::Alpha::Hairline,
+                },
+                outside: true,
+            }]);
+        }
+        let layout = c::Element::Box(c::Box::new(style, vec![]))
+            .layout(Rect::new(17.25, 23.5, 120., 0.), context(), &Metrics)
+            .unwrap();
+        let ops = c::paint(&layout, context());
+        let underlay = ops
+            .iter()
+            .find_map(|op| match op {
+                c::Paint::Underlay(list) => Some(&list.primitives),
+                _ => None,
+            })
+            .unwrap();
+        let outside_hair = |p: &Prim| matches!(p, Prim::Rect { rect, stroke: Some(_), .. } if rect.x < layout.rect.x);
+        let hair = underlay
+            .iter()
+            .position(outside_hair)
+            .expect("outside hair");
+        let shadow = underlay
+            .iter()
+            .position(|p| {
+                matches!(
+                    p,
+                    Prim::Rect {
+                        shadow: Some(_),
+                        ..
+                    }
+                )
+            })
+            .expect("floating shadow");
+        assert!(hair < shadow, "the first CSS shadow paints on top");
+        let copies = ops
+            .iter()
+            .filter_map(|op| match op {
+                c::Paint::Draw(list) | c::Paint::Underlay(list) => Some(&list.primitives),
+                _ => None,
+            })
+            .flatten()
+            .filter(|p| outside_hair(p))
+            .count();
+        assert_eq!(copies, 1);
+    }
+}
+
+#[test]
 fn rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin() {
     let element = c::Element::Rects(c::Rects {
         size: [6., 43.],
