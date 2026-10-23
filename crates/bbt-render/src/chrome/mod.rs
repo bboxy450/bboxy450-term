@@ -46,6 +46,9 @@ pub struct ChromeRenderer {
     group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_depth: usize,
     paths: paths::Renderer,
+    /// Headless material renders reuse one Pass (bind layout and pipelines) per target
+    /// format; see materials::render_layered_to_rgba.
+    material_pass: Option<(wgpu::TextureFormat, materials::Pass)>,
 }
 impl ChromeRenderer {
     /// Read-only diagnostics for cache-capacity and long-lived-renderer gates.
@@ -93,6 +96,7 @@ impl ChromeRenderer {
             group_pipelines: HashMap::new(),
             group_depth: 0,
             paths: paths::Renderer::default(),
+            material_pass: None,
         })
     }
     pub fn draw(
