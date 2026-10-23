@@ -1,0 +1,147 @@
+Smoke idle quiescence fix — Oracle2caa5a41-a535-4143-85b8-57dfed1dd1e8, after C1a-2. Branch exec3-smoke-idle, base f248c6b24c88ad84ca0f185f654c1c7216fe2ce7. Fetch0; branch creation0; initial source reads/git status0. C1a-2 handed off at3f48e68 with clean CI0 and accepted on mainf248c6b. C1c e1a74f2 remains separate. Scope: app main.rs smoke/demo/idle control and its unit fixture; evidence logs. No live/input/renderer/protocol changes.
+
+$ cargo fmt --package bboxy450-term
+EXIT 0 elapsed_seconds=0.179
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --locked --bin bboxy450-term smoke_tests
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 21.93s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-8904b9b34a87a919)
+
+running 1 test
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=22.138
+
+$ uptime
+21:52  up 2 days,  7:36, 19 users, load averages: 55.29 36.76 31.91
+EXIT 0 elapsed_seconds=0.011
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo run -p bboxy450-term --locked -- --smoke
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 4.25s
+     Running `target/debug/bboxy450-term --smoke`
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+smoke bootstrap: early producer handled before GPU ready
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 66.123ms cpu=70.552ms drain=0.006 layout=4.223 draw=0.200 encode=66.123 present_wait=0.071
+first frame: native scene presented, seats=15
+hitch frame=2 phase=encode 17.815ms cpu=22.413ms drain=0.006 layout=4.390 draw=0.202 encode=17.815 present_wait=0.062
+hitch frame=3 phase=encode 17.509ms cpu=22.043ms drain=0.005 layout=4.326 draw=0.202 encode=17.509 present_wait=0.068
+hitch frame=4 phase=encode 17.779ms cpu=22.360ms drain=0.003 layout=4.363 draw=0.215 encode=17.779 present_wait=0.087
+hitch frame=5 phase=encode 17.956ms cpu=22.529ms drain=0.004 layout=4.361 draw=0.207 encode=17.956 present_wait=0.062
+hitch frame=6 phase=encode 17.596ms cpu=22.105ms drain=0.005 layout=4.299 draw=0.205 encode=17.596 present_wait=0.078
+hitch frame=7 phase=encode 17.906ms cpu=22.409ms drain=0.006 layout=4.293 draw=0.204 encode=17.906 present_wait=0.070
+hitch frame=8 phase=encode 17.896ms cpu=22.482ms drain=0.005 layout=4.350 draw=0.230 encode=17.896 present_wait=0.063
+hitch frame=9 phase=encode 17.864ms cpu=22.436ms drain=0.006 layout=4.364 draw=0.202 encode=17.864 present_wait=0.065
+hitch frame=10 phase=encode 18.066ms cpu=22.579ms drain=0.006 layout=4.303 draw=0.204 encode=18.066 present_wait=0.084
+hitch frame=11 phase=encode 17.722ms cpu=22.261ms drain=0.005 layout=4.314 draw=0.220 encode=17.722 present_wait=0.069
+hitch frame=12 phase=encode 17.848ms cpu=22.348ms drain=0.006 layout=4.274 draw=0.220 encode=17.848 present_wait=0.061
+hitch frame=13 phase=encode 18.081ms cpu=22.580ms drain=0.002 layout=4.284 draw=0.213 encode=18.081 present_wait=0.064
+hitch frame=14 phase=encode 17.841ms cpu=22.307ms drain=0.004 layout=4.247 draw=0.214 encode=17.841 present_wait=0.067
+hitch frame=15 phase=encode 17.738ms cpu=22.278ms drain=0.004 layout=4.319 draw=0.218 encode=17.738 present_wait=0.065
+hitch frame=16 phase=encode 17.806ms cpu=22.246ms drain=0.006 layout=4.230 draw=0.204 encode=17.806 present_wait=0.073
+hitch frame=17 phase=encode 17.969ms cpu=22.540ms drain=0.006 layout=4.342 draw=0.223 encode=17.969 present_wait=0.062
+hitch frame=18 phase=encode 18.189ms cpu=22.826ms drain=0.008 layout=4.403 draw=0.226 encode=18.189 present_wait=0.063
+hitch frame=19 phase=encode 17.904ms cpu=22.433ms drain=0.006 layout=4.277 draw=0.246 encode=17.904 present_wait=0.071
+hitch frame=20 phase=encode 17.670ms cpu=22.229ms drain=0.005 layout=4.326 draw=0.227 encode=17.670 present_wait=0.065
+hitch frame=21 phase=encode 17.534ms cpu=21.982ms drain=0.005 layout=4.227 draw=0.216 encode=17.534 present_wait=0.061
+idle probe settling: producer_done=true queued=false redraw_pending=false frames=21 callbacks=21
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=22.409ms p99=70.552ms samples=21 warm_encode_p50=17.841ms warm_encode_p99=18.189ms
+EXIT 0 elapsed_seconds=20.125
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --locked
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 2.17s
+     Running unittests src/lib.rs (target/debug/deps/bboxy450_term-2abe3bee3d375908)
+
+running 7 tests
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-8904b9b34a87a919)
+
+running 8 tests
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test scene::lane_tests::the_lane_sets_gutter_and_inset_and_relayouts_at_runtime ... ok
+test scene::lane_tests::pane_rects_are_identical_across_activity_states ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/cockpit.rs (target/debug/deps/cockpit-6f4661edf49f761c)
+
+running 5 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.30s
+
+     Running tests/custody.rs (target/debug/deps/custody-e47a856cdb9fc328)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.13s
+
+   Doc-tests bboxy450_term
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=35.493
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 6.81s
+EXIT 0 elapsed_seconds=6.911
+
+$ git diff --check
+EXIT 0 elapsed_seconds=0.062

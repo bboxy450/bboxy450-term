@@ -25,6 +25,7 @@ use winit::{
 #[derive(Debug)]
 pub enum UiEvent {
     Wake,
+    DemoFinished,
     BeginIdle,
     EndIdle,
     EndAnimation,
@@ -39,6 +40,22 @@ impl bbt_rt::Waker for Wake {
     }
 }
 type Prepared = Result<(gpu::Gpu, scene::Scene), String>;
+
+#[derive(Default)]
+struct IdleQuiescence {
+    observed: Option<(u64, u64)>,
+}
+impl IdleQuiescence {
+    fn ready(&mut self, producer_finished: bool, pending: bool, counts: (u64, u64)) -> bool {
+        if !producer_finished || pending {
+            self.observed = None;
+            return false;
+        }
+        let quiet = self.observed == Some(counts);
+        self.observed = Some(counts);
+        quiet
+    }
+}
 
 struct App {
     proxy: EventLoopProxy<UiEvent>,
@@ -68,7 +85,10 @@ struct App {
     fake: bool,
     smoke: bool,
     demo_started: bool,
+    demo_finished: bool,
     idle_scheduled: bool,
+    idle_quiet: IdleQuiescence,
+    redraw_pending: std::cell::Cell<bool>,
     last_update: usize,
     idle_start: Option<(Instant, u64, u64)>,
     error: Option<String>,
@@ -98,8 +118,16 @@ impl App {
             pacer.request_frame();
         }
         if let Some(window) = &self.window {
+            self.redraw_pending.set(true);
             window.request_redraw();
         }
+    }
+    fn schedule_idle_check(&self) {
+        let proxy = self.proxy.clone();
+        bbt_rt::handle().spawn(async move {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            let _ = proxy.send_event(UiEvent::BeginIdle);
+        });
     }
     fn fail(&mut self, error: String, event_loop: &ActiveEventLoop) {
         self.logger.write(format!("app error: {error}"));
@@ -263,6 +291,7 @@ impl App {
         self.demo_started = true;
         let updates = self.updates.clone();
         let sender = self.inbox.sender.clone();
+        let proxy = self.proxy.clone();
         bbt_rt::handle().spawn(async move {
             tokio::time::sleep(Duration::from_millis(300)).await;
             for sequence in 1..=20 {
@@ -270,9 +299,13 @@ impl App {
                 let _ = sender.try_send(UiMsg::Changed { source: 3 });
                 tokio::time::sleep(Duration::from_millis(50)).await;
             }
+            // Observing update20 alone is insufficient: its Changed notice
+            // may not have been posted yet if the producer was descheduled.
+            let _ = proxy.send_event(UiEvent::DemoFinished);
         });
     }
     fn redraw(&mut self) -> Result<(), String> {
+        self.redraw_pending.set(false);
         if self.gpu.is_none() {
             // A producer may wake us before GPU preparation finishes. Drain
             // admission even on an empty frame, or GPU-ready can lose its wake.
@@ -395,11 +428,7 @@ impl App {
             }
             if self.fake && self.last_update == 20 && !self.idle_scheduled {
                 self.idle_scheduled = true;
-                let proxy = self.proxy.clone();
-                bbt_rt::handle().spawn(async move {
-                    tokio::time::sleep(Duration::from_secs(1)).await;
-                    let _ = proxy.send_event(UiEvent::BeginIdle);
-                });
+                self.schedule_idle_check();
             }
         }
         if (self.animate && fifo)
@@ -422,6 +451,7 @@ impl ApplicationHandler<UiEvent> for App {
     }
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UiEvent) {
         match event {
+            UiEvent::DemoFinished => self.demo_finished = true,
             UiEvent::Wake => {
                 if self.smoke && self.gpu.is_none() {
                     self.smoke_wake_seen = true;
@@ -433,6 +463,28 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_redraw();
             }
             UiEvent::BeginIdle => {
+                let counts = (
+                    self.meter.total_frames(),
+                    self.pacer.as_ref().map_or(0, DisplayLink::callbacks),
+                );
+                let queued = !self.inbox.messages.is_empty() || !self.inbox.output.is_empty();
+                if self.fake
+                    && !self.idle_quiet.ready(
+                        self.demo_finished && self.last_update == 20,
+                        queued || self.redraw_pending.get(),
+                        counts,
+                    )
+                {
+                    self.logger.write(format!(
+                        "idle probe settling: producer_done={} queued={} redraw_pending={} frames={} callbacks={}",
+                        self.demo_finished, queued, self.redraw_pending.get(), counts.0, counts.1,
+                    ));
+                    if queued {
+                        self.request_redraw();
+                    }
+                    self.schedule_idle_check();
+                    return;
+                }
                 if self.cadence_test {
                     self.gpu.as_ref().unwrap().collect_gpu(&mut self.budget);
                     self.logger.write(self.budget.report());
@@ -707,7 +759,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fake,
         smoke,
         demo_started: false,
+        demo_finished: false,
         idle_scheduled: false,
+        idle_quiet: IdleQuiescence::default(),
+        redraw_pending: std::cell::Cell::new(false),
         last_update: 0,
         idle_start: None,
         error: None,
@@ -722,4 +777,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err(error.into());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod smoke_tests {
+    use super::IdleQuiescence;
+
+    #[test]
+    fn idle_waits_for_producer_queued_work_and_late_frames_before_starting() {
+        let mut quiet = IdleQuiescence::default();
+        // The final value was rendered, but its producer can still be paused
+        // before posting the matching Changed notice. A timer is not a barrier.
+        assert!(!quiet.ready(false, false, (21, 21)));
+        assert!(!quiet.ready(false, false, (21, 21)));
+        assert!(!quiet.ready(true, true, (21, 21)));
+        // Draining the notice can leave a native redraw and then a callback.
+        assert!(!quiet.ready(true, false, (22, 22)));
+        assert!(!quiet.ready(true, false, (23, 22)));
+        assert!(!quiet.ready(true, false, (23, 23)));
+        // Pending work invalidates an earlier observation even if it has not
+        // changed either counter yet. Only a full quiet interval may start idle.
+        assert!(!quiet.ready(true, true, (23, 23)));
+        assert!(!quiet.ready(true, false, (23, 23)));
+        assert!(quiet.ready(true, false, (23, 23)));
+    }
 }
