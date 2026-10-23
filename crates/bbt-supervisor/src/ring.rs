@@ -15,6 +15,7 @@ use crate::durability::{sync_directory, sync_file};
 use crate::protocol::{Event, ExitInfo, OUTPUT_CHUNK_BYTES, SeatSize};
 use crate::store::{Blobs, Result, blobs::LocalBlobs, invalid};
 
+mod journal;
 mod writer;
 pub(crate) use writer::{
     CaptureWriter, Handle as CaptureHandle, Query as CaptureQuery, Response as CaptureResponse,
@@ -362,6 +363,8 @@ pub struct History {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Boundary {
+    #[serde(default)]
+    journal_position: Option<journal::Position>,
     version: u16,
     seat: Ulid,
     generation: u64,
@@ -429,7 +432,6 @@ pub struct Ring {
     append_file: Option<File>,
     grouped: bool,
     strong_dirty: bool,
-    strong_requested: bool,
 }
 impl Ring {
     pub fn open(
@@ -482,7 +484,6 @@ impl Ring {
                                 append_file: None,
                                 grouped: false,
                                 strong_dirty: false,
-                                strong_requested: false,
                                 boundary,
                                 entries,
                                 index: Default::default(),
@@ -505,6 +506,7 @@ impl Ring {
                             ring.load_sealed()?;
                             ring.rebuild_index()?;
                             ring.retire_orphans()?;
+                            journal::recover(&mut ring)?;
                             return Ok(ring);
                         }
                         Err(e) => failures.push(e.to_string()),
@@ -523,6 +525,7 @@ impl Ring {
             )));
         }
         let boundary = Boundary {
+            journal_position: None,
             version: 1,
             seat,
             generation,
@@ -547,7 +550,6 @@ impl Ring {
             append_file: None,
             grouped: false,
             strong_dirty: false,
-            strong_requested: false,
             boundary,
             entries: Vec::new(),
             index: Default::default(),
@@ -564,17 +566,7 @@ impl Ring {
     }
     fn put_blob(&self, bytes: &[u8]) -> Result<String> {
         let blobs = LocalBlobs::open(&self.root)?;
-        if self.grouped {
-            blobs.put_ordered(bytes)
-        } else {
-            blobs.put(bytes)
-        }
-    }
-    fn finish_durable(&mut self) -> Result<()> {
-        self.strong_dirty = false;
-        self.strong_requested = false;
-        self.stats.durable_commits += 1;
-        self.retire_orphans()
+        blobs.put(bytes)
     }
     pub fn directory(&self) -> &Path {
         &self.root
@@ -620,20 +612,31 @@ impl Ring {
         Ok(())
     }
     fn checkpoint_refs(&self) -> Result<Vec<CheckpointRef>> {
-        if !self.boundary.checkpoints.is_empty() {
-            return Ok(self.boundary.checkpoints.clone());
-        }
-        let mut refs = Vec::new();
+        let mut refs = self.boundary.checkpoints.clone();
         for entry in self.entries.iter().filter(|e| e.kind == 4).rev().take(2) {
             refs.push(CheckpointRef {
                 sequence: entry.sequence,
                 digest: self.put_blob(&self.payload(entry)?)?,
             });
         }
-        refs.reverse();
+        refs.sort_by_key(|r| r.sequence);
+        refs.dedup_by_key(|r| r.sequence);
+        if refs.len() > 2 {
+            refs.drain(..refs.len() - 2);
+        }
         Ok(refs)
     }
     pub fn latest_checkpoint(&self) -> Result<Option<Vec<u8>>> {
+        if let Some(entry) = self.entries.iter().rev().find(|e| e.kind == 4) {
+            if self
+                .boundary
+                .checkpoints
+                .last()
+                .is_none_or(|r| entry.sequence >= r.sequence)
+            {
+                return self.payload(entry).map(Some);
+            }
+        }
         if let Some(reference) = self.boundary.checkpoints.last() {
             let bytes = LocalBlobs::open(&self.root)?.get(&reference.digest)?;
             let saved = Saved::decode(&bytes)?;
@@ -732,8 +735,8 @@ impl Ring {
             .write(true)
             .create_new(true)
             .open(self.root.join(&next.file))?;
-        sync_file(&next_file, !self.grouped)?;
-        self.publish_boundary_tier(&next, !self.grouped)?;
+        sync_file(&next_file, true)?;
+        self.publish_boundary_tier(&next, true)?;
         self.durable = next.clone();
         self.last_commit = std::time::Instant::now();
         self.boundary = next;
@@ -741,12 +744,7 @@ impl Ring {
         self.entries.clear();
         self.sealed.push(segment);
         self.rebuild_index()?;
-        if self.grouped {
-            self.strong_dirty = true;
-            self.strong_requested = true;
-        } else {
-            self.retire_orphans()?;
-        }
+        self.retire_orphans()?;
         self.stats.seals += 1;
         self.stats.max_seal_ns = self
             .stats
@@ -860,7 +858,7 @@ impl Ring {
         self.stats.hot_write_ns += write_started.elapsed().as_nanos() as u64;
         let mut next = self.boundary.clone();
         next.length += bytes.len() as u64;
-        if kind == 4 {
+        if kind == 4 && !self.grouped {
             next.checkpoints = self.checkpoint_refs()?;
             next.checkpoints.push(CheckpointRef {
                 sequence,
@@ -884,27 +882,17 @@ impl Ring {
             sequence,
             byte_start,
         });
-        if kind != 1
-            || (!self.grouped
-                && self.boundary.length.saturating_sub(self.durable.length) >= self.group_bytes)
+        if !self.grouped
+            && (kind != 1
+                || self.boundary.length.saturating_sub(self.durable.length) >= self.group_bytes)
         {
             self.flush()?;
         }
         Ok(())
     }
-    /// Strong publication at checkpoints, seals, shutdown and the machine-wide
-    /// durability cadence. The shared writer's tick uses `flush_ordered`.
+    /// Direct callers and segment seals require a durable derived boundary.
     pub fn flush(&mut self) -> Result<()> {
-        if self.grouped {
-            self.commit(false)?;
-            self.strong_requested |= self.strong_dirty;
-            Ok(())
-        } else {
-            self.commit(true)
-        }
-    }
-    fn flush_ordered(&mut self) -> Result<()> {
-        self.commit(false)
+        self.commit(true)
     }
     fn commit(&mut self, strong: bool) -> Result<()> {
         bbt_rt::assert_not_ui_thread();

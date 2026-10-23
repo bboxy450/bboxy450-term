@@ -1,5 +1,6 @@
 #![allow(clippy::disallowed_methods)] // Controlled blocking IO/process fixtures.
 
+mod common;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
@@ -12,7 +13,7 @@ use bbt_mux::mcp::{
 };
 use bbt_mux::registry::{Class, Registry, SeatRecord};
 use bbt_mux::store::{Events, Store, events::EventLog, sqlite::SqliteStore};
-use bbt_mux::{Config, LaunchSpec, Supervisor, Ulid};
+use bbt_mux::{LaunchSpec, Supervisor, Ulid};
 use ed25519_dalek::SigningKey;
 use serde_json::{Value, json};
 
@@ -60,7 +61,7 @@ impl Fixture {
             .enable_all()
             .build()
             .unwrap();
-        let supervisor = Supervisor::start(Config::default()).unwrap();
+        let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
         let logic = Logic::start(
             supervisor.connect().unwrap(),
             config.clone(),

@@ -1,0 +1,21 @@
+['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 6.00s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1: replacing existing signature
+
+running 10 tests
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 8 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+EXIT 0

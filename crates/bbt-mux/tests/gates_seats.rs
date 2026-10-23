@@ -10,6 +10,7 @@
 
 #![allow(clippy::disallowed_methods)] // Explicit opt-in blocking process/IO load fixture.
 
+mod common;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -145,12 +146,29 @@ fn budget(gate: &str, value: f64, unit: &str, detail: String) {
     );
 }
 
+struct CountBusy {
+    client: bbt_mux::Client,
+    busy: std::sync::Arc<std::sync::atomic::AtomicU64>,
+}
+impl bbt_mux::logic::SupervisorConnection for CountBusy {
+    fn request(&mut self, action: bbt_mux::Action) -> bbt_mux::store::Result<bbt_mux::Reply> {
+        let reply = self.client.request(action);
+        if matches!(&reply, Err(error) if error.code == bbt_mux::FailureCode::Busy) {
+            self.busy.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        Ok(reply?)
+    }
+    fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<bbt_mux::Event>> {
+        bbt_mux::logic::SupervisorConnection::receive(&mut self.client, timeout)
+    }
+}
 struct Rig {
     run: tempfile::TempDir,
     runtime: tokio::runtime::Runtime,
     supervisor: Supervisor,
     logic: Logic,
     swarm: Ulid,
+    busy: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl Rig {
@@ -167,13 +185,17 @@ impl Rig {
             .unwrap();
         let supervisor = Supervisor::start(Config {
             max_seats,
-            ..Config::default()
+            ..common::capture_config(run.path())
         })
         .unwrap();
         let repo = run.path().join(".bboxy");
         std::fs::create_dir(&repo).unwrap();
+        let busy = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
         let logic = Logic::start(
-            supervisor.connect().unwrap(),
+            CountBusy {
+                client: supervisor.connect().unwrap(),
+                busy: busy.clone(),
+            },
             LogicConfig {
                 ring: Default::default(),
                 run_dir: run.path().join("run"),
@@ -189,6 +211,7 @@ impl Rig {
             supervisor,
             logic,
             swarm: Ulid::new(),
+            busy,
         }
     }
 
@@ -243,35 +266,29 @@ impl Rig {
     }
 
     fn sum_capture(&self, seats: &[Ulid]) -> bbt_mux::ring::CaptureStats {
-        let mut t = bbt_mux::ring::CaptureStats::default();
-        for &s in seats {
-            let c = self
-                .runtime
-                .block_on(self.logic.client.history(s, 1, 1, 1))
-                .unwrap()
-                .status
-                .capture;
-            t.records += c.records;
-            t.hot_write_ns += c.hot_write_ns;
-            t.encode_ns += c.encode_ns;
-            t.sync_ns += c.sync_ns;
-            t.marker_ns += c.marker_ns;
-            t.queue_full_count += c.queue_full_count;
-            t.peak_queue_bytes = t.peak_queue_bytes.max(c.peak_queue_bytes);
-            // Machine-wide counters repeat on each seat. Keep the last sample,
-            // never multiply shared-writer time by the number of seats.
-            t.writer_busy_ns = c.writer_busy_ns;
-            t.commit_rounds = c.commit_rounds;
-            t.commit_p99_ns = c.commit_p99_ns;
-            t.commit_max_ns = c.commit_max_ns;
-        }
-        t
+        // Machine counters repeat in every seat status. One bounded RPC is the
+        // measurement; 400 serial commands would prolong the workload itself.
+        self.runtime
+            .block_on(async {
+                tokio::time::timeout(
+                    Duration::from_secs(5),
+                    self.logic.client.history(seats[0], 1, u64::MAX, u64::MAX),
+                )
+                .await
+            })
+            .expect("capture telemetry deadline")
+            .expect("capture telemetry failed")
+            .status
+            .capture
     }
 
     fn stop(self) -> u64 {
         let disk = disk_bytes(self.run.path());
         self.logic.shutdown().unwrap();
         self.supervisor.shutdown().unwrap();
+        if std::env::var_os("GATE_KEEP_RUN").is_some() {
+            eprintln!("GATE retained owned fixture {}", self.run.keep().display());
+        }
         disk
     }
 }
@@ -290,10 +307,15 @@ fn gate_memory() {
     let t = Instant::now();
     let (rig, seats) = rig.firehose_seats(n, &rate);
     let spawn = t.elapsed();
+    let before_capture = rig.sum_capture(&seats);
+    let load_started = Instant::now();
+    let deadline = load_started + Duration::from_secs(secs);
     let mut peak = 0;
     let mut samples = Vec::new();
-    for _ in 0..secs {
+    let mut heartbeat_max = Duration::ZERO;
+    while Instant::now() < deadline {
         std::thread::sleep(Duration::from_secs(1));
+        let heartbeat_started = Instant::now();
         let record = rig
             .runtime
             .block_on(async {
@@ -302,6 +324,7 @@ fn gate_memory() {
             })
             .expect("logic heartbeat timed out")
             .expect("logic died under firehose");
+        heartbeat_max = heartbeat_max.max(heartbeat_started.elapsed());
         assert_eq!(record.id, seats[0]);
         let r = rss_kib();
         peak = peak.max(r);
@@ -310,13 +333,23 @@ fn gate_memory() {
     let last = *samples.last().unwrap_or(&base);
     let cap = rig.sum_capture(&seats);
     let observed = t.elapsed().as_secs_f64();
+    let load_elapsed = load_started.elapsed().as_secs_f64();
+    let busy_fraction =
+        (cap.writer_busy_ns - before_capture.writer_busy_ns) as f64 / 1e9 / load_elapsed;
+    let busy_replies = rig.busy.load(std::sync::atomic::Ordering::Relaxed);
+    eprintln!(
+        "GATE capture seats={n} load_wall_s={load_elapsed:.3} writer_busy_fraction={busy_fraction:.4} busy_replies={busy_replies} heartbeat_max_ms={:.3} commit_p99_upper_ms={:.3} commit_max_ms={:.3}",
+        heartbeat_max.as_secs_f64() * 1000.,
+        cap.commit_p99_ns as f64 / 1e6,
+        cap.commit_max_ns as f64 / 1e6
+    );
     let disk = rig.stop();
     budget(
         "memory",
         last as f64 / 1024.0,
         "MiB",
         format!(
-            "seats={n} rate={rate} load_s={secs} baseline_mib={:.1} peak_mib={:.1} per_seat_kib={:.1} spawn_s={:.1} records={} sync_s={:.1} marker_s={:.1} queue_full={} disk_peak_mib={:.1} observed_s={observed:.3} writer_busy_s={:.3} writer_s_per_wall_s={:.3} commit_rounds={} commit_p99_upper_ms={:.3} commit_max_ms={:.3} logic_alive=true",
+            "seats={n} rate={rate} load_s={secs} baseline_mib={:.1} peak_mib={:.1} per_seat_kib={:.1} spawn_s={:.1} sample_seat_records={} sync_s={:.1} marker_s={:.1} sample_seat_full={} disk_peak_mib={:.1} observed_s={observed:.3} writer_busy_s={:.3} writer_s_per_wall_s={:.3} commit_rounds={} commit_p99_upper_ms={:.3} commit_max_ms={:.3} logic_alive=true",
             base as f64 / 1024.0,
             peak as f64 / 1024.0,
             (last.saturating_sub(base)) as f64 / n.max(1) as f64,
@@ -332,6 +365,14 @@ fn gate_memory() {
             cap.commit_p99_ns as f64 / 1e6,
             cap.commit_max_ns as f64 / 1e6
         ),
+    );
+    assert!(
+        busy_fraction < 0.5,
+        "capture writer exceeds 50% busy: {busy_fraction}"
+    );
+    assert_eq!(
+        busy_replies, 0,
+        "supervisor returned Busy under capture load"
     );
 }
 
@@ -578,7 +619,7 @@ fn gate_poller() {
         percentile(&lat, 99.0),
         "ms",
         format!(
-            "ptys={n} firehose={} rate={rate} probes={probes} writes={} p50_ms={:.3} max_ms={:.3} fds={} fds_before_seats={fds_before} nofile_soft={soft} nofile_hard={hard} ring_records={} ring_mean_write_us={:.1} queue_full={} disk_peak_mib={:.1}",
+            "ptys={n} firehose={} rate={rate} probes={probes} writes={} p50_ms={:.3} max_ms={:.3} fds={} fds_before_seats={fds_before} nofile_soft={soft} nofile_hard={hard} ring_records={} ring_mean_write_us={:.1} sample_seat_full={} disk_peak_mib={:.1}",
             n - probes,
             lat.len(),
             percentile(&lat, 50.0),

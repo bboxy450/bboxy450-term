@@ -1,5 +1,6 @@
 #![allow(clippy::disallowed_methods)] // Bounded real-PTY/IO-worker fault fixture.
 
+mod common;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, AtomicU64, Ordering},
@@ -8,9 +9,7 @@ use std::time::{Duration, Instant};
 
 use bbt_mux::logic::{Logic, LogicConfig, SupervisorConnection};
 use bbt_mux::registry::SeatRecord;
-use bbt_mux::{
-    Action, Client, Config, Event, Failure, FailureCode, LaunchSpec, Reply, Supervisor, Ulid,
-};
+use bbt_mux::{Action, Client, Event, Failure, FailureCode, LaunchSpec, Reply, Supervisor, Ulid};
 
 struct Congested {
     client: Client,
@@ -56,7 +55,7 @@ fn capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint() {
         .enable_all()
         .build()
         .unwrap();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let blocked = Arc::new(AtomicBool::new(false));
     let rejected = Arc::new(AtomicU64::new(0));
     let committed = Arc::new(AtomicU64::new(0));

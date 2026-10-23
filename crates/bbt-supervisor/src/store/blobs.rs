@@ -29,9 +29,6 @@ impl LocalBlobs {
     }
     /// The shared capture writer supplies the subsequent device-wide full
     /// flush. File and directory ordering must be established before returning.
-    pub(crate) fn put_ordered(&self, bytes: &[u8]) -> Result<String> {
-        self.put_tier(bytes, false)
-    }
     fn put_tier(&self, bytes: &[u8], strong: bool) -> Result<String> {
         bbt_rt::assert_not_ui_thread();
         if bytes.len() > MAX_BLOB {

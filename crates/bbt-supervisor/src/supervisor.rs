@@ -30,6 +30,8 @@ const OUTPUT_DELAY: Duration = Duration::from_millis(2);
 pub struct Config {
     /// None is the v0.1 in-process transport; Some enables the same protocol on Unix IPC.
     pub socket_path: Option<PathBuf>,
+    /// Required for AttachRing. Supervisor-wide, outside all seat storage units.
+    pub journal_directory: Option<PathBuf>,
     pub max_seats: usize,
     /// A partially written input times out as unknown; it is never resubmitted.
     pub write_timeout: Duration,
@@ -39,6 +41,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             socket_path: None,
+            journal_directory: None,
             max_seats: 1024,
             write_timeout: Duration::from_secs(5),
         }
@@ -77,7 +80,10 @@ impl Supervisor {
         getrandom::fill(&mut capability).map_err(io::Error::other)?;
         let (tx, rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
         let mut actor = Actor {
-            capture_writer: CaptureWriter::start(waker.clone())?,
+            capture_writer: CaptureWriter::start(
+                waker.clone(),
+                config.journal_directory.as_deref(),
+            )?,
             poll,
             socket,
             config,
@@ -583,6 +589,12 @@ impl Actor {
                 directory,
                 settings,
             } => {
+                if self.config.journal_directory.is_none() {
+                    return Err(Failure::new(
+                        FailureCode::Invalid,
+                        "JournalDirectoryRequired: capture requires Config.journal_directory",
+                    ));
+                }
                 let seat_id = seat;
                 let seat = self.seat_mut(seat_id, generation)?;
                 if !directory.is_absolute() {

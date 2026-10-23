@@ -4,6 +4,7 @@
 )]
 //! Disposable interoperability/custody checks. Every GnuPG command has an
 //! explicit throwaway homedir; these tests never query the operator keyring.
+mod common;
 use std::{
     cell::RefCell,
     collections::BTreeMap,
@@ -1093,7 +1094,7 @@ fn identity_status_is_available_as_data_through_the_bounded_logic_client() {
         .enable_all()
         .build()
         .unwrap();
-    let supervisor = bbt_mux::Supervisor::start(bbt_mux::Config::default()).unwrap();
+    let supervisor = bbt_mux::Supervisor::start(common::capture_config(directory.path())).unwrap();
     let logic = Logic::start(
         supervisor.connect().unwrap(),
         LogicConfig {

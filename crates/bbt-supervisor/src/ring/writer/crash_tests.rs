@@ -30,7 +30,11 @@ fn capture_crash_child() {
         return;
     };
     let root = std::path::PathBuf::from(root);
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(Config {
+        journal_directory: Some(root.join("journal")),
+        ..Default::default()
+    })
+    .unwrap();
     let client = supervisor.connect().unwrap();
     let mut seats = Vec::new();
     let mut attachments = Vec::new();
@@ -160,14 +164,26 @@ fn capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost() {
         let seat: Ulid = serde_json::from_value(seat.clone()).unwrap();
         let root = temp.path().join(format!("ring-{i}"));
         let (admitted, admitted_tick_bytes) = Probe::open(&root).unwrap().unwrap().snapshot();
-        let marker = std::fs::read(root.join("committed")).unwrap();
-        let marker: Value = serde_json::from_slice(&marker[..marker.len() - 4]).unwrap();
+        // The journal, not the stale derived ring marker, owns tick commits.
+        let mut committed = (0, 0);
+        for path in super::super::journal::journal_files(&temp.path().join("journal")).unwrap() {
+            let (records, _, _) = super::super::journal::scan(&path).unwrap();
+            for r in records
+                .into_iter()
+                .filter(|r| r.key == (seat, 1) && r.kind != 4)
+            {
+                committed = (
+                    r.sequence,
+                    r.byte_start + if r.kind == 1 { r.length as u64 } else { 0 },
+                );
+            }
+        }
         let ring = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
         let status = ring.status();
         assert_eq!(
-            status.captured_sequence,
-            marker["sequence"].as_u64().unwrap(),
-            "current marker failed CRC validation"
+            (status.captured_sequence, status.byte_end),
+            committed,
+            "projection did not recover the journal boundary"
         );
         let mut bytes = Vec::new();
         let mut from = 1;
