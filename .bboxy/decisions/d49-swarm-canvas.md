@@ -2,7 +2,7 @@
 id: 01M5NJMENTZR8YPBEJCEZMJY3Z
 type: decision
 number: 49
-title: the swarm canvas, an endless zoom view of every graph, structured like the board; logged for later
+title: "the swarm canvas, an endless zoom view of every graph, structured like the board; logged for later"
 status: decided
 decided: 2026-10-23
 operator:

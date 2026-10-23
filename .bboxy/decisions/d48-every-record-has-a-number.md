@@ -2,7 +2,7 @@
 id: 01M5NJETTJ655HDRTBVXPR4H2B
 type: decision
 number: 48
-title: every record carries a number, one global sequence continuing from the decisions
+title: "every record carries a number, one global sequence continuing from the decisions"
 status: decided
 decided: 2026-10-23
 operator:

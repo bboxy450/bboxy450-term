@@ -2,7 +2,7 @@
 id: 01M5NJ11AFK9TFTN5X78VDSW1K
 type: decision
 number: 47
-title: one file per decision; records are objects, the git tree is the first store
+title: "one file per decision; records are objects, the git tree is the first store"
 status: decided
 decided: 2026-10-23
 operator:
