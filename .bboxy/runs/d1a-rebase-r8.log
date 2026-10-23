@@ -1,0 +1,7 @@
+D1a: accepted upstream moved during exact CI
+
+First exact gated commit 694db58a4ef55555fbd0191d4d4fdf83403d064f: sh scripts/ci-local.sh exit 0, elapsed 355.524 s. Strict workspace all-target clippy, all workspace tests, UI lint, native smoke and invariants passed; 5 invariant checks, 0 failures, 4 slow skips. All logged test result totals including invariant retests: 592 passed / 0 failed / 13 ignored. Memory custody only, O1 with debug assertions. Raw CI sha256 ce4db84d6f1dbcd1731662f35249d73679b088ff470ff2735e976104c08a0e67. Private CARGO_TARGET_DIR and detached worktree removal both exit 0.
+
+Before handoff, shared origin/main advanced from f248c6b to accepted R8 7111b111d7c730c4ba814ae30856dc82e90ce928. Fetch 0, signed rebase 0. The entire crates/bbt-mux tree is byte-for-byte unchanged from the first gated commit (git diff --exit-code ... -- crates/bbt-mux: 0). Diff relative to the new main contains only the assigned provider/logic/test/export and D1a evidence paths. No executor edit to renderer/UI/app source occurred.
+
+The first raw CI and cleanup logs are committed here. A second exact clean CI will gate the rebased handoff commit, because the upstream base changed; its raw result is retained separately to avoid modifying the exact gated commit. Historical preflight records refer to their then-current signed checkpoints and bases.

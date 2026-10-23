@@ -1,0 +1,101 @@
+
+D1a resume 2026-10-22: Oracle GO 9ca47fe1-a52a-458a-a120-b284637d4680; origin/main 86384b5. Prior reads: date, ICQ help/dry-run/inbox, git status/branch/log/show/fetch all exit 0. Renamed accepted exec5 to exec5-id1f-accepted and created exec5 from exec5-d1a-id1f-parked: both exit 0. ICQ GO acknowledgements recipient-stored, exit 0.
+$ git log --oneline origin/main..HEAD
+0cb0936 provider: record D1a verification after custody fixes
+ccec346 provider: route supervisor actions through host links
+df41cdd fix: retry capture pressure without terminating mux logic
+511891f provider: add local supervisor links and host routing map
+exit=0
+$ GIT_SEQUENCE_EDITOR=<drop only imported df41cdd; main supplies final W1.2d> GIT_EDITOR=true git rebase --gpg-sign --interactive origin/main
+Rebasing (1/4)
+Rebasing (2/4)
+Rebasing (3/4)
+Auto-merging crates/bbt-mux/src/logic.rs
+CONFLICT (content): Merge conflict in crates/bbt-mux/src/logic.rs
+error: could not apply ccec346... provider: route supervisor actions through host links
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Recorded preimage for 'crates/bbt-mux/src/logic.rs'
+Could not apply ccec346... # (Boxy <bboxy450@gmail.com>) provider: route supervisor actions through host links
+exit=1
+Read upstream/spec/provider/tests and conflict source: all exit 0. Resolved exactly two logic.rs conflicts: retained all C1a GUI helpers; routed capture retry; preserved event Result<bool> with per-host pending events. Routed new C1a GUI Input and Resize requests; no retry change. Checked Python edit assertions: exit 0.
+$ rustfmt --edition 2024 --config skip_children=true crates/bbt-mux/src/logic.rs
+exit=0
+$ git add -- crates/bbt-mux/src/logic.rs
+exit=0
+$ git -c core.editor=true rebase --continue
+Recorded resolution for 'crates/bbt-mux/src/logic.rs'.
+[detached HEAD da7ed65] provider: route supervisor actions through host links
+ 4 files changed, 413 insertions(+), 80 deletions(-)
+ create mode 100644 .bboxy/runs/d1a-commands.log
+Rebasing (4/4)
+Successfully rebased and updated refs/heads/exec5.
+exit=0
+Post-rebase source/stat/signature reads: exit 0; all three commits G. rg included nonexistent tests/gui.rs: exit 2; existing matches were read, no code impact. Provider test now uses separate private W1.2d journal roots and asserts real GUI input/resize route/echo. apply_patch: exit 0.
+$ rustfmt --edition 2024 --config skip_children=true crates/bbt-mux/tests/provider.rs
+exit=0
+$ git diff --check
+exit=0
+$ rg -n 'self\.connection\b|\.connection\b|capture_request|request_for_seat' crates/bbt-mux/src/logic.rs
+762:    fn request_for_seat(&mut self, seat: Ulid, action: Action) -> Result<Reply> {
+773:        let Reply::Seats { seats } = self.request_for_seat(id, Action::ListOwnedSeats)? else {
+943:        let reply = self.request_for_seat(
+960:        let Reply::RingRecovery { status, checkpoint } = self.capture_request(
+998:            self.capture_request(
+1012:            let Reply::RingHistory { history } = self.capture_request(
+1127:                self.request_for_seat(
+1249:        let Reply::Spawned { info } = self.request_for_seat(record.id, Action::Spawn { spec })?
+1325:        let Reply::RingHistory { history } = self.capture_request(
+1344:        let result = self.capture_request(
+1485:            match self.request_for_seat(
+1927:    fn capture_request(&mut self, seat: Ulid, action: Action) -> Result<Reply> {
+1934:        retry_capture(|| self.request_for_seat(seat, action.clone()))
+1973:                            match self.request_for_seat(
+2003:                            match self.request_for_seat(id, Action::Resize { attachment, size })? {
+2167:                            self.request_for_seat(
+2198:                            self.request_for_seat(
+exit=0
+$ BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_{DEV,TEST}_{DEBUG=0,OPT_LEVEL=1,DEBUG_ASSERTIONS=true} cargo test --locked -p bbt-mux --test provider --test capture_busy -- --nocapture
+cargo pid=43928
+Read scripts/ci-local.sh: exit 0; O1 plus debug assertions preserved. df -h: exit 0, 20 GiB free before focused build. Scoped instruction inventory (rg --files --hidden -g AGENTS.md -g CLAUDE.md -g !target -g !.git): exit 0; only root files. Read diff/name paths and test changes: exit 0. Bounded ICQ inbox after 4875: exit 0, no additional records. All coordination previews/sends exit 0, recipient-stored; no model receipt claim.
+exit=101
+First focused build exit 101: new test used GUI Applied name for supervisor InputState; protocol.rs enum inspected (rg exit 0), corrected assertion to PtyWritten (apply_patch exit 0). Extra rg against nonexistent seat_socket.rs exit 2, corrected search to existing tests dirs exit 0.
+$ cargo test --locked -p bbt-mux --test provider --test capture_busy -- --nocapture (same memory/compact O1 env)
+cargo pid=47261
+exit=0
+$ git diff --check
+exit=0
+$ git add -- crates/bbt-mux/tests/provider.rs
+exit=0
+$ git commit -S -m 'provider: verify GUI routing with private machine journals'
+[exec5 126f14a] provider: verify GUI routing with private machine journals
+ 1 file changed, 27 insertions(+), 5 deletions(-)
+exit=0
+$ git fetch origin
+exit=0
+$ git rebase --gpg-sign origin/main
+Rebasing (1/4)
+Rebasing (2/4)
+Rebasing (3/4)
+Rebasing (4/4)
+Successfully rebased and updated refs/heads/exec5.
+exit=0
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (memory custody, compact O1/debug assertions)
+cargo pid=47928
+exit=0
+$ git fetch origin
+exit=0
+$ git rebase --gpg-sign origin/main
+Current branch exec5 is up to date.
+exit=0
+$ git log '--format=%h %G? %s' origin/main..HEAD
+7d4ecea G provider: verify GUI routing with private machine journals
+2ae67fb G provider: record D1a verification after custody fixes
+776840a G provider: route supervisor actions through host links
+2682d67 G provider: add local supervisor links and host routing map
+exit=0
+$ git diff --check
+exit=0

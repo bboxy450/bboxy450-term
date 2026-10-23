@@ -1,0 +1,90 @@
+$ git add -- .bboxy/runs/d1a-provider-final.log .bboxy/runs/d1a-provider-final-retry.log .bboxy/runs/d1a-workspace-clippy.log .bboxy/runs/d1a-resume-commands.log .bboxy/runs/d1a-final-preflight.log
+exit=0
+$ git commit -S -m 'provider: record final journal routing preflight evidence'
+[exec5 694db58] provider: record final journal routing preflight evidence
+ 5 files changed, 680 insertions(+)
+ create mode 100644 .bboxy/runs/d1a-final-preflight.log
+ create mode 100644 .bboxy/runs/d1a-provider-final-retry.log
+ create mode 100644 .bboxy/runs/d1a-provider-final.log
+ create mode 100644 .bboxy/runs/d1a-resume-commands.log
+ create mode 100644 .bboxy/runs/d1a-workspace-clippy.log
+exit=0
+$ git rev-parse HEAD
+694db58a4ef55555fbd0191d4d4fdf83403d064f
+exit=0
+$ git status --porcelain --untracked-files=no
+exit=0
+$ git worktree add --detach /tmp/ci-kestrel-d1a-694db58a 694db58a4ef55555fbd0191d4d4fdf83403d064f
+Preparing worktree (detached HEAD 694db58)
+HEAD is now at 694db58 provider: record final journal routing preflight evidence
+exit=0
+clean detached commit assertion: exit=0
+$ BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=/tmp/target-kestrel-d1a-694db58a CARGO_INCREMENTAL=0 CARGO_PROFILE_{DEV,TEST}_{DEBUG=0,OPT_LEVEL=1,DEBUG_ASSERTIONS=true} sh scripts/ci-local.sh ; cwd=/tmp/ci-kestrel-d1a-694db58a
+owned gate pid/pgid=52711
+ci-local exit=0 elapsed=355.524s
+deleted owned private CARGO_TARGET_DIR: exit=0
+$ git worktree remove --force /tmp/ci-kestrel-d1a-694db58a
+exit=0
+cleanup exit=0
+Post-gate exact HEAD, no error/test failure, log-end success and owned private target/worktree absence assertions: exit 0. Raw CI sha256=ce4db84d6f1dbcd1731662f35249d73679b088ff470ff2735e976104c08a0e67
+$ git status --porcelain --untracked-files=no
+exit=0
+$ git log '--format=%H %G? %s' origin/main..HEAD
+694db58a4ef55555fbd0191d4d4fdf83403d064f G provider: record final journal routing preflight evidence
+7d4eceaf2c183e9b3430a52a45557efa18070b46 G provider: verify GUI routing with private machine journals
+2ae67fbe7e17e50dfd42ffe9e63bfce32a74f8e0 G provider: record D1a verification after custody fixes
+776840a7e15d061a4f7f23ae66394277c8e92c39 G provider: route supervisor actions through host links
+2682d671b20f4435b75f2f9c05fc7f651b42a45c G provider: add local supervisor links and host routing map
+exit=0
+$ git diff --check
+exit=0
+$ git diff origin/main --name-only
+.bboxy/runs/d1a-after-id1e.log
+.bboxy/runs/d1a-clippy.log
+.bboxy/runs/d1a-commands.log
+.bboxy/runs/d1a-final-preflight.log
+.bboxy/runs/d1a-provider-final-retry.log
+.bboxy/runs/d1a-provider-final.log
+.bboxy/runs/d1a-resume-commands.log
+.bboxy/runs/d1a-workspace-clippy.log
+.bboxy/runs/r8-ci-9755083-failed.log
+.bboxy/runs/r8-ci-d9d3cff.log
+.bboxy/runs/r8-metrics.log
+crates/bboxy450-term/src/scene.rs
+crates/bboxybook/src/components.rs
+crates/bbt-mux/src/lib.rs
+crates/bbt-mux/src/logic.rs
+crates/bbt-mux/src/provider/mod.rs
+crates/bbt-mux/tests/provider.rs
+crates/bbt-render/src/chrome/text.rs
+exit=0
+Final diff against shared origin/main revealed accepted upstream R8 paths advanced while CI ran. This is a newer upstream base, not executor edits. First exact gate 694db58 passed 0 and private target/worktree cleanup passed 0. Rebasing before handoff; another exact gate is required because upstream changed.
+$ git fetch origin
+exit=0
+$ git rebase --gpg-sign origin/main
+Rebasing (1/5)
+Rebasing (2/5)
+Rebasing (3/5)
+Rebasing (4/5)
+Rebasing (5/5)
+Successfully rebased and updated refs/heads/exec5.
+exit=0
+$ git log -1 '--format=%H %s' origin/main
+7111b111d7c730c4ba814ae30856dc82e90ce928 merge R8: text measurement from CoreText shaping, never a raster; app and bboxybook share one measure()
+exit=0
+$ git diff origin/main --name-only
+.bboxy/runs/d1a-after-id1e.log
+.bboxy/runs/d1a-clippy.log
+.bboxy/runs/d1a-commands.log
+.bboxy/runs/d1a-final-preflight.log
+.bboxy/runs/d1a-provider-final-retry.log
+.bboxy/runs/d1a-provider-final.log
+.bboxy/runs/d1a-resume-commands.log
+.bboxy/runs/d1a-workspace-clippy.log
+crates/bbt-mux/src/lib.rs
+crates/bbt-mux/src/logic.rs
+crates/bbt-mux/src/provider/mod.rs
+crates/bbt-mux/tests/provider.rs
+exit=0
+$ git diff --exit-code 694db58a4ef55555fbd0191d4d4fdf83403d064f HEAD -- crates/bbt-mux
+exit=0
