@@ -1,48 +1,49 @@
-C1c-1 RECOVERY — in-progress checkpoint, not a handoff.
-Owner: Sable Embertail <EXECUTOR>; writing tree bboxy450-term-exec3, exec3.
-Base after start fetch/rebase: 54d9e0f. All changes currently confined to approved paths.
+C1c-1 recovery and generation fencing — Sable Embertail <EXECUTOR>
+Writing tree: /Users/feral/mydev/bboxy450-term-exec3, branch exec3.
+Base: origin/main 1d9102bf4f5fa904fa840a7d23a02ae8399a733a (W1.2e).
+This record supersedes the earlier WIP checkpoint notes. Final exact-commit CI status, raw path and digest are supplied in the handoff; do not infer a green gate from this preflight record.
 
-Authorization / decisions (ICQ DM UUIDs):
-57376d1c-0c6c-4ca3-b451-647122f1f0a4 — recovery first, close/undo/history separate handoff.
-8fabbfa2-8d2f-4458-8e14-0819a08b1b8b — Aster adds mandatory displayed generation to Input/Resize; C1c enforces stale rejection after C1i.
-11aaf77f-bb99-485e-99f4-5fb508e525c7 — supervisor admission scope expanded after W1.2d; no ring/writer/journal edits.
-4b2ff9de-f1e4-4b9c-a909-e58e54bdd07d — exact Spawn retry remains same PID; conflicting same-generation launch rejected.
-7a9ebb80-eef6-49fd-842a-422af3e9365c — known durable predecessor generation required, unknown generation2 rejected, generation gap rejected.
-b982f9fd-e586-455b-aba2-514aea93f641 — one live.rs Error-arm hunk for stale-input notice, Aster review before gate. Aster reported current notice seam differs; awaiting correction.
+Authority and scope (Oracle ICQ DM UUIDs)
+- 57376d1c-0c6c-4ca3-b451-647122f1f0a4: recovery first; close/undo/history are C1c-2.
+- ab9e5a08-8866-48e1-94eb-4951d7c1dd95: GO after accepted socket ownership4fa924d; rebase checkpoint; marker-first supervisor admission and atomic stale GUI generation rejection; preserve D1b routing and W1.2d journal.
+- 11aaf77f-bb99-485e-99f4-5fb508e525c7 / 7a9ebb80-eef6-49fd-842a-422af3e9365c / 4b2ff9de-f1e4-4b9c-a909-e58e54bdd07d: supervisor admission hunk/private helper only; valid predecessor required, no gaps, unknown generation2 rejected, exact Spawn retry same PID, conflicting same-generation spec rejected.
+- 322b5741-65aa-403f-8909-ee19d8f54abc / b16dee50-213b-4b9b-af77-5614afe154ab: existing Ring::open may validate/repair only after old supervisor is reaped and existing committed/previous marker is found; no ring/writer/journal edits. UI stale-input notice withdrawn: named log/count only, NO live.rs edits.
+- 74c9b029-e10b-47a7-b94d-9afc9f202e35: only fixture-generation caller changes in mux tests/provider.rs and provider_fake.rs, coordinated with Kestrel; rebase before gate onto W1.2e.
+- e24718b3-9723-4da1-8389-bae47ac7c51c: socket_backlog supervisor-disconnected failure is known, owned by Rook; shared 4 MiB events/reply queue lacks reserved reply frame. Continue strict Clippy and clean CI; if it is the sole failure, hand off with it named, or consume Rook's fix if landed first. No failure is waived implicitly.
 
-Verification so far (real output, commands and statuses in c1c-commands.log):
-- First cargo check: 101, two incomplete SeatSize initializers. Fixed with Default pixels.
-- cargo check -p bboxy450-term --locked: 0.
-- First recovery suite: 101, 2 passed /1 failed. Logic-only same PID+generation, rewatch, new view, post-restart echo and 250ms ack hold passed. Pending-recovery shutdown passed. Supervisor recovery rejected generation2 at current first-generation admission; NOT claimed complete.
-- First strict crate clippy: 101, collapsible_if in fixture; corrected.
-- Strict crate/all-target clippy after correction and added admission fixture: 0.
-- Targeted logic recovery after cancellation/send refactor: 0, 1 passed.
-- Targeted held-readiness cancellation/reap: 0, 1 passed; recorded replacement PID65160 reaped.
-- Existing app cockpit integration suite: 0, 5 passed, including both child exits, modes/admission/framing, shutdown after cancelled exit watch and same-root relaunch.
-- git diff --check: 0.
+Mechanisms (source pointers)
+- crates/bboxy450-term/src/cockpit.rs:87 — bootstrap marks supervisor replacement; logic_main:307 invokes recover_seats after custodied startup, before GUI Ready. The configured supervisor-wide journal directory is preserved.
+- cockpit.rs:385 — Session retains config/readiness, child control pipes, last watches and one stored recovery task. event cancellation does not discard a half-started child. Logic death replaces only logic, preserves PTYs; supervisor death reaps the old owner then replaces both. A failed recovery is named and held, rather than repeatedly advancing generations.
+- cockpit.rs:441 — restoration is a finite Watch diff drained through the existing bounded writer before later UI requests. Busy, independent reader/writer tasks and owned writer_ready are preserved; event keeps draining snapshots while restoration is blocked.
+- cockpit.rs:500/:578/:653 — fresh catalogue comes through existing Seats before Identity; restored watches use new view tokens and current process generation. Shutdown aborts and awaits pending/completed startup, then stops/reaps owned installed children.
+- crates/bbt-mux/src/logic.rs:1302 — local/open/missing processes with confirmed running state and explicit saved launch context replay only committed predecessor state. New process generation resets capture cursor, preserves screen/parser/title/cwd/size, adds a named uncommitted-output loss gap and uses the existing launch planner for native Claude/Codex resume or fresh zsh. Natural exits clear running state. Inherited environment/capabilities are not saved.
+- logic.rs:2058/:2198/:2220 — Input/Resize displayed generation is checked on the serialized worker against the canonical registry, before attachment/provider access. A stale request returns FailureCode::StaleGeneration, logs and counts its refusal. D1b host routing remains request_for_seat.
+- crates/bbt-mux/src/seat_socket.rs:254/:259 — forward mandatory generation. Existing Input-ID Error.op correlation is preserved.
+- crates/bbt-supervisor/src/supervisor.rs:858/:1714 — unknown seats may start at1 only with an unused destination ring. Higher first generation requires a valid existing predecessor boundary: bounded marker read/CRC/settings, then existing Ring::open identity/record validation. Unknown/empty/corrupt rings are never initialized by admission. Requested generation occupancy is rejected. Existing same-spec retry, conflict, capacity and W1.2e child registration are preserved.
+- crates/bbt-mux/tests/provider.rs:273 and provider_fake.rs:413 — authorized caller-only migration passes known fixture generation1; provider behavior/assertions unchanged.
 
-Unfinished / not checked yet:
-- Supervisor recovery and admission tests need W1.2d and approved supervisor admission.
-- Mandatory generation rejection needs C1i merge first. No schema hunk taken from Aster.
-- UI stale-input notice seam pending clarification; no visual code edited.
-- No final strict workspace clippy or exact-commit clean CI yet; no parity per Oracle's explicit C1c-1 scope.
-- No actual native Claude/Codex process launched: isolated executable fixtures record real --resume / resume argv, pending supervisor pass. All integration wrappers use BBOXY_TEST_CUSTODY=memory, no real Keychain mutation.
+Acceptance evidence: crates/bboxy450-term/tests/recovery.rs
+- :215 logic SIGKILL — watched AND unwatched seats keep PIDs/process generations and supervisor PID; logic PID/root changes, Watch snapshot uses a fresh view token, exact output line after recovery; 250 ms without Applied produces no second Update, then ack releases output. Three short cancelled event polls do not cancel startup.
+- :318 supervisor SIGKILL — zsh/Claude/Codex retain3 seat IDs with generation1->2 and new PIDs; 100x30 saved size; committed old screen and explicit generation/uncommitted-loss gap; fixture executables record actual --resume / resume arguments twice; exact post-restart output and stty30x100.
+- :383 held old-generation actions — stale Input returns original operation ID, Input/Resize refusals count1/2; input sentinel file remains absent and resize never changes the replacement PTY. Generation2 input works.
+- :480 shutdown during pending recovery and the held-readiness fixture — stop/abort reaps recorded replacement PID, keeps shutdown independent, no new restart.
+- :631 raw supervisor admission — valid previous marker plus torn current boundary recovers gen2; old/gen-gap/occupied/unknown/empty/corrupt/conflicting generation requests reject; exact gen2 retry returns same PID. Unknown seat directory remains absent; empty predecessor remains empty; corrupt marker remains unchanged with no initialized data file.
+- All5 recovery tests passed, exit0/3.972s. Repeated as part of the broader preflight:5/0,2.69s. Actual raw stdout is in c1c-commands.log.
 
-Mechanisms:
-- Session retains Config/readiness, watches, child control pipes and a stored recovery task. Cancellation cannot lose a partial child handshake. Wire readers stay bounded (8 replies). Known loss returns promptly to IO's bounded retained queue. Failed startup produces a held disconnected state rather than repeatedly advancing process generations. Shutdown aborts pending startup and reaps installed children.
-- Logic-only restart preserves supervisor/PTYS and process generations; refreshed catalogue and authoritative watch snapshots are delivered on the existing Event::Reply seam.
-- Supervisor recovery implementation saves explicit cwd/role/overlay inputs (never inherited environment), replays committed prior ring into Playback, changes process generation, resets the new capture cursor and records an explicit loss gap. It rebuilds overlays/capabilities and uses existing launch planner resume flags. Old rings remain separate for later history work.
-- Natural process exit marks launch state non-running, so general recovery does not deliberately resurrect it. Close/history retained-view behavior belongs C1c-2, not claimed here.
+Development preflight (not a substitute for final clean CI)
+- App build: exit0/7.967s.
+- Strict cargo clippy --workspace --all-targets --locked -- -D warnings: exit0/8.686s.
+- Combined app/mux/supervisor tests: exit101/168.124s at socket_backlog. App35 tests passed, including full-duplex1000x1000, held-replacement IO, custody retry, relaunch and all5 recovery tests; mux tests through ring passed. Supervisor tests were not reached in that combined command.
+- Isolated socket_backlog with temporary Worker::run error logging: exit101/18.279s; actual cause supervisor disconnected,10000 requests9.523s. Diagnostic was removed afterward, no production logging hunk remains.
+- Unchanged clean detached main1d9102b, isolated socket_backlog: exit101/47.853s including cold build;10000 requests3.906s; same logic-stopped failure at test129. Both baseline checkout/target are removed after confirming clean status.624594944 unique allocated file bytes removed; raw log retained. Oracle disposition above is explicit.
+- Supervisor suite separately: exit0/4.842s,40 passed/0 failed/4 ignored.
+- Remaining mux storage/index/bus and UI guard suites: exit0/22.241s,10 passed/0 failed.
+- Earlier checkpoint compile/test failures and typo/read failures remain visible in c1c-commands.log; none are relabelled as successful. The first new continuation lib check failed101 (private Failure::new); corrected to public Failure fields, then lib check0 and app/mux all-target check0. A duplicated --all-targets command failed1 before compiling; corrected command exited0. Initial pre-C1i supervisor recovery rejected generation2 before the admission helper existed; now covered by the passing full recovery suite.
 
-Deliberately untouched: Rook's catch_up/journal configuration, Aster's live/grids/model/scene producers, writer/ring/journal formats, main branch, native approval state, publication/release work.
-
-Later checkpoint updates:
-322b5741-65aa-403f-8909-ee19d8f54abc / b16dee50-213b-4b9b-af77-5614afe154ab — Oracle allows existing Ring::open repair only after dead supervisor reaped and after an existing committed/previous marker check. Empty directories cannot establish prior-generation existence; unknown admission cannot create any ring. Derive root from socket parent and pin that layout in test. UI stale-input notice requirement withdrawn: named log + count only, NO live.rs edits.
-- Logic recovery now also checks predecessor markers before Ring::open, and refuses missing/corrupt predecessor provenance instead of creating an empty ring. Confirmed process-running state is stored only after successful attachment, not before a launch attempt.
-- Mux regression suite: exit0, 93 passed /0 failed /11 ignored (14 result lines including doctests); elapsed123.322s. This is a development preflight, not exact-final-commit CI.
-- Logic-only test now proves both watched and unwatched PTY PIDs/generations survive; exit0, elapsed6.25s.
-- Echo assertions now require an exact output line, not a command echo substring.
-- Admission fixture pins run/seat-ID/ring-N layout and covers missing predecessor, empty predecessor, skipped generation, conflicting same-generation launch, and exact same-PID retry. Not yet run because the required W1.2d admission parent is not landed.
-- Every socket write error now triggers recovery even if reader EOF never arrives. An ambiguous Spawn attempt is consumed as SpawnOutcomeUnknown, so the IO retained queue cannot duplicate the launch automatically.
-- Read-only diagnostic command `git log -4 --oneline /dev/null` was a mistyped path and exited128; no mutation. A failed apply_patch SeatSize context match changed nothing, then the corrected edit/check succeeded. Earlier source discovery used a missing guessed capture.rs path and a nonmatching zsh glob; those failed reads changed nothing.
-- Latest development check after provenance guard / exact-line echo changes: app recovery subset 3 passed, exit0 (32.405s), explicitly excluding the 2 tests awaiting supervisor admission; strict crate/all-target clippy exit0 (12.782s). No acceptance claim for excluded supervisor tests.
+Not checked / deliberately left alone
+- Native Claude/Codex services, user credentials and real approval state: fixtures record actual argv instead. Tests explicitly use BBOXY_TEST_CUSTODY=memory; no real Keychain mutation.
+- No operator desktop injection or native-window visual capture. Recovery is proven headlessly through private processes, socket replies and Replica screens, not claimed as a new visual-parity result.
+- No close/undo/history UI, remote supervisor restart, scale/slow gates or parity replay (Oracle's C1c-1 scope is no parity/slow).
+- live.rs, main.rs, model.rs, grids.rs, renderer, ring/writer/journal sources and formats, provider implementation and child-reaping/polling implementation remain untouched.
+- Original old checkpoint statement about an ambiguous-Spawn consumption branch is superseded by the accepted C1a-2 dedicated writer API; this change does not add a new wire-level delivery/ack protocol.
+- Executor does not merge or push main. Signed candidate plus exact gate evidence go to Vesper for verification.

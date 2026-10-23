@@ -376,6 +376,22 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     .await;
     let old_supervisor = session.supervisor.id();
     let old_logic = session.logic.id();
+    // These actions were formed against the displayed old process and held
+    // across the outage. Neither may reach the replacement process.
+    let stale_id = Ulid::new();
+    let stale_file = root.path().join("stale-input-ran");
+    let stale_input = GuiAction::Input {
+        seat: id(&zsh),
+        generation: zsh.record.generation,
+        id: stale_id,
+        bytes: format!(": > '{}'\n", stale_file.display()).into_bytes(),
+    };
+    let stale_resize = GuiAction::Resize {
+        seat: id(&zsh),
+        generation: zsh.record.generation,
+        cols: 77,
+        rows: 7,
+    };
     session.supervisor.start_kill().unwrap();
     let seats = restarted(&mut session).await;
     assert_eq!(seats.len(), 3);
@@ -414,22 +430,48 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
             "{argv}"
         );
     }
+    session.send(stale_input).await.unwrap();
+    session.send(stale_resize).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        for dropped in 1..=2 {
+            loop {
+                match session.receive().await.unwrap() {
+                    GuiReply::Error { op, reason } => {
+                        if dropped == 1 {
+                            assert_eq!(op, stale_id, "Input rejection lost its operation ID");
+                        }
+                        assert!(reason.contains("StaleGeneration"), "{reason}");
+                        assert!(
+                            reason.contains("displayed generation 1, current 2"),
+                            "{reason}"
+                        );
+                        assert!(reason.contains(&format!("dropped={dropped}")), "{reason}");
+                        break;
+                    }
+                    GuiReply::Update { seat, update } => {
+                        apply(&mut session, seat, &mut replica, update).await;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    })
+    .await
+    .unwrap();
     input(
         &mut session,
         id(&zsh),
         replica.snapshot.as_ref().unwrap().view.generation,
-        b"printf 'echo-after-supervisor\\n'\n",
+        b"printf 'echo-after-supervisor\\n'; stty size\n",
     )
     .await;
-    until_text(
-        &mut session,
-        id(&zsh),
-        &mut replica,
-        "echo-after-supervisor",
-    )
-    .await;
+    until_text(&mut session, id(&zsh), &mut replica, "30 100").await;
+    assert!(!tokio::fs::try_exists(stale_file).await.unwrap());
+    let screen = &replica.snapshot.as_ref().unwrap().screen;
+    assert_eq!((screen.cols, screen.rows), (100, 30));
+    assert!(text(screen).contains("echo-after-supervisor"));
     println!(
-        "supervisor recovery: 3 stable seat IDs, gen1->2, zsh/Claude/Codex new PIDs; 100x30, retained screen, explicit gap, actual resume argv, post-restart echo"
+        "supervisor recovery: 3 stable seat IDs, gen1->2, zsh/Claude/Codex new PIDs; 100x30, retained screen, explicit gap, actual resume argv, post-restart echo; stale Input ID preserved, drops1/2 counted, stale input file absent, stale resize rejected at PTY30x100"
     );
     session.shutdown().await.unwrap();
 }
@@ -641,6 +683,15 @@ async fn recovered_generation_admission_rejects_unknown_and_conflicting_launches
     first.start_kill().unwrap();
     first.wait().await.unwrap();
     drop(client);
+    let predecessor = root.path().join(format!("run/seat-{}/ring-1", spec.seat));
+    // Recovery must also work with a valid previous boundary and a torn current
+    // marker, using Ring's existing validation/repair rather than a new format.
+    tokio::fs::copy(predecessor.join("committed"), predecessor.join("previous"))
+        .await
+        .unwrap();
+    tokio::fs::write(predecessor.join("committed"), b"torn marker")
+        .await
+        .unwrap();
     let (mut second, mut client) = raw_supervisor(root.path()).await;
     assert!(
         client
@@ -655,6 +706,15 @@ async fn recovered_generation_admission_rejects_unknown_and_conflicting_launches
         "generation gap admitted"
     );
     spec.generation = 2;
+    let occupied = root.path().join(format!("run/seat-{}/ring-2", spec.seat));
+    tokio::fs::create_dir(&occupied).await.unwrap();
+    assert!(
+        client
+            .request(Action::Spawn { spec: spec.clone() })
+            .is_err(),
+        "occupied destination generation was reused"
+    );
+    tokio::fs::remove_dir(occupied).await.unwrap();
     let info = match client
         .request(Action::Spawn { spec: spec.clone() })
         .unwrap()
@@ -684,6 +744,24 @@ async fn recovered_generation_admission_rejects_unknown_and_conflicting_launches
         !tokio::fs::try_exists(unknown_root).await.unwrap(),
         "admission created a ring for an unknown seat"
     );
+    let mut corrupt = spec.clone();
+    corrupt.seat = Ulid::new();
+    let corrupt_ring = root
+        .path()
+        .join(format!("run/seat-{}/ring-1", corrupt.seat));
+    tokio::fs::create_dir_all(&corrupt_ring).await.unwrap();
+    tokio::fs::write(corrupt_ring.join("committed"), b"invalid boundary")
+        .await
+        .unwrap();
+    assert!(client.request(Action::Spawn { spec: corrupt }).is_err());
+    assert_eq!(
+        tokio::fs::read_to_string(corrupt_ring.join("committed"))
+            .await
+            .unwrap(),
+        "invalid boundary",
+        "invalid predecessor was changed during admission"
+    );
+    assert_eq!(std::fs::read_dir(&corrupt_ring).unwrap().count(), 1);
     let mut empty = spec;
     empty.seat = Ulid::new();
     let empty_ring = root.path().join(format!("run/seat-{}/ring-1", empty.seat));
@@ -717,7 +795,7 @@ async fn recovered_generation_admission_rejects_unknown_and_conflicting_launches
             .success()
     );
     println!(
-        "admission: durable gen1 -> gen2; old/unknown/conflicting generations rejected; identical gen2 retry returned PID {}",
+        "admission: valid previous boundary authorized gen1 -> gen2; old/gap/occupied/unknown/empty/corrupt/conflicting generations rejected; identical gen2 retry returned PID {}",
         info.pid
     );
 }
