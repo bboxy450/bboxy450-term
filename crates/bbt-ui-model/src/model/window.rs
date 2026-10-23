@@ -231,7 +231,7 @@ impl Model {
             })
     }
 
-    fn focus(&mut self, seat: SeatId) -> Result<(), EditError> {
+    pub(crate) fn focus(&mut self, seat: SeatId) -> Result<(), EditError> {
         let (si, ti) = self.tab_of(seat).ok_or(EditError::MissingTab)?;
         let swarm = &self.window.sidebar.swarms[si];
         self.window.stage = Stage {
