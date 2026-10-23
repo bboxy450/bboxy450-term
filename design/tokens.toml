@@ -127,12 +127,12 @@ grid = 3
 
 [layout]
 cohort_gap = 8                # px of air between cohort blocks in the sidebar
-gutter = 8                    # px between panes = the chosen glow lane (default glow.lane), shared by both neighbours' effects; follows the Glow lane setting
+gutter = 2                    # px between panes and the stage inset: a fixed divider; the glow lives inside the pane now (rim-glow §2, operator 2026-10-23)
 
 [sidebar]
 width = 260
 width_compact = 220
-edge = 2                      # px, the sidebar's left inset from the window edge (was the gutter; the gutter now follows the glow lane)
+edge = 2                      # px, the sidebar's left inset from the window edge
 minigrid_w = 24
 minigrid_h = 16
 collapse_glyphs = 6           # rolled-up glyphs shown per collapsed row before the ellipsis
@@ -144,8 +144,12 @@ border_active = 2
 
 [glow]
 # Border glow spec (.kb/ux-pick.md): particle glow in the seat colour, four readings, one shader.
-lane = 8                      # px reserved just outside every pane: the border effect (silk) draws only in [0, lane]; layout never moves (operator 2026-10-22)
-lane_min = 2                  # Settings › Appearance › Glow lane range (operator 2026-10-22: a setting, 2 to 8 px, default lane)
+rim = 2                       # px, the alive rim just inside the pane border: a hue that flows round it, crests both ways, a pulse (rim-glow §1, operator 2026-10-23)
+depth = 8                     # px the rim's bloom reaches inside the pane; Settings › Appearance › Glow depth; never moves layout (pane padding >= depth_max)
+depth_min = 2
+depth_max = 8
+lane = 8                      # retiring (rim-glow §2): the outside lane; kept until the native rim (G1) stops reading it, then removed with it
+lane_min = 2
 lane_max = 8
 pane_radius = 14              # px, blur radius at the pane border
 row_radius = 4                # px, sidebar row glow radius; rows sit 20 px apart so halos must not meet

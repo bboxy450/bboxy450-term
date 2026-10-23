@@ -22,9 +22,9 @@
 // Inside variants live in the terminal's own padding (.pane .term, var(--s4)) or the title strip, never over text cells.
 // Same silk equation and activity table as the native lane (materials.wgsl lane): idle .32/.35, active 1/1, waiting .9/.6
 // with a breath, errored .65/still; focused x1.3. Lab only: nothing here is a token or a parity reference yet.
-const el = Lab.el, T = window.TOKENS, GAP = 2;
+const el = Lab.el, T = window.TOKENS, GAP = T.layout.gutter;
 const q = new URLSearchParams(location.search);
-let lane = Math.min(T.glow.lane_max, Math.max(T.glow.lane_min, +(q.get('lane') || T.glow.lane)));
+let lane = Math.min(T.glow.depth_max, Math.max(T.glow.depth_min, +(q.get('lane') || T.glow.depth)));   // the glow value: the old lane, now the rim's depth
 
 const SEATS = [
   { key: 'gi-vesper', name: 'Vesper Greywind', harness: 'claude', role: 'oracle', title: 'swarm control', state: 'active', focused: true },
@@ -193,7 +193,7 @@ Lab.page({ title: 'glow inside', wide: true,
   note: 'Can the activity glow live inside the pane, to save the lane between panes? Eight readings of the same seats (Vesper focused and active, Nyx and Aster active, Rook waiting, Sable and zsh idle). Variants inside the pane pack panes 2 px apart, so the space they win shows as bigger panes in the same frame. The lane slider is the Settings glow lane (2 to 8 px). Needs WebGL2.',
   states: ['gallery', ...VARIANTS.map(v => v.id)],
   render(s, body) {
-    const slider = el('input', { type: 'range', min: T.glow.lane_min, max: T.glow.lane_max, step: 1, value: lane });
+    const slider = el('input', { type: 'range', min: T.glow.depth_min, max: T.glow.depth_max, step: 1, value: lane });
     const val = el('b', {}, lane + ' px');
     const grid = el('div', { class: 'gi-grid' });
     const draw = () => { grid.innerHTML = ''; for (const v of VARIANTS) if (s === 'gallery' || s === v.id) grid.append(card(v)); };

@@ -120,6 +120,9 @@ window.TOKENS = {
     "active_alpha_max": 0.7,
     "active_alpha_min": 0.25,
     "active_pulse_ms": 1800,
+    "depth": 8,
+    "depth_max": 8,
+    "depth_min": 2,
     "errored_alpha": 0.45,
     "focused_boost": 1.6,
     "idle_alpha": 0.12,
@@ -131,6 +134,7 @@ window.TOKENS = {
     "particle_speed": 18,
     "particles_active": 40,
     "particles_idle": 6,
+    "rim": 2,
     "row_alpha": 0.3,
     "row_idle": false,
     "row_particles_active": 4,
@@ -140,7 +144,7 @@ window.TOKENS = {
   },
   "layout": {
     "cohort_gap": 8,
-    "gutter": 8
+    "gutter": 2
   },
   "meta": {
     "version": 1

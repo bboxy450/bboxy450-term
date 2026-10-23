@@ -6,16 +6,17 @@
   const T = window.TOKENS, G = T.glow, el = Lab.el;
   const q = new URLSearchParams(location.search);
   const SCENE = q.get('scene') === '15' ? 15 : 3;
-  // the glow lane (Settings › Appearance, 2 to 8 px, default glow.lane) is the gutter and the stage inset; ?lane= deep-links it
-  let lane = q.has('lane') ? Math.min(T.glow.lane_max, Math.max(T.glow.lane_min, +q.get('lane'))) : T.glow.lane;
-  C.SET.appearance.lane = lane;   // Settings shows the deep-linked lane
+  // the alive rim's depth (Settings › Appearance › Glow depth, 2 to 8 px, default glow.depth): how far its bloom reaches
+  // inside each pane. It repaints only; the gutter and stage inset are a fixed layout.gutter. ?depth= deep-links it.
+  let depth = q.has('depth') ? Math.min(T.glow.depth_max, Math.max(T.glow.depth_min, +q.get('depth'))) : T.glow.depth;
+  C.SET.appearance.depth = depth;   // Settings shows the deep-linked depth
 
   // ---------- theme: auto (prefers-color-scheme) | dark | light ----------
   let density = 'cozy';   // live from Settings › Appearance
   const mq = matchMedia('(prefers-color-scheme: dark)');
   let themeMode = Lab.store.get('showcase.theme') || 'auto';
   const theme = () => themeMode === 'auto' ? (mq.matches ? 'dark' : 'light') : themeMode;
-  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = density; Lab.applyTokens(); document.documentElement.style.setProperty('--gutter', lane + 'px'); document.documentElement.style.setProperty('--glow-lane', lane + 'px'); }
+  function applyTheme() { Lab.prefs.theme = theme(); Lab.prefs.density = density; Lab.applyTokens(); document.documentElement.style.setProperty('--glow-depth', depth + 'px'); }
   mq.addEventListener('change', () => { if (themeMode === 'auto') { applyTheme(); render(); } });
   applyTheme();
 
@@ -272,7 +273,7 @@
       setTimeout(() => { s.restarted = false; const t = tabOf(s.key); streamLine(t ? t.sp : space(), s.name + ' restarted · process generation ' + s.generation); render(); }, 4000);
     }, 2600);
   });
-  // Appearance settings apply live: density, theme and glow lane re-render the window; glow toggles the shader canvas.
+  // Appearance settings apply live: density, theme and glow depth re-render the window; glow toggles the shader canvas.
   // window transparency (renderer.md §1b): the page shows a wallpaper, panes carry the alpha, chrome and text stay opaque.
   // ?opacity=0.7&blur=1 deep-link it; Settings › Appearance changes it live.
   { const q = new URLSearchParams(location.search), o = parseFloat(q.get('opacity')); if (o >= TOKENS.window.opacity_min && o <= 1) C.SET.appearance.opacity = o; if (q.get('blur')) C.SET.appearance.blur = q.get('blur') !== '0'; }
@@ -282,7 +283,7 @@
     if (section !== 'appearance') return;
     if (key === 'density') { density = value; }
     if (key === 'theme') { themeMode = value; Lab.store.set('showcase.theme', value); drawThemeBtn(); }
-    if (key === 'lane') { lane = value; }   // applyTheme below re-applies --gutter and --glow-lane
+    if (key === 'depth') { depth = value; }   // repaint only: the rim lives inside the pane, nothing moves
     if (key === 'glow') { document.getElementById('glow').style.display = value ? '' : 'none'; }
     if (key === 'opacity' || key === 'blur' || key === 'blurRadius') { applyWindow(); if (key === 'opacity') return; }
     const keep = settingsSeat.section; applyTheme(); settingsSeat.section = keep; render();
@@ -711,22 +712,23 @@
     uniform vec4 uRip[${MAXRIP}];  // x y t0 unused
     uniform vec4 uRipCol[${MAXRIP}];
     uniform float uMul[${MAXR}];   // per-rect alpha multiplier: panes 1, sidebar rows glow.row_alpha
-    uniform float uPane[${MAXR}];  // 1: a pane, drawn as silk in its reserved lane; 0: a sidebar row (halo + particles)
-    uniform float uLane, uDpr;     // the chosen glow lane in device px (it is also the gutter), device pixel ratio
+    uniform float uPane[${MAXR}];  // 1: a pane, drawn as the alive rim inside it; 0: a sidebar row (halo + particles)
+    uniform float uDepth, uDpr;    // the rim's bloom depth in CSS px (Settings › Glow depth), device pixel ratio
     uniform float uPulseMs, uActiveMs, uIdleA, uActMin, uActMax, uWaitMin, uWaitMax, uErrA, uBoost, uSpeed, uPSize;
     uniform vec3 uAmber, uRed;
     out vec4 o;
     float hash(float n){ return fract(sin(n)*43758.5453); }
     float breathe(float ms){ return 0.5 - 0.5*cos(uTime/ms*6.28318); }
-    // silk (shaders.html pick, operator 2026-10-22: 8 px lane): true arc length round the box, each wavelength closed on it
+    // the alive rim (rim-glow spec; glow.js): arc length round the box, each wavelength closed on it
     const float TAU = 6.2831853;
     float wl(float lambda, float P){ return P / max(1., floor(P / lambda + .5)); }
+    vec3 hue(vec3 c, float a){ const vec3 k = vec3(.57735); float ca = cos(a); return c*ca + cross(k, c)*sin(a) + k*dot(k, c)*(1. - ca); }
     float perim(vec2 q, vec2 hs){ vec2 e = hs - abs(q);
       if (e.x < e.y) return q.x > 0. ? 2.*hs.x + (q.y + hs.y) : 4.*hs.x + 2.*hs.y + (hs.y - q.y);
       return q.y < 0. ? q.x + hs.x : 2.*hs.x + 2.*hs.y + (hs.x - q.x); }
     void main(){
       vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
-      vec3 acc = vec3(0.); float w = 0.0;
+      vec3 acc = vec3(0.); float w = 0.0; vec3 rimC = vec3(0.); float rimA = 0.0;   // rims composite over the halos
       for (int i = 0; i < ${MAXR}; i++) {
         if (i >= uN) break;
         vec4 R = uRect[i]; vec2 c = R.xy + R.zw*0.5; vec2 hs = R.zw*0.5;
@@ -734,21 +736,27 @@
         float dOut = length(max(d2, 0.)); float dIn = min(max(d2.x, d2.y), 0.);
         float d = abs(dOut + dIn);                    // distance to the border line
         if (uPane[i] > 0.5) {
-          // a pane: silk only in [0, lane] outside it; content and neighbours are never touched, so nothing ever moves
-          float inLane = smoothstep(0., 0.6*uDpr, dOut) * (1.0 - smoothstep(uLane - 0.6*uDpr, uLane, dOut));
-          if (inLane <= 0.0) continue;
+          // a pane: the alive rim, 2 px inside the border plus a bloom to uDepth px; it never leaves the pane
+          float dep = -min(max(d2.x, d2.y), 0.) / uDpr;                 // CSS px inward from the border (0 outside)
+          if (dOut > 0.) continue;
+          float rim = smoothstep(0., .6, dep) * (1. - smoothstep(1.6, 2.4, dep));
+          float bloom = step(1.6, dep) * exp(-(dep - 2.) / (.3*uDepth)) * (1. - smoothstep(uDepth - 1., uDepth, dep));
+          if (rim + bloom <= 0.) continue;
           float pst = uPar[i].x; vec3 pcol = uCol[i].rgb;
           if (pst > 1.5 && pst < 2.5) pcol = uAmber; else if (pst > 2.5) pcol = uRed;
           float spd = pst < 0.5 ? 0.35 : pst < 1.5 ? 1.0 : pst < 2.5 ? 0.6 : 0.0;
           float amp = pst < 0.5 ? 0.32 : pst < 1.5 ? 1.0 : pst < 2.5 ? 0.9 : 0.65;
-          float t = uTime*0.001*spd, u = clamp(dOut/uLane, 0., 1.);
+          float time = uTime + uPar[i].z, t = time*0.001*spd;
           float s = perim(q, hs)/uDpr, P = 4.*(hs.x + hs.y)/uDpr;   // CSS px: tiled panes are square-cornered
-          float c0 = 0.40 + 0.14*sin(TAU*(s/wl(190., P) - t*0.31)) + 0.07*sin(TAU*(s/wl(73., P) + t*0.43) + 1.3);
-          float core = exp(-pow((u - c0)/0.16, 2.));
-          float crest = 0.5 + 0.5*sin(TAU*(s/wl(260., P) - t*0.22));
-          float I = amp*(core*(0.55 + 0.45*crest) + exp(-u*2.2)*(0.15 + 0.55*crest*crest)) * inLane * mix(1.0, 1.3, uCol[i].w) * uMul[i];
-          if (pst > 1.5 && pst < 2.5) I *= 0.6 + 0.4*breathe(1600.0);
-          acc += pcol*I; w += I;
+          float a1 = .5 + .5*sin(TAU*(s/wl(170., P) - t*.45)), a2 = .5 + .5*sin(TAU*(s/wl(110., P) + t*.30) + 1.7);
+          float crest = max(a1*a1, .8*a2*a2), pulse = .5 - .5*cos(time/(2600./(.5 + spd))*TAU);
+          float I = (.42 + .58*crest)*(.72 + .28*pulse)*rim + .3*crest*(.6 + .4*pulse)*bloom;
+          vec3 rc = hue(pcol, .55*sin(TAU*(s/P - t*.12)) + .3*sin(TAU*(s/wl(230., P) + t*.2)));
+          rc = clamp(mix(rc, vec3(1.), .22*crest*rim), 0., 1.);
+          I *= amp * mix(1.0, 1.3, uCol[i].w) * uMul[i];
+          if (pst > 1.5 && pst < 2.5) I *= 0.6 + 0.4*(.5 - .5*cos(time/1600.*TAU));
+          I = clamp(I, 0., 1.);
+          rimC += rc*I*(1. - rimA); rimA += I*(1. - rimA);
           continue;
         }
         float rad = uPar[i].y;
@@ -800,12 +808,13 @@
       } else {
         o = vec4(acc, clamp(w, 0.0, 1.0));
       }
+      o = vec4(rimC + o.rgb*(1. - rimA), rimA + o.a*(1. - rimA));   // the pane rims sit over any halo
     }`;
   function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
   const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog);
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
   gl.useProgram(prog);
-  const U = {}; for (const n of ['uRes', 'uTime', 'uBg', 'uN', 'uNR', 'uLight', 'uRect', 'uCol', 'uPar', 'uMul', 'uPane', 'uLane', 'uDpr', 'uRip', 'uRipCol', 'uPulseMs', 'uActiveMs', 'uIdleA', 'uActMin', 'uActMax', 'uWaitMin', 'uWaitMax', 'uErrA', 'uBoost', 'uSpeed', 'uPSize', 'uAmber', 'uRed']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uRes', 'uTime', 'uBg', 'uN', 'uNR', 'uLight', 'uRect', 'uCol', 'uPar', 'uMul', 'uPane', 'uDepth', 'uDpr', 'uRip', 'uRipCol', 'uPulseMs', 'uActiveMs', 'uIdleA', 'uActMin', 'uActMax', 'uWaitMin', 'uWaitMax', 'uErrA', 'uBoost', 'uSpeed', 'uPSize', 'uAmber', 'uRed']) U[n] = gl.getUniformLocation(prog, n);
   gl.uniform3fv(U.uAmber, C.hslToRgb(T.color.state.waiting)); gl.uniform3fv(U.uRed, C.hslToRgb(T.color.state.errored));
   gl.uniform1f(U.uPulseMs, T.motion.pulse_ms); gl.uniform1f(U.uActiveMs, G.active_pulse_ms); gl.uniform1f(U.uIdleA, G.idle_alpha);
   gl.uniform1f(U.uActMin, G.active_alpha_min); gl.uniform1f(U.uActMax, G.active_alpha_max); gl.uniform1f(U.uWaitMin, G.waiting_alpha_min); gl.uniform1f(U.uWaitMax, G.waiting_alpha_max);
@@ -830,14 +839,15 @@
       colBuf.set([rgb[0], rgb[1], rgb[2], s.key === focused ? 1 : pulse], n * 4);
       const rad = (R.pane ? G.pane_radius : G.row_radius) * dpr;
       const parts = R.pane ? (s.state === 'active' ? G.particles_active : G.particles_idle * 2) : (s.state === 'active' ? G.row_particles_active : 0);
-      parBuf.set([STATE_IDX[s.state], rad, C.hash32(s.key) % 1000, parts], n * 4);
+      parBuf.set([STATE_IDX[s.state], rad, C.hash32(s.key) % (R.pane ? 10000 : 1000), parts], n * 4);   // panes: the rim's phase ms (glow.js)
       mulBuf[n] = (R.pane ? 1 : (s.state === 'idle' && !G.row_idle ? 0 : G.row_alpha)) * (s.grade === 'inferred' ? 0.5 : 1);
       paneBuf[n] = R.pane ? 1 : 0;
       n++;
     }
     gl.uniform3fv(U.uBg, C.hslToRgb(T.color[th].bg)); gl.uniform1f(U.uLight, th === 'light' ? 1 : 0);
     gl.uniform2f(U.uRes, cv.width, cv.height); gl.uniform1f(U.uTime, now);
-    gl.uniform1i(U.uN, n); gl.uniform4fv(U.uRect, rectBuf); gl.uniform4fv(U.uCol, colBuf); gl.uniform4fv(U.uPar, parBuf); gl.uniform1fv(U.uMul, mulBuf); gl.uniform1fv(U.uPane, paneBuf); gl.uniform1f(U.uLane, lane * dpr); gl.uniform1f(U.uDpr, dpr);
+    gl.uniform1i(U.uN, n); gl.uniform4fv(U.uRect, rectBuf); gl.uniform4fv(U.uCol, colBuf); gl.uniform4fv(U.uPar, parBuf); gl.uniform1fv(U.uMul, mulBuf); gl.uniform1fv(U.uPane, paneBuf); const term = document.querySelector('.stage .pane .term'), pad = term ? parseFloat(getComputedStyle(term).paddingLeft) : depth;
+    gl.uniform1f(U.uDepth, Math.min(depth, pad));   // the cell edge rule (rim-glow §3): [0, min(depth, padding)) gl.uniform1f(U.uDpr, dpr);
     ripples.forEach((rp, j) => { ripBuf.set([rp.x * dpr, rp.y * dpr, rp.t0, 0], j * 4); ripCol.set([rp.c[0], rp.c[1], rp.c[2], 1], j * 4); });
     gl.uniform1i(U.uNR, ripples.length); gl.uniform4fv(U.uRip, ripBuf); gl.uniform4fv(U.uRipCol, ripCol);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);

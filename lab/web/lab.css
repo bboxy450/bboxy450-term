@@ -249,7 +249,7 @@ table.tok td, table.tok th { text-align: left; padding: 3px var(--s4); border-bo
 table.tok th { color: var(--fg-dim); font-weight: 500; }
 
 /* ---------- row glow: one mechanism, four readings, focused boost ----------
-   --gc = glow colour, --gr = radius, --ga = alpha. Panes no longer use it: they draw silk in the glow lane (glow.js). */
+   --gc = glow colour, --gr = radius, --ga = alpha. Panes no longer use it: they draw the alive rim inside (glow.js). */
 .seat-row { --gc: var(--seat); --gr: var(--glow-row-r); --ga: var(--glow-idle-a); --boost: 1; --inset: 0 0 0 transparent; }
 .seat-row.focused { --boost: var(--glow-boost); --inset: inset 2px 0 0 var(--seat); }
 .seat-row { box-shadow: var(--inset), 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--ga) * var(--boost) * 100%), transparent); }
@@ -269,6 +269,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 }
 .pane-wrap { position: relative; }
 .pane-wrap canvas.particles { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; }
+.pane-wrap canvas.rim { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; z-index: 2; }   /* the alive rim draws inside the pane, so above it */
 .pane-wrap .pane { position: relative; z-index: 1; }
 
 /* phone sheet open/closed */
@@ -1279,7 +1280,7 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 .tab-row.closed-strip { background: var(--sel-hover); border-radius: var(--r-row); }
 .tab-row.closed-strip .undo { border: var(--hair-w) solid var(--hair); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); border-radius: var(--r-round); font-size: var(--t-small); }
 /* stage.tiled = the app's split stage: no frame, gutters are the dividers, panes tile square */
-.stage.tiled { flex: 1; padding: var(--glow-lane); background: transparent; min-width: 0; }
+.stage.tiled { flex: 1; padding: var(--gutter); background: transparent; min-width: 0; }
 .stage.tiled .pane { background: var(--bg); min-height: 0; min-width: 0; border-radius: 0; }
 .pane .strip .kbd { background: rgba(0,0,0,.22); color: rgba(255,255,255,.85); }
 .pane.settings-pane { display: flex; flex-direction: column; min-width: 0; }
