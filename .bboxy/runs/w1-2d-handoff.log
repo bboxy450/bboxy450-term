@@ -1,4 +1,4 @@
-W1.2d evidence index — scale and crash verified. Exact clean CI is recorded separately in w1-2d-ci-handoff.log after this signed snapshot.
+W1.2d evidence index — scale and crash verified. Exact clean CI is recorded separately in w1-2d-ci-optimized.log after this signed snapshot.
 Executor: Rook Ashwhisker. Worktree /Users/feral/mydev/bboxy450-term-rook, branch rook-w1-2d.
 
 Criteria and scope
@@ -69,7 +69,7 @@ C1a integration, approved by Oracle c90b34a1-9382-47b2-990e-80ef6ec97a9a (seq472
 - C1a landed during the first exact gate. Its baseline e79c6bd0b86bbb69601b26ed18b44bcfd3b0528e passed clean ci-local, exit0,412.046s; logs w1-2d-ci-pre-c1a.log and status file. Both its initial/final worktree were clean, all17 signatures verified. Own CI target2844127232B and completed release target883933184B removed; own temporary worktree removed, exit0. Signed source is preserved at local branch rook-w1-2d-pre-c1a.
 - Rebased onto C1a + architecture-map origin4864ab5. The only conflict was adjacent independent GUI helpers and capture_request in logic.rs; retained both bodies. No capture journal/writer/supervisor read implementation changed in that integration. Earlier scale/crash results name their actual pre-C1a source revisions.
 - Narrow approved app changes only: crates/bboxy450-term/src/cockpit.rs supervisor_main supplies object_dir(run_dir,supervisor)/journal; tests/custody.rs supplies its own temp supervisor-object journal. No other app code or launch flags changed.
-- Final verification at this rebased signed snapshot runs real process tests/cockpit.rs + tests/custody.rs explicitly, then exact clean ci-local. Actual commands, statuses, source SHA and cleanup are recorded separately in w1-2d-ci-handoff.log. No post-C1a physical power-loss or new throughput claim.
+- Final verification at this rebased signed snapshot runs real process tests/cockpit.rs + tests/custody.rs explicitly, then exact clean ci-local. Actual commands, statuses, source SHA and cleanup are recorded separately in w1-2d-ci-optimized.log. No post-C1a physical power-loss or new throughput claim.
 
 C1a constructor ordering regression
 - Exact source0a502b3 app fixture exited101 in53.683s, five cockpit startup failures, before custody or full CI: object_dir created missing run parent with0755, and socket admission correctly rejected it. Log w1-2d-ci-c1a-permission-failure.log, actual status saved before cleanup; private target1210859520B and own temp worktree removed.
@@ -80,3 +80,9 @@ C1a caller migration audit
 - Audited every constructor in the full C1a diff: exactly three capture owners were added (app supervisor_main, custody test, inline GUI socket test). All now supply their own journal root. Other default constructors are uncaptured PTY/control tests or the intentional required-directory rejection test; the pre-C1a complete gate covered those.
 - Only the inline cfg(test) constructor in bbt-mux/src/seat_socket.rs changed in this follow-up; no production GUI protocol/control behavior changed. Next exact gate runs mux --lib before real app fixtures and full CI.
 - Gap (Oracle4d05936f-5819-4739-96a4-fb4ac1a3e62d): store::object_dir at crates/bbt-mux/src/store/mod.rs:21 creates missing ancestors with default0755. Any caller preceding private socket-root creation must prepare its own private parent. App is fixed locally here; global helper/caller-contract hazard remains for Oracle's queue, deliberately not changed.
+
+Unoptimized startup-budget diagnosis (W1.2f gap)
+- Exact08b focused muxlib10+app5+custody1 exit0. Its fullCI exited101 after803.532s:20MiB cold startup steadily progressed past16MiB by25.78s, but exceeded unchanged30s ready deadline; detailed log/status now w1-2d-ci-unoptimized-timeout*.log.
+- Standalone current08b21.00s versus requested parent0a54219.68s, both fullhash/no gap/exit0. Actual pre-yield992 cannot produce a replay timing: its capture guard failed before restart. Call graph excludes live catch_up from Worker::open/attach startup; full comparison and limits in w1-2d-replay-comparison.log.
+- Applied Oracle's case2 CI ruling8d1ad0a0: dev/test O1 defaults with debug assertions explicitly true.30s ready deadline and production writer/read logic untouched. Unoptimized bulk-read cost/load-sensitive startup remains W1.2f; not represented as repaired by CI profile selection.
+- scripts/ci-local.sh syntax check and scoped diff whitespace check exit0. Final exact CI uses this script and logs actual source/profile/results separately in w1-2d-ci-optimized.log.
