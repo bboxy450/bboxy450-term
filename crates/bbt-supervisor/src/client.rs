@@ -54,8 +54,9 @@ struct Pending {
 /// are retained, never replaced by output or by a newer process generation.
 /// Moving a replaced notification to the back preserves per-process ordering:
 /// an intervening resize is received before a later output that replays its gap.
+/// Reusable per-seat/generation/kind queue; raw prefixes stay FIFO and exits are never replaced.
 #[derive(Default)]
-struct PendingEvents {
+pub struct PendingEvents {
     captured: BTreeMap<(Ulid, u64), u64>,
     ordered: BTreeMap<u64, Pending>,
     slots: BTreeMap<EventKey, u64>,
@@ -63,7 +64,8 @@ struct PendingEvents {
     raw_count: usize,
 }
 impl PendingEvents {
-    fn push(&mut self, event: Event) -> Result<()> {
+    /// Coalesce captured seat/generation/kind slots; raw prefixes stay FIFO and exits are never replaced.
+    pub fn push(&mut self, event: Event) -> Result<()> {
         let key = event_key(&event);
         let raw = !self
             .captured
@@ -86,7 +88,8 @@ impl PendingEvents {
         Ok(())
     }
 
-    fn confirm_ring(&mut self, seat: Ulid, generation: u64, first: u64) -> Result<()> {
+    /// Promote only the confirmed captured range, preserving FIFO raw prefixes and all exits.
+    pub fn confirm_ring(&mut self, seat: Ulid, generation: u64, first: u64) -> Result<()> {
         self.captured.insert((seat, generation), first);
         // Events and the attach reply can share a socket read. Promote only
         // records covered by the confirmed ring; pre-ring bytes stay FIFO.
@@ -99,7 +102,8 @@ impl PendingEvents {
         Ok(())
     }
 
-    fn pop_front(&mut self) -> Option<Event> {
+    /// Remove the oldest notification; coalescing never replaces an exit or a raw prefix.
+    pub fn pop_front(&mut self) -> Option<Event> {
         let (_, queued) = self.ordered.pop_first()?;
         let key = event_key(&queued.event);
         if queued.raw {

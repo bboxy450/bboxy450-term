@@ -1,0 +1,100 @@
+D1c GO 58701e43-8fbe-4b04-9fc8-c11163065a4d; D1b accepted 2750175.
+$ date '+%Y-%m-%d %H:%M:%S %Z'
+2026-10-22 23:05:39 PDT
+exit=0
+$ git status --short --branch
+## exec5
+?? .bboxy/runs/d1a-check.log
+?? .bboxy/runs/d1a-ci-final.log
+?? .bboxy/runs/d1a-final-commands.log
+?? .bboxy/runs/d1a-gate-state.log
+?? .bboxy/runs/d1a-handoff-preview.log
+?? .bboxy/runs/d1a-handoff-receipt.log
+?? .bboxy/runs/d1a-handoff.log
+?? .bboxy/runs/d1a-mux-app.log
+?? .bboxy/runs/d1a-mux.log
+?? .bboxy/runs/d1a-provider.log
+?? .bboxy/runs/d1b-ci-final.log
+?? .bboxy/runs/d1b-final-commands.log
+?? .bboxy/runs/d1b-gate-state.log
+?? .bboxy/runs/d1b-handoff-preview.log
+?? .bboxy/runs/d1b-handoff-receipt.log
+?? .bboxy/runs/d1b-handoff.log
+?? .bboxy/runs/d1c-commands.log
+?? .bboxy/runs/id1a-acceptance.log
+?? .bboxy/runs/id1a-check.log
+?? .bboxy/runs/id1a-ci-final.log
+?? .bboxy/runs/id1a-ci.log
+?? .bboxy/runs/id1a-handoff.log
+?? .bboxy/runs/id1a-keychain-dev.log
+?? .bboxy/runs/id1a-keychain.log
+?? .bboxy/runs/id1b-check.log
+?? .bboxy/runs/id1b-ci-followup.log
+?? .bboxy/runs/id1b-ci.log
+?? .bboxy/runs/id1b-fixture-followup.log
+?? .bboxy/runs/id1b-handoff.log
+?? .bboxy/runs/id1b-messaging.log
+?? .bboxy/runs/id1c-check.log
+?? .bboxy/runs/id1c-ci.log
+?? .bboxy/runs/id1c-handoff.log
+?? .bboxy/runs/id1d-check.log
+?? .bboxy/runs/id1d-ci.log
+?? .bboxy/runs/id1d-gate-state.log
+?? .bboxy/runs/id1d-handoff-digest.log
+?? .bboxy/runs/id1d-handoff-receipt.log
+?? .bboxy/runs/id1d-handoff.log
+?? .bboxy/runs/id1d-local.log
+?? .bboxy/runs/id1d-rook-bus-hunk.log
+?? .bboxy/runs/id1d-runtime-check.log
+?? .bboxy/runs/id1e-ci.log
+?? .bboxy/runs/id1e-gate-state.log
+?? .bboxy/runs/id1e-handoff-preview.log
+?? .bboxy/runs/id1e-handoff-receipt.log
+?? .bboxy/runs/id1e-handoff.log
+?? .bboxy/runs/id1f-ci.log
+?? .bboxy/runs/id1f-clippy.log
+?? .bboxy/runs/id1f-commands.log
+?? .bboxy/runs/id1f-extra.log
+?? .bboxy/runs/id1f-gate-state.log
+?? .bboxy/runs/id1f-handoff-preview.log
+?? .bboxy/runs/id1f-handoff-receipt.log
+?? .bboxy/runs/id1f-handoff.log
+?? .bboxy/runs/id1f-identity-memory.log
+?? .bboxy/runs/id1f-identity-unset.log
+?? .bboxy/runs/id1f-release.log
+exit=0
+$ git branch exec5-d1b-accepted
+exit=0
+$ git fetch origin
+exit=0
+$ git rebase --gpg-sign origin/main
+Successfully rebased and updated refs/heads/exec5.
+exit=0
+$ git log -5 --oneline origin/main
+2750175 merge D1b: FakeProvider/FakeLink from fixtures; dummy SSH and cloud hosts, events delayed by due-time queue, down hosts never execute
+2da2393 merge C1i: live panes on real terminals — echo, typing, resize/reflow, focus, Metal resize, logic kill survives
+fdc8a96 provider: record D1b headless and dependency gate evidence
+fa661bc provider: add fixture-driven fake hosts and headless recovery
+6bfe726 merge W1.2g: coalesce ring-backed supervisor events per (seat, generation, kind); no logic death under output floods
+exit=0
+Protocol/host adapter and minimal logic/socket edits plus scoped rustfmt: exit 0.
+$ cargo test --locked -p bbt-proto (compact O1 env)
+exit=0
+D1c scope narrowed by Oracle 643f4dfb: app hosts/sidebar/seat link state plus launcher/settings MODULES; no app launcher/settings host. Production sharing approved, one supervisor/lease/journal. Proto tests exit 0 (5 passed). Model/live/socket host path edits exit 0. Read errors retained: guessed model.rs path rg exit 2, shell config* unmatched glob exit 1, guessed computer-use skill alias cat exit 1; catalog skill path read exit 0. No desktop-control action taken.
+$ cargo check --locked -p bbt-mux -p bboxy450-term --all-targets (compact O1)
+exit=0
+$ cargo check --workspace --all-targets --locked (compact O1)
+exit=0
+$ cargo test --locked -p bbt-mux --test provider_gui -- --nocapture (memory custody, compact O1)
+owned cargo pid=99618
+exit=0
+$ cargo test --locked -p bbt-ui --test links --test settings (memory custody, compact O1)
+owned cargo pid=207
+exit=0
+$ cargo test --locked -p bboxy450-term --test hosts (memory custody, compact O1)
+owned cargo pid=1139
+exit=0
+UI data projection, module LinkState support, legacy cloud/machine decoding, named sidebar/capture hunks and 5-scene provider parity selection added; checked edits and scoped formatting exit 0. Public PendingEvents seam approved by Oracle 7036efee, Rook clear 5e70356c; only visibility/rustdoc changes. Source inventory guessed generated* and components dir failed 1/2 respectively; corrected known-file reads exit 0.
+$ scoped rustfmt --edition 2024 --config skip_children=true (27 named Rust files)
+exit=0
+Focused checks: provider_gui 1/0, links 2/0, settings 5/0, app hosts 1/0; raw d1c-focused.log. Poll after completion returned Unknown process id72891; finished log contains all three actual exit0 records. Latest bounded inbox received cursor5207. Native range helper remains Velvet-owned. Read guessed launcher.rs failed1; correct launchers.rs to follow.

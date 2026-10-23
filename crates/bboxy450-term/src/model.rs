@@ -24,6 +24,7 @@ use crate::grids::Grids;
 /// terminal rows are cloned or locked by the UI while taking that Arc.
 #[derive(Clone)]
 pub struct Model {
+    pub hosts: Vec<bbt_proto::GuiHost>,
     pub ui: ui::Model,
     pub screens: BTreeMap<SeatId, Arc<Screen>>,
     pub frames: BTreeMap<SeatId, Arc<PreparedGrid>>,
@@ -39,11 +40,18 @@ impl Default for Model {
             frames: BTreeMap::new(),
             states: BTreeMap::new(),
             identity: None,
+            hosts: vec![],
         }
     }
 }
 
 impl Model {
+    pub fn provider_settings(&self) -> bbt_ui::modules::settings::Records {
+        crate::hosts::settings(&self.hosts)
+    }
+    pub fn provider_launcher_items(&self) -> Vec<bbt_ui::modules::launcher::Item> {
+        crate::hosts::launcher_items(&self.hosts)
+    }
     /// Project the portable state after build, before preparation/publication.
     /// State comes from logic; this does not infer activity from terminal text.
     pub fn apply_seat_states(&mut self, seats: &[GuiSeat]) {
@@ -243,6 +251,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         .map(|(id, state)| (*id, state.clone()))
         .collect();
     Model {
+        hosts: previous.hosts.clone(),
         ui: model,
         screens,
         frames,

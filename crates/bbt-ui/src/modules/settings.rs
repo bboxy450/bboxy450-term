@@ -1,5 +1,6 @@
 //! Read-mostly Settings composition. Host-owned records and section selection;
 //! this view never reads config files, unlocks keys, or issues grants.
+use super::link::{Cloud, MachineState};
 use super::{
     seat_row::{named, role_color},
     strip::plain,
@@ -75,8 +76,8 @@ pub struct Appearance {
 #[serde(default)]
 pub struct Records {
     pub account: Account,
-    pub cloud: Vec<(String, String, bool, String)>,
-    pub machines: Vec<(String, String, String, String, bool)>,
+    pub cloud: Vec<Cloud>,
+    pub machines: Vec<(String, String, String, String, MachineState)>,
     pub roles: Vec<(String, Role)>,
     pub harness: Vec<(String, Harness)>,
     pub appearance: Appearance,
@@ -1348,7 +1349,7 @@ impl Settings {
             .cloud
             .iter()
             .enumerate()
-            .map(|(i, (name, region, on, co))| {
+            .map(|(i, Cloud(name, region, on, co, link))| {
                 let title = col(
                     "",
                     plain(None, [0.; 4], 0.),
@@ -1394,7 +1395,17 @@ impl Settings {
                     "",
                     plain(None, [0.; 4], 0.),
                     10.,
-                    vec![fixed(tile, 30.), fill(title), b.dot("", *on, 8.).into()],
+                    vec![
+                        fixed(tile, 30.),
+                        fill(title),
+                        if *on {
+                            link.as_ref()
+                                .map_or_else(|| b.dot("", *on, 8.), |link| link.dot())
+                        } else {
+                            b.dot("", false, 8.)
+                        }
+                        .into(),
+                    ],
                 );
                 let foot = row(
                     "",
@@ -1403,7 +1414,12 @@ impl Settings {
                     vec![
                         fill(b.text(
                             "",
-                            if *on { "connected" } else { "not connected" },
+                            if *on {
+                                link.as_ref()
+                                    .map_or_else(|| "connected".into(), |link| link.label())
+                            } else {
+                                "not connected".into()
+                            },
                             11.,
                             400,
                             false,
@@ -1439,6 +1455,12 @@ impl Settings {
             .iter()
             .enumerate()
             .map(|(i, (host, user, hw, key, up))| {
+                let link = match up {
+                    MachineState::Link(link) => Some(link),
+                    MachineState::Legacy(_) => None,
+                };
+                let address =
+                    link.map_or_else(|| user.clone(), |link| format!("{user} · {}", link.label()));
                 let mt = col(
                     "",
                     plain(None, [0.; 4], 0.),
@@ -1455,7 +1477,7 @@ impl Settings {
                         .into(),
                         txt(
                             "",
-                            user,
+                            address,
                             ui::Text {
                                 line_height: 1.25,
                                 ..font(11., 400, true, ui::Color::Muted)
@@ -1469,7 +1491,13 @@ impl Settings {
                     bottom(plain(None, [8., 0., 8., 0.], 0.), b.ctx, false),
                     12.,
                     vec![
-                        fixed(b.dot("", *up, 8.), 8.),
+                        fixed(
+                            link.map_or_else(
+                                || b.dot("", matches!(up, MachineState::Legacy(true)), 8.),
+                                |link| link.dot(),
+                            ),
+                            8.,
+                        ),
                         fill(mt),
                         b.text("", hw, 11., 400, false, true).into(),
                         row(

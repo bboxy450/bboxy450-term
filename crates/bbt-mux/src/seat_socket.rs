@@ -228,6 +228,7 @@ async fn gui_session(
                         // disappear between the initial list and live events.
                         let mut subscription=Consumer::gui("seat/*/state");
                         subscription.filter.push("account/identity/state".into());
+                        subscription.filter.push(crate::provider::fake::STATE_SUBJECT.into());
                         consumer=Some(client.bus.subscribe(subscription).await?);
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                     }
@@ -235,6 +236,7 @@ async fn gui_session(
                     let reply:Result<GuiReply>=async {
                         match request.action {
                             GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
+                            GuiAction::ListHosts=>Ok(GuiReply::Hosts(client.gui_hosts().await?)),
                             GuiAction::Spawn {spec}=>Ok(GuiReply::Seat(client.gui_spawn(spec).await?)),
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}
@@ -273,12 +275,24 @@ async fn gui_session(
                                     send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                                     continue;
                                 }
+                                if envelope.event.subject==crate::provider::fake::STATE_SUBJECT {
+                                    let crate::provider::ProviderEvent::HostState {host,state} = serde_json::from_value(envelope.event.payload)?;
+                                    for mut view in client.gui_hosts().await? {
+                                        if crate::provider::HostId::from(&view.location) == host {
+                                            // Keep the original transition even if a later state is already current.
+                                            view.state = bbt_proto::HostState::from(state.clone());
+                                            send(&mut write,&GuiReply::HostState {host:view}).await?;
+                                        }
+                                    }
+                                    continue;
+                                }
                                 let id=envelope.event.subject.split('/').nth(1).ok_or_else(||invalid("state event has no seat"))?.parse()?;
                                 if let Ok(seat)=client.gui_seat(id).await {send(&mut write,&GuiReply::Seat(seat)).await?;}
                             }
                             crate::bus::Delivery::Gap {..}=> {
                                 send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                                 send(&mut write,&GuiReply::Seats(client.gui_seats().await?)).await?;
+                                send(&mut write,&GuiReply::Hosts(client.gui_hosts().await?)).await?;
                             }
                         }
                     }

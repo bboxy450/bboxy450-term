@@ -177,6 +177,7 @@ pub struct SeatRow {
     pub grade: Grade,
     pub color: Option<[f32; 4]>,
     pub where_: Option<String>,
+    pub link: Option<super::link::LinkState>,
     pub focused: bool,
     pub muted: bool,
     pub authority: Option<String>,
@@ -208,6 +209,7 @@ impl SeatRow {
             grade: Grade::Reported,
             color: None,
             where_: None,
+            link: None,
             focused: false,
             muted: false,
             authority: None,
@@ -299,11 +301,22 @@ impl SeatRow {
                         icon(
                             where_,
                             12.,
-                            if where_ == "cloud" {
-                                rgba(ctx.theme.palette().accent_soft)
-                            } else {
-                                ui::Color::Muted
-                            },
+                            self.link.as_ref().map_or_else(
+                                || {
+                                    if where_ == "cloud" {
+                                        rgba(ctx.theme.palette().accent_soft)
+                                    } else {
+                                        ui::Color::Muted
+                                    }
+                                },
+                                |link| {
+                                    link.chip_color(if where_ == "cloud" {
+                                        rgba(ctx.theme.palette().accent_soft)
+                                    } else {
+                                        ui::Color::Muted
+                                    })
+                                },
+                            ),
                         ),
                     ),
                 )

@@ -37,6 +37,7 @@ pub struct LogicConfig {
 }
 
 enum Command {
+    GuiHosts(oneshot::Sender<Result<Vec<bbt_proto::GuiHost>>>),
     ControlCatalogue(Ulid, u64, oneshot::Sender<Result<serde_json::Value>>),
     ControlCall(
         Ulid,
@@ -125,6 +126,15 @@ pub struct LogicClient {
     pub bus: BusHandle,
 }
 impl LogicClient {
+    pub async fn gui_hosts(&self) -> Result<Vec<bbt_proto::GuiHost>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiHosts(tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
+
     /// Portable status only; key custody stays inside the identity runtime.
     pub async fn gui_identity(&self) -> Result<bbt_proto::GuiIdentity> {
         let (tx, rx) = oneshot::channel();
@@ -431,6 +441,35 @@ impl Logic {
         handle: &tokio::runtime::Handle,
     ) -> Result<Self> {
         Self::start_with_custody(connection, config, None, handle)
+    }
+    /// Production dummy hosts share the one admitted supervisor and journal.
+    pub fn start_custodied_with_fixtures(
+        connection: impl SupervisorConnection + 'static,
+        config: LogicConfig,
+        handle: &tokio::runtime::Handle,
+    ) -> Result<Self> {
+        bbt_rt::assert_not_ui_thread();
+        let registry = Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
+        let owners = registry
+            .list()?
+            .into_iter()
+            .map(|seat| (seat.id, HostId::from(&seat.location)));
+        let providers = crate::provider::shared::fixture_providers(
+            connection,
+            owners,
+            Arc::new(crate::provider::fake::RealClock::default()),
+        )?;
+        let mut seed = [0; 32];
+        getrandom::fill(&mut seed)?;
+        let bus_key = SigningKey::from_bytes(&seed);
+        seed.fill(0);
+        Self::start_inner(
+            providers,
+            config,
+            bus_key,
+            IdentityMode::Custodied(None),
+            handle,
+        )
     }
     /// Isolated custody seam for IO tests; production uses start_custodied.
     pub fn start_custodied_with_store(
@@ -1894,8 +1933,22 @@ impl Worker {
         })
     }
     fn gui_spawn(&mut self, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::GuiSeat> {
-        if !matches!(spec.location, bbt_proto::Where::Local) {
-            return Err(invalid("remote providers are not connected"));
+        let id = HostId::from(&spec.location);
+        let host = self
+            .connections
+            .hosts()
+            .into_iter()
+            .find(|host| host.id == id)
+            .ok_or_else(|| invalid("unknown provider host"))?;
+        if !matches!(
+            host.state,
+            crate::provider::LinkState::Connected { .. }
+                | crate::provider::LinkState::Degraded { .. }
+        ) {
+            return Err(Box::new(crate::provider::fake::LinkDown {
+                host: id,
+                state: host.state,
+            }));
         }
         let harness = HarnessRecord::builtin(&spec.harness_kind)?;
         let mut record = SeatRecord::new(
@@ -1904,6 +1957,13 @@ impl Worker {
             spec.name.unwrap_or_else(|| harness.name.clone()),
             harness.kind.clone(),
         );
+        record.location = match spec.location {
+            bbt_proto::Where::Local => crate::registry::Location::Local,
+            bbt_proto::Where::Ssh { host } => crate::registry::Location::Ssh { host },
+            bbt_proto::Where::Cloud { provider, host } => {
+                crate::registry::Location::Cloud { provider, host }
+            }
+        };
         record.role = harness.default_role.clone();
         if let Some(role) = spec.role {
             record.role.name = role;
@@ -1996,6 +2056,9 @@ impl Worker {
                     break;
                 };
                 match command {
+                    Command::GuiHosts(reply) => {
+                        let _ = reply.send(Ok(self.connections.gui_hosts()));
+                    }
                     Command::IdentityStatus(reply) => {
                         let _ = reply.send(self.identity.status());
                     }

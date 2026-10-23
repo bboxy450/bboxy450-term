@@ -18,6 +18,8 @@ pub struct Item {
     pub aliases: Vec<String>,
     pub tags: Vec<String>,
     pub navigation: bool,
+    pub link: Option<super::link::LinkState>,
+    pub down: bool,
     /// Some(empty) remains a parent, as in the lab's empty Go to fixture.
     pub children: Option<Vec<Item>>,
 }
@@ -90,6 +92,14 @@ fn hits(it: &Item, w: &str) -> bool {
         || (w.chars().count() >= 3 && subsequence(&norm(&it.label).replace(' ', ""), w))
 }
 impl Launcher {
+    /// The app's Enter handler consumes this; unavailable hosts stay visible.
+    pub fn activation(&self) -> Option<&Item> {
+        let view = self.view();
+        view.rows
+            .get(view.selected)
+            .copied()
+            .filter(|item| !item.down && !item.link.as_ref().is_some_and(|link| link.down()))
+    }
     pub fn view(&self) -> View<'_> {
         let mut level = self.items.as_slice();
         let mut crumbs = vec![];
@@ -323,6 +333,8 @@ impl Launcher {
     }
     fn row(&self, it: &Item, index: usize, selected: bool, ctx: ui::Context) -> c::Element {
         let spot = self.spotlight;
+        let parent =
+            it.children.is_some() && !it.down && !it.link.as_ref().is_some_and(|link| link.down());
         let key = format!(
             "picker/div/opt{}",
             if index == 0 {
@@ -430,7 +442,20 @@ impl Launcher {
             false,
             true,
         );
-        let end = if it.children.is_some() {
+        let kind = it.link.as_ref().map_or(kind, |link| {
+            named(
+                format!("{key}/kind"),
+                link.element(
+                    if spot {
+                        STYLE.r#type.kind as f32
+                    } else {
+                        STYLE.r#type.caption as f32
+                    },
+                    true,
+                ),
+            )
+        });
+        let end = if parent {
             let mut s = plain(None, [0.; 4], 0.);
             if spot {
                 s.overrides.width = Some(ui::Length::Px(24.));
@@ -497,7 +522,7 @@ impl Launcher {
                 false,
             )
         };
-        let end = if it.children.is_some() {
+        let end = if parent {
             boxed(
                 "",
                 plain(None, [0., 0., 0., STYLE.spacing.s2 as f32], 0.),
@@ -509,6 +534,9 @@ impl Launcher {
             end
         };
         let mut end = end;
+        if it.down || it.link.as_ref().is_some_and(|link| link.down()) {
+            hide_number(&mut end);
+        }
         if self.cap.is_some() && !it.navigation && it.children.is_none() {
             hide_number(&mut end);
         }
@@ -547,7 +575,13 @@ impl Launcher {
             Axis::Row,
             0.,
         );
-        let row = if self.cap.is_some() && !it.navigation {
+        let row = if it.down || it.link.as_ref().is_some_and(|link| link.down()) {
+            c::Element::Filter {
+                content: Box::new(row),
+                saturation: 1.,
+                opacity: 0.45,
+            }
+        } else if self.cap.is_some() && !it.navigation {
             c::Element::Filter {
                 content: Box::new(row),
                 saturation: 1.,

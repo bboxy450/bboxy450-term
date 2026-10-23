@@ -226,6 +226,9 @@ impl FakeProvider {
     }
 }
 impl Provider for FakeProvider {
+    fn address(&self, host: &HostId) -> Option<String> {
+        FakeProvider::address(self, host).map(str::to_owned)
+    }
     fn id(&self) -> ProviderId {
         self.id.clone()
     }
