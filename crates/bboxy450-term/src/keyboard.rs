@@ -297,6 +297,11 @@ fn legacy_control_or_text(key: &Input<'_>, mods: ModifiersState) -> Option<Vec<u
         Key::Named(NamedKey::Tab) => b"\t",
         Key::Named(NamedKey::Escape) => b"\x1b",
         Key::Character(text) if mods.control_key() => {
+            // Like Alacritty's key_input, preserve the platform's actual Ctrl
+            // text. Infer C0 bytes only when no supplemental text is available.
+            if let Some(text) = key.text_all_modifiers.filter(|text| !text.is_empty()) {
+                return Some(text.as_bytes().to_vec());
+            }
             let c = single_char(&key.unmodified_key).or_else(|| text.chars().next())?;
             let control = match c {
                 '@' | ' ' | '2' => 0,
@@ -1067,9 +1072,21 @@ mod tests {
         ] {
             let mut input = character(value, KeyCode::KeyA);
             input.modifiers.state = ModifiersState::CONTROL;
+            input.text_all_modifiers = None; // Exercise the missing-platform-text fallback.
             assert_eq!(encode(&input, 0), Some(vec![byte]));
         }
         check(&character("界", KeyCode::KeyA), 0, Some("界"));
+        // The OS's actual Ctrl text is authoritative, including combinations
+        // whose unmodified key alone would imply a different C0 byte.
+        let mut control = character("?", KeyCode::Slash);
+        control.unmodified_key = Key::Character("/".into());
+        control.modifiers.state = ModifiersState::CONTROL | ModifiersState::SHIFT;
+        control.text_all_modifiers = Some("\x7f");
+        check(&control, 0, Some("\x7f"));
+        control.text_all_modifiers = Some("?");
+        check(&control, 0, Some("?"));
+        control.text_all_modifiers = None;
+        check(&control, 0, Some("\x1f"));
         let mut alt = character("a", KeyCode::KeyA);
         alt.modifiers.state = ModifiersState::ALT;
         check(&alt, 0, Some("\x1ba"));

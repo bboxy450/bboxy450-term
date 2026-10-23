@@ -1857,7 +1857,8 @@ fn test_key<'a>(
         physical_key: physical,
         unmodified_key: key.clone(),
         text,
-        text_all_modifiers: text,
+        // These legacy fixture arguments contain no platform Ctrl supplement.
+        text_all_modifiers: text.filter(|_| !mods.control_key()),
         location: winit::keyboard::KeyLocation::Standard,
         state: ElementState::Pressed,
         repeat,
