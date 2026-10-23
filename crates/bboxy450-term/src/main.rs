@@ -30,7 +30,7 @@ pub enum UiEvent {
     Wake,
     DemoFinished,
     BeginIdle,
-    EndIdle,
+    EndIdle(u64),
     EndAnimation,
     Quit,
     BackendStopped(Result<(), String>),
@@ -50,6 +50,9 @@ type Prepared = Result<(gpu::Gpu, scene::Scene), String>;
 #[derive(Default)]
 struct IdleQuiescence {
     observed: Option<(u64, u64)>,
+    epoch: u64,
+    active: Option<(Instant, u64, u64)>,
+    invalidations: u64,
 }
 impl IdleQuiescence {
     fn ready(&mut self, producer_finished: bool, pending: bool, counts: (u64, u64)) -> bool {
@@ -60,6 +63,32 @@ impl IdleQuiescence {
         let quiet = self.observed == Some(counts);
         self.observed = Some(counts);
         quiet
+    }
+    fn begin(&mut self, now: Instant, counts: (u64, u64)) -> u64 {
+        self.epoch += 1;
+        self.active = Some((now, counts.0, counts.1));
+        self.epoch
+    }
+    fn interrupt(&mut self) -> bool {
+        self.invalidations += 1;
+        self.observed = None;
+        self.active.take().is_some()
+    }
+    fn finish(&mut self, epoch: u64) -> Option<(Instant, u64, u64)> {
+        if epoch != self.epoch {
+            return None;
+        }
+        self.active.take()
+    }
+    fn deadline_error(&self) -> String {
+        if self.invalidations != 0 {
+            format!(
+                "idle window never stable within 30 seconds (native invalidations: {})",
+                self.invalidations
+            )
+        } else {
+            "smoke probe did not finish within 30 seconds".into()
+        }
     }
 }
 
@@ -103,7 +132,6 @@ struct App {
     idle_quiet: IdleQuiescence,
     redraw_pending: std::cell::Cell<bool>,
     last_update: usize,
-    idle_start: Option<(Instant, u64, u64)>,
     error: Option<String>,
     capture: Option<std::path::PathBuf>,
     capture_pending: bool,
@@ -230,6 +258,20 @@ impl App {
             tokio::time::sleep(Duration::from_secs(1)).await;
             let _ = proxy.send_event(UiEvent::BeginIdle);
         });
+    }
+    fn native_idle_invalidation(&mut self, reason: &str) {
+        if self.smoke && !self.cadence_test && self.idle_scheduled {
+            // Native window changes require a real repaint. That interval is
+            // no longer idle; do not count it as the zero-work measurement.
+            let interrupted = self.idle_quiet.interrupt();
+            self.logger.write(format!(
+                "idle probe native invalidation #{}: {reason}; measured_window_interrupted={interrupted}",
+                self.idle_quiet.invalidations
+            ));
+            if interrupted {
+                self.schedule_idle_check();
+            }
+        }
     }
     fn fail(&mut self, error: String, event_loop: &ActiveEventLoop) {
         self.logger.write(format!("app error: {error}"));
@@ -628,13 +670,13 @@ impl ApplicationHandler<UiEvent> for App {
                 if self.fake
                     && !self.idle_quiet.ready(
                         self.demo_finished && self.last_update == 20,
-                        queued || self.redraw_pending.get(),
+                        queued || self.redraw_pending.get() || self.occluded,
                         counts,
                     )
                 {
                     self.logger.write(format!(
-                        "idle probe settling: producer_done={} queued={} redraw_pending={} frames={} callbacks={}",
-                        self.demo_finished, queued, self.redraw_pending.get(), counts.0, counts.1,
+                        "idle probe settling: producer_done={} queued={} redraw_pending={} occluded={} frames={} callbacks={}",
+                        self.demo_finished, queued, self.redraw_pending.get(), self.occluded, counts.0, counts.1,
                     ));
                     if queued {
                         self.request_redraw();
@@ -646,11 +688,13 @@ impl ApplicationHandler<UiEvent> for App {
                     self.gpu.as_ref().unwrap().collect_gpu(&mut self.budget);
                     self.logger.write(self.budget.report());
                 }
-                self.idle_start = Some((
+                let epoch = self.idle_quiet.begin(
                     Instant::now(),
-                    self.meter.total_frames(),
-                    self.pacer.as_ref().map_or(0, DisplayLink::callbacks),
-                ));
+                    (
+                        self.meter.total_frames(),
+                        self.pacer.as_ref().map_or(0, DisplayLink::callbacks),
+                    ),
+                );
                 self.logger.write(format!(
                     "idle probe begins: frames={} last_update={}",
                     self.meter.total_frames(),
@@ -659,7 +703,7 @@ impl ApplicationHandler<UiEvent> for App {
                 let proxy = self.proxy.clone();
                 bbt_rt::handle().spawn(async move {
                     tokio::time::sleep(Duration::from_secs(10)).await;
-                    let _ = proxy.send_event(UiEvent::EndIdle);
+                    let _ = proxy.send_event(UiEvent::EndIdle(epoch));
                 });
             }
             UiEvent::EndAnimation => {
@@ -693,9 +737,13 @@ impl ApplicationHandler<UiEvent> for App {
                     let _ = proxy.send_event(UiEvent::BeginIdle);
                 });
             }
-            UiEvent::EndIdle => {
-                let (start, frames, callbacks) =
-                    self.idle_start.take().expect("idle probe started");
+            UiEvent::EndIdle(epoch) => {
+                let Some((start, frames, callbacks)) = self.idle_quiet.finish(epoch) else {
+                    if self.smoke {
+                        self.logger.write("idle probe ignored stale end timer");
+                    }
+                    return;
+                };
                 let delta = self.meter.total_frames() - frames;
                 let callbacks = self.pacer.as_ref().map_or(0, DisplayLink::callbacks) - callbacks;
                 let passed =
@@ -741,10 +789,7 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::Quit => event_loop.exit(),
-            UiEvent::SmokeDeadline => self.fail(
-                "smoke probe did not finish within 30 seconds".into(),
-                event_loop,
-            ),
+            UiEvent::SmokeDeadline => self.fail(self.idle_quiet.deadline_error(), event_loop),
             UiEvent::BackendStopped(result) => {
                 if self.admission_refusals.input != 0 || self.admission_refusals.spawn != 0 {
                     let mut report = self.admission_refusals.report();
@@ -783,6 +828,7 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_close(event_loop);
             }
             WindowEvent::Resized(size) => {
+                self.native_idle_invalidation("Resized");
                 if self.capture.is_some() {
                     self.logger.write(format!(
                         "verification window resize: {}x{} physical pixels",
@@ -794,8 +840,16 @@ impl ApplicationHandler<UiEvent> for App {
                 }
                 self.request_redraw();
             }
-            WindowEvent::ScaleFactorChanged { .. } => self.request_redraw(),
+            WindowEvent::ScaleFactorChanged { .. } => {
+                self.native_idle_invalidation("ScaleFactorChanged");
+                self.request_redraw();
+            }
             WindowEvent::Occluded(occluded) => {
+                self.native_idle_invalidation(if occluded {
+                    "Occluded(true)"
+                } else {
+                    "Occluded(false)"
+                });
                 self.occluded = occluded;
                 if let Some(pacer) = &mut self.pacer
                     && let Err(error) = pacer.set_active(self.animate && !occluded)
@@ -1322,7 +1376,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         idle_quiet: IdleQuiescence::default(),
         redraw_pending: std::cell::Cell::new(false),
         last_update: 0,
-        idle_start: None,
         error: None,
         capture,
         capture_pending: true,
@@ -1343,6 +1396,59 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod smoke_tests {
     use super::IdleQuiescence;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn flapping_native_events_never_pass_and_deadline_has_a_named_reason() {
+        let mut quiet = IdleQuiescence::default();
+        assert_eq!(
+            quiet.deadline_error(),
+            "smoke probe did not finish within 30 seconds"
+        );
+        let now = Instant::now();
+        let first = quiet.begin(now, (21, 21));
+        for second in 0..30 {
+            quiet.interrupt();
+            assert!(!quiet.ready(true, false, (21 + second, 21 + second)));
+            assert!(quiet.finish(first).is_none());
+        }
+        assert_eq!(quiet.invalidations, 30);
+        assert_eq!(
+            quiet.deadline_error(),
+            "idle window never stable within 30 seconds (native invalidations: 30)"
+        );
+    }
+
+    #[test]
+    fn native_invalidation_restarts_settling_and_old_timers_cannot_end_the_new_window() {
+        let mut quiet = IdleQuiescence::default();
+        let now = Instant::now();
+        assert!(!quiet.ready(true, false, (21, 21)));
+        assert!(quiet.ready(true, false, (21, 21)));
+        let first = quiet.begin(now, (21, 21));
+        assert!(quiet.interrupt());
+        assert!(
+            !quiet.interrupt(),
+            "only one replacement check is scheduled"
+        );
+        assert!(quiet.finish(first).is_none());
+        // Four legitimate unocclusion repaints occurred. A hidden window or
+        // any pending redraw must not begin the replacement measurement.
+        assert!(!quiet.ready(true, true, (25, 25)));
+        assert!(!quiet.ready(true, false, (25, 25)));
+        assert!(quiet.ready(true, false, (25, 25)));
+        let replacement_start = now + Duration::from_secs(2);
+        let replacement = quiet.begin(replacement_start, (25, 25));
+        assert!(
+            quiet.finish(first).is_none(),
+            "old timer cannot shorten the full ten seconds"
+        );
+        assert_eq!(quiet.finish(replacement), Some((replacement_start, 25, 25)));
+        assert!(
+            quiet.finish(replacement).is_none(),
+            "duplicate timer is harmless"
+        );
+    }
 
     #[test]
     fn idle_waits_for_producer_queued_work_and_late_frames_before_starting() {
