@@ -874,13 +874,11 @@ impl Actor {
                     "old process or its final records are still live",
                 ));
             }
-        } else if spec.generation != 1 {
-            return Err(Failure::new(
-                FailureCode::StaleGeneration,
-                "first process generation must be 1",
-            ));
-        } else if self.seats.len() >= self.config.max_seats {
-            return Err(Failure::new(FailureCode::Limit, "machine seat cap reached"));
+        } else {
+            admit_recovered_generation(&self.config, &spec)?;
+            if self.seats.len() >= self.config.max_seats {
+                return Err(Failure::new(FailureCode::Limit, "machine seat cap reached"));
+            }
         }
         let token = self.token();
         let mut seat = Seat::spawn(spec, token, self.poll.registry())?;
@@ -1707,6 +1705,62 @@ fn signal(pid: u32, signal: libc::c_int) -> io::Result<()> {
         return Err(io::Error::last_os_error());
     }
     Ok(())
+}
+
+// A newly started supervisor has no in-memory generation history. Only an
+// existing, validated predecessor ring can authorize a higher first generation.
+// Do not use object_dir or open a ring before finding its durable marker:
+// Ring::open initializes an empty directory, which cannot prove a predecessor.
+fn admit_recovered_generation(config: &Config, spec: &LaunchSpec) -> Result<(), Failure> {
+    let stale = |reason| Failure::new(FailureCode::StaleGeneration, reason);
+    let Some(root) = config.socket_path.as_deref().and_then(|path| path.parent()) else {
+        return if spec.generation == 1 {
+            Ok(())
+        } else {
+            Err(stale("recovery requires a persistent supervisor root"))
+        };
+    };
+    let directory = root.join(format!("seat-{}", spec.seat));
+    match std::fs::symlink_metadata(directory.join(format!("ring-{}", spec.generation))) {
+        Ok(_) => return Err(stale("requested process generation already has a ring")),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(_) => return Err(stale("requested process generation cannot be inspected")),
+    }
+    if spec.generation == 1 {
+        return Ok(());
+    }
+    let previous = spec.generation - 1;
+    let predecessor = directory.join(format!("ring-{previous}"));
+    #[derive(serde::Deserialize)]
+    struct MarkerSettings {
+        settings: crate::ring::Settings,
+    }
+    for name in ["committed", "previous"] {
+        let Ok(file) = std::fs::File::open(predecessor.join(name)) else {
+            continue;
+        };
+        let mut bytes = Vec::new();
+        if file.take(4097).read_to_end(&mut bytes).is_err() || bytes.len() < 4 || bytes.len() > 4096
+        {
+            continue;
+        }
+        let end = bytes.len() - 4;
+        let crc = u32::from_le_bytes(bytes[end..].try_into().unwrap());
+        if crate::ring::crc32c(&bytes[..end]) != crc {
+            continue;
+        }
+        let Ok(marker) = serde_json::from_slice::<MarkerSettings>(&bytes[..end]) else {
+            continue;
+        };
+        // The old supervisor has been reaped. The existing ring reader checks
+        // identity, settings and record CRCs, and may repair its committed tail.
+        if crate::ring::Ring::open(&predecessor, spec.seat, previous, 0, marker.settings).is_ok() {
+            return Ok(());
+        }
+    }
+    Err(stale(
+        "no valid committed predecessor for process generation",
+    ))
 }
 
 #[cfg(test)]

@@ -1,0 +1,37 @@
+C1c-1 first exact clean gate — source c2620ca095baca5a3349b9f5fe0634e67bb67fc4
+Frozen reference branch: exec3-c1c-gated-c2620ca; writing branch exec3.
+Command: sh scripts/ci-local.sh
+Environment: BBOXY_TEST_CUSTODY=memory, CARGO_INCREMENTAL=0, DEV/TEST_DEBUG=0, DEV/TEST_OPT_LEVEL=1, DEV/TEST_DEBUG_ASSERTIONS=true, CARGO_BUILD_JOBS=4, isolated CARGO_TARGET_DIR.
+Real exit0; elapsed488.269s. Workspace634 passed/0 failed/15 ignored over113 summaries; strict workspace Clippy0; UI IO lint0; idle10.002s frames0/callbacks0; invariants6 passed/0 failed/4 named slow skips. All5 C1c recovery tests passed in1.43s. The known socket_backlog test PASSED in72.89s in this optimized-debug run; earlier development and unchanged-main failures remain recorded, and are not relabelled or claimed fixed by C1c. No supplemental skips or waiver were used in this green gate.
+Raw log: target/c1c-ci-c2620ca.log
+SHA256:73470e4432aea8f7ed40525d6e95c51a6183865bc7c9bf26b9196b3c8201e0f1
+Source checkout clean before and after. Private checkout/target removed after completion;2072952832 unique allocated file bytes removed. Raw output/metadata retained. Earlier baseline target cleanup removed624594944 unique allocated file bytes.
+
+Before handoff, fetch0 found unrelated accepted R10/AGENTS changes on origin/main a585ece727d76146f9e7058932983bccadf25548. Rebase and exact successor verification are performed afterward, with their real results in the handoff. The first green source is retained above; this record does not claim a future successor passed before it ran.
+
+First-gate machine metadata:
+{
+  "source_sha": "c2620ca095baca5a3349b9f5fe0634e67bb67fc4",
+  "ci_local_exit": 0,
+  "commands": [
+    {
+      "command": [
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "pid": 97793,
+      "exit": 0,
+      "elapsed_seconds": 488.269
+    }
+  ],
+  "clean_after": true,
+  "raw_log": "/Users/feral/mydev/bboxy450-term-exec3/target/c1c-ci-c2620ca.log",
+  "raw_sha256": "73470e4432aea8f7ed40525d6e95c51a6183865bc7c9bf26b9196b3c8201e0f1",
+  "elapsed_seconds": 489.597,
+  "cleanup": {
+    "worktree_remove_exit": 0,
+    "allocated_unique_file_bytes_removed": 2072952832,
+    "checkout_exists": false,
+    "target_exists": false
+  }
+}

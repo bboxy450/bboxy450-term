@@ -251,13 +251,13 @@ async fn gui_session(
                                 views.get_mut(&seat).ok_or_else(||invalid("seat is not watched"))?.stream.applied(view,sequence)?;
                                 Ok(GuiReply::Ok {op})
                             }
-                            GuiAction::Input {seat,generation:_,id,bytes}=> {
-                                let receipt=client.gui_input(Ulid::from(seat.0.0),id,bytes).await?;
+                            GuiAction::Input {seat,generation,id,bytes}=> {
+                                let receipt=client.gui_input(Ulid::from(seat.0.0),generation,id,bytes).await?;
                                 if receipt.state==crate::InputState::PartialUnknown {return Err(invalid("input result is partial/unknown; keep the original id"));}
                                 Ok(GuiReply::Ok {op:id})
                             }
-                            GuiAction::Resize {seat,generation:_,cols,rows}=> {
-                                client.gui_resize(Ulid::from(seat.0.0),cols,rows).await?;
+                            GuiAction::Resize {seat,generation,cols,rows}=> {
+                                client.gui_resize(Ulid::from(seat.0.0),generation,cols,rows).await?;
                                 Ok(GuiReply::Ok {op})
                             }
                             GuiAction::ScheduleClose {..}|GuiAction::UndoClose {..}|GuiAction::GetHistory {..}=>Err(invalid("close, undo and history are not connected until C1c")),
