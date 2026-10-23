@@ -9,6 +9,124 @@ use crate::{
 };
 use bbt_ui_model::{Activity, STYLE, TOKENS, draw::Color as Rgba, layout::Axis};
 
+/// Declare only heights already fixed by the composition. An unknown-height
+/// child leaves its ancestors undeclared, selecting ScrollView's old path.
+pub(crate) fn declare_fixed(
+    mut e: c::Element,
+    ctx: ui::Context,
+    keys: &std::collections::HashMap<String, String>,
+) -> c::Element {
+    let mut key = String::new();
+    let declared = match &mut e {
+        c::Element::FixedHeight { .. } => return e,
+        c::Element::Named { name, content } => {
+            key = keys.get(name).cloned().unwrap_or_default();
+            **content = declare_fixed(
+                std::mem::replace(content.as_mut(), c::Element::Spacer),
+                ctx,
+                keys,
+            );
+            fixed_dimensions(content)
+        }
+        c::Element::Filter { content, .. } => {
+            **content = declare_fixed(
+                std::mem::replace(content.as_mut(), c::Element::Spacer),
+                ctx,
+                keys,
+            );
+            fixed_dimensions(content)
+        }
+        c::Element::Layers { base, .. } => {
+            **base = declare_fixed(
+                std::mem::replace(base.as_mut(), c::Element::Spacer),
+                ctx,
+                keys,
+            );
+            fixed_dimensions(base)
+        }
+        c::Element::Box(b) => {
+            let s = b.style.resolve(ctx).expect("fixed sidebar Style");
+            let outset = s
+                .shadow
+                .as_ref()
+                .map_or(0., |s| {
+                    s.blur * 1.5 + s.offset[0].abs().max(s.offset[1].abs())
+                })
+                .max(s.rings.iter().map(|r| r.width).fold(0., f32::max))
+                .max(s.border.as_ref().map_or(0., |b| b.width));
+            if let Some(height) = s.height {
+                Some((height, outset))
+            } else if b.direction == Axis::Column
+                && b.align == c::Alignment::Stretch
+                && !b.inline
+                && b.scale == 1.
+            {
+                for item in &mut b.children {
+                    item.element = declare_fixed(
+                        std::mem::replace(&mut item.element, c::Element::Spacer),
+                        ctx,
+                        keys,
+                    );
+                }
+                fixed_column(&b.children, b.gap.resolve(ctx.density).expect("gap")).map(
+                    |(h, child_outset)| {
+                        let border = s
+                            .border
+                            .as_ref()
+                            .filter(|b| !b.outside)
+                            .map_or(0., |b| b.width);
+                        let top = s.padding[0] + if s.border_sides[0] { border } else { 0. };
+                        let bottom = s.padding[2] + if s.border_sides[2] { border } else { 0. };
+                        (h + top + bottom, outset.max(child_outset))
+                    },
+                )
+            } else {
+                None
+            }
+        }
+        c::Element::Stack(s) if s.direction == Axis::Column && s.align == c::Alignment::Stretch => {
+            for item in &mut s.children {
+                item.element = declare_fixed(
+                    std::mem::replace(&mut item.element, c::Element::Spacer),
+                    ctx,
+                    keys,
+                );
+            }
+            fixed_column(&s.children, s.gap.resolve(ctx.density).expect("gap"))
+        }
+        _ => None,
+    };
+    if let Some((height, outset)) = declared {
+        e.fixed_height(height, key, outset)
+    } else {
+        e
+    }
+}
+fn fixed_dimensions(e: &c::Element) -> Option<(f32, f32)> {
+    match e {
+        c::Element::FixedHeight {
+            height,
+            paint_outset,
+            ..
+        } => Some((*height, *paint_outset)),
+        _ => None,
+    }
+}
+fn fixed_column(items: &[c::Item], gap: f32) -> Option<(f32, f32)> {
+    let mut height = 0.;
+    let mut outset: f32 = 0.;
+    for item in items {
+        let (h, o) = fixed_dimensions(&item.element)?;
+        height += match item.extent {
+            c::Extent::Auto => h,
+            c::Extent::Fixed(h) => h,
+            _ => return None,
+        };
+        outset = outset.max(o);
+    }
+    Some((height + gap * items.len().saturating_sub(1) as f32, outset))
+}
+
 pub(crate) fn plain(
     height: Option<f32>,
     padding: [f32; 4],
@@ -500,7 +618,34 @@ impl SwarmCard {
         frame.gap = ui::Length::Px(0.);
         frame.align = c::Alignment::Stretch;
         frame.clip = true;
-        named("card", c::Element::Box(frame))
+        let mut keys = std::collections::HashMap::from([
+            ("head".into(), format!("swarm/{}/head", self.key)),
+            ("body/newseat".into(), format!("swarm/{}/newseat", self.key)),
+            ("body/shadows".into(), format!("swarm/{}/shadows", self.key)),
+        ]);
+        for (i, tab) in self.tabs.iter().enumerate() {
+            // A tab's header follows its seat identities, not its array index.
+            let identity = tab
+                .seats
+                .iter()
+                .map(|s| s.row.key.as_str())
+                .collect::<Vec<_>>()
+                .join("/");
+            keys.insert(
+                format!("body/tab{i}/header"),
+                format!("swarm/{}/tab/{identity}", self.key),
+            );
+            for (j, seat) in tab.seats.iter().enumerate() {
+                keys.insert(
+                    format!("body/tab{i}/seat{j}/row"),
+                    format!("seat/{}", seat.row.key),
+                );
+            }
+        }
+        for (i, row) in self.shadows.iter().enumerate() {
+            keys.insert(format!("body/shadow{i}/row"), format!("shadow/{}", row.key));
+        }
+        declare_fixed(named("card", c::Element::Box(frame)), ctx, &keys)
     }
 }
 #[derive(Debug, Clone)]

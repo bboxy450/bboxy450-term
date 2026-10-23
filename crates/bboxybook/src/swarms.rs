@@ -292,6 +292,123 @@ pub fn render_case(
     }
     Ok(crop)
 }
+fn visit(e: &c::Element, f: &mut impl FnMut(&c::Element)) {
+    f(e);
+    match e {
+        c::Element::FixedHeight { content, .. }
+        | c::Element::Named { content, .. }
+        | c::Element::Filter { content, .. }
+        | c::Element::Baseline { content, .. }
+        | c::Element::InlineMiddle { content, .. } => visit(content, f),
+        c::Element::Box(b) => {
+            for item in &b.children {
+                visit(&item.element, f);
+            }
+        }
+        c::Element::Stack(s) => {
+            for item in &s.children {
+                visit(&item.element, f);
+            }
+        }
+        c::Element::Flow(s) => {
+            for item in &s.children {
+                visit(&item.element, f);
+            }
+        }
+        c::Element::ScrollView(s) => visit(&s.content, f),
+        c::Element::Overlay(o) => visit(&o.content, f),
+        c::Element::Layers { base, overlays } => {
+            visit(base, f);
+            for p in overlays {
+                visit(&p.content, f);
+            }
+        }
+        _ => {}
+    }
+}
+fn windowed_parts(
+    e: &c::Element,
+    layout: &c::Layout,
+) -> Result<Option<(Rect, std::collections::BTreeSet<String>)>> {
+    let mut views = vec![];
+    visit(e, &mut |e| {
+        if let c::Element::ScrollView(s) = e
+            && s.content.declared_height().is_some()
+        {
+            let mut names = std::collections::BTreeSet::new();
+            visit(&s.content, &mut |e| {
+                if let c::Element::Named { name, .. } = e {
+                    names.insert(name.clone());
+                }
+            });
+            views.push(names);
+        }
+    });
+    if views.is_empty() {
+        return Ok(None);
+    }
+    fn clips(n: &c::Layout, out: &mut Vec<Rect>) {
+        if matches!(n.kind, c::LayoutKind::ScrollView { .. }) {
+            out.push(n.rect);
+        }
+        for child in &n.children {
+            clips(child, out);
+        }
+    }
+    let mut rects = vec![];
+    clips(layout, &mut rects);
+    // Sidebar has one viewport. Refuse ambiguous attribution rather than
+    // filtering a missing part against an unrelated ancestor clip.
+    if views.len() != 1 || rects.len() != 1 {
+        return Err("windowed sidebar viewport attribution is ambiguous".into());
+    }
+    Ok(Some((rects[0], views.pop().unwrap())))
+}
+fn omit_part(
+    key: &str,
+    web: [f32; 4],
+    offset: [f32; 2],
+    windowed: Option<&(Rect, std::collections::BTreeSet<String>)>,
+) -> bool {
+    windowed.is_some_and(|(clip, descendants)| {
+        descendants.contains(key)
+            && (web[0] + web[2] <= clip.x - offset[0]
+                || web[0] >= clip.right() - offset[0]
+                || web[1] + web[3] <= clip.y - offset[1]
+                || web[1] >= clip.bottom() - offset[1])
+    })
+}
+#[test]
+fn diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant() {
+    let windowed = (
+        Rect::new(20., 40., 100., 80.),
+        ["inside".into()].into_iter().collect(),
+    );
+    assert!(!omit_part(
+        "inside",
+        [0., -1., 20., 2.],
+        [20., 40.],
+        Some(&windowed)
+    ));
+    assert!(!omit_part(
+        "ancestor",
+        [0., -40., 100., 20.],
+        [20., 40.],
+        Some(&windowed)
+    ));
+    assert!(!omit_part(
+        "inside",
+        [0., -40., 100., 20.],
+        [20., 40.],
+        None
+    ));
+    assert!(omit_part(
+        "inside",
+        [0., -40., 100., 20.],
+        [20., 40.],
+        Some(&windowed)
+    ));
+}
 pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
     let mut out = vec![];
     for case in cases
@@ -301,10 +418,17 @@ pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
         let f = case.fixture.as_ref().unwrap();
         let crop = &f["backdrop"]["crop"];
         let offset = [seat_rows::number(crop, "x")?, seat_rows::number(crop, "y")?];
-        let layout = layout_case(case)?;
+        let (element, bounds) = element_case(case)?;
+        let layout = element.layout(
+            bounds,
+            crate::components::context(case),
+            &crate::components::CachedMetrics::default(),
+        )?;
+        let windowed = windowed_parts(&element, &layout)?;
         let mut names = BTreeMap::new();
         seat_rows::named(&layout, &mut names);
         let mut parts = vec![];
+        let mut omitted = vec![];
         for p in f["parts"].as_array().ok_or("swarm diagnostics missing")? {
             let key = p["key"].as_str().ok_or("part name missing")?;
             let r = &p["rect"];
@@ -314,6 +438,10 @@ pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
                 seat_rows::number(r, "w")?,
                 seat_rows::number(r, "h")?,
             ];
+            if omit_part(key, web, offset, windowed.as_ref()) {
+                omitted.push(json!({"key":key,"web":web}));
+                continue;
+            }
             let native = names.get(key).map(|n| {
                 [
                     n.rect.x - offset[0],
@@ -325,7 +453,18 @@ pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
             let text = p["kind"] == "text";
             parts.push(json!({"key":key,"kind":if text{"text"}else{"box"},"native":native,"web":web,"baseline":if text{json!({"native":names.get(key).and_then(|n|seat_rows::text_baseline(n)).map(|y|y-offset[1]),"web":p["font_diagnostics"]["baseline"].as_f64().map(|b|b+web[1] as f64)})}else{Value::Null},"children":[]}));
         }
-        out.push(json!({"key":case.relative(),"tree":{"kind":"box","native":[0.,0.,case.width as f32,case.height as f32],"web":[0.,0.,case.width as f32,case.height as f32],"children":parts}}));
+        if windowed.is_some() {
+            println!(
+                "{}: windowed diagnostics omitted {} entirely clipped parts (listed in layouts.json)",
+                case.relative(),
+                omitted.len()
+            );
+        }
+        let mut record = json!({"key":case.relative(),"tree":{"kind":"box","native":[0.,0.,case.width as f32,case.height as f32],"web":[0.,0.,case.width as f32,case.height as f32],"children":parts}});
+        if let Some((clip, _)) = windowed {
+            record["windowing"] = json!({"viewport":[clip.x-offset[0],clip.y-offset[1],clip.w,clip.h],"omitted_count":omitted.len(),"omitted_parts":omitted,"rule":"only descendants entirely outside this viewport clip; partly visible parts always compared"});
+        }
+        out.push(record);
     }
     Ok(out)
 }

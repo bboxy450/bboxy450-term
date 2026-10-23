@@ -4,7 +4,7 @@ use crate::{
     self as ui, components as c,
     modules::{
         seat_row::named,
-        swarm_card::{SwarmCard, flow, plain, text},
+        swarm_card::{SwarmCard, declare_fixed, flow, plain, text},
     },
 };
 use bbt_ui_model::{STYLE, layout::Axis};
@@ -17,7 +17,36 @@ pub struct Sidebar {
     pub new_swarm: bool,
 }
 impl Sidebar {
+    /// Capture before replacing the caller's model or density, then pass the
+    /// snapshot to element_anchored. An undeclared subtree returns None.
+    pub fn anchor(&self, ctx: ui::Context) -> crate::style::Result<Option<c::ScrollAnchor>> {
+        fn find(e: &c::Element, ctx: ui::Context) -> crate::style::Result<Option<c::ScrollAnchor>> {
+            match e {
+                c::Element::ScrollView(s) => s.anchor(ctx),
+                c::Element::Named { content, .. } => find(content, ctx),
+                c::Element::Box(b) => {
+                    for item in &b.children {
+                        if let Some(anchor) = find(&item.element, ctx)? {
+                            return Ok(Some(anchor));
+                        }
+                    }
+                    Ok(None)
+                }
+                _ => Ok(None),
+            }
+        }
+        find(&self.element(ctx), ctx)
+    }
     pub fn element(&self, ctx: ui::Context) -> c::Element {
+        self.element_anchored(ctx, None)
+    }
+    /// Rebuild after a content, width or density change while preserving the
+    /// caller's first visible stable item. No retained height estimates.
+    pub fn element_anchored(
+        &self,
+        ctx: ui::Context,
+        anchor: Option<&c::ScrollAnchor>,
+    ) -> c::Element {
         let border = STYLE.material.hairline_px as f32;
         // The sidebar's own left inset (the pane gutter now follows the glow lane).
         let edge = bbt_ui_model::TOKENS.sidebar.edge as f32;
@@ -129,14 +158,18 @@ impl Sidebar {
             );
             content.push(named("new-swarm", body).into());
         }
-        let content = flow(
-            plain(None, [0.; 4], ui::Color::Transparent, 0.),
-            Axis::Column,
-            0.,
-            c::Alignment::Stretch,
-            content,
+        let content = declare_fixed(
+            flow(
+                plain(None, [0.; 4], ui::Color::Transparent, 0.),
+                Axis::Column,
+                0.,
+                c::Alignment::Stretch,
+                content,
+            ),
+            ctx,
+            &Default::default(),
         );
-        let scroll = c::Element::ScrollView(c::ScrollView {
+        let mut scroll = c::ScrollView {
             viewport: [
                 (width - 2. * STYLE.spacing.s3 as f32).max(0.),
                 (scroll_height - STYLE.spacing.s4 as f32).max(0.),
@@ -144,7 +177,13 @@ impl Sidebar {
             offset: [0., self.scroll],
             content_width: None,
             content: Box::new(content),
-        });
+        };
+        if let Some(anchor) = anchor {
+            scroll
+                .restore_anchor(anchor, ctx)
+                .expect("fixed sidebar anchor");
+        }
+        let scroll = c::Element::ScrollView(scroll);
         let scroll = named(
             "scroll",
             flow(

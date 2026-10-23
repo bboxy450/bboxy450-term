@@ -165,6 +165,13 @@ pub struct ScrollView {
     pub content_width: Option<f32>,
     pub content: std::boxed::Box<Element>,
 }
+/// A caller-owned scroll snapshot; it retains identities, never measurements.
+#[derive(Debug, Clone)]
+pub struct ScrollAnchor {
+    key: String,
+    within: f32,
+    order: Vec<String>,
+}
 #[derive(Debug, Clone)]
 pub struct Overlay {
     pub content: std::boxed::Box<Element>,
@@ -204,6 +211,14 @@ impl Overlay {
 }
 #[derive(Debug, Clone)]
 pub enum Element {
+    /// A producer's fixed-height declaration. Transparent in ordinary layout;
+    /// ScrollView can omit offscreen items without measuring their contents.
+    FixedHeight {
+        height: f32,
+        paint_outset: f32,
+        key: String,
+        content: std::boxed::Box<Element>,
+    },
     /// CSS sRGB saturation/opacity over retained colour records.
     Filter {
         content: std::boxed::Box<Element>,
@@ -605,6 +620,22 @@ fn inset(s: &ResolvedStyle) -> Insets {
     }
 }
 impl Element {
+    pub fn fixed_height(self, height: f32, key: impl Into<String>, paint_outset: f32) -> Self {
+        Self::FixedHeight {
+            height,
+            paint_outset,
+            key: key.into(),
+            content: std::boxed::Box::new(self),
+        }
+    }
+    pub fn declared_height(&self) -> Option<f32> {
+        match self {
+            Self::FixedHeight { height, .. } if height.is_finite() && *height >= 0. => {
+                Some(*height)
+            }
+            _ => None,
+        }
+    }
     pub fn natural(
         &self,
         width: f32,
@@ -627,6 +658,21 @@ impl Element {
     fn measure_in(&self, width: f32, pass: &mut LayoutPass<'_>) -> crate::style::Result<Intrinsic> {
         let (ctx, m) = (pass.ctx, pass.measure);
         match self {
+            Self::FixedHeight {
+                height,
+                paint_outset,
+                content,
+                ..
+            } => {
+                if !height.is_finite()
+                    || *height < 0.
+                    || !paint_outset.is_finite()
+                    || *paint_outset < 0.
+                {
+                    return Err("invalid fixed-height declaration");
+                }
+                content.natural_in(width, pass)
+            }
             Self::Filter {
                 content,
                 saturation,
@@ -775,6 +821,7 @@ impl Element {
         let (ctx, m) = (pass.ctx, pass.measure);
         let (_, base) = self.natural_in(rect.w, pass)?;
         let (kind, children) = match self {
+            Self::FixedHeight { content, .. } => return content.layout_in(rect, pass),
             Self::Filter {
                 content,
                 saturation,
@@ -991,21 +1038,32 @@ impl Element {
             }
             Self::ScrollView(s) => {
                 let content_w = s.content_width.unwrap_or(rect.w).max(rect.w);
-                let (natural, _) = s.content.natural_in(content_w, pass)?;
-                let content = [content_w, natural[1].max(rect.h)];
+                let declared = s.content.declared_height();
+                let height = match declared {
+                    Some(h) => h,
+                    None => s.content.natural_in(content_w, pass)?.0[1],
+                };
+                let content = [content_w, height.max(rect.h)];
                 let offset = [
                     s.offset[0].clamp(0., (content[0] - rect.w).max(0.)),
                     s.offset[1].clamp(0., (content[1] - rect.h).max(0.)),
                 ];
-                let child = s.content.layout_in(
-                    Rect::new(
-                        rect.x - offset[0],
-                        rect.y - offset[1],
-                        content[0],
-                        content[1],
-                    ),
-                    pass,
-                )?;
+                let content_rect = Rect::new(
+                    rect.x - offset[0],
+                    rect.y - offset[1],
+                    content[0],
+                    content[1],
+                );
+                let child = if declared.is_some() {
+                    let outset = match s.content.as_ref() {
+                        Self::FixedHeight { paint_outset, .. } => *paint_outset,
+                        _ => 0.,
+                    } + pass.ctx.density.tokens().row_h as f32;
+                    let visible = Rect::new(rect.x, rect.y - outset, rect.w, rect.h + outset * 2.);
+                    layout_fixed(&s.content, content_rect, visible, pass)?
+                } else {
+                    s.content.layout_in(content_rect, pass)?
+                };
                 (LayoutKind::ScrollView { content, offset }, vec![child])
             }
         };
@@ -1042,6 +1100,294 @@ impl Element {
         Ok(layout)
     }
 }
+fn declared_item_height(item: &Item) -> Option<f32> {
+    match item.extent {
+        Extent::Auto => item.element.declared_height(),
+        Extent::Fixed(h) if h.is_finite() && h >= 0. => Some(h),
+        _ => None,
+    }
+}
+
+/// Keep solve_box's local cursor additions, independently of its natural-height
+/// sum. Reassociating these floats changes fractional row positions.
+fn fixed_prefix(children: &[Item], gap: f32) -> Option<Vec<(f32, f32)>> {
+    let mut cursor = 0.;
+    children
+        .iter()
+        .map(|item| {
+            let h = declared_item_height(item)?;
+            let start = cursor;
+            cursor += h + gap;
+            Some((start, h))
+        })
+        .collect()
+}
+
+fn fixed_baseline(e: &Element, width: f32, pass: &mut LayoutPass<'_>) -> crate::style::Result<f32> {
+    match e {
+        Element::FixedHeight { content, .. }
+        | Element::Named { content, .. }
+        | Element::Filter { content, .. } => fixed_baseline(content, width, pass),
+        Element::Baseline { content, offset } => Ok(fixed_baseline(content, width, pass)? + offset),
+        Element::Box(b) if b.direction == Axis::Column && !b.inline => {
+            let p = inset(&b.style.resolve(pass.ctx)?);
+            Ok(p.top
+                + match b.children.first() {
+                    Some(c) => {
+                        fixed_baseline(&c.element, (width - p.left - p.right).max(0.), pass)?
+                    }
+                    None => 0.,
+                })
+        }
+        Element::Stack(s) if s.direction == Axis::Column => match s.children.first() {
+            Some(c) => fixed_baseline(&c.element, width, pass),
+            None => Ok(0.),
+        },
+        _ => Ok(e.natural_in(width, pass)?.1),
+    }
+}
+
+fn fixed_children(
+    children: &[Item],
+    gap: f32,
+    rect: Rect,
+    visible: Rect,
+    pass: &mut LayoutPass<'_>,
+) -> crate::style::Result<Option<Vec<Layout>>> {
+    let Some(prefix) = fixed_prefix(children, gap) else {
+        return Ok(None);
+    };
+    let start = prefix.partition_point(|(y, h)| rect.y + *y + *h <= visible.y);
+    let end = prefix.partition_point(|(y, _)| rect.y + *y < visible.bottom());
+    let mut out = Vec::with_capacity(end.saturating_sub(start));
+    for i in start..end {
+        let (y, h) = prefix[i];
+        out.push(layout_fixed(
+            &children[i].element,
+            Rect::new(rect.x, rect.y + y, rect.w, h),
+            visible,
+            pass,
+        )?);
+    }
+    Ok(Some(out))
+}
+
+fn layout_fixed(
+    e: &Element,
+    rect: Rect,
+    visible: Rect,
+    pass: &mut LayoutPass<'_>,
+) -> crate::style::Result<Layout> {
+    let (kind, children) = match e {
+        Element::FixedHeight {
+            height,
+            paint_outset,
+            content,
+            ..
+        } => {
+            if !height.is_finite()
+                || *height < 0.
+                || !paint_outset.is_finite()
+                || *paint_outset < 0.
+            {
+                return Err("invalid fixed-height declaration");
+            }
+            return layout_fixed(content, rect, visible, pass);
+        }
+        Element::Named { name, content } => {
+            let child = layout_fixed(content, rect, visible, pass)?;
+            return Ok(Layout {
+                rect: child.rect,
+                baseline: child.baseline,
+                kind: LayoutKind::Named(name.clone()),
+                children: vec![child],
+            });
+        }
+        Element::Filter {
+            content,
+            saturation,
+            opacity,
+        } => {
+            if !saturation.is_finite()
+                || !(0. ..=4.).contains(saturation)
+                || !opacity.is_finite()
+                || !(0. ..=1.).contains(opacity)
+            {
+                return Err("invalid colour filter");
+            }
+            (
+                LayoutKind::Filter {
+                    saturation: *saturation,
+                    opacity: *opacity,
+                },
+                vec![layout_fixed(content, rect, visible, pass)?],
+            )
+        }
+        Element::Baseline { content, offset } => {
+            let mut child = layout_fixed(content, rect, visible, pass)?;
+            child.baseline += offset;
+            return Ok(child);
+        }
+        Element::Box(b)
+            if b.direction == Axis::Column
+                && b.align == Alignment::Stretch
+                && !b.inline
+                && b.scale == 1. =>
+        {
+            let style = b.style.resolve(pass.ctx)?;
+            if let Some(mask) = b.mask {
+                mask.validate()?;
+            }
+            let Some(children) = fixed_children(
+                &b.children,
+                b.gap.resolve(pass.ctx.density)?,
+                rect.inset(inset(&style)),
+                visible,
+                pass,
+            )?
+            else {
+                return e.layout_in(rect, pass);
+            };
+            (
+                LayoutKind::Box {
+                    style: std::boxed::Box::new(style),
+                    clip: b.clip,
+                    group: b.group,
+                    mask: b.mask,
+                },
+                children,
+            )
+        }
+        Element::Stack(s) if s.direction == Axis::Column && s.align == Alignment::Stretch => {
+            let Some(children) = fixed_children(
+                &s.children,
+                s.gap.resolve(pass.ctx.density)?,
+                rect,
+                visible,
+                pass,
+            )?
+            else {
+                return e.layout_in(rect, pass);
+            };
+            (LayoutKind::Stack, children)
+        }
+        _ => return e.layout_in(rect, pass),
+    };
+    Ok(Layout {
+        rect,
+        baseline: fixed_baseline(e, rect.w, pass)?,
+        kind,
+        children,
+    })
+}
+
+fn anchor_rows(
+    e: &Element,
+    y: f32,
+    ctx: Context,
+    out: &mut Vec<(String, f32, f32)>,
+) -> crate::style::Result<()> {
+    match e {
+        Element::FixedHeight {
+            key,
+            height,
+            content,
+            ..
+        } => {
+            if !key.is_empty() {
+                out.push((key.clone(), y, *height));
+            } else {
+                anchor_rows(content, y, ctx, out)?;
+            }
+        }
+        Element::Named { content, .. }
+        | Element::Filter { content, .. }
+        | Element::Baseline { content, .. } => anchor_rows(content, y, ctx, out)?,
+        Element::Box(b) if b.direction == Axis::Column => {
+            let p = inset(&b.style.resolve(ctx)?);
+            if let Some(prefix) = fixed_prefix(&b.children, b.gap.resolve(ctx.density)?) {
+                for (item, (dy, _)) in b.children.iter().zip(prefix) {
+                    anchor_rows(&item.element, y + p.top + dy, ctx, out)?;
+                }
+            }
+        }
+        Element::Stack(s) if s.direction == Axis::Column => {
+            if let Some(prefix) = fixed_prefix(&s.children, s.gap.resolve(ctx.density)?) {
+                for (item, (dy, _)) in s.children.iter().zip(prefix) {
+                    anchor_rows(&item.element, y + dy, ctx, out)?;
+                }
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+impl ScrollView {
+    /// Snapshot only declared fixed items. Variable-height views retain their
+    /// old caller-controlled offset and return no fixed-item anchor.
+    pub fn anchor(&self, ctx: Context) -> crate::style::Result<Option<ScrollAnchor>> {
+        let Some(height) = self.content.declared_height() else {
+            return Ok(None);
+        };
+        let offset = self.offset[1].clamp(0., (height - self.viewport[1]).max(0.));
+        let mut rows = vec![];
+        anchor_rows(&self.content, 0., ctx, &mut rows)?;
+        let Some((key, y, _)) = rows.iter().find(|(_, y, h)| *y + *h > offset) else {
+            return Ok(None);
+        };
+        Ok(Some(ScrollAnchor {
+            key: key.clone(),
+            within: offset - *y,
+            order: rows.into_iter().map(|r| r.0).collect(),
+        }))
+    }
+    /// Restore the same item and pixel position. If removed, choose the nearest
+    /// surviving old neighbour, preferring the following item on a tie.
+    pub fn restore_anchor(
+        &mut self,
+        anchor: &ScrollAnchor,
+        ctx: Context,
+    ) -> crate::style::Result<bool> {
+        let Some(height) = self.content.declared_height() else {
+            return Ok(false);
+        };
+        let mut rows = vec![];
+        anchor_rows(&self.content, 0., ctx, &mut rows)?;
+        let positions: std::collections::HashMap<&str, f32> =
+            rows.iter().map(|(key, y, _)| (key.as_str(), *y)).collect();
+        let mut y = positions.get(anchor.key.as_str()).copied();
+        if y.is_none()
+            && let Some(index) = anchor.order.iter().position(|k| k == &anchor.key)
+        {
+            for distance in 1..anchor.order.len() {
+                for candidate in [
+                    index
+                        .checked_add(distance)
+                        .filter(|i| *i < anchor.order.len()),
+                    index.checked_sub(distance),
+                ]
+                .into_iter()
+                .flatten()
+                {
+                    if let Some(found) = positions.get(anchor.order[candidate].as_str()) {
+                        y = Some(*found);
+                        break;
+                    }
+                }
+                if y.is_some() {
+                    break;
+                }
+            }
+        }
+        if let Some(y) = y {
+            self.offset[1] = (y + anchor.within).clamp(0., (height - self.viewport[1]).max(0.));
+            return Ok(true);
+        }
+        Ok(false)
+    }
+}
+
 fn translate_layout(node: &mut Layout, dy: f32) {
     node.rect.y += dy;
     if let LayoutKind::Text { runs, .. } = &mut node.kind {
@@ -1271,6 +1617,7 @@ fn layout_children(
 fn fn_content_inset(element: &Element, ctx: Context) -> crate::style::Result<f32> {
     match element {
         Element::Named { content, .. }
+        | Element::FixedHeight { content, .. }
         | Element::Baseline { content, .. }
         | Element::InlineMiddle { content, .. } => fn_content_inset(content, ctx),
         Element::Box(b) => {
@@ -1959,6 +2306,7 @@ pub fn namespace(element: &mut Element, prefix: &str) {
             }
         }
         Element::Filter { content, .. }
+        | Element::FixedHeight { content, .. }
         | Element::Baseline { content, .. }
         | Element::InlineMiddle { content, .. }
         | Element::Overlay(Overlay { content, .. })
