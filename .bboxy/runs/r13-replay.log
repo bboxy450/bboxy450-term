@@ -1,0 +1,9 @@
+# R13 byte identity over the canonical catalogue: bboxybook manifest (1704) captured once on main 92e60dc;
+# replay-images with release bboxybook built at main (before) and R13 3d08a83 (after), clean detached worktrees, sha256 per PNG.
+# Wall times are back to back on the same machine while other agents' parity ran: indicative, not the gate's full --parity pair.
+before 92e60dc after 3d08a83
+capture exit=0 web: 1704/1704 captured; 0 failures requested=1704
+replay before exit=0 499 s: replayed 1704 images; geometry not requested
+replay after  exit=0 175 s: replayed 1704 images; geometry not requested
+sha256 per PNG: before 1704, after 1704, missing 0, extra 0, byte-different 0
+done
