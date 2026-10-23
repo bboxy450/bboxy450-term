@@ -1,0 +1,9 @@
+{"argv": ["cargo", "package", "--allow-dirty", "--locked"], "cwd": "/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bbt-yarn-macros", "env": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1-ci-1d6f99f0", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}, "TRYBUILD": null}
+   Packaging bbt-yarn-macros v0.0.1 (/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bbt-yarn-macros)
+    Updating crates.io index
+    Packaged 9 files, 100.1KiB (22.0KiB compressed)
+   Verifying bbt-yarn-macros v0.0.1 (/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bbt-yarn-macros)
+   Compiling syn v2.0.119
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/target/y1-ci-1d6f99f0/package/bbt-yarn-macros-0.0.1)
+    Finished `dev` profile [optimized] target(s) in 9.54s
+{"argv": ["cargo", "package", "--allow-dirty", "--locked"], "cwd": "/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bbt-yarn-macros", "exit": 0, "elapsed_s": 9.598404417018173}

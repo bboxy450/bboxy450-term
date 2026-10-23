@@ -1,0 +1,114 @@
+Display copy: trailing context whitespace removed; raw git diff retained at /private/tmp/rook-y1-upstream-hcdwigiu/y1-upstream-code-diff.raw.log; raw SHA256 f9ecd5ae9f9ce451902c3d1e7ed71e702ea8ab7e4327e363528bdf768e5404ba.
+{"argv": ["git", "diff", "--no-index", "--", "/private/tmp/rook-y1-upstream-hcdwigiu/kittens-old/crates/kittens/src/lib.rs", "/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn/src/lib.rs"], "exit": 1, "meaning": "expected differences; documentation/lint attributes and crate paths only"}
+diff --git a/private/tmp/rook-y1-upstream-hcdwigiu/kittens-old/crates/kittens/src/lib.rs b/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn/src/lib.rs
+index 5c616ed..599e87f 100644
+--- a/private/tmp/rook-y1-upstream-hcdwigiu/kittens-old/crates/kittens/src/lib.rs
++++ b/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn/src/lib.rs
+@@ -1,10 +1,12 @@
+ #![no_std]
+ #![forbid(unsafe_code)]
+-#![doc = include_str!("crate_docs.md")]
++#![deny(missing_docs)]
++#![warn(rustdoc::broken_intra_doc_links)]
++#![doc = include_str!("../README.md")]
+
+ // Lets generated code use one absolute path both inside the library target and
+ // from examples/integration tests that belong to this package.
+-extern crate self as kittens;
++extern crate self as bbt_yarn;
+
+ #[cfg(all(feature = "tokio", not(target_os = "none")))]
+ extern crate alloc;
+@@ -15,7 +17,7 @@ pub mod reactor;
+ pub mod source;
+
+ #[cfg(feature = "macros")]
+-pub use kittens_macros::reactor;
++pub use bbt_yarn_macros::reactor;
+
+ /// Implementation details used by generated code.
+ ///
+@@ -30,7 +32,7 @@ pub mod __private {
+     pub use tokio;
+
+     #[cfg(feature = "macros")]
+-    pub use kittens_macros::{
++    pub use bbt_yarn_macros::{
+         reactor_event, reactor_slots, reactor_tokio_event, reactor_tokio_slots,
+     };
+
+{"argv": ["git", "diff", "--no-index", "--", "/private/tmp/rook-y1-upstream-hcdwigiu/kittens-old/crates/kittens-macros/src/lib.rs", "/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros/src/lib.rs"], "exit": 1, "meaning": "expected differences; documentation/lint attributes and crate paths only"}
+diff --git a/private/tmp/rook-y1-upstream-hcdwigiu/kittens-old/crates/kittens-macros/src/lib.rs b/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros/src/lib.rs
+index 41b659f..45ab57c 100644
+--- a/private/tmp/rook-y1-upstream-hcdwigiu/kittens-old/crates/kittens-macros/src/lib.rs
++++ b/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros/src/lib.rs
+@@ -1,17 +1,7 @@
+-//! Procedural-macro compiler for the Kittens K0 reactor grammar.
+-//!
+-//! # Coverage boundary
+-//!
+-//! The five `#[proc_macro]` functions below are compiler ABI shims. An empty
+-//! [`proc_macro::TokenStream`] can be constructed in-process, but unit tests
+-//! cannot supply populated compiler-backed input and observe populated output
+-//! conversion outside macro expansion. The shims are therefore absent only
+-//! from the unit-test build. Their shared token-level parser, validator,
+-//! diagnostic rendering, and all four expansion paths remain present and are
+-//! exercised directly; downstream trybuild fixtures remain the invocation-level
+-//! compile oracle.
+-
++#![doc = include_str!("../README.md")]
+ #![forbid(unsafe_code)]
++#![deny(missing_docs)]
++#![warn(rustdoc::broken_intra_doc_links)]
+
+ use std::collections::{HashMap, HashSet};
+
+@@ -627,7 +617,8 @@ impl Parse for DrainArgs {
+     }
+ }
+
+-#[allow(clippy::too_many_lines)]
++// Vendored upstream: retain the validator syntax; only crate paths change.
++#[allow(clippy::too_many_lines, clippy::collapsible_if)]
+ fn validate(reactor: &Reactor) -> Result<()> {
+     if reactor.arms.is_empty() {
+         return Err(ktr(
+@@ -1428,7 +1419,7 @@ fn source_for<'a>(reactor: &'a Reactor, id: &Ident) -> &'a Expr {
+ }
+
+ fn kittens_path() -> TokenStream2 {
+-    kittens_path_from(crate_name("kittens").ok())
++    kittens_path_from(crate_name("bbt-yarn").ok())
+ }
+
+ fn kittens_path_from(found: Option<FoundCrate>) -> TokenStream2 {
+@@ -1437,7 +1428,7 @@ fn kittens_path_from(found: Option<FoundCrate>) -> TokenStream2 {
+             let ident = Ident::new(&name, Span::call_site());
+             quote!(::#ident)
+         }
+-        Some(FoundCrate::Itself) | None => quote!(::kittens),
++        Some(FoundCrate::Itself) | None => quote!(::bbt_yarn),
+     }
+ }
+
+@@ -1920,7 +1911,7 @@ mod tests {
+             ),
+             (
+                 one_arm(
+-                    quote! { #[kittens::source(item)] #[readiness(quiescent)] },
++                    quote! { #[bbt_yarn::source(item)] #[readiness(quiescent)] },
+                     quote!(item),
+                     quote!(sources.item),
+                 ),
+@@ -2283,8 +2274,8 @@ mod tests {
+         let absent = kittens_path_from(None);
+
+         assert_eq!(renamed.to_string(), ":: tiny_cats");
+-        assert_eq!(itself.to_string(), ":: kittens");
+-        assert_eq!(absent.to_string(), ":: kittens");
+-        assert_eq!(kittens_path().to_string(), ":: kittens");
++        assert_eq!(itself.to_string(), ":: bbt_yarn");
++        assert_eq!(absent.to_string(), ":: bbt_yarn");
++        assert_eq!(kittens_path().to_string(), ":: bbt_yarn");
+     }
+ }

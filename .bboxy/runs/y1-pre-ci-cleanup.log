@@ -1,0 +1,13 @@
+[
+  {
+    "removed": "/Users/feral/mydev/bboxy450-term-rook/target/y1",
+    "allocated_bytes": 347987968
+  },
+  {
+    "removed": "/Users/feral/mydev/bboxy450-term-rook/target/y1-timing",
+    "allocated_bytes": 37904384
+  },
+  {
+    "freed_total_bytes": 385892352
+  }
+]
