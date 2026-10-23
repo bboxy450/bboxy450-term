@@ -805,8 +805,17 @@ pub fn render_layered_to_rgba(
     underlay: &DrawList,
     foreground: &DrawList,
 ) -> Result<Vec<u8>> {
-    let pass = Pass::new(&renderer.context.device, wgpu::TextureFormat::Rgba8Unorm);
-    render_layered_with(renderer, &pass, scene, underlay, foreground, None)
+    // Pass depends only on the device and target format. It is taken out for the call and put
+    // back, so ChromeRenderer stays Send; with no backdrop key, Pass.blurred is never filled,
+    // so no state crosses from one render to the next.
+    let format = wgpu::TextureFormat::Rgba8Unorm;
+    let pass = match renderer.material_pass.take() {
+        Some((cached, pass)) if cached == format => pass,
+        _ => Pass::new(&renderer.context.device, format),
+    };
+    let result = render_layered_with(renderer, &pass, scene, underlay, foreground, None);
+    renderer.material_pass = Some((format, pass));
+    result
 }
 /// As `render_layered_to_rgba` through a caller-owned `Pass`, so blur reuse
 /// across renders (`backdrop_key`) can be checked against recomputation.
@@ -1056,6 +1065,38 @@ mod tests {
         // a filled cache: a changed backdrop yields exactly a fresh render.
         assert_eq!(render(&mut renderer, &b, None), fresh_b);
         assert_eq!(render(&mut renderer, &a, None), fresh_a);
+    }
+    #[test]
+    fn headless_renders_reuse_one_pass_and_match_fresh_renderers() {
+        let none = DrawList::default();
+        let render = |renderer: &mut ChromeRenderer, list: &DrawList| {
+            let (items, mut scene) = frosted_scene(list);
+            scene.items = &items;
+            render_layered_to_rgba(renderer, scene, &none, &none).unwrap()
+        };
+        let (a, b) = (checker(0.), checker(3.));
+        let fresh = |list: &DrawList| render(&mut ChromeRenderer::new(vec![]).unwrap(), list);
+        let (fresh_a, fresh_b) = (fresh(&a), fresh(&b));
+        assert_ne!(fresh_a, fresh_b);
+        let mut shared = ChromeRenderer::new(vec![]).unwrap();
+        assert!(shared.material_pass.is_none());
+        assert_eq!(render(&mut shared, &a), fresh_a);
+        assert!(
+            shared.material_pass.is_some(),
+            "the Pass is kept after a render"
+        );
+        assert_eq!(render(&mut shared, &b), fresh_b);
+        assert_eq!(
+            render(&mut shared, &a),
+            fresh_a,
+            "no state crosses between renders"
+        );
+        let pass = shared.material_pass.as_ref().unwrap();
+        assert_eq!(pass.0, wgpu::TextureFormat::Rgba8Unorm);
+        assert!(
+            pass.1.blurred.borrow().is_empty(),
+            "unkeyed renders never cache a blur"
+        );
     }
     #[test]
     fn zero_blur_still_samples_the_backdrop_and_fractional_edge_texels() {
