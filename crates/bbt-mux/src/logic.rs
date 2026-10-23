@@ -746,6 +746,7 @@ struct ViewState {
 struct PendingSeats {
     seats: BTreeMap<(HostId, Ulid), PendingSeat>,
     ready: VecDeque<(HostId, Ulid)>,
+    parked: BTreeSet<HostId>,
 }
 struct PendingSeat {
     active: Event,
@@ -755,8 +756,20 @@ struct PendingSeat {
     queued: bbt_supervisor::client::PendingEvents,
 }
 impl PendingSeats {
+    #[cfg(test)]
     fn is_empty(&self) -> bool {
         self.seats.is_empty()
+    }
+    fn has_ready(&self) -> bool {
+        self.ready
+            .iter()
+            .any(|(host, _)| !self.parked.contains(host))
+    }
+    fn park(&mut self, host: &HostId) {
+        self.parked.insert(host.clone());
+    }
+    fn resume(&mut self, host: &HostId) {
+        self.parked.remove(host);
     }
     fn push(&mut self, host: HostId, event: Event, generation: u64, first: u64) -> Result<()> {
         let key = (host, event.seat());
@@ -794,8 +807,15 @@ impl PendingSeats {
         Ok(())
     }
     fn next(&mut self) -> Option<((HostId, Ulid), Event)> {
-        let key = self.ready.pop_front()?;
-        Some((key.clone(), self.seats[&key].active.clone()))
+        for _ in 0..self.ready.len() {
+            let key = self.ready.pop_front()?;
+            if self.parked.contains(&key.0) {
+                self.ready.push_back(key);
+            } else {
+                return Some((key.clone(), self.seats[&key].active.clone()));
+            }
+        }
+        None
     }
     fn finish(&mut self, key: (HostId, Ulid), complete: bool) {
         if complete {
@@ -2480,7 +2500,11 @@ impl Worker {
         )?;
         self.gui_seat(info.seat)
     }
-    fn refresh_providers(&mut self, recoveries: &mut BTreeSet<HostId>) -> Result<()> {
+    fn refresh_providers(
+        &mut self,
+        recoveries: &mut BTreeSet<HostId>,
+        pending: &mut PendingSeats,
+    ) -> Result<()> {
         use crate::provider::fake::{STATE_SUBJECT, is_link_down};
         use crate::provider::{LinkState, ProviderEvent};
         for event in self.connections.poll() {
@@ -2489,8 +2513,10 @@ impl Worker {
                 state,
                 LinkState::Connected { .. } | LinkState::Degraded { .. }
             ) {
+                pending.resume(host);
                 recoveries.insert(host.clone());
             } else {
+                pending.park(host);
                 recoveries.remove(host);
             }
             self.publish(
@@ -2544,7 +2570,10 @@ impl Worker {
         let mut providers_at = Instant::now();
         let mut pending_events = PendingSeats::default();
         let mut provider_recoveries = BTreeSet::new();
+        let mut made_progress = false;
         while !stop.load(Ordering::Acquire) {
+            let poll_ready = made_progress && pending_events.has_ready();
+            made_progress = false;
             for _ in 0..32 {
                 let Ok(command) = commands.try_recv() else {
                     break;
@@ -2845,10 +2874,10 @@ impl Worker {
                 }
             }
             for host in self.connections.host_ids() {
-                let event = if pending_events.is_empty() {
-                    self.connections.receive_from(&host)?
-                } else {
+                let event = if poll_ready {
                     self.connections.receive_ready_from(&host)?
+                } else {
+                    self.connections.receive_from(&host)?
                 };
                 if let Some(event) = event {
                     if self.host_for_seat(event.seat())? != host {
@@ -2868,14 +2897,18 @@ impl Worker {
                 }
             }
             if let Some((key, event)) = pending_events.next() {
+                let before = self.views.get(&key.1).map(|view| view.sequence);
                 let complete = match self.event(event) {
-                    Ok(complete) => complete,
-                    Err(error)
-                        if is_capture_busy(&error)
-                            || crate::provider::fake::is_link_down(&error) =>
-                    {
+                    Ok(complete) => {
+                        made_progress =
+                            complete || self.views.get(&key.1).map(|view| view.sequence) != before;
+                        complete
+                    }
+                    Err(error) if crate::provider::fake::is_link_down(&error) => {
+                        pending_events.park(&key.0);
                         false
                     }
+                    Err(error) if is_capture_busy(&error) => false,
                     Err(error) => return Err(error),
                 };
                 // One page per seat per round, with command service and fresh
@@ -2883,7 +2916,7 @@ impl Worker {
                 pending_events.finish(key, complete);
             }
             if providers_at.elapsed() >= Duration::from_millis(200) {
-                self.refresh_providers(&mut provider_recoveries)?;
+                self.refresh_providers(&mut provider_recoveries, &mut pending_events)?;
                 providers_at = Instant::now();
             }
             if adapters_at.elapsed() >= Duration::from_millis(200) {
@@ -3100,5 +3133,24 @@ mod pending_tests {
         pending.finish(key, true);
         assert!(pending.is_empty());
         assert!(pending.ready.is_empty());
+    }
+    #[test]
+    fn down_host_work_is_parked_until_a_provider_up_transition() {
+        let mut pending = PendingSeats::default();
+        pending
+            .push(HostId::Local, output(Ulid::from(1), 1, 1000), 1, 1)
+            .unwrap();
+        pending.park(&HostId::Local);
+        assert!(!pending.has_ready());
+        for _ in 0..100 {
+            assert!(pending.next().is_none());
+        }
+        assert_eq!(pending.ready.len(), 1);
+        pending.resume(&HostId::Local);
+        assert!(pending.has_ready());
+        let (key, event) = pending.next().unwrap();
+        assert_eq!(event.sequence(), Some(1000));
+        pending.finish(key, true);
+        assert!(pending.is_empty());
     }
 }
