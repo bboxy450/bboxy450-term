@@ -1412,7 +1412,10 @@ impl ApplicationHandler<UiEvent> for App {
                     return;
                 }
                 if self.cadence_test {
-                    self.gpu.as_ref().unwrap().collect_gpu(&mut self.budget);
+                    self.gpu
+                        .as_ref()
+                        .unwrap()
+                        .collect_gpu(&mut self.budget, |_, _| {});
                     self.logger.write(self.budget.report());
                 }
                 let epoch = self.idle_quiet.begin(
