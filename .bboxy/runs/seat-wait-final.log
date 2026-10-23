@@ -1,0 +1,156 @@
+Waiting SeatRow amber halo — exact clean final verification
+Velvet Vulpine <EXECUTOR> — 2026-10-23T22:36:03.929318+00:00
+Brief c2326ca6; native-on-spec ruling d668cde0; cached R8 design/scope approval 785dc42e.
+GATED SIGNED SOURCE 4c7e10d2225c9f538f1d843dc51ffbb633c22280 (4c7e10d; parent ec43cccd46d4b1da08733af2eeb8d85363958f35).
+8fed490 was rebased onto then-current main ec43ccc before the gate, with --gpg-sign and autostash disabled. Task files are byte-identical across that rebase (git diff --quiet exit 0).
+Quiet #3 release 9c8a6349 and slot-1 grant bc2b1ce1 consumed; started 2026-10-23T21:43:21.880906+00:00. Slot released by cf8288a8 after actual exit and deletion.
+COMMAND BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity — ACTUAL EXIT 0; 2866.315 seconds. ONE final gate, no retry or exception.
+Clean detached source /tmp/velvet-seat-wait-ci-4c7e10d; own CARGO_TARGET_DIR=/tmp/velvet-seat-wait-ci-4c7e10d/target; target absent after exit, source git status --porcelain empty before and after.
+Profile: DEV/TEST opt-level 1, debug assertions true, debug info 0, incremental 0, jobs 2; all BBOXYBOOK_* and gallery overrides unset. Free disk at actual launch 99.405 GiB.
+Preflight git fetch, signed rebase, git diff --check, task-file diff --quiet, exact detached worktree creation and clean-status checks all exited 0. Administrative command records are in /tmp/velvet-seat-wait-final-setup.json.
+CI stages cargo build --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --locked; sh scripts/ui-lint.sh; cargo run -p bboxy450-term --locked -- --smoke; sh scripts/invariants.sh --parity all exited 0 (set -e advanced to each next stage and all-gates line).
+Workspace output before ui-lint reports 137 test-result lines, 919 passed, 0 failed, 20 ignored. Duplex :787 and socket flood :2037 pass first try. New GPU shadow :2152, atom alpha :2322, all-density geometry :2476 pass.
+Lab-check :2994: 37 pages x4 densities, 0 findings; self-test :2993 passes all 10 checks. Invariants :3166: 11 checks, 0 failures, 3 named slow skips.
+RAW LOG .bboxy/runs/seat-wait-ci-4c7e10d.log:3157 geometry; :3158 strict parity; :3167 all gates; :3169 actual exit; :3172 target deleted.
+RAW LOG SHA256 7d010d2a57dbb871e46ff634658685728fbf41634c5160cab4e427a3e1708860
+PRIMARY STATUS SHA256 7d583b1cbbc4d0ae7cab545fb8cc8c373931ec0dd057fd7a951820d622dce013
+FINAL BINARY SHA256 eb0feba34f4eb64acf83436221a504c3f06b2a5da44eab09fb277a0f3849daf8 — retained beside report as bboxybook-4c7e10d.
+
+ACCEPTANCE
+1768/1768 current captured/rendered, exact same current case-key set as fresh post-rim baseline 16b4c98. 1664 required/measured; 0 unproven; 0 geometry mismatches. All 1720 native layout records identical.
+Reviews 174 -> 172; 0 new keys. Exactly cleared: seat-row/waiting-compact-dark.png and seat-row/waiting-compact-light.png. Both retain identical policy and geometry.
+Dark changed fraction 0.021482075976457998 -> 0.014947833065810594; light 0.020385232744783308 -> 0.015175227394328517. Budget remains 0.02, channel tolerance 8, geometry tolerance 0.5px. No lab/token/policy/tolerance edit.
+Native PNG file hashes: 1728 identical, 40 changed: SeatRow16 + Sidebar16 + SpaceHeader8. Those modules add zero review keys; the latter two remain at zero reviews. This hash comparison is of encoded PNG files; full baseline PNGs were retired under Oracle ruling. The separate 232-case frozen SeatRow replay decoded RGBA: 16 improved, 216 identical, none worse.
+Before baseline report SHA256 50eaa61ac6c4930ac4c60c8d479bef3cfb5f7edcd0d3ce198536f4efd47df9de.
+Final report SHA256 aaf9c291eb7a96f47684ff88e50c1731f0b7dbe40698dc992473a7540cc1d8a7.
+Final report /Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/report.json
+Full deterministic verdict /Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/seat-wait-verdict.json; verdict command ACTUAL EXIT 0. all acceptance checks true; Oracle acceptance remains a separate decision.
+Historical diagnostic alongside: 1664 cases, 859 pixel reviews, explicitly non-gating.
+
+MODULE COUNTS: cases / required / measured / pixel reviews before->after
+components: 128 / 128 / 128 / 0->0
+documents: 136 / 136 / 136 / 44->44
+documents-surface: 8 / 0 / 0 / 0->0
+glyph: 56 / 56 / 56 / 0->0
+graph: 64 / 64 / 64 / 16->16
+harness-icon: 56 / 0 / 0 / 48->48
+launcher: 144 / 144 / 144 / 0->0
+launcher-surface: 8 / 0 / 0 / 0->0
+materials: 32 / 0 / 0 / 8->8
+message-row: 104 / 104 / 104 / 24->24
+mini-grid: 64 / 64 / 64 / 0->0
+pane: 48 / 48 / 48 / 0->0
+paths: 48 / 48 / 48 / 0->0
+perf: 48 / 48 / 48 / 0->0
+picker: 64 / 64 / 64 / 0->0
+seat-row: 232 / 232 / 232 / 2->0
+settings: 72 / 72 / 72 / 24->24
+sidebar: 40 / 40 / 40 / 0->0
+space-header: 32 / 32 / 32 / 0->0
+stream: 96 / 96 / 96 / 8->8
+style: 120 / 120 / 120 / 0->0
+tab-row: 40 / 40 / 40 / 0->0
+title-strip: 88 / 88 / 88 / 0->0
+titlebar: 40 / 40 / 40 / 0->0
+
+FILES — mechanism
+crates/bbt-ui-model/src/draw/prim.rs:179,247 — optional color/blur/offset TextShadow and one general text-shadow draw primitive, with finite/nonnegative validation.
+crates/bbt-ui/src/atoms.rs:30,120 — emit actual symbol and inherited kind-text shadows beneath foreground; preserve grade/dim/ancestor-opacity convention.
+crates/bbt-ui/src/components.rs:77,483,1150,2459,2485 — optional retained Text/Glyph property, scale/paint forwarding and independent shadow alpha; foreground defaults None; G1 Glow/Rim-after-children ordering preserved.
+crates/bbt-ui/src/modules/seat_row.rs:551,716 — waiting main glyph requests token amber/6 logical px/zero offset; subagent defaults None. TaskRow untouched.
+crates/bbt-ui/src/modules/tab_row.rs:161 — default-only Glyph shadow: None caller update.
+crates/bbt-ui/src/modules/swarm_card.rs:297 — default-only Glyph shadow: None caller update.
+crates/bbt-ui/src/modules/strip.rs:325 — default-only Glyph shadow: None caller update.
+crates/bbt-ui/src/modules/graph_tab.rs:462 — default-only Glyph shadow: None caller update.
+crates/bbt-ui/tests/atoms.rs:9,82 — glyph/kind/grade/ancestor alpha and Text alpha/flow/order regressions; existing caller defaults None.
+crates/bbt-ui/tests/seat_rows.rs:30 — all four densities and two themes retain row/glyph geometry while waiting symbols and kind text gain shadows.
+crates/bbt-render/src/chrome/text_glyphs.rs:191,420 — zero-padded, normalized separable Gaussian of actual R8 glyph/ink-overlap coverage; bounded inputs and impulse/empty/tiny-sigma regression.
+crates/bbt-render/src/chrome/text_cache.rs:126,210,405 — sigma-keyed mask variant in the same bounded glyph atlas/LRU; color/integer translation reuse, real shadow counters.
+crates/bbt-render/src/chrome/mod.rs:440,1293 — emit clipped shadow coverage quads in existing flat pass; independent 2-D-convolution GPU readback regression for light/dark, blur/offset/alpha/cache reuse.
+.bboxy/runs/seat-wait-diagnosis.log:1 — crop/DOM isolation and on-spec side attribution.
+.bboxy/runs/seat-wait-implementation.log:1 — implementation, all dev command results including failures, real cache/quad stats and cleanup provenance.
+
+PRIOR COMMANDS / FAILURES (full commands and hashes in implementation log)
+cargo test -p bbt-ui --locked --test atoms --test seat_rows: 0; renderer first compile: 101 (Mask empty clone and stats wrapper access); corrected qualified GPU test: 0, one actual test selected; cargo test -p bbt-render --locked --lib: 0 (65 pass); cargo test -p bbt-ui-model -p bbt-ui --locked: 0 (165 pass); first scoped strict Clippy: 101 (test chunks_exact); corrected scoped strict Clippy: 0; cargo build -p bboxybook --locked: 0; frozen render and strict compare: 0 each.
+First unqualified --exact renderer command never executed tests because compilation failed. Fixed source received the fully qualified test plus full renderer/UI/model and final workspace runs. One failed multi-file patch wrote no files; corrected. Diagnostic missing-path reads/searches are recorded in diagnosis log.
+Fresh baseline exact clean ci-local --parity at signed 16b4c98: 0, 3243.590s; 174 reviews; no duplex exception used; target deleted. Baseline .log/status/report and all per-PNG hashes retained, whole PNGs retired per ruling after scoped copy.
+
+CACHE / COST
+Real 12px ? GPU probe: 1 Gaussian blur, 780 shadow-mask bytes /876 total coverage bytes, 2 total misses, 1 shape. Recolor/integer translation and repeats add no misses/blurs/bytes; exactly +1 visible shadow quad/render; transparent adds no shadow quad/blur. One extra quad per visible glyph/overlap coverage component, no new render/compute pass or WGSL. Full counters in implementation log and GPU dev output.
+Coverage is actual glyph/ink-overlap R8, not a rectangle; sigma=blur/2 in device pixels. New GPU test independently convolves a readback glyph in 2-D and checks sRGB source-over beneath translucent foreground at fractional source phase on light/dark backgrounds.
+
+MAIN MOVED / SCOPE
+Observed main after gate: 45ce2b87efe9816324cfbd1cc28c094344e4aee2 G attention: no osascript fallback, an unbundled run posts nothing; order G3, G5, then attention after W2.6b
+Main gained C1c-3 pane scrollback and paired lab gap-row CSS, window3/R5 evidence, specs/decisions and pending rim invariants while the gate ran. No automatic rebase/re-gate. The exact gated source is the feature commit above; merged-current-main behavior has NOT been checked by me.
+No intersection between the 13 changed code/test paths and observed main code paths since ec43ccc. Main changes include pane.rs/lab.css; source overlap and merged verification belong to Oracle.
+Sable MK1 coordination fc154f3d: precise amber/6px/zero-offset halo and inherited kind-text details supplied. Oracle ec5a67be requests review of forthcoming PathShadow design with shared Gaussian/cache/atlas; pending actual design, halo lands first.
+
+NOT CHECKED / LEFT ALONE
+Dedicated new GPU probe is DPR1 (with fractional source phase); no new full DPR2/fractional-DPR shadow matrix or standalone performance benchmark claimed. Ignored Keychain tests, --slow seat gates and manual desktop not run. Default --parity deliberately skips three slow invariants; strict workspace Clippy ran as a normal CI stage.
+No identity, app, TaskRow, materials, WGSL, lab, token or tolerance implementation change. Existing Glow/Rim-after-children paint order retained. Old untracked logs left untouched; no push/merge.
+
+ARTIFACT HASHES
+aaf9c291eb7a96f47684ff88e50c1731f0b7dbe40698dc992473a7540cc1d8a7  /Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/report.json
+d443e51bdfad4b5b0c71ca96101b85fc1fe24f28b6920c0f213ca4fc17c1bd31  /Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/seat-wait-verdict.json
+d443e51bdfad4b5b0c71ca96101b85fc1fe24f28b6920c0f213ca4fc17c1bd31  /Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/verdict-command.log
+fbe7b36544ab9c2d3e284d0f1c002f4f1a026c14701adcf9ec876793f61dfe4a  /tmp/velvet-seat-wait-final-verdict.py
+65cc07711be60af5b9b55e285c302df646e8a4fb138a9a3c653acc20ed0d88a3  /tmp/velvet-p3-final-ci.py
+
+PRIMARY STATUS
+{
+  "source_sha": "4c7e10d2225c9f538f1d843dc51ffbb633c22280",
+  "phase": "finished",
+  "wrapper_pid": 85782,
+  "started_utc": "2026-10-23T21:43:21.880906+00:00",
+  "target": "/tmp/velvet-seat-wait-ci-4c7e10d/target",
+  "report": "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d",
+  "log": "/tmp/velvet-seat-wait-ci-4c7e10d.log",
+  "ci_pid": 85818,
+  "exit": 0,
+  "elapsed_seconds": 2866.315,
+  "socket_waiver": false,
+  "preserved_binary_sha256": "eb0feba34f4eb64acf83436221a504c3f06b2a5da44eab09fb277a0f3849daf8",
+  "target_deleted": true
+}
+
+ALL NATIVE PNG FILE HASH CHANGES
+seat-row/focused-state-comfortable-dark.png
+seat-row/focused-state-comfortable-light.png
+seat-row/focused-state-compact-dark.png
+seat-row/focused-state-compact-light.png
+seat-row/focused-state-cozy-dark.png
+seat-row/focused-state-cozy-light.png
+seat-row/focused-state-touch-dark.png
+seat-row/focused-state-touch-light.png
+seat-row/waiting-comfortable-dark.png
+seat-row/waiting-comfortable-light.png
+seat-row/waiting-compact-dark.png
+seat-row/waiting-compact-light.png
+seat-row/waiting-cozy-dark.png
+seat-row/waiting-cozy-light.png
+seat-row/waiting-touch-dark.png
+seat-row/waiting-touch-light.png
+sidebar/100-seats-comfortable-dark.png
+sidebar/100-seats-comfortable-light.png
+sidebar/100-seats-compact-dark.png
+sidebar/100-seats-compact-light.png
+sidebar/100-seats-cozy-dark.png
+sidebar/100-seats-cozy-light.png
+sidebar/100-seats-touch-dark.png
+sidebar/100-seats-touch-light.png
+sidebar/1000-seats-comfortable-dark.png
+sidebar/1000-seats-comfortable-light.png
+sidebar/1000-seats-compact-dark.png
+sidebar/1000-seats-compact-light.png
+sidebar/1000-seats-cozy-dark.png
+sidebar/1000-seats-cozy-light.png
+sidebar/1000-seats-touch-dark.png
+sidebar/1000-seats-touch-light.png
+space-header/expanded-comfortable-dark.png
+space-header/expanded-comfortable-light.png
+space-header/expanded-compact-dark.png
+space-header/expanded-compact-light.png
+space-header/expanded-cozy-dark.png
+space-header/expanded-cozy-light.png
+space-header/expanded-touch-dark.png
+space-header/expanded-touch-light.png
