@@ -1473,7 +1473,7 @@ select { -webkit-appearance: none; appearance: none; }
 /* textarea: no grip; it grows with its content to a cap and then scrolls with our scrollbar (field-sizing: content) */
 textarea { resize: none; }
 /* range: our track and thumb */
-input[type=range] { -webkit-appearance: none; appearance: none; height: 16px; background: transparent; cursor: pointer; }
+input[type=range] { -webkit-appearance: none; appearance: none; height: 16px; margin: 0; background: transparent; cursor: pointer; }
 input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--fg) 18%, transparent); }
 input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--fg) 18%, transparent); }
 input[type=range]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }

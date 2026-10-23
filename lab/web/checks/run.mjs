@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url)), web = dirname(here);
 const SCANS = { type: readFileSync(join(here, 'typescan.js'), 'utf8'), ua: readFileSync(join(here, 'uascan.js'), 'utf8') };
-const MUST_FIRE = ['type-below', 'svg-scaled', 'ua-select', 'ua-textarea', 'ua-input', 'ua-summary', 'ua-button', 'ua-focus', 'ua-scrollbar'];
+const MUST_FIRE = ['type-below', 'svg-scaled', 'ua-select', 'ua-textarea', 'ua-input', 'ua-summary', 'ua-button', 'ua-focus', 'ua-scrollbar', 'ua-margin'];
 const only = process.argv.slice(2).filter(a => a.endsWith('.html'));
 const pages = only.length ? only : readdirSync(web).filter(f => f.endsWith('.html')).sort();
 
