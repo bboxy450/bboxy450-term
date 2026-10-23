@@ -11,7 +11,7 @@ links:
   - { to: "[[rim-never-covers-text]]", rel: invariant }
   - { to: "[[glow-never-moves-layout]]", rel: invariant }
 created: 2026-10-23T16:39:50Z
-updated: 2026-10-23T22:29:53Z
+updated: 2026-10-23T23:04:45Z
 ---
 # Rim glow
 
@@ -63,7 +63,7 @@ Verbatim, from Wren's "focus swell" demo at 10/20/30/40 px: "can we change focus
 
 - **What.** On focus, the focused block's silk swells **40 px past its rim** and settles back over **0.9 s** with a sine envelope (`reach(t) = 40 · sin(π · t / 0.9)` px, t in seconds from focus), same colour and crest as the rim, weight falling to zero at the reach. It **replaces the locate ripple** everywhere the ripple fired (pane and row, click and keyboard focus; the ux-flow locate rules are superseded and Wren rewrites them with the reference).
 - **Paint, never layout.** The swell is drawn in the glow pass over the gutter and over neighbouring blocks; nothing moves ([[glow-never-moves-layout]], [[rim-size-is-layout]]). It is zero at rest, so the steady-state band and [[rim-never-covers-text]] are untouched.
-- **Legibility.** The focused block's own text is never covered (the swell lies outside its rim). A neighbour's text under the swell stays readable: the lab reference sets the alpha curve and records the peak weight over a text cell as acceptance; the native pass matches it under strict parity.
+- **Legibility.** The focused block's own text is never covered (the swell lies outside its rim). A neighbour's text under the swell stays readable. **Acceptance from Wren's reference (df6d58e, 2026-10-23):** over a neighbour's nearest text cell (12 px away at rim size 4) the weight is at most **0.48** (mean 0.36, trough 0.13) for at most 0.9 s; the curve is `weight = env · (.6·e^(−2.8u)·(.45 + .55·crest) + .18·e^(−((u − c0)/.22)²))` with `u = (d − R/2)/reach`, `reach = 40·sin(πt/900 ms)`, `env = sin(πt/900 ms)`, the weight fixed and not scaled by activity; the native pass matches it under strict parity.
 - **Tokens.** `glow.swell = 40` (px past the rim), `glow.swell_ms = 900`; both read by the shader as uniforms.
 
 ## 8. Alive borders are a kit capability (operator, 2026-10-23, decision #43)
@@ -72,7 +72,7 @@ Verbatim: "and same swell and same border effect as on terminal blocks should be
 
 - **Where it lives.** The rim and the swell are a **style property of any `bbt-ui` block**, not pane code: `border.rim { size, source }` and `border.swell { reach, ms }` on the block's style, with the same `materials.wgsl` rim pass run over the block's rect; the "alive" inputs (activity, seat colour, focus, pulse phase) arrive per block through the R12-2 arenas as uniforms. Shader in `bbt-render`, style types in `bbt-ui-model` (shared with the lab), defaults in `bbt-ui`; nothing in the app ([[layering]], decision #39). **What it replaces:** today `Pane` sets the rim as a style override, `style.overrides.glow = Some(ui::Glow { … })` (`crates/bbt-ui/src/modules/pane.rs:398`), and only panes have one; that override becomes `Style.border: Border { rim: Option<Rim>, swell: Option<Swell> }` on every block, filled per block kind from the tokens, so `Pane` stops writing it and the rim pass reads `border` off every block rect. `ui::Glow` as a pane-only override is retired in G5.
 - **Defaults.** Panes and their strips, sidebar seat rows, tabs and cards carry the rim and the swell out of the box; a block opts out by style, never by code.
-- **Layout rule for blocks that are not panes.** Only the pane gutter and the stage inset follow the rim size ([[rim-size-is-layout]]). Every other block draws its outer half into the spacing it already has and is clipped there; its inner half and bloom stay inside its own padding, so a block with less padding than the bloom shows a shallower bloom, never glow over its content.
+- **Layout rule for blocks that are not panes.** Only the pane gutter and the stage inset follow the rim size ([[rim-size-is-layout]]). Every other block draws its outer half into the spacing it already has (the lab's `--rim-space`, 0 for edge-to-edge rows) and is clipped there; its inner half and bloom stay inside its own padding, so a block with less padding than the bloom shows a shallower bloom, never glow over its content. Idle seat rows carry no rim at rest (`glow.row_idle`) and still take the swell; cards keep their gap and fit the outer half (Wren's reference df6d58e).
 - **Order.** Lands after G3 as **G5**: the capability, the defaults on rows, tabs and cards, Wren's references for each, one paired commit under strict geometry.
 
 ## 9. Attention

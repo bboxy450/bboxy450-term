@@ -8,6 +8,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | Invariant | Check | Last result |
 |---|---|---|
 | [[layering]] every crate depends only on crates below it | `sh scripts/layering.sh` | runner pass at 0bab92f, 2026-10-22 |
+| [[cross-os-facade]] raw OS bindings live only in per-OS crates behind a facade | `sh scripts/cross-os.sh` | held at the adding commit (three dated exceptions) |
 | [[ui-never-waits]] the UI thread never waits on IO | `sh scripts/ui-lint.sh` | runner pass at 0bab92f, 2026-10-22 |
 | [[modules-through-components]] L7 modules draw only through components | `cargo test -p bbt-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows` | runner pass at 0bab92f, 2026-10-22 |
 | [[parity-geometry]] web and native geometry agree for every parity case | `sh scripts/parity.sh` (slow; under `ci-local.sh --parity`) | P3 at dd47f4e: 1704 cases, 0 unproven, 0 mismatches, 2026-10-23 |

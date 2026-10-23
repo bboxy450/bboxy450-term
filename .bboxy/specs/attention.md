@@ -11,7 +11,7 @@ links:
   - { to: "[[gui-components]]", rel: focus-model }
   - { to: "[[c1-live-seats]]", rel: wire }
 created: 2026-10-23T22:28:21Z
-updated: 2026-10-23T22:31:44Z
+updated: 2026-10-23T23:04:45Z
 ---
 # Attention
 
@@ -34,7 +34,7 @@ The seat state the adapters already produce: `Activity::Waiting(kind)` with `kin
 
 ## 2. In the window
 
-- The seat's **sidebar row** and its **pane block** auto-swell and pulse **strongly**: the [[rim-glow]] §7 swell on a loop (reach 40 px, period 0.9 s) with the waiting amber at full amplitude, the row's name pulsing with it, **repeating until handled**: the seat leaves `waiting`, or the operator focuses it. Focusing it ends the loop and plays the single focus swell.
+- The seat's **sidebar row** and its **pane block** auto-swell and pulse **strongly**: the [[rim-glow]] §7 swell on a loop (reach 40 px, period 0.9 s) with the waiting amber at full amplitude, the row's name pulsing with it (reference df6d58e: envelope `|sin(πt/900 ms)|`, hue rotation held at ×0.15, the rim pulsing `.55 + .45·env` in step across the seat's blocks), **repeating until handled**: the seat leaves `waiting`, or the operator focuses it. Focusing it ends the loop and plays the single focus swell.
 - Paint only. Nothing moves and nothing steals focus: the swell never changes layout or focus (decision #29's rule for every push), only the operator's click or the notification does.
 - A **muted** seat (⌘M, [[ux-flow]]) swells quietly (the ordinary waiting rim) and does not notify.
 

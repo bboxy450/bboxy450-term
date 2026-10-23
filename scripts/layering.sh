@@ -4,7 +4,7 @@
 # New crate: add it to ORDER in the same commit.
 set -eu
 cd "$(dirname "$0")/.."
-ORDER="bbt-yarn-macros bbt-yarn bbt-rt bbt-core bbt-mermaid bboxy-firehose bbt-ui-model bbt-render bbt-ui bbt-doc bboxybook bbt-supervisor bbt-proto bbt-mux bboxy450-term"
+ORDER="bboxy450-desktop-notifications-macos bboxy450-desktop-notifications-windows bboxy450-desktop-notifications-linux bboxy450-desktop-notifications bbt-yarn-macros bbt-yarn bbt-rt bbt-core bbt-mermaid bboxy-firehose bbt-ui-model bbt-render bbt-ui bbt-doc bboxybook bbt-supervisor bbt-proto bbt-mux bboxy450-term"
 cargo metadata --no-deps --format-version 1 | ORDER="$ORDER" python3 -I -c '
 import json, os, sys
 rank = {n: i for i, n in enumerate(os.environ["ORDER"].split())}

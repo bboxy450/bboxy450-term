@@ -644,7 +644,10 @@ briefs Executors from the specs, never from this note.
     envelope, painted over gutter and neighbours, never layout; zero at
     rest so the rim invariants are untouched; the lab reference sets the
     alpha curve and records the peak weight over a neighbour's text cell
-    ([[rim-glow]] §7). Rejected: keeping the ripple beside the swell (two
+    ([[rim-glow]] §7; Wren's reference df6d58e: at most 0.48 over the
+    nearest cell). Operator on that reference, verbatim: "THIS IS SO SEXY I
+    FUKCING LOVE ALL OF IT GO MAKE THIS HAPPEN!"; top priority after the
+    in-flight gates (Oracle, same evening). Rejected: keeping the ripple beside the swell (two
     focus signals); a swell that pushes neighbours (layout following focus).
 
 43. **Alive borders are a kit capability (operator, 2026-10-23, verbatim:
@@ -683,6 +686,41 @@ briefs Executors from the specs, never from this note.
     the harness for questions (the adapters already report them); a
     notification that steals focus on its own; a separate notification
     daemon.
+
+45. **Desktop notifications are a facade over one crate per OS (operator
+    via the Oracle, 2026-10-23: an OS-agnostic facade
+    `bboxy450-desktop-notifications` with per-OS sub-crates, macOS first
+    and real, Windows and Linux dummies marked "DO RESEARCH BEFORE
+    IMPLEMENTING").** Spec [[desktop-notifications]]: the facade holds
+    `Notifier`, `Notification`, `Response`, `Error` and selects the backend
+    by `cfg(target_os)`; `open` once at launch with a response callback the
+    caller forwards to its own loop; macOS on `UNUserNotificationCenter`
+    with the process as delegate, identifier = replace semantics, a bundle
+    check before the centre is touched (`NoBundle`); dummies answer
+    `Unsupported` by name at run time, an unknown target fails at compile
+    time; the four crates lead the layering order and carry no `bbt-*`
+    dependency; dual licence. Use versus build for the bindings under the
+    macOS crate is taken from [[desktop-notifications-research]] when it
+    lands tonight and recorded here; the facade and the layout do not move
+    with it. Rejected: notifications inside the app crate (unportable, and
+    attention is a kit consumer); one crate with `cfg` blocks per OS (the
+    seam hidden, the dummies invisible).
+
+46. **Everything cross-OS is a facade over per-OS crates (operator, same
+    message: "as a GENERAL RULE, everything cross-OS is done this way, with
+    an eye on eventually running in wasm, on iPad and on Android", "we are a
+    pure GPU rendering library", "unless an existing crate already does
+    this well enough to use").** Raw OS bindings live only in `*-macos`,
+    `*-windows`, `*-linux`, `*-ios`, `*-android`, `*-web` crates behind an
+    OS-agnostic facade the suite depends on; OS-agnostic crates that are
+    facades themselves (`winit`, `wgpu`) are allowed anywhere; POSIX is not
+    an OS. Invariant [[cross-os-facade]] with `sh scripts/cross-os.sh` in
+    the default set; the bindings that predate the rule are dated
+    exceptions in the script (`bboxy450-term` window and Metal glue,
+    `bbt-render` CoreText raster, `bbt-mux` Keychain custody), each retired
+    when its facade arrives, never silently extended. Rejected: refactoring
+    the three exceptions now (velocity; nothing else runs on a second OS
+    yet); a rule without a check (a preference).
 
 ## Specs to touch (Architect, in this order)
 

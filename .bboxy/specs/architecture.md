@@ -10,7 +10,7 @@ links:
   - { to: "[[mux-daemon]]", rel: supersedes-in-part }
   - { to: "[[runtime]]", rel: spec }
 created: 2026-10-22T19:12:38Z
-updated: 2026-10-22T19:12:38Z
+updated: 2026-10-23T23:04:45Z
 ---
 # Architecture — as built
 
@@ -193,7 +193,7 @@ flowchart BT
   classDef next stroke-dasharray: 5 5
 ```
 
-Order `bbt-yarn-macros bbt-yarn bbt-rt bbt-core bbt-mermaid bboxy-firehose bbt-ui-model bbt-render bbt-ui bbt-doc bboxybook bbt-supervisor bbt-proto bbt-mux bboxy450-term`, gated by [[layering]]. `bbt-yarn` and `bbt-yarn-macros` (Y1, Rook, 5c2ef84, 2026-10-23) sit first: no workspace dependencies, the reactor macro of [[yarn]], not yet used by any loop. Decision #1 landed on 2026-10-22 (S1, Rook): `bbt-supervisor` holds the mio supervisor, PTYs, leases and the ring writer; `bbt-mux` re-exports `SocketSupervisor` and `SupervisorConnection` from it (`M/logic.rs:29`). bbt-mux depends on bbt-core and bbt-rt only; the app depends on everything. Decision #6 landed: `bbt-proto` (511 lines, depends on bbt-core and bbt-ui-model only) carries the GUI schema and the moved wire types; `bbt-mermaid` and `bbt-doc` (W3.5) sit below the app. C1b's grids and model modules build on it (`A/grids.rs`, `A/model.rs`), with no socket code in them, as [[c1-live-seats]] §2a requires. Public set and docs standard: [[open-source]]; renderer design: [[renderer]]; components: [[gui-components]]; the parity loop: [[runbook-web-to-native]].
+Order `bboxy450-desktop-notifications-macos bboxy450-desktop-notifications-windows bboxy450-desktop-notifications-linux bboxy450-desktop-notifications bbt-yarn-macros bbt-yarn bbt-rt bbt-core bbt-mermaid bboxy-firehose bbt-ui-model bbt-render bbt-ui bbt-doc bboxybook bbt-supervisor bbt-proto bbt-mux bboxy450-term`, gated by [[layering]]. The four `bboxy450-desktop-notifications*` crates lead the order so they can depend on nothing of ours: an OS-agnostic facade and one crate per OS, the first of the cross-OS kits under decision #46 ([[desktop-notifications]], [[cross-os-facade]]). `bbt-yarn` and `bbt-yarn-macros` (Y1, Rook, 5c2ef84, 2026-10-23) sit first: no workspace dependencies, the reactor macro of [[yarn]], not yet used by any loop. Decision #1 landed on 2026-10-22 (S1, Rook): `bbt-supervisor` holds the mio supervisor, PTYs, leases and the ring writer; `bbt-mux` re-exports `SocketSupervisor` and `SupervisorConnection` from it (`M/logic.rs:29`). bbt-mux depends on bbt-core and bbt-rt only; the app depends on everything. Decision #6 landed: `bbt-proto` (511 lines, depends on bbt-core and bbt-ui-model only) carries the GUI schema and the moved wire types; `bbt-mermaid` and `bbt-doc` (W3.5) sit below the app. C1b's grids and model modules build on it (`A/grids.rs`, `A/model.rs`), with no socket code in them, as [[c1-live-seats]] §2a requires. Public set and docs standard: [[open-source]]; renderer design: [[renderer]]; components: [[gui-components]]; the parity loop: [[runbook-web-to-native]].
 
 ## 10. Direction (operator, 2026-10-22 and 2026-10-23)
 
