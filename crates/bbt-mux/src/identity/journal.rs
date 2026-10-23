@@ -255,6 +255,7 @@ impl Bootstrap {
         now: u64,
     ) -> Result<DeviceIdentity> {
         let root = Root::parse(&self.public_certificate, &self.fingerprint, now)?;
+        let device = super::local::first_device(account, keys)?;
         let created: u32 = proof(now.try_into())?;
         let mut db = account.connection().map_err(|_| E::StorageUnavailable)?;
         // Persist only a public retry identity first. A cancelled root operation
@@ -324,7 +325,7 @@ impl Bootstrap {
             .map_err(|_| E::StorageUnavailable)?;
         if pending.is_none() {
             let pending = PendingDevice {
-                id: Ulid::new(),
+                id: device,
                 created,
                 root: root.fingerprint.clone(),
             };

@@ -26,7 +26,10 @@ impl<'a> Author<'a> {
         use base64::Engine;
         let public =
             base64::engine::general_purpose::STANDARD.encode(key.verifying_key().to_bytes());
-        let (kind, id) = if let Some(device) = status.device_id {
+        let certified = status.bootstrapped
+            && status.issuer_kind == crate::messaging::wire::IssuerKind::GpgRoot
+            && status.authenticated_signing_ready;
+        let (kind, id) = if let Some(device) = status.device_id.filter(|_| certified) {
             ("device", format!("device:{device}"))
         } else {
             ("local-dev", format!("observer:local-dev:{public}"))
@@ -38,5 +41,54 @@ impl<'a> Author<'a> {
             key,
             public: json!({"signer":id,"kind":kind,"public_key":public,"device_id":status.device_id,"root_fingerprint":status.root_fingerprint,"custody":status.custody_label}),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::identity::{IdentityState, IdentityStatus};
+    use crate::messaging::wire::IssuerKind;
+
+    #[test]
+    fn device_id_is_data_and_does_not_certify_local_or_pending_signers() {
+        let key = SigningKey::from_bytes(&[3; 32]);
+        let mut status = IdentityStatus {
+            state: IdentityState::LocalDev,
+            label: "local".into(),
+            issuer_kind: IssuerKind::LocalDev,
+            bootstrapped: false,
+            authenticated_signing_ready: false,
+            root_fingerprint: None,
+            pending_reason: None,
+            reason_label: None,
+            custody: Some(crate::identity::Custody::Memory),
+            custody_label: Some("memory".into()),
+            device_id: Some(Ulid(1)),
+            device_grant_expires_at: None,
+            device_renewal_due_at: None,
+            device_renewal_required: false,
+            seats_still_local_dev: 0,
+            custody_held_since: None,
+            open_ephemeral_holds: 0,
+        };
+        for state in [IdentityState::LocalDev, IdentityState::Pending] {
+            status.state = state;
+            let author = Author::observer(&status, &key);
+            assert_eq!(author.public["kind"], "local-dev");
+            assert!(author.id.starts_with("observer:local-dev:"));
+            assert_eq!(author.public["device_id"], json!(Ulid(1)));
+        }
+        // An enrolled account can still be using its old local bus key until
+        // activation; public enrollment alone does not change the signer.
+        status.bootstrapped = true;
+        status.issuer_kind = IssuerKind::GpgRoot;
+        status.state = IdentityState::Held;
+        assert_eq!(Author::observer(&status, &key).public["kind"], "local-dev");
+        status.authenticated_signing_ready = true;
+        status.state = IdentityState::Certified;
+        let author = Author::observer(&status, &key);
+        assert_eq!(author.public["kind"], "device");
+        assert_eq!(author.id, format!("device:{}", Ulid(1)));
     }
 }

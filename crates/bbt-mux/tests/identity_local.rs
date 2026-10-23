@@ -59,6 +59,173 @@ fn store(root: &std::path::Path) -> SqliteStore {
     SqliteStore::open(&root.join("account")).unwrap()
 }
 
+fn custody_record(root: &std::path::Path) -> serde_json::Value {
+    serde_json::from_slice(&store(root).get("identity/local-issuer").unwrap().unwrap()).unwrap()
+}
+fn device_id(root: &std::path::Path) -> Ulid {
+    serde_json::from_value(custody_record(root)["device_id"].clone()).unwrap()
+}
+fn identity_status(root: &std::path::Path, keys: Arc<Memory>) -> bbt_mux::identity::IdentityStatus {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let identity = bbt_mux::identity::IdentityRuntime::open_custodied_with_store(
+        root,
+        keys,
+        runtime.handle().clone(),
+    )
+    .unwrap();
+    identity.status().unwrap()
+}
+
+#[test]
+fn first_launch_device_is_stable_and_local_or_pending_is_still_uncertified() {
+    let root = tempfile::tempdir().unwrap();
+    let keys = Arc::new(Memory::default());
+    ready(local_dev_issuer_with_store(root.path(), keys.as_ref()));
+    let first = device_id(root.path());
+    assert_ne!(first, Ulid::nil());
+    assert_ne!(
+        custody_record(root.path())["key_id"],
+        serde_json::json!(first)
+    );
+    let local = identity_status(root.path(), keys.clone());
+    assert_eq!(local.device_id, Some(first));
+    assert_eq!(local.state, bbt_mux::identity::IdentityState::LocalDev);
+    assert!(!local.bootstrapped);
+    assert_eq!(
+        local.issuer_kind,
+        bbt_mux::messaging::wire::IssuerKind::LocalDev
+    );
+    store(root.path())
+        .put(
+            "identity/attempt",
+            &serde_json::to_vec(&serde_json::json!({
+                "root_fingerprint":null,"reason":PendingReason::AgentUnavailable,"at":1,
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    let pending = identity_status(root.path(), keys.clone());
+    assert_eq!(pending.device_id, Some(first));
+    assert_eq!(pending.state, bbt_mux::identity::IdentityState::Pending);
+    assert!(!pending.bootstrapped);
+    assert_eq!(
+        pending.issuer_kind,
+        bbt_mux::messaging::wire::IssuerKind::LocalDev
+    );
+    ready(local_dev_issuer_with_store(root.path(), keys.as_ref()));
+    assert_eq!(device_id(root.path()), first);
+    assert_eq!(keys.creates.load(Ordering::Relaxed), 2); // issuer plus device
+}
+
+#[test]
+fn legacy_custody_record_upgrades_once_without_changing_the_issuer_or_its_address() {
+    let root = tempfile::tempdir().unwrap();
+    let keys = Memory::default();
+    let first = public(&ready(local_dev_issuer_with_store(root.path(), &keys)));
+    let mut legacy = custody_record(root.path());
+    let retired = device_id(root.path());
+    keys.keys.lock().unwrap().remove(&retired);
+    legacy.as_object_mut().unwrap().remove("device_id");
+    legacy.as_object_mut().unwrap().remove("device_ready");
+    let bytes = serde_json::to_vec(&legacy).unwrap();
+    for name in ["identity/local-issuer", "identity/local-issuer-history/1"] {
+        store(root.path()).put(name, &bytes).unwrap();
+    }
+    assert_eq!(
+        public(&ready(local_dev_issuer_with_store(root.path(), &keys))),
+        first
+    );
+    let upgraded = custody_record(root.path());
+    let id = device_id(root.path());
+    assert_ne!(id, retired);
+    assert_eq!(upgraded["key_id"], legacy["key_id"]);
+    let creates = keys.creates.load(Ordering::Relaxed);
+    ready(local_dev_issuer_with_store(root.path(), &keys));
+    assert_eq!(device_id(root.path()), id);
+    assert_eq!(custody_record(root.path()), upgraded);
+    assert_eq!(keys.creates.load(Ordering::Relaxed), creates);
+}
+
+#[test]
+fn fresh_memory_custody_gets_a_fresh_device_and_lost_custody_stays_held() {
+    let a = tempfile::tempdir().unwrap();
+    let b = tempfile::tempdir().unwrap();
+    let first = Arc::new(Memory::default());
+    let second = Arc::new(Memory::default());
+    let a_status = identity_status(a.path(), first);
+    let b_status = identity_status(b.path(), second);
+    assert_ne!(a_status.device_id, b_status.device_id);
+    assert!(a_status.device_id.is_some() && b_status.device_id.is_some());
+    let lost = Arc::new(Memory::default());
+    let held = identity_status(a.path(), lost.clone());
+    assert_eq!(held.device_id, None);
+    assert_eq!(held.pending_reason, Some(PendingReason::LocalIssuerMissing));
+    assert_eq!(lost.creates.load(Ordering::Relaxed), 0);
+}
+
+#[test]
+fn held_device_creation_retains_its_reserved_id_and_releases_on_recovery() {
+    struct DeviceHold {
+        memory: Memory,
+        issuer: Mutex<Option<Ulid>>,
+        blocked: std::sync::atomic::AtomicBool,
+    }
+    impl DeviceKeyStore for DeviceHold {
+        fn custody(&self) -> Custody {
+            Custody::Memory
+        }
+        fn load(&self, id: Ulid) -> bbt_mux::identity::Result<Option<SigningKey>> {
+            if self.blocked.load(Ordering::SeqCst)
+                && self
+                    .issuer
+                    .lock()
+                    .unwrap()
+                    .is_some_and(|issuer| issuer != id)
+            {
+                return Err(PendingReason::KeychainInteractionRequired);
+            }
+            self.memory.load(id)
+        }
+        fn create(&self, id: Ulid, key: &SigningKey) -> bbt_mux::identity::Result<()> {
+            self.memory.create(id, key)?;
+            self.issuer.lock().unwrap().get_or_insert(id);
+            Ok(())
+        }
+    }
+    let root = tempfile::tempdir().unwrap();
+    let keys = Arc::new(DeviceHold {
+        memory: Memory::default(),
+        issuer: Mutex::new(None),
+        blocked: std::sync::atomic::AtomicBool::new(true),
+    });
+    assert!(matches!(
+        local_dev_issuer_with_store(root.path(), keys.as_ref()),
+        LocalIssuerOutcome::Pending(PendingReason::KeychainInteractionRequired)
+    ));
+    let reserved = device_id(root.path());
+    assert_eq!(custody_record(root.path())["device_ready"], false);
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let mut identity = bbt_mux::identity::IdentityRuntime::open_custodied_with_store(
+        root.path(),
+        keys.clone(),
+        runtime.handle().clone(),
+    )
+    .unwrap();
+    assert_eq!(identity.status().unwrap().device_id, None);
+    keys.blocked.store(false, Ordering::SeqCst);
+    identity.retry_custody().unwrap();
+    let status = identity.status().unwrap();
+    assert_eq!(status.device_id, Some(reserved));
+    assert!(!status.bootstrapped);
+    assert_eq!(custody_record(root.path())["device_ready"], true);
+}
+
 #[test]
 fn stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs() {
     use bbt_mux::{
@@ -127,7 +294,7 @@ fn stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs() {
         ))),
         issuer
     );
-    assert_eq!(machine.creates.load(Ordering::Relaxed), 1);
+    assert_eq!(machine.creates.load(Ordering::Relaxed), 3);
     let record = store(root.path())
         .get("identity/local-issuer")
         .unwrap()
@@ -142,7 +309,7 @@ fn stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs() {
             .is_some()
     );
     println!(
-        "ID1d: same custodied machine issuer across two logic starts and distinct run dirs; messaging pin unchanged; one creation"
+        "ID1d: same custodied issuer across two logic starts/run dirs; messaging pin unchanged; issuer plus two account device items"
     );
 }
 
@@ -176,7 +343,7 @@ fn unavailable_and_missing_custody_hold_without_replacement_or_secret_file() {
         local_dev_issuer_with_store(root.path(), &machine),
         LocalIssuerOutcome::Pending(PendingReason::LocalIssuerMissing)
     ));
-    assert_eq!(machine.creates.load(Ordering::Relaxed), 1);
+    assert_eq!(machine.creates.load(Ordering::Relaxed), 2);
     fn scan(root: &std::path::Path, seed: &[u8; 32]) {
         for entry in std::fs::read_dir(root).unwrap() {
             let path = entry.unwrap().path();
@@ -272,9 +439,11 @@ fn concurrent_creators_read_one_atomic_winner() {
     let x = run(a.path().into(), machine.clone());
     let y = run(b.path().into(), machine.clone());
     assert_eq!(x.join().unwrap(), y.join().unwrap());
-    assert_eq!(machine.memory.creates.load(Ordering::Relaxed), 2);
-    assert_eq!(machine.memory.keys.lock().unwrap().len(), 1);
-    println!("ID1d: two concurrent creators, one stored key; losing creator reads the winner");
+    assert_eq!(machine.memory.creates.load(Ordering::Relaxed), 4);
+    assert_eq!(machine.memory.keys.lock().unwrap().len(), 3);
+    println!(
+        "ID1d: concurrent creators share the issuer; each account retains its own device item"
+    );
 }
 
 #[test]

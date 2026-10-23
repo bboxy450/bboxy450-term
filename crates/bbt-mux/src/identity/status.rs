@@ -101,6 +101,7 @@ impl IdentityRuntime {
         }
         if let Some(reason) = self.pending {
             status.hold(reason);
+            status.device_id = None;
         }
         if status.bootstrapped && status.pending_reason.is_none() {
             // Bootstrap is an explicit operator operation. If it ran after
@@ -190,7 +191,7 @@ pub(super) fn read(account: &SqliteStore, now: u64) -> Result<IdentityStatus> {
         reason_label: None,
         custody: None,
         custody_label: None,
-        device_id: None,
+        device_id: super::local::device_id(account)?,
         device_grant_expires_at: None,
         device_renewal_due_at: None,
         device_renewal_required: false,
