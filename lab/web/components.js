@@ -1277,6 +1277,12 @@
   }
   // report-back card (work-items.md: the Executor's report is a handoff, not proof): what changed, what ran with its exit
   // status, each acceptance check, gaps; Accept and Re-brief belong to the delegator. Accepting flips the task to done.
+  // the desktop notification (attention §3), the lab's picture of the macOS banner: app icon, seat and harness, what it asks
+  function notification(seat, line, onClick) {
+    return el('div', { class: 'notif', role: 'button', tabindex: '0', onclick: onClick }, logo(32, { square: true }),
+      el('div', { class: 'nb' }, el('div', { class: 'nt' }, el('b', {}, seat.name), el('span', {}, '· ' + seat.harness), el('span', { class: 'nw' }, 'now')),
+        el('div', { class: 'ns' }, 'needs your answer'), el('div', { class: 'nm' }, line)));
+  }
   function reportCard(r, opts) {
     const card = el('div', { class: 'report ' + (r.verdict || 'pending') }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, taskMark(r.state || 'reported')), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
       el('div', { class: 'rsec' }, ...r.files.map(f => el('div', { class: 'rf' }, el('code', {}, f.path), el('span', { class: 'rd' }, el('i', { class: 'add' }, '+' + f.add), ' ', el('i', { class: 'del' }, '−' + f.del))))),
@@ -1550,5 +1556,5 @@
     return root;
   }
 
-  window.C = { circleMark, taskMark, SEAT_MARK, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { notification, circleMark, taskMark, SEAT_MARK, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

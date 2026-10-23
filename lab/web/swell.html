@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>swell · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
+</head><body><script>
+// G5 references (rim-glow §7-8, attention §2-3): the alive border and the focus swell on every block kind, the waiting
+// attention loop beside the single focus swell, the desktop notification whose click focuses the seat, and the swell's
+// alpha curve with the peak weight over a neighbour's text cell (the acceptance number). Frozen at ?t ms into the swell
+// (default the peak, swell_ms / 2) so captures are deterministic; ?live=1 runs it: focus moves every 2.2 s.
+const el = Lab.el, T = TOKENS, G = T.glow, q = new URLSearchParams(location.search);
+const LIVE = q.has('live'), AT = q.has('t') ? +q.get('t') : G.swell_ms / 2;
+const NAMES = ['Vesper Greywind', 'Nyx Copperwing', 'Rook Ashwhisker', 'Lumen Foxglove', 'Sable Quill', 'Kestrel Nine'], HAR = ['claude', 'codex', 'codex', 'claude', 'codex', 'claude'], ROLE = ['oracle', 'executor', 'executor', 'creativity', 'executor', 'executor'];
+const TITLE = ['swarm control', 'messaging spec', 'gpu research', 'ux divergence', 'harness hooks', 'ring checksum'];
+const seat = (i, st, x) => ({ key: 'sw' + i, name: NAMES[i], harness: HAR[i], role: ROLE[i], title: TITLE[i], state: st, ...(x || {}) });
+const QUESTION = 'Allow Bash(git push origin main)?';
+// one block with the alive border; swelling: frozen at AT unless live (then Glow.swell fires it)
+const glowing = [];
+function block(child, sd, o) {
+  o = o || {};
+  const w = el('div', { class: (o.pane ? 'pane-wrap' : 'glow-wrap') + ' swells' }, child);
+  const opts = { focused: !!o.swell, block: !o.pane, rim_alpha: o.rim_alpha, ...(sd.color ? { color: sd.color } : {}), attn: !!o.attn, ...(o.swell && !LIVE ? { swell_at: AT } : {}), ...(o.attn && !LIVE ? { swell_at: AT } : {}) };
+  requestAnimationFrame(() => Glow.attach(w, sd, opts));
+  glowing.push({ w, sd, o });
+  return w;
+}
+const pane = (sd, o) => block(C.pane(sd, { focused: !!(o && o.swell), unfocused: !(o && o.swell), height: 150, shortcut: '⌘' + (+sd.key.slice(2) + 1) }), sd, { ...o, pane: true });
+// rows: the pane's rim, except idle rows carry none at rest (glow.row_idle); the swell shows on any row
+const row = (sd, o) => { const r = C.seatRow(sd, { focused: !!(o && o.swell), shortcut: '⌘' + (+sd.key.slice(2) + 1) }); if (o && o.attn) r.classList.add('attn'); return block(r, sd, { ...o, rim_alpha: sd.state === 'idle' && !G.row_idle && !(o && o.swell) ? 0 : 1 }); };
+const stage = (...ch) => el('div', { class: 'sw-stage' }, ...ch);
+const side = (...ch) => el('div', { class: 'sw-side' }, ...ch);
+const cap = s => el('p', { class: 'lab-note sw-cap' }, s);
+// the swell's weight past the rim (glow.js): env · (.6 e^(-2.8u) (.45 + .55 crest) + .18 e^(-((u - c0)/.22)^2)), u = (d - R/2) / reach
+const weight = (d, crest, core) => { const u = Math.min(1, Math.max(0, (d - G.rim / 2) / G.swell)), kc = (u - core) / .22; return .6 * Math.exp(-u * 2.8) * (.45 + .55 * crest) + .18 * Math.exp(-kc * kc); };
+Lab.page({ title: 'swell', wide: true, note: 'The alive border and the ' + G.swell + ' px focus swell on every block kind (rim-glow §7-8): paint over the spacing and the neighbours, never layout; the swell replaces the locate ripple. Rows and tabs stack edge to edge, so their outer half is clipped away and their bloom stops at their own padding; panes keep the half/half rim and the gap. A waiting seat loops the swell in amber until it is focused or leaves waiting, its row name pulsing with it, and posts one notification whose click focuses it (attention §2-3). Frozen at ' + AT + ' ms of ' + G.swell_ms + ' (?t=ms); ?live=1 runs it.',
+  states: ['panes', 'rows', 'tabs', 'cards', 'attention beside focus', 'notification', 'muted waiting', 'curve'],
+  render(s, body) {
+    glowing.length = 0;
+    if (s === 'panes') body.append(stage(pane(seat(0, 'idle')), pane(seat(1, 'active'), { swell: true }), pane(seat(2, 'idle'))),
+      cap('The middle pane took focus: its silk swells ' + G.swell + ' px past the rim over the gap (' + G.rim + ' px, the rim size) and onto both neighbours, at the same colour and crests, and settles back in ' + G.swell_ms + ' ms. Nothing moves.'));
+    if (s === 'rows') body.append(side(...[0, 1, 2, 3, 4, 5].map(i => row(seat(i, ['active', 'idle', 'active', 'waiting', 'idle', 'errored'][i]), i === 2 ? { swell: true } : {}))),
+      cap('Every row that is not idle carries the same alive rim as its pane (idle rows carry none at rest, glow.row_idle). Rows sit edge to edge, so only the inner half (' + G.rim / 2 + ' px) shows and there is no bloom (no vertical padding); the swell still paints over the neighbouring rows.'));
+    if (s === 'tabs') {
+      const r = C.rng('swell-tabs'), tabs = [['gpu research', 3], ['messaging', 2], ['parse logs', 5]].map(([name, n], j) => { const ss = Array.from({ length: n }, (_, k) => C.makeSeat(r, 10 * j + k)); return { name, shortcut: '⌘' + (j + 1), seats: ss, tree: C.makeTree(r, ss) }; });
+      body.append(side(...tabs.map((t, j) => { const worst = C.rollup(t.seats)[0]; return block(C.tabRow(t, {}).firstChild, { key: 'tab' + j, state: worst.state, color: C.seatColor(worst) }, j === 1 ? { swell: true } : {}); })),
+        cap('A collapsed tab is a block too: its rim takes the colour and state of its worst seat, and it swells when focus lands on one of its seats.'));
+    }
+    if (s === 'cards') {
+      const rep = (i, task, files, ok) => ({ task, files: files.map(([path, add, del]) => ({ path, add, del })), checks: [{ cmd: 'sh scripts/ci-local.sh', ok, exit: ok ? 'exit 0' : 'exit 1' }], commit: ok ? 'a3dcbc1' : null, verdict: null });
+      const card = (i, r, o) => { const c = C.reportCard(r); c.style.marginTop = '0'; return block(c, seat(i, 'active'), o); };
+      body.append(el('div', { class: 'sw-cards' }, card(1, rep(1, 'W2.4 local messaging', [['crates/bbt-logic/src/bus.rs', 84, 12]], true)), card(4, rep(4, 'MK1 centred marks', [['lab/web/components.js', 41, 18], ['crates/bbt-ui/src/marks.rs', 96, 0]], true), { swell: true }), card(2, rep(2, 'R2c perf HUD', [['crates/bbt-app/src/hud.rs', 12, 3]], false))),
+        cap('Cards keep a ' + G.rim + ' px stack gap here, so their outer half fits; their bloom stays inside their padding. Focus on a card swells it the same way.'));
+    }
+    if (s === 'attention beside focus') body.append(stage(pane(seat(2, 'waiting'), { attn: true }), pane(seat(1, 'active'), { swell: true })),
+      side(row(seat(2, 'waiting'), { attn: true }), row(seat(1, 'active'), { swell: true }), row(seat(0, 'idle'))),
+      cap('Left: waiting for the operator. The swell loops every ' + G.swell_ms + ' ms in the waiting amber at full amplitude, the rim pulses with it, and the row name pulses in step, until the seat is focused or leaves waiting. Right: the single focus swell in the seat colour, once. The loop never moves layout or takes focus.'));
+    if (s === 'notification') {
+      const W = seat(2, 'waiting', { waitKind: 'permission' });
+      const host = el('div', {}); const draw = handled => { host.innerHTML = ''; glowing.length = 0;
+        host.append(el('div', { class: 'sw-notif' }, handled ? cap('Clicked: the window raised, the tab shown, the pane focused; the loop stopped and one focus swell played. The notification is removed.') : C.notification(W, QUESTION, () => draw(true))),
+          stage(pane(seat(0, 'active')), pane({ ...W, state: handled ? 'active' : 'waiting' }, handled ? { swell: true } : { attn: true })),
+          side(row(seat(0, 'active')), row({ ...W, state: handled ? 'active' : 'waiting' }, handled ? { swell: true } : { attn: true }))); };
+      draw(false); body.append(host, cap('One notification per waiting episode: title the seat and harness, body the first line of what it asks, identifier the seat id so a repeat replaces it. Click it.'));
+    }
+    if (s === 'muted waiting') body.append(stage(pane(seat(3, 'waiting', { muted: true })), pane(seat(1, 'active'))),
+      side(row(seat(3, 'waiting', { muted: true })), row(seat(1, 'active'))),
+      cap('A muted seat (⌘M) waiting: the ordinary waiting rim only, no loop, no row-name pulse, no notification.'));
+    if (s === 'curve') {
+      const near = G.rim + 8;   // a neighbour's first text cell: the gap (rim size) plus its 8 px content padding
+      const ds = [G.rim / 2, 6, near, 20, 30, G.rim / 2 + G.swell];
+      const t = el('table', { class: 'sw-curve' }, el('tr', {}, el('th', {}, 'px past the border'), el('th', {}, 'trough'), el('th', {}, 'mean'), el('th', {}, 'peak')),
+        ...ds.map(d => el('tr', { class: d === near ? 'near' : '' }, el('td', {}, d + (d === near ? ' · neighbour text' : '')), ...[weight(d, 0, -9), weight(d, .5, .35), weight(d, 1, Math.min(.45, Math.max(.25, (d - G.rim / 2) / G.swell)))].map(v => el('td', {}, v.toFixed(2))))));
+      body.append(t, cap('Weight of the swell at its peak (envelope 1), by distance past the pane border, before the seat colour composites over what is beneath. Trough: crest 0, core away. Mean: crest .5, core at rest. Peak: crest 1, core over the cell. Acceptance (rim-glow §7): over a neighbour\'s nearest text cell (' + near + ' px at Rim size ' + G.rim + ') the swell weighs at most ' + weight(near, 1, .25).toFixed(2) + ', for at most ' + G.swell_ms + ' ms; native matches under strict parity.'));
+    }
+    if (LIVE) { const sw = glowing.filter(g => g.o.swell); clearInterval(window.__swT); window.__swT = setInterval(() => sw.forEach(g => Glow.swell(g.w)), 2200); sw.forEach(g => Glow.swell(g.w)); }
+  } });
+</script></body></html>

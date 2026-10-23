@@ -138,6 +138,8 @@ window.TOKENS = {
     "row_idle": false,
     "row_particles_active": 4,
     "row_radius": 4,
+    "swell": 40,
+    "swell_ms": 900,
     "waiting_alpha_max": 0.8,
     "waiting_alpha_min": 0.25
   },

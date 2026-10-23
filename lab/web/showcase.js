@@ -1,6 +1,7 @@
 // Showcase: full-window mock. Sidebar + a split tree of panes in the DOM; the border glow is a WebGL2 fragment
-// shader on a full-window canvas behind the DOM. Per seat: rect, colour, state, focus. Particles advect along the
-// border; ripples expand from a sidebar row and the matching pane corner. A timer keeps the scene alive.
+// shader on a full-window canvas over the DOM. Per block (pane or sidebar row): rect, colour, state, focus. Each carries the
+// alive rim; on focus its silk swells glow.swell px out and back (rim-glow §7); a waiting seat loops that swell in amber,
+// pulses its row name and posts a notification whose click focuses it (attention §2-3). A timer keeps the scene alive.
 // ?scene=15 renders fifteen seats in one tab as a deep uneven split tree. Theme follows the OS unless toggled.
 (function () {
   const T = window.TOKENS, G = T.glow, el = Lab.el;
@@ -436,12 +437,13 @@
   // State change without a full render: swap glyphs and classes in place so replay text and scroll survive.
   function setState(seat, st) {
     if (seat.state === st) return;
-    seat.state = st;
+    seat.state = st; if (st !== 'waiting') seat.attnDone = false;
     for (const n of main.querySelectorAll('[data-key="' + seat.key + '"]')) {
       for (const k of C.STATES) n.classList.remove(k);
       n.classList.add(st);
       const g = n.querySelector('.glyph'); if (g) g.replaceWith(C.glyph(st, seat));
     }
+    attention();
   }
 
   // ---------- DOM ----------
@@ -482,7 +484,7 @@
     main.append(sb, stage);
     main.querySelectorAll('[data-key]').forEach(n => {
       const ph = space().participants.find(x => x.key === n.dataset.key);
-      if (ph) { n.addEventListener('click', () => { streamFilter = streamFilter === ph.key ? null : ph.key; drawStream(); }); return; }  // no focus, no ripple
+      if (ph) { n.addEventListener('click', () => { streamFilter = streamFilter === ph.key ? null : ph.key; drawStream(); }); return; }  // no focus, no swell
       n.addEventListener('click', () => { const s = seats.find(x => x.key === n.dataset.key); s.unread = 0; setFocus(n.dataset.key, { locate: n.classList.contains('pane') ? 'row' : 'pane' }); });
       if (n.classList.contains('pane')) { n.addEventListener('pointerenter', () => armHover(n.dataset.key)); n.addEventListener('pointerleave', disarmHover); }   // panes: dwell focus, brightness only; rows: never
     });
@@ -522,30 +524,49 @@
     } }));
     drawStream();
     setFocus(focused, { force: true });
+    attention();
     for (const seat of seats) paintTerm(seat);
     measure();
   }
   // Focus change touches classes only: no re-render, no re-measure (rows never move).
-  // Locate ripple: row at its left edge, pane at its centre, in the seat colour.
-  // Directional (operator): a row click rings the pane; a pane click bounces the row's border; keyboard does both.
+  // Locate is the focus swell (rim-glow §7, decision #42; it replaced the ripple): the block's silk swells glow.swell px past
+  // its rim and back over glow.swell_ms, paint only. Directional (operator): a row click swells the pane, a pane click the row;
+  // keyboard does both.
+  const swellT0 = {};
   function locate(key, where) {
-    const f = seats.find(x => x.key === key); if (!f) return;
-    if (where === 'pane' || where === 'both') { const col = C.hslToRgb(f.color); for (const R of rects) if (R.key === key && R.pane) ripple(R.x + R.w / 2, R.y + R.h / 2, col); }
-    if (where === 'row' || where === 'both') { const row = main.querySelector('.seat-row[data-key="' + key + '"]'); if (row) { row.classList.remove('bounce'); void row.offsetWidth; row.classList.add('bounce'); row.addEventListener('animationend', () => row.classList.remove('bounce'), { once: true }); } }
+    const now = performance.now();
+    if (where === 'pane' || where === 'both') swellT0[key + '|pane'] = now;
+    if (where === 'row' || where === 'both') swellT0[key + '|row'] = now;
   }
-  // Signal semantics (.bboxy/ux-pick.md): focus = brightness only. The locate ripple fires only with opts.locate,
-  // which click and keyboard pass and dwell does not. Timers and messages never ripple.
+  // Attention (attention §2-3): a waiting seat, not muted and not yet focused, loops the swell in amber with its row name
+  // pulsing, and posts one notification (keyed by the seat, so a repeat replaces it) whose click focuses it. Focusing the seat
+  // or its leaving waiting ends both; focus then plays the single swell. Nothing moves and nothing takes focus by itself.
+  const notifs = el('div', { class: 'notifs' }); document.body.append(notifs);
+  const needs = s => s.state === 'waiting' && !s.muted && !s.attnDone;
+  function attention() {
+    main.querySelectorAll('.seat-row[data-key]').forEach(n => { const s = seats.find(x => x.key === n.dataset.key); n.classList.toggle('attn', !!s && needs(s)); });
+    for (const n of [...notifs.children]) { const s = seats.find(x => x.key === n.dataset.key); if (!s || !needs(s)) n.remove(); }
+    for (const s of seats) if (needs(s) && !notifs.querySelector('[data-key="' + s.key + '"]')) {
+      // the body is the first line of what it asks: the replay line that stopped it, else the waiting screen's prompt (fakeTerm)
+      const ask = s.waitLine || ((s.replay && s.replay.buf) || []).slice().reverse().find(l => /Allow|\?\s*$/.test(l)) || 'Allow Bash(git push)?';
+      const n = C.notification(s, ask.trim(), () => setFocus(s.key, { locate: 'both' }));
+      n.dataset.key = s.key; notifs.append(n);
+    }
+  }
+  // Signal semantics (.bboxy/ux-pick.md): focus = brightness only. The swell fires only with opts.locate,
+  // which click and keyboard pass and dwell does not. Timers and messages never swell.
   function setFocus(key, opts) {
     opts = opts || {};
     if (key === focused && !opts.force && !opts.locate) return;
     const changed = key !== focused;
     focused = key;
-    if (!opts.force && !stageKeys.includes(key)) { render(); if (opts.locate) locate(key, opts.locate); return; }   // another tab: the stage switches, then the ripple says where you landed
+    const fs = seats.find(s => s.key === key); if (fs && fs.state === 'waiting' && !fs.attnDone && !opts.force) { fs.attnDone = true; attention(); }   // focus handles it
+    if (!opts.force && !stageKeys.includes(key)) { render(); if (opts.locate) locate(key, opts.locate); return; }   // another tab: the stage switches, then the swell says where you landed
     main.querySelectorAll('.seat-row[data-key]').forEach(n => n.classList.toggle('focused', n.dataset.key === key));
     main.querySelectorAll('.pane[data-key]').forEach(n => { const f = n.dataset.key === key; n.classList.toggle('focused', f); n.classList.toggle('unfocused', !f); });
     const f = seats.find(s => s.key === key);
     document.getElementById('crumb').textContent = '· ' + space().name + ' · ' + f.name;
-    // locate (DECIDED): every focus change ripples the row and the pane corner in the seat colour, both directions;
+    // locate (DECIDED): every focus change swells the row and the pane in the seat colour, both directions;
     // an off-screen row scrolls into view inside the sidebar (never the window), then rects are re-measured once.
     const row = main.querySelector('.seat-row[data-key="' + key + '"]'), sc = main.querySelector('.sb-scroll');
     if (row && sc) {
@@ -590,7 +611,7 @@
     main.querySelectorAll('[data-key]').forEach(n => {
       const s = seats.find(x => x.key === n.dataset.key) || space().participants.find(x => x.key === n.dataset.key); if (!s) return;
       const b = n.getBoundingClientRect();
-      rects.push({ key: s.key, seat: s, pane: n.classList.contains('pane'), x: b.left, y: b.top, w: b.width, h: b.height });
+      rects.push({ key: s.key, seat: s, pane: n.classList.contains('pane'), r: parseFloat(getComputedStyle(n).borderTopLeftRadius) || 0, x: b.left, y: b.top, w: b.width, h: b.height });
     });
   }
 
@@ -603,7 +624,7 @@
     const st = { '1': 'idle', '2': 'active', '3': 'waiting', '4': 'errored' }[e.key];
     if (st) { if (st === 'waiting' && f.state === 'waiting') { const ks = ['permission', 'question', 'auth']; f.waitKind = ks[(ks.indexOf(f.waitKind || 'question') + 1) % 3]; render(); return; } setState(f, st); if (st === 'active' && f.replay && f.replay.waiting) { f.replay.waiting = false; schedule(f, 200); } }
     else if (e.key === 'm' || e.key === 'M') {
-      // a message arrives for the next seat in order, from a sender role that cycles; unread dot only, no ripple
+      // a message arrives for the next seat in order, from a sender role that cycles; unread dot only, no swell
       const s = seats[msgN % seats.length], role = ['executor', 'oracle', 'creativity'][msgN % 3]; msgN++;
       // a muted seat holds swarm traffic instead (demo: every fourth held item is outgoing work its grant no longer permits)
       if (s.muted) { s.held = s.held || []; const k = s.held.length; s.held.push({ id: 'msg-' + C.hash32(s.key + k).toString(16).slice(0, 6), dir: k % 4 === 3 ? 'out' : 'in', blocked: k % 4 === 3 ? 'sent under an old grant epoch · the current grant no longer permits the swarm' : null }); render(); return; }
@@ -681,7 +702,7 @@
     setState(seat, 'active');
     const line = rp.lines[rp.idx++]; emit(seat, line); rp.burst--;
     if (rp.burst === 0) {                                 // burst ended
-      if (/Allow|\?\s*$/.test(line)) { seat.waitKind = /Allow/.test(line) ? 'permission' : /auth|login|token|password/i.test(line) ? 'auth' : 'question'; rp.waiting = true; setState(seat, 'waiting'); return; }
+      if (/Allow|\?\s*$/.test(line)) { seat.waitLine = line.trim(); seat.waitKind = /Allow/.test(line) ? 'permission' : /auth|login|token|password/i.test(line) ? 'auth' : 'question'; rp.waiting = true; setState(seat, 'waiting'); return; }
       return schedule(seat, 400 + rnd() * 1600);
     }
     schedule(seat, 30 + rnd() * 90);
@@ -699,26 +720,22 @@
   const cv = document.getElementById('glow');
   const gl = cv.getContext('webgl2', { antialias: false, alpha: true, premultipliedAlpha: true });
   if (!gl) { render(); seats.slice().forEach((seat, i) => startReplay(seat, i)); return; }   // no WebGL: everything but the glow still runs
-  const MAXR = 40, MAXRIP = 6;
+  const MAXR = 40;
   const vs = `#version 300 es
     const vec2 q[3] = vec2[3](vec2(-1.,-1.), vec2(3.,-1.), vec2(-1.,3.));
     void main(){ gl_Position = vec4(q[gl_VertexID], 0., 1.); }`;
   const fs = `#version 300 es
     precision highp float;
-    uniform vec2 uRes; uniform float uTime; uniform vec3 uBg; uniform int uN; uniform int uNR; uniform float uLight;
+    uniform vec2 uRes; uniform float uTime; uniform int uN;
     uniform vec4 uRect[${MAXR}];   // x y w h (device px, y down)
     uniform vec4 uCol[${MAXR}];    // rgb, focus(0/1)
-    uniform vec4 uPar[${MAXR}];    // state(0 idle,1 active,2 waiting,3 errored), radius, seed, particles
-    uniform vec4 uRip[${MAXRIP}];  // x y t0 unused
-    uniform vec4 uRipCol[${MAXRIP}];
-    uniform float uMul[${MAXR}];   // per-rect alpha multiplier: panes 1, sidebar rows glow.row_alpha
-    uniform float uPane[${MAXR}];  // 1: a pane, drawn as the alive rim inside it; 0: a sidebar row (halo + particles)
+    uniform vec4 uPar[${MAXR}];    // state(0 idle,1 active,2 waiting,3 errored), corner radius (device px), phase ms, unused
+    uniform vec4 uSw[${MAXR}];     // swell reach px, envelope, attention, unused
+    uniform float uMul[${MAXR}];   // the rim at rest: 1, 0 for an idle row (glow.row_idle), halved for an inferred seat; never the swell
+    uniform float uPane[${MAXR}];  // 1: a pane (half/half rim, bloom); 0: a sidebar row (outer half clipped, no bloom: rim-glow §8)
     uniform float uRim, uRimOut, uDepth, uDpr;   // rim size (Settings › Rim size), half of it outside the edge, bloom depth (glow.depth), CSS px; dpr
-    uniform float uPulseMs, uActiveMs, uIdleA, uActMin, uActMax, uWaitMin, uWaitMax, uErrA, uBoost, uSpeed, uPSize;
     uniform vec3 uAmber, uRed;
     out vec4 o;
-    float hash(float n){ return fract(sin(n)*43758.5453); }
-    float breathe(float ms){ return 0.5 - 0.5*cos(uTime/ms*6.28318); }
     // the alive rim (rim-glow spec; glow.js): arc length round the box, each wavelength closed on it
     const float TAU = 6.2831853;
     float wl(float lambda, float P){ return P / max(1., floor(P / lambda + .5)); }
@@ -728,109 +745,55 @@
       return q.y < 0. ? q.x + hs.x : 2.*hs.x + 2.*hs.y + (hs.x - q.x); }
     void main(){
       vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
-      vec3 acc = vec3(0.); float w = 0.0; vec3 rimC = vec3(0.); float rimA = 0.0;   // rims composite over the halos
+      vec3 rimC = vec3(0.); float rimA = 0.0;
       for (int i = 0; i < ${MAXR}; i++) {
         if (i >= uN) break;
-        vec4 R = uRect[i]; vec2 c = R.xy + R.zw*0.5; vec2 hs = R.zw*0.5;
-        vec2 q = p - c; vec2 d2 = abs(q) - hs;
-        float dOut = length(max(d2, 0.)); float dIn = min(max(d2.x, d2.y), 0.);
-        float d = abs(dOut + dIn);                    // distance to the border line
-        if (uPane[i] > 0.5) {
-          // a pane: the alive rim, 2 px inside the border plus a bloom to uDepth px; it never leaves the pane
-          float dep = (dOut > 0. ? -dOut : -max(d2.x, d2.y)) / uDpr;   // signed CSS px inward from the border (negative outside)
-          if (dep < -uRimOut - 1.) continue;
-          float inner = uRim - uRimOut;
-          float rim = smoothstep(-uRimOut, -uRimOut + .6, dep) * (1. - smoothstep(inner - .4, inner + .4, dep));
-          float bloom = step(inner - .4, dep) * exp(-(dep - inner) / (.3*uDepth)) * (1. - smoothstep(uDepth - 1., uDepth, dep));
-          if (rim + bloom <= 0.) continue;
-          float pst = uPar[i].x; vec3 pcol = uCol[i].rgb;
-          if (pst > 1.5 && pst < 2.5) pcol = uAmber; else if (pst > 2.5) pcol = uRed;
-          float spd = pst < 0.5 ? 0.35 : pst < 1.5 ? 1.0 : pst < 2.5 ? 0.6 : 0.0;
-          float amp = pst < 0.5 ? 0.32 : pst < 1.5 ? 1.0 : pst < 2.5 ? 0.9 : 0.65;
-          float time = uTime + uPar[i].z, t = time*0.001*spd;
-          float s = perim(q, hs)/uDpr, P = 4.*(hs.x + hs.y)/uDpr;   // CSS px: tiled panes are square-cornered
-          float a1 = .5 + .5*sin(TAU*(s/wl(170., P) - t*.45)), a2 = .5 + .5*sin(TAU*(s/wl(110., P) + t*.30) + 1.7);
-          float crest = max(a1*a1, .8*a2*a2), pulse = .5 - .5*cos(time/(2600./(.5 + spd))*TAU);
-          float I = (.42 + .58*crest)*(.72 + .28*pulse)*rim + .3*crest*(.6 + .4*pulse)*bloom;
-          vec3 rc = hue(pcol, .55*sin(TAU*(s/P - t*.12)) + .3*sin(TAU*(s/wl(230., P) + t*.2)));
-          rc = clamp(mix(rc, vec3(1.), .22*crest*rim), 0., 1.);
-          I *= amp * mix(1.0, 1.3, uCol[i].w) * uMul[i];
-          if (pst > 1.5 && pst < 2.5) I *= 0.6 + 0.4*(.5 - .5*cos(time/1600.*TAU));
-          I = clamp(I, 0., 1.);
-          rimC += rc*I*(1. - rimA); rimA += I*(1. - rimA);
-          continue;
-        }
-        float rad = uPar[i].y;
-        if (d > rad * 4.0) continue;                  // budget: only rects whose halo reaches this pixel
-        float st = uPar[i].x; vec3 col = uCol[i].rgb; float focus = uCol[i].w;
-        float a; float speed = 0.5; float count = uPar[i].w;
-        if (st < 0.5)      { a = uIdleA; speed = 0.35; }
-        else if (st < 1.5) { a = mix(uActMin, uActMax, breathe(uActiveMs)); speed = 1.0; }
-        else if (st < 2.5) { a = mix(uWaitMin, uWaitMax, breathe(uPulseMs)); col = uAmber; speed = 0.6; }
-        else               { a = uErrA; col = uRed; speed = 0.15; count *= 0.5; }
-        a *= mix(1.0, uBoost, focus) * uMul[i];
-        float inside = step(dOut, 0.0);
-        float g = exp(-d / (rad * mix(1.0, 0.45, inside))) * a * 0.38;
-        acc += col * g; w += g;
-        // particles: perimeter coordinate t in [0,1), advect with time, gaussian in t and in d
-        vec2 e = hs - abs(q); float P = 4.0*(hs.x + hs.y);
-        float t;
-        if (e.x < e.y) { t = q.x > 0. ? (hs.x + hs.y + (q.y + hs.y)) : (3.0*hs.x + 2.0*hs.y + (hs.y - q.y)); }
-        else           { t = q.y < 0. ? (q.x + hs.x) : (2.0*hs.x + hs.y + (hs.x - q.x)); }
-        t /= P;
-        float sig = uPSize * mix(1.0, 1.6, focus);
-        float pk = 0.0;
-        int n = int(count);
-        for (int k = 0; k < 48; k++) {
-          if (k >= n) break;
-          float s0 = hash(uPar[i].z + float(k)*7.31);
-          float sp = (0.6 + 0.8*hash(uPar[i].z + float(k)*3.7)) * speed * uSpeed / P;
-          float tk = fract(s0 + uTime*0.001*sp);
-          float dt = abs(fract(t - tk + 0.5) - 0.5) * P;
-          float tw = 0.65 + 0.35*sin(uTime*0.004 + float(k)*1.7);
-          pk += exp(-(dt*dt)/(2.0*sig*sig*3.0)) * exp(-(d*d)/(2.0*sig*sig*0.6)) * tw;
-        }
-        float pg = min(pk, 1.5) * a * mix(0.9, 0.45, uLight);
-        acc += col * pg; w += pg;
+        vec4 R = uRect[i]; vec2 c = R.xy + R.zw*0.5; vec2 hs = R.zw*0.5, q = p - c;
+        float r = min(uPar[i].y, min(hs.x, hs.y)); vec2 d2 = abs(q) - hs + vec2(r);
+        float dep = -(min(max(d2.x, d2.y), 0.) + length(max(d2, 0.)) - r) / uDpr;   // signed CSS px inward from the border (negative outside)
+        bool pane = uPane[i] > 0.5;
+        float ro = pane ? uRimOut : 0., inner = uRim - uRimOut, depth = pane ? uDepth : 0., ext = uSw[i].x;
+        if (dep < -ro - ext - 1.) continue;
+        float rim = smoothstep(-ro, -ro + .6, dep) * (1. - smoothstep(inner - .4, inner + .4, dep));
+        float bloom = depth > .5 ? step(inner - .4, dep) * exp(-(dep - inner) / (.3*depth)) * (1. - smoothstep(depth - 1., depth, dep)) : 0.;
+        float sw = ext > .5 ? step(ro - .4, -dep) * (1. - smoothstep(ro + ext*.8, ro + ext, -dep)) : 0.;   // the swell, past the rim's outer edge
+        if (rim + bloom + sw <= 0.) continue;
+        float pst = uPar[i].x; vec3 pcol = uCol[i].rgb; bool attn = uSw[i].z > .5;
+        if (pst > 1.5 && pst < 2.5) pcol = uAmber; else if (pst > 2.5) pcol = uRed;
+        float spd = pst < 0.5 ? 0.35 : pst < 1.5 ? 1.0 : pst < 2.5 ? 0.6 : 0.0;
+        float amp = pst < 0.5 ? 0.32 : pst < 1.5 ? 1.0 : pst < 2.5 ? 0.9 : 0.65;
+        float time = uTime + uPar[i].z, t = time*0.001*spd;
+        float s = perim(q, hs)/uDpr, P = 4.*(hs.x + hs.y)/uDpr;   // CSS px
+        float a1 = .5 + .5*sin(TAU*(s/wl(170., P) - t*.45)), a2 = .5 + .5*sin(TAU*(s/wl(110., P) + t*.30) + 1.7);
+        float crest = max(a1*a1, .8*a2*a2), pulse = .5 - .5*cos(time/(2600./(.5 + spd))*TAU);
+        float I = (.42 + .58*crest)*(.72 + .28*pulse)*rim + .3*crest*(.6 + .4*pulse)*bloom;
+        vec3 rc = hue(pcol, (.55*sin(TAU*(s/P - t*.12)) + .3*sin(TAU*(s/wl(230., P) + t*.2))) * (attn ? .15 : 1.));   // attention stays amber
+        rc = clamp(mix(rc, vec3(1.), .22*crest*rim), 0., 1.);
+        I *= amp * mix(1.0, 1.3, uCol[i].w) * uMul[i];
+        if (attn) I *= .55 + .45*uSw[i].y; else if (pst > 1.5 && pst < 2.5) I *= 0.6 + 0.4*(.5 - .5*cos(time/1600.*TAU));
+        // the swell (glow.js, swell.html 'curve'): a soft bloom carrying the crests, weight falling to zero at the reach
+        float u = clamp((-dep - ro)/max(ext, 1.), 0., 1.), c0 = .35 + .1*sin(TAU*(s/wl(190., P) - t*.31)), kc = (u - c0)/.22;
+        float Is = sw > 0. ? uSw[i].y*(.6*exp(-u*2.8)*(.45 + .55*crest) + .18*exp(-(kc*kc)))*sw : 0.;
+        I = clamp(I, 0., 1.); I = I + Is*(1. - I);
+        rimC += rc*I*(1. - rimA); rimA += I*(1. - rimA);
       }
-      for (int j = 0; j < ${MAXRIP}; j++) {
-        if (j >= uNR) break;
-        float age = uTime - uRip[j].z; if (age < 0.0 || age > 900.0) continue;
-        float rr = age * 0.22; float dist = distance(p, uRip[j].xy);
-        float ring = exp(-pow(dist - rr, 2.0) / (2.0*9.0)) * (1.0 - age/900.0) * 0.9;
-        acc += uRipCol[j].rgb * ring; w += ring;
-      }
-      // The canvas sits above the DOM (zero layout space): output is premultiplied alpha over whatever is beneath.
-      if (uLight > 0.5) {
-        // light ground: additive washes out, so the halo darkens toward the seat colour
-        vec3 tint = w > 0.001 ? acc / w : vec3(1.0);
-        float a = clamp(w * 1.1, 0.0, 0.8);
-        o = vec4(uBg * tint * a, a);
-      } else {
-        o = vec4(acc, clamp(w, 0.0, 1.0));
-      }
-      o = vec4(rimC + o.rgb*(1. - rimA), rimA + o.a*(1. - rimA));   // the pane rims sit over any halo
+      o = vec4(rimC, rimA);   // premultiplied over whatever is beneath (the canvas sits above the DOM, zero layout space)
     }`;
   function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
   const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog);
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
   gl.useProgram(prog);
-  const U = {}; for (const n of ['uRes', 'uTime', 'uBg', 'uN', 'uNR', 'uLight', 'uRect', 'uCol', 'uPar', 'uMul', 'uPane', 'uRim', 'uRimOut', 'uDepth', 'uDpr', 'uRip', 'uRipCol', 'uPulseMs', 'uActiveMs', 'uIdleA', 'uActMin', 'uActMax', 'uWaitMin', 'uWaitMax', 'uErrA', 'uBoost', 'uSpeed', 'uPSize', 'uAmber', 'uRed']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uRes', 'uTime', 'uN', 'uRect', 'uCol', 'uPar', 'uSw', 'uMul', 'uPane', 'uRim', 'uRimOut', 'uDepth', 'uDpr', 'uAmber', 'uRed']) U[n] = gl.getUniformLocation(prog, n);
   gl.uniform3fv(U.uAmber, C.hslToRgb(T.color.state.waiting)); gl.uniform3fv(U.uRed, C.hslToRgb(T.color.state.errored));
-  gl.uniform1f(U.uPulseMs, T.motion.pulse_ms); gl.uniform1f(U.uActiveMs, G.active_pulse_ms); gl.uniform1f(U.uIdleA, G.idle_alpha);
-  gl.uniform1f(U.uActMin, G.active_alpha_min); gl.uniform1f(U.uActMax, G.active_alpha_max); gl.uniform1f(U.uWaitMin, G.waiting_alpha_min); gl.uniform1f(U.uWaitMax, G.waiting_alpha_max);
-  gl.uniform1f(U.uErrA, G.errored_alpha); gl.uniform1f(U.uBoost, G.focused_boost); gl.uniform1f(U.uSpeed, G.particle_speed); gl.uniform1f(U.uPSize, G.particle_size * Math.min(devicePixelRatio, 2));
 
   const STATE_IDX = { idle: 0, active: 1, waiting: 2, errored: 3 };
-  const rectBuf = new Float32Array(MAXR * 4), colBuf = new Float32Array(MAXR * 4), parBuf = new Float32Array(MAXR * 4), mulBuf = new Float32Array(MAXR), paneBuf = new Float32Array(MAXR);
-  const ripples = []; const ripBuf = new Float32Array(MAXRIP * 4), ripCol = new Float32Array(MAXRIP * 4);
-  function ripple(x, y, color) { if (!gl) return; ripples.push({ x, y, t0: performance.now(), c: color }); if (ripples.length > MAXRIP) ripples.shift(); }
+  const rectBuf = new Float32Array(MAXR * 4), colBuf = new Float32Array(MAXR * 4), parBuf = new Float32Array(MAXR * 4), swBuf = new Float32Array(MAXR * 4), mulBuf = new Float32Array(MAXR), paneBuf = new Float32Array(MAXR);
   function resize() { const dpr = Math.min(devicePixelRatio, 2); cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; gl.viewport(0, 0, cv.width, cv.height); measure(); }
   addEventListener('resize', resize);
 
   let frames = 0, fpsT = performance.now(), fps = 0, ftMax = 0, ftAcc = 0, lastNow = 0;
   function frame(now) {
-    const dpr = cv.width / innerWidth, th = theme();
+    const dpr = cv.width / innerWidth;
     let n = 0;
     for (const R of rects) {
       if (n >= MAXR) break;
@@ -838,19 +801,19 @@
       rectBuf.set([R.x * dpr, R.y * dpr, R.w * dpr, R.h * dpr], n * 4);
       const pulse = s.pulseT ? Math.max(0, 1 - (now - s.pulseT) / 700) : 0;  // phantom message: one pulse, 700 ms, through the brightness channel
       colBuf.set([rgb[0], rgb[1], rgb[2], s.key === focused ? 1 : pulse], n * 4);
-      const rad = (R.pane ? G.pane_radius : G.row_radius) * dpr;
-      const parts = R.pane ? (s.state === 'active' ? G.particles_active : G.particles_idle * 2) : (s.state === 'active' ? G.row_particles_active : 0);
-      parBuf.set([STATE_IDX[s.state], rad, C.hash32(s.key) % (R.pane ? 10000 : 1000), parts], n * 4);   // panes: the rim's phase ms (glow.js)
-      mulBuf[n] = (R.pane ? 1 : (s.state === 'idle' && !G.row_idle ? 0 : G.row_alpha)) * (s.grade === 'inferred' ? 0.5 : 1);
+      parBuf.set([STATE_IDX[s.state], R.pane ? 0 : R.r * dpr, C.hash32(s.key) % 10000, 0], n * 4);   // the rim's phase ms (glow.js)
+      // the swell: once on locate, or looping while the seat needs the operator (attention: |sin|, in step across its blocks)
+      const attn = !s.phantom && needs(s), t0 = swellT0[s.key + (R.pane ? '|pane' : '|row')], st = t0 == null ? -1 : now - t0;
+      const env = attn ? Math.abs(Math.sin(Math.PI * now / G.swell_ms)) : st >= 0 && st < G.swell_ms ? Math.sin(Math.PI * st / G.swell_ms) : 0;
+      swBuf.set([G.swell * env, env, attn ? 1 : 0, 0], n * 4);
+      mulBuf[n] = (!R.pane && s.state === 'idle' && !G.row_idle && s.key !== focused ? 0 : 1) * (s.grade === 'inferred' ? 0.5 : 1);
       paneBuf[n] = R.pane ? 1 : 0;
       n++;
     }
-    gl.uniform3fv(U.uBg, C.hslToRgb(T.color[th].bg)); gl.uniform1f(U.uLight, th === 'light' ? 1 : 0);
     gl.uniform2f(U.uRes, cv.width, cv.height); gl.uniform1f(U.uTime, now);
-    gl.uniform1i(U.uN, n); gl.uniform4fv(U.uRect, rectBuf); gl.uniform4fv(U.uCol, colBuf); gl.uniform4fv(U.uPar, parBuf); gl.uniform1fv(U.uMul, mulBuf); gl.uniform1fv(U.uPane, paneBuf); const term = document.querySelector('.stage .pane .term'), pad = term ? parseFloat(getComputedStyle(term).paddingLeft) : depth;
-    gl.uniform1f(U.uRim, rim); gl.uniform1f(U.uRimOut, rim / 2); gl.uniform1f(U.uDepth, Math.min(T.glow.depth, pad));   // the cell edge rule (rim-glow §3): [0, min(depth, padding)) gl.uniform1f(U.uDpr, dpr);
-    ripples.forEach((rp, j) => { ripBuf.set([rp.x * dpr, rp.y * dpr, rp.t0, 0], j * 4); ripCol.set([rp.c[0], rp.c[1], rp.c[2], 1], j * 4); });
-    gl.uniform1i(U.uNR, ripples.length); gl.uniform4fv(U.uRip, ripBuf); gl.uniform4fv(U.uRipCol, ripCol);
+    gl.uniform1i(U.uN, n); gl.uniform4fv(U.uRect, rectBuf); gl.uniform4fv(U.uCol, colBuf); gl.uniform4fv(U.uPar, parBuf); gl.uniform4fv(U.uSw, swBuf); gl.uniform1fv(U.uMul, mulBuf); gl.uniform1fv(U.uPane, paneBuf);
+    const term = document.querySelector('.stage .pane .term'), pad = term ? parseFloat(getComputedStyle(term).paddingLeft) : T.glow.depth;
+    gl.uniform1f(U.uRim, rim); gl.uniform1f(U.uRimOut, rim / 2); gl.uniform1f(U.uDepth, Math.min(T.glow.depth, pad)); gl.uniform1f(U.uDpr, dpr);   // the cell edge rule (rim-glow §3): [0, min(depth, padding))
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     if (lastNow) { const ft = now - lastNow; ftAcc += ft; ftMax = Math.max(ftMax, ft); } lastNow = now;

@@ -271,6 +271,11 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .pane-wrap { position: relative; }
 .pane-wrap canvas.particles { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; }
 .pane-wrap canvas.rim { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; z-index: 2; }   /* the alive rim draws inside the pane, so above it */
+/* any block with the alive border (rim-glow §8): rows, tabs, cards; .swells widens the canvas to hold the 40 px focus swell */
+.glow-wrap { position: relative; }
+.glow-wrap canvas.rim { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; z-index: 2; }
+.pane-wrap.swells canvas.rim, .glow-wrap.swells canvas.rim { inset: -48px; width: calc(100% + 96px); height: calc(100% + 96px); }
+.seat-row, .tab-row { --rim-space: 0px; }   /* rows stack edge to edge: the outer half has no spacing to draw into */
 .pane-wrap .pane { position: relative; z-index: 1; }
 
 /* phone sheet open/closed */
@@ -1253,8 +1258,6 @@ body.resizing, body.resizing * { cursor: inherit !important; user-select: none; 
    crates/bbt-ui-model/tests/showcase_overrides.rs fails if showcase.html sets a token-backed property again. ---------- */
 /* body.live = the running app: the WebGL shader is the only glow, so the CSS fakes are off; the focused cursor blinks */
 body.live .sidebar, body.live .pane, body.live .seat-row { box-shadow: none !important; animation: none !important; }
-body.live .seat-row.bounce { animation: rowBounce 520ms var(--ease) !important; outline: 2px solid var(--seat); outline-offset: 0; }
-@keyframes rowBounce { 0% { transform: scale(1); outline-offset: 0; outline-color: transparent; } 35% { transform: scale(1.045); outline-offset: 3px; outline-color: var(--seat); } 70% { transform: scale(0.99); outline-offset: 1px; } 100% { transform: scale(1); outline-offset: 0; outline-color: transparent; } }
 body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 @keyframes curBlink { 50% { opacity: 0; } }
 /* sidebar: frosted ground, resizable edge */
@@ -1527,3 +1530,24 @@ details[open] > summary::before { transform: rotate(90deg); }
 .doc-status > .mark { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 5px; }
 /* the waiting mark keeps its amber halo (text-shadow does not reach SVG): a drop-shadow on the mark */
 .seat-row.waiting .glyph > .mark { filter: drop-shadow(0 0 3px var(--c-waiting)); }
+/* swell references (swell.html; rim-glow §7-8, attention §2-3) */
+.sw-stage { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--gutter); padding: calc(var(--stage-inset) + 48px); background: var(--bg); }
+.sw-side { width: 260px; padding: 48px 12px; background: var(--surface); display: flex; flex-direction: column; }
+.sw-cards { width: 320px; padding: 48px 12px; display: flex; flex-direction: column; gap: var(--glow-rim); }
+.sw-cap { max-width: 640px; }
+.sw-notif { display: flex; justify-content: flex-end; padding: 12px; min-height: 96px; }
+.sw-curve { border-collapse: collapse; font-size: var(--font); font-variant-numeric: tabular-nums; }
+.sw-curve th, .sw-curve td { padding: 4px 12px; text-align: right; border-bottom: var(--hair-w) solid var(--hair); }
+.sw-curve th:first-child, .sw-curve td:first-child { text-align: left; }
+.sw-curve tr.near td { color: var(--c-waiting); font-weight: 600; }
+/* attention (attention §2): the waiting row's name pulses with the swell loop, glow.swell_ms */
+.seat-row.attn .name { animation: attn-name var(--swell-ms) ease-in-out infinite; }
+@keyframes attn-name { 0%, 100% { color: inherit; text-shadow: none; } 50% { color: var(--c-waiting); text-shadow: 0 0 6px color-mix(in srgb, var(--c-waiting) 70%, transparent); } }
+/* the desktop notification (attention §3), a reference for the macOS banner: click focuses the seat */
+.notif { display: flex; gap: 10px; align-items: flex-start; width: 340px; padding: 10px 12px; border-radius: 14px; cursor: default;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(20px); box-shadow: 0 8px 24px rgba(0,0,0,.25), inset 0 0 0 var(--hair-w) var(--hair); }
+.notif .nb { flex: 1; min-width: 0; font-size: var(--font); line-height: 1.35; }
+.notif .nt { display: flex; gap: 4px; } .notif .nt span { color: var(--fg-dim); } .notif .nw { margin-left: auto; font-size: var(--font-small); }
+.notif .ns { color: var(--c-waiting); font-size: var(--font-small); }
+.notif .nm { font-family: var(--font-mono); font-size: var(--font-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notifs { position: fixed; top: calc(var(--title-bar-h) + 8px); right: 12px; z-index: 60; display: flex; flex-direction: column; gap: 8px; }
