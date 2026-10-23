@@ -1,0 +1,66 @@
+W1.2d evidence index — scale and crash verified. Exact clean CI is recorded separately in w1-2d-ci-final.log after this signed snapshot.
+Executor: Rook Ashwhisker. Worktree /Users/feral/mydev/bboxy450-term-rook, branch rook-w1-2d.
+
+Criteria and scope
+- Decisions21/22: one supervisor-wide ordered tick journal, full-flush cadence and admission bound, derived per-seat projections, safe replay, Busy is transient.
+- Config directory decision: explicit Config.journal_directory required; no silent fallback; app owns supervisor object root outside seat purge/backup.
+- Oracle ruling cc106f70fe2b09cfadb07a8f0066cd436f9f31a0 (ICQ received seq4585, message2ff83ad8-9ae2-4248-a112-dcde21f6fd8c): D21/D22 replaces W1.2c throughput/latency as the landing gate. W1.2f follows W1.2e. Old figures remain disclosed.
+- Oracle gate interpretation ef987b1a-f934-45a5-b4f3-59912ea50e02 (received seq4697): under50% busy and Busy0 apply at400; maximum967 requires live logic, reported latency and real SIGKILL replay. Fixture corrected in2246ec8; no production performance change followed this ruling.
+- Scope: bbt-supervisor, mux logic Busy handling plus explicitly approved one-page replay yield, capture/test fixtures and w1-2d logs. No Cargo/root/app/identity/transport changes authored. Main's ID1e and dev-signing removal preserved.
+
+Mechanisms
+- src/ring/journal.rs in bbt-supervisor: BBR1 frame+CRC32C, nil-seat tick commits, one barrier per tick, bounded staging, strong flushes, 64MiB rotation, coverage-based retirement and CRC-valid whole-tick recovery.
+- Checkpoints prefix the unchanged Saved payload with JCP2 + journal ULID + offset (28bytes), covering parsed input rather than the publication tail. Legacy8byte records remain readable.
+- Writer keeps bounded tail refs and row indexes; derived ring+tail history is paged. Old-process journal retention is conservative when its sealed-projection proof is unavailable.
+- Admission locks enforce undurable byte/time debt and one admission tick per seat. Query replies and commit boundaries wake the actor; raw append credit release does not force an O(seats) poller pass.
+- Child-status polling has100ms cadence, immediate EOF/due-escalation checks. Event-driven reaping is separately queued as W1.2e; no additional runtime or worker pool.
+- Logic retries rejected capture Busy only, keeps checkpoint cursors on rejection, preserves pending events and serves later commands. No ambiguous effects/input retries.
+
+Correctness evidence
+- w1-2d-wake-coalescing-checks.log: release supervisor lib12passed/2ignored; capture_busy1passed;20MiB cold replay1passed; real SIGKILL fixture1passed, all commands exit0.
+- w1-2d-967-crash-replay.log + w1-2d-967-crash-summary.log: real SIGKILL at967 native synthetic PTYs. Every seat reopens through production Ring::open and history; exact generated prefixes, CRC0; each admitted loss <=its own observed tick. Max loss640B, max tick704B, max pre-tail832B <=measuredPTY1024B+64B coalescing. Written5241920, admitted4710528, replayed4315968B. Replay21.614s; whole command45.776s; exit0. Default two-seat compatibility test also exits0. This is NOT a physical power-cut test.
+- journal_config tests prove required explicit directory and preservation of already-admitted bytes through orderly shutdown/offline reopen.
+- Existing10 PTY/lease integration tests pass with100ms status checks (w1-2d-child-poll-checks.log).
+- w1-2d-replay-yield-checks.log: capture_busy2/2 exit0; control response105.355ms while a4MiB replay is deliberately slowed per page; replay then reaches its final cursor.
+- w1-2d-zero-read-regression.log: real-PTY full retained frame regression reproduced invented EOF (exit101), fixed capacity==0 handling (all supervisor tests exit0); repeated actual SIGKILL also exits0.
+- w1-2d-disk-guard.log: forced low-free-disk abort stops both owned processes and removes its run, exit0.
+- Full core/parser, real separate-logic SIGKILL/reattach, grace undo and workspace gates require the exact clean CI log; this evidence snapshot itself does not claim that later command result.
+
+Burst comparison (different byte counts labelled)
+- Prior W1.2c20MiB regression:33.681MiB/s, max49.117ms,p9914.735ms; w1-2c-regression-final.log:43.
+- Prior W1.2c128MiB logic stopped:53.856MiB/s writer, max12.797ms,p994.724ms; durable39.788MiB/s; w1-2c-throughput-final.log:6-7.
+- Prior W1.2c128MiB logic running:56.795MiB/s writer, max12.444ms,p994.570ms; durable37.063MiB/s; same log:9-10.
+- Current20MiB logic stopped:24.7908MiB/s, max103.7028ms,p9990.3145ms; max seal60.149ms; cold replay startup1.3007s; w1-2d-wake-coalescing-checks.log. Exact20MiB+tail SHA256=77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb; no gap, same child. Old performance targets do NOT pass; ruling above places recovery in W1.2f.
+
+Load measurements (historical source revisions are in each log)
+- Unchanged baseline50: spawn47/50 failed Busy and logic exited; w1-2d-baseline-50-02.log.
+- Per-file barrier prototype: writer30.762/32.216s busy at40 seats;492/967 samples per-file barriers; w1-2d-40-profile.log and40-live-sample.log. Superseded by shared journal.
+- First shared400 gate failed67.52%,Busy0 (w1-2d-journal-400-memory-04.log). Sample found per-record write calls and full Saved decoding for history, then batched WAL writes and cached rows removed them.
+- Batching400:31.71%,Busy0,exit0 (w1-2d-batched-400-memory.log). Rebased400:30.99%,Busy0,exit0 (w1-2d-rebased-400-memory.log).
+- Grouped-seal400:26.25%,Busy0,p99upper7ms,max62.960ms,exit0 (w1-2d-final-400-memory.log).
+- Child-poll400:51.61%,Busy0,exit101; retained failure (w1-2d-poll-bounded-400-memory.log). Diagnostic rebase400:43.69%,Busy0,p99upper7ms,max43.404ms,exit0.
+- Final raw-wake-coalesced400:42.87%,Busy0,p99upper10ms,max37.964ms,heartbeatmax447.872ms,60.742s load,exit0 (w1-2d-wake-coalesced-400-memory.log).
+- Fixed-source staged400, w1-2d-staged-400-verified.log:60.287s, writer49.78%, Busy0, p99upper6ms/max44.337ms, heartbeatmax128.509ms,400/400 alive at cleanup, exit0. The <50% margin is narrow.
+- Maximum967 after corrected gate scope, signed source2246ec8, w1-2d-staged-967-gate.log:60.849s, writer56.44% (reported, not bounded at maximum), Busy0, p99upper12ms/max178.977ms, heartbeatmax2026.943ms,967/967 alive at cleanup, exit0. Peak RSS1130.0MiB.
+- Prior fixed-source967 run w1-2d-staged-967-verified.log exited101 at the old incorrectly scoped<50% assertion:52.44%,Busy0,p99upper6ms,max10.797ms,logic alive. The20s diagnostic likewise exited101 at that assertion. Both original failures are preserved, not relabelled. Diagnostic sample pointed to frame encoding/CRC; no optimization followed the clarified gate.
+- Global timing fields repeat per seat; the harness reads one global sample and does not sum them. p99 is a1ms histogram upper bound, accumulated over startup+load; not an exact percentile or producer write latency.
+- Test teardown stops all owned producers through their supervisor client before joining, after load measurement. This prevents unmeasured output growth during sequential child joins; the400 check finished teardown in <1s after this change.
+
+Failures and gaps deliberately retained
+- Earlier prototype compile/lint/test failures and stopped partial967 ramps remain in their named w1-2d logs; no maximum result inferred from them.
+- Isolated CI c515053 exited101 at a newly rebased identity fixture missing journal_directory; changed that fixture only to common::capture_config. Focused actual30s custody retry then passed.
+- Several prior scale runs were explicitly stopped through recorded owned literal PIDs after sampling; they are incomplete, not passes. No name/pattern kills or peer targets/worktrees touched.
+- No physical power loss, kernel-panic, macOS14 or Linux validation, journal ABI migration/fuzz campaign, live app path integration or remote-provider validation claimed. Full-scale real supervisor SIGKILL is covered as above; full-scale physical power loss is not.
+- No real identity secret/config or login-custody operation authored. Tests use explicit fixture keys or injected memory; latest main's noninteractive custody is preserved.
+- W2.5b is parked on its preserved branch; no protected harness configuration was changed by this work.
+
+Final source/preflight
+- crates/bbt-supervisor/src/ring/journal.rs:230 — shared commit frame and one ordering/full barrier; :279 safe retired-segment coverage; :353 scan; :447 production recovery.
+- crates/bbt-supervisor/src/ring/writer.rs:232 — bounded admission; :457 parsed checkpoint coverage; :522 paged history; :636 sole writer; :864 group commit.
+- crates/bbt-supervisor/src/supervisor.rs:1386 — a retained full frame is flushed before any new PTY read, so a zero-length read cannot invent EOF; regression:1555.
+- crates/bbt-mux/src/logic.rs:1305 — one-page live catch-up; :1656 rejected-capture Busy retry. tests/capture_busy.rs:163 proves bounded controls.
+- crates/bbt-mux/tests/gates_seats.rs:198 — observed pre-exec stop and simultaneous resume, rate clock starts after exec; :108 disk reserve; :542 threshold scope.
+- crates/bbt-supervisor/src/ring/writer/crash_tests.rs:135 — maximum-seat real-process crash; crash_producer.rs:15 native successful-write observation independent of admission.
+- w1-2d-preflight-final.log: cargo fmt --check exit0; release all-target strict clippy for supervisor+mux exit0; cargo tree -p bbt-supervisor -e normal exit0 with no tokio.
+- Private fixture directories removed after actual child exits; exact allocated bytes are in w1-2d-fixture-cleanup.log. No peer dirs/PIDs or accepted galleries touched.
+- Final clean CI is run after this snapshot in a detached worktree of its exact commit with its own target and BBOXY_TEST_CUSTODY=memory; actual code SHA, command, exit and cleanup are in the separate final CI log. No parity requested: UI/lab/renderer unchanged.

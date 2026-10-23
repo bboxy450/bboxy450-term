@@ -13,3 +13,7 @@ AFTER_WAKE_COALESCED_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/ta
 OWN_INACTIVE_DEBUG_CACHE_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d/debug allocated_du_bytes=1049636864; release gate70023 continues
 AFTER_STAGED_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-7bUCh5 allocated_du_bytes=1015156736
 AFTER_FINAL_967_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-x5lXMZ allocated_du_bytes=2591346688
+AFTER_VERIFIED_967_EXIT_101_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-HQsxMW allocated_du_bytes=2749071360
+AFTER_DIAGNOSTIC_967_EXIT_101_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-A3x5xu allocated_du_bytes=1088417792
+AFTER_VERIFIED_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-wfxC9D allocated_du_bytes=1033752576
+AFTER_CORRECTED_MAXIMUM_967_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-7NsSfq allocated_du_bytes=2639581184
