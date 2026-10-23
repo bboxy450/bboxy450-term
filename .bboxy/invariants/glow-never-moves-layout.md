@@ -16,8 +16,8 @@ updated: 2026-10-23T16:39:50Z
 # Glow settings never move layout
 
 **Property.** The solved layout of every fixture scene (pane rects, dividers,
-sidebar, strips) is byte-identical with glow off, glow on, and every rim width
-in `glow.rim_min..=glow.rim_max` ([[rim-glow]] §2, §3). Glow is paint, never
+sidebar, strips) is byte-identical with glow off, glow on, and every depth
+in `glow.depth_min..=glow.depth_max` ([[rim-glow]] §2, §3). Glow is paint, never
 geometry; the gutter is a fixed token.
 
 **Check.** `cargo test -p bbt-ui --locked --lib glow_never_moves_layout -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`

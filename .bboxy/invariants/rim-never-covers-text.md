@@ -15,10 +15,11 @@ updated: 2026-10-23T16:39:50Z
 ---
 # The glow rim never covers a text cell
 
-**Property.** For every pane case in the fixture catalogue and every rim width in
-`glow.rim_min..=glow.rim_max`, the rim band (the strip `rim` px wide just inside
-the pane border) does not intersect the pane's text cell grid rectangle, and the
-pane's content padding is at least `rim_max + 2` px ([[rim-glow]] §1, §3).
+**Property.** For every pane case in the fixture catalogue and every depth in
+`glow.depth_min..=glow.depth_max`, the glow band (rim plus bloom, the strip `depth`
+px wide just inside the pane border) does not intersect the pane's text cell grid
+rectangle, and the pane's content padding is at least `glow.depth_max` px
+([[rim-glow]] §1, §3).
 
 **Check.** `cargo test -p bbt-ui --locked --lib rim_never_covers_text -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The grep demands that exactly this named test ran and passed
