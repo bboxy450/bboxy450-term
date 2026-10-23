@@ -8,6 +8,6 @@ pub mod model;
 
 #[cfg(test)]
 #[test]
-fn kitty_keyboard_invariant() {
-    keyboard::assert_invariant();
+fn keyboard_adapter_uses_neutral_core_and_live_modes() {
+    keyboard::assert_adapter();
 }
