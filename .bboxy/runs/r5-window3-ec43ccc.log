@@ -314,5 +314,11 @@
       "sha256": "e192304caad8c8031ec9bde4d1c16a85635c197c98d0922dc775bedc3af2f4da"
     }
   },
-  "no_source_change_proof_exit": 0
+  "no_source_change_proof_exit": 0,
+  "r5e_data_delivery": {
+    "brief": "5f99724a-e6c2-4d96-bd36-0049eaf47a99",
+    "rook_message": "cd22daed-4ecb-4a93-90ef-ee9f97571765",
+    "full_row_payload": "/private/tmp/aster-r5-window3-aeniqxeb/r5e-to-rook.txt",
+    "post_stop_advancement": "UNPROVEN: six later logic samples are ahead of frozen GUI by 9..15 events, but GUI publication timestamps and a stop-time logic cursor were not recorded. No claim of post-stop advancement or permanent stoppage; no extra load used to fill this gap."
+  }
 }
