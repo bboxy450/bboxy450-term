@@ -64,6 +64,7 @@ Before every handoff, run `sh scripts/ci-local.sh` (add `--parity` when lab, des
 - in a **clean detached worktree of the exact commit** you hand off (`git worktree add --detach /tmp/ci-<name> <sha>`);
 - with **its own `CARGO_TARGET_DIR`**;
 - then **delete that target**, because disk is tight.
+- and only in a **gate slot**: at most three full gates run at once. DM the Oracle for a slot before starting and report the exit. Keep one dev target per worktree and delete it at handoff.
 
 Report the real exit code. A shared-tree run proves nothing: other agents' in-flight files leak into it.
 
