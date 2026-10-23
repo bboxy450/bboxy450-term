@@ -1,0 +1,11 @@
+{
+  "meaning": "Inclusive wall-stack sample counts, not CPU utilization. History/capture contains waits. Lightweight readable Rust-v0 identifier labels adapted from inspected sample_tree.py; aggregate matching roots without nested double count. App method symbols were not classified; no UI-thread zero-activity claim.",
+  "logic": {
+    "worker_run": 4025,
+    "scan": 0,
+    "history_or_capture_request": 3810,
+    "term_advance": 60,
+    "playback_apply": 73,
+    "screen_from_term": 8
+  }
+}

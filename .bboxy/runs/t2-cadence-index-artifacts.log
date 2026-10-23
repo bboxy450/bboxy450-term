@@ -1,0 +1,87 @@
+[
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/build.log",
+    "evidence": ".bboxy/runs/t2-cadence-index-build.log",
+    "sha256": "dd57c2ec680058fdfd3f94551cb1098a4028aa197dae34d9d4fe54cfb853260d"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-driver.log",
+    "evidence": ".bboxy/runs/t2-cadence-index-profiled-driver.log",
+    "sha256": "dc1d6b69b3933a62c0850d49e25347243ea483b263d77c97353eff9e24024433"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe/process.json",
+    "evidence": ".bboxy/runs/t2-cadence-index-profiled-process.log",
+    "sha256": "c52f53596f1b51c58c808f178b5b2f5bb59c6a9fe896bd3f7bc2b409d88bd9f3"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe/app.log",
+    "evidence": ".bboxy/runs/t2-cadence-index-profiled-app.log",
+    "sha256": "c7af5520df0bf40942cd5a86908e67304700760bf1bab24374b2dfcc5c29bdac"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-unsampled-driver.log",
+    "evidence": ".bboxy/runs/t2-cadence-index-unsampled-driver.log",
+    "sha256": "8ec68628d2d9c3bc65fe64e564ee358253e83bbf74e2698eec8a74d985e733fa"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-unsampled/process.json",
+    "evidence": ".bboxy/runs/t2-cadence-index-unsampled-process.log",
+    "sha256": "edf837f5a639e20379cecaeb1eb7b092c1c400f1a7cc3c8566a66c3e1f0608b1"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-unsampled/app.log",
+    "evidence": ".bboxy/runs/t2-cadence-index-unsampled-app.log",
+    "sha256": "e8fec2c4c4398ab0e9c16275f8ebe4faaaeea6bb737cc05bb4cd0e8efd5ddbaa"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/ack-rate-unsampled.json",
+    "evidence": ".bboxy/runs/t2-cadence-index-ack-rate.log",
+    "sha256": "7974b653105ff15d9538a8b6a4a1eff89d02850fc59b07db19632f7487af056d"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/profile-summary.json",
+    "evidence": ".bboxy/runs/t2-cadence-index-profile.log",
+    "sha256": "023f3c1862c246751679d8a1b15905d332519e9880896e21ad511d95b4fa9884"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/speed_probe_unsampled.py",
+    "evidence": ".bboxy/runs/t2-cadence-index-driver-source.log",
+    "sha256": "ee5058b127e9df518191fa26156919fdd88f47421871a6369715b5cc126cef11"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/bboxy450-term",
+    "sha256": "1d91ec0920ec2e169b7941bf0f598a0263e96c2a7fc785b7ee9ca3ebbf79d60f",
+    "bytes": 27990320
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe/capture.png",
+    "sha256": "8fd6eff81853d73c258d780cc65ab570b552ab937c6df15e8c40498aabf4c99a",
+    "bytes": 302556
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-unsampled/capture.png",
+    "sha256": "40432b970af401efadaa1a3b24d99362616ac8efd450865902a512469e4a2e14",
+    "bytes": 305953
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe/sample-logic.txt",
+    "sha256": "3a2beb859c9e54f6455d98255c3d785a5a6bc58c358e58e300ed3548654e8bc3",
+    "bytes": 234863
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe/sample-app.txt",
+    "sha256": "28b24ea1e4519edec637f5c9d18e20425167a40436efe00b6036de676186e18d",
+    "bytes": 222908
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/capture-observations.json",
+    "sha256": "cd02a0ed0b0f6b0b5ef2f3c5eaac7781cb9f561f7ee921c6db6f599f4e8a0672",
+    "bytes": 93
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-unsampled-summary.json",
+    "sha256": "a647ad5496c01d5ee38dbc06a8a06d6aa50f830e10be237db9345bae8cb634a7",
+    "bytes": 778
+  }
+]

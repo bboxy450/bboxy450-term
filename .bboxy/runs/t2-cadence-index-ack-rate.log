@@ -1,0 +1,39 @@
+{
+  "method": "Unsampled run, last6s logged accepted GUI-operation dispatch ULID timestamps; after setup only Applied expected. Best-effort log proxy, not exact publication instrument.",
+  "observed_operations": 210,
+  "intervals": 209,
+  "span_seconds": 5.999,
+  "observed_intervals_per_second": 34.839139856642774,
+  "N_over_span": 35.00583430571762,
+  "estimated_per_pane_observed_events_per_second": 8.709784964160693,
+  "per_second_counts": {
+    "0": 29,
+    "1": 33,
+    "2": 40,
+    "3": 27,
+    "4": 51,
+    "5": 30
+  },
+  "total_accepted": 567,
+  "capture_frame": 435,
+  "pane_sizes": [
+    [
+      37,
+      57
+    ],
+    [
+      37,
+      57
+    ],
+    [
+      37,
+      57
+    ],
+    [
+      37,
+      57
+    ]
+  ],
+  "capture_sha256": "40432b970af401efadaa1a3b24d99362616ac8efd450865902a512469e4a2e14",
+  "source": "b65776d atop90dd9a5"
+}

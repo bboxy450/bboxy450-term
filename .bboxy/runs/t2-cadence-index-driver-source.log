@@ -1,0 +1,52 @@
+import hashlib,json,os,runpy,shutil,sqlite3,subprocess,sys,tempfile,time
+from pathlib import Path
+root=Path(__file__).resolve().parent
+repo=Path('/Users/feral/mydev/bboxy450-term-exec4')
+h=runpy.run_path(str(repo/'crates/bboxy-firehose/reference/live_capture.py'))
+appfile=Path(sys.argv[1]).resolve();out=root/sys.argv[2];out.mkdir()
+b=appfile.read_bytes();assert b'BBOXY_TEST_CUSTODY' in b and b'memory custody (debug)' in b
+r=Path(tempfile.mkdtemp(prefix='t2-speed-'));zd=out/'zsh';zd.mkdir();(zd/'.zshrc').write_text("PROMPT=''\nRPROMPT=''\nunset HISTFILE\n")
+argv=[str(appfile),'--run-dir',str(r),'--meter','--spawn-zsh','4','--capture-after','12','--capture',str(out/'capture.png'),'--grid-hash']
+rec={'argv':argv,'binary_sha256':hashlib.sha256(b).hexdigest(),'memory_selector_compiled':True,'runtime':str(r),'owned':{}};del b
+samples=[]
+with (out/'app.log').open('w') as log:
+ app=subprocess.Popen(argv,cwd=repo,env={**os.environ,'BBOXY_TEST_CUSTODY':'memory','ZDOTDIR':str(zd),'BBOXY_VERIFY_INPUT':'seq 1 2000000000\\n'},stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+ rec['app_pid']=app.pid;start=time.monotonic()
+ try:
+  while time.monotonic()-start<18 and app.poll() is None:
+   h['record_descendants'](app.pid,rec['owned'])
+   if False:  # Unsampled cadence baseline; no sample subprocesses.
+    for pid,d in list(rec['owned'].items()):
+     if pid==app.pid or d['command'].endswith(' logic'):
+      output=out/('sample-app.txt' if pid==app.pid else 'sample-logic.txt')
+      sample=subprocess.Popen(['sample',str(pid),'6','-mayDie','-file',str(output)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+      samples.append((sample,pid,str(output)))
+   (out/'process.json').write_text(json.dumps(rec,indent=2)+'\n')
+   if time.monotonic()-start>14 and (out/'capture.grid.json').exists() and log.name and (out/'app.log').read_text().count('capture '+str(out/'capture.png')+': Ok(())')>=2:break
+   time.sleep(.1)
+  rec['custody_witness']=[]
+  for db in r.rglob('*'):
+   if not db.is_file() or db.suffix not in ['.db','.sqlite','.sqlite3']:continue
+   try:
+    conn=sqlite3.connect('file:'+str(db)+'?mode=ro',uri=True)
+    for table, in conn.execute("SELECT name FROM sqlite_master WHERE type='table'"):
+     if table not in ['kv','objects']:continue
+     cols=[x[1] for x in conn.execute('PRAGMA table_info('+table+')')]
+     if 'key' not in cols or 'value' not in cols:continue
+     for key,value in conn.execute('SELECT key,value FROM '+table+" WHERE key LIKE 'identity/local-issuer%'"):
+      try:obj=json.loads(value)
+      except (ValueError,TypeError):continue
+      if isinstance(obj,dict) and 'custody' in obj:rec['custody_witness'].append({'db':str(db.relative_to(r)),'key':str(key),'custody':obj['custody']})
+    conn.close()
+   except sqlite3.Error:pass
+  if (out/'capture.grid.json').exists():rec['grid']=json.loads((out/'capture.grid.json').read_text())
+  rec['healthy_before_cleanup']=('backend lost' not in (out/'app.log').read_text() and len(rec.get('grid',{}).get('panes',[]))==4 and all(p['cols']==p['crop'][2]//(8*rec['grid']['scale']) and p['rows']==p['crop'][3]//(15*rec['grid']['scale']) for p in rec['grid']['panes']) and bool(rec['custody_witness']) and all(x['custody']=='memory' for x in rec['custody_witness']))
+ finally:
+  h['record_descendants'](app.pid,rec['owned'])
+  rec['signals'],rec['remaining_pids']=h['stop_owned'](app,rec['owned'])
+  rec['app_exit']=app.returncode;rec['elapsed_seconds']=time.monotonic()-start
+  rec['samples']=[{'pid':pid,'file':path,'exit':p.wait(timeout=10)} for p,pid,path in samples]
+  if not rec['remaining_pids']:shutil.rmtree(r);rec['runtime_removed']=True
+  (out/'process.json').write_text(json.dumps(rec,indent=2)+'\n')
+print(json.dumps(rec))
+raise SystemExit(int(bool(rec['remaining_pids']) or not rec.get('healthy_before_cleanup',False)))

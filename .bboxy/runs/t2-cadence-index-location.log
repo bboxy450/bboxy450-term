@@ -1,0 +1,9 @@
+{
+  "source": "b65776dee9c7d067811b407326dd5c80ec92e1ac",
+  "base": "90dd9a5d4d0b7a3fefca82a7ceac4c169439a7fd",
+  "outside_output": "/tmp/aster-t2-cadence-dayzwfi1",
+  "build_exit": 0,
+  "binary": "/tmp/aster-t2-cadence-dayzwfi1/bboxy450-term",
+  "sha256": "1d91ec0920ec2e169b7941bf0f598a0263e96c2a7fc785b7ee9ca3ebbf79d60f",
+  "memory_selector_compiled": true
+}
