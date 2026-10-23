@@ -7,6 +7,9 @@ children and writer leases; one disk writer owns ring IO. `protocol` and
 client; `SocketSupervisor` and `SupervisorConnection` moved from mux logic for
 the same private Unix socket protocol.
 
+Child-status probes have a 100 ms cadence rather than following every ready-PTY
+iteration; EOF and due kill escalation request an immediate probe.
+
 `ring` retains CRC32C capture, committed boundaries, cold segments, checkpoints,
 logical-line indexing and effect-free replay. `store` holds its shared blob,
 error, timestamp and digest primitives; SQLite, signed event storage, the bus,

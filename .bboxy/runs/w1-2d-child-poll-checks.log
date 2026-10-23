@@ -1,0 +1,25 @@
+CHANGE: child status cadence100ms; new EOF and due kill escalation probe immediately; no read/capture/2ms coalescing change.
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--test', 'supervisor', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 9.76s
+     Running tests/supervisor.rs (target/w1-2d/release/deps/supervisor-4baddf59c0f5bef6)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/supervisor-4baddf59c0f5bef6: replacing existing signature
+
+running 10 tests
+test validation_rejects_stale_and_oversized_input ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+test natural_exit_follows_all_final_output ... ok
+test two_seats_interleave_without_cross_talk ... ok
+50 distinct PTY seats echoed under one Supervisor / one mio::Poll
+test fifty_seats_share_one_supervisor_poller ... ok
+slow subscriber: complete 4 MiB + TAIL recovered with contiguous record sequences
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+blocked write: 1022 of 65536 bytes, PartialUnknown retained across logic replacement
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.03s
+
+EXIT=0; ELAPSED_S=11.074

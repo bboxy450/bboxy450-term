@@ -2,3 +2,7 @@ Cleanup at Thu Oct 22 18:02:19 2026; no own scale gate running; only owned GATE_
 REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-Cau7pc allocated_bytes=9743536128
 REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-SHFZN9 allocated_bytes=1271988224
 OWN_ALLOCATED_BYTES_REMOVED=11015524352
+AFTER_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-lHSztX allocated_bytes=2518560768
+OWN_ALLOCATED_BYTES_REMOVED_THIS_PASS=2518560768
+AFTER_967_OWN_STOP_NO_REMAINING_CHILDREN_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-ouCayQ allocated_bytes=15031005184
+OWN_ALLOCATED_BYTES_REMOVED_THIS_PASS=15031005184

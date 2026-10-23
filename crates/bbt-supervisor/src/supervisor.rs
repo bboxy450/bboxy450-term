@@ -26,6 +26,9 @@ const MAX_INPUT_IDS: usize = 4096;
 const TICK: Duration = Duration::from_millis(20);
 const CALL_TIMEOUT: Duration = Duration::from_secs(10);
 const OUTPUT_DELAY: Duration = Duration::from_millis(2);
+// A ready PTY can spin the actor much faster than child status can change.
+// Keep waitpid work bounded per child; EOF and kill deadlines still wake it.
+const CHILD_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 pub struct Config {
     /// None is the v0.1 in-process transport; Some enables the same protocol on Unix IPC.
@@ -1036,6 +1039,7 @@ struct Seat {
     last_input_ms: u64,
     operator_draft: bool,
     exited: Option<ExitInfo>,
+    next_child_check: Instant,
     exit_published: bool,
     terminate_at: Option<Instant>,
     termination_escalated: bool,
@@ -1092,6 +1096,7 @@ impl Seat {
             last_input_ms: 0,
             operator_draft: false,
             exited: None,
+            next_child_check: Instant::now(),
             exit_published: false,
             terminate_at: None,
             termination_escalated: false,
@@ -1341,16 +1346,17 @@ impl Seat {
         {
             self.writer = None;
         }
-        if self.exited.is_none() {
+        let now = Instant::now();
+        let escalate = !self.termination_escalated && self.terminate_at.is_some_and(|at| now >= at);
+        if self.exited.is_none() && (now >= self.next_child_check || escalate) {
+            self.next_child_check = now + CHILD_POLL_INTERVAL;
             if let Some(status) = self.child.try_wait()? {
                 self.exited = Some(ExitInfo {
                     code: status.exit_code(),
                     signal: status.signal().map(str::to_owned),
                 });
                 self.read_ready = true;
-            } else if !self.termination_escalated
-                && self.terminate_at.is_some_and(|at| Instant::now() >= at)
-            {
+            } else if escalate {
                 signal(self.pid, libc::SIGKILL)?;
                 self.termination_escalated = true;
             }
@@ -1403,6 +1409,7 @@ impl Seat {
                 self.read_ready = false;
                 if read == 0 || error.raw_os_error() == Some(libc::EIO) {
                     self.eof = true;
+                    self.next_child_check = Instant::now();
                 } else if error.kind() != io::ErrorKind::WouldBlock {
                     return Err(error);
                 }
