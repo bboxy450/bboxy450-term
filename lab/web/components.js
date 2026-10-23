@@ -1117,16 +1117,16 @@
   // The caret is steady unless edit.blink (reference states are snapshots). A selection hides the caret (macOS). Focused and
   // empty: the caret sits at 0, before the dimmed placeholder.
   function editField(input, edit) {
-    const v = input.value, run = (cls, t) => el('span', { class: cls }, t), caret = () => el('i', { class: 'caret' });
+    const v = input.value, run = (cls, t) => el('span', { class: cls }, t), caret = () => el('i', { class: 'ed-caret' });
     const f = el('span', { class: 'edit-field' + (edit.blink ? ' blink' : ''), 'aria-hidden': 'true' });
-    if (edit.select) { const [a, b] = edit.select; f.append(run('t', v.slice(0, a)), run('sel', v.slice(a, b)), run('t', v.slice(b))); }
+    if (edit.select) { const [a, b] = edit.select; f.append(run('ed-t', v.slice(0, a)), run('ed-sel', v.slice(a, b)), run('ed-t', v.slice(b))); }
     else {
       const at = Math.max(0, Math.min(v.length, edit.caret != null ? edit.caret : v.length)), pe = edit.preedit;
-      f.append(run('t', v.slice(0, at)));
-      if (pe) { const k = pe.caret != null ? pe.caret : pe.text.length; f.append(el('span', { class: 'ime' }, pe.text.slice(0, k), caret(), pe.text.slice(k))); }
+      f.append(run('ed-t', v.slice(0, at)));
+      if (pe) { const k = pe.caret != null ? pe.caret : pe.text.length; f.append(el('span', { class: 'ed-ime' }, pe.text.slice(0, k), caret(), pe.text.slice(k))); }
       else f.append(caret());
-      f.append(run('t', v.slice(at)));
-      if (!v && !pe && input.placeholder) f.append(run('ph', input.placeholder));
+      f.append(run('ed-t', v.slice(at)));
+      if (!v && !pe && input.placeholder) f.append(run('ed-ph', input.placeholder));
     }
     input.tabIndex = -1; input.readOnly = true;
     return el('span', { class: 'ui-edit' }, input, f);
