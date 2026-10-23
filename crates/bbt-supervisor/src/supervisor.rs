@@ -1383,6 +1383,18 @@ impl Seat {
                 .as_ref()
                 .map_or(OUTPUT_CHUNK_BYTES, CaptureHandle::capture_capacity)
                 - self.output.len();
+            if capacity == 0 {
+                // A full frame can survive a WouldBlock admission race. A
+                // read(fd, _, 0) would return zero without real PTY EOF.
+                if let Err(error) = self.flush_output() {
+                    if error.kind() == io::ErrorKind::WouldBlock {
+                        return Ok(());
+                    }
+                    return Err(error);
+                }
+                self.publish_pending(actor);
+                continue;
+            }
             // Darwin commonly returns 1 KiB per PTY read. Coalesce currently
             // available bytes into one bounded record, without waiting for more.
             let mut count = 0;
@@ -1533,4 +1545,58 @@ fn signal(pid: u32, signal: libc::c_int) -> io::Result<()> {
         return Err(io::Error::last_os_error());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod capture_read_tests {
+    use super::*;
+
+    #[test]
+    fn a_full_retained_capture_buffer_is_not_pty_eof() {
+        let root = tempfile::tempdir().unwrap();
+        let journal = root.path().join("journal");
+        let poll = Poll::new().unwrap();
+        let wake = Arc::new(Waker::new(poll.registry(), WAKE).unwrap());
+        let capture_writer = CaptureWriter::start(wake, Some(&journal)).unwrap();
+        let (_tx, rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
+        let mut actor = Actor {
+            poll,
+            socket: None,
+            config: Config {
+                journal_directory: Some(journal),
+                ..Default::default()
+            },
+            capability: [0; 32],
+            boot: Ulid::new(),
+            rx,
+            clients: HashMap::new(),
+            routes: HashMap::new(),
+            seats: BTreeMap::new(),
+            active: None,
+            next_token: 2,
+            pending_io: Vec::new(),
+            capture_writer,
+        };
+        let mut spec = LaunchSpec::new("/bin/sleep", root.path());
+        spec.args = vec!["60".into()];
+        let seat_id = spec.seat;
+        let token = actor.token();
+        let mut seat = Seat::spawn(spec, token, actor.poll.registry()).unwrap();
+        let ring =
+            crate::ring::Ring::open(&root.path().join("ring"), seat_id, 1, 0, Default::default())
+                .unwrap();
+        let handle = actor.capture_writer.register(ring);
+        // Model a full coalesced frame retained after append returned WouldBlock.
+        seat.output.resize(handle.capture_capacity(), b'x');
+        seat.output_since = Some(Instant::now());
+        seat.ring = Some(handle);
+        seat.read_ready = true;
+        seat.tick(&mut actor).unwrap();
+        assert!(!seat.eof, "zero-length read invented EOF on a live PTY");
+        assert!(
+            seat.registered,
+            "live PTY was deregistered after backpressure"
+        );
+        assert!(seat.output.is_empty(), "retained frame was not admitted");
+    }
 }
