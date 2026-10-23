@@ -1,16 +1,16 @@
-# F5 app HUD: target/debug/bboxy450-term --smoke --meter --capture (debug build, 1600x960, top-right crop in f5-hud-smoke.png)
+# F5 app HUD on 15b3dcb (main 2750175): target/debug/bboxy450-term --smoke --meter --capture (debug build, 1600x960; top-right crop in f5-hud-smoke.png)
 renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
 first frame: native scene presented, seats=15
-idle probe settling: producer_done=true queued=false redraw_pending=false frames=21 callbacks=21
 capture /private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/f5-app.png: Ok(())
+idle probe settling: producer_done=true queued=false redraw_pending=false frames=21 callbacks=21
 idle probe begins: frames=21 last_update=20
 
-# live: BBOXY_TEST_CUSTODY=memory bboxy450-term --meter --capture --run-dir <mktemp 0700> (first frame, seats=0; crop in f5-hud-live.png); killed by recorded PID after 15 s
+# live: BBOXY_TEST_CUSTODY=memory bboxy450-term --meter --capture --run-dir <mktemp 0700> (first frame, seats=0, empty meter; crop in f5-hud-live.png); app, supervisor, logic stopped by recorded PID
 panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
 verification window resize: 1600x960 physical pixels
 renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
 Metal maximumDrawableCount=Some(3), configured latency=2
 pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
 first frame: native scene presented, seats=0
-cockpit ready: supervisor=76475 logic=76476
+cockpit ready: supervisor=96718 logic=96719
 capture /private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/f5-live.png: Ok(())
