@@ -1,0 +1,17 @@
+{
+  "mechanism": "AF_UNIX raw nonblocking connect_ex immediately after close(bind(listener)),8x250 unique private endpoints",
+  "iterations": 2000,
+  "elapsed_seconds": 0.893,
+  "results": [
+    {
+      "connect_errno": 61,
+      "connect_name": "ECONNREFUSED",
+      "so_error": 0,
+      "so_error_name": "OK",
+      "peer_errno": 57,
+      "peer_name": "ENOTCONN",
+      "count": 2000
+    }
+  ]
+}
+EXIT 0

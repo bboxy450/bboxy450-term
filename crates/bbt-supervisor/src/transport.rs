@@ -3,10 +3,11 @@
 //! These are private supervisor control frames, not the later public seat bus.
 
 use std::collections::VecDeque;
-use std::fs::{self, DirBuilder};
+use std::fs::{self, DirBuilder, File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::marker::PhantomData;
-use std::os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt, PermissionsExt};
+use std::os::fd::AsRawFd;
+use std::os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
 
@@ -130,11 +131,96 @@ pub fn default_socket_path() -> io::Result<PathBuf> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no private runtime directory"))
 }
 
+// Keep this inode forever: unlinking/recreating the lock could split owners
+// across two independent flocks. Only closing the last descriptor releases it.
+fn socket_ownership(path: &Path, uid: libc::uid_t) -> io::Result<File> {
+    let mut lock_name = path.as_os_str().to_os_string();
+    lock_name.push(".lock");
+    let lock_path = PathBuf::from(lock_name);
+    let previous = match fs::symlink_metadata(&lock_path) {
+        Ok(metadata) => Some(metadata),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+        Err(error) => return Err(error),
+    };
+    if previous.is_none() {
+        match fs::symlink_metadata(path) {
+            Ok(_) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::AddrInUse,
+                    "ControlSocketOwnershipUnknown: existing endpoint has no ownership lock",
+                ));
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    let validate = |metadata: &fs::Metadata| {
+        if !metadata.is_file() || metadata.uid() != uid || metadata.mode() & 0o7777 != 0o600 {
+            Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "ControlSocketLockInvalid: lock must be an owned regular file of mode 0600",
+            ))
+        } else {
+            Ok(())
+        }
+    };
+    if let Some(previous) = &previous {
+        validate(previous)?;
+    }
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK)
+        .open(&lock_path)?;
+    let metadata = file.metadata()?;
+    validate(&metadata)?;
+    if previous.as_ref().is_some_and(|previous| {
+        (previous.dev(), previous.ino()) != (metadata.dev(), metadata.ino())
+    }) {
+        return Err(io::Error::new(
+            io::ErrorKind::AddrInUse,
+            "ControlSocketLockChanged: ownership lock changed while opening",
+        ));
+    }
+    loop {
+        // SAFETY: file owns this valid descriptor; flock borrows it without
+        // taking ownership. LOCK_NB never waits for another owner to exit.
+        if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
+            break;
+        }
+        let error = io::Error::last_os_error();
+        match error.kind() {
+            io::ErrorKind::Interrupted => continue,
+            io::ErrorKind::WouldBlock => {
+                return Err(io::Error::new(
+                    io::ErrorKind::AddrInUse,
+                    format!(
+                        "another live supervisor owns the control socket: ownership lock {error:?}"
+                    ),
+                ));
+            }
+            _ => return Err(error),
+        }
+    }
+    let current = fs::symlink_metadata(&lock_path)?;
+    if (current.dev(), current.ino()) != (metadata.dev(), metadata.ino()) {
+        return Err(io::Error::new(
+            io::ErrorKind::AddrInUse,
+            "ControlSocketLockChanged: ownership lock changed while locking",
+        ));
+    }
+    Ok(file)
+}
+
 pub(crate) struct BoundSocket {
     pub listener: MioListener,
     path: PathBuf,
     dev: u64,
     ino: u64,
+    _ownership: File,
 }
 
 impl BoundSocket {
@@ -156,6 +242,7 @@ impl BoundSocket {
                 "runtime parent must be owned and mode 0700",
             ));
         }
+        let ownership = socket_ownership(path, uid)?;
         let listener = match UnixListener::bind(path) {
             Ok(listener) => listener,
             Err(error) if error.kind() == io::ErrorKind::AddrInUse => {
@@ -166,17 +253,8 @@ impl BoundSocket {
                         "control endpoint exists and is not an owned socket",
                     ));
                 }
-                // Mio probes without blocking on a full listener backlog.
-                match UnixStream::connect(path) {
-                    Err(error) if error.kind() == io::ErrorKind::ConnectionRefused => {}
-                    Err(error) if error.kind() != io::ErrorKind::WouldBlock => return Err(error),
-                    _ => {
-                        return Err(io::Error::new(
-                            io::ErrorKind::AddrInUse,
-                            "another live supervisor owns the control socket",
-                        ));
-                    }
-                }
+                // Exclusive ownership, rather than connect errno, authorizes
+                // reclamation: a full live backlog can also return refused.
                 let current = fs::symlink_metadata(path)?;
                 if current.dev() != previous.dev() || current.ino() != previous.ino() {
                     return Err(io::Error::new(
@@ -195,6 +273,7 @@ impl BoundSocket {
             path: path.to_owned(),
             dev: metadata.dev(),
             ino: metadata.ino(),
+            _ownership: ownership,
         };
         fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
         // mio requires nonblocking descriptors, including those passed from_std.
@@ -273,14 +352,42 @@ mod tests {
     use super::*;
     use crate::protocol::Action;
 
+    fn bind_orphan_fixture(path: &Path) -> BoundSocket {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        loop {
+            match BoundSocket::bind(path) {
+                Ok(bound) => return bound,
+                Err(error)
+                    if error.kind() == io::ErrorKind::AddrInUse
+                        && error.to_string().contains("live supervisor") =>
+                {
+                    assert!(
+                        std::time::Instant::now() < deadline,
+                        "fixture still owned: {error:?}"
+                    );
+                    std::thread::yield_now();
+                }
+                Err(error) => panic!("bind orphan fixture: {error:?}"),
+            }
+        }
+    }
+
+    fn fixture_ownership(path: &Path) -> File {
+        // SAFETY: geteuid has no arguments or memory-safety preconditions.
+        socket_ownership(path, unsafe { libc::geteuid() }).unwrap()
+    }
+
     #[test]
     fn refused_socket_rebinds_without_replacing_a_live_socket_or_file() {
         let root = tempfile::tempdir().unwrap();
         let run = root.path().join("run");
         DirBuilder::new().mode(0o700).create(&run).unwrap();
         let path = run.join("mux.sock");
+        let ownership = fixture_ownership(&path);
         drop(UnixListener::bind(&path).unwrap());
-        let bound = BoundSocket::bind(&path).unwrap();
+        drop(ownership);
+        // A pre-exec child can inherit the listener and its lifetime lock.
+        let bound = bind_orphan_fixture(&path);
         let before = fs::symlink_metadata(&path).unwrap();
         let error = BoundSocket::bind(&path).err().unwrap();
         assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
@@ -297,6 +404,257 @@ mod tests {
             io::ErrorKind::AddrInUse
         );
         assert_eq!(fs::read(&path).unwrap(), b"owned fixture");
+    }
+
+    #[test]
+    fn ownership_lock_persists_and_legacy_without_one_fails_closed() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("run/mux.sock");
+        let lock_path = root.path().join("run/mux.sock.lock");
+        let bound = BoundSocket::bind(&path).unwrap();
+        let before = fs::symlink_metadata(&lock_path).unwrap();
+        assert!(before.is_file());
+        assert_eq!(before.mode() & 0o7777, 0o600);
+        // SAFETY: the BoundSocket owns this valid descriptor; read flags only.
+        let flags = unsafe { libc::fcntl(bound._ownership.as_raw_fd(), libc::F_GETFD) };
+        assert!(flags >= 0);
+        assert_ne!(flags & libc::FD_CLOEXEC, 0);
+        drop(bound);
+        assert!(!path.exists());
+        fs::write(&lock_path, b"persistent fixture").unwrap();
+        let bound = bind_orphan_fixture(&path);
+        let after = fs::symlink_metadata(&lock_path).unwrap();
+        assert_eq!((before.dev(), before.ino()), (after.dev(), after.ino()));
+        assert_eq!(fs::read(&lock_path).unwrap(), b"persistent fixture");
+        drop(bound);
+
+        let legacy = root.path().join("run/legacy.sock");
+        let legacy_lock = root.path().join("run/legacy.sock.lock");
+        let listener = UnixListener::bind(&legacy).unwrap();
+        let before = fs::symlink_metadata(&legacy).unwrap();
+        for _ in 0..2 {
+            let error = BoundSocket::bind(&legacy).err().unwrap();
+            assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
+            assert!(error.to_string().contains("ControlSocketOwnershipUnknown"));
+            assert!(
+                !legacy_lock.exists(),
+                "refusal must not mint legacy authority"
+            );
+            let after = fs::symlink_metadata(&legacy).unwrap();
+            assert_eq!((before.dev(), before.ino()), (after.dev(), after.ino()));
+        }
+        drop(listener);
+        let error = BoundSocket::bind(&legacy).err().unwrap();
+        assert!(error.to_string().contains("ControlSocketOwnershipUnknown"));
+        assert!(!legacy_lock.exists());
+    }
+
+    #[test]
+    fn invalid_lock_types_permissions_and_owner_are_rejected_without_changes() {
+        use std::os::unix::fs::symlink;
+        for kind in ["mode", "symlink", "directory", "socket", "uid"] {
+            let root = tempfile::tempdir().unwrap();
+            let run = root.path().join("run");
+            DirBuilder::new().mode(0o700).create(&run).unwrap();
+            let path = run.join("mux.sock");
+            let lock_path = run.join("mux.sock.lock");
+            let target = run.join("untouched");
+            fs::write(&target, b"sentinel").unwrap();
+            let mut listener = None;
+            match kind {
+                "symlink" => symlink(&target, &lock_path).unwrap(),
+                "directory" => fs::create_dir(&lock_path).unwrap(),
+                "socket" => listener = Some(UnixListener::bind(&lock_path).unwrap()),
+                _ => {
+                    fs::write(&lock_path, b"lock fixture").unwrap();
+                    fs::set_permissions(
+                        &lock_path,
+                        fs::Permissions::from_mode(if kind == "uid" { 0o600 } else { 0o644 }),
+                    )
+                    .unwrap();
+                }
+            }
+            let before = fs::symlink_metadata(&lock_path).unwrap();
+            let error = if kind == "uid" {
+                // Exercise the owner check without chown or privileged state.
+                socket_ownership(&path, before.uid().wrapping_add(1))
+                    .err()
+                    .unwrap()
+            } else {
+                BoundSocket::bind(&path).err().unwrap()
+            };
+            assert_eq!(error.kind(), io::ErrorKind::PermissionDenied, "{kind}");
+            assert!(
+                error.to_string().contains("ControlSocketLockInvalid"),
+                "{kind}: {error:?}"
+            );
+            let after = fs::symlink_metadata(&lock_path).unwrap();
+            assert_eq!(
+                (before.dev(), before.ino(), before.mode()),
+                (after.dev(), after.ino(), after.mode())
+            );
+            assert!(!path.exists());
+            assert_eq!(fs::read(&target).unwrap(), b"sentinel");
+            drop(listener);
+        }
+    }
+
+    #[test]
+    fn full_listener_backlog_is_live_and_never_unlinked() {
+        use std::os::fd::AsRawFd;
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("run/mux.sock");
+        let bound = BoundSocket::bind(&path).unwrap();
+        // SAFETY: the test owns this listening descriptor. A small backlog
+        // makes the real nonblocking WouldBlock path deterministic.
+        assert_eq!(unsafe { libc::listen(bound.listener.as_raw_fd(), 1) }, 0);
+        let before = fs::symlink_metadata(&path).unwrap();
+        let mut clients = Vec::new();
+        let mut full = false;
+        for _ in 0..32 {
+            match UnixStream::connect(&path) {
+                Ok(client) => clients.push(client),
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::ConnectionRefused
+                    ) =>
+                {
+                    eprintln!(
+                        "saturated live listener: {} queued clients; connect error {error:?}",
+                        clients.len()
+                    );
+                    full = true;
+                    break;
+                }
+                Err(error) => panic!("fill backlog: {error:?}"),
+            }
+        }
+        assert!(full, "test did not saturate its listener backlog");
+        let probe = BoundSocket::bind(&path);
+        let after = fs::symlink_metadata(&path).unwrap();
+        let same_inode = (before.dev(), before.ino()) == (after.dev(), after.ino());
+        let accepted = bound.listener.accept().is_ok();
+        eprintln!(
+            "full backlog: replacement_bound={} same_inode={same_inode} original_listener_accepts={accepted}",
+            probe.is_ok()
+        );
+        assert!(accepted, "original listener must still be live");
+        assert!(same_inode, "must not replace a saturated live listener");
+        let error = probe.err().unwrap();
+        assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
+        assert!(error.to_string().contains("live supervisor"));
+    }
+
+    #[test]
+    fn fork_inherited_listener_is_live_until_the_child_releases_it() {
+        use std::os::fd::AsRawFd;
+        let root = tempfile::tempdir().unwrap();
+        let run = root.path().join("run");
+        DirBuilder::new().mode(0o700).create(&run).unwrap();
+        let path = run.join("mux.sock");
+        let ownership = fixture_ownership(&path);
+        let listener = UnixListener::bind(&path).unwrap();
+        let before = fs::symlink_metadata(&path).unwrap();
+        // SAFETY: listener owns this valid descriptor; F_GETFD only reads flags.
+        let flags = unsafe { libc::fcntl(listener.as_raw_fd(), libc::F_GETFD) };
+        assert!(flags >= 0);
+        assert_ne!(flags & libc::FD_CLOEXEC, 0);
+        let (mut parent_gate, child_gate) = std::os::unix::net::UnixStream::pair().unwrap();
+        let parent_fd = parent_gate.as_raw_fd();
+        let child_fd = child_gate.as_raw_fd();
+        // SAFETY: the child only closes/reads owned descriptors and _exits;
+        // it never allocates, locks, or runs Rust destructors after fork.
+        let pid = unsafe { libc::fork() };
+        assert!(pid >= 0, "fork: {}", io::Error::last_os_error());
+        if pid == 0 {
+            // SAFETY: both descriptors were opened before fork and are valid.
+            unsafe {
+                libc::close(parent_fd);
+                let mut byte = 0u8;
+                let count = libc::read(child_fd, (&mut byte as *mut u8).cast(), 1);
+                libc::_exit(if count >= 0 { 0 } else { 2 });
+            }
+        }
+        eprintln!("socket probe owned_fork_child_pid={pid}");
+        drop(child_gate);
+        drop(listener);
+        drop(ownership);
+        // The parent closed its listener, but the pre-exec child still owns
+        // the same open file description. A successful connect is truly live.
+        let probe = BoundSocket::bind(&path);
+        let after = fs::symlink_metadata(&path);
+        // Release and reap before asserting, even if the probe unexpectedly
+        // succeeded. Closing the gate also releases the child on write error.
+        let released = parent_gate.write_all(&[1]);
+        drop(parent_gate);
+        let mut status = 0;
+        let reaped = loop {
+            // SAFETY: pid is this test's fork child; status is writable.
+            let result = unsafe { libc::waitpid(pid, &mut status, 0) };
+            if result < 0 && io::Error::last_os_error().kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            break result;
+        };
+        released.unwrap();
+        assert_eq!(reaped, pid);
+        assert_eq!(status, 0);
+        let error = probe.err().expect("must preserve inherited live listener");
+        eprintln!("inherited listener probe: {error}");
+        assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
+        let after = after.unwrap();
+        assert_eq!((before.dev(), before.ino()), (after.dev(), after.ino()));
+        let bound = bind_orphan_fixture(&path);
+        drop(bound);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    #[ignore = "manual 2000-iteration parallel stale/live socket stress"]
+    fn stale_and_live_socket_paths_survive_2000_parallel_iterations() {
+        let finished = std::sync::atomic::AtomicBool::new(false);
+        let (failures, forks) = std::thread::scope(|scope| {
+            let fork_load = scope.spawn(|| {
+                let mut forks = 0;
+                while !finished.load(std::sync::atomic::Ordering::Acquire) {
+                    fork_inherited_listener_is_live_until_the_child_releases_it();
+                    forks += 1;
+                }
+                forks
+            });
+            let workers: Vec<_> = (0..8)
+                .map(|worker| {
+                    scope.spawn(move || {
+                        let mut failures = Vec::new();
+                        for iteration in 0..250 {
+                            if std::panic::catch_unwind(
+                                refused_socket_rebinds_without_replacing_a_live_socket_or_file,
+                            )
+                            .is_err()
+                            {
+                                failures.push((worker, iteration));
+                            }
+                        }
+                        failures
+                    })
+                })
+                .collect();
+            let failures = workers
+                .into_iter()
+                .flat_map(|worker| worker.join().unwrap())
+                .collect::<Vec<_>>();
+            finished.store(true, std::sync::atomic::Ordering::Release);
+            (failures, fork_load.join().unwrap())
+        });
+        eprintln!(
+            "socket stress: 2000 iterations, 8 workers, {forks} concurrent fork/exit cycles, {} failures",
+            failures.len()
+        );
+        assert!(
+            failures.is_empty(),
+            "failed worker/iteration pairs: {failures:?}"
+        );
     }
 
     #[test]
