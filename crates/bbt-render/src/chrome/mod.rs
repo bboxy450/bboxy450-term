@@ -1239,6 +1239,55 @@ mod tests {
         }
     }
     #[test]
+    fn translucent_border_composites_over_fill_at_fractional_coverage() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let background = [0.1, 0.2, 0.3, 1.0];
+        for (fill_alpha, border_alpha) in [(0., 0.5), (0.4, 0.5), (1., 0.5), (0.4, 0.), (0.4, 1.)] {
+            let fill = [0.8, 0.2, 0.1, fill_alpha];
+            let border = [0.1, 0.6, 0.9, border_alpha];
+            let mut list = DrawList::default();
+            list.rect(Rect::new(0., 0., 64., 64.), 0., Color(background));
+            list.push(Prim::Rect {
+                rect: Rect::new(8., 8., 32., 32.),
+                radii: [8.; 4],
+                fill: Color(fill),
+                stroke: Some((1., Color(border))),
+                inner_highlight: None,
+                shadow: None,
+            });
+            let pixels = renderer.render_to_rgba(&list, 64, 64, 1.).unwrap();
+            // Rounded-corner pixel centres give fractional outer and inner
+            // coverage despite rectangle coordinates snapping to whole pixels.
+            // The border paints over the fill; outer coverage applies once.
+            for (x, y, coverage, border_coverage) in [
+                (10, 10, 8.5 - 60.5_f32.sqrt(), 1.),
+                (11, 10, 1., 50.5_f32.sqrt() - 6.5),
+                (24, 8, 1., 1.),
+                (24, 9, 1., 0.),
+                (24, 24, 1., 0.),
+            ] {
+                let alpha = border_alpha * border_coverage;
+                let fill_alpha = fill_alpha * (1. - alpha);
+                let composite_alpha = (alpha + fill_alpha) * coverage;
+                let at = (y * 64 + x) * 4;
+                for channel in 0..3 {
+                    let expected = (border[channel] * alpha + fill[channel] * fill_alpha)
+                        * coverage
+                        + background[channel] * (1. - composite_alpha);
+                    assert!(
+                        (f32::from(pixels[at + channel]) - expected * 255.).abs() <= 2.,
+                        "border alpha {border_alpha}, fill alpha {}, pixel {x},{y}, channel {channel}: {} vs {}",
+                        fill[3],
+                        pixels[at + channel],
+                        expected * 255.
+                    );
+                }
+                assert_eq!(pixels[at + 3], 255);
+            }
+        }
+    }
+
+    #[test]
     fn inner_highlight_stays_inside_light_and_dark_borders() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
         for (fill, line) in [

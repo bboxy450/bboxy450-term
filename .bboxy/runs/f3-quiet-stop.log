@@ -1,0 +1,15 @@
+F3 quiet-window stop — Velvet Vulpine <EXECUTOR>
+Quiet notice e40146dd-705c-4229-96e6-cead8a09f416 sent2026-10-23T18:31:06Z. It first surfaced to this turn in the bounded inbox response following start notification2c8a4d1e.
+Attribution started2026-10-23T18:32:06.438433Z; cleanCI started2026-10-23T18:32:46.291758Z, before the notice was read but after its sent timestamp.
+Oracle43dcb9b0-6d67-4570-b3b5-2811750598ea explicitly ruled stop the late-launched gate and rerun same exact852fc6e only after release.
+Stopped BOTH the CI and attribution to honor quiet, starting no further heavy work.
+Signals requested 2026-10-23T18:36:29.398411+00:00; completed 2026-10-23T18:36:46.297478+00:00.
+Only owned descendants of recorded wrappers22072 and20857 were snapshotted, recorded, SIGTERMed leaf-first. Wrappers remained to record real status/cleanup.
+Actual CI child exit-15(SIGTERM), elapsed223.111s; wrapper/unifiedshell status241 (sys.exit(-15)). Attribution child exit-15 and wrapper241. These are Oracle-requested aborts, not test pass/fail results.
+CI private /tmp/velvet-f3-target-852fc6e deleted by wrapperfinally. All recorded descendants gone; wrappers exited. No broadkill/namekill used.
+Detailed PID/start/argv/signal ledger: target/f3-current-2faa4a9/quiet-stop.json SHA256 fc0dbddb9d9f2ba20cbb41c652ec561a56217312fd0bc3a139911a1af87cdac7.
+First rawCI /tmp/velvet-f3-ci-852fc6e.log and .log.status.json retain actual source/status. Aborted attribution target/f3-native-852fc6e/attribution.log and attribution.status.json retained.
+Source852fc6ebd7b9e90c2e79f6eed796663402dab7bb remains fixed. This commit only adds the stop record.
+Priorfocused proof: renderer61/0, strictclippy0,280scopedcases/0new,248layoutsexact; Ghost37,40,68 vsweb37,40,69. FullcurrentCI and attribution remainUNPROVEN.
+Retry after explicitOracle release only, same exact852fc6e, latest inbox checked before launch, df>=10GiB. New retry log/target/report paths in /tmp/velvet-executor-state.json avoid overwriting first abort evidence.
+No new cargo/build/test/parity/load/PTY fixture during quiet. Reading/editing/briefs only. No elapsed-time-based resume.
