@@ -1,0 +1,22 @@
+D1b preflight — 2026-10-22
+Oracle GO cbaada7d-24c6-45ee-8a70-ab44b8c72956, RTT ruling a7e2b9a1-d4d0-4b1e-9017-4b6901b0b9fe; Architect decision 25 / main d3c2151 now records the same rule.
+Source fa661bc2e81e61f724d2f5e70d52485104e7c2ed, rebased on 6bfe726cf13e3ebe3817adc108cb62ec6c0de532 (accepted W1.2g). Rook and Sable were sent the exact minimal shared hunks before editing; both replied clear (85dbd905 and cae566fc).
+
+Acceptance 4
+provider/fake.rs:19 — account/providers/transition is a retained non-coalescing subject. A shared trailing /state collapsed three hosts to one; the headless test caught it and the implementation topic was corrected.
+provider/fake.rs:40 — fixture parsing validates provider/host uniqueness, host namespace, cloud region, SSH metadata and monotonic Connecting-first scripts; no host discovery fallback.
+provider/fake.rs:174 — FakeProvider uses fixture records and a supplied fresh admitted local link per host, with injected monotonic clock; no provider-owned thread.
+provider/fake.rs:279 — FakeLink checks LinkDown before request execution and preserves the synchronous reply. Events use a bounded FIFO due-time queue and no sleep, including retention across drops.
+provider/mod.rs:161 — initially down remote hosts do not prevent local logic startup; other errors and local-host errors still propagate.
+logic.rs:1352,1929,2285 — checkpoint deferral, retained recovery events, headless HostState events and reconnect recovery of missing generations only. The retry set is polled at the existing 200 ms cadence and retries only safe ownership/capture recovery on Busy/LinkDown. No effect retries or command/wire changes.
+tests/provider_fake.rs:58,165,334 — invalid fixture rejection, all 16 protocol actions forwarded with identical replies when connected and none executed when down, exact clock-controlled latency/host-state sequence, real zsh echo before a drop, output written during a drop and replayed without a history gap, routed spawn/capture/input/resize/ownership/close/undo, and restart while initially down recovering the same existing seat with no new Spawn.
+Focused command cargo test --locked -p bbt-mux --test provider_fake --test provider --test capture_busy -- --nocapture: exit 0; 3 new + 3 existing provider + 2 capture tests passed. See d1b-focused-transition.log.
+
+Acceptance 5
+cargo tree --locked -p bbt-mux: exit 0, 616 output lines retained in d1b-cargo-tree.log; broad SSH/quinn/cloud SDK package-name scan has zero matches, exit 0. No Cargo.toml/Cargo.lock changes. Fixture address strings are metadata only; fake code opens no network socket and has no credentials path.
+
+Strict workspace clippy --all-targets --locked -- -D warnings: exit 0 on accepted W1.2g base, 9.18 s (d1b-clippy.log).
+Failures retained: two initial compile exits 101 for the test-only InputContext import (correct defining path is bbt_supervisor::protocol::InputContext), followed by a runtime 101 that exposed the real bus coalescing problem. Both corrected without changing existing bus behavior. The initial source inventory included a not-yet-created fixtures directory (rg exit 2). Scoped format/checks and all checked edits exited 0. Full command history in d1b-commands.log.
+
+All runtime preflights use BBOXY_TEST_CUSTODY=memory, CARGO_INCREMENTAL=0, dev/test debug=0, opt-level=1 and debug assertions=true. No real Keychain or account-root enrollment. Existing tests untouched; no GUI/bbt-proto/app/renderer, messaging/identity, supervisor, registry/store, manifest or lockfile changes. D1c and real remote transports remain outside scope.
+Exact clean CI still pending; its raw result will be retained after the gate without altering that exact gated commit.

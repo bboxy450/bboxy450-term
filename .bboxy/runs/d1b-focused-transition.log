@@ -1,0 +1,31 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 28.86s
+     Running tests/capture_busy.rs (target/debug/deps/capture_busy-9cd7fe7bc92a6d7a)
+
+running 2 tests
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+control answered during paged replay: 103.43125ms; pages=1; final sequence=257
+test large_capture_catchup_yields_to_control_between_history_pages ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.82s
+
+     Running tests/provider.rs (target/debug/deps/provider-b64d6e52e9fa7345)
+
+running 3 tests
+test local_provider_preserves_the_existing_link_and_rejects_unknown_hosts ... ok
+test location_namespaces_select_one_link_and_only_the_local_link_waits ... ok
+D1a: real local and SSH-labelled PTYs route spawn/input/resize/capture/history/ownership/close through distinct links and private host journals; records retain location
+test logic_routes_real_seats_recovery_history_ownership_and_close_by_location ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running tests/provider_fake.rs (target/debug/deps/provider_fake-017efbbec746ae8c)
+
+running 3 tests
+test all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt ... ok
+test fixture_is_the_host_source_and_invalid_scripts_are_rejected ... ok
+D1b: fixture HostState sequence verified; disconnected effects rejected; RTT queued events; real PTY output retained through drop/reconnect and startup-down recovery, with no extra spawn
+test headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.65s
+

@@ -1,0 +1,49 @@
+{
+  "providers": [
+    {
+      "id": "fixture-ssh",
+      "kind": "Ssh",
+      "hosts": [
+        {
+          "id": { "kind": "ssh", "host": "build-box" },
+          "label": "Build box",
+          "address": "agent@build-box.invalid",
+          "region": null,
+          "script": [
+            { "at_ms": 0, "state": "Connecting" },
+            { "at_ms": 120, "state": { "Connected": { "rtt_ms": 40 } } },
+            { "at_ms": 12000, "state": { "Disconnected": { "reason": "fixture link dropped" } } },
+            { "at_ms": 16000, "state": "Connecting" },
+            { "at_ms": 18000, "state": { "Connected": { "rtt_ms": 20 } } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fixture-nebula",
+      "kind": { "Cloud": { "name": "nebula" } },
+      "hosts": [
+        {
+          "id": { "kind": "cloud", "provider": "nebula", "host": "worker-east" },
+          "label": "East worker",
+          "address": null,
+          "region": "east-test-1",
+          "script": [
+            { "at_ms": 0, "state": "Connecting" },
+            { "at_ms": 200, "state": { "Connected": { "rtt_ms": 60 } } }
+          ]
+        },
+        {
+          "id": { "kind": "cloud", "provider": "nebula", "host": "worker-west" },
+          "label": "West worker",
+          "address": null,
+          "region": "west-test-1",
+          "script": [
+            { "at_ms": 0, "state": "Connecting" },
+            { "at_ms": 300, "state": { "Connected": { "rtt_ms": 80 } } }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error[E0422]: cannot find struct, variant or union type `InputContext` in crate `bbt_supervisor`
+   --> crates/bbt-mux/tests/provider_fake.rs:130:39
+    |
+130 |             expected: bbt_supervisor::InputContext {
+    |                                       ^^^^^^^^^^^^ not found in `bbt_supervisor`
+
+For more information about this error, try `rustc --explain E0422`.
+error: could not compile `bbt-mux` (test "provider_fake") due to 1 previous error

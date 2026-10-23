@@ -1,6 +1,6 @@
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{
     Arc,
@@ -1348,10 +1348,12 @@ impl Worker {
                 checkpoint: view.saved().encode()?,
             },
         );
-        if result.as_ref().is_err_and(is_capture_busy) {
+        if result.as_ref().is_err_and(|error| {
+            is_capture_busy(error) || crate::provider::fake::is_link_down(error)
+        }) {
             // Keep the previous checkpoint cursor and retry on the next idle
-            // pass. The supervisor still owns the raw records; Busy is not an
-            // acknowledged checkpoint and must not terminate every seat's logic.
+            // pass. The supervisor still owns the raw records; Busy or a down
+            // host is not an acknowledged checkpoint and must not stop logic.
             return Ok(());
         }
         result?;
@@ -1924,6 +1926,53 @@ impl Worker {
         )?;
         self.gui_seat(info.seat)
     }
+    fn refresh_providers(&mut self, recoveries: &mut BTreeSet<HostId>) -> Result<()> {
+        use crate::provider::fake::{STATE_SUBJECT, is_link_down};
+        use crate::provider::{LinkState, ProviderEvent};
+        for event in self.connections.poll() {
+            let ProviderEvent::HostState { host, state } = &event;
+            if matches!(
+                state,
+                LinkState::Connected { .. } | LinkState::Degraded { .. }
+            ) {
+                recoveries.insert(host.clone());
+            } else {
+                recoveries.remove(host);
+            }
+            self.publish(
+                "account",
+                Draft::new(STATE_SUBJECT, "provider", serde_json::to_value(&event)?),
+            )?;
+        }
+        for host in recoveries.clone() {
+            let result = (|| {
+                let Reply::Seats { seats } =
+                    self.connections.request(&host, Action::ListOwnedSeats)?
+                else {
+                    return Err(invalid("provider ownership reply mismatch"));
+                };
+                for info in seats {
+                    if self.host_for_seat(info.seat)? == host
+                        && self
+                            .views
+                            .get(&info.seat)
+                            .is_none_or(|view| view.generation != info.generation)
+                    {
+                        self.attach(info, false)?;
+                    }
+                }
+                Ok(())
+            })();
+            match result {
+                Ok(()) => {
+                    recoveries.remove(&host);
+                }
+                Err(error) if is_link_down(&error) || is_capture_busy(&error) => {}
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(())
+    }
     fn capture_request(&mut self, seat: Ulid, action: Action) -> Result<Reply> {
         debug_assert!(matches!(
             action,
@@ -1940,6 +1989,7 @@ impl Worker {
         let mut identity_at = Instant::now();
         let mut providers_at = Instant::now();
         let mut pending_events = BTreeMap::new();
+        let mut provider_recoveries = BTreeSet::new();
         while !stop.load(Ordering::Acquire) {
             for _ in 0..32 {
                 let Ok(command) = commands.try_recv() else {
@@ -2230,7 +2280,10 @@ impl Worker {
                             // while commands and other hosts get their turn.
                             pending_events.insert(host, event);
                         }
-                        Err(error) if is_capture_busy(&error) => {
+                        Err(error)
+                            if is_capture_busy(&error)
+                                || crate::provider::fake::is_link_down(&error) =>
+                        {
                             pending_events.insert(host, event);
                         }
                         Err(error) => return Err(error),
@@ -2238,9 +2291,7 @@ impl Worker {
                 }
             }
             if providers_at.elapsed() >= Duration::from_millis(200) {
-                // LocalProvider emits no state events. D1b/c add the scripted
-                // host-state consumer; no network work or provider thread here.
-                let _ = self.connections.poll();
+                self.refresh_providers(&mut provider_recoveries)?;
                 providers_at = Instant::now();
             }
             if adapters_at.elapsed() >= Duration::from_millis(200) {
