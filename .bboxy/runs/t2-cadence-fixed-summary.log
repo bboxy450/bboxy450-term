@@ -1,0 +1,9 @@
+Owned unthrottled4-seat baseline on baace3b atop830511f (includes accepted936de7a queue fix and metadata getters).
+Build CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true cargo build --release -p bboxy450-term --locked EXIT0. BBOXY_TEST_CUSTODY=memory selected; own account SQLite issuer/history custody=memory verified, no private key fields read/printed.
+Probe ACTUAL_EXIT0: four actual37x57 panes, no pre-cleanup backend loss,14.293s. Samples app18102 and logic18111 bothEXIT0; all recorded PIDs stopped, remainingempty, app externalSIGTERM -15.
+IMAGE READ target/t2-live-1792738261650322000/speed-fixed-936de7a/capture.png SHA256=76bfb447572aa45051b0398978e5699dad7274594c0c669ee506c48afd7c6cac
+HUD at capture reads idle, last frame60ms ago, CPU p506.08ms/p9913.79ms, encode5.64ms, GPU3.53ms, late0/120. It does NOT show healthy34Hz or continuous75Hz. Cadence remains a measured gap; no gain claimed from constructor microbenchmark.
+ACK log proxy in t2-cadence-ack-rate.log counts38 accepted operations over5.803s (~6.38/s total); log is best-effort and counts server-dispatch timestamps, so this is an inference/lower-bound proxy, not exact publish instrumentation. Stable4-seat case has no ongoing UI input/control operations aftersetup. Do not turn this into a precise publish-rate claim.
+Actual panes37x57 due lane/body flooring; earlier accepted component benchmark38x57 and77x57 is explicitly approximate for this window, not exact37.
+Source/shape changes in this visual pair are independent of wire/poll/Applied. Further cadence fixes require proposal, not guessed timer edits.
+Probe sourceSHA256=f38b9e23df512adc83bfc8b0bf7e9a75f7e66b46a1aa5e5400b275f467de3ec4
