@@ -255,6 +255,17 @@ briefs Executors from the specs, never from this note.
     Tab/arrows for pane navigation (steals them from shells and TUIs);
     a modal "navigation mode" (one more state the operator must notice).
 
+27. **Two C1c-2 wire rulings (2026-10-23, Oracle).** (a) `GuiAction::UndoClose`
+    carries `layout_revision` for concurrent-layout conflict detection; the
+    close revision comes from the durable operation id. (b) `GuiReply::History`
+    is capture-sequence based: bounded `(sequence, bytes)` records, explicit
+    `Gap` entries in order, `next: Option<sequence>`; not a row pager. Rows
+    come from GUI-side replay through a `bbt-core` `Term`, later. Rejected:
+    a row pager on the wire (logic would keep a second parsed history per
+    client, against the viewport-grid-plus-ring memory model); undo without
+    a layout revision (a race the operator would see as a seat landing in
+    the wrong split).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate

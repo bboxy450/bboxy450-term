@@ -88,9 +88,11 @@ Two Executors build in parallel against these signatures; neither waits for the 
 pub enum GuiAction { ListSeats, Watch { seat: SeatId, view: View }, Unwatch { seat: SeatId },
     Applied { seat: SeatId, view: View, sequence: u64 }, Input { seat: SeatId, id: Ulid, bytes: Vec<u8> },
     Resize { seat: SeatId, cols: u16, rows: u16 }, Spawn { spec: SpawnSpec }, ScheduleClose { seat: SeatId },
-    UndoClose { seat: SeatId, close_id: Ulid }, GetHistory { seat: SeatId, from: u64, to: u64 } }
+    UndoClose { seat: SeatId, close_id: Ulid, layout_revision: u64 }, GetHistory { seat: SeatId, from: u64, to: u64 } }
 pub enum GuiReply { Seats(Vec<GuiSeat>), Update { seat: SeatId, update: Update }, Seat(GuiSeat),
-    Ok { op: Ulid }, Error { op: Ulid, reason: String }, History { seat: SeatId, rows: Vec<(u64, Row)> } }
+    Ok { op: Ulid }, Error { op: Ulid, reason: String }, History { seat: SeatId, records: Vec<HistoryRecord>, next: Option<u64> } }
+// Decision #27 (2026-10-23): history is capture-sequence based, bounded, with explicit gaps; not a row pager.
+pub enum HistoryRecord { Bytes { sequence: u64, bytes: Vec<u8> }, Gap { from: u64, to: u64, reason: String } }
 
 // Portable seat state (2026-10-22, from C1a). bbt-proto depends on bbt-ui-model (ids and these enums)
 // and bbt-core (Cell), both below it in the layering order; the mux types never cross the socket.
@@ -162,8 +164,8 @@ flowchart TD
 
 ## 4. Scrollback, close, undo
 
-- `GetHistory{from, to}` pages (`M/seat_socket.rs:30-58`) render lazily when a pane scrolls above its viewport; never prefetched.
-- `ScheduleClose` and `UndoClose` are the supervisor's (`M/protocol.rs` Action, `M/supervisor.rs:758-795`); the GUI endpoint forwards them; 60 s default ([[vision]] undo close).
+- `GetHistory{seat, from, to}` (`M/seat_socket.rs:30-58`) returns **capture-sequence pages of raw bytes**, bounded, with explicit `Gap` records in order and `next: Option<sequence>` for the following page (decision #27, 2026-10-23). It is not a row pager: the GUI turns bytes into scrollback rows by replaying them through a `bbt-core` `Term` on the IO task, lazily when a pane scrolls above its viewport, never prefetched; a `Gap` renders as the gap marker. (GUI-side replay is later work; C1c-2 ships the wire shape and the fetch.)
+- `ScheduleClose` and `UndoClose` are the supervisor's (`M/protocol.rs` Action, `M/supervisor.rs:758-795`); the GUI endpoint forwards them; 60 s default ([[vision]] undo close). `UndoClose` carries `layout_revision` so a concurrent layout change is detected and refused by name; the close's own revision comes from its durable operation id (decision #27).
 
 ## 5. Gates before C1 is accepted (decision #10)
 
