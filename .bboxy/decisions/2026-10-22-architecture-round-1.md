@@ -8,7 +8,7 @@ links:
   - { to: "[[layering]]", rel: invariant }
   - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
 created: 2026-10-22T19:02:24Z
-updated: 2026-10-23T23:48:12Z
+updated: 2026-10-23T23:56:02Z
 ---
 # Architecture decisions, round 1
 
@@ -754,6 +754,19 @@ briefs Executors from the specs, never from this note.
 49. [[d49-swarm-canvas]] — **the swarm canvas: an endless zoom view of
     every graph, structured like the Oracle's board, drawn from the store;
     logged for later (operator, 2026-10-23).**
+
+50. [[d50-licence-when-mit-when-apache]] — **when MIT, when Apache: dual for
+    what we own, Apache alone where upstream forces it, never copyleft;
+    identity is not licensed (operator, 2026-10-23).**
+
+51. [[d51-frontmatter-is-the-gui-kit]] — **the GUI kit publishes as
+    `bboxy450-frontmatter`; internal names stay until the first release.**
+
+52. [[d52-brand-and-face]] — **everything is branded `bboxy450-`, the fox is
+    the face everywhere, records carry images by wikilink; two checks.**
+
+53. [[d53-evolve-and-restart]] — **the two first mantras: be flexible and
+    always evolve; a restart loses nothing, state lives in frontmatter.**
 
 ## Specs to touch (Architect, in this order)
 

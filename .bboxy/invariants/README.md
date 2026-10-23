@@ -22,6 +22,9 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[rim-size-is-layout]] rim size moves only the gutter and the stage inset | `cargo test -p bbt-ui --locked --lib rim_size_moves_only_gutter_and_inset -- --exact \| grep -q 'ok. 1 passed; 0 failed'` (pending G1) | none yet |
 | [[glow-never-moves-layout]] glow settings never move layout | `cargo test -p bbt-ui --locked --lib glow_never_moves_layout -- --exact \| grep -q 'ok. 1 passed; 0 failed'` (pending G1) | none yet |
 | [[signed-main]] every commit on main carries a good signature | `git log --format='%G?' HEAD \| grep -vc '^G$'` is 0 and the log is non-empty, on the handed-off commit | runner pass at 0bab92f, 2026-10-22 |
+| [[bboxy450-prefix]] everything we publish is branded bboxy450- | `sh scripts/brand.sh` | held at the adding commit |
+| [[images-resolve]] the face is the identity file and every image wikilink resolves | `sh scripts/images.sh` | held at the adding commit |
+| [[restart-keeps-state]] a restart of the app loses no working state | `cargo test -p bboxy450-term --locked --test recovery restart_keeps_working_state -- --exact` | pending RS1 (slow, gated) |
 
 A violation halts the work that broke it: the task goes `blocked` with
 `[[invariant|violates]]`, and the halt names the invariant, the evidence and

@@ -14,6 +14,10 @@ Like iTerm2's semantic history: the terminal recognises `path`, `path:line`, `pa
 
 Parse with `pulldown-cmark` (MIT; CommonMark + GFM tables, task lists, footnotes, strikethrough). Our own typesetting on the renderer's text pipeline: headings on the type scale from `style.json`, paragraphs with proper wrapping and hyphenless justification off, lists, block quotes, tables (our layout engine's row/column solver), images (PNG/JPEG via `image` crate into the colour atlas or a texture), links, footnotes, YAML frontmatter rendered as the header grid, wikilinks as chips with `{rel:w}` badges, code blocks highlighted with tree-sitter (grammars shared with the code graph) and copied with one click, math deferred.
 
+## Images ([[d52-brand-and-face]], operator 2026-10-23)
+
+Images live in `.bboxy/images/` as files. `![[bboxy.png]]` renders the image inline at true size ([[renderer]] §4.4b, never scaled; wider than the column scrolls), `[[bboxy.png]]` is a link to it; both resolve by file name in that one folder and nowhere else, so a link cannot rot ([[images-resolve]]). An image is not a record: no frontmatter, no number; one a seat produces is an artifact of kind image ([[work-items]]). The face `bboxy.png` is the first image and is the identity file byte for byte.
+
 ## Mermaid, built ourselves
 
 A Mermaid subset parser and layout engine in Rust, rendering to our draw list (no browser):
