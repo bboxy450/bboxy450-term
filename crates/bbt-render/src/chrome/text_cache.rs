@@ -30,6 +30,10 @@ pub struct Stats {
     pub shape_entries: usize,
     pub shape_hits: u64,
     pub shape_misses: u64,
+    pub shadow_requests: u64,
+    pub shadow_blurs: u64,
+    pub shadow_quads: u64,
+    pub shadow_mask_bytes: usize,
 }
 pub(super) struct Part {
     pub id: u64,
@@ -122,7 +126,15 @@ impl Cache {
             return Ok((entry.id, entry.mask.clone()));
         }
         self.totals.misses += 1;
-        let mask = Arc::new(glyphs::rasterize(&key)?);
+        let mask = if key.blur_sigma == 0 {
+            Arc::new(glyphs::rasterize(&key)?)
+        } else {
+            let mut plain = key.clone();
+            plain.blur_sigma = 0;
+            let (_, mask) = self.get(plain)?;
+            self.totals.shadow_blurs += 1;
+            Arc::new(glyphs::blur(&mask, f32::from_bits(key.blur_sigma))?)
+        };
         self.next_id += 1;
         let id = self.next_id;
         self.bytes += mask.pixels.len();
@@ -193,6 +205,40 @@ impl Cache {
             advance: shape.advance,
             parts,
         })
+    }
+
+    pub fn shadow_line(
+        &mut self,
+        value: &str,
+        style: TextStyle,
+        max_width: Option<f32>,
+        scale: f32,
+        phase: f32,
+        sigma: f32,
+    ) -> Result<Line> {
+        if !sigma.is_finite() || sigma < 0. {
+            return Err("invalid chrome text shadow blur".into());
+        }
+        self.totals.shadow_requests += 1;
+        let mut line = self.line(value, style, max_width, scale, phase)?;
+        if sigma == 0. {
+            return Ok(line);
+        }
+        for part in &mut line.parts {
+            let mut key = self.ids[&part.id].clone();
+            let original = self.entries[&key].mask.bounds;
+            key.blur_sigma = sigma.to_bits();
+            let (id, mask) = self.get(key)?;
+            part.id = id;
+            part.offset[0] += mask.bounds[0] - original[0];
+            part.offset[1] += original[3] - mask.bounds[3];
+            part.size = [mask.width(), mask.height()];
+        }
+        Ok(line)
+    }
+
+    pub fn record_shadow_quad(&mut self) {
+        self.totals.shadow_quads += 1;
     }
 
     /// Fonts may have changed (installed, removed or reconfigured): reshape everything.
@@ -359,6 +405,9 @@ impl Cache {
         stats.atlas_size = self.atlas.size();
         stats.cached_mask_bytes = self.bytes;
         for (key, entry) in &self.entries {
+            if key.blur_sigma != 0 {
+                stats.shadow_mask_bytes += entry.mask.pixels.len();
+            }
             if key.glyphs.len() == 1 {
                 stats.glyph_entries += 1;
             } else {

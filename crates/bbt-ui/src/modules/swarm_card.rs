@@ -294,6 +294,7 @@ impl SwarmCard {
                         ),
                         c::Element::Glyph {
                             kind_colors: Default::default(),
+                            shadow: None,
                             activity: s.activity,
                             grade: s.grade,
                             color: ui::Paint::solid(s.color(ctx)),

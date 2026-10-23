@@ -30,6 +30,7 @@ pub(super) struct Glyph {
 pub(super) struct Key {
     pub scale: u32,
     pub glyphs: Vec<Glyph>,
+    pub blur_sigma: u32,
 }
 #[derive(Clone)]
 pub(super) struct Placed {
@@ -85,6 +86,7 @@ pub(super) fn shape(
             glyphs.push(Placed {
                 key: Key {
                     scale: scale.to_bits(),
+                    blur_sigma: 0,
                     glyphs: vec![Glyph {
                         font: Font(run.font.clone()),
                         id,
@@ -140,6 +142,7 @@ pub(super) fn component(shape: &Shape, indices: &[usize]) -> (Key, [i32; 2]) {
         Key {
             scale: first.key.scale,
             glyphs,
+            blur_sigma: 0,
         },
         origin,
     )
@@ -181,6 +184,74 @@ pub(super) fn connected(bounds: &[[i32; 4]]) -> Vec<Vec<usize>> {
     let mut out: Vec<_> = groups.into_values().collect();
     out.sort_by_key(|g| g[0]);
     out
+}
+
+/// Blur actual coverage, retaining zero padding for the atlas quad's AA edge.
+/// The source is a cached glyph or minimal ink-overlap component, never a line bitmap.
+pub(super) fn blur(mask: &Mask, sigma: f32) -> Result<Mask> {
+    let pad = (3. * sigma).ceil();
+    if !sigma.is_finite() || sigma <= 0. || pad > 16_384. {
+        return Err("invalid chrome text shadow blur".into());
+    }
+    if mask.empty() {
+        return Ok(Mask {
+            bounds: mask.bounds,
+            merge_bounds: mask.merge_bounds,
+            pixels: vec![],
+        });
+    }
+    let pad = pad as usize;
+    let source_width = mask.width() as usize;
+    let source_height = mask.height() as usize;
+    let width = source_width + 2 * pad;
+    let height = source_height + 2 * pad;
+    if width > 16_384 || height > 2_048 {
+        return Err("chrome text shadow component too large".into());
+    }
+    let mut weights: Vec<_> = (0..=2 * pad)
+        .map(|i| {
+            let x = i as f32 - pad as f32;
+            let distance = x / sigma;
+            (-0.5 * distance * distance).exp()
+        })
+        .collect();
+    let total: f32 = weights.iter().sum();
+    for weight in &mut weights {
+        *weight /= total;
+    }
+    let mut horizontal = vec![0.; width * source_height];
+    for y in 0..source_height {
+        for x in 0..width {
+            let mut value = 0.;
+            for (tap, weight) in weights.iter().enumerate() {
+                let source_x = x as isize + tap as isize - 2 * pad as isize;
+                if (0..source_width as isize).contains(&source_x) {
+                    value += f32::from(mask.pixels[y * source_width + source_x as usize]) * weight;
+                }
+            }
+            horizontal[y * width + x] = value;
+        }
+    }
+    let mut pixels = vec![0; width * height];
+    for y in 0..height {
+        for x in 0..width {
+            let mut value = 0.;
+            for (tap, weight) in weights.iter().enumerate() {
+                let source_y = y as isize + tap as isize - 2 * pad as isize;
+                if (0..source_height as isize).contains(&source_y) {
+                    value += horizontal[source_y as usize * width + x] * weight;
+                }
+            }
+            pixels[y * width + x] = value.round().clamp(0., 255.) as u8;
+        }
+    }
+    let pad = pad as i32;
+    let expand = |b: [i32; 4]| [b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad];
+    Ok(Mask {
+        bounds: expand(mask.bounds),
+        merge_bounds: expand(mask.merge_bounds),
+        pixels,
+    })
 }
 
 #[cfg(target_os = "macos")]
@@ -342,6 +413,48 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
 #[cfg(not(target_os = "macos"))]
 pub(super) fn rasterize(_: &Key) -> Result<Mask> {
     Err("chrome glyph rasterization requires macOS".into())
+}
+
+#[cfg(test)]
+mod shadow_tests {
+    use super::*;
+
+    #[test]
+    fn gaussian_shadow_keeps_a_zero_atlas_border_and_rejects_unbounded_inputs() {
+        let point = Mask {
+            bounds: [0, 0, 3, 3],
+            merge_bounds: [1, 1, 2, 2],
+            pixels: vec![0, 0, 0, 0, 255, 0, 0, 0, 0],
+        };
+        let blurred = blur(&point, 1.).unwrap();
+        assert_eq!(blurred.bounds, [-3, -3, 6, 6]);
+        assert_eq!((blurred.width(), blurred.height()), (9, 9));
+        assert_eq!(blurred.pixels[4 * 9 + 4], 41);
+        assert_eq!(blurred.pixels[4 * 9 + 5], 25);
+        assert_eq!(blurred.pixels[5 * 9 + 5], 15);
+        for y in 0..9 {
+            for x in 0..9 {
+                assert_eq!(
+                    blurred.pixels[y * 9 + x],
+                    blurred.pixels[(8 - y) * 9 + 8 - x]
+                );
+                if x == 0 || y == 0 || x == 8 || y == 8 {
+                    assert_eq!(blurred.pixels[y * 9 + x], 0);
+                }
+            }
+        }
+        let tiny = blur(&point, 1e-30).unwrap();
+        assert_eq!(tiny.pixels[2 * 5 + 2], 255);
+        for sigma in [f32::NAN, f32::INFINITY, -1., 10_000.] {
+            assert!(blur(&point, sigma).is_err());
+        }
+        let empty = Mask {
+            bounds: [0; 4],
+            merge_bounds: [0; 4],
+            pixels: vec![],
+        };
+        assert!(blur(&empty, 1.).unwrap().empty());
+    }
 }
 
 #[cfg(all(test, target_os = "macos"))]

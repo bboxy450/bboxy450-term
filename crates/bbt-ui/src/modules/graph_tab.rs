@@ -459,6 +459,7 @@ impl GraphTab {
                 format!("{k}/glyph"),
                 c::Element::Glyph {
                     kind_colors: Default::default(),
+                    shadow: None,
                     activity,
                     grade: match s.grade.as_str() {
                         "shim" => Grade::Shim,

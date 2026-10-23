@@ -4,6 +4,127 @@ use bbt_ui_model::{
     draw::{Color, DrawCtx, DrawList, Prim},
     layout::{Rect, TextMeasure, TextStyle},
 };
+
+#[test]
+fn glyph_shadow_inherits_kind_grade_and_ancestor_opacity_once() {
+    use bbt_ui::{self as ui, components as c};
+    fn collect<'a>(ops: &'a [c::Paint], alpha: f32, out: &mut Vec<(&'a Prim, f32)>) {
+        for op in ops {
+            match op {
+                c::Paint::Draw(list) => out.extend(list.primitives.iter().map(|p| (p, alpha))),
+                c::Paint::Group { ops, opacity, .. } => collect(ops, alpha * opacity, out),
+                _ => {}
+            }
+        }
+    }
+    let ctx = ui::Context::new(Theme::Dark, Density::Compact);
+    let shadow = c::TextShadow {
+        color: ui::Paint {
+            color: ui::Color::Rgba([0.2, 0.4, 0.8, 1.]),
+            alpha: ui::Alpha::Value(0.5),
+        },
+        blur_radius: 6.,
+        offset: [2., -1.],
+    };
+    let glyph = |shadow| c::Element::Filter {
+        opacity: 0.5,
+        saturation: 1.,
+        content: Box::new(c::Element::Glyph {
+            shadow,
+            kind_colors: Default::default(),
+            activity: Activity::Waiting(WaitKind::Question),
+            grade: Grade::Inferred,
+            color: ui::Paint::solid(ui::Color::Foreground),
+            size: 10.,
+            scale: 1.,
+        }),
+    };
+    let bounds = Rect::new(20., 20., 10., 10.);
+    let layout = glyph(Some(shadow)).layout(bounds, ctx, &Metrics).unwrap();
+    let plain = glyph(None).layout(bounds, ctx, &Metrics).unwrap();
+    assert_eq!((layout.rect, layout.baseline), (plain.rect, plain.baseline));
+    let ops = c::paint(&layout, ctx);
+    let mut primitives = Vec::new();
+    collect(&ops, 1., &mut primitives);
+    let shadows: Vec<_> = primitives
+        .iter()
+        .enumerate()
+        .filter_map(|(i, (p, alpha))| match p {
+            Prim::TextShadow {
+                text,
+                origin,
+                style,
+                shadow,
+                ..
+            } => {
+                assert!((shadow.color.0[3] * alpha - 0.18).abs() < 0.00001);
+                assert_eq!((shadow.blur_radius, shadow.offset), (6., [2., -1.]));
+                Some((i, text, origin, style))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(shadows.len(), 2, "symbol and inherited kind marker");
+    for (shadow_index, value, shadow_origin, shadow_style) in shadows {
+        let (text_index, _) = primitives
+            .iter()
+            .enumerate()
+            .find(|(_, (p, _))| {
+                matches!(p, Prim::Text { text, origin, style, .. }
+                if text == value && origin == shadow_origin && style == shadow_style)
+            })
+            .unwrap();
+        assert!(shadow_index < text_index);
+    }
+}
+
+#[test]
+fn text_shadow_color_is_independent_of_foreground_alpha_and_flow() {
+    use bbt_ui::{self as ui, components as c};
+    let ctx = ui::Context::new(Theme::Light, Density::Cozy);
+    let mut text = c::Text::new(
+        "alpha",
+        ui::Text {
+            paint: ui::Paint {
+                color: ui::Color::Foreground,
+                alpha: ui::Alpha::Value(0.2),
+            },
+            ..Default::default()
+        },
+    );
+    let plain = c::Element::Text(text.clone())
+        .layout(Rect::new(5., 8., 200., 0.), ctx, &Metrics)
+        .unwrap();
+    text.shadow = Some(c::TextShadow {
+        color: ui::Paint {
+            color: ui::Color::Accent,
+            alpha: ui::Alpha::Value(0.7),
+        },
+        blur_radius: 6.,
+        offset: [2., 1.],
+    });
+    let layout = c::Element::Text(text)
+        .layout(Rect::new(5., 8., 200., 0.), ctx, &Metrics)
+        .unwrap();
+    assert_eq!((layout.rect, layout.baseline), (plain.rect, plain.baseline));
+    let ops = c::paint(&layout, ctx);
+    let c::Paint::Draw(list) = &ops[0] else {
+        panic!("text paint")
+    };
+    let shadow = list
+        .primitives
+        .iter()
+        .position(
+            |p| matches!(p,Prim::TextShadow{shadow,..} if (shadow.color.0[3]-0.7).abs()<0.00001),
+        )
+        .unwrap();
+    let foreground = list
+        .primitives
+        .iter()
+        .position(|p| matches!(p,Prim::Text{color,..} if (color.0[3]-0.2).abs()<0.00001))
+        .unwrap();
+    assert!(shadow < foreground);
+}
 struct Metrics;
 impl bbt_ui::components::Measure for Metrics {
     fn font_metrics(&self, style: &TextStyle) -> [f32; 2] {
@@ -200,6 +321,7 @@ fn kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice() {
         );
     }
     let element = bbt_ui::components::Element::Glyph {
+        shadow: None,
         kind_colors: KindColors {
             foreground: Some(Color::WHITE),
             background: Some(Color::TRANSPARENT),

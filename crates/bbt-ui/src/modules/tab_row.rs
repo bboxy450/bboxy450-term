@@ -158,6 +158,7 @@ impl TabRow {
                         ),
                         c::Element::Glyph {
                             kind_colors: Default::default(),
+                            shadow: None,
                             activity: s.row.activity,
                             grade: s.row.grade,
                             color: ui::Paint::solid(s.row.color(ctx)),
