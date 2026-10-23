@@ -1,0 +1,107 @@
+F1 harness-icon diagnosis and disposition — Velvet Vulpine <EXECUTOR>
+UTC: 2026-10-23T23:40:04.849757+00:00
+Assignment: Oracle 4840ce8a-0e22-4d11-a6e2-0f538dad6ecf.
+Source diagnosed: a9436aff1f2265c46f92196ea50c5950286413f7, exec6.
+Ruling: Oracle 32003ac7-70e6-45cc-ae1f-4c4ef9319a6b supersedes the implementation acceptance: KEEP native AA. The 48 harness-icon pixel reviews remain advisory as a reference sampling artifact. Corvin owns the parity-spec artifact note. No product, lab, token, policy, tolerance, geometry or cache code is changed by this record.
+
+BASELINE AND SCOPE
+Accepted halo exact gate source 4c7e10d2225c9f538f1d843dc51ffbb633c22280, merged at a9436af. Retained baseline: target/seat-wait-parity-4c7e10d/report.json.
+Report SHA256: aaf9c291eb7a96f47684ff88e50c1731f0b7dbe40698dc992473a7540cc1d8a7
+That exact clean CI --parity exited 0: 1768 current cases, 1664 required/measured, 0 unproven, 0 geometry mismatches, 172 advisory pixel reviews. .bboxy/runs/seat-wait-ci-4c7e10d.log:3157 — geometry verdict; :3158 — advisory gate line; :3167 — all gates passed. This diagnosis reuses that explicitly assigned fresh 172 baseline; it does not claim a new full parity run.
+Harness scope: 56 cases = 7 icons x 4 densities x 2 themes. Six icons review in every density/theme: claude, codex, omp, zsh, gear, sidebarfox (48); pi passes all 8. Every page includes 12/16/20/32/64 CSS px plus tinted32. Policy remains channel tolerance 8, changed-pixel budget 0.001 (0.1%); each 1246x112 page admits 139.552 changed pixels.
+Frozen scope target/f1-a9436af/before/ has cases.json, report.json, web/native/backdrops/diff plus copied-file-hashes.json. The only fixture path rewrite points backdrop.path to the byte-identical owned copy. Crops are taken from saved accepted web/native captures, not from a reinterpreted renderer.
+
+SOURCE AND MECHANISM
+lab/web/harness-icon.html:12 — explicit 12,16,20,32,64 size loop; :13 — tinted32.
+lab/web/components.js:61 — canonical currentColor SVG dictionary; :62-71 — compound paths, analytic circle/rrect primitives and sidebar divider.
+crates/bboxybook/build.rs:16 — regex reads those exact SVG strings; :20-22 — adds the namespace and replaces currentColor with white. Native uses the same geometry as the lab.
+crates/bbt-ui/src/atoms.rs:84 — Icon::paint forwards rect/name/context color without a raster-size decision.
+crates/bbt-render/src/chrome/icons.rs:70 — RasterKey includes name, requested physical size and DPR; :153 — cache lookup/raster, :180 — resvg renders at that exact size. Existing code already retains independent per-size device rasters; this is NOT a first-raster-size reuse defect.
+crates/bbt-render/src/chrome/mod.rs:541 — Prim::Icon requests device-size raster; :555-556 — accepted CSS half-up origin snap before DPR. No changed layout or origin rule is indicated.
+crates/bbt-render/src/chrome/chrome.wgsl:24 — premultiplied atlas sampling/tint is correct; the CPU control below reproduces the complete existing native RGB exactly.
+Observed cause: web compound paths expose quarter-coverage steps, while native resvg/tiny-skia coverage is continuous. Web circle/rounded-box edges are continuous rather than quarter-stepped. This is raster coverage, not SVG path/font hinting, a colour/tint error or incorrect scaling. The browser renderer backend was not traced; Chrome/Metal 4x attribution is supported by the coverage pattern, the direct Metal sample query, and the diagnostic emulation, not by a GPU trace.
+At 64 px the web claude/codex/pi crops have only 9 RGB colours (background checker plus 0/quarter/half/three-quarter/full edge coverage). Native has more intermediate levels. The analytical basic-shape control clears omp's >8 deltas at every tested size in both themes without changing its geometry.
+
+CROP TRIPLETS AND PER-SIZE MEASUREMENT
+Read all seven target/f1-a9436af/inspection/<name>-triplet.png files (WEB / NATIVE / ABS DIFF x4). Original compact dark/light representative measurements are in size-metrics.json: 14 pages, every >8 delta inside one of the six icon rectangles; outside count 0. Sizes in each row below are 12 / 16 / 20 / 32 / 64 / tinted32; these are pixel counts, not percentages.
+harness-icon/claude-compact-dark.png — 28/28/74/120/252/120; total 622; outside 0
+harness-icon/codex-compact-dark.png — 38/63/75/109/209/109; total 603; outside 0
+harness-icon/pi-compact-dark.png — 2/13/14/19/40/19; total 107; outside 0
+harness-icon/omp-compact-dark.png — 48/50/95/123/202/114; total 632; outside 0
+harness-icon/zsh-compact-dark.png — 19/35/39/67/115/67; total 342; outside 0
+harness-icon/gear-compact-dark.png — 24/44/64/104/162/104; total 502; outside 0
+harness-icon/sidebarfox-compact-dark.png — 28/61/77/121/236/117; total 640; outside 0
+
+CONTROL AND CAUSAL PROBES (NOT A PRODUCT FIX)
+CPU compositing uses the actual cropped backdrop (floor(crop.x), floor(crop.y)), raw premultiplied resvg RGBA and the existing tint/source-over rule. Normal-mode max RGB delta against saved real native is 0 across all 56 scope cases; it reproduces 48 reviews and 27596 changed pixels. This independently rules out a tint/atlas sampling explanation for the observed native/reference difference.
+Direct local Metal API query (Apple M4), successful metal-samples-labeled.log, exit 0:
+command: ["xcrun", "swift", "-module-cache-path", "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev/swift-modules", "/Users/feral/mydev/bboxy450-term-exec6/target/f1-a9436af/probe/metal-samples.swift"]
+source_sha: a9436aff1f2265c46f92196ea50c5950286413f7
+Apple M4
+0.375 0.125
+0.875 0.375
+0.125 0.625
+0.625 0.875
+
+actual exit: 0
+
+The four positions are (.375,.125),(.875,.375),(.125,.625),(.625,.875). Primary API reference: https://developer.apple.com/documentation/metal/positioning-samples-programmatically . The primary Skia analytic-shape source documents separate analytic coverage for rrect/line geometry: https://raw.githubusercontent.com/google/skia/main/src/gpu/graphite/render/AnalyticRRectRenderStep.cpp . Those sources support mechanism; this is not a claim that Chrome's backend selection was traced.
+Diagnostic control: opaque path coverage rendered without AA on a 4x quarter grid, then the four Metal positions resolved per output pixel. Separate generic circle/rrect/single-segment line controls use pixel-centre distance coverage clamped to [0,1], preserving stroke width, cap and source-over. No per-icon name or size adjustment, and no tolerance adjustment. Combining those controls predicts 0 reviews / 2723 changed pixels across 56 pages. That is causal evidence only: the alternate sampling was rejected, not shipped, and is not an achieved parity result. Other probe patterns (mirrored 4x, regular 2x2, box16, implicit-rrect variants) were diagnostic alternatives, not repeated acceptance gates.
+Exact symbols were sent before editing in DM 095d5714-ae45-4272-af3f-eb2d75ce9d65. A draft icon_raster.rs plus icons.rs integration/module declaration was temporarily written, then removed on the ruling. Existing tracked renderer files were restored from HEAD; the untracked new helper was removed. A copy is retained only under ignored target/f1-a9436af/discarded-draft for provenance. No text/path shadow atlas, WGSL, glyph cache or UI atom edit remains. Sable was notified that the RGBA proposal did not overlap MK1's R8 path/text masks.
+The draft cargo check was interrupted on this ruling. It is not frozen-source validation: source was restored while dependencies were still checking. Only the recorded owned cargo PID and its recorded descendants were stopped; target/f1-a9436af/check-native-stop.json records PID ancestry and signals.
+
+REQUESTED VISUAL JUDGEMENT
+Oracle requested native vs web Claude/Codex at 32 CSS px, shown at 2x. Viewed inspection/claude-codex-32-dark-2x.png and -light-2x.png, WEB left / NATIVE right, nearest-neighbour 2x magnification of DPR1 accepted captures. These are not fresh DPR2 captures.
+My judgement: native is at least as good in both themes. Claude's diagonal and rounded-cap transitions are smoother; Codex preserves the same sharp hexagon and inner mark with less stepped edge coverage. No missing detail or colour problem is visible. Codex is close at this scale; the difference is edge smoothness, not a different mark. Keep native's smoother raster and leave all 48 as named reference artifacts. This is visual judgement, separate from deterministic measurements.
+
+COMMAND RESULTS
+{"command": ["cargo", "check", "-p", "bbt-render", "--locked"], "command_pid": 8181, "elapsed_seconds": 130.92, "exit": -15, "label": "check-native", "log_sha256": "3593732a4b424de9dcca7fb68d8f8e489333e222326e4146b0aa62c818fb8bda", "phase": "finished", "source_sha": "a9436aff1f2265c46f92196ea50c5950286413f7", "started_utc": "2026-10-23T23:36:38.702293+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev", "wrapper_pid": 8164}
+{"command": ["cargo", "run", "--manifest-path", "target/f1-a9436af/probe/Cargo.toml", "--offline", "--", "target/f1-a9436af/probe/svg", "target/f1-a9436af/probe/rasters-hybrid"], "command_pid": 55109, "elapsed_seconds": 0.92, "exit": 0, "label": "coverage-hybrid", "log_sha256": "8eaf10fb3c81f880fdb70aa0d214421188d04a5bae75c120162bc7473f735d73", "phase": "finished", "source_sha": "a9436aff1f2265c46f92196ea50c5950286413f7", "started_utc": "2026-10-23T23:16:52.779242+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev", "wrapper_pid": 55068}
+{"command": ["cargo", "run", "--manifest-path", "target/f1-a9436af/probe/Cargo.toml", "--offline", "--", "target/f1-a9436af/probe/svg", "target/f1-a9436af/probe/rasters-lines"], "command_pid": 87912, "elapsed_seconds": 0.305, "exit": 0, "label": "coverage-lines", "log_sha256": "c1b8154f4bc485fdf55879755ad5134a9ca5f37db21d5b0d51e600493f09ba29", "phase": "finished", "source_sha": "a9436aff1f2265c46f92196ea50c5950286413f7", "started_utc": "2026-10-23T23:29:33.493814+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev", "wrapper_pid": 87898}
+{"command": ["cargo", "run", "--manifest-path", "target/f1-a9436af/probe/Cargo.toml", "--offline", "--", "target/f1-a9436af/probe/svg", "target/f1-a9436af/probe/rasters"], "command_pid": 38986, "elapsed_seconds": 20.132, "exit": 0, "label": "coverage-probe", "log_sha256": "4bcc489d165beedf38a2ea705096f7c5d4c7eadfe542f3a80418d9c799859f7b", "phase": "finished", "source_sha": "a9436aff1f2265c46f92196ea50c5950286413f7", "started_utc": "2026-10-23T23:06:27.068200+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev", "wrapper_pid": 38973}
+{"command": ["xcrun", "swift", "-module-cache-path", "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev/swift-modules", "/Users/feral/mydev/bboxy450-term-exec6/target/f1-a9436af/probe/metal-samples.swift"], "command_pid": 78829, "elapsed_seconds": 0.785, "exit": 1, "label": "metal-samples-fixed", "log_sha256": "ca0c24975e0d6a5243c083d94e3cae443e67cbf302ea888d2237005494f14b05", "phase": "finished", "source_sha": "a9436aff1f2265c46f92196ea50c5950286413f7", "started_utc": "2026-10-23T23:25:41.699847+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev", "wrapper_pid": 78787}
+{"command": ["xcrun", "swift", "-module-cache-path", "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev/swift-modules", "/Users/feral/mydev/bboxy450-term-exec6/target/f1-a9436af/probe/metal-samples.swift"], "command_pid": 95391, "elapsed_seconds": 0.457, "exit": 0, "label": "metal-samples-labeled", "log_sha256": "03d7c49623fb1347f0442d4ce96b7fd7b9b80d367ae0780dba7ed788a501b2ba", "phase": "finished", "source_sha": "a9436aff1f2265c46f92196ea50c5950286413f7", "started_utc": "2026-10-23T23:32:38.161755+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev", "wrapper_pid": 95376}
+{"command": ["xcrun", "swift", "-module-cache-path", "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev/swift-modules", "/Users/feral/mydev/bboxy450-term-exec6/target/f1-a9436af/probe/metal-samples.swift"], "command_pid": 70254, "elapsed_seconds": 5.723, "exit": 1, "label": "metal-samples", "log_sha256": "c45a81875ae2213f5ed6f933cd7033be5b5193e553a9ee147ca56daef2bd3cb6", "phase": "finished", "source_sha": "a9436aff1f2265c46f92196ea50c5950286413f7", "started_utc": "2026-10-23T23:22:32.618488+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/f1-dev", "wrapper_pid": 70221}
+python3 /tmp/velvet-f1-inspect.py — exit 0; script SHA256 533f985e62a0f026ff4b43400011ea00134dfbebf7fc8e42b30a4296b8b1371e
+python3 /tmp/velvet-f1-evaluate.py — exit 0; script SHA256 c4cbbd46860fecfc46506b6878906f1ee00a1320587f870076424822fb434d76
+python3 /tmp/velvet-f1-circle.py — exit 0; script SHA256 ef295b9ed286639e43ad306059c7ebb151d8ef55aff46198ec3ae3c9531aa374
+python3 /tmp/velvet-f1-hybrid-evaluate.py — exit 0; script SHA256 2bf73dd194991c81df926562b68eab9555c2017d2a5ea34ee941b6ec651e4a83
+python3 /tmp/velvet-f1-hybrid-byte.py — exit 0; script SHA256 76b01eb988487c72b0f3c6f7fe94856e393a3d48031a8cbbbd5f3ceabeda4056
+python3 /tmp/velvet-f1-implicit_l2.py — exit 0; script SHA256 74c9c680b6acb037bf254ce8c26330721426a5b6645a8b2fa04a7c9ee01b6e28
+python3 /tmp/velvet-f1-implicit_l1.py — exit 0; script SHA256 5bb6e197ed5e73aa1417a1ac5a5e34d15845b87436228503d28222e8948ab59f
+python3 /tmp/velvet-f1-implicit_boundary.py — exit 0; script SHA256 7729248007c30ba5cb45644d0925f8ba9b2c0bcc3ae7b690e64965ef0cc4cab4
+python3 /tmp/velvet-f1-hybrid-line.py — exit 0; script SHA256 756e56a21ccad4e503be243c6efe89bfa6b397381ef6aecc0ca9ff7cc70d4adc
+Swift failures are retained above: first call used the wrong pointer/count signature; second omitted the required sampleCount label; third used getDefaultSamplePositions(sampleCount: 4) and exited 0. Draft cargo was SIGTERM (-15; wrapper shell exit 241), not a test failure or a passed check. Native replay/test/full CI was not run for the rejected draft.
+Other operations: git rebase onto a9436af returned 0 before diagnosis; diagnostic extraction/evaluation/crop scripts returned 0; exact-path git restore returned 0, and git diff is empty for product source. ICQ previews and sends returned 0 (recipient-stored is delivery storage, not proof of review). Reading files and image inspection are not acceptance gates.
+
+GAPS AND DELIBERATELY UNCHANGED
+No new geometry was measured: harness-icon is decorative raster policy, and its scope does not supply required-geometry measurements. Required geometry 1664/1664 and the full 172-review count come from the accepted exact baseline above. No fresh full gate or DPR2 visual comparison, cache/performance benchmark, or Chrome backend trace is claimed. No product fix or threshold change was accepted. The record-only CI disposition is pending the Oracle; no full gate is started without a slot.
+
+LOCAL ARTIFACT SHA256
+8afc92e2d69fba0a0821ce8ef26600d46efb92a828f29a647aa4c5b4e9f2b575  target/seat-wait-parity-4c7e10d/cases.json
+e198c2e973f53c3d3cac747b93c2dcb939a4202a1942908cabdfc4fed938a298  target/f1-a9436af/size-metrics.json
+ca0244c00985c0a41a7bc109b59f8e86ba9ed99cb87db54983b01868396c002c  target/f1-a9436af/probe/evaluation.json
+119f47f4956fdaf20f8783f2449e54b5ee59ebe4041992db1afbb801b2e02e7e  target/f1-a9436af/probe/hybrid-line-evaluation.json
+7c3c9258b32fa1aa429f392fbc20b2dd7702a850a75a0bf4c69f09c22cf8d1ae  target/f1-a9436af/before/copied-file-hashes.json
+ee5427229169d6f9ba80e2aad916e9d4b8c4aa2100f5e322f3ec7571d6075b74  target/f1-a9436af/check-native-stop.json
+b1256fabae24bf9b00458c69a31259ebd108d616fbd5ae0f457bd883d464092f  target/f1-a9436af/inspection/claude-32-dark-native.png
+dd5a2de73c990aa82c27ae30bc974ba08a0ed417619d6fb09a54b1c2823b7dbd  target/f1-a9436af/inspection/claude-32-dark-web.png
+078f4b4b664c8846304000a719ad2b89c4788f61ca10326cca25a3bd45c359cb  target/f1-a9436af/inspection/claude-32-light-native.png
+a6da1de44ba6fe55cc3ff7005ae3c051b04415132040caf0d30d66f30af2333f  target/f1-a9436af/inspection/claude-32-light-web.png
+a6b20ff58cbb7997a10bd36b83922cc3a321d0895d279c29dafab0a56431dd40  target/f1-a9436af/inspection/claude-codex-32-dark-2x.png
+0f29b5b23459ee18cd3327e63708d42815ada6ca39ad4bab793181335fb9cd2d  target/f1-a9436af/inspection/claude-codex-32-light-2x.png
+28c6d26433cb707fd6927bdae20de79d59a0427c144f92a20eae3e72cd2ddd44  target/f1-a9436af/inspection/claude-triplet.png
+7c32d5e05408cbbabfb84a330154f9609d41fa3434970bcba4461c5628033ea4  target/f1-a9436af/inspection/codex-32-dark-native.png
+ca5e9b6bfffcc0149be919c69b4fa9ef989e68d05ed169b7154d53dd6c210fcf  target/f1-a9436af/inspection/codex-32-dark-web.png
+4e7ea21c8f195ef9d69378032738bcac6fba841edf494e36384b712aeb9264a8  target/f1-a9436af/inspection/codex-32-light-native.png
+783d6b0d2ec36eb17dfbaba174f174798edf29cf12d98eb45f29f73cd59005e8  target/f1-a9436af/inspection/codex-32-light-web.png
+1bca11dfd3568d43f8cc04e62c66541602d451f8ab06fe1669070cd791f2d489  target/f1-a9436af/inspection/codex-triplet.png
+e61ed1859bed2b3b29e075f5f393cdb10d004e8ae2764a4a712c616f48e276ca  target/f1-a9436af/inspection/gear-triplet.png
+548b11cf0823fb2cb11bcff18eb39854762f108e7b4da32aed7ac01836f01440  target/f1-a9436af/inspection/omp-triplet.png
+2f0a61a49895db6b64c3565c6579372dc09f2d51c063e8dbcbb69d9aee06eeba  target/f1-a9436af/inspection/pi-triplet.png
+6929d22631bbcfc5e3196064be927c7c9e207c768bd2977b2994402b4a581b21  target/f1-a9436af/inspection/sidebarfox-triplet.png
+1994489f67315357a39321be68453ba716e9472588f49e59fea70e09c702c9bb  target/f1-a9436af/inspection/zsh-triplet.png
+
+POST-DIAGNOSIS STATE
+Rebased exec6 onto current origin/main 0c7b26d1f3733e791bba9766b9c58a9c36068d26 — exit 0. All cited icon source files are byte-identical to a9436af (git diff a9436af HEAD over six icon paths — exit 0, empty). git diff --check — exit 0.
+Inactive owned dev target cleanup — exit 0; 190218240 allocated file bytes removed; target/f1-a9436af/dev-cleanup.json records ownership/finished status. Baseline/crops/probe source and output retained.
