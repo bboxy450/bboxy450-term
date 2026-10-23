@@ -1,0 +1,22 @@
+flowchart LR
+  subgraph APP["app"]
+    UI["UI thread<br/>compose, stream dock, task rows"]
+    IO["IO task<br/>gui.sock client<br/>one durable bus consumer"]
+    UI -- "UiMsg::Messaging / UiMsg::Task" --> IO
+    IO -- "Latest of Arc Model" --> UI
+  end
+  subgraph LOGIC["logic"]
+    GUI["gui endpoint"]
+    J["account journal<br/>control/op/{id} under Operator{device_id}"]
+    MSG["messaging service (W2.4)"]
+    WI["work items (W2.5d)"]
+    BUS["bus"]
+    GUI --> J
+    J --> MSG
+    J --> WI
+    MSG --> BUS
+    WI --> BUS
+  end
+  IO -- "GuiAction::Messaging{id, request}<br/>GuiAction::Task{id, request}" --> GUI
+  GUI -- "GuiReply::Messaging / Task {op, response}" --> IO
+  BUS -- "GuiReply::Event {seq, subject, envelope}<br/>one lane, W2.6b" --> IO
