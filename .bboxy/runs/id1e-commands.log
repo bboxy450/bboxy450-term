@@ -1,0 +1,11 @@
+ID1e — Kestrel Voidwing <EXECUTOR> — 2026-10-22
+Brief fda30afe: noninteractive Keychain with 2s IO bound; cfg(debug_assertions)-only BBOXY_TEST_CUSTODY=memory; identity/** and identity tests only. Real root remains held.
+Parked D1a signed9798e1c on exec5-d1a-id1e-parked; sole writing worktree exec5 recreated from origin/main b50f7dc. Exact-path checkpoint commit, branch rename/switch, fetch and rebase: exit0. P4 present. No D1 source in ID1e branch.
+AGENTS/spec/source/pinned Security.framework binding reads: exit0; inbox cursor4424. ICQ scope acknowledgment and Sable coordination preview/send: exit0. No real Keychain lock or root operation.
+Scoped apply_patch succeeded, rustfmt --edition2024 --config skip_children=true on five identity files: exit0. Initial bounded IO implementation and native noninteractive call added.
+cargo test -p bbt-mux --locked --test identity_io -- --nocapture — exit 101 — id1e-focused.log
+Initial focused run exit101:2 passed,1 failed,1 ignored; assertion expected a display label in a diagnostic string. Corrected assertion checks the named diagnostic and separately checks reason_label; timeout and process-memory tests passed on that run.
+cargo test -p bbt-mux --locked --test identity_io -- --nocapture — exit 0 — id1e-focused.log
+cargo test -p bbt-mux --locked --lib — exit 0 — id1e-unit.log
+cargo clippy -p bbt-mux --all-targets --locked -- -D warnings — exit 101 — id1e-clippy.log
+Pinned macOS SDK SecBase.h confirms denial statuses -128,-25293,-25308,-25315; source read exit0. Strict all-target clippy exits101 solely on inherited tests/messaging.rs:515 unused_mut; outside ID1e scope, reported to Oracle. No messaging test edits made.

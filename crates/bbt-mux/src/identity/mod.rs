@@ -9,6 +9,7 @@ mod certificate;
 mod chain;
 mod custodied;
 mod hold;
+mod io;
 mod journal;
 mod keychain;
 mod local;
@@ -41,6 +42,8 @@ pub enum PendingReason {
     FingerprintMismatch,
     InvalidProof,
     KeychainUnavailable(i32),
+    KeychainInteractionRequired,
+    KeychainTimedOut,
     JournalConflict,
     StorageUnavailable,
     BootstrapInProgress,
@@ -61,6 +64,8 @@ impl PendingReason {
             Self::FingerprintMismatch => "primary fingerprint mismatch",
             Self::InvalidProof => "identity proof invalid",
             Self::KeychainUnavailable(_) => "device Keychain unavailable",
+            Self::KeychainInteractionRequired => "Keychain interaction required; signing held",
+            Self::KeychainTimedOut => "Keychain did not respond within 2 seconds; signing held",
             Self::JournalConflict => "identity journal conflict",
             Self::StorageUnavailable => "identity storage unavailable",
             Self::BootstrapInProgress => "bootstrap has not completed",

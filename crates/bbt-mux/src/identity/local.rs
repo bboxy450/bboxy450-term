@@ -52,6 +52,9 @@ struct Context {
 /// a hold; callers must never substitute another signing key.
 pub fn local_dev_issuer(run_dir: &Path) -> LocalIssuerOutcome {
     bbt_rt::assert_not_ui_thread();
+    if let Some(store) = super::io::process_test_store() {
+        return local_dev_issuer_with_store(run_dir, store.as_ref());
+    }
     let result = (|| {
         let account = account(run_dir)?;
         let context = context(&account)?;
