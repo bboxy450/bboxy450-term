@@ -462,6 +462,36 @@ briefs Executors from the specs, never from this note.
     events lane (two cursors, two reconnect stories); storing unread counts
     (a second source of truth).
 
+38. **L9-M implementation rulings (2026-10-23; Kestrel's five, Nyx's four).**
+    (a) Operator-originated messages and tasks are signed by the device key
+    with `seat = nil`, `role = operator (Oracle class)`, `role_grant_id` the
+    DeviceGrant; `mcp::Actor` gains the operator variant; `delegated_by:
+    operator:<device_id>` is a reference kind; no synthetic seat. (b) The
+    GUI task wire equals the W2.5d tool arguments as built; `spawn_spec` is
+    off the wire (spawn then delegate). (c) Events: one consumer per device
+    with per-stream cursors, `Event{stream, seq, …}`, `EventAck{stream,
+    seq}`, named `Gap`; ack after publish, never on enqueue; unread is
+    operator-read from a durable read-mark in the account object, not the
+    consumer cursor; `operator/inbox/*` is a new retained namespace while
+    `inbox/>` stays fanout; one active attachment per device, filter change
+    = versioned name; `Start::New`, read-through history, bounded quanta.
+    (d) Projections `MessageRow`, `TaskCard`, `TaskReport` in bbt-proto with
+    the work-items status set canonical and the lab adopting its names;
+    `p1` is worker-class priority ≥ 7 on the 0–9 scale (restated from a
+    wrong 0–255 threshold the same day). (e) Residuals from Nyx: under
+    local-dev the operator's `role_grant_id` is the digest of the persisted
+    ID1d issuer record and `role_epoch` the local-dev epoch, never a minted
+    grant; the operator destination is the sink `operator/inbox` in every
+    swarm tree with recipient reference `operator:<device_id>`, delivering
+    to the retained `operator/inbox/message`; replies address the same sink.
+    Rejected: an app-owned cursor tail instead of a durable consumer (loses
+    restart-resume); ack on write (loses rows on a crash between poll and
+    socket); unread from the consumer cursor (a restart would mark everything
+    read, and human reading would throttle redelivery to `max_deliver`);
+    making `inbox/>` retained (changes every seat's delivery semantics for the
+    operator's convenience); a native label-mapping table for the lab's
+    `assigned`/`done` (two vocabularies for one state).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
