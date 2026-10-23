@@ -12,5 +12,6 @@ cargo build --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 sh scripts/ui-lint.sh
+cargo run -p bboxy450-term --locked -- --smoke
 sh scripts/invariants.sh "$@"
 echo "ci-local: all gates passed"

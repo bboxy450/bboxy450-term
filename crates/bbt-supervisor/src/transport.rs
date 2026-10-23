@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use std::fs::{self, DirBuilder};
 use std::io::{self, Read, Write};
 use std::marker::PhantomData;
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt, PermissionsExt};
 use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
 
@@ -156,8 +156,39 @@ impl BoundSocket {
                 "runtime parent must be owned and mode 0700",
             ));
         }
-        // Never unlink an existing socket; another supervisor may own it.
-        let listener = UnixListener::bind(path)?;
+        let listener = match UnixListener::bind(path) {
+            Ok(listener) => listener,
+            Err(error) if error.kind() == io::ErrorKind::AddrInUse => {
+                let previous = fs::symlink_metadata(path)?;
+                if !previous.file_type().is_socket() || previous.uid() != uid {
+                    return Err(io::Error::new(
+                        io::ErrorKind::AddrInUse,
+                        "control endpoint exists and is not an owned socket",
+                    ));
+                }
+                // Mio probes without blocking on a full listener backlog.
+                match UnixStream::connect(path) {
+                    Err(error) if error.kind() == io::ErrorKind::ConnectionRefused => {}
+                    Err(error) if error.kind() != io::ErrorKind::WouldBlock => return Err(error),
+                    _ => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::AddrInUse,
+                            "another live supervisor owns the control socket",
+                        ));
+                    }
+                }
+                let current = fs::symlink_metadata(path)?;
+                if current.dev() != previous.dev() || current.ino() != previous.ino() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::AddrInUse,
+                        "control socket changed during stale-path check",
+                    ));
+                }
+                fs::remove_file(path)?;
+                UnixListener::bind(path)?
+            }
+            Err(error) => return Err(error),
+        };
         let metadata = fs::symlink_metadata(path)?;
         let bound = Self {
             listener: MioListener::from_std(listener),
@@ -241,6 +272,32 @@ impl SocketPeer {
 mod tests {
     use super::*;
     use crate::protocol::Action;
+
+    #[test]
+    fn refused_socket_rebinds_without_replacing_a_live_socket_or_file() {
+        let root = tempfile::tempdir().unwrap();
+        let run = root.path().join("run");
+        DirBuilder::new().mode(0o700).create(&run).unwrap();
+        let path = run.join("mux.sock");
+        drop(UnixListener::bind(&path).unwrap());
+        let bound = BoundSocket::bind(&path).unwrap();
+        let before = fs::symlink_metadata(&path).unwrap();
+        let error = BoundSocket::bind(&path).err().unwrap();
+        assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
+        assert!(error.to_string().contains("live supervisor"));
+        let after = fs::symlink_metadata(&path).unwrap();
+        assert_eq!((before.dev(), before.ino()), (after.dev(), after.ino()));
+        assert!(std::os::unix::net::UnixStream::connect(&path).is_ok());
+        drop(bound);
+        assert!(!path.exists());
+
+        fs::write(&path, b"owned fixture").unwrap();
+        assert_eq!(
+            BoundSocket::bind(&path).err().unwrap().kind(),
+            io::ErrorKind::AddrInUse
+        );
+        assert_eq!(fs::read(&path).unwrap(), b"owned fixture");
+    }
 
     #[test]
     fn fragmented_and_coalesced_frames_round_trip() {

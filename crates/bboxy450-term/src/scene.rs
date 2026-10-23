@@ -1,4 +1,4 @@
-//! The frozen scene-15 tree and native UI modules, from embedded memory only.
+//! Native sidebar metadata and the optional frozen scene-15 smoke fixture.
 use bbt_ui::{
     self as ui, components as c,
     modules::{
@@ -21,7 +21,8 @@ use std::{cell::RefCell, collections::HashMap};
 
 pub struct Scene {
     pub seats: Vec<SeatRow>,
-    tree: SplitNode,
+    tree: Option<SplitNode>,
+    identity: Option<bbt_proto::GuiIdentity>,
     metrics: Metrics,
 }
 type FontKey = (u32, u16, bool, bool, u32);
@@ -143,9 +144,40 @@ impl Scene {
         .expect("embedded scene-15 fixture");
         Self {
             seats,
-            tree: tree(&fixture["tree"]),
+            tree: Some(tree(&fixture["tree"])),
+            identity: None,
             metrics: Metrics::default(),
         }
+    }
+    pub fn live() -> Self {
+        Self {
+            seats: vec![],
+            tree: None,
+            identity: None,
+            metrics: Metrics::default(),
+        }
+    }
+    pub fn set_model(&mut self, model: &bboxy450_term::model::Model) {
+        self.identity = model.identity.clone();
+        self.seats = model
+            .ui
+            .seats
+            .iter()
+            .map(|(id, seat)| {
+                let mut row = SeatRow::new(id.to_string(), &seat.name, &seat.harness.0);
+                row.role = seat.role.as_ref().map(|role| role.name.clone());
+                row.title = seat.title.clone();
+                row.activity = seat.activity;
+                row.grade = seat.grade;
+                row.muted = seat.muted;
+                row.where_ = match &seat.where_ {
+                    bbt_ui_model::Where::Local => None,
+                    bbt_ui_model::Where::Ssh { .. } => Some("ssh".into()),
+                    bbt_ui_model::Where::Cloud { .. } => Some("cloud".into()),
+                };
+                row
+            })
+            .collect();
     }
     pub fn update(&mut self, sequence: usize) {
         self.seats[1].title = format!("runtime update {sequence}");
@@ -177,6 +209,8 @@ impl Scene {
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         let title = STYLE.spacing.title_bar as f32;
         let sidebar_width = 300_f32.min(size[0] * 0.35);
+        let footer_height = if self.identity.is_some() { 24. } else { 0. };
+        let sidebar_height = (size[1] - title - footer_height).max(1.);
         let bounds = Rect::new(
             sidebar_width,
             title,
@@ -193,34 +227,52 @@ impl Scene {
             unfocused: false,
             body: true,
             new_seat: true,
-            extra: vec![],
-            shadows: vec![],
-            tabs: vec![TabRow {
-                name: "all fifteen".into(),
-                shortcut: Some("⌘1".into()),
-                tree: self.mini(&self.tree),
-                seats: self
-                    .seats
+            extra: if self.tree.is_none() {
+                self.seats
                     .iter()
-                    .map(|row| TabSeat {
-                        row: row.clone(),
-                        children: vec![],
-                    })
-                    .collect(),
-                expanded: true,
-                focused_key: Some("sc0".into()),
-            }],
+                    .map(|seat| seat.element_in_swarm(ctx))
+                    .collect()
+            } else {
+                vec![]
+            },
+            shadows: vec![],
+            tabs: self
+                .tree
+                .as_ref()
+                .map(|tree| {
+                    vec![TabRow {
+                        name: "all fifteen".into(),
+                        shortcut: Some("⌘1".into()),
+                        tree: self.mini(tree),
+                        seats: self
+                            .seats
+                            .iter()
+                            .map(|row| TabSeat {
+                                row: row.clone(),
+                                children: vec![],
+                            })
+                            .collect(),
+                        expanded: true,
+                        focused_key: Some("sc0".into()),
+                    }]
+                })
+                .unwrap_or_default(),
         };
         let sidebar = Sidebar {
             cards: vec![card],
-            size: [sidebar_width, size[1] - title],
+            size: [sidebar_width, sidebar_height],
             scroll: 0.,
             phone: false,
             new_swarm: true,
         };
         let mut layouts = vec![
             TitleBar {
-                crumb: "swarm / all fifteen".into(),
+                crumb: if self.tree.is_some() {
+                    "swarm / all fifteen"
+                } else {
+                    "local / seats"
+                }
+                .into(),
                 ..Default::default()
             }
             .element(ctx)
@@ -229,13 +281,18 @@ impl Scene {
             sidebar
                 .element(ctx)
                 .layout(
-                    Rect::new(0., title, sidebar_width, size[1] - title),
+                    Rect::new(0., title, sidebar_width, sidebar_height),
                     ctx,
                     &self.metrics,
                 )
                 .map_err(|e| e.to_string())?,
         ];
-        for (id, rect) in solve_split(&self.tree, bounds, TOKENS.layout.gutter as f32).panes {
+        for (id, rect) in self
+            .tree
+            .as_ref()
+            .map(|tree| solve_split(tree, bounds, TOKENS.layout.gutter as f32).panes)
+            .unwrap_or_default()
+        {
             let seat = self.seats[id.0.0 as usize].clone();
             let pane_ctx = ui::Context {
                 seat: seat.color.unwrap_or(ctx.seat),
@@ -278,6 +335,33 @@ impl Scene {
         let mut ops = vec![c::Paint::Draw(background)];
         for layout in layouts {
             ops.extend(c::paint(layout, ctx));
+        }
+        if let Some(identity) = &self.identity {
+            use bbt_proto::GuiIdentityState;
+            let note = match identity.state {
+                GuiIdentityState::LocalDev => "unsigned, local only".into(),
+                GuiIdentityState::Certified => "identity certified".into(),
+                GuiIdentityState::Pending | GuiIdentityState::Held => format!(
+                    "signing held: {}",
+                    identity.reason.as_deref().unwrap_or("identity pending")
+                ),
+            };
+            let mut footer = DrawList::default();
+            footer.text(
+                Rect::new(
+                    12.,
+                    size[1] - 20.,
+                    (300_f32.min(size[0] * 0.35) - 24.).max(1.),
+                    16.,
+                ),
+                note,
+                TextStyle {
+                    scale: TypeScale::Caption,
+                    ..Default::default()
+                },
+                Color::hex("#8B92AA"),
+            );
+            ops.push(c::Paint::Draw(footer));
         }
         if let Some(text) = overlay {
             let mut list = DrawList::default();

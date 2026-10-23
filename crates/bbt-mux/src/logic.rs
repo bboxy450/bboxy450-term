@@ -43,6 +43,21 @@ enum Command {
         crate::mcp::Call,
         oneshot::Sender<Result<serde_json::Value>>,
     ),
+    GuiSpawn(
+        bbt_proto::SpawnSpec,
+        oneshot::Sender<Result<bbt_proto::GuiSeat>>,
+    ),
+    GuiInput(
+        Ulid,
+        Ulid,
+        Vec<u8>,
+        oneshot::Sender<Result<crate::InputReceipt>>,
+    ),
+    GuiResize(Ulid, u16, u16, oneshot::Sender<Result<()>>),
+    GuiEndpoint(oneshot::Sender<Result<EndpointInfo>>),
+    GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
+    GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
+    GuiIdentity(oneshot::Sender<Result<bbt_proto::GuiIdentity>>),
     Messaging(
         Ulid,
         u64,
@@ -109,6 +124,15 @@ pub struct LogicClient {
     pub bus: BusHandle,
 }
 impl LogicClient {
+    /// Portable status only; key custody stays inside the identity runtime.
+    pub async fn gui_identity(&self) -> Result<bbt_proto::GuiIdentity> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiIdentity(tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
     /// Read-only identity-card data for the in-process GUI. Primary signing is
     /// deliberately absent from this client and from the seat/MCP surface.
     pub async fn identity_status(&self) -> Result<crate::identity::IdentityStatus> {
@@ -144,6 +168,61 @@ impl LogicClient {
             .map_err(|_| invalid("logic stopped"))?;
         rx.await
             .map_err(|_| invalid("control outcome unavailable; query the original operation ID"))?
+    }
+    pub async fn gui_spawn(&self, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::GuiSeat> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiSpawn(spec, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await
+            .map_err(|_| invalid("spawn outcome unknown; inspect the seat list"))?
+    }
+    pub async fn gui_input(
+        &self,
+        seat: Ulid,
+        id: Ulid,
+        bytes: Vec<u8>,
+    ) -> Result<crate::InputReceipt> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiInput(seat, id, bytes, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await
+            .map_err(|_| invalid("input outcome unknown; keep the original input id"))?
+    }
+    pub async fn gui_resize(&self, seat: Ulid, cols: u16, rows: u16) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiResize(seat, cols, rows, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("resize outcome unknown"))?
+    }
+    pub async fn gui_endpoint(&self) -> Result<EndpointInfo> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiEndpoint(tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
+    pub async fn gui_seats(&self) -> Result<Vec<crate::seat_socket::GuiSeat>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiSeats(tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
+    pub async fn gui_seat(&self, id: Ulid) -> Result<crate::seat_socket::GuiSeat> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiSeat(id, tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
     }
     /// Admitted seat identity; the broker derives its class from the registry.
     pub async fn messaging(
@@ -514,6 +593,7 @@ struct LegacySaved {
     gap: Option<String>,
 }
 struct ViewState {
+    info: SeatInfo,
     adapter: Session,
     delivery_endpoint: crate::adapters::Endpoint,
     tap: OscTap,
@@ -565,6 +645,8 @@ struct Worker {
     client: LogicClient,
     endpoints: BTreeMap<Ulid, (EndpointInfo, crate::seat_socket::SeatEndpoint)>,
     endpoint_root: PathBuf,
+    gui_info: EndpointInfo,
+    gui_endpoint: Option<crate::seat_socket::SeatEndpoint>,
     messaging: crate::messaging::Messaging,
     identity: crate::identity::IdentityRuntime,
     bus_window: Option<Ulid>,
@@ -601,6 +683,19 @@ impl Worker {
             .mode(0o700)
             .create(&endpoint_root)?;
         let messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
+        let mut capability = [0; 32];
+        getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
+        let gui_info = EndpointInfo {
+            path: endpoint_root.join("gui.sock"),
+            generation: 1,
+            capability,
+        };
+        let gui_endpoint = crate::seat_socket::SeatEndpoint::bind_gui(
+            &handle,
+            &gui_info.path,
+            client.clone(),
+            capability,
+        )?;
         let mut worker = Self {
             connection,
             config,
@@ -614,6 +709,8 @@ impl Worker {
             client,
             endpoints: BTreeMap::new(),
             endpoint_root,
+            gui_info,
+            gui_endpoint: Some(gui_endpoint),
             messaging,
             identity,
             bus_window,
@@ -951,6 +1048,7 @@ impl Worker {
         self.views.insert(
             info.seat,
             ViewState {
+                info: info.clone(),
                 adapter,
                 delivery_endpoint: crate::adapters::Endpoint::None,
                 tap,
@@ -1136,6 +1234,9 @@ impl Worker {
                 serde_json::json!({"seat":info.seat}),
             ),
         )?;
+        // Other GUI connections must learn about a new unwatched seat even
+        // when its adapter remains in the initial state until the first output.
+        self.publish_adapter(info.seat, self.views[&info.seat].adapter.status.clone())?;
         Ok(info)
     }
     fn snapshot(&self, id: Ulid, generation: u64) -> Result<Snapshot> {
@@ -1219,6 +1320,12 @@ impl Worker {
         let view = self.views.get_mut(&id).unwrap();
         let before = view.adapter.status.clone();
         view.state.apply(&event)?;
+        view.info.next_sequence = seq.saturating_add(1);
+        match &event {
+            Event::Resized { size, .. } => view.info.size = *size,
+            Event::Exited { status, .. } => view.info.exited = Some(status.clone()),
+            Event::Output { .. } => {}
+        }
         let now = now_ms();
         view.adapter.output(now);
         match view.tap.drain() {
@@ -1624,6 +1731,116 @@ impl Worker {
         }
         Ok(())
     }
+    fn gui_identity(&self) -> Result<bbt_proto::GuiIdentity> {
+        use crate::identity::IdentityState;
+        use bbt_proto::GuiIdentityState;
+        let status = self.identity.status()?;
+        Ok(bbt_proto::GuiIdentity {
+            state: match status.state {
+                IdentityState::LocalDev => GuiIdentityState::LocalDev,
+                IdentityState::Pending => GuiIdentityState::Pending,
+                IdentityState::Certified => GuiIdentityState::Certified,
+                IdentityState::Held => GuiIdentityState::Held,
+            },
+            reason: status.reason_label,
+        })
+    }
+    fn gui_seat(&self, id: Ulid) -> Result<crate::seat_socket::GuiSeat> {
+        let view = self
+            .views
+            .get(&id)
+            .ok_or_else(|| invalid("seat has no live process view"))?;
+        use bbt_proto::{ProcessStatus, SeatState, SubagentRow};
+        let record = self.registry.get(id)?;
+        let status = &view.adapter.status;
+        let process = match record.lifecycle {
+            Lifecycle::ClosedRetained => ProcessStatus::Retained,
+            Lifecycle::ClosedGrace => ProcessStatus::ClosedGrace {
+                until_ms: record
+                    .close
+                    .as_ref()
+                    .ok_or_else(|| invalid("close grace has no deadline"))?
+                    .deadline_ms,
+            },
+            Lifecycle::Open => match &view.info.exited {
+                Some(exit) => ProcessStatus::Exited {
+                    status: i32::try_from(exit.code)?,
+                },
+                None => ProcessStatus::Running { pid: view.info.pid },
+            },
+        };
+        let title = if !view.title.is_empty() {
+            view.title.clone()
+        } else {
+            status
+                .detail
+                .clone()
+                .unwrap_or_else(|| view.adapter.record.name.clone())
+        };
+        let subagents = status
+            .subagents
+            .iter()
+            .filter(|agent| {
+                matches!(
+                    agent.state,
+                    crate::adapters::State::Active | crate::adapters::State::Waiting
+                )
+            })
+            .map(|agent| SubagentRow {
+                id: agent.id.clone(),
+                title: agent.title.clone(),
+                activity: gui_activity(agent.state, agent.waiting_kind),
+                grade: gui_grade(agent.grade),
+            })
+            .collect();
+        Ok(bbt_proto::GuiSeat {
+            record,
+            state: SeatState {
+                generation: view.info.generation,
+                process,
+                activity: gui_activity(status.state, status.waiting_kind),
+                grade: gui_grade(status.grade),
+                title,
+                detail: status.detail.clone(),
+                turn_open: status.turn_open,
+                observed_ms: status.observed_ms,
+                subagents,
+            },
+        })
+    }
+    fn gui_spawn(&mut self, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::GuiSeat> {
+        if !matches!(spec.location, bbt_proto::Where::Local) {
+            return Err(invalid("remote providers are not connected"));
+        }
+        let harness = HarnessRecord::builtin(&spec.harness_kind)?;
+        let mut record = SeatRecord::new(
+            Ulid::new(),
+            Ulid::from(spec.swarm.0.0),
+            spec.name.unwrap_or_else(|| harness.name.clone()),
+            harness.kind.clone(),
+        );
+        record.role = harness.default_role.clone();
+        if let Some(role) = spec.role {
+            record.role.name = role;
+        }
+        let resume = spec.resume.is_some();
+        record.harness_session_id = spec.resume;
+        let info = self.launch(
+            record,
+            harness,
+            crate::adapters::launch::LaunchOptions {
+                cwd: spec.cwd.into(),
+                role_prompt: String::new(),
+                executable: std::env::current_exe()?,
+                user_home: std::env::var_os("HOME")
+                    .map(PathBuf::from)
+                    .ok_or_else(|| invalid("missing user home"))?,
+                user_zdotdir: std::env::var_os("ZDOTDIR").map(PathBuf::from),
+                resume,
+            },
+        )?;
+        self.gui_seat(info.seat)
+    }
     fn run(&mut self, mut commands: mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
         let mut adapters_at = Instant::now();
@@ -1647,6 +1864,67 @@ impl Worker {
                     Command::ControlCall(id, generation, call, reply) => {
                         let result = self.control_call(id, generation, call);
                         let _ = reply.send(result);
+                    }
+                    Command::GuiSpawn(spec, reply) => {
+                        let result = self.gui_spawn(spec);
+                        let _ = reply.send(result);
+                    }
+                    Command::GuiInput(id, input_id, bytes, reply) => {
+                        let result = (|| {
+                            let attachment = self
+                                .attachments
+                                .get(&id)
+                                .ok_or_else(|| invalid("seat not attached"))?
+                                .clone();
+                            match self.connection.request(Action::Input {
+                                attachment,
+                                input_id,
+                                bytes,
+                            })? {
+                                Reply::Input { receipt } => Ok(receipt),
+                                _ => Err(invalid("input receipt mismatch")),
+                            }
+                        })();
+                        let _ = reply.send(result);
+                    }
+                    Command::GuiResize(id, cols, rows, reply) => {
+                        let result = (|| {
+                            let attachment = self
+                                .attachments
+                                .get(&id)
+                                .ok_or_else(|| invalid("seat not attached"))?
+                                .clone();
+                            let mut size = self
+                                .views
+                                .get(&id)
+                                .ok_or_else(|| invalid("seat unavailable"))?
+                                .info
+                                .size;
+                            size.cols = cols.clamp(2, 512);
+                            size.rows = rows.clamp(1, 256).min(32768 / size.cols);
+                            check_size(size.cols as usize, size.rows as usize)?;
+                            match self
+                                .connection
+                                .request(Action::Resize { attachment, size })?
+                            {
+                                Reply::Resized { .. } => Ok(()),
+                                _ => Err(invalid("resize receipt mismatch")),
+                            }
+                        })();
+                        let _ = reply.send(result);
+                    }
+                    Command::GuiEndpoint(reply) => {
+                        let _ = reply.send(Ok(self.gui_info.clone()));
+                    }
+                    Command::GuiIdentity(reply) => {
+                        let _ = reply.send(self.gui_identity());
+                    }
+                    Command::GuiSeats(reply) => {
+                        let seats = self.views.keys().map(|id| self.gui_seat(*id)).collect();
+                        let _ = reply.send(seats);
+                    }
+                    Command::GuiSeat(id, reply) => {
+                        let _ = reply.send(self.gui_seat(id));
                     }
                     Command::Messaging(id, generation, request, operator, reply) => {
                         let result = (|| {
@@ -1885,7 +2163,32 @@ impl Worker {
 impl Drop for Worker {
     fn drop(&mut self) {
         self.endpoints.clear();
+        drop(self.gui_endpoint.take());
         let _ = std::fs::remove_dir(&self.endpoint_root);
+    }
+}
+fn gui_activity(
+    state: crate::adapters::State,
+    waiting: Option<crate::adapters::WaitingKind>,
+) -> bbt_proto::Activity {
+    use crate::adapters::{State, WaitingKind};
+    use bbt_proto::{Activity, WaitKind};
+    match state {
+        State::Active => Activity::Active,
+        State::Idle => Activity::Idle,
+        State::Errored => Activity::Errored,
+        State::Waiting => Activity::Waiting(match waiting {
+            Some(WaitingKind::Permission) => WaitKind::Permission,
+            Some(WaitingKind::Auth) => WaitKind::Auth,
+            _ => WaitKind::Question,
+        }),
+    }
+}
+fn gui_grade(grade: crate::adapters::Grade) -> bbt_proto::Grade {
+    match grade {
+        crate::adapters::Grade::Reported => bbt_proto::Grade::Reported,
+        crate::adapters::Grade::Shim => bbt_proto::Grade::Shim,
+        crate::adapters::Grade::Inferred => bbt_proto::Grade::Inferred,
     }
 }
 fn check_size(cols: usize, rows: usize) -> Result<()> {

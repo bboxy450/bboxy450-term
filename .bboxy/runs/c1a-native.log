@@ -1,0 +1,44 @@
+C1a native pilot, before the portable schema decision (not final handoff evidence)
+Own bundle: target/c1a/Live.app; run directory target/c1a/live-run.
+CUA image-read: initially 1600x960 with local/seats title, SWARM 0, no grids.
+CUA click focused the app; Command-T produced one real zsh sidebar row (SWARM 1).
+App log: supervisor 80665, logic 80666, seat 01M5JRYMZ6C504HRSNVTC0Q2XK, zsh PID 81591.
+ps -p 81591 -o pid=,comm= exited 0 and confirmed /bin/zsh.
+/bin/kill -KILL 81591 exited 0. Bus state changed to Errored source=exit.
+CUA image-read: the same row became red and displayed exit 1.
+Command-Q did not quit the pilot binary (no binding existed); source now routes it through asynchronous child cleanup. Final recheck pending.
+Pilot cleanup deliberately sent SIGTERM only to the exact own bundle processes 80665, 80666, 80650 after validating argv; cleanup command exited 0.
+The pilot app's actual termination was signal 15; the Python logging wrapper exited 241 (recorded EXIT -15 in c1a-commands.log). This is not labelled a successful orderly exit.
+The stale first-frame log claimed 15 native panes on an empty live scene; source now logs the actual scene seat count. Final recheck pending.
+
+Second pilot (Live2.app): a producer published sidebar state before GPU bootstrap completed. The window stayed white. A 2s/1ms sample of own UI PID 12498 exited 0; target/c1a/native2-sample.txt shows the main AppKit event loop waiting and both bbt-io workers parked. No renderer-ready line appeared while seat states continued to arrive.
+Mechanism: redraw returned on gpu=None without DirtySet::drain; pending wake admission stayed set, suppressing the later GPU-ready wake. Fixed in the app's pre-GPU redraw path, with no bbt-rt changes.
+Native2 exact own bundle/process cleanup exited 0; its wrapper exited 241 / child signal 15. No unrelated processes touched.
+A deterministic --smoke gate now holds GPU bootstrap until an early producer wake has been handled and an empty frame drained. A 30s watchdog bounds the probe. First regression run exited 0 in 14.314s; idle 10.003s, frames=0, callbacks=0, updates=20. This is a debug smoke, not a performance-budget claim.
+Own idle target/debug/incremental removal exited 0, freed 5,358,985,216 allocated bytes.
+
+Third native validation: C1a on Aster signed C1b-lib d973716 (local dependency; not an accepted-main final gate).
+Bundle target/c1a/Live3.app, run target/c1a/live3-run, empty ZDOTDIR target/c1a/live3-zdotdir. App PID 43290; supervisor 43306; logic 43307.
+CUA image-read: native 1600x960 live sidebar SWARM 0, no grids; Command-T produced SWARM 1 with zsh row. Log: seat 01M5JWMQJEB2PXSTBFZE5W216C, real zsh PID 43878.
+ps -p 43306,43307,43878 -o pid=,ppid=,comm=,args= exited 0: exact own Live3 supervisor/logic, /bin/zsh -il child of 43306.
+/bin/kill -KILL 43878 exited 0. CUA image-read: same row red, exit 1. Log: activity=Errored process=Exited {status:1}.
+CUA Command-Q ended the app. Python runner/app exited 0. Later repeat-startup evidence below disproves the earlier inference that this traversed the async shutdown handler. ps -p 43290,43306,43307,43878 -o pid=,ppid=,comm= exited 1 with no output: all four recorded own processes gone.
+
+Repeat startup invalidated Live3 normal-shutdown claim: same run directory exited 1 in 0.218s, supervisor AddrInUse. Recorded own PIDs were gone, but mux.sock remained. Python connect_ex on that exact own socket returned ECONNREFUSED (61); removed only that refused test socket, exit 0. Next same-root launch exited 1 in 0.491s: local messaging issuer changed; explicit re-enrollment required. Fresh random logic SigningKey conflicts with messaging/issuer pin; Vesper assigned stable custody to Kestrel ID1d (73321ded). No file-key fallback added.
+Winit source: platform_impl/macos/menu.rs:66-72 default Quit sends terminate:, and app_state.rs:166-171 exits; this bypasses KeyboardInput async close. Disabled default menu in app main so Command-Q reaches App::request_close.
+Live4 (fresh root) truthfully failed: Command-Q logged app close requested; stop_child reported logic shutdown timed out; child was killed. App exit 1 in 22.870s; mux.sock still exists, Python absence assertion exit 1. Earlier silent forced-timeout success is now an explicit error. Both private helpers are being isolated with shutdown stderr markers; no supervisor shutdown-source changes.
+
+Shutdown isolation and correction:
+Private helper subprocess probe against the real exec3 repository: logic stop 0.066s and supervisor 0.001s, both status 0 (stdin flushed/closed); a second probe keeping stdin open: logic 0.012s, supervisor 0.001s, both status 0. Probe wrappers exit 0; startup capabilities remained in memory and were not logged.
+Native5 with stderr shutdown markers still failed exit 1 at the parent 5s stop deadline; no private shutdown-request marker appeared. sample of recorded own logic PID 87253 exited 255 (cannot examine), excluded; no source attribution from that failed sample.
+Tokio 1.54.1 process/mod.rs:1379-1382 drops Child.stdin on the first poll of Child::wait, including a wait later cancelled by select. Session.event had closed both control pipes on its first poll. Fix: retain ChildStdin outside Child; stop_child owns and drops those controls only during explicit shutdown. Timeout stays 5s and is an error if reached.
+New integration regression cancelled_exit_watch_preserves_orderly_child_shutdown passed, with all 4 cockpit tests, exit 0 in 4.792s.
+Native6 fresh root, fixed controls: CUA Command-T displayed a real zsh row (seat 01M5JY1D423GCCJF4320DX30ZF, zsh PID 92628; supervisor 91813, logic 91814). Command-Q logged app close, logic requested/completed, supervisor requested/completed, children reaped. App exit 0 in 57.940s total session duration (not shutdown latency). Python mux.sock absence assertion exit 0; targeted ps of the three recorded child PIDs exit 1/empty. CUA reported App quit at the final state read, consistent with process exit. This is the corrected orderly-shutdown proof.
+
+Native7 on accepted C1b main base fa596f5, portable identity status implemented: CUA image-read at 1600x960/1x showed a single sidebar footer line, unsigned, local only. The empty live pane area remained as scoped. Supervisor36482/logic36483; Command-Q logged both private shutdown completions and app exit0 (54.979s whole-session duration). This proves initial public status rendering only; custody unavailable/restoration is still pending ID1d.
+R2b housekeeping request cde4be97: cua.listApps did not list ReleaseProfile. Three ps inventories (including ps -axww full width) found no active ReleaseProfile/bboxy450-term-r2b or own exec3 target binary at that time. Read-only probes exit0/empty; no process stopped, no old bundle launched to manufacture a quit.
+
+Native8 on signed ID1d ffa497bd local artifact, production start_custodied: SAME bundle and SAME target/c1a/live8-run launched twice. Each CUA image-read showed unsigned, local only footer; Command-T created a real zsh row on both launches; Command-Q traversed both private shutdown completions and each app exited0. First run supervisor23474/logic23475/zsh23684, seat01M5K1VVV24SBBV872W237A7T6, whole session22.890s. Second run supervisor24064/logic24065 (zsh PID is in command log); second mux.sock absence Python assertion0. No stale-path deletion or identity pin rewrite between these launches. Prior seats are not resumed, as C1c remains separate.
+
+Held native follow-up: same current Live8 binary opened the OWN prior live3-run fixture, whose lost pre-ID1d random issuer is intentionally not rewritten. App started, recovered the refused stale mux.sock through the new bind path, and CUA image-read showed one ellipsized footer line: signing held: local-dev issuer key unavailable; use ... . Command-T still created a live zsh row (seat01M5K210Y8STGF8EQ1RJ6XHFXF, zsh26328, supervisor25441/logic25442). Both helper shutdown completions logged; app exit0 in33.902s total session. No real Keychain lock state changed; the locked-store recovery case is fault-injected in custody.rs.
+Native8 second fresh-state run: zsh24301, seat01M5K1X9HKQ48G29813YBVCAJQ; app0 in29.489s whole session.

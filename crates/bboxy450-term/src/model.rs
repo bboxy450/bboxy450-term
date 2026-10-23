@@ -28,6 +28,8 @@ pub struct Model {
     pub screens: BTreeMap<SeatId, Arc<Screen>>,
     pub frames: BTreeMap<SeatId, Arc<PreparedGrid>>,
     pub states: BTreeMap<SeatId, SeatState>,
+    /// Signing holds affect messaging, never whether terminal panes stay live.
+    pub identity: Option<bbt_proto::GuiIdentity>,
 }
 impl Default for Model {
     fn default() -> Self {
@@ -36,6 +38,7 @@ impl Default for Model {
             screens: BTreeMap::new(),
             frames: BTreeMap::new(),
             states: BTreeMap::new(),
+            identity: None,
         }
     }
 }
@@ -244,6 +247,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         screens,
         frames,
         states,
+        identity: previous.identity.clone(),
     }
 }
 
