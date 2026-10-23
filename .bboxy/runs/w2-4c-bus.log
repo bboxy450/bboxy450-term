@@ -1,0 +1,8 @@
+W2.4c gate 2 after per-recipient batching (decision #23). exec7 working tree on origin/main c713ea0
+plus the ledger.rs prepare change, release, 2026-10-22 ~17:16 PDT, load average 14-18 (shared Mac).
+$ GATE_RUN_DIR=<scratch> GATE_SEATS=1000 GATE_SECONDS=600 sh scripts/gates.sh bus   (x3)
+GATE bus value=10639.000 unit=ms budget=none MEASURED ptmx_max=999 seats=1000 synthetic=1 recipients=999 messages=30 rate=10/s delivered=29970/29970 p50_ms=6314 max_ms=11133 drained_s=11.2 send_p50_ms=83 send_max_ms=152 pump_p99_ms=250.8 pump_max_ms=250.8 setup_s=1.6 disk_peak_mib=305.6
+GATE bus value=9334.000 unit=ms budget=none MEASURED ptmx_max=999 seats=1000 synthetic=1 recipients=999 messages=30 rate=10/s delivered=29970/29970 p50_ms=5256 max_ms=9832 drained_s=9.9 send_p50_ms=83 send_max_ms=137 pump_p99_ms=221.0 pump_max_ms=221.0 setup_s=1.9 disk_peak_mib=305.5
+GATE bus value=13013.000 unit=ms budget=none MEASURED ptmx_max=999 seats=1000 synthetic=1 recipients=999 messages=30 rate=10/s delivered=29970/29970 p50_ms=6367 max_ms=13753 drained_s=13.9 send_p50_ms=89 send_max_ms=134 pump_p99_ms=594.8 pump_max_ms=594.8 setup_s=1.6 disk_peak_mib=305.6
+median p99 10639 ms; budget per decision #23 (median + 25%): 13299 ms.
+before W2.4c (w2-4b-bus.log): p99 median 119912 ms, drained 121-132 s.

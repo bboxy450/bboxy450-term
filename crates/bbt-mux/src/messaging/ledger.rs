@@ -65,6 +65,8 @@ impl Work {
         }).collect::<Vec<_>>().join("\n\n")
     }
 }
+/// Messages per wake at most; the 40 KiB text budget usually binds first.
+const MAX_BATCH: u64 = 64;
 pub struct Ledger {
     pub(crate) store: SqliteStore,
     swarm: Ulid,
@@ -387,27 +389,25 @@ impl Ledger {
         } else {
             Class::Worker
         };
-        let batch = first
-            .arrivals
-            .iter()
-            .any(|a| !a.paused && (a.batch_ms > 0 || a.coalesce));
-        let cap = if !batch {
-            1
-        } else if class == Class::Oracle {
+        // Decision #23: one wake per recipient per pump pass carries every
+        // eligible message pending for it (FIFO, one agent), so a broadcast
+        // costs one delivery per recipient. The fair queue still bounds an
+        // Oracle batch by its credit and by the 4:1 streak when a worker
+        // waits; the 40 KiB text budget below bounds the wake's size.
+        let cap = if class == Class::Oracle {
             ((credit / 1000).min(if had_worker {
                 4u64.saturating_sub(streak).max(1)
             } else {
-                16
-            }))
-            .min(16) as usize
+                MAX_BATCH
+            })) as usize
         } else {
-            16
+            MAX_BATCH as usize
         };
         let mut receipts = vec![first.clone()];
         if cap > 1 {
-            // Inspect the next FIFO entries before coalescing. Filtering by
-            // batch key in SQL would jump over an earlier different route (or
-            // a worker between two bucket-overflow Oracle messages).
+            // Inspect the next FIFO entries in order: filtering in SQL would
+            // jump over an earlier entry for another agent (or a worker
+            // between two bucket-overflow Oracle messages).
             let selector = if class == Class::Oracle {
                 1
             } else if credit < 1000 {
@@ -428,7 +428,7 @@ impl Ledger {
                 |r| r.get::<_, Vec<u8>>(0),
             )? {
                 let receipt: Receipt = serde_json::from_slice(&row?)?;
-                if receipt.batch_key != first.batch_key || receipt.agent != first.agent {
+                if receipt.agent != first.agent {
                     break;
                 }
                 receipts.push(receipt);

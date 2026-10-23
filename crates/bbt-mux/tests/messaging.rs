@@ -360,6 +360,13 @@ impl Fixture {
 fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
     let mut f = Fixture::new();
     let first = f.send(f.a.id, "parent", 1000);
+    let r = f.messaging.receipts(f.a.id, first.envelope.id).unwrap();
+    assert_eq!(r[0].evidence, Evidence::RecipientStored);
+    assert!(r[0].attempt.is_none());
+    // One wake carries everything pending (decision #23); the reply below is
+    // sent while this one is in flight, so it gets its own attempt.
+    let work = f.take(1010);
+    assert_eq!(work.messages, vec![first.clone()]);
     let mut reply = SendRequest::text(format!("seats/{}/inbox", f.b.id), "reply");
     reply.reply_to = Some(first.envelope.id);
     let stored = f.messaging.send(f.a.id, 1, reply.clone(), 1001).unwrap();
@@ -370,11 +377,6 @@ fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
     );
     reply.text.push_str(" changed");
     assert!(f.messaging.send(f.a.id, 1, reply, 1003).is_err());
-    let r = f.messaging.receipts(f.a.id, first.envelope.id).unwrap();
-    assert_eq!(r[0].evidence, Evidence::RecipientStored);
-    assert!(r[0].attempt.is_none());
-    let work = f.take(1010);
-    assert_eq!(work.messages[0], first);
     f.messaging
         .acknowledge(f.b.id, first.envelope.id, None, 1011)
         .unwrap();
@@ -486,10 +488,17 @@ fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
             vec![Right::Write],
         )
         .unwrap();
+    // Both released messages travel in one FIFO wake (decision #23).
     let first = f.take(3002);
-    assert_eq!(first.messages[0].envelope.id, inbound.envelope.id);
+    let ids: Vec<_> = first.messages.iter().map(|m| m.envelope.id).collect();
+    assert_eq!(ids, vec![inbound.envelope.id, blocked.envelope.id]);
     f.finish(&first, Evidence::NativeWritten, 3003);
-    assert_eq!(f.take(3004).messages[0].envelope.id, blocked.envelope.id);
+    assert!(
+        f.messaging
+            .prepare(f.b.swarm, f.b.id, 3004)
+            .unwrap()
+            .is_none()
+    );
     assert!(!f.registry.get(f.b.id).unwrap().muted);
 }
 #[test]
@@ -500,24 +509,24 @@ fn priority_fifo_four_to_one_and_burst_overflow_are_receiver_local() {
     for _ in 0..32 {
         ids.push(f.send(f.o.id, "oracle", 1000).envelope.id);
     }
-    for id in ids.iter().take(4) {
+    // Per-recipient wakes (decision #23), still under the fair queue: four
+    // Oracle messages, then the waiting worker, then the rest of the Oracle
+    // credit (30 at 1000 each), then the overflow demoted to worker class.
+    let mut take = |f: &mut Fixture| {
         let work = f.take(1000);
-        assert_eq!(work.class, Class::Oracle);
-        assert_eq!(work.messages[0].envelope.id, *id);
         f.finish(&work, Evidence::NativeWritten, 1000);
-    }
-    let w = f.take(1000);
-    assert_eq!(w.messages[0].envelope.id, worker.envelope.id);
-    f.finish(&w, Evidence::NativeWritten, 1000);
-    for (i, id) in ids.iter().enumerate().skip(4) {
-        let work = f.take(1000);
-        assert_eq!(work.messages[0].envelope.id, *id);
-        assert_eq!(
+        (
             work.class,
-            if i < 30 { Class::Oracle } else { Class::Worker }
-        );
-        f.finish(&work, Evidence::NativeWritten, 1000);
-    }
+            work.messages
+                .iter()
+                .map(|m| m.envelope.id)
+                .collect::<Vec<_>>(),
+        )
+    };
+    assert_eq!(take(&mut f), (Class::Oracle, ids[..4].to_vec()));
+    assert_eq!(take(&mut f), (Class::Worker, vec![worker.envelope.id]));
+    assert_eq!(take(&mut f), (Class::Oracle, ids[4..30].to_vec()));
+    assert_eq!(take(&mut f), (Class::Worker, ids[30..].to_vec()));
 }
 #[test]
 fn oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects() {
@@ -1066,12 +1075,17 @@ fn batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo() {
                 .id,
         );
     }
-    for id in ids {
-        let work = f.take(1010);
-        assert_eq!(work.messages.len(), 1);
-        assert_eq!(work.messages[0].envelope.id, id);
-        f.finish(&work, Evidence::NativeWritten, 1010);
-    }
+    // One wake carries all three across both routes, in FIFO order.
+    let work = f.take(1010);
+    let got: Vec<_> = work.messages.iter().map(|m| m.envelope.id).collect();
+    assert_eq!(got, ids);
+    f.finish(&work, Evidence::NativeWritten, 1010);
+    assert!(
+        f.messaging
+            .prepare(f.b.swarm, f.b.id, 1010)
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[test]
