@@ -25,7 +25,19 @@ Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-23 (decision #33; operator
 
 A declaration of persistent sources in priority order, each arm carrying relations, which the macro (1) parses into `Reactor { policy, phases, arms }`, (2) validates as a graph before anything runs, (3) expands into one `loop` that runs `initialize` once, `before_poll` each round, snapshots the `#[when]` guards once per arbitration, polls the sources in biased order (direct `poll_next`, or a generated `tokio::select!` in the retained comparison backends), runs the winning handler, optionally drains up to `N` immediate items, and runs `after_event` only after a service window in which every handler returned `Ok(Control::Continue)`; and (4) emits `if false { assert_… }` blocks so trait-level checks fire at the use site with a stable `KTRnnn` or `SRC001` name in rustc output. Every error reads `<CODE> <consequence>. Repair: <repair>.` The boundary is what is declared: remove `#[shutdown]` or `#[last]` and the macro cannot infer it; the program compiles weaker, and two compile-pass negative controls document exactly that.
 
-One arbitration round: `initialize` once; then per round `before_poll`, snapshot the guards, poll sources in declared order, run the winning handler (a shutdown or terminal arm exits; `Control::Stop` exits; `Control::Continue` may drain up to `N` immediate items), and `after_event` only after a whole window of `Continue`.
+```mermaid
+flowchart TD
+  I[initialize once] --> B[before_poll]
+  B --> G[snapshot when guards once]
+  G --> P[poll sources in declared order]
+  P --> H{winning arm}
+  H -- "shutdown or terminal" --> X([exit with Result Exit])
+  H -- "Control::Stop" --> X
+  H -- "Control::Continue" --> D{drain max N?}
+  D -- "more immediate items" --> H
+  D -- "window done" --> A[after_event, only after all Continue]
+  A --> B
+```
 
 ### Grammar, the only implemented one
 

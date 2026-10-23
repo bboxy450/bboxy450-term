@@ -1,0 +1,11 @@
+flowchart TD
+  I[initialize once] --> B[before_poll]
+  B --> G[snapshot when guards once]
+  G --> P[poll sources in declared order]
+  P --> H{winning arm}
+  H -- "shutdown or terminal" --> X([exit with Result Exit])
+  H -- "Control::Stop" --> X
+  H -- "Control::Continue" --> D{drain max N?}
+  D -- "more immediate items" --> H
+  D -- "window done" --> A[after_event, only after all Continue]
+  A --> B
