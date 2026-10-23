@@ -1,4 +1,4 @@
-W1.2d evidence index — scale and crash verified. Exact clean CI is recorded separately in w1-2d-ci-final.log after this signed snapshot.
+W1.2d evidence index — scale and crash verified. Exact clean CI is recorded separately in w1-2d-ci-c1a.log after this signed snapshot.
 Executor: Rook Ashwhisker. Worktree /Users/feral/mydev/bboxy450-term-rook, branch rook-w1-2d.
 
 Criteria and scope
@@ -64,3 +64,9 @@ Final source/preflight
 - w1-2d-preflight-final.log: cargo fmt --check exit0; release all-target strict clippy for supervisor+mux exit0; cargo tree -p bbt-supervisor -e normal exit0 with no tokio.
 - Private fixture directories removed after actual child exits; exact allocated bytes are in w1-2d-fixture-cleanup.log. No peer dirs/PIDs or accepted galleries touched.
 - Final clean CI is run after this snapshot in a detached worktree of its exact commit with its own target and BBOXY_TEST_CUSTODY=memory; actual code SHA, command, exit and cleanup are in the separate final CI log. No parity requested: UI/lab/renderer unchanged.
+
+C1a integration, approved by Oracle c90b34a1-9382-47b2-990e-80ef6ec97a9a (seq4728)
+- C1a landed during the first exact gate. Its baseline e79c6bd0b86bbb69601b26ed18b44bcfd3b0528e passed clean ci-local, exit0,412.046s; logs w1-2d-ci-pre-c1a.log and status file. Both its initial/final worktree were clean, all17 signatures verified. Own CI target2844127232B and completed release target883933184B removed; own temporary worktree removed, exit0. Signed source is preserved at local branch rook-w1-2d-pre-c1a.
+- Rebased onto C1a + architecture-map origin4864ab5. The only conflict was adjacent independent GUI helpers and capture_request in logic.rs; retained both bodies. No capture journal/writer/supervisor read implementation changed in that integration. Earlier scale/crash results name their actual pre-C1a source revisions.
+- Narrow approved app changes only: crates/bboxy450-term/src/cockpit.rs supervisor_main supplies object_dir(run_dir,supervisor)/journal; tests/custody.rs supplies its own temp supervisor-object journal. No other app code or launch flags changed.
+- Final verification at this rebased signed snapshot runs real process tests/cockpit.rs + tests/custody.rs explicitly, then exact clean ci-local. Actual commands, statuses, source SHA and cleanup are recorded separately in w1-2d-ci-c1a.log. No post-C1a physical power-loss or new throughput claim.

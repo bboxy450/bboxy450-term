@@ -133,6 +133,9 @@ async fn supervisor_main() -> Result<()> {
     let config: Config = serde_json::from_slice(&line)?;
     let supervisor = bbt_mux::Supervisor::start(bbt_mux::Config {
         socket_path: Some(config.socket.clone()),
+        journal_directory: Some(
+            bbt_mux::store::object_dir(&config.run_dir, "supervisor")?.join("journal"),
+        ),
         ..Default::default()
     })?;
     write_json(
