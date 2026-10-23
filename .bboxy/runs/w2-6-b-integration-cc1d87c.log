@@ -1,0 +1,50 @@
+COMMAND ['git', 'fetch', 'origin']
+EXIT 0
+COMMAND ['git', 'rebase', '--gpg-sign=9B07E849480C68328CA20684844ECC0587DE7AB0', 'origin/main']
+Auto-merging crates/bboxy450-term/src/cockpit.rs
+CONFLICT (content): Merge conflict in crates/bboxy450-term/src/cockpit.rs
+Auto-merging crates/bboxy450-term/src/live.rs
+CONFLICT (content): Merge conflict in crates/bboxy450-term/src/live.rs
+Auto-merging crates/bboxy450-term/src/main.rs
+CONFLICT (content): Merge conflict in crates/bboxy450-term/src/main.rs
+Auto-merging crates/bboxy450-term/src/model.rs
+Rebasing (1/1)
+error: could not apply 4c247f7... feat: expose durable GUI activity and operator-read state
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Recorded preimage for 'crates/bboxy450-term/src/cockpit.rs'
+Recorded preimage for 'crates/bboxy450-term/src/live.rs'
+Recorded preimage for 'crates/bboxy450-term/src/main.rs'
+Could not apply 4c247f7... # (Boxy <bboxy450@gmail.com>) feat: expose durable GUI activity and operator-read state
+EXIT 1
+COMMAND ['git', 'add', 'crates/bboxy450-term/src/cockpit.rs', 'crates/bboxy450-term/src/live.rs', 'crates/bboxy450-term/src/main.rs']
+EXIT 0
+COMMAND ['git', 'rebase', '--continue']
+[detached HEAD 68a661e] feat: expose durable GUI activity and operator-read state
+ 19 files changed, 3849 insertions(+), 97 deletions(-)
+ create mode 100644 crates/bboxy450-term/tests/support/events.rs
+ create mode 100644 crates/bbt-mux/src/gui_events.rs
+ create mode 100644 crates/bbt-mux/tests/gui_events.rs
+ create mode 100644 crates/bbt-proto/src/events.rs
+Recorded resolution for 'crates/bboxy450-term/src/cockpit.rs'.
+Recorded resolution for 'crates/bboxy450-term/src/live.rs'.
+Recorded resolution for 'crates/bboxy450-term/src/main.rs'.
+Successfully rebased and updated refs/heads/exec5.
+EXIT 0
+COMMAND ['git', 'log', '-1', '--format=%H %G? %GS']
+68a661eccece8d2818e463f6951db4348f9dc17f G Boxy (bboxy450) <bboxy450@gmail.com>
+EXIT 0
+COMMAND ['git', 'status', '--short', '--untracked-files=no']
+EXIT 0
+COMMAND ['git', 'rebase', '--gpg-sign=9B07E849480C68328CA20684844ECC0587DE7AB0', 'origin/main']
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/exec5.
+EXIT 0
+COMMAND ['git', 'diff', '--exit-code', '68a661eccece8d2818e463f6951db4348f9dc17f', 'HEAD', '--', 'crates']
+EXIT 0
+COMMAND ['git', 'log', '-1', '--format=%H %p %G? %GS']
+cc1d87c2bba963137c2daef99503082ff2895a6d 900172a G Boxy (bboxy450) <bboxy450@gmail.com>
+EXIT 0

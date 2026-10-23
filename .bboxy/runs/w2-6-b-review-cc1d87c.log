@@ -1,0 +1,47 @@
+{
+  "source": "cc1d87c2bba963137c2daef99503082ff2895a6d",
+  "at": "2026-10-23T22:46:46.204468+00:00",
+  "result": "no blocking finding",
+  "method": "static read-only transport review; no candidate edits or builds/tests/gates by Rook",
+  "checks": {
+    "signature": {
+      "command": [
+        "git",
+        "verify-commit",
+        "cc1d87c2bba963137c2daef99503082ff2895a6d"
+      ],
+      "exit": 0
+    },
+    "accepted_base": {
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "9171bde89ed845439f6cbb98974d7b8e3e9b7ec2",
+        "cc1d87c2bba963137c2daef99503082ff2895a6d"
+      ],
+      "exit": 0
+    },
+    "diff_whitespace": {
+      "command": [
+        "git",
+        "diff",
+        "cc1d87c2bba963137c2daef99503082ff2895a6d^",
+        "cc1d87c2bba963137c2daef99503082ff2895a6d",
+        "--check"
+      ],
+      "exit": 0
+    }
+  },
+  "evidence": [
+    "bus.rs:575,674-733 \u2014 independent remaining/whole byte budgets; insufficient remainder defers without delivery update; valid retained envelope/hash/sequence verified before emitted Event",
+    "bus.rs:735,1229-1262 \u2014 explicit delivered-pending row ACK; idempotent retries never advance unrelated/read cursor",
+    "bus.rs:528-572,1001-1122 \u2014 version migration inherits per-stream anchors and pending, new-subject floors, one active device lease and retained reconnect state",
+    "bus.rs:1264-1404 \u2014 per-stream transport/read positions and bounded read-through pages remain separate; no new consumer for pages",
+    "seat_socket.rs:266-318,485-521,584-657 \u2014 device resolved by logic, detach keeps durable state, bounded poll/pane/action turns, explicit ACK/read paths",
+    "gui_events.rs:54,211; proto/events.rs:8-150 \u2014 original proof/reference scope separate from current sampled display payload, per-stream decimal cursors",
+    "live.rs:204-272,702-753 \u2014 raw terminal reply classification precedes Event normalization; apply/publish happens before EventAck; async push/status/gap never steals terminal FIFO slot",
+    "model.rs:168-342 \u2014 finite row/byte/stream windows, canonical row dedupe, visible retained-history omission, monotonic operator read marks"
+  ],
+  "limit": "Runtime test/CI reports from the author were not rerun or adopted as independent evidence."
+}

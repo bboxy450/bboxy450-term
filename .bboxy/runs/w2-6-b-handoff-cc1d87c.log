@@ -1,0 +1,132 @@
+Kestrel Voidwing <EXECUTOR> — W2.6b + L9-M-b handoff.
+SOURCE/GATED: cc1d87c2bba963137c2daef99503082ff2895a6d, branch exec5, /Users/feral/mydev/bboxy450-term-exec5.
+Parent900172a includes accepted C1c-3 9171bde. Signature G Boxy (bboxy450) <bboxy450@gmail.com>. This log is in a signed evidence-only successor; its SHA is reported by the ICQ handoff. No push or merge.
+
+OUTCOME
+One durable operator/device events lane replaces ephemeral state pushes. Original signed source is verified before selected projection; app publication precedes explicit delivery ACK. Operator read marks remain a separate monotonic account-KV value, unread is derived, history queries have no ACK/read effects. No new wire admission version, canonical ledger, signer or GUI widgets.
+
+FILES AND MECHANISMS
+crates/bbt-proto/src/events.rs:9 — per-stream decimal references, original-envelope proof scope, selected payloads, gaps, cursors and pages; numeric-loss/format negatives.
+crates/bbt-proto/src/gui.rs:49 — opt-in attach/page/cursor/ACK/read actions and asynchronous event/status replies; VERSION remains2.
+crates/bbt-proto/src/lib.rs:2 — exports the shared events DTO module.
+crates/bbt-mux/src/bus.rs:575 — bounded GUI admission and replay; whole-quantum oversize Gap, remaining-budget deferral, retained pending/max-delivery audit. :1001 binds one durable lease/device; :1132 migrates filters; :1256 derives unread, :1314 persists monotonic read separately from ACK, :1326 pages without mutation.
+crates/bbt-mux/src/gui_events.rs:26 — exact retained subjects plus M-a grants; :55 verifies original source before metadata/projection, selected activity/redacted paths/shared MessageRow, current state separate from proof.
+crates/bbt-mux/src/lib.rs:16 — private GUI projector module.
+crates/bbt-mux/src/logic.rs:206 — GuiDevice read request uses worker-owned identity (:3229), named hold without synthetic identity; preserves unavailable() cause mapping.
+crates/bbt-mux/src/seat_socket.rs:266 — RAII lane attachment, explicit opt-in, device/policy refresh, asynchronous hold transitions and fair bounded event/pane service; disconnect detaches, pages do not ACK/read.
+crates/bbt-mux/tests/gui_events.rs:1 — own ignored child fixture and real logic kill/restart proof, one lease/replay, distinct message/bus cursors, persistent read23/unread1, LocalDev issuer and real PTY Input/Resize/Applied during40 activity events.
+crates/bbt-mux/tests/provider_gui.rs:89 — fixture opts into the lane and unwraps state only; keeps provider assertions/fixture semantics.
+crates/bboxy450-term/src/model.rs:51 — Arc EventLane bounded512 rows/1MiB serialized window and4096 stream metadata, canonical dedupe, per-stream order/cursor mirrors, sparse page-next, explicit eviction gaps/window-only artifact counts; preserves History and lane across normal rebuilds.
+crates/bboxy450-term/src/live.rs:196 — typed Events/EventCursor terminal FIFO slots, raw reply classification before Event normalization; EventStatus/Gap do not consume slots. :266 publication-beforeACK and explicit attach/reconnect; state uses existing helpers, data-only publication avoids pane preparation. :924 tests successes/refusals/128-slot release; :1593 tests publication-beforeACK and duplicate suppression.
+crates/bboxy450-term/src/cockpit.rs:76 — future UI event-page/cursor/read intents; :617 bounded deferred events while awaiting catalogue, preserving single connection/process supervision and Scroll.
+crates/bboxy450-term/src/main.rs:3074 — exactly the approved three new UiMsg alternatives in one test match, preserving Scroll and existing input handling.
+crates/bboxy450-term/tests/support/events.rs:1 — explicit opt-in/state-only compatibility adapter; no invented transport ACK or read marks.
+crates/bboxy450-term/tests/cockpit.rs:58 — state fixtures attach only when needed; idle metadata probes remain passive.
+crates/bboxy450-term/tests/custody.rs:83 — consumes typed Identity projection and explicit pending attach through the injected store; actual30s recovery remains checked.
+crates/bboxy450-term/tests/lifecycle.rs:69 — command connection hydrates from correlated Spawned/List; Observer (:203) is sole lane drainer for close/undo/60s expiry state.
+crates/bboxy450-term/tests/recovery.rs:47 — recovery state assertions explicitly attach and unwrap typed state; retained process/restart/generation assertions preserved.
+
+VERIFICATION
+Final source crates are byte-identical to focused-tested68a661e after a records-only rebase (git diff --exit-code68a661e HEAD --crates:0, integration log). Focused live14 passed/0 failed: cargo test --locked -p bboxy450-term --bin bboxy450-term live::tests:: exit0/281.796s cold, runtime3.23s. Strict cargo clippy --workspace --all-targets --locked -- -D warnings exit0/43.735s.
+Exact source clean detached command sh scripts/ci-local.sh --parity: EXIT0 (driver gate elapsed2821.607s; total including copy/cleanup2829.112s). BBOXY_TEST_CUSTODY=memory, O1, debug assertions enabled, no debug info/incremental, jobs2, own target; BBOXYBOOK_GALLERY unset. DETACHED_STATUS empty. All gates passed. Eleven invariant checks0 failures; four slow skips (clippy-clean duplicate, rim-size-is-layout, seats-1000-bus, seats-400-memory-idle). Workspace strict Clippy ran despite the duplicate invariant skip. Full workspace tests, UI lint and native smoke passed; native smoke15 seats then10.003s idle0 frames/0 callbacks, CPU p50=2.895ms. No scale/performance verdict beyond the functional fixtures.
+Parity1768 current cases,1664 required/1664 measured,0 unproven/0 mismatches;174 advisory reviews,0 new/resolved review keys,0 added/removed cases against the authorized baseline. Historical1664 image diagnostic is pixel-only, not a geometry claim.
+
+ACCEPTANCE EVIDENCE
+- Persistence/one drainer: bus GUI unit fixtures exercise one lease, detach without deletion, New bootstrap, unacked replay, filter migration plus interrupted migration, deduplicated append-before-route wake, oversize Gap and max-delivery audit without drop. Sixteen gui_ focused tests exited0/89.804s.
+- Real process/stream identity: tests/gui_events.rs killed its own recorded logic child85274 and waited, restarted85282 and shut down/waited; exactly one consumer, one canonical replay,42 unique artifact rows. Two inbox pages have ledger cursors deliberately distinct from bus positions; LocalDev issuer retained. Read mark23/unread1 survives logic kill. Fixture exit0/237.948s cold, runtime1.24s,1 passed plus1 intentionally ignored child entry. Real zsh Input/Resize/Applied/echo66x22 during40 artifact events, observed~229ms; not a1000-seat budget claim.
+- Bounds/proofs: proto4 tests; server/projector signature/tamper/selected-redacted payload tests; app six cache tests cover canonical conflict/dedupe, limits/gaps, cursor rollback, sparse next and no page ACK/read. Published duplicate gets ACK without another dirty publication; invalid projection gets no ACK. The final FIFO regression covers typed page/cursor successes/refusals, async EventStatus/Gap and128 slots; raw classification precedes Event(Seat) normalization.
+- Existing state/control: provider_gui2, cockpit5, custody1 (actual30s retry), lifecycle3 (incl60s expiry), recovery5 and real-IO echo/resize/frame-retention all passed in development. Exact CI reran the workspace successfully. Fixtures opt in explicitly; lifecycle Observer is sole drainer. C1c-3 History/Scroll and single-connection writer/recovery are preserved.
+- Rook static transport review: no blocking finding in frozen cc; actual report read/copied. He independently checked signature, accepted-base ancestry and whitespace (each0), and read the listed source. He did not rerun our runtime or CI evidence; this is not an independent runtime result.
+
+KNOWN READ-SIDE GAPS / ORACLE DISPOSITION
+1. model.rs191-213: identical/empty completed pages may return changed=false; page high is hidden by a newer live cursor. Nyx adds bounded per-stream PageSnapshot{revision,high,next}, revision/publication every valid page, pages() compatibility, in M-c on accepted base. Oracle83e64d24-7532-46bf-83cd-c4dd347783d6: keep this gate/source frozen; no restart, no wire/ACK/consumer change.
+2. model.rs264-270/306-333: omitted-range replay guard ignores old requested rows, and sorted backfill is otherwise evicted at the front of a full live window. Thus an older List row may lack its shared MessageRow projection. Oracle2b8ad89a-579d-48c5-a4bf-4c433c305c91 assigns Nyx M-c a held read-page projection inside the shared budget, live window first. Explicit missing-projection gap stays truthful; no UI author/priority fork. Both remain unfixed in this exact gated artifact by that instruction. Related refused-read completion (tag-only Events FIFO + logged Error) was noted to Nyx for M-c controller handling; no claim of read-side UI completeness here.
+
+FAILURES / COMMANDS
+Full stdout/stderr is retained in development/integration/CI logs. Development failures included u64/usize FromSql compile, UiMsg exhaustiveness, fixture type/import, three let_and_return lints, private test-root mode, legacy identity hydration/idle assertions, a second non-draining observer and changed metadata-publication assertions. Each relevant correction was followed by the successful checks listed; no failed run is presented as a pass. Rustfmt initially rejected fixture header placement, then succeeded after correcting the header. Administrative helper/JSON-shape errors were corrected without changing source or the baseline. An ICQ --dry-run inbox --wait55 returned1 because wait<=30; no55-second read was executed, bounded20 reads returned0.
+The first accepted-main rebase exited1 on three shared-file conflicts; additive unions preserved both features, rebase --continue exited0 and signed68a661e. Final records-only rebase0 produced cc, crates diff0. Exact paths only were staged, no reset/stash/autostash/add-A/no-gpg-sign.
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-proto', 'events::tests']
+EXIT 0; elapsed 31.390s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'bus::gui_tests']
+EXIT 101; elapsed 136.511s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'bus::gui_tests']
+EXIT 0; elapsed 43.482s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'gui_']
+EXIT 0; elapsed 30.882s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'gui_']
+EXIT 0 elapsed 78.608s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--all-targets', 'event_lane']
+EXIT 101 elapsed 368.565s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'gui_']
+EXIT 0 elapsed 125.798s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'gui_events', '--', '--nocapture']
+EXIT 101 elapsed 132.643s
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+EXIT 101 elapsed 236.180s
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+EXIT 0 elapsed 40.786s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'gui_']
+EXIT 0 elapsed 89.804s
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'gui_events', '--', '--nocapture']
+EXIT 101 elapsed 79.455s
+SOURCE ff8b298dc12dbc5603cfd1c8503c05add2a39b70
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'gui_events', '--', '--nocapture']
+EXIT 0 elapsed 237.948s
+SOURCE ff8b298dc12dbc5603cfd1c8503c05add2a39b70
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--all-targets', 'event_']
+EXIT 0 elapsed 139.311s
+SOURCE 19f26fed286acc3418e4d7b69dbbf3a76e927aee
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provider_gui']
+EXIT 0 elapsed 6.486s
+SOURCE 19f26fed286acc3418e4d7b69dbbf3a76e927aee
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'cockpit', '--test', 'recovery', '--test', 'lifecycle', '--test', 'custody']
+EXIT 101 elapsed 0.969s
+SOURCE 0dbf522b309c0cdd7d75a52a18dc4c0f376e859d
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'cockpit', '--test', 'recovery', '--test', 'lifecycle', '--test', 'custody']
+EXIT 101 elapsed 97.863s
+SOURCE 4334c3a296d1e5f27510d4933e74093e0abb8be4
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'lifecycle', '--test', 'recovery']
+EXIT 0 elapsed 67.809s
+SOURCE 4334c3a296d1e5f27510d4933e74093e0abb8be4
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--bin', 'bboxy450-term', 'live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame', '--', '--nocapture']
+EXIT 101 elapsed 3.997s
+SOURCE b3bd795b89437a4ec95b75e1668193a66de9a8ad
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--bin', 'bboxy450-term', 'live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame', '--', '--nocapture']
+EXIT 0 elapsed 8.974s
+SOURCE b3bd795b89437a4ec95b75e1668193a66de9a8ad
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+EXIT 101 elapsed 81.865s
+SOURCE 3b2a8ca74143b175d8f05f8113fc47d50d92b464
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+EXIT 0 elapsed 99.737s
+SOURCE 68a661eccece8d2818e463f6951db4348f9dc17f
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--bin', 'bboxy450-term', 'live::tests::']
+EXIT 0 elapsed 281.796s
+SOURCE 68a661eccece8d2818e463f6951db4348f9dc17f
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+EXIT 0 elapsed 43.735s
+
+INTENTIONALLY LEFT ALONE / NOT CHECKED
+No real-root enrollment, real Keychain acceptance, primary GPG daily checkpoints, new MCP tools, external ingress, canonical retention/pruning or new GUI widget hosting. Tests use explicit throwaway keys/memory custody. The original full event signature scope is stated explicitly; the display subset does not independently establish root/grant authority. Model row bytes mean a serialized512-row/1MiB window, with finite separate metadata; no whole-process heap claim. Operator-read is never advanced by receiving or transport ACK.
+Four slow checks were skipped; no967/50 or1000-seat performance run. Current M-c UI pagination coverage/completion is limited by the two named gaps. ATTENTION spec read only (including no osascript fallback); no scoped brief or implementation yet.
+Main moved while the gate ran: through32ed848, records/Mermaid fixtures and waiting-row halo a9436af (bbt-render/bbt-ui-model/bbt-ui), plus cross-OS scripts/rule. It was not rebased/re-gated per AGENTS. Merged-tree validation, including the new cross-OS check, remains Oracle-owned; not claimed tested here.
+
+CLEANUP
+ci-target exists_after_gate=False
+ci-worktree exists_after_gate=False
+COMMAND remove own /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target
+EXIT 0; existed=True; exists_after=False
+
+The gate's own ci-target was deleted immediately and git worktree remove exited0. The one own dev-target was deleted after the checks; no owned build/test/gate/app is running. Retained only local report/sample evidence and logs. Peers' directories/processes were untouched; older untracked run logs in exec5 left untouched.
+
+EVIDENCE DIGESTS
+w2-6-b-development-cc1d87c.log sha256 3709db4949ef40e059f1eedec21fad713ed48e418c87f2947e5c2ad0323cbb76
+w2-6-b-integration-cc1d87c.log sha256 59f07305e9752f5c13ee0e051a6d8178fdb6f0b5aeb73dfbde64a973dff2a938
+w2-6-b-ci-cc1d87c.log sha256 3337d03b20adaa3fa7b082d0e897f659d2f3e81c0d1af05fe81409672325f76b
+w2-6-b-review-cc1d87c.log sha256 4a5d1a912e83fb116006f0e239de5e12889dffaeda5b59ed433e8d77ff9a0959
+w2-6-b-parity-cc1d87c.log sha256 bb3dc1bcf53abb76196fe90cab5287037ccbb404bbe3b05541e3580e5fe0ec30
+report.json sha256 021b7fed277e8b6845c133a9b04fd8ce89154f4965766a058fd3eb665c5dfd27
+baseline sha256 50eaa61ac6c4930ac4c60c8d479bef3cfb5f7edcd0d3ce198536f4efd47df9de
+
+ADDITIONAL EVIDENCE STAGING CHECK
+git diff --cached --check: exit2, confined to raw development-log compiler suggestions at lines1220,1245,1278 (three trailing-space-only suggested replacements). Raw stdout is preserved byte-for-byte, sha3709db49 above; no source whitespace defect. git diff cc1d87c^ cc1d87c --check: exit0.

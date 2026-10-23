@@ -1,0 +1,4189 @@
+OWNED_DRIVER_PID 11378
+Quiet release dbd756fa; development target only, no full gate slot claimed.
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-proto', 'events::tests']
+OWNED_COMMAND_PID 11388
+   Compiling libc v0.2.191
+   Compiling proc-macro2 v1.0.107
+   Compiling zmij v1.0.23
+   Compiling serde_core v1.0.229
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling cfg-if v1.0.5
+   Compiling serde_json v1.0.154
+   Compiling syn v3.0.9
+   Compiling serde v1.0.229
+   Compiling getrandom v0.3.4
+   Compiling zerocopy v0.8.63
+   Compiling winnow v1.0.4
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling serde_derive v1.0.229
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling parking_lot_core v0.9.12
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling winnow v0.7.15
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling rand_core v0.9.5
+   Compiling smallvec v1.16.3
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling rand_chacha v0.9.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling rand v0.9.5
+   Compiling parking_lot v0.12.5
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling bitflags v2.13.2
+   Compiling unicode-width v0.2.2
+   Compiling log v0.4.34
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling ulid v1.2.1
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Finished `test` profile [optimized] target(s) in 31.14s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bbt_proto-c90495c501afbde9)
+
+running 4 tests
+test events::tests::gaps_are_stream_ranges_without_a_signature ... ok
+test events::tests::positions_keep_every_u64_bit_and_their_stream ... ok
+test events::tests::numeric_loss_and_ambiguous_positions_are_rejected ... ok
+test events::tests::projection_metadata_names_the_original_signature_scope ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+EXIT 0; elapsed 31.390s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'bus::gui_tests']
+OWNED_COMMAND_PID 12706
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling subtle v2.6.1
+   Compiling syn v3.0.9
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling crypto-common v0.1.7
+   Compiling const-oid v0.9.6
+   Compiling serde_core v1.0.229
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling serde v1.0.229
+   Compiling jobserver v0.1.35
+   Compiling serde_derive v1.0.229
+   Compiling find-msvc-tools v0.1.15
+   Compiling shlex v2.0.1
+   Compiling cc v1.9.0
+   Compiling cpufeatures v0.2.17
+   Compiling base64ct v1.8.3
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling radium v0.7.0
+   Compiling tap v1.0.1
+   Compiling serde_json v1.0.154
+   Compiling spki v0.7.3
+   Compiling pkcs8 v0.10.2
+   Compiling wyz v0.5.1
+   Compiling hmac v0.12.1
+   Compiling funty v2.0.0
+   Compiling base16ct v0.2.0
+   Compiling bitvec v1.1.1
+   Compiling sha2-asm v0.6.4
+   Compiling bitflags v2.13.2
+   Compiling signature v2.2.0
+   Compiling bytes v1.12.1
+   Compiling semver v1.0.28
+   Compiling pkg-config v0.3.34
+   Compiling rustc_version v0.4.1
+   Compiling ff v0.13.1
+   Compiling serdect v0.2.0
+   Compiling smallvec v1.16.3
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling autocfg v1.5.1
+   Compiling thiserror v2.0.21
+   Compiling libm v0.2.16
+   Compiling num-traits v0.2.19
+   Compiling elliptic-curve v0.13.8
+   Compiling sha2 v0.10.9
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling rfc6979 v0.4.0
+   Compiling thiserror-impl v2.0.21
+   Compiling errno v0.3.14
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+   Compiling const-oid v0.10.2
+   Compiling ident_case v1.0.1
+   Compiling darling_core v0.20.11
+   Compiling digest v0.11.3
+   Compiling getrandom v0.3.4
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling rand_core v0.10.1
+   Compiling foldhash v0.2.0
+   Compiling getrandom v0.4.3
+   Compiling darling_macro v0.20.11
+   Compiling hashbrown v0.17.1
+   Compiling rand_core v0.9.5
+   Compiling num-integer v0.1.47
+   Compiling ecdsa v0.16.9
+   Compiling curve25519-dalek v4.1.3
+   Compiling rand_chacha v0.3.1
+   Compiling cpufeatures v0.3.1
+   Compiling pin-project-lite v0.2.17
+   Compiling cfg_aliases v0.1.1
+   Compiling thiserror v1.0.69
+   Compiling crossbeam-utils v0.8.23
+   Compiling spin v0.9.9
+   Compiling num-bigint-dig v0.8.6
+   Compiling lazy_static v1.5.1
+   Compiling nix v0.28.0
+   Compiling rand v0.8.8
+   Compiling num-iter v0.1.46
+   Compiling rand_chacha v0.9.0
+   Compiling darling v0.20.11
+   Compiling parking_lot_core v0.9.12
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling aead v0.5.2
+   Compiling mio v1.2.4
+   Compiling ctr v0.9.2
+   Compiling tokio-macros v2.7.2
+   Compiling universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+   Compiling socket2 v0.6.5
+   Compiling unicode-segmentation v1.13.3
+   Compiling vcpkg v0.2.15
+   Compiling opaque-debug v0.3.1
+   Compiling zstd-safe v8.2.0
+   Compiling rustversion v1.0.23
+   Compiling httparse v1.10.1
+   Compiling anyhow v1.0.104
+   Compiling libsqlite3-sys v0.38.2
+   Compiling polyval v0.6.2
+   Compiling convert_case v0.10.0
+   Compiling tokio v1.54.1
+   Compiling parking_lot v0.12.5
+   Compiling derive_builder_core v0.20.2
+   Compiling rand v0.9.5
+   Compiling chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling aes v0.8.4
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling keccak v0.1.6
+   Compiling dbl v0.3.2
+   Compiling unicode-xid v0.2.6
+   Compiling once_cell v1.21.4
+   Compiling core-foundation-sys v0.8.7
+   Compiling rustix v1.1.5
+   Compiling byteorder v1.5.0
+   Compiling crc24 v0.1.6
+   Compiling equivalent v1.0.3
+   Compiling heck v0.5.0
+   Compiling snafu-derive v0.9.2
+   Compiling indexmap v2.14.2
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling derive_more-impl v2.1.1
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling ulid v1.2.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling bitfields-impl v1.0.3
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling futures-macro v0.3.34
+   Compiling num_enum_derive v0.7.6
+   Compiling serial2 v0.2.38
+   Compiling slab v0.4.12
+   Compiling downcast-rs v1.2.1
+   Compiling futures-task v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling futures-core v0.3.34
+   Compiling zlib-rs v0.6.8
+   Compiling data-encoding v2.11.1
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling shell-words v1.1.1
+   Compiling signature v3.0.0
+   Compiling ed25519 v3.0.0
+   Compiling portable-pty v0.9.0
+   Compiling futures-util v0.3.34
+   Compiling walkdir v2.5.0
+   Compiling tungstenite v0.30.0
+   Compiling flate2 v1.1.10
+   Compiling hashbrown v0.15.5
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling bitfields v1.0.3
+   Compiling aes-gcm v0.10.3
+   Compiling zstd v0.14.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling eax v0.5.0
+   Compiling derive_more v2.1.1
+   Compiling snafu v0.9.2
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling k256 v0.13.4
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling dsa v0.6.3
+   Compiling ocb3 v0.1.0
+   Compiling p521 v0.13.3
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling sha2 v0.11.1
+   Compiling hashlink v0.12.2
+   Compiling notify-types v2.1.0
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling cfb-mode v0.8.2
+   Compiling cast5 v0.11.1
+   Compiling idea v0.5.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling ripemd v0.1.3
+   Compiling md-5 v0.10.6
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling ryu v1.0.23
+   Compiling fallible-iterator v0.3.0
+   Compiling fastrand v2.5.0
+   Compiling fixedbitset v0.5.7
+   Compiling replace_with v0.1.8
+   Compiling unsafe-libyaml v0.2.11
+   Compiling hex v0.4.3
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling rusqlite v0.40.2
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling pgp v0.21.0
+   Compiling petgraph v0.8.3
+   Compiling tempfile v3.27.0
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling security-framework v3.7.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error[E0277]: the trait bound `u64: FromSql` is not satisfied
+   --> crates/bbt-mux/src/bus.rs:487:38
+    |
+487 |                     Ok((row.get::<_, u64>(0)?, row.get::<_, String>(1)?))
+    |                             ---      ^^^ the trait `FromSql` is not implemented for `u64`
+    |                             |
+    |                             required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `FromSql`:
+              f32
+              f64
+              i16
+              i32
+              i64
+              i8
+              isize
+              u16
+            and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+    |
+285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+    |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+error[E0277]: the trait bound `u64: FromSql` is not satisfied
+   --> crates/bbt-mux/src/bus.rs:521:38
+    |
+521 |                         row.get::<_, u64>(0)?,
+    |                             ---      ^^^ the trait `FromSql` is not implemented for `u64`
+    |                             |
+    |                             required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `FromSql`:
+              f32
+              f64
+              i16
+              i32
+              i64
+              i8
+              isize
+              u16
+            and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+    |
+285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+    |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+error[E0277]: the trait bound `u64: FromSql` is not satisfied
+   --> crates/bbt-mux/src/bus.rs:522:38
+    |
+522 |                         row.get::<_, u64>(1)?,
+    |                             ---      ^^^ the trait `FromSql` is not implemented for `u64`
+    |                             |
+    |                             required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `FromSql`:
+              f32
+              f64
+              i16
+              i32
+              i64
+              i8
+              isize
+              u16
+            and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+    |
+285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+    |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+error[E0277]: the trait bound `usize: FromSql` is not satisfied
+   --> crates/bbt-mux/src/bus.rs:524:38
+    |
+524 |                         row.get::<_, usize>(3)?,
+    |                             ---      ^^^^^ the trait `FromSql` is not implemented for `usize`
+    |                             |
+    |                             required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `FromSql`:
+              f32
+              f64
+              i16
+              i32
+              i64
+              i8
+              isize
+              u16
+            and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+    |
+285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+    |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+error[E0277]: the trait bound `u64: FromSql` is not satisfied
+   --> crates/bbt-mux/src/bus.rs:526:38
+    |
+526 |                         row.get::<_, u64>(5)?,
+    |                             ---      ^^^ the trait `FromSql` is not implemented for `u64`
+    |                             |
+    |                             required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `FromSql`:
+              f32
+              f64
+              i16
+              i32
+              i64
+              i8
+              isize
+              u16
+            and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+    |
+285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+    |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+error[E0277]: the trait bound `u64: FromSql` is not satisfied
+    --> crates/bbt-mux/src/bus.rs:1078:27
+     |
+1078 |             |row| Ok((row.get(0)?, row.get(1)?)),
+     |                           ^^^ the trait `FromSql` is not implemented for `u64`
+     |
+     = help: the following other types implement trait `FromSql`:
+               f32
+               f64
+               i16
+               i32
+               i64
+               i8
+               isize
+               u16
+             and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+    --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+     |
+ 285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+     |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+error[E0277]: the trait bound `u64: FromSql` is not satisfied
+    --> crates/bbt-mux/src/bus.rs:1078:40
+     |
+1078 |             |row| Ok((row.get(0)?, row.get(1)?)),
+     |                                        ^^^ the trait `FromSql` is not implemented for `u64`
+     |
+     = help: the following other types implement trait `FromSql`:
+               f32
+               f64
+               i16
+               i32
+               i64
+               i8
+               isize
+               u16
+             and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+    --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+     |
+ 285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+     |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+error[E0277]: the trait bound `u64: FromSql` is not satisfied
+    --> crates/bbt-mux/src/bus.rs:1143:38
+     |
+1143 |                         row.get::<_, u64>(0)?,
+     |                             ---      ^^^ the trait `FromSql` is not implemented for `u64`
+     |                             |
+     |                             required by a bound introduced by this call
+     |
+     = help: the following other types implement trait `FromSql`:
+               f32
+               f64
+               i16
+               i32
+               i64
+               i8
+               isize
+               u16
+             and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+    --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+     |
+ 285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+     |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+error[E0277]: the trait bound `usize: FromSql` is not satisfied
+    --> crates/bbt-mux/src/bus.rs:1144:38
+     |
+1144 |                         row.get::<_, usize>(1)?,
+     |                             ---      ^^^^^ the trait `FromSql` is not implemented for `usize`
+     |                             |
+     |                             required by a bound introduced by this call
+     |
+     = help: the following other types implement trait `FromSql`:
+               f32
+               f64
+               i16
+               i32
+               i64
+               i8
+               isize
+               u16
+             and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+    --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+     |
+ 285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+     |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `bbt-mux` (lib test) due to 9 previous errors
+EXIT 101; elapsed 136.511s
+
+SQL INTEGER signed-to-unsigned conversion fix; formatter0.
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'bus::gui_tests']
+OWNED_COMMAND_PID 22698
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+warning: fields `stream` and `admitted` are never read
+   --> crates/bbt-mux/src/bus.rs:218:9
+    |
+217 | pub(crate) struct GuiCursor {
+    |                   --------- fields in this struct
+218 |     pub stream: String,
+    |         ^^^^^^
+219 |     pub admitted: u64,
+    |         ^^^^^^^^
+    |
+    = note: `GuiCursor` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `cursor` is never read
+   --> crates/bbt-mux/src/bus.rs:229:9
+    |
+226 | pub(crate) struct GuiPage {
+    |                   ------- field in this struct
+...
+229 |     pub cursor: GuiCursor,
+    |         ^^^^^^
+
+warning: multiple variants are never constructed
+    --> crates/bbt-mux/src/bus.rs:1250:5
+     |
+1243 | enum Command {
+     |      ------- variants in this enum
+...
+1250 |     GuiAttach(Ulid, Vec<String>, oneshot::Sender<Result<GuiLease>>),
+     |     ^^^^^^^^^
+1251 |     GuiPoll(
+     |     ^^^^^^^
+...
+1257 |     GuiAck(GuiLease, String, u64, oneshot::Sender<Result<()>>),
+     |     ^^^^^^
+1258 |     GuiDetach(GuiLease, oneshot::Sender<Result<()>>),
+     |     ^^^^^^^^^
+1259 |     GuiCursor(GuiLease, String, oneshot::Sender<Result<GuiCursor>>),
+     |     ^^^^^^^^^
+1260 |     GuiRead(GuiLease, String, u64, oneshot::Sender<Result<GuiCursor>>),
+     |     ^^^^^^^
+1261 |     GuiPage(
+     |     ^^^^^^^
+
+warning: multiple methods are never used
+    --> crates/bbt-mux/src/bus.rs:1415:25
+     |
+1278 | impl BusHandle {
+     | -------------- methods in this implementation
+...
+1415 |     pub(crate) async fn gui_attach(&self, device: Ulid, filter: Vec<String>) -> Result<GuiLease> {
+     |                         ^^^^^^^^^^
+...
+1423 |     pub(crate) async fn gui_poll(
+     |                         ^^^^^^^^
+...
+1436 |     pub(crate) async fn gui_ack(
+     |                         ^^^^^^^
+...
+1449 |     pub(crate) async fn gui_detach(&self, lease: &GuiLease) -> Result<()> {
+     |                         ^^^^^^^^^^
+...
+1457 |     pub(crate) async fn gui_cursor(&self, lease: &GuiLease, stream: &str) -> Result<GuiCursor> {
+     |                         ^^^^^^^^^^
+...
+1465 |     pub(crate) async fn gui_read(
+     |                         ^^^^^^^^
+...
+1478 |     pub(crate) async fn gui_page(
+     |                         ^^^^^^^^
+
+warning: `bbt-mux` (lib test) generated 4 warnings
+    Finished `test` profile [optimized] target(s) in 43.18s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 5 tests
+test bus::gui_tests::gui_oversized_rows_have_a_visible_gap_and_retained_original ... ok
+test bus::gui_tests::gui_one_attachment_detaches_without_deleting_and_filter_change_versions ... ok
+test bus::gui_tests::gui_starts_new_but_replays_unpublished_pending_after_logic_restart ... ok
+test bus::gui_tests::gui_transport_ack_is_not_operator_read_and_read_marks_survive_restart ... ok
+test bus::gui_tests::gui_delivery_limit_is_audited_without_discarding_the_original_row ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 43 filtered out; finished in 0.01s
+
+EXIT 0; elapsed 43.482s
+
+Projection/server/device-binding code; app/M-a integration still in progress.
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'gui_']
+OWNED_COMMAND_PID 73286
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 29.96s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 12 tests
+test seat_socket::gui_tests::duplicate_baseline_ack_preserves_the_newer_in_flight_update ... ok
+test gui_events::tests::metadata_preserves_the_original_proof_and_rejects_tampering ... ok
+test gui_events::tests::public_activity_fields_exclude_arbitrary_bodies_and_unsafe_refs ... ok
+test seat_socket::gui_tests::repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back ... ok
+test seat_socket::gui_tests::unwatch_removes_pending_work_and_rewatch_schedules_only_once ... ok
+test bus::gui_tests::gui_oversized_rows_have_a_visible_gap_and_retained_original ... ok
+test bus::gui_tests::gui_one_attachment_detaches_without_deleting_and_filter_change_versions ... ok
+test bus::gui_tests::gui_transport_ack_is_not_operator_read_and_read_marks_survive_restart ... ok
+test bus::gui_tests::gui_starts_new_but_replays_unpublished_pending_after_logic_restart ... ok
+test bus::gui_tests::gui_delivery_limit_is_audited_without_discarding_the_original_row ... ok
+test seat_socket::gui_tests::fallback_never_requests_a_snapshot_while_an_update_is_in_flight ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.38s
+
+EXIT 0; elapsed 30.882s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'gui_']
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+warning: unused variable: `id`
+   --> crates/bbt-mux/src/seat_socket.rs:582:33
+    |
+582 |                     if let Some(id)=want_events && lane.is_none() && lane_at.is_none_or(|at|at.elapsed()>=Duration::from_secs(1)) {
+    |                                 ^^ help: if this is intentional, prefix it with an underscore: `_id`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bbt-mux` (lib test) generated 1 warning (run `cargo fix --lib -p bbt-mux --tests` to apply 1 suggestion)
+    Finished `test` profile [optimized] target(s) in 1m 17s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 13 tests
+test gui_events::tests::public_activity_fields_exclude_arbitrary_bodies_and_unsafe_refs ... ok
+test seat_socket::gui_tests::duplicate_baseline_ack_preserves_the_newer_in_flight_update ... ok
+test gui_events::tests::metadata_preserves_the_original_proof_and_rejects_tampering ... ok
+test seat_socket::gui_tests::unwatch_removes_pending_work_and_rewatch_schedules_only_once ... ok
+test seat_socket::gui_tests::repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back ... ok
+test bus::gui_tests::gui_oversized_rows_have_a_visible_gap_and_retained_original ... ok
+test bus::gui_tests::gui_one_attachment_detaches_without_deleting_and_filter_change_versions ... ok
+test bus::gui_tests::gui_defers_a_row_that_fits_a_fresh_quantum_without_emitting_a_gap ... ok
+test bus::gui_tests::gui_transport_ack_is_not_operator_read_and_read_marks_survive_restart ... ok
+test bus::gui_tests::gui_starts_new_but_replays_unpublished_pending_after_logic_restart ... ok
+test bus::gui_tests::gui_delivery_limit_is_audited_without_discarding_the_original_row ... ok
+test seat_socket::gui_tests::fallback_never_requests_a_snapshot_while_an_update_is_in_flight ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.56s
+
+EXIT 0 elapsed 78.608s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--all-targets', 'event_lane']
+OWNED_COMMAND_PID 6744
+   Compiling log v0.4.34
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+   Compiling objc2-encode v4.1.0
+   Compiling smallvec v1.16.3
+   Compiling cfg_aliases v0.2.2
+   Compiling objc2 v0.6.5
+   Compiling crc32fast v1.5.3
+   Compiling hashbrown v0.17.1
+   Compiling block2 v0.6.2
+   Compiling dispatch2 v0.3.1
+   Compiling bytemuck_derive v1.12.1
+   Compiling indexmap v2.14.2
+   Compiling ppv-lite86 v0.2.21
+   Compiling bytemuck v1.25.2
+   Compiling objc2-core-foundation v0.3.2
+   Compiling parking_lot_core v0.9.12
+   Compiling simd-adler32 v0.3.10
+   Compiling parking_lot v0.12.5
+   Compiling rustc-hash v1.1.0
+   Compiling adler2 v2.0.1
+   Compiling naga-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling bit-vec v0.9.1
+   Compiling arrayvec v0.7.8
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-set v0.10.0
+   Compiling miniz_oxide v0.9.1
+   Compiling objc2-foundation v0.3.2
+   Compiling codespan-reporting v0.13.1
+   Compiling half v2.7.1
+   Compiling static_assertions v1.1.0
+   Compiling float-cmp v0.9.0
+   Compiling cfg-if v1.0.5
+   Compiling objc-sys v0.3.5
+   Compiling unicode-ident v1.0.27
+   Compiling zlib-rs v0.6.8
+   Compiling objc2-metal v0.3.2
+   Compiling objc2-core-graphics v0.3.2
+   Compiling flate2 v1.1.10
+   Compiling objc2-quartz-core v0.3.2
+   Compiling strict-num v0.1.1
+   Compiling wgpu-types v30.0.1
+   Compiling polycool v0.4.0
+   Compiling rand_chacha v0.3.1
+   Compiling wgpu-hal v30.0.1
+   Compiling arrayref v0.3.9
+   Compiling kurbo v0.13.1
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling rand v0.8.8
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling rand_chacha v0.9.0
+   Compiling raw-window-metal v1.1.0
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling mio v1.2.4
+   Compiling libloading v0.8.9
+   Compiling bitflags v2.13.2
+   Compiling profiling v1.0.18
+   Compiling siphasher v1.0.4
+   Compiling svgtypes v0.16.1
+   Compiling png v0.18.1
+   Compiling tokio v1.54.1
+   Compiling objc2 v0.5.3
+   Compiling rand v0.9.5
+   Compiling num-bigint-dig v0.8.6
+   Compiling simplecss v0.2.2
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling wgpu-core v30.0.1
+   Compiling euclid v0.22.14
+   Compiling pico-args v0.5.0
+   Compiling data-url v0.3.2
+   Compiling regex-syntax v0.8.11
+   Compiling litrs v1.0.1
+   Compiling imagesize v0.15.0
+   Compiling usvg v0.48.1
+   Compiling regex-automata v0.4.18
+   Compiling document-features v0.2.12
+   Compiling lyon_geom v1.0.20
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling ulid v1.2.1
+   Compiling block2 v0.5.1
+   Compiling tiny-skia v0.12.0
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling rgb v0.8.53
+   Compiling core-foundation v0.9.4
+   Compiling wgpu v30.0.1
+   Compiling foreign-types-macros v0.2.4
+   Compiling foreign-types-shared v0.3.1
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling objc2-foundation v0.2.2
+   Compiling core-graphics-types v0.1.3
+   Compiling tungstenite v0.30.0
+   Compiling portable-pty v0.9.0
+   Compiling foreign-types v0.5.0
+   Compiling rsa v0.9.10
+   Compiling resvg v0.48.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling regex v1.13.1
+   Compiling lyon_path v1.0.19
+   Compiling dsa v0.6.3
+   Compiling hashlink v0.12.2
+   Compiling winit v0.30.13
+   Compiling tracing-core v0.1.36
+   Compiling float_next_after v1.0.0
+   Compiling lyon_tessellation v1.0.22
+   Compiling rusqlite v0.40.2
+   Compiling petgraph v0.8.3
+   Compiling pgp v0.21.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling tracing v0.1.44
+   Compiling notify v8.2.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling core-graphics v0.23.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling objc2-app-kit v0.2.2
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling pollster v0.4.0
+   Compiling dpi v0.1.2
+   Compiling smol_str v0.2.2
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling objc2-app-kit v0.3.2
+error[E0004]: non-exhaustive patterns: `bboxy450_term::cockpit::UiMsg::EventPage { .. }`, `bboxy450_term::cockpit::UiMsg::EventCursor { .. }` and `bboxy450_term::cockpit::UiMsg::MarkEventsRead { .. }` not covered
+    --> crates/bboxy450-term/src/main.rs:2857:19
+     |
+2857 |               match receiver
+     |  ___________________^
+2858 | |                 .try_recv()
+2859 | |                 .expect("capacity-one reconnect must make progress")
+     | |____________________________________________________________________^ patterns `bboxy450_term::cockpit::UiMsg::EventPage { .. }`, `bboxy450_term::cockpit::UiMsg::EventCursor { .. }` and `bboxy450_term::cockpit::UiMsg::MarkEventsRead { .. }` not covered
+     |
+note: `bboxy450_term::cockpit::UiMsg` defined here
+    --> crates/bboxy450-term/src/cockpit.rs:32:1
+     |
+  32 | pub enum UiMsg {
+     | ^^^^^^^^^^^^^^
+...
+  71 |     EventPage {
+     |     --------- not covered
+...
+  76 |     EventCursor {
+     |     ----------- not covered
+...
+  80 |     MarkEventsRead {
+     |     -------------- not covered
+     = note: the matched value is of type `bboxy450_term::cockpit::UiMsg`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+     |
+2877 ~                 },
+2878 +                 bboxy450_term::cockpit::UiMsg::EventPage { .. } | bboxy450_term::cockpit::UiMsg::EventCursor { .. } | bboxy450_term::cockpit::UiMsg::MarkEventsRead { .. } => todo!()
+     |
+
+For more information about this error, try `rustc --explain E0004`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+EXIT 101 elapsed 368.565s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'gui_']
+OWNED_COMMAND_PID 25985
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 2m 03s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 15 tests
+test gui_events::tests::metadata_preserves_the_original_proof_and_rejects_tampering ... ok
+test gui_events::tests::public_activity_fields_exclude_arbitrary_bodies_and_unsafe_refs ... ok
+test seat_socket::gui_tests::duplicate_baseline_ack_preserves_the_newer_in_flight_update ... ok
+test bus::gui_tests::gui_deduplicated_publish_wakes_a_retained_append_not_yet_routed ... ok
+test bus::gui_tests::gui_oversized_rows_have_a_visible_gap_and_retained_original ... ok
+test seat_socket::gui_tests::unwatch_removes_pending_work_and_rewatch_schedules_only_once ... ok
+test seat_socket::gui_tests::repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back ... ok
+test bus::gui_tests::gui_starts_new_but_replays_unpublished_pending_after_logic_restart ... ok
+test bus::gui_tests::gui_delivery_limit_is_audited_without_discarding_the_original_row ... ok
+test bus::gui_tests::gui_transport_ack_is_not_operator_read_and_read_marks_survive_restart ... ok
+test bus::gui_tests::gui_one_attachment_detaches_without_deleting_and_filter_change_versions ... ok
+test bus::gui_tests::gui_defers_a_row_that_fits_a_fresh_quantum_without_emitting_a_gap ... ok
+test bus::gui_tests::gui_filter_migration_keeps_pending_and_tail_but_new_subjects_start_at_head ... ok
+test seat_socket::gui_tests::fallback_never_requests_a_snapshot_while_an_update_is_in_flight ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.52s
+
+EXIT 0 elapsed 125.798s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'gui_events', '--', '--nocapture']
+OWNED_COMMAND_PID 31445
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+warning: unused import: `Update`
+  --> crates/bbt-mux/tests/gui_events.rs:13:46
+   |
+13 |     GuiAction, GuiReply, GuiRequest, SeatId, Update, View,
+   |                                              ^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0308]: mismatched types
+   --> crates/bbt-mux/tests/gui_events.rs:321:55
+    |
+321 |         gui.send(GuiAction::Messaging {id:op,swarm_id:SWARM,request:Request::Send {message}}).await;
+    |                                                       ^^^^^ expected `SwarmId`, found `Ulid`
+
+For more information about this error, try `rustc --explain E0308`.
+warning: `bbt-mux` (test "gui_events") generated 1 warning
+error: could not compile `bbt-mux` (test "gui_events") due to 1 previous error; 1 warning emitted
+EXIT 101 elapsed 132.643s
+
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+OWNED_COMMAND_PID 38302
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking cfg-if v1.0.5
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+    Checking zmij v1.0.23
+   Compiling winnow v1.0.4
+    Checking serde v1.0.229
+    Checking serde_json v1.0.154
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking bitflags v2.13.2
+    Checking log v0.4.34
+    Checking arrayvec v0.7.8
+    Checking typenum v1.20.1
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking smallvec v1.16.3
+    Checking zeroize v1.9.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking zerocopy v0.8.63
+    Checking unicode-width v0.2.2
+    Checking getrandom v0.2.17
+    Checking foldhash v0.2.0
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking hashbrown v0.17.1
+    Checking rand_core v0.6.4
+    Checking parking_lot_core v0.9.12
+    Checking generic-array v0.14.7
+    Checking parking_lot v0.12.5
+    Checking equivalent v1.0.3
+    Checking indexmap v2.14.2
+    Checking libm v0.2.16
+    Checking num-traits v0.2.19
+    Checking cursor-icon v1.2.0
+    Checking pin-project-lite v0.2.17
+    Checking crypto-common v0.1.7
+    Checking once_cell v1.21.4
+    Checking thiserror v2.0.21
+    Checking subtle v2.6.1
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking crc32fast v1.5.3
+    Checking miniz_oxide v0.9.1
+    Checking zlib-rs v0.6.8
+    Checking const-oid v0.9.6
+    Checking unsafe-libyaml v0.2.11
+    Checking core-foundation-sys v0.8.7
+    Checking flate2 v1.1.10
+    Checking ryu v1.0.23
+    Checking serde_yaml v0.9.34+deprecated
+    Checking block-buffer v0.10.4
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking digest v0.10.7
+    Checking objc2-encode v4.1.0
+    Checking objc2 v0.6.5
+    Checking bytes v1.12.1
+    Checking block2 v0.6.2
+    Checking dispatch2 v0.3.1
+    Checking bytemuck v1.25.2
+    Checking objc2-core-foundation v0.3.2
+    Checking errno v0.3.14
+    Checking unicode-ident v1.0.27
+    Checking base64 v0.22.1
+    Checking serde-big-array v0.5.1
+    Checking cpufeatures v0.2.17
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking objc2-foundation v0.3.2
+    Checking signal-hook-registry v1.4.8
+    Checking mio v1.2.4
+    Checking socket2 v0.6.5
+    Checking bit-vec v0.9.1
+    Checking raw-window-handle v0.6.2
+    Checking objc2-metal v0.3.2
+    Checking bit-set v0.10.0
+    Checking tokio v1.54.1
+    Checking objc2-core-graphics v0.3.2
+    Checking half v2.7.1
+    Checking codespan-reporting v0.13.1
+    Checking static_assertions v1.1.0
+    Checking wgpu-types v30.0.1
+    Checking naga v30.0.1
+    Checking objc2-quartz-core v0.3.2
+    Checking float-cmp v0.9.0
+    Checking base64ct v1.8.3
+    Checking strict-num v0.1.1
+    Checking raw-window-metal v1.1.0
+    Checking polycool v0.4.0
+    Checking libloading v0.8.9
+    Checking profiling v1.0.18
+    Checking arrayref v0.3.9
+    Checking tiny-skia-path v0.12.0
+    Checking kurbo v0.13.1
+    Checking fdeflate v0.3.7
+    Checking miniz_oxide v0.8.9
+    Checking ppv-lite86 v0.2.21
+    Checking euclid v0.22.14
+    Checking siphasher v1.0.4
+    Checking svgtypes v0.16.1
+    Checking lyon_geom v1.0.20
+    Checking png v0.18.1
+    Checking wgpu-naga-bridge v30.0.1
+    Checking wgpu-hal v30.0.1
+    Checking pem-rfc7468 v0.7.0
+    Checking inout v0.1.4
+    Checking simplecss v0.2.2
+    Checking roxmltree v0.21.1
+    Checking pico-args v0.5.0
+    Checking data-url v0.3.2
+    Checking imagesize v0.15.0
+    Checking usvg v0.48.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking cipher v0.4.4
+    Checking der v0.7.10
+    Checking tiny-skia v0.12.0
+    Checking lyon_path v1.0.19
+    Checking rgb v0.8.53
+    Checking float_next_after v1.0.0
+    Checking lyon_tessellation v1.0.22
+    Checking resvg v0.48.1
+    Checking spki v0.7.3
+    Checking objc2-core-text v0.3.2
+    Checking pollster v0.4.0
+    Checking pkcs8 v0.10.2
+    Checking sha2-asm v0.6.4
+    Checking tap v1.0.1
+    Checking wyz v0.5.1
+    Checking sha2 v0.10.9
+    Checking getrandom v0.3.4
+    Checking radium v0.7.0
+    Checking objc-sys v0.3.5
+    Checking hmac v0.12.1
+    Checking futures-task v0.3.34
+    Checking base16ct v0.2.0
+    Checking slab v0.4.12
+    Checking wgpu v30.0.1
+    Checking futures-core v0.3.34
+    Checking funty v2.0.0
+    Checking futures-sink v0.3.34
+    Checking futures-util v0.3.34
+    Checking bitvec v1.1.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking objc2 v0.5.3
+    Checking rand_core v0.9.5
+    Checking signature v2.2.0
+    Checking ff v0.13.1
+    Checking rand_chacha v0.9.0
+    Checking block2 v0.5.1
+    Checking crossbeam-utils v0.8.23
+    Checking serdect v0.2.0
+    Checking core-foundation v0.9.4
+    Checking bitflags v1.3.2
+    Checking rand_core v0.10.1
+    Checking dispatch v0.2.0
+    Checking foreign-types-shared v0.3.1
+    Checking foreign-types v0.5.0
+    Checking objc2-foundation v0.2.2
+    Checking core-graphics-types v0.1.3
+    Checking crossbeam-queue v0.3.14
+    Checking sec1 v0.7.3
+    Checking rand v0.9.5
+    Checking group v0.13.0
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+    Checking tracing-core v0.1.36
+    Checking tracing v0.1.44
+    Checking elliptic-curve v0.13.8
+    Checking ulid v1.2.1
+    Checking core-graphics v0.23.2
+    Checking objc2-app-kit v0.2.2
+    Checking getrandom v0.4.3
+    Checking dpi v0.1.2
+    Checking smol_str v0.2.2
+    Checking thiserror v1.0.69
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking rfc6979 v0.4.0
+    Checking const-oid v0.10.2
+    Checking digest v0.11.3
+    Checking zstd-safe v8.2.0
+    Checking nix v0.28.0
+    Checking filedescriptor v0.8.3
+    Checking anyhow v1.0.104
+    Checking serial2 v0.2.38
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+    Checking portable-pty v0.9.0
+    Checking zstd v0.14.3
+    Checking ecdsa v0.16.9
+    Checking rand_chacha v0.3.1
+    Checking num-integer v0.1.47
+    Checking winit v0.30.13
+    Checking cpufeatures v0.3.1
+    Checking spin v0.9.9
+    Checking lazy_static v1.5.1
+    Checking num-iter v0.1.46
+    Checking rand v0.8.8
+    Checking primeorder v0.13.6
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+    Checking universal-hash v0.5.1
+   Compiling pulldown-cmark v0.13.4
+    Checking opaque-debug v0.3.1
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking polyval v0.6.2
+    Checking curve25519-dalek v4.1.3
+    Checking num-bigint-dig v0.8.6
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking chacha20 v0.10.2
+    Checking aes v0.8.4
+    Checking keccak v0.1.6
+    Checking dbl v0.3.2
+    Checking unicase v2.10.0
+    Checking byteorder v1.5.0
+    Checking cmac v0.7.2
+    Checking sha3 v0.10.9
+    Checking rand v0.10.3
+    Checking httparse v1.10.1
+    Checking rustix v1.1.5
+    Checking ghash v0.5.1
+    Checking sha1 v0.11.0
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking password-hash v0.5.0
+    Checking sha1 v0.10.7
+    Checking http v1.5.0
+    Checking blake2 v0.10.6
+    Checking unicode-segmentation v1.13.3
+    Checking data-encoding v2.11.1
+    Checking foldhash v0.1.5
+    Checking fastrand v2.5.0
+    Checking same-file v1.0.6
+    Checking signature v3.0.0
+    Checking tempfile v3.27.0
+    Checking ed25519 v3.0.0
+    Checking walkdir v2.5.0
+    Checking hashbrown v0.15.5
+    Checking tungstenite v0.30.0
+    Checking argon2 v0.5.3
+    Checking num_enum v0.7.6
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking libsqlite3-sys v0.38.2
+    Checking aes-gcm v0.10.3
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking curve25519-dalek v5.0.0
+    Checking eax v0.5.0
+    Checking derive_more v2.1.1
+    Checking crc24 v0.1.6
+    Checking snafu v0.9.2
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking aes-kw v0.2.1
+    Checking dsa v0.6.3
+    Checking x25519-dalek v2.0.1
+    Checking ocb3 v0.1.0
+    Checking p256 v0.13.2
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking sha2 v0.11.1
+    Checking k256 v0.13.4
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking idea v0.5.1
+    Checking cast5 v0.11.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking block-padding v0.3.3
+    Checking hashlink v0.12.2
+    Checking notify-types v2.1.0
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking fsevent-sys v4.1.0
+    Checking fixedbitset v0.5.7
+    Checking replace_with v0.1.8
+    Checking fallible-iterator v0.3.0
+    Checking hex v0.4.3
+    Checking fallible-streaming-iterator v0.1.9
+    Checking rusqlite v0.40.2
+    Checking petgraph v0.8.3
+    Checking pgp v0.21.0
+    Checking notify v8.2.0
+    Checking security-framework v3.7.0
+    Checking ed25519-dalek v3.0.0
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking toml_datetime v1.1.2+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling proc-macro-crate v3.5.0
+    Checking objc2-app-kit v0.3.2
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking serde_spanned v1.1.2
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking tokio-util v0.7.19
+    Checking termcolor v1.4.1
+    Checking glob v0.3.4
+    Checking trybuild v1.0.120
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking aho-corasick v1.1.5
+error: returning the result of a `let` binding from a block
+   --> crates/bbt-mux/src/bus.rs:608:13
+    |
+603 | /             let values = statement
+604 | |                 .query_map(params![sqlint(cursor)?, limit as i64], |row| {
+605 | |                     Ok((gui_uint(row, 0)?, row.get::<_, String>(1)?))
+606 | |                 })?
+607 | |                 .collect::<std::result::Result<Vec<_>, _>>()?;
+    | |______________________________________________________________- unnecessary `let` binding
+608 |               values
+    |               ^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#let_and_return
+    = note: `-D clippy::let-and-return` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
+help: return the expression directly
+    |
+603 ~             
+604 ~             statement
+605 +                 .query_map(params![sqlint(cursor)?, limit as i64], |row| {
+606 +                     Ok((gui_uint(row, 0)?, row.get::<_, String>(1)?))
+607 +                 })?
+608 +                 .collect::<std::result::Result<Vec<_>, _>>()?
+    |
+
+error: returning the result of a `let` binding from a block
+   --> crates/bbt-mux/src/bus.rs:649:13
+    |
+636 | /             let values = statement
+637 | |                 .query_map(params![id, sqlint(after)?, limit as i64], |row| {
+638 | |                     Ok((
+639 | |                         gui_uint(row, 0)?,
+...   |
+647 | |                 })?
+648 | |                 .collect::<std::result::Result<Vec<_>, _>>()?;
+    | |______________________________________________________________- unnecessary `let` binding
+649 |               values
+    |               ^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#let_and_return
+help: return the expression directly
+    |
+636 ~             
+637 ~             statement
+638 +                 .query_map(params![id, sqlint(after)?, limit as i64], |row| {
+639 +                     Ok((
+640 +                         gui_uint(row, 0)?,
+641 +                         gui_uint(row, 1)?,
+642 +                         row.get::<_, u32>(2)?,
+643 +                         gui_uint(row, 3)?,
+644 +                         row.get::<_, String>(4)?,
+645 +                         gui_uint(row, 5)?,
+646 +                         row.get::<_, String>(6)?,
+647 +                     ))
+648 +                 })?
+649 +                 .collect::<std::result::Result<Vec<_>, _>>()?
+    |
+
+error: returning the result of a `let` binding from a block
+    --> crates/bbt-mux/src/bus.rs:1359:13
+     |
+1349 | /             let rows = statement
+1350 | |                 .query_map(params![sqlint(after)?, limit as i64], |row| {
+1351 | |                     Ok((
+1352 | |                         gui_uint(row, 0)?,
+...    |
+1357 | |                 })?
+1358 | |                 .collect::<std::result::Result<Vec<_>, _>>()?;
+     | |______________________________________________________________- unnecessary `let` binding
+1359 |               rows
+     |               ^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#let_and_return
+help: return the expression directly
+     |
+1349 ~             
+1350 ~             statement
+1351 +                 .query_map(params![sqlint(after)?, limit as i64], |row| {
+1352 +                     Ok((
+1353 +                         gui_uint(row, 0)?,
+1354 +                         gui_uint(row, 1)?,
+1355 +                         row.get::<_, String>(2)?,
+1356 +                         row.get::<_, String>(3)?,
+1357 +                     ))
+1358 +                 })?
+1359 +                 .collect::<std::result::Result<Vec<_>, _>>()?
+     |
+
+error: could not compile `bbt-mux` (lib) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+EXIT 101 elapsed 236.180s
+
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+OWNED_COMMAND_PID 57383
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking regex-syntax v0.8.11
+    Checking regex-automata v0.4.18
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking regex v1.13.1
+    Checking hashbrown v0.17.1
+    Checking unicode-ident v1.0.27
+    Checking winnow v1.0.4
+    Checking equivalent v1.0.3
+    Checking indexmap v2.14.2
+    Checking toml_parser v1.1.5+spec-1.1.0
+    Checking proc-macro2 v1.0.107
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking toml_edit v0.25.17+spec-1.1.0
+    Checking quote v1.0.47
+    Checking syn v2.0.119
+    Checking proc-macro-crate v3.5.0
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Finished `dev` profile [optimized] target(s) in 40.55s
+EXIT 0 elapsed 40.786s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--lib', 'gui_']
+OWNED_COMMAND_PID 59885
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1m 29s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bbt_mux-5270645b97a77e6c)
+
+running 16 tests
+test gui_events::tests::metadata_preserves_the_original_proof_and_rejects_tampering ... ok
+test gui_events::tests::public_activity_fields_exclude_arbitrary_bodies_and_unsafe_refs ... ok
+test seat_socket::gui_tests::duplicate_baseline_ack_preserves_the_newer_in_flight_update ... ok
+test bus::gui_tests::gui_oversized_rows_have_a_visible_gap_and_retained_original ... ok
+test bus::gui_tests::gui_deduplicated_publish_wakes_a_retained_append_not_yet_routed ... ok
+test seat_socket::gui_tests::repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back ... ok
+test seat_socket::gui_tests::unwatch_removes_pending_work_and_rewatch_schedules_only_once ... ok
+test bus::gui_tests::gui_starts_new_but_replays_unpublished_pending_after_logic_restart ... ok
+test bus::gui_tests::gui_transport_ack_is_not_operator_read_and_read_marks_survive_restart ... ok
+test bus::gui_tests::gui_defers_a_row_that_fits_a_fresh_quantum_without_emitting_a_gap ... ok
+test bus::gui_tests::gui_one_attachment_detaches_without_deleting_and_filter_change_versions ... ok
+test bus::gui_tests::gui_delivery_limit_is_audited_without_discarding_the_original_row ... ok
+test bus::gui_tests::gui_filter_migration_resumes_after_a_crash_between_streams ... ok
+test bus::gui_tests::gui_filter_migration_keeps_pending_and_tail_but_new_subjects_start_at_head ... ok
+test seat_socket::gui_tests::fallback_never_requests_a_snapshot_while_an_update_is_in_flight ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.45s
+
+EXIT 0 elapsed 89.804s
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'gui_events', '--', '--nocapture']
+OWNED_COMMAND_PID 63256
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1m 19s
+     Running tests/gui_events.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/gui_events-9d07ed46aa5f3570)
+
+running 2 tests
+test gui_event_fixture_child ... ignored, spawned only by the parent with its private fixture paths
+
+thread 'durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls' (19211285) panicked at crates/bbt-mux/tests/gui_events.rs:335:6:
+called `Result::unwrap()` on an `Err` value: Custom { kind: PermissionDenied, error: "runtime parent must be owned and mode 0700" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls ... FAILED
+
+failures:
+
+failures:
+    durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls
+
+test result: FAILED. 0 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p bbt-mux --test gui_events`
+EXIT 101 elapsed 79.455s
+
+Disk floor event: df reported4.3GiB free, all own checks stopped after fixture101. Deleted ONLY own dev-target after gate process exit, cleanup0. Shared10GiB floor, no peer directory touched.
+
+SOURCE ff8b298dc12dbc5603cfd1c8503c05add2a39b70
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'gui_events', '--', '--nocapture']
+OWNED_COMMAND_PID 79652
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling cfg-if v1.0.5
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling subtle v2.6.1
+   Compiling syn v3.0.9
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling const-oid v0.9.6
+   Compiling crypto-common v0.1.7
+   Compiling serde_core v1.0.229
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling serde v1.0.229
+   Compiling jobserver v0.1.35
+   Compiling serde_derive v1.0.229
+   Compiling find-msvc-tools v0.1.15
+   Compiling shlex v2.0.1
+   Compiling cc v1.9.0
+   Compiling zmij v1.0.23
+   Compiling cpufeatures v0.2.17
+   Compiling base64ct v1.8.3
+   Compiling inout v0.1.4
+   Compiling itoa v1.0.18
+   Compiling pem-rfc7468 v0.7.0
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling memchr v2.8.3
+   Compiling radium v0.7.0
+   Compiling zerocopy v0.8.63
+   Compiling spki v0.7.3
+   Compiling pkcs8 v0.10.2
+   Compiling serde_json v1.0.154
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling hmac v0.12.1
+   Compiling funty v2.0.0
+   Compiling base16ct v0.2.0
+   Compiling bitvec v1.1.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling sha2-asm v0.6.4
+   Compiling bitflags v2.13.2
+   Compiling signature v2.2.0
+   Compiling pkg-config v0.3.34
+   Compiling log v0.4.34
+   Compiling bytes v1.12.1
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+   Compiling ff v0.13.1
+   Compiling serdect v0.2.0
+   Compiling smallvec v1.16.3
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling libm v0.2.16
+   Compiling autocfg v1.5.1
+   Compiling thiserror v2.0.21
+   Compiling num-traits v0.2.19
+   Compiling sha2 v0.10.9
+   Compiling elliptic-curve v0.13.8
+   Compiling getrandom v0.3.4
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling rfc6979 v0.4.0
+   Compiling thiserror-impl v2.0.21
+   Compiling errno v0.3.14
+   Compiling ident_case v1.0.1
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+   Compiling const-oid v0.10.2
+   Compiling digest v0.11.3
+   Compiling darling_core v0.20.11
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling parking_lot_core v0.9.12
+   Compiling getrandom v0.4.3
+   Compiling foldhash v0.2.0
+   Compiling rand_core v0.10.1
+   Compiling winnow v1.0.4
+   Compiling darling_macro v0.20.11
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling hashbrown v0.17.1
+   Compiling rand_core v0.9.5
+   Compiling num-integer v0.1.47
+   Compiling ecdsa v0.16.9
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling curve25519-dalek v4.1.3
+   Compiling rand_chacha v0.3.1
+   Compiling cpufeatures v0.3.1
+   Compiling scopeguard v1.2.0
+   Compiling num-bigint-dig v0.8.6
+   Compiling pin-project-lite v0.2.17
+   Compiling winnow v0.7.15
+   Compiling cfg_aliases v0.1.1
+   Compiling thiserror v1.0.69
+   Compiling crossbeam-utils v0.8.23
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling spin v0.9.9
+   Compiling lazy_static v1.5.1
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling nix v0.28.0
+   Compiling lock_api v0.4.14
+   Compiling rand v0.8.8
+   Compiling num-iter v0.1.46
+   Compiling rand_chacha v0.9.0
+   Compiling darling v0.20.11
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling aead v0.5.2
+   Compiling mio v1.2.4
+   Compiling ctr v0.9.2
+   Compiling universal-hash v0.5.1
+   Compiling tokio-macros v2.7.2
+   Compiling thiserror-impl v1.0.69
+   Compiling socket2 v0.6.5
+   Compiling vcpkg v0.2.15
+   Compiling unicode-segmentation v1.13.3
+   Compiling base64 v0.22.1
+   Compiling opaque-debug v0.3.1
+   Compiling zstd-safe v8.2.0
+   Compiling httparse v1.10.1
+   Compiling rustversion v1.0.23
+   Compiling anyhow v1.0.104
+   Compiling polyval v0.6.2
+   Compiling convert_case v0.10.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling tokio v1.54.1
+   Compiling derive_builder_core v0.20.2
+   Compiling parking_lot v0.12.5
+   Compiling rand v0.9.5
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling aes v0.8.4
+   Compiling keccak v0.1.6
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling dbl v0.3.2
+   Compiling heck v0.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling unicode-width v0.2.2
+   Compiling core-foundation-sys v0.8.7
+   Compiling once_cell v1.21.4
+   Compiling byteorder v1.5.0
+   Compiling cursor-icon v1.2.0
+   Compiling crc24 v0.1.6
+   Compiling equivalent v1.0.3
+   Compiling indexmap v2.14.2
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling ulid v1.2.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling bitfields-impl v1.0.3
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling futures-macro v0.3.34
+   Compiling num_enum_derive v0.7.6
+   Compiling serial2 v0.2.38
+   Compiling rustix v1.1.5
+   Compiling slab v0.4.12
+   Compiling downcast-rs v1.2.1
+   Compiling futures-task v0.3.34
+   Compiling data-encoding v2.11.1
+   Compiling foldhash v0.1.5
+   Compiling futures-core v0.3.34
+   Compiling same-file v1.0.6
+   Compiling zlib-rs v0.6.8
+   Compiling futures-sink v0.3.34
+   Compiling signature v3.0.0
+   Compiling shell-words v1.1.1
+   Compiling portable-pty v0.9.0
+   Compiling ed25519 v3.0.0
+   Compiling futures-util v0.3.34
+   Compiling flate2 v1.1.10
+   Compiling walkdir v2.5.0
+   Compiling hashbrown v0.15.5
+   Compiling tungstenite v0.30.0
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling aes-gcm v0.10.3
+   Compiling zstd v0.14.3
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling eax v0.5.0
+   Compiling snafu v0.9.2
+   Compiling derive_more v2.1.1
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling k256 v0.13.4
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling dsa v0.6.3
+   Compiling ocb3 v0.1.0
+   Compiling p521 v0.13.3
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling sha2 v0.11.1
+   Compiling hashlink v0.12.2
+   Compiling notify-types v2.1.0
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling cast5 v0.11.1
+   Compiling idea v0.5.1
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling hex v0.4.3
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling ryu v1.0.23
+   Compiling fallible-iterator v0.3.0
+   Compiling fixedbitset v0.5.7
+   Compiling unsafe-libyaml v0.2.11
+   Compiling replace_with v0.1.8
+   Compiling pgp v0.21.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling petgraph v0.8.3
+   Compiling rusqlite v0.40.2
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling security-framework v3.7.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 3m 56s
+     Running tests/gui_events.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/gui_events-9d07ed46aa5f3570)
+
+running 2 tests
+test gui_event_fixture_child ... ignored, spawned only by the parent with its private fixture paths
+gui-events owned logic fixture pid=85274
+gui-events owned logic fixture pid=85282
+gui-events real kill/restart: 1 consumer; 1 exact replay; 42 unique artifact rows; read watermark=23; input/resize serviced during events in 228.787542ms
+test durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.24s
+
+EXIT 0 elapsed 237.948s
+
+SOURCE ff8b298dc12dbc5603cfd1c8503c05add2a39b70
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--all-targets', 'event_']
+OWNED_COMMAND_PID 85293
+   Compiling log v0.4.34
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+   Compiling objc2-encode v4.1.0
+   Compiling smallvec v1.16.3
+   Compiling cfg_aliases v0.2.2
+   Compiling crc32fast v1.5.3
+   Compiling objc2 v0.6.5
+   Compiling hashbrown v0.17.1
+   Compiling block2 v0.6.2
+   Compiling dispatch2 v0.3.1
+   Compiling bytemuck_derive v1.12.1
+   Compiling indexmap v2.14.2
+   Compiling ppv-lite86 v0.2.21
+   Compiling objc2-core-foundation v0.3.2
+   Compiling bytemuck v1.25.2
+   Compiling parking_lot_core v0.9.12
+   Compiling simd-adler32 v0.3.10
+   Compiling parking_lot v0.12.5
+   Compiling objc2-foundation v0.3.2
+   Compiling adler2 v2.0.1
+   Compiling rustc-hash v1.1.0
+   Compiling naga-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling bit-vec v0.9.1
+   Compiling arrayvec v0.7.8
+   Compiling raw-window-handle v0.6.2
+   Compiling objc2-metal v0.3.2
+   Compiling bit-set v0.10.0
+   Compiling miniz_oxide v0.9.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling codespan-reporting v0.13.1
+   Compiling half v2.7.1
+   Compiling static_assertions v1.1.0
+   Compiling unicode-ident v1.0.27
+   Compiling objc-sys v0.3.5
+   Compiling zlib-rs v0.6.8
+   Compiling float-cmp v0.9.0
+   Compiling cfg-if v1.0.5
+   Compiling strict-num v0.1.1
+   Compiling flate2 v1.1.10
+   Compiling wgpu-types v30.0.1
+   Compiling objc2-quartz-core v0.3.2
+   Compiling polycool v0.4.0
+   Compiling rand_chacha v0.3.1
+   Compiling wgpu-hal v30.0.1
+   Compiling arrayref v0.3.9
+   Compiling kurbo v0.13.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling rand v0.8.8
+   Compiling rand_chacha v0.9.0
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling mio v1.2.4
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling bitflags v2.13.2
+   Compiling siphasher v1.0.4
+   Compiling svgtypes v0.16.1
+   Compiling png v0.18.1
+   Compiling tokio v1.54.1
+   Compiling objc2 v0.5.3
+   Compiling rand v0.9.5
+   Compiling num-bigint-dig v0.8.6
+   Compiling simplecss v0.2.2
+   Compiling roxmltree v0.21.1
+   Compiling aho-corasick v1.1.5
+   Compiling wgpu-core v30.0.1
+   Compiling euclid v0.22.14
+   Compiling pico-args v0.5.0
+   Compiling litrs v1.0.1
+   Compiling regex-syntax v0.8.11
+   Compiling imagesize v0.15.0
+   Compiling data-url v0.3.2
+   Compiling usvg v0.48.1
+   Compiling regex-automata v0.4.18
+   Compiling document-features v0.2.12
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling lyon_geom v1.0.20
+   Compiling ulid v1.2.1
+   Compiling block2 v0.5.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling tiny-skia v0.12.0
+   Compiling rgb v0.8.53
+   Compiling core-foundation v0.9.4
+   Compiling wgpu v30.0.1
+   Compiling foreign-types-macros v0.2.4
+   Compiling foreign-types-shared v0.3.1
+   Compiling bitflags v1.3.2
+   Compiling dispatch v0.2.0
+   Compiling portable-pty v0.9.0
+   Compiling objc2-foundation v0.2.2
+   Compiling core-graphics-types v0.1.3
+   Compiling tungstenite v0.30.0
+   Compiling foreign-types v0.5.0
+   Compiling rsa v0.9.10
+   Compiling resvg v0.48.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling lyon_path v1.0.19
+   Compiling regex v1.13.1
+   Compiling dsa v0.6.3
+   Compiling hashlink v0.12.2
+   Compiling winit v0.30.13
+   Compiling float_next_after v1.0.0
+   Compiling tracing-core v0.1.36
+   Compiling rusqlite v0.40.2
+   Compiling pgp v0.21.0
+   Compiling tracing v0.1.44
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling lyon_tessellation v1.0.22
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling core-graphics v0.23.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling objc2-app-kit v0.2.2
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling smol_str v0.2.2
+   Compiling pollster v0.4.0
+   Compiling dpi v0.1.2
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling objc2-app-kit v0.3.2
+    Finished `test` profile [optimized] target(s) in 2m 17s
+     Running unittests src/lib.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bboxy450_term-c73f959280942a3a)
+
+running 6 tests
+test model::event_lane_tests::stale_transport_snapshots_cannot_roll_back_operator_read_state ... ok
+test model::event_lane_tests::sparse_history_pages_keep_next_without_acknowledging_or_marking_read ... ok
+test model::event_lane_tests::metadata_rebuild_and_reconnect_preserve_the_published_window ... ok
+test model::event_lane_tests::rows_dedupe_by_canonical_identity_and_keep_per_stream_order ... ok
+test model::event_lane_tests::window_eviction_is_visible_and_old_replays_do_not_repopulate_it ... ok
+test model::event_lane_tests::byte_budget_is_independent_of_row_count ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bboxy450_term-1777b3d526f86f71)
+
+running 1 test
+test live::tests::event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 50 filtered out; finished in 0.00s
+
+     Running tests/cockpit.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/cockpit-8d508e3d131d42ec)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/custody.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/custody-1180325e10aa3ba7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/hosts.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/hosts-06c387817605b5de)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/launcher.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/launcher-670ee66ab4bffdfa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/lifecycle-67e646ece33504b8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/r5_stall.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/r5_stall-6802d3666d3f8f4d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/recovery.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/recovery-4a49ffb73d34d094)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+EXIT 0 elapsed 139.311s
+
+SOURCE 19f26fed286acc3418e4d7b69dbbf3a76e927aee
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'provider_gui']
+OWNED_COMMAND_PID 88956
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 4.26s
+     Running tests/provider_gui.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/provider_gui-5aa6e5f30f566b0f)
+
+running 2 tests
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.80s
+
+EXIT 0 elapsed 6.486s
+
+SOURCE 19f26fed286acc3418e4d7b69dbbf3a76e927aee
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'cockpit', '--test', 'recovery', '--test', 'lifecycle', '--test', 'custody']
+OWNED_COMMAND_PID 89367
+    Finished `test` profile [optimized] target(s) in 0.14s
+     Running tests/cockpit.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/cockpit-8d508e3d131d42ec)
+
+running 5 tests
+logic: orderly shutdown requested
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... FAILED
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... FAILED
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... FAILED
+
+failures:
+
+---- same_run_directory_relaunches_and_spawns_after_orderly_shutdown stdout ----
+
+thread 'same_run_directory_relaunches_and_spawns_after_orderly_shutdown' (19339988) panicked at crates/bboxy450-term/tests/cockpit.rs:85:26:
+unexpected spawn response: Identity(GuiIdentity { state: LocalDev, reason: None })
+
+---- cancelled_exit_watch_preserves_orderly_child_shutdown stdout ----
+
+thread 'cancelled_exit_watch_preserves_orderly_child_shutdown' (19339985) panicked at crates/bboxy450-term/tests/cockpit.rs:298:5:
+assertion failed: tokio::time::timeout(Duration::from_millis(50),
+            session.event()).await.is_err()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection stdout ----
+
+thread 'real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection' (19339987) panicked at crates/bboxy450-term/tests/cockpit.rs:85:26:
+unexpected spawn response: Identity(GuiIdentity { state: LocalDev, reason: None })
+
+
+failures:
+    cancelled_exit_watch_preserves_orderly_child_shutdown
+    real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection
+    same_run_directory_relaunches_and_spawns_after_orderly_shutdown
+
+test result: FAILED. 2 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+
+error: test failed, to rerun pass `-p bboxy450-term --test cockpit`
+EXIT 101 elapsed 0.969s
+
+NOTE: app event_ dev run uses ff8b298 plus sparse-page model/live patch, bytes stable before app compile, now signed19f26fe. Development run is not exact-commit proof; clean detached CI remains required. Administrative state-update helper had Python SyntaxError1 and exec JS SyntaxError (no command executed), corrected here, no source effect.
+
+SOURCE 0dbf522b309c0cdd7d75a52a18dc4c0f376e859d
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'cockpit', '--test', 'recovery', '--test', 'lifecycle', '--test', 'custody']
+OWNED_COMMAND_PID 93498
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 4.43s
+     Running tests/cockpit.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/cockpit-8d508e3d131d42ec)
+
+running 5 tests
+logic: orderly shutdown requested
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s
+
+     Running tests/custody.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/custody-1180325e10aa3ba7)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.67s
+
+     Running tests/lifecycle.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/lifecycle-67e646ece33504b8)
+
+running 3 tests
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors ... ok
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... FAILED
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+failures:
+
+---- gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position stdout ----
+
+thread 'gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position' (19368958) panicked at crates/bboxy450-term/tests/lifecycle.rs:207:10:
+called `Result::unwrap()` on an `Err` value: Elapsed(())
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.24s
+
+error: test failed, to rerun pass `-p bboxy450-term --test lifecycle`
+EXIT 101 elapsed 97.863s
+
+SOURCE 4334c3a296d1e5f27510d4933e74093e0abb8be4
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'lifecycle', '--test', 'recovery']
+OWNED_COMMAND_PID 1458
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+warning: unused import: `events::StateEvents`
+  --> crates/bboxy450-term/tests/lifecycle.rs:17:5
+   |
+17 | use events::StateEvents;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: trait `StateEvents` is never used
+  --> crates/bboxy450-term/tests/support/events.rs:11:11
+   |
+11 | pub trait StateEvents {
+   |           ^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `attach` is never used
+  --> crates/bboxy450-term/tests/support/events.rs:20:14
+   |
+20 | pub async fn attach(session: &mut Session) -> Result<()> {
+   |              ^^^^^^
+
+warning: function `receive` is never used
+  --> crates/bboxy450-term/tests/support/events.rs:38:14
+   |
+38 | pub async fn receive(session: &mut Session) -> Result<GuiReply> {
+   |              ^^^^^^^
+
+warning: `bboxy450-term` (test "lifecycle") generated 4 warnings (run `cargo fix --test "lifecycle" -p bboxy450-term` to apply 1 suggestion)
+    Finished `test` profile [optimized] target(s) in 3.67s
+     Running tests/lifecycle.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/lifecycle-67e646ece33504b8)
+
+running 3 tests
+logic worker exited: supervisor disconnected
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.81s
+
+     Running tests/recovery.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/recovery-4a49ffb73d34d094)
+
+running 5 tests
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test shutdown_during_pending_recovery_reaps_children_without_restarting ... ok
+logic worker exited: supervisor disconnected
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressure ... ok
+StaleGeneration: GUI request for seat 01M5N9ERRV5QP00TXAAHG6ZE2X rejected: displayed generation 1, current 2; dropped=1
+StaleGeneration: GUI request for seat 01M5N9ERRV5QP00TXAAHG6ZE2X rejected: displayed generation 1, current 2; dropped=2
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.89s
+
+EXIT 0 elapsed 67.809s
+
+SOURCE 4334c3a296d1e5f27510d4933e74093e0abb8be4
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--bin', 'bboxy450-term', 'live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame', '--', '--nocapture']
+OWNED_COMMAND_PID 3231
+    Finished `test` profile [optimized] target(s) in 0.74s
+     Running unittests src/main.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bboxy450_term-1777b3d526f86f71)
+
+running 1 test
+owned supervisor=3237 logic=3238
+cockpit ready: supervisor=3237 logic=3238
+GUI operation 01M5N9EVJQVG601G9YQP6163B6 accepted
+GUI operation 01M5N9EVE6NBTHGP5D52YFCBYH rejected: not a built-in harness
+GUI operation 01M5N9EVQCBKJJQKRWQHBY5V1V accepted
+GUI operation 01M5N9EVQZRNJWJRCDCTDSEV50 accepted
+GUI operation 01M5N9EVRMCKNE04BJ0ADR4V50 accepted
+GUI operation 01M5N9EVSHNAGHD2KR5NS4N9AE accepted
+GUI operation 01M5N9EVSPJGHSM0Y34C688JQ5 accepted
+GUI operation 01M5N9EVSPP1207NTRADVP44F7 accepted
+PASS real IO: standalone hi row in Replica, prepared frame published
+GUI operation 01M5N9EVTN1D51J4WRT32D9XA7 accepted
+GUI operation 01M5N9EVV2YG7F9CEPP0FG4A98 accepted
+GUI operation 01M5N9EVV36GTV00T3G2Y8GEGK accepted
+GUI operation 01M5N9EVTTQPEZQT27D4KSRF9T accepted
+seat 01M5N9EVNXEP1CRCYHZ2DPTGBH activity=Idle process=Running { pid: 3259 }
+GUI operation 01M5N9EVVTEAGMDD2ZSDDW36CW accepted
+GUI operation 01M5N9EVVYDW1PPNZSB1EJG4C4 accepted
+GUI operation 01M5N9EVVZZRFREKSBH31EWKQC accepted
+GUI operation 01M5N9EVVZJXTDYD7VYT1F21HF accepted
+GUI operation 01M5N9EVW0GDAZBHHXXRT33D18 accepted
+GUI operation 01M5N9EVW9YW6XFB0C5E32QFH6 accepted
+GUI operation 01M5N9EVW90VMWS1BXD8B0RXRY accepted
+GUI operation 01M5N9EVW9CNY04QGD9FD9G04T accepted
+GUI operation 01M5N9EVW9DDSGCTZ0KPMR9YVB accepted
+GUI operation 01M5N9EVW9C5VX2JQ2MZRKCZ9Q accepted
+GUI operation 01M5N9EVW9E2QRS5P8DEQF1P0H accepted
+GUI operation 01M5N9EVW97F5NJ5JT4EP3PFAQ accepted
+seat 01M5N9EVNXEP1CRCYHZ2DPTGBH activity=Active process=Running { pid: 3259 }
+GUI operation 01M5N9EVW935YAT4AEF8R347AY accepted
+GUI operation 01M5N9EVW97BF7NFS7DHKY15B0 accepted
+GUI operation 01M5N9EVW9GW9Y5STNSXHKGGKP accepted
+GUI operation 01M5N9EVW91A1C052W5M2ZDY1P accepted
+GUI operation 01M5N9EVW9GHDA9CAMGNE49DQJ accepted
+GUI operation 01M5N9EVW9WZ0WR4V1EMEXHHEV accepted
+GUI operation 01M5N9EVW992CAYV1DKHRYQHQR accepted
+GUI operation 01M5N9EVW95EJA1J4BQEBPAW0R accepted
+GUI operation 01M5N9EVW93G1C9X6SC7SC5QG1 accepted
+GUI operation 01M5N9EVW9SNJJ19W4SC5SNT48 accepted
+GUI operation 01M5N9EVW9EADDD9FMAY2RZZXG accepted
+GUI operation 01M5N9EVW9SNSHBWMMKMH4PEQH accepted
+GUI operation 01M5N9EVW9JPQ0Q7P7KBABPRHV accepted
+GUI operation 01M5N9EVW9MWP7T6N4972WGCXR accepted
+GUI operation 01M5N9EVW9F99T5KQGJ3BPRW3S accepted
+GUI operation 01M5N9EVW9R1ZE4MYCM8FAFPVD accepted
+GUI operation 01M5N9EVW9QPEKVATQ538XCWEZ accepted
+GUI operation 01M5N9EVW9CTH2MRQTQK5DNE67 accepted
+GUI operation 01M5N9EVW90RZYVXAJA2P9SWBR accepted
+GUI operation 01M5N9EVW9HBG61S6PNRZFV89J accepted
+GUI operation 01M5N9EVW9A08AB614RVAHRS0G accepted
+GUI operation 01M5N9EVW9JWCFBNT6DZ8REGX3 accepted
+GUI operation 01M5N9EVW9PBB5S0CXY0YFQCGZ accepted
+GUI operation 01M5N9EVW9BCP888DM2FQ59XWQ accepted
+GUI operation 01M5N9EVW9WXPDZWSE4Q1PG8B9 accepted
+GUI operation 01M5N9EVW96SBHPDJ1EA8DQ2FQ accepted
+GUI operation 01M5N9EVW9796NGFZZDQAZGR5G accepted
+GUI operation 01M5N9EVW9FG0GREEAVQGFAQ4X accepted
+GUI operation 01M5N9EVW9NCF5ERZ7TJS80JVF accepted
+GUI operation 01M5N9EVW9ENSD5V53TT4NGFV2 accepted
+GUI operation 01M5N9EVW9WER6TQDARBSZ74TD accepted
+GUI operation 01M5N9EVW9ME3NTMEHF2905HB4 accepted
+GUI operation 01M5N9EVW9MCCHTE28AM542R1B accepted
+GUI operation 01M5N9EVW9QCFBAYJMW8HC7YMK accepted
+GUI operation 01M5N9EVW9SPN60TQ5GPZ87FKD accepted
+GUI operation 01M5N9EVW9EA8FGF262E6R308K accepted
+GUI operation 01M5N9EVW9P15Y66740DRGQ3FE accepted
+GUI operation 01M5N9EVW9K1E10GJ8B8TCJENG accepted
+GUI operation 01M5N9EVW9DWVQ94SKX5N9X1D0 accepted
+GUI operation 01M5N9EVW96NP298SNP9RH8DPN accepted
+GUI operation 01M5N9EVW919S02QFRR71ZQFHN accepted
+GUI operation 01M5N9EVW9QE9DHA4ZB05KJ1QE accepted
+GUI operation 01M5N9EVW99BGV6PZVHGKYNE1E accepted
+GUI operation 01M5N9EVW90CWVS5H6CHWFPJ2H accepted
+GUI operation 01M5N9EVW9K8Y0NXWKHR49W5FS accepted
+GUI operation 01M5N9EVW9EJXX4VMXRF20WKWC accepted
+GUI operation 01M5N9EVW94EBFP2PD99HPXFB3 accepted
+GUI operation 01M5N9EVW9SQFN8FJ193TBHGSZ accepted
+GUI operation 01M5N9EVW9BY4W8Q3RBKYJQHB3 accepted
+GUI operation 01M5N9EVW9XF2DRKG53Q9TQMSZ accepted
+GUI operation 01M5N9EVW9HBYS41CRMEPSVWCW accepted
+GUI operation 01M5N9EVW985NZ4S68YMCV7CET accepted
+GUI operation 01M5N9EVW9YRNFG79CXYHJ2QG6 accepted
+GUI operation 01M5N9EVW9SDB70S9263NWK4AP accepted
+GUI operation 01M5N9EVW9YQ0JBXD6GMRN31S3 accepted
+GUI operation 01M5N9EVW9T0P5HZSP4TREHTK5 accepted
+GUI operation 01M5N9EVW991DTGGE8FTZ1WM25 accepted
+GUI operation 01M5N9EVW90Y4PXVWGAV7CXQBS accepted
+GUI operation 01M5N9EVW9ZDEJWVVD8Y0DJ8NB accepted
+GUI operation 01M5N9EVW9Q6SVG42BB97PBJG7 accepted
+GUI operation 01M5N9EVW9921S7PV74802CC1V accepted
+GUI operation 01M5N9EVW96A30H02P2FDX44K6 accepted
+GUI operation 01M5N9EVW9PC9D0S8AJ6J7NQWE accepted
+GUI operation 01M5N9EVW96DPQ31K2DFMSMMQ4 accepted
+GUI operation 01M5N9EVW9DK0TQPT1E5622HHT accepted
+GUI operation 01M5N9EVW9DGBYY4WYKGW7KBGB accepted
+GUI operation 01M5N9EVW99ETVJEPYJ6Q0QYRR accepted
+GUI operation 01M5N9EVW9E8RR8QZD3W5TPYE6 accepted
+GUI operation 01M5N9EVW93HJR5KA6V8S6TBG4 accepted
+GUI operation 01M5N9EVW97NP1H8XYH152YCKT accepted
+GUI operation 01M5N9EVW9109QV7TC9C314Z67 accepted
+GUI operation 01M5N9EVW9RK867R930JZDMFW2 accepted
+GUI operation 01M5N9EVW91K3G24EY4S7FNDZJ accepted
+GUI operation 01M5N9EVW9090Z35M87QKNHZY4 accepted
+GUI operation 01M5N9EVW9TK1AT75WQPW6N7R8 accepted
+GUI operation 01M5N9EVW9XYAME23G8NB2PJHN accepted
+GUI operation 01M5N9EVW9H8YAMG2CYWR3Y50H accepted
+GUI operation 01M5N9EVW9FHJSJ1R581NVK48H accepted
+GUI operation 01M5N9EVW9ZYQTSB0MQ2C33NQT accepted
+GUI operation 01M5N9EVW9D61FYDZ2XQW65SBY accepted
+GUI operation 01M5N9EVW9FFWAF67C2GT2P1T0 accepted
+GUI operation 01M5N9EVW9RHKXDAYYMDPKHX5Q accepted
+GUI operation 01M5N9EVW9NSQB2JSXH3PTG88V accepted
+GUI operation 01M5N9EVW9RHJP3HA1H9NZXTB4 accepted
+GUI operation 01M5N9EVW9JEYSN320WCRPJDTV accepted
+GUI operation 01M5N9EVW9W5NYQ8DHW7AY70J4 accepted
+GUI operation 01M5N9EVW99A24E7PC8BM88HNK accepted
+GUI operation 01M5N9EVW9GHWHTGH6WNFAR35B accepted
+GUI operation 01M5N9EVW90R469RFNYC44SP9D accepted
+GUI operation 01M5N9EVW98PPEY580PVXAPMX8 accepted
+GUI operation 01M5N9EVW9DSVH45H9QNY0CM4D accepted
+GUI operation 01M5N9EVW95NZHXMFND8P0E3CP accepted
+GUI operation 01M5N9EVW9GBZHKV3KTX0703WM accepted
+GUI operation 01M5N9EVW99ZX406AE5TP0X9V8 accepted
+GUI operation 01M5N9EVW9MCVZE0KYQZ6KYM3C accepted
+GUI operation 01M5N9EVW9B4GV4HJH2WKKCW69 accepted
+GUI operation 01M5N9EVW9AY34X02R0RQ0SCBF accepted
+GUI operation 01M5N9EVW9YKK2YAAC89GRMK51 accepted
+GUI operation 01M5N9EVW9G1B88J104EBGWX6K accepted
+GUI operation 01M5N9EVW9WPGB2PMP00MAVNH4 accepted
+GUI operation 01M5N9EVW9444F23ZNY21ZAGGK accepted
+GUI operation 01M5N9EVW9GEN3JXACVH56EKB6 accepted
+GUI operation 01M5N9EVW9MR15QM5PPVHNBBVY accepted
+GUI operation 01M5N9EVW98T3SA37K8STC5F4D accepted
+GUI operation 01M5N9EVW9RECY4NGQMCVMQQNY accepted
+GUI operation 01M5N9EVW9FJK2SDXRYN99GNA1 accepted
+GUI operation 01M5N9EVW918BTJGAJW82HBCS2 accepted
+GUI operation 01M5N9EVW9FCG6GFXFPG0X6N10 accepted
+GUI operation 01M5N9EVW9V2DF2S4WECQPRM3E accepted
+GUI operation 01M5N9EVW9PASJPN7W08D2X5J5 accepted
+GUI operation 01M5N9EVW9G71TZ7V3M6FJRNE0 accepted
+GUI operation 01M5N9EVW91H7Y4J2A56SSX5BH accepted
+GUI operation 01M5N9EVW9PR3YA3QNZAB9KTTB accepted
+GUI operation 01M5N9EVW92KVD06AC5YY6KZAD accepted
+GUI operation 01M5N9EVW907YA62D58BFS9S9N accepted
+GUI operation 01M5N9EVW9BG81QHD4R1ENXJ18 accepted
+GUI operation 01M5N9EVW9DQ79J2EHZ5M5BDMD accepted
+GUI operation 01M5N9EWQN16EHKVVS2G5KVXEC accepted
+GUI operation 01M5N9EWQVEBSYV5TM4S9S8R8X accepted
+GUI operation 01M5N9EVW9EWXCQ80C6BENH5AQ accepted
+GUI operation 01M5N9EVW91XZ7S4224H38W4KM accepted
+GUI operation 01M5N9EVW9VK76PXBEW57PAXQA accepted
+GUI operation 01M5N9EVW97QGMTW137YY3NEXF accepted
+GUI operation 01M5N9EVW9HTA491F0D0M2GSHR accepted
+GUI operation 01M5N9EVWA8B83FHWRYZWVKZPQ accepted
+GUI operation 01M5N9EVWAMCJFFRFB5R9CAJAF accepted
+GUI operation 01M5N9EVWA6YHF3T1K7BHCPV8V accepted
+GUI operation 01M5N9EVWAGMH15WXJGA0BA0F6 accepted
+GUI operation 01M5N9EVWAAD16DFFZGH0H94R2 accepted
+GUI operation 01M5N9EVWAVFJA6S2BAEC42BG7 accepted
+GUI operation 01M5N9EVWAE4BJFJ0A8HCH79ZV accepted
+GUI operation 01M5N9EVWA2AXP6V6B88W35591 accepted
+GUI operation 01M5N9EVWA6Z66WMT1Z4WV90N7 accepted
+GUI operation 01M5N9EVWAADZBQC5V6AA7VFJJ accepted
+GUI operation 01M5N9EVWAV25Y96B2CHY8A4Y5 accepted
+GUI operation 01M5N9EVWACX24Q5MQCJMY8YBZ accepted
+GUI operation 01M5N9EVWA9RYXZ35D5PFYD1RR accepted
+GUI operation 01M5N9EVWAH0ZTAW5XM37XFB2M accepted
+GUI operation 01M5N9EVWAYKQ7B3R9V41KSVH7 accepted
+GUI operation 01M5N9EVWARJNWTZFYHJ810QDY accepted
+GUI operation 01M5N9EVWA2D8C45548VCJKK4M accepted
+GUI operation 01M5N9EVWAM5MV9FGAN5F09EGY accepted
+GUI operation 01M5N9EVWA2RCT618ZABH6P946 accepted
+GUI operation 01M5N9EVWAQD8ZF7KZRY92MART accepted
+GUI operation 01M5N9EVWAW2QXX2TT5VGW2XFN accepted
+GUI operation 01M5N9EVWA7P54AMBJT05PHMAH accepted
+GUI operation 01M5N9EVWA4TPT21ZHS5DQPP2G accepted
+GUI operation 01M5N9EVWAK550PK81V46R45QA accepted
+GUI operation 01M5N9EVWA6BZ1QGQGVEGQ75K8 accepted
+GUI operation 01M5N9EVWAE0T9WWTGZB2CKZKF accepted
+GUI operation 01M5N9EVWA8AP056KK37VY8XTY accepted
+GUI operation 01M5N9EVWA282CZSA5DSXSCQ5N accepted
+GUI operation 01M5N9EVWAAS1NE3653F7Q2F9D accepted
+GUI operation 01M5N9EVWA26M2ZYX91C2QS3X1 accepted
+GUI operation 01M5N9EVWAS70SXBZ7A7A1VHWS accepted
+GUI operation 01M5N9EVWAJM83371SY2250YNE accepted
+GUI operation 01M5N9EVWAM52WSW9V87R0KYXS accepted
+GUI operation 01M5N9EVWAXR7VR5JCKG9QDG4H accepted
+GUI operation 01M5N9EVWAKX3G7FJ4PH7ZZ51K accepted
+GUI operation 01M5N9EVWAHC2NDWKHFG8SVJ80 accepted
+GUI operation 01M5N9EVWAM1R992BH9M96JACK accepted
+GUI operation 01M5N9EVWA2034JKKZWDQ6NQ1B accepted
+GUI operation 01M5N9EVWAGC65JRDGSPTMQZZH accepted
+GUI operation 01M5N9EVWAZSZCCFJG79Y5W0FH accepted
+GUI operation 01M5N9EVWA0RATMNFRN37YEN4A accepted
+GUI operation 01M5N9EVWAJQ4EGBSMB3SSWBTZ accepted
+GUI operation 01M5N9EVWAYTP5TGN187DYXM9F accepted
+GUI operation 01M5N9EVWA9SJEAXN64VWAMFYS accepted
+GUI operation 01M5N9EVWAXQHCT4Q57QD0ZMAH accepted
+GUI operation 01M5N9EVWAZ7C7Z9N7KKSWWQDK accepted
+GUI operation 01M5N9EVWAF0X01NF56J0AQ2YG accepted
+GUI operation 01M5N9EVWASWRWN4H44AZDAXBD accepted
+GUI operation 01M5N9EVWA3A6QM04ZYSK413FG accepted
+GUI operation 01M5N9EVWA25QNF2W6ZHF0SH8N accepted
+GUI operation 01M5N9EVWA3JT7CZ0B0D8MRQ6E accepted
+GUI operation 01M5N9EX4D5GS5545DHX7N72ND accepted
+GUI operation 01M5N9EX4E2FHF2KYPP9P6JWG6 accepted
+GUI operation 01M5N9EVWA5YJTHNXBE80XX1PJ accepted
+GUI operation 01M5N9EVWAKW63D59YV9R7MBD0 accepted
+GUI operation 01M5N9EVWA42Z03GE7KVWTWNDR accepted
+GUI operation 01M5N9EVWAF41Y3D0ZCBGD15PR accepted
+GUI operation 01M5N9EVWAPRQK3WN9MKM70QHQ accepted
+GUI operation 01M5N9EVWAGYKENMT3FHK02R3R accepted
+GUI operation 01M5N9EVWAK8QJJQJKP09X58G1 accepted
+GUI operation 01M5N9EVWARN29JZXYTXXF8CVB accepted
+GUI operation 01M5N9EVWA07B47AVBN7KPHF80 accepted
+GUI operation 01M5N9EW04MNT3TCRT98Q64ESP accepted
+GUI operation 01M5N9EW04TJBXEH7S864RSCV1 accepted
+GUI operation 01M5N9EW04MAZHKNC9WZPKBEHA accepted
+GUI operation 01M5N9EW04QJGRK43A4MVNBH8T accepted
+GUI operation 01M5N9EW04AMQCCXCSG5NRK973 accepted
+GUI operation 01M5N9EW04R8PP393JCNSH5VD0 accepted
+GUI operation 01M5N9EW04YBH72M16MY9DHBSK accepted
+GUI operation 01M5N9EW04GMEZ0RRCRBD9ECF5 accepted
+GUI operation 01M5N9EW047J9B1F02CSXKB399 accepted
+GUI operation 01M5N9EW04ZP2YDVMAYDFV46K5 accepted
+GUI operation 01M5N9EW042VBFWZ4RPMK2E36H accepted
+GUI operation 01M5N9EW042WD16YGXTQ5SSA2N accepted
+GUI operation 01M5N9EW04KJEWGNNQS1ZB9BX8 accepted
+GUI operation 01M5N9EW041KXDQFMNFVT1XK91 accepted
+GUI operation 01M5N9EW04VCM0NWX44EVV7R5Z accepted
+GUI operation 01M5N9EW044JE8N5GF111J88GB accepted
+GUI operation 01M5N9EW04BHD3Y0KSEQZD67FM accepted
+GUI operation 01M5N9EW04RBMXH7NWSJWS75RK accepted
+GUI operation 01M5N9EW04XXVBX9TFMCDBWGZD accepted
+GUI operation 01M5N9EW04HB74WZYETN3CZK37 accepted
+GUI operation 01M5N9EW049A3WH34GNJBPYKPK accepted
+GUI operation 01M5N9EW04MPB4WBM4YZE01PK4 accepted
+GUI operation 01M5N9EW04VS30VR4G8MF8WEBQ accepted
+GUI operation 01M5N9EW047X9D6788JYSKHAN1 accepted
+GUI operation 01M5N9EW04XBZRTM0YJ6Y2G01F accepted
+GUI operation 01M5N9EW04E173KRMBMQD32EHT accepted
+GUI operation 01M5N9EW04FNF2XJC8HYYPDPR4 accepted
+GUI operation 01M5N9EW5PJAPE35JNXPKX97BQ accepted
+GUI operation 01M5N9EW5P9VFDJ39M7G6M1J9Y accepted
+GUI operation 01M5N9EW5PNR407DNH0K4S54MY accepted
+GUI operation 01M5N9EW5P6YYE4WE490NB07VM accepted
+GUI operation 01M5N9EW5P96Q63K6FSJKP67KW accepted
+GUI operation 01M5N9EW5P0H0BF7091AP3P1J7 accepted
+GUI operation 01M5N9EW5P0FTAX603WGPGQYPD accepted
+GUI operation 01M5N9EW5PMKCDR4H62EBAR37H accepted
+GUI operation 01M5N9EW5PHSB1P3TKVP7TNX8F accepted
+GUI operation 01M5N9EW5PFRBNCVC4JRGTMWKM accepted
+GUI operation 01M5N9EW5P9TZZE7MFJESQFGTX accepted
+GUI operation 01M5N9EW5PAH58Z81JQJMNBAV1 accepted
+GUI operation 01M5N9EW5PM95KVQY5XZPF25DK accepted
+GUI operation 01M5N9EW5PZA9TPPMFC3BS749M accepted
+GUI operation 01M5N9EW5PK02KR7QMC8ECXV81 accepted
+GUI operation 01M5N9EW5PF3M51DDYB8872MD3 accepted
+GUI operation 01M5N9EW5PW6C70PKDWMAPX3CB accepted
+GUI operation 01M5N9EW5P3D1PEDTTXTSX72X2 accepted
+GUI operation 01M5N9EW5PMMZ2Y0GAZHAZZDAW accepted
+GUI operation 01M5N9EW5PWPHFRSCMRRM2GHY5 accepted
+GUI operation 01M5N9EXJ1CRVFP1S2YWJBK4M7 accepted
+GUI operation 01M5N9EW5PQKZTV0AX7CMEE9KN accepted
+GUI operation 01M5N9EW5PPEXYZ8YHPKHHH1Y1 accepted
+GUI operation 01M5N9EW5PNE5B41FGY9ACXKNA accepted
+GUI operation 01M5N9EW5PFTM2TADRA1QJ2YHH accepted
+GUI operation 01M5N9EW5PJ32M7DE76YEA9JKM accepted
+GUI operation 01M5N9EW5PSJQF2P1DB9WKBWY2 accepted
+GUI operation 01M5N9EW5PBT4BT244F0W6FEWR accepted
+GUI operation 01M5N9EW5P69AJ3NJ35C4SBACG accepted
+GUI operation 01M5N9EW5PYYRZNJQQK9R2M3YP accepted
+GUI operation 01M5N9EWCYT6HX86GP1G66F58R accepted
+GUI operation 01M5N9EWCYNWRTNWQQPEDX9C42 accepted
+GUI operation 01M5N9EWCY0EK4HWJKGHZBCSPG accepted
+GUI operation 01M5N9EWCYW6RNZD72B4W9RVJB accepted
+GUI operation 01M5N9EWCYFKSZDX9PAVXFRPCZ accepted
+GUI operation 01M5N9EWCYBJ4Z0CMTZ9Z19DSQ accepted
+GUI operation 01M5N9EWCYFX6MZ5RW3YAJ4R70 accepted
+GUI operation 01M5N9EWCY97B8TT4ZWY9ZKBJE accepted
+GUI operation 01M5N9EWCY8AG8JSN146NWR3T5 accepted
+GUI operation 01M5N9EWCY9S436QNWRE228WQ4 accepted
+GUI operation 01M5N9EWCYT1T2FCTNMXNHW5MA accepted
+GUI operation 01M5N9EWCYBDNTMWYYK88EJ4C3 accepted
+GUI operation 01M5N9EXPXDJBBGTKJDW23ZDM8 accepted
+PASS full duplex: 256 distinct input IDs delivered all bytes in exact order while frames/replies were drained
+GUI operation 01M5N9EXQ5YZHBQ6MVXEH5NC18 accepted
+GUI operation 01M5N9EXQJA3ZKK8QAYPFM6HTP accepted
+seat 01M5N9EVNXEP1CRCYHZ2DPTGBH activity=Idle process=Running { pid: 3259 }
+GUI operation 01M5N9EXRHF3FPJYB3NA7QM15E accepted
+GUI operation 01M5N9EXS0RZB3T9QV17SPYF8Y accepted
+GUI operation 01M5N9EXRNMGPC9Z17MHFQHAZH accepted
+GUI operation 01M5N9EXSGT0C187RCS2G4VK0R accepted
+GUI operation 01M5N9EXT0BME10TVPK23T7D7R accepted
+GUI operation 01M5N9EXTMEF59759D4SQ8G3XK accepted
+GUI operation 01M5N9EXTQDJ8CM6XCF0W0FSYR accepted
+GUI operation 01M5N9EXTVVC2RYS17SSPE612M accepted
+GUI operation 01M5N9EXVT608JGSV9606ZH8CW accepted
+GUI operation 01M5N9EXW6MP6VFRSV3D7FM6DJ accepted
+seat 01M5N9EVNXEP1CRCYHZ2DPTGBH activity=Idle process=Running { pid: 3259 }
+GUI operation 01M5N9EXWZXKCP8MFQY1NVS0CD accepted
+seat 01M5N9EVNXEP1CRCYHZ2DPTGBH activity=Idle process=Running { pid: 3259 }
+GUI operation 01M5N9EXXDNDGF38W45FTRN6NB accepted
+GUI operation 01M5N9EXXAB35WJAN2XNG34ME0 accepted
+GUI operation 01M5N9EXYB7KK0FWE04Q4V4PZZ accepted
+GUI operation 01M5N9EXYNE57NABHS9V7ZS672 accepted
+PASS resize: PTY stty reports 12x40 then 12x20; prior output reflows
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: recovery failed: logic exited during startup
+
+thread 'live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame' (19408182) panicked at crates/bboxy450-term/src/live.rs:1470:9:
+assertion failed: updates.take().is_none()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... FAILED
+
+failures:
+
+failures:
+    live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 50 filtered out; finished in 3.13s
+
+error: test failed, to rerun pass `-p bboxy450-term --bin bboxy450-term`
+EXIT 101 elapsed 3.997s
+
+SOURCE b3bd795b89437a4ec95b75e1668193a66de9a8ad
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--bin', 'bboxy450-term', 'live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame', '--', '--nocapture']
+OWNED_COMMAND_PID 13820
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 5.59s
+     Running unittests src/main.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bboxy450_term-1777b3d526f86f71)
+
+running 1 test
+owned supervisor=13990 logic=13992
+cockpit ready: supervisor=13990 logic=13992
+GUI operation 01M5N9MS48EHKMPJA854CPEEZP accepted
+GUI operation 01M5N9MS3J2N4G67F43YQ13140 rejected: not a built-in harness
+GUI operation 01M5N9MS8MV6BRK329XBR9RY2A accepted
+GUI operation 01M5N9MS8R5SVHJA4NC4DTTBE1 accepted
+GUI operation 01M5N9MS9AZ29HC0YQZRS7RPE0 accepted
+GUI operation 01M5N9MS9AD7WRCNYQ9EDEMBDA accepted
+GUI operation 01M5N9MSA5Y89F3537RN4QE8N3 accepted
+GUI operation 01M5N9MSA86ESGFQQ7CVC078P2 accepted
+GUI operation 01M5N9MSAG36813E4H2R5DACQW accepted
+PASS real IO: standalone hi row in Replica, prepared frame published
+GUI operation 01M5N9MSB4KM7A5F69K4KT5CS0 accepted
+GUI operation 01M5N9MSB86JGXBAK0HZN19454 accepted
+GUI operation 01M5N9MSCAZ9CYG5XNG8F7YWKV accepted
+GUI operation 01M5N9MSCRR4093KFPXSMN6EA5 accepted
+GUI operation 01M5N9MSCPJMZBHWK3JR4QY7AK accepted
+GUI operation 01M5N9MSCPAKK33RST5N4DJ6S5 accepted
+GUI operation 01M5N9MSCPGS6C01XD4K1129KR accepted
+GUI operation 01M5N9MSCPKBC6ASY7K5TYGGAA accepted
+GUI operation 01M5N9MSCP1DMHBRG6ZSKCNND1 accepted
+GUI operation 01M5N9MSCPRB2GK7A1ES6T1Z2A accepted
+GUI operation 01M5N9MSCPV5GRW2KV90E2SE54 accepted
+GUI operation 01M5N9MSCPZCN5C15MW2RKT757 accepted
+GUI operation 01M5N9MSCP3VKXA3CM10X5MPJS accepted
+GUI operation 01M5N9MSCPSZGV5M58XR80YHZN accepted
+GUI operation 01M5N9MSCPX5F7GBJHJMCVYCYA accepted
+GUI operation 01M5N9MSCPZGSPRVB481M1KJSR accepted
+GUI operation 01M5N9MSCPVYHHX8RMJXR1PT10 accepted
+GUI operation 01M5N9MSCPMX1VYSYJHDDAGSW3 accepted
+GUI operation 01M5N9MSCPKAEHWXM18PZXA64A accepted
+GUI operation 01M5N9MSCPP7785RDY96AZD81V accepted
+GUI operation 01M5N9MSCP75R2N95H1WJPS187 accepted
+GUI operation 01M5N9MSCPV5K3SZSCBC09YVKQ accepted
+GUI operation 01M5N9MSCPHHBF24XNBGAPBF0N accepted
+GUI operation 01M5N9MSCP3GXENKPRCHNQYP3S accepted
+GUI operation 01M5N9MSCPE5STW4MKTCKWZVNF accepted
+GUI operation 01M5N9MSCPRVHT1NXG20T01VGS accepted
+GUI operation 01M5N9MSCPMM3BTKJVF93FHVMP accepted
+GUI operation 01M5N9MSCPVB66689J3ED3Y45C accepted
+GUI operation 01M5N9MSCPNJ6QTCFDZ5CSMB7H accepted
+GUI operation 01M5N9MSCP5PTZDQ4Q6KRRWV8B accepted
+GUI operation 01M5N9MSCP51MQX57N6AJV1DFF accepted
+GUI operation 01M5N9MSCPBYA1GYAE0F0DBTCD accepted
+GUI operation 01M5N9MSCPDXS6KJ35JMN1GJ7J accepted
+GUI operation 01M5N9MSCPG4CMSTR1PSVQC1HK accepted
+GUI operation 01M5N9MSCPMXWCNNF3NYQ21X2K accepted
+GUI operation 01M5N9MSCPK3J4EHJ760Y3CNSA accepted
+GUI operation 01M5N9MSCPVMVX368F6CQ62VFW accepted
+GUI operation 01M5N9MSCP065BSAH66RXN9CG6 accepted
+GUI operation 01M5N9MSCP86FZ5WFQYDXVJYCC accepted
+GUI operation 01M5N9MSCP5ZNEE4ZMVEVBSTDD accepted
+GUI operation 01M5N9MSCP7P34EDXQHG3A0YFA accepted
+GUI operation 01M5N9MSCP0FRY0WQE4QZZ8FZC accepted
+GUI operation 01M5N9MSCPDC3DK12A2J38XFK8 accepted
+GUI operation 01M5N9MSCPK0HD75YHSVAEQ1DN accepted
+GUI operation 01M5N9MSCP24RGJAVJND16C3V9 accepted
+GUI operation 01M5N9MSCPKFCM91RRKWX4ABF5 accepted
+seat 01M5N9MS6YTN8D8231M7XHM9BW activity=Active process=Running { pid: 13993 }
+GUI operation 01M5N9MSCPKKKXRGBZ0Y6MDBGB accepted
+GUI operation 01M5N9MSCP53WW19WWM078KZ6H accepted
+GUI operation 01M5N9MSCP74MC9N05W67QKV1M accepted
+GUI operation 01M5N9MSCPS780QF11MAVDWREF accepted
+GUI operation 01M5N9MSCPFCSF4G6V77QGGPV8 accepted
+GUI operation 01M5N9MSCPNG9S5TEV3TXSTR0R accepted
+GUI operation 01M5N9MSCPDPFX2605DABEMZ1V accepted
+GUI operation 01M5N9MSCP1SDWTM7DXNKH81YC accepted
+GUI operation 01M5N9MSCP7AVJG352FRNQCWD5 accepted
+GUI operation 01M5N9MSCPK7TTCX3R6DSY4CYR accepted
+GUI operation 01M5N9MSCPYNHCE24HT71DZCY8 accepted
+GUI operation 01M5N9MSCP7HAFBC1JVNDBZ33Y accepted
+GUI operation 01M5N9MSCP14TN94MSZ78WH5AD accepted
+GUI operation 01M5N9MSCPHZSR49AQ6983NW6E accepted
+GUI operation 01M5N9MSCPTBXSREAVCDW3T9SP accepted
+GUI operation 01M5N9MSCP4AQNCJG74JDZ6DPA accepted
+GUI operation 01M5N9MSCPCGGM81KWHAC7PJH2 accepted
+GUI operation 01M5N9MSCPGDBYQBDHS4NXF2HF accepted
+GUI operation 01M5N9MSCP9HVTD2Z9A59ZAXH9 accepted
+GUI operation 01M5N9MSCP9GAFB65FJ3NN1N9Z accepted
+GUI operation 01M5N9MSCPDWP3536PD8F13VKN accepted
+GUI operation 01M5N9MSCP0KETDRQDDP2DE3V1 accepted
+GUI operation 01M5N9MSCP4QD7BKKXE3DRAKFP accepted
+GUI operation 01M5N9MSCPYH6CYYJ960C9HQB2 accepted
+GUI operation 01M5N9MSCP0D4Z0EAAQ9Q1Z465 accepted
+GUI operation 01M5N9MSCPH4QKBAA0F5623RJ7 accepted
+GUI operation 01M5N9MSCPZ86DSGZ8V79YKTM6 accepted
+GUI operation 01M5N9MSCP0AYTKCSMDPG92M7Z accepted
+GUI operation 01M5N9MSCPD9Q2R9MAY0W7FPDA accepted
+GUI operation 01M5N9MSCP8WYSNNSKYGYMBAP1 accepted
+GUI operation 01M5N9MSCPAJQRD1JMZFTWC0RR accepted
+GUI operation 01M5N9MSCPH2D6F48KHDVA6Z76 accepted
+GUI operation 01M5N9MSCP4S9T9AVXT3EAE4ZR accepted
+GUI operation 01M5N9MSCPB695EQ5EEW4KJJEE accepted
+GUI operation 01M5N9MSCPC143M6HC9BFFS67H accepted
+GUI operation 01M5N9MSCP2WP221BFJ7DDDHX5 accepted
+GUI operation 01M5N9MSCPVDBHZV2EZDWR70E8 accepted
+GUI operation 01M5N9MSCPVM4MK0X011VYNQBG accepted
+GUI operation 01M5N9MSCPRDMDQGHV3F0E4T0F accepted
+GUI operation 01M5N9MSCP3FFND47WC36SCX9X accepted
+GUI operation 01M5N9MSCP29S1VX47MW4CEPYF accepted
+GUI operation 01M5N9MSCP2WMNHS3K22Z35HEH accepted
+GUI operation 01M5N9MSCPKV54NMAX9F9XVD8H accepted
+GUI operation 01M5N9MSCPHN8M7XEFA9N5KZ8F accepted
+GUI operation 01M5N9MSCP1FBJER5JED3PA0HJ accepted
+GUI operation 01M5N9MSCPZRHM9EZ9M9QSGAX9 accepted
+GUI operation 01M5N9MSCPCAFWPRF3SCXG6A5D accepted
+GUI operation 01M5N9MSCP626SFA00XJ89W755 accepted
+GUI operation 01M5N9MSCPFZH3CE7EKF1QMX1E accepted
+GUI operation 01M5N9MSCP0DCNMS46TEJRN6T7 accepted
+GUI operation 01M5N9MSCPVVKFMD01VPKD94Q4 accepted
+GUI operation 01M5N9MSCPTBKBFVEXVRNB7ASQ accepted
+GUI operation 01M5N9MSCP26JGP7B6WBB0PBNC accepted
+GUI operation 01M5N9MSCPE84MMX007A78TAHS accepted
+GUI operation 01M5N9MSCP1F0EAZQ34VCACBT7 accepted
+GUI operation 01M5N9MSCPC71EW505YR8PX0SW accepted
+GUI operation 01M5N9MSCPA44WWMG4S3KPKFJ5 accepted
+GUI operation 01M5N9MSCP2WMPQB39RSJ0VJ5Y accepted
+GUI operation 01M5N9MSCPPXWMDEXERSDCPCD7 accepted
+GUI operation 01M5N9MSCPEY85SFY79H913PRC accepted
+GUI operation 01M5N9MSCP8Y5DXXPYBXP4ZJ0V accepted
+GUI operation 01M5N9MSCP122KD7DADVXME382 accepted
+GUI operation 01M5N9MSCPDXNEG0GPWXM9ZRHB accepted
+GUI operation 01M5N9MSCP9JKX4MH0S4N3VTNR accepted
+GUI operation 01M5N9MSCPDX40WVGMZTMQBY3S accepted
+GUI operation 01M5N9MSCPHMFQWDH4NCSXTW3M accepted
+GUI operation 01M5N9MSCPDT8DSAV73SHTV7HW accepted
+GUI operation 01M5N9MSCP1T8803D6XTWETY11 accepted
+GUI operation 01M5N9MSCPEW16SKX0QKVBJFBX accepted
+GUI operation 01M5N9MSCPDQYP24RENK1D7T26 accepted
+GUI operation 01M5N9MSCPZZ9PXB40DZP1SJXW accepted
+GUI operation 01M5N9MSCPE2BZGW975QRXG6AB accepted
+GUI operation 01M5N9MSCPH3D6ST6GMJ4BXT0S accepted
+GUI operation 01M5N9MSCPY11D7AY9E72M3006 accepted
+GUI operation 01M5N9MSCPCR6184Q36EQZBZTN accepted
+GUI operation 01M5N9MSCPECVVJEQ1MTQ9JTJJ accepted
+GUI operation 01M5N9MSCP66EDZYQZCG4THQ7H accepted
+GUI operation 01M5N9MSCPZ3523ZZWAVWPE746 accepted
+GUI operation 01M5N9MSCPTPF6J3Y14G80FCE2 accepted
+GUI operation 01M5N9MSCPE7Z4583HJGJATC1Z accepted
+GUI operation 01M5N9MSCPEYN8PQMFZD0YGDMF accepted
+GUI operation 01M5N9MSCPD8P4PX668YZQ6BCV accepted
+GUI operation 01M5N9MSCP5V982C50THFPYBYQ accepted
+GUI operation 01M5N9MSCPCPG6HT76EBE6JYVF accepted
+GUI operation 01M5N9MTBWX44WJCRFXSNM5R7Y accepted
+GUI operation 01M5N9MTBWMPT9K8KE1D4W52TK accepted
+GUI operation 01M5N9MTC2HDQPKYDS6F8662KQ accepted
+GUI operation 01M5N9MTC355BM3FQGNX31Y890 accepted
+GUI operation 01M5N9MSCP4M659JQVKDZVN22Q accepted
+GUI operation 01M5N9MSCPF2F10VJKARJ6W5V7 accepted
+GUI operation 01M5N9MSCP74YTPASV5HE5JNWZ accepted
+GUI operation 01M5N9MSCPDCQ8AZD1TNGD06JW accepted
+GUI operation 01M5N9MSCQRKCM02NC09ZKES5J accepted
+GUI operation 01M5N9MSCQT1AAT71KH07SP2SW accepted
+GUI operation 01M5N9MSCQQ3NWT1H7F4ZN5FR7 accepted
+GUI operation 01M5N9MSCQG3B2VXWMNBMJKRVY accepted
+GUI operation 01M5N9MSCQENDH5W487RJAJQ1F accepted
+GUI operation 01M5N9MSCQA57EMS2PH5VJ4W7G accepted
+GUI operation 01M5N9MSCQ1PQBZXGPCWR79T5J accepted
+GUI operation 01M5N9MSCQFXGAKVSESTDM5X2Y accepted
+GUI operation 01M5N9MSCQ85PJTPYX1YSQV9VZ accepted
+GUI operation 01M5N9MSCQGWD5YQXTV14K8C24 accepted
+GUI operation 01M5N9MSCQCT4GX3A08BVG041V accepted
+GUI operation 01M5N9MSCQH21RYVEDFRE3AXE3 accepted
+GUI operation 01M5N9MSCQDQSHXBZGW31AJB54 accepted
+GUI operation 01M5N9MSCQZ4FJ656YRBEJQCZA accepted
+GUI operation 01M5N9MSCQ3EAQ7SWZB02XSWPA accepted
+GUI operation 01M5N9MSCQ4NDDR6J70F97BEVN accepted
+GUI operation 01M5N9MSCQYARFEZ6B2XJQRJ1Q accepted
+GUI operation 01M5N9MSCQCMHMBVZH8G2NGRGF accepted
+GUI operation 01M5N9MSCQG5C6PB41AS717JNG accepted
+GUI operation 01M5N9MSCQ0FAXCTZ491T17AV2 accepted
+GUI operation 01M5N9MSCQ1SRJT0EGZN6JEQD9 accepted
+GUI operation 01M5N9MSCQTZNJ8FV989TCE25Y accepted
+GUI operation 01M5N9MTJMXTF8FXRAAW9QY4JH accepted
+GUI operation 01M5N9MTJM8MW30G91WP63W5ZY accepted
+GUI operation 01M5N9MTJNXT4DHE7SPPT8JPP2 accepted
+GUI operation 01M5N9MTJNMRBDHRNV19FWH5GM accepted
+GUI operation 01M5N9MTJNQY7S4VNKQ0C79TK3 accepted
+GUI operation 01M5N9MTJN5TPGA1SQ55655CC2 accepted
+GUI operation 01M5N9MSCQK6XCYA1Z9K3SQAZR accepted
+GUI operation 01M5N9MSCQJ8M639ZDJMWDWTYC accepted
+GUI operation 01M5N9MSCQQMMG8ZF5B3SKQC8Q accepted
+GUI operation 01M5N9MSCQGPX2NVYRZ7WP0K4F accepted
+GUI operation 01M5N9MSCQWVFMDG8FX77MGESS accepted
+GUI operation 01M5N9MSCQER719CWDRN261SQ7 accepted
+GUI operation 01M5N9MSCQWQCFMBGC4NWSY338 accepted
+GUI operation 01M5N9MSCQQA7PZAD4SJSKW9ZE accepted
+GUI operation 01M5N9MSCQTZ6K1KBYWT62497N accepted
+GUI operation 01M5N9MSCQKK67T6BT4XG89N5X accepted
+GUI operation 01M5N9MSCQS0H3Y21X45CXRGG0 accepted
+GUI operation 01M5N9MSCQ8E6F91KFKX317TYC accepted
+GUI operation 01M5N9MSCQSFJN1GMRDWAYVVA0 accepted
+GUI operation 01M5N9MSCQ68BRGC52PX26163Y accepted
+GUI operation 01M5N9MSCQXSJ3RVH14QYF5Y7X accepted
+GUI operation 01M5N9MSCQ9DJHG6YW7TZPASB2 accepted
+GUI operation 01M5N9MSCQ456QKFZYE2JDJYYM accepted
+GUI operation 01M5N9MSCQAANT8N5ZJRP4YF6B accepted
+GUI operation 01M5N9MSCQ39QAVHZH4GZA5NQC accepted
+GUI operation 01M5N9MSCQ30TDWQQT2HBHTZXS accepted
+GUI operation 01M5N9MSCQ8KV02P1YV99SRPNG accepted
+GUI operation 01M5N9MSCQ6AKDY7RBSGBRD8KT accepted
+GUI operation 01M5N9MSCQK8EWXND16YB21SHQ accepted
+GUI operation 01M5N9MSCQKSZWFCM3N692H45B accepted
+GUI operation 01M5N9MTQJ3WYWEMBE05YXJ9JC accepted
+GUI operation 01M5N9MTQK1S2WN6SJXCQHF9T9 accepted
+GUI operation 01M5N9MSCQJFDE1H9Q3C72J6QV accepted
+GUI operation 01M5N9MSCQ87BESQYYSQSJNGHH accepted
+GUI operation 01M5N9MSCQSXZB2XRRQPXP4WJF accepted
+GUI operation 01M5N9MSCQBN90FW7CFV1FFRV2 accepted
+GUI operation 01M5N9MSCQV3FWFVD93W5WM6E1 accepted
+GUI operation 01M5N9MSCQ96AGXRAQJA4AWT23 accepted
+GUI operation 01M5N9MSCQ61941A4JDRB1ET0E accepted
+GUI operation 01M5N9MSCQNJDQD41Y40AAMVMV accepted
+GUI operation 01M5N9MSCQF9X1MRH9ATFC55E5 accepted
+GUI operation 01M5N9MSCQF0KN1ABC0K6X886A accepted
+GUI operation 01M5N9MSCQY79X8DKA2J37NN54 accepted
+GUI operation 01M5N9MSCQD3WK41RKTD0YVZEZ accepted
+GUI operation 01M5N9MSCQPTEWQ3F85JZTECCB accepted
+GUI operation 01M5N9MSCQVGVXXMPKRZF82D2M accepted
+GUI operation 01M5N9MSCQ4A2G6ZRPWWX7DW7S accepted
+GUI operation 01M5N9MSHPK01AYN89E6Q03J27 accepted
+GUI operation 01M5N9MSHP5K22BKW3W2F4NR6T accepted
+GUI operation 01M5N9MSHPJSMWZ78FKCAFFVF1 accepted
+GUI operation 01M5N9MSHP22SD1Z9D2ZRB4G80 accepted
+GUI operation 01M5N9MSHPRHJ242G7AMKVSB8N accepted
+GUI operation 01M5N9MSHPES4NK2QMA2P34QZJ accepted
+GUI operation 01M5N9MSHPQKZK3CYG1ZFJEHBK accepted
+GUI operation 01M5N9MSHP179ANHNY5EYQVZX0 accepted
+GUI operation 01M5N9MSHPK039TA4CTSRP0CP5 accepted
+GUI operation 01M5N9MSHPEJGRN7N6C6F0HKVY accepted
+GUI operation 01M5N9MSHPJD6R0BJ12WHGGGC4 accepted
+GUI operation 01M5N9MSHPY25YNNFCS8JPER7S accepted
+GUI operation 01M5N9MSHPWNDTBH8EDCYXP3Q7 accepted
+GUI operation 01M5N9MTXTHW1WD2T2TWCT34JV accepted
+GUI operation 01M5N9MTXT0BR6M5GZ17BRWT80 accepted
+GUI operation 01M5N9MTXTZ63JM7XE72G56M8C accepted
+GUI operation 01M5N9MSHPZTFQSNAT772SQ3EQ accepted
+GUI operation 01M5N9MSHPFCWK4ETKA5NENQQF accepted
+GUI operation 01M5N9MSHPW3CBEHWYSQGT1Q5T accepted
+GUI operation 01M5N9MSHPRQHGTRT8D1X0R1YQ accepted
+GUI operation 01M5N9MSHPENGN8TNDJNRPKBNN accepted
+GUI operation 01M5N9MSHPXTEJTF00VK7V4NVM accepted
+GUI operation 01M5N9MSHPCA68MM4307F59VXF accepted
+GUI operation 01M5N9MSHP9AVAKE0BH2ZDG77V accepted
+GUI operation 01M5N9MSHPHZ243F4GR63NZ6RA accepted
+GUI operation 01M5N9MSHPRXAQ2TJSB4YRTREG accepted
+GUI operation 01M5N9MSHPPN6E37MMRDNVW2E4 accepted
+GUI operation 01M5N9MSHPX7PMBTVEEM8K6APK accepted
+GUI operation 01M5N9MSHPY70M7NBE997QNQ42 accepted
+GUI operation 01M5N9MSR7KNJVSXKCYAFTGATY accepted
+GUI operation 01M5N9MSR73V73V1DTJ48XDREB accepted
+GUI operation 01M5N9MSR7THAZWCGQ4346RKCD accepted
+GUI operation 01M5N9MSR7GNTN3K3VT588WY14 accepted
+GUI operation 01M5N9MSR7K9WS0FC425EGPYCH accepted
+GUI operation 01M5N9MSR75EDGYZ4S2Q7GRK5T accepted
+GUI operation 01M5N9MSR79ZSHM89TEE32XDRR accepted
+GUI operation 01M5N9MSR7XCB27J1QW3VD300M accepted
+GUI operation 01M5N9MSR7T105DY3409A2X2DR accepted
+GUI operation 01M5N9MSR7ME4WNJPH8A6D3KD9 accepted
+GUI operation 01M5N9MSR758ZH42QXF2G554MB accepted
+GUI operation 01M5N9MSR7S4FX5A1J6NF8KDNJ accepted
+GUI operation 01M5N9MSR7HTVX1EGK7QGWDMF8 accepted
+GUI operation 01M5N9MSR77QPGAGB6T4VB7R9G accepted
+GUI operation 01M5N9MSR79481PJTGP55T7HB5 accepted
+GUI operation 01M5N9MV4X8PMJCP5J880RBJDQ accepted
+GUI operation 01M5N9MV4X3Y63HWMSRSJ6RNNV accepted
+GUI operation 01M5N9MV4YD444NGBCV4K0XZ2B accepted
+GUI operation 01M5N9MV4YP0H1HJQGKWE5KJPJ accepted
+GUI operation 01M5N9MV4Y00DBYM7B7CB9VRRB accepted
+GUI operation 01M5N9MV59VCX4DSJ8YQT2X361 accepted
+GUI operation 01M5N9MV5CWAWWKCC957FBXYFQ accepted
+GUI operation 01M5N9MSR7R7HYWQJR5AV0CNYR accepted
+GUI operation 01M5N9MSR7KQBV2MM1YNJBCX19 accepted
+GUI operation 01M5N9MSR7EVXG2KSMWEYEVK9R accepted
+GUI operation 01M5N9MSR7VBRJC7P44W2KDDT0 accepted
+GUI operation 01M5N9MSR7RZSQ7NMZ6RA8Y720 accepted
+GUI operation 01M5N9MSR715ZG7DY2BSWCCRVG accepted
+GUI operation 01M5N9MSR7HG95BPWKYFWKGZM7 accepted
+GUI operation 01M5N9MSR77H329XX2833SZARD accepted
+GUI operation 01M5N9MSR7G66Y3QB0ZNY55F69 accepted
+GUI operation 01M5N9MSYX357ZHAB5SSH1R6GQ accepted
+GUI operation 01M5N9MSYXFB9AT7X8Z6MDX1WQ accepted
+GUI operation 01M5N9MSYXFP2ZX8ETM94ZAY29 accepted
+GUI operation 01M5N9MSYXEFJY6A2GWP022TZY accepted
+GUI operation 01M5N9MSYX233TZMYPEF3CYSHA accepted
+GUI operation 01M5N9MSYXJ1X4GJ7JA1AQXADC accepted
+GUI operation 01M5N9MSYX438203Q2FGW0ZPA7 accepted
+GUI operation 01M5N9MSYX73SW4QA14FFF2NDK accepted
+GUI operation 01M5N9MSYXD7652YHQ4A330H8E accepted
+GUI operation 01M5N9MSYXX3BKD0D8ZBJT09AD accepted
+GUI operation 01M5N9MSYXKCYKV0TBQT6KY422 accepted
+GUI operation 01M5N9MSYXDMZSP7K88CCR962J accepted
+GUI operation 01M5N9MSYXXQ5J0CQ8Z77E06EB accepted
+GUI operation 01M5N9MSYXMZ3PFNPN2CR0CWP1 accepted
+GUI operation 01M5N9MVAMVXD15RFB4YJ4JF5B accepted
+GUI operation 01M5N9MVAM4Z2G3BAQMJ7D5AZ0 accepted
+GUI operation 01M5N9MVAMK1G6NY47MQ8KHQ0G accepted
+GUI operation 01M5N9MSYX9KJ21EVHPDXA615D accepted
+GUI operation 01M5N9MSYXX3XE31A9EGJYD324 accepted
+GUI operation 01M5N9MVB14KPRT2ZCPVWE074C accepted
+GUI operation 01M5N9MVC97SPTYD1859B1723Q accepted
+PASS full duplex: 256 distinct input IDs delivered all bytes in exact order while frames/replies were drained
+GUI operation 01M5N9MVCDMQK7EY9055XFMTXQ accepted
+GUI operation 01M5N9MVD3MD9KQ5FWCG1WJFGH accepted
+GUI operation 01M5N9MVD3K1JM349C0JVJ8RDF accepted
+GUI operation 01M5N9MVDPK2TYV0D9NN3K0R33 accepted
+seat 01M5N9MS6YTN8D8231M7XHM9BW activity=Idle process=Running { pid: 13993 }
+GUI operation 01M5N9MVE48XY8G5KHC8X8QNM5 accepted
+GUI operation 01M5N9MVEP0GN89XJPJATNZVGV accepted
+GUI operation 01M5N9MVER7K8F7HV2CGXEQ343 accepted
+GUI operation 01M5N9MVF6QZ1KRATY0Q2X4V4B accepted
+seat 01M5N9MS6YTN8D8231M7XHM9BW activity=Idle process=Running { pid: 13993 }
+GUI operation 01M5N9MVHGRJNSAC7SJNEQHE59 accepted
+GUI operation 01M5N9MVHY5459HQPXP79P4STT accepted
+GUI operation 01M5N9MVJG4VG98GX5KK9WP53M accepted
+seat 01M5N9MS6YTN8D8231M7XHM9BW activity=Idle process=Running { pid: 13993 }
+GUI operation 01M5N9MVJYW9VH7NJ6WVVFVK7A accepted
+GUI operation 01M5N9MVKHPJ4C6WBTEXGMZ08W accepted
+GUI operation 01M5N9MVK048TTEZCQ3XDPYYAY accepted
+GUI operation 01M5N9MVM7FM01KXES5KX58DAP accepted
+GUI operation 01M5N9MVMSCFXT41D4RKPQCCNT accepted
+PASS resize: PTY stty reports 12x40 then 12x20; prior output reflows
+GUI operation 01M5N9MVMWQRSBVT0XK6T1MY8X accepted
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: recovery failed: logic exited during startup
+PASS logic SIGKILL: Some("GUI connection closed"); retained Screen/frame; no restoration claimed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+PASS orderly shutdown at full retained/channel capacity after backend loss, supervisor 13990 reaped
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 50 filtered out; finished in 3.07s
+
+EXIT 0 elapsed 8.974s
+
+SOURCE b3bd795b89437a4ec95b75e1668193a66de9a8ad
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+OWNED_COMMAND_PID 14135
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking cfg-if v1.0.5
+    Checking memchr v2.8.3
+    Checking serde v1.0.229
+    Checking itoa v1.0.18
+    Checking zmij v1.0.23
+   Compiling winnow v1.0.4
+    Checking serde_json v1.0.154
+    Checking bitflags v2.13.2
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking log v0.4.34
+    Checking arrayvec v0.7.8
+    Checking typenum v1.20.1
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking smallvec v1.16.3
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking zeroize v1.9.1
+    Checking zerocopy v0.8.63
+    Checking unicode-width v0.2.2
+    Checking getrandom v0.2.17
+    Checking foldhash v0.2.0
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking hashbrown v0.17.1
+    Checking rand_core v0.6.4
+    Checking parking_lot_core v0.9.12
+    Checking parking_lot v0.12.5
+    Checking generic-array v0.14.7
+    Checking equivalent v1.0.3
+    Checking indexmap v2.14.2
+    Checking libm v0.2.16
+    Checking cursor-icon v1.2.0
+    Checking pin-project-lite v0.2.17
+    Checking crypto-common v0.1.7
+    Checking once_cell v1.21.4
+    Checking num-traits v0.2.19
+    Checking thiserror v2.0.21
+    Checking subtle v2.6.1
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking crc32fast v1.5.3
+    Checking miniz_oxide v0.9.1
+    Checking zlib-rs v0.6.8
+    Checking const-oid v0.9.6
+    Checking core-foundation-sys v0.8.7
+    Checking ryu v1.0.23
+    Checking unsafe-libyaml v0.2.11
+    Checking flate2 v1.1.10
+    Checking block-buffer v0.10.4
+    Checking serde_yaml v0.9.34+deprecated
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking digest v0.10.7
+    Checking objc2-encode v4.1.0
+    Checking objc2 v0.6.5
+    Checking bytes v1.12.1
+    Checking dispatch2 v0.3.1
+    Checking block2 v0.6.2
+    Checking bytemuck v1.25.2
+    Checking objc2-core-foundation v0.3.2
+    Checking errno v0.3.14
+    Checking base64 v0.22.1
+    Checking unicode-ident v1.0.27
+    Checking serde-big-array v0.5.1
+    Checking cpufeatures v0.2.17
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking objc2-foundation v0.3.2
+    Checking signal-hook-registry v1.4.8
+    Checking mio v1.2.4
+    Checking socket2 v0.6.5
+    Checking bit-vec v0.9.1
+    Checking objc2-metal v0.3.2
+    Checking raw-window-handle v0.6.2
+    Checking bit-set v0.10.0
+    Checking tokio v1.54.1
+    Checking objc2-core-graphics v0.3.2
+    Checking half v2.7.1
+    Checking codespan-reporting v0.13.1
+    Checking static_assertions v1.1.0
+    Checking wgpu-types v30.0.1
+    Checking objc2-quartz-core v0.3.2
+    Checking naga v30.0.1
+    Checking float-cmp v0.9.0
+    Checking base64ct v1.8.3
+    Checking strict-num v0.1.1
+    Checking raw-window-metal v1.1.0
+    Checking polycool v0.4.0
+    Checking libloading v0.8.9
+    Checking arrayref v0.3.9
+    Checking profiling v1.0.18
+    Checking tiny-skia-path v0.12.0
+    Checking kurbo v0.13.1
+    Checking fdeflate v0.3.7
+    Checking miniz_oxide v0.8.9
+    Checking euclid v0.22.14
+    Checking wgpu-naga-bridge v30.0.1
+    Checking wgpu-hal v30.0.1
+    Checking ppv-lite86 v0.2.21
+    Checking siphasher v1.0.4
+    Checking svgtypes v0.16.1
+    Checking lyon_geom v1.0.20
+    Checking png v0.18.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking pem-rfc7468 v0.7.0
+    Checking inout v0.1.4
+    Checking simplecss v0.2.2
+    Checking roxmltree v0.21.1
+    Checking imagesize v0.15.0
+    Checking pico-args v0.5.0
+    Checking data-url v0.3.2
+    Checking tiny-skia v0.12.0
+    Checking usvg v0.48.1
+    Checking cipher v0.4.4
+    Checking der v0.7.10
+    Checking wgpu-core v30.0.1
+    Checking lyon_path v1.0.19
+    Checking rgb v0.8.53
+    Checking float_next_after v1.0.0
+    Checking lyon_tessellation v1.0.22
+    Checking resvg v0.48.1
+    Checking spki v0.7.3
+    Checking objc2-core-text v0.3.2
+    Checking wgpu v30.0.1
+    Checking pollster v0.4.0
+    Checking pkcs8 v0.10.2
+    Checking sha2-asm v0.6.4
+    Checking tap v1.0.1
+    Checking wyz v0.5.1
+    Checking sha2 v0.10.9
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking getrandom v0.3.4
+    Checking radium v0.7.0
+    Checking objc-sys v0.3.5
+    Checking hmac v0.12.1
+    Checking futures-task v0.3.34
+    Checking base16ct v0.2.0
+    Checking slab v0.4.12
+    Checking futures-core v0.3.34
+    Checking funty v2.0.0
+    Checking futures-sink v0.3.34
+    Checking futures-util v0.3.34
+    Checking bitvec v1.1.1
+    Checking objc2 v0.5.3
+    Checking rand_core v0.9.5
+    Checking signature v2.2.0
+    Checking rand_chacha v0.9.0
+    Checking ff v0.13.1
+    Checking crossbeam-utils v0.8.23
+    Checking serdect v0.2.0
+    Checking core-foundation v0.9.4
+    Checking block2 v0.5.1
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking rand_core v0.10.1
+    Checking foreign-types-shared v0.3.1
+    Checking foreign-types v0.5.0
+    Checking core-graphics-types v0.1.3
+    Checking objc2-foundation v0.2.2
+    Checking sec1 v0.7.3
+    Checking crossbeam-queue v0.3.14
+    Checking group v0.13.0
+    Checking rand v0.9.5
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+    Checking tracing-core v0.1.36
+    Checking tracing v0.1.44
+    Checking elliptic-curve v0.13.8
+    Checking objc2-app-kit v0.2.2
+    Checking ulid v1.2.1
+    Checking core-graphics v0.23.2
+    Checking getrandom v0.4.3
+    Checking dpi v0.1.2
+    Checking smol_str v0.2.2
+    Checking thiserror v1.0.69
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking winit v0.30.13
+    Checking rfc6979 v0.4.0
+    Checking const-oid v0.10.2
+    Checking digest v0.11.3
+    Checking zstd-safe v8.2.0
+    Checking nix v0.28.0
+    Checking filedescriptor v0.8.3
+    Checking anyhow v1.0.104
+    Checking serial2 v0.2.38
+    Checking downcast-rs v1.2.1
+    Checking shell-words v1.1.1
+    Checking zstd v0.14.3
+    Checking portable-pty v0.9.0
+    Checking ecdsa v0.16.9
+    Checking rand_chacha v0.3.1
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+    Checking spin v0.9.9
+    Checking num-iter v0.1.46
+    Checking lazy_static v1.5.1
+    Checking rand v0.8.8
+    Checking primeorder v0.13.6
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+    Checking universal-hash v0.5.1
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking opaque-debug v0.3.1
+   Compiling pulldown-cmark v0.13.4
+    Checking polyval v0.6.2
+    Checking num-bigint-dig v0.8.6
+    Checking curve25519-dalek v4.1.3
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking chacha20 v0.10.2
+    Checking aes v0.8.4
+    Checking keccak v0.1.6
+    Checking dbl v0.3.2
+    Checking unicase v2.10.0
+    Checking byteorder v1.5.0
+    Checking cmac v0.7.2
+    Checking sha3 v0.10.9
+    Checking rand v0.10.3
+    Checking ghash v0.5.1
+    Checking rustix v1.1.5
+    Checking httparse v1.10.1
+    Checking sha1 v0.11.0
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking password-hash v0.5.0
+    Checking sha1 v0.10.7
+    Checking http v1.5.0
+    Checking blake2 v0.10.6
+    Checking foldhash v0.1.5
+    Checking unicode-segmentation v1.13.3
+    Checking data-encoding v2.11.1
+    Checking fastrand v2.5.0
+    Checking same-file v1.0.6
+    Checking signature v3.0.0
+    Checking walkdir v2.5.0
+    Checking ed25519 v3.0.0
+    Checking tempfile v3.27.0
+    Checking tungstenite v0.30.0
+    Checking hashbrown v0.15.5
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking libsqlite3-sys v0.38.2
+    Checking bitfields v1.0.3
+    Checking aes-gcm v0.10.3
+    Checking derive_builder v0.20.2
+    Checking curve25519-dalek v5.0.0
+    Checking eax v0.5.0
+    Checking snafu v0.9.2
+    Checking crc24 v0.1.6
+    Checking derive_more v2.1.1
+    Checking blowfish v0.9.1
+    Checking camellia v0.1.0
+    Checking aes-kw v0.2.1
+    Checking dsa v0.6.3
+    Checking x25519-dalek v2.0.1
+    Checking ocb3 v0.1.0
+    Checking p521 v0.13.3
+    Checking p256 v0.13.2
+    Checking p384 v0.13.1
+    Checking sha2 v0.11.1
+    Checking k256 v0.13.4
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking cast5 v0.11.1
+    Checking cfb-mode v0.8.2
+    Checking idea v0.5.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking block-padding v0.3.3
+    Checking hashlink v0.12.2
+    Checking notify-types v2.1.0
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+    Checking fsevent-sys v4.1.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking hex v0.4.3
+    Checking replace_with v0.1.8
+    Checking fixedbitset v0.5.7
+    Checking fallible-iterator v0.3.0
+    Checking rusqlite v0.40.2
+    Checking pgp v0.21.0
+    Checking petgraph v0.8.3
+    Checking notify v8.2.0
+    Checking security-framework v3.7.0
+    Checking ed25519-dalek v3.0.0
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking toml_datetime v1.1.2+spec-1.1.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling toml_edit v0.25.17+spec-1.1.0
+    Checking objc2-app-kit v0.3.2
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+   Compiling proc-macro-crate v3.5.0
+    Checking serde_spanned v1.1.2
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking tokio-util v0.7.19
+    Checking glob v0.3.4
+    Checking termcolor v1.4.1
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking trybuild v1.0.120
+    Checking aho-corasick v1.1.5
+    Checking regex-syntax v0.8.11
+    Checking regex-automata v0.4.18
+    Checking regex v1.13.1
+    Checking proc-macro2 v1.0.107
+    Checking quote v1.0.47
+    Checking syn v2.0.119
+error: unused import: `events::StateEvents`
+  --> crates/bboxy450-term/tests/lifecycle.rs:17:5
+   |
+17 | use events::StateEvents;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: trait `StateEvents` is never used
+  --> crates/bboxy450-term/tests/support/events.rs:11:11
+   |
+11 | pub trait StateEvents {
+   |           ^^^^^^^^^^^
+   |
+   = note: `-D dead-code` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: function `attach` is never used
+  --> crates/bboxy450-term/tests/support/events.rs:20:14
+   |
+20 | pub async fn attach(session: &mut Session) -> Result<()> {
+   |              ^^^^^^
+
+error: function `receive` is never used
+  --> crates/bboxy450-term/tests/support/events.rs:38:14
+   |
+38 | pub async fn receive(session: &mut Session) -> Result<GuiReply> {
+   |              ^^^^^^^
+
+error: could not compile `bboxy450-term` (test "lifecycle") due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+EXIT 101 elapsed 81.865s
+
+SOURCE 3b2a8ca74143b175d8f05f8113fc47d50d92b464
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+OWNED_COMMAND_PID 19890
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+    Checking cfg-if v1.0.5
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+    Checking memchr v2.8.3
+   Compiling zmij v1.0.23
+    Checking itoa v1.0.18
+   Compiling serde_json v1.0.154
+   Compiling winnow v1.0.4
+    Checking bitflags v2.13.2
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking log v0.4.34
+   Compiling winnow v0.7.15
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking arrayvec v0.7.8
+    Checking typenum v1.20.1
+    Checking smallvec v1.16.3
+   Compiling zeroize_derive v1.5.0
+    Checking zeroize v1.9.1
+   Compiling zerocopy v0.8.63
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling zerocopy-derive v0.8.63
+   Compiling parking_lot_core v0.9.12
+   Compiling version_check v0.9.5
+    Checking unicode-width v0.2.2
+   Compiling generic-array v0.14.7
+    Checking getrandom v0.2.17
+    Checking scopeguard v1.2.0
+    Checking foldhash v0.2.0
+    Checking hashbrown v0.17.1
+    Checking lock_api v0.4.14
+    Checking rand_core v0.6.4
+    Checking parking_lot v0.12.5
+   Compiling autocfg v1.5.1
+    Checking equivalent v1.0.3
+   Compiling libm v0.2.16
+   Compiling num-traits v0.2.19
+    Checking indexmap v2.14.2
+   Compiling thiserror v2.0.21
+    Checking cursor-icon v1.2.0
+   Compiling crc32fast v1.5.3
+    Checking pin-project-lite v0.2.17
+   Compiling thiserror-impl v2.0.21
+    Checking crypto-common v0.1.7
+    Checking once_cell v1.21.4
+    Checking subtle v2.6.1
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking miniz_oxide v0.9.1
+    Checking zlib-rs v0.6.8
+    Checking const-oid v0.9.6
+    Checking unsafe-libyaml v0.2.11
+    Checking flate2 v1.1.10
+    Checking core-foundation-sys v0.8.7
+    Checking ryu v1.0.23
+    Checking block-buffer v0.10.4
+    Checking serde_yaml v0.9.34+deprecated
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking digest v0.10.7
+    Checking objc2-encode v4.1.0
+   Compiling cfg_aliases v0.2.2
+   Compiling objc2 v0.6.5
+    Checking bytes v1.12.1
+   Compiling jobserver v0.1.35
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling cc v1.9.0
+    Checking dispatch2 v0.3.1
+    Checking block2 v0.6.2
+   Compiling bytemuck_derive v1.12.1
+    Checking bytemuck v1.25.2
+    Checking objc2-core-foundation v0.3.2
+    Checking errno v0.3.14
+    Checking base64 v0.22.1
+    Checking serde-big-array v0.5.1
+    Checking cpufeatures v0.2.17
+    Checking rustc-hash v1.1.0
+    Checking objc2-foundation v0.3.2
+    Checking naga-types v30.0.1
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking objc2-metal v0.3.2
+    Checking signal-hook-registry v1.4.8
+   Compiling naga v30.0.1
+    Checking objc2-core-graphics v0.3.2
+    Checking mio v1.2.4
+   Compiling tokio-macros v2.7.2
+    Checking socket2 v0.6.5
+    Checking raw-window-handle v0.6.2
+    Checking bit-vec v0.9.1
+    Checking tokio v1.54.1
+    Checking bit-set v0.10.0
+    Checking half v2.7.1
+    Checking codespan-reporting v0.13.1
+    Checking static_assertions v1.1.0
+    Checking wgpu-types v30.0.1
+    Checking objc2-quartz-core v0.3.2
+   Compiling wgpu-hal v30.0.1
+    Checking base64ct v1.8.3
+    Checking float-cmp v0.9.0
+    Checking strict-num v0.1.1
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-naga-bridge v30.0.1
+    Checking polycool v0.4.0
+    Checking libloading v0.8.9
+    Checking arrayref v0.3.9
+    Checking profiling v1.0.18
+    Checking tiny-skia-path v0.12.0
+    Checking kurbo v0.13.1
+   Compiling wgpu-core v30.0.1
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking euclid v0.22.14
+    Checking ppv-lite86 v0.2.21
+    Checking siphasher v1.0.4
+   Compiling litrs v1.0.1
+    Checking svgtypes v0.16.1
+    Checking lyon_geom v1.0.20
+    Checking png v0.18.1
+   Compiling document-features v0.2.12
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking pem-rfc7468 v0.7.0
+   Compiling wgpu v30.0.1
+    Checking inout v0.1.4
+    Checking simplecss v0.2.2
+    Checking roxmltree v0.21.1
+    Checking data-url v0.3.2
+    Checking imagesize v0.15.0
+    Checking pico-args v0.5.0
+    Checking usvg v0.48.1
+    Checking cipher v0.4.4
+    Checking der v0.7.10
+    Checking tiny-skia v0.12.0
+    Checking lyon_path v1.0.19
+   Compiling sha2-asm v0.6.4
+    Checking rgb v0.8.53
+    Checking float_next_after v1.0.0
+   Compiling pkg-config v0.3.34
+    Checking lyon_tessellation v1.0.22
+    Checking resvg v0.48.1
+    Checking spki v0.7.3
+    Checking objc2-core-text v0.3.2
+   Compiling radium v0.7.0
+   Compiling getrandom v0.3.4
+    Checking pollster v0.4.0
+   Compiling objc-sys v0.3.5
+    Checking pkcs8 v0.10.2
+   Compiling aho-corasick v1.1.5
+    Checking tap v1.0.1
+   Compiling regex-syntax v0.8.11
+    Checking wyz v0.5.1
+   Compiling regex-automata v0.4.18
+    Checking sha2 v0.10.9
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking hmac v0.12.1
+   Compiling futures-macro v0.3.34
+    Checking slab v0.4.12
+    Checking futures-core v0.3.34
+    Checking funty v2.0.0
+    Checking futures-sink v0.3.34
+   Compiling crossbeam-utils v0.8.23
+    Checking futures-task v0.3.34
+    Checking base16ct v0.2.0
+    Checking futures-util v0.3.34
+    Checking bitvec v1.1.1
+   Compiling regex v1.13.1
+    Checking objc2 v0.5.3
+    Checking rand_core v0.9.5
+    Checking signature v2.2.0
+   Compiling semver v1.0.28
+    Checking rand_chacha v0.9.0
+    Checking block2 v0.5.1
+    Checking ff v0.13.1
+   Compiling rustc_version v0.4.1
+    Checking serdect v0.2.0
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+    Checking core-foundation v0.9.4
+   Compiling foreign-types-macros v0.2.4
+    Checking rand_core v0.10.1
+   Compiling getrandom v0.4.3
+    Checking foreign-types-shared v0.3.1
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking objc2-foundation v0.2.2
+    Checking core-graphics-types v0.1.3
+    Checking foreign-types v0.5.0
+    Checking sec1 v0.7.3
+    Checking crossbeam-queue v0.3.14
+    Checking group v0.13.0
+    Checking rand v0.9.5
+    Checking hkdf v0.12.4
+   Compiling winit v0.30.13
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+   Compiling thiserror v1.0.69
+    Checking tracing-core v0.1.36
+   Compiling cfg_aliases v0.1.1
+   Compiling nix v0.28.0
+    Checking tracing v0.1.44
+    Checking elliptic-curve v0.13.8
+    Checking ulid v1.2.1
+    Checking objc2-app-kit v0.2.2
+    Checking core-graphics v0.23.2
+   Compiling thiserror-impl v1.0.69
+    Checking smol_str v0.2.2
+   Compiling anyhow v1.0.104
+    Checking dpi v0.1.2
+   Compiling zstd-safe v8.2.0
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking rfc6979 v0.4.0
+   Compiling strsim v0.11.1
+   Compiling ident_case v1.0.1
+   Compiling fnv v1.0.7
+    Checking const-oid v0.10.2
+    Checking digest v0.11.3
+   Compiling darling_core v0.20.11
+    Checking filedescriptor v0.8.3
+    Checking serial2 v0.2.38
+    Checking downcast-rs v1.2.1
+    Checking shell-words v1.1.1
+    Checking portable-pty v0.9.0
+   Compiling darling_macro v0.20.11
+    Checking ecdsa v0.16.9
+   Compiling curve25519-dalek v4.1.3
+    Checking rand_chacha v0.3.1
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+   Compiling num-bigint-dig v0.8.6
+    Checking spin v0.9.9
+    Checking lazy_static v1.5.1
+    Checking num-iter v0.1.46
+    Checking rand v0.8.8
+   Compiling darling v0.20.11
+    Checking primeorder v0.13.6
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+    Checking universal-hash v0.5.1
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling unicode-segmentation v1.13.3
+   Compiling httparse v1.10.1
+    Checking opaque-debug v0.3.1
+   Compiling rustversion v1.0.23
+   Compiling pulldown-cmark v0.13.4
+   Compiling rustix v1.1.5
+   Compiling vcpkg v0.2.15
+   Compiling libsqlite3-sys v0.38.2
+    Checking polyval v0.6.2
+   Compiling convert_case v0.10.0
+   Compiling derive_builder_core v0.20.2
+    Checking chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+    Checking aes v0.8.4
+    Checking zstd v0.14.3
+    Checking keccak v0.1.6
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking dbl v0.3.2
+    Checking byteorder v1.5.0
+    Checking unicase v2.10.0
+   Compiling unicode-xid v0.2.6
+   Compiling heck v0.5.0
+   Compiling crc24 v0.1.6
+   Compiling snafu-derive v0.9.2
+   Compiling derive_more-impl v2.1.1
+    Checking cmac v0.7.2
+    Checking sha3 v0.10.9
+    Checking rand v0.10.3
+   Compiling derive_builder_macro v0.20.2
+   Compiling bitfields-impl v1.0.3
+    Checking ghash v0.5.1
+    Checking sha1 v0.11.0
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking password-hash v0.5.0
+    Checking sha1 v0.10.7
+    Checking http v1.5.0
+    Checking blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+    Checking data-encoding v2.11.1
+    Checking fastrand v2.5.0
+    Checking same-file v1.0.6
+    Checking signature v3.0.0
+    Checking foldhash v0.1.5
+    Checking hashbrown v0.15.5
+    Checking ed25519 v3.0.0
+    Checking walkdir v2.5.0
+    Checking tempfile v3.27.0
+    Checking tungstenite v0.30.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking bitfields v1.0.3
+    Checking aes-gcm v0.10.3
+    Checking derive_builder v0.20.2
+    Checking eax v0.5.0
+    Checking derive_more v2.1.1
+    Checking snafu v0.9.2
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking aes-kw v0.2.1
+    Checking dsa v0.6.3
+    Checking x25519-dalek v2.0.1
+    Checking ocb3 v0.1.0
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking p256 v0.13.2
+    Checking sha2 v0.11.1
+    Checking k256 v0.13.4
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking twofish v0.7.1
+    Checking idea v0.5.1
+    Checking cast5 v0.11.1
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking block-padding v0.3.3
+    Checking hashlink v0.12.2
+    Checking notify-types v2.1.0
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking fsevent-sys v4.1.0
+    Checking hex v0.4.3
+    Checking fixedbitset v0.5.7
+    Checking fallible-iterator v0.3.0
+    Checking replace_with v0.1.8
+    Checking fallible-streaming-iterator v0.1.9
+    Checking pgp v0.21.0
+    Checking petgraph v0.8.3
+    Checking notify v8.2.0
+    Checking security-framework v3.7.0
+    Checking ed25519-dalek v3.0.0
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking toml_datetime v1.1.2+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking rusqlite v0.40.2
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling proc-macro-crate v3.5.0
+    Checking objc2-app-kit v0.3.2
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking toml v1.1.8+spec-1.1.0
+    Checking tokio-util v0.7.19
+    Checking termcolor v1.4.1
+    Checking glob v0.3.4
+    Checking trybuild v1.0.120
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Finished `dev` profile [optimized] target(s) in 1m 39s
+EXIT 0 elapsed 99.737s
+
+Administrative baseline shape probe: list mistaken for dict, AttributeError1; corrected list summary0, original untouched. Baseline copy SHA256 50eaa61ac6c4930ac4c60c8d479bef3cfb5f7edcd0d3ce198536f4efd47df9de
+
+SOURCE 68a661eccece8d2818e463f6951db4348f9dc17f
+COMMAND ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--bin', 'bboxy450-term', 'live::tests::']
+OWNED_COMMAND_PID 46271
+   Compiling libc v0.2.191
+   Compiling cfg-if v1.0.5
+   Compiling typenum v1.20.1
+   Compiling serde_core v1.0.229
+   Compiling zeroize v1.9.1
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling generic-array v0.14.7
+   Compiling crypto-common v0.1.7
+   Compiling subtle v2.6.1
+   Compiling serde v1.0.229
+   Compiling const-oid v0.9.6
+   Compiling bitflags v2.13.2
+   Compiling block-buffer v0.10.4
+   Compiling log v0.4.34
+   Compiling digest v0.10.7
+   Compiling zerocopy v0.8.63
+   Compiling objc2-encode v4.1.0
+   Compiling libm v0.2.16
+   Compiling arrayvec v0.7.8
+   Compiling cpufeatures v0.2.17
+   Compiling memchr v2.8.3
+   Compiling smallvec v1.16.3
+   Compiling base64ct v1.8.3
+   Compiling num-traits v0.2.19
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling itoa v1.0.18
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling foldhash v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling objc2 v0.6.5
+   Compiling spki v0.7.3
+   Compiling pkcs8 v0.10.2
+   Compiling tap v1.0.1
+   Compiling zmij v1.0.23
+   Compiling wyz v0.5.1
+   Compiling block2 v0.6.2
+   Compiling dispatch2 v0.3.1
+   Compiling radium v0.7.0
+   Compiling hmac v0.12.1
+   Compiling base16ct v0.2.0
+   Compiling funty v2.0.0
+   Compiling equivalent v1.0.3
+   Compiling indexmap v2.14.2
+   Compiling objc2-core-foundation v0.3.2
+   Compiling bitvec v1.1.1
+   Compiling bytemuck v1.25.2
+   Compiling thiserror v2.0.21
+   Compiling serde_json v1.0.154
+   Compiling ppv-lite86 v0.2.21
+   Compiling signature v2.2.0
+   Compiling bytes v1.12.1
+   Compiling unicode-width v0.2.2
+   Compiling ff v0.13.1
+   Compiling objc2-foundation v0.3.2
+   Compiling serdect v0.2.0
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling lock_api v0.4.14
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling sha2-asm v0.6.4
+   Compiling parking_lot_core v0.9.12
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling simd-adler32 v0.3.10
+   Compiling objc2-metal v0.3.2
+   Compiling elliptic-curve v0.13.8
+   Compiling parking_lot v0.12.5
+   Compiling sha2 v0.10.9
+   Compiling winnow v1.0.4
+   Compiling rustc-hash v1.1.0
+   Compiling adler2 v2.0.1
+   Compiling naga-types v30.0.1
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling rfc6979 v0.4.0
+   Compiling objc2-core-graphics v0.3.2
+   Compiling errno v0.3.14
+   Compiling bit-vec v0.9.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling const-oid v0.10.2
+   Compiling pin-project-lite v0.2.17
+   Compiling raw-window-handle v0.6.2
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling digest v0.11.3
+   Compiling bit-set v0.10.0
+   Compiling crc32fast v1.5.3
+   Compiling getrandom v0.3.4
+   Compiling miniz_oxide v0.9.1
+   Compiling codespan-reporting v0.13.1
+   Compiling half v2.7.1
+   Compiling zlib-rs v0.6.8
+   Compiling rand_core v0.10.1
+   Compiling unicode-ident v1.0.27
+   Compiling static_assertions v1.1.0
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling flate2 v1.1.10
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling rand_core v0.9.5
+   Compiling objc2-quartz-core v0.3.2
+   Compiling ecdsa v0.16.9
+   Compiling rand_chacha v0.3.1
+   Compiling num-integer v0.1.47
+   Compiling cpufeatures v0.3.1
+   Compiling spin v0.9.9
+   Compiling float-cmp v0.9.0
+   Compiling strict-num v0.1.1
+   Compiling lazy_static v1.5.1
+   Compiling num-iter v0.1.46
+   Compiling rand v0.8.8
+   Compiling raw-window-metal v1.1.0
+   Compiling rand_chacha v0.9.0
+   Compiling objc-sys v0.3.5
+   Compiling getrandom v0.4.3
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling polycool v0.4.0
+   Compiling mio v1.2.4
+   Compiling universal-hash v0.5.1
+   Compiling socket2 v0.6.5
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling cursor-icon v1.2.0
+   Compiling opaque-debug v0.3.1
+   Compiling base64 v0.22.1
+   Compiling arrayref v0.3.9
+   Compiling tiny-skia-path v0.12.0
+   Compiling polyval v0.6.2
+   Compiling wgpu-hal v30.0.1
+   Compiling tokio v1.54.1
+   Compiling thiserror v1.0.69
+   Compiling kurbo v0.13.1
+   Compiling objc2 v0.5.3
+   Compiling rand v0.9.5
+   Compiling curve25519-dalek v4.1.3
+   Compiling num-bigint-dig v0.8.6
+   Compiling crossbeam-utils v0.8.23
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling chacha20 v0.10.2
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling aes v0.8.4
+   Compiling euclid v0.22.14
+   Compiling keccak v0.1.6
+   Compiling serde-big-array v0.5.1
+   Compiling dbl v0.3.2
+   Compiling byteorder v1.5.0
+   Compiling siphasher v1.0.4
+   Compiling cmac v0.7.2
+   Compiling svgtypes v0.16.1
+   Compiling sha3 v0.10.9
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling lyon_geom v1.0.20
+   Compiling png v0.18.1
+   Compiling rand v0.10.3
+   Compiling zstd-safe v8.2.0
+   Compiling crossbeam-queue v0.3.14
+   Compiling nix v0.28.0
+   Compiling ulid v1.2.1
+   Compiling block2 v0.5.1
+   Compiling filedescriptor v0.8.3
+   Compiling httparse v1.10.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling ghash v0.5.1
+   Compiling anyhow v1.0.104
+   Compiling sha1 v0.11.0
+   Compiling core-foundation v0.9.4
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling roxmltree v0.21.1
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling simplecss v0.2.2
+   Compiling serial2 v0.2.38
+   Compiling foldhash v0.1.5
+   Compiling shell-words v1.1.1
+   Compiling slab v0.4.12
+   Compiling dispatch v0.2.0
+   Compiling pico-args v0.5.0
+   Compiling data-url v0.3.2
+   Compiling bitflags v1.3.2
+   Compiling futures-core v0.3.34
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling downcast-rs v1.2.1
+   Compiling signature v3.0.0
+   Compiling imagesize v0.15.0
+   Compiling foreign-types-shared v0.3.1
+   Compiling data-encoding v2.11.1
+   Compiling futures-task v0.3.34
+   Compiling futures-util v0.3.34
+   Compiling tungstenite v0.30.0
+   Compiling usvg v0.48.1
+   Compiling foreign-types v0.5.0
+   Compiling ed25519 v3.0.0
+   Compiling portable-pty v0.9.0
+   Compiling walkdir v2.5.0
+   Compiling core-graphics-types v0.1.3
+   Compiling objc2-foundation v0.2.2
+   Compiling hashbrown v0.15.5
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling aes-gcm v0.10.3
+   Compiling wgpu-core v30.0.1
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling zstd v0.14.3
+   Compiling curve25519-dalek v5.0.0
+   Compiling tiny-skia v0.12.0
+   Compiling lyon_path v1.0.19
+   Compiling crc24 v0.1.6
+   Compiling eax v0.5.0
+   Compiling snafu v0.9.2
+   Compiling derive_more v2.1.1
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling aes-kw v0.2.1
+   Compiling dsa v0.6.3
+   Compiling x25519-dalek v2.0.1
+   Compiling ocb3 v0.1.0
+   Compiling p256 v0.13.2
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling sha2 v0.11.1
+   Compiling k256 v0.13.4
+   Compiling security-framework-sys v2.17.0
+   Compiling core-foundation v0.10.1
+   Compiling rgb v0.8.53
+   Compiling hashlink v0.12.2
+   Compiling idea v0.5.1
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling notify-types v2.1.0
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling replace_with v0.1.8
+   Compiling unsafe-libyaml v0.2.11
+   Compiling fallible-iterator v0.3.0
+   Compiling float_next_after v1.0.0
+   Compiling fixedbitset v0.5.7
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling hex v0.4.3
+   Compiling ryu v1.0.23
+   Compiling tracing-core v0.1.36
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling tracing v0.1.44
+   Compiling pgp v0.21.0
+   Compiling petgraph v0.8.3
+   Compiling rusqlite v0.40.2
+   Compiling lyon_tessellation v1.0.22
+   Compiling notify v8.2.0
+   Compiling security-framework v3.7.0
+   Compiling resvg v0.48.1
+   Compiling ed25519-dalek v3.0.0
+   Compiling wgpu v30.0.1
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling objc2-app-kit v0.2.2
+   Compiling core-graphics v0.23.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling dpi v0.1.2
+   Compiling pollster v0.4.0
+   Compiling smol_str v0.2.2
+   Compiling winit v0.30.13
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling rustix v1.1.5
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling objc2-app-kit v0.3.2
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+    Finished `test` profile [optimized] target(s) in 4m 38s
+     Running unittests src/main.rs (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/dev-target/debug/deps/bboxy450_term-1777b3d526f86f71)
+
+running 14 tests
+test live::tests::messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test live::tests::event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do ... ok
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test live::tests::resize_before_a_coalesced_watch_keeps_its_desired_grid ... ok
+test live::tests::refused_watch_retries_stay_bounded_and_coalesce_the_latest_size ... ok
+test live::tests::generic_spawn_preserves_inputs_and_uses_io_defaults ... ok
+test live::tests::controls_obey_logic_size_limits_and_discard_old_generations ... ok
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test live::tests::event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice ... ok
+test live::tests::sent_control_waits_for_an_observation_or_refusal_before_retrying ... ok
+test live::tests::first_refused_resize_converges_without_another_ui_resize ... ok
+cockpit ready: supervisor=54181 logic=54186
+cockpit ready: supervisor=54182 logic=54187
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5NDEBK6F5BKKZ7S51BD4MX9 accepted
+GUI operation 01M5NDEBK66R1A2KM2R4M139C1 accepted
+GUI operation 01M5NDEBHQXTHWT7DHDJSR26VE rejected: not a built-in harness
+GUI operation 01M5NDEBTEJ6NC5P6XPFDAFNNX accepted
+GUI operation 01M5NDEBTF6XNN17S8F5KH6R7H accepted
+GUI operation 01M5NDEBVCF5X18VT9H68PETZG accepted
+GUI operation 01M5NDEBVEZG6FZJNZSF2PSQ64 accepted
+GUI operation 01M5NDEBVTCE6C33HG7PG77TBJ accepted
+GUI operation 01M5NDEBVJ5819J5V8YRAVMG55 accepted
+GUI operation 01M5NDEBW4D13K3NF95X9QH382 accepted
+GUI operation 01M5NDEBWD8182DTJVTBYXV1XE accepted
+GUI operation 01M5NDEBWHEB985XXXMX3B1GEB accepted
+GUI operation 01M5NDEBW9HG4T6MDWKZQ7AX2Y accepted
+GUI operation 01M5NDEBX2KARYRSC04W7JG3Z3 accepted
+GUI operation 01M5NDEBXC35VRAB2RRKHG9J70 accepted
+GUI operation 01M5NDEBXG5G8Y09MP665MJ5CD accepted
+GUI operation 01M5NDEBXV9V972CNHMGYKQ2KD accepted
+GUI operation 01M5NDEBY3P4VZSH5WGVK4N56W accepted
+GUI operation 01M5NDEBY62SNEHP2JXKGHKPER accepted
+GUI operation 01M5NDEBY97EQ842PBPS252MZR accepted
+GUI operation 01M5NDEBXWFPTCA35SFEA6Q0F8 accepted
+GUI operation 01M5NDEBYCMYGZS84DBGF8S3XX accepted
+GUI operation 01M5NDEBXPGS5BGP85JQZBBXM5 accepted
+GUI operation 01M5NDEBYXJKDG259Q8T41NA3Z accepted
+GUI operation 01M5NDEBYZVQ7856MR4D5FQTD8 accepted
+GUI operation 01M5NDEBZ4JXQVMBGHNBWH0Y43 accepted
+GUI operation 01M5NDEBZ6Y4YN7HGZ4QWNRZQG accepted
+GUI operation 01M5NDEBZBENNG4JACDCFT09MG accepted
+GUI operation 01M5NDEBZH2DMJB7SBJ9EFA8ER accepted
+GUI operation 01M5NDEBZR90MQYSSBFW79ND1C accepted
+GUI operation 01M5NDEBZ5Z9NMENB22BYGKY3D accepted
+GUI operation 01M5NDEC0FNKYHZEV09PDA9F1F accepted
+GUI operation 01M5NDEC0ZZSTJ8DK8YB07S4ZT accepted
+GUI operation 01M5NDEC136SD1TR9K3H8N1714 accepted
+seat 01M5NDEBQ7J7M5HACR66Y0HM5N activity=Active process=Running { pid: 54192 }
+GUI operation 01M5NDEC1HXTC2W8EENYVE8KSG accepted
+GUI operation 01M5NDEC1BH9DCDPNVCG28R48M accepted
+GUI operation 01M5NDEC1BE14FPBWHZ04M3FNP accepted
+GUI operation 01M5NDEC1B138EX088N90RH2J8 accepted
+GUI operation 01M5NDEC1BHDV5TMJSV1CV2ZP0 accepted
+GUI operation 01M5NDEC1B3CG0BT3WSCGYBMYF accepted
+GUI operation 01M5NDEC1B1D3GDY774DZ151C7 accepted
+GUI operation 01M5NDEC1B5QP5PMMRPNZF2BH3 accepted
+GUI operation 01M5NDEC1BEF8Q8G6YHCX38GVD accepted
+GUI operation 01M5NDEC1B0V1DVRVH4K523MBD accepted
+GUI operation 01M5NDEC1BSCMCRPKM0FMH01MM accepted
+GUI operation 01M5NDEC1BHE52F7DVYN36W61G accepted
+GUI operation 01M5NDEC1B80V9799J2ER1K34X accepted
+GUI operation 01M5NDEC1BTNFGPT0KT3JBYJ4C accepted
+GUI operation 01M5NDEC1B9WDZXA7PSCDTRFCN accepted
+GUI operation 01M5NDEC1B3FCQA4FXZAVEHW1R accepted
+GUI operation 01M5NDEC1BBCGK2FRH3QFBN3B1 accepted
+GUI operation 01M5NDEC1BFGA1JCYHG1GG8E2M accepted
+GUI operation 01M5NDEC1BXY66DZWBSHPDQTVY accepted
+GUI operation 01M5NDEC1BYDZQ718HQ1FAQEWJ accepted
+GUI operation 01M5NDEC1BABKA745M0AJZ58QM accepted
+GUI operation 01M5NDEC1BD2X3CESQCD19V2A1 accepted
+GUI operation 01M5NDEC1B38FTT0EXND2B7067 accepted
+GUI operation 01M5NDEC1BZYBT5N7533JT0FCB accepted
+GUI operation 01M5NDEC1BXESBWMBENCK05532 accepted
+GUI operation 01M5NDEC1BDJ8M2WB5K83C3BB1 accepted
+GUI operation 01M5NDEC1BBD9HGBDVD90Z1VZY accepted
+GUI operation 01M5NDEC1BH8HCPAMX0WXK1N2S accepted
+GUI operation 01M5NDEC1B884KJ6M80EGQ09Y5 accepted
+GUI operation 01M5NDEC1BRM479D3D0MCYXJCV accepted
+GUI operation 01M5NDEC1B40S4BP03FGM2R90D accepted
+GUI operation 01M5NDEC1B2BT8ZJ7520AANHJQ accepted
+GUI operation 01M5NDEC1B72FBSQMBGFNY8V5Y accepted
+GUI operation 01M5NDEC1BX9SNYHAFWSVTH3AP accepted
+GUI operation 01M5NDEC1BT4RJ7HTWB93T07EM accepted
+GUI operation 01M5NDEC1BEP0V9EJJ0V51B3Q1 accepted
+GUI operation 01M5NDEC1BPJ9RMJ9Q43YDAVMY accepted
+GUI operation 01M5NDEC1BWYM9KFCY5CQSH4AS accepted
+GUI operation 01M5NDEC1BRS8F3R8FAT8B6A5B accepted
+GUI operation 01M5NDEC1B60T7R39HQ8DK4ZXE accepted
+GUI operation 01M5NDEC1B9D2A1HE9463J6W6J accepted
+GUI operation 01M5NDEC1B7639ZY97ARVT9CQ3 accepted
+GUI operation 01M5NDEC1B11Y50THCS9WAGY65 accepted
+GUI operation 01M5NDEC1BSWG5Z957VW4Y052R accepted
+GUI operation 01M5NDEC1BZFQRD4Q6VWSYMT4S accepted
+GUI operation 01M5NDEC1BW092ESED0D94P4CP accepted
+GUI operation 01M5NDEC1B4GJXNVRTVSJ834ZN accepted
+GUI operation 01M5NDEC1BYKQ6KG1G5B944MRS accepted
+GUI operation 01M5NDEC1B1TQP3FYN62QJNCTM accepted
+GUI operation 01M5NDEC1B3KHA3WTC062RQNZ9 accepted
+GUI operation 01M5NDEC1BV72FXEXEAPT39V97 accepted
+GUI operation 01M5NDEC1B9QGDF74Y2EVM0ABF accepted
+GUI operation 01M5NDEC1B7SQBXBED14QW2J7Z accepted
+GUI operation 01M5NDEC1BXEKN6VQKPJVW50BF accepted
+GUI operation 01M5NDEC1B7E338X20HN38VQS3 accepted
+GUI operation 01M5NDEC1BDMBWCGYSWVYDSY8C accepted
+GUI operation 01M5NDEC1B78EH6NAYNK6NKY8P accepted
+GUI operation 01M5NDEC1B6B2WE03GDWQ1J4QN accepted
+GUI operation 01M5NDEC1B2XMJCTQFHKZQF91F accepted
+GUI operation 01M5NDEC1B8MN8BEXDATS1SH14 accepted
+GUI operation 01M5NDEC1BPPY9TFE4WKJ6VCK7 accepted
+GUI operation 01M5NDEC1BWFZ8BKVMHQ6Z5417 accepted
+GUI operation 01M5NDEC1B6ZS5D78G39DWHSC4 accepted
+GUI operation 01M5NDEC1BXZWXFEC3H8AKC8ZX accepted
+GUI operation 01M5NDEC1BND753RE1894F6MD1 accepted
+GUI operation 01M5NDEC1BP0FDC993RQDJAF9F accepted
+GUI operation 01M5NDEC1BE2CWK719Z9Q6FKKS accepted
+GUI operation 01M5NDEC1B9H6E97HZSBT7RSR5 accepted
+GUI operation 01M5NDEC1BKRFC04QRY0D4R262 accepted
+GUI operation 01M5NDECKWN3FSEY7ME9NZGSSP accepted
+GUI operation 01M5NDEC1BW01HT6GAMY4JPSA8 accepted
+GUI operation 01M5NDEC1B6SEZP015Z59B3JQF accepted
+GUI operation 01M5NDEC1BJNK2W7CRH9RTSTB5 accepted
+GUI operation 01M5NDEC1BFJKG3EZPKQ4EZQ33 accepted
+GUI operation 01M5NDEC1BAFEY3HYENA50YQNJ accepted
+GUI operation 01M5NDEC1BJR9BD98S7GJ6108T accepted
+GUI operation 01M5NDEC1B00X8MMBSVTN8HJCZ accepted
+GUI operation 01M5NDEC1B8CSNT7H5HAGKCXQ9 accepted
+GUI operation 01M5NDEC1B9QM9P8JXR97A0F2H accepted
+GUI operation 01M5NDEC1BBBD21HY3Z5Q5PPNX accepted
+GUI operation 01M5NDEC1BK9AVKC8GJ08DASPR accepted
+GUI operation 01M5NDEC1BZTSF6QKQYT9RQ9GJ accepted
+GUI operation 01M5NDEC1BATFZ5ZMX2AZ5514A accepted
+GUI operation 01M5NDEC1BXDNNBKMNPWTSDAAF accepted
+GUI operation 01M5NDEC1BTS9A0QWN739XRJCB accepted
+GUI operation 01M5NDEC1BTW9F08YKNYJZVKAD accepted
+GUI operation 01M5NDEC1BDT11Q7KNS5SWYAH1 accepted
+GUI operation 01M5NDEC1B3DSSY8TK1XS73K68 accepted
+GUI operation 01M5NDEC1BQEZZ26GNMZVESTE4 accepted
+GUI operation 01M5NDEC1B297CE2V0B5H6NKZT accepted
+GUI operation 01M5NDEC1B8F66GMMF93K8FMWQ accepted
+GUI operation 01M5NDEC1BHSM74E8SDPFA1RZZ accepted
+GUI operation 01M5NDEC1BEFSF38AFACS74PTZ accepted
+GUI operation 01M5NDEC1BSQ5WTT6GMGSYK4MP accepted
+GUI operation 01M5NDEC1B97DSA0NSXHX86JS5 accepted
+GUI operation 01M5NDEC1BCJ198A8NHNV4B102 accepted
+GUI operation 01M5NDEC1B7Y3H4ZH2H4EXRN5E accepted
+GUI operation 01M5NDEC1BJJ60JETP21F3P0BV accepted
+GUI operation 01M5NDEC1B4KTDWQXG6NZBXKWT accepted
+GUI operation 01M5NDEC1BPFWJMM0NDEA1VFYQ accepted
+GUI operation 01M5NDEC1BK0HKBY0C78F753C3 accepted
+GUI operation 01M5NDEC1BFWMRE8TY27KAD4VW accepted
+GUI operation 01M5NDEC1BWRC9Z12MM15V60QP accepted
+GUI operation 01M5NDEC1B3M6K96VS625KHF24 accepted
+GUI operation 01M5NDEC1BPQ835MS006G3170Y accepted
+GUI operation 01M5NDECW1M7ENQMGZX052B3YS accepted
+GUI operation 01M5NDEC1BK4TXTXF27M9BPWHH accepted
+GUI operation 01M5NDEC1BAMFFWBXWH8WTVWBX accepted
+GUI operation 01M5NDEC1B49BND8KSP6AN96S3 accepted
+GUI operation 01M5NDECX1RFTT0XM1KN18PBKS accepted
+GUI operation 01M5NDEC1BE2M3S1GTJX6166BF accepted
+GUI operation 01M5NDEC1B18W2FKP7VRHN001J accepted
+GUI operation 01M5NDEC1B5E13XRYV7ZAFM3AC accepted
+GUI operation 01M5NDEC1BBG1GGCSNQJRP6PHE accepted
+GUI operation 01M5NDEC1BNY2H682G87F80W4W accepted
+GUI operation 01M5NDEC1B9Q1NJ49117K28TQ9 accepted
+GUI operation 01M5NDEC1BJ9VD6A28ZPDX1JZD accepted
+GUI operation 01M5NDECYRTAG4Y1RY9GW7Q033 accepted
+GUI operation 01M5NDEC1BS66XFQ92BR80CNFV accepted
+logic: orderly shutdown requested
+GUI operation 01M5NDEC1BAGW9C54C8QH2CSPS accepted
+GUI operation 01M5NDEC1BDDD2ZZ9AF57XGSZJ accepted
+GUI operation 01M5NDEC1BJ8MDYY60B21Q6W49 accepted
+logic: shutdown completed
+supervisor: orderly shutdown requested
+GUI operation 01M5NDEC1BB9GWTE010X2KQJ2X accepted
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+GUI operation 01M5NDEC1B9KJMZNQ4FAQZ1FZQ accepted
+test live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input ... ok
+GUI operation 01M5NDEC1BKJWBXXJ5W40VY655 accepted
+GUI operation 01M5NDEC1BB3FKEA9BRKN14PVJ accepted
+GUI operation 01M5NDEC1BVNF4N5GNPTX0W1RJ accepted
+GUI operation 01M5NDEC1BXTAK6VRH146TXMA1 accepted
+GUI operation 01M5NDEC1BTNX47KH5QK4E85ES accepted
+GUI operation 01M5NDEC1BFKJNCQ7XAND7MFT0 accepted
+GUI operation 01M5NDED1C8CPJ22WZK655K5Z8 accepted
+GUI operation 01M5NDED1DRBYT2WWKN5323ZAG accepted
+GUI operation 01M5NDED1KB7KNNH40RWTQBZY2 accepted
+GUI operation 01M5NDED1K9SSJ7ANK64J9XBCD accepted
+GUI operation 01M5NDEC1B23AE88P3275JZPHR accepted
+GUI operation 01M5NDEC1B6D5CCYNGD0A5GKV0 accepted
+GUI operation 01M5NDEC1B99V4AQMYNSR1MBD1 accepted
+GUI operation 01M5NDEC1BZ38ZW7647TZHNB6B accepted
+GUI operation 01M5NDEC1BF04YKY3XK27P66H2 accepted
+GUI operation 01M5NDEC1B7A5SF7ZA2S3SNJ5B accepted
+GUI operation 01M5NDEC1B1J859FGRKKGJRDTA accepted
+GUI operation 01M5NDEC1B9FD4BPXYV1CBGKPJ accepted
+GUI operation 01M5NDEC1BGA8YMT9T8RK4S516 accepted
+GUI operation 01M5NDEC1B98EYHFWKC45HY4WW accepted
+GUI operation 01M5NDEC1BTFWAK83Z2ABWCPE0 accepted
+GUI operation 01M5NDEC1B586H6BQSRX6QGVTZ accepted
+GUI operation 01M5NDEC1B3QZXFQBXEEHSFSSE accepted
+GUI operation 01M5NDEC1B5KJDS7NK2203G9TT accepted
+GUI operation 01M5NDEC1BNRF4JYFF0MG614S8 accepted
+GUI operation 01M5NDEC1BQ319QTJ6H0AQ3F83 accepted
+GUI operation 01M5NDEC1BVHP82WA7YRP4BGWR accepted
+GUI operation 01M5NDED5D37XV0Z5CBH82HQRQ accepted
+GUI operation 01M5NDEC1BS4TXNH36VQNQSFGJ accepted
+GUI operation 01M5NDEC1B17Y7XBVCNAMTJ3RQ accepted
+GUI operation 01M5NDEC1BZ1EKTFJTV2ZQACFZ accepted
+GUI operation 01M5NDED60GZPKJ6AXKEE1ZW2M accepted
+GUI operation 01M5NDEC1B3EM9DEEM8FANWWZD accepted
+GUI operation 01M5NDEC1BC3BA2FZP6S9M86K9 accepted
+GUI operation 01M5NDEC1BYYMPSWTVA0DS4CBV accepted
+GUI operation 01M5NDED6KTE4P7JT53J2PTM0M accepted
+GUI operation 01M5NDED6MTEB69NKFVDDK6YKN accepted
+GUI operation 01M5NDED6M2SF71ZRXA6SPRWGQ accepted
+GUI operation 01M5NDEC1BDGZ2460DBSJ7W1MW accepted
+GUI operation 01M5NDEC1B4BZ7N3SYRQAQZX4X accepted
+GUI operation 01M5NDEC1BVWVZ0VF7E4N4QZ0K accepted
+GUI operation 01M5NDEC1B29R4Q5S5WB5MYY3W accepted
+GUI operation 01M5NDEC1B4HNT07ZS7R2KD17B accepted
+GUI operation 01M5NDEC1BC3VZQA28XF11NQF7 accepted
+GUI operation 01M5NDEC1BZSF9KBFPQ10TSV0W accepted
+GUI operation 01M5NDEC1B3ZY1NFX888V2W60P accepted
+GUI operation 01M5NDEC1BGMAEY26MANRKTWAM accepted
+GUI operation 01M5NDEC1B9FJH69Y70Y6B05RY accepted
+GUI operation 01M5NDEC1BFDGZFXCT1P13SV2A accepted
+GUI operation 01M5NDEC1B7BFE0V3QKFSGVC4A accepted
+GUI operation 01M5NDEC1BWB928M5XTN7RNSRB accepted
+GUI operation 01M5NDEC1BQ576QQE0YA7ZSZYF accepted
+GUI operation 01M5NDEC1B0JNSKWQR6AA3YPVZ accepted
+GUI operation 01M5NDEC1BC6A932D5NYQ3AQ4M accepted
+GUI operation 01M5NDEC1B77PVD91ZR3J5GTRY accepted
+GUI operation 01M5NDEC1BYSQKRS59ABT4JW9T accepted
+GUI operation 01M5NDEC1BTPYK6C1J4WB6VRCT accepted
+GUI operation 01M5NDEC1B1R54RR58SJ8GB63E accepted
+GUI operation 01M5NDEC1BNH87QNWZFEW6XD19 accepted
+GUI operation 01M5NDEC1B3YK5K8SV744J3C9R accepted
+GUI operation 01M5NDEC1BTSS62JZEMCXJ2KY5 accepted
+GUI operation 01M5NDEC1BY8R666Q8AFRT5FZ6 accepted
+GUI operation 01M5NDEC1BTW9C1WZWW35RYXJ2 accepted
+GUI operation 01M5NDEC1BZJW2F8YFF5AN9JF3 accepted
+GUI operation 01M5NDEDBVYT1RCPV5MGKFBCG9 accepted
+GUI operation 01M5NDEDBVHDRFJYRXNNER04YZ accepted
+GUI operation 01M5NDEDBVTYA5C6WC60GTVXRH accepted
+GUI operation 01M5NDEC1B09JAH8BPCXM1SNS8 accepted
+GUI operation 01M5NDEC1BKR239281Y3MT2T8B accepted
+GUI operation 01M5NDEC1BH1JQD9KPS8CJ6J28 accepted
+GUI operation 01M5NDEC1B7DJ8YE1XK7FPSHPD accepted
+GUI operation 01M5NDEC1B7HAT1PE1DZWXJYY3 accepted
+GUI operation 01M5NDEC1BM04WFB40SJ2EHY7E accepted
+GUI operation 01M5NDEC1BSDB3035P62N3QMQV accepted
+GUI operation 01M5NDEC1B9KCH49W2KJARRKQD accepted
+GUI operation 01M5NDEC1BF08BPSP7EKS7B691 accepted
+GUI operation 01M5NDEC1BTB5AZYA63YNCMSH1 accepted
+GUI operation 01M5NDEC1BN19J7NEK0K14CWGR accepted
+GUI operation 01M5NDEC1BWH4EGWT420MN4DBC accepted
+GUI operation 01M5NDEC1BEM9369FWGH373P4F accepted
+GUI operation 01M5NDEC1BSJTZZN0RXYHR0AWG accepted
+GUI operation 01M5NDEC1B1QVP5EJ1KNQ21G6S accepted
+GUI operation 01M5NDEC1B0ABNR55NS3CV1ZX3 accepted
+GUI operation 01M5NDEDFGHJWRJ862TBYDSDVC accepted
+GUI operation 01M5NDEC544GZAT83XHF9EW4XW accepted
+GUI operation 01M5NDEC54ZB9EGM2XH1VAJQNK accepted
+GUI operation 01M5NDEC54TDPZWWM9CXW4J093 accepted
+GUI operation 01M5NDEC5419T7KRJX00H9254H accepted
+GUI operation 01M5NDEDH38N5X9TSV89349945 accepted
+GUI operation 01M5NDEC548PXF2ZTWAKQZVDXQ accepted
+GUI operation 01M5NDEC54G77S0ZRP2CMX10Z2 accepted
+GUI operation 01M5NDEC542D2RZ32021YEFXDA accepted
+GUI operation 01M5NDEC54S1Y2XKXRJZDYMKBJ accepted
+GUI operation 01M5NDEDJ4G20NVJRX1JBMHHSE accepted
+GUI operation 01M5NDEDJ5KMK1JZ7VEKN0ARDM accepted
+GUI operation 01M5NDEDJ5Z4MFB9M29F0YPSKA accepted
+GUI operation 01M5NDEDJ5HD38V5R4C5FRG525 accepted
+GUI operation 01M5NDEC54ZGD4QD1TQQJV4T52 accepted
+GUI operation 01M5NDEC54B1N3AKCD0S2PKE9M accepted
+GUI operation 01M5NDEC54H4Y8G9VK20DE7358 accepted
+GUI operation 01M5NDEC54V3DHQ6SG0WPR69GW accepted
+GUI operation 01M5NDEC5AXDNMQBT6GPX2D5W8 accepted
+GUI operation 01M5NDEC5H0S9TJ5Y98FM649VT accepted
+GUI operation 01M5NDEC5RSGBY16BB46WNCKAW accepted
+GUI operation 01M5NDEC5Z6TKVYPTGAQN22DFS accepted
+GUI operation 01M5NDEC65YKGMNZB4VJNGW4ME accepted
+GUI operation 01M5NDEC6JKV0C92DDZ1P5141P accepted
+GUI operation 01M5NDEC6SDKXGXKWG65Z7M9TG accepted
+GUI operation 01M5NDEC6Z0HZVBWBMDYMQWH1W accepted
+GUI operation 01M5NDEC7HSE6ER518MNTPEY6F accepted
+GUI operation 01M5NDEC7QEYA5EC9P1CEDZVSY accepted
+GUI operation 01M5NDEC7YTZ56ZBBFERQHWA73 accepted
+GUI operation 01M5NDECCZ5BPBGZW9KYCKX1HT accepted
+GUI operation 01M5NDECCZ67A3Y9QRA9VTN93B accepted
+GUI operation 01M5NDECCZYCXY5GW4SDM34PCH accepted
+GUI operation 01M5NDECCZ2HFSHYY4N0MKCTXP accepted
+GUI operation 01M5NDECCZDAB4XKD7GA6TJCH3 accepted
+GUI operation 01M5NDECCZ93X2931KYKSW948H accepted
+GUI operation 01M5NDECCZPAZ8G8P25NNPVHXS accepted
+GUI operation 01M5NDECCZN7SZB5N7ACQ4WBRQ accepted
+GUI operation 01M5NDECCZED9WM2NAHN1KZY1P accepted
+GUI operation 01M5NDECCZJXC8YG0PBXWBJH6K accepted
+GUI operation 01M5NDECCZS60CPS4E4GKWZ4EA accepted
+GUI operation 01M5NDECCZ3FV4PRK3T2RBB2AW accepted
+GUI operation 01M5NDEDQK6YGBS5YPABHXJ16Z accepted
+GUI operation 01M5NDECCZ8G079HGE97JXPS4J accepted
+GUI operation 01M5NDECCZFDZKHMSKRCBFWDA8 accepted
+GUI operation 01M5NDECDAQJW985W5PRFRJAGX accepted
+GUI operation 01M5NDECDJS5TZJK7NS3HQAEJP accepted
+GUI operation 01M5NDECDRSTZSXB7PYCG981QA accepted
+GUI operation 01M5NDECE2G3HFB5195J1XBB6X accepted
+GUI operation 01M5NDECE8JDPF2HF5WGR49B3M accepted
+GUI operation 01M5NDECEG2NRC4G0PD72BE54J accepted
+GUI operation 01M5NDECEPQ56KG0H5S406J7CE accepted
+GUI operation 01M5NDECEWPYJ70RCWZ8Q11HEG accepted
+GUI operation 01M5NDECF3DYXNV3QHAHTZ57EV accepted
+GUI operation 01M5NDECFASP5SBJMCQ4EA8V88 accepted
+GUI operation 01M5NDECFGAAX6ZK27B44KFDWV accepted
+GUI operation 01M5NDECFQCG6075PJMN9WBDBQ accepted
+GUI operation 01M5NDECM940TE45XK3F1TP26B accepted
+GUI operation 01M5NDECM9GZ1TJTQWTZQQBDPY accepted
+GUI operation 01M5NDECM9FGQH64CW4MD3NHQJ accepted
+GUI operation 01M5NDECM9EVBKTEED6QQE865E accepted
+GUI operation 01M5NDECM9ZR4C4F9XG5PKXKGC accepted
+GUI operation 01M5NDECM9YJPQ2AHY45KPCN4F accepted
+GUI operation 01M5NDECM9EATRJBVKEM2ZD4MQ accepted
+GUI operation 01M5NDECM97471WEPMFTGK8FCF accepted
+GUI operation 01M5NDECM9Y6TQDD0FGPJWVTDX accepted
+GUI operation 01M5NDECM9W244T50X3WCJ7RT4 accepted
+GUI operation 01M5NDECM9S5S3N8D2Q22ZSANT accepted
+GUI operation 01M5NDECM9C77NKAM75T2KWR3Y accepted
+GUI operation 01M5NDECM9FS24ACZPNXDRF9KF accepted
+GUI operation 01M5NDECM90816NTEJJW9HVHJM accepted
+GUI operation 01M5NDECMFGKD4M5S081V1GDT2 accepted
+GUI operation 01M5NDECMPDE8H1EF62EN4XSKV accepted
+GUI operation 01M5NDECN2HHVCAGNK6Q37ZRP2 accepted
+GUI operation 01M5NDECN8X7YK0W8M1QE2EFRC accepted
+GUI operation 01M5NDEDYX82H0D7EE0BGKB9T1 accepted
+GUI operation 01M5NDEDZ47MP2BB230B7QQ0ZC accepted
+GUI operation 01M5NDEDZJKEC4PT2NE286H5A9 accepted
+GUI operation 01M5NDEE0AVEYWNH0VK5FS12X4 accepted
+GUI operation 01M5NDEE0D84EQ64PACX4S4NG5 accepted
+GUI operation 01M5NDEE0KCWDBVN31B7RG7PCG accepted
+GUI operation 01M5NDEE1H77Y78TGJQWV40Z7T accepted
+GUI operation 01M5NDEE1RWXN6YVBM0AVDW08P accepted
+GUI operation 01M5NDEE22AJ9H22GSQ0BBQ6CN accepted
+seat 01M5NDEBQ7J7M5HACR66Y0HM5N activity=Idle process=Running { pid: 54192 }
+GUI operation 01M5NDEE39H52J06F3NG5V4ADF accepted
+GUI operation 01M5NDEE3Q1X8CK8FZ04VN4709 accepted
+GUI operation 01M5NDEE46QG9P1FV1DZSMRHPH accepted
+GUI operation 01M5NDEE4NT8R7GSZVY2JZTQQ5 accepted
+seat 01M5NDEBQ7J7M5HACR66Y0HM5N activity=Idle process=Running { pid: 54192 }
+GUI operation 01M5NDEE512429ZBT2007HKFVC accepted
+GUI operation 01M5NDEE5FAAW0QGBJJFEGTW77 accepted
+GUI operation 01M5NDEE59X832VW0JGGZ6EB3T accepted
+GUI operation 01M5NDEE5Y3CY8NRE5AF80Q6R5 accepted
+seat 01M5NDEBQ7J7M5HACR66Y0HM5N activity=Idle process=Running { pid: 54192 }
+GUI operation 01M5NDEE6D6VN0DA7EP8AVKA9Z accepted
+GUI operation 01M5NDEE6XHBFV25YQJTQCCE97 accepted
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: recovery failed: logic exited during startup
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 3.23s
+
+EXIT 0 elapsed 281.796s
+
+SOURCE 68a661eccece8d2818e463f6951db4348f9dc17f
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+OWNED_COMMAND_PID 54227
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 43.54s
+EXIT 0 elapsed 43.735s
