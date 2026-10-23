@@ -110,6 +110,29 @@ impl ChromeRenderer {
         target: ChromeTarget<'_>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<()> {
+        self.composite_with_load(layer, filter, mask, target, encoder, wgpu::LoadOp::Load)
+    }
+    /// As composite_group onto an uncleared target: the composite pass itself clears it to
+    /// transparent, exactly what a separate clear pass followed by composite_group draws.
+    pub fn composite_group_clearing(
+        &mut self,
+        layer: &wgpu::TextureView,
+        filter: Filter,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<()> {
+        let clear = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
+        self.composite_with_load(layer, filter, None, target, encoder, clear)
+    }
+    fn composite_with_load(
+        &mut self,
+        layer: &wgpu::TextureView,
+        filter: Filter,
+        mask: Option<LinearAlphaMask>,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+        load: wgpu::LoadOp<wgpu::Color>,
+    ) -> Result<()> {
         filter.validate()?;
         if let Some(mask) = mask {
             mask.validate()?;
@@ -171,7 +194,7 @@ impl ChromeRenderer {
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
+                    load,
                     store: wgpu::StoreOp::Store,
                 },
             })],
@@ -542,5 +565,94 @@ mod tests {
                 .composite_group_rgba_with_mask(&layer, &behind, [8, 1], filter, Some(invalid))
                 .is_err()
         );
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod clearing_tests {
+    use super::*;
+    #[test]
+    fn a_clearing_composite_equals_compositing_onto_transparent() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let [width, height] = [24u32, 12];
+        let len = (width * height * 4) as usize;
+        // Premultiplied: each channel at most its pixel's alpha.
+        let layer: Vec<u8> = (0..len)
+            .map(|i| {
+                let a = ((i / 4) * 29 % 256) as u8;
+                if i % 4 == 3 {
+                    a
+                } else {
+                    ((i * 53) % 256) as u8 % a.max(1)
+                }
+            })
+            .collect();
+        let filter = Filter {
+            opacity: 0.7,
+            saturation: 0.5,
+        };
+        let expected = renderer
+            .composite_group_rgba(&layer, &vec![0; len], [width, height], filter)
+            .unwrap();
+        let make = |bytes: &[u8]| {
+            let texture = renderer
+                .context
+                .device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: None,
+                    size: wgpu::Extent3d {
+                        width,
+                        height,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    usage: wgpu::TextureUsages::COPY_DST
+                        | wgpu::TextureUsages::COPY_SRC
+                        | wgpu::TextureUsages::TEXTURE_BINDING
+                        | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+                });
+            renderer.context.queue.write_texture(
+                texture.as_image_copy(),
+                bytes,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(width * 4),
+                    rows_per_image: Some(height),
+                },
+                texture.size(),
+            );
+            texture
+        };
+        let source = make(&layer);
+        // Garbage the clearing pass must replace, as a separate clear pass did.
+        let destination = make(&vec![200; len]);
+        renderer.begin_frame();
+        let mut encoder = renderer
+            .context
+            .device
+            .create_command_encoder(&Default::default());
+        renderer
+            .composite_group_clearing(
+                &source.create_view(&Default::default()),
+                filter,
+                ChromeTarget {
+                    width,
+                    height,
+                    scale: 1.,
+                    view: &destination.create_view(&Default::default()),
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                },
+                &mut encoder,
+            )
+            .unwrap();
+        renderer.flush();
+        let pixels = renderer
+            .readback(&destination, encoder, width, height)
+            .unwrap();
+        assert_eq!(pixels, expected);
     }
 }

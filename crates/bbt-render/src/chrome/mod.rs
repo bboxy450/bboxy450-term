@@ -134,6 +134,18 @@ impl ChromeRenderer {
     ) -> Result<()> {
         self.draw_with_load(list, target, encoder, wgpu::LoadOp::Load)
     }
+    /// As draw_overlay onto an uncleared target: the first pass clears it to transparent
+    /// (folded into that pass's load op when the list is flat), exactly what a separate clear
+    /// pass followed by draw_overlay draws.
+    pub fn draw_clearing(
+        &mut self,
+        list: &DrawList,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<()> {
+        let clear = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
+        self.draw_with_load(list, target, encoder, clear)
+    }
     fn draw_with_load(
         &mut self,
         list: &DrawList,

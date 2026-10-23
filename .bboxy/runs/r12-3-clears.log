@@ -1,0 +1,12 @@
+# R12-3 step 2 (a): folded clears, live firehose (custody-clean opt+debug assertions, --meter, every 120th frame)
+# before (step 1 counter only):
+passes frame=1200 total=31 flat=12 clear=4 path=1 group=1 blur=2 material=9 cells=2 copy=6
+passes frame=1320 total=31 flat=12 clear=4 path=1 group=1 blur=2 material=9 cells=2 copy=6
+passes frame=1440 total=31 flat=12 clear=4 path=1 group=1 blur=2 material=9 cells=2 copy=6
+passes frame=1560 total=31 flat=12 clear=4 path=1 group=1 blur=2 material=9 cells=2 copy=6
+# after (a) [build also carried the gloss hoist, which hoisted nothing: material stayed 9]:
+passes frame=2280 total=29 flat=12 clear=2 path=1 group=1 blur=2 material=9 cells=2 copy=6
+passes frame=2400 total=29 flat=12 clear=2 path=1 group=1 blur=2 material=9 cells=2 copy=6
+passes frame=2520 total=29 flat=12 clear=2 path=1 group=1 blur=2 material=9 cells=2 copy=6
+passes frame=2640 total=29 flat=12 clear=2 path=1 group=1 blur=2 material=9 cells=2 copy=6
+# clear 4 -> 2 (target and surface folded; the remaining 2 are terminal-cell texture clears in Aster's cell renderer, untouched); total 31 -> 29
