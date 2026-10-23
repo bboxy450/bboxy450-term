@@ -410,11 +410,12 @@ fn headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_r
     });
     rt.block_on(logic.client.spawn(record.clone(), spec))
         .unwrap();
-    rt.block_on(logic.client.gui_resize(seat, 94, 27)).unwrap();
+    rt.block_on(logic.client.gui_resize(seat, 1, 94, 27))
+        .unwrap();
     rt.block_on(
         logic
             .client
-            .gui_input(seat, Ulid::new(), b"before-drop\n".to_vec()),
+            .gui_input(seat, 1, Ulid::new(), b"before-drop\n".to_vec()),
     )
     .unwrap();
     wait_text(&rt, &logic, &clock, seat, "echo:before-drop");
@@ -423,7 +424,7 @@ fn headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_r
     rt.block_on(
         logic
             .client
-            .gui_input(seat, Ulid::new(), b"arm-drop\n".to_vec()),
+            .gui_input(seat, 1, Ulid::new(), b"arm-drop\n".to_vec()),
     )
     .unwrap();
     wait_text(&rt, &logic, &clock, seat, "armed");
@@ -436,7 +437,7 @@ fn headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_r
         .block_on(
             logic
                 .client
-                .gui_input(seat, Ulid::new(), b"refused\n".to_vec()),
+                .gui_input(seat, 1, Ulid::new(), b"refused\n".to_vec()),
         )
         .unwrap_err();
     assert!(is_link_down(&error));

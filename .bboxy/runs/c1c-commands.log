@@ -1158,3 +1158,53 @@ $ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CA
     Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
     Finished `dev` profile [unoptimized] target(s) in 12.64s
 EXIT 0 elapsed_seconds=12.782
+
+2026-10-23 continuation: Oracle ab9e5a08 GO after accepted socket4fa924d; fetch0, switch exec3@e1a74f2 0; rebase initially1 (cockpit conflict), accepted GuiIo/Busy preserved with finite nonblocking rewatch diff; exact-path resolution/rebase continue0 =>6c4e19b. GUI gen now carried to serialized Worker before provider/attachment lookup. Provider fixture scope requested d29f2e28; no out-of-scope fixture edits yet. Source reads0 except guessed ring/mod.rs absent (2); actual ring.rs located/read0. No new tests run yet.
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo check -p bboxy450-term --lib --locked
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+error[E0624]: associated function `new` is private
+    --> crates/bbt-mux/src/logic.rs:2059:38
+     |
+2059 |         Err(Box::new(crate::Failure::new(crate::FailureCode::StaleGeneration, reason)))
+     |                                      ^^^ private associated function
+     |
+    ::: crates/bbt-supervisor/src/protocol.rs:400:5
+     |
+ 400 |     pub(crate) fn new(code: FailureCode, message: impl Into<String>) -> Self {
+     |     ------------------------------------------------------------------------ private associated function defined here
+
+For more information about this error, try `rustc --explain E0624`.
+error: could not compile `bbt-mux` (lib) due to 1 previous error
+EXIT 101 elapsed_seconds=5.89
+
+Oracle74c9b029 approved provider fixture caller-only migration. provider.rs gui_resize/input and provider_fake.rs resize/three input calls now pass known generation1; no other provider test change. First new lib check101/5.890s: Failure::new is private across supervisor crate; replaced with its public field initializer.
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo check -p bboxy450-term --lib --locked
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 3.52s
+EXIT 0 elapsed_seconds=3.567
+
+$ cargo fmt -p bboxy450-term -p bbt-mux
+EXIT 0 elapsed_seconds=0.287
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo check -p bboxy450-term --all-targets -p bbt-mux --all-targets --locked
+error: the argument '--all-targets' cannot be used multiple times
+
+Usage: cargo check [OPTIONS]
+
+For more information, try '--help'.
+EXIT 1 elapsed_seconds=0.02
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo check -p bboxy450-term -p bbt-mux --all-targets --locked
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 4.26s
+EXIT 0 elapsed_seconds=4.304

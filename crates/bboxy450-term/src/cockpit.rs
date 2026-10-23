@@ -419,8 +419,12 @@ impl Session {
         let result = self.io.try_send(action.clone());
         if result.is_ok() {
             match action {
-                GuiAction::Watch { seat, view } => { self.watches.insert(seat, view); }
-                GuiAction::Unwatch { seat } => { self.watches.remove(&seat); }
+                GuiAction::Watch { seat, view } => {
+                    self.watches.insert(seat, view);
+                }
+                GuiAction::Unwatch { seat } => {
+                    self.watches.remove(&seat);
+                }
                 _ => {}
             }
         } else if self.io.disconnected || self.io.outgoing.is_closed() {
@@ -437,9 +441,14 @@ impl Session {
     fn flush_restoring(&mut self) -> Result<bool> {
         while let Some(action) = self.restoring.front() {
             match self.io.try_send(action.clone()) {
-                Ok(()) => { self.restoring.pop_front(); }
+                Ok(()) => {
+                    self.restoring.pop_front();
+                }
                 Err(error) if error.is::<Busy>() => return Ok(true),
-                Err(error) => { self.disconnect()?; return Err(error); }
+                Err(error) => {
+                    self.disconnect()?;
+                    return Err(error);
+                }
             }
         }
         Ok(false)
@@ -455,7 +464,9 @@ impl Session {
     }
     /// Cancellation leaves the stored recovery task and its handshake alive.
     pub async fn event(&mut self) -> Result<Event> {
-        if let Some(event) = self.deferred.pop_front() { return Ok(event); }
+        if let Some(event) = self.deferred.pop_front() {
+            return Ok(event);
+        }
         self.next_event().await
     }
     fn disconnect(&mut self) -> Result<()> {
@@ -463,25 +474,37 @@ impl Session {
         self.io.disconnected = true;
         self.io.reader_task.abort();
         self.io.writer_task.abort();
-        if !self.logic_exited { self.logic.start_kill()?; }
+        if !self.logic_exited {
+            self.logic.start_kill()?;
+        }
         Ok(())
     }
     fn restart_if_ready(&mut self) {
-        if !self.logic_exited || self.recovery.is_some() || self.recovery_failed { return; }
+        if !self.logic_exited || self.recovery.is_some() || self.recovery_failed {
+            return;
+        }
         let config = self.config.clone();
         let ready = self.supervisor_ready.clone();
         let replace_supervisor = self.supervisor_exited;
         let watches = self.watches.clone();
         self.recovery = Some(tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(100)).await;
-            tokio::time::timeout(STARTUP_TIMEOUT, recover(config, ready, replace_supervisor, watches))
-                .await.map_err(|_| invalid("recovery startup timed out"))?
+            tokio::time::timeout(
+                STARTUP_TIMEOUT,
+                recover(config, ready, replace_supervisor, watches),
+            )
+            .await
+            .map_err(|_| invalid("recovery startup timed out"))?
         }));
     }
     async fn next_event(&mut self) -> Result<Event> {
         loop {
             self.restart_if_ready();
-            let writer_blocked = if self.disconnected { false } else { self.flush_restoring()? };
+            let writer_blocked = if self.disconnected {
+                false
+            } else {
+                self.flush_restoring()?
+            };
             let writer_ready = self.io.writer_ready();
             return tokio::select! {
                 biased;
@@ -545,8 +568,8 @@ impl Session {
             match self.receive().await? {
                 GuiReply::Seats(seats) => return Ok(seats),
                 GuiReply::Identity(identity) => self.endpoint.identity = identity,
-                GuiReply::Error {reason,..} => return Err(invalid(reason)),
-                GuiReply::Seat(_) | GuiReply::Update {..} | GuiReply::Ok {..} => {}
+                GuiReply::Error { reason, .. } => return Err(invalid(reason)),
+                GuiReply::Seat(_) | GuiReply::Update { .. } | GuiReply::Ok { .. } => {}
                 _ => return Err(invalid("unexpected GUI startup reply")),
             }
         }
@@ -556,14 +579,26 @@ impl Session {
         if let Some(task) = self.recovery.take() {
             task.abort();
             if let Ok(Ok(mut recovered)) = task.await {
-                let _ = stop_child(&mut recovered.logic.child,&mut recovered.logic.control,"logic").await;
+                let _ = stop_child(
+                    &mut recovered.logic.child,
+                    &mut recovered.logic.control,
+                    "logic",
+                )
+                .await;
                 if let Some(mut supervisor) = recovered.supervisor {
-                    let _ = stop_child(&mut supervisor.child,&mut supervisor.control,"supervisor").await;
+                    let _ =
+                        stop_child(&mut supervisor.child, &mut supervisor.control, "supervisor")
+                            .await;
                 }
             }
         }
-        let logic = stop_child(&mut self.logic,&mut self.logic_control,"logic").await;
-        let supervisor = stop_child(&mut self.supervisor,&mut self.supervisor_control,"supervisor").await;
+        let logic = stop_child(&mut self.logic, &mut self.logic_control, "logic").await;
+        let supervisor = stop_child(
+            &mut self.supervisor,
+            &mut self.supervisor_control,
+            "supervisor",
+        )
+        .await;
         logic.and(supervisor)
     }
 }
@@ -608,7 +643,12 @@ async fn start_logic(
     let stream = UnixStream::connect(endpoint.root.join("gui.sock")).await?;
     let io = GuiIo::new(stream, endpoint.capability);
     let control = child.stdin.take();
-    Ok(StartedLogic {child,control,endpoint,io})
+    Ok(StartedLogic {
+        child,
+        control,
+        endpoint,
+        io,
+    })
 }
 async fn recover(
     config: Config,
@@ -616,27 +656,53 @@ async fn recover(
     replace_supervisor: bool,
     watches: BTreeMap<SeatId, View>,
 ) -> Result<Recovered> {
-    let supervisor = if replace_supervisor { Some(start_supervisor(&config).await?) } else { None };
-    let ready = supervisor.as_ref().map_or(&ready, |supervisor| &supervisor.ready);
-    let mut logic = start_logic(&config,ready,replace_supervisor).await?;
+    let supervisor = if replace_supervisor {
+        Some(start_supervisor(&config).await?)
+    } else {
+        None
+    };
+    let ready = supervisor
+        .as_ref()
+        .map_or(&ready, |supervisor| &supervisor.ready);
+    let mut logic = start_logic(&config, ready, replace_supervisor).await?;
     logic.io.try_send(GuiAction::ListSeats)?;
     let seats = loop {
         match logic.io.event().await {
             Event::Reply(reply) => match *reply {
                 GuiReply::Seats(seats) => break seats,
-                GuiReply::Identity(identity) => logic.endpoint.identity=identity,
-                GuiReply::Error {reason,..} => return Err(invalid(reason)),
+                GuiReply::Identity(identity) => logic.endpoint.identity = identity,
+                GuiReply::Error { reason, .. } => return Err(invalid(reason)),
                 _ => {}
             },
             Event::Disconnected(reason) => return Err(invalid(reason)),
-            Event::Exited {process,status} => return Err(invalid(format!("{process} exited: {status}"))),
+            Event::Exited { process, status } => {
+                return Err(invalid(format!("{process} exited: {status}")));
+            }
         }
     };
-    let watches = watches.keys().filter_map(|seat| {
-        let record = &seats.iter().find(|item|item.record.id.0==seat.0.0)?.record;
-        Some((*seat,View {seat:record.id,generation:record.generation,view_generation:bbt_mux::Ulid::new()}))
-    }).collect();
-    Ok(Recovered {supervisor,logic,seats,watches})
+    let watches = watches
+        .keys()
+        .filter_map(|seat| {
+            let record = &seats
+                .iter()
+                .find(|item| item.record.id.0 == seat.0.0)?
+                .record;
+            Some((
+                *seat,
+                View {
+                    seat: record.id,
+                    generation: record.generation,
+                    view_generation: bbt_mux::Ulid::new(),
+                },
+            ))
+        })
+        .collect();
+    Ok(Recovered {
+        supervisor,
+        logic,
+        seats,
+        watches,
+    })
 }
 
 async fn read_replies(read: OwnedReadHalf, sender: mpsc::Sender<Result<GuiReply>>) {

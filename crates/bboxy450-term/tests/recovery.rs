@@ -141,10 +141,11 @@ async fn apply(session: &mut Session, seat: SeatId, replica: &mut Replica, updat
 fn text(screen: &Screen) -> String {
     screen.cells.iter().flatten().map(|c| c.c).collect()
 }
-async fn input(session: &mut Session, seat: SeatId, bytes: &[u8]) {
+async fn input(session: &mut Session, seat: SeatId, generation: u64, bytes: &[u8]) {
     session
         .send(GuiAction::Input {
             seat,
+            generation,
             id: Ulid::new(),
             bytes: bytes.into(),
         })
@@ -223,7 +224,13 @@ async fn logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressu
     let logic_pid = session.logic.id();
     watch(&mut session, &seat).await;
     let mut replica = Replica::default();
-    input(&mut session, id(&seat), b"printf 'before-restart\\n'\n").await;
+    input(
+        &mut session,
+        id(&seat),
+        seat.record.generation,
+        b"printf 'before-restart\\n'\n",
+    )
+    .await;
     until_text(&mut session, id(&seat), &mut replica, "before-restart").await;
     let previous_view = replica.snapshot.as_ref().unwrap().view;
     session.logic.start_kill().unwrap();
@@ -276,7 +283,13 @@ async fn logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressu
     assert_eq!(view.generation, previous_view.generation);
     assert_ne!(view.view_generation, previous_view.view_generation);
     assert!(matches!(first, Update::Snapshot { .. }));
-    input(&mut session, id(&seat), b"printf 'after-restart\\n'\n").await;
+    input(
+        &mut session,
+        id(&seat),
+        seat.record.generation,
+        b"printf 'after-restart\\n'\n",
+    )
+    .await;
     let window = tokio::time::timeout(Duration::from_millis(250), async {
         loop {
             assert!(
@@ -328,6 +341,7 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     input(
         &mut session,
         id(&zsh),
+        zsh.record.generation,
         b"printf 'durable-before-supervisor\\n'\n",
     )
     .await;
@@ -341,6 +355,7 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     session
         .send(GuiAction::Resize {
             seat: id(&zsh),
+            generation: zsh.record.generation,
             cols: 100,
             rows: 30,
         })
@@ -402,6 +417,7 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     input(
         &mut session,
         id(&zsh),
+        replica.snapshot.as_ref().unwrap().view.generation,
         b"printf 'echo-after-supervisor\\n'\n",
     )
     .await;

@@ -51,11 +51,12 @@ enum Command {
     ),
     GuiInput(
         Ulid,
+        u64,
         Ulid,
         Vec<u8>,
         oneshot::Sender<Result<crate::InputReceipt>>,
     ),
-    GuiResize(Ulid, u16, u16, oneshot::Sender<Result<()>>),
+    GuiResize(Ulid, u64, u16, u16, oneshot::Sender<Result<()>>),
     GuiEndpoint(oneshot::Sender<Result<EndpointInfo>>),
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
@@ -190,24 +191,33 @@ impl LogicClient {
         rx.await
             .map_err(|_| invalid("spawn outcome unknown; inspect the seat list"))?
     }
+    /// Enqueue operator input fenced to the process generation shown by the GUI.
     pub async fn gui_input(
         &self,
         seat: Ulid,
+        generation: u64,
         id: Ulid,
         bytes: Vec<u8>,
     ) -> Result<crate::InputReceipt> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiInput(seat, id, bytes, tx))
+            .send(Command::GuiInput(seat, generation, id, bytes, tx))
             .await
             .map_err(|_| invalid("logic stopped"))?;
         rx.await
             .map_err(|_| invalid("input outcome unknown; keep the original input id"))?
     }
-    pub async fn gui_resize(&self, seat: Ulid, cols: u16, rows: u16) -> Result<()> {
+    /// Resize only the displayed process generation; validation runs on the worker.
+    pub async fn gui_resize(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        cols: u16,
+        rows: u16,
+    ) -> Result<()> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiResize(seat, cols, rows, tx))
+            .send(Command::GuiResize(seat, generation, cols, rows, tx))
             .await
             .map_err(|_| invalid("logic stopped"))?;
         rx.await.map_err(|_| invalid("resize outcome unknown"))?
@@ -688,6 +698,7 @@ struct Worker {
     last_identity: Option<Vec<u8>>,
     deliveries: tokio::task::JoinSet<Delivery>,
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
+    stale_gui_requests: u64,
 }
 impl Worker {
     fn open(
@@ -753,6 +764,7 @@ impl Worker {
             last_identity: None,
             deliveries: tokio::task::JoinSet::new(),
             control_journals: BTreeMap::new(),
+            stale_gui_requests: 0,
         };
         for (host, info) in worker.connections.owned_seats()? {
             // Several fixture links can wrap one local supervisor. Recover a
@@ -2041,6 +2053,24 @@ impl Worker {
             },
         })
     }
+    // Runs on the serialized worker immediately before attachment/provider
+    // lookup, so queued GUI work cannot target a replacement process.
+    fn check_gui_generation(&mut self, seat: Ulid, displayed: u64) -> Result<()> {
+        let current = self.registry.get(seat)?.generation;
+        if displayed == current {
+            return Ok(());
+        }
+        self.stale_gui_requests = self.stale_gui_requests.saturating_add(1);
+        let reason = format!(
+            "displayed generation {displayed}, current {current}; dropped={}",
+            self.stale_gui_requests,
+        );
+        eprintln!("StaleGeneration: GUI request for seat {seat} rejected: {reason}");
+        Err(Box::new(crate::Failure {
+            code: crate::FailureCode::StaleGeneration,
+            message: reason,
+        }))
+    }
     fn gui_spawn(&mut self, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::GuiSeat> {
         if !matches!(spec.location, bbt_proto::Where::Local) {
             return Err(invalid("remote providers are not connected"));
@@ -2165,8 +2195,9 @@ impl Worker {
                         let result = self.gui_spawn(spec);
                         let _ = reply.send(result);
                     }
-                    Command::GuiInput(id, input_id, bytes, reply) => {
+                    Command::GuiInput(id, generation, input_id, bytes, reply) => {
                         let result = (|| {
+                            self.check_gui_generation(id, generation)?;
                             let attachment = self
                                 .attachments
                                 .get(&id)
@@ -2186,8 +2217,9 @@ impl Worker {
                         })();
                         let _ = reply.send(result);
                     }
-                    Command::GuiResize(id, cols, rows, reply) => {
+                    Command::GuiResize(id, generation, cols, rows, reply) => {
                         let result = (|| {
+                            self.check_gui_generation(id, generation)?;
                             let attachment = self
                                 .attachments
                                 .get(&id)

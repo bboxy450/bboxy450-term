@@ -270,13 +270,13 @@ fn logic_routes_real_seats_recovery_history_ownership_and_close_by_location() {
         record.location = location.clone();
         runtime.block_on(logic.client.spawn(record, spec)).unwrap();
         runtime
-            .block_on(logic.client.gui_resize(id, 94, 27))
+            .block_on(logic.client.gui_resize(id, 1, 94, 27))
             .unwrap();
         let receipt = runtime
             .block_on(
                 logic
                     .client
-                    .gui_input(id, Ulid::new(), b"host-routed\n".to_vec()),
+                    .gui_input(id, 1, Ulid::new(), b"host-routed\n".to_vec()),
             )
             .unwrap();
         assert_eq!(receipt.state, bbt_mux::InputState::PtyWritten);
