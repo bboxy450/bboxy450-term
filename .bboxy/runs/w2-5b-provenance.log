@@ -11,3 +11,22 @@ exit=0
 source a2318fc81c54fce31a787b33b6991a369af35d19 patch_id=dc80d69a49864b274f2500c4407630b92552de86
 source 2e602679d921bd2c380ab9e1da6f1a08f1e4baef patch_id=dc80d69a49864b274f2500c4407630b92552de86
 Rook source delta identical, authorship/date preserved; no parked W2.5a evidence imported.
+
+After signed rebase onto accepted a0da5b0; frozen by Oracle91717c41:
+$ git verify-commit ad72ad851688c3cd18ff45f88e10f6c56017496b
+gpg: Signature made Fri Oct 23 02:26:36 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0
+$ git verify-commit 8b475f28c91cbefb1c1b0378ac36bd467f8f2764
+gpg: Signature made Fri Oct 23 02:26:36 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0
+$ git verify-commit 53c7d5b91090651f03638d93fafc624b03b40fa4
+gpg: Signature made Fri Oct 23 02:26:36 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0
+rebased source a2318fc81c54fce31a787b33b6991a369af35d19 patch_id=dc80d69a49864b274f2500c4407630b92552de86 exit0
+rebased source ad72ad851688c3cd18ff45f88e10f6c56017496b patch_id=dc80d69a49864b274f2500c4407630b92552de86 exit0

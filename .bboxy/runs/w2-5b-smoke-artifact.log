@@ -1,0 +1,4 @@
+source_sha=53c7d5b91090651f03638d93fafc624b03b40fa4
+artifact=/Users/feral/mydev/bboxy450-term-exec5/target/w2-5b-smoke-53c7d5b/bboxy450-term
+sha256=f368c4ee61dd97dd7af761770a5473b139e797f67957926723da693a6c917a50
+Copied while the exact clean-source CI log reported Running target/debug/bboxy450-term --smoke. Same artifact retained for the two standalone probes. No recompilation/code signing.
