@@ -1,3 +1,9 @@
+# CORRECTION 2026-10-23 (Seraph): these were plain --release builds. BBOXY_TEST_CUSTODY=memory is compiled only under
+# cfg(debug_assertions) (crates/bbt-mux/src/identity/io.rs:105-113), so these runs used DataProtection (Keychain) custody,
+# not memory; the cockpit footer read 'signing held: Keychain interaction required'. Whether anything was written to the
+# operator's Keychain is unknown and was not probed. HUD numbers are UI-thread timings and stand as measured; the custody
+# statement below is wrong. Per AGENTS.md a585ece, optimized runs now use CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true.
+
 # F5 release HUD, populated: BBOXY_TEST_CUSTODY=memory BBOXY_VERIFY_INPUT='while :; do date +%T; ls -la /usr/bin | tail -30; done
 ' target/release/bboxy450-term --meter --spawn-zsh 4 --capture-after 8 --capture <png> --run-dir <mktemp 0700>
 # display: DELL S3222HN only (75 Hz); no 120 Hz panel on this machine
