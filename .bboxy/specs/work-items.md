@@ -23,6 +23,10 @@ assignee: seat:01JAX… | name:Nyx Copperwing | none
 role: executor | oracle | creativity  # role header the delegate carries
 allowed_paths: [crates/bbt-core/**, Cargo.lock]
 verify: cargo test -p bbt-core --locked   # task: the hard gate; exit 0 is the only acceptance
+on: "[[plugins]]"                        # comment: the document reviewed
+on_digest: sha256:…                      # comment: the exact version reviewed
+anchor: "§1 Shape"                       # comment: section or line
+kind: objection                          # comment: question | objection | suggestion | approval
 review: boundary fidelity against [[gui-components]] §2c   # task, optional: judgement, advises, never blocks
 check: sh scripts/layering.sh            # invariant: the command; exit 0 means held
 cost: an upward edge welds a library to the product   # invariant: one line
@@ -41,9 +45,14 @@ Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]
 | spec | a decided design for one concern | draft, decided, superseded | `parent` epic; `[[…\|evidence]]` to research notes |
 | task | one Executor assignment | open, claimed, running, reported, accepted, rejected, blocked, done | `parent` spec or epic; `depends`; `assignee` |
 | bug | a defect with a reproduction | open, claimed, running, reported, fixed, wontfix, duplicate | `[[task\|blocks]]`, `[[spec\|violates]]`, `[[invariant\|violates]]` |
-| note | knowledge: research, runs, runbooks, evidence | none (always current until superseded) | anything |
+| note | knowledge: runs, runbooks, evidence | none (always current until superseded) | anything |
 | invariant | a property that holds before and after every change, **with the command that checks it**; the thing bugs are checked against and specs may not contradict. No command, no invariant: then it is a preference and lives in a note | active, retired | `[[spec\|constrains]]`, `[[bug\|violated-by]]` |
 | decision | a numbered record of alternatives, choice, reason and date, written when the decision is made ([[2026-10-22-architecture-round-1]] is the first) | proposed, decided, superseded | `[[spec\|changes]]`, `[[invariant\|creates]]` |
+| proposal | an RFC: motivation, design, alternatives, open questions; reviewed by red-team comments, closed by a decision that creates or changes a spec (operator, 2026-10-23: "proposal should also be a document type, then we can do entire RFC") | draft, review, accepted, rejected, withdrawn | `[[spec\|changes]]`, `[[decision\|decided-by]]`, `[[research\|evidence]]` |
+| comment | one review remark on one document version: `on: [[doc]]`, `on_digest` (the reviewed version's digest), `anchor` (section or line), `kind: question \| objection \| suggestion \| approval`; written by a seat and signed by its leaf like every record (operator: "comment should be a document type as well") | open, resolved, withdrawn | `[[doc\|on]]`, `[[comment\|resolves]]` |
+| research | truth compression: `file:line — mechanism` and `source — fact` pointers with sources, never prose summaries; what a spec cites as its evidence (operator, 2026-10-23: "research should be a document type as well"; the files in `research/` take `type: research` on their next touch) | none (always current until superseded) | `[[spec\|evidence-for]]` |
+
+**The RFC loop (decision #41).** A `proposal` is written; the Oracle delegates a **red-team review** to a seat (a Claude Executor by the operator's choice, decision #18), which writes `comment` records against the proposal's digest; the author answers with comments or a revision; a `decision` closes it and creates or changes the `spec`. Every record in the loop is written through the task tools and signed by the writer's seat leaf (W2.5d), each comment pins the digest it reviewed, and the decision links the proposal, so provenance holds the whole argument: who proposed, who objected to which version, what was decided and why. The viewer shows comments beside their anchor (later, [[document-viewer]]).
 
 Invariants are first-class so the graph can answer "what does this bug break" and "which spec does this invariant bind". An invariant carries four things (Architect, 2026-10-22): the **property**, the **check** command, the exit status that means **held**, and the **cost** of a violation; `check` and `cost` are frontmatter fields (schema above). Recorded in `.bboxy/invariants/` with its index: every crate depends only on crates below it (`scripts/layering.sh`); the UI thread never waits on IO (`scripts/ui-lint.sh`); L7 modules draw only through components; every commit on main is signed. Still preferences until they get a command: one meaning per signal; rows never reorder; the app never holds the primary secret; unknown is never shown as failure; no LGPL in the tree.
 

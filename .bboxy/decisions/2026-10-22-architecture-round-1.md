@@ -535,6 +535,32 @@ briefs Executors from the specs, never from this note.
     the heap that matters); the API in the app (it is terminal model, not
     glue).
 
+41. **Plugins: planned and logged, not built (operator, 2026-10-23, verbatim
+    in [[plugins]] §0).** A folder of binaries named `<app>-<system>-
+    <provider>`, each printing its JSON shape when run bare, fulfilling
+    app-owned versioned contracts per system (task_system, event_sink,
+    session, data_source, repo_graph, provider), a deterministic protocol
+    (shape → status/login → health → calls) over stdio JSON-RPC or a named
+    socket, hooks before/after with budgets, exposure through MCP and hooks,
+    a registry with timings and flame graphs, a guide any harness can
+    follow. Built-ins stay built in and opinionated; every pluggable system
+    gets its contract now and the built-in is the contract's reference
+    implementation, the task system first. Status: draft until the operator
+    and the Architect talk. Rejected for v1: in-process dynamic libraries
+    (no stable Rust ABI, a crash is ours), WebAssembly plugins (sandboxing we
+    do not need yet, language and IO limits we would pay for), PATH-prefix
+    discovery (a folder is the operator's shape and is auditable). The "Jev"
+    reference resolved by the research: TypeSafe's decision model, so plugin
+    selection and routing may use a decision model while contract,
+    protocol and authority stay deterministic.
+    **Document types (operator, same day):** `research`, `proposal` and
+    `comment` join the work-item types (supersedes #13's rejection of
+    research; the operator's call), and the RFC loop is defined in
+    [[work-items]]: proposal → red-team comments by a Claude Executor seat
+    → decision → spec, every record signed and digest-pinned so the whole
+    argument lives in provenance. The plugin research and spec are the first
+    red-team subject once the research lands.
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate

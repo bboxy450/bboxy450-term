@@ -1,0 +1,10 @@
+flowchart LR
+  F["plugins/ folder<br/>bboxy450-term-&lt;system&gt;-&lt;provider&gt;"] --> R["registry<br/>shape, version, health, timings"]
+  R -- "run bare: shape JSON" --> P["plugin binary<br/>subprocess, JSON-RPC over stdio<br/>or a socket it names"]
+  R -- "status / login / health" --> P
+  C["system contracts<br/>task_system, event_sink, session,<br/>data_source, repo_graph, provider"] --> R
+  P -- "fulfils one or more contracts" --> C
+  L["logic"] -- "calls through the contract" --> P
+  L -- "hooks: before / after, with budget" --> P
+  M["MCP catalogue"] -- "plugin commands as tools" --> P
+  R -- "per-call timings, flame graphs,<br/>slow-hook warnings" --> UI["Settings › Plugins"]
