@@ -278,18 +278,6 @@ fn upper(mut s: ui::Text, tracking: f32) -> ui::Text {
     s.tracking_em = tracking;
     s
 }
-fn task_mark(state: &str) -> &'static str {
-    match state {
-        "claimed" => "◔",
-        "running" => "◑",
-        "reported" => "◕",
-        "accepted" => "●",
-        "done" => "✓",
-        "rejected" => "✕",
-        "blocked" => "⊘",
-        _ => "○",
-    }
-}
 fn task_color(state: &str) -> ui::Color {
     color(
         Some(match state {
@@ -513,19 +501,28 @@ impl GraphTab {
                 .iter()
                 .find(|t| ["claimed", "running", "reported"].contains(&t.state.as_str()));
             let now = if let Some(t) = live {
-                let mut tx = c::Text::new("", font(12.5, 400, false, ui::Color::Foreground));
-                tx.wrap = false;
-                tx.runs = vec![
-                    c::TextRun {
-                        value: task_mark(&t.state).into(),
-                        style: font(12.5, 400, true, task_color(&t.state)),
-                    },
-                    c::TextRun {
-                        value: format!(" {}", t.title),
-                        style: font(12.5, 400, false, ui::Color::Foreground),
-                    },
-                ];
-                named(format!("{k}/now"), c::Element::Text(tx))
+                let mut inline = c::Flow::new(vec![
+                    named(
+                        format!("{k}/now/mark"),
+                        ui::marks::Mark::task(&t.state)
+                            .element(11., ui::Paint::solid(task_color(&t.state))),
+                    )
+                    .into(),
+                    text(
+                        format!("{k}/now/title"),
+                        format!(" {}", t.title),
+                        12.5,
+                        400,
+                        false,
+                        ui::Color::Foreground,
+                    )
+                    .into(),
+                ]);
+                inline.wrap = false;
+                inline.align = c::Alignment::Baseline;
+                inline.column_gap = ui::Length::Px(0.);
+                inline.row_gap = ui::Length::Px(0.);
+                named(format!("{k}/now"), c::Element::Flow(inline))
             } else {
                 text(
                     format!("{k}/now"),
@@ -648,18 +645,12 @@ impl GraphTab {
                 };
                 let mark = if kind == "bug" {
                     inline_icon(&format!("{k}/mark"), "bug", 11., 12., col)
+                } else if kind == "invariant" {
+                    text(format!("{k}/mark"), "◆", 12., 400, true, col)
                 } else {
-                    text(
+                    named(
                         format!("{k}/mark"),
-                        if kind == "invariant" {
-                            "◆"
-                        } else {
-                            task_mark(&it.state)
-                        },
-                        12.,
-                        400,
-                        true,
-                        col,
+                        ui::marks::Mark::task(&it.state).element(11., ui::Paint::solid(col)),
                     )
                 };
                 let mut cells = vec![

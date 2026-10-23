@@ -78,8 +78,8 @@
       result.font_diagnostics={font:css.font,ascent:tm.fontBoundingBoxAscent,descent:tm.fontBoundingBoxDescent,baseline:marker.getBoundingClientRect().y-node.getBoundingClientRect().y,source:'inline-marker'};marker.remove();
       return result;
     };
-    const rawTextDiag=node=>{
-      const span=document.createElement('span'),parent=node.parentNode;span.style.cssText='font:inherit;line-height:inherit;padding:0;margin:0;border:0;display:inline-block';
+    const rawTextDiag=(node,preserveSpace=false)=>{
+      const span=document.createElement('span'),parent=node.parentNode;span.style.cssText='font:inherit;line-height:inherit;padding:0;margin:0;border:0;display:inline-block'+(preserveSpace?';white-space:pre':'');
       parent.replaceChild(span,node);span.append(node);const result=textDiag(span);parent.replaceChild(node,span);return result;
     };
     const diag=node=>{
@@ -161,11 +161,11 @@
       }
       return result;
     };
-    const leaf=n=>n.classList.contains('glyph')||n.classList.contains('hicon')||(!n.children.length&&!n.classList.contains('cell'));
+    const leaf=n=>n.classList.contains('glyph')||n.classList.contains('hicon')||!!n.querySelector(':scope > .mark')||(!n.children.length&&!n.classList.contains('cell'));
     const parts=(node,path='',out=[])=>{
       const key=path||'row',css=getComputedStyle(node);if(css.display==='none'||(window.bboxyPaneFixture&&node.matches('.reconnect.out')))return out;
       const r={key,rect:bounds(node)};
-      if(leaf(node)&&!node.classList.contains('glyph')&&!node.classList.contains('hicon')&&node.textContent){Object.assign(r,{kind:'text',...textDiag(node)});r.key=key;}
+      if(leaf(node)&&!node.classList.contains('glyph')&&!node.classList.contains('hicon')&&!node.querySelector(':scope > .mark')&&node.textContent){Object.assign(r,{kind:'text',...textDiag(node)});r.key=key;}
       r.css={font:css.font,line_height:css.lineHeight,background:css.backgroundColor,shadow:css.boxShadow,opacity:css.opacity,border_radius:css.borderRadius,flex:css.flex,padding:css.padding};out.push(r);
       if(!leaf(node)&&!(window.bboxyPaneFixture&&node.classList.contains('term'))){const counts={};for(const ch of [...node.childNodes]){
         if(ch.nodeType===Node.TEXT_NODE&&ch.textContent.trim()){out.push({...rawTextDiag(ch),key:(path?path+'/':'')+'text'});continue;}
@@ -196,7 +196,7 @@
       const add=(key,n,text=false)=>{if(!n)throw Error('Missing document part '+key);diagnostics.push(text?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});};
       add('document',node);if(modal){add('scroller',node.querySelector('.dm-body'));add('footer',node.querySelector('.dm-foot'));[...node.querySelectorAll('.dm-act')].forEach((n,i)=>{add('action'+i,n);add('action'+i+'/label',n.firstChild,true);if(n.lastChild.textContent)add('action'+i+'/key',n.lastChild,true);});}
       add('view',view);add('main',view.querySelector('.doc-main'));add('head',view.querySelector('.doc-head'));add('top',view.querySelector('.doc-top'));add('path',view.querySelector('.doc-path'),true);add('title',view.querySelector('h1'),true);
-      for(const [key,sel]of [['type','.doc-type'],['status','.doc-status'],['super','.doc-super'],['broken','.doc-broken'],['frontmatter','.doc-fm'],['body','.md'],['provenance','.doc-prov'],['rail','.doc-rail'],['rail/graph','.nbhd'],['rail/legend','.rail-legend']]){const n=view.querySelector(sel);if(n)add(key,n,key==='type'||key==='status');}
+      for(const [key,sel]of [['type','.doc-type'],['status','.doc-status'],['super','.doc-super'],['broken','.doc-broken'],['frontmatter','.doc-fm'],['body','.md'],['provenance','.doc-prov'],['rail','.doc-rail'],['rail/graph','.nbhd'],['rail/legend','.rail-legend']]){const n=view.querySelector(sel);if(n){add(key,n,key==='type'||(key==='status'&&!n.querySelector('.mark')));if(key==='status'&&n.querySelector('.mark')){add('status/mark',n.querySelector('.mark'));diagnostics.push({...rawTextDiag(n.lastChild),key:'status/text'});}}}
       [...view.querySelectorAll('.doc-fm > .k')].forEach((n,i)=>{add('fm'+i+'/key',n,true);add('fm'+i+'/value',n.nextElementSibling);[...n.nextElementSibling.children].forEach((v,j)=>{if(!v.children.length)add('fm'+i+'/value'+j,v,true);});});
       [...view.querySelectorAll('.md > *')].forEach((n,i)=>{add('block'+i,n,/^H[234]$/.test(n.tagName)||n.tagName==='PRE');if(n.tagName==='UL')[...n.children].forEach((li,j)=>add('block'+i+'/li'+j,li));});
       [...view.querySelectorAll('.md > *')].forEach((n,i)=>{if(!n.classList.contains('dgfig'))return;const k='block'+i;add(k+'/figure',n);for(const [name,sel,tx]of [['head','.dgfig-h',false],['kind','.dgfig-h>.kind',true],['count','.dgfig-h>.cnt',true],['segment','.dgfig-h>.seg',false],['button-drawing','.seg button:first-child',false],['button-source','.seg button:last-child',false],['expand','.exp',false],['drawing','.dgfig-b',false]])add(k+'/'+name,n.querySelector(sel),tx);if(n.querySelector('svg.dg')){add(k+'/canvas',n.querySelector('svg.dg'));[...n.querySelectorAll('.dg-node')].forEach((g,j)=>{add(k+'/node'+j,g.querySelector('rect,path,circle'));const t=g.querySelector('text');if(t){const p=t.getStartPositionOfChar(0).matrixTransform(t.getScreenCTM()),css=getComputedStyle(t),ctx=document.createElement('canvas').getContext('2d');ctx.font=css.fontStyle+' '+css.fontWeight+' '+parseFloat(css.fontSize)+'px '+css.fontFamily;const fm=ctx.measureText(t.textContent),r=bounds(t);diagnostics.push({key:k+'/label'+j,kind:'text',rect:r,font_diagnostics:{baseline:p.y-origin.y-r.y+(fm.fontBoundingBoxAscent-fm.fontBoundingBoxDescent)/2,source:'SVG central anchor; diagnostic only'}})}});}if(n.querySelector('.dgfig-src'))add(k+'/source',n.querySelector('.dgfig-src'));});
@@ -259,7 +259,7 @@
       if(!graphCall&&!standalone)throw Error('Graph constructor missing');
       const node=(graphCall||standalone).node,view=graphCall?graphCall.args[0]:standalone.name==='provenanceCard'?{provenance:standalone.args[0],only:['provenance']}:{subscriptions:standalone.args[0],only:['subscriptions']};
       view.harnesses=C.LAUNCH.filter(l=>l.harness).map(l=>({name:l.harness,tile:l.tile}));
-      const diagnostics=[],add=(key,n,isText=false)=>{if(!n)throw Error('Missing graph diagnostic '+key);diagnostics.push(isText?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});};
+      const diagnostics=[],add=(key,n,isText=false)=>{if(!n)throw Error('Missing graph diagnostic '+key);const vector=n.querySelector('.mark');diagnostics.push(isText&&!vector?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});if(isText&&vector&&n.classList.contains('g-now'))diagnostics.push({...rawTextDiag(n.lastChild,true),key:key+'/title'});};
       if(graphCall)add('graph',node);
       const cards=graphCall?[...node.children]:[node];
       for(const card of cards){
@@ -539,9 +539,9 @@
       const result={kind:glyph?'glyph':'icon',rect:bounds(node),color:color(css.color,node),opacity:Number(css.opacity),
         ...(glyph?{activity:['active','idle','waiting','errored'].find(x=>node.classList.contains(x)),grade:['reported','shim','inferred'].find(x=>node.classList.contains('g-'+x)),wait_kind:['permission','question','auth'].find(x=>node.classList.contains('k-'+x))}:{name:node.title})};
       if(glyph){
-        const main=[...node.childNodes].find(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim());
-        if(!main)throw Error('glyph text is missing');
-        result.text=rawTextDiag(main);
+        const shape=node.querySelector(':scope > .mark');
+        if(!shape)throw Error('glyph vector is missing');
+        result.mark_rect=bounds(shape);
         const mark=node.querySelector(':scope > .kind');
         if(mark){result.kind_rect=bounds(mark);result.kind_text=rawTextDiag(mark.firstChild);}
       }
