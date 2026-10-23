@@ -1,0 +1,12 @@
+Preparing worktree (detached HEAD f7a62e7)
+HEAD is now at f7a62e7 test: verify per-seat MCP hooks and skill launch wiring
+source_sha=f7a62e7ca264f577a91e4651f3afca5956d7ab3e
+worktree=/private/tmp/ci-kestrel-w2-5b-f7a62e7-gbml1z2b
+target=/private/tmp/ci-kestrel-w2-5b-f7a62e7-gbml1z2b/target
+worktree_add_exit=0
+initial_git_status=''
+gate_pid=52129
+ci_exit=1
+private_target_deleted=true
+worktree_remove_exit=0
+ci_log_sha256=e183219826c09d18e41899f3ed983a0e5997754ce32554bfba1833e312bc59cf

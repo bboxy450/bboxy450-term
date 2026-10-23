@@ -1,0 +1,13 @@
+$ git verify-commit 2e602679d921bd2c380ab9e1da6f1a08f1e4baef
+gpg: Signature made Fri Oct 23 02:01:30 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0
+$ git verify-commit f7a62e7ca264f577a91e4651f3afca5956d7ab3e
+gpg: Signature made Fri Oct 23 02:12:12 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0
+source a2318fc81c54fce31a787b33b6991a369af35d19 patch_id=dc80d69a49864b274f2500c4407630b92552de86
+source 2e602679d921bd2c380ab9e1da6f1a08f1e4baef patch_id=dc80d69a49864b274f2500c4407630b92552de86
+Rook source delta identical, authorship/date preserved; no parked W2.5a evidence imported.
