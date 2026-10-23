@@ -195,6 +195,13 @@ impl Connections {
             .ok_or_else(|| invalid("unknown supervisor host"))?
             .receive(wait)
     }
+    /// Poll notifications while replay work is already ready to run.
+    pub fn receive_ready_from(&mut self, host: &HostId) -> Result<Option<Event>> {
+        self.links
+            .get_mut(host)
+            .ok_or_else(|| invalid("unknown supervisor host"))?
+            .receive(Duration::ZERO)
+    }
     pub fn poll(&mut self) -> Vec<ProviderEvent> {
         self.providers
             .iter_mut()
