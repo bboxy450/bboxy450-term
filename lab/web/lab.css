@@ -362,7 +362,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .settings .chip.bi { color: var(--fg-dim); height: 18px; padding: 0 var(--s3); font-size: var(--t-small); letter-spacing: .04em; }
 .settings .swatch { width: 14px; height: 14px; border-radius: 50%; border: 0; box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--hair); padding: 0; flex: none; }
 .settings .marks { display: inline-flex; gap: var(--s2); }
-.settings .marks button { width: 28px; height: 26px; border: 0; border-radius: var(--r-badge); background: var(--badge); color: var(--fg-dim); font-family: var(--font-mono); font-size: var(--t-subtitle); line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.settings .marks button { width: 28px; height: 26px; padding: 1px 6px; border: 0; border-radius: var(--r-badge); background: var(--badge); color: var(--fg-dim); font-family: var(--font-mono); font-size: var(--t-subtitle); line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 .settings .marks button.on { background: var(--role, var(--accent)); color: var(--on-accent); }
 .settings .marks.icons button.on { color: var(--on-accent); }
 .settings .marks .hicon { --icon: 14px; }
