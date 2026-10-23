@@ -488,7 +488,16 @@ briefs Executors from the specs, never from this note.
     one `swarm_id`; `Send` and `Receipts` must agree with the swarm inferred
     from destination or message id; no account-wide union on the wire, the
     GUI composes per-swarm pages and per-swarm read-marks (rejected: an
-    invented cross-swarm cursor; picking the first swarm).
+    invented cross-swarm cursor; picking the first swarm). (g) A filter
+    change while the GUI is attached migrates, never restarts (Kestrel,
+    2026-10-23): the new versioned consumer is created first, inherits the
+    old one's per-stream anchors and pending rows, then the old is removed;
+    the next bounded poll drops pending rows for revoked subjects without
+    projecting them, newly granted subjects start at head with read-through
+    history, and the migration is one audited line on `account/control`
+    (old and new version, subjects added and removed, rows dropped), no new
+    record type (rejected: new = head plus unsubscribe, which silently loses
+    still-authorized pending rows; `Start::All` for the new version).
     Rejected: an app-owned cursor tail instead of a durable consumer (loses
     restart-resume); ack on write (loses rows on a crash between poll and
     socket); unread from the consumer cursor (a restart would mark everything
