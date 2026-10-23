@@ -463,6 +463,7 @@ pub fn execute_at(
                         materials::Material::Glow(g)
                     }
                     ui::Material::Flat => materials::Material::Flat(color),
+                    ui::Material::Lane => materials::Material::Lane(lane(ctx, glow)),
                 };
                 let items = [Surface {
                     rect,
@@ -526,6 +527,24 @@ pub(crate) fn append_draw(ops: Vec<c::Paint>, out: &mut DrawList) -> Result<()> 
     Ok(())
 }
 
+/// G1-G2: the pane lane, silk at `glow.lane` px, in the seat colour.
+pub(crate) fn lane(ctx: ui::Context, state: Option<ui::Glow>) -> materials::Lane {
+    use ui::GlowActivity as A;
+    let state = state.unwrap_or_default();
+    crate::shaders::lane(
+        materials::LaneFx::Silk,
+        state.tint.map(Color).unwrap_or(Color(ctx.seat)).alpha(state.inferred_multiplier),
+        match state.activity {
+            A::Idle => materials::Activity::Idle,
+            A::Active => materials::Activity::Active,
+            A::Waiting => materials::Activity::Waiting,
+            A::Errored => materials::Activity::Errored,
+        },
+        state.lane.unwrap_or(bbt_ui_model::TOKENS.glow.lane as f32),
+        if state.focused || ctx.focused { 1. } else { 0. },
+        (state.seed % 10_000) as f32,
+    )
+}
 pub(crate) fn configure_glow(g: &mut materials::Glow, ctx: ui::Context, state: Option<ui::Glow>) {
     g.color = Color(ctx.seat);
     g.focus = if ctx.focused { 1. } else { 0. };

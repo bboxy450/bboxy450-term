@@ -42,6 +42,8 @@ pub struct Pane {
     /// The host freezes/advances the effect clock. A seed identifies the emitter.
     pub glow_seed: Option<u32>,
     pub opacity: f32,
+    /// The host's glow lane (px): the effect's width outside the box.
+    pub lane: f32,
 }
 fn column(children: Vec<c::Item>) -> c::Element {
     c::Element::Stack(c::Stack {
@@ -333,11 +335,8 @@ impl Pane {
             strip = filter(strip);
             term = filter(term);
         }
-        let border = if seat.activity == Activity::Active {
-            TOKENS.strip.border_active
-        } else {
-            TOKENS.strip.border_idle
-        } as f32;
+        // G1: a constant border; activity lives only in the lane shader.
+        let border = TOKENS.strip.border_idle as f32;
         let mut style = ui::Style::new(ui::Preset::PaneGlow);
         style.overrides.height = Some(ui::Length::Px(self.height()));
         style.overrides.padding = Some([ui::Length::Px(0.); 4]);
@@ -389,6 +388,12 @@ impl Pane {
             seed: self.glow_seed.unwrap_or(7),
             halo_alpha: Some((alpha * boost).min(1.)),
             particles: Some(particles),
+            focused: seat.focused,
+            lane: Some(self.lane),
+            tint: match seat.color(ctx) {
+                ui::Color::Rgba(c) => Some(c),
+                _ => None,
+            },
         });
         // The lab emitter sits behind the pane. Compose the effect before the
         // opaque frame so jittered particles cannot paint over terminal text.

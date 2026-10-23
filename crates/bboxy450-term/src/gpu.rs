@@ -472,6 +472,29 @@ fn encode_ops(
                         saturation: blur
                             .map_or(STYLE.material.panel_saturate as f32, |b| b.saturation),
                     }),
+                    ui::Material::Lane => {
+                        // G1-G2: the pane lane, silk at glow.lane px, in the seat colour.
+                        let s = glow.unwrap_or_default();
+                        m::Material::Lane(m::Lane {
+                            color: s
+                                .tint
+                                .map(Color)
+                                .unwrap_or(color)
+                                .alpha(s.inferred_multiplier),
+                            waiting: Color::hex(TOKENS.color.state.waiting),
+                            errored: Color::hex(TOKENS.color.state.errored),
+                            activity: match s.activity {
+                                ui::GlowActivity::Idle => m::Activity::Idle,
+                                ui::GlowActivity::Active => m::Activity::Active,
+                                ui::GlowActivity::Waiting => m::Activity::Waiting,
+                                ui::GlowActivity::Errored => m::Activity::Errored,
+                            },
+                            focus: if s.focused { 1. } else { 0. },
+                            lane: s.lane.unwrap_or(TOKENS.glow.lane as f32),
+                            effect: m::LaneFx::Silk,
+                            phase_ms: (s.seed % 10_000) as f32,
+                        })
+                    }
                     ui::Material::Glow => {
                         let g = TOKENS.glow;
                         let state = glow.map_or(m::Activity::Idle, |s| match s.activity {

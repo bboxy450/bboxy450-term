@@ -1284,7 +1284,7 @@
       pi: { role: 'executor', wake: 'pty', hooks: false, command: 'pi', tile: LT('pi'), icon: 'pi', stateFrom: 'output cadence' },
       omp: { role: 'executor', wake: 'pty', hooks: false, command: 'omp', tile: LT('omp'), icon: 'omp', stateFrom: 'output cadence' },
     },
-    appearance: { theme: 'auto', density: 'cozy', gutter: 2, glow: true, subtitle: false, opacity: TOKENS.window.opacity, blur: TOKENS.window.blur, blurRadius: TOKENS.window.blur_radius },
+    appearance: { theme: 'auto', density: 'cozy', lane: TOKENS.glow.lane, glow: true, subtitle: false, opacity: TOKENS.window.opacity, blur: TOKENS.window.blur, blurRadius: TOKENS.window.blur_radius },
     shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab'], ['Focus previous pane', '⇧Tab']],
   };
   const SET = JSON.parse(JSON.stringify(SET_DEF));
@@ -1460,7 +1460,12 @@
         add('Appearance', card('Appearance', [
           row('Theme', 'starts from the OS', themes, v.theme !== d.theme, rsA('theme')),
           row('Density', 'row height on the map', dens, v.density !== d.density, rsA('density')),
-          row('Gutter', 'between panes', seg(['2 px', '4 px'], v.gutter + ' px', x => setA('gutter')(parseInt(x, 10))), v.gutter !== d.gutter, rsA('gutter')),
+          (() => { // glow lane (operator 2026-10-22): the space reserved around and between panes for the border effect; the gutter and
+            // the stage inset follow it, silk scales into it (2 px reads as light-only motion). Drag previews the value; release commits
+            const val = el('b', { class: 'wo-pct' }, v.lane + ' px');
+            const slider = el('input', { type: 'range', min: String(TOKENS.glow.lane_min), max: String(TOKENS.glow.lane_max), step: '1', value: String(v.lane), oninput: e => { val.textContent = e.target.value + ' px'; }, onchange: e => setA('lane')(+e.target.value) });
+            return row('Glow lane', 'space around and between panes for the border effect · ' + TOKENS.glow.lane_min + ' to ' + TOKENS.glow.lane_max + ' px', el('span', { class: 'wo' }, slider, val), v.lane !== d.lane, rsA('lane'));
+          })(),
           (() => { // window transparency: drag previews live without redrawing the page; release commits
             const pct = el('b', { class: 'wo-pct' }, Math.round(v.opacity * 100) + '%');
             const prev = el('span', { class: 'win-prev' + (v.blur ? ' blur' : ''), style: '--wa:' + v.opacity }, el('i', { class: 'wp-side' }), el('i', { class: 'wp-pane' }, el('i'), el('i'), el('i')));

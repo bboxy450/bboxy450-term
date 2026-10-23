@@ -46,6 +46,7 @@ fn pane() -> Pane {
         reconnected: false,
         glow_seed: Some(7),
         opacity: 1.,
+        lane: bbt_ui_model::TOKENS.glow.lane as f32,
     }
 }
 fn context() -> ui::Context {
@@ -87,7 +88,8 @@ fn pane_preserves_history_content_and_capability_actions_while_disconnected() {
     assert_eq!(layout.rect.h, 140.);
     assert_eq!(
         find(&layout, "pane/strip").unwrap().rect.w,
-        396.,
+        // A constant 1 px border on every activity (G1): 400 - 2 x 1.
+        398.,
         "frame must stretch over the caller width, independently of natural terminal content"
     );
     assert!(find(&layout, "pane/strip/stop").is_none());
@@ -122,7 +124,7 @@ fn pane_preserves_history_content_and_capability_actions_while_disconnected() {
             matches!(
                 p,
                 c::Paint::Material {
-                    kind: ui::Material::Glow,
+                    kind: ui::Material::Lane,
                     ..
                 }
             )

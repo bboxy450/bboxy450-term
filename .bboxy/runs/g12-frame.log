@@ -1,0 +1,14 @@
+G1+G2 frame measurement. Commit db303f6 (on Wren 297c8ee), release, method as r4c (8 s Metal System Trace, --animate --meter, steady 2.5-8 s, frame-number grouping, union of V/F/C intervals; parser gpu_frames.py).
+$ xcrun xctrace record --template 'Metal System Trace' --time-limit 8s --launch -- bboxy450-term --animate --meter   (default lane 8)
+load average at start: 19.87 (shared Mac)
+AFTER : 413 frames {'mean': 6.995, 'p50': 7.19, 'p99': 8.152, 'max': 8.519}
+BEFORE: 413 frames {'mean': 9.158, 'p50': 9.381, 'p99': 10.236, 'max': 11.595}   (main 950d4a9, r4c baseline)
+per-pass mean ms/frame, before -> after:
+  frosted separable Gaussian          3.363 ->  4.211
+  L2 named materials                  3.984 ->  0.531
+  CSS gamma chrome and text           2.775 ->  2.434
+  app clear                           0.173 ->  0.131
+  (wgpu internal) PendingWrites       0.124 ->  0.132
+  isolated group source-over          0.107 ->  0.112
+  Command Buffer 6                    0.014 ->  0.040
+Blur rose 3.36 -> 4.21 ms with the blur code and region unchanged: machine load 19.9 (others' GPU galleries); budget: p50/p99 under 8.333 ms, max 8.52 over by 0.19.

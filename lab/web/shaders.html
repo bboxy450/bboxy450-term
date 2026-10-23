@@ -13,7 +13,7 @@ document.body.classList.add('live');   // the running app: the shader replaces e
 const Q = new URLSearchParams(location.search);
 const ACT = ['idle', 'active', 'waiting', 'errored'];
 let activity = ACT.includes(Q.get('activity')) ? Q.get('activity') : 'active';
-let lane = Math.min(10, Math.max(2, +(Q.get('lane') || 4)));
+let lane = Math.min(10, Math.max(2, +(Q.get('lane') || T.glow.lane)));   // the decided lane (operator 2026-10-22: 8)
 const frozen = Q.has('t') ? +Q.get('t') : null, showLanes = Q.get('lanes') === '1';
 
 // Shared prelude: u in [0,1] runs across the lane (0 = pane edge, 1 = lane edge); s is the arc coordinate (px, clockwise from

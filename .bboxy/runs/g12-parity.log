@@ -1,0 +1,8 @@
+G1+G2 parity vs main. Same capture policy, clean detached worktrees, own targets.
+$ sh scripts/ci-local.sh --parity   (db303f6 on wren/glow-lane 297c8ee): exit 1, 'parity gate: 648 geometry failures (fail)'
+$ sh scripts/parity.sh              (main 510f0ef, Wren's base):          exit 1, 'parity gate: 648 geometry failures (fail)'
+Both: 1664 cases, 829 review; statuses {'review pixels': 181, 'unproven geometry': 1320, 'within policy': 163}
+unproven geometry: main 1320, G1+G2 1320, new 0, cleared 0
+status changes main -> G1+G2: 0
+pixel changed-fraction deltas: cases moved 191 min -0.0058 (drop_zone/normal-touch-dark.png) max +0.0139 (title_strip/active-cozy-light.png)
+The 648 strict failures are missing captured geometry (P3, Velvet), identical on main.

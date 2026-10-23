@@ -270,7 +270,7 @@ fn paint_box(
     }
     let fill = Color(s.fill).alpha(s.opacity);
     let mat = match s.material {
-        Material::Flat | Material::Glow => materials::Material::Flat(fill),
+        Material::Flat | Material::Glow | Material::Lane => materials::Material::Flat(fill),
         Material::Gloss => {
             let materials::Material::Gloss(mut g) =
                 crate::materials::material(Kind::Gloss, ctx.theme)

@@ -1,7 +1,7 @@
 //! G3 geometry invariant: a lane effect paints only inside its lane, (0, L) px
 //! outside the box, never inside the box and never beyond L, for every candidate,
 //! activity, lane width and time. The box rect is an input the effect never changes.
-use bboxybook::shaders::{ACTIVITIES, LANES, TIMES, lane, radius};
+use bboxybook::shaders::{ACTIVITIES, TIMES, lane, radius};
 use bbt_render::chrome::{ChromeRenderer, materials::*};
 use bbt_ui_model::{Theme, draw::Color, layout::Rect};
 
@@ -24,7 +24,8 @@ fn lane_effects_never_leave_the_lane() {
     let r = radius();
     for fx in LaneFx::ALL {
         for activity in ACTIVITIES {
-            for l in LANES {
+            // The whole Settings > Glow lane range (2-8 px).
+            for l in [2., 4., 6., 8.] {
                 for t in [TIMES[1], TIMES[3]] {
                     let items = [Surface {
                         rect,
