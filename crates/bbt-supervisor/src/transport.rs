@@ -301,7 +301,9 @@ pub(crate) struct SocketPeer {
     pub stream: UnixStream,
     pub decoder: Decoder<Request>,
     queue: VecDeque<Vec<u8>>,
+    replies: VecDeque<Vec<u8>>,
     offset: usize,
+    writing_reply: bool,
     queued_bytes: usize,
 }
 
@@ -311,13 +313,16 @@ impl SocketPeer {
             stream,
             decoder: Decoder::default(),
             queue: VecDeque::new(),
+            replies: VecDeque::new(),
             offset: 0,
+            writing_reply: false,
             queued_bytes: 0,
         }
     }
 
     pub fn enqueue(&mut self, message: Message) -> io::Result<bool> {
-        let limit = if matches!(&message, Message::Reply { .. }) {
+        let reply = matches!(&message, Message::Reply { .. });
+        let limit = if reply {
             MAX_SOCKET_QUEUE_BYTES
         } else {
             MAX_EVENT_QUEUE_BYTES
@@ -327,23 +332,40 @@ impl SocketPeer {
             return Ok(false);
         }
         self.queued_bytes += bytes.len();
-        self.queue.push_back(bytes);
+        if reply {
+            self.replies.push_back(bytes);
+        } else {
+            self.queue.push_back(bytes);
+        }
         Ok(true)
     }
 
     pub fn wants_write(&self) -> bool {
-        !self.queue.is_empty()
+        !self.queue.is_empty() || !self.replies.is_empty()
     }
 
     pub fn flush(&mut self) -> io::Result<()> {
-        while let Some(front) = self.queue.front() {
+        loop {
+            // Replies match request IDs and can pass unsent events. Once any
+            // frame starts, pin its lane until its final byte is written.
+            if self.offset == 0 {
+                self.writing_reply = !self.replies.is_empty();
+            }
+            let queue = if self.writing_reply {
+                &mut self.replies
+            } else {
+                &mut self.queue
+            };
+            let Some(front) = queue.front() else {
+                return Ok(());
+            };
             match self.stream.write(&front[self.offset..]) {
                 Ok(0) => return Err(io::ErrorKind::WriteZero.into()),
                 Ok(count) => {
                     self.offset += count;
                     self.queued_bytes -= count;
                     if self.offset == front.len() {
-                        self.queue.pop_front();
+                        queue.pop_front();
                         self.offset = 0;
                     }
                 }
@@ -352,7 +374,6 @@ impl SocketPeer {
                 Err(error) => return Err(error),
             }
         }
-        Ok(())
     }
 }
 
@@ -360,6 +381,81 @@ impl SocketPeer {
 mod tests {
     use super::*;
     use crate::protocol::Action;
+
+    fn check_reply_priority(partial_event: bool) {
+        use crate::{Event, Reply, Ulid};
+        let (stream, mut reader) = std::os::unix::net::UnixStream::pair().unwrap();
+        stream.set_nonblocking(true).unwrap();
+        reader
+            .set_read_timeout(Some(std::time::Duration::from_secs(10)))
+            .unwrap();
+        let mut peer = SocketPeer::new(UnixStream::from_std(stream));
+        let seat = Ulid::new();
+        let event = |seq| Message::Event {
+            event: Event::Output {
+                seat,
+                generation: 1,
+                seq,
+                bytes: vec![seq as u8; 40],
+            },
+        };
+        let reply = |id| Message::Reply {
+            request_id: Ulid::from(id),
+            result: Ok(Reply::Seats { seats: vec![] }),
+        };
+        let a = event(1);
+        let b = event(2);
+        let first = reply(10);
+        let second = reply(11);
+        assert!(peer.enqueue(a.clone()).unwrap());
+        assert!(peer.enqueue(b.clone()).unwrap());
+        if partial_event {
+            // Put a known prefix on the real socket, rather than relying on a
+            // platform-specific send-buffer size to produce a short write.
+            peer.stream
+                .write_all(&peer.queue.front().unwrap()[..17])
+                .unwrap();
+            peer.offset = 17;
+            peer.queued_bytes -= 17;
+        }
+        assert!(peer.enqueue(first.clone()).unwrap());
+        assert!(peer.enqueue(second.clone()).unwrap());
+        let read = std::thread::spawn(move || {
+            (0..4)
+                .map(|_| read_frame::<Message>(&mut reader).unwrap().body)
+                .collect::<Vec<_>>()
+        });
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while peer.wants_write() {
+            peer.flush().unwrap();
+            assert!(
+                std::time::Instant::now() < deadline,
+                "priority frames did not drain"
+            );
+            if peer.wants_write() {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+        }
+        assert_eq!(peer.queued_bytes, 0);
+        let expected = if partial_event {
+            vec![a, first, second, b]
+        } else {
+            vec![first, second, a, b]
+        };
+        let actual = read.join().unwrap();
+        assert_eq!(
+            serde_json::to_value(actual).unwrap(),
+            serde_json::to_value(expected).unwrap()
+        );
+    }
+    #[test]
+    fn replies_pass_unsent_events_with_fifo_order_in_both_lanes() {
+        check_reply_priority(false);
+    }
+    #[test]
+    fn priority_replies_never_interleave_a_partially_written_event() {
+        check_reply_priority(true);
+    }
 
     #[test]
     fn saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue() {

@@ -186,6 +186,25 @@ struct GuiView {
     stream: ViewStream,
     generation: u64,
     last: Option<(View, u64)>,
+    in_flight: Option<(View, u64)>,
+}
+impl GuiView {
+    fn next_update(&mut self) -> Option<crate::streams::Update> {
+        let update = self.stream.next_update()?;
+        self.in_flight = Some(match &update {
+            crate::streams::Update::Snapshot { snapshot } => (snapshot.view, snapshot.sequence),
+            crate::streams::Update::Delta { delta } => (delta.view, delta.sequence),
+        });
+        Some(update)
+    }
+    fn applied(&mut self, view: View, sequence: u64) -> Result<()> {
+        self.stream.applied(view, sequence)?;
+        // A duplicate baseline ACK is valid, but must not clear a newer send.
+        if self.in_flight == Some((view, sequence)) {
+            self.in_flight = None;
+        }
+        Ok(())
+    }
 }
 #[derive(Default)]
 struct GuiChecks {
@@ -226,10 +245,23 @@ async fn gui_check_view(
         watched.stream.offer(snapshot)?;
         watched.last = identity;
     }
-    if let Some(update) = watched.stream.next_update() {
+    if let Some(update) = watched.next_update() {
         send(write, &GuiReply::Update { seat, update }).await?;
     }
     Ok(())
+}
+async fn gui_fallback_check(
+    client: &LogicClient,
+    write: &mut tokio::net::unix::OwnedWriteHalf,
+    seat: bbt_proto::SeatId,
+    watched: &mut GuiView,
+) -> Result<()> {
+    // Applied immediately checks for a fresh snapshot. Until then, another
+    // Snapshot RPC cannot produce an Update for this view.
+    if watched.in_flight.is_some() {
+        return Ok(());
+    }
+    gui_check_view(client, write, seat, watched).await
 }
 async fn gui_state_event(
     event: crate::bus::Delivery,
@@ -343,7 +375,7 @@ async fn gui_session(
                                 let snapshot=client.snapshot(view.seat,view.generation).await?;
                                 let last=Some((snapshot.view,snapshot.sequence));
                                 let mut stream=ViewStream::default();stream.offer(snapshot)?;
-                                views.insert(seat,GuiView {stream,generation:view.generation,last});
+                                views.insert(seat,GuiView {stream,generation:view.generation,last,in_flight:None});
                                 checks.schedule(seat);
                                 Ok(GuiReply::Ok {op})
                             }
@@ -351,7 +383,7 @@ async fn gui_session(
                             GuiAction::Applied {seat,view,sequence}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("ack seat and view disagree"));}
                                 let watched=views.get_mut(&seat).ok_or_else(||invalid("seat is not watched"))?;
-                                watched.stream.applied(view,sequence)?;
+                                watched.applied(view,sequence)?;
                                 checks.remove(seat);
                                 let result=gui_check_view(&client,&mut write,seat,watched).await;
                                 if result.is_err() {views.remove(&seat);}
@@ -403,7 +435,7 @@ async fn gui_session(
                     if !checks.is_empty()&&(prefer_view||state_events.is_empty()) {
                         let seat=checks.next().unwrap();
                         if let Some(watched)=views.get_mut(&seat)
-                            && let Err(error)=gui_check_view(&client,&mut write,seat,watched).await {
+                            && let Err(error)=gui_fallback_check(&client,&mut write,seat,watched).await {
                             views.remove(&seat);
                             send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:error.to_string()}).await?;
                         }
@@ -670,6 +702,104 @@ mod gui_tests {
         assert_eq!(checks.next(), Some(a));
         assert!(checks.is_empty());
         assert!(checks.queued.is_empty());
+    }
+
+    fn offered_view() -> (bbt_proto::SeatId, View, GuiView) {
+        let id = Ulid::new();
+        let view = View {
+            seat: id,
+            generation: 1,
+            view_generation: Ulid::new(),
+        };
+        let snapshot = crate::streams::Snapshot {
+            view,
+            sequence: 1,
+            screen: crate::streams::Screen::from_term(
+                &bbt_core::Term::new(2, 2, 0),
+                String::new(),
+                None,
+                None,
+            ),
+        };
+        let mut stream = ViewStream::default();
+        stream.offer(snapshot).unwrap();
+        (
+            bbt_proto::SeatId::from_u128(id.0),
+            view,
+            GuiView {
+                stream,
+                generation: 1,
+                last: Some((view, 1)),
+                in_flight: None,
+            },
+        )
+    }
+
+    #[test]
+    fn duplicate_baseline_ack_preserves_the_newer_in_flight_update() {
+        let (_, view, mut watched) = offered_view();
+        let crate::streams::Update::Snapshot { snapshot } = watched.next_update().unwrap() else {
+            panic!("first update must be a snapshot");
+        };
+        watched.applied(view, 1).unwrap();
+        let mut newer = *snapshot;
+        newer.sequence = 2;
+        watched.stream.offer(newer).unwrap();
+        assert!(watched.next_update().is_some());
+        watched.applied(view, 1).unwrap();
+        assert_eq!(watched.in_flight, Some((view, 2)));
+        assert!(watched.next_update().is_none());
+        assert!(watched.applied(view, 3).is_err());
+        assert_eq!(watched.in_flight, Some((view, 2)));
+        watched.applied(view, 2).unwrap();
+        assert_eq!(watched.in_flight, None);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn fallback_never_requests_a_snapshot_while_an_update_is_in_flight() {
+        let temp = tempfile::tempdir().unwrap();
+        let repository = temp.path().join("repository");
+        std::fs::create_dir(&repository).unwrap();
+        let supervisor = Supervisor::start(crate::Config {
+            journal_directory: Some(temp.path().join("supervisor-journal")),
+            ..Default::default()
+        })
+        .unwrap();
+        let logic = Logic::start(
+            supervisor.connect().unwrap(),
+            LogicConfig {
+                run_dir: temp.path().join("run"),
+                repository,
+                ring: Default::default(),
+            },
+            ed25519_dalek::SigningKey::from_bytes(&[92; 32]),
+            &tokio::runtime::Handle::current(),
+        )
+        .unwrap();
+        let client = logic.client.clone();
+        logic.shutdown().unwrap();
+        let (writer, _reader) = tokio::net::UnixStream::pair().unwrap();
+        let (_, mut write) = writer.into_split();
+        let (seat, view, mut watched) = offered_view();
+        // Positive control: an RPC against this stopped client always fails.
+        let error = gui_fallback_check(&client, &mut write, seat, &mut watched)
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("logic stopped"), "{error}");
+        assert!(watched.next_update().is_some());
+        for _ in 0..100 {
+            gui_fallback_check(&client, &mut write, seat, &mut watched)
+                .await
+                .unwrap();
+        }
+        assert_eq!(watched.in_flight, Some((view, 1)));
+        watched.applied(view, 1).unwrap();
+        assert!(
+            gui_fallback_check(&client, &mut write, seat, &mut watched)
+                .await
+                .is_err()
+        );
+        supervisor.shutdown().unwrap();
     }
 
     async fn update(rx: &mut tokio::sync::mpsc::Receiver<GuiReply>) -> (View, u64, bool) {
