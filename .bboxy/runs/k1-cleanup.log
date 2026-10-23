@@ -1,0 +1,13 @@
+{
+  "removed": "/private/tmp/sable-k1-it_bx1w_/ci-target",
+  "unique_inode_allocated_bytes": 2617253888,
+  "data_bytes_with_remaining_external_hardlinks": 0,
+  "method": "lstat st_blocks*512, unique(dev,ino); directory removed after final CI exit0",
+  "volume_available_before": 14277382144,
+  "volume_available_after": 16685514752,
+  "volume_delta_not_attributed_exclusively": 2408132608,
+  "kept_parity": "/private/tmp/sable-k1-it_bx1w_/parity-final",
+  "kept_raw_logs": "/private/tmp/sable-k1-it_bx1w_",
+  "precheck_cleanup_note": "earlier1,607,163,904 was by-path allocated-block sum; not a unique-inode/physical-free measurement"
+}
+Private CI worktree removed by command290f0d7c2b544784b00382cb4c250113, EXIT0. Accepted parity/reference/native PNGs and raw logs remain in the named scratch root.
