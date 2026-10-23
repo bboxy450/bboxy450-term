@@ -13,6 +13,8 @@ pub enum Hit {
     Kind,
     KindChoice(usize),
     Attach,
+    AttachQuery,
+    AttachChoice(usize),
 }
 pub struct Regions {
     pub panel: Rect,
@@ -21,6 +23,11 @@ pub struct Regions {
     pub address: Rect,
     picker: Option<Rect>,
     kind_menu: Option<Rect>,
+    attachment_picker: Option<Rect>,
+    pub attachment_query: Option<Rect>,
+    attachment_caret: Option<Rect>,
+    attachment_clip: Option<Rect>,
+    attachment_choices: Vec<(usize, Rect)>,
     kinds: Vec<Rect>,
     choices: Vec<Rect>,
     removes: Vec<Rect>,
@@ -52,6 +59,27 @@ impl Regions {
         let removes = (0..)
             .map_while(|i| find(layout, &format!("composer/address/a{i}/x")).map(|n| n.rect))
             .collect();
+        fn clip(n: &c::Layout) -> Option<Rect> {
+            if matches!(n.kind, c::LayoutKind::ScrollView { .. }) {
+                Some(n.rect)
+            } else {
+                n.children.iter().find_map(clip)
+            }
+        }
+        fn attachment_regions(n: &c::Layout, out: &mut Vec<(usize, Rect)>) {
+            if let c::LayoutKind::Named(name) = &n.kind
+                && let Some(i) = name
+                    .strip_prefix("composer/attach-pick/o")
+                    .and_then(|s| s.parse().ok())
+            {
+                out.push((i, n.rect));
+            }
+            for child in &n.children {
+                attachment_regions(child, out);
+            }
+        }
+        let mut attachment_choices = vec![];
+        attachment_regions(layout, &mut attachment_choices);
         Ok(Self {
             panel: rect("composer")?,
             body: rect("composer/text")?,
@@ -59,6 +87,11 @@ impl Regions {
             address: rect("composer/address")?,
             picker: find(layout, "composer/pick").map(|n| n.rect),
             kind_menu: find(layout, "composer/kind-menu").map(|n| n.rect),
+            attachment_picker: find(layout, "composer/attach-pick").map(|n| n.rect),
+            attachment_query: find(layout, "composer/attach-pick/query").map(|n| n.rect),
+            attachment_caret: find(layout, "composer/attach-pick/query/caret").map(|n| n.rect),
+            attachment_clip: find(layout, "composer/attach-pick/list").and_then(clip),
+            attachment_choices,
             kinds: (0..3)
                 .filter_map(|i| find(layout, &format!("composer/kind-menu/k{i}")).map(|n| n.rect))
                 .collect(),
@@ -74,8 +107,20 @@ impl Regions {
         contains(self.panel, at)
             || self.picker.is_some_and(|r| contains(r, at))
             || self.kind_menu.is_some_and(|r| contains(r, at))
+            || self.attachment_picker.is_some_and(|r| contains(r, at))
     }
     pub fn hit(&self, at: [f32; 2]) -> Option<Hit> {
+        if self.attachment_query.is_some_and(|r| contains(r, at)) {
+            return Some(Hit::AttachQuery);
+        }
+        if self.attachment_clip.is_some_and(|r| contains(r, at))
+            && let Some((i, _)) = self
+                .attachment_choices
+                .iter()
+                .find(|(_, r)| contains(*r, at))
+        {
+            return Some(Hit::AttachChoice(*i));
+        }
         if let Some(i) = self.kinds.iter().position(|r| contains(*r, at)) {
             return Some(Hit::KindChoice(i));
         }
@@ -103,12 +148,27 @@ impl Regions {
         contains(self.body, at).then_some(Hit::Body)
     }
     pub fn candidate_area(&self) -> Rect {
+        if let Some(query) = self.attachment_query {
+            return self
+                .attachment_caret
+                .unwrap_or(Rect::new(query.x, query.y, 2., query.h));
+        }
         self.caret.unwrap_or(Rect::new(
             self.body.x,
             self.body.y,
             2.,
             self.body.h.min(20.),
         ))
+    }
+    pub fn attachment_index_at(
+        &self,
+        layout: &c::Layout,
+        value: &str,
+        at: [f32; 2],
+        m: &dyn c::Measure,
+    ) -> usize {
+        find(layout, "composer/attach-pick/query/text")
+            .map_or(0, |n| TextArea::index_at(value, n, at, m))
     }
     pub fn position_at(
         &self,

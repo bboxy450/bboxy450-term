@@ -115,3 +115,73 @@ fn accepting_a_report_requires_reported_status_and_zero_exit() {
     report.status = "running".into();
     assert!(!report.can_accept());
 }
+
+#[test]
+fn attachment_query_is_uncommitted_until_pick_and_preedit_never_filters_or_submits() {
+    let mut c = composer();
+    c.replace_attachments(vec![
+        Attachment {
+            id: "task-a".into(),
+            path: ".bboxy/tasks/a.md".into(),
+            kind: "task".into(),
+            title: "Adapters".into(),
+            status: "open".into(),
+            ..Default::default()
+        },
+        Attachment {
+            id: "artifact-b".into(),
+            path: ".bboxy/artifacts/b.md".into(),
+            kind: "artifact".into(),
+            title: "Adapter image".into(),
+            ..Default::default()
+        },
+    ]);
+    c.handle(Command::Edit(Edit::Insert("hello ".into())));
+    c.handle(Command::Edit(Edit::Insert("[".into())));
+    c.handle(Command::Edit(Edit::Insert("[".into())));
+    assert_eq!(c.view.text, "hello ");
+    assert!(c.view.attach_pick.is_some());
+    c.handle(Command::Edit(Edit::Insert("adap".into())));
+    c.handle(Command::Edit(Edit::Preedit {
+        text: "no match".into(),
+        caret: Some(8),
+    }));
+    assert_eq!(c.view.attach_pick.as_ref().unwrap().query, "adap");
+    assert_eq!(c.view.attach_pick.as_ref().unwrap().rows().len(), 2);
+    assert_eq!(c.handle(Command::ChooseSelected), Outcome::Local);
+    assert_eq!(c.handle(Command::Send), Outcome::Local);
+    c.handle(Command::Edit(Edit::CancelPreedit));
+    c.handle(Command::ChooseSelected);
+    assert!(c.view.attach_pick.is_none());
+    assert_eq!(c.view.attach[0].path, ".bboxy/tasks/a.md");
+    assert_eq!(c.view.text, "hello ");
+}
+#[test]
+fn reject_reason_requires_committed_nonempty_text_and_survives_refusal() {
+    let mut reject = RejectController::default();
+    assert_eq!(reject.submission(), Err("reject_reason_required"));
+    reject.handle(Edit::Preedit {
+        text: "add a test".into(),
+        caret: Some(10),
+    });
+    assert_eq!(reject.submission(), Err("preedit_pending"));
+    reject.handle(Edit::Commit("add a test".into()));
+    assert_eq!(reject.submission().unwrap(), "add a test");
+    reject.refused("task changed");
+    assert_eq!(reject.view.reason, "add a test");
+    assert_eq!(reject.view.notice.as_ref().unwrap().text, "task changed");
+}
+
+#[test]
+fn task_status_is_canonical_in_graph_records_without_renaming_seat_activity() {
+    use bbt_ui::modules::graph_tab::{Seat, Work};
+    let seat: Seat = serde_json::from_value(
+        serde_json::json!({"state":"active","tasks":[{"title":"Task","status":"reported"}]}),
+    )
+    .unwrap();
+    assert_eq!(seat.state, "active");
+    assert_eq!(seat.tasks[0].state, "reported");
+    let old: Work = serde_json::from_value(serde_json::json!({"state":"running"})).unwrap();
+    assert_eq!(old.state, "running");
+    assert_eq!(serde_json::to_value(&old).unwrap()["status"], "running");
+}

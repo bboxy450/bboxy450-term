@@ -101,11 +101,58 @@ pub struct External {
     pub text: String,
     pub time: String,
 }
+/// A badge is numeric only when the retained pages prove its count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnreadCount {
+    Exact(u64),
+    More,
+}
+impl Default for UnreadCount {
+    fn default() -> Self {
+        Self::Exact(0)
+    }
+}
+impl UnreadCount {
+    pub fn any(self) -> bool {
+        self != Self::Exact(0)
+    }
+}
+impl std::fmt::Display for UnreadCount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Exact(n) => write!(f, "{n}"),
+            Self::More => f.write_str("more"),
+        }
+    }
+}
+impl Serialize for UnreadCount {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Exact(n) => s.serialize_u64(*n),
+            Self::More => s.serialize_str("more"),
+        }
+    }
+}
+impl<'de> Deserialize<'de> for UnreadCount {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Value {
+            Number(u64),
+            Marker(String),
+        }
+        match Value::deserialize(d)? {
+            Value::Number(n) => Ok(Self::Exact(n)),
+            Value::Marker(s) if s == "more" => Ok(Self::More),
+            _ => Err(serde::de::Error::custom("unread must be a count or more")),
+        }
+    }
+}
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Channel {
     pub name: String,
-    pub unread: usize,
+    pub unread: UnreadCount,
     pub muted: bool,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -126,6 +173,8 @@ pub enum Entry {
     Tabs {
         channels: Vec<Channel>,
         selected: String,
+        #[serde(default)]
+        total: Option<u64>,
     },
     Filter {
         name: String,
@@ -1395,10 +1444,23 @@ impl StreamDock {
                             .into(),
                         ],
                     ),
-                    Entry::Tabs { channels, selected } => {
+                    Entry::Tabs {
+                        channels,
+                        selected,
+                        total,
+                    } => {
                         let all = Channel {
                             name: "all".into(),
-                            unread: channels.iter().filter(|c| !c.muted).map(|c| c.unread).sum(),
+                            unread: total.map(UnreadCount::Exact).unwrap_or_else(|| {
+                                channels
+                                    .iter()
+                                    .filter(|c| !c.muted)
+                                    .try_fold(0u64, |sum, c| match c.unread {
+                                        UnreadCount::Exact(n) => sum.checked_add(n),
+                                        UnreadCount::More => None,
+                                    })
+                                    .map_or(UnreadCount::More, UnreadCount::Exact)
+                            }),
                             muted: false,
                         };
                         let cells = std::iter::once(&all)
@@ -1465,17 +1527,25 @@ impl StreamDock {
                                         )
                                         .into(),
                                     );
-                                } else if ch.unread > 0 {
+                                } else if ch.unread.any() {
                                     cells.push(
                                         badge(
                                             &format!("{k}/b"),
                                             &ch.unread.to_string(),
-                                            text_style(
-                                                t.micro as f32,
-                                                600,
-                                                false,
-                                                ui::Color::OnAccent,
-                                            ),
+                                            ui::Text {
+                                                italic: ch.unread == UnreadCount::More,
+                                                tracking_em: if ch.unread == UnreadCount::More {
+                                                    0.02
+                                                } else {
+                                                    0.
+                                                },
+                                                ..text_style(
+                                                    t.micro as f32,
+                                                    600,
+                                                    false,
+                                                    ui::Color::OnAccent,
+                                                )
+                                            },
                                             Some(ui::Paint::solid(ui::Color::Accent)),
                                             None,
                                             (STYLE.radius.pill as f32, 5., Some(13.), false),

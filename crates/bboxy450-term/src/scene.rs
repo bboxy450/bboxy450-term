@@ -686,6 +686,16 @@ impl Scene {
             .regions
             .index_at(&layout.layout, value, at, &self.metrics)
     }
+    pub fn conversation_attachment_index(
+        &self,
+        layout: &ConversationLayout,
+        value: &str,
+        at: [f32; 2],
+    ) -> usize {
+        layout
+            .regions
+            .attachment_index_at(&layout.layout, value, at, &self.metrics)
+    }
     pub fn launcher_layout(
         &self,
         size: [f32; 2],

@@ -9,6 +9,7 @@ pub struct TextArea {
     pub style: ui::Text,
     pub edit: Option<c::Edit>,
     pub min_lines: usize,
+    pub wrap: bool,
     pub name: String,
 }
 fn named(name: impl Into<String>, content: c::Element) -> c::Element {
@@ -120,7 +121,9 @@ impl TextArea {
         if empty {
             style.paint = ui::Paint::solid(ui::Color::Muted);
         }
-        let text = c::Element::Text(c::Text::new(shown, style));
+        let mut paragraph = c::Text::new(shown, style);
+        paragraph.wrap = self.wrap;
+        let text = c::Element::Text(paragraph);
         let layout = text.layout(Rect::new(0., 0., width, 0.), ctx, m)?;
         let c::LayoutKind::Text { runs, .. } = &layout.kind else {
             unreachable!()

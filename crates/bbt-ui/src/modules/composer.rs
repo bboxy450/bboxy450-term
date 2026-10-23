@@ -8,7 +8,9 @@ use crate::{
     text_edit::{Command as EditCommand, Editor},
 };
 pub use hit::{Hit, Regions};
-pub use report::{Criterion, Report, Verification};
+pub use report::{Criterion, Reject, RejectController, Report, Verification};
+mod attachments;
+pub use attachments::AttachmentPicker;
 mod conversation;
 pub use conversation::Conversation;
 use serde::{Deserialize, Serialize};
@@ -69,6 +71,8 @@ pub struct Composer {
     pub kind: String,
     #[serde(rename = "kindMenu")]
     pub kind_menu: bool,
+    #[serde(rename = "attachPick")]
+    pub attach_pick: Option<AttachmentPicker>,
     pub focus: bool,
     pub typed: String,
     pub text: String,
@@ -106,6 +110,8 @@ pub enum Command {
     Priority(u8),
     Kind(String),
     ToggleKindMenu,
+    PickAttachments,
+    ChooseAttachment(usize),
     Attach(Attachment),
     RemoveAttachment(usize),
     Delegate(Attachment),
@@ -128,6 +134,8 @@ pub struct Controller {
     pub view: Composer,
     address: Editor,
     body: Editor,
+    attachment_editor: Editor,
+    attachment_catalog: Vec<Attachment>,
     catalog: Vec<PickGroup>,
     selected: usize,
 }
@@ -136,6 +144,13 @@ impl Controller {
         let mut result = Self {
             address: Editor::new(&view.typed),
             body: Editor::new(&view.text),
+            attachment_editor: Editor::new(
+                view.attach_pick.as_ref().map_or("", |p| p.query.as_str()),
+            ),
+            attachment_catalog: view
+                .attach_pick
+                .as_ref()
+                .map_or_else(Vec::new, |p| p.items.clone()),
             catalog: view.pick.clone(),
             view,
             selected: 0,
@@ -148,12 +163,18 @@ impl Controller {
         self.filter();
     }
     pub fn composing(&self) -> bool {
+        if self.view.attach_pick.is_some() {
+            return self.attachment_editor.composing();
+        }
         match self.view.field {
             Field::Address => self.address.composing(),
             Field::Body => self.body.composing(),
         }
     }
     pub fn handle(&mut self, command: Command) -> Outcome {
+        if let Some(outcome) = self.attachment_command(&command) {
+            return outcome;
+        }
         if self.view.kind_menu {
             match command {
                 Command::Edit(_) => return Outcome::Local,
@@ -181,6 +202,12 @@ impl Controller {
         let changed = match command {
             Command::Focus(field) => {
                 self.view.kind_menu = false;
+                if self.view.field != field {
+                    self.address
+                        .handle(&mut self.view.typed, EditCommand::CancelPreedit);
+                    self.body
+                        .handle(&mut self.view.text, EditCommand::CancelPreedit);
+                }
                 self.view.field = field;
                 self.view.focus = true;
                 self.filter();
@@ -197,6 +224,10 @@ impl Controller {
                 true
             }
             Command::Edit(command) => {
+                let bracket = self.view.field == Field::Body
+                    && !self.body.composing()
+                    && self.body.selection()[0] == self.body.selection()[1]
+                    && matches!(&command,EditCommand::Insert(text) if text=="[[" || text=="["&&crate::components::utf16_byte_index(&self.view.text,self.body.selection()[0]).is_some_and(|at|self.view.text[..at].ends_with('[')));
                 if self.view.field == Field::Body
                     && self.view.text.is_empty()
                     && matches!(&command, EditCommand::Insert(text) if matches!(text.as_str(),"@"|"#"|"↳"))
@@ -207,6 +238,15 @@ impl Controller {
                     Field::Address => self.address.handle(&mut self.view.typed, command),
                     Field::Body => self.body.handle(&mut self.view.text, command),
                 };
+                if bracket && changed {
+                    self.body
+                        .handle(&mut self.view.text, EditCommand::Delete { backwards: true });
+                    self.body
+                        .handle(&mut self.view.text, EditCommand::Delete { backwards: true });
+                    self.open_attachments();
+                    self.sync();
+                    return Outcome::Changed;
+                }
                 if self.view.field == Field::Address && changed {
                     self.selected = 0;
                     self.filter();
@@ -291,8 +331,23 @@ impl Controller {
                 self.view.pick.clear();
                 true
             }
+            Command::PickAttachments => {
+                self.open_attachments();
+                true
+            }
+            Command::ChooseAttachment(_) => return Outcome::Local,
             Command::Attach(attachment) => {
-                self.view.attach.push(attachment);
+                if attachment.path.is_empty() {
+                    return Outcome::Refused("attachment_unresolved");
+                }
+                if self.view.mode == "delegate" {
+                    if attachment.kind != "task" {
+                        return Outcome::Refused("delegation_requires_one_task");
+                    }
+                    self.view.attach = vec![attachment];
+                } else if !self.view.attach.iter().any(|a| a.path == attachment.path) {
+                    self.view.attach.push(attachment);
+                }
                 true
             }
             Command::RemoveAttachment(index) => {
@@ -383,6 +438,9 @@ impl Controller {
     fn sync(&mut self) {
         self.view.edit =
             (self.view.focus && self.view.field == Field::Body).then(|| self.body.edit());
+        if let Some(p) = &mut self.view.attach_pick {
+            p.edit = Some(self.attachment_editor.edit());
+        }
     }
     fn filter(&mut self) {
         if !self.view.focus || self.view.field != Field::Address {

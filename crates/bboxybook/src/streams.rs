@@ -23,6 +23,7 @@ pub const DOCK_STATES: &[&str] = &[
     "messages",
     "audit lines",
     "subchannels",
+    "subchannel unread · more",
     "subchannel muted",
     "subgroup message",
     "rejected progress",
@@ -65,6 +66,12 @@ pub const COMPOSE_STATES: &[&str] = &[
     "delegate · claimed",
     "delegate · report back",
     "delegate · accepted",
+    "delegate · reject reason",
+    "delegate · reject typed",
+    "delegate · reject refused",
+    "delegate · rejected",
+    "attach · picker",
+    "attach · typed",
 ];
 pub fn cases() -> Vec<Case> {
     let mut all = vec![];

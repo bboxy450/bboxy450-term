@@ -952,6 +952,19 @@ impl App {
         self.request_redraw();
     }
     fn composer_move(&mut self, vertical: Option<bool>, end: Option<bool>, extend: bool) {
+        if self.composer.view.attach_pick.is_some() {
+            if let Some(end) = end {
+                self.composer_command(ComposeCommand::Edit(EditCommand::Move {
+                    motion: if end {
+                        bbt_ui::text_edit::Motion::End
+                    } else {
+                        bbt_ui::text_edit::Motion::Start
+                    },
+                    extend,
+                }));
+            }
+            return;
+        }
         if self.composer.composing() {
             return;
         }
@@ -2064,11 +2077,16 @@ impl ApplicationHandler<UiEvent> for App {
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
                 if self.composer_dragging && self.launcher.is_none() {
                     if let Some(layout) = &self.conversation_layout {
-                        let at = self.scene.conversation_index(
-                            layout,
-                            &self.composer.view.text,
-                            self.pointer,
-                        );
+                        let at = if let Some(p) = &self.composer.view.attach_pick {
+                            self.scene
+                                .conversation_attachment_index(layout, &p.query, self.pointer)
+                        } else {
+                            self.scene.conversation_index(
+                                layout,
+                                &self.composer.view.text,
+                                self.pointer,
+                            )
+                        };
                         self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
                             at,
                             extend: true,
@@ -2164,7 +2182,12 @@ impl ApplicationHandler<UiEvent> for App {
                 {
                     use composer::Hit;
                     let hit = layout.regions.hit(self.pointer);
-                    let at = if hit == Some(Hit::Body) {
+                    let at = if hit == Some(Hit::AttachQuery) {
+                        self.composer.view.attach_pick.as_ref().map(|p| {
+                            self.scene
+                                .conversation_attachment_index(layout, &p.query, self.pointer)
+                        })
+                    } else if hit == Some(Hit::Body) {
                         Some(self.scene.conversation_index(
                             layout,
                             &self.composer.view.text,
@@ -2199,11 +2222,16 @@ impl ApplicationHandler<UiEvent> for App {
                             ComposeCommand::Kind(composer::SEND_KINDS[index].into()),
                         ),
                         Some(Hit::Send) => self.composer_command(ComposeCommand::Send),
-                        Some(Hit::Attach) => {
-                            self.composer_client
-                                .refused("attachment picker waits for task/artifact rows");
-                            self.composer_notice();
-                            self.request_redraw();
+                        Some(Hit::Attach) => self.composer_command(ComposeCommand::PickAttachments),
+                        Some(Hit::AttachChoice(index)) => {
+                            self.composer_command(ComposeCommand::ChooseAttachment(index))
+                        }
+                        Some(Hit::AttachQuery) => {
+                            self.composer_dragging = true;
+                            self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
+                                at: at.unwrap(),
+                                extend: self.modifiers.shift_key(),
+                            }));
                         }
                         _ => {}
                     }
@@ -2309,8 +2337,16 @@ impl ApplicationHandler<UiEvent> for App {
                             .map(|screen| screen.modes)
                     });
                 let routed = if self.launcher.is_none() && self.composer.view.focus {
-                    let routed =
-                        route_composer(&input, modes.unwrap_or_default(), self.composer.view.field);
+                    let routed = route_composer(
+                        &input,
+                        modes.unwrap_or_default(),
+                        if self.composer.view.kind_menu || self.composer.view.attach_pick.is_some()
+                        {
+                            ComposeField::Address
+                        } else {
+                            self.composer.view.field
+                        },
+                    );
                     finish_route(&mut self.keyboard, &input, routed)
                 } else {
                     route_input(

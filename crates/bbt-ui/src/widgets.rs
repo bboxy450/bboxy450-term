@@ -544,6 +544,10 @@ pub struct Input {
 }
 impl Input {
     pub fn element(&self, _ctx: ui::Context) -> c::Element {
+        self.unresolved()
+    }
+    /// Declarative input; the caller's layout context resolves its tokens.
+    pub fn unresolved(&self) -> c::Element {
         let empty = self.edit.is_none() && self.state == InputState::Empty;
         let label_style = normal(
             ui::TypeStep::Body,

@@ -48,6 +48,7 @@ fn editing_never_reflows_the_committed_paragraph_and_uses_shaped_positions() {
             ..Default::default()
         }),
         min_lines: 2,
+        wrap: true,
         name: "body".into(),
     };
     let edited = area
@@ -76,6 +77,7 @@ fn invalid_surrogate_boundaries_are_rejected_before_layout() {
             ..Default::default()
         }),
         min_lines: 2,
+        wrap: true,
         name: "body".into(),
     };
     let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);

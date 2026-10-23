@@ -328,13 +328,23 @@
       };
       const report=(out,key,node)=>{
         semantic(out,key,node);
-        for(const [part,sel,text] of [['head','.rh'],['glyph','.rk',true],['title','.rh b',true],['status','.rs'],['summary','.rsum'],['checks','.rsec'],['verify','.rc'],['verify/mark','.ck',true],['verify/command','.rc code',true],['verify/exit','.ex',true],['commit','.rcommit'],['commit/text','.rcommit code',true],['gap','.rgap'],['actions','.racts'],['reject','.rebrief'],['accept','.accept']])semantic(out,key+'/'+part,node.querySelector(sel),text);
+        for(const [part,sel,text] of [['head','.rh'],['glyph','.rk',true],['title','.rh b',true],['status','.rs'],['summary','.rsum'],['checks','.rsec'],['verify','.rc'],['verify/mark','.ck',true],['verify/command','.rc code',true],['verify/exit','.ex',true],['commit','.rcommit'],['commit/text','.rcommit code',true],['gap','.rgap'],['actions',':scope > .racts'],['reject',':scope > .racts > .rebrief'],['accept',':scope > .racts > .accept']])semantic(out,key+'/'+part,node.querySelector(sel),text);
         const commit=out.find(p=>p.key===key+'/commit/text');if(commit)commit.native_inline=true;
         contentText(out,key+'/summary/text',node.querySelector('.rsum'));contentText(out,key+'/gap/text',node.querySelector('.rgap'));
         for(const [i,n] of [...node.querySelectorAll('.rev')].entries()){
           semantic(out,key+'/evidence'+i,n);semantic(out,key+'/evidence'+i+'/criterion',n.querySelector('.rcrit'),true);semantic(out,key+'/evidence'+i+'/reference',n.querySelector('code'),true);
         }
-        for(const [part,sel] of [['reject','.rebrief'],['accept','.accept']]){const n=node.querySelector(sel);if(n)raw(out,key+'/'+part+'/text',n);}
+        for(const [part,sel] of [['reject',':scope > .racts > .rebrief'],['accept',':scope > .racts > .accept']]){const n=node.querySelector(sel);if(n)raw(out,key+'/'+part+'/text',n);}
+        const reject=node.querySelector('.rrej');
+        if(reject){
+          const k=key+'/reject';semantic(out,k,reject);semantic(out,k+'/label',reject.querySelector('.rjl'),true);
+          const input=reject.querySelector('input'),host=reject.querySelector('.rjin');semantic(out,k+'/input',host);
+          if(host.querySelector('.edit-field')){out.push({key:k+'/input/control',rect:bounds(input)},...editParts(input.parentElement,k+'/input/edit'));}
+          else contentText(out,k+'/input/control',input);
+          const notice=reject.querySelector('.cnote');if(notice){semantic(out,k+'/notice',notice);semantic(out,k+'/notice/mark',notice.querySelector('.cnm'),true);semantic(out,k+'/notice/text',notice.querySelector('.cnt'),true);}
+          semantic(out,k+'/actions',reject.querySelector('.racts'));
+          for(const [part,sel] of [['cancel','.rebrief'],['submit','.reject']]){const n=reject.querySelector(sel);semantic(out,k+'/'+part,n);if(n)raw(out,k+'/'+part+'/text',n);}
+        }
       };
       const composer=(out,key,node)=>{
         semantic(out,key,node);
@@ -360,6 +370,17 @@
         for(const [i,n] of [...node.querySelectorAll('.kopt')].entries()){
           const k=key+'/kind-menu/k'+i;semantic(out,k,n);semantic(out,k+'/mark',n.querySelector('.kck'),true);semantic(out,k+'/chip',n.querySelector('.kchip'));contentText(out,k+'/chip/text',n.querySelector('.kchip'));semantic(out,k+'/description',n.querySelector('small'),true);
         }
+        const ap=node.querySelector('.apick');
+        if(ap){
+          const k=key+'/attach-pick';semantic(out,k,ap);semantic(out,k+'/head',ap.querySelector('.aphead'));semantic(out,k+'/mark',ap.querySelector('.apq'),true);semantic(out,k+'/query',ap.querySelector('.apin'),true);semantic(out,k+'/list',ap.querySelector('.aplist'));
+          for(const [i,n] of [...ap.querySelectorAll('.apopt')].entries()){
+            const r=k+'/o'+i;semantic(out,r,n);
+            for(const [part,sel] of [['glyph','.ak'],['title','.apt'],['meta','.aps'],['kind','.apk']])semantic(out,r+'/'+part,n.querySelector(sel),true);
+          }
+          semantic(out,k+'/empty',ap.querySelector('.apempty'));contentText(out,k+'/empty/text',ap.querySelector('.apempty'));
+          semantic(out,k+'/foot',ap.querySelector('.apfoot'));contentText(out,k+'/foot/text',ap.querySelector('.apfoot'));
+          const caret=ap.querySelector('.ed-caret');if(caret){const r=bounds(caret);out.push({key:k+'/query/caret',rect:{x:r.x-1,y:r.y,w:2,h:r.h}});}
+        }
         const body=node.querySelector('.ctext'),caret=body.querySelector('.ed-caret');
         if(caret){const r=bounds(caret);out.push({key:key+'/text/caret',rect:{x:r.x-1,y:r.y,w:2,h:r.h}});}
         for(const [part,sel] of [['selection','.ed-sel'],['underline','.ed-ime']]){
@@ -376,7 +397,7 @@
           if(c.name==='epicGroup')return {node:c.node,kind:'epic',data:{...c.args[0],delegate:!!(c.args[1]?.delegate||c.args[1]?.onDelegate)}};
           if(c.name==='composer')return {node:c.node,kind:'composer',data:c.args[0]};
           if(c.name==='externalLane')return {node:c.node,kind:'external',events:c.args[0],open:c.args[1]?.open!==false};
-          return {node:c.node,kind:'tabs',channels:c.args[0],selected:c.args[1]?.sel||'all'};
+          return {node:c.node,kind:'tabs',channels:c.args[0],selected:c.args[1]?.sel||'all',total:c.args[1]?.total??null};
         });
         for(const n of node.querySelectorAll('.filter'))entries.push({node:n,kind:'filter',name:n.querySelector('b').textContent});
         for(const n of node.querySelectorAll('.lab-note')){const css=getComputedStyle(n);entries.push({node:n,kind:'note',text:n.textContent,padding:[css.paddingTop,css.paddingRight,css.paddingBottom,css.paddingLeft].map(parseFloat)});}

@@ -58,7 +58,7 @@ pub fn task_glyph(status: &str) -> &'static str {
         _ => "○",
     }
 }
-fn artifact_glyph(kind: &str) -> &'static str {
+pub(super) fn artifact_glyph(kind: &str) -> &'static str {
     match kind {
         "markdown" => "▤",
         "pr" => "⎇",
@@ -68,7 +68,7 @@ fn artifact_glyph(kind: &str) -> &'static str {
         _ => "▢",
     }
 }
-fn spinner() -> c::Element {
+fn spinner(key: &str, width: f32) -> c::Element {
     let arc = |start: f32, turns: usize, paint| {
         let point = |a: f32| [5. + 4.25 * a.cos(), 5. + 4.25 * a.sin()];
         let mut points = vec![c::PathCommand::Move(point(start))];
@@ -96,9 +96,9 @@ fn spinner() -> c::Element {
         })
     };
     let mut slot = plain(Some(10.), [0.; 4], 0.);
-    slot.overrides.width = Some(ui::Length::Px(12.));
+    slot.overrides.width = Some(ui::Length::Px(width));
     named(
-        "composer/notice/mark",
+        key,
         c::Element::Layers {
             base: Box::new(c::Element::Box(c::Box::new(slot, vec![]))),
             overlays: vec![
@@ -108,7 +108,7 @@ fn spinner() -> c::Element {
                         4,
                         tint(ui::Color::Foreground, 0.25),
                     ),
-                    left: 1.,
+                    left: (width - 10.) * 0.5,
                     bottom: 0.,
                 },
                 c::Placed {
@@ -117,11 +117,144 @@ fn spinner() -> c::Element {
                         1,
                         ui::Paint::solid(ui::Color::Foreground),
                     ),
-                    left: 1.,
+                    left: (width - 10.) * 0.5,
                     bottom: 0.,
                 },
             ],
         },
+    )
+}
+pub(super) fn scope_names(e: &mut c::Element, from: &str, to: &str) {
+    fn name(name: &mut String, from: &str, to: &str) {
+        if let Some(tail) = name.strip_prefix(from) {
+            *name = format!("{to}{tail}");
+        }
+    }
+    match e {
+        c::Element::Named { name: n, content } => {
+            name(n, from, to);
+            scope_names(content, from, to);
+        }
+        c::Element::EditingText(t) => name(&mut t.name, from, to),
+        c::Element::Box(b) => {
+            for i in &mut b.children {
+                scope_names(&mut i.element, from, to);
+            }
+        }
+        c::Element::Stack(b) => {
+            for i in &mut b.children {
+                scope_names(&mut i.element, from, to);
+            }
+        }
+        c::Element::Flow(b) => {
+            for i in &mut b.children {
+                scope_names(&mut i.element, from, to);
+            }
+        }
+        c::Element::Layers { base, overlays } => {
+            scope_names(base, from, to);
+            for p in overlays {
+                scope_names(&mut p.content, from, to);
+            }
+        }
+        c::Element::ScrollView(s) => scope_names(&mut s.content, from, to),
+        c::Element::FixedHeight { key, content, .. } => {
+            name(key, from, to);
+            scope_names(content, from, to);
+        }
+        c::Element::Baseline { content, .. }
+        | c::Element::InlineMiddle { content, .. }
+        | c::Element::Filter { content, .. } => scope_names(content, from, to),
+        c::Element::Overlay(o) => scope_names(&mut o.content, from, to),
+        _ => {}
+    }
+}
+pub(super) fn notice_line(key: &str, n: &Notice, report: bool) -> c::Element {
+    let sp = &STYLE.spacing;
+    let size = STYLE.r#type.small as f32;
+    let col = match n.kind.as_str() {
+        "held" => rgba(TOKENS.color.state.waiting),
+        "refused" => rgba(TOKENS.color.state.errored),
+        _ => ui::Color::Muted,
+    };
+    let mut s = plain(
+        None,
+        if report {
+            [sp.s1 as f32, 0., sp.s1 as f32, 0.]
+        } else {
+            [sp.s2 as f32, sp.s5 as f32, sp.s2 as f32, sp.s5 as f32]
+        },
+        0.,
+    );
+    if !report {
+        s.overrides.border = Some(ui::Border {
+            width: ui::Length::Hairline,
+            paint: ui::Paint {
+                color: ui::Color::Line,
+                alpha: ui::Alpha::Hairline,
+            },
+            outside: false,
+        });
+        s.overrides.border_sides = Some([false, false, true, false]);
+    }
+    let mark = if n.kind == "pending" {
+        spinner(&format!("{key}/mark"), if report { 10. } else { 12. })
+    } else {
+        label(
+            format!("{key}/mark"),
+            match n.kind.as_str() {
+                "sent" => "✓",
+                "held" => "◷",
+                "refused" => "⊘",
+                _ => "",
+            },
+            text_style(
+                size,
+                400,
+                false,
+                if n.kind == "sent" {
+                    rgba(TOKENS.color.ui.ok)
+                } else {
+                    col
+                },
+            ),
+            false,
+        )
+    };
+    row(
+        key,
+        s,
+        sp.s3 as f32,
+        c::Alignment::Center,
+        vec![
+            c::Item {
+                element: mark,
+                extent: if report {
+                    c::Extent::Auto
+                } else {
+                    c::Extent::Fixed(12.)
+                },
+            },
+            c::Item {
+                element: label(
+                    format!("{key}/text"),
+                    &n.text,
+                    text_style(size, 400, false, col),
+                    report,
+                ),
+                extent: if report {
+                    c::Extent::MinContent
+                } else {
+                    c::Extent::Content {
+                        grow: 0.,
+                        shrink: 1.,
+                        min: 0.,
+                        max: None,
+                        max_fraction: None,
+                    }
+                },
+            },
+        ],
     )
 }
 impl Address {
@@ -285,41 +418,8 @@ impl Composer {
         width: f32,
         m: &dyn c::Measure,
     ) -> ui::style::Result<c::Element> {
-        fn scope(e: &mut c::Element, key: &str) {
-            match e {
-                c::Element::Named { name, content } => {
-                    if let Some(tail) = name.strip_prefix("composer") {
-                        *name = format!("{key}{tail}");
-                    }
-                    scope(content, key);
-                }
-                c::Element::Box(b) => {
-                    for item in &mut b.children {
-                        scope(&mut item.element, key);
-                    }
-                }
-                c::Element::Stack(b) => {
-                    for item in &mut b.children {
-                        scope(&mut item.element, key);
-                    }
-                }
-                c::Element::Flow(b) => {
-                    for item in &mut b.children {
-                        scope(&mut item.element, key);
-                    }
-                }
-                c::Element::Layers { base, overlays } => {
-                    scope(base, key);
-                    for p in overlays {
-                        scope(&mut p.content, key);
-                    }
-                }
-                c::Element::ScrollView(s) => scope(&mut s.content, key),
-                _ => {}
-            }
-        }
         let mut e = self.element(ctx, width, m)?;
-        scope(&mut e, key);
+        scope_names(&mut e, "composer", key);
         Ok(e)
     }
     pub fn element(
@@ -339,79 +439,7 @@ impl Composer {
         };
         let mut children = vec![];
         if let Some(n) = &self.notice {
-            let col = match n.kind.as_str() {
-                "held" => rgba(TOKENS.color.state.waiting),
-                "refused" => rgba(TOKENS.color.state.errored),
-                _ => ui::Color::Muted,
-            };
-            let mut s = plain(
-                None,
-                [sp.s2 as f32, sp.s5 as f32, sp.s2 as f32, sp.s5 as f32],
-                0.,
-            );
-            s.overrides.border = Some(ui::Border {
-                width: ui::Length::Hairline,
-                paint: ui::Paint {
-                    color: ui::Color::Line,
-                    alpha: ui::Alpha::Hairline,
-                },
-                outside: false,
-            });
-            s.overrides.border_sides = Some([false, false, true, false]);
-            let mark = match n.kind.as_str() {
-                "sent" => "✓",
-                "held" => "◷",
-                "refused" => "⊘",
-                _ => "◌",
-            };
-            children.push(
-                row(
-                    "composer/notice",
-                    s,
-                    sp.s3 as f32,
-                    c::Alignment::Center,
-                    vec![
-                        c::Item {
-                            element: if n.kind == "pending" {
-                                spinner()
-                            } else {
-                                label(
-                                    "composer/notice/mark",
-                                    mark,
-                                    text_style(
-                                        t.small as f32,
-                                        400,
-                                        false,
-                                        if n.kind == "sent" {
-                                            rgba(TOKENS.color.ui.ok)
-                                        } else {
-                                            col
-                                        },
-                                    ),
-                                    false,
-                                )
-                            },
-                            extent: c::Extent::Fixed(12.),
-                        },
-                        c::Item {
-                            element: label(
-                                "composer/notice/text",
-                                &n.text,
-                                text_style(t.small as f32, 400, false, col),
-                                false,
-                            ),
-                            extent: c::Extent::Content {
-                                grow: 0.,
-                                shrink: 1.,
-                                min: 0.,
-                                max: None,
-                                max_fraction: None,
-                            },
-                        },
-                    ],
-                )
-                .into(),
-            );
+            children.push(notice_line("composer/notice", n, false).into());
         }
         let mut cells = vec![
             row(
@@ -506,6 +534,7 @@ impl Composer {
                 style,
                 edit: self.focus.then(|| self.edit.clone().unwrap_or_default()),
                 min_lines: 2,
+                wrap: true,
                 name: "composer/text".into(),
             }
             .element(inner, ctx, m)?
@@ -659,11 +688,22 @@ impl Composer {
             }]);
         }
         let panel = stack("composer", s, Axis::Column, sp.s3 as f32, children);
-        let panel = if self.pick.is_empty() && !self.kind_menu {
+        let panel = if self.pick.is_empty() && !self.kind_menu && self.attach_pick.is_none() {
             panel
         } else {
             let height = panel.layout(Rect::new(0., 0., width, 0.), ctx, m)?.rect.h;
-            let overlay = if self.kind_menu {
+            let overlay = if let Some(p) = &self.attach_pick {
+                c::Placed {
+                    content: p.element(
+                        "composer/attach-pick",
+                        ctx,
+                        width - 2. * sp.s4 as f32,
+                        m,
+                    )?,
+                    left: sp.s4 as f32,
+                    bottom: height + 6.,
+                }
+            } else if self.kind_menu {
                 let (menu, menu_width) = kind_menu(kind, width - 2. * sp.s4 as f32, m);
                 c::Placed {
                     content: menu,

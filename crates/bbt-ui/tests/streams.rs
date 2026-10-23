@@ -193,3 +193,15 @@ fn unread_marks_stay_round_and_compressed_chips_clip_their_text() {
         assert!(text.rect.right() <= chip.rect.right());
     }
 }
+
+#[test]
+fn incomplete_channel_counts_keep_more_and_explicit_swarm_total() {
+    use bbt_ui::modules::stream_dock::UnreadCount;
+    let view:StreamDock=serde_json::from_value(serde_json::json!({"dock":true,"entries":[{"kind":"tabs","selected":"all","total":12,"channels":[{"name":"render","unread":"more"},{"name":"decisions","unread":3}]}]})).unwrap();
+    let text = labels(&layout(view, 300.));
+    assert!(text.contains("more"));
+    assert!(text.contains("12"));
+    assert!(serde_json::from_value::<UnreadCount>(serde_json::json!("12")).is_err());
+    assert!(serde_json::from_value::<UnreadCount>(serde_json::json!(-1)).is_err());
+    assert_eq!(serde_json::to_value(UnreadCount::More).unwrap(), "more");
+}

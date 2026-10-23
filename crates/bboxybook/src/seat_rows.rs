@@ -19,6 +19,7 @@ pub const STATES: &[&str] = &[
     "errored",
     "focused × state",
     "unread badge",
+    "unread · more",
     "subtitle opt-in",
     "zsh seat",
     "long names",

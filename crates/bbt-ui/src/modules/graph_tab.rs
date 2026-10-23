@@ -27,6 +27,7 @@ pub struct Binding {
 #[serde(default)]
 pub struct Work {
     pub title: String,
+    #[serde(rename = "status", alias = "state")]
     pub state: String,
     #[serde(rename = "type")]
     pub kind: String,

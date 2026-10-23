@@ -290,6 +290,7 @@ pub fn task_report(
             .get("commit")
             .and_then(serde_json::Value::as_str)
             .map(String::from),
+        reject: None,
         verify_result: verify.map(|v| bbt_ui::modules::composer::Verification {
             command: v.command,
             exit_code: v.exit_code,

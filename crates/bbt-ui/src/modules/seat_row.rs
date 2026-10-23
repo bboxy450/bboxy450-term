@@ -560,6 +560,8 @@ impl SeatRow {
                 ui::Color::OnAccent,
             );
             if let c::Element::Text(t) = &mut text {
+                t.runs[0].style.italic = unread == "more";
+                t.runs[0].style.tracking_em = if unread == "more" { 0.02 } else { 0. };
                 t.runs[0].style.line_height = 16. / STYLE.r#type.small as f32;
             }
             right.push(named("badge", row_box(s, 0., vec![text.into()])).into());

@@ -27,6 +27,130 @@ pub struct Report {
     pub summary: String,
     pub commit: Option<String>,
     pub verify_result: Option<Verification>,
+    pub reject: Option<Reject>,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Reject {
+    pub reason: String,
+    pub edit: Option<c::Edit>,
+    pub notice: Option<super::Notice>,
+}
+/// Local reason editing; only a confirmed backend reply may change task status.
+pub struct RejectController {
+    pub view: Reject,
+    editor: crate::text_edit::Editor,
+}
+impl Default for RejectController {
+    fn default() -> Self {
+        Self::new(String::new())
+    }
+}
+impl RejectController {
+    pub fn new(reason: String) -> Self {
+        let editor = crate::text_edit::Editor::new(&reason);
+        let edit = Some(editor.edit());
+        Self {
+            view: Reject {
+                reason,
+                edit,
+                notice: None,
+            },
+            editor,
+        }
+    }
+    pub fn composing(&self) -> bool {
+        self.editor.composing()
+    }
+    pub fn handle(&mut self, command: crate::text_edit::Command) -> bool {
+        let changed = self.editor.handle(&mut self.view.reason, command);
+        self.view.edit = Some(self.editor.edit());
+        changed
+    }
+    pub fn submission(&self) -> Result<String, &'static str> {
+        if self.composing() {
+            return Err("preedit_pending");
+        }
+        if self.view.reason.trim().is_empty() {
+            return Err("reject_reason_required");
+        }
+        Ok(self.view.reason.clone())
+    }
+    pub fn refused(&mut self, reason: impl Into<String>) {
+        self.view.notice = Some(super::Notice {
+            kind: "refused".into(),
+            text: reason.into(),
+        });
+    }
+}
+struct Action<'a> {
+    id: &'a str,
+    label: &'a str,
+    fill: Option<ui::Color>,
+    enabled: bool,
+    weight: u16,
+}
+fn actions(key: &str, padding: [f32; 4], specs: &[Action<'_>]) -> c::Element {
+    let mut buttons = vec![spacer()];
+    for action in specs {
+        let mut s = plain(
+            None,
+            [2., STYLE.spacing.s5 as f32, 2., STYLE.spacing.s5 as f32],
+            STYLE.radius.pill as f32,
+        );
+        s.overrides.border = Some(ui::Border {
+            width: ui::Length::Hairline,
+            paint: if action.fill.is_some() {
+                ui::Paint::solid(ui::Color::Transparent)
+            } else {
+                ui::Paint {
+                    color: ui::Color::Line,
+                    alpha: ui::Alpha::Hairline,
+                }
+            },
+            outside: false,
+        });
+        if let Some(fill) = action.fill {
+            s.overrides.fill = Some(ui::Paint::solid(fill));
+        }
+        if !action.enabled {
+            s.overrides.opacity = Some(0.4);
+        }
+        buttons.push(
+            row(
+                format!("{key}/{}", action.id),
+                s,
+                0.,
+                c::Alignment::Center,
+                vec![
+                    label(
+                        format!("{key}/{}/text", action.id),
+                        action.label,
+                        text_style(
+                            STYLE.r#type.caption as f32,
+                            action.weight,
+                            false,
+                            if action.fill.is_some() {
+                                ui::Color::Rgba([1.; 4])
+                            } else {
+                                ui::Color::Foreground
+                            },
+                        ),
+                        false,
+                    )
+                    .into(),
+                ],
+            )
+            .into(),
+        );
+    }
+    row(
+        format!("{key}/actions"),
+        plain(None, padding, 0.),
+        STYLE.spacing.s3 as f32,
+        c::Alignment::Center,
+        buttons,
+    )
 }
 fn line(padding: [f32; 4]) -> ui::Style {
     let mut s = plain(None, padding, 0.);
@@ -240,72 +364,101 @@ impl Report {
             );
         }
         if status == "reported" && review {
-            let mut buttons = vec![spacer()];
-            for (action, value, col, background) in [
-                ("reject", "Re-brief", ui::Color::Foreground, None),
-                ("accept", "Accept", ui::Color::Rgba([1.; 4]), Some(good)),
-            ] {
-                let mut s = plain(
-                    None,
-                    [2., sp.s5 as f32, 2., sp.s5 as f32],
-                    STYLE.radius.pill as f32,
+            if let Some(reject) = &self.reject {
+                let k = format!("{key}/reject");
+                let mut label_text = c::Text::new(
+                    "Reject · reason ",
+                    text_style(t.small as f32, 600, false, ui::Color::Foreground),
                 );
+                label_text.runs.push(c::TextRun {
+                    value: "required".into(),
+                    style: text_style(t.small as f32, 400, false, waiting),
+                });
+                let input_key = format!("{k}/input");
+                let mut input = crate::widgets::Input {
+                    value: reject.reason.clone(),
+                    placeholder: "what to change · sent to the seat".into(),
+                    state: if reject.reason.is_empty() {
+                        crate::widgets::InputState::Empty
+                    } else {
+                        crate::widgets::InputState::Value
+                    },
+                    icon: None,
+                    error: None,
+                    edit: reject.edit.clone(),
+                }
+                .unresolved();
+                super::view::scope_names(&mut input, "input", &input_key);
+                let mut fields = vec![
+                    named(format!("{k}/label"), c::Element::Text(label_text)).into(),
+                    named(&input_key, input).into(),
+                ];
+                if let Some(n) = &reject.notice {
+                    fields.push(super::view::notice_line(&format!("{k}/notice"), n, true).into());
+                }
+                fields.push(
+                    actions(
+                        &k,
+                        [0., 0., sp.s3 as f32, 0.],
+                        &[
+                            Action {
+                                id: "cancel",
+                                label: "Cancel",
+                                fill: None,
+                                enabled: true,
+                                weight: 500,
+                            },
+                            Action {
+                                id: "submit",
+                                label: "Reject",
+                                fill: Some(bad),
+                                enabled: !reject.reason.trim().is_empty(),
+                                weight: 600,
+                            },
+                        ],
+                    )
+                    .into(),
+                );
+                let mut s = plain(None, [sp.s3 as f32, sp.s4 as f32, 0., sp.s4 as f32], 0.);
                 s.overrides.border = Some(ui::Border {
                     width: ui::Length::Hairline,
-                    paint: if background.is_some() {
-                        ui::Paint::solid(ui::Color::Transparent)
-                    } else {
-                        ui::Paint {
-                            color: ui::Color::Line,
-                            alpha: ui::Alpha::Hairline,
-                        }
+                    paint: ui::Paint {
+                        color: ui::Color::Line,
+                        alpha: ui::Alpha::Hairline,
                     },
                     outside: false,
                 });
-                if let Some(background) = background {
-                    s.overrides.fill = Some(ui::Paint::solid(background));
-                }
-                if action == "accept" && !ok {
-                    s.overrides.opacity = Some(0.4);
-                }
-                buttons.push(
-                    row(
-                        format!("{key}/{action}"),
-                        s,
-                        0.,
-                        c::Alignment::Center,
-                        vec![
-                            label(
-                                format!("{key}/{action}/text"),
-                                value,
-                                text_style(
-                                    t.caption as f32,
-                                    if action == "reject" { 500 } else { 600 },
-                                    false,
-                                    col,
-                                ),
-                                false,
-                            )
-                            .into(),
+                s.overrides.border_sides = Some([true, false, false, false]);
+                let mut b = c::Box::new(s, fields);
+                b.direction = Axis::Column;
+                b.gap = ui::Length::Spacing(3);
+                b.align = c::Alignment::Stretch;
+                children.push(named(k, c::Element::Box(b)).into());
+            } else {
+                children.push(
+                    actions(
+                        key,
+                        [sp.s3 as f32, sp.s4 as f32, sp.s3 as f32, sp.s4 as f32],
+                        &[
+                            Action {
+                                id: "reject",
+                                label: "Reject…",
+                                fill: None,
+                                enabled: true,
+                                weight: 500,
+                            },
+                            Action {
+                                id: "accept",
+                                label: "Accept",
+                                fill: Some(good),
+                                enabled: ok,
+                                weight: 600,
+                            },
                         ],
                     )
                     .into(),
                 );
             }
-            children.push(
-                row(
-                    format!("{key}/actions"),
-                    plain(
-                        None,
-                        [sp.s3 as f32, sp.s4 as f32, sp.s3 as f32, sp.s4 as f32],
-                        0.,
-                    ),
-                    sp.s3 as f32,
-                    c::Alignment::Center,
-                    buttons,
-                )
-                .into(),
-            );
         }
         let mut s = plain(None, [0.; 4], STYLE.radius.row as f32);
         s.overrides.fill = Some(tint(ui::Color::Foreground, 0.04));
