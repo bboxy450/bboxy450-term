@@ -1,0 +1,58 @@
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 30.00s
+     Running tests/identity.rs (target/l8-placement-dev/debug/deps/identity-48af9c586c4981ba)
+
+running 14 tests
+test identity_keychain_device_local_item_and_cleanup ... ignored, uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+test identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences ... FAILED
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+test identity_status_is_available_as_data_through_the_bounded_logic_client ... ok
+test identity_device_without_root_certification_is_refused_before_seat_issuance ... ok
+test identity_bootstrap_external_certification_and_custody ... ok
+test identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history ... FAILED
+test identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count ... FAILED
+test identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts ... ok
+test identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs ... ok
+test identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons ... FAILED
+test identity_hold_range_stays_ephemeral_until_throwaway_device_enrollment_then_closes ... ok
+test identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history ... ok
+
+failures:
+
+---- identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences stdout ----
+
+thread 'identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences' (17043445) panicked at crates/bbt-mux/tests/identity.rs:518:9:
+assertion failed: matches!(root.bootstrap.run(&account, custody.as_ref(), time),
+    BootstrapOutcome::Certified(_))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history stdout ----
+
+thread 'identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history' (17043450) panicked at crates/bbt-mux/tests/identity.rs:829:5:
+assertion failed: matches!(f.root.bootstrap.run(&f.account, f.custody.as_ref(), f.time()),
+    BootstrapOutcome::Certified(_))
+
+---- identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count stdout ----
+
+thread 'identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count' (17043759) panicked at crates/bbt-mux/tests/identity.rs:518:9:
+assertion failed: matches!(root.bootstrap.run(&account, custody.as_ref(), time),
+    BootstrapOutcome::Certified(_))
+
+---- identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons stdout ----
+
+thread 'identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons' (17043758) panicked at crates/bbt-mux/tests/identity.rs:1045:5:
+assertion failed: matches!(fixture.bootstrap.run(&account, &custody, now()),
+    BootstrapOutcome::Pending(PendingReason::AgentUnavailable))
+
+
+failures:
+    identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences
+    identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history
+    identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons
+    identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count
+
+test result: FAILED. 9 passed; 4 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+error: test failed, to rerun pass `-p bbt-mux --test identity`

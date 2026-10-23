@@ -34,6 +34,19 @@ struct Record {
     key_id: Ulid,
     public_key: String,
     custody: Custody,
+    #[serde(default)]
+    device_id: Option<Ulid>,
+    #[serde(default)]
+    device_ready: bool,
+}
+impl Record {
+    fn same_issuer(&self, other: &Self) -> bool {
+        self.version == other.version
+            && self.epoch == other.epoch
+            && self.key_id == other.key_id
+            && self.public_key == other.public_key
+            && self.custody == other.custody
+    }
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -85,6 +98,59 @@ fn record(account: &SqliteStore) -> Result<Option<Record>> {
         .map_err(|_| E::StorageUnavailable)?
         .map(|bytes| serde_json::from_slice::<Record>(&bytes).map_err(|_| E::InvalidProof))
         .transpose()
+}
+
+/// Public custody metadata only; a hold never masquerades as a ready device.
+pub(super) fn device_id(account: &SqliteStore) -> crate::store::Result<Option<Ulid>> {
+    let Some(record) = record(account).map_err(|e| crate::store::invalid(e.to_string()))? else {
+        return Ok(None);
+    };
+    if !record.device_ready {
+        return Ok(None);
+    }
+    if let Some(hold) = account.get("identity/local-issuer-hold")? {
+        let hold: Hold = serde_json::from_slice(&hold)?;
+        if hold.epoch == record.epoch {
+            return Ok(None);
+        }
+    }
+    if record.device_id == Some(Ulid::nil()) {
+        return Err(crate::store::invalid("invalid custody device id"));
+    }
+    Ok(record.device_id)
+}
+
+pub(super) fn first_device(account: &SqliteStore, keys: &dyn DeviceKeyStore) -> Result<Ulid> {
+    match load(account, keys) {
+        Ok(key) => {
+            drop(key);
+            device_id(account)
+                .map_err(|_| E::StorageUnavailable)?
+                .ok_or(E::LocalIssuerMissing)
+        }
+        Err(E::LocalIssuerMissing) => {
+            // Primary bootstrap already permits a new device while preserving
+            // an older public local pin. It must not replace that missing key.
+            let context = context(account)?;
+            let public_key = context.expected.ok_or(E::LocalIssuerMissing)?;
+            let device = reserve_device(
+                account,
+                Record {
+                    version: 1,
+                    epoch: context.epoch.to_string(),
+                    key_id: key_id(context.epoch),
+                    public_key,
+                    custody: keys.custody(),
+                    device_id: None,
+                    device_ready: false,
+                },
+            )?;
+            ensure_device(account, keys, device)?;
+            complete_device(account, device, false)?;
+            Ok(device)
+        }
+        Err(reason) => Err(reason),
+    }
 }
 pub(super) fn decorate(
     account: &SqliteStore,
@@ -243,14 +309,64 @@ fn obtain(
     {
         return Err(E::LocalIssuerMismatch);
     }
-    let record = Record {
+    let proposed_record = Record {
         version: 1,
         epoch: context.epoch.to_string(),
         key_id: id,
         public_key,
         custody: keys.custody(),
+        device_id: None,
+        device_ready: false,
     };
-    let bytes = serde_json::to_vec(&record).map_err(|_| E::InvalidProof)?;
+    let device = reserve_device(account, proposed_record)?;
+    ensure_device(account, keys, device)?;
+    complete_device(account, device, true)?;
+    Ok(key)
+}
+
+fn ensure_device(account: &SqliteStore, keys: &dyn DeviceKeyStore, device: Ulid) -> Result<()> {
+    match keys.load(device)? {
+        Some(_) => {}
+        None => {
+            let current = record(account)?.ok_or(E::JournalConflict)?;
+            if current.device_ready {
+                return Err(E::LocalIssuerMissing);
+            }
+            let mut seed = [0; 32];
+            getrandom::fill(&mut seed).map_err(|_| E::StorageUnavailable)?;
+            let proposed = SigningKey::from_bytes(&seed);
+            seed.fill(0);
+            let created = match keys.create(device, &proposed) {
+                Ok(()) => true,
+                Err(E::JournalConflict | E::KeychainUnavailable(-25299)) => false,
+                Err(reason) => return Err(reason),
+            };
+            let saved = keys.load(device)?.ok_or(E::KeychainUnavailable(-25300))?;
+            if created && saved.verifying_key() != proposed.verifying_key() {
+                return Err(E::InvalidProof);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn reserve_device(account: &SqliteStore, mut proposed: Record) -> Result<Ulid> {
+    let status =
+        super::status::read(account, crate::store::now_ms() / 1000).map_err(|_| E::InvalidProof)?;
+    let enrolled = status.bootstrapped.then_some(status.device_id).flatten();
+    #[derive(Deserialize)]
+    struct Pending {
+        id: Ulid,
+    }
+    let pending = account
+        .get("identity/pending")
+        .map_err(|_| E::StorageUnavailable)?
+        .map(|bytes| {
+            serde_json::from_slice::<Pending>(&bytes)
+                .map(|v| v.id)
+                .map_err(|_| E::InvalidProof)
+        })
+        .transpose()?;
     let mut db = account.connection().map_err(|_| E::StorageUnavailable)?;
     let tx = db
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -258,28 +374,102 @@ fn obtain(
     let state = transition::get(&tx).map_err(|_| E::JournalConflict)?;
     if let Some(state) = state
         && state.kind == IssuerKind::LocalDev
-        && state.cutover_epoch != record.epoch
+        && state.cutover_epoch != proposed.epoch
     {
         return Err(E::JournalConflict);
     }
-    let history_key = format!("identity/local-issuer-history/{}", record.epoch);
+    let history_key = format!("identity/local-issuer-history/{}", proposed.epoch);
     let old: Option<Vec<u8>> = tx
         .query_row("SELECT value FROM kv WHERE key=?1", [&history_key], |r| {
             r.get(0)
         })
         .optional()
         .map_err(|_| E::StorageUnavailable)?;
-    if old.as_ref().is_some_and(|old| old != &bytes) {
+    let old = old
+        .map(|bytes| serde_json::from_slice::<Record>(&bytes).map_err(|_| E::InvalidProof))
+        .transpose()?;
+    if old.as_ref().is_some_and(|old| !old.same_issuer(&proposed)) {
         return Err(E::JournalConflict);
     }
+    let current: Option<Vec<u8>> = tx
+        .query_row(
+            "SELECT value FROM kv WHERE key='identity/local-issuer'",
+            [],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|_| E::StorageUnavailable)?;
+    let current = current
+        .map(|bytes| serde_json::from_slice::<Record>(&bytes).map_err(|_| E::InvalidProof))
+        .transpose()?;
+    let candidates = [
+        enrolled,
+        current.as_ref().and_then(|r| r.device_id),
+        old.as_ref().and_then(|r| r.device_id),
+        pending,
+    ];
+    let mut chosen = None;
+    for id in candidates.into_iter().flatten() {
+        if id == Ulid::nil() || chosen.is_some_and(|old| old != id) {
+            return Err(E::JournalConflict);
+        }
+        chosen = Some(id);
+    }
+    let id = chosen.unwrap_or_else(Ulid::new);
+    proposed.device_id = Some(id);
+    proposed.device_ready = enrolled == Some(id)
+        || current
+            .as_ref()
+            .is_some_and(|r| r.device_id == Some(id) && r.device_ready)
+        || old
+            .as_ref()
+            .is_some_and(|r| r.device_id == Some(id) && r.device_ready);
+    let bytes = serde_json::to_vec(&proposed).map_err(|_| E::InvalidProof)?;
     tx.execute(
-        "INSERT OR IGNORE INTO kv VALUES(?1,?2)",
+        "INSERT INTO kv VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         params![history_key, &bytes],
     )
     .map_err(|_| E::StorageUnavailable)?;
     tx.execute("INSERT INTO kv VALUES('identity/local-issuer',?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value", [&bytes]).map_err(|_|E::StorageUnavailable)?;
-    tx.execute("DELETE FROM kv WHERE key='identity/local-issuer-hold'", [])
-        .map_err(|_| E::StorageUnavailable)?;
     tx.commit().map_err(|_| E::StorageUnavailable)?;
-    Ok(key)
+    Ok(id)
+}
+
+fn complete_device(account: &SqliteStore, id: Ulid, clear_local_hold: bool) -> Result<()> {
+    let mut db = account.connection().map_err(|_| E::StorageUnavailable)?;
+    let tx = db
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|_| E::StorageUnavailable)?;
+    let bytes: Vec<u8> = tx
+        .query_row(
+            "SELECT value FROM kv WHERE key='identity/local-issuer'",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|_| E::StorageUnavailable)?;
+    let mut record: Record = serde_json::from_slice(&bytes).map_err(|_| E::InvalidProof)?;
+    if record.device_id != Some(id) {
+        return Err(E::JournalConflict);
+    }
+    record.device_ready = true;
+    let bytes = serde_json::to_vec(&record).map_err(|_| E::InvalidProof)?;
+    tx.execute(
+        "UPDATE kv SET value=?1 WHERE key='identity/local-issuer'",
+        [&bytes],
+    )
+    .map_err(|_| E::StorageUnavailable)?;
+    tx.execute(
+        "UPDATE kv SET value=?2 WHERE key=?1",
+        params![
+            format!("identity/local-issuer-history/{}", record.epoch),
+            &bytes
+        ],
+    )
+    .map_err(|_| E::StorageUnavailable)?;
+    if clear_local_hold {
+        tx.execute("DELETE FROM kv WHERE key='identity/local-issuer-hold'", [])
+            .map_err(|_| E::StorageUnavailable)?;
+    }
+    tx.commit().map_err(|_| E::StorageUnavailable)?;
+    Ok(())
 }

@@ -1,0 +1,106 @@
+{
+  "task": "L8-D identity support, decisions 31 and amendment 9fdfd94",
+  "source": "f57b92e568209f8200075f1761e539a3e1ad5c1e",
+  "signature": "G, machine key 9B07E849480C68328CA20684844ECC0587DE7AB0",
+  "base": "4208270",
+  "mechanisms": {
+    "crates/bbt-mux/src/identity/local.rs:353": "reserve a persistent first-launch device ULID independently from local issuer key_id; legacy metadata upgrades once; missing private custody stays held",
+    "crates/bbt-mux/src/identity/status.rs:104": "expose the persistent ID for LocalDev/Pending with available custody; unavailable custody clears it; certification stays independent",
+    "crates/bbt-mux/src/identity/journal.rs:258": "enrollment adopts the existing device ID",
+    "crates/bbt-mux/src/provenance/author.rs:29": "only active certified GpgRoot signer gets kind=device; LocalDev/Pending remains kind=local-dev even with a public device ID"
+  },
+  "validation": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--test",
+        "identity_local",
+        "--test",
+        "identity",
+        "--test",
+        "identity_io"
+      ],
+      "exit": 101,
+      "log": "l8-d-id1-tests-01.log",
+      "result": "first implementation caused 4 legacy bootstrap regressions: missing local issuer key prevented independent device setup; corrected before source commit"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--test",
+        "identity_local",
+        "--test",
+        "identity",
+        "--test",
+        "identity_io"
+      ],
+      "exit": 0,
+      "log": "l8-d-id1-tests-02.log",
+      "result": "27 passed; 2 expected ignored isolated/real-keychain probes"
+    },
+    {
+      "command": "focused provenance::author test; original argv not retained, test name and exit are in the log",
+      "exit": 0,
+      "log": "l8-d-id1-author-test.log"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "log": "l8-d-id1-clippy-02.log"
+    },
+    {
+      "command": "sh scripts/ci-local.sh",
+      "exit": 0,
+      "log": "l8-d-id1-ci-f57b92e.log",
+      "exact_clean_worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8d-id1-3k9p22_m",
+      "own_target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8d-id1-ci-target-5wnf6sfd"
+    }
+  ],
+  "acceptance": {
+    "first_launch_restart": "identity_local::first_launch_device_is_stable_and_local_or_pending_is_still_uncertified",
+    "legacy_upgrade": "identity_local::legacy_custody_record_upgrades_once_without_changing_the_issuer_or_its_address",
+    "lost_memory_custody": "identity_local::fresh_memory_custody_gets_a_fresh_device_and_lost_custody_stays_held",
+    "held_recovery": "identity_local::held_device_creation_retains_its_reserved_id_and_releases_on_recovery",
+    "certification": "identity enrollment tests and provenance::author::tests::device_id_is_data_and_does_not_certify_local_or_pending_signers"
+  },
+  "peer_review": {
+    "peer": "Kestrel",
+    "message": "5b6455a8-9fd3-4cfe-846b-7e3baf74f092",
+    "scope": "static review of author classification only; no peer execution claimed"
+  },
+  "cleanup": {
+    "logical_bytes_removed": 2212400874,
+    "target_removed": true,
+    "worktree_removed": true
+  },
+  "not_checked": [
+    "real login Keychain ignored tests",
+    "full visual replay: identity-only support; D requires full strict parity separately"
+  ],
+  "boundary": "D prototype is unstaged in the writer; none of it is in this source or records-only successor",
+  "logs": {
+    ".bboxy/runs/l8-d-id1-ci-f57b92e.log": "645b0689301241e6bebb6c92df78d5482214ab62fc67b4479e16f3ea88313b2a",
+    ".bboxy/runs/l8-d-id1-ci-state.json": "1bd4487e406bc65c86bc974ee261ff7fb083f7c83bab3f2fdb997640afe80e98",
+    ".bboxy/runs/l8-d-id1-tests-01.log": "0e96b47ae0479cf3bbec807da1af74c7954e43ae1da624ee76c1080cb75688c7",
+    ".bboxy/runs/l8-d-id1-tests-02.log": "b1c87204a4a44f8b8f9ab9fe43bcf1cf0aa890cb3d0bae633c52a16890396b77",
+    ".bboxy/runs/l8-d-id1-clippy-02.log": "00d12a9ca6a213b5f95466c132d7b8b9f96cd363bd05756629a206a60a2f3f5c",
+    ".bboxy/runs/l8-d-id1-author-test.log": "c92fce65d1bb65a875a78962b333bf601e4eb6e46d014caeb2bcb58a0b503f30"
+  }
+}

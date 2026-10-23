@@ -1,0 +1,5 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 47.81s

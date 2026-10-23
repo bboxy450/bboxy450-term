@@ -181,7 +181,13 @@ fn identity_bootstrap_external_certification_and_custody() {
         .unwrap();
     assert!(account.get("identity/pending").unwrap().is_none());
     assert_eq!(account.get("identity/roster").unwrap().unwrap(), b"[]");
-    assert_eq!(keys.0.borrow().len(), 1);
+    assert_eq!(keys.0.borrow().len(), 2); // local issuer plus the first-launch device
+    let local: serde_json::Value =
+        serde_json::from_slice(&account.get("identity/local-issuer").unwrap().unwrap()).unwrap();
+    assert_eq!(
+        local["device_id"],
+        serde_json::json!(identity.grant.payload.device_id)
+    );
 
     let verifier = tempfile::Builder::new()
         .prefix("id1a-verify-")
@@ -303,13 +309,15 @@ fn identity_pending_failure_installs_no_authority_and_retries_same_device() {
     assert!(account.get("identity/head").unwrap().is_none());
     assert!(account.list("identity/device/").unwrap().is_empty());
     assert!(account.get("identity/roster").unwrap().is_none());
-    let id = *keys.0.borrow().keys().next().unwrap();
+    let local: serde_json::Value =
+        serde_json::from_slice(&account.get("identity/local-issuer").unwrap().unwrap()).unwrap();
+    let id: Ulid = serde_json::from_value(local["device_id"].clone()).unwrap();
     fixture.bootstrap.agent_socket = agent_socket;
     match fixture.bootstrap.run(&account, &keys, now()) {
         BootstrapOutcome::Certified(identity) => assert_eq!(identity.grant.payload.device_id, id),
         pending => panic!("{pending:?}"),
     }
-    assert_eq!(keys.0.borrow().len(), 1);
+    assert_eq!(keys.0.borrow().len(), 2);
 }
 
 #[test]
