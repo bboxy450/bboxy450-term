@@ -1,0 +1,49 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 37.45s
+     Running tests/identity.rs (target/l8-placement-dev/debug/deps/identity-48af9c586c4981ba)
+
+running 14 tests
+test identity_keychain_device_local_item_and_cleanup ... ignored, uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+test identity_device_without_root_certification_is_refused_before_seat_issuance ... ok
+test identity_status_is_available_as_data_through_the_bounded_logic_client ... ok
+test identity_bootstrap_external_certification_and_custody ... ok
+test identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences ... ok
+test identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history ... ok
+test identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts ... ok
+test identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs ... ok
+test identity_hold_range_stays_ephemeral_until_throwaway_device_enrollment_then_closes ... ok
+test identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons ... ok
+test identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count ... ok
+test identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history ... ok
+
+test result: ok. 13 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.71s
+
+     Running tests/identity_io.rs (target/l8-placement-dev/debug/deps/identity_io-da7c1637c7a9a114)
+
+running 4 tests
+test memory_custody_process_fixture ... ignored, spawned-process fixture, invoked by debug_process_override_uses_only_memory_custody
+test interaction_required_is_pending_without_a_prompt_or_replacement ... ok
+test debug_process_override_uses_only_memory_custody ... ok
+test stuck_custody_has_a_two_second_bound_and_retry_does_not_add_workers ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 4.02s
+
+     Running tests/identity_local.rs (target/l8-placement-dev/debug/deps/identity_local-ae42c551a05a4128)
+
+running 11 tests
+test concurrent_creators_read_one_atomic_winner ... ok
+test held_device_creation_retains_its_reserved_id_and_releases_on_recovery ... ok
+test legacy_custody_record_upgrades_once_without_changing_the_issuer_or_its_address ... ok
+test first_launch_device_is_stable_and_local_or_pending_is_still_uncertified ... ok
+test old_random_pin_is_not_silently_replaced ... ok
+test fresh_memory_custody_gets_a_fresh_device_and_lost_custody_stays_held ... ok
+test unavailable_and_missing_custody_hold_without_replacement_or_secret_file ... ok
+test bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes ... ok
+test held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_routes ... ok
+test stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs ... ok
+test pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.15s
+
