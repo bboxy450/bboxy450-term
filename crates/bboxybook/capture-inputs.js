@@ -16,7 +16,7 @@
     window.cancelAnimationFrame=id=>{frames=frames.filter(f=>f.id!==id);};
     window.bboxyFreezeLayer=(timeMs=450)=>{for(const time of [0,0.000001,timeMs]){const ready=frames;frames=[];for(const f of ready)f.fn(time);}};
     let glow;
-    Object.defineProperty(window,'Glow',{configurable:true,get:()=>glow,set(value){glow=value;const attach=value.attach;value.attach=function(wrap,seat,opts){const seed=randomIndex;const cv=attach(wrap,seat,opts);glows.push({wrap,cv,seed,activity:seat.state,focused:!!opts?.focused,time_ms:450});return cv;};}});
+    Object.defineProperty(window,'Glow',{configurable:true,get:()=>glow,set(value){glow=value;const attach=value.attach;value.attach=function(wrap,seat,opts){const seed=randomIndex;const cv=attach(wrap,seat,opts);glows.push({wrap,cv,seed:cv.dataset.phaseMs===undefined?seed:Number(cv.dataset.phaseMs),activity:seat.state,focused:!!opts?.focused,time_ms:450});return cv;};}});
   }
   if (window.bboxyStreamFixture) {
     const timeout=window.setTimeout.bind(window);
