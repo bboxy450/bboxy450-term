@@ -1,0 +1,132 @@
+LOG /tmp/w3-5b-frontmatter-5e0e080.log
+source: 5e0e080
+command: ['cargo', 'test', '-p', 'bbt-doc', '--locked', '--test', 'corpus', 'real_bboxy_frontmatter_parses', '--', '--exact', '--nocapture']
+   Compiling hashbrown v0.17.1
+   Compiling bitflags v2.13.2
+   Compiling pulldown-cmark v0.13.4
+   Compiling indexmap v2.14.2
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-doc v0.0.1 (/private/tmp/ci-nyx-w35b-5e0e080/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 2.92s
+     Running tests/corpus.rs (/tmp/ci-nyx-w35b-ccc6424-target/debug/deps/corpus-80a908cc437286bc)
+/tmp/ci-nyx-w35b-ccc6424-target/debug/deps/corpus-80a908cc437286bc: replacing existing signature
+
+running 1 test
+frontmatter: 88 Markdown files, 0 parse errors
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.03s
+
+
+exit: 0
+
+
+LOG /tmp/w3-5b-corpus-5e0e080.log
+source: 5e0e080
+command: ['/tmp/ci-nyx-w35b-ccc6424-target/debug/bboxybook', 'documents', '--repository', '--root', '/tmp/ci-nyx-w35b-5e0e080', '--out', '/Users/feral/mydev/bboxy450-term-nyx/target/bbt-doc/repository-5e0e080']
+document 1/88: .bboxy/README.md
+document 2/88: .bboxy/decisions/2026-10-22-architecture-round-1.md
+document 3/88: .bboxy/graph.md
+document 4/88: .bboxy/invariants/README.md
+document 5/88: .bboxy/invariants/frontmatter-parses.md
+document 6/88: .bboxy/invariants/layering.md
+document 7/88: .bboxy/invariants/modules-through-components.md
+document 8/88: .bboxy/invariants/parity-geometry.md
+document 9/88: .bboxy/invariants/signed-main.md
+document 10/88: .bboxy/invariants/ui-never-waits.md
+document 11/88: .bboxy/plan.md
+document 12/88: .bboxy/research/agent-messaging.md
+document 13/88: .bboxy/research/cloud-and-mosh-exec.md
+document 14/88: .bboxy/research/cloud-and-mosh.md
+document 15/88: .bboxy/research/gpu-terminals-rust.md
+document 16/88: .bboxy/research/harness-touchpoints-exec.md
+document 17/88: .bboxy/research/harness-touchpoints.md
+document 18/88: .bboxy/research/iterm-harness-plugin.md
+document 19/88: .bboxy/research/kittens-events.md
+document 20/88: .bboxy/research/monorepo-weavie.md
+document 21/88: .bboxy/research/osc7501-capture.md
+document 22/88: .bboxy/research/provenance-and-documents.md
+document 23/88: .bboxy/research/pubsub-nats.md
+document 24/88: .bboxy/research/state-backend.md
+document 25/88: .bboxy/research/text-rendering.md
+document 26/88: .bboxy/research/transport-and-identity.md
+document 27/88: .bboxy/research/usage-limits-tachyon.md
+document 28/88: .bboxy/research/ux-divergence.md
+document 29/88: .bboxy/roadmap.md
+document 30/88: .bboxy/runbook-web-to-native.md
+document 31/88: .bboxy/runs/2026-10-21-agent-messaging-checks.md
+document 32/88: .bboxy/specs/README.md
+document 33/88: .bboxy/specs/architecture.md
+document 34/88: .bboxy/specs/c1-live-seats.md
+document 35/88: .bboxy/specs/channel-tree.md
+document 36/88: .bboxy/specs/d1-providers.md
+document 37/88: .bboxy/specs/document-viewer.md
+document 38/88: .bboxy/specs/events.md
+document 39/88: .bboxy/specs/gui-components.md
+document 40/88: .bboxy/specs/harness-adapters.md
+document 41/88: .bboxy/specs/id1-seat-chain.md
+document 42/88: .bboxy/specs/identity.md
+document 43/88: .bboxy/specs/mcp-control-plane.md
+document 44/88: .bboxy/specs/messaging.md
+document 45/88: .bboxy/specs/mux-daemon.md
+document 46/88: .bboxy/specs/networking.md
+document 47/88: .bboxy/specs/open-source.md
+document 48/88: .bboxy/specs/provenance.md
+document 49/88: .bboxy/specs/renderer.md
+document 50/88: .bboxy/specs/runtime.md
+document 51/88: .bboxy/specs/storage.md
+document 52/88: .bboxy/specs/subagent-detection.md
+document 53/88: .bboxy/specs/terminal-core.md
+document 54/88: .bboxy/specs/ux-prototype.md
+document 55/88: .bboxy/specs/w2-5-mcp-and-seat-wiring.md
+document 56/88: .bboxy/specs/work-items.md
+document 57/88: .bboxy/tasks/2026-10-21-agent-messaging-research.md
+document 58/88: .bboxy/tasks/2026-10-21-cloud-and-mosh-research.md
+document 59/88: .bboxy/tasks/2026-10-21-gpu-terminal-research.md
+document 60/88: .bboxy/tasks/2026-10-21-harness-touchpoints-research.md
+document 61/88: .bboxy/tasks/2026-10-21-identity-spec.md
+document 62/88: .bboxy/tasks/2026-10-21-mcp-control-plane.md
+document 63/88: .bboxy/tasks/2026-10-21-subagent-detection-research.md
+document 64/88: .bboxy/tasks/2026-10-21-text-rendering-research.md
+document 65/88: .bboxy/tasks/2026-10-21-transport-identity-research.md
+document 66/88: .bboxy/tasks/2026-10-21-w1-1-term-core-fork.md
+document 67/88: .bboxy/tasks/2026-10-21-w1-2-byte-ring.md
+document 68/88: .bboxy/tasks/2026-10-21-w2-1-mux-supervisor.md
+document 69/88: .bboxy/tasks/2026-10-21-w2-2-logic-bus-index.md
+document 70/88: .bboxy/tasks/2026-10-21-w2-3-adapters-claude-codex-zsh.md
+document 71/88: .bboxy/tasks/2026-10-21-w3-1-renderer-harness.md
+document 72/88: .bboxy/tasks/2026-10-21-w3-2a-ui-model.md
+document 73/88: .bboxy/tasks/2026-10-21-w3-2b-bboxybook.md
+document 74/88: .bboxy/tasks/2026-10-21-w3-2c-fixtures-input-fx.md
+document 75/88: .bboxy/tasks/2026-10-21-w3-2d-7-modules.md
+document 76/88: .bboxy/tasks/2026-10-21-w3-2d-component-library.md
+document 77/88: .bboxy/tasks/2026-10-21-w4-1-transport-trait.md
+document 78/88: .bboxy/tasks/2026-10-22-c-cockpit.md
+document 79/88: .bboxy/tasks/2026-10-22-o-open-source.md
+document 80/88: .bboxy/tasks/2026-10-22-r-runtime.md
+document 81/88: .bboxy/tasks/2026-10-22-t-terminal-fidelity.md
+document 82/88: .bboxy/tasks/2026-10-22-w2-4-local-messaging.md
+document 83/88: .bboxy/tasks/2026-10-22-w3-5-bbt-doc.md
+document 84/88: .bboxy/tasks/README.md
+document 85/88: .bboxy/ux-flow.md
+document 86/88: .bboxy/ux-pick.md
+document 87/88: .bboxy/ux-sidebar.md
+document 88/88: .bboxy/vision.md
+88 documents rendered; /Users/feral/mydev/bboxy450-term-nyx/target/bbt-doc/repository-5e0e080/index.html
+
+exit: 0
+elapsed_seconds: 117.52342729200609
+
+
+LOG /tmp/w3-5b-lab-diagrams-5e0e080.log
+source: 5e0e080
+command: ['/tmp/ci-nyx-w35b-ccc6424-target/debug/bboxybook', 'documents', '--repository', '--root', '/Users/feral/mydev/bboxy450-term-nyx/target/bbt-doc/lab-input-root', '--out', '/Users/feral/mydev/bboxy450-term-nyx/target/bbt-doc/lab-diagrams-5e0e080']
+document 1/5: .bboxy/flowchart-lr.md
+document 2/5: .bboxy/flowchart-td.md
+document 3/5: .bboxy/sequence.md
+document 4/5: .bboxy/state.md
+document 5/5: .bboxy/unsupported-syntax.md
+5 documents rendered; /Users/feral/mydev/bboxy450-term-nyx/target/bbt-doc/lab-diagrams-5e0e080/index.html
+
+exit: 0
+elapsed_seconds: 0.9204868329979945
