@@ -1,0 +1,461 @@
+{
+  "task": "R5d diagnostics only; NO FIX; no new timing or diagnostic load run",
+  "source": "8cbdac248f0e4868afaae058d65442a3e378f72a",
+  "source_before_rebase": "732d1c0",
+  "base": "1e768e06e02400bff8c37f0db844894ac052db32",
+  "brief": "da14828d-a0e5-4f71-affa-885b081691f2",
+  "logic_label_ruling": "4e6cb8d7-a513-4179-b90c-73a0c60234aa",
+  "mechanisms": [
+    "stall.rs:125 \u2014 UI records packed last-poll settle flags with atomics only; contextual counters can be newer",
+    "stall/load.rs:79 \u2014 fixture shares the original admitted client and observes original attachments; no second connect/lease",
+    "stall/load.rs:176 \u2014 read-only RingRecovery plus bounded two-sequence ReadRing tail, up to four pages; gaps/failures/truncation remain unknown",
+    "stall/load.rs:408 \u2014 watched-only GUI trace records receive, apply/publish and Applied socket write completion independently",
+    "stall/load.rs:719 \u2014 freezes GUI/UI evidence before later logic current Snapshot and ring reads; prints and saves per-seat table on timeout"
+  ],
+  "preflight": {
+    "strict_first_exit": 101,
+    "first_failure": "E0382 boxed ring history partially moved; fixed by destructuring page",
+    "strict_corrected_exit": 0,
+    "strict_after_rebase_exit": 0,
+    "focused_r5_tests": {
+      "passed": 9,
+      "failed": 0,
+      "exit": 0
+    },
+    "fixture_source_unchanged_by_rebase": {
+      "command": [
+        "git",
+        "diff",
+        "--quiet",
+        "732d1c0",
+        "8cbdac248f0e4868afaae058d65442a3e378f72a",
+        "--",
+        "crates/bboxy450-term/src/stall.rs",
+        "crates/bboxy450-term/src/stall/load.rs"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  "proofs": {
+    "render-and-product-tree": {
+      "command": [
+        "git",
+        "diff",
+        "--quiet",
+        "1e768e06e02400bff8c37f0db844894ac052db32",
+        "8cbdac248f0e4868afaae058d65442a3e378f72a",
+        "--",
+        "crates/bbt-render",
+        "crates/bbt-ui",
+        "crates/bbt-ui-model",
+        "crates/bboxybook",
+        "lab",
+        "design",
+        "crates/bboxy450-term/src/main.rs",
+        "crates/bboxy450-term/src/gpu.rs",
+        "crates/bboxy450-term/src/scene.rs",
+        "crates/bboxy450-term/src/live.rs",
+        "crates/bbt-mux"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "fixture-rebase-proof": {
+      "command": [
+        "git",
+        "diff",
+        "--quiet",
+        "732d1c0",
+        "8cbdac248f0e4868afaae058d65442a3e378f72a",
+        "--",
+        "crates/bboxy450-term/src/stall.rs",
+        "crates/bboxy450-term/src/stall/load.rs"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "diff-check": {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "1e768e06e02400bff8c37f0db844894ac052db32",
+        "8cbdac248f0e4868afaae058d65442a3e378f72a"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  "ci": {
+    "state": "NOT STARTED; queued behind Rook",
+    "prepared_worktree": "/private/tmp/ci-aster-r5d-8cbdac2-rio5461u",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-ci-8cbdac2-1792788037453564000",
+    "target_exists": false,
+    "initial_status": "",
+    "slot_request": "f915d313-1bd6-4fa2-9832-3a124a4c9ee5",
+    "queue_reply": "4f914e11-db4e-49ba-8f7e-1ff1b993ffb4",
+    "slot_limit": 2,
+    "rule_message": "4de185cc-a152-4189-a2f6-35509b3e8a3f"
+  },
+  "gaps": [
+    "No real diagnostic run, no scale root cause, no new timings or medians; one real diagnostic run requires a new explicit Oracle window",
+    "Logic current snapshot is NOT GUI offered/published; socket ACK write is NOT server acceptance",
+    "Two captured sequences are a tail probe, not all history; existing R5PAUSED cannot distinguish initial/final pause by itself",
+    "No consistent-cut assertion across backend observations; sample offsets are logged after timeout",
+    "Full clean CI remains pending a slot; no parity run (no rendering source changed)",
+    "Default synthetic 20x load reproduction remains deferred to the separately ordered task"
+  ],
+  "deliberately_untouched": [
+    "settle predicates and deadlines",
+    "readiness rules",
+    "timing limits and pacing",
+    "mux/live and socket schema",
+    "normal app, renderer, UI and scene code"
+  ],
+  "commands": [
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/ci-create.json",
+      "command": [
+        "git",
+        "worktree",
+        "add",
+        "--detach",
+        "/private/tmp/ci-aster-r5d-8cbdac2-rio5461u",
+        "8cbdac248f0e4868afaae058d65442a3e378f72a"
+      ],
+      "exit": 0,
+      "stdout": "HEAD is now at 8cbdac2 Trace R5 settling across ring, logic snapshots and GUI ACKs\n",
+      "stderr": "Preparing worktree (detached HEAD 8cbdac2)\n"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/commit-source.json",
+      "command": [
+        "git",
+        "commit",
+        "-m",
+        "Trace R5 settling across ring, logic snapshots and GUI ACKs"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:39:19.789458+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 57723,
+      "exit": 0,
+      "elapsed_s": 0.30402645902358927,
+      "ended_utc": "2026-10-23T20:39:20.093484+00:00"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/fetch-final.json",
+      "command": [
+        "git",
+        "fetch",
+        "origin",
+        "main"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:39:36.216684+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 58210,
+      "exit": 0,
+      "elapsed_s": 1.9275281250011176,
+      "ended_utc": "2026-10-23T20:39:38.144214+00:00"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/fetch-pre-gate.json",
+      "command": [
+        "git",
+        "fetch",
+        "origin",
+        "main"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:34:54.665590+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 43237,
+      "exit": 0,
+      "elapsed_s": 1.6752641249913722,
+      "ended_utc": "2026-10-23T20:34:56.340857+00:00"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/focused-unit-1.json",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--bin",
+        "bboxy450-term",
+        "stall::",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:33:11.274480+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 40264,
+      "exit": 0,
+      "elapsed_s": 360.1270246670174,
+      "ended_utc": "2026-10-23T20:39:11.401229+00:00"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/git-identity.json",
+      "command": [
+        "sh",
+        "-c",
+        "git var GIT_AUTHOR_IDENT && git var GIT_COMMITTER_IDENT && git config --get commit.gpgsign && git config --get user.signingkey"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:36:47.976429+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 53949,
+      "exit": 0,
+      "elapsed_s": 1.07835291599622,
+      "ended_utc": "2026-10-23T20:36:49.054783+00:00"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/rebase-final.json",
+      "command": [
+        "git",
+        "rebase",
+        "--gpg-sign=9B07E849480C68328CA20684844ECC0587DE7AB0",
+        "origin/main"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:39:42.169889+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 58680,
+      "exit": 0,
+      "elapsed_s": 0.5720552499988116,
+      "ended_utc": "2026-10-23T20:39:42.741944+00:00"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/stage-source.json",
+      "command": [
+        "git",
+        "add",
+        "--",
+        "crates/bboxy450-term/src/stall.rs",
+        "crates/bboxy450-term/src/stall/load.rs"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:39:12.445653+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 57608,
+      "exit": 0,
+      "elapsed_s": 0.056571041990537196,
+      "ended_utc": "2026-10-23T20:39:12.502227+00:00"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/strict-1.json",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:29:15.694049+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 31095,
+      "exit": 101,
+      "elapsed_s": 181.27654725001776,
+      "ended_utc": "2026-10-23T20:32:16.970491+00:00"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/strict-2.json",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:32:35.088625+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 39143,
+      "exit": 0,
+      "elapsed_s": 13.17300291598076,
+      "ended_utc": "2026-10-23T20:32:48.261640+00:00"
+    },
+    {
+      "record": "/private/tmp/aster-r5d-cz4bym3o/strict-final.json",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "started_utc": "2026-10-23T20:39:55.933368+00:00",
+      "env": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "CARGO_PROFILE_DEV_DEBUG": "0",
+        "CARGO_PROFILE_TEST_DEBUG": "0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "RUST_BACKTRACE": "1"
+      },
+      "pid": 59298,
+      "exit": 0,
+      "elapsed_s": 37.139002415991854,
+      "ended_utc": "2026-10-23T20:40:33.072372+00:00"
+    }
+  ],
+  "raw_log_hashes": {
+    "strict-1.log": {
+      "sha256": "9c5839fb23bd98d34a8739ba4fcac33b8db3159c5e6fa910abf46e9d10d71ef5",
+      "bytes": 13699
+    },
+    "strict-2.log": {
+      "sha256": "da2c5eaaef594c2b384737f292a94366b1555b288160ae7d270fc1fe61eb008c",
+      "bytes": 239
+    },
+    "strict-final.log": {
+      "sha256": "4787c319ddc820b220bcf34c4fc01e699bc2f29ef4fea040cebac85dd287c39d",
+      "bytes": 413
+    },
+    "focused-unit-1.log": {
+      "sha256": "0c310f34ac16b086353546554e62244a3c32c26fc5fa20757e493c1db49ed36e",
+      "bytes": 11060
+    }
+  },
+  "raw_committed_path": ".bboxy/runs/r5-d-preflight-raw.log",
+  "dev_cleanup": {
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/target/r5d-dev-1792787344138853000",
+    "unique_file_allocated_bytes_removed": 1297715200,
+    "files": 6308,
+    "target_removed": true,
+    "free_bytes_after": 11078692864
+  },
+  "window2_overlap_correction": "Actual run interval 19:40:34.533\u201319:42:10.874 UTC; Sable probes at 19:42:46 and 19:47:02 were later in the unreleased window, not overlapping this run. No external-load root cause inferred."
+}
