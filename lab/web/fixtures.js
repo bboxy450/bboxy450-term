@@ -38,35 +38,37 @@ window.FIX = {
   // seats and epics for the dedicated pages (graph, stream): the swarm "term" as the Oracle's graph.md describes it
   seats: [
     { key: 'v', name: 'Vesper Greywind', harness: 'claude', role: 'oracle', title: 'swarm control', state: 'active', color: '#FFC53D', tasks: [] },
-    { key: 'n', name: 'Nyx Copperwing', harness: 'codex', role: 'executor', title: 'W3.2b bboxybook', state: 'active', color: '#FF4FA3', tasks: [{ id: 'w32b', title: 'W3.2b bboxybook', state: 'running' }] },
-    { key: 'r', name: 'Rook Ashwhisker', harness: 'codex', role: 'executor', title: 'W2.2 logic', state: 'waiting', color: '#2EE6A8', where: 'cloud', host: 'eu-2', tasks: [{ id: 'w22', title: 'W2.2 logic, bus, index', state: 'running', constrains: 'one sequence per stream' }, { id: 'b2', type: 'bug', title: 'gap row lost on replay', state: 'claimed', violates: 'never invent a count' }] },
-    { key: 'w', name: 'Wren Thistledown', harness: 'claude', role: 'creativity', title: 'ux lab', state: 'active', color: '#B07BFF', tasks: [{ id: 'w33', title: 'W3.3 glow and locate', state: 'blocked', waits: 'W3.2b' }] },
+    { key: 'n', name: 'Nyx Copperwing', harness: 'codex', role: 'executor', title: 'W3.2b bboxybook', state: 'active', color: '#FF4FA3', tasks: [{ id: 'w32b', title: 'W3.2b bboxybook', status: 'running' }] },
+    { key: 'r', name: 'Rook Ashwhisker', harness: 'codex', role: 'executor', title: 'W2.2 logic', state: 'waiting', color: '#2EE6A8', where: 'cloud', host: 'eu-2', tasks: [{ id: 'w22', title: 'W2.2 logic, bus, index', status: 'running', constrains: 'one sequence per stream' }, { id: 'b2', type: 'bug', title: 'gap row lost on replay', status: 'claimed', violates: 'never invent a count' }] },
+    { key: 'w', name: 'Wren Thistledown', harness: 'claude', role: 'creativity', title: 'ux lab', state: 'active', color: '#B07BFF', tasks: [{ id: 'w33', title: 'W3.3 glow and locate', status: 'blocked', waits: 'W3.2b' }] },
   ],
   epics: [
     { id: 'e3', title: 'W3 renderer', open: true, items: [
       { id: 'inv1', type: 'invariant', title: 'upright text', state: 'active', binds: [{ title: 'W3.1 renderer harness', rel: 'constrains' }, { title: 'glyphs upside down in smoke', rel: 'violated-by' }] },
-      { id: 'b1', type: 'bug', title: 'glyphs upside down in smoke', state: 'fixed', assignee: 'Nyx Copperwing', violates: 'upright text' },
-      { id: 'w31', kind: 'task', title: 'W3.1 renderer harness', state: 'accepted', assignee: 'Nyx Copperwing', constrains: 'upright text', artifacts: [{ kind: 'image', ref: 'target/render/smoke/ · 48 PNG', digest: '7a21ee90', by: 'Nyx Copperwing' }] },
-      { id: 'w32a', kind: 'task', title: 'W3.2a ui-model', state: 'accepted', assignee: 'Nyx Copperwing' },
-      { id: 'w32b', kind: 'task', title: 'W3.2b bboxybook', state: 'running', assignee: 'Nyx Copperwing' },
-      { id: 'w33', kind: 'task', title: 'W3.3 glow and locate', state: 'blocked', waits: 'W3.2b' },
+      { id: 'b1', type: 'bug', title: 'glyphs upside down in smoke', status: 'fixed', assignee: 'Nyx Copperwing', violates: 'upright text' },
+      { id: 'w31', kind: 'task', title: 'W3.1 renderer harness', status: 'accepted', assignee: 'Nyx Copperwing', constrains: 'upright text', artifacts: [{ kind: 'image', ref: 'target/render/smoke/ · 48 PNG', digest: '7a21ee90', by: 'Nyx Copperwing' }] },
+      { id: 'w32a', kind: 'task', title: 'W3.2a ui-model', status: 'accepted', assignee: 'Nyx Copperwing' },
+      { id: 'w32b', kind: 'task', title: 'W3.2b bboxybook', status: 'running', assignee: 'Nyx Copperwing' },
+      { id: 'w33', kind: 'task', title: 'W3.3 glow and locate', status: 'blocked', waits: 'W3.2b' },
     ] },
     { id: 'e2', title: 'W2 mux', open: false, items: [
-      { id: 'w21', kind: 'task', title: 'W2.1 supervisor + PTY + lease', state: 'accepted', assignee: 'Nyx Copperwing' },
-      { id: 'w22', kind: 'task', title: 'W2.2 logic, bus, index', state: 'running', assignee: 'Rook Ashwhisker' },
-      { id: 'w23', kind: 'task', title: 'W2.3 adapters', state: 'open' },
-      { id: 'w12', kind: 'task', title: 'W1.2 byte ring', state: 'open' },
+      { id: 'w21', kind: 'task', title: 'W2.1 supervisor + PTY + lease', status: 'accepted', assignee: 'Nyx Copperwing' },
+      { id: 'w22', kind: 'task', title: 'W2.2 logic, bus, index', status: 'running', assignee: 'Rook Ashwhisker' },
+      { id: 'w23', kind: 'task', title: 'W2.3 adapters', status: 'open' },
+      { id: 'w12', kind: 'task', title: 'W1.2 byte ring', status: 'open' },
     ] },
   ],
-  // the swarm stream: messages with delivery evidence, presence notices
+  // the swarm stream as MessageRow projections (decision #38): author, issuer_kind, kind, priority_class + priority, ts; role is the
+  // seat registry's (by author.id), evidence the lab's per-message ladder. Nyx's note is a worker at priority 7 (the p1 chip); Wren's
+  // is signed under the local-dev issuer; Kestrel is a foreign Oracle, so this swarm receives it as worker class.
   stream: [
-    { presence: true, text: 'Rook Ashwhisker joined · cloud eu-2', time: '14:02' },
-    { from: 'Vesper Greywind', fromKey: 'v', role: 'oracle', time: '14:03', text: 'Rook: W2.2 is yours. Read events.md Bus design first.', evidence: 'application-acknowledged' },
-    { from: 'Rook Ashwhisker', fromKey: 'r', role: 'executor', time: '14:05', text: 'claimed W2.2, store traits first', evidence: 'native-written' },
-    { from: 'Nyx Copperwing', fromKey: 'n', role: 'executor', time: '14:09', text: 'parity triplets: 41 of 52 within threshold, inspecting the rest', evidence: 'recipient-stored', unread: true },
-    { presence: true, text: 'Nyx Copperwing muted · 1:1 with the operator', time: '14:11' },
-    { from: 'Wren Thistledown', fromKey: 'w', role: 'creativity', time: '14:12', text: 'landed: events.html, the bus at a glance', evidence: 'native-unknown' },
-    { from: 'Kestrel Nine', fromKey: 'k9', role: 'executor', foreign: true, time: '14:14', text: 'relay bench green on eu-2, 41 ms p50', unread: true },
+    { kind: 'presence', text: 'Rook Ashwhisker joined · cloud eu-2', ts: C.atHM('14:02') },
+    { author: { kind: 'seat', id: 'v', name: 'Vesper Greywind' }, role: 'oracle', issuer_kind: 'gpg-root', kind: 'text', priority_class: 'oracle', priority: 0, ts: C.atHM('14:03'), text: 'Rook: W2.2 is yours. Read events.md Bus design first.', evidence: 'application-acknowledged' },
+    { author: { kind: 'seat', id: 'r', name: 'Rook Ashwhisker' }, role: 'executor', issuer_kind: 'gpg-root', kind: 'text', priority_class: 'worker', priority: 0, ts: C.atHM('14:05'), text: 'claimed W2.2, store traits first', evidence: 'native-written' },
+    { author: { kind: 'seat', id: 'n', name: 'Nyx Copperwing' }, role: 'executor', issuer_kind: 'gpg-root', kind: 'text', priority_class: 'worker', priority: 7, ts: C.atHM('14:09'), text: 'parity triplets: 41 of 52 within threshold, inspecting the rest', evidence: 'recipient-stored', unread: true },
+    { kind: 'presence', text: 'Nyx Copperwing muted · 1:1 with the operator', ts: C.atHM('14:11') },
+    { author: { kind: 'seat', id: 'w', name: 'Wren Thistledown' }, role: 'creativity', issuer_kind: 'local-dev', kind: 'text', priority_class: 'worker', priority: 0, ts: C.atHM('14:12'), text: 'landed: events.html, the bus at a glance', evidence: 'native-unknown' },
+    { author: { kind: 'seat', id: 'k9', name: 'Kestrel Nine' }, role: 'executor', issuer_kind: 'gpg-root', kind: 'text', priority_class: 'worker', priority: 0, foreign: true, ts: C.atHM('14:14'), text: 'relay bench green on eu-2, 41 ms p50', unread: true },
   ],
   // documents the showcase opens in the modal (key V): a .bboxy spec and a plain README
   docs: {
@@ -78,11 +80,11 @@ window.FIX = {
   },
   // audit projection for the stream (Oracle effects, swarm-member scope)
   audit: [
-    { audit: { actor: 'Vesper Greywind', verb: 'spawned', target: 'Odile Marsh', op: '3fa91c2e', outcome: 'applied' }, time: '14:16' },
-    { audit: { actor: 'Vesper Greywind', verb: 'assigned executor to', target: 'Odile Marsh', op: '7d02aa41', outcome: 'applied' }, time: '14:16' },
-    { audit: { actor: 'Vesper Greywind', verb: 'interrupted', target: 'Rook Ashwhisker', op: 'c19be004', outcome: 'applied' }, time: '14:18' },
-    { audit: { actor: 'Vesper Greywind', verb: 'spawned', target: 'Bram Calder', op: '5e6610fb', outcome: 'rejected', reason: 'spawn cap for this swarm is 8' }, time: '14:19' },
-    { audit: { actor: 'Vesper Greywind', verb: 'closed', target: 'Ysolde Pike', op: '90ab3c12', outcome: 'unknown', reason: 'no confirmation from the mux' }, time: '14:21' },
+    { audit: { actor: 'Vesper Greywind', verb: 'spawned', target: 'Odile Marsh', op: '3fa91c2e', outcome: 'applied' }, ts: C.atHM('14:16') },
+    { audit: { actor: 'Vesper Greywind', verb: 'assigned executor to', target: 'Odile Marsh', op: '7d02aa41', outcome: 'applied' }, ts: C.atHM('14:16') },
+    { audit: { actor: 'Vesper Greywind', verb: 'interrupted', target: 'Rook Ashwhisker', op: 'c19be004', outcome: 'applied' }, ts: C.atHM('14:18') },
+    { audit: { actor: 'Vesper Greywind', verb: 'spawned', target: 'Bram Calder', op: '5e6610fb', outcome: 'rejected', reason: 'spawn cap for this swarm is 8' }, ts: C.atHM('14:19') },
+    { audit: { actor: 'Vesper Greywind', verb: 'closed', target: 'Ysolde Pike', op: '90ab3c12', outcome: 'unknown', reason: 'no confirmation from the mux' }, ts: C.atHM('14:21') },
   ],
   // the channel tree (channel-tree.md §9, this cohort): folders, seat sinks, links with filters and rates
   channels: {
@@ -107,12 +109,12 @@ window.FIX = {
   subchannels: [{ name: 'render', unread: 3 }, { name: 'mux', unread: 0 }, { name: 'design', unread: 1 }, { name: 'decisions', unread: 1 }],
   // subchannel traffic, subgroup fan-out and a rejected progress note (messaging.md routing discipline)
   routed: [
-    { from: 'Vesper Greywind', fromKey: 'v', role: 'oracle', time: '14:30', text: 'W3.2b accepted; W3.2c is next', kind: 'chunk', evidence: 'application-acknowledged' },
-    { from: 'Nyx Copperwing', fromKey: 'n', role: 'executor', time: '14:31', ch: 'render', text: 'atlas grows ×2 at 2k glyphs, eviction stays off', evidence: 'native-written' },
-    { from: 'Rook Ashwhisker', fromKey: 'r', role: 'executor', time: '14:32', ch: 'mux', text: 'consumers table lands with ack_wait 30 s', evidence: 'native-written' },
-    { from: 'Wren Thistledown', fromKey: 'w', role: 'creativity', time: '14:33', ch: 'design', text: 'lab.css reads tokens now, 514 literals left', evidence: 'recipient-stored' },
-    { from: 'Vesper Greywind', fromKey: 'v', role: 'oracle', time: '14:34', ch: 'decisions', text: 'pubsub is a filesystem of sinks: channel-tree.md', kind: 'decision', evidence: 'native-written' },
-    { from: 'Vesper Greywind', fromKey: 'v', role: 'oracle', time: '14:35', group: { name: 'render crew', n: 2 }, text: 'parity triplets: look at the 41 over tolerance together', evidence: 'native-written' },
-    { rejected: true, from: 'Rook Ashwhisker', delegator: 'Vesper Greywind', time: '14:36' },
+    { author: { kind: 'seat', id: 'v', name: 'Vesper Greywind' }, role: 'oracle', issuer_kind: 'gpg-root', priority_class: 'oracle', priority: 0, ts: C.atHM('14:30'), text: 'W3.2b accepted; W3.2c is next', kind: 'chunk', evidence: 'application-acknowledged' },
+    { author: { kind: 'seat', id: 'n', name: 'Nyx Copperwing' }, role: 'executor', issuer_kind: 'gpg-root', kind: 'text', priority_class: 'worker', priority: 0, ts: C.atHM('14:31'), ch: 'render', text: 'atlas grows ×2 at 2k glyphs, eviction stays off', evidence: 'native-written' },
+    { author: { kind: 'seat', id: 'r', name: 'Rook Ashwhisker' }, role: 'executor', issuer_kind: 'gpg-root', kind: 'text', priority_class: 'worker', priority: 0, ts: C.atHM('14:32'), ch: 'mux', text: 'consumers table lands with ack_wait 30 s', evidence: 'native-written' },
+    { author: { kind: 'seat', id: 'w', name: 'Wren Thistledown' }, role: 'creativity', issuer_kind: 'gpg-root', kind: 'text', priority_class: 'worker', priority: 0, ts: C.atHM('14:33'), ch: 'design', text: 'lab.css reads tokens now, 514 literals left', evidence: 'recipient-stored' },
+    { author: { kind: 'seat', id: 'v', name: 'Vesper Greywind' }, role: 'oracle', issuer_kind: 'gpg-root', priority_class: 'oracle', priority: 0, ts: C.atHM('14:34'), ch: 'decisions', text: 'pubsub is a filesystem of sinks: channel-tree.md', kind: 'decision', evidence: 'native-written' },
+    { author: { kind: 'seat', id: 'v', name: 'Vesper Greywind' }, role: 'oracle', issuer_kind: 'gpg-root', kind: 'text', priority_class: 'oracle', priority: 0, ts: C.atHM('14:35'), group: { name: 'render crew', n: 2 }, text: 'parity triplets: look at the 41 over tolerance together', evidence: 'native-written' },
+    { rejected: true, author: { kind: 'seat', id: 'r', name: 'Rook Ashwhisker' }, delegator: 'Vesper Greywind', ts: C.atHM('14:36') },
   ],
 };
