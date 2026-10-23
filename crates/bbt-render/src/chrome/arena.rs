@@ -1,8 +1,11 @@
 //! Per-owner buffer arenas: one growable buffer per binding kind, a fresh aligned slice per
-//! draw. queue.write_buffer lands at the next submit, before that submission's commands, so
-//! slices must never overlap within a submission: the cursor rewinds only in `begin_frame`,
-//! which the owner of the submit calls at a submission boundary. Before the first
-//! `begin_frame`, or past the cap, each draw gets its own buffer, as before arenas existed.
+//! draw. Slices are staged in a CPU shadow and uploaded by `flush` in one write per arena,
+//! which the owner of the submit calls right before submitting (wgpu 30's write_buffer makes a
+//! staging buffer per call). The write lands at that submit, before its commands, so slices
+//! never overlap within a submission: the cursor rewinds only in `begin_frame`, at a submission
+//! boundary. A frame left unflushed would draw stale data, so `begin_frame` and drop
+//! debug-assert that it was flushed. Before the first `begin_frame`, or past the cap, each draw
+//! gets its own buffer, as before arenas existed.
 use std::num::NonZeroU64;
 
 const FIRST: u64 = 64 * 1024;
@@ -29,6 +32,9 @@ struct Arena {
     label: &'static str,
     buffer: Option<wgpu::Buffer>,
     cursor: u64,
+    /// Bytes of the current buffer from `base` to `cursor`, not yet written.
+    shadow: Vec<u8>,
+    base: u64,
 }
 impl Arena {
     fn new(usage: wgpu::BufferUsages, label: &'static str) -> Self {
@@ -37,7 +43,24 @@ impl Arena {
             label,
             buffer: None,
             cursor: 0,
+            shadow: vec![],
+            base: 0,
         }
+    }
+    fn pending(&self) -> bool {
+        !self.shadow.is_empty()
+    }
+    fn flush(&mut self, context: &crate::device::DeviceContext) {
+        if let Some(buffer) = self.buffer.as_ref().filter(|_| self.pending()) {
+            context.queue.write_buffer(buffer, self.base, &self.shadow);
+        }
+        self.shadow.clear();
+        self.base = self.cursor;
+    }
+    fn rewind(&mut self) {
+        self.shadow.clear();
+        self.cursor = 0;
+        self.base = 0;
     }
     fn slice(
         &mut self,
@@ -72,18 +95,22 @@ impl Arena {
             if grown > CAP {
                 return fallback();
             }
-            // Earlier slices of this frame keep the old buffer alive through their bind groups.
+            // Earlier slices of this frame keep the old buffer alive through their bind groups;
+            // their staged bytes go to that buffer before it is replaced.
+            self.flush(context);
             self.buffer = Some(context.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(self.label),
                 size: grown,
                 usage: self.usage | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             }));
-            self.cursor = 0;
+            self.rewind();
             return self.slice(context, bytes, align, armed);
         }
         let buffer = self.buffer.clone().expect("arena buffer");
-        context.queue.write_buffer(&buffer, offset, bytes);
+        // Alignment padding, then the slice, contiguous from base.
+        self.shadow.resize((offset - self.base) as usize, 0);
+        self.shadow.extend_from_slice(bytes);
         self.cursor = offset + size;
         Slice {
             buffer,
@@ -112,9 +139,21 @@ impl Arenas {
     }
     /// Call only where no command referencing an earlier slice is still being encoded.
     pub fn begin_frame(&mut self) {
+        debug_assert!(
+            !self.pending(),
+            "arena slices were never flushed: call flush() before submitting"
+        );
         self.armed = self.enabled;
-        self.uniform.cursor = 0;
-        self.storage.cursor = 0;
+        self.uniform.rewind();
+        self.storage.rewind();
+    }
+    /// Upload this frame's staged slices; call right before submitting the commands using them.
+    pub fn flush(&mut self, context: &crate::device::DeviceContext) {
+        self.uniform.flush(context);
+        self.storage.flush(context);
+    }
+    fn pending(&self) -> bool {
+        self.uniform.pending() || self.storage.pending()
     }
     pub fn uniform(&mut self, context: &crate::device::DeviceContext, bytes: &[u8]) -> Slice {
         let align = u64::from(context.device.limits().min_uniform_buffer_offset_alignment);
@@ -132,5 +171,13 @@ impl Arenas {
     pub fn storage(&mut self, context: &crate::device::DeviceContext, bytes: &[u8]) -> Slice {
         let align = u64::from(context.device.limits().min_storage_buffer_offset_alignment);
         self.storage.slice(context, bytes, align, self.armed)
+    }
+}
+impl Drop for Arenas {
+    fn drop(&mut self) {
+        debug_assert!(
+            std::thread::panicking() || !self.pending(),
+            "arena slices were never flushed: call flush() before submitting"
+        );
     }
 }
