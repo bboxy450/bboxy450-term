@@ -44,6 +44,8 @@ at admission, rather than discovered after accepting excess output. Queue,
 tick-window or durable-credit pressure pauses admission and wakes the writer;
 logic retries only rejected capture `Busy` replies, never ambiguous effects.
 The `paused` display is delayed until pressure persists for one second.
+Live catch-up consumes one history page per worker turn, retaining its cursor
+and final event while control commands run between pages; replay has no effects.
 
 Seat rings are derived. Live history pages merge their retained prefix with
 bounded journal-tail references; checkpoint payloads remain opaque and are

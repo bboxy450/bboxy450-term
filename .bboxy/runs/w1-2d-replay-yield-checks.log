@@ -1,0 +1,14 @@
+Oracle approval4a060181-44b2-48d7-9956-f19f8b922aed; one page per event turn, cursor+live event retained.
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'capture_busy', '--', '--nocapture', '--test-threads=1']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 31.92s
+     Running tests/capture_busy.rs (target/w1-2d/release/deps/capture_busy-4f4a6b2e9942357c)
+
+running 2 tests
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+test large_capture_catchup_yields_to_control_between_history_pages ... control answered during paged replay: 105.355292ms; pages=1; final sequence=261
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+
+EXIT=0; WALL_SECONDS=33.229

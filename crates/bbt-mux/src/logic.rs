@@ -1321,7 +1321,8 @@ impl Worker {
         view.checkpoint_sequence = sequence;
         Ok(())
     }
-    fn event(&mut self, event: Event) -> Result<()> {
+    // false retains this event while replay yields to the command queue.
+    fn event(&mut self, event: Event) -> Result<bool> {
         let id = event.seat();
         let seq = event.sequence().unwrap();
         let generation = match &event {
@@ -1330,13 +1331,13 @@ impl Worker {
             | Event::Exited { generation, .. } => *generation,
         };
         let Some(view) = self.views.get(&id) else {
-            return Ok(());
+            return Ok(true);
         };
         if view.generation != generation || seq <= view.sequence {
-            return Ok(());
+            return Ok(true);
         }
-        if seq > view.sequence + 1 {
-            self.catch_up(id, seq - 1)?;
+        if seq > view.sequence + 1 && !self.catch_up(id, seq - 1)? {
+            return Ok(false);
         }
         let view = self.views.get_mut(&id).unwrap();
         let before = view.adapter.status.clone();
@@ -1406,28 +1407,35 @@ impl Worker {
         if !status.same_value(&before) {
             self.publish_adapter(id, status)?;
         }
-        Ok(())
+        Ok(true)
     }
-    fn catch_up(&mut self, id: Ulid, through: u64) -> Result<()> {
-        loop {
-            let current = &self.views[&id];
-            if current.sequence >= through {
-                return self.save(id);
+    fn catch_up(&mut self, id: Ulid, through: u64) -> Result<bool> {
+        let current = &self.views[&id];
+        if current.sequence >= through {
+            self.save(id)?;
+            return Ok(true);
+        }
+        let history = self.history(id, current.generation, current.sequence + 1, through)?;
+        if history.gap.is_some() || history.records.is_empty() {
+            return Err(invalid("capture recovery gap"));
+        }
+        let view = self.views.get_mut(&id).unwrap();
+        for record in history.records {
+            if matches!(record.event, Event::Resized { .. }) {
+                view.view_generation = Ulid::new();
             }
-            let history = self.history(id, current.generation, current.sequence + 1, through)?;
-            if history.gap.is_some() || history.records.is_empty() {
-                return Err(invalid("capture recovery gap"));
-            }
-            let view = self.views.get_mut(&id).unwrap();
-            for record in history.records {
-                if matches!(record.event, Event::Resized { .. }) {
-                    view.view_generation = Ulid::new();
-                }
-                view.state.apply(&record.event)?;
-                // Recovery must not replay probe responses or hook/native effects.
-                let _ = view.tap.drain();
-            }
-            view.changed_at = Instant::now();
+            view.state.apply(&record.event)?;
+            // Recovery must not replay probe responses or hook/native effects.
+            let _ = view.tap.drain();
+        }
+        view.changed_at = Instant::now();
+        if view.sequence >= through {
+            self.save(id)?;
+            Ok(true)
+        } else {
+            // The caller keeps the final live event. Its sequence and this
+            // applied cursor survive the command-service turn between pages.
+            Ok(false)
         }
     }
     fn flush_protocol_replies(&mut self, id: Ulid) -> Result<()> {
@@ -2148,15 +2156,17 @@ impl Worker {
             if pending_event.is_none() {
                 pending_event = self.connection.receive(Duration::from_millis(10))?;
             }
-            if let Some(event) = pending_event.take()
-                && let Err(error) = self.event(event.clone())
-            {
-                if !is_capture_busy(&error) {
-                    return Err(error);
+            if let Some(event) = pending_event.take() {
+                match self.event(event.clone()) {
+                    Ok(true) => {}
+                    Ok(false) => pending_event = Some(event),
+                    Err(error) if is_capture_busy(&error) => {
+                        // A rejected recovery read exhausted its retry. Keep
+                        // the event and serve commands before another attempt.
+                        pending_event = Some(event);
+                    }
+                    Err(error) => return Err(error),
                 }
-                // A recovery read exhausted its bounded retry. Keep the event
-                // while continuing to service commands.
-                pending_event = Some(event);
             }
             if adapters_at.elapsed() >= Duration::from_millis(200) {
                 self.refresh_adapters()?;

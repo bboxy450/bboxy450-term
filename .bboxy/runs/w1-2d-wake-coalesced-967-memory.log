@@ -1,0 +1,47 @@
+SOURCE d858b1b00b795e0b23080ca580902927dfaf41dd
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', 'gate_memory', '--', '--ignored', '--nocapture', '--test-threads=1']
+GATE_SEATS=967 GATE_RATE=32kB/s GATE_SECONDS=60; fixture key, no production custody
+OWN_CARGO_PID=70023
+    Finished `release` profile [optimized] target(s) in 0.50s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+
+running 1 test
+test gate_memory ... GATE spawn progress=25/967 elapsed_s=1.040
+GATE spawn progress=50/967 elapsed_s=2.013
+GATE spawn progress=75/967 elapsed_s=3.105
+GATE spawn progress=100/967 elapsed_s=4.307
+GATE spawn progress=125/967 elapsed_s=5.640
+GATE spawn progress=150/967 elapsed_s=7.001
+GATE spawn progress=175/967 elapsed_s=8.340
+GATE spawn progress=200/967 elapsed_s=10.006
+GATE spawn progress=225/967 elapsed_s=12.575
+GATE spawn progress=250/967 elapsed_s=14.183
+GATE spawn progress=275/967 elapsed_s=16.040
+GATE spawn progress=300/967 elapsed_s=18.928
+GATE spawn progress=325/967 elapsed_s=21.431
+GATE spawn progress=350/967 elapsed_s=23.703
+GATE spawn progress=375/967 elapsed_s=25.817
+GATE spawn progress=400/967 elapsed_s=27.919
+GATE spawn progress=425/967 elapsed_s=33.418
+GATE spawn progress=450/967 elapsed_s=39.427
+GATE spawn progress=475/967 elapsed_s=44.073
+GATE spawn progress=500/967 elapsed_s=50.155
+GATE spawn progress=525/967 elapsed_s=57.904
+GATE spawn progress=550/967 elapsed_s=68.026
+GATE spawn progress=575/967 elapsed_s=79.729
+GATE spawn progress=600/967 elapsed_s=90.417
+GATE spawn progress=625/967 elapsed_s=105.105
+GATE spawn progress=650/967 elapsed_s=212.542
+GATE spawn progress=675/967 elapsed_s=277.448
+GATE spawn progress=700/967 elapsed_s=335.889
+GATE spawn progress=725/967 elapsed_s=425.489
+GATE spawn progress=750/967 elapsed_s=535.263
+GATE spawn progress=775/967 elapsed_s=615.680
+GATE spawn progress=800/967 elapsed_s=829.180
+GATE spawn progress=825/967 elapsed_s=1108.163
+GATE spawn progress=850/967 elapsed_s=1445.750
+error: test failed, to rerun pass `-p bbt-mux --test gates_seats`
+
+Caused by:
+  process didn't exit successfully: `/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0 gate_memory --ignored --nocapture --test-threads=1` (signal: 15, SIGTERM: termination signal)
+CHILD_EXIT=101; WALL_SECONDS=1812.387

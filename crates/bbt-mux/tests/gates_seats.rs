@@ -171,6 +171,59 @@ struct Rig {
     busy: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
+// These PIDs are this rig's stopped, unreaped children. On fixture unwinding,
+// resume them before the supervisor's ordinary terminate/reap teardown.
+#[derive(Default)]
+struct StagedChildren(Vec<u32>);
+impl StagedChildren {
+    fn observe_stop(&mut self, pid: u32) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            // SAFETY: zeroed siginfo is a valid waitid out-parameter. WNOWAIT
+            // observes this owned child's stop without taking the exit status
+            // away from its supervisor.
+            let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
+            let result = unsafe {
+                libc::waitid(
+                    libc::P_PID,
+                    pid as libc::id_t,
+                    &mut info,
+                    libc::WSTOPPED | libc::WNOHANG | libc::WNOWAIT,
+                )
+            };
+            assert_eq!(result, 0, "observe owned staged PID {pid}");
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            let observed = unsafe { info.si_pid() };
+            #[cfg(not(any(target_os = "linux", target_os = "android")))]
+            let observed = info.si_pid;
+            if observed == pid as libc::pid_t {
+                eprintln!("GATE staged owned_pid={pid}");
+                self.0.push(pid);
+                return;
+            }
+            assert!(Instant::now() < deadline, "owned PID {pid} did not stop");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+    fn resume(&mut self) {
+        for &pid in &self.0 {
+            // SAFETY: the stopped child cannot exit normally or have its PID
+            // reused before this continuation; the supervisor still owns it.
+            assert_eq!(unsafe { libc::kill(pid as libc::pid_t, libc::SIGCONT) }, 0);
+        }
+        eprintln!("GATE resumed staged_children={}", self.0.len());
+        self.0.clear();
+    }
+}
+impl Drop for StagedChildren {
+    fn drop(&mut self) {
+        for &pid in &self.0 {
+            // SAFETY: same owned, stopped child set as resume().
+            let _ = unsafe { libc::kill(pid as libc::pid_t, libc::SIGCONT) };
+        }
+    }
+}
+
 impl Rig {
     fn start(max_seats: usize) -> Self {
         let parent = env_or("GATE_RUN_DIR", "/tmp");
@@ -233,20 +286,45 @@ impl Rig {
     /// Spawns `n` firehose seats; on failure stops logic and reports its exit.
     fn firehose_seats(self, n: usize, rate: &str) -> (Self, Vec<Ulid>) {
         let bin = firehose();
+        let staged = rate != "idle" && std::env::var_os("GATE_STAGED").is_some();
+        let mut stopped = StagedChildren::default();
+        eprintln!(
+            "GATE staging={staged} method=preexec-SIGSTOP-waitid-WNOWAIT; rate clock starts after SIGCONT/exec"
+        );
         let started = Instant::now();
         let mut seats = Vec::with_capacity(n);
         for i in 0..n {
             let mut launch = LaunchSpec::new(bin.to_string_lossy().to_string(), self.run.path());
             launch.args = vec!["--rate".into(), rate.into(), "--loop".into()];
+            if staged {
+                // Stop before exec so a suspended absolute-rate timer cannot
+                // produce a catch-up flood on resume. exec preserves this PID.
+                launch.program = "/bin/sh".into();
+                launch.args = vec![
+                    "-c".into(),
+                    "kill -STOP \"$$\"; exec \"$@\"".into(),
+                    "bboxy-gate-firehose".into(),
+                    bin.to_string_lossy().into(),
+                    "--rate".into(),
+                    rate.into(),
+                    "--loop".into(),
+                ];
+            }
             if rate == "idle" {
                 launch = LaunchSpec::new("/bin/sleep", self.run.path());
                 launch.args = vec!["3600".into()];
             }
             let record =
                 SeatRecord::new(launch.seat, self.swarm, format!("firehose-{i}"), "firehose");
-            match self.try_spawn(record, launch) {
-                Ok(s) => {
-                    seats.push(s);
+            match self
+                .runtime
+                .block_on(self.logic.client.spawn(record, launch))
+            {
+                Ok(info) => {
+                    if staged {
+                        stopped.observe_stop(info.pid);
+                    }
+                    seats.push(info.seat);
                     if (i + 1) % 25 == 0 || i + 1 == n {
                         eprintln!(
                             "GATE spawn progress={}/{n} elapsed_s={:.3}",
@@ -261,6 +339,9 @@ impl Rig {
                     panic!("spawn {i} of {n} failed after {at:?}: {e}; logic exit: {exit:?}");
                 }
             }
+        }
+        if staged {
+            stopped.resume();
         }
         (self, seats)
     }

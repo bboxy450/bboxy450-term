@@ -210,10 +210,13 @@ fn capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost() {
         let pre_capture = written - admitted;
         let admitted_loss = admitted - bytes.len() as u64;
         let pty_capacity = measured_pty_capacity();
+        // This producer writes 64 bytes every 2 ms: one coalescing window.
+        let coalescing_limit = 64;
         println!(
             "{}",
-            json!({"seat":seat,"signal":"SIGKILL","written":written,"admitted":admitted,"committed":bytes.len(),"admitted_loss":admitted_loss,"admitted_tick_bytes":admitted_tick_bytes,"pre_capture_tail":pre_capture,"measured_pty_buffer":pty_capacity,"coalescing_limit":crate::protocol::OUTPUT_CHUNK_BYTES,"crc_errors":0})
+            json!({"seat":seat,"signal":"SIGKILL","written":written,"admitted":admitted,"committed":bytes.len(),"admitted_loss":admitted_loss,"admitted_tick_bytes":admitted_tick_bytes,"pre_capture_tail":pre_capture,"measured_pty_buffer":pty_capacity,"coalescing_limit":coalescing_limit,"crc_errors":0})
         );
+        assert!(pre_capture <= pty_capacity as u64 + coalescing_limit);
         assert!(
             admitted_loss <= admitted_tick_bytes,
             "lost more than the admitted data from one 20 ms tick"
