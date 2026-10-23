@@ -226,6 +226,16 @@ briefs Executors from the specs, never from this note.
     still scales with messages). Gate 1 idle budget set: 420 MiB at 400
     seats, +25 % over the measured median; the loaded number is still owed.
 
+24. **No code signing until we distribute (operator, 2026-10-22; velocity
+    first).** The PKG0 cargo runner is removed from main the day it landed,
+    PKG1 is deferred, `scripts/sign-run.sh` is kept for later; nothing may
+    depend on a signed build or a keychain prompt. Custody stays at tier 2
+    with ID1e's non-interactive, bounded keychain access on every developer
+    machine; tier 1 returns with the signed bundle at distribution. #17's
+    tiers are unchanged, only their timeline. Rejected: keeping the runner
+    for its keychain-ACL stability (it put a signing step and a certificate
+    dependency in every cargo test for a benefit ID1e made unnecessary).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
