@@ -1,0 +1,24 @@
+VERIFIED_OWN_GATE=['72498', '70382', 'S', '/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-profile/release/deps/gates_seats-4124c2039231a89d gate_memory --ignored --nocapture --test-threads=1']
+RECORDED_OWN_REMAINING_CHILDREN=[77155, 77162, 77170, 77175, 77178, 77184, 77187, 77192, 77195, 77198]
+RESENT_SIGKILL_OWN_PID=77155 verified=['77155', '72498', '?Es', '(bboxy-firehose)']
+RESENT_SIGKILL_OWN_PID=77162 verified=['77162', '72498', '?Es', '(bboxy-firehose)']
+SKIP_PID=77170 current=['77170', '72498', 'Z', '<defunct>']
+RESENT_SIGKILL_OWN_PID=77175 verified=['77175', '72498', '?Es', '(bboxy-firehose)']
+RESENT_SIGKILL_OWN_PID=77178 verified=['77178', '72498', '?Es', '(bboxy-firehose)']
+RESENT_SIGKILL_OWN_PID=77184 verified=['77184', '72498', '?Es', '(bboxy-firehose)']
+SKIP_PID=77187 current=['77187', '72498', 'Z', '<defunct>']
+RESENT_SIGKILL_OWN_PID=77192 verified=['77192', '72498', '?Es', '(bboxy-firehose)']
+RESENT_SIGKILL_OWN_PID=77195 verified=['77195', '72498', '?Es', '(bboxy-firehose)']
+RESENT_SIGKILL_OWN_PID=77198 verified=['77198', '72498', '?Es', '(bboxy-firehose)']
+SENT_SIGTERM_OWN_GATE=72498
+AFTER_PID=72498 state=None
+AFTER_PID=77155 state=None
+AFTER_PID=77162 state=None
+AFTER_PID=77170 state=None
+AFTER_PID=77175 state=None
+AFTER_PID=77178 state=None
+AFTER_PID=77184 state=None
+AFTER_PID=77187 state=None
+AFTER_PID=77192 state=None
+AFTER_PID=77195 state=None
+AFTER_PID=77198 state=None

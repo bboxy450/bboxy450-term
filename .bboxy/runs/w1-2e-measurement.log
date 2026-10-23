@@ -1,0 +1,129 @@
+W1.2e measurement/evidence notes (Rook Ashwhisker)
+
+Baseline production: accepted 6bfe726. Fixture-only sources:
+150431631f5eafe0b7bc8c735faf2689bc532557 for staged gate/sample;
+4e52aa8d4f4dc613378277f8a1a51a0b9b04ce82 for corrected latency fixture.
+git diff --exit-code 6bfe726 <each baseline source> -- crates/bbt-supervisor/src/supervisor.rs = 0.
+The old .50/.99 fixture literals were fixed before latency was built; the gate
+build targets only gates_seats and never compiled that invalid fixture.
+
+Baseline 967 staged, 32kB/s, 60s (before-gate.log): spawn=61.340s,
+load=60.361s, Busy=0, writer busy=35.20%, commit p99 upper=7ms,
+max=17.896ms. Logic alive, 967 alive before cleanup, unexpected=[];
+this measured phase completed but THE WHOLE GATE DID NOT PASS.
+Teardown held 10 owned children in Child::wait/__wait4 while the PTY master
+remained open. Supervisor cleanup sample: 841/841 samples in that wait.
+The exact owned gate PID was terminated after diagnosis: exit=-15,
+wall=954.351s. before-forced-cleanup.log records verified PIDs/actions and
+all children gone before removal of owned run data. No peer PIDs touched.
+
+Alive-phase /usr/bin/sample PID 10 1 -file before-sample.log: exit=0.
+Supervisor samples=5403; top portable_pty::Child::try_wait frames=1279+2,
+1281/5403=23.71% stack occupancy (NOT a CPU percentage). The nested std
+try_wait frames are the same samples and are not added again.
+
+Baseline latency: release DEBUG=1, all 967 READY then one release file,
+CLOCK_MONOTONIC marker immediately before producer _exit(0) to client Exit.
+967/967 exit zero, final output before Exit, no duplicate Exit; command exit=0.
+p50=146.709ms, p99=268.008ms, max=275.264ms. This includes kernel process
+teardown, supervisor observation and client delivery, not kernel-only time.
+Every marker/receive timestamp and owned PID is in before-latency.log.
+
+PTY-cycle diagnostic (pty-close-diagnostic.log), subprocess Python with
+owned openpty master, setsid/TIOCSCTTY slave, raw 64MiB write, no master read.
+After select observed output, SIGKILL exact owned PID; WNOHANG for 250ms.
+8 running + 8 observed SIGSTOP trials: all remained ?Es, no waitable status
+while master held. Closing master allowed all to reap -9 in <=6.14ms after
+that 250ms window. Stopped arm additionally sent SIGCONT after master close.
+The 8 non-stopped trials isolate the held-master mechanism from staging.
+Diagnostic child exit=0. No primary keys, keychain or real transcripts used.
+
+Implementation: NOTE_EXIT on the existing mio kqueue for exact owned PIDs;
+EV_ADD ESRCH handles an already-exiting process. macOS can make that PID
+unattachable before its waitpid status is ready, so reaping is nonblocking.
+Only an already-notified exit retries in tick while its PTY drains; running
+seats never poll child status. No global waitpid(-1), SIGCHLD ownership,
+per-active-seat thread or second runtime. Non-macOS old polling fallback
+is deliberately unchanged and UNVALIDATED.
+
+Shutdown: flush coalesced capture, signal owned group/exact child, close the
+single Option-owned PTY master, then event wait/nonblocking retry bounded at
+250ms per child (not an overall 250ms actor-shutdown guarantee). A private
+short-lived shutdown kqueue cannot consume other seats' runtime events.
+An unconfirmed wait logs seat/generation/PID instead of blocking forever.
+Confirmed shutdown exit is captured once after output. Normal runtime retains
+its existing drain-before-Exit path. The owned profile driver now has a 360s
+watchdog and reports actual exit, so a failed teardown cannot hide indefinitely.
+
+Scoped checks: check-01 exited101 (fixture syntax/import), corrected;
+check-02 exited0 (pre-shutdown tests). check-03 exited101: test requested beyond
+the committed history and correctly received a gap; fixed request to 1..2.
+check-04 exited101: early exit notification preceded waitpid-ready, now handled
+nonblockingly with a bounded shutdown retry. check-05: supervisor tests 36 pass,
+3 ignored; scoped all-target strict clippy exit0. (22 lib +2 journal +2 reaping
++10 existing integration). ESRCH exactly-one Exit, early exiting output drain,
+EOF while still alive, staged blocked-writer capture+Exit and finite wait proven.
+
+After-profile and exact clean CI results will be appended below.
+
+After exact clean-source profile at 3ad1fc5f6ee00169249b7d15809bb4e88dc03d40:
+967 staged 32kB/s load60.483s, spawn72.996s, logic alive, Busy0,
+writer busy43.47%, commit p99upper10ms/max36.246ms. Whole gate exit0,
+including cleanup; no unconfirmed child-shutdown diagnostics. Memory695.438MiB,
+disk peak2154.4MiB, explicit 10GiB free-space guard. Native sample exit0:
+supervisor5458 samples, portable_pty try_wait / wait4=0 (0%).
+Initial after latency:967/967 exact Exit0, command0; p50=207.465ms,
+p99=333.919ms/max354.951ms, entire fixture23.62s vs baseline6.62s.
+This single run DOES NOT meet the no-latency-regression evidence requirement;
+paired diagnostics follow rather than changing a deadline or claiming success.
+
+First paired diagnostic batch is INVALID for A/B: sequential source worktrees
+shared target/w1-2e-profile. Cargo rebuilt the old source (fresh=false), then
+reused it for the event source (fresh=true); both copied binaries sha256
+424e923ead98b65062d0946d9a79a177b12185de7de4bec287130b75cc67d601.
+The four paired-N logs are actually polling-binary runs, whatever their labels.
+Their exits0 demonstrate fixture completion only, not an implementation comparison.
+No production change was based on them. Raw logs and JSON artifacts are retained.
+Original after staged/sample/latency remain valid: their supervisor artifacts
+were fresh=false with the event-source manifest path, before the bad reuse.
+
+Corrected comparison: old source b71b1a68422418e1065acc39290a1bac2f283490
+(the same production supervisor as 4e52aa8), fresh event-source build in its own
+new target/w1-2e-isolated-after. Event binary sha256:
+e81425fcd3ca523ab31b41fdb671528ab7471f0a5304f91f41170044496f87be.
+Driver asserts distinct hashes, runs old/new/new/old binaries without any cargo
+build during the batch, and logs load averages. See isolated-paired-*.log.
+
+Corrected ABBA results, each 967/967 zero exit, exactly one Exit per seat:
+run1 polling p50=266.036 p99=403.188 max=424.778ms; exit0, wall11.044s.
+run2 events p50=238.153 p99=367.846 max=383.148ms; exit0, wall26.478s.
+run3 events p50=235.684 p99=389.337 max=410.356ms; exit0, wall26.900s.
+run4 polling p50=249.585 p99=395.924 max=399.238ms; exit0, wall33.217s.
+Both event medians/p99s are lower than both aligned polling runs. Maxima
+are overlapping (383.148-410.356 vs399.238-424.778), not a guaranteed per-PID
+latency bound. Host load varied16.47 to43.70; no exclusive-machine claim.
+This paired distribution gives no observed systematic exit-latency regression;
+it does not replace the raw initial measurements or create a hard realtime SLA.
+The 256-event batch hypothesis was not implemented: corrected evidence did not
+justify another production change. All binary hashes/markers are retained.
+
+Rebased onto origin/main0102666 as393f0023d565ae7ee675bd5be9d3b39aaa4e5d02.
+git diff --exit-code 3ad1fc5 HEAD -- crates/bbt-supervisor =0: measured crate
+source is identical after that rebase. No source/dependency/lock edits outside
+bbt-supervisor. The transport socket-lifetime fix belongs to Sable and remains
+untouched. No new APIs, protocol fields, ring formats, SIGCHLD handler, worker
+runtime or dependency changes. Cargo fmt -p bbt-supervisor -- --check=0;
+git diff --check=0. All four rebased implementation/fixture commits signed G.
+
+Cleanup: private before/after diagnostic worktrees removed after actual child
+exits. Own profiling/scoped targets and copied binaries removed; bytes/free-space
+in cleanup.log. Accepted galleries and peers' processes/directories untouched.
+
+Exact clean-worktree CI at c5adca3c25a63d2362beb37f93e4351fa947a075:
+sh scripts/ci-local.sh exit0, wall505.256s, memory custody, private fresh target.
+Workspace build/clippy(-D warnings, all targets)/tests, UI IO lint, app smoke and
+6 invariants all passed; 4 named slow checks skipped by policy. Full stdout
+and actual child status in ci-c5adca3{,-status}.log. No parity change requested.
+Origin/main moved to4fa924d (Sable socket-lifetime ownership fix), so the final
+head will rebase and run exact CI again; this first pass is not substituted for
+that new integration run. Own reaping source stays unchanged.

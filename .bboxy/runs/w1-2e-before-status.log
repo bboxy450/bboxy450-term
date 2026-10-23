@@ -1,0 +1,50 @@
+[
+  {
+    "source": "150431631f5eafe0b7bc8c735faf2689bc532557",
+    "stage": "firehose-build",
+    "command": [
+      "cargo",
+      "build",
+      "--release",
+      "--locked",
+      "-p",
+      "bboxy-firehose"
+    ],
+    "child_pid": 70404,
+    "child_exit": 0,
+    "wall_seconds": 2.044367416994646
+  },
+  {
+    "source": "150431631f5eafe0b7bc8c735faf2689bc532557",
+    "stage": "build-gates_seats",
+    "command": [
+      "cargo",
+      "test",
+      "--release",
+      "--locked",
+      "-p",
+      "bbt-mux",
+      "--test",
+      "gates_seats",
+      "--no-run",
+      "--message-format=json"
+    ],
+    "child_pid": 70457,
+    "child_exit": 0,
+    "wall_seconds": 70.89729749999242
+  },
+  {
+    "source": "150431631f5eafe0b7bc8c735faf2689bc532557",
+    "stage": "967-sampled",
+    "command": [
+      "/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-profile/release/deps/gates_seats-4124c2039231a89d",
+      "gate_memory",
+      "--ignored",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "child_pid": 72498,
+    "child_exit": -15,
+    "wall_seconds": 954.350673332985
+  }
+]

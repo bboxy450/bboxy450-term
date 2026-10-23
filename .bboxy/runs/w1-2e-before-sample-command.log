@@ -1,0 +1,7 @@
+SOURCE=150431631f5eafe0b7bc8c735faf2689bc532557
+COMMAND=['/usr/bin/sample', '72498', '10', '1', '-file', '/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/w1-2e-before-sample.log']
+OWN_SAMPLE_PID=77213
+Sampling process 72498 for 10 seconds with 1 millisecond of run time between samples
+Sampling completed, processing symbols...
+Sample analysis of process 72498 written to file /Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/w1-2e-before-sample.log
+CHILD_EXIT=0

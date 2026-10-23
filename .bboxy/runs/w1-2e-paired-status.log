@@ -1,0 +1,38 @@
+[
+  {
+    "stage": "before-build",
+    "source": "b71b1a68422418e1065acc39290a1bac2f283490",
+    "child_exit": 0,
+    "binary_sha256": "424e923ead98b65062d0946d9a79a177b12185de7de4bec287130b75cc67d601"
+  },
+  {
+    "stage": "after-build",
+    "source": "3ad1fc5f6ee00169249b7d15809bb4e88dc03d40",
+    "child_exit": 0,
+    "binary_sha256": "424e923ead98b65062d0946d9a79a177b12185de7de4bec287130b75cc67d601"
+  },
+  {
+    "stage": "1-before",
+    "child_pid": 64425,
+    "child_exit": 0,
+    "wall_seconds": 21.54694158298662
+  },
+  {
+    "stage": "2-after",
+    "child_pid": 65790,
+    "child_exit": 0,
+    "wall_seconds": 14.066876750002848
+  },
+  {
+    "stage": "3-after",
+    "child_pid": 67250,
+    "child_exit": 0,
+    "wall_seconds": 11.30261995800538
+  },
+  {
+    "stage": "4-before",
+    "child_pid": 68843,
+    "child_exit": 0,
+    "wall_seconds": 9.611871708999388
+  }
+]

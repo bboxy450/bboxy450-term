@@ -18,6 +18,9 @@ use crate::protocol::*;
 use crate::ring::{CaptureHandle, CaptureQuery, CaptureResponse, CaptureWriter};
 use crate::transport::{BoundSocket, SocketPeer};
 
+#[cfg(target_os = "macos")]
+mod child_events;
+
 const WAKE: Token = Token(0);
 const LISTENER: Token = Token(1);
 const CHANNEL_CAPACITY: usize = 128;
@@ -26,8 +29,8 @@ const MAX_INPUT_IDS: usize = 4096;
 const TICK: Duration = Duration::from_millis(20);
 const CALL_TIMEOUT: Duration = Duration::from_secs(10);
 const OUTPUT_DELAY: Duration = Duration::from_millis(2);
-// A ready PTY can spin the actor much faster than child status can change.
-// Keep waitpid work bounded per child; EOF and kill deadlines still wake it.
+// Non-macOS fallback is unchanged; this pass validates the macOS cockpit only.
+#[cfg(not(target_os = "macos"))]
 const CHILD_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 pub struct Config {
@@ -285,6 +288,7 @@ enum Target {
 #[derive(Clone, Copy)]
 enum Route {
     Seat(Ulid),
+    Child(Ulid),
     Socket(Ulid),
 }
 
@@ -426,6 +430,13 @@ impl Actor {
                                 if event.is_writable() {
                                     seat.write_ready = true;
                                 }
+                            }
+                        }
+                        Some(Route::Child(id)) => {
+                            self.routes.remove(&token);
+                            if let Some(seat) = self.seats.get_mut(&id) {
+                                seat.complete_child_watch();
+                                seat.reap_child()?;
                             }
                         }
                         Some(Route::Socket(id)) => self.read_socket(id),
@@ -732,7 +743,11 @@ impl Actor {
                     ));
                 }
                 seat.flush_output().map_err(capture_error)?;
-                seat.master.resize(pty_size(size)).map_err(pty_error)?;
+                seat.master
+                    .as_ref()
+                    .ok_or_else(|| Failure::new(FailureCode::Io, "PTY is closed"))?
+                    .resize(pty_size(size))
+                    .map_err(pty_error)?;
                 seat.size = size;
                 let sequence = seat.next_seq;
                 let event = Event::Resized {
@@ -868,10 +883,19 @@ impl Actor {
             return Err(Failure::new(FailureCode::Limit, "machine seat cap reached"));
         }
         let token = self.token();
-        let seat = Seat::spawn(spec, token, self.poll.registry())?;
+        let mut seat = Seat::spawn(spec, token, self.poll.registry())?;
+        let child_token = self.token();
+        if seat.watch_child(self.poll.registry(), child_token)? {
+            self.routes
+                .insert(child_token, Route::Child(seat.spec.seat));
+        }
         let info = seat.info();
         if let Some(old) = self.seats.insert(info.seat, seat) {
             self.routes.remove(&old.token);
+            #[cfg(target_os = "macos")]
+            if let Some(watch) = &old.child_watch {
+                self.routes.remove(&watch.token());
+            }
         }
         self.routes.insert(token, Route::Seat(info.seat));
         Ok(Reply::Spawned { info })
@@ -1019,8 +1043,12 @@ struct PendingWrite {
 struct Seat {
     spec: LaunchSpec,
     size: SeatSize,
-    master: Box<dyn MasterPty + Send>,
+    master: Option<Box<dyn MasterPty + Send>>,
     child: Box<dyn Child + Send + Sync>,
+    #[cfg(target_os = "macos")]
+    child_watch: Option<child_events::Watch>,
+    #[cfg(target_os = "macos")]
+    reap_pending: bool,
     pid: u32,
     fd: RawFd,
     token: Token,
@@ -1039,6 +1067,7 @@ struct Seat {
     last_input_ms: u64,
     operator_draft: bool,
     exited: Option<ExitInfo>,
+    #[cfg(not(target_os = "macos"))]
     next_child_check: Instant,
     exit_published: bool,
     terminate_at: Option<Instant>,
@@ -1076,8 +1105,12 @@ impl Seat {
         Ok(Self {
             size: spec.size,
             spec,
-            master: pair.master,
+            master: Some(pair.master),
             child,
+            #[cfg(target_os = "macos")]
+            child_watch: None,
+            #[cfg(target_os = "macos")]
+            reap_pending: false,
             pid,
             fd,
             token,
@@ -1096,6 +1129,7 @@ impl Seat {
             last_input_ms: 0,
             operator_draft: false,
             exited: None,
+            #[cfg(not(target_os = "macos"))]
             next_child_check: Instant::now(),
             exit_published: false,
             terminate_at: None,
@@ -1115,6 +1149,50 @@ impl Seat {
             next_sequence: self.next_seq,
             exited: self.exited.clone(),
         }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn watch_child(&mut self, registry: &mio::Registry, token: Token) -> io::Result<bool> {
+        self.child_watch = child_events::Watch::register(registry, self.pid, token)?;
+        if self.child_watch.is_none() {
+            // The exited child remains unreaped, so its PID cannot be reused.
+            // It follows the same output-drain/one-Exit path as NOTE_EXIT.
+            self.reap_child()?;
+        }
+        Ok(self.child_watch.is_some())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn watch_child(&mut self, _registry: &mio::Registry, _token: Token) -> io::Result<bool> {
+        Ok(false)
+    }
+
+    fn complete_child_watch(&mut self) {
+        #[cfg(target_os = "macos")]
+        if let Some(watch) = self.child_watch.take() {
+            watch.completed();
+        }
+    }
+
+    fn reap_child(&mut self) -> io::Result<()> {
+        if self.exited.is_none() {
+            // Called only after NOTE_EXIT or EV_ADD's ESRCH, never on PTY EOF.
+            // An exiting process can be unattachable before waitpid is ready,
+            // e.g. while tty output drains. Never block that drain in wait().
+            #[cfg(target_os = "macos")]
+            {
+                self.reap_pending = true;
+                if let Some(status) = self.child.try_wait()? {
+                    self.exited = Some(ExitInfo {
+                        code: status.exit_code(),
+                        signal: status.signal().map(str::to_owned),
+                    });
+                    self.reap_pending = false;
+                }
+            }
+            self.read_ready = true;
+        }
+        Ok(())
     }
 
     fn sequence(&mut self) -> u64 {
@@ -1346,19 +1424,37 @@ impl Seat {
         {
             self.writer = None;
         }
-        let now = Instant::now();
-        let escalate = !self.termination_escalated && self.terminate_at.is_some_and(|at| now >= at);
-        if self.exited.is_none() && (now >= self.next_child_check || escalate) {
-            self.next_child_check = now + CHILD_POLL_INTERVAL;
-            if let Some(status) = self.child.try_wait()? {
-                self.exited = Some(ExitInfo {
-                    code: status.exit_code(),
-                    signal: status.signal().map(str::to_owned),
-                });
-                self.read_ready = true;
-            } else if escalate {
-                signal(self.pid, libc::SIGKILL)?;
-                self.termination_escalated = true;
+        #[cfg(target_os = "macos")]
+        if self.reap_pending {
+            // Only an already-notified exit may need a later waitpid-ready
+            // turn. Running seats never enter this path or poll child status.
+            self.reap_child()?;
+        }
+        #[cfg(target_os = "macos")]
+        if self.exited.is_none()
+            && !self.termination_escalated
+            && self.terminate_at.is_some_and(|at| Instant::now() >= at)
+        {
+            signal(self.pid, libc::SIGKILL)?;
+            self.termination_escalated = true;
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let now = Instant::now();
+            let escalate =
+                !self.termination_escalated && self.terminate_at.is_some_and(|at| now >= at);
+            if self.exited.is_none() && (now >= self.next_child_check || escalate) {
+                self.next_child_check = now + CHILD_POLL_INTERVAL;
+                if let Some(status) = self.child.try_wait()? {
+                    self.exited = Some(ExitInfo {
+                        code: status.exit_code(),
+                        signal: status.signal().map(str::to_owned),
+                    });
+                    self.read_ready = true;
+                } else if escalate {
+                    signal(self.pid, libc::SIGKILL)?;
+                    self.termination_escalated = true;
+                }
             }
         }
         self.write_pending();
@@ -1421,7 +1517,10 @@ impl Seat {
                 self.read_ready = false;
                 if read == 0 || error.raw_os_error() == Some(libc::EIO) {
                     self.eof = true;
-                    self.next_child_check = Instant::now();
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        self.next_child_check = Instant::now();
+                    }
                 } else if error.kind() != io::ErrorKind::WouldBlock {
                     return Err(error);
                 }
@@ -1495,9 +1594,72 @@ impl Seat {
 
 impl Drop for Seat {
     fn drop(&mut self) {
+        #[cfg(target_os = "macos")]
+        drop(self.child_watch.take());
         if self.ring.as_ref().is_none_or(CaptureHandle::can_capture) {
             let _ = self.flush_output();
         }
+        #[cfg(target_os = "macos")]
+        {
+            if self.exited.is_none() {
+                // portable-pty creates an owned session/process-group leader.
+                // Signal its group as well as the exact unreaped child; CONT
+                // also releases a staged/stopped child with KILL pending.
+                // SAFETY: this unreaped PID cannot be reused by another owner.
+                unsafe {
+                    libc::kill(-(self.pid as libc::pid_t), libc::SIGKILL);
+                    libc::kill(-(self.pid as libc::pid_t), libc::SIGCONT);
+                }
+                let _ = signal(self.pid, libc::SIGKILL);
+                let _ = signal(self.pid, libc::SIGCONT);
+            }
+            // A child can be exiting while tty output drains. Close the one
+            // owning master before waiting, after flushing captured bytes.
+            drop(self.master.take());
+            if self.exited.is_none() {
+                let until = Instant::now() + Duration::from_millis(250);
+                let result = child_events::exited_within(self.pid, Duration::from_millis(250))
+                    .and_then(|ready| {
+                        loop {
+                            let status = self.child.try_wait()?;
+                            if status.is_some() || !ready || Instant::now() >= until {
+                                return Ok(status);
+                            }
+                            // NOTE_EXIT/ESRCH may precede a waitable zombie. This
+                            // shutdown-only retry remains inside the same bound.
+                            std::thread::sleep(Duration::from_millis(1));
+                        }
+                    });
+                match result {
+                    Ok(Some(status)) => {
+                        self.exited = Some(ExitInfo {
+                            code: status.exit_code(),
+                            signal: status.signal().map(str::to_owned),
+                        });
+                    }
+                    result => eprintln!(
+                        "supervisor child shutdown unconfirmed: seat={} generation={} pid={} result={result:?}",
+                        self.spec.seat, self.spec.generation, self.pid
+                    ),
+                }
+            }
+            if let Some(status) = self.exited.clone()
+                && !self.exit_published
+                && self.output.is_empty()
+                && self.ring.as_ref().is_some_and(CaptureHandle::can_control)
+            {
+                let event = Event::Exited {
+                    seat: self.spec.seat,
+                    generation: self.spec.generation,
+                    seq: self.next_seq,
+                    status,
+                };
+                if let Err(error) = self.capture(event) {
+                    eprintln!("supervisor shutdown exit capture: {error}");
+                }
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
         if self.exited.is_none() {
             let _ = signal(self.pid, libc::SIGKILL);
             let _ = self.child.wait();
@@ -1551,15 +1713,13 @@ fn signal(pid: u32, signal: libc::c_int) -> io::Result<()> {
 mod capture_read_tests {
     use super::*;
 
-    #[test]
-    fn a_full_retained_capture_buffer_is_not_pty_eof() {
-        let root = tempfile::tempdir().unwrap();
-        let journal = root.path().join("journal");
+    fn fixture_actor(root: &std::path::Path) -> Actor {
+        let journal = root.join("journal");
         let poll = Poll::new().unwrap();
         let wake = Arc::new(Waker::new(poll.registry(), WAKE).unwrap());
         let capture_writer = CaptureWriter::start(wake, Some(&journal)).unwrap();
         let (_tx, rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
-        let mut actor = Actor {
+        Actor {
             poll,
             socket: None,
             config: Config {
@@ -1576,7 +1736,13 @@ mod capture_read_tests {
             next_token: 2,
             pending_io: Vec::new(),
             capture_writer,
-        };
+        }
+    }
+
+    #[test]
+    fn a_full_retained_capture_buffer_is_not_pty_eof() {
+        let root = tempfile::tempdir().unwrap();
+        let mut actor = fixture_actor(root.path());
         let mut spec = LaunchSpec::new("/bin/sleep", root.path());
         spec.args = vec!["60".into()];
         let seat_id = spec.seat;
@@ -1598,5 +1764,219 @@ mod capture_read_tests {
             "live PTY was deregistered after backpressure"
         );
         assert!(seat.output.is_empty(), "retained frame was not admitted");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn exited_between_spawn_and_registration_emits_exactly_one_exit() {
+        let root = tempfile::tempdir().unwrap();
+        let mut actor = fixture_actor(root.path());
+        let id = Ulid::new();
+        let lease = Ulid::new();
+        let (tx, rx) = mpsc::sync_channel(16);
+        actor.clients.insert(id, Target::Local(tx));
+        actor.active = Some((id, lease));
+        let token = actor.token();
+        let mut seat = Seat::spawn(
+            LaunchSpec::new("/usr/bin/true", root.path()),
+            token,
+            actor.poll.registry(),
+        )
+        .unwrap();
+        seat.writer = Some((id, Ulid::new()));
+        let until = Instant::now() + Duration::from_secs(5);
+        loop {
+            // SAFETY: observe this exact owned child without reaping it; its
+            // PID remains reserved for the subsequent EV_ADD/ESRCH path.
+            let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
+            assert_eq!(
+                unsafe {
+                    libc::waitid(
+                        libc::P_PID,
+                        seat.pid as libc::id_t,
+                        &mut info,
+                        libc::WEXITED | libc::WNOHANG | libc::WNOWAIT,
+                    )
+                },
+                0
+            );
+            if info.si_pid == seat.pid as libc::pid_t {
+                break;
+            }
+            assert!(Instant::now() < until, "owned fast child did not exit");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let child_token = actor.token();
+        assert!(
+            !seat
+                .watch_child(actor.poll.registry(), child_token)
+                .unwrap(),
+            "expected native ESRCH for the exited child"
+        );
+        assert_eq!(seat.exited.as_ref().unwrap().code, 0);
+        for _ in 0..3 {
+            seat.tick(&mut actor).unwrap();
+        }
+        let events: Vec<_> = rx.try_iter().collect();
+        assert_eq!(events.len(), 1, "missing or duplicate exit: {events:?}");
+        assert!(
+            matches!(&events[0], Event::Exited { seat: got, generation: 1, status, .. } if *got == seat.spec.seat && status.code == 0)
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn an_early_exiting_writer_is_drained_before_reaping_without_blocking_the_actor() {
+        let root = tempfile::tempdir().unwrap();
+        let mut actor = fixture_actor(root.path());
+        let mut spec = LaunchSpec::new("python3", root.path());
+        spec.args = vec![
+            "-c".into(),
+            "import os,tty; tty.setraw(1); os.write(1,b'x'*(64*1024*1024))".into(),
+        ];
+        let id = spec.seat;
+        let token = actor.token();
+        let mut seat = Seat::spawn(spec, token, actor.poll.registry()).unwrap();
+        let ring_path = root.path().join("ring");
+        let ring = crate::ring::Ring::open(&ring_path, id, 1, 0, Default::default()).unwrap();
+        seat.ring = Some(actor.capture_writer.register(ring));
+        let mut events = Events::with_capacity(8);
+        actor
+            .poll
+            .poll(&mut events, Some(Duration::from_secs(10)))
+            .unwrap();
+        assert!(events.iter().any(|event| event.token() == token));
+        signal(seat.pid, libc::SIGKILL).unwrap();
+        // Leave the master open and undrained, exactly the old teardown cycle.
+        // Observe the kernel's unattachable-exiting state without waiting for it.
+        let until = Instant::now() + Duration::from_secs(5);
+        let child_token = actor.token();
+        loop {
+            if child_events::Watch::register(actor.poll.registry(), seat.pid, child_token)
+                .unwrap()
+                .is_none()
+            {
+                break;
+            }
+            assert!(Instant::now() < until, "owned child never entered exit");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let started = Instant::now();
+        assert!(
+            !seat
+                .watch_child(actor.poll.registry(), child_token)
+                .unwrap()
+        );
+        assert!(started.elapsed() < Duration::from_secs(1));
+        while !seat.exit_published {
+            seat.tick(&mut actor).unwrap();
+            assert!(Instant::now() < until, "exiting PTY was not drained/reaped");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        drop(seat);
+        drop(actor);
+        let ring = crate::ring::Ring::open(&ring_path, id, 1, 0, Default::default()).unwrap();
+        let history = ring.history(1, ring.status().committed_sequence).unwrap();
+        assert!(history.gap.is_none());
+        assert!(history.records.iter().any(
+            |record| matches!(&record.event, Event::Output { bytes, .. } if !bytes.is_empty())
+        ));
+        assert_eq!(
+            history
+                .records
+                .iter()
+                .filter(|record| matches!(record.event, Event::Exited { .. }))
+                .count(),
+            1
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit() {
+        for staged in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let mut actor = fixture_actor(root.path());
+            let mut spec = LaunchSpec::new("python3", root.path());
+            spec.args = vec![
+                "-c".into(),
+                "import os,tty; tty.setraw(1); os.write(1,b'x'*(64*1024*1024))".into(),
+            ];
+            let id = spec.seat;
+            let token = actor.token();
+            let mut seat = Seat::spawn(spec, token, actor.poll.registry()).unwrap();
+            let child_token = actor.token();
+            seat.watch_child(actor.poll.registry(), child_token)
+                .unwrap();
+            let ring_path = root.path().join("ring");
+            let ring = crate::ring::Ring::open(&ring_path, id, 1, 0, Default::default()).unwrap();
+            seat.ring = Some(actor.capture_writer.register(ring));
+            // Observe actual PTY output, but leave the writer blocked on a
+            // 64 MiB write. Retain this read in the normal coalescing buffer.
+            let mut bytes = [0; 256];
+            let until = Instant::now() + Duration::from_secs(10);
+            let count = loop {
+                // SAFETY: the live master owns fd and bytes is writable.
+                let count = unsafe { libc::read(seat.fd, bytes.as_mut_ptr().cast(), bytes.len()) };
+                if count > 0 {
+                    break count as usize;
+                }
+                assert!(Instant::now() < until, "writer never reached the PTY");
+                std::thread::sleep(Duration::from_millis(1));
+            };
+            seat.output.extend_from_slice(&bytes[..count]);
+            seat.output_since = Some(Instant::now());
+            assert!(seat.child.try_wait().unwrap().is_none());
+            if staged {
+                signal(seat.pid, libc::SIGSTOP).unwrap();
+                loop {
+                    // SAFETY: observe the exact owned child's stop, without
+                    // consuming the status its supervisor must reap.
+                    let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
+                    assert_eq!(
+                        unsafe {
+                            libc::waitid(
+                                libc::P_PID,
+                                seat.pid as libc::id_t,
+                                &mut info,
+                                libc::WSTOPPED | libc::WNOHANG | libc::WNOWAIT,
+                            )
+                        },
+                        0
+                    );
+                    if info.si_pid == seat.pid as libc::pid_t {
+                        break;
+                    }
+                    assert!(Instant::now() < until, "owned writer did not stop");
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+            }
+            let started = Instant::now();
+            let pid = seat.pid;
+            drop(seat);
+            assert!(
+                started.elapsed() < Duration::from_secs(1),
+                "PTY teardown blocked"
+            );
+            // SAFETY: signal zero only queries the original child's existence.
+            assert_eq!(unsafe { libc::kill(pid as libc::pid_t, 0) }, -1);
+            assert_eq!(io::Error::last_os_error().raw_os_error(), Some(libc::ESRCH));
+            drop(actor); // drains the capture writer's shutdown barrier
+            let ring = crate::ring::Ring::open(&ring_path, id, 1, 0, Default::default()).unwrap();
+            assert_eq!(ring.status().committed_sequence, 2);
+            let history = ring.history(1, 2).unwrap();
+            assert!(history.gap.is_none());
+            assert_eq!(
+                history.records.len(),
+                2,
+                "missing/duplicate shutdown records"
+            );
+            assert!(
+                matches!(&history.records[0].event, Event::Output { bytes: got, .. } if got == &bytes[..count])
+            );
+            assert!(
+                matches!(&history.records[1].event, Event::Exited { status, .. } if status.signal.is_some())
+            );
+        }
     }
 }

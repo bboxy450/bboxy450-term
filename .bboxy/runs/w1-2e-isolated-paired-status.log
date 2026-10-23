@@ -1,0 +1,36 @@
+{
+  "sources": {
+    "before": "b71b1a68422418e1065acc39290a1bac2f283490",
+    "after": "3ad1fc5f6ee00169249b7d15809bb4e88dc03d40"
+  },
+  "binaries": {
+    "before": "424e923ead98b65062d0946d9a79a177b12185de7de4bec287130b75cc67d601",
+    "after": "e81425fcd3ca523ab31b41fdb671528ab7471f0a5304f91f41170044496f87be"
+  },
+  "runs": [
+    {
+      "stage": "1-before",
+      "child_pid": 77633,
+      "child_exit": 0,
+      "wall_seconds": 11.044452499976614
+    },
+    {
+      "stage": "2-after",
+      "child_pid": 78785,
+      "child_exit": 0,
+      "wall_seconds": 26.47768266600906
+    },
+    {
+      "stage": "3-after",
+      "child_pid": 80616,
+      "child_exit": 0,
+      "wall_seconds": 26.900143958016997
+    },
+    {
+      "stage": "4-before",
+      "child_pid": 82317,
+      "child_exit": 0,
+      "wall_seconds": 33.21730279098847
+    }
+  ]
+}

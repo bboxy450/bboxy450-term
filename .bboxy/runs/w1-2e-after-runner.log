@@ -1,0 +1,14 @@
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1   460Gi   411Gi    21Gi    96%    4.5M  220M    2%   /System/Volumes/Data
+COMMAND=['python3', '/tmp/rook-w1-2e-after-3ad1fc5/crates/bbt-supervisor/tests/profile_reaping.py', '--worktree', '/tmp/rook-w1-2e-after-3ad1fc5', '--target', '/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-profile', '--runs', '/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-runs', '--prefix', '/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/w1-2e-after', '--sha', '3ad1fc5f6ee00169249b7d15809bb4e88dc03d40']
+OWN_DRIVER_PID=43321
+DRIVER_PID=43321 SOURCE=3ad1fc5f6ee00169249b7d15809bb4e88dc03d40
+firehose-build: exit=0, wall=0.517s
+build-gates_seats: exit=0, wall=26.968s
+967-sampled: exit=0, wall=140.815s
+build-reaping: exit=0, wall=16.404s
+967-exit-latency: exit=0, wall=23.811s
+PROFILE_DRIVER_EXIT=0
+DRIVER_EXIT=0
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1   460Gi   412Gi    20Gi    96%    4.5M  205M    2%   /System/Volumes/Data

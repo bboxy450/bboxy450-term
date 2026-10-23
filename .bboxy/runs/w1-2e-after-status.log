@@ -1,0 +1,83 @@
+[
+  {
+    "source": "3ad1fc5f6ee00169249b7d15809bb4e88dc03d40",
+    "stage": "firehose-build",
+    "command": [
+      "cargo",
+      "build",
+      "--release",
+      "--locked",
+      "-p",
+      "bboxy-firehose"
+    ],
+    "child_pid": 43327,
+    "child_exit": 0,
+    "wall_seconds": 0.5169393329997547
+  },
+  {
+    "source": "3ad1fc5f6ee00169249b7d15809bb4e88dc03d40",
+    "stage": "build-gates_seats",
+    "command": [
+      "cargo",
+      "test",
+      "--release",
+      "--locked",
+      "-p",
+      "bbt-mux",
+      "--test",
+      "gates_seats",
+      "--no-run",
+      "--message-format=json"
+    ],
+    "child_pid": 43359,
+    "child_exit": 0,
+    "wall_seconds": 26.967967917007627
+  },
+  {
+    "source": "3ad1fc5f6ee00169249b7d15809bb4e88dc03d40",
+    "stage": "967-sampled",
+    "command": [
+      "/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-profile/release/deps/gates_seats-4124c2039231a89d",
+      "gate_memory",
+      "--ignored",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "child_pid": 46842,
+    "child_exit": 0,
+    "wall_seconds": 140.81496258400148
+  },
+  {
+    "source": "3ad1fc5f6ee00169249b7d15809bb4e88dc03d40",
+    "stage": "build-reaping",
+    "command": [
+      "cargo",
+      "test",
+      "--release",
+      "--locked",
+      "-p",
+      "bbt-supervisor",
+      "--test",
+      "reaping",
+      "--no-run",
+      "--message-format=json"
+    ],
+    "child_pid": 53914,
+    "child_exit": 0,
+    "wall_seconds": 16.403878666984383
+  },
+  {
+    "source": "3ad1fc5f6ee00169249b7d15809bb4e88dc03d40",
+    "stage": "967-exit-latency",
+    "command": [
+      "/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-profile/release/deps/reaping-841e5c668c9f331c",
+      "exit_events_at_machine_scale",
+      "--ignored",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "child_pid": 54462,
+    "child_exit": 0,
+    "wall_seconds": 23.810900209005922
+  }
+]

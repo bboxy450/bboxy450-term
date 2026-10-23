@@ -1,0 +1,33 @@
+OWN_CHILD_PID=29161 staged=False trial=0
+{"trial": 0, "staged": false, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 254.6774579968769}
+OWN_CHILD_PID=29164 staged=False trial=1
+{"trial": 1, "staged": false, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 253.3476249955129}
+OWN_CHILD_PID=29181 staged=False trial=2
+{"trial": 2, "staged": false, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 254.698417003965}
+OWN_CHILD_PID=29183 staged=False trial=3
+{"trial": 3, "staged": false, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 253.243624989409}
+OWN_CHILD_PID=29188 staged=False trial=4
+{"trial": 4, "staged": false, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 254.1413750150241}
+OWN_CHILD_PID=29193 staged=False trial=5
+{"trial": 5, "staged": false, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 256.1133749841247}
+OWN_CHILD_PID=29205 staged=False trial=6
+{"trial": 6, "staged": false, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 254.07220801571384}
+OWN_CHILD_PID=29208 staged=False trial=7
+{"trial": 7, "staged": false, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 254.56937501439825}
+OWN_CHILD_PID=29211 staged=True trial=0
+{"trial": 0, "staged": true, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 253.62029200186953}
+OWN_CHILD_PID=29215 staged=True trial=1
+{"trial": 1, "staged": true, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 255.17683301586658}
+OWN_CHILD_PID=29217 staged=True trial=2
+{"trial": 2, "staged": true, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 253.81424999795854}
+OWN_CHILD_PID=29221 staged=True trial=3
+{"trial": 3, "staged": true, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 253.54020902886987}
+OWN_CHILD_PID=29224 staged=True trial=4
+{"trial": 4, "staged": true, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 256.13649998558685}
+OWN_CHILD_PID=29226 staged=True trial=5
+{"trial": 5, "staged": true, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 255.14370898599736}
+OWN_CHILD_PID=29228 staged=True trial=6
+{"trial": 6, "staged": true, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 254.02695799130015}
+OWN_CHILD_PID=29231 staged=True trial=7
+{"trial": 7, "staged": true, "held_master_exit": null, "held_state": "?Es", "after_close_exit": -9, "total_ms": 254.87208299455233}
+CHILD_EXIT=0
