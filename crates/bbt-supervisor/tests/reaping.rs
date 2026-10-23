@@ -1,6 +1,7 @@
 #![allow(clippy::disallowed_methods)] // Opt-in owned-child reaping/latency fixture.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use bbt_supervisor::{Config, Event, LaunchSpec, Supervisor, Ulid};
@@ -149,7 +150,12 @@ os._exit(0)
         }
     }
     latencies.sort_by(f64::total_cmp);
-    println!("EXIT_LATENCY seats={n} p50_ms={:.6} p99_ms={:.6} max_ms={:.6} all_exit_zero=true clock=CLOCK_MONOTONIC span=producer_marker_to_client_exit", percentile(&latencies, .50), percentile(&latencies, .99), latencies[n-1]);
+    println!(
+        "EXIT_LATENCY seats={n} p50_ms={:.6} p99_ms={:.6} max_ms={:.6} all_exit_zero=true clock=CLOCK_MONOTONIC span=producer_marker_to_client_exit",
+        percentile(&latencies, 0.50),
+        percentile(&latencies, 0.99),
+        latencies[n - 1]
+    );
     supervisor.shutdown().unwrap();
     latencies
 }
@@ -164,6 +170,65 @@ fn final_output_and_exit_reach_the_owner() {
     assert_eq!(result.len(), 8);
     // A supervisor must never consume a different owner's child status.
     assert_eq!(foreign.wait().unwrap().code(), Some(17));
+}
+
+#[test]
+fn stdio_eof_does_not_wait_for_a_still_running_child() {
+    let root = tempfile::tempdir().unwrap();
+    let closed = root.path().join("closed");
+    let release = root.path().join("release");
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let client = supervisor.connect().unwrap();
+    struct Release(PathBuf);
+    impl Drop for Release {
+        fn drop(&mut self) {
+            let _ = std::fs::write(&self.0, b"go");
+        }
+    }
+    // On a failed query, release before Supervisor::drop joins the actor.
+    let release_on_drop = Release(release.clone());
+    let mut spec = LaunchSpec::new("python3", root.path());
+    spec.args = vec![
+        "-c".into(),
+        r#"
+import os, sys, time
+os.close(0); os.close(1); os.close(2)
+open(sys.argv[1], 'w').close()
+while not os.path.exists(sys.argv[2]): time.sleep(.01)
+os._exit(0)
+"#
+        .into(),
+        closed.to_string_lossy().into(),
+        release.to_string_lossy().into(),
+    ];
+    let info = client.spawn(spec).unwrap();
+    client.attach(info.seat, 1).unwrap();
+    let until = Instant::now() + Duration::from_secs(10);
+    while !closed.exists() {
+        assert!(Instant::now() < until, "child never closed its stdio");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    for _ in 0..10 {
+        let bbt_supervisor::Reply::Seats { seats } = client
+            .request(bbt_supervisor::Action::ListOwnedSeats)
+            .unwrap()
+        else {
+            panic!()
+        };
+        assert!(seats[0].exited.is_none(), "EOF invented process exit");
+    }
+    drop(release_on_drop);
+    loop {
+        assert!(Instant::now() < until, "exit after closed stdio was lost");
+        if let Ok(Event::Exited { seat, status, .. }) =
+            client.recv_timeout(Duration::from_millis(100))
+        {
+            assert_eq!(seat, info.seat);
+            assert_eq!(status.code, 0);
+            break;
+        }
+    }
+    supervisor.shutdown().unwrap();
 }
 
 #[test]
