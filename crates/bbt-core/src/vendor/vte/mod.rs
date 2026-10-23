@@ -26,6 +26,7 @@
 //! [`Parser`]: struct.Parser.html
 //! [`Perform`]: trait.Perform.html
 //! [Paul Williams' ANSI parser state machine]: https://vt100.net/emu/dec_ansi_parser
+// modified by bboxy450.
 #![deny(clippy::all, clippy::if_not_else, clippy::enum_glob_use)]
 
 use core::mem::MaybeUninit;

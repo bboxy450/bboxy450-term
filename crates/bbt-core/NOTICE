@@ -1,0 +1,20 @@
+bbt-core — third-party notices
+
+bbt-core is distributed under Apache-2.0. Its root LICENSE-MIT retains the
+MIT option for the vendored vte parser.
+
+Alacritty
+Source: https://github.com/alacritty/alacritty/tree/542147067dd016fc5f49120ef0ba605a98a4e3a7
+Copyright 2020 The Alacritty Project
+Licensed under Apache-2.0; see src/vendor/alacritty/LICENSE-APACHE.
+See VENDOR.md and source headers for retained modules and local adaptations.
+
+vte 0.15.0
+Source: https://github.com/alacritty/vte/tree/3b3da71c34cc1256c7e20981cf03f8eb95e08ffc
+Copyright (c) 2016 Joe Wilm
+Licensed under MIT OR Apache-2.0; see src/vendor/vte/LICENSE-MIT and src/vendor/vte/LICENSE-APACHE.
+Retained sources: src/vendor/vte. Local modifications are marked in the files.
+
+The upstream distributions contain no separate NOTICE file. Original licence
+texts and source notices are retained. New fork code is by Boxy (bboxy450).
+This inventory does not change the applicable licence terms.
