@@ -105,16 +105,6 @@ fn on_shape(shape: Shape, r: &Rect, p: Point) -> bool {
 
 #[test]
 fn fixture_counts() {
-    let bboxy = fixtures("bboxy");
-    let seq = bboxy
-        .iter()
-        .filter(|(_, s)| s.trim_start().starts_with("sequenceDiagram"))
-        .count();
-    assert_eq!(
-        (bboxy.len() - seq, seq),
-        (8, 5),
-        "8 flowcharts and 5 sequence diagrams from .bboxy"
-    );
     assert_eq!(fixtures("docs").len(), 20);
     assert_eq!(fixtures("state").len(), 20);
 }
@@ -129,14 +119,19 @@ fn every_bboxy_mermaid_block_has_a_fixture() {
         "no mermaid blocks found under {}",
         root.display()
     );
-    let have: Vec<String> = fixtures("bboxy")
-        .iter()
-        .map(|(_, s)| normalized(s))
-        .collect();
-    for (file, block) in blocks {
+    let bboxy = fixtures("bboxy");
+    let have: Vec<String> = bboxy.iter().map(|(_, s)| normalized(s)).collect();
+    for (file, block) in &blocks {
         assert!(
-            have.contains(&normalized(&block)),
+            have.contains(&normalized(block)),
             "{file}: a mermaid block has no fixture in tests/fixtures/bboxy; add it as <spec>-<n>.mmd:\n{block}"
+        );
+    }
+    let want: Vec<String> = blocks.iter().map(|(_, s)| normalized(s)).collect();
+    for (name, fixture) in bboxy {
+        assert!(
+            want.contains(&normalized(&fixture)),
+            "tests/fixtures/bboxy/{name}: fixture has no mermaid block under .bboxy; remove it or restore its source block:\n{fixture}"
         );
     }
 }
