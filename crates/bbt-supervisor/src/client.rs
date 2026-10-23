@@ -1,12 +1,15 @@
 //! Blocking supervisor clients, shared by in-process and separate-process logic.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
 use crate::store::{Result, invalid};
 use crate::{Action, Client, Event, Failure, Frame, Message, Reply, Ulid};
+
+#[cfg(test)]
+mod tests;
 
 pub trait SupervisorConnection: Send {
     fn request(&mut self, action: Action) -> Result<Reply>;
@@ -25,11 +28,97 @@ impl SupervisorConnection for Client {
     }
 }
 
+type EventKey = (Ulid, u64, u8);
+
+fn event_key(event: &Event) -> EventKey {
+    match event {
+        Event::Output {
+            seat, generation, ..
+        } => (*seat, *generation, 0),
+        Event::Resized {
+            seat, generation, ..
+        } => (*seat, *generation, 1),
+        Event::Exited {
+            seat, generation, ..
+        } => (*seat, *generation, 2),
+    }
+}
+
+struct Pending {
+    event: Event,
+    raw: bool,
+}
+
+/// Ring-backed notifications are bounded by distinct pending
+/// (seat, generation, kind), not output volume. Each process exits once; exits
+/// are retained, never replaced by output or by a newer process generation.
+/// Moving a replaced notification to the back preserves per-process ordering:
+/// an intervening resize is received before a later output that replays its gap.
+#[derive(Default)]
+struct PendingEvents {
+    captured: BTreeMap<(Ulid, u64), u64>,
+    ordered: BTreeMap<u64, Pending>,
+    slots: BTreeMap<EventKey, u64>,
+    next: u64,
+    raw_count: usize,
+}
+impl PendingEvents {
+    fn push(&mut self, event: Event) -> Result<()> {
+        let key = event_key(&event);
+        let raw = !self
+            .captured
+            .get(&(key.0, key.1))
+            .is_some_and(|first| event.sequence().unwrap() >= *first);
+        if raw {
+            if self.raw_count >= 1024 {
+                return Err(invalid(
+                    "raw supervisor event backlog exceeded; continuity unavailable without AttachRing",
+                ));
+            }
+            self.raw_count += 1;
+        } else if key.2 != 2
+            && let Some(old) = self.slots.insert(key, self.next)
+        {
+            self.ordered.remove(&old);
+        }
+        self.ordered.insert(self.next, Pending { event, raw });
+        self.next += 1;
+        Ok(())
+    }
+
+    fn confirm_ring(&mut self, seat: Ulid, generation: u64, first: u64) -> Result<()> {
+        self.captured.insert((seat, generation), first);
+        // Events and the attach reply can share a socket read. Promote only
+        // records covered by the confirmed ring; pre-ring bytes stay FIFO.
+        let pending = std::mem::take(&mut self.ordered);
+        self.slots.clear();
+        self.raw_count = 0;
+        for queued in pending.into_values() {
+            self.push(queued.event)?;
+        }
+        Ok(())
+    }
+
+    fn pop_front(&mut self) -> Option<Event> {
+        let (_, queued) = self.ordered.pop_first()?;
+        let key = event_key(&queued.event);
+        if queued.raw {
+            self.raw_count -= 1;
+        } else if key.2 != 2 {
+            self.slots.remove(&key);
+        }
+        if key.2 == 2 {
+            self.captured.remove(&(key.0, key.1));
+        }
+        Some(queued.event)
+    }
+}
+
 /// The same logic can run in a separate process against W2.1's private socket.
 pub struct SocketSupervisor {
     stream: std::os::unix::net::UnixStream,
     decoder: crate::transport::Decoder<Message>,
-    events: VecDeque<Event>,
+    events: PendingEvents,
     replies: BTreeMap<Ulid, std::result::Result<Reply, Failure>>,
     lease: Option<Ulid>,
 }
@@ -41,7 +130,7 @@ impl SocketSupervisor {
         let mut client = Self {
             stream,
             decoder: Default::default(),
-            events: VecDeque::new(),
+            events: PendingEvents::default(),
             replies: BTreeMap::new(),
             lease: None,
         };
@@ -70,14 +159,7 @@ impl SocketSupervisor {
         };
         for frame in self.decoder.push(&bytes[..count])? {
             match frame.body {
-                Message::Event { event } => {
-                    if self.events.len() >= 1024 {
-                        return Err(invalid(
-                            "supervisor event backlog exceeded; continuity unavailable",
-                        ));
-                    }
-                    self.events.push_back(event);
-                }
+                Message::Event { event } => self.events.push(event)?,
                 Message::Reply { request_id, result } => {
                     if self.replies.len() >= 32 {
                         return Err(invalid("unexpected reply backlog"));
@@ -92,6 +174,12 @@ impl SocketSupervisor {
 impl SupervisorConnection for SocketSupervisor {
     fn request(&mut self, action: Action) -> Result<Reply> {
         bbt_rt::assert_not_ui_thread();
+        let ring = match &action {
+            Action::AttachRing {
+                seat, generation, ..
+            } => Some((*seat, *generation)),
+            _ => None,
+        };
         let request = crate::Request::new(self.lease, action);
         let id = request.request_id;
         self.stream
@@ -99,7 +187,23 @@ impl SupervisorConnection for SocketSupervisor {
         let until = Instant::now() + Duration::from_secs(5);
         loop {
             if let Some(reply) = self.replies.remove(&id) {
-                return Ok(reply?);
+                let reply = reply?;
+                if let (
+                    Some((seat, generation)),
+                    Reply::Attached {
+                        attachment,
+                        first_available_sequence,
+                        ..
+                    },
+                ) = (ring, &reply)
+                {
+                    if attachment.seat != seat || attachment.generation != generation {
+                        return Err(invalid("ring attach reply mismatches seat/generation"));
+                    }
+                    self.events
+                        .confirm_ring(seat, generation, *first_available_sequence)?;
+                }
+                return Ok(reply);
             }
             if Instant::now() >= until {
                 return Err(invalid(

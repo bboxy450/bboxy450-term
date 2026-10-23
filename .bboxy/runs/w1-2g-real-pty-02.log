@@ -1,0 +1,14 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1.96s
+     Running tests/socket_backlog.rs (target/w1-2g-dev/debug/deps/socket_backlog-b85444e384592457)
+
+running 1 test
+socket backlog: owned_pid=79919 seat=01M5KJFFV591AJPSV8GCQMZ11N
+socket backlog: 10000 requests completed in 6.26991525s
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic has been running for over 60 seconds
+socket backlog: requests=10000, exact_bytes=67108877, exit_sequence=4358, replayed_records=8714
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 75.11s
+
+CHILD_EXIT=0

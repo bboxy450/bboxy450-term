@@ -1,0 +1,20 @@
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [optimized] target(s) in 7.75s
+     Running unittests src/lib.rs (target/w1-2g-dev/debug/deps/bbt_supervisor-bac4711fa5046bbf)
+
+running 1 test
+
+thread 'client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive' (11426361) panicked at crates/bbt-supervisor/src/client/tests.rs:84:25:
+captured notifications must not kill the supervisor client: Custom { kind: InvalidData, error: "supervisor event backlog exceeded; continuity unavailable" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... FAILED
+
+failures:
+
+failures:
+    client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+CHILD_EXIT=101

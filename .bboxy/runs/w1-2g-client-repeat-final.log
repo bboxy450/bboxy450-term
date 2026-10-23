@@ -1,0 +1,110 @@
+OWN_TEST_PID=89956; RUN=1
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.26s
+
+RUN=1 CHILD_EXIT=0 WALL_SECONDS=0.271
+OWN_TEST_PID=89959; RUN=2
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.23s
+
+RUN=2 CHILD_EXIT=0 WALL_SECONDS=0.229
+OWN_TEST_PID=89963; RUN=3
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.24s
+
+RUN=3 CHILD_EXIT=0 WALL_SECONDS=0.245
+OWN_TEST_PID=89967; RUN=4
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.24s
+
+RUN=4 CHILD_EXIT=0 WALL_SECONDS=0.247
+OWN_TEST_PID=89979; RUN=5
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.22s
+
+RUN=5 CHILD_EXIT=0 WALL_SECONDS=0.228
+OWN_TEST_PID=89980; RUN=6
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.28s
+
+RUN=6 CHILD_EXIT=0 WALL_SECONDS=0.283
+OWN_TEST_PID=89982; RUN=7
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.20s
+
+RUN=7 CHILD_EXIT=0 WALL_SECONDS=0.210
+OWN_TEST_PID=89985; RUN=8
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.24s
+
+RUN=8 CHILD_EXIT=0 WALL_SECONDS=0.244
+OWN_TEST_PID=89986; RUN=9
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.21s
+
+RUN=9 CHILD_EXIT=0 WALL_SECONDS=0.212
+OWN_TEST_PID=89987; RUN=10
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.20s
+
+RUN=10 CHILD_EXIT=0 WALL_SECONDS=0.207

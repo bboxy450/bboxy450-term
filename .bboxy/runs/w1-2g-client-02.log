@@ -1,0 +1,23 @@
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [optimized] target(s) in 29.95s
+     Running unittests src/lib.rs (target/w1-2g-dev/debug/deps/bbt_supervisor-bac4711fa5046bbf)
+
+running 4 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+
+thread 'client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive' (11471019) panicked at crates/bbt-supervisor/src/client/tests.rs:233:25:
+captured notifications must not kill the supervisor client: Os { code: 22, kind: InvalidInput, message: "Invalid argument" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... FAILED
+
+failures:
+
+failures:
+    client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.31s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+CHILD_EXIT=101
