@@ -527,7 +527,7 @@ async fn exercise(
                     sequence+=1;
                     if let Some(states)=progress.synthetic.get(){for value in &states.values{value.publish(sequence);}}
                     for (i,((seat,view),term)) in panes.iter().zip(&mut terms).enumerate() {
-                        let marker=if stop_sent{"R5PAUSED".to_owned()}else if i==0 && pending_probe.is_some(){format!("R5P{:08X}",pending_probe.unwrap())}else{format!("R5 {sequence:016X}")};
+                        let marker=if stop_sent{"R5PAUSED".to_owned()}else if i==0 && pending_probe.is_some(){format!("R5P{:08X}{}",pending_probe.unwrap(),if sequence.is_multiple_of(2){'|'}else{'/'})}else{format!("R5 {:04X}",sequence & 0xffff)};
                         term.advance(format!("\x1b[H\x1b[2J{marker}\r\nsynthetic {i} revision {sequence}\r\n").as_bytes());
                         grids.apply(*seat,&Update::Snapshot {snapshot:Box::new(Snapshot {view:*view,sequence,screen:bbt_proto::Screen::from_term(term,String::new(),None,None)})}).map_err(|e|e.to_string())?;
                     }
@@ -772,9 +772,12 @@ pub fn private_entry(args: &[String]) -> Option<Result<(), String>> {
                 sequence += 1;
                 let id = probe.load(Ordering::Acquire);
                 let header = if id == 0 {
-                    format!("R5 {sequence:016X}")
+                    format!("R5 {:04X}", sequence & 0xffff)
                 } else {
-                    format!("R5P{id:08X}")
+                    format!(
+                        "R5P{id:08X}{}",
+                        if sequence.is_multiple_of(2) { '|' } else { '/' }
+                    )
                 };
                 let prefix = format!("\x1b7\x1b[1;1H{header}\x1b[K\x1b8");
                 stdout

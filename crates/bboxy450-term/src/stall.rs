@@ -459,7 +459,7 @@ impl Native {
                 let prepared = &model.frames[seat];
                 let cell_width = prepared.width as f32 / screen.cols as f32;
                 let line_height = prepared.height as f32 / screen.rows as f32;
-                if rect.w * scale >= 11. * cell_width && rect.h * scale >= line_height {
+                if rect.w * scale >= 12. * cell_width && rect.h * scale >= line_height {
                     self.probe_frame = Some(frame);
                     self.encoded_ms = self
                         .probe_started
