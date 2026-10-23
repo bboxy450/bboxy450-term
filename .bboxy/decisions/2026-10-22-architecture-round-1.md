@@ -344,10 +344,14 @@ briefs Executors from the specs, never from this note.
     generation to bind to).
     **Amendment (same day, Nyx's finding that `identity/status.rs:193-215`
     returns `device_id: None` for LocalDev and unenrolled Pending):** the
-    device id is **born at first launch, not at enrollment**. ID1 §1 creates
-    the device key with its ULID in `DeviceKeyStore` custody and records it
-    in the account journal before any root certification; enrollment
-    certifies that key, it does not create it. So `Operator { device_id }`
+    device id is **born at first launch, not at enrollment**: the rule, not
+    yet the code when written (the ULID was minted at enrollment,
+    `journal.rs:327`, and the custody record had no device id; L8 D fixes
+    it as its own commit: mint once at first create, persist in the custody
+    record, upgrade legacy once, key id unchanged). ID1 §1 creates the
+    device key with its ULID in `DeviceKeyStore` custody and records it in
+    the account journal before any root certification; enrollment certifies
+    that key, it does not create it. So `Operator { device_id }`
     uses the custody device ULID for every issuer kind, LocalDev and
     Pending included, and `identity/status` must expose it from the custody
     record, not from the enrollment state. Memory custody (tests, debug
