@@ -720,4 +720,3 @@ test stall::load::tests::gui_keeps_applying_and_acknowledging_while_side_finish_
 test stall::load::tests::timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results ... ok
 
 test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 45 filtered out; finished in 0.09s
-
