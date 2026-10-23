@@ -24,7 +24,10 @@ struct RequestFlood {
 }
 impl SupervisorConnection for RequestFlood {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
-        let reply = self.client.request(action)?;
+        let kind = std::mem::discriminant(&action);
+        let reply = self.client.request(action).inspect_err(|error| {
+            eprintln!("socket backlog supervisor request {kind:?} failed: {error:?}");
+        })?;
         if let Reply::RingHistory { history } = &reply {
             self.replayed
                 .fetch_add(history.records.len() as u64, Ordering::Release);
@@ -44,7 +47,9 @@ impl SupervisorConnection for RequestFlood {
                 started.elapsed()
             );
         }
-        let event = self.client.receive(timeout)?;
+        let event = self.client.receive(timeout).inspect_err(|error| {
+            eprintln!("socket backlog supervisor receive {timeout:?} failed: {error:?}");
+        })?;
         if let Some(Event::Exited { seq, .. }) = &event {
             self.exit.store(*seq, Ordering::Release);
         }
