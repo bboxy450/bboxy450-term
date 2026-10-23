@@ -271,8 +271,11 @@ briefs Executors from the specs, never from this note.
     exit_code, evidence: [{criterion, reference}]}`. Acceptance requires
     `command` equal to the task's `verify`, `exit_code` 0, and, when the
     task lists acceptance criteria, one evidence entry per criterion. Task
-    swarm scope is the registry swarm of `assignee` and `delegated_by`,
-    which must match each other and the caller; never from a path. Rejected:
+    swarm scope (exact wording from W2.5d, Kestrel via the Oracle): every
+    present seat reference among `assignee` and `delegated_by` must resolve
+    to the caller's registry swarm; one alone anchors, two must match each
+    other, none is ambiguous and refuses; never from a path. A fresh
+    `assignee: none` task with `delegated_by: seat:<Oracle>` is delegable. Rejected:
     a free-text evidence blob (nothing to check against); trusting the
     reported command string without comparing it to `verify` (a passing
     `true` would accept anything); swarm from the task's path (paths move,
