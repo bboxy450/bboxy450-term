@@ -87,10 +87,10 @@ Two Executors build in parallel against these signatures; neither waits for the 
 // bbt-proto (C1a). Update, Screen, View, SeatRecord move here from bbt-mux unchanged.
 pub enum GuiAction { ListSeats, Watch { seat: SeatId, view: View }, Unwatch { seat: SeatId },
     Applied { seat: SeatId, view: View, sequence: u64 }, Input { seat: SeatId, id: Ulid, bytes: Vec<u8> },
-    Resize { seat: SeatId, cols: u16, rows: u16 }, Spawn { spec: SpawnSpec }, ScheduleClose { seat: SeatId },
+    Resize { seat: SeatId, cols: u16, rows: u16 }, Spawn { id: Ulid, spec: SpawnSpec }, ScheduleClose { seat: SeatId },
     UndoClose { seat: SeatId, close_id: Ulid, layout_revision: u64 }, GetHistory { seat: SeatId, from: u64, to: u64 } }
 pub enum GuiReply { Seats(Vec<GuiSeat>), Update { seat: SeatId, update: Update }, Seat(GuiSeat),
-    Ok { op: Ulid }, Error { op: Ulid, reason: String }, History { seat: SeatId, records: Vec<HistoryRecord>, next: Option<u64> } }
+    Spawned { op: Ulid, seat: SeatId }, Ok { op: Ulid }, Error { op: Ulid, reason: String }, History { seat: SeatId, records: Vec<HistoryRecord>, next: Option<u64> } }
 // Decision #27 (2026-10-23): history is capture-sequence based, bounded, with explicit gaps; not a row pager.
 pub enum HistoryRecord { Bytes { sequence: u64, bytes: Vec<u8> }, Gap { from: u64, to: u64, reason: String } }
 
@@ -115,7 +115,11 @@ pub enum ProcessStatus { Running { pid: u32 }, Exited { status: i32 }, ClosedGra
 pub struct SpawnSpec {
     pub swarm: SwarmId, pub harness_kind: String, pub name: Option<String>, pub role: Option<String>,
     pub cwd: String, pub location: Where, pub resume: Option<String>,   // harness session id to resume
+    #[serde(default)] pub placement: Option<Placement>,                 // decision #29; None = the default lane
 }
+// Captured at the pick, never resolved from focus when the reply arrives.
+pub enum Placement { NewTab { tab: TabId }, Split { tab: TabId, target: SeatId, target_generation: u64, side: Side } }
+pub enum Side { Right, Bottom }
 
 // crates/bboxy450-term/src/grids.rs (C1b)
 pub struct Grids { /* Replica per watched seat, Arc<Screen> per seat */ }
@@ -134,6 +138,8 @@ pub fn draw_pane(screen: &Screen, rect: Rect, ctx: &mut DrawCtx);              /
 ```
 
 Mapping, in logic and nowhere else: `observe::State` to `Activity` by name, with `Waiting` carrying the `WaitingKind` (`Permission`, `Question`; `Auth` when the 7501 `kind=auth` report lands in observe); `observe::Grade` by name; a subagent becomes a `SubagentRow` only while its state is `Active` or `Waiting`; `ProcessStatus` comes from the registry's lifecycle and the supervisor's exit report, never from the adapter. `GuiReply::Seat` replaces the earlier `State` reply and carries the whole `GuiSeat`, so the sidebar never needs a second fetch.
+
+**Explicit placement (decision #29, 2026-10-23, from Nyx's seam proposal).** A spawn carries a caller-minted `id` (a ULID, which is also its `op_id` in the control journal) and an optional `placement` captured at the pick: swarm, tab and target seat with its generation. Logic checks authority, swarm and target generation before launching and answers `Spawned { op, seat }` or `Error { op, reason }` with that same id; a retry of the same id returns the same seat through the existing op journal, and a disconnected in-flight launch is unknown, never repeated automatically. On the app side the pending placement lives in the immutable model until a matching `Spawned` consumes it, so `Latest` coalescing cannot drop it; `Seat` and `Seats` pushes are metadata and never place or focus anything. On a match the IO task installs the seat, calls the ui-model `place` once (`UM/model/window.rs:146, 315`) and hands focus to the UI's focus core; a duplicate reply is inert. If the captured anchor is gone or changed generation, the seat is kept and the outcome `placement_anchor_missing` or `placement_anchor_changed` is surfaced; nothing splits the current focus and nothing relaunches. Membership reconciliation adds and removes only the affected leaves and never rebuilds the tab and split trees (`A/model.rs:169` today does). The GUI wire's existing admission `version` is bumped for this change and a mismatched peer is refused by name; no capability negotiation. Stage and focus authority stay in the GUI (decision #26).
 
 The IO loop (C1a), per `GuiReply`:
 1. `Update{seat, update}` → `grids.apply` → if `Some`, `model = build(..)`, `latest.publish(Arc::new(model))`, mark dirty → then send `Applied{seat, view, sequence}` with the update's own view and sequence. Never ack before publishing.
