@@ -500,7 +500,17 @@ impl Broker {
             .map(|h| h.ranges.values().cloned().collect())
             .unwrap_or_default()
     }
-    pub fn publish(&mut self, stream: &str, mut event: Draft) -> Result<Envelope> {
+    pub fn publish(&mut self, stream: &str, event: Draft) -> Result<Envelope> {
+        self.publish_using(stream, event, None)
+    }
+    fn publish_using(
+        &mut self,
+        stream: &str,
+        mut event: Draft,
+        signer: Option<SigningKey>,
+    ) -> Result<Envelope> {
+        let supplied = signer.is_some();
+        let key = signer.unwrap_or_else(|| self.key.clone());
         validate_subject(&event.subject, false)?;
         if let Some(reply) = &event.reply_to {
             validate_subject(reply, false)?;
@@ -510,7 +520,7 @@ impl Broker {
         }
         self.ensure_stream(stream)?;
         let previous = self.streams[stream].log.last_sequence()?;
-        if self.custody_signers && !fanout(&event.subject) {
+        if (self.custody_signers || supplied) && !fanout(&event.subject) {
             // An outbox may replay across a hold/rekey or a crashed process.
             // Retain the original signed bytes after checking the full draft;
             // a different signer must not rewrite an already-journaled event.
@@ -524,6 +534,9 @@ impl Broker {
             if let Some(bytes) = old {
                 let old: Envelope = serde_json::from_slice(&bytes)?;
                 old.verify()?;
+                if supplied && old.provenance.signer != key.verifying_key().to_bytes() {
+                    return Err(invalid("activity signer conflicts with retained event"));
+                }
                 let mut draft = old.event.clone();
                 if let Some(marked) = draft.source.strip_prefix("ephemeral-hold/")
                     && let Some((run, source)) = marked.split_once('/')
@@ -537,18 +550,19 @@ impl Broker {
                 return Ok(old);
             }
         }
-        if let Some(hold) = &self.hold {
+        if !supplied && let Some(hold) = &self.hold {
             event.source = format!("ephemeral-hold/{}/{}", hold.run, event.source);
         }
         let envelope = if fanout(&event.subject) {
-            Envelope::signed(event, 0, String::new(), &self.key)?
+            Envelope::signed(event, 0, String::new(), &key)?
         } else {
-            self.streams[stream].log.append(event, &self.key)?
+            self.streams[stream].log.append(event, &key)?
         };
         if envelope.seq != 0 && envelope.seq <= previous {
             return Ok(envelope);
         }
         if envelope.seq != 0
+            && !supplied
             && let Some(hold) = &mut self.hold
         {
             let hash = envelope.hash()?;
@@ -629,6 +643,7 @@ impl Broker {
 
 enum Command {
     Publish(String, Draft, oneshot::Sender<Result<Envelope>>),
+    Activity(Box<(Draft, SigningKey)>, oneshot::Sender<Result<Envelope>>),
     Subscribe(Consumer, oneshot::Sender<Result<String>>),
     Poll(String, usize, oneshot::Sender<Result<Vec<Delivery>>>),
     Ack(String, String, u64, oneshot::Sender<Result<()>>),
@@ -655,6 +670,18 @@ impl BusHandle {
                 match command {
                     Command::Publish(stream, event, reply) => {
                         let _ = reply.send(broker.publish(&stream, event));
+                    }
+                    Command::Activity(activity, reply) => {
+                        let (event, key) = *activity;
+                        let result = if !event.subject.starts_with("doc/")
+                            && !event.subject.starts_with("artifact/")
+                            && !event.subject.starts_with("activity/")
+                        {
+                            Err(invalid("activity sink only accepts index subjects"))
+                        } else {
+                            broker.publish_using("index", event, Some(key))
+                        };
+                        let _ = reply.send(result);
                     }
                     Command::Subscribe(config, reply) => {
                         let _ = reply.send(broker.subscribe(config));
@@ -702,6 +729,17 @@ impl BusHandle {
             .map_err(|_| invalid("router stopped"))?;
         rx.await
             .map_err(|_| invalid("publish outcome unknown; query original event id"))?
+    }
+    /// Trusted index writer only: append and route once with the actual author
+    /// key. This is not a seat socket operation or a general signing service.
+    pub(crate) async fn publish_activity(&self, event: Draft, key: SigningKey) -> Result<Envelope> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::Activity(Box::new((event, key)), tx))
+            .await
+            .map_err(|_| invalid("activity router stopped"))?;
+        rx.await
+            .map_err(|_| invalid("activity outcome unknown; retain the event ID"))?
     }
     pub async fn subscribe(&self, config: Consumer) -> Result<String> {
         let (tx, rx) = oneshot::channel();

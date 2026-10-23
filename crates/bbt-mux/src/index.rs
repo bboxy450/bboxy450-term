@@ -189,6 +189,8 @@ pub enum GraphKind {
 pub struct Index {
     root: PathBuf,
     store: SqliteStore,
+    activity: crate::store::events::EventLog,
+    activity_sink: Option<(crate::bus::BusHandle, tokio::runtime::Handle)>,
     pub documents: BTreeMap<String, Document>,
     pub graphs: BTreeMap<GraphKind, DiGraph<String, Link>>,
     // A reopened index cold-reconciles its root. Persisted documents alone do
@@ -212,6 +214,13 @@ impl Index {
         std::fs::create_dir_all(root)?;
         let mut index = Self {
             root: root.canonicalize()?,
+            activity: crate::store::events::EventLog::open(
+                store
+                    .path
+                    .parent()
+                    .ok_or_else(|| invalid("index store has no object directory"))?,
+            )?,
+            activity_sink: None,
             store,
             documents: BTreeMap::new(),
             graphs: BTreeMap::new(),
@@ -458,10 +467,38 @@ impl Index {
                 body: body.into(),
                 expected: None,
             },
-            seat,
-            key,
+            &crate::provenance::author::Author::seat(seat, None, key),
             false,
         )
+    }
+    /// Production activity has one append/sign/route owner; fixtures may append directly.
+    pub(crate) fn route_activity(
+        &mut self,
+        bus: crate::bus::BusHandle,
+        handle: tokio::runtime::Handle,
+    ) {
+        self.activity_sink = Some((bus, handle));
+    }
+    pub(crate) fn append_activity(
+        &self,
+        event: Draft,
+        key: &SigningKey,
+    ) -> Result<crate::store::events::Envelope> {
+        use crate::store::Events;
+        if let Some((bus, handle)) = &self.activity_sink {
+            handle.block_on(bus.publish_activity(event, key.clone()))
+        } else {
+            self.activity.append(event, key)
+        }
+    }
+    pub(crate) fn project_activity(&self) -> Result<crate::provenance::projection::Projection> {
+        crate::provenance::projection::step(&self.root, &self.store, &self.activity)
+    }
+    pub(crate) fn mirror(&self) -> SqliteStore {
+        self.store.clone()
+    }
+    pub(crate) fn activity(&self) -> &crate::store::events::EventLog {
+        &self.activity
     }
     /// Read current bounded bytes without trusting the watcher's cached copy.
     pub(crate) fn current(&self, path: &str) -> Result<Option<Document>> {
@@ -488,7 +525,18 @@ impl Index {
         Ok(Some(Document::parse(path, &String::from_utf8(bytes)?)))
     }
     /// Reject a detected editor conflict; creation never replaces an existing file.
-    pub(crate) fn apply(&self, mut update: Update, seat: Ulid, key: &SigningKey) -> Result<()> {
+    #[cfg(test)]
+    pub(crate) fn apply(&self, update: Update, seat: Ulid, key: &SigningKey) -> Result<()> {
+        self.apply_author(
+            update,
+            &crate::provenance::author::Author::seat(seat, None, key),
+        )
+    }
+    pub(crate) fn apply_author(
+        &self,
+        mut update: Update,
+        author: &crate::provenance::author::Author<'_>,
+    ) -> Result<()> {
         if update.metadata["id"]
             .as_str()
             .and_then(|id| id.parse::<Ulid>().ok())
@@ -506,7 +554,7 @@ impl Index {
         if update.expected.is_none() {
             update.metadata["created"] = json!(timestamp);
         }
-        self.write_inner(update, seat, key, true)
+        self.write_inner(update, author, true)
     }
     fn destination(&self, path: &str) -> Result<PathBuf> {
         let path = Path::new(path);
@@ -543,11 +591,11 @@ impl Index {
     fn write_inner(
         &self,
         mut update: Update,
-        seat: Ulid,
-        key: &SigningKey,
+        author: &crate::provenance::author::Author<'_>,
         guarded: bool,
     ) -> Result<()> {
         bbt_rt::assert_not_ui_thread();
+        let key = author.key;
         let destination = self.destination(&update.path)?;
         if guarded {
             self.unchanged(&update)?;
@@ -559,9 +607,9 @@ impl Index {
             .as_object_mut()
             .ok_or_else(|| invalid("frontmatter must be a mapping"))?;
         map.remove("provenance");
-        map.entry("created_by")
-            .or_insert(json!(format!("seat:{seat}")));
-        map.insert("updated_by".into(), json!(format!("seat:{seat}")));
+        map.entry("created_by").or_insert(json!(author.id));
+        map.insert("updated_by".into(), json!(author.id));
+        map.insert("authorship".into(), author.public.clone());
         let front = serde_yaml::to_string(&metadata)?;
         let body_digest = digest(body.as_bytes());
         let front_digest = digest(front.as_bytes());
@@ -571,7 +619,7 @@ impl Index {
         pae.extend(domain);
         pae.extend(format!(" {} ", payload.len()).as_bytes());
         pae.extend(payload.as_bytes());
-        metadata["provenance"] = json!({"digest":format!("sha256:{body_digest}"),"frontmatter_digest":format!("sha256:{front_digest}"),"signer":format!("seat:{seat}"),"sig":base64::engine::general_purpose::STANDARD.encode(key.sign(&pae).to_bytes())});
+        metadata["provenance"] = json!({"digest":format!("sha256:{body_digest}"),"frontmatter_digest":format!("sha256:{front_digest}"),"signer":author.id,"sig":base64::engine::general_purpose::STANDARD.encode(key.sign(&pae).to_bytes())});
         let parent = destination.parent().ok_or_else(|| invalid("no parent"))?;
         std::fs::create_dir_all(parent)?;
         if !parent.canonicalize()?.starts_with(&self.root)
@@ -581,43 +629,34 @@ impl Index {
         {
             return Err(invalid("write escapes index root"));
         }
-        // The durable signed intent comes first. A later completion distinguishes
-        // an applied write from a crash/unknown outcome; the JSONL is a projection.
-        use crate::store::Events;
-        let events = crate::store::events::EventLog::open(
-            self.store
-                .path
-                .parent()
-                .ok_or_else(|| invalid("index store has no object directory"))?,
-        )?;
-        let day: String = self
-            .store
-            .connection()?
-            .query_row("SELECT date('now')", [], |r| r.get(0))?;
-        let log_dir = self.root.join("log");
-        std::fs::create_dir_all(&log_dir)?;
-        if !log_dir.canonicalize()?.starts_with(&self.root) {
-            return Err(invalid("activity log escapes index root"));
-        }
-        let projection_path = log_dir.join(format!("{day}.jsonl"));
-        if log_dir.symlink_metadata()?.file_type().is_symlink()
-            || projection_path
-                .symlink_metadata()
-                .is_ok_and(|m| m.file_type().is_symlink())
-        {
-            return Err(invalid("symlink in activity log path"));
-        }
+        // The durable signed intent comes first; JSONL remains a projection.
         let mut intent = Draft::new(
             format!(
                 "doc/{}/write_prepared",
                 metadata["id"].as_str().unwrap_or("legacy")
             ),
             "mux/document",
-            json!({"activity":"write","path":path,"body_digest":body_digest,"frontmatter_digest":front_digest,"agent":format!("seat:{seat}"),"used":metadata["derived_from"]}),
+            json!({"activity":"write","path":path,"body_digest":body_digest,"frontmatter_digest":front_digest,"agent":author.id,"used":metadata["derived_from"]}),
         );
-        intent.seat = Some(seat);
-        let prepared = events.append(intent, key)?;
-        metadata["provenance"]["log"] = json!(format!(".bboxy/log/{day}.jsonl#{}", prepared.seq));
+        let artifact = crate::provenance::artifacts::summary(metadata);
+        if let Some(artifact) = &artifact {
+            intent.payload["artifact"] = artifact.clone();
+        }
+        intent.seat = author.seat;
+        intent.generation = author.generation;
+        let prepared = self.append_activity(intent, key)?;
+        let mut projection = self.project_activity()?;
+        for _ in 0..64 {
+            if projection.cursor() >= prepared.seq {
+                break;
+            }
+            projection = self.project_activity()?;
+        }
+        metadata["provenance"]["log"] = json!(
+            projection
+                .reference(&prepared, &self.store)?
+                .ok_or_else(|| invalid("activity projection backlog; write intent retained"))?
+        );
         let document_id = metadata["id"].as_str().unwrap_or("legacy").to_owned();
         let temp = parent.join(format!(".{}.tmp", Ulid::new()));
         struct Temporary(PathBuf);
@@ -657,17 +696,13 @@ impl Index {
             "mux/document",
             json!({"activity":"write_applied","prepared":prepared.event.id,"generated":[format!("sha256:{body_digest}")]}),
         );
-        completed.seat = Some(seat);
-        let completed = events.append(completed, key)?;
-        let mut projection = std::fs::OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(projection_path)?;
-        for envelope in [prepared, completed] {
-            serde_json::to_writer(&mut projection, &envelope)?;
-            projection.write_all(b"\n")?;
+        if let Some(artifact) = artifact {
+            completed.payload["artifact"] = artifact;
         }
-        projection.sync_all()?;
+        completed.seat = author.seat;
+        completed.generation = author.generation;
+        self.append_activity(completed, key)?;
+        self.project_activity()?;
         Ok(())
     }
 }
