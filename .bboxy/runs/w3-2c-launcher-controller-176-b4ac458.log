@@ -1,0 +1,14 @@
+start 2026-10-23T09:33:15Z
+b4ac4589fd1616b65695abb6ff2d30cb0230adcd
+launcher request from public launchers::cases() constants: 176 source sha256 334254d2b95fd24b78a87992248bd3557800fe21ec88ede45ef44abd4aff7fea
+captured 100/176
+web: 176/176 captured; 0 failures
+public input pass-through: 15472 items with enterPicks; 2912 default-pick parents
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/176
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-nyx/target/l8-launcher/parity-launcher/native/layouts.json
+rendered 176 PNGs to /Users/feral/mydev/bboxy450-term-nyx/target/l8-launcher/parity-launcher/native
+parity: 176 cases, 0 review; /Users/feral/mydev/bboxy450-term-nyx/target/l8-launcher/parity-launcher/index.html
+parity gate: pass (0 pixel reviews advisory)
+extra Launcher176 exit=0
+end 2026-10-23T09:36:31Z

@@ -1,0 +1,106 @@
+L8 — pure launcher controller and Enter-default public input
+
+Source b4ac4589fd1616b65695abb6ff2d30cb0230adcd, support
+5a21420ad4a71364b20ed52f72f103e3a975ed35. Both signed G, machine fingerprint
+9B07E849480C68328CA20684844ECC0587DE7AB0. Branch nyx-l8-launcher in the
+Nyx worktree, rebased onto main 830511f including accepted focus and W1.2f.
+Oracle scope approvals: 7a4b7259-bfdc-4a84-a998-15c3450b04dc (controller),
+e759663d-4d5c-4054-9003-a984b573ae95 (enter_picks/conversion).
+
+Mechanism:
+- crates/bboxy450-term/src/launcher.rs — Controller owns the existing native
+  Launcher record. Query changes, wrapping selection, hover, explicit/typed
+  descent, climb, Escape, reroll intents, Enter/click/digits use view()/activation().
+  No new item tree, matching implementation, provider model, IO or winit.
+- Activate returns the selected id and original modifiers to the caller; it
+  never spawns or sends. enter_picks parents pick on Enter, while Right opens
+  children. Both parent default picks and leaf picks respect the cap;
+  navigation stays available. Down/link-disabled rows refuse activation.
+- replace_items keeps the selected id across catalog reordering and truncates
+  a path whose host/parent vanished or no longer exposes children. Provider
+  inputs in the tests come from Model.provider_launcher_items(), not a second
+  provider model. Connecting remains browseable per the existing projection;
+  the backend's Connected/Degraded spawn fence is deliberately unchanged.
+- crates/bboxy450-term/src/lib.rs exports the pure module; tests/launcher.rs has
+  15 synthetic controller cases. Text-field editing, name generation and
+  bounded dispatch are caller responsibilities expressed as pure outcomes.
+- crates/bbt-ui/src/modules/launcher.rs:25 carries serde-default enter_picks,
+  renamed enterPicks, and tests/launchers.rs tests true/missing/default children.
+- crates/bboxybook/capture-inputs.js:342 preserves that public constructor flag
+  through capture. Matching, materials, geometry and drawing do not read it.
+  Wren fixed the source lab cap bypass in 8ae27d9 before this branch froze.
+
+Development checks (own target, no incremental/debug info, memory custody):
+cargo test -p bboxy450-term --test launcher -p bbt-ui --test launchers --locked
+— exit 0; controller 15/0, UI launcher 6/0.
+cargo clippy -p bboxy450-term -p bbt-ui --all-targets --locked -- -D warnings
+— exit 0. node --check crates/bboxybook/capture-inputs.js — exit 0.
+git diff --check — exit 0.
+
+Earlier failure: the first expanded controller run was 13 pass/1 fail (exit 101).
+The test treated Connecting as down, but LinkState::down() and D1c's projection
+keep it browseable. The test now checks only Offline/Disconnected as down and
+separately verifies Connecting browsing. Product down semantics were not widened.
+All 15 final controller tests pass; Clippy ran afterward and passed.
+
+Final exact-source clean CI:
+Detached /tmp/ci-nyx-l8-launcher-b4ac458 at source b4ac458, empty git status before
+and after. CARGO_TARGET_DIR=/tmp/nyx-l8-launcher-target-b4ac458, jobs 2, explicit
+BBOXY_TEST_CUSTODY=memory, default O1/debug assertions. sh scripts/ci-local.sh
+--parity with BBOXYBOOK_GALLERY=flow — exit 0, all gates passed. Workspace build 0;
+workspace all-target strict Clippy 0; workspace 687 passed/0 failed/15 ignored;
+UI IO lint 0; app --smoke 0; invariants 7/0, 3 named slow skips. Socket-backlog passes
+on accepted W1.2f; no external waiver. Flow 40/40 within policy, zero reviews or
+geometry failures; max rect 0.0283203125 px / baseline 0.0078125 px.
+Raw CI: w3-2c-launcher-controller-ci-b4ac458.log
+sha256 c4ef1189d4c85449ca7317048fb1c401f3f0a973ed0e8b8c91b0ec9e6d9eedcc
+
+Extra Launcher176 verification:
+The first extra driver selected the default CLI legacy catalog and found zero
+layer=launchers records (exit 1 after the standard CI had already exited 0). Two
+parser mistakes in the temporary driver (overescaped regex, then missing '&' in
+Rust's slice literal) also exited 1; a failed manifest-validation step was followed
+by one unnecessary invocation of that same driver. These were verification
+harness failures, not product-test failures, and were not relabelled as passes.
+The final manifest was validated as 176 before capture. It uses the public
+launchers::cases() state constants and the same outer width/height/density/theme
+fields, then fresh capture supplies public constructor records. It does not copy
+browser child geometry. The CLI standing-selector gap is left for P3; no
+bboxybook main/gallery change was added here.
+Factory source sha256 334254d2b95fd24b78a87992248bd3557800fe21ec88ede45ef44abd4aff7fea.
+Final driver: w3-2c-launcher-controller-176-driver.log; final raw result:
+w3-2c-launcher-controller-176-b4ac458.log — exit 0.
+Extra log sha256 c3f10693b55e645615a7393f1ebf9657adc366e807a108861337ea43710ed3d7.
+Driver sha256 68550b6e30f5495917751b2f975a48b71ac1ac51ce9d545c42ba8102cae37c4b.
+176 web + 176 native PNGs, 176/176 within policy, 0 reviews/unproven/mismatches.
+Max rect 0.08441162109375 px / baseline 0.0078125 px; worst changed pixels 1.4413%.
+All 15472 captured item records carry enterPicks; 2912 are default-pick parents.
+No frozen peer cut is substituted. Lab checks 36 pages x 4 densities, 0 findings.
+Index: /Users/feral/mydev/bboxy450-term-nyx/target/l8-launcher/parity-launcher/index.html
+Flow index: /Users/feral/mydev/bboxy450-term-nyx/target/l8-launcher/parity-flow/index.html
+Image read: cap-reached-cozy-dark web/native show matching disabled launch rows,
+cap notice and live navigation selection. Worst preset diff retains text/rim
+residue within the existing policy; no policy changes made.
+
+Ten worst Launcher triplet basenames (web/,native/,diff/ under that index):
+- launcher/preset-split-down-compact-light.png — 1.4413%
+- launcher/preset-split-down-comfortable-light.png — 1.4383%
+- launcher/preset-split-down-cozy-light.png — 1.4315%
+- launcher/go-to-seats-and-swarms-comfortable-dark.png — 1.4293%
+- launcher/go-to-seats-and-swarms-compact-dark.png — 1.4293%
+- launcher/go-to-seats-and-swarms-cozy-dark.png — 1.4293%
+- launcher/go-to-seats-and-swarms-touch-dark.png — 1.4293%
+- launcher/preset-split-down-touch-light.png — 1.4281%
+- launcher/preset-split-right-compact-light.png — 1.4265%
+- launcher/preset-split-right-comfortable-light.png — 1.4236%
+
+Cleanup: removed only own inactive l8-dev and l8-launcher-dev targets
+(1,521,685,171 bytes total). After CI exited, copied its headless binary for the
+extra run and removed its private compiler target (2,451,905,367 bytes). The
+clean verification worktree was removed after the final extra run; parity
+artifacts, binary and local logs are retained.
+
+Gaps/untouched: app main.rs/scene.rs, native physical-key/IME handling, live
+overlay hosting, launch-plan/placement dispatch, Settings record composition,
+screens, connecting animation clock, hover tooltips and renderer/fx. This is
+the pure controller checkpoint; the agreed exact-hunk app review comes next.
