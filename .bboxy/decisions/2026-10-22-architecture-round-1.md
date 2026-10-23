@@ -514,6 +514,21 @@ briefs Executors from the specs, never from this note.
     them); a plugin host as the suite's shape now (#12 keeps plugins for
     providers, later).
 
+40. **Scrollback replay bounds (2026-10-23, C1c-3, Sable's two questions).**
+    (1) The resident parsed window rolls; a seek outside it re-replays from
+    the nearest ring checkpoint before the target, so any depth is
+    reachable and "top is line 1" is by re-replay, not residency. (2) The
+    4 MB cap is total heap of the history Playback per watched seat with a
+    dimension-aware line cap, floor three viewports, ceiling 10k; the
+    vision's "10k lines or 4 MB" is the raw ring's retention, a different
+    thing. A narrow bounded-storage and scroll-row API goes into bbt-core
+    (its own code, Apache-only crate) because every app with scrollback
+    needs it (#39), no wire or renderer change. Rejected: an
+    oldest-accessible limit at 10k lines (the ring has the bytes, refusing
+    to show them is a product bug); counting raw bytes only (the grid is
+    the heap that matters); the API in the app (it is terminal model, not
+    glue).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
