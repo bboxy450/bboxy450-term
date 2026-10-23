@@ -1,0 +1,7 @@
+cases 1768 1768
+status Counter({'within policy': 1594, 'review pixels': 174})
+reviews base 174 new 174
+geometry-flagged []
+NEW keys 0
+cleared 0
+Counter()

@@ -45,14 +45,15 @@ pub fn material(kind: Kind, theme: Theme) -> Material {
             speed: g.particle_speed as f32,
             particle_size: g.particle_size as f32,
         }),
-        Kind::Lane => Material::Lane(crate::shaders::lane(
-            LaneFx::Silk,
-            Color::hex(p.accent),
-            Activity::Active,
-            4.,
-            1.,
-            0.,
-        )),
+        Kind::Rim => Material::Rim(Rim {
+            color: Color::hex(p.accent),
+            waiting: Color::hex(TOKENS.color.state.waiting),
+            errored: Color::hex(TOKENS.color.state.errored),
+            activity: Activity::Active,
+            focus: 1.,
+            depth: TOKENS.glow.depth as f32,
+            phase_ms: 0.,
+        }),
     }
 }
 pub fn backdrop(kind: Kind, theme: Theme) -> DrawList {
@@ -190,7 +191,9 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &crate::gallery::Case) -
         };
         let params = &value["params"];
         let material = match kind {
-            Kind::Lane => return Err("lane has no web reference; see the shader gallery".into()),
+            Kind::Rim => {
+                return Err("the rim has no materials-page reference; see the pane cases".into());
+            }
             Kind::Flat => Material::Flat(color(&value["color"])?),
             Kind::Gloss => Material::Gloss(Gloss {
                 color: color(&value["color"])?,

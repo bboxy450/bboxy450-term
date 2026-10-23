@@ -8,3 +8,15 @@ pub mod style;
 pub mod widgets;
 pub use bbt_ui_model::{Density, Theme};
 pub use style::*;
+
+// Root-level so the invariants' `cargo test --lib <name> -- --exact` checks name them exactly.
+#[cfg(test)]
+#[test]
+fn rim_never_covers_text() {
+    modules::pane::rim_invariants::rim_never_covers_text();
+}
+#[cfg(test)]
+#[test]
+fn glow_never_moves_layout() {
+    modules::pane::rim_invariants::glow_never_moves_layout();
+}

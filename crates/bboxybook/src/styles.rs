@@ -270,7 +270,7 @@ fn paint_box(
     }
     let fill = Color(s.fill).alpha(s.opacity);
     let mat = match s.material {
-        Material::Flat | Material::Glow | Material::Lane => materials::Material::Flat(fill),
+        Material::Flat | Material::Glow | Material::Rim => materials::Material::Flat(fill),
         Material::Gloss => {
             let materials::Material::Gloss(mut g) =
                 crate::materials::material(Kind::Gloss, ctx.theme)
@@ -349,21 +349,21 @@ fn paint_box(
         }];
         pixels = materials::render_to_rgba(renderer, scene(&pixels, size, &items, ctx.theme))?;
     }
-    if s.material == Material::Lane {
+    if s.material == Material::Rim {
         // style.html explicitly shows an active, focused pane-glow fixture.
         let state = s.glow.unwrap_or(bbt_ui::Glow {
             focused: true,
             ..Default::default()
         });
-        let mut lane = crate::components::lane(ctx, Some(state));
-        for color in [&mut lane.color, &mut lane.waiting, &mut lane.errored] {
+        let mut rim = crate::components::rim(ctx, Some(state));
+        for color in [&mut rim.color, &mut rim.waiting, &mut rim.errored] {
             *color = color.alpha(s.opacity);
         }
         let items = [Surface {
             rect,
             radii: s.radii,
             clips: vec![],
-            material: materials::Material::Lane(lane),
+            material: materials::Material::Rim(rim),
         }];
         pixels = materials::render_to_rgba(renderer, scene(&pixels, size, &items, ctx.theme))?;
     }

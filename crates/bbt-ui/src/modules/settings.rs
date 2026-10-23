@@ -63,8 +63,9 @@ pub struct Harness {
 pub struct Appearance {
     pub theme: String,
     pub density: String,
-    /// Glow lane in px (glow.lane_min..=glow.lane_max): the gutter, the stage inset and the pane effect width.
-    pub lane: f32,
+    /// Glow depth in px (glow.depth_min..=glow.depth_max): how far the rim's bloom reaches
+    /// inside each pane. Paint only; it never moves layout.
+    pub depth: f32,
     pub glow: bool,
     pub subtitle: bool,
     pub opacity: f32,
@@ -2275,15 +2276,15 @@ impl Settings {
             )
             .into(),
         );
-        let (lo, hi) = (TOKENS.glow.lane_min as f32, TOKENS.glow.lane_max as f32);
-        let lane = row(
+        let (lo, hi) = (TOKENS.glow.depth_min as f32, TOKENS.glow.depth_max as f32);
+        let depth = row(
             "",
             plain(None, [0.; 4], 0.),
             10.,
             vec![
-                fixed(slider(((v.lane - lo) / (hi - lo)).clamp(0., 1.)), 120.),
+                fixed(slider(((v.depth - lo) / (hi - lo)).clamp(0., 1.)), 120.),
                 fixed(
-                    b.text("", format!("{} px", v.lane), 11., 500, true, false),
+                    b.text("", format!("{} px", v.depth), 11., 500, true, false),
                     35.2,
                 ),
             ],
@@ -2291,12 +2292,12 @@ impl Settings {
         rows.push(
             b.setting_row(
                 "card0/r2",
-                "Glow lane",
+                "Glow depth",
                 Some(&format!(
-                    "space around and between panes for the border effect · {lo} to {hi} px"
+                    "how far the rim glows into each pane · {lo} to {hi} px"
                 )),
-                lane,
-                v.lane != self.defaults.appearance.lane,
+                depth,
+                v.depth != self.defaults.appearance.depth,
                 false,
                 false,
             )

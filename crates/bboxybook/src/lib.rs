@@ -18,7 +18,6 @@ pub mod paths;
 pub mod seat_rows;
 pub mod perf;
 pub mod settings;
-pub mod shaders;
 pub mod streams;
 pub mod styles;
 pub mod swarms;

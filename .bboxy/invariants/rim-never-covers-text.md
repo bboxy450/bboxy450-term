@@ -3,8 +3,6 @@ id: 01M5MT43P4RP34NK00SFTBNBEH
 type: invariant
 title: the glow rim never covers a text cell
 status: active
-slow: true
-gate: pending-g1
 check: cargo test -p bbt-ui --locked --lib rim_never_covers_text -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a glow that touches text makes the terminal unreadable at the edge; a glow that moves layout breaks parity for every pane case
 links:

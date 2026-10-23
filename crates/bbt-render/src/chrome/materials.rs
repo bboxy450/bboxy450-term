@@ -15,8 +15,8 @@ pub enum Kind {
     Gloss,
     Frosted,
     Glow,
-    /// The confined border lane (G1-G3); not in `ALL`, which the parity galleries enumerate.
-    Lane,
+    /// The pane's alive rim (rim-glow); not in `ALL`, which the parity galleries enumerate.
+    Rim,
 }
 impl Kind {
     pub const ALL: [Self; 4] = [Self::Flat, Self::Gloss, Self::Frosted, Self::Glow];
@@ -26,7 +26,7 @@ impl Kind {
             Self::Gloss => "gloss",
             Self::Frosted => "frosted",
             Self::Glow => "glow",
-            Self::Lane => "lane",
+            Self::Rim => "rim",
         }
     }
 }
@@ -74,41 +74,23 @@ pub struct Glow {
     pub speed: f32,
     pub particle_size: f32,
 }
-/// A border effect confined to a lane of `lane` logical px just outside the
-/// box: zero inside the box and beyond the lane, so it never moves layout.
-/// Port of Wren's lab/web/shaders.html (prelude, main and the `fx` bodies).
+/// The alive rim (rim-glow §1): a 2 px band just inside the pane border where the seat
+/// colour flows round as a moving hue gradient, plus a bloom to `depth` px inside. Never
+/// outside the box and never past `depth`, so it never moves layout. Port of Wren's
+/// lab/web/glow.js alive rim.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Lane {
-    /// Seat colour; waiting and errored use their state colours.
+pub struct Rim {
+    /// Seat colour (alpha .5 for an inferred seat); waiting and errored use their state colours.
     pub color: Color,
     pub waiting: Color,
     pub errored: Color,
     pub activity: Activity,
     /// 1 for the focused pane (x1.3), 0 otherwise.
     pub focus: f32,
-    pub lane: f32,
-    pub effect: LaneFx,
+    /// How far the bloom reaches inside the border, px: min(Settings glow depth, padding).
+    pub depth: f32,
     /// Added to the frame clock, so neighbouring panes do not move in step.
     pub phase_ms: f32,
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LaneFx {
-    Silk,
-    Swell,
-    Tide,
-    /// The control: today's uniform breathing, confined to the lane.
-    Breathe,
-}
-impl LaneFx {
-    pub const ALL: [Self; 4] = [Self::Silk, Self::Swell, Self::Tide, Self::Breathe];
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::Silk => "silk",
-            Self::Swell => "swell",
-            Self::Tide => "tide",
-            Self::Breathe => "breathe",
-        }
-    }
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Material {
@@ -116,7 +98,7 @@ pub enum Material {
     Gloss(Gloss),
     Frosted(Frosted),
     Glow(Glow),
-    Lane(Lane),
+    Rim(Rim),
 }
 impl Material {
     pub fn kind(self) -> Kind {
@@ -125,7 +107,7 @@ impl Material {
             Self::Gloss(_) => Kind::Gloss,
             Self::Frosted(_) => Kind::Frosted,
             Self::Glow(_) => Kind::Glow,
-            Self::Lane(_) => Kind::Lane,
+            Self::Rim(_) => Kind::Rim,
         }
     }
 }
@@ -288,33 +270,30 @@ impl Surface {
                     return Err("invalid glow parameters".into());
                 }
             }
-            Material::Lane(l) => {
-                i.color = match l.activity {
-                    Activity::Waiting => l.waiting.0,
-                    Activity::Errored => l.errored.0,
-                    _ => l.color.0,
+            Material::Rim(r) => {
+                let state = match r.activity {
+                    Activity::Waiting => r.waiting.0,
+                    Activity::Errored => r.errored.0,
+                    _ => r.color.0,
                 };
-                // The quad covers the lane (vs adds one more pixel).
-                i.p0[3] = l.lane * scale;
+                // The state colour keeps the seat's alpha (an inferred seat draws at .5).
+                i.color = [state[0], state[1], state[2], r.color.0[3]];
+                // Wholly inside the box: the quad needs no outset (vs adds one pixel).
+                i.p0[3] = 0.;
                 i.p1 = [
-                    match l.effect {
-                        LaneFx::Silk => 0.,
-                        LaneFx::Swell => 1.,
-                        LaneFx::Tide => 2.,
-                        LaneFx::Breathe => 3.,
-                    },
-                    match l.activity {
+                    0.,
+                    match r.activity {
                         Activity::Idle => 0.,
                         Activity::Active => 1.,
                         Activity::Waiting => 2.,
                         Activity::Errored => 3.,
                     },
-                    l.focus,
-                    l.lane * scale,
+                    r.focus,
+                    r.depth * scale,
                 ];
-                i.p2[0] = l.phase_ms;
-                if !(1.0..=32.).contains(&l.lane) || !(0.0..=1.).contains(&l.focus) {
-                    return Err("invalid lane parameters".into());
+                i.p2[0] = r.phase_ms;
+                if !(1.0..=32.).contains(&r.depth) || !(0.0..=1.).contains(&r.focus) {
+                    return Err("invalid rim parameters".into());
                 }
             }
         }
@@ -444,7 +423,7 @@ impl Pass {
         };
         let pipelines = std::array::from_fn(|index| {
             let entry = [
-                "flat", "gloss", "frosted", "glow", "glow", "glow", "lane", "lane",
+                "flat", "gloss", "frosted", "glow", "glow", "glow", "rim", "rim",
             ][index];
             let blend = if index == 5 || index == 7 {
                 // A transparent group must retain the effect's coverage for
@@ -760,7 +739,7 @@ impl Pass {
                         3
                     }
                 }
-                Kind::Lane => {
+                Kind::Rim => {
                     if group {
                         7
                     } else {

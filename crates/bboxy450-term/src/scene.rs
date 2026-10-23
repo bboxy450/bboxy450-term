@@ -21,9 +21,9 @@ use bbt_ui_model::{
 };
 use std::{cell::RefCell, collections::HashMap};
 
-/// Settings > Glow lane range (operator, 2026-10-22).
-pub const LANE_MIN: f32 = TOKENS.glow.lane_min as f32;
-pub const LANE_MAX: f32 = TOKENS.glow.lane_max as f32;
+/// Settings > Glow depth range (rim-glow §3).
+pub const DEPTH_MIN: f32 = TOKENS.glow.depth_min as f32;
+pub const DEPTH_MAX: f32 = TOKENS.glow.depth_max as f32;
 
 /// The host retains the very layout it paints; pointer input never reconstructs
 /// browser positions or guesses a row's height.
@@ -76,9 +76,9 @@ pub struct Scene {
     backend_lost: bool,
     identity: Option<bbt_proto::GuiIdentity>,
     metrics: Metrics,
-    /// The glow lane (Settings > Glow lane, 2-8 px): the gutter between panes,
-    /// the inset of the panes area and every pane's effect width. Runtime state.
-    lane: f32,
+    /// The glow depth (Settings > Glow depth, 2-8 px): how far each pane's rim blooms
+    /// inside its border. Runtime paint state; layout never reads it.
+    depth: f32,
 }
 type FontKey = (u32, u16, bool, bool, u32);
 #[derive(Default)]
@@ -207,26 +207,23 @@ impl Scene {
             identity: None,
             hosts: vec![],
             metrics: Metrics::default(),
-            lane: TOKENS.glow.lane as f32,
+            depth: TOKENS.glow.depth as f32,
         }
-        .with_env_lane()
+        .with_env_depth()
     }
-    /// BBOXY_GLOW_LANE=2..8 for manual checks until Settings is hosted in the app.
-    fn with_env_lane(mut self) -> Self {
-        if let Some(px) = std::env::var("BBOXY_GLOW_LANE")
+    /// BBOXY_GLOW_DEPTH=2..8 for manual checks until Settings is hosted in the app.
+    fn with_env_depth(mut self) -> Self {
+        if let Some(px) = std::env::var("BBOXY_GLOW_DEPTH")
             .ok()
             .and_then(|v| v.parse().ok())
         {
-            self.set_lane(px);
+            self.set_depth(px);
         }
         self
     }
-    pub fn lane(&self) -> f32 {
-        self.lane
-    }
-    /// Takes effect on the next layout; nothing else changes.
-    pub fn set_lane(&mut self, px: f32) {
-        self.lane = px.clamp(LANE_MIN, LANE_MAX);
+    /// Repaints on the next frame; never moves layout.
+    pub fn set_depth(&mut self, px: f32) {
+        self.depth = px.clamp(DEPTH_MIN, DEPTH_MAX);
     }
     pub fn live() -> Self {
         Self {
@@ -239,9 +236,9 @@ impl Scene {
             identity: None,
             hosts: vec![],
             metrics: Metrics::default(),
-            lane: TOKENS.glow.lane as f32,
+            depth: TOKENS.glow.depth as f32,
         }
-        .with_env_lane()
+        .with_env_depth()
     }
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
         self.identity = model.identity.clone();
@@ -307,7 +304,7 @@ impl Scene {
     pub fn backend_ready(&mut self) {
         self.backend_lost = false;
     }
-    /// Read the actual pane body after lane-aware layout, including its padding.
+    /// Read the actual pane body after layout, including its padding.
     pub fn pane_bounds(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect)> {
         fn body(layout: &c::Layout) -> Option<Rect> {
             if matches!(&layout.kind, c::LayoutKind::Named(name) if name == "pane/term") {
@@ -461,19 +458,19 @@ impl Scene {
                 )
                 .map_err(|e| e.to_string())?,
         ];
-        // Every pane owns a lane of L px outside its box: L at the panes area's
-        // outer edges, and one shared lane as the gutter between panes.
-        let l = self.lane();
+        // A fixed gutter between panes and as the panes area's inset (rim-glow §2): the glow
+        // is drawn inside each pane, so no glow setting reaches the layout.
+        let g = TOKENS.layout.gutter as f32;
         let bounds = Rect::new(
-            bounds.x + l,
-            bounds.y + l,
-            (bounds.w - 2. * l).max(1.),
-            (bounds.h - 2. * l).max(1.),
+            bounds.x + g,
+            bounds.y + g,
+            (bounds.w - 2. * g).max(1.),
+            (bounds.h - 2. * g).max(1.),
         );
         for (id, rect) in self
             .tree
             .as_ref()
-            .map(|tree| solve_split(tree, bounds, l).panes)
+            .map(|tree| solve_split(tree, bounds, g).panes)
             .unwrap_or_default()
         {
             let seat = self.seats[self.seat_index[&id]].clone();
@@ -493,7 +490,7 @@ impl Scene {
                 reconnected: false,
                 glow_seed: effects.then_some(id.0.0 as u32),
                 opacity: 1.,
-                lane: l,
+                depth: self.depth,
             };
             layouts.push(
                 pane.element(pane_ctx)
@@ -672,7 +669,7 @@ impl Scene {
 }
 
 #[cfg(test)]
-mod lane_tests {
+mod depth_tests {
     use super::*;
 
     /// Pane rects (layouts after the title bar and the sidebar).
@@ -684,71 +681,33 @@ mod lane_tests {
     }
 
     #[test]
-    fn the_lane_sets_gutter_and_inset_and_relayouts_at_runtime() {
+    fn the_glow_depth_repaints_and_never_moves_a_pane() {
         let mut scene = Scene::new();
-        for l in [LANE_MAX, LANE_MIN, LANE_MAX] {
-            scene.set_lane(l);
-            let rects = panes(&scene);
-            let left = rects.iter().map(|r| r.x).fold(f32::MAX, f32::min);
-            let right = rects.iter().map(|r| r.right()).fold(f32::MIN, f32::max);
-            let top = rects.iter().map(|r| r.y).fold(f32::MAX, f32::min);
-            let bottom = rects.iter().map(|r| r.bottom()).fold(f32::MIN, f32::max);
-            // The panes area as Scene::layout computes it, before the lane inset.
-            let sidebar = 300_f32.min(1600. * 0.35);
-            let title = STYLE.spacing.title_bar as f32;
-            assert!(
-                (left - (sidebar + l)).abs() < 0.01,
-                "L={l}: left inset {}",
-                left - sidebar
-            );
-            assert!(
-                (right - (1600. - l)).abs() < 0.01,
-                "L={l}: right inset {}",
-                1600. - right
-            );
-            assert!(
-                (top - (title + l)).abs() < 0.01,
-                "L={l}: top inset {}",
-                top - title
-            );
-            assert!(
-                (bottom - (960. - l)).abs() < 0.01,
-                "L={l}: bottom inset {}",
-                960. - bottom
-            );
-            // Neighbours are exactly one lane apart.
-            let mut gaps = 0;
-            for a in &rects {
-                for b in &rects {
-                    let horizontal =
-                        (b.x - a.right() - l).abs() < 0.01 && a.y < b.bottom() && b.y < a.bottom();
-                    let vertical =
-                        (b.y - a.bottom() - l).abs() < 0.01 && a.x < b.right() && b.x < a.right();
-                    gaps += (horizontal || vertical) as usize;
-                }
-            }
-            assert!(gaps > 0, "L={l}: no neighbour one lane apart");
+        let g = TOKENS.layout.gutter as f32;
+        let reference = panes(&scene);
+        let sidebar = 300_f32.min(1600. * 0.35);
+        let left = reference.iter().map(|r| r.x).fold(f32::MAX, f32::min);
+        assert!(
+            (left - (sidebar + g)).abs() < 0.01,
+            "the stage inset is the gutter"
+        );
+        for depth in [DEPTH_MIN, 5., DEPTH_MAX] {
+            scene.set_depth(depth);
+            assert_eq!(panes(&scene), reference, "depth {depth} moved a pane");
         }
-        scene.set_lane(20.);
-        assert_eq!(scene.lane(), LANE_MAX);
-        scene.set_lane(0.5);
-        assert_eq!(scene.lane(), LANE_MIN);
+        scene.set_depth(20.);
+        assert_eq!(scene.depth, DEPTH_MAX);
+        scene.set_depth(0.5);
+        assert_eq!(scene.depth, DEPTH_MIN);
     }
 
     #[test]
     fn pane_rects_are_identical_across_activity_states() {
         let mut scene = Scene::new();
-        for l in [LANE_MIN, LANE_MAX] {
-            scene.set_lane(l);
-            let before = panes(&scene);
-            for sequence in 0..4 {
-                scene.update(sequence);
-                assert_eq!(
-                    panes(&scene),
-                    before,
-                    "L={l}: an activity change moved a pane"
-                );
-            }
+        let before = panes(&scene);
+        for sequence in 0..4 {
+            scene.update(sequence);
+            assert_eq!(panes(&scene), before, "an activity change moved a pane");
         }
     }
 }

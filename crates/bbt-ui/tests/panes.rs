@@ -46,7 +46,7 @@ fn pane() -> Pane {
         reconnected: false,
         glow_seed: Some(7),
         opacity: 1.,
-        lane: bbt_ui_model::TOKENS.glow.lane as f32,
+        depth: bbt_ui_model::TOKENS.glow.depth as f32,
     }
 }
 fn context() -> ui::Context {
@@ -124,16 +124,27 @@ fn pane_preserves_history_content_and_capability_actions_while_disconnected() {
             matches!(
                 p,
                 c::Paint::Material {
-                    kind: ui::Material::Lane,
+                    kind: ui::Material::Rim,
                     ..
                 }
             )
         })
         .unwrap();
-    let content=ops.iter().position(|p|matches!(p,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,bbt_ui_model::draw::Prim::Text{..})))).unwrap();
+    // The terminal's own text, wherever it sits: a stale pane dims its strip and terminal
+    // inside an isolated group.
+    fn has_output(p: &c::Paint) -> bool {
+        match p {
+            c::Paint::Draw(d) => d.primitives.iter().any(|p| {
+                matches!(p, bbt_ui_model::draw::Prim::Text { text, .. } if text.contains("output"))
+            }),
+            c::Paint::Group { ops, .. } => ops.iter().any(has_output),
+            _ => false,
+        }
+    }
+    let content = ops.iter().position(has_output).unwrap();
     assert!(
-        fx < content,
-        "the pane frame/content must occlude its backdrop particles"
+        fx > content,
+        "the rim lies inside the pane, painted above its strip and terminal (rim-glow)"
     );
     p.strip.may_interrupt = true;
     p.strip.may_mute = true;
