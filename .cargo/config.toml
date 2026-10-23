@@ -1,2 +1,0 @@
-[target.aarch64-apple-darwin]
-runner = "scripts/sign-run.sh"
