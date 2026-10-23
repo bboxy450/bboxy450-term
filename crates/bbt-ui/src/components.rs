@@ -7,7 +7,7 @@ use bbt_ui_model::{
     layout::{self, Align, Axis, Insets, Rect, Size, TextMeasure, TextStyle as MeasureStyle},
 };
 
-/// A stroke-only retained vector. Viewport size participates in layout;
+/// A retained vector, optionally filled before stroking. Viewport size participates in layout;
 /// the stroke may overflow it, like the lab's public UI.Path constructor.
 #[derive(Debug, Clone)]
 pub struct Path {
@@ -15,6 +15,7 @@ pub struct Path {
     pub points: std::sync::Arc<[PathCommand]>,
     pub stroke: PathStroke,
     pub paint: crate::Paint,
+    pub fill: Option<crate::Paint>,
     pub opacity: f32,
 }
 
@@ -318,6 +319,7 @@ pub enum LayoutKind {
         points: std::sync::Arc<[PathCommand]>,
         stroke: PathStroke,
         color: [f32; 4],
+        fill: Option<[f32; 4]>,
         scale: f32,
     },
 }
@@ -846,6 +848,11 @@ impl Element {
                     points: p.points.clone(),
                     stroke: p.stroke.clone(),
                     color: Color(p.paint.resolve(ctx)?).alpha(p.opacity).0,
+                    fill: p
+                        .fill
+                        .map(|f| f.resolve(ctx))
+                        .transpose()?
+                        .map(|f| Color(f).alpha(p.opacity).0),
                     scale: 1.,
                 },
                 vec![],
@@ -1803,6 +1810,7 @@ fn paint_contents(
             points,
             stroke,
             color: rgba,
+            fill,
             scale,
         } => {
             let mut list = list_with_clips(clips);
@@ -1812,6 +1820,7 @@ fn paint_contents(
                 points: points.clone(),
                 stroke: stroke.clone(),
                 color: color(*rgba, draw, opacity),
+                fill: fill.map(|rgba| color(rgba, draw, opacity)),
             });
             finish(list, clips, out);
         }

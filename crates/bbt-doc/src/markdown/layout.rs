@@ -212,6 +212,15 @@ impl Markdown {
     }
     /// Entire Markdown presentation, including generic YAML fields.
     pub fn element(&self, ctx: ui::Context, m: &dyn c::Measure, width: f32) -> c::Element {
+        self.element_with_title(ctx, m, width, None)
+    }
+    fn element_with_title(
+        &self,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+        title: Option<&str>,
+    ) -> c::Element {
         let width = finite_width(width).min(STYLE.spacing.doc_measure as f32);
         let r = Render {
             ctx,
@@ -224,13 +233,25 @@ impl Markdown {
             children.push(r.metadata(&self.frontmatter, &[]).into());
             children.push(spacer(STYLE.spacing.s7 as f32));
         }
-        children.push(r.blocks(&self.blocks, "").into());
+        children.push(r.blocks(self.display_blocks(title), "").into());
         column("markdown", plain([0.; 4]), 0., children)
     }
-    /// Body seam used by DocumentModal. Supplied semantic fixture diagrams are
-    /// preserved; real Markdown has no diagram geometry until W3.5b.
+    /// Body seam used by DocumentModal. Diagram records carry Source/scroll
+    /// state; their illustrative graph geometry is not consumed.
     pub fn body_element(
         &self,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+        diagrams: &[Diagram],
+    ) -> c::Element {
+        self.body_element_with_title(None, ctx, m, width, diagrams)
+    }
+    /// A header is already visible. Suppress only the lab's matching leading
+    /// ATX H1; retain the original Markdown bytes and every other heading.
+    pub fn body_element_with_title(
+        &self,
+        title: Option<&str>,
         ctx: ui::Context,
         m: &dyn c::Measure,
         width: f32,
@@ -243,7 +264,46 @@ impl Markdown {
             width,
             diagrams,
         };
-        r.blocks(&self.blocks, "")
+        r.blocks(self.display_blocks(title), "")
+    }
+    fn display_blocks(&self, title: Option<&str>) -> &[Block] {
+        let Some(title) = title.filter(|title| !title.is_empty()) else {
+            return &self.blocks;
+        };
+        let Some(line) = self
+            .source
+            .get(self.body_start..)
+            .and_then(|body| body.lines().find(|line| !line.trim().is_empty()))
+        else {
+            return &self.blocks;
+        };
+        let normalize = |value: &str| {
+            value
+                .to_lowercase()
+                .chars()
+                .map(|c| {
+                    if matches!(c, '\u{2012}'..='\u{2015}') {
+                        '-'
+                    } else {
+                        c
+                    }
+                })
+                .collect::<String>()
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+        };
+        if let Some(h1) = line.strip_prefix("# ")
+            && normalize(h1) == normalize(title)
+            && matches!(
+                self.blocks.first().map(|b| &b.kind),
+                Some(BlockKind::Heading { level: 1, .. })
+            )
+        {
+            &self.blocks[1..]
+        } else {
+            &self.blocks
+        }
     }
     pub fn modal_element(
         &self,
@@ -260,8 +320,13 @@ impl Markdown {
             ..Default::default()
         };
         shell.element_with_body(ctx, m, viewport, &|w| {
+            let title = if shell.document.title.is_empty() {
+                &shell.document.path
+            } else {
+                &shell.document.title
+            };
             if shell.document.kind.is_none() {
-                self.element(ctx, m, w)
+                self.element_with_title(ctx, m, w, Some(title))
             } else {
                 let width = finite_width(w).min(STYLE.spacing.doc_measure as f32);
                 let r = Render {
@@ -278,7 +343,7 @@ impl Markdown {
                     .cloned()
                     .collect();
                 if extra.is_empty() {
-                    r.blocks(&self.blocks, "")
+                    r.blocks(self.display_blocks(Some(title)), "")
                 } else {
                     column(
                         "body-with-metadata",
@@ -286,7 +351,7 @@ impl Markdown {
                         STYLE.spacing.s7 as f32,
                         vec![
                             r.metadata(&self.frontmatter, &extra).into(),
-                            r.blocks(&self.blocks, "").into(),
+                            r.blocks(self.display_blocks(Some(title)), "").into(),
                         ],
                     )
                 }
@@ -405,18 +470,25 @@ impl Render<'_> {
             ),
             BlockKind::Code { info, text } => {
                 if info.split_whitespace().next() == Some("mermaid") {
-                    if let Some(d) = self
+                    let options = self
                         .diagrams
                         .iter()
                         .find(|d| d.source.trim_end() == text.trim_end())
-                    {
-                        return (
-                            named(key, d.retained_element(key, self.width, self.ctx, self.m)),
-                            0.,
-                            0.,
-                        );
-                    }
-                    (self.mermaid_source(key, text), 0., 0.)
+                        .map(|d| crate::mermaid::Options {
+                            show_source: d.show_source,
+                            scroll_x: d.scroll_x,
+                        })
+                        .unwrap_or_default();
+                    (
+                        named(
+                            key,
+                            crate::mermaid::element_with_key(
+                                key, text, self.width, self.ctx, self.m, options,
+                            ),
+                        ),
+                        0.,
+                        0.,
+                    )
                 } else {
                     (
                         self.code(key, text, 1.6),
@@ -890,54 +962,6 @@ impl Render<'_> {
             vec![child.into()],
         )
     }
-    fn mermaid_source(&self, key: &str, value: &str) -> c::Element {
-        let header = row(
-            format!("{key}/head"),
-            border(
-                plain([6., 8., 6., 8.]),
-                self.ctx,
-                [false, false, true, false],
-            ),
-            8.,
-            vec![
-                nowrap(
-                    format!("{key}/kind"),
-                    "mermaid",
-                    font(ui::TypeStep::Caption, 400, true, ui::Color::Foreground),
-                )
-                .into(),
-                nowrap(
-                    format!("{key}/source-label"),
-                    "Source",
-                    font(ui::TypeStep::Caption, 600, false, ui::Color::Muted),
-                )
-                .into(),
-            ],
-        );
-        let inner = Render {
-            width: (self.width - 16.).max(0.),
-            ..*self
-        };
-        let body = column(
-            format!("{key}/source"),
-            plain([4., 8., 8., 8.]),
-            0.,
-            vec![inner.code(&format!("{key}/source-code"), value, 1.5).into()],
-        );
-        let mut b = c::Box::new(
-            border(
-                style(ui::Color::Surface, 0.5, STYLE.radius.card as f32, [0.; 4]),
-                self.ctx,
-                [true; 4],
-            ),
-            vec![header.into(), body.into()],
-        );
-        b.direction = Axis::Column;
-        b.align = c::Alignment::Stretch;
-        b.gap = ui::Length::Px(0.);
-        b.clip = true;
-        named(format!("{key}/figure"), c::Element::Box(b))
-    }
     fn table(
         &self,
         key: &str,
@@ -952,42 +976,50 @@ impl Render<'_> {
             return column(key, plain([0.; 4]), 0., vec![]);
         }
         let pad = STYLE.spacing.s4 as f32;
-        let min = ui::TypeStep::Body.pixels() * 3. + pad * 2.;
-        let canvas = (self.width - 2.).max(0.).max(min * n as f32);
-        let weights: Vec<_> = (0..n)
-            .map(|i| {
-                std::iter::once(header)
-                    .chain(rows.iter().map(Vec::as_slice))
-                    .filter_map(|r| r.get(i))
-                    .map(|c| {
-                        self.m.width(
-                            &Inline::plain_text(c),
-                            &measure_style(font(
-                                ui::TypeStep::Body,
-                                400,
-                                false,
-                                ui::Color::Foreground,
-                            )),
-                        )
-                    })
-                    .fold(1., f32::max)
-            })
-            .collect();
+        let available = (self.width - 2.).max(0.);
+        let content_limit = (available - 2. * pad - 2.).max(1.);
+        let mut minima = vec![2. * pad + 2.; n];
+        let mut preferred = minima.clone();
+        for (ri, cells) in std::iter::once(header)
+            .chain(rows.iter().map(Vec::as_slice))
+            .enumerate()
+        {
+            let f = font(
+                ui::TypeStep::Body,
+                if ri == 0 { 600 } else { 400 },
+                false,
+                ui::Color::Foreground,
+            );
+            for (i, cell) in cells.iter().enumerate() {
+                let [min, max] = self.cell_widths(cell, f);
+                // Like CSS auto tables, a column keeps its longest unbreakable
+                // word. Only a word wider than the entire table may fragment.
+                minima[i] = minima[i].max(min.min(content_limit) + 2. * pad + 2.);
+                preferred[i] = preferred[i].max(max + 2. * pad + 2.);
+            }
+        }
+        let minimum: f32 = minima.iter().sum();
+        let canvas = available.max(minimum);
         let extra = solve_box(
             &Box_ {
                 axis: Axis::Row,
                 pad: Insets::default(),
                 gap: 0.,
-                children: weights
+                children: preferred
                     .iter()
-                    .map(|w| (Size::Flex(*w), Child::default()))
+                    .zip(&minima)
+                    .map(|(want, min)| (Size::Flex((want - min).max(0.001)), Child::default()))
                     .collect(),
                 align: bbt_ui_model::layout::Align::Start,
             },
-            Rect::new(0., 0., (canvas - min * n as f32).max(0.), 0.),
+            Rect::new(0., 0., (canvas - minimum).max(0.), 0.),
             self.m,
         );
-        let widths: Vec<_> = extra.iter().map(|r| min + r.w).collect();
+        let widths: Vec<_> = extra
+            .iter()
+            .zip(&minima)
+            .map(|(r, min)| min + r.w)
+            .collect();
         let mut lines = vec![];
         for (ri, cells) in std::iter::once(header)
             .chain(rows.iter().map(Vec::as_slice))
@@ -1066,6 +1098,53 @@ impl Render<'_> {
         b.clip = true;
         b.gap = ui::Length::Px(0.);
         named(key, c::Element::Box(b))
+    }
+    fn cell_widths(&self, values: &[Inline], f: ui::Text) -> [f32; 2] {
+        let mut pieces = vec![];
+        Self::pieces(values, f, false, false, &mut pieces);
+        let (mut minimum, mut preferred, mut word, mut line) = (0_f32, 0_f32, 0_f32, 0_f32);
+        for piece in pieces {
+            match piece {
+                Piece::Text { value, font, .. } => {
+                    for part in value.split_inclusive(char::is_whitespace) {
+                        let content = part.trim_end_matches(char::is_whitespace);
+                        word += self.m.width(content, &measure_style(font));
+                        line += self.m.width(part, &measure_style(font));
+                        if part.chars().last().is_some_and(char::is_whitespace) {
+                            minimum = minimum.max(word);
+                            word = 0.;
+                        }
+                    }
+                }
+                Piece::Wiki {
+                    target,
+                    display,
+                    relation,
+                    weight,
+                } => {
+                    minimum = minimum.max(word);
+                    word = 0.;
+                    let chip = self.wiki(
+                        "table-measure",
+                        &target,
+                        &display,
+                        relation.as_deref(),
+                        weight,
+                        f,
+                    );
+                    let width = size(&chip, f32::INFINITY, self.ctx, self.m)[0];
+                    minimum = minimum.max(width);
+                    line += width;
+                }
+                Piece::Break => {
+                    minimum = minimum.max(word);
+                    preferred = preferred.max(line);
+                    word = 0.;
+                    line = 0.;
+                }
+            }
+        }
+        [minimum.max(word), preferred.max(line)]
     }
     fn metadata(&self, front: &Frontmatter, keys: &[String]) -> c::Element {
         let mut rows = vec![];

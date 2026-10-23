@@ -61,9 +61,14 @@ impl DrawList {
                     points,
                     stroke,
                     color,
+                    fill,
                 } => {
                     stroke.validate(points)?;
-                    if origin.iter().chain(color.0.iter()).any(|n| !n.is_finite())
+                    if origin
+                        .iter()
+                        .chain(color.0.iter())
+                        .chain(fill.iter().flat_map(|c| c.0.iter()))
+                        .any(|n| !n.is_finite())
                         || !scale.is_finite()
                         || *scale <= 0.
                     {

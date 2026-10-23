@@ -130,6 +130,8 @@ pub fn compare(root: &Path, cases: &[Case]) -> Result<()> {
 pub struct CasePolicy {
     pub historical: bool,
     pub text: bool,
+    /// renderer.md §4.4c: the real engine owns body layout; pixels stay visible.
+    pub diagram_body_advisory: bool,
     pub channel_tolerance: u8,
     pub changed_pixel_budget: f64,
     pub geometry_tolerance_px: Option<f64>,
@@ -172,13 +174,14 @@ impl CasePolicy {
         Ok(Self {
             historical: f.is_some_and(|f| f["reference"] == "baseline"),
             text,
+            diagram_body_advisory: crate::documents::has_diagram_body(case),
             channel_tolerance: diff::CHANNEL_TOLERANCE,
             changed_pixel_budget: if vector { 0.005 } else if text { 0.02 } else { diff::CHANGED_BUDGET },
             geometry_tolerance_px: if vector { Some(0.) } else { text.then_some(0.5) },
             scope: if f.is_some_and(|f|f["layer"]=="paths") {
                 "L6 Path strokes in caller-owned slots; public points tessellated natively; 1x/2x"
             } else if f.is_some_and(|f|f["layer"]=="documents") {
-                "DocumentModal and static document views; public document records, native layout, shared enclosing backdrop"
+                if crate::documents::has_diagram_body(case) { "Document figure chrome; engine canvas height removed from comparison coordinates only (renderer 4.4c); raw diagram pixels advisory" } else { "DocumentModal and static document views; public document records, native layout, shared enclosing backdrop" }
             } else if f.is_some_and(|f|f["layer"]=="settings") {
                 "Settings; public records and outer viewport only, read-mostly controls"
             } else if f.is_some_and(|f|f["layer"]=="graphs") {
@@ -695,6 +698,7 @@ mod tests {
     #[test]
     fn text_policy_requires_rects_and_baselines_even_when_pixels_pass() {
         let p = CasePolicy {
+            diagram_body_advisory: false,
             historical: false,
             text: true,
             channel_tolerance: 8,

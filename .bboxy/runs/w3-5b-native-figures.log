@@ -1,0 +1,139 @@
+W3.5b — native Mermaid figures and real-corpus acceptance amendment
+Source: 5e0e080; base: accepted origin/main ba7bdc9.
+One writing worktree: /Users/feral/mydev/bboxy450-term-nyx (nyx-w3-5a).
+Every source commit is signed by Boxy, key 9B07E849480C68328CA20684844ECC0587DE7AB0.
+
+Signed source stack (old frontmatter logs retain the exact earlier SHA they tested):
+9f2aeac — the document reader's YAML parser is the real .bboxy corpus gate.
+99c341e — optional retained Path fill, before stroke, through lyon + the existing AA pipeline.
+01155c4 — historical syntax-only gate evidence; later id/type amendment below supersedes its scope.
+97de6a0 — a present metadata block also requires id and type; one negative fixture per missing key.
+2d8480f — bbt-mermaid geometry to native DocumentModal figures; table min-content and picked title rule.
+3f33750 — complete true-size diagram canvases in the native repository gallery.
+5e0e080 — document figure chrome remains gated around engine-owned diagram bodies, renderer §4.4c.
+
+Mechanisms:
+crates/bbt-doc/src/mermaid.rs:66 — consume bbt-mermaid's Geometry; its Measure trait uses the same native UI fonts as the painter. No parser/layout copy, browser SVG, DOM coordinates or bitmap diagram.
+crates/bbt-doc/src/mermaid.rs:587 — retained Path/Text/Box composition at true size: node shapes, clusters, frames, notes, lifelines, role classes, links, filled/open/hollow markers and both endpoints.
+crates/bbt-ui/src/modules/document_modal/diagram.rs:709 — public retained-figure seam reuses the existing header, Source state, clipped horizontal scroll and 28 px edge fade.
+crates/bbt-render/src/chrome/paths.rs:279 — CPU lyon fill tessellation, fill before stroke; None preserves the existing stroke path. Fill validation and cache replay are tested.
+crates/bbt-doc/src/markdown/layout.rs:269 — hide only one leading raw H1 matching the surrounding header, with the picked case/whitespace/dash normalization. Original source and spans survive; a different H1 stays.
+crates/bbt-doc/src/markdown/layout.rs:965 — intrinsic table minima keep styled words and wikilink chips whole. A table wider than doc_measure scrolls explicitly; no arbitrary within-word shrink.
+crates/bbt-doc/tests/corpus.rs:10 — read every real .bboxy Markdown recursively, including untracked files, without following symlink directories. Malformed/unclosed YAML reports path:line; absent id/type reports the missing key.
+crates/bbt-doc/tests/corpus.rs:62 — nested malformed BOM/CRLF, unclosed and separate missing-id/missing-type fixtures; their repairs clear the failure. No-frontmatter Markdown remains valid.
+crates/bboxybook/src/documents.rs:288 — exclude the engine canvas/node geometry and remove each side's own canvas height from comparison-only figure/body flow coordinates. Raw native/web rectangles remain in layouts.json; the renderer receives no web geometry. A regression catches a 1 px chrome-padding error and preserves header/rail checks.
+crates/bboxybook/src/parity.rs:133 — explicit diagram_body_advisory policy + scope in report.json; raw body pixels stay visible. Text budgets remain 2%/0.5px, other budgets unchanged.
+crates/bboxybook/src/documents/repository.rs:262 — render every Mermaid block as a complete true-size review canvas, in addition to each document's top/middle/end views.
+
+Exact invariant command for the Architect's frontmatter-parses check-line migration:
+cargo test -p bbt-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact --nocapture
+The invariant-file migration and retirement of scripts/frontmatter.py remain with the Architect; this change does not edit those owned files.
+
+Support replay:
+48 accepted Path PNGs before/after optional fill are byte-identical (SHA-256 maps equal).
+Before: target/bbt-doc/path-fill-before; after: target/bbt-doc/path-fill-after.
+Filled/hollow triangles and a translucent polygon at 1x/2x, serialization, validation, retained pass-through and tessellation-cache replay have dedicated tests.
+
+References and decisions:
+Wren 411be60 — picked duplicate-title rule.
+Oracle 086c9e55-c343-476b-9e2d-ba0d968fe7b9; renderer.md §4.4c on a1dc85f — engine owns diagram layout, lab JS body is illustrative; figure chrome gates, raw body pixels are advisory, engine geometry tests plus image reads judge the body.
+Source base includes owner repairs: Seraph 950d4a9 (sequence :::class -> Actor.classes / Node.classes, bare label), Aster 97ed4fd (exact offline GPU test lint exemption). Both signatures and diffs inspected; no engine or terminal edits by Nyx.
+
+Verification (final exact source):
+
+Clean detached worktree: /tmp/ci-nyx-w35b-5e0e080; clean before and after.
+Source: 5e0e080ec15491340c51f4900e7441cf9cf8ebd8.
+Own CARGO_TARGET_DIR=/tmp/ci-nyx-w35b-ccc6424-target, reused only after its prior gate exited.
+CARGO_PROFILE_{DEV,TEST}_OPT_LEVEL=1, CARGO_PROFILE_{DEV,TEST}_DEBUG=0, CARGO_INCREMENTAL=0.
+BBOXYBOOK_GALLERY=documents BBOXYBOOK_REFERENCE_HEAD=5e0e080 sh scripts/ci-local.sh --parity — exit 0.
+cargo clippy -p bbt-ui-model -p bbt-render -p bbt-ui -p bbt-doc -p bboxybook --all-targets --locked -- -D warnings -A clippy::map_entry -A clippy::chunks_exact_to_as_chunks — exit 0.
+528 passed, 0 failed, 9 ignored across 99 result records (including invariant reruns); total gate plus strict lint 502.676 seconds.
+All six invariants held; layering/UI IO lint held. Lab-check 36 pages x 4 densities, zero findings; self-test proves all 9 checks fire; web captures 136/136, zero failures.
+Raw output: w3-5b-ci-local.log; SHA-256 953890bbf72b4b508ca582a18a43317068c465a461da416519c9bfaef4197a80.
+Exact frontmatter command above — exit 0, 88 Markdown files, 0 errors. Negative fixtures also pass in the full bbt-doc suite (20 tests).
+Raw exact-gate/corpus/fixture-gallery output: w3-5b-corpus.log.
+
+Final document parity:
+Index: /tmp/ci-nyx-w35b-5e0e080/target/parity/index.html
+Report: /tmp/ci-nyx-w35b-5e0e080/target/parity/report.json
+{
+  "cases": 136,
+  "reviews": 48,
+  "geometry_complete": 136,
+  "worst_rect_px": 0.08508300781238631,
+  "worst_baseline_px": 0.0078125,
+  "new_reviews": [],
+  "new_case_count": 16,
+  "new_case_reviews": 0,
+  "diagram_body_advisory_cases": 16,
+  "worst_ten": [
+    {
+      "key": "documents/with-a-diagram-compact-light.png",
+      "changed_percent": 10.565381547997617
+    },
+    {
+      "key": "documents/with-a-diagram-comfortable-light.png",
+      "changed_percent": 10.565255358026187
+    },
+    {
+      "key": "documents/with-a-diagram-cozy-light.png",
+      "changed_percent": 10.565255358026187
+    },
+    {
+      "key": "documents/with-a-diagram-touch-light.png",
+      "changed_percent": 10.565255358026187
+    },
+    {
+      "key": "documents/with-a-diagram-comfortable-dark.png",
+      "changed_percent": 10.524874567168398
+    },
+    {
+      "key": "documents/with-a-diagram-compact-dark.png",
+      "changed_percent": 10.524748377196968
+    },
+    {
+      "key": "documents/with-a-diagram-cozy-dark.png",
+      "changed_percent": 10.524748377196968
+    },
+    {
+      "key": "documents/with-a-diagram-touch-dark.png",
+      "changed_percent": 10.524748377196968
+    },
+    {
+      "key": "documents/as-modal-comfortable-light.png",
+      "changed_percent": 5.681771412108491
+    },
+    {
+      "key": "documents/as-modal-compact-light.png",
+      "changed_percent": 5.681771412108491
+    }
+  ]
+}
+The 48 advisory reviews are the same inherited set as the 120-case W3.5a gate at 715423f; the 16 added title cases all pass. No new review among common cases. The native engine intentionally has different diagram-body layout; the largest raw body pixels (10.565%) are visible for review, not misreported as text-AA residue. Every compared figure/chrome rectangle and baseline passes. No budget was retuned.
+Ten worst triplets are named in worst_ten above. For each key K, web/native/diff are index-parent/{web,native,diff}/K.
+Image read: worst with-a-diagram-cozy-light web/native/diff; as-modal and the two title-rule states. Card header, metadata, rail and following body flow are measured separately from the engine canvas.
+
+Repository gallery (exact final source, exit 0):
+/Users/feral/mydev/bboxy450-term-nyx/target/bbt-doc/repository-5e0e080/index.html
+88 real tracked Markdown files, 394 document viewports, 26 full Mermaid canvases (13 blocks x 2 themes); no metadata errors, unclipped body overflow, diagram errors or panic. Tables exceeding doc_measure are intentional horizontal scrollers, not unclipped overflow.
+Image read: vision.dark-top (single picked title, harness word intact); specs/architecture.light-top (metadata and min-content table); tasks/2026-10-22-w3-5-bbt-doc.dark-top (body/lists/code); specs/c1-live-seats.light.mermaid2 (complete native sequence, self/return arrows, lifelines).
+Lab-source gallery (exit 0):
+/Users/feral/mydev/bboxy450-term-nyx/target/bbt-doc/lab-diagrams-5e0e080/index.html
+Five exact lab inputs; four supported diagram types/variants plus gantt Source fallback in both themes. Ten document views and ten full canvases. The two gantt reports are expected content errors (line 1 unsupported type), shown with the original source, not render failures.
+Image read: flowchart TD/LR, state, sequence (bare labels and role classes verified after Seraph's fix), unsupported-syntax Source. Filled and open markers are native retained geometry.
+Report SHA-256 repository-5e0e080: c64629a8408d45c8ca6e9c30e00ddcb06fddbb9c79684189d0d2283160a2ab22
+Report SHA-256 lab-diagrams-5e0e080: 731cdbbb0126137aedd77efb65ebb15d37de8211228b7e0881c8fb70a94028a2
+
+Cleanup after every recorded process exited:
+{
+  "removed": "/tmp/ci-nyx-w35b-ccc6424-target",
+  "allocated_bytes_removed": 2312736768,
+  "volume_free_before": 14925680640,
+  "volume_free_after": 17084850176,
+  "volume_free_delta": 2159169536,
+  "note": "only exited private CI build target; accepted parity/corpus galleries retained; concurrent volume activity may affect free-space delta"
+}
+
+Remaining deliberate scope:
+Unsupported Mermaid remains readable Source with a note; no promise of the complete Mermaid language. Syntax highlighting and image loading remain deferred as in W3.5a. Host input/navigation wiring is outside this pure layout/gallery item. Root invariant check-line migration stays with the Architect. R6 cache work is queued after acceptance; it is not mixed into W3.5.
+No push or merge by Nyx. Final evidence commit only adds these logs; the tested source is unchanged.

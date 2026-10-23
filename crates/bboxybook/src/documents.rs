@@ -25,6 +25,8 @@ pub const STATES: &[&str] = &[
     "broken frontmatter",
     "as modal",
     "modal · plain markdown",
+    "title in body",
+    "different first heading",
 ];
 pub fn cases() -> Vec<Case> {
     let mut all = vec![];
@@ -86,7 +88,17 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
             let available = [seat_rows::number(host, "w")?, seat_rows::number(host, "h")?];
             let markdown = bbt_doc::parse(&view.document.body);
             let element = view.element_with_body(ctx, &metrics, available, &|width| {
-                markdown.body_element(ctx, &metrics, width, &view.diagrams)
+                markdown.body_element_with_title(
+                    Some(if view.document.title.is_empty() {
+                        &view.document.path
+                    } else {
+                        &view.document.title
+                    }),
+                    ctx,
+                    &metrics,
+                    width,
+                    &view.diagrams,
+                )
             });
             let width = if view.modal {
                 980_f32.min(view.viewport[0] * 0.94).min(available[0])
@@ -170,6 +182,58 @@ pub fn render_case(
     }
     Ok(out)
 }
+struct DiagramRegion {
+    key: String,
+    native: [f64; 4],
+    web: [f64; 4],
+}
+fn in_diagram_body(key: &str, region: &DiagramRegion) -> bool {
+    key.strip_prefix(&region.key).is_some_and(|suffix| {
+        suffix == "/canvas" || suffix.starts_with("/node") || suffix.starts_with("/label")
+    })
+}
+// Comparison projection only, never a layout input. Each side removes its own
+// engine-owned canvas height, retaining header, padding and following gaps.
+fn chrome_rect(
+    key: &str,
+    mut rect: [f64; 4],
+    regions: &[DiagramRegion],
+    native: bool,
+    modal: bool,
+) -> [f64; 4] {
+    let raw = rect;
+    for region in regions {
+        let canvas = if native { region.native } else { region.web };
+        let flow = key.starts_with("block") || key == "provenance";
+        if flow && raw[1] >= canvas[1] + canvas[3] - 0.5 {
+            rect[1] -= canvas[3];
+        }
+        let container = matches!(key, "view" | "main" | "body" | "rail")
+            || (!modal && key == "document")
+            || key == region.key
+            || key == format!("{}/figure", region.key)
+            || key == format!("{}/drawing", region.key);
+        if container && raw[1] <= canvas[1] + 0.5 && raw[1] + raw[3] >= canvas[1] + canvas[3] - 0.5
+        {
+            rect[3] -= canvas[3];
+        }
+    }
+    rect
+}
+pub fn has_diagram_body(case: &Case) -> bool {
+    case.fixture
+        .as_ref()
+        .and_then(|f| f["frames"].as_array())
+        .is_some_and(|frames| {
+            frames.iter().any(|f| {
+                f["parts"].as_array().is_some_and(|parts| {
+                    parts
+                        .iter()
+                        .any(|p| p["key"].as_str().is_some_and(|k| k.ends_with("/canvas")))
+                })
+            })
+        })
+}
 pub fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
     let mut all = vec![];
     for case in cases.iter().filter(|c| {
@@ -189,28 +253,67 @@ pub fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
         {
             let mut names = BTreeMap::new();
             seat_rows::named(&layout, &mut names);
+            let diagnostics = frame["parts"]
+                .as_array()
+                .ok_or("Document diagnostics missing")?;
+            let mut regions = vec![];
+            for p in diagnostics {
+                let key = p["key"].as_str().ok_or("Document part key missing")?;
+                if let Some(prefix) = key.strip_suffix("/canvas")
+                    && let Some(n) = names.get(key)
+                {
+                    let r = &p["rect"];
+                    regions.push(DiagramRegion {
+                        key: prefix.into(),
+                        native: [
+                            f64::from(n.rect.x - offset[0]),
+                            f64::from(n.rect.y - offset[1]),
+                            f64::from(n.rect.w),
+                            f64::from(n.rect.h),
+                        ],
+                        web: [
+                            f64::from(seat_rows::number(r, "x")?),
+                            f64::from(seat_rows::number(r, "y")?),
+                            f64::from(seat_rows::number(r, "w")?),
+                            f64::from(seat_rows::number(r, "h")?),
+                        ],
+                    });
+                }
+            }
             for p in frame["parts"]
                 .as_array()
                 .ok_or("Document diagnostics missing")?
             {
                 let key = p["key"].as_str().ok_or("Document part key missing")?;
-                let native = names.get(key).map(|n| {
-                    json!([
-                        n.rect.x - offset[0],
-                        n.rect.y - offset[1],
-                        n.rect.w,
-                        n.rect.h
-                    ])
+                if regions.iter().any(|r| in_diagram_body(key, r)) {
+                    continue;
+                }
+                let raw_native = names.get(key).map(|n| {
+                    [
+                        f64::from(n.rect.x - offset[0]),
+                        f64::from(n.rect.y - offset[1]),
+                        f64::from(n.rect.w),
+                        f64::from(n.rect.h),
+                    ]
                 });
                 let r = &p["rect"];
-                let web = [
-                    seat_rows::number(r, "x")?,
-                    seat_rows::number(r, "y")?,
-                    seat_rows::number(r, "w")?,
-                    seat_rows::number(r, "h")?,
+                let raw_web = [
+                    f64::from(seat_rows::number(r, "x")?),
+                    f64::from(seat_rows::number(r, "y")?),
+                    f64::from(seat_rows::number(r, "w")?),
+                    f64::from(seat_rows::number(r, "h")?),
                 ];
+                let modal = frame["view"]["modal"].as_bool().unwrap_or(false);
+                let native = raw_native.map(|r| chrome_rect(key, r, &regions, true, modal));
+                let web = chrome_rect(key, raw_web, &regions, false, modal);
                 let text = p["kind"] == "text";
-                parts.push(json!({"key":key,"kind":if text{"text"}else{"box"},"native":native,"web":web,"baseline":if text{json!({"native":names.get(key).and_then(|n|seat_rows::text_baseline(n)).map(|y|y-offset[1]),"web":p["font_diagnostics"]["baseline"].as_f64().map(|b|b+web[1]as f64)})}else{Value::Null},"children":[]}));
+                let native_baseline = names
+                    .get(key)
+                    .and_then(|n| seat_rows::text_baseline(n))
+                    .map(|y| {
+                        f64::from(y - offset[1]) + native.unwrap()[1] - raw_native.unwrap()[1]
+                    });
+                parts.push(json!({"key":key,"kind":if text{"text"}else{"box"},"native":native,"web":web,"raw_native":raw_native,"raw_web":raw_web,"diagram_body_excluded":!regions.is_empty(),"baseline":if text{json!({"native":native_baseline,"web":p["font_diagnostics"]["baseline"].as_f64().map(|b|b+web[1])})}else{Value::Null},"children":[]}));
             }
         }
         all.push(json!({"key":case.relative(),"tree":{"kind":"box","native":[0.,0.,case.width as f32,case.height as f32],"web":[0.,0.,case.width as f32,case.height as f32],"children":parts}}));
@@ -219,4 +322,60 @@ pub fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
 }
 pub fn render(out: &Path) -> Result<()> {
     crate::materials::render_gallery(out, &cases())
+}
+
+#[cfg(test)]
+mod diagram_policy_tests {
+    use super::*;
+
+    #[test]
+    fn engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated() {
+        let regions = [DiagramRegion {
+            key: "block2".into(),
+            native: [10., 50., 500., 160.],
+            web: [10., 50., 450., 120.],
+        }];
+        let native = chrome_rect(
+            "block2/figure",
+            [2., 20., 576., 200.],
+            &regions,
+            true,
+            false,
+        );
+        let web = chrome_rect(
+            "block2/figure",
+            [2., 20., 576., 160.],
+            &regions,
+            false,
+            false,
+        );
+        assert_eq!(native, web);
+        assert_eq!(
+            chrome_rect("block3", [2., 230., 576., 30.], &regions, true, false),
+            chrome_rect("block3", [2., 190., 576., 30.], &regions, false, false)
+        );
+        assert_ne!(
+            chrome_rect(
+                "block2/figure",
+                [2., 20., 576., 201.],
+                &regions,
+                true,
+                false
+            ),
+            web,
+            "one wrong chrome pixel still fails"
+        );
+        assert_eq!(
+            chrome_rect("block2/head", [2., 20., 576., 30.], &regions, true, false),
+            [2., 20., 576., 30.]
+        );
+        assert_eq!(
+            chrome_rect("rail/h1", [900., 230., 200., 30.], &regions, true, false),
+            [900., 230., 200., 30.],
+            "parallel rail content never follows the Markdown flow"
+        );
+        assert!(in_diagram_body("block2/node0", &regions[0]));
+        assert!(!in_diagram_body("block2/head", &regions[0]));
+        assert!(!in_diagram_body("block20/node0", &regions[0]));
+    }
 }

@@ -1,4 +1,4 @@
-//! Cached CPU stroke tessellation and analytic GPU edge coverage.
+//! Cached CPU fill/stroke tessellation and analytic GPU edge coverage.
 //! Paint is one source-over operation per path, including translucent joins.
 use super::ChromeTarget;
 use crate::Result;
@@ -22,14 +22,17 @@ struct Geometry {
     count: u32,
     bounds: [f32; 4],
 }
-fn key(points: &[PathCommand], s: &PathStroke) -> Vec<u32> {
-    let mut out = vec![
-        s.width.to_bits(),
-        s.cap as u32,
-        s.join as u32,
-        s.dash.len() as u32,
-    ];
-    out.extend(s.dash.iter().map(|n| n.to_bits()));
+fn key(points: &[PathCommand], stroke: Option<&PathStroke>) -> Vec<u32> {
+    let mut out = vec![u32::from(stroke.is_some())];
+    if let Some(s) = stroke {
+        out.extend([
+            s.width.to_bits(),
+            s.cap as u32,
+            s.join as u32,
+            s.dash.len() as u32,
+        ]);
+        out.extend(s.dash.iter().map(|n| n.to_bits()));
+    }
     for p in points {
         match p {
             PathCommand::Move(p) => {
@@ -62,14 +65,14 @@ fn join(j: LineJoin) -> lyon_tessellation::LineJoin {
         LineJoin::Bevel => lyon_tessellation::LineJoin::Bevel,
     }
 }
-fn source(points: &[PathCommand]) -> Path {
+fn source(points: &[PathCommand], close: bool) -> Path {
     let mut b = Path::builder();
     let mut open = false;
     for p in points {
         match *p {
             PathCommand::Move(p) => {
                 if open {
-                    b.end(false);
+                    b.end(close);
                 }
                 b.begin(point(p[0], p[1]));
                 open = true;
@@ -87,7 +90,7 @@ fn source(points: &[PathCommand]) -> Path {
         }
     }
     if open {
-        b.end(false);
+        b.end(close);
     }
     b.build()
 }
@@ -213,7 +216,7 @@ fn tessellate(points: &[PathCommand], stroke: &PathStroke) -> Result<Vec<[f32; 4
     let (path, dots) = if stroke.dash.iter().sum::<f32>() > 0. {
         dashed(points, &stroke.dash)?
     } else {
-        (source(points), vec![])
+        (source(points, false), vec![])
     };
     let mut mesh: VertexBuffers<[f32; 2], u32> = VertexBuffers::new();
     let options = StrokeOptions::default()
@@ -283,6 +286,27 @@ fn tessellate(points: &[PathCommand], stroke: &PathStroke) -> Result<Vec<[f32; 4
             }),
         )
         .map_err(|e| format!("path stroke union: {e:?}"))?;
+    Ok(boundary_edges(&result))
+}
+fn fill_edges(points: &[PathCommand]) -> Result<Vec<[f32; 4]>> {
+    PathStroke::default().validate(points)?;
+    if points.is_empty() {
+        return Ok(vec![]);
+    }
+    let mut result: VertexBuffers<[f32; 2], u32> = VertexBuffers::new();
+    FillTessellator::new()
+        .tessellate_path(
+            &source(points, true),
+            &FillOptions::non_zero().with_tolerance(TOLERANCE),
+            &mut BuffersBuilder::new(&mut result, |v: FillVertex| {
+                let p = v.position();
+                [p.x, p.y]
+            }),
+        )
+        .map_err(|e| format!("path fill tessellation: {e:?}"))?;
+    Ok(boundary_edges(&result))
+}
+fn boundary_edges(result: &VertexBuffers<[f32; 2], u32>) -> Vec<[f32; 4]> {
     let mut edges = BTreeMap::new();
     for tri in result.indices.chunks_exact(3) {
         for (a, b) in [(tri[0], tri[1]), (tri[1], tri[2]), (tri[2], tri[0])] {
@@ -293,7 +317,7 @@ fn tessellate(points: &[PathCommand], stroke: &PathStroke) -> Result<Vec<[f32; 4
                 .or_insert((a, b, 1));
         }
     }
-    Ok(edges
+    edges
         .into_values()
         .filter(|v| v.2 == 1)
         .map(|(a, b, _)| {
@@ -301,7 +325,14 @@ fn tessellate(points: &[PathCommand], stroke: &PathStroke) -> Result<Vec<[f32; 4
             let b = result.vertices[b as usize];
             [a[0], a[1], b[0], b[1]]
         })
-        .collect())
+        .collect()
+}
+struct PathPaint<'a> {
+    points: &'a [PathCommand],
+    stroke: Option<&'a PathStroke>,
+    color: bbt_ui_model::draw::Color,
+    origin: [f32; 2],
+    scale: f32,
 }
 impl Renderer {
     pub fn draw(
@@ -316,15 +347,57 @@ impl Renderer {
             points,
             stroke,
             color,
+            fill,
             origin,
             scale,
         } = primitive
         else {
             return Err("expected path primitive".into());
         };
+        // SVG paint order: fill first, then stroke. Their geometry is cached
+        // independently; colour, scale and translation do not retessellate.
+        for (color, stroke) in fill
+            .iter()
+            .map(|c| (*c, None))
+            .chain(std::iter::once((*color, Some(stroke))))
+        {
+            self.draw_geometry(
+                device,
+                &target,
+                encoder,
+                PathPaint {
+                    points,
+                    stroke,
+                    color,
+                    origin: *origin,
+                    scale: *scale,
+                },
+                clips,
+            )?;
+        }
+        Ok(())
+    }
+    fn draw_geometry(
+        &mut self,
+        device: &wgpu::Device,
+        target: &ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+        path: PathPaint<'_>,
+        clips: &[Prim],
+    ) -> Result<()> {
+        let PathPaint {
+            points,
+            stroke,
+            color,
+            origin,
+            scale,
+        } = path;
         let key = key(points, stroke);
         if !self.geometry.contains_key(&key) {
-            let edges = tessellate(points, stroke)?;
+            let edges = match stroke {
+                Some(stroke) => tessellate(points, stroke)?,
+                None => fill_edges(points)?,
+            };
             let count = edges.len() as u32;
             if count == 0 {
                 return Ok(());
@@ -372,7 +445,7 @@ impl Renderer {
         if clip_data.is_empty() {
             clip_data.push([0.; 4]);
         }
-        let s = target.scale * *scale;
+        let s = target.scale * scale;
         let data = [
             [
                 target.width as f32,
@@ -530,7 +603,72 @@ mod tests {
             points: points.into(),
             stroke,
             color: Color([1., 0., 0., 0.5]),
+            fill: None,
         }
+    }
+    #[test]
+    fn filled_and_hollow_triangles_and_translucent_polygon_use_real_fill_geometry() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let triangle = vec![
+            PathCommand::Move([4., 4.]),
+            PathCommand::Line([28., 4.]),
+            PathCommand::Line([16., 28.]),
+            PathCommand::Line([4., 4.]),
+        ];
+        let mut solid = path(triangle.clone(), PathStroke::default());
+        if let Prim::Path { color, fill, .. } = &mut solid {
+            *color = Color::BLACK;
+            *fill = Some(Color([1., 0., 0., 1.]));
+        }
+        let mut hollow = path(triangle, PathStroke::default());
+        if let Prim::Path { origin, color, .. } = &mut hollow {
+            *origin = [32., 0.];
+            *color = Color::BLACK;
+        }
+        let mut polygon = path(
+            vec![
+                PathCommand::Move([4., 32.]),
+                PathCommand::Line([28., 32.]),
+                PathCommand::Line([28., 44.]),
+                PathCommand::Line([4., 44.]),
+            ],
+            PathStroke {
+                width: 0.,
+                ..Default::default()
+            },
+        );
+        if let Prim::Path { fill, .. } = &mut polygon {
+            *fill = Some(Color([1., 0., 0., 0.5]));
+        }
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 64., 48.), 0., Color::WHITE);
+        list.primitives.extend([solid, hollow, polygon]);
+        for scale in [1_u32, 2] {
+            let (w, h) = (64 * scale, 48 * scale);
+            let image = renderer.render_to_rgba(&list, w, h, scale as f32).unwrap();
+            let pixel = |x: u32, y: u32| {
+                let at = ((y * scale * w + x * scale) * 4) as usize;
+                &image[at..at + 4]
+            };
+            assert_eq!(pixel(16, 12), [255, 0, 0, 255], "filled triangle");
+            assert_eq!(pixel(48, 12), [255, 255, 255, 255], "hollow triangle");
+            assert_eq!(
+                pixel(16, 38),
+                [255, 128, 128, 255],
+                "one fill composite, no mesh seams"
+            );
+            assert_eq!(
+                image,
+                renderer.render_to_rgba(&list, w, h, scale as f32).unwrap()
+            );
+        }
+        // Fill paint does not alter the cached geometry or the stroke cache.
+        let cached = renderer.paths.geometry.len();
+        if let Prim::Path { fill, .. } = &mut list.primitives[1] {
+            *fill = Some(Color([0., 0., 1., 1.]));
+        }
+        renderer.render_to_rgba(&list, 64, 48, 1.).unwrap();
+        assert_eq!(renderer.paths.geometry.len(), cached);
     }
     #[test]
     fn gpu_path_preserves_order_clip_alpha_and_retained_geometry() {

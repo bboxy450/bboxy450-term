@@ -1753,6 +1753,7 @@ fn channel_path(
                 cap,
                 join: c::LineJoin::Miter,
             },
+            fill: None,
             paint: ui::Paint::solid(color),
             opacity,
         }),

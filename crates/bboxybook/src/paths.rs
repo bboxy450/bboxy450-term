@@ -75,6 +75,7 @@ pub fn element(input: &Value, scale: f32) -> Result<c::Element> {
     Ok(c::Element::Path(c::Path {
         size: pt(&input["size"])?,
         points: points.into(),
+        fill: None,
         paint: ui::Paint::solid(color),
         opacity: s["opacity"].as_f64().unwrap_or(1.) as f32,
         stroke: c::PathStroke {

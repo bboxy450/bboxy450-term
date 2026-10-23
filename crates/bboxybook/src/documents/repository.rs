@@ -57,6 +57,14 @@ pub fn check(root: &Path) -> Result<Vec<serde_json::Value>> {
     for path in inputs(root)? {
         let source = fs::read_to_string(root.join(&path))?;
         let doc = bbt_doc::parse(&source);
+        if let Some(error) = &doc.frontmatter.error {
+            return Err(format!(
+                "{}:{}: invalid YAML frontmatter: {error}",
+                path.display(),
+                doc.frontmatter.error_line.unwrap_or(1)
+            )
+            .into());
+        }
         for theme in [ui::Theme::Dark, ui::Theme::Light] {
             let ctx = ui::Context::new(theme, ui::Density::Cozy);
             let e = doc.modal_element(&path.to_string_lossy(), false, [1246., 900.], ctx, &metrics);
@@ -161,7 +169,7 @@ pub fn render(root: &Path, out: &Path) -> Result<()> {
     let [width, height] = [1246u32, 900u32];
     let mut report = vec![];
     let mut html = String::from(
-        "<!doctype html><meta charset=utf-8><title>bbt-doc · repository</title><style>body{font:14px system-ui;background:#10131c;color:#dde4fa;margin:24px}section{margin:24px 0}img{width:100%;max-width:1246px;border:1px solid #65718c}a{color:#8ebaff}summary{cursor:pointer}</style><h1>Native repository documents</h1><p>Tracked .bboxy Markdown · top, middle and end viewports · Mermaid Source-only.</p>",
+        "<!doctype html><meta charset=utf-8><title>bbt-doc · repository</title><style>body{font:14px system-ui;background:#10131c;color:#dde4fa;margin:24px}section{margin:24px 0}img{width:100%;max-width:1246px;border:1px solid #65718c}a{color:#8ebaff}summary{cursor:pointer}</style><h1>Native repository documents</h1><p>Tracked .bboxy Markdown · top, middle and end viewports · native Mermaid at true size.</p>",
     );
     for relative in paths {
         // Each document is an independent offline case. Do not let hundreds of
@@ -169,6 +177,27 @@ pub fn render(root: &Path, out: &Path) -> Result<()> {
         let mut renderer = bbt_render::chrome::ChromeRenderer::new(crate::images()?)?;
         let source = fs::read_to_string(root.join(&relative))?;
         let markdown = bbt_doc::parse(&source);
+        fn mermaid_blocks<'a>(blocks: &'a [bbt_doc::Block], out: &mut Vec<&'a str>) {
+            for block in blocks {
+                match &block.kind {
+                    bbt_doc::BlockKind::Code { info, text }
+                        if info.split_whitespace().next() == Some("mermaid") =>
+                    {
+                        out.push(text)
+                    }
+                    bbt_doc::BlockKind::Quote(blocks)
+                    | bbt_doc::BlockKind::Footnote { blocks, .. } => mermaid_blocks(blocks, out),
+                    bbt_doc::BlockKind::List { items, .. } => {
+                        for item in items {
+                            mermaid_blocks(item, out);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let mut diagram_sources = vec![];
+        mermaid_blocks(&markdown.blocks, &mut diagram_sources);
         let mut variants = vec![];
         for theme in [ui::Theme::Dark, ui::Theme::Light] {
             let ctx = ui::Context::new(theme, ui::Density::Cozy);
@@ -228,7 +257,42 @@ pub fn render(root: &Path, out: &Path) -> Result<()> {
                 bbt_render::write_png(&path, &pixels, width, height)?;
                 shots.push(json!({"view":name,"offset":offset,"png":file}));
             }
-            variants.push(json!({"theme":gallery::theme_name(theme),"height":extent,"overflow_count":overflows.len(),"shots":shots}));
+            // Full diagram cases complement the document viewports: a figure
+            // may lie between top/middle/end crops in a long spec.
+            let mut diagrams = vec![];
+            for (i, source) in diagram_sources.iter().enumerate() {
+                let geometry = bbt_doc::mermaid::geometry(source, ctx, &metrics);
+                let w = geometry
+                    .as_ref()
+                    .map_or(576., |g| (g.size.w + 16.).max(320.))
+                    .ceil()
+                    .min(4096.);
+                let figure =
+                    bbt_doc::mermaid::element(source, w, ctx, &metrics, Default::default());
+                let layout = figure.layout(Rect::new(2., 2., w, 0.), ctx, &metrics)?;
+                let size = [w as u32 + 4, (layout.rect.h.ceil() as u32 + 4).min(4096)];
+                let color = bbt_ui_model::draw::Color::hex(theme.palette().bg).0;
+                let bg = (0..size[0] * size[1])
+                    .flat_map(|_| color.map(|v| (v * 255.).round() as u8))
+                    .collect();
+                let pixels = page_pixels(
+                    &mut renderer,
+                    c::paint_with_draw(&layout, DrawCtx::new(theme, ctx.density)),
+                    bg,
+                    size,
+                    ctx,
+                )?;
+                let file = relative.strip_prefix(".bboxy")?.with_extension(format!(
+                    "{}.mermaid{}.png",
+                    gallery::theme_name(theme),
+                    i + 1
+                ));
+                let path = out.join(&file);
+                fs::create_dir_all(path.parent().ok_or("diagram output has no parent")?)?;
+                bbt_render::write_png(&path, &pixels, size[0], size[1])?;
+                diagrams.push(json!({"block":i + 1,"png":file,"viewport":size,"geometry_size":geometry.as_ref().ok().map(|g| [g.size.w,g.size.h]),"error":geometry.err().map(|e| e.to_string())}));
+            }
+            variants.push(json!({"theme":gallery::theme_name(theme),"height":extent,"overflow_count":overflows.len(),"shots":shots,"diagrams":diagrams}));
         }
         html.push_str(&format!(
             "<section><h2>{}</h2>",
@@ -246,6 +310,9 @@ pub fn render(root: &Path, out: &Path) -> Result<()> {
                     shot["view"].as_str().unwrap_or(""),
                     escape(shot["png"].as_str().ok_or("shot path missing")?)
                 ));
+            }
+            for diagram in variant["diagrams"].as_array().unwrap() {
+                html.push_str(&format!("<p>Mermaid {} · true-size canvas</p><div style=\"overflow-x:auto\"><img style=\"width:auto;max-width:none\" loading=lazy src=\"{}\"></div>", diagram["block"], escape(diagram["png"].as_str().ok_or("diagram path missing")?)));
             }
             html.push_str("</details>");
         }
