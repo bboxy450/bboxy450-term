@@ -751,9 +751,10 @@
   function streamTabs(chs, opts) {
     opts = opts || {};
     const bar = el('div', { class: 'ch-tabs', role: 'tablist' });
-    // a subchannel shows 'more' when its count is not proven; 'all' is then the server's swarm total (opts.total) or 'more' itself
+    // the server's swarm total (opts.total) is authoritative when given: it also counts bare-stream messages, so the subchannels
+    // need not sum to it; without it, 'all' is 'more' when a subchannel's count is not proven, else the sum
     const gap = chs.some(c => !c.muted && c.unread === 'more');
-    const all = { name: 'all', unread: gap ? (opts.total != null ? opts.total : 'more') : chs.reduce((n, c) => n + (c.muted ? 0 : c.unread || 0), 0) };
+    const all = { name: 'all', unread: opts.total != null ? opts.total : gap ? 'more' : chs.reduce((n, c) => n + (c.muted ? 0 : c.unread || 0), 0) };
     for (const c of [all, ...chs]) {
       const t = el('button', { class: 'ch-tab' + (opts.sel === c.name ? ' on' : '') + (c.muted ? ' muted' : ''), role: 'tab', title: c.name === 'all' ? 'the swarm stream: chunks, decisions, presence' : '#' + c.name + (c.muted ? ' · muted (right-click to unmute)' : ' · right-click to mute'), onclick: () => opts.onSel && opts.onSel(c.name) },
         c.name === 'all' ? 'all' : '#' + c.name, c.muted ? harnessIcon('muted') : c.unread ? el('b', { class: c.unread === 'more' ? 'more' : null }, String(c.unread)) : null);
