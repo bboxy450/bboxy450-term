@@ -4,9 +4,20 @@ use super::{CursorShape, Underline};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Sprite {
     Character(char),
-    Underline(Underline),
+    Underline(Underline, u32),
     Strike,
     Cursor(CursorShape, bool),
+}
+
+impl Sprite {
+    pub fn underline(style: Underline, offset: u32, width: u32, scale: u32) -> Self {
+        let period = match style {
+            Underline::Dotted => 2 * scale,
+            Underline::Dashed => 5 * scale,
+            _ => width,
+        };
+        Self::Underline(style, offset % period)
+    }
 }
 
 pub fn character(ch: char) -> bool {
@@ -162,32 +173,40 @@ fn segment(x: f32, y: f32, ax: f32, ay: f32, bx: f32, by: f32, radius: f32) -> b
     (x - ax - u * dx).powi(2) + (y - ay - u * dy).powi(2) <= radius * radius
 }
 
-pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32, baseline: i16) -> Vec<u8> {
+pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32) -> Vec<u8> {
     let mut mask = vec![0; (w * h) as usize];
     let (wf, hf, s) = (w as f32, h as f32, scale as f32);
     let (cx, cy) = ((wf * 0.5).floor() + 0.5, (hf * 0.5).floor() + 0.5);
+    let double =
+        matches!(sprite, Sprite::Character(ch) if arms(ch).is_some_and(|arms| arms.contains(&3)));
+    // Measured at the default cell size against the fixed-grid reference:
+    // double rules need a coverage fringe, with a smaller increase at 1x.
+    let double_width = s * if scale == 1 { 1.125 } else { 1.25 };
+    let double_y = cy + 1.;
     let test = |x: f32, y: f32| -> bool {
         match sprite {
             Sprite::Cursor(shape, focused) => match (shape, focused) {
                 (_, false) => x < s || x >= wf - s || y < s || y >= hf - s,
                 (CursorShape::Block, true) => true,
-                (CursorShape::Bar, true) => x < 2. * s,
-                (CursorShape::Underline, true) => y >= hf - 2. * s,
+                (CursorShape::Bar, true) => x < s,
+                (CursorShape::Underline, true) => y >= hf - s,
             },
-            Sprite::Strike => (y - (f32::from(baseline) - hf * 0.22).round() - 0.5).abs() < s * 0.5,
-            Sprite::Underline(style) => {
-                let base = (hf - 2. * s).floor() + 0.5;
+            Sprite::Strike => {
+                let top = ((hf - s) * 0.5).floor();
+                y >= top && y < top + s
+            }
+            Sprite::Underline(style, phase) => {
+                let base = (hf - 2. * s).floor() + s * 0.5;
+                let x = x + phase as f32;
                 match style {
                     Underline::None => false,
                     Underline::Single => (y - base).abs() < s * 0.5,
                     Underline::Double => {
-                        (y - (hf - 3. * s + 0.5)).abs() < s * 0.5
-                            || (y - (hf - s + 0.5)).abs() < s * 0.5
+                        (y - (hf - 3. * s + s * 0.5)).abs() < s * 0.5
+                            || (y - (hf - s + s * 0.5)).abs() < s * 0.5
                     }
-                    Underline::Dotted => {
-                        ((x / s).rem_euclid(4.) - 1.).powi(2) + ((y - base) / s).powi(2) <= 0.7
-                    }
-                    Underline::Dashed => (y - base).abs() < s * 0.5 && (x / s).rem_euclid(6.) < 4.,
+                    Underline::Dotted => (y - base).abs() < s * 0.5 && (x / s).rem_euclid(2.) < 1.,
+                    Underline::Dashed => (y - base).abs() < s * 0.5 && (x / s).rem_euclid(5.) < 3.,
                     Underline::Curly => {
                         (y - (hf - 2. * s + (x / wf * std::f32::consts::TAU).sin() * s)).abs()
                             < s * 0.55
@@ -276,15 +295,21 @@ pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32, baseline: i16) -> Vec<
                         || (ch != '╱' && segment(x, y, 0., 0., wf, hf, s * 0.5));
                 }
                 if let Some(arms) = arms(ch) {
-                    // Join double corners as two nested Ls. Independent half-lines
-                    // would leave four short stubs inside the bend.
-                    if matches!(ch, '╔' | '╗' | '╚' | '╝') {
-                        let u = if arms[1] != 0 { x - cx } else { cx - x };
-                        let v = if arms[2] != 0 { y - cy } else { cy - y };
-                        return [-s, s].into_iter().any(|offset| {
-                            ((v - offset).abs() < s * 0.5 && u >= offset)
-                                || ((u - offset).abs() < s * 0.5 && v >= offset)
-                        });
+                    // Outline the joined network, rather than crossing independent
+                    // pairs of lines. This keeps corners, tees and crosses open.
+                    if double && arms.iter().all(|&weight| weight == 0 || weight == 3) {
+                        let network = |radius: f32| {
+                            arms.into_iter().enumerate().any(|(direction, weight)| {
+                                weight != 0
+                                    && match direction {
+                                        0 => (x - cx).abs() < radius && y <= double_y + radius,
+                                        1 => (y - double_y).abs() < radius && x >= cx - radius,
+                                        2 => (x - cx).abs() < radius && y >= double_y - radius,
+                                        _ => (y - double_y).abs() < radius && x <= cx + radius,
+                                    }
+                            })
+                        };
+                        return network(s + double_width * 0.5) && !network(s - double_width * 0.5);
                     }
                     if matches!(ch, '╭' | '╮' | '╯' | '╰') {
                         let u = if matches!(ch, '╭' | '╰') {
@@ -324,14 +349,25 @@ pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32, baseline: i16) -> Vec<
                             continue;
                         }
                         let offsets: &[f32] = if weight == 3 { &[-1., 1.] } else { &[0.] };
-                        let thickness = if weight == 2 { 2. * s } else { s };
+                        let thickness = match weight {
+                            2 => 2. * s,
+                            3 => double_width,
+                            _ => s,
+                        };
+                        let horizontal_y = if weight == 3 { double_y } else { cy };
                         for offset in offsets {
                             let offset = offset * s;
                             let hit = match direction {
                                 0 => (x - cx - offset).abs() < thickness * 0.5 && y <= cy + s,
-                                1 => (y - cy - offset).abs() < thickness * 0.5 && x >= cx - s,
+                                1 => {
+                                    (y - horizontal_y - offset).abs() < thickness * 0.5
+                                        && x >= cx - s
+                                }
                                 2 => (x - cx - offset).abs() < thickness * 0.5 && y >= cy - s,
-                                _ => (y - cy - offset).abs() < thickness * 0.5 && x <= cx + s,
+                                _ => {
+                                    (y - horizontal_y - offset).abs() < thickness * 0.5
+                                        && x <= cx + s
+                                }
                             };
                             if hit {
                                 return true;
@@ -343,21 +379,85 @@ pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32, baseline: i16) -> Vec<
             }
         }
     };
+    // Resolve the narrow double-rule fringe without changing other sprites.
+    let samples = if double { 16 } else { 4 };
     for y in 0..h {
         for x in 0..w {
             let mut n = 0;
-            for sy in 0..4 {
-                for sx in 0..4 {
+            for sy in 0..samples {
+                for sx in 0..samples {
                     if test(
-                        x as f32 + (sx as f32 + 0.5) / 4.,
-                        y as f32 + (sy as f32 + 0.5) / 4.,
+                        x as f32 + (sx as f32 + 0.5) / samples as f32,
+                        y as f32 + (sy as f32 + 0.5) / samples as f32,
                     ) {
                         n += 1;
                     }
                 }
             }
-            mask[(y * w + x) as usize] = (n * 255 / 16) as u8;
+            mask[(y * w + x) as usize] = (n * 255 / (samples * samples)) as u8;
         }
     }
     mask
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn double_rules_join_without_stubs_or_filled_crossings() {
+        for scale in [1, 2] {
+            let (w, h) = (8 * scale, 15 * scale);
+            let draw = |ch| raster(Sprite::Character(ch), w, h, scale);
+            let horizontal = draw('═');
+            let vertical = draw('║');
+            for ch in '═'..='╬' {
+                let Some(arms) = arms(ch) else { continue };
+                if !arms.contains(&3) || arms.iter().any(|&weight| weight != 0 && weight != 3) {
+                    continue;
+                }
+                let mask = draw(ch);
+                for (direction, weight) in arms.into_iter().enumerate() {
+                    if weight == 0 {
+                        continue;
+                    }
+                    match direction {
+                        0 | 2 => {
+                            let y = if direction == 0 { 0 } else { h - 1 };
+                            for x in 0..w {
+                                assert_eq!(
+                                    mask[(y * w + x) as usize],
+                                    vertical[(y * w + x) as usize],
+                                    "{ch} vertical seam, {scale}x"
+                                );
+                            }
+                        }
+                        _ => {
+                            let x = if direction == 1 { w - 1 } else { 0 };
+                            for y in 0..h {
+                                assert_eq!(
+                                    mask[(y * w + x) as usize],
+                                    horizontal[(y * w + x) as usize],
+                                    "{ch} horizontal seam, {scale}x"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            let first_rule = (0..h).find(|&y| horizontal[(y * w) as usize] > 0).unwrap();
+            let tee = draw('╦');
+            assert!(
+                tee[..(first_rule * w) as usize]
+                    .iter()
+                    .all(|&alpha| alpha == 0),
+                "double tee has stubs above its top rule, {scale}x"
+            );
+            let cross = draw('╬');
+            assert!(
+                cross[((h / 2 + 1) * w + w / 2) as usize] < 16,
+                "double crossing must keep its central channel clear apart from antialiased corners, {scale}x"
+            );
+        }
+    }
 }

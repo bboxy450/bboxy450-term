@@ -1,0 +1,6 @@
+[1mCursor styles: steady underline[0m
+
+DECSCUSR 4: focused underline, blinking disabled.
+The lower-left blue cell contains the cursor.
+The cursor must stay within that cell at both pixel densities.
+[24;1H[48;2;40;58;82m [0m underline at column 1[4 q

@@ -1,0 +1,24 @@
+{
+  "source": "594692b0547ac802f0f2667dd5464362ddfd72bd",
+  "base": "4fd0a1cb98eb3c6965c1ffb3c5553add04901a6e",
+  "worktree": "/tmp/ci-aster-t2-layers-594692b-1792758379000299000",
+  "target": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-layer-ci-594692b",
+  "parity": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-layer-parity-594692b",
+  "clean_before": true,
+  "argv": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "env": {
+    "BBOXY_TEST_CUSTODY": "memory",
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-layer-ci-594692b",
+    "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-layer-parity-594692b"
+  },
+  "start_utc": "2026-10-23T12:26:19.208134+00:00",
+  "state": "exited",
+  "pid": 49725,
+  "exit": 0,
+  "elapsed_seconds": 2635.4482712089957,
+  "log_sha256": "2d0e637080112bd9ffa9795d860a9d47110e6265fd1610fa1d57ae6b63f97783"
+}

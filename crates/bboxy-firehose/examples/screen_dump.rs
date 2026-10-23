@@ -1,6 +1,6 @@
 //! Independent parser output for comparison with the vendored xterm reference.
 use bboxy_firehose::{COLS, ROWS, SCENES, scene_bytes};
-use bbt_core::{Color, Column, Line, Term, term::cell::Flags};
+use bbt_core::{Color, Column, Line, Term, ansi::CursorShape, term::cell::Flags};
 use serde_json::{Value, json};
 
 fn colour(color: Color) -> Value {
@@ -36,7 +36,15 @@ fn main() {
                 ]));
             }
         }
-        json!({"name": scene.name, "cursor": [grid.cursor.point.line.0, grid.cursor.point.column.0], "cells": cells})
+        let cursor = term.cursor_style();
+        let shape = match cursor.shape {
+            CursorShape::Beam => "bar",
+            CursorShape::Underline => "underline",
+            CursorShape::Block => "block",
+            CursorShape::HollowBlock => "outline",
+            CursorShape::Hidden => "hidden",
+        };
+        json!({"name": scene.name, "cursor": [grid.cursor.point.line.0, grid.cursor.point.column.0], "cursorStyle": shape, "cursorBlink": cursor.blinking, "cells": cells})
     }).collect();
     println!("{}", serde_json::to_string(&scenes).unwrap());
 }

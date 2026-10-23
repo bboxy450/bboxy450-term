@@ -5,7 +5,7 @@
 )]
 use bboxy_firehose::{COLS, ROWS, SCENES, scene_bytes};
 use bbt_core::{
-    Color, Column, Line, NamedColor, Term,
+    Color, Column, Line, NamedColor, Term, ansi,
     term::{TermMode, cell::Flags},
 };
 use bbt_render::{
@@ -65,7 +65,7 @@ fn color(value: Color, light: bool, bold: bool) -> [u8; 4] {
         Color::Named(_) => fg,
     }
 }
-fn snapshot(term: &Term, light: bool) -> Grid {
+fn snapshot(term: &Term, light: bool, focused: bool) -> Grid {
     let mut cells = Vec::new();
     for row in 0..ROWS {
         for col in 0..COLS {
@@ -121,18 +121,21 @@ fn snapshot(term: &Term, light: bool) -> Grid {
         }
     }
     let point = term.grid().cursor.point;
+    let shape = term.cursor_style().shape;
     Grid {
         columns: COLS as u16,
         rows: ROWS as u16,
         cells,
-        cursor: term
-            .mode()
-            .contains(TermMode::SHOW_CURSOR)
+        cursor: (term.mode().contains(TermMode::SHOW_CURSOR) && shape != ansi::CursorShape::Hidden)
             .then_some(Cursor {
                 column: point.column.0 as u16,
                 row: point.line.0 as u16,
-                shape: CursorShape::Block,
-                focused: false,
+                shape: match shape {
+                    ansi::CursorShape::Beam => CursorShape::Bar,
+                    ansi::CursorShape::Underline => CursorShape::Underline,
+                    _ => CursorShape::Block,
+                },
+                focused: focused && shape != ansi::CursorShape::HollowBlock,
                 color: color(Color::Named(NamedColor::Foreground), light, false),
             }),
     }
@@ -169,7 +172,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             for scene in SCENES {
                 let mut term = Term::new(COLS, ROWS, 0);
                 term.advance(&scene_bytes(scene));
-                let grid = snapshot(&term, light);
+                let grid = snapshot(&term, light, scene.name.starts_with("cursor-"));
                 let variant = format!(
                     "{}-{}-{}x",
                     scene.name,

@@ -6,7 +6,7 @@ use bboxy_firehose::options::{Options, Rate};
 use bboxy_firehose::{COLS, ROWS, Rng, SCENES, expected_hash, ordered_scenes, scene_bytes};
 
 const HELP: &str = "bboxy-firehose — embedded synthetic terminal output
-  --list                  List the ten scenes
+  --list                  List the embedded scenes
   --scene NAME            Play one scene; otherwise shuffle all scenes
   --seed N                Seed for scene order and real pacing (default 1)
   --rate RATE             max, bytes/s, 64KiB/s, 8MiB/s, or 30lines/s

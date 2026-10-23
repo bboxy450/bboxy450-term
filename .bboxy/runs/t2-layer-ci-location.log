@@ -1,0 +1,8 @@
+{
+  "source": "594692b0547ac802f0f2667dd5464362ddfd72bd",
+  "base": "4fd0a1cb98eb3c6965c1ffb3c5553add04901a6e",
+  "worktree": "/tmp/ci-aster-t2-layers-594692b-1792758379000299000",
+  "target": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-layer-ci-594692b",
+  "parity": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-layer-parity-594692b",
+  "clean_before": true
+}

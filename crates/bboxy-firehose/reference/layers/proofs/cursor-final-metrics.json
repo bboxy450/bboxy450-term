@@ -1,0 +1,86 @@
+{
+  "method": "all RGB bytes in actual focused cursor cell over blue background; no threshold or cursor exclusion",
+  "cases": [
+    {
+      "scene": "cursor-beam",
+      "theme": "dark",
+      "scale": 1,
+      "web_ink_pixels": 15,
+      "before_ink_pixels": 30,
+      "after_ink_pixels": 15,
+      "before_differing_pixels": 15,
+      "after_differing_pixels": 0
+    },
+    {
+      "scene": "cursor-underline",
+      "theme": "dark",
+      "scale": 1,
+      "web_ink_pixels": 8,
+      "before_ink_pixels": 16,
+      "after_ink_pixels": 8,
+      "before_differing_pixels": 8,
+      "after_differing_pixels": 0
+    },
+    {
+      "scene": "cursor-beam",
+      "theme": "light",
+      "scale": 1,
+      "web_ink_pixels": 15,
+      "before_ink_pixels": 30,
+      "after_ink_pixels": 15,
+      "before_differing_pixels": 15,
+      "after_differing_pixels": 0
+    },
+    {
+      "scene": "cursor-underline",
+      "theme": "light",
+      "scale": 1,
+      "web_ink_pixels": 8,
+      "before_ink_pixels": 16,
+      "after_ink_pixels": 8,
+      "before_differing_pixels": 8,
+      "after_differing_pixels": 0
+    },
+    {
+      "scene": "cursor-beam",
+      "theme": "dark",
+      "scale": 2,
+      "web_ink_pixels": 60,
+      "before_ink_pixels": 120,
+      "after_ink_pixels": 60,
+      "before_differing_pixels": 60,
+      "after_differing_pixels": 0
+    },
+    {
+      "scene": "cursor-underline",
+      "theme": "dark",
+      "scale": 2,
+      "web_ink_pixels": 32,
+      "before_ink_pixels": 64,
+      "after_ink_pixels": 32,
+      "before_differing_pixels": 32,
+      "after_differing_pixels": 0
+    },
+    {
+      "scene": "cursor-beam",
+      "theme": "light",
+      "scale": 2,
+      "web_ink_pixels": 60,
+      "before_ink_pixels": 120,
+      "after_ink_pixels": 60,
+      "before_differing_pixels": 60,
+      "after_differing_pixels": 0
+    },
+    {
+      "scene": "cursor-underline",
+      "theme": "light",
+      "scale": 2,
+      "web_ink_pixels": 32,
+      "before_ink_pixels": 64,
+      "after_ink_pixels": 32,
+      "before_differing_pixels": 32,
+      "after_differing_pixels": 0
+    }
+  ],
+  "read_image_sha256": "b51bf6909c56b75e771e72ac98e7640f07d3df20ed829882749e224c63067445"
+}

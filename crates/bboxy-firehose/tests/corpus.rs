@@ -176,3 +176,27 @@ fn scenes_exercise_real_grid_effects_and_leave_modes_balanced() {
         }
     }
 }
+
+#[test]
+fn cursor_scenes_are_steady_and_the_next_scene_restores_the_default() {
+    use bbt_core::ansi::CursorShape;
+    for (name, shape) in [
+        ("cursor-beam", CursorShape::Beam),
+        ("cursor-underline", CursorShape::Underline),
+    ] {
+        let scene = SCENES.iter().find(|scene| scene.name == name).unwrap();
+        for chunk_size in [1, 7, scene.bytes.len()] {
+            let mut term = Term::new(COLS, ROWS, 0);
+            let default = term.cursor_style();
+            for chunk in scene_bytes(scene).chunks(chunk_size) {
+                term.advance(chunk);
+            }
+            assert_eq!(term.cursor_style().shape, shape);
+            assert!(!term.cursor_style().blinking);
+            assert_eq!(term.grid().cursor.point.line, Line(23));
+            assert_eq!(term.grid().cursor.point.column, Column(0));
+            term.advance(&scene_bytes(&SCENES[0]));
+            assert_eq!(term.cursor_style(), default);
+        }
+    }
+}

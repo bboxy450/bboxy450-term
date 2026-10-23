@@ -1,0 +1,18 @@
+{
+  "source": "594692b0547ac802f0f2667dd5464362ddfd72bd",
+  "ci_exit": 0,
+  "ci_elapsed_seconds": 2635.4482712089957,
+  "ci_log_sha256": "2d0e637080112bd9ffa9795d860a9d47110e6265fd1610fa1d57ae6b63f97783",
+  "report_sha256": "0eee10c25e364e7cb5585707e8feea3564efdb35544943266c78e23c44214ae3",
+  "cases": 1704,
+  "required": 1600,
+  "measured_complete": 1600,
+  "unproven": 0,
+  "geometry_errors_over_tolerance": [],
+  "statuses": {
+    "review pixels": 334,
+    "within policy": 1370
+  },
+  "terminal_replay_byte_identical": 48,
+  "terminal_replay_cases": 48
+}

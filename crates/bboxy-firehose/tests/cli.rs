@@ -43,7 +43,10 @@ fn seed_is_reproducible_and_reorders_the_complete_corpus() {
 #[test]
 fn listing_and_checks_never_emit_terminal_control_bytes() {
     let list = run(&["--list"]);
-    assert_eq!(String::from_utf8(list.stdout).unwrap().lines().count(), 10);
+    assert_eq!(
+        String::from_utf8(list.stdout).unwrap().lines().count(),
+        SCENES.len()
+    );
     let check = run(&["--check", "--scene", "codex", "--seed", "42", "--loop"]);
     assert!(check.status.success());
     assert!(!check.stdout.contains(&27));
