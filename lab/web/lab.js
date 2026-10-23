@@ -25,7 +25,8 @@
     set('--row-h', d.row_h + 'px'); set('--tab-h', d.tab_h + 'px'); set('--glyph', d.glyph + 'px'); set('--icon', d.icon + 'px');
     set('--font', d.font + 'px'); set('--font-small', d.font_small + 'px'); set('--pad-x', d.pad_x + 'px'); set('--gap', d.gap + 'px');
     set('--r-pill', (window.STYLE ? STYLE.radius.card : 12) + 'px'); set('--r-chip', T.radius.chip + 'px'); set('--r-grid', T.radius.grid + 'px');
-    set('--cohort-gap', T.layout.cohort_gap + 'px'); set('--gutter', T.glow.rim + 'px'); set('--stage-inset', T.glow.rim / 2 + 'px'); set('--glow-rim', T.glow.rim + 'px'); set('--glow-depth', T.glow.depth + 'px');   // the gutter is the rim size: outer halves meet set('--sb-edge', T.sidebar.edge + 'px'); set('--sb-w', T.sidebar.width + 'px'); set('--sb-w-compact', T.sidebar.width_compact + 'px');
+    // the gutter is the rim size, so neighbours' outer rim halves meet; the stage inset is half of it
+    set('--cohort-gap', T.layout.cohort_gap + 'px'); set('--gutter', T.glow.rim + 'px'); set('--stage-inset', T.glow.rim / 2 + 'px'); set('--glow-rim', T.glow.rim + 'px'); set('--glow-depth', T.glow.depth + 'px'); set('--sb-edge', T.sidebar.edge + 'px'); set('--sb-w', T.sidebar.width + 'px'); set('--sb-w-compact', T.sidebar.width_compact + 'px');
     set('--mg-w', T.sidebar.minigrid_w + 'px'); set('--mg-h', T.sidebar.minigrid_h + 'px');
     set('--strip-h', T.strip.height + 'px'); set('--strip-b-idle', T.strip.border_idle + 'px'); set('--strip-b-active', T.strip.border_active + 'px');
     const g = T.glow;
