@@ -8,10 +8,10 @@ sequenceDiagram
   A->>L: Spawn{spec, location: Ssh{build-box}}
   L->>F: link(build-box): Connecting
   F-->>L: HostState Connected{rtt 40}
-  L->>F: Action::Spawn (delayed 40 ms)
+  L->>F: Action::Spawn (synchronous, decision #25)
   F->>S: Action::Spawn
-  S-->>F: Reply, Event::Output …
-  F-->>L: released after 40 ms
+  S-->>F: Reply (immediate), Event::Output …
+  F-->>L: events released after rtt 40 ms
   L-->>A: seat record location Ssh, where-mark on the row
   F-->>L: HostState Disconnected{reason} at T
   L-->>A: host row and seat rows marked
