@@ -26,6 +26,7 @@ winit = "=0.30.13"
 [dev-dependencies]
 ed25519-dalek = "3.0"
 tempfile = "3"
+tokio = { version = "1.54.1", features = ["test-util"] }
 
 [build-dependencies]
 regex = "1"

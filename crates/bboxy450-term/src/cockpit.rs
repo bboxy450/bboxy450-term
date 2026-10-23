@@ -861,15 +861,14 @@ mod gui_io_tests {
             // fake-peer halves progress independently under backpressure.
             let replies = async {
                 for index in 0..COUNT {
-                    write_json(
-                        &mut write,
-                        &GuiReply::Error {
-                            op: bbt_mux::Ulid::from(index as u128 + 1),
-                            reason: format!("reply-{index}:{}", "x".repeat(4096)),
-                        },
-                    )
-                    .await
+                    let frame = json_frame(&GuiReply::Error {
+                        op: bbt_mux::Ulid::from(index as u128 + 1),
+                        reason: format!("reply-{index}:{}", "x".repeat(4096)),
+                    })
                     .unwrap();
+                    // This peer measures ordering/backpressure, not the
+                    // product startup writer's real-time two-second budget.
+                    write.write_all(&frame).await.unwrap();
                 }
             };
             let inputs = async {
@@ -902,13 +901,16 @@ mod gui_io_tests {
             tokio::join!(replies, inputs);
         });
         let (mut sent, mut received, mut busy) = (0, 0, 0);
-        tokio::time::timeout(Duration::from_secs(10), async {
+        {
             while sent < COUNT || received < COUNT {
                 while sent < COUNT {
                     let mut bytes = vec![b'a'; 4096];
                     bytes[..8].copy_from_slice(&(sent as u64).to_le_bytes());
                     match io.try_send(GuiAction::Input {
-                        seat: SeatId::from_u128(7), generation: 7, id: bbt_mux::Ulid::from(sent as u128 + 1), bytes,
+                        seat: SeatId::from_u128(7),
+                        generation: 7,
+                        id: bbt_mux::Ulid::from(sent as u128 + 1),
+                        bytes,
                     }) {
                         Ok(()) => sent += 1,
                         Err(error) if error.is::<Busy>() => {
@@ -921,7 +923,9 @@ mod gui_io_tests {
                         Err(error) => panic!("enqueue failed: {error}"),
                     }
                 }
-                if sent == COUNT && received == COUNT {break;}
+                if sent == COUNT && received == COUNT {
+                    break;
+                }
                 // Retain the unsent action while still draining inbound data.
                 // Capacity notification is only a test wake; production's IO
                 // owner keeps the command in its existing bounded retry queue.
@@ -938,11 +942,47 @@ mod gui_io_tests {
                 }
             }
             peer.await.unwrap();
-        }).await.expect("full-duplex transport stalled");
+        }
         assert!(busy > 0, "fixture did not fill the bounded writer queue");
         println!(
             "full-duplex: {sent} inputs / {received} replies, ordered; Busy {busy}; no write deadline; elapsed {:?}",
             started.elapsed()
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn startup_write_deadline_is_two_seconds_of_controlled_time() {
+        use std::future::{Future, poll_fn};
+        use std::task::Poll;
+
+        let (mut writer, _peer) = tokio::io::duplex(1);
+        writer.write_all(b"x").await.unwrap();
+        let started = tokio::time::Instant::now();
+        let write = write_frame(&mut writer, b"blocked");
+        tokio::pin!(write);
+        // Poll once to arm the real product timeout against the paused clock.
+        assert!(
+            poll_fn(|cx| Poll::Ready(write.as_mut().poll(cx)))
+                .await
+                .is_pending()
+        );
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        assert!(
+            poll_fn(|cx| Poll::Ready(write.as_mut().poll(cx)))
+                .await
+                .is_pending()
+        );
+        let error = tokio::time::timeout(Duration::from_millis(1100), write)
+            .await
+            .expect("product writer exceeded its controlled two-second deadline")
+            .unwrap_err();
+        assert!(error.is::<tokio::time::error::Elapsed>());
+        // Tokio's timer wheel has millisecond granularity. This bounds virtual
+        // time only; scheduler wall time is not part of the assertion.
+        let elapsed = tokio::time::Instant::now() - started;
+        assert!(
+            (Duration::from_secs(2)..=Duration::from_millis(2002)).contains(&elapsed),
+            "unexpected controlled deadline: {elapsed:?}"
         );
     }
 
