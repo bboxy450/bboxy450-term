@@ -2,6 +2,7 @@
 use bbt_ui::{
     self as ui, components as c,
     modules::{
+        launcher::Launcher,
         mini_grid::Node,
         pane::Pane,
         perf_hud::PerfHud,
@@ -14,7 +15,7 @@ use bbt_ui::{
     },
 };
 use bbt_ui_model::{
-    Activity, STYLE, SeatId, SplitNode, TOKENS, WaitKind,
+    Activity, STYLE, SeatId, SplitNode, Stage, TOKENS, WaitKind,
     draw::{Color, DrawList, TextStyle, TypeScale},
     layout::{Axis, Rect, TextMeasure, TextStyle as MeasureStyle, solve_split},
 };
@@ -23,6 +24,39 @@ use std::{cell::RefCell, collections::HashMap};
 /// Settings > Glow lane range (operator, 2026-10-22).
 pub const LANE_MIN: f32 = TOKENS.glow.lane_min as f32;
 pub const LANE_MAX: f32 = TOKENS.glow.lane_max as f32;
+
+/// The host retains the very layout it paints; pointer input never reconstructs
+/// browser positions or guesses a row's height.
+pub struct LauncherLayout {
+    layout: c::Layout,
+    pub panel: Rect,
+    pub query: Rect,
+    pub rows: Vec<Rect>,
+}
+impl LauncherLayout {
+    pub fn row_at(&self, at: [f32; 2]) -> Option<usize> {
+        self.rows.iter().position(|rect| contains(*rect, at))
+    }
+    pub fn contains(&self, at: [f32; 2]) -> bool {
+        contains(self.panel, at)
+    }
+    fn paint(&self) -> Vec<c::Paint> {
+        c::paint(
+            &self.layout,
+            ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+        )
+    }
+}
+fn contains(r: Rect, at: [f32; 2]) -> bool {
+    at[0] >= r.x && at[0] < r.right() && at[1] >= r.y && at[1] < r.bottom()
+}
+fn named<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> {
+    if matches!(&layout.kind, c::LayoutKind::Named(key) if key == name) {
+        return Some(layout);
+    }
+    layout.children.iter().find_map(|child| named(child, name))
+}
+
 pub struct Scene {
     hosts: Vec<bbt_proto::GuiHost>,
     pub seats: Vec<SeatRow>,
@@ -200,7 +234,7 @@ impl Scene {
         }
         .with_env_lane()
     }
-    pub fn set_model(&mut self, model: &bboxy450_term::model::Model) {
+    pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
         let tab = model
@@ -210,21 +244,10 @@ impl Scene {
             .swarms
             .iter()
             .flat_map(|swarm| &swarm.tabs)
-            .find(|tab| Some(tab.id) == model.ui.window.stage.tab);
+            .find(|tab| Some(tab.id) == stage.tab);
         self.tree = tab.map(|tab| tab.tree.clone());
-        let visible = self
-            .tree
-            .as_ref()
-            .map(SplitNode::leaves)
-            .unwrap_or_default();
-        // Command-T focuses the new pane; later screen publications preserve
-        // the operator's local focus until its watched-set message reaches IO.
-        self.focused = visible
-            .iter()
-            .find(|id| !self.seat_index.contains_key(id))
-            .copied()
-            .or(self.focused.filter(|id| visible.contains(id)))
-            .or(model.ui.window.stage.focused);
+        // Stage is owned by the UI input adapter. Scene only projects it.
+        self.focused = stage.focused;
         self.seat_index = model
             .ui
             .seats
@@ -265,12 +288,6 @@ impl Scene {
     pub fn focused(&self) -> Option<SeatId> {
         self.focused
     }
-    pub fn focus(&mut self, id: SeatId) {
-        self.focused = Some(id);
-        for (seat, index) in &self.seat_index {
-            self.seats[*index].focused = *seat == id;
-        }
-    }
     pub fn backend_lost(&mut self) {
         self.backend_lost = true;
         for row in &mut self.seats {
@@ -310,6 +327,16 @@ impl Scene {
             .into_iter()
             .zip(layouts.iter().skip(2))
             .filter_map(|(id, layout)| body(layout).map(|rect| (id, rect)))
+            .collect()
+    }
+    /// Spatial focus uses the whole pane, independently of terminal body sizes.
+    pub fn focus_bounds(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect)> {
+        self.tree
+            .as_ref()
+            .map(SplitNode::leaves)
+            .unwrap_or_default()
+            .into_iter()
+            .zip(layouts.iter().skip(2).map(|layout| layout.rect))
             .collect()
     }
     pub fn update(&mut self, sequence: usize) {
@@ -472,6 +499,7 @@ impl Scene {
         layouts: &[c::Layout],
         size: [f32; 2],
         overlay: Option<&PerfHud>,
+        launcher: Option<&LauncherLayout>,
     ) -> Vec<c::Paint> {
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         let mut background = DrawList::default();
@@ -511,7 +539,66 @@ impl Scene {
             );
             ops.push(c::Paint::Draw(footer));
         }
-        ops.extend(self.overlay(size, overlay));
+        ops.extend(self.foreground(size, launcher, overlay));
+        ops
+    }
+    pub fn launcher_layout(
+        &self,
+        size: [f32; 2],
+        launcher: &Launcher,
+    ) -> Result<LauncherLayout, String> {
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let width = 760_f32.min(size[0] * 0.92);
+        let side = (size[0] - width) * 0.5;
+        let mut overlay = c::Overlay::new(launcher.element(ctx));
+        overlay.horizontal = c::Alignment::Stretch;
+        overlay.vertical = c::Alignment::Start;
+        overlay.style.overrides.height = Some(ui::Length::Px(size[1]));
+        overlay.style.overrides.radii = Some([ui::Length::Px(0.); 4]);
+        overlay.style.overrides.padding =
+            Some([size[1] * 0.09, side, 0., side].map(ui::Length::Px));
+        overlay.style.overrides.blur = Some(ui::Blur {
+            radius: ui::Length::Px(STYLE.material.backdrop_blur_px as f32),
+            saturation: 1.15,
+        });
+        let layout = c::Element::Overlay(overlay)
+            .layout(Rect::new(0., 0., size[0], size[1]), ctx, &self.metrics)
+            .map_err(|e| e.to_string())?;
+        let panel = named(&layout, "picker")
+            .ok_or("launcher panel missing")?
+            .rect;
+        let query = named(&layout, "picker/inrow/input")
+            .ok_or("launcher query missing")?
+            .rect;
+        let rows = (0..launcher.view().rows.len())
+            .map(|index| {
+                let key = if index == 0 {
+                    "picker/div/opt".into()
+                } else {
+                    format!("picker/div/opt{index}")
+                };
+                named(&layout, &key)
+                    .map(|layout| layout.rect)
+                    .ok_or("launcher row missing")
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(LauncherLayout {
+            layout,
+            panel,
+            query,
+            rows,
+        })
+    }
+    /// Cells precede these ops in the live path. Leave the frosted launcher
+    /// unwrapped so its blur samples the painted window; the meter stays last.
+    pub fn foreground(
+        &self,
+        size: [f32; 2],
+        launcher: Option<&LauncherLayout>,
+        hud: Option<&PerfHud>,
+    ) -> Vec<c::Paint> {
+        let mut ops = launcher.map_or_else(Vec::new, LauncherLayout::paint);
+        ops.extend(self.overlay(size, hud));
         ops
     }
     /// The perf HUD (Cmd+Opt+F), top right as the lab's perf.html floats it over the app.
@@ -606,5 +693,92 @@ mod lane_tests {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod launcher_tests {
+    use super::*;
+
+    #[test]
+    fn retained_launcher_hit_regions_and_unwrapped_foreground_order() {
+        let scene = Scene::new();
+        let size = [1600., 960.];
+        let layouts = scene.layout(size, false).unwrap();
+        let before = scene.pane_bounds(&layouts);
+        let outer = scene.focus_bounds(&layouts);
+        assert_eq!(outer.len(), before.len());
+        for ((id, frame), (body_id, body)) in outer.iter().zip(&before) {
+            assert_eq!(id, body_id);
+            assert!(body.x >= frame.x && body.y > frame.y);
+            assert!(body.right() <= frame.right() && body.bottom() <= frame.bottom());
+        }
+        let controller = crate::new_launcher(None, 0);
+        let launcher = scene.launcher_layout(size, &controller.launcher).unwrap();
+        assert_eq!(launcher.panel.w, 760.);
+        assert!(launcher.query.w > 0.);
+        assert!(launcher.contains([launcher.query.x + 1., launcher.query.y + 1.]));
+        assert!(!launcher.contains([0., 0.]));
+        assert_eq!(launcher.rows.len(), controller.launcher.view().rows.len());
+        for (index, rect) in launcher.rows.iter().enumerate() {
+            assert_eq!(
+                launcher.row_at([rect.x + rect.w * 0.5, rect.y + rect.h * 0.5]),
+                Some(index)
+            );
+        }
+        let hud = crate::perf_hud(
+            bbt_rt::HitchMeter::new(120.).perf_record(std::time::Instant::now(), 0.),
+        );
+        let foreground = scene.foreground(size, Some(&launcher), Some(&hud));
+        let launcher_ops = launcher.paint();
+        let hud_ops = scene.overlay(size, Some(&hud));
+        assert_eq!(foreground.len(), launcher_ops.len() + hud_ops.len());
+        assert_eq!(
+            format!("{:?}", &foreground[..launcher_ops.len()]),
+            format!("{launcher_ops:?}")
+        );
+        assert_eq!(
+            format!("{:?}", &foreground[launcher_ops.len()..]),
+            format!("{hud_ops:?}")
+        );
+        assert!(launcher_ops.iter().any(|op| matches!(
+            op,
+            c::Paint::Material {
+                kind: ui::Material::Frosted,
+                ..
+            }
+        )));
+        assert!(
+            launcher_ops
+                .iter()
+                .all(|op| !matches!(op, c::Paint::Group { .. }))
+        );
+        assert!(scene.foreground(size, None, None).is_empty());
+        assert_eq!(
+            before,
+            scene.pane_bounds(&scene.layout(size, false).unwrap())
+        );
+        let base_ops = scene.paint(&layouts, size, None, None);
+        let frozen = scene.paint(&layouts, size, Some(&hud), Some(&launcher));
+        assert_eq!(
+            format!("{:?}", &frozen[..base_ops.len()]),
+            format!("{base_ops:?}")
+        );
+        assert_eq!(
+            format!("{:?}", &frozen[base_ops.len()..]),
+            format!("{foreground:?}")
+        );
+    }
+
+    /// Captured also on the unchanged accepted source. Compare the complete
+    /// bytes between these markers, not a screenshot of a moving live scene.
+    #[test]
+    fn no_launcher_paint_proof() {
+        let scene = Scene::new();
+        let size = [1600., 960.];
+        let layouts = scene.layout(size, false).unwrap();
+        let paints = scene.paint(&layouts, size, None, None);
+        println!("L8_PAINT_BEGIN{paints:#?}L8_PAINT_END");
+        assert_eq!(scene.focus_bounds(&layouts).len(), 15);
     }
 }

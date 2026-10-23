@@ -8,9 +8,20 @@ mod live;
 mod log;
 mod scene;
 
+use bboxy450_term::launcher::{
+    Command as LauncherCommand, Controller as LauncherController, Outcome as LauncherOutcome,
+};
 use bbt_proto::{SeatId, View};
 use bbt_rt::{HitchMeter, Latest, Phases, UiInbox, UiMsg};
-use bbt_ui_model::layout::Rect;
+use bbt_ui_model::{
+    Model as UiModel, Stage,
+    event::Event as InputEvent,
+    input::{
+        Direction, Focus, FocusContext, FocusOrigin, KeyRoute, Modifiers, Navigation,
+        NavigationKey, route_navigation,
+    },
+    layout::Rect,
+};
 use display_link::{Clock, DisplayLink, Mode};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
@@ -19,7 +30,7 @@ use winit::platform::macos::MonitorHandleExtMacOS;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{ElementState, MouseButton, WindowEvent},
+    event::{ElementState, Ime, MouseButton, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy},
     keyboard::{Key, KeyCode, ModifiersState, NamedKey, PhysicalKey},
     window::{Window, WindowId},
@@ -63,6 +74,409 @@ impl IdleQuiescence {
     }
 }
 
+#[derive(Default)]
+struct FocusState {
+    controller: Focus,
+    stage: Option<Stage>,
+    pending_layout: bool,
+}
+enum FocusAction {
+    Activate(SeatId, FocusOrigin),
+    Navigate(Navigation),
+}
+impl FocusState {
+    fn reconcile(&mut self, previous: Option<&UiModel>, next: &UiModel) {
+        let owner = |seat| {
+            if next.seats.get(&seat)?.lifecycle != bbt_ui_model::Lifecycle::Open {
+                return None;
+            }
+            let (swarm, tab) = next.tab_of(seat)?;
+            let swarm = &next.window.sidebar.swarms[swarm];
+            Some(Stage {
+                swarm: Some(swarm.id),
+                tab: Some(swarm.tabs[tab].id),
+                focused: Some(seat),
+            })
+        };
+        // New membership may select a newly launched pane, just as the old
+        // scene did. Ordinary screen/state publications never replace Stage.
+        let new_seat = previous.and_then(|old| {
+            let tab = self.stage.as_ref()?.tab;
+            next.window
+                .sidebar
+                .swarms
+                .iter()
+                .flat_map(|s| &s.tabs)
+                .find(|t| Some(t.id) == tab)?
+                .tree
+                .leaves()
+                .into_iter()
+                .find(|id| !old.seats.contains_key(id))
+        });
+        self.stage = new_seat
+            .and_then(owner)
+            .or_else(|| self.stage.as_ref().and_then(|s| s.focused).and_then(owner))
+            .or_else(|| Some(next.window.stage.clone()));
+    }
+    fn apply(
+        &mut self,
+        source: &UiModel,
+        action: FocusAction,
+        panes: &[(SeatId, Rect)],
+        now: Instant,
+    ) -> Result<Vec<InputEvent>, bbt_ui_model::EditError> {
+        // Clone only for an input action, never for a terminal publication or
+        // ordinary frame. Focus is the sole writer of explicit Stage changes.
+        let mut model = source.clone();
+        if let Some(stage) = &self.stage {
+            model.window.stage = stage.clone();
+        }
+        let events = match action {
+            FocusAction::Activate(seat, origin) => {
+                self.controller.activate(&mut model, seat, origin, now)
+            }
+            FocusAction::Navigate(Navigation::Direction(direction)) => {
+                self.controller.navigate(&mut model, panes, direction, now)
+            }
+            FocusAction::Navigate(Navigation::Cycle { backwards }) => {
+                self.controller.cycle(&mut model, backwards, now)
+            }
+        }?;
+        self.stage = Some(model.window.stage);
+        self.pending_layout |= events.iter().any(|event| {
+            matches!(
+                event,
+                InputEvent::FocusChanged {
+                    stage_switched: true,
+                    ..
+                }
+            )
+        });
+        Ok(events)
+    }
+    fn layout_ready(&mut self, source: &UiModel, panes: &[(SeatId, Rect)]) -> Vec<InputEvent> {
+        if !self.pending_layout {
+            return vec![];
+        }
+        let mut model = source.clone();
+        if let Some(stage) = &self.stage {
+            model.window.stage = stage.clone();
+        }
+        let events = self.controller.layout_ready(&model, panes, Instant::now());
+        self.pending_layout = model.window.stage.focused.is_some_and(|seat| {
+            !panes
+                .iter()
+                .any(|(id, rect)| *id == seat && rect.w > 0. && rect.h > 0.)
+        });
+        events
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum RoutedKey {
+    Quit,
+    OpenLauncher,
+    ToggleHud,
+    Launcher(LauncherCommand),
+    Pane(Navigation),
+    Terminal(Vec<u8>),
+    Local,
+}
+fn input_modifiers(mods: ModifiersState) -> Modifiers {
+    Modifiers {
+        command: mods.super_key(),
+        alt: mods.alt_key(),
+        control: mods.control_key(),
+        shift: mods.shift_key(),
+    }
+}
+fn zsh_pick(id: &str, modifiers: Modifiers) -> bool {
+    // A only wires the existing default launch. Explicit placement and every
+    // other action have a named outcome until the generic spawn checkpoint.
+    id == "zsh" && modifiers == Modifiers::default()
+}
+/// This is the same routing entry point used by winit and the synthetic tests.
+fn route_key(
+    key: &Key,
+    physical: PhysicalKey,
+    text: Option<&str>,
+    mods: ModifiersState,
+    repeat: bool,
+    query: Option<&str>,
+) -> RoutedKey {
+    let command = mods.super_key();
+    if command && physical == PhysicalKey::Code(KeyCode::KeyQ) {
+        return if repeat {
+            RoutedKey::Local
+        } else {
+            RoutedKey::Quit
+        };
+    }
+    if command
+        && !mods.alt_key()
+        && !mods.shift_key()
+        && !mods.control_key()
+        && physical == PhysicalKey::Code(KeyCode::KeyT)
+    {
+        return if repeat {
+            RoutedKey::Local
+        } else {
+            RoutedKey::OpenLauncher
+        };
+    }
+    if command && mods.alt_key() && physical == PhysicalKey::Code(KeyCode::KeyF) {
+        return if repeat {
+            RoutedKey::Local
+        } else {
+            RoutedKey::ToggleHud
+        };
+    }
+    let navigation = match key {
+        Key::Named(NamedKey::ArrowLeft) => NavigationKey::Arrow(Direction::Left),
+        Key::Named(NamedKey::ArrowRight) => NavigationKey::Arrow(Direction::Right),
+        Key::Named(NamedKey::ArrowUp) => NavigationKey::Arrow(Direction::Up),
+        Key::Named(NamedKey::ArrowDown) => NavigationKey::Arrow(Direction::Down),
+        Key::Named(NamedKey::Tab) => NavigationKey::Tab,
+        _ => NavigationKey::Other,
+    };
+    match route_navigation(
+        navigation,
+        input_modifiers(mods),
+        if query.is_some() {
+            FocusContext::Launcher
+        } else {
+            FocusContext::Terminal
+        },
+    ) {
+        KeyRoute::Pane(navigation) => return RoutedKey::Pane(navigation),
+        KeyRoute::Terminal => {
+            return terminal_input(key, text, mods).map_or(RoutedKey::Local, RoutedKey::Terminal);
+        }
+        _ => {}
+    }
+    let Some(query) = query else {
+        return RoutedKey::Local;
+    };
+    let pick = input_modifiers(mods);
+    let local = match key {
+        Key::Named(NamedKey::ArrowUp) => LauncherCommand::Up,
+        Key::Named(NamedKey::ArrowDown) => LauncherCommand::Down,
+        Key::Named(NamedKey::Tab) if mods.shift_key() => LauncherCommand::Up,
+        Key::Named(NamedKey::Tab) => LauncherCommand::Down,
+        Key::Named(NamedKey::ArrowRight) => LauncherCommand::Right,
+        Key::Named(NamedKey::ArrowLeft) => LauncherCommand::Left,
+        Key::Named(NamedKey::Enter) if !repeat => LauncherCommand::Activate(pick),
+        Key::Named(NamedKey::Escape) if !repeat => LauncherCommand::Escape,
+        Key::Named(NamedKey::Backspace) if !query.is_empty() => {
+            let mut query = query.to_owned();
+            query.pop();
+            LauncherCommand::Query(query)
+        }
+        Key::Named(NamedKey::Backspace) => LauncherCommand::Backspace,
+        Key::Character(value)
+            if (command || mods.control_key()) && value.eq_ignore_ascii_case("r") && !repeat =>
+        {
+            LauncherCommand::Reroll
+        }
+        Key::Character(value)
+            if query.is_empty()
+                && value.len() == 1
+                && matches!(value.as_bytes()[0], b'1'..=b'9') =>
+        {
+            if repeat {
+                return RoutedKey::Local;
+            }
+            LauncherCommand::Digit {
+                digit: value.as_bytes()[0] - b'0',
+                modifiers: pick,
+            }
+        }
+        Key::Character(value) if !command && !mods.control_key() => {
+            LauncherCommand::Query(format!("{query}{}", text.unwrap_or(value)))
+        }
+        Key::Named(NamedKey::Space) if !command && !mods.control_key() => {
+            LauncherCommand::Query(format!("{query} "))
+        }
+        _ => return RoutedKey::Local,
+    };
+    RoutedKey::Launcher(local)
+}
+
+/// Public item records, with the provider projection kept authoritative. Picks
+/// are identified by id; a display label never becomes a command.
+fn launcher_items(
+    model: Option<&bboxy450_term::model::Model>,
+) -> Vec<bbt_ui::modules::launcher::Item> {
+    use bbt_ui::modules::launcher::Item;
+    let launchables = || {
+        [
+            (
+                "claude",
+                "Claude",
+                "oracle by default",
+                "#D97757",
+                "Suggestions",
+            ),
+            (
+                "codex",
+                "Codex",
+                "executor by default",
+                "#1F2937",
+                "Suggestions",
+            ),
+            ("pi", "pi", "executor by default", "#7C3AED", "Harnesses"),
+            ("omp", "omp", "executor by default", "#0EA5E9", "Harnesses"),
+            ("zsh", "zsh", "~", "#111827", "Shells"),
+        ]
+        .into_iter()
+        .map(|(id, label, sub, tile, section)| Item {
+            id: id.into(),
+            label: label.into(),
+            sub: sub.into(),
+            harness: id.into(),
+            kind: if id == "zsh" { "Shell" } else { "Harness" }.into(),
+            tile: Some(tile.into()),
+            section: Some(section.into()),
+            aliases: vec![id.into()],
+            enter_picks: true,
+            ..Default::default()
+        })
+        .collect::<Vec<_>>()
+    };
+    let mut items = launchables();
+    for item in &mut items {
+        item.children = Some(
+            [
+                ("tab", "New tab"),
+                ("right", "Split right"),
+                ("bottom", "Split down"),
+            ]
+            .into_iter()
+            .map(|(id, label)| Item {
+                id: format!("{}:{id}", item.id),
+                label: label.into(),
+                harness: item.harness.clone(),
+                kind: "Placement".into(),
+                tile: item.tile.clone(),
+                ..Default::default()
+            })
+            .collect(),
+        );
+    }
+    let mut providers = model.map_or_else(Vec::new, |m| m.provider_launcher_items());
+    for root in &mut providers {
+        for host in root.children.iter_mut().flatten() {
+            if host.children.is_some() {
+                host.children = Some(
+                    launchables()
+                        .into_iter()
+                        .map(|mut item| {
+                            item.id = format!("{}:{}", host.id, item.id);
+                            item
+                        })
+                        .collect(),
+                );
+            }
+        }
+    }
+    items.extend(providers);
+    let seats = model.map_or_else(Vec::new, |m| {
+        m.ui.seats
+            .values()
+            .filter(|s| s.lifecycle == bbt_ui_model::Lifecycle::Open)
+            .map(|seat| Item {
+                id: format!("seat:{}", seat.id),
+                label: seat.name.clone(),
+                sub: seat.title.clone(),
+                harness: seat.harness.0.clone(),
+                kind: "Seat".into(),
+                navigation: true,
+                ..Default::default()
+            })
+            .collect()
+    });
+    items.push(Item {
+        id: "goto".into(),
+        label: "Go to".into(),
+        aliases: vec!["go".into(), "jump".into()],
+        harness: "sidebarfoxopen".into(),
+        kind: "Navigate".into(),
+        section: Some("Navigate".into()),
+        navigation: true,
+        children: Some(seats),
+        ..Default::default()
+    });
+    items.push(Item {
+        id: "graph".into(),
+        label: "Graph".into(),
+        harness: "sidebarfoxopen".into(),
+        kind: "Open".into(),
+        navigation: true,
+        ..Default::default()
+    });
+    items.push(Item {
+        id: "settings".into(),
+        label: "Settings".into(),
+        aliases: vec!["prefs".into(), "preferences".into(), "config".into()],
+        harness: "gear".into(),
+        kind: "Open".into(),
+        navigation: true,
+        enter_picks: true,
+        children: Some(
+            [
+                "Account",
+                "Cloud",
+                "Machines",
+                "Roles",
+                "Harnesses",
+                "Appearance",
+                "Shortcuts",
+            ]
+            .into_iter()
+            .map(|section| Item {
+                id: format!("settings:{}", section.to_lowercase()),
+                label: section.into(),
+                harness: "gear".into(),
+                kind: "Section".into(),
+                navigation: true,
+                ..Default::default()
+            })
+            .collect(),
+        ),
+        ..Default::default()
+    });
+    items
+}
+
+fn new_launcher(model: Option<&bboxy450_term::model::Model>, used: usize) -> LauncherController {
+    use bbt_ui::modules::launcher::{Cap, Launcher};
+    LauncherController::new(
+        Launcher {
+            items: launcher_items(model),
+            query: String::new(),
+            path: vec![],
+            selected: Some(0),
+            placeholder: "launch or go to · type to search".into(),
+            name: "new seat".into(),
+            swatch: [0.18, 0.42, 1., 1.],
+            actions: vec![
+                ("Launch / go".into(), "↵".into()),
+                ("Into".into(), "→".into()),
+                ("Back".into(), "←".into()),
+            ],
+            cap: (used >= PENDING_SPAWNS).then(|| Cap {
+                scope: "pending launches".into(),
+                used,
+                limit: PENDING_SPAWNS,
+                counts: "queued spawn requests count".into(),
+                ..Default::default()
+            }),
+            spotlight: true,
+        },
+        0,
+    )
+}
+
 struct App {
     proxy: EventLoopProxy<UiEvent>,
     inbox: UiInbox,
@@ -77,6 +491,10 @@ struct App {
     watched: Vec<(SeatId, View)>,
     pane_sizes: BTreeMap<SeatId, (u64, u16, u16)>,
     pane_bounds: Vec<(SeatId, Rect)>,
+    focus_bounds: Vec<(SeatId, Rect)>,
+    focus: FocusState,
+    launcher: Option<LauncherController>,
+    launcher_layout: Option<scene::LauncherLayout>,
     pointer: [f32; 2],
     backend_lost: bool,
     render_context: Option<tokio::sync::oneshot::Sender<live::RenderContext>>,
@@ -115,6 +533,75 @@ struct App {
     verify: Verify,
 }
 impl App {
+    fn open_launcher(&mut self) {
+        let used = self
+            .pending_commands
+            .iter()
+            .filter(|m| matches!(m, live::UiMsg::SpawnZsh))
+            .count();
+        self.launcher = Some(new_launcher(self.live_state.as_deref(), used));
+        self.launcher_layout = None;
+        if let Some(window) = &self.window {
+            window.set_ime_allowed(true);
+        }
+        self.logger
+            .write("launcher open; query gap: caret, selection and IME preedit are not wired yet");
+        self.request_redraw();
+    }
+    fn close_launcher(&mut self) {
+        self.launcher = None;
+        self.launcher_layout = None;
+        if let Some(window) = &self.window {
+            window.set_ime_allowed(false);
+        }
+        self.request_redraw();
+    }
+    fn launcher_command(&mut self, command: LauncherCommand) {
+        let Some(launcher) = &mut self.launcher else {
+            return;
+        };
+        let outcome = launcher.handle(command);
+        match outcome {
+            LauncherOutcome::Close => self.close_launcher(),
+            LauncherOutcome::Changed => {
+                self.launcher_layout = None;
+                self.request_redraw();
+            }
+            LauncherOutcome::Pick { id, modifiers } => {
+                if zsh_pick(&id, modifiers) && self.live_commands.is_some() {
+                    self.queue(live::UiMsg::SpawnZsh);
+                    self.close_launcher();
+                } else {
+                    self.logger.write(format!(
+                        "launcher pick not_wired_yet: id={id} modifiers={modifiers:?}"
+                    ));
+                }
+            }
+            LauncherOutcome::Local => {}
+            other => self.logger.write(format!("launcher outcome: {other:?}")),
+        }
+    }
+    fn focus_action(&mut self, action: FocusAction) {
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        match self
+            .focus
+            .apply(&model.ui, action, &self.focus_bounds, Instant::now())
+        {
+            Ok(events) => {
+                self.scene.set_model(
+                    model,
+                    self.focus.stage.as_ref().expect("focus action stage"),
+                );
+                for event in events {
+                    self.logger.write(format!("ui input: {event:?}"));
+                }
+                self.request_redraw();
+            }
+            Err(error) => self.logger.write(format!("focus refused: {error}")),
+        }
+    }
     fn queue(&mut self, message: live::UiMsg) {
         if self.closing || self.live_commands.is_none() {
             return;
@@ -303,7 +790,7 @@ impl App {
                 };
                 let logical = [size.width as f32 / scale, size.height as f32 / scale];
                 let layouts = scene.layout(logical, effects)?;
-                gpu.warm(scene.paint(&layouts, logical, None), scale)?;
+                gpu.warm(scene.paint(&layouts, logical, None, None), scale)?;
                 Ok((gpu, scene))
             }
             .await;
@@ -322,7 +809,10 @@ impl App {
             let (mut gpu, scene) = result?;
             self.scene = scene;
             if let Some(state) = &self.live_state {
-                self.scene.set_model(state);
+                self.scene.set_model(
+                    state,
+                    self.focus.stage.as_ref().unwrap_or(&state.ui.window.stage),
+                );
             }
             let size = self.window.as_ref().unwrap().inner_size();
             gpu.resize(size.width, size.height);
@@ -382,7 +872,17 @@ impl App {
             self.last_update = sequence;
         }
         if let Some(state) = self.live_updates.take() {
-            self.scene.set_model(&state);
+            self.focus
+                .reconcile(self.live_state.as_ref().map(|old| &old.ui), &state.ui);
+            let refresh = self.live_state.as_ref().is_none_or(|old| {
+                old.hosts != state.hosts || old.ui.seats.keys().ne(state.ui.seats.keys())
+            });
+            if refresh && let Some(launcher) = &mut self.launcher {
+                launcher.replace_items(launcher_items(Some(&state)));
+                self.launcher_layout = None;
+            }
+            self.scene
+                .set_model(&state, self.focus.stage.as_ref().expect("published stage"));
             self.live_state = Some(state);
             self.verify();
         }
@@ -484,8 +984,25 @@ impl App {
             .scene
             .layout(logical, self.animation_start.is_some() || self.animate)?;
         let bounds = self.scene.pane_bounds(&layouts);
+        self.focus_bounds = self.scene.focus_bounds(&layouts);
+        if let Some(model) = &self.live_state {
+            for event in self.focus.layout_ready(&model.ui, &self.focus_bounds) {
+                self.logger.write(format!("ui input: {event:?}"));
+            }
+        }
         self.watch_panes(&bounds, scale);
         self.pane_bounds = bounds;
+        self.launcher_layout = self
+            .launcher
+            .as_ref()
+            .map(|launcher| self.scene.launcher_layout(logical, &launcher.launcher))
+            .transpose()?;
+        if let Some(launcher) = &self.launcher_layout {
+            self.window.as_ref().unwrap().set_ime_cursor_area(
+                winit::dpi::LogicalPosition::new(launcher.query.x, launcher.query.y),
+                winit::dpi::LogicalSize::new(launcher.query.w, launcher.query.h),
+            );
+        }
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
             perf_hud(
@@ -499,6 +1016,11 @@ impl App {
             &layouts,
             logical,
             if live { None } else { overlay.as_ref() },
+            if live {
+                None
+            } else {
+                self.launcher_layout.as_ref()
+            },
         );
         phases.draw = start.elapsed();
         if self.animate {
@@ -522,7 +1044,11 @@ impl App {
             self.live_state.as_ref().map(|model| gpu::Panes {
                 model,
                 bounds: &self.pane_bounds,
-                overlay: self.scene.overlay(logical, overlay.as_ref()),
+                overlay: self.scene.foreground(
+                    logical,
+                    self.launcher_layout.as_ref(),
+                    overlay.as_ref(),
+                ),
             }),
         )? {
             phases.encode = encode;
@@ -815,23 +1341,51 @@ impl ApplicationHandler<UiEvent> for App {
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                if let Some(index) = self
+                    .launcher_layout
+                    .as_ref()
+                    .and_then(|layout| layout.row_at(self.pointer))
+                {
+                    self.launcher_command(LauncherCommand::Hover(index));
+                }
             }
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 button: MouseButton::Left,
                 ..
             } => {
-                if let Some((id, _)) = self.pane_bounds.iter().find(|(_, rect)| {
+                if self.launcher.is_some() {
+                    if let Some(layout) = &self.launcher_layout {
+                        if let Some(index) = layout.row_at(self.pointer) {
+                            self.launcher_command(LauncherCommand::ActivateAt {
+                                index,
+                                modifiers: input_modifiers(self.modifiers),
+                            });
+                        } else if !layout.contains(self.pointer) {
+                            self.close_launcher();
+                        }
+                    }
+                    return;
+                }
+                if let Some((id, _)) = self.focus_bounds.iter().find(|(_, rect)| {
                     self.pointer[0] >= rect.x
                         && self.pointer[0] < rect.right()
                         && self.pointer[1] >= rect.y
                         && self.pointer[1] < rect.bottom()
                 }) {
-                    self.scene.focus(*id);
-                    self.request_redraw();
+                    self.focus_action(FocusAction::Activate(*id, FocusOrigin::Pane));
+                }
+            }
+            WindowEvent::Ime(Ime::Commit(text)) => {
+                if let Some(launcher) = &self.launcher {
+                    self.launcher_command(LauncherCommand::Query(format!(
+                        "{}{text}",
+                        launcher.launcher.query
+                    )));
                 }
             }
             WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
+                self.focus.controller.key_pressed(Instant::now());
                 // Verification-only resize exercises the real OS Resized event
                 // on borderless windows whose native edge is hard to grab.
                 if self.capture.is_some()
@@ -863,46 +1417,45 @@ impl ApplicationHandler<UiEvent> for App {
                     self.request_redraw();
                     return;
                 }
-                if event.physical_key == PhysicalKey::Code(KeyCode::KeyQ)
-                    && self.modifiers.super_key()
-                    && !event.repeat
-                {
-                    self.request_close(event_loop);
-                    return;
-                }
-                if event.physical_key == PhysicalKey::Code(KeyCode::KeyT)
-                    && self.modifiers.super_key()
-                    && !self.modifiers.alt_key()
-                    && !self.modifiers.shift_key()
-                    && !event.repeat
-                {
-                    self.queue(live::UiMsg::SpawnZsh);
-                    return;
-                }
-                if event.physical_key == PhysicalKey::Code(KeyCode::KeyF)
-                    && self.modifiers.super_key()
-                    && self.modifiers.alt_key()
-                {
-                    self.overlay = !self.overlay;
-                    self.logger.write(format!("hitch overlay={}", self.overlay));
-                    self.request_redraw();
-                    return;
-                }
-                if let Some(seat) = self.scene.focused()
-                    && let Some(generation) = self
-                        .live_state
+                match route_key(
+                    &event.logical_key,
+                    event.physical_key,
+                    event.text.as_deref(),
+                    self.modifiers,
+                    event.repeat,
+                    self.launcher
                         .as_ref()
-                        .and_then(|model| model.ui.seats.get(&seat))
-                        .map(|seat| seat.process_generation)
-                    && let Some(bytes) =
-                        terminal_input(&event.logical_key, event.text.as_deref(), self.modifiers)
-                {
-                    self.queue(live::UiMsg::Input {
-                        seat,
-                        generation,
-                        id: bbt_mux::Ulid::new(),
-                        bytes,
-                    });
+                        .map(|launcher| launcher.launcher.query.as_str()),
+                ) {
+                    RoutedKey::Quit => self.request_close(event_loop),
+                    RoutedKey::OpenLauncher => self.open_launcher(),
+                    RoutedKey::ToggleHud => {
+                        self.overlay = !self.overlay;
+                        self.logger.write(format!("hitch overlay={}", self.overlay));
+                        self.request_redraw();
+                    }
+                    RoutedKey::Launcher(command) => self.launcher_command(command),
+                    RoutedKey::Pane(navigation) => {
+                        self.focus_action(FocusAction::Navigate(navigation))
+                    }
+                    RoutedKey::Terminal(bytes) => {
+                        if let Some(seat) =
+                            self.focus.stage.as_ref().and_then(|stage| stage.focused)
+                            && let Some(generation) = self
+                                .live_state
+                                .as_ref()
+                                .and_then(|model| model.ui.seats.get(&seat))
+                                .map(|seat| seat.process_generation)
+                        {
+                            self.queue(live::UiMsg::Input {
+                                seat,
+                                generation,
+                                id: bbt_mux::Ulid::new(),
+                                bytes,
+                            });
+                        }
+                    }
+                    RoutedKey::Local => {}
                 }
             }
             WindowEvent::RedrawRequested => {
@@ -1292,6 +1845,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         watched: vec![],
         pane_sizes: BTreeMap::new(),
         pane_bounds: vec![],
+        focus_bounds: vec![],
+        focus: FocusState::default(),
+        launcher: None,
+        launcher_layout: None,
         pointer: [0.; 2],
         backend_lost: false,
         render_context: (!fake && !animate).then_some(render_context),
@@ -1700,5 +2257,292 @@ mod input_tests {
             ),
             None
         );
+    }
+}
+
+#[cfg(test)]
+mod launcher_host_tests {
+    use super::*;
+    use bbt_ui_model::{Axis, Seat, SplitNode, Swarm, SwarmId, Tab, TabId};
+
+    fn fixture() -> UiModel {
+        let swarm = SwarmId::from_u128(1);
+        UiModel::new(
+            vec![Swarm::new(
+                swarm,
+                "swarm",
+                vec![
+                    Tab::new(
+                        TabId::from_u128(1),
+                        "split",
+                        SplitNode::split(
+                            Axis::Row,
+                            0.5,
+                            SplitNode::Leaf(SeatId::from_u128(1)),
+                            SplitNode::Leaf(SeatId::from_u128(2)),
+                        ),
+                    ),
+                    Tab::new(
+                        TabId::from_u128(2),
+                        "other",
+                        SplitNode::Leaf(SeatId::from_u128(3)),
+                    ),
+                ],
+            )],
+            (1..=3)
+                .map(|id| {
+                    Seat::new(
+                        SeatId::from_u128(id),
+                        swarm,
+                        [id as u8; 32],
+                        format!("seat{id}"),
+                        "zsh",
+                    )
+                })
+                .collect(),
+        )
+        .unwrap()
+    }
+    fn route(key: Key, mods: ModifiersState, repeat: bool, query: Option<&str>) -> RoutedKey {
+        route_key(
+            &key,
+            PhysicalKey::Code(KeyCode::Space),
+            None,
+            mods,
+            repeat,
+            query,
+        )
+    }
+    #[test]
+    fn terminal_keys_stay_byte_exact_while_explicit_chords_move_focus() {
+        let plain = ModifiersState::empty();
+        for (key, mods, bytes) in [
+            (Key::Named(NamedKey::Tab), plain, b"\t".to_vec()),
+            (
+                Key::Named(NamedKey::Tab),
+                ModifiersState::SHIFT,
+                b"\x1b[Z".to_vec(),
+            ),
+            (Key::Named(NamedKey::ArrowLeft), plain, b"\x1b[D".to_vec()),
+            (
+                Key::Named(NamedKey::ArrowUp),
+                ModifiersState::ALT,
+                b"\x1b\x1b[A".to_vec(),
+            ),
+            (Key::Character("c".into()), ModifiersState::CONTROL, vec![3]),
+            (Key::Character("界".into()), plain, "界".as_bytes().to_vec()),
+            (Key::Named(NamedKey::Enter), plain, b"\r".to_vec()),
+        ] {
+            assert_eq!(
+                route(key.clone(), mods, false, None),
+                RoutedKey::Terminal(bytes.clone())
+            );
+            assert_eq!(route(key, mods, true, None), RoutedKey::Terminal(bytes));
+        }
+        let nav = ModifiersState::SUPER | ModifiersState::ALT;
+        assert_eq!(
+            route(Key::Named(NamedKey::ArrowLeft), nav, true, None),
+            RoutedKey::Pane(Navigation::Direction(Direction::Left))
+        );
+        assert_eq!(
+            route(
+                Key::Named(NamedKey::Tab),
+                nav | ModifiersState::SHIFT,
+                false,
+                None
+            ),
+            RoutedKey::Pane(Navigation::Cycle { backwards: true })
+        );
+    }
+    #[test]
+    fn modal_input_never_reaches_a_pty_and_picks_do_not_repeat() {
+        let plain = ModifiersState::empty();
+        assert_eq!(
+            route(Key::Named(NamedKey::Tab), plain, false, Some("")),
+            RoutedKey::Launcher(LauncherCommand::Down)
+        );
+        assert_eq!(
+            route(
+                Key::Named(NamedKey::ArrowLeft),
+                ModifiersState::SUPER | ModifiersState::ALT,
+                false,
+                Some("")
+            ),
+            RoutedKey::Launcher(LauncherCommand::Left)
+        );
+        assert_eq!(
+            route(
+                Key::Character("c".into()),
+                ModifiersState::CONTROL,
+                false,
+                Some("zsh")
+            ),
+            RoutedKey::Local
+        );
+        for key in [
+            Key::Named(NamedKey::Enter),
+            Key::Named(NamedKey::Escape),
+            Key::Character("5".into()),
+        ] {
+            assert_eq!(route(key, plain, true, Some("")), RoutedKey::Local);
+        }
+        assert_eq!(
+            route(Key::Named(NamedKey::Enter), plain, false, Some("zsh")),
+            RoutedKey::Launcher(LauncherCommand::Activate(Modifiers::default()))
+        );
+        assert_eq!(
+            route(Key::Character("界".into()), plain, false, Some("z")),
+            RoutedKey::Launcher(LauncherCommand::Query("z界".into()))
+        );
+        assert_eq!(
+            route(Key::Named(NamedKey::Backspace), plain, true, Some("z界")),
+            RoutedKey::Launcher(LauncherCommand::Query("z".into()))
+        );
+        assert_eq!(
+            route_key(
+                &Key::Character("t".into()),
+                PhysicalKey::Code(KeyCode::KeyT),
+                Some("t"),
+                ModifiersState::SUPER,
+                false,
+                None
+            ),
+            RoutedKey::OpenLauncher
+        );
+        assert_eq!(
+            route_key(
+                &Key::Character("t".into()),
+                PhysicalKey::Code(KeyCode::KeyT),
+                Some("t"),
+                ModifiersState::SUPER,
+                true,
+                None
+            ),
+            RoutedKey::Local
+        );
+    }
+    #[test]
+    fn actual_controller_filters_picks_climbs_and_preserves_the_named_gaps() {
+        let mut launcher = new_launcher(None, 0);
+        launcher.handle(LauncherCommand::Query("zsh".into()));
+        assert_eq!(
+            launcher.handle(LauncherCommand::Activate(Modifiers::default())),
+            LauncherOutcome::Pick {
+                id: "zsh".into(),
+                modifiers: Modifiers::default()
+            }
+        );
+        assert!(zsh_pick("zsh", Modifiers::default()));
+        for id in [
+            "claude",
+            "settings",
+            "zsh:right",
+            "ssh:rig:zsh",
+            "anything labelled zsh",
+        ] {
+            assert!(!zsh_pick(id, Modifiers::default()));
+        }
+        assert!(!zsh_pick(
+            "zsh",
+            Modifiers {
+                command: true,
+                ..Default::default()
+            }
+        ));
+        launcher.handle(LauncherCommand::Right);
+        assert_eq!(launcher.launcher.path, ["zsh"]);
+        assert_eq!(
+            launcher.handle(LauncherCommand::Escape),
+            LauncherOutcome::Changed
+        );
+        assert_eq!(
+            launcher.handle(LauncherCommand::Escape),
+            LauncherOutcome::Close
+        );
+        let mut capped = new_launcher(None, PENDING_SPAWNS);
+        capped.handle(LauncherCommand::Query("zsh".into()));
+        assert_eq!(
+            capped.handle(LauncherCommand::Activate(Modifiers::default())),
+            LauncherOutcome::Capped
+        );
+    }
+    #[test]
+    fn published_screens_do_not_undo_local_focus_or_create_locate() {
+        let model = fixture();
+        let mut focus = FocusState::default();
+        focus.reconcile(None, &model);
+        focus
+            .apply(
+                &model,
+                FocusAction::Navigate(Navigation::Cycle { backwards: false }),
+                &[],
+                Instant::now(),
+            )
+            .unwrap();
+        assert_eq!(
+            focus.stage.as_ref().unwrap().focused,
+            Some(SeatId::from_u128(2))
+        );
+        let mut next = model.clone();
+        next.seats.get_mut(&SeatId::from_u128(1)).unwrap().title = "fresh terminal title".into();
+        focus.reconcile(Some(&model), &next);
+        assert_eq!(
+            focus.stage.as_ref().unwrap().focused,
+            Some(SeatId::from_u128(2))
+        );
+        assert!(!focus.pending_layout);
+        assert!(focus.layout_ready(&next, &[]).is_empty());
+        let mut scene = scene::Scene::live();
+        scene.set_model(
+            &bboxy450_term::model::Model {
+                ui: next.clone(),
+                ..Default::default()
+            },
+            focus.stage.as_ref().unwrap(),
+        );
+        assert_eq!(scene.focused(), Some(SeatId::from_u128(2)));
+        next.apply(bbt_ui_model::event::Update::SeatClosedByDaemon {
+            seat: SeatId::from_u128(2),
+        })
+        .unwrap();
+        focus.reconcile(Some(&model), &next);
+        assert_eq!(
+            focus.stage.as_ref().unwrap().focused,
+            Some(SeatId::from_u128(1))
+        );
+    }
+    #[test]
+    fn stage_switch_waits_for_the_new_outer_pane_before_locate_once() {
+        let model = fixture();
+        let mut focus = FocusState::default();
+        focus.reconcile(None, &model);
+        let events = focus
+            .apply(
+                &model,
+                FocusAction::Activate(SeatId::from_u128(3), FocusOrigin::Row),
+                &[],
+                Instant::now(),
+            )
+            .unwrap();
+        assert_eq!(focus.stage.as_ref().unwrap().tab, Some(TabId::from_u128(2)));
+        assert!(
+            events
+                .iter()
+                .all(|e| !matches!(e, InputEvent::Locate { .. }))
+        );
+        assert!(
+            focus
+                .layout_ready(
+                    &model,
+                    &[(SeatId::from_u128(1), Rect::new(0., 0., 100., 100.))]
+                )
+                .is_empty()
+        );
+        assert!(focus.pending_layout);
+        let pane = [(SeatId::from_u128(3), Rect::new(310., 40., 600., 500.))];
+        assert!(
+            matches!(focus.layout_ready(&model, &pane).as_slice(), [InputEvent::Locate { seat, .. }] if *seat == SeatId::from_u128(3))
+        );
+        assert!(focus.layout_ready(&model, &pane).is_empty());
     }
 }
