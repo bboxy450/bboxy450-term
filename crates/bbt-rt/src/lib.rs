@@ -7,6 +7,7 @@
 #[cfg(feature = "runtime")]
 use std::sync::Arc;
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread::{self, ThreadId};
 
 #[cfg(feature = "runtime")]
@@ -14,6 +15,8 @@ use tokio::runtime::{Builder, Handle, Runtime};
 
 #[cfg(feature = "runtime")]
 mod commands;
+#[cfg(feature = "runtime")]
+pub mod fault;
 mod meter;
 #[cfg(feature = "runtime")]
 mod queues;
@@ -29,6 +32,7 @@ pub use wake::{DirtySet, DirtySource, Waker};
 #[cfg(feature = "runtime")]
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 static UI_THREAD: OnceLock<ThreadId> = OnceLock::new();
+static UI_BLOCKING_VIOLATIONS: AtomicU64 = AtomicU64::new(0);
 #[cfg(feature = "runtime")]
 static COMMANDS: OnceLock<CommandRunner> = OnceLock::new();
 
@@ -66,7 +70,16 @@ pub fn is_ui_thread() -> bool {
 /// Guard a blocking IO entry point; the panic points to its caller.
 #[track_caller]
 pub fn assert_not_ui_thread() {
-    debug_assert!(!is_ui_thread(), "blocking IO on the UI thread");
+    if cfg!(debug_assertions) && is_ui_thread() {
+        UI_BLOCKING_VIOLATIONS.fetch_add(1, Ordering::Relaxed);
+        panic!("blocking IO on the UI thread");
+    }
+}
+
+/// R5 counts violations of instrumented application entry points, not all OS
+/// or framework waits. Debug guards must be enabled for this witness.
+pub fn ui_blocking_violations() -> u64 {
+    UI_BLOCKING_VIOLATIONS.load(Ordering::Relaxed)
 }
 
 /// Memory-only state the UI drains at frame start, under its own time budget.

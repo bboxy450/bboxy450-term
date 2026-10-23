@@ -1,0 +1,44 @@
+{
+  "utc": "2026-10-23T14:25:54Z",
+  "source": "01e90794cf575835354443de178313dcb8e51217",
+  "assignment": "Oracle db581ab1-5c3f-4b43-a7f8-1fc0359d9ebb, plan before code",
+  "stage": "read-only feasibility; no source code/load/build started; Oracle scope/evidence decision pending",
+  "facts": {
+    "ptmx_max": 999,
+    "maxfilesperproc": 92160,
+    "hw_mem_bytes": 25769803776,
+    "cpu_cores": 10,
+    "panel": "DELL S3222HN1920x1080@75Hz",
+    "df_available_KiB_at_probe": 16098300,
+    "quinn_search_exit": 1,
+    "quinn_search_result": "no dependency or implementation match in root Cargo.toml/lock, bbt-rt or app"
+  },
+  "mechanisms": {
+    "runtime.md:6": "no UI waits invariant; current lint guards named calls, not exhaustive blocking instrumentation",
+    "runtime.md:51": "R5 mixed-load gates; current parser pool description superseded by C1",
+    "crates/bbt-rt/src/meter.rs:8": "elapsed drain/layout/draw/encode/present_wait durations; no actual per-thread CPU/wait counters",
+    "crates/bbt-rt/src/commands.rs:36": "ExitStatus exact stdout/stderr byte counters",
+    "crates/bbt-rt/src/queues.rs:71": "Latest bounded1; ViewRing bounded count",
+    "crates/bboxy450-term/src/model.rs:307": "worker-only PanePreparer; DrawCtx/draw_pane exposes headless terminal encode",
+    "crates/bboxy450-term/src/main.rs:961": "app UI bounded drain/current Model publication",
+    "crates/bboxy450-term/src/gpu.rs:465": "present call is not physical scanout/photon timestamp",
+    "crates/bbt-mux/tests/gates_seats.rs:43": "existing default min1000/ptmx_max-32; do not call scaled count1000"
+  },
+  "proposed_scope_decision": "tests/** plus fault-only rt is insufficient for real app trace; request narrow main.rs/newstall.rs/optionalgpu.rs completion and rt meter instrumentation, localCI wiring instead ofobsolete.github",
+  "unproven": [
+    "1000realPTY acceptance on currenthost",
+    "120Hznative on75Hzpanel",
+    "physicalinput-to-photon",
+    "exhaustiveframework/OSlock/IOwaitframes",
+    "quinn never-answeringpeer(noimplementation)"
+  ],
+  "command_results": "date,gitstatus,catAGENTS/spec/task,rg/sedsource reads,sysctl,df,system_profiler,gitfetch/rebase/log EXIT0; dedicated quinn rg EXIT1(no matches); ICQ preview/send EXIT0. No compile or load commands.",
+  "binding_gate4": {
+    "message": "6d5948ec-f5d2-48e9-8736-c192fc83b0df",
+    "command_proposal": "GATE_SEATS=1000 GATE_WATCHED=50 GATE_BUDGET=<ms> sh scripts/gates.sh frame",
+    "measure_proposal": "p99 hitch-meter frame-work sum of all5phases; one GATEframevalue; actualcounts and idle proof; identicalcommit3runs median goesArchitect",
+    "scope_added": "scripts/gates.sh frame subcommand authorized by Oracle; other app/rt instrumentation stillpending",
+    "fixture_definition_needed": "c1\u00a75decisions19/20 seat=PTY, absolute999ceiling; specgate4says1000rows/50panes, DM1000seatsopen. Need explicitly synthetic renderingfixture vs real1000PTY acrosshosts; do not relabel syntheticstatefixtures as seats."
+  },
+  "received_cursor": 6209
+}
