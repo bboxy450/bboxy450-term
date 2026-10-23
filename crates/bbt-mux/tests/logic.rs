@@ -21,8 +21,8 @@ fn runtime() -> tokio::runtime::Runtime {
         .unwrap()
 }
 fn fixture(root: &Path) -> LogicConfig {
-    let repository = root.join(".bboxy");
-    std::fs::create_dir_all(&repository).unwrap();
+    let repository = root.join("repository");
+    std::fs::create_dir_all(repository.join(".bboxy")).unwrap();
     LogicConfig {
         ring: Default::default(),
         run_dir: root.join("run"),
@@ -170,6 +170,18 @@ fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_ident
     let runtime = runtime();
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let config = fixture(temp.path());
+    // Build products and repository Markdown are outside the document root.
+    // This file used to abort the whole scan before task events could flow.
+    std::fs::create_dir_all(config.repository.join("target")).unwrap();
+    std::fs::File::create(config.repository.join("target/oversized.md"))
+        .unwrap()
+        .set_len(2 * 1024 * 1024 + 1)
+        .unwrap();
+    std::fs::write(
+        config.repository.join("README.md"),
+        "not a cockpit document",
+    )
+    .unwrap();
     let logic = Logic::start(
         supervisor.connect().unwrap(),
         config.clone(),
@@ -185,7 +197,7 @@ fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_ident
     let id = Ulid::new();
     let swarm = Ulid::new();
     std::fs::write(
-        config.repository.join("task.md"),
+        config.repository.join(".bboxy/task.md"),
         format!("---\nid: {id}\ntype: task\nstatus: running\nswarm_id: {swarm}\n---\nfixture\n"),
     )
     .unwrap();
