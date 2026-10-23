@@ -1,4 +1,5 @@
-//! CoreText grayscale glyph rasterization. Shaping and colour glyphs are later work.
+//! Shared font settings and the legacy ASCII fixture font.
+//! Current terminal cluster shaping and colour glyphs are in [`terminal`].
 
 #[derive(Clone, Debug)]
 pub struct FontConfig {

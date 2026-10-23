@@ -7,6 +7,7 @@ use objc2_core_text::{
 };
 use std::ptr::{self, NonNull};
 
+/// ASCII-only font for legacy HeadlessRenderer fixtures, separate from terminal::Fonts.
 pub struct Font {
     native: CFRetained<CTFont>,
     metrics: FontMetrics,
@@ -84,7 +85,7 @@ impl Font {
 
     pub fn rasterize(&self, ch: char) -> Result<Option<RasterizedGlyph>> {
         if !ch.is_ascii() || ch.is_ascii_control() {
-            return Err("W3.1 text supports printable ASCII only".into());
+            return Err("legacy HeadlessRenderer fixture font accepts printable ASCII only (current terminal path: cells::terminal)".into());
         }
         if ch == ' ' {
             return Ok(None);
