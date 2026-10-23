@@ -1,0 +1,42 @@
+[
+  {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "exit": 0,
+    "stdout": "23caced7d4c59fc3e721f7560e5ee3189481767a\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "status",
+      "--porcelain=v1"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": "shutil.rmtree exact own private target",
+    "exit": 0,
+    "allocated_bytes_removed": 2745749504
+  },
+  {
+    "command": [
+      "git",
+      "worktree",
+      "remove",
+      "/tmp/ci-aster-t2-p3-w0acb2aw"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "parity_gallery_preserved": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-p3-parity-23caced",
+    "terminal_gallery_preserved": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-terminal-final-23caced"
+  }
+]

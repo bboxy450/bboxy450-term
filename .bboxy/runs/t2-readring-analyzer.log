@@ -1,0 +1,22 @@
+import json,re,sys,hashlib,math
+from pathlib import Path
+folder=Path(sys.argv[1]);pattern=re.compile(r"READRING_RTT wall_ms=(\d+) seat=([0-9A-Z]+) generation=(\d+) from=(\d+) to=(\d+) attempt=(\d+) elapsed_us=(\d+) records=(\d+) bytes=(\d+) ok=(true|false)$")
+raw=(folder/'app.log').read_text()
+# Remove complete GUI-op log records, including one interleaved in an RTT line.
+normalized=re.sub(r'GUI operation [0-9A-HJKMNP-TV-Z]{26} accepted\n', '', raw)
+rows=[]
+for line in normalized.splitlines():
+ m=pattern.fullmatch(line)
+ if m:
+  wall,seat,gen,start,end,attempt,us,records,size,ok=m.groups()
+  rows.append(dict(wall_ms=int(wall),seat=seat,generation=int(gen),start=int(start),end=int(end),attempt=int(attempt),elapsed_us=int(us),records=int(records),bytes=int(size),ok=ok=='true'))
+assert rows,'no RTT trace rows'
+assert raw.count('READRING_RTT ')==len(rows), 'unparsed RTT rows'
+last=max(r['wall_ms'] for r in rows);tail=[r for r in rows if r['wall_ms']>=last-6000];good=[r for r in tail if r['ok']]
+def stats(a):
+ vals=sorted(r['elapsed_us']/1000 for r in a)
+ def q(p):return vals[max(0,math.ceil(p*len(vals))-1)] if vals else None
+ return dict(requests=len(a),mean_ms=sum(vals)/len(vals) if vals else None,p50_ms=q(.5),p95_ms=q(.95),p99_ms=q(.99),min_ms=min(vals) if vals else None,max_ms=max(vals) if vals else None,sum_ms=sum(vals),output_bytes=sum(r['bytes'] for r in a),records=sum(r['records'] for r in a),retry_attempts=sum(r['attempt']>1 for r in a))
+process=json.loads((folder/'process.json').read_text());panes={p['seat']:i+1 for i,p in enumerate(process['grid']['panes'])}
+result=dict(normalization='Removed exact complete GUI-operation accepted records; raw log unchanged, no RTT values inferred.',raw_trace_prefixes=raw.count('READRING_RTT '),parsed_rows=len(rows),method='Last6s end timestamps, successful worker-side request_for_seat wall times; includes routing, IPC and reply decode. Nearest-rank percentiles; tracing I/O occurs after timer. In-flight call at window boundary may start earlier.',total_trace_rows=len(rows),tail_rows=len(tail),failures=sum(not r['ok'] for r in tail),span_ms=max(r['wall_ms'] for r in tail)-min(r['wall_ms'] for r in tail),all_successful=stats(good),per_pane=[dict(seat=s,pane=panes.get(s),**stats([r for r in good if r['seat']==s])) for s in sorted(panes)],app_log_sha256=hashlib.sha256((folder/'app.log').read_bytes()).hexdigest())
+(folder/'readring-rows.json').write_text(json.dumps(rows,indent=2)+'\n');(folder/'readring-summary.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))

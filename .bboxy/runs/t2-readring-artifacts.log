@@ -1,0 +1,97 @@
+[
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/readring-trace.patch",
+    "evidence": ".bboxy/runs/t2-readring-patch.log",
+    "sha256": "4a4d1f2d9892276a18874311f67a631f411fb39f0da77904d109bee5b4827367"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/readring-patch-plan.json",
+    "evidence": ".bboxy/runs/t2-readring-plan.log",
+    "sha256": "dbffa8c895e0484743d8ebeb9f6a17aacdb5392469fd70dfda9fe7fe4e32ac3e"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/readring-build-record.json",
+    "evidence": ".bboxy/runs/t2-readring-build-record.log",
+    "sha256": "49a2ecba39e19a2fe2cd3c0f71ea1df5d9d751bfbeb461bd33c14ca51228267e"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/readring-build.log",
+    "evidence": ".bboxy/runs/t2-readring-build.log",
+    "sha256": "2ebbedfd39f587f4fc6ad8e95bf089562a589ab2beb02deb163304a3a52e9385"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/analyze_readring.py",
+    "evidence": ".bboxy/runs/t2-readring-analyzer.log",
+    "sha256": "dd78adc83d560214f64279f75005e3526ac053ea55341298855e03c8d02fb7a3"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/readring-concurrent-driver.log",
+    "evidence": ".bboxy/runs/t2-readring-concurrent-driver.log",
+    "sha256": "1c1508f0397e503076c370965e08eaa9f03a0f251f86e5f9988e7043056207f2"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-readring-concurrent/readring-summary.json",
+    "evidence": ".bboxy/runs/t2-readring-concurrent-summary.log",
+    "sha256": "830fd0529e34f6d799cab4efd0e6c638934a3cd508ba1a5c2e2f1adb69287f34"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-readring-concurrent/process.json",
+    "evidence": ".bboxy/runs/t2-readring-concurrent-process.log",
+    "sha256": "16296925628e758588d4b1e77601ae8abd63b957080659c455721473af84d765"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/readring-quiet-driver.log",
+    "evidence": ".bboxy/runs/t2-readring-quiet-driver.log",
+    "sha256": "6a50a9467a00520d4510233c0691528919f054cb911ca66f164840160c43c234"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-readring-quiet/readring-summary.json",
+    "evidence": ".bboxy/runs/t2-readring-quiet-summary.log",
+    "sha256": "6244060c8f8f16a2bdce65db05f1cf5a96677bef96ca21b15798791fdb680b8f"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-readring-quiet/process.json",
+    "evidence": ".bboxy/runs/t2-readring-quiet-process.log",
+    "sha256": "4a1b123105f2b79737e5b6dc274a80fe8ffa3a6abc4ae28dc9a371525157b8b8"
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/bboxy450-term-readring",
+    "sha256": "287775d72106f6fb8c4607f9915f09b4695b1f4510a728c20d87c4fcea87bbc0",
+    "bytes": 28016064
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/logic.original.rs",
+    "sha256": "16fdfd7e151fc08c666af9f7b40320208a26e3e276a99baf6898c2451eeb3c9d",
+    "bytes": 108234
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/logic.instrumented.rs",
+    "sha256": "9c225a9df1a38b8831ae7e1d87c7ef51f6afe390cd4935016d0b51e715d37bbc",
+    "bytes": 109707
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-readring-concurrent/app.log",
+    "sha256": "5dd1b3807c27348bf54ebdb4e420ea6a3562f7f8e7b88010e7f2895396324dbc",
+    "bytes": 140110
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-readring-concurrent/readring-rows.json",
+    "sha256": "90c5e538f036e8ed6fc620be0236a5d0919a3c498add22e76d8cc951873f7d88",
+    "bytes": 199798
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-readring-quiet/app.log",
+    "sha256": "6b907c4526b154f48240045998c8c74686d1da888c394d5c72801c1da987f6f4",
+    "bytes": 519110
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-readring-quiet/readring-rows.json",
+    "sha256": "82729ae6926c1297f3a24c58b37b152baa8cdb90990383c6e0276ef920bf7e02",
+    "bytes": 752216
+  },
+  {
+    "artifact": "/tmp/aster-t2-cadence-dayzwfi1/probe-readring-quiet/capture.png",
+    "sha256": "f4c97c816943efc1853cc2b28a511e9f3cc5ec14e7204ffe9a2fa7cb8525efd0",
+    "bytes": 314984
+  }
+]

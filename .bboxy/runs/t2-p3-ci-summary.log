@@ -1,0 +1,24 @@
+{
+  "source": "23caced7d4c59fc3e721f7560e5ee3189481767a",
+  "gate_exit": 0,
+  "elapsed_seconds": 2792.5359959579946,
+  "report_cases": 1704,
+  "status_counts": {
+    "review pixels": 334,
+    "within policy": 1370
+  },
+  "required_geometry": 1600,
+  "measured_geometry": 1600,
+  "unproven": 0,
+  "mismatches": 0,
+  "pixel_reviews_advisory": 334,
+  "reported_test_groups": 127,
+  "reported_tests_passed": 708,
+  "reported_tests_failed": 0,
+  "reported_tests_ignored": 15,
+  "ci_log_sha256": "c158b7fc1a82d2cc5a851c0a9038e77b417d5b93365fbc67b5ed549e60b4f0a6",
+  "report_sha256": "614bc58054f20684c742c078fe39164b3f194b301839343b1e06943bdb6d4183",
+  "invariants": "7 checks,0 failures,3 slow checks skipped",
+  "private_target_removed_allocated_bytes": 2745749504,
+  "terminal_replay": "40/40 PNGs byte-identical to reviewed final output"
+}

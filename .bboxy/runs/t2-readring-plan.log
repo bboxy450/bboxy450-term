@@ -1,0 +1,8 @@
+{
+  "source": "23caced7d4c59fc3e721f7560e5ee3189481767a",
+  "original_sha256": "16fdfd7e151fc08c666af9f7b40320208a26e3e276a99baf6898c2451eeb3c9d",
+  "instrumented_sha256": "9c225a9df1a38b8831ae7e1d87c7ef51f6afe390cd4935016d0b51e715d37bbc",
+  "patch_sha256": "4a4d1f2d9892276a18874311f67a631f411fb39f0da77904d109bee5b4827367",
+  "source_applied": false,
+  "meaning": "Worker-side request_for_seat wall latency includes local routing, IPC and reply decoding; eprintln occurs after timing. Retry policy/result untouched."
+}

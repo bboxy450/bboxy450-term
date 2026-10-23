@@ -1,0 +1,16 @@
+{
+  "source": "23caced7d4c59fc3e721f7560e5ee3189481767a",
+  "patch": "/tmp/aster-t2-cadence-dayzwfi1/readring-trace.patch",
+  "patch_sha256": "4a4d1f2d9892276a18874311f67a631f411fb39f0da77904d109bee5b4827367",
+  "original_sha256": "16fdfd7e151fc08c666af9f7b40320208a26e3e276a99baf6898c2451eeb3c9d",
+  "temporary_source": "/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux/src/logic.rs",
+  "rook_clearance": "4ce6ad5b-0740-4a4f-9919-bd18eb018de4",
+  "oracle_authorization": "034cbeab-7aae-4168-af6e-51921865195e",
+  "build_exit": 0,
+  "build_seconds": 35.10659224999836,
+  "binary": "/tmp/aster-t2-cadence-dayzwfi1/bboxy450-term-readring",
+  "binary_sha256": "287775d72106f6fb8c4607f9915f09b4695b1f4510a728c20d87c4fcea87bbc0",
+  "memory_selector_compiled": true,
+  "source_restored_exactly": true,
+  "source_restore_diff_exit": 0
+}

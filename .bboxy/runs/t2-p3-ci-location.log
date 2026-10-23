@@ -1,0 +1,10 @@
+{
+  "sha": "23caced7d4c59fc3e721f7560e5ee3189481767a",
+  "base": "4bb041798a4a6f4bcd6bad5968ceae6e605d5723",
+  "worktree": "/tmp/ci-aster-t2-p3-w0acb2aw",
+  "target": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-p3-ci-23caced",
+  "parity": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-p3-parity-23caced",
+  "worktree_add_exit": 0,
+  "clean_before_gate": true,
+  "gate_pid": 59592
+}
