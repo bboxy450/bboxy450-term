@@ -1429,6 +1429,9 @@ impl Worker {
             record.generation = previous
                 .checked_add(1)
                 .ok_or_else(|| invalid("generation exhausted"))?;
+            // Open seats may still retain an already-undone close handle.
+            // Its restoration operation belongs to the dead process only.
+            record.close = None;
             let resume = record.harness_session_id.is_some()
                 && matches!(record.harness_kind.as_str(), "claude" | "codex");
             let harness = if resume {
@@ -2518,6 +2521,7 @@ impl Worker {
                                     deadline_ms: close.deadline_ms,
                                 },
                             )?;
+                            self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
                             Ok(())
                         })();
                         let _ = reply.send(result);
@@ -2535,6 +2539,20 @@ impl Worker {
                             {
                                 return Err(invalid("layout/close revision conflict"));
                             }
+                            if record.lifecycle == Lifecycle::Open
+                                && record.lifecycle_revision == revision.saturating_add(1)
+                            {
+                                if self
+                                    .views
+                                    .get(&id)
+                                    .is_none_or(|view| view.info.exited.is_some())
+                                {
+                                    return Err(invalid("process exited"));
+                                }
+                                // The matching undo already committed. Replaying
+                                // its ID returns the same restoration handle.
+                                return Ok(close.position.clone());
+                            }
                             let attachment = self
                                 .attachments
                                 .get(&id)
@@ -2548,13 +2566,15 @@ impl Worker {
                                     close_id: close.operation,
                                 },
                             )?;
-                            self.registry.undo(
+                            let position = self.registry.undo(
                                 id,
                                 generation,
                                 revision,
                                 layout_revision,
                                 accepted_at,
-                            )
+                            )?;
+                            self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
+                            Ok(position)
                         })();
                         let _ = reply.send(result);
                     }

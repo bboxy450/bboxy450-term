@@ -1,0 +1,275 @@
+C1c-2 command record — Sable Embertail <EXECUTOR>
+Oracle GO20092c57; earlier scope/seam57376d1c; addoncb37d73f removes dead Adapter::resume_command or delegates to planner. Base after git fetch origin0 + git rebase origin/main0:3de59b4, includes accepted C1c-1 merge85ff110. git status clean0.
+Initial read-only source/skill/help/date reads0 except ICQ --limit1000 exited1 (documented CLI bound1..50; bounded pagination then succeeded0); rg guessed ring/playback.rs and core/term.rs paths exited2 (actual implementations located in ring.rs/core lib). No source edit in failed reads. Original approved plan retrieved from outboxd241de2e0; close/undo/history is backend forwarding with fixture Position, no live/model/grid edits. Schema gaps sent to Oracle; position getter coordination sent to Aster. New task CLAIM sent0. No implementation verification yet.
+
+$ cargo fmt -p bbt-proto -p bbt-mux
+EXIT 0 elapsed_seconds=0.252
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo check -p bboxy450-term -p bbt-proto -p bbt-mux --all-targets --locked
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+warning: unused import: `Path`
+  --> crates/bbt-mux/src/adapters/mod.rs:15:17
+   |
+15 | use std::path::{Path, PathBuf};
+   |                 ^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bbt-mux` (lib test) generated 1 warning (1 duplicate)
+warning: `bbt-mux` (lib) generated 1 warning (run `cargo fix --lib -p bbt-mux` to apply 1 suggestion)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 5.98s
+EXIT 0 elapsed_seconds=6.045
+
+$ cargo fmt -p bbt-proto -p bbt-mux
+EXIT 0 elapsed_seconds=0.306
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo check -p bboxy450-term -p bbt-proto -p bbt-mux --all-targets --locked
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+error[E0609]: no field `seat` on type `bbt_supervisor::ring::Status`
+   --> crates/bbt-mux/src/seat_socket.rs:344:23
+    |
+344 |     if history.status.seat != Ulid::from(seat.0.0) || history.status.generation != generation {
+    |                       ^^^^ unknown field
+    |
+    = note: available fields are: `generation`, `first_sequence`, `committed_sequence`, `captured_sequence`, `byte_start` ... and 5 others
+
+For more information about this error, try `rustc --explain E0609`.
+error: could not compile `bbt-mux` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bbt-mux` (lib test) due to 1 previous error
+EXIT 101 elapsed_seconds=4.688
+
+$ cargo fmt -p bboxy450-term -p bbt-proto -p bbt-mux
+EXIT 0 elapsed_seconds=0.422
+
+$ cargo fmt -p bboxy450-term -p bbt-proto -p bbt-mux
+EXIT 0 elapsed_seconds=0.625
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo check -p bboxy450-term -p bbt-proto -p bbt-mux --all-targets --locked
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+error[E0308]: mismatched types
+   --> crates/bboxy450-term/tests/lifecycle.rs:207:83
+    |
+207 |                 GuiReply::Seat(s) if seat_id(&s) == seat && s.record.lifecycle == lifecycle => {
+    |                                                             ------------------    ^^^^^^^^^ expected `bbt_mux::registry::Lifecycle`, found `bbt_proto::Lifecycle`
+    |                                                             |
+    |                                                             expected because this is `bbt_mux::registry::Lifecycle`
+    |
+    = note: `bbt_proto::Lifecycle` and `bbt_mux::registry::Lifecycle` have similar names, but are actually distinct types
+note: `bbt_proto::Lifecycle` is defined in crate `bbt_ui_model`
+   --> crates/bbt-ui-model/src/model/seat.rs:47:1
+    |
+ 47 | pub enum Lifecycle {
+    | ^^^^^^^^^^^^^^^^^^
+note: `bbt_mux::registry::Lifecycle` is defined in crate `bbt_proto`
+   --> crates/bbt-proto/src/registry.rs:43:1
+    |
+ 43 | pub enum Lifecycle {
+    | ^^^^^^^^^^^^^^^^^^
+
+error[E0533]: expected value, found struct variant `Lifecycle::ClosedGrace`
+   --> crates/bboxy450-term/tests/lifecycle.rs:240:41
+    |
+240 |     assert_eq!(closed.record.lifecycle, Lifecycle::ClosedGrace);
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^ not a value
+    |
+help: you might have meant to create a new value of the struct
+    |
+240 |     assert_eq!(closed.record.lifecycle, Lifecycle::ClosedGrace { until: /* value */ });
+    |                                                                ++++++++++++++++++++++
+
+error[E0533]: expected value, found struct variant `Lifecycle::ClosedGrace`
+   --> crates/bboxy450-term/tests/lifecycle.rs:250:26
+    |
+250 |             .state(seat, Lifecycle::ClosedGrace)
+    |                          ^^^^^^^^^^^^^^^^^^^^^^ not a value
+    |
+help: you might have meant to create a new value of the struct
+    |
+250 |             .state(seat, Lifecycle::ClosedGrace { until: /* value */ })
+    |                                                 ++++++++++++++++++++++
+
+error[E0533]: expected value, found struct variant `Lifecycle::ClosedGrace`
+   --> crates/bboxy450-term/tests/lifecycle.rs:326:9
+    |
+326 |         Lifecycle::ClosedGrace
+    |         ^^^^^^^^^^^^^^^^^^^^^^ not a value
+    |
+help: you might have meant to create a new value of the struct
+    |
+326 |         Lifecycle::ClosedGrace { until: /* value */ }
+    |                                ++++++++++++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/bboxy450-term/tests/lifecycle.rs:337:43
+    |
+337 |     assert_eq!(restored.record.lifecycle, Lifecycle::Open);
+    |                                           ^^^^^^^^^^^^^^^ expected `bbt_mux::registry::Lifecycle`, found `bbt_proto::Lifecycle`
+    |
+    = note: `bbt_proto::Lifecycle` and `bbt_mux::registry::Lifecycle` have similar names, but are actually distinct types
+note: `bbt_proto::Lifecycle` is defined in crate `bbt_ui_model`
+   --> crates/bbt-ui-model/src/model/seat.rs:47:1
+    |
+ 47 | pub enum Lifecycle {
+    | ^^^^^^^^^^^^^^^^^^
+note: `bbt_mux::registry::Lifecycle` is defined in crate `bbt_proto`
+   --> crates/bbt-proto/src/registry.rs:43:1
+    |
+ 43 | pub enum Lifecycle {
+    | ^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/bboxy450-term/tests/lifecycle.rs:585:43
+    |
+585 |     assert_eq!(retained.record.lifecycle, Lifecycle::ClosedRetained);
+    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bbt_mux::registry::Lifecycle`, found `bbt_proto::Lifecycle`
+    |
+    = note: `bbt_proto::Lifecycle` and `bbt_mux::registry::Lifecycle` have similar names, but are actually distinct types
+note: `bbt_proto::Lifecycle` is defined in crate `bbt_ui_model`
+   --> crates/bbt-ui-model/src/model/seat.rs:47:1
+    |
+ 47 | pub enum Lifecycle {
+    | ^^^^^^^^^^^^^^^^^^
+note: `bbt_mux::registry::Lifecycle` is defined in crate `bbt_proto`
+   --> crates/bbt-proto/src/registry.rs:43:1
+    |
+ 43 | pub enum Lifecycle {
+    | ^^^^^^^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0308, E0533.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `bboxy450-term` (test "lifecycle") due to 6 previous errors
+warning: build failed, waiting for other jobs to finish...
+EXIT 101 elapsed_seconds=9.036
+
+$ cargo fmt -p bboxy450-term
+EXIT 0 elapsed_seconds=0.148
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo test -p bboxy450-term --locked --test lifecycle -- --nocapture
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 11.83s
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-caadaaff9bc7d84f)
+
+running 3 tests
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+close/undo: default60s, retry stable deadline, unwatched state publication, capture during grace, exact Position, stale/layout conflicts, same PID 75423, same generation, idempotent undo
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+history: 12 bounded pages; exact 194560 output bytes; capture sequences1..17, prefix/suffix gaps ordered, resize+exit retained, invalid range named without disconnect
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_resize_and_exit ... ok
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+expiry: original60s deadline survived logicSIGKILL, supervisor reaped PID 75422, no new generation/process, retained history and explicit expired undo
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 62.30s
+
+EXIT 0 elapsed_seconds=74.407
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 10.03s
+EXIT 0 elapsed_seconds=10.129
+
+Scope updates: Oracle9939d472 approved UndoClose.layout_revision, matching durable close ID and capture-sequence History entries/gaps/next instead of rows. Aster58e28aed agreed future Model::seat_position(SeatId)->Option<proto::registry::Position>; implementation deferred to UI/L8. Wren supplied close.html/recently-closed references, no visual changes in this scope. Seraph reads accepted target/r4b read-only; promised no broad cleanup. Kestrel4fd52de5 notified GUI schema/action/lifecycle hunks; no Host/Spawn changes. Source command/read/ICQ operations so far0 unless separately logged. First all-target check0/6.045s warned unused Path after dead method removal; import removed. Second check101/4.688s assumed Status.seat; fixed to status generation plus each record's actual seat+generation checks. Next all-target check101/9.036s due UI Lifecycle import versus registry Lifecycle in new fixture; corrected import. One failed apply_patch context match changed nothing, then correct patch succeeded. Formatting0. Lifecycle suite0/74.407s,3 passed. Strict workspace all-target Clippy0/10.129s. No CI yet.
+D1c accepted on mainc8dba61 during preflight; checkpoint before consuming that main. No production constructor/host/provider edits from C1c-2.
+
+$ cargo fmt -p bboxy450-term -p bbt-proto -p bbt-mux
+EXIT 0 elapsed_seconds=0.632
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo test -p bboxy450-term --locked --test lifecycle -- --nocapture
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 43.19s
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-caadaaff9bc7d84f)
+
+running 3 tests
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+close/undo: default60s, retry stable deadline, unwatched state publication, capture during grace, exact Position, stale/layout conflicts, same PID 3896, same generation, idempotent undo
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+history: 12 bounded pages; exact 194560 output bytes; capture sequences1..18, prefix/suffix gaps ordered, resize+exit cursor slots retained, invalid range named without disconnect
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors ... ok
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+expiry: original60s deadline survived logicSIGKILL, supervisor reaped PID 3897, no new generation/process, retained history and explicit expired undo
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 62.10s
+
+EXIT 0 elapsed_seconds=105.535
+
+$ cargo fmt -p bboxy450-term -p bbt-mux -p bbt-proto
+EXIT 0 elapsed_seconds=0.404
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo test -p bboxy450-term --locked --test lifecycle gui_close_retry_and_undo -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 10.89s
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-caadaaff9bc7d84f)
+
+running 1 test
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+close/undo: default60s, retry stable deadline, unwatched state publication, capture during grace, exact Position, stale/layout conflicts, same PID 7973 and generation for idempotent undo; replaced-generation handle rejected
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 2.42s
+
+EXIT 0 elapsed_seconds=13.546
+
+$ env BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=4 cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy-firehose)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 9.57s
+EXIT 0 elapsed_seconds=9.666
+
+Integration: git fetch origin0, rebase0 ->1f6e109 over D1c/T2/decision27. D1c Hosts/HostState and start_custodied_with_fixtures retained; cockpit.list already tolerates host notifications. Read decided HistoryRecord API after rebase. Aligned literal wire contract to records: Vec<HistoryRecord> with Bytes/Gap and next; removed preliminary HistoryEntry/control-metadata extensions and extra generation field. Non-output captures retain empty-byte sequence slots. This supersedes the earlier prototype's typed resize/exit variants; final wire follows decision27. Lifecycle suite after D1c+wire alignment:0/105.535s,3 passed/0failed. Then found old cancelled close handle would survive open-process replacement; recover_seats now clears only that old open-seat handle on generation advance, and focused process test proves old undo rejects generation2 while it was idempotent within generation1. Focused test0/13.546s. Final strict workspace all-target Clippy0/9.666s; diff --check0. New Oracle channel933d5783 requires W1.2f root fix936de7a before CI and withdraws all flood waivers. Will consume before clean gate; no skip supplement in the new gate.

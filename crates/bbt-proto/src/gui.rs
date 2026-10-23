@@ -6,6 +6,15 @@ use crate::seat_state::{GuiSeat, SpawnSpec, text_id};
 use crate::{SeatId, Update, View};
 pub type Row = Vec<bbt_core::Cell>;
 
+/// Ordered capture history. Sequence numbers are capture cursors, never row IDs.
+/// Non-output capture records have empty bytes, preserving their cursor slots.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum HistoryRecord {
+    Bytes { sequence: u64, bytes: Vec<u8> },
+    Gap { from: u64, to: u64, reason: String },
+}
+
 /// Public signing state; custody and secret key material never cross the GUI socket.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -70,15 +79,22 @@ pub enum GuiAction {
     ScheduleClose {
         #[serde(with = "text_id")]
         seat: SeatId,
+        /// Stable operation ID, retained across retries and used by UndoClose.
+        id: Ulid,
+        /// Exact layout restoration handle captured when close was requested.
+        position: crate::registry::Position,
     },
     UndoClose {
         #[serde(with = "text_id")]
         seat: SeatId,
         close_id: Ulid,
+        /// Current layout revision; a changed layout must reject restoration.
+        layout_revision: u64,
     },
     GetHistory {
         #[serde(with = "text_id")]
         seat: SeatId,
+        /// Inclusive capture sequence range, not semantic terminal row numbers.
         from: u64,
         to: u64,
     },
@@ -112,7 +128,9 @@ pub enum GuiReply {
     History {
         #[serde(with = "text_id")]
         seat: SeatId,
-        rows: Vec<(u64, Row)>,
+        records: Vec<HistoryRecord>,
+        /// First capture sequence not included in this bounded page.
+        next: Option<u64>,
     },
 }
 
