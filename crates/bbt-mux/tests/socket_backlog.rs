@@ -123,20 +123,30 @@ os.write(1, b'\r\nW12G-TAIL\r\n')
         .unwrap();
     eprintln!("socket backlog: owned_pid={} seat={seat}", info.pid);
     armed.store(true, Ordering::Release);
-    runtime.block_on(async {
+    let observation = runtime.block_on(async {
         tokio::time::timeout(Duration::from_secs(90), async {
             loop {
-                let status = logic.client.adapter_status(seat, 1).await.unwrap();
+                let status = logic.client.adapter_status(seat, 1).await?;
                 if status.source == "exit" {
                     assert_eq!(status.detail.as_deref(), Some("exit 0"));
-                    break;
+                    break Ok::<(), bbt_mux::store::Error>(());
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
         })
         .await
-        .expect("logic never observed the full-rate producer's exit");
     });
+    if !matches!(&observation, Ok(Ok(()))) {
+        // Drop otherwise discards the actor's actual error and leaves only
+        // "logic stopped". Preserve it without changing the deadline or retrying.
+        let actor_exit = logic.shutdown();
+        panic!(
+            "socket backlog failure: observation={observation:?}, actor_exit={actor_exit:?}, requests={}, replayed={}, exit_sequence={}",
+            requests.load(Ordering::Acquire),
+            replayed.load(Ordering::Acquire),
+            exit.load(Ordering::Acquire),
+        );
+    }
     assert_eq!(requests.load(Ordering::Acquire), 10_000);
     let logic_replayed_records = replayed.load(Ordering::Acquire);
     assert!(
