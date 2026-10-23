@@ -11,8 +11,10 @@ struct Sample {
     cpu: Duration,
     gpu: Option<Duration>,
 }
+/// CPU/GPU pairs (filled while animating) and, separately, every recent GPU span:
+/// the HUD needs GPU time on event-driven frames that record no CPU row.
 #[derive(Default)]
-pub struct Budget(VecDeque<Sample>);
+pub struct Budget(VecDeque<Sample>, VecDeque<Duration>);
 impl Budget {
     pub fn cpu(&mut self, frame: u64, cpu: Duration) {
         if self.0.len() == SAMPLES {
@@ -25,17 +27,21 @@ impl Budget {
         });
     }
     pub fn gpu(&mut self, sample: GpuSample) {
+        if self.1.len() == SAMPLES {
+            self.1.pop_front();
+        }
+        self.1.push_back(sample.time);
         if let Some(frame) = self.0.iter_mut().rev().find(|f| f.frame == sample.frame) {
             frame.gpu = Some(sample.time);
         }
     }
-    /// Mean GPU span (ms) over the last `frames` paired samples; 0 before any pair.
+    /// Mean GPU span (ms) over the last `frames` completed frames, paired or not; 0 before any.
     pub fn gpu_mean(&self, frames: usize) -> f64 {
         let gpu: Vec<f64> = self
-            .0
+            .1
             .iter()
             .rev()
-            .filter_map(|s| s.gpu)
+            .copied()
             .take(frames)
             .map(|t| t.as_secs_f64() * 1000.)
             .collect();
@@ -97,5 +103,19 @@ mod tests {
         assert_eq!(budget.0.len(), SAMPLES);
         assert!(budget.report().contains("paired=1 pending=1023"));
         assert!(budget.report().contains("CPU+GPU_span_p50=5.000ms"));
+    }
+    #[test]
+    fn hud_gpu_mean_counts_spans_without_a_cpu_row() {
+        let mut budget = Budget::default();
+        assert_eq!(budget.gpu_mean(120), 0.);
+        for (frame, ms) in [(1, 2), (2, 4), (3, 6)] {
+            budget.gpu(GpuSample {
+                frame,
+                time: Duration::from_millis(ms),
+            });
+        }
+        assert!(budget.report().contains("paired=0"));
+        assert!((budget.gpu_mean(120) - 4.).abs() < 1e-9);
+        assert!((budget.gpu_mean(2) - 5.).abs() < 1e-9);
     }
 }
