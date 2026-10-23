@@ -1,0 +1,23 @@
+Style Lane paired proof; source pairing is explicit, not a current-main full-CI claim.
+Native source: f65a87ef573164c62f1e6b875bd5d4f522bbdec5
+Reference source (local Wren checkpoint, not yet published): b8e5aa3962988634e989d1cef6948a31993dda90
+Native binary SHA256: cf23063d933da0bd9ef62c9dbe8b488a25581d12a7cc839f8dd9055785b052c8
+Reference signature verification exit0; clean detached reference worktree; removed after proof with exit0.
+Fresh current Style pane-glow cases:4densities x2themes =8.
+All8 measured,0unproven,0mismatches,0pixelreviews; 8withinpolicy.
+Raw changed fraction percent range: 1.4557288283342205 .. 1.6403404733266558
+This is within the existing2% text policy, not pixel identity. Lane contour and text coverage residue remain visible in the diff.
+Max rect error: 0.5; max baseline error: 0.006256103515625
+Report: /Users/feral/mydev/bboxy450-term-exec6/target/style-lane-pair-b8e5aa3-f65a87e/report.json
+Report SHA256: f39f97e5fd707d22cb40713fab73227438a883319847288fe11c5c75d385ebf4
+Raw log: /tmp/velvet-style-lane-pair-b8e5aa3-f65a87e.log
+Web/native/diff cozy-dark triplet read. Native-only emission proof separately confirms8nonzero lanes,0inner-core changes,0changes beyond conservative token-lane bounds.
+Current published lab remains the older glow reference until Wren publishes; final exact-head full CI still required.
+Commands and actual exits:
+{"command": ["git", "verify-commit", "b8e5aa3962988634e989d1cef6948a31993dda90"], "cwd": "/Users/feral/mydev/bboxy450-term-exec6", "exit": 0, "seconds": 0.037}
+{"command": ["git", "worktree", "add", "--detach", "/tmp/velvet-style-reference-b8e5aa3", "b8e5aa3962988634e989d1cef6948a31993dda90"], "cwd": "/Users/feral/mydev/bboxy450-term-exec6", "exit": 0, "seconds": 0.123}
+{"command": ["sh", "scripts/lab-check.sh", "style.html"], "cwd": "/tmp/velvet-style-reference-b8e5aa3", "exit": 0, "seconds": 3.461}
+{"command": ["/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-eight-focused-dev/bboxybook-style-lane-focused", "manifest"], "cwd": "/tmp/velvet-style-reference-b8e5aa3", "exit": 0, "seconds": 0.016}
+{"command": ["node", "crates/bboxybook/capture.mjs", "/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-pair-b8e5aa3-f65a87e", "/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-pair-b8e5aa3-f65a87e/requested.json"], "cwd": "/tmp/velvet-style-reference-b8e5aa3", "exit": 0, "seconds": 6.136}
+{"command": ["/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-eight-focused-dev/bboxybook-style-lane-focused", "render", "--all", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-pair-b8e5aa3-f65a87e/native", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-pair-b8e5aa3-f65a87e/cases.json"], "cwd": "/tmp/velvet-style-reference-b8e5aa3", "exit": 0, "seconds": 0.296}
+{"command": ["/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-eight-focused-dev/bboxybook-style-lane-focused", "compare", "--strict-geometry", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-pair-b8e5aa3-f65a87e", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-pair-b8e5aa3-f65a87e/cases.json"], "cwd": "/tmp/velvet-style-reference-b8e5aa3", "exit": 0, "seconds": 0.123}
