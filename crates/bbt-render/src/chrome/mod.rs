@@ -58,6 +58,11 @@ impl ChromeRenderer {
     pub fn begin_frame(&mut self) {
         self.arenas.begin_frame();
     }
+    /// Upload this frame's per-draw slices: call right before submitting the commands that use
+    /// them (and before the next begin_frame, which debug-asserts that this happened).
+    pub fn flush(&mut self) {
+        self.arenas.flush(&self.context);
+    }
     /// Read-only diagnostics for cache-capacity and long-lived-renderer gates.
     pub fn text_cache_stats(&self) -> TextCacheStats {
         TextCacheStats {
@@ -682,6 +687,7 @@ impl ChromeRenderer {
             },
             &mut encoder,
         )?;
+        self.flush();
         self.readback(&texture, encoder, width, height)
     }
     #[allow(
@@ -814,6 +820,31 @@ fn upload(
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    #[should_panic(expected = "never flushed")]
+    fn an_unflushed_frame_fails_at_the_next_begin_frame() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        renderer.begin_frame();
+        let _slice = renderer.arenas.uniform(&renderer.context, &[0; 16]);
+        renderer.begin_frame();
+    }
+    #[test]
+    #[should_panic(expected = "never flushed")]
+    fn an_unflushed_frame_fails_when_its_owner_drops() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        renderer.begin_frame();
+        let _slice = renderer.arenas.storage(&renderer.context, &[0; 16]);
+        drop(renderer);
+    }
+    #[test]
+    fn a_flushed_frame_rewinds_cleanly() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        for _ in 0..3 {
+            renderer.begin_frame();
+            let _slice = renderer.arenas.uniform(&renderer.context, &[0; 16]);
+            renderer.flush();
+        }
+    }
     #[test]
     fn arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth() {
         use bbt_ui_model::draw::{PathCommand, PathStroke};

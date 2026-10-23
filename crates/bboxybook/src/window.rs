@@ -274,6 +274,7 @@ impl Gallery {
             },
             &mut encoder,
         )?;
+        renderer.flush();
         renderer.context.queue.submit([encoder.finish()]);
         renderer.context.queue.present(frame);
         Ok(())

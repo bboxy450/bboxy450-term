@@ -535,6 +535,10 @@ impl Pass {
     pub fn begin_frame(&self) {
         self.arenas.borrow_mut().begin_frame();
     }
+    /// Upload this Pass's staged slices right before the submit (see ChromeRenderer::flush).
+    pub fn flush(&self, context: &DeviceContext) {
+        self.arenas.borrow_mut().flush(context);
+    }
     pub fn draw(
         &self,
         context: &DeviceContext,
@@ -969,6 +973,8 @@ fn render_layered_with(
             &mut encoder,
         )?;
     }
+    pass.flush(&renderer.context);
+    renderer.flush();
     renderer.readback(&texture, encoder, width, height)
 }
 

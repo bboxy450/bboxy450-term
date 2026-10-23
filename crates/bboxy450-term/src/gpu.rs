@@ -299,6 +299,8 @@ impl Gpu {
             &mut encoder,
         )
         .map_err(|e| e.to_string())?;
+        self.materials.flush(&self.renderer.context);
+        self.renderer.flush();
         self.renderer.context.queue.submit([encoder.finish()]);
         Ok(())
     }
@@ -440,6 +442,8 @@ impl Gpu {
         // wgpu 30 prohibits mixing its encoding API with as_hal_mut. Native
         // queue markers bracket the submission (including staging uploads),
         // yielding a conservative GPU span without inspecting private state.
+        self.materials.flush(&self.renderer.context);
+        self.renderer.flush();
         let gpu_start = timing_marker(&self.renderer.context.queue)?;
         gpu_start.commit();
         self.renderer.context.queue.submit([encoder.finish()]);

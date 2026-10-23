@@ -270,6 +270,7 @@ impl ChromeRenderer {
             },
             &mut encoder,
         )?;
+        self.arenas.flush(&self.context);
         self.readback(&destination, encoder, width, height)
     }
 }
