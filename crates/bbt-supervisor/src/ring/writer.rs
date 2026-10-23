@@ -378,8 +378,8 @@ fn release(shared: &Shared, key: Key, cost: usize) {
     if q.jobs_in_flight == 0 && q.undurable_bytes + OUTPUT_CHUNK_BYTES <= q.durable_capacity {
         q.durable_paused = false;
     }
-    drop(q);
-    let _ = shared.wake.wake();
+    // Commits and control replies wake the actor. Raw credit release must not
+    // force an O(seats) poller pass for every append before its tick commits.
 }
 fn failure(error: impl std::fmt::Display) -> Failure {
     Failure::new(FailureCode::Io, format!("capture writer failed: {error}"))
