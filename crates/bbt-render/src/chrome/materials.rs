@@ -16,6 +16,8 @@ pub enum Kind {
     Gloss,
     Frosted,
     Glow,
+    /// The confined border lane (G1-G3); not in `ALL`, which the parity galleries enumerate.
+    Lane,
 }
 impl Kind {
     pub const ALL: [Self; 4] = [Self::Flat, Self::Gloss, Self::Frosted, Self::Glow];
@@ -25,6 +27,7 @@ impl Kind {
             Self::Gloss => "gloss",
             Self::Frosted => "frosted",
             Self::Glow => "glow",
+            Self::Lane => "lane",
         }
     }
 }
@@ -72,12 +75,49 @@ pub struct Glow {
     pub speed: f32,
     pub particle_size: f32,
 }
+/// A border effect confined to a lane of `lane` logical px just outside the
+/// box: zero inside the box and beyond the lane, so it never moves layout.
+/// Port of Wren's lab/web/shaders.html (prelude, main and the `fx` bodies).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Lane {
+    /// Seat colour; waiting and errored use their state colours.
+    pub color: Color,
+    pub waiting: Color,
+    pub errored: Color,
+    pub activity: Activity,
+    /// 1 for the focused pane (x1.3), 0 otherwise.
+    pub focus: f32,
+    pub lane: f32,
+    pub effect: LaneFx,
+    /// Added to the frame clock, so neighbouring panes do not move in step.
+    pub phase_ms: f32,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LaneFx {
+    Silk,
+    Swell,
+    Tide,
+    /// The control: today's uniform breathing, confined to the lane.
+    Breathe,
+}
+impl LaneFx {
+    pub const ALL: [Self; 4] = [Self::Silk, Self::Swell, Self::Tide, Self::Breathe];
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Silk => "silk",
+            Self::Swell => "swell",
+            Self::Tide => "tide",
+            Self::Breathe => "breathe",
+        }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Material {
     Flat(Color),
     Gloss(Gloss),
     Frosted(Frosted),
     Glow(Glow),
+    Lane(Lane),
 }
 impl Material {
     pub fn kind(self) -> Kind {
@@ -86,6 +126,7 @@ impl Material {
             Self::Gloss(_) => Kind::Gloss,
             Self::Frosted(_) => Kind::Frosted,
             Self::Glow(_) => Kind::Glow,
+            Self::Lane(_) => Kind::Lane,
         }
     }
 }
@@ -248,6 +289,35 @@ impl Surface {
                     return Err("invalid glow parameters".into());
                 }
             }
+            Material::Lane(l) => {
+                i.color = match l.activity {
+                    Activity::Waiting => l.waiting.0,
+                    Activity::Errored => l.errored.0,
+                    _ => l.color.0,
+                };
+                // The quad covers the lane (vs adds one more pixel).
+                i.p0[3] = l.lane * scale;
+                i.p1 = [
+                    match l.effect {
+                        LaneFx::Silk => 0.,
+                        LaneFx::Swell => 1.,
+                        LaneFx::Tide => 2.,
+                        LaneFx::Breathe => 3.,
+                    },
+                    match l.activity {
+                        Activity::Idle => 0.,
+                        Activity::Active => 1.,
+                        Activity::Waiting => 2.,
+                        Activity::Errored => 3.,
+                    },
+                    l.focus,
+                    l.lane * scale,
+                ];
+                i.p2[0] = l.phase_ms;
+                if !(1.0..=32.).contains(&l.lane) || !(0.0..=1.).contains(&l.focus) {
+                    return Err("invalid lane parameters".into());
+                }
+            }
         }
         if bytemuck::cast_slice::<Instance, f32>(&[i])
             .iter()
@@ -283,7 +353,7 @@ pub struct Frame<'a> {
 }
 pub struct Pass {
     layout: wgpu::BindGroupLayout,
-    pipelines: [wgpu::RenderPipeline; 6],
+    pipelines: [wgpu::RenderPipeline; 8],
     blur: [wgpu::RenderPipeline; 2],
     sampler: wgpu::Sampler,
     format: wgpu::TextureFormat,
@@ -363,8 +433,10 @@ impl Pass {
             operation: wgpu::BlendOperation::Add,
         };
         let pipelines = std::array::from_fn(|index| {
-            let entry = ["flat", "gloss", "frosted", "glow", "glow", "glow"][index];
-            let blend = if index == 5 {
+            let entry = [
+                "flat", "gloss", "frosted", "glow", "glow", "glow", "lane", "lane",
+            ][index];
+            let blend = if index == 5 || index == 7 {
                 // A transparent group must retain the effect's coverage for
                 // its later source-over composite. Normal fx keep dest alpha.
                 wgpu::BlendState::ALPHA_BLENDING
@@ -646,6 +718,13 @@ impl Pass {
                         4
                     } else {
                         3
+                    }
+                }
+                Kind::Lane => {
+                    if group {
+                        7
+                    } else {
+                        6
                     }
                 }
             };

@@ -98,3 +98,55 @@ fn random(index:u32)->f32 {
     strength=clamp(strength*i.color.a,0.0,1.0)*mask;
     return vec4f(i.color.rgb*strength,strength);
 }
+// Border lane (G1-G3): a 1:1 port of Wren's lab/web/shaders.html. All distances and
+// wavelengths are CSS px (physical / view.w); u runs 0 at the box edge to 1 at the
+// lane edge; s is the arc length clockwise from the start of the top edge. GLSL
+// pow(x, 2.) is written x*x (GLSL leaves pow undefined for x < 0).
+const LANE_TAU=6.2831853;
+fn lane_perim_len(hs:vec2f,r0:f32)->f32 {let r=max(r0,0.001);let b=hs-r;return 4.0*(b.x+b.y)+LANE_TAU*r;}
+// Continuous through the corners: lane pixels beyond a corner take the corner arc's angle.
+fn lane_perim(q:vec2f,hs:vec2f,r0:f32)->f32 {
+    let r=max(r0,0.001);let b=hs-r;let sx=2.0*b.x;let sy=2.0*b.y;let a=0.25*LANE_TAU*r;
+    if abs(q.x)<=b.x {return select(sx+2.0*a+sy+(b.x-q.x),q.x+b.x,q.y<0.0);}
+    if abs(q.y)<=b.y {return select(2.0*sx+3.0*a+sy+(b.y-q.y),sx+a+(q.y+b.y),q.x>0.0);}
+    if q.x>0.0&&q.y<0.0 {let v=q-vec2f(b.x,-b.y);return sx+r*atan2(v.x,-v.y);}
+    if q.x>0.0 {let v=q-vec2f(b.x,b.y);return sx+a+sy+r*atan2(v.y,v.x);}
+    if q.y>0.0 {let v=q-vec2f(-b.x,b.y);return 2.0*sx+2.0*a+sy+r*atan2(-v.x,v.y);}
+    let v=q-vec2f(-b.x,-b.y);return 2.0*sx+3.0*a+2.0*sy+r*atan2(-v.y,-v.x);
+}
+fn lane_fx(fx:u32,u:f32,s:f32,t:f32,amp:f32)->f32 {
+    if fx==0u { // silk: tide's thin moving core over swell's faint rolling bloom
+        let c0=0.40+0.14*sin(LANE_TAU*(s/190.0-t*0.31))+0.07*sin(LANE_TAU*(s/73.0+t*0.43)+1.3);
+        let k=(u-c0)/0.16;let core=exp(-(k*k));
+        let crest=0.5+0.5*sin(LANE_TAU*(s/260.0-t*0.22));
+        let bloom=exp(-u*2.2)*(0.15+0.55*crest*crest);
+        return amp*(core*(0.55+0.45*crest)+bloom);
+    }
+    if fx==1u { // swell: the band hugs the edge; brightness crests roll along it
+        let crest=0.5+0.5*sin(LANE_TAU*(s/230.0-t*0.28));
+        return amp*exp(-u*2.4)*(0.22+0.78*crest*crest);
+    }
+    if fx==2u { // tide: the ribbon displaced by three incommensurate sines
+        let c0=0.44+0.15*sin(LANE_TAU*(s/190.0-t*0.31))+0.08*sin(LANE_TAU*(s/71.0+t*0.47)+1.3)+0.04*sin(LANE_TAU*(s/31.0-t*0.83)+2.1);
+        let w=0.22+0.05*sin(LANE_TAU*(s/260.0+t*0.2));let k=(u-c0)/w;
+        return amp*exp(-(k*k));
+    }
+    // breathe (control): today's uniform breathing glow, confined to the lane
+    return amp*exp(-u*2.0)*(0.55+0.45*(0.5-0.5*cos(t*LANE_TAU/1.8)));
+}
+@fragment fn lane(v:Vertex)->@location(0) vec4f {
+    let i=items[v.index];let mask=clip_mask(v);if mask<=0.0 {discard;}
+    let k=view.w;let lane=i.p1.w/k;let d=rounded_sdf(v.point,i.rect,i.radii)/k;
+    let in_lane=smoothstep(0.0,0.6,d)*(1.0-smoothstep(lane-0.6,lane,d));  // the effect lives only in [0, L] outside
+    if in_lane<=0.0 {discard;}
+    let hs=i.rect.zw*0.5/k;let q=(v.point-i.rect.xy)/k-hs;let r=i.radii.x/k;
+    let s=lane_perim(q,hs,r);let u=clamp(d/lane,0.0,1.0);
+    let act=u32(i.p1.y);
+    var spd=0.0;var amp=0.65;
+    if act==0u {spd=0.35;amp=0.32;} if act==1u {spd=1.0;amp=1.0;} if act==2u {spd=0.6;amp=0.9;}
+    let time=view.z+i.p2.x;let t=time*0.001*spd;
+    var intensity=lane_fx(u32(i.p1.x),u,s,t,amp)*in_lane*mix(1.0,1.3,i.p1.z);
+    if act==2u {intensity*=0.6+0.4*(0.5-0.5*cos(time/1600.0*LANE_TAU));}  // waiting breathes on top
+    intensity=clamp(intensity,0.0,1.0)*i.color.a*mask;
+    return vec4f(i.color.rgb*intensity,intensity);
+}
