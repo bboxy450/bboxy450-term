@@ -1,0 +1,20 @@
+D1c exact source=5746f5b2daff975be0d465195d7cd10e75918d9d
+UTC=2026-10-23T08:03:30.305752+00:00
+$ git worktree add --detach /private/tmp/ci-kestrel-d1c-5746f5b 5746f5b2daff975be0d465195d7cd10e75918d9d
+HEAD is now at 5746f5b provider: record successful gate before R10 integration
+Preparing worktree (detached HEAD 5746f5b)
+exit=0
+initial clean-worktree status exit=0 bytes=0
+git verify-commit exit=0
+gpg: Signature made Fri Oct 23 01:01:33 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+
+$ cp -cR /Users/feral/mydev/bboxy450-term-exec5/target/debug /private/tmp/ci-kestrel-d1c-target-5746f5b/debug
+exit=0
+private APFS-cloned cache seeded only from this executor inactive target/debug; no symlink/shared build directory, Cargo fingerprints rebuild changed workspace paths
+owned CI PID=23332 PGID=23332
+private CARGO_TARGET_DIR deleted immediately after gate exit; exit=0
+gate_exit=101 elapsed=304.655s
+git worktree remove exit=0
+

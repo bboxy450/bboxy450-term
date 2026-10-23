@@ -1,0 +1,3 @@
+Oracle d9a95149: skip repro; known external socket queue bug, Rook fix in progress. First D1c fresh-target test already completed0 before instruction read. Stop only recorded second/baseline probe and descendants.
+recorded tree=[]
+owned probe PID already exited=38252
