@@ -685,14 +685,11 @@ impl Message {
                 row_gap: ui::Length::Px(0.),
                 column_gap: ui::Length::Px(0.),
             };
-            head.push(
-                column(
-                    format!("{head_key}/issuer"),
-                    style,
-                    vec![c::Element::Flow(flow).into()],
-                )
-                .into(),
-            );
+            head.push(shrink(column(
+                format!("{head_key}/issuer"),
+                style,
+                vec![c::Element::Flow(flow).into()],
+            )));
         }
 
         if show_ch && let Some(ch) = &self.ch {
@@ -940,7 +937,7 @@ impl Message {
         );
         if !self.attach.is_empty() {
             let mut attachments = c::Box::new(
-                plain(None, [sp.s2 as f32, 0., 0., 0.], 0.),
+                plain(None, [0.; 4], 0.),
                 self.attach
                     .iter()
                     .enumerate()
@@ -950,7 +947,14 @@ impl Message {
             attachments.direction = Axis::Column;
             attachments.gap = ui::Length::Spacing(2);
             attachments.align = c::Alignment::Stretch;
-            body.push(named(format!("{key}/body/attach"), c::Element::Box(attachments)).into());
+            body.push(
+                column(
+                    format!("{key}/body/attach-margin"),
+                    plain(None, [sp.s2 as f32, 0., 0., 0.], 0.),
+                    vec![named(format!("{key}/body/attach"), c::Element::Box(attachments)).into()],
+                )
+                .into(),
+            );
         }
         if let Some(report) = &self.report {
             body.push(

@@ -213,3 +213,159 @@ fn normal_model_build_preserves_correlated_results_across_grid_publications() {
     ));
     assert_eq!(next.operation_results.rows().next().unwrap().op, id);
 }
+
+#[test]
+fn task_views_keep_canonical_status_and_require_the_actual_zero_exit_report() {
+    use bboxy450_term::messaging::{task_attachment, task_item, task_report, task_row};
+    use bbt_proto::messaging::{TaskCard, TaskDoc, TaskVerifySummary};
+    use serde_json::json;
+    let id = Ulid::new();
+    let mut card = TaskCard {
+        id,
+        path: ".bboxy/tasks/check.md".into(),
+        title: "Check".into(),
+        status: "claimed".into(),
+        assignee: Some("seat:missing".into()),
+        delegated_by: Some("operator:actual-device".into()),
+        updated: None,
+        verify: None,
+    };
+    let view = task_item(&card, &bboxy450_term::model::Model::default());
+    assert_eq!(view.state, "claimed");
+    assert_eq!(view.assignee, "seat:missing");
+    assert_eq!(view.delegated_by.as_deref(), Some("operator:actual-device"));
+    assert_eq!(task_attachment(&card).path, card.path);
+    assert!(!task_row(&card).0.may_accept);
+    card.status = "reported".into();
+    card.verify = Some(TaskVerifySummary { exit_code: 0 });
+    assert!(task_row(&card).0.may_accept);
+    let mut doc = TaskDoc {
+        id,
+        path: card.path.clone(),
+        metadata: json!({"status":"reported","report":{"summary":"Checks run","commit":"abc123"},"verify_result":{"command":"cargo test","exit_code":1,"evidence":[]}}),
+        body: String::new(),
+        body_truncated: false,
+    };
+    let report = task_report(&card, &doc).unwrap().unwrap();
+    assert!(!report.can_accept());
+    assert_eq!(report.commit.as_deref(), Some("abc123"));
+    doc.metadata["verify_result"]["exit_code"] = json!(0);
+    assert!(task_report(&card, &doc).unwrap().unwrap().can_accept());
+    doc.id = Ulid::new();
+    assert!(matches!(
+        task_report(&card, &doc),
+        Err("task_document_mismatch")
+    ));
+}
+
+#[test]
+fn result_byte_bound_includes_correlation_metadata_and_names_oversize_reads() {
+    let mut results = Results::default();
+    results.push(Ulid::new(), Reply::Refused("x".repeat(1024 * 1024)));
+    let rows: Vec<_> = results.rows().collect();
+    assert!(serde_json::to_vec(&rows).unwrap().len() <= results.bytes());
+    assert!(results.bytes() <= 1024 * 1024);
+    assert!(
+        matches!(&rows[0].reply,Reply::Refused(s) if s.starts_with("operation_result_window_limit:"))
+    );
+}
+
+fn op_id(command: &UiMsg) -> Ulid {
+    match command {
+        UiMsg::Task { id, .. } | UiMsg::Messaging { id, .. } => *id,
+        _ => panic!("operator request"),
+    }
+}
+fn task_card(id: Ulid) -> bbt_proto::messaging::TaskCard {
+    bbt_proto::messaging::TaskCard {
+        id,
+        path: ".bboxy/tasks/check.md".into(),
+        title: "Check".into(),
+        status: "reported".into(),
+        assignee: None,
+        delegated_by: Some("operator:device".into()),
+        updated: None,
+        verify: Some(bbt_proto::messaging::TaskVerifySummary { exit_code: 0 }),
+    }
+}
+#[test]
+fn read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::messaging::{TaskRequest, TaskResponse};
+    let mut records = Records::default();
+    let swarm = SwarmId::from_u128(52);
+    records.select(swarm);
+    let commands = records.commands();
+    assert_eq!(commands.len(), 3);
+    let task = commands
+        .iter()
+        .find(|c| matches!(c, UiMsg::Task { .. }))
+        .unwrap();
+    assert!(
+        matches!(task,UiMsg::Task {request:TaskRequest::List {swarm_id:Some(id),limit:Some(128),..},..} if id.0==52)
+    );
+    for c in &commands {
+        if let UiMsg::Messaging { swarm_id, .. } = c {
+            assert_eq!(*swarm_id, swarm);
+        }
+    }
+    let next = Ulid::new();
+    let mut replies = Results::default();
+    replies.push(
+        op_id(task),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(Ulid::new())],
+            next: Some(next),
+        }),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.task_next, Some(next));
+    records.more_tasks();
+    let more = records.commands();
+    assert!(more.iter().any(
+        |c| matches!(c,UiMsg::Task {request:TaskRequest::List {after:Some(id),..},..} if *id==next)
+    ));
+    records.select(SwarmId::from_u128(53));
+    assert!(!records.replies(&replies));
+    assert!(records.tasks().is_empty());
+}
+#[test]
+fn task_review_does_not_repeat_an_unknown_effect_with_a_fresh_id_or_changed_reason() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::messaging::TaskResponse;
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(1));
+    let requests = records.commands();
+    let op = requests
+        .iter()
+        .find(|r| matches!(r, UiMsg::Task { .. }))
+        .unwrap();
+    let task = Ulid::new();
+    let mut replies = Results::default();
+    replies.push(
+        op_id(op),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    records.replies(&replies);
+    assert!(matches!(
+        records.review(task, Some("  ".into())),
+        Err("rebrief_reason_required")
+    ));
+    let accept = records.review(task, None).unwrap();
+    let id = op_id(&accept);
+    replies.push(id, Reply::Unknown("connection closed".into()));
+    records.replies(&replies);
+    assert!(matches!(
+        records.review(task, Some("changed action".into())),
+        Err("task_outcome_unknown_repeat_original_action")
+    ));
+    records.select(SwarmId::from_u128(2));
+    assert_eq!(op_id(&records.review(task, None).unwrap()), id);
+    assert!(matches!(
+        records.review(task, None),
+        Err("task_operation_in_flight")
+    ));
+}

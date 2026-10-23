@@ -194,6 +194,117 @@ pub fn message_view(
     }
 }
 
+fn assignee_name(reference: &str, model: &crate::model::Model) -> String {
+    reference
+        .strip_prefix("seat:")
+        .and_then(|id| id.parse::<bbt_ui_model::SeatId>().ok())
+        .and_then(|id| model.ui.seats.get(&id))
+        .map_or_else(|| reference.to_owned(), |seat| seat.name.clone())
+}
+
+/// TaskCard carries the canonical status. The UI adds names from the registry,
+/// never a status translation or an acceptance claim.
+pub fn task_item(
+    card: &wire::TaskCard,
+    model: &crate::model::Model,
+) -> bbt_ui::modules::stream_dock::WorkItem {
+    bbt_ui::modules::stream_dock::WorkItem {
+        id: card.id.to_string(),
+        path: card.path.clone(),
+        title: card.title.clone(),
+        state: card.status.clone(),
+        assignee: card
+            .assignee
+            .as_deref()
+            .map_or_else(String::new, |id| assignee_name(id, model)),
+        delegated_by: card.delegated_by.clone(),
+        kind: "task".into(),
+        ..Default::default()
+    }
+}
+pub fn task_attachment(card: &wire::TaskCard) -> bbt_ui::modules::composer::Attachment {
+    bbt_ui::modules::composer::Attachment {
+        id: card.id.to_string(),
+        path: card.path.clone(),
+        kind: "task".into(),
+        title: card.title.clone(),
+        status: card.status.clone(),
+        ..Default::default()
+    }
+}
+pub fn task_row(card: &wire::TaskCard) -> (bbt_ui::modules::seat_row::TaskRow, Option<i32>) {
+    let exit = card.verify.as_ref().map(|v| v.exit_code);
+    (
+        bbt_ui::modules::seat_row::TaskRow {
+            title: card.title.clone(),
+            state: card.status.clone(),
+            bug: false,
+            violates: None,
+            constrains: None,
+            waits: None,
+            may_accept: card.status == "reported" && exit == Some(0),
+        },
+        exit,
+    )
+}
+pub fn task_report(
+    card: &wire::TaskCard,
+    doc: &wire::TaskDoc,
+) -> Result<Option<bbt_ui::modules::composer::Report>, &'static str> {
+    if doc.id != card.id || doc.path != card.path {
+        return Err("task_document_mismatch");
+    }
+    if doc
+        .metadata
+        .get("status")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|status| status != card.status)
+    {
+        return Err("task_status_changed_refresh_required");
+    }
+    let Some(report) = doc
+        .metadata
+        .get("report")
+        .and_then(serde_json::Value::as_object)
+    else {
+        return Ok(None);
+    };
+    let summary = report
+        .get("summary")
+        .and_then(serde_json::Value::as_str)
+        .ok_or("task_report_summary_missing")?;
+    let verify = doc
+        .metadata
+        .get("verify_result")
+        .filter(|v| !v.is_null())
+        .map(|v| {
+            serde_json::from_value::<wire::TaskVerification>(v.clone())
+                .map_err(|_| "task_verify_result_invalid")
+        })
+        .transpose()?;
+    Ok(Some(bbt_ui::modules::composer::Report {
+        task: card.title.clone(),
+        status: card.status.clone(),
+        summary: summary.into(),
+        commit: report
+            .get("commit")
+            .and_then(serde_json::Value::as_str)
+            .map(String::from),
+        verify_result: verify.map(|v| bbt_ui::modules::composer::Verification {
+            command: v.command,
+            exit_code: v.exit_code,
+            evidence: v
+                .evidence
+                .into_iter()
+                .map(|e| bbt_ui::modules::composer::Criterion {
+                    criterion: e.criterion,
+                    reference: e.reference,
+                })
+                .collect(),
+        }),
+    }))
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub enum Reply {
     Messaging(Response),
@@ -658,5 +769,311 @@ fn send(
                 reply_to: None,
             },
         },
+    }
+}
+
+/// Read-through task/tree snapshots for the selected swarm. These are bounded
+/// display caches; the backend journal, bus positions and read marks stay authority.
+#[derive(Default)]
+pub struct Records {
+    scope: Option<SwarmId>,
+    pending: BTreeMap<Ulid, RecordRequest>,
+    waiting: VecDeque<Read>,
+    tasks: VecDeque<wire::TaskCard>,
+    docs: VecDeque<wire::TaskDoc>,
+    nodes: Vec<wire::Node>,
+    pub task_next: Option<Ulid>,
+    pub tree_next: BTreeMap<String, Option<String>>,
+    pub issue: Option<String>,
+    pub omitted: usize,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Read {
+    Tasks(Option<Ulid>),
+    Detail(Ulid),
+    Tree(String, Option<String>),
+}
+struct RecordRequest {
+    read: Option<Read>,
+    task: Option<Ulid>,
+    command: Saved,
+    serial: u64,
+    unknown: bool,
+}
+impl Records {
+    pub fn scope(&self) -> Option<SwarmId> {
+        self.scope
+    }
+    pub fn tasks(&self) -> &VecDeque<wire::TaskCard> {
+        &self.tasks
+    }
+    pub fn task(&self, id: Ulid) -> Option<&wire::TaskCard> {
+        self.tasks.iter().find(|t| t.id == id)
+    }
+    pub fn doc(&self, id: Ulid) -> Option<&wire::TaskDoc> {
+        self.docs.iter().find(|t| t.id == id)
+    }
+    pub fn nodes(&self) -> &[wire::Node] {
+        &self.nodes
+    }
+    pub fn select(&mut self, scope: SwarmId) {
+        if self.scope == Some(scope) {
+            return;
+        }
+        let pending = std::mem::take(&mut self.pending)
+            .into_iter()
+            .filter(|(_, p)| p.read.is_none())
+            .collect();
+        *self = Self {
+            scope: Some(scope),
+            pending,
+            ..Default::default()
+        };
+        self.refresh();
+    }
+    fn enqueue(&mut self, read: Read) {
+        if self.waiting.len() < 132
+            && !self.waiting.contains(&read)
+            && !self
+                .pending
+                .values()
+                .any(|p| p.read.as_ref() == Some(&read))
+        {
+            self.waiting.push_back(read);
+        }
+    }
+    pub fn refresh(&mut self) {
+        // Read retries have no side effect. Unknown mutations keep their original
+        // ids until the operator repeats that same action explicitly.
+        self.pending.retain(|_, p| p.read.is_none() || !p.unknown);
+        self.enqueue(Read::Tasks(None));
+        for path in ["channels", "groups"] {
+            self.enqueue(Read::Tree(path.into(), None));
+        }
+    }
+    pub fn more_tasks(&mut self) {
+        if let Some(next) = self.task_next {
+            self.enqueue(Read::Tasks(Some(next)));
+        }
+    }
+    pub fn more_tree(&mut self, path: &str) {
+        if let Some(Some(next)) = self.tree_next.get(path) {
+            self.enqueue(Read::Tree(path.into(), Some(next.clone())));
+        }
+    }
+    pub fn detail(&mut self, id: Ulid) {
+        if self.task(id).is_some() {
+            self.enqueue(Read::Detail(id));
+        }
+    }
+    pub fn commands(&mut self) -> Vec<UiMsg> {
+        let Some(scope) = self.scope else {
+            return vec![];
+        };
+        let mut commands = vec![];
+        while self.pending.len() < 8 {
+            let Some(read) = self.waiting.pop_front() else {
+                break;
+            };
+            let id = Ulid::new();
+            let command = match &read {
+                Read::Tasks(after) => UiMsg::Task {
+                    id,
+                    request: TaskRequest::List {
+                        swarm_id: Some(Ulid::from(scope.0.0)),
+                        status: None,
+                        assignee: None,
+                        after: *after,
+                        limit: Some(128),
+                    },
+                },
+                Read::Detail(task) => {
+                    let Some(card) = self.task(*task) else {
+                        continue;
+                    };
+                    UiMsg::Task {
+                        id,
+                        request: TaskRequest::Status {
+                            task_path: Some(card.path.clone()),
+                            task_id: None,
+                        },
+                    }
+                }
+                Read::Tree(path, after) => UiMsg::Messaging {
+                    id,
+                    swarm_id: scope,
+                    request: Request::Ls {
+                        path: path.clone(),
+                        after: after.clone(),
+                        limit: 128,
+                    },
+                },
+            };
+            self.pending.insert(
+                id,
+                RecordRequest {
+                    read: Some(read),
+                    task: None,
+                    command: Saved::capture(&command).1,
+                    serial: 0,
+                    unknown: false,
+                },
+            );
+            commands.push(command);
+        }
+        commands
+    }
+    /// A second click on an unknown task operation reuses its captured request,
+    /// never a new mutation id. A changed action is refused until it is resolved.
+    pub fn review(&mut self, task: Ulid, reason: Option<String>) -> Result<UiMsg, &'static str> {
+        if let Some((&original_id, p)) = self.pending.iter_mut().find(|(_, p)| p.task == Some(task))
+        {
+            if !p.unknown {
+                return Err("task_operation_in_flight");
+            }
+            let Saved::Task(request) = &p.command else {
+                unreachable!();
+            };
+            let same = match (request, reason.as_deref()) {
+                (TaskRequest::Accept { .. }, None) => true,
+                (TaskRequest::Reject { reason: old, .. }, Some(new)) => old == new,
+                _ => false,
+            };
+            if !same {
+                return Err("task_outcome_unknown_repeat_original_action");
+            }
+            p.unknown = false;
+            return Ok(p.command.command(original_id));
+        }
+        if self.pending.len() >= 8 {
+            return Err("task_operation_queue_full");
+        }
+        let card = self.task(task).ok_or("task_not_loaded")?;
+        let request = if let Some(reason) = reason {
+            if reason.trim().is_empty() {
+                return Err("rebrief_reason_required");
+            }
+            TaskRequest::Reject {
+                task_path: card.path.clone(),
+                reason,
+            }
+        } else {
+            if card.status != "reported" || card.verify.as_ref().is_none_or(|v| v.exit_code != 0) {
+                return Err("task_requires_reported_zero_exit");
+            }
+            TaskRequest::Accept {
+                task_path: card.path.clone(),
+            }
+        };
+        let id = Ulid::new();
+        let command = UiMsg::Task { id, request };
+        self.pending.insert(
+            id,
+            RecordRequest {
+                read: None,
+                task: Some(task),
+                command: Saved::capture(&command).1,
+                serial: 0,
+                unknown: false,
+            },
+        );
+        Ok(command)
+    }
+    pub fn replies(&mut self, results: &Results) -> bool {
+        let mut changed = false;
+        for row in results.rows() {
+            let Some(p) = self.pending.get_mut(&row.op) else {
+                continue;
+            };
+            if row.serial <= p.serial {
+                continue;
+            }
+            p.serial = row.serial;
+            if let Reply::Unknown(reason) = &row.reply {
+                p.unknown = true;
+                self.issue = Some(format!("task/read outcome unknown · {reason}"));
+                changed = true;
+                continue;
+            }
+            let p = self.pending.remove(&row.op).unwrap();
+            match (&p.read, &row.reply) {
+                (Some(Read::Tasks(after)), Reply::Task(TaskResponse::Items { items, next })) => {
+                    if after.is_none() {
+                        self.tasks.clear();
+                        self.omitted = 0;
+                    }
+                    self.task_next = *next;
+                    for card in items {
+                        if let Some(i) = self.tasks.iter().position(|t| t.id == card.id) {
+                            self.tasks.remove(i);
+                        }
+                        self.tasks.push_back(card.clone());
+                        if card.status == "reported" && self.docs.iter().all(|d| d.id != card.id) {
+                            self.enqueue(Read::Detail(card.id));
+                        }
+                    }
+                    while self.tasks.len() > 128
+                        || serde_json::to_vec(&self.tasks).map_or(true, |b| b.len() > 256 * 1024)
+                    {
+                        if self.tasks.pop_front().is_none() {
+                            break;
+                        }
+                        self.omitted += 1;
+                    }
+                    self.docs
+                        .retain(|d| self.tasks.iter().any(|t| t.id == d.id));
+                }
+                (Some(Read::Detail(id)), Reply::Task(TaskResponse::Item { item }))
+                    if item.id == *id =>
+                {
+                    self.docs.retain(|d| d.id != *id);
+                    self.docs.push_back(item.clone());
+                    while self.docs.len() > 16
+                        || serde_json::to_vec(&self.docs).map_or(true, |b| b.len() > 512 * 1024)
+                    {
+                        if self.docs.pop_front().is_none() {
+                            break;
+                        }
+                    }
+                }
+                (
+                    Some(Read::Tree(folder, after)),
+                    Reply::Messaging(Response::Tree { nodes, next }),
+                ) => {
+                    if after.is_none() {
+                        let prefix = format!("{folder}/");
+                        self.nodes.retain(|n| !n.path.starts_with(&prefix));
+                    }
+                    self.tree_next.insert(folder.clone(), next.clone());
+                    for node in nodes {
+                        self.nodes.retain(|n| n.path != node.path);
+                        self.nodes.push(node.clone());
+                    }
+                    while self.nodes.len() > 256
+                        || serde_json::to_vec(&self.nodes).map_or(true, |b| b.len() > 256 * 1024)
+                    {
+                        if self.nodes.is_empty() {
+                            break;
+                        }
+                        self.nodes.remove(0);
+                        self.omitted += 1;
+                    }
+                }
+                (None, Reply::Task(TaskResponse::Applied)) => {
+                    self.issue = None;
+                    self.enqueue(Read::Tasks(None));
+                    if let Some(task) = p.task {
+                        self.docs.retain(|d| d.id != task);
+                        self.enqueue(Read::Detail(task));
+                    }
+                }
+                (_, Reply::Refused(reason)) => {
+                    self.issue = Some(reason.chars().take(512).collect())
+                }
+                _ => self.issue = Some("unexpected_task_or_tree_reply".into()),
+            }
+            changed = true;
+        }
+        changed
     }
 }
