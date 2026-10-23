@@ -2,7 +2,7 @@
 id: 01M5N6JP76ZEQ9DAR99859BSW7
 type: comment
 title: "where trust records live is unstated"
-status: open
+status: resolved
 author: name:Wren key:22c0e081a5f4ac21
 on: "[[plugins]]"
 on_digest: "sha256:2c3ad29192ad9c89939bf8e8e8d2c69db0eddc11c33b0e15c715520f9559362f"
@@ -11,7 +11,7 @@ kind: objection
 links:
   - { to: "[[plugins]]", rel: on }
 created: 2026-10-23T20:17:31Z
-updated: 2026-10-23T20:17:31Z
+updated: 2026-10-23T20:26:43Z
 ---
 # where trust records live is unstated
 

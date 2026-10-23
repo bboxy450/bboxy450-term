@@ -576,7 +576,16 @@ briefs Executors from the specs, never from this note.
     opt-in trace spans, MCP-style framing and MAJOR.MINOR versions, hook
     semantics per phase, a bare login seat, trust records before any run,
     shape caching, trust tiers per contract), and one, the suite-wide
-    prefix, is the operator's. Outside the cockpit,
+    prefix, is the operator's: closed the same evening, **per app**
+    (`bboxy450-term-<system>-<provider>`; a second suite app has its own
+    folder and prefix, the contracts in `bbt-plugin` are shared; rejected:
+    a suite-wide prefix, two prefix rules). The operator also corrected
+    the Jev reading: Jev is TypeSafe's hosted decision primitive already
+    used by kittens and paperhands, so `decision_model` is a plugin
+    system with Jev its first provider, optional and never load-bearing.
+    Wren's two follow-ups (a817a9d) close in revision 3: trust records
+    live only in the operator's store, never read from a repository; the
+    diagram matches the text. Outside the cockpit,
     comments and proposals are commit-signed files with an inferred author
     grade; seat-leaf signing and a claim upgrade them to reported when the
     reviewer runs as a seat (Oracle's gap, same day). Rejected: a second
