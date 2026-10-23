@@ -1,0 +1,26 @@
+{"source": "66f03a4c147b198fef34b4c5c7858d4d503f9701", "stage": "run", "profile": "o0", "fixture": "ring_cold_replay_twenty_mib_profile", "wrapper_pid": 38197, "target": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile", "started_utc": "2026-10-23T09:54:06.833254+00:00", "child_pid": 38246, "build_exit": 0, "binary": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-o0-logic", "binary_sha256": "a9d4792ced345fc457490e0fb8a4a5dc1af82d06a3829165399e1ad915cd3d09", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-o0-logic", "ring_cold_replay_twenty_mib_profile", "--ignored", "--exact", "--nocapture", "--test-threads=1"]}
+vm.loadavg: { 54.77 33.45 28.48 }
+vm.swapusage: total = 4096.00M  used = 2861.88M  free = 1234.12M  (encrypted)
+
+running 1 test
+test ring_cold_replay_twenty_mib_profile ... 20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":321,"elapsed_s":1.0275217090093065,"max_write_s":0.1541993750142865,"mib_s":19.464308952930217,"p99_write_s":0.1329432910133619}
+capture profile BEFORE logic restart: CaptureStats { records: 1295, encode_ns: 18951071, hot_write_ns: 14613440, sync_ns: 61714124, marker_ns: 12393041, cold_ns: 183408876, seals: 5, max_seal_ns: 69634708, queued_bytes: 0, peak_queue_bytes: 1463160, queue_full_count: 20, ordered_commits: 36, durable_commits: 10, writer_busy_ns: 757067551, commit_rounds: 27, commit_p99_ns: 8000000, commit_max_ns: 7399375, undurable_bytes: 30740, peak_undurable_bytes: 4612096, durable_pauses: 0, durable_rounds: 7 }
+cold replay 633.798875ms: 4202496 bytes, reads 133.504042ms, checkpoint writes 0ns
+cold replay 1.213461209s: 8398848 bytes, reads 232.114371ms, checkpoint writes 0ns
+cold replay 1.817967542s: 12594176 bytes, reads 344.240991ms, checkpoint writes 0ns
+cold replay 2.463760459s: 16785408 bytes, reads 464.628068ms, checkpoint writes 0ns
+cold replay 3.022438834s: 20971540 bytes, reads 524.321199ms, checkpoint writes 0ns
+20 MiB cold replay startup: 3.062647917s
+cold replay 6.308458084s: 25174044 bytes, reads 808.615908ms, checkpoint writes 19.05625ms
+cold replay 9.689837292s: 29370396 bytes, reads 984.408028ms, checkpoint writes 19.05625ms
+cold replay 13.044007167s: 33565724 bytes, reads 1.145196117s, checkpoint writes 19.05625ms
+cold replay 16.380487625s: 37756956 bytes, reads 1.31701604s, checkpoint writes 19.05625ms
+cold replay 19.724935834s: 41943088 bytes, reads 1.454843627s, checkpoint writes 19.05625ms
+complete raw capture: 20971548 bytes, SHA-256 77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb, no gap
+W12F_PROFILE cold_start_only=true producer_max_write_s=0.1541993750142865
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 21.22s
+
+
+{"source": "66f03a4c147b198fef34b4c5c7858d4d503f9701", "stage": "complete", "profile": "o0", "fixture": "ring_cold_replay_twenty_mib_profile", "wrapper_pid": 38197, "target": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile", "started_utc": "2026-10-23T09:54:06.833254+00:00", "child_pid": 38730, "build_exit": 0, "binary": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-o0-logic", "binary_sha256": "a9d4792ced345fc457490e0fb8a4a5dc1af82d06a3829165399e1ad915cd3d09", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-o0-logic", "ring_cold_replay_twenty_mib_profile", "--ignored", "--exact", "--nocapture", "--test-threads=1"], "child_exit": 0, "wall_seconds": 21.583455917018, "finished_utc": "2026-10-23T09:54:46.452671+00:00"}

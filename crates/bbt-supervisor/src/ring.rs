@@ -15,7 +15,11 @@ use crate::durability::{sync_directory, sync_file};
 use crate::protocol::{Event, ExitInfo, OUTPUT_CHUNK_BYTES, SeatSize};
 use crate::store::{Blobs, Result, blobs::LocalBlobs, invalid};
 
+#[cfg(test)]
+mod checksum_tests;
 mod journal;
+#[cfg(test)]
+mod paging_tests;
 mod writer;
 pub(crate) use writer::{
     CaptureWriter, Handle as CaptureHandle, Query as CaptureQuery, Response as CaptureResponse,
@@ -352,6 +356,36 @@ pub struct Status {
 pub struct IndexedEvent {
     pub event: Event,
     pub row: Option<RowPoint>,
+}
+
+/// A conservative JSON size without walking an Output's byte array.
+fn page_weight(record: &IndexedEvent) -> Result<usize> {
+    let Event::Output {
+        seat,
+        generation,
+        seq,
+        bytes,
+    } = &record.event
+    else {
+        return Ok(serde_json::to_vec(record)?.len());
+    };
+    let metadata = IndexedEvent {
+        event: Event::Output {
+            seat: *seat,
+            generation: *generation,
+            seq: *seq,
+            bytes: Vec::new(),
+        },
+        row: record.row.clone(),
+    };
+    // A u8 occupies at most three digits plus a comma. The empty brackets
+    // already counted in metadata make this one byte conservative as well.
+    let metadata_len = serde_json::to_vec(&metadata)?.len();
+    bytes
+        .len()
+        .checked_mul(4)
+        .and_then(|payload| metadata_len.checked_add(payload))
+        .ok_or_else(|| invalid("history page weight overflow"))
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct History {
@@ -1133,6 +1167,10 @@ impl Ring {
                 .iter()
                 .filter(|e| e.kind != 4 && e.sequence >= from && e.sequence <= to)
             {
+                if !records.is_empty() && size >= PAGE_BYTES {
+                    next = Some(entry.sequence);
+                    break;
+                }
                 let payload = &cache.bytes[entry.start as usize + HEADER..entry.end as usize];
                 let record = IndexedEvent {
                     event: decode_event(
@@ -1148,7 +1186,7 @@ impl Ring {
                         .or_else(|| cache.rows.get(&entry.sequence))
                         .cloned(),
                 };
-                let bytes = serde_json::to_vec(&record)?.len();
+                let bytes = page_weight(&record)?;
                 if !records.is_empty() && size + bytes > PAGE_BYTES {
                     next = Some(entry.sequence);
                     break;
@@ -1166,6 +1204,10 @@ impl Ring {
                 .iter()
                 .filter(|e| e.kind != 4 && e.sequence >= from && e.sequence <= to)
             {
+                if !records.is_empty() && size >= PAGE_BYTES {
+                    next = Some(entry.sequence);
+                    break;
+                }
                 let record = IndexedEvent {
                     event: decode_event(
                         entry.kind,
@@ -1176,7 +1218,7 @@ impl Ring {
                     )?,
                     row: self.index.get(&entry.sequence).cloned(),
                 };
-                let bytes = serde_json::to_vec(&record)?.len();
+                let bytes = page_weight(&record)?;
                 if !records.is_empty() && size + bytes > PAGE_BYTES {
                     next = Some(entry.sequence);
                     break;
@@ -1362,6 +1404,33 @@ fn load_boundary(path: &Path) -> Result<Boundary> {
     Ok(serde_json::from_slice(&bytes[..end])?)
 }
 fn crc32c_parts(header: &[u8], payload: &[u8]) -> u32 {
+    #[cfg(target_arch = "aarch64")]
+    if std::arch::is_aarch64_feature_detected!("crc") {
+        // SAFETY: Runtime detection establishes the function's CRC feature.
+        return unsafe { crc32c_aarch64(header, payload) };
+    }
+    crc32c_portable(header, payload)
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "crc")]
+unsafe fn crc32c_aarch64(header: &[u8], payload: &[u8]) -> u32 {
+    use std::arch::aarch64::{__crc32cb, __crc32cd};
+    let mut crc = !0u32;
+    for part in [header, payload] {
+        let (words, remainder) = part.as_chunks::<8>();
+        for word in words {
+            crc = __crc32cd(crc, u64::from_le_bytes(*word));
+        }
+        for byte in remainder {
+            crc = __crc32cb(crc, *byte);
+        }
+    }
+    !crc
+}
+
+// Retained both as the portable path and as an independent test reference.
+fn crc32c_portable(header: &[u8], payload: &[u8]) -> u32 {
     let mut crc = !0u32;
     for byte in header.iter().chain(payload) {
         crc = CRC32C[((crc ^ *byte as u32) & 255) as usize] ^ (crc >> 8);

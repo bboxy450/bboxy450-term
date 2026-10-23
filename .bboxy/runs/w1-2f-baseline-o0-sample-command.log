@@ -1,0 +1,7 @@
+OWN_TEST_PID=8557
+COMMAND=['sample', '8557', '3', '-file', '/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/w1-2f-baseline-o0-sample.log']
+Sampling process 8557 for 3 seconds with 1 millisecond of run time between samples
+Sampling completed, processing symbols...
+Sample analysis of process 8557 written to file /Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/w1-2f-baseline-o0-sample.log
+
+SAMPLE_EXIT=0

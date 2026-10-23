@@ -1,0 +1,15 @@
+W1.2f rebased exact-source numerical verification
+utc=2026-10-23T10:29:06.481013+00:00
+source=93114be2f9d5412913889fa05e22873c8cec295c
+Command: python3 parser of recorded native-test output/status; asserts below.
+release: build_exit=0 child_exit=0 native_test=1pass binary_sha256=f34e5af2c207c4a3c84e90af09d052095f9d752f727814680bc7ab3b6d143936
+release raw_log_sha256=7134334515e62fa4f6449a42aa3ac37c4736f6d61e3c2ad81cd27b17e7eeb1ef status_sha256=9b53dccdb4574972ab67ccbdcb769a1247081e8fb50695ad4a4544c5cbc94f03
+running=true: writer_MiB_s=35.486782171 committed_MiB_s=32.642906376 p99_ms=31.551374996 max_ms=102.690582979 capture_bytes=20971548 no_gap=true; >=30 and p99<=50ms PASS; max<=50ms NOT claimed
+running=false: writer_MiB_s=35.381877711 committed_MiB_s=31.756012207 p99_ms=43.971499981 max_ms=85.776833002 capture_bytes=20971548 no_gap=true; >=30 and p99<=50ms PASS; max<=50ms NOT claimed
+o0: build_exit=0 child_exit=0 native_test=1pass binary_sha256=5d3dc854738b9d41ed0db4c97e44b482e393a87919ba410d9dec1e0ab7ea9f50
+o0 raw_log_sha256=41c040682e6a78de08e86df502a0e4ce2f5d14e465cc475ecf36306ca9c8327a status_sha256=e77c01bd46ae681ed3f1053067e67b20dad273066b6d01be874d927c39322e3c
+O0 startup_seconds=6.938105458 first_20MiB_history_seconds=1.914198917 raw_bytes=20971548 sha256=77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb no_gap=true; unchanged startup<30s PASS
+Comparison caveat: fixed ABBA schedule has same old release binary also meeting targets; do not attribute the full original unpaired ~21 to ~60 MiB/s change to this code. See paired-summary.log for every A/B result.
+Rebased O0 startup6.938s is slower than paired1.259-1.311s; latest value is reported, not replaced by a quieter run. No further run planned: it is within the unchanged30s deadline.
+No schema/CRC/durability semantics/IO scheduling or runtime changes. Default producer-latency assertion remains and will run in exact CI.
+Verification exit=0

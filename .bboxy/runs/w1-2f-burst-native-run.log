@@ -1,0 +1,20 @@
+{"source": "92f114ea537158851996616a292c4344f1446cf9", "binary_sha256": "975b8a962b52324b1b2c67e1f75d25d59283ed1df2b7a3987129072c5b003a0e", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/release/deps/logic-7ed53c86a3f8d119", "ring_capture_throughput_with_logic_running_and_stopped", "--ignored", "--exact", "--nocapture", "--test-threads=1"], "purpose": "one diagnostic128MiB stopped-logic sample; legacy50ms assertion remains expected to fail, not an acceptance pass"}
+
+running 1 test
+test ring_capture_throughput_with_logic_running_and_stopped ... 128 MiB logic running=false writer: {"bytes":134217728,"calls":2049,"elapsed_s":5.725414415996056,"max_write_s":0.14690829097526148,"mib_s":22.35646028388527,"p99_write_s":0.07026404101634398}
+128 MiB logic running=false durable capture: 5.798387959s, 22.075 MiB/s; CaptureStats { records: 8303, encode_ns: 432032189, hot_write_ns: 219088848, sync_ns: 386010089, marker_ns: 96636582, cold_ns: 568806914, seals: 32, max_seal_ns: 62462083, queued_bytes: 0, peak_queue_bytes: 1627560, queue_full_count: 143, ordered_commits: 236, durable_commits: 64, writer_busy_ns: 3075400205, commit_rounds: 174, commit_p99_ns: 9000000, commit_max_ns: 9805333, undurable_bytes: 224276, peak_undurable_bytes: 4708352, durable_pauses: 0, durable_rounds: 34 }
+
+thread 'ring_capture_throughput_with_logic_running_and_stopped' (13549147) panicked at crates/bbt-mux/tests/logic.rs:1091:9:
+max write target
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    ring_capture_throughput_with_logic_running_and_stopped
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 6.01s
+
+
+{"source": "92f114ea537158851996616a292c4344f1446cf9", "binary_sha256": "975b8a962b52324b1b2c67e1f75d25d59283ed1df2b7a3987129072c5b003a0e", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/release/deps/logic-7ed53c86a3f8d119", "ring_capture_throughput_with_logic_running_and_stopped", "--ignored", "--exact", "--nocapture", "--test-threads=1"], "purpose": "one diagnostic128MiB stopped-logic sample; legacy50ms assertion remains expected to fail, not an acceptance pass", "child_pid": 43574, "wrapper_pid": 43564, "sample_pid": 43586, "child_exit": 101, "wall_seconds": 6.028019916993799, "sample_exit": 0}

@@ -1,0 +1,7 @@
+SOURCE=93114be2f9d5412913889fa05e22873c8cec295c
+COMMAND=['cargo', 'test', '--release', '-p', 'bbt-mux', '--locked', '--test', 'logic', '--no-run', '--message-format=json']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 1m 18s
+BUILD_EXIT=0

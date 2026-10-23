@@ -1,0 +1,20 @@
+{"profile": "release", "order": 2, "label": "after", "source": "66f03a4c147b198fef34b4c5c7858d4d503f9701", "binary_sha256": "d1c59ec76caf095e2800b96420b59b34ec69a863417ad80367b917baede83f43", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-release-logic", "ring_capture_twenty_mib_profile_running_and_stopped", "--ignored", "--exact", "--nocapture", "--test-threads=1"]}
+vm.loadavg: { 11.74 15.99 20.83 }
+vm.swapusage: total = 4096.00M  used = 2861.88M  free = 1234.12M  (encrypted)
+RUSTC_PROCESSES_BEFORE=0
+
+running 1 test
+test ring_capture_twenty_mib_profile_running_and_stopped ... W12F_PROFILE baseline_only=true running=true seat=01M5M3CP5F33R1CYR5ZD5YBWQQ producer_pid=49966 bytes=20971520
+W12F_PROFILE writer running=true: {"bytes":20971520,"calls":321,"elapsed_s":0.33419212501030415,"max_write_s":0.03417425000225194,"mib_s":59.845814737206446,"p99_write_s":0.02567883298615925}
+W12F_PROFILE committed running=true elapsed_s=0.374036833 mib_s=53.4706698257174 stats={"records":1290,"encode_ns":3706419,"hot_write_ns":15108454,"sync_ns":52256461,"marker_ns":8801541,"cold_ns":22998918,"seals":5,"max_seal_ns":15848542,"queued_bytes":0,"peak_queue_bytes":2204531,"queue_full_count":4,"ordered_commits":46,"durable_commits":10,"writer_busy_ns":306901963,"commit_rounds":37,"commit_p99_ns":11000000,"commit_max_ns":10116500,"undurable_bytes":0,"peak_undurable_bytes":2195456,"durable_pauses":0,"durable_rounds":34}
+W12F_PROFILE exact_capture running=true bytes=20971548 no_gap=true
+W12F_PROFILE baseline_only=true running=false seat=01M5M3CPN77JT8MTTCCK05BYTC producer_pid=49993 bytes=20971520
+W12F_PROFILE writer running=false: {"bytes":20971520,"calls":321,"elapsed_s":0.31040337501326576,"max_write_s":0.04095612501259893,"mib_s":64.43228911137084,"p99_write_s":0.03301816701423377}
+W12F_PROFILE committed running=false elapsed_s=0.363581875 mib_s=55.008242641358294 stats={"records":1284,"encode_ns":2826452,"hot_write_ns":9336330,"sync_ns":58106291,"marker_ns":7431501,"cold_ns":19630875,"seals":5,"max_seal_ns":16033500,"queued_bytes":0,"peak_queue_bytes":3222240,"queue_full_count":5,"ordered_commits":23,"durable_commits":10,"writer_busy_ns":178430653,"commit_rounds":15,"commit_p99_ns":8000000,"commit_max_ns":7025959,"undurable_bytes":24596,"peak_undurable_bytes":5459968,"durable_pauses":0,"durable_rounds":7}
+W12F_PROFILE exact_capture running=false bytes=20971548 no_gap=true
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 1.00s
+
+
+{"profile": "release", "order": 2, "label": "after", "source": "66f03a4c147b198fef34b4c5c7858d4d503f9701", "binary_sha256": "d1c59ec76caf095e2800b96420b59b34ec69a863417ad80367b917baede83f43", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-release-logic", "ring_capture_twenty_mib_profile_running_and_stopped", "--ignored", "--exact", "--nocapture", "--test-threads=1"], "child_pid": 49965, "child_exit": 0, "wall_seconds": 1.0156358340173028}

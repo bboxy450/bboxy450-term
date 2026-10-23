@@ -1,0 +1,24 @@
+{
+  "source": "66f03a4c147b198fef34b4c5c7858d4d503f9701",
+  "stage": "complete",
+  "profile": "o0",
+  "fixture": "ring_cold_replay_twenty_mib_profile",
+  "wrapper_pid": 38197,
+  "target": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile",
+  "started_utc": "2026-10-23T09:54:06.833254+00:00",
+  "child_pid": 38730,
+  "build_exit": 0,
+  "binary": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-o0-logic",
+  "binary_sha256": "a9d4792ced345fc457490e0fb8a4a5dc1af82d06a3829165399e1ad915cd3d09",
+  "command": [
+    "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-o0-logic",
+    "ring_cold_replay_twenty_mib_profile",
+    "--ignored",
+    "--exact",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "child_exit": 0,
+  "wall_seconds": 21.583455917018,
+  "finished_utc": "2026-10-23T09:54:46.452671+00:00"
+}

@@ -1,0 +1,9 @@
+use bbt_supervisor::store::{Blobs, blobs::LocalBlobs};
+fn main() {
+    let root = std::path::PathBuf::from(std::env::args_os().nth(1).unwrap());
+    let data: Vec<u8> = (0..1024 * 1024).map(|n| n as u8).collect();
+    let blobs = LocalBlobs::open(&root).unwrap();
+    let digest = blobs.put(&data).unwrap();
+    assert_eq!(blobs.get(&digest).unwrap(), data);
+    println!("digest={digest} bytes={}", data.len());
+}

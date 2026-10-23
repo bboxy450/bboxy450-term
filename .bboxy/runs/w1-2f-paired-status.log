@@ -1,0 +1,253 @@
+{
+  "results": [
+    {
+      "profile": "release",
+      "order": 1,
+      "label": "before",
+      "source": "92f114ea537158851996616a292c4344f1446cf9",
+      "binary_sha256": "975b8a962b52324b1b2c67e1f75d25d59283ed1df2b7a3987129072c5b003a0e",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/before-92f114e-release",
+        "ring_capture_twenty_mib_profile_running_and_stopped",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "child_pid": 49926,
+      "child_exit": 0,
+      "wall_seconds": 2.203850207995856,
+      "writers": {
+        "true": {
+          "bytes": 20971520,
+          "calls": 321,
+          "elapsed_s": 0.3133332919969689,
+          "max_write_s": 0.05846954201115295,
+          "mib_s": 63.82979565476072,
+          "p99_write_s": 0.03889229102060199
+        },
+        "false": {
+          "bytes": 20971520,
+          "calls": 321,
+          "elapsed_s": 0.4055105420120526,
+          "max_write_s": 0.06835424999007955,
+          "mib_s": 49.32054269357456,
+          "p99_write_s": 0.04464254199410789
+        }
+      },
+      "committed_mib_s": {
+        "true": 53.40557327211275,
+        "false": 42.44576009652573
+      },
+      "target_pass": true
+    },
+    {
+      "profile": "release",
+      "order": 2,
+      "label": "after",
+      "source": "66f03a4c147b198fef34b4c5c7858d4d503f9701",
+      "binary_sha256": "d1c59ec76caf095e2800b96420b59b34ec69a863417ad80367b917baede83f43",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-release-logic",
+        "ring_capture_twenty_mib_profile_running_and_stopped",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "child_pid": 49965,
+      "child_exit": 0,
+      "wall_seconds": 1.0156358340173028,
+      "writers": {
+        "true": {
+          "bytes": 20971520,
+          "calls": 321,
+          "elapsed_s": 0.33419212501030415,
+          "max_write_s": 0.03417425000225194,
+          "mib_s": 59.845814737206446,
+          "p99_write_s": 0.02567883298615925
+        },
+        "false": {
+          "bytes": 20971520,
+          "calls": 321,
+          "elapsed_s": 0.31040337501326576,
+          "max_write_s": 0.04095612501259893,
+          "mib_s": 64.43228911137084,
+          "p99_write_s": 0.03301816701423377
+        }
+      },
+      "committed_mib_s": {
+        "true": 53.4706698257174,
+        "false": 55.008242641358294
+      },
+      "target_pass": true
+    },
+    {
+      "profile": "release",
+      "order": 3,
+      "label": "after",
+      "source": "66f03a4c147b198fef34b4c5c7858d4d503f9701",
+      "binary_sha256": "d1c59ec76caf095e2800b96420b59b34ec69a863417ad80367b917baede83f43",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-release-logic",
+        "ring_capture_twenty_mib_profile_running_and_stopped",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "child_pid": 50010,
+      "child_exit": 0,
+      "wall_seconds": 0.9421977089950815,
+      "writers": {
+        "true": {
+          "bytes": 20971520,
+          "calls": 321,
+          "elapsed_s": 0.2916145829949528,
+          "max_write_s": 0.03089150000596419,
+          "mib_s": 68.58367573594958,
+          "p99_write_s": 0.022201666986802593
+        },
+        "false": {
+          "bytes": 20971520,
+          "calls": 321,
+          "elapsed_s": 0.273735291993944,
+          "max_write_s": 0.03529654099838808,
+          "mib_s": 73.06328626577852,
+          "p99_write_s": 0.03159904101630673
+        }
+      },
+      "committed_mib_s": {
+        "true": 59.43853609875561,
+        "false": 61.10535785495826
+      },
+      "target_pass": true
+    },
+    {
+      "profile": "release",
+      "order": 4,
+      "label": "before",
+      "source": "92f114ea537158851996616a292c4344f1446cf9",
+      "binary_sha256": "975b8a962b52324b1b2c67e1f75d25d59283ed1df2b7a3987129072c5b003a0e",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/before-92f114e-release",
+        "ring_capture_twenty_mib_profile_running_and_stopped",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "child_pid": 50116,
+      "child_exit": 0,
+      "wall_seconds": 1.9233256250154227,
+      "writers": {
+        "true": {
+          "bytes": 20971520,
+          "calls": 321,
+          "elapsed_s": 0.3558469999989029,
+          "max_write_s": 0.055565624992595986,
+          "mib_s": 56.203930341022016,
+          "p99_write_s": 0.038036375015508384
+        },
+        "false": {
+          "bytes": 20971520,
+          "calls": 321,
+          "elapsed_s": 0.31933095800923184,
+          "max_write_s": 0.05945133400382474,
+          "mib_s": 62.630946040069816,
+          "p99_write_s": 0.04400562500813976
+        }
+      },
+      "committed_mib_s": {
+        "true": 49.00554973639155,
+        "false": 51.58684913788109
+      },
+      "target_pass": true
+    },
+    {
+      "profile": "o0",
+      "order": 1,
+      "label": "before",
+      "source": "d00caae5695a2ecbd27c7e4a5d1c0cb02970589c",
+      "binary_sha256": "b2364ab7fd2b51467b4471454ab4bebc9426bcc01b92011da70dfb5edf79b13a",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/before-pager-o0-logic",
+        "ring_cold_replay_twenty_mib_profile",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "child_pid": 50141,
+      "child_exit": 0,
+      "wall_seconds": 29.256871833000332,
+      "startup_s": 5.724498708,
+      "history_s": 4.579588889,
+      "target_pass": true
+    },
+    {
+      "profile": "o0",
+      "order": 2,
+      "label": "after",
+      "source": "66f03a4c147b198fef34b4c5c7858d4d503f9701",
+      "binary_sha256": "a9d4792ced345fc457490e0fb8a4a5dc1af82d06a3829165399e1ad915cd3d09",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-o0-logic",
+        "ring_cold_replay_twenty_mib_profile",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "child_pid": 50780,
+      "child_exit": 0,
+      "wall_seconds": 17.910831582994433,
+      "startup_s": 1.310553292,
+      "history_s": 0.181825162,
+      "target_pass": true
+    },
+    {
+      "profile": "o0",
+      "order": 3,
+      "label": "after",
+      "source": "66f03a4c147b198fef34b4c5c7858d4d503f9701",
+      "binary_sha256": "a9d4792ced345fc457490e0fb8a4a5dc1af82d06a3829165399e1ad915cd3d09",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/after-checksums-o0-logic",
+        "ring_cold_replay_twenty_mib_profile",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "child_pid": 51245,
+      "child_exit": 0,
+      "wall_seconds": 17.644883999979356,
+      "startup_s": 1.258534542,
+      "history_s": 0.165324041,
+      "target_pass": true
+    },
+    {
+      "profile": "o0",
+      "order": 4,
+      "label": "before",
+      "source": "d00caae5695a2ecbd27c7e4a5d1c0cb02970589c",
+      "binary_sha256": "b2364ab7fd2b51467b4471454ab4bebc9426bcc01b92011da70dfb5edf79b13a",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/before-pager-o0-logic",
+        "ring_cold_replay_twenty_mib_profile",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "child_pid": 51506,
+      "child_exit": 0,
+      "wall_seconds": 28.86438279200229,
+      "startup_s": 5.835536833,
+      "history_s": 4.667464939,
+      "target_pass": true
+    }
+  ],
+  "after_targets_pass": true
+}

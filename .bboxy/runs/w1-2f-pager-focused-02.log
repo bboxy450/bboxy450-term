@@ -1,0 +1,16 @@
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--lib', '--locked', 'paging', '--', '--nocapture']
+WORKTREE=approved pager delta; corrected test type path
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized] target(s) in 10.57s
+     Running unittests src/lib.rs (target/w1-2f-profile/debug/deps/bbt_supervisor-aa5d79e9f44a3463)
+
+running 4 tests
+test ring::paging_tests::output_weight_bounds_real_json_for_all_bytes_and_boundary_metadata ... ok
+test ring::paging_tests::a_full_page_returns_before_decoding_the_following_entry ... ok
+test ring::writer::tests::ring_and_journal_paging_is_contiguous_wire_bounded_and_does_not_decode_past_full ... ok
+test ring::paging_tests::hot_and_cold_pages_fit_the_wire_and_keep_every_record_in_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 33 filtered out; finished in 0.54s
+
+
+CHILD_EXIT=0

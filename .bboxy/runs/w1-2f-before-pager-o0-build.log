@@ -1,0 +1,5 @@
+SOURCE=d00caae5695a2ecbd27c7e4a5d1c0cb02970589c
+COMMAND=['cargo', 'test', '-p', 'bbt-mux', '--locked', '--test', 'logic', '--no-run', '--message-format=json']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 1.85s
+BUILD_EXIT=0

@@ -1,0 +1,60 @@
+# W1.2f owned-worktree measurement driver: argv = tag, o0|release, ignored fixture.
+from pathlib import Path
+import datetime, hashlib, json, os, re, shutil, subprocess, sys, time
+
+tag, profile, fixture = sys.argv[1:]
+assert re.fullmatch(r'[a-z0-9-]+', tag) and profile in ['o0', 'release']
+root = Path.cwd()
+assert root == Path('/Users/feral/mydev/bboxy450-term-rook')
+assert not subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=no'], text=True)
+assert shutil.disk_usage(root).free >= 10 * 1024**3
+runs = root / '.bboxy/runs'
+prefix = runs / ('w1-2f-' + tag)
+target = root / 'target/w1-2f-profile'
+source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+env = os.environ.copy()
+env.update(CARGO_TARGET_DIR=str(target), CARGO_BUILD_JOBS='2', CARGO_INCREMENTAL='0',
+           CARGO_PROFILE_DEV_DEBUG='0', CARGO_PROFILE_TEST_DEBUG='0',
+           CARGO_PROFILE_DEV_OPT_LEVEL='0', CARGO_PROFILE_TEST_OPT_LEVEL='0',
+           CARGO_PROFILE_RELEASE_DEBUG='0', CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS='true',
+           BBOXY_TEST_CUSTODY='memory')
+state = dict(source=source, stage='build', profile=profile, fixture=fixture,
+             wrapper_pid=os.getpid(), target=str(target),
+             started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
+status = Path(str(prefix) + '-status.log')
+def record():
+    status.write_text(json.dumps(state, indent=2) + '\n')
+    print(json.dumps(state), flush=True)
+command = ['cargo', 'test', '-p', 'bbt-mux', '--locked', '--test', 'logic', '--no-run', '--message-format=json']
+if profile == 'release': command.insert(2, '--release')
+artifact_path = Path(str(prefix) + '-build-json.log')
+with Path(str(prefix) + '-build.log').open('w') as log, artifact_path.open('w') as artifacts:
+    log.write(f'SOURCE={source}\nCOMMAND={command!r}\n'); log.flush()
+    child = subprocess.Popen(command, env=env, stdout=artifacts, stderr=log)
+    state['child_pid'] = child.pid; record()
+    code = child.wait(); log.write(f'BUILD_EXIT={code}\n')
+state['build_exit'] = code
+if code:
+    state['stage'] = 'build failed'; record(); sys.exit(code)
+artifacts = [json.loads(l) for l in artifact_path.read_text().splitlines() if l.startswith('{')]
+binary = next(x['executable'] for x in reversed(artifacts) if x.get('reason') == 'compiler-artifact' and x.get('target', {}).get('name') == 'logic' and x.get('executable'))
+frozen = target / (tag + '-logic')
+shutil.copy2(binary, frozen)
+state.update(stage='run', binary=str(frozen), binary_sha256=hashlib.sha256(frozen.read_bytes()).hexdigest())
+command = [str(frozen), fixture, '--ignored', '--exact', '--nocapture', '--test-threads=1']
+state['command'] = command
+started = time.monotonic()
+with Path(str(prefix) + '-run.log').open('w') as log:
+    log.write(json.dumps(state) + '\n')
+    log.write(subprocess.check_output(['sysctl', 'vm.loadavg', 'vm.swapusage'], text=True))
+    log.flush()
+    child = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT)
+    state['child_pid'] = child.pid; record()
+    try:
+        code = child.wait(timeout=180)
+    except subprocess.TimeoutExpired:
+        child.kill(); code = child.wait(); state['outer_timeout'] = True
+    state.update(stage='complete', child_exit=code, wall_seconds=time.monotonic()-started,
+                 finished_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
+    log.write('\n' + json.dumps(state) + '\n'); log.flush(); record()
+sys.exit(code)

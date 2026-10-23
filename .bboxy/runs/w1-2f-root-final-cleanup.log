@@ -1,0 +1,10 @@
+{
+  "source": "e6feaf804eb47d93a0becfaab03f3bc4bd5d872d",
+  "ci_exit": 0,
+  "cache_allocated_bytes_removed": 2440732672,
+  "free_before": 17462702080,
+  "free_after": 19772452864,
+  "removed_target": "/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6",
+  "removed_worktree": "/tmp/rook-socket-diag-48eb8d6",
+  "finished_utc": "2026-10-23T08:43:03.127592+00:00"
+}

@@ -1,0 +1,16 @@
+{
+  "source": "e6feaf804eb47d93a0becfaab03f3bc4bd5d872d",
+  "worktree": "/private/tmp/rook-socket-diag-48eb8d6",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "started_utc": "2026-10-23T08:30:44.876527+00:00",
+  "target": "/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6",
+  "custody": "memory",
+  "child_pid": 60948,
+  "wrapper_pid": 60925,
+  "child_exit": 0,
+  "wall_seconds": 627.6732120829984,
+  "finished_utc": "2026-10-23T08:41:12.548732+00:00"
+}

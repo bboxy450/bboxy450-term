@@ -1,0 +1,10 @@
+{
+  "source": "416eff60f423906189392b827b3e4c54fea56587",
+  "generator_sha256": "cca51e470f048375536eb0ab71e5c26a50a586ed4fc555f912e0a6736710a80a",
+  "generator_exit": 0,
+  "payload_bytes": 1048576,
+  "payload_sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+  "fixture": "crates/bbt-supervisor/tests/fixtures/legacy-checksum.zst",
+  "fixture_bytes": 363,
+  "fixture_sha256": "2a207cd20c744d857c5c098c4c6ab0d81e164e6f90ca4a2074e8fb01e8486776"
+}

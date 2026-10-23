@@ -1,0 +1,51 @@
+SOURCE=66f03a4c147b198fef34b4c5c7858d4d503f9701
+BBT_CRASH_SEATS=2
+COMMAND=['cargo', 'test', '--release', '-p', 'bbt-supervisor', '--lib', '--locked', 'capture_sigkill', '--', '--ignored', '--nocapture', '--test-threads=1']
+   Compiling serde_core v1.0.229
+   Compiling generic-array v0.14.7
+   Compiling syn v3.0.9
+   Compiling serde v1.0.229
+   Compiling bitflags v2.13.2
+   Compiling serde_derive v1.0.229
+   Compiling typenum v1.20.1
+   Compiling syn v2.0.119
+   Compiling getrandom v0.4.3
+   Compiling smallvec v1.16.3
+   Compiling thiserror-impl v1.0.69
+   Compiling parking_lot_core v0.9.12
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling thiserror v1.0.69
+   Compiling errno v0.3.14
+   Compiling serde_json v1.0.154
+   Compiling filedescriptor v0.8.3
+   Compiling rustix v1.1.5
+   Compiling digest v0.10.7
+   Compiling nix v0.28.0
+   Compiling parking_lot v0.12.5
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling portable-pty v0.9.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+   Compiling tempfile v3.27.0
+   Compiling sha2 v0.10.9
+   Compiling ulid v1.2.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 19.79s
+     Running unittests src/lib.rs (target/w1-2f-profile/release/deps/bbt_supervisor-2e39d38abe03e1da)
+
+running 1 test
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... CRASH owned_supervisor_pid=55395 seats=2
+CRASH free_disk_bytes=16271634432 min_free_bytes=10737418240
+CRASH free_disk_bytes=16271659008 min_free_bytes=10737418240
+CRASH staged=2/2
+{"admitted":5952,"admitted_loss":384,"admitted_tick_bytes":576,"coalescing_limit":64,"committed":5568,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":64,"seat":"01M5M3S00F4T1S2YDEWPV8JHQ7","signal":"SIGKILL","written":6016}
+{"admitted":5952,"admitted_loss":384,"admitted_tick_bytes":576,"coalescing_limit":64,"committed":5568,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":64,"seat":"01M5M3S00X60SDBNP6FZ8AE4PP","signal":"SIGKILL","written":6016}
+CRASH replayed=2/2 elapsed_s=0.016
+CRASH seats=2 replayed=2 crc_errors=0 total_written=12032 total_committed=11136 replay_s=0.016
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.50s
+
+CHILD_EXIT=0

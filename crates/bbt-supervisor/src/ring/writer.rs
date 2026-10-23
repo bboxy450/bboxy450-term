@@ -547,17 +547,18 @@ impl Tail {
         }
         let mut size = records
             .iter()
-            .map(serde_json::to_vec)
-            .collect::<Result<Vec<_>, _>>()?
-            .iter()
-            .map(Vec::len)
-            .sum::<usize>();
+            .map(super::page_weight)
+            .sum::<super::Result<usize>>()?;
         if next.is_none() {
             for r in self
                 .records
                 .iter()
                 .filter(|r| r.kind != 4 && r.sequence >= from && r.sequence <= to)
             {
+                if !records.is_empty() && size >= super::PAGE_BYTES {
+                    next = Some(r.sequence);
+                    break;
+                }
                 let item = super::IndexedEvent {
                     event: super::decode_event(
                         r.kind,
@@ -572,7 +573,7 @@ impl Tail {
                         .ok()
                         .map(|i| self.rows[i].clone()),
                 };
-                let bytes = serde_json::to_vec(&item)?.len();
+                let bytes = super::page_weight(&item)?;
                 if !records.is_empty() && size + bytes > super::PAGE_BYTES {
                     next = Some(r.sequence);
                     break;
@@ -918,6 +919,55 @@ fn commit_group(
 mod tests {
     use super::*;
     use std::time::Instant;
+
+    #[test]
+    #[allow(clippy::disallowed_methods)] // Owned ring and journal paging fixture.
+    fn ring_and_journal_paging_is_contiguous_wire_bounded_and_does_not_decode_past_full() {
+        let root = tempfile::tempdir().unwrap();
+        let seat = Ulid::new();
+        let mut ring =
+            Ring::open(&root.path().join("seat"), seat, 1, 0, Settings::default()).unwrap();
+        let events: Vec<_> = (1..=6)
+            .map(|seq| Event::Output {
+                seat,
+                generation: 1,
+                seq,
+                bytes: vec![255; OUTPUT_CHUNK_BYTES],
+            })
+            .collect();
+        for event in &events[..3] {
+            ring.append_event(event).unwrap();
+        }
+        ring.flush().unwrap();
+        let mut tail = Tail::new(ring).unwrap();
+        let mut journal =
+            super::super::journal::Journal::open(&root.path().join("journal")).unwrap();
+        for event in &events[3..] {
+            tail.append(&mut journal, event).unwrap();
+        }
+        journal.commit(false).unwrap();
+        tail.committed_sequence = tail.sequence;
+        tail.committed_end = tail.byte_end;
+        let mut from = 1;
+        let mut actual = Vec::new();
+        while from <= 6 {
+            let page = tail.history(&mut journal, from, 6).unwrap();
+            assert!(page.gap.is_none());
+            assert!(!page.records.is_empty());
+            assert_eq!(page.records[0].event.sequence(), Some(from));
+            super::super::paging_tests::wire_page(&page);
+            actual.extend(page.records.iter().map(|r| r.event.clone()));
+            from = page.next.unwrap_or(7);
+        }
+        assert_eq!(actual, events);
+        // Corrupt only the unrequested index entry. Its own page must still
+        // reject it; the preceding full page must not try to decode it.
+        tail.records[1].kind = u16::MAX;
+        let page = tail.history(&mut journal, 4, 6).unwrap();
+        assert_eq!(page.next, Some(5));
+        assert_eq!(page.records.len(), 1);
+        assert!(tail.history(&mut journal, 5, 5).is_err());
+    }
 
     #[test]
     fn undurable_admission_budget_pauses_until_a_full_flush_returns_credit() {
