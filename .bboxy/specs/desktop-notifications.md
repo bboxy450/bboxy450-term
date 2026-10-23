@@ -11,7 +11,7 @@ links:
   - { to: "[[licensing]]", rel: licence }
   - { to: "[[desktop-notifications-research]]", rel: research }
 created: 2026-10-23T23:04:45Z
-updated: 2026-10-23T23:04:45Z
+updated: 2026-10-23T23:16:21Z
 ---
 # Desktop notifications
 
@@ -63,11 +63,11 @@ pub fn open(on_response: Box<dyn Fn(Response) + Send + Sync + 'static>) -> Resul
 - `UNUserNotificationCenter.currentNotificationCenter()` with the process as its own `UNUserNotificationCenterDelegate`; `requestAuthorization(options: [.alert, .sound])` on `authorize`; `UNMutableNotificationContent` + `UNNotificationRequest(identifier: id.0)` on `post`, so the identifier carries the replace semantics; `removeDeliveredNotifications(withIdentifiers:)` and `removePendingNotificationRequests(withIdentifiers:)` on `remove`.
 - `didReceive response`: `UNNotificationDefaultActionIdentifier` → `Response::Clicked(id)`, `UNNotificationDismissActionIdentifier` → `Dismissed(id)`, the id read from `response.notification.request.identifier`; the completion handler is called after the callback returns.
 - **Bundle check first.** `open` reads `NSBundle.mainBundle.bundleIdentifier`; `None` returns `Error::NoBundle` **before** touching the notification centre, which throws without one. The build produces `bboxy450-term.app` with an `Info.plist` for every run, ad-hoc signed; Developer ID stays deferred (decision #24; ad-hoc is not identity signing).
-- **Use versus build** for the bindings underneath is decision #45, taken from [[desktop-notifications-research]]: the facade API and the per-OS layout above do not move with that choice; only what the macOS crate wraps does.
+- **Use versus build: build** (decision #45, from [[desktop-notifications-research]]). The macOS crate sits directly on `objc2-user-notifications` 0.3 with `objc2` and `block2`, the family `winit` already links: a `define_class!` delegate implementing `UNUserNotificationCenterDelegate`, `setDelegate` with the delegate kept alive for the process (the property is weak) **before `EventLoop::run`**, since Apple requires the delegate before the app finishes launching for cold-launch delivery. No existing crate met the four requirements with the app owning the click: notify-rust's UN path is a preview feature with blocking handles and a delegate owned by `mac-usernotifications`; `user-notify` is LGPL-3.0, generates UUID identifiers so nothing replaces, and drags tokio onto every target; `mac-notification-sys` is the deprecated `NSUserNotification` behind a bundle-identifier swizzle; `usernotifications-rs` was a day old on bespoke FFI. About 300 lines; the research names a working reference file to read for the mechanism, not to copy.
 
 ## 4. The dummies
 
-- `bboxy450-desktop-notifications-windows` and `-linux` compile on their OS with no dependencies and answer `open` with `Err(Error::Unsupported { os, note: "DO RESEARCH BEFORE IMPLEMENTING: .bboxy/research/desktop-notifications.md" })`; their `README.md` and crate docs carry the same marker in capitals, with the research record's pointers for toasts (AUMID, COM activator) and freedesktop (`org.freedesktop.Notifications`, `ActionInvoked`).
+- `bboxy450-desktop-notifications-windows` and `-linux` compile on their OS with no dependencies and answer `open` with `Err(Error::Unsupported { os, note: "DO RESEARCH BEFORE IMPLEMENTING: .bboxy/research/desktop-notifications-research.md" })`; their `README.md` and crate docs carry the same marker in capitals and the research record's pointers: Windows needs a Start shortcut with `System.AppUserModel.ID` and `ToastActivatorCLSID` plus a `LocalServer32` COM server implementing `INotificationActivationCallback` for launch-on-click (or the Windows App SDK runtime, not Rust-native), `Tag`/`Group` for replace and `ToastNotificationHistory.Remove`; Linux is `org.freedesktop.Notifications` spec 1.3 over `zbus` with `replaces_id`, `CloseNotification`, `ActionInvoked` with the `default` key and `ActivationToken` for raising a Wayland toplevel. iPadOS is the same UserNotifications framework (the macOS delegate code modulo lifecycle); Android is JNI into `NotificationManagerCompat` (`notify` with the same id replaces, `cancel`, `PendingIntent` for the tap, a channel on API 26+, `POST_NOTIFICATIONS` on 33+); web is `web-sys` `Notification` with `tag` for replace and a service worker `notificationclick` for routing.
 - A target with no per-OS crate hits `compile_error!` in the facade: an unknown OS fails at build time, a known-but-unbuilt OS fails at run time by name. The app treats `Unsupported` and `NoBundle` the same way: the in-window attention loop runs, nothing is posted, one log line says why.
 
 ## 5. Acceptance, the spec signs off
@@ -76,5 +76,7 @@ pub fn open(on_response: Box<dyn Fn(Response) + Send + Sync + 'static>) -> Resul
 2. A test double of the delegate delivers a default-action response and the facade's callback receives `Clicked(id)` with the posted id; posting twice with one id yields one delivered notification (identifier replace); `remove` clears it.
 3. Run unbundled, `open` returns `NoBundle` without touching the notification centre (no exception, the log line present); run as the bundle, `authorize` prompts once and the state persists across launches.
 4. On a Linux or Windows build of the facade (CI cross-check or a local VM), `open` returns `Unsupported` with the marker text.
+5. Two Apple behaviours the research found in no Apple document are measured on this machine before the crate is trusted: an ad-hoc-signed `.app` with an `Info.plist` is enough for `currentNotificationCenter()` and delivery; and re-adding a request with a **delivered** notification's identifier replaces it in Notification Center, not only a pending one. Each is a test with its result written here.
+6. Cold-launch delivery: with the app not running, clicking a delivered notification launches the bundle and the delegate receives the response, which the app turns into the seat focus; this is the test that proves the delegate is set early enough.
 
 Owner: Corvin Duskmantle <ARCHITECT>.

@@ -706,10 +706,19 @@ briefs Executors from the specs, never from this note.
     check before the centre is touched (`NoBundle`); dummies answer
     `Unsupported` by name at run time, an unknown target fails at compile
     time; the four crates lead the layering order and carry no `bbt-*`
-    dependency; dual licence. Use versus build for the bindings under the
-    macOS crate is taken from [[desktop-notifications-research]] when it
-    lands tonight and recorded here; the facade and the layout do not move
-    with it. Rejected: notifications inside the app crate (unportable, and
+    dependency; dual licence. **Use versus build: build**, from
+    [[desktop-notifications-research]] (same evening): the macOS crate sits
+    on `objc2-user-notifications` 0.3 directly, the objc2 family winit
+    already links, with a `define_class!` delegate set before
+    `EventLoop::run`; about 300 lines. Rejected on evidence: notify-rust
+    (its UN path is a preview feature with blocking handles and a delegate
+    it does not own), user-notify (LGPL-3.0, UUID identifiers so no
+    replace, tokio on every target), mac-notification-sys (deprecated
+    NSUserNotification behind a bundle-identifier swizzle),
+    usernotifications-rs (a day old, bespoke FFI). Two Apple behaviours
+    nobody documents are acceptance tests, not assumptions: ad-hoc bundle
+    sufficiency and delivered-identifier replace. Names are free on
+    crates.io (404 on all four). Rejected: notifications inside the app crate (unportable, and
     attention is a kit consumer); one crate with `cfg` blocks per OS (the
     seam hidden, the dummies invisible).
 
