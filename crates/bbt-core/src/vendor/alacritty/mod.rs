@@ -1,4 +1,5 @@
 //! Forked alacritty_terminal model; see VENDOR.md for provenance.
+// modified by bboxy450.
 pub mod event;
 pub mod grid;
 pub mod index;
