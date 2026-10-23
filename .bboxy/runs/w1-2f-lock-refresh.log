@@ -1,0 +1,5 @@
+COMMAND=['cargo', 'update', '-p', 'sha2@0.10.9', '--precise', '0.10.9']
+    Updating crates.io index
+      Adding sha2-asm v0.6.4
+note: pass `--verbose` to see 11 unchanged dependencies behind latest
+CHILD_EXIT=0

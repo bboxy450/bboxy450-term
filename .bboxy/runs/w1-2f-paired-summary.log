@@ -1,0 +1,16 @@
+W1.2f fixed before/after schedule: A(before),B(after),B(after),A(before), release then O0.
+Native test byte hashes checked before every launch; every child exit0 and exact capture/CRC/SHA checks passed.
+Both release B cases: writer>=30MiB/s,committed>=30MiB/s,p99<=50ms in running and stopped states. Both O0 B cases retain Logic::start30s deadline.
+IMPORTANT: original unpaired release was~21.4MiB/s and~104-105ms p99, but the SAME frozen A binary later also passed targets (~49-64MiB/s,~38-45ms p99). Host conditions varied; do NOT attribute the entire unpaired difference to code. Paired output/VM/rustc observations are retained, not discarded.
+profile order label writer_running writer_stopped committed_running committed_stopped p99_running_ms p99_stopped_ms startup_s history_at_20MiB_s
+release 1 before 63.829796 49.320543 53.405573 42.445760 38.892291 44.642542 - -
+release 2 after 59.845815 64.432289 53.470670 55.008243 25.678833 33.018167 - -
+release 3 after 68.583676 73.063286 59.438536 61.105358 22.201667 31.599041 - -
+release 4 before 56.203930 62.630946 49.005550 51.586849 38.036375 44.005625 - -
+o0 1 before - - - - - - 5.724498708 4.579588889
+o0 2 after - - - - - - 1.310553292 0.181825162
+o0 3 after - - - - - - 1.258534542 0.165324041
+o0 4 before - - - - - - 5.835536833 4.667464939
+Full fixture wall time includes a second raw verification read pass, not just startup. History timing is the first replay trace that reaches20MiB, before that separate verification pass.
+Original strict default producer2s check remains; its earlier O0 failure at2.908s is in before-current-o0 logs. New ignored cold measurement entry isolates startup and cannot substitute for the burst timing acceptance.
+Gate exit0; implementation66f03a4; source/argv/PIDs/binary digests in paired-status and per-case logs.

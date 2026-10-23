@@ -1,0 +1,15 @@
+SOURCE=66f03a4c147b198fef34b4c5c7858d4d503f9701
+COMMAND=['cargo', 'test', '--release', '-p', 'bbt-mux', '--locked', '--test', 'logic', '--no-run', '--message-format=json']
+   Compiling sha2-asm v0.6.4
+   Compiling sha2 v0.10.9
+   Compiling p384 v0.13.1
+   Compiling k256 v0.13.4
+   Compiling dsa v0.6.3
+   Compiling p256 v0.13.2
+   Compiling ed25519-dalek v2.2.0
+   Compiling p521 v0.13.3
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling pgp v0.21.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 57.45s
+BUILD_EXIT=0

@@ -1,0 +1,54 @@
+SOURCE_BASE=d00caae5695a2ecbd27c7e4a5d1c0cb02970589c
+WORKTREE=approved pager delta
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--lib', '--locked', 'paging', '--', '--nocapture']
+   Compiling serde_core v1.0.229
+   Compiling generic-array v0.14.7
+   Compiling syn v3.0.9
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling bitflags v2.13.2
+   Compiling typenum v1.20.1
+   Compiling syn v2.0.119
+   Compiling smallvec v1.16.3
+   Compiling getrandom v0.4.3
+   Compiling parking_lot_core v0.9.12
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling errno v0.3.14
+   Compiling rustix v1.1.5
+   Compiling thiserror-impl v1.0.69
+   Compiling thiserror v1.0.69
+   Compiling digest v0.10.7
+   Compiling filedescriptor v0.8.3
+   Compiling nix v0.28.0
+   Compiling parking_lot v0.12.5
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+   Compiling portable-pty v0.9.0
+   Compiling serde_json v1.0.154
+   Compiling tempfile v3.27.0
+   Compiling sha2 v0.10.9
+   Compiling ulid v1.2.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+error[E0422]: cannot find struct, variant or union type `ExitInfo` in the crate root
+  --> crates/bbt-supervisor/src/ring/paging_tests.rs:43:24
+   |
+43 |         status: crate::ExitInfo {
+   |                        ^^^^^^^^ not found in the crate root
+   |
+help: consider importing this struct through its public re-export
+   |
+ 1 + use crate::ring::ExitInfo;
+   |
+help: if you import `ExitInfo`, refer to it directly
+   |
+43 -         status: crate::ExitInfo {
+43 +         status: ExitInfo {
+   |
+
+For more information about this error, try `rustc --explain E0422`.
+error: could not compile `bbt-supervisor` (lib test) due to 1 previous error
+
+CHILD_EXIT=101

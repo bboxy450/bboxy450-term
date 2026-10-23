@@ -1,0 +1,498 @@
+COMMAND=['cargo', 'tree', '-p', 'bbt-supervisor', '-e', 'normal', '--locked']
+bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+├── bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+│   ├── arrayvec v0.7.8
+│   │   └── serde v1.0.229
+│   │       ├── serde_core v1.0.229
+│   │       └── serde_derive v1.0.229 (proc-macro)
+│   │           ├── proc-macro2 v1.0.107
+│   │           │   └── unicode-ident v1.0.27
+│   │           ├── quote v1.0.47
+│   │           │   └── proc-macro2 v1.0.107 (*)
+│   │           └── syn v3.0.9
+│   │               ├── proc-macro2 v1.0.107 (*)
+│   │               ├── quote v1.0.47 (*)
+│   │               └── unicode-ident v1.0.27
+│   ├── base64 v0.22.1
+│   ├── bitflags v2.13.2
+│   │   └── serde_core v1.0.229
+│   ├── cursor-icon v1.2.0
+│   ├── log v0.4.34
+│   ├── memchr v2.8.3
+│   ├── parking_lot v0.12.5
+│   │   ├── lock_api v0.4.14
+│   │   │   └── scopeguard v1.2.0
+│   │   └── parking_lot_core v0.9.12
+│   │       ├── cfg-if v1.0.5
+│   │       ├── libc v0.2.191
+│   │       └── smallvec v1.16.3
+│   ├── serde v1.0.229 (*)
+│   ├── serde-big-array v0.5.1
+│   │   └── serde v1.0.229 (*)
+│   └── unicode-width v0.2.2
+├── bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+├── getrandom v0.3.4
+│   ├── cfg-if v1.0.5
+│   └── libc v0.2.191
+├── libc v0.2.191
+├── mio v1.2.4
+│   ├── libc v0.2.191
+│   └── log v0.4.34
+├── portable-pty v0.9.0
+│   ├── anyhow v1.0.104
+│   ├── downcast-rs v1.2.1
+│   ├── filedescriptor v0.8.3
+│   │   ├── libc v0.2.191
+│   │   └── thiserror v1.0.69
+│   │       └── thiserror-impl v1.0.69 (proc-macro)
+│   │           ├── proc-macro2 v1.0.107 (*)
+│   │           ├── quote v1.0.47 (*)
+│   │           └── syn v2.0.119
+│   │               ├── proc-macro2 v1.0.107 (*)
+│   │               ├── quote v1.0.47 (*)
+│   │               └── unicode-ident v1.0.27
+│   ├── libc v0.2.191
+│   ├── log v0.4.34
+│   ├── nix v0.28.0
+│   │   ├── bitflags v2.13.2 (*)
+│   │   ├── cfg-if v1.0.5
+│   │   └── libc v0.2.191
+│   ├── serial2 v0.2.38
+│   │   ├── cfg-if v1.0.5
+│   │   └── libc v0.2.191
+│   └── shell-words v1.1.1
+├── serde v1.0.229 (*)
+├── serde_json v1.0.154
+│   ├── itoa v1.0.18
+│   ├── memchr v2.8.3
+│   ├── serde_core v1.0.229
+│   └── zmij v1.0.23
+├── sha2 v0.10.9
+│   ├── cfg-if v1.0.5
+│   ├── cpufeatures v0.2.17
+│   │   └── libc v0.2.191
+│   ├── digest v0.10.7
+│   │   ├── block-buffer v0.10.4
+│   │   │   └── generic-array v0.14.7
+│   │   │       └── typenum v1.20.1
+│   │   └── crypto-common v0.1.7
+│   │       ├── generic-array v0.14.7 (*)
+│   │       └── typenum v1.20.1
+│   └── sha2-asm v0.6.4
+├── ulid v1.2.1
+│   ├── rand v0.9.5
+│   │   ├── rand_chacha v0.9.0
+│   │   │   ├── ppv-lite86 v0.2.21
+│   │   │   │   └── zerocopy v0.8.63
+│   │   │   └── rand_core v0.9.5
+│   │   │       └── getrandom v0.3.4 (*)
+│   │   └── rand_core v0.9.5 (*)
+│   └── serde v1.0.229 (*)
+└── zstd v0.14.3
+    └── zstd-safe v8.2.0
+        └── zstd-sys v2.1.2+zstd.1.5.7
+CHILD_EXIT=0
+COMMAND=['cargo', 'tree', '-p', 'bbt-supervisor', '-e', 'features', '--locked']
+bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+├── bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+├── bbt-core feature "default"
+│   └── bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+│       ├── arrayvec feature "default"
+│       │   ├── arrayvec v0.7.8
+│       │   │   └── serde v1.0.229
+│       │   │       ├── serde_core feature "result"
+│       │   │       │   └── serde_core v1.0.229
+│       │   │       └── serde_derive feature "default"
+│       │   │           └── serde_derive v1.0.229 (proc-macro)
+│       │   │               ├── proc-macro2 feature "proc-macro"
+│       │   │               │   └── proc-macro2 v1.0.107
+│       │   │               │       └── unicode-ident feature "default"
+│       │   │               │           └── unicode-ident v1.0.27
+│       │   │               ├── quote feature "proc-macro"
+│       │   │               │   ├── quote v1.0.47
+│       │   │               │   │   └── proc-macro2 v1.0.107 (*)
+│       │   │               │   └── proc-macro2 feature "proc-macro" (*)
+│       │   │               ├── syn feature "clone-impls"
+│       │   │               │   └── syn v3.0.9
+│       │   │               │       ├── proc-macro2 v1.0.107 (*)
+│       │   │               │       ├── quote v1.0.47 (*)
+│       │   │               │       └── unicode-ident feature "default" (*)
+│       │   │               ├── syn feature "derive"
+│       │   │               │   └── syn v3.0.9 (*)
+│       │   │               ├── syn feature "parsing"
+│       │   │               │   └── syn v3.0.9 (*)
+│       │   │               ├── syn feature "printing"
+│       │   │               │   └── syn v3.0.9 (*)
+│       │   │               └── syn feature "proc-macro"
+│       │   │                   ├── syn v3.0.9 (*)
+│       │   │                   ├── proc-macro2 feature "proc-macro" (*)
+│       │   │                   └── quote feature "proc-macro" (*)
+│       │   └── arrayvec feature "std"
+│       │       └── arrayvec v0.7.8 (*)
+│       ├── arrayvec feature "serde"
+│       │   └── arrayvec v0.7.8 (*)
+│       ├── serde feature "default"
+│       │   ├── serde v1.0.229 (*)
+│       │   └── serde feature "std"
+│       │       ├── serde v1.0.229 (*)
+│       │       └── serde_core feature "std"
+│       │           └── serde_core v1.0.229
+│       ├── serde feature "derive"
+│       │   ├── serde v1.0.229 (*)
+│       │   └── serde feature "serde_derive"
+│       │       └── serde v1.0.229 (*)
+│       ├── serde feature "rc"
+│       │   ├── serde v1.0.229 (*)
+│       │   └── serde_core feature "rc"
+│       │       └── serde_core v1.0.229
+│       ├── base64 feature "default"
+│       │   ├── base64 v0.22.1
+│       │   └── base64 feature "std"
+│       │       ├── base64 v0.22.1
+│       │       └── base64 feature "alloc"
+│       │           └── base64 v0.22.1
+│       ├── bitflags feature "default"
+│       │   └── bitflags v2.13.2
+│       │       └── serde_core v1.0.229
+│       ├── bitflags feature "serde"
+│       │   ├── bitflags v2.13.2 (*)
+│       │   └── bitflags feature "serde_core"
+│       │       └── bitflags v2.13.2 (*)
+│       ├── cursor-icon feature "default"
+│       │   ├── cursor-icon v1.2.0
+│       │   └── cursor-icon feature "std"
+│       │       ├── cursor-icon v1.2.0
+│       │       └── cursor-icon feature "alloc"
+│       │           └── cursor-icon v1.2.0
+│       ├── log feature "default"
+│       │   └── log v0.4.34
+│       ├── memchr feature "default"
+│       │   ├── memchr v2.8.3
+│       │   └── memchr feature "std"
+│       │       ├── memchr v2.8.3
+│       │       └── memchr feature "alloc"
+│       │           └── memchr v2.8.3
+│       ├── parking_lot feature "default"
+│       │   └── parking_lot v0.12.5
+│       │       ├── lock_api feature "default"
+│       │       │   ├── lock_api v0.4.14
+│       │       │   │   └── scopeguard v1.2.0
+│       │       │   └── lock_api feature "atomic_usize"
+│       │       │       └── lock_api v0.4.14 (*)
+│       │       └── parking_lot_core feature "default"
+│       │           └── parking_lot_core v0.9.12
+│       │               ├── cfg-if feature "default"
+│       │               │   └── cfg-if v1.0.5
+│       │               ├── libc feature "default"
+│       │               │   ├── libc v0.2.191
+│       │               │   └── libc feature "std"
+│       │               │       └── libc v0.2.191
+│       │               └── smallvec feature "default"
+│       │                   └── smallvec v1.16.3
+│       ├── serde-big-array feature "default"
+│       │   └── serde-big-array v0.5.1
+│       │       └── serde v1.0.229 (*)
+│       └── unicode-width feature "default"
+│           ├── unicode-width v0.2.2
+│           └── unicode-width feature "cjk"
+│               └── unicode-width v0.2.2
+├── serde feature "default" (*)
+├── serde feature "derive" (*)
+├── libc feature "default" (*)
+├── getrandom feature "default"
+│   └── getrandom v0.3.4
+│       ├── libc v0.2.191
+│       └── cfg-if feature "default" (*)
+├── mio feature "default"
+│   ├── mio v1.2.4
+│   │   ├── log feature "default" (*)
+│   │   └── libc feature "default" (*)
+│   └── mio feature "log"
+│       └── mio v1.2.4 (*)
+├── mio feature "net"
+│   └── mio v1.2.4 (*)
+├── mio feature "os-ext"
+│   ├── mio v1.2.4 (*)
+│   └── mio feature "os-poll"
+│       └── mio v1.2.4 (*)
+├── mio feature "os-poll" (*)
+├── portable-pty feature "default"
+│   └── portable-pty v0.9.0
+│       ├── log feature "default" (*)
+│       ├── libc feature "default" (*)
+│       ├── anyhow feature "default"
+│       │   ├── anyhow v1.0.104
+│       │   └── anyhow feature "std"
+│       │       └── anyhow v1.0.104
+│       ├── downcast-rs feature "default"
+│       │   ├── downcast-rs v1.2.1
+│       │   └── downcast-rs feature "std"
+│       │       └── downcast-rs v1.2.1
+│       ├── filedescriptor feature "default"
+│       │   └── filedescriptor v0.8.3
+│       │       ├── libc feature "default" (*)
+│       │       └── thiserror feature "default"
+│       │           └── thiserror v1.0.69
+│       │               └── thiserror-impl feature "default"
+│       │                   └── thiserror-impl v1.0.69 (proc-macro)
+│       │                       ├── proc-macro2 feature "default"
+│       │                       │   ├── proc-macro2 v1.0.107 (*)
+│       │                       │   └── proc-macro2 feature "proc-macro" (*)
+│       │                       ├── quote feature "default"
+│       │                       │   ├── quote v1.0.47 (*)
+│       │                       │   └── quote feature "proc-macro" (*)
+│       │                       └── syn feature "default"
+│       │                           ├── syn v2.0.119
+│       │                           │   ├── proc-macro2 v1.0.107 (*)
+│       │                           │   ├── quote v1.0.47 (*)
+│       │                           │   └── unicode-ident feature "default" (*)
+│       │                           ├── syn feature "clone-impls"
+│       │                           │   └── syn v2.0.119 (*)
+│       │                           ├── syn feature "derive"
+│       │                           │   └── syn v2.0.119 (*)
+│       │                           ├── syn feature "parsing"
+│       │                           │   └── syn v2.0.119 (*)
+│       │                           ├── syn feature "printing"
+│       │                           │   └── syn v2.0.119 (*)
+│       │                           └── syn feature "proc-macro"
+│       │                               ├── syn v2.0.119 (*)
+│       │                               ├── proc-macro2 feature "proc-macro" (*)
+│       │                               └── quote feature "proc-macro" (*)
+│       ├── nix feature "default"
+│       │   └── nix v0.28.0
+│       │       ├── bitflags feature "default" (*)
+│       │       ├── cfg-if feature "default" (*)
+│       │       ├── libc feature "default" (*)
+│       │       └── libc feature "extra_traits"
+│       │           └── libc v0.2.191
+│       │       [build-dependencies]
+│       │       └── cfg_aliases feature "default"
+│       │           └── cfg_aliases v0.1.1
+│       ├── nix feature "fs"
+│       │   └── nix v0.28.0 (*)
+│       ├── nix feature "term"
+│       │   └── nix v0.28.0 (*)
+│       ├── serial2 feature "default"
+│       │   └── serial2 v0.2.38
+│       │       ├── cfg-if feature "default" (*)
+│       │       └── libc feature "default" (*)
+│       └── shell-words feature "default"
+│           ├── shell-words v1.1.1
+│           └── shell-words feature "std"
+│               └── shell-words v1.1.1
+├── serde_json feature "default"
+│   ├── serde_json v1.0.154
+│   │   ├── memchr v2.8.3
+│   │   ├── serde_core v1.0.229
+│   │   ├── itoa feature "default"
+│   │   │   └── itoa v1.0.18
+│   │   └── zmij feature "default"
+│   │       └── zmij v1.0.23
+│   └── serde_json feature "std"
+│       ├── serde_json v1.0.154 (*)
+│       ├── serde_core feature "std" (*)
+│       └── memchr feature "std" (*)
+├── sha2 feature "asm-aarch64"
+│   ├── sha2 v0.10.9
+│   │   ├── cfg-if feature "default" (*)
+│   │   ├── cpufeatures feature "default"
+│   │   │   └── cpufeatures v0.2.17
+│   │   │       └── libc v0.2.191
+│   │   ├── digest feature "default"
+│   │   │   ├── digest v0.10.7
+│   │   │   │   ├── block-buffer feature "default"
+│   │   │   │   │   └── block-buffer v0.10.4
+│   │   │   │   │       └── generic-array feature "default"
+│   │   │   │   │           └── generic-array v0.14.7
+│   │   │   │   │               └── typenum feature "default"
+│   │   │   │   │                   └── typenum v1.20.1
+│   │   │   │   │               [build-dependencies]
+│   │   │   │   │               └── version_check feature "default"
+│   │   │   │   │                   └── version_check v0.9.5
+│   │   │   │   └── crypto-common feature "default"
+│   │   │   │       └── crypto-common v0.1.7
+│   │   │   │           ├── generic-array feature "default" (*)
+│   │   │   │           ├── generic-array feature "more_lengths"
+│   │   │   │           │   └── generic-array v0.14.7 (*)
+│   │   │   │           └── typenum feature "default" (*)
+│   │   │   └── digest feature "core-api"
+│   │   │       ├── digest v0.10.7 (*)
+│   │   │       └── digest feature "block-buffer"
+│   │   │           └── digest v0.10.7 (*)
+│   │   └── sha2-asm feature "default"
+│   │       └── sha2-asm v0.6.4
+│   │           [build-dependencies]
+│   │           └── cc feature "default"
+│   │               └── cc v1.9.0
+│   │                   ├── jobserver v0.1.35
+│   │                   │   └── libc feature "default"
+│   │                   │       ├── libc v0.2.191
+│   │                   │       └── libc feature "std"
+│   │                   │           └── libc v0.2.191
+│   │                   ├── libc v0.2.191
+│   │                   ├── find-msvc-tools feature "default"
+│   │                   │   └── find-msvc-tools v0.1.15
+│   │                   └── shlex feature "default"
+│   │                       ├── shlex v2.0.1
+│   │                       └── shlex feature "std"
+│   │                           └── shlex v2.0.1
+│   └── sha2 feature "asm"
+│       ├── sha2 v0.10.9 (*)
+│       └── sha2 feature "sha2-asm"
+│           └── sha2 v0.10.9 (*)
+├── sha2 feature "default"
+│   ├── sha2 v0.10.9 (*)
+│   └── sha2 feature "std"
+│       ├── sha2 v0.10.9 (*)
+│       └── digest feature "std"
+│           ├── digest v0.10.7 (*)
+│           ├── digest feature "alloc"
+│           │   └── digest v0.10.7 (*)
+│           └── crypto-common feature "std"
+│               └── crypto-common v0.1.7 (*)
+├── ulid feature "default"
+│   ├── ulid v1.2.1
+│   │   ├── serde feature "default" (*)
+│   │   └── rand feature "default"
+│   │       ├── rand v0.9.5
+│   │       │   ├── rand_chacha v0.9.0
+│   │       │   │   ├── ppv-lite86 feature "simd"
+│   │       │   │   │   └── ppv-lite86 v0.2.21
+│   │       │   │   │       ├── zerocopy feature "default"
+│   │       │   │   │       │   └── zerocopy v0.8.63
+│   │       │   │   │       └── zerocopy feature "simd"
+│   │       │   │   │           └── zerocopy v0.8.63
+│   │       │   │   └── rand_core feature "default"
+│   │       │   │       └── rand_core v0.9.5
+│   │       │   │           └── getrandom feature "default" (*)
+│   │       │   └── rand_core v0.9.5 (*)
+│   │       ├── rand feature "os_rng"
+│   │       │   ├── rand v0.9.5 (*)
+│   │       │   └── rand_core feature "os_rng"
+│   │       │       └── rand_core v0.9.5 (*)
+│   │       ├── rand feature "small_rng"
+│   │       │   └── rand v0.9.5 (*)
+│   │       ├── rand feature "std"
+│   │       │   ├── rand v0.9.5 (*)
+│   │       │   ├── rand feature "alloc"
+│   │       │   │   └── rand v0.9.5 (*)
+│   │       │   ├── rand_chacha feature "std"
+│   │       │   │   ├── rand_chacha v0.9.0 (*)
+│   │       │   │   ├── ppv-lite86 feature "std"
+│   │       │   │   │   └── ppv-lite86 v0.2.21 (*)
+│   │       │   │   └── rand_core feature "std"
+│   │       │   │       ├── rand_core v0.9.5 (*)
+│   │       │   │       └── getrandom feature "std"
+│   │       │   │           └── getrandom v0.3.4 (*)
+│   │       │   └── rand_core feature "std" (*)
+│   │       ├── rand feature "std_rng"
+│   │       │   └── rand v0.9.5 (*)
+│   │       └── rand feature "thread_rng"
+│   │           ├── rand v0.9.5 (*)
+│   │           ├── rand feature "os_rng" (*)
+│   │           ├── rand feature "std" (*)
+│   │           └── rand feature "std_rng" (*)
+│   └── ulid feature "std"
+│       ├── ulid v1.2.1 (*)
+│       └── ulid feature "rand"
+│           └── ulid v1.2.1 (*)
+├── ulid feature "serde"
+│   └── ulid v1.2.1 (*)
+└── zstd feature "default"
+    ├── zstd v0.14.3
+    │   └── zstd-safe feature "std"
+    │       ├── zstd-safe v8.2.0
+    │       │   └── zstd-sys v2.1.2+zstd.1.5.7
+    │       │       [build-dependencies]
+    │       │       ├── cc feature "default" (*)
+    │       │       ├── cc feature "parallel"
+    │       │       │   └── cc v1.9.0 (*)
+    │       │       └── pkg-config feature "default"
+    │       │           └── pkg-config v0.3.34
+    │       └── zstd-sys feature "std"
+    │           └── zstd-sys v2.1.2+zstd.1.5.7 (*)
+    ├── zstd feature "arrays"
+    │   ├── zstd v0.14.3 (*)
+    │   └── zstd-safe feature "arrays"
+    │       └── zstd-safe v8.2.0 (*)
+    ├── zstd feature "legacy"
+    │   ├── zstd v0.14.3 (*)
+    │   └── zstd-safe feature "legacy"
+    │       ├── zstd-safe v8.2.0 (*)
+    │       └── zstd-sys feature "legacy"
+    │           └── zstd-sys v2.1.2+zstd.1.5.7 (*)
+    └── zstd feature "zdict_builder"
+        ├── zstd v0.14.3 (*)
+        └── zstd-safe feature "zdict_builder"
+            ├── zstd-safe v8.2.0 (*)
+            └── zstd-sys feature "zdict_builder"
+                └── zstd-sys v2.1.2+zstd.1.5.7 (*)
+[dev-dependencies]
+└── tempfile feature "default"
+    ├── tempfile v3.27.0
+    │   ├── getrandom v0.4.3
+    │   │   ├── libc v0.2.191
+    │   │   └── cfg-if feature "default" (*)
+    │   ├── fastrand feature "default"
+    │   │   ├── fastrand v2.5.0
+    │   │   └── fastrand feature "std"
+    │   │       ├── fastrand v2.5.0
+    │   │       └── fastrand feature "alloc"
+    │   │           └── fastrand v2.5.0
+    │   ├── once_cell feature "std"
+    │   │   ├── once_cell v1.21.4
+    │   │   └── once_cell feature "alloc"
+    │   │       ├── once_cell v1.21.4
+    │   │       └── once_cell feature "race"
+    │   │           └── once_cell v1.21.4
+    │   ├── rustix feature "default"
+    │   │   ├── rustix v1.1.5
+    │   │   │   ├── bitflags v2.13.2 (*)
+    │   │   │   ├── errno v0.3.14
+    │   │   │   │   └── libc v0.2.191
+    │   │   │   └── libc v0.2.191
+    │   │   └── rustix feature "std"
+    │   │       ├── rustix v1.1.5 (*)
+    │   │       ├── bitflags feature "std"
+    │   │       │   └── bitflags v2.13.2 (*)
+    │   │       ├── libc feature "std" (*)
+    │   │       ├── rustix feature "alloc"
+    │   │       │   └── rustix v1.1.5 (*)
+    │   │       └── errno feature "std"
+    │   │           ├── errno v0.3.14 (*)
+    │   │           └── libc feature "std" (*)
+    │   └── rustix feature "fs"
+    │       └── rustix v1.1.5 (*)
+    └── tempfile feature "getrandom"
+        └── tempfile v3.27.0 (*)
+CHILD_EXIT=0
+COMMAND=['cargo', 'clippy', '-p', 'bbt-supervisor', '-p', 'bbt-mux', '--all-targets', '--locked', '--', '-D', 'warnings']
+    Checking sha2-asm v0.6.4
+    Checking sha2 v0.10.9
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Checking p384 v0.13.1
+    Checking k256 v0.13.4
+    Checking dsa v0.6.3
+    Checking p256 v0.13.2
+    Checking ed25519-dalek v2.2.0
+    Checking p521 v0.13.3
+    Checking pgp v0.21.0
+error: using `chunks_exact` with a constant chunk size
+    --> crates/bbt-supervisor/src/ring.rs:1421:30
+     |
+1421 |         let mut words = part.chunks_exact(8);
+     |                              ^^^^^^^^^^^^^^^
+     |
+help: consider using `as_chunks::<8>()` instead
+    --> crates/bbt-supervisor/src/ring.rs:1421:30
+     |
+1421 |         let mut words = part.chunks_exact(8);
+     |                              ^^^^^^^^^^^^^^^
+     = note: you can access the chunks using `words.0.iter()`, and the remainder using `words.1`
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+     = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: could not compile `bbt-supervisor` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+CHILD_EXIT=101

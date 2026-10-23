@@ -1,0 +1,21 @@
+{"source": "92f114ea537158851996616a292c4344f1446cf9", "stage": "O0 current-base cold replay", "wrapper_pid": 54487, "target": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile", "started_utc": "2026-10-23T09:14:12.342286+00:00", "child_pid": 54512, "binary": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/before-92f114e-o0", "binary_sha256": "7c54a199d1322b0a52ca3a3639a195fd4be03c12162a7c59e381eb09041f3dfb", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/before-92f114e-o0", "ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap", "--exact", "--nocapture", "--test-threads=1"]}
+
+running 1 test
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... writer progress 5.530931084s: 9115656 captured bytes, hot 32880, paused true
+writer progress 10.040441084s: 20131848 captured bytes, hot 2342896, paused true
+20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":321,"elapsed_s":10.089234000013676,"max_write_s":2.9081968749815132,"mib_s":1.9823110456128672,"p99_write_s":1.4289597920142114}
+
+thread 'ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap' (13607462) panicked at crates/bbt-mux/tests/logic.rs:626:5:
+assertion failed: stats["max_write_s"].as_f64().unwrap() < 2.0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 10.37s
+
+
+{"source": "92f114ea537158851996616a292c4344f1446cf9", "stage": "complete", "wrapper_pid": 54487, "target": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile", "started_utc": "2026-10-23T09:14:12.342286+00:00", "child_pid": 55428, "binary": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/before-92f114e-o0", "binary_sha256": "7c54a199d1322b0a52ca3a3639a195fd4be03c12162a7c59e381eb09041f3dfb", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/before-92f114e-o0", "ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap", "--exact", "--nocapture", "--test-threads=1"], "child_exit": 101, "wall_seconds": 10.75402595801279, "finished_utc": "2026-10-23T09:15:21.125172+00:00"}

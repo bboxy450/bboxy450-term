@@ -1,0 +1,23 @@
+{"source": "e6feaf804eb47d93a0becfaab03f3bc4bd5d872d", "stage": "O0 cold replay", "wrapper_pid": 6125, "target": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile", "started_utc": "2026-10-23T08:49:23.094256+00:00", "child_pid": 6137, "binary": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/debug/deps/logic-221cf4ff58a682a7", "binary_sha256": "93799e7e5789c48cc22a82139bc669a5342c218e179096aeb1e9d3328fdd8ecb", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/debug/deps/logic-221cf4ff58a682a7", "ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap", "--exact", "--nocapture", "--test-threads=1"]}
+
+running 1 test
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... 20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":321,"elapsed_s":2.045434125000611,"max_write_s":0.4960987080121413,"mib_s":9.777875393564203,"p99_write_s":0.3025380829931237}
+capture profile BEFORE logic restart: CaptureStats { records: 1290, encode_ns: 392533956, hot_write_ns: 22252641, sync_ns: 44740542, marker_ns: 11706209, cold_ns: 547101250, seals: 4, max_seal_ns: 170719334, queued_bytes: 0, peak_queue_bytes: 1676880, queue_full_count: 21, ordered_commits: 39, durable_commits: 8, writer_busy_ns: 2000480134, commit_rounds: 31, commit_p99_ns: 5000000, commit_max_ns: 4354041, undurable_bytes: 2556948, peak_undurable_bytes: 6296576, durable_pauses: 0, durable_rounds: 6 }
+cold replay 2.799116333s: 4199424 bytes, reads 2.215848251s, checkpoint writes 0ns
+cold replay 5.343053958s: 8394752 bytes, reads 4.270303547s, checkpoint writes 0ns
+cold replay 8.618827292s: 12593152 bytes, reads 7.055762634s, checkpoint writes 0ns
+cold replay 11.046837917s: 16780288 bytes, reads 9.064121561s, checkpoint writes 0ns
+cold replay 14.174965417s: 20971540 bytes, reads 11.652647152s, checkpoint writes 0ns
+20 MiB cold replay startup: 14.215620167s
+cold replay 19.623959292s: 25170972 bytes, reads 13.871426359s, checkpoint writes 20.480542ms
+cold replay 23.91256875s: 29366300 bytes, reads 15.020505991s, checkpoint writes 20.480542ms
+cold replay 28.469564125s: 33564700 bytes, reads 16.425636277s, checkpoint writes 20.480542ms
+cold replay 32.910154125s: 37751836 bytes, reads 17.729519936s, checkpoint writes 20.480542ms
+cold replay 37.988422042s: 41943088 bytes, reads 19.630229231s, checkpoint writes 20.480542ms
+complete raw capture: 20971548 bytes, SHA-256 77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb, no gap
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 42.41s
+
+
+{"source": "e6feaf804eb47d93a0becfaab03f3bc4bd5d872d", "stage": "complete", "wrapper_pid": 6125, "target": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile", "started_utc": "2026-10-23T08:49:23.094256+00:00", "child_pid": 8557, "binary": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/debug/deps/logic-221cf4ff58a682a7", "binary_sha256": "93799e7e5789c48cc22a82139bc669a5342c218e179096aeb1e9d3328fdd8ecb", "command": ["/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/debug/deps/logic-221cf4ff58a682a7", "ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap", "--exact", "--nocapture", "--test-threads=1"], "sample_pid": 8573, "child_exit": 0, "wall_seconds": 42.772538416000316, "finished_utc": "2026-10-23T08:51:21.177606+00:00"}

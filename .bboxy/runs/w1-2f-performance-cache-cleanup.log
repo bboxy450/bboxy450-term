@@ -1,0 +1,8 @@
+utc=2026-10-23T10:29:06.519527+00:00
+Owned performance comparison cache only. All profile status files report complete and exit0; original recorded wrapper/native PIDs are no longer present.
+1955260	/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile
+before Filesystem   1024-blocks      Used Available Capacity iused    ifree %iused  Mounted on
+/dev/disk3s1   482797652 443814648   9189548    98% 4604082 91895480    5%   /System/Volumes/Data
+rm owned consumed profile cache exit=0
+after Filesystem   1024-blocks      Used Available Capacity iused     ifree %iused  Mounted on
+/dev/disk3s1   482797652 441902684  11101512    98% 4595695 111015120    4%   /System/Volumes/Data

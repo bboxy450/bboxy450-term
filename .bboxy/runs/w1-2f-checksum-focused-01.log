@@ -1,0 +1,17 @@
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--lib', '--locked', 'checksum', '--', '--nocapture']
+SOURCE_BASE=416eff6 plus approved checksum delta
+   Compiling sha2-asm v0.6.4
+   Compiling sha2 v0.10.9
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized] target(s) in 3.12s
+     Running unittests src/lib.rs (target/w1-2f-profile/debug/deps/bbt_supervisor-45e7b1757b187788)
+
+running 2 tests
+test ring::checksum_tests::fixed_sha_vectors_and_a_software_written_cold_blob_still_verify ... ok
+checksum CPU features: crc=true sha2=true
+test ring::checksum_tests::crc_matches_the_table_for_all_bytes_unaligned_splits_and_short_tails ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.09s
+
+
+CHILD_EXIT=0

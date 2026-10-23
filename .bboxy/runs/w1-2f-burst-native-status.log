@@ -1,0 +1,19 @@
+{
+  "source": "92f114ea537158851996616a292c4344f1446cf9",
+  "binary_sha256": "975b8a962b52324b1b2c67e1f75d25d59283ed1df2b7a3987129072c5b003a0e",
+  "command": [
+    "/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/release/deps/logic-7ed53c86a3f8d119",
+    "ring_capture_throughput_with_logic_running_and_stopped",
+    "--ignored",
+    "--exact",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "purpose": "one diagnostic128MiB stopped-logic sample; legacy50ms assertion remains expected to fail, not an acceptance pass",
+  "child_pid": 43574,
+  "wrapper_pid": 43564,
+  "sample_pid": 43586,
+  "child_exit": 101,
+  "wall_seconds": 6.028019916993799,
+  "sample_exit": 0
+}

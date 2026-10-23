@@ -1,0 +1,63 @@
+from pathlib import Path
+import hashlib, json, os, re, shutil, subprocess, time
+r = Path('.bboxy/runs')
+records = []
+status = r / 'w1-2f-paired-status.log'
+legacy = json.loads((r / 'w1-2f-before-binaries.log').read_text())['release']
+before_o0 = json.loads((r / 'w1-2f-before-pager-o0-status.log').read_text())
+after_o0 = json.loads((r / 'w1-2f-after-checksums-o0-status.log').read_text())
+after_release = json.loads((r / 'w1-2f-after-checksums-release-status.log').read_text())
+old_release = dict(source=legacy['source'], binary=legacy['path'], binary_sha256=legacy['sha256'])
+def seconds(value):
+    m = re.fullmatch(r'([0-9.]+)(ns|us|µs|ms|s)', value)
+    assert m, value
+    return float(m[1]) * {'ns': 1e-9, 'us': 1e-6, 'µs': 1e-6, 'ms': 1e-3, 's': 1}[m[2]]
+for profile, variants, fixture in [
+    ('release', {'before': old_release, 'after': after_release}, 'ring_capture_twenty_mib_profile_running_and_stopped'),
+    ('o0', {'before': before_o0, 'after': after_o0}, 'ring_cold_replay_twenty_mib_profile')]:
+    for index, label in enumerate(['before', 'after', 'after', 'before'], 1):
+        assert shutil.disk_usage('.').free >= 10 * 1024**3
+        meta = variants[label]
+        binary = Path(meta['binary'])
+        assert hashlib.sha256(binary.read_bytes()).hexdigest() == meta['binary_sha256']
+        path = r / f'w1-2f-paired-{profile}-{index}-{label}.log'
+        command = [str(binary), fixture, '--ignored', '--exact', '--nocapture', '--test-threads=1']
+        state = dict(profile=profile, order=index, label=label, source=meta['source'],
+                     binary_sha256=meta['binary_sha256'], command=command)
+        with path.open('x') as log:
+            log.write(json.dumps(state) + '\n')
+            log.write(subprocess.check_output(['sysctl', 'vm.loadavg', 'vm.swapusage'], text=True))
+            processes = subprocess.check_output(['ps', '-A', '-o', 'comm='], text=True).splitlines()
+            log.write(f'RUSTC_PROCESSES_BEFORE={sum(Path(p.strip()).name == "rustc" for p in processes)}\n')
+            log.flush()
+            env = os.environ.copy(); env['BBOXY_TEST_CUSTODY'] = 'memory'
+            start = time.monotonic(); child = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=env)
+            state['child_pid'] = child.pid
+            status.write_text(json.dumps(dict(results=records, active=state), indent=2) + '\n')
+            try: rc = child.wait(timeout=180)
+            except subprocess.TimeoutExpired: child.kill(); rc = child.wait(); state['outer_timeout'] = True
+            state.update(child_exit=rc, wall_seconds=time.monotonic()-start)
+            log.write('\n' + json.dumps(state) + '\n'); log.flush()
+        text = path.read_text()
+        assert rc == 0 and 'test result: ok. 1 passed; 0 failed' in text, state
+        if profile == 'release':
+            writers = {m[1]: json.loads(m[2]) for m in re.finditer(r'W12F_PROFILE writer running=(true|false): (\{[^\n]+\})', text)}
+            committed = {m[1]: float(m[3]) for m in re.finditer(r'W12F_PROFILE committed running=(true|false) elapsed_s=(\S+) mib_s=(\S+)', text)}
+            assert set(writers) == set(committed) == {'true', 'false'}
+            assert len(re.findall(r'W12F_PROFILE exact_capture running=(?:true|false) bytes=20971548 no_gap=true', text)) == 2
+            state.update(writers=writers, committed_mib_s=committed)
+            state['target_pass'] = all(writers[k]['mib_s'] >= 30 and writers[k]['p99_write_s'] <= .050 and committed[k] >= 30 for k in writers)
+        else:
+            assert '20971548 bytes, SHA-256 77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb, no gap' in text
+            startup = seconds(re.search(r'20 MiB cold replay startup: (\S+)', text)[1])
+            # First trace reaching 20MiB precedes the later verification read pass.
+            traces = [(int(m[1]), seconds(m[2])) for m in re.finditer(r'cold replay [^\n]+?: (\d+) bytes, reads (\S+),', text)]
+            history = next(t for b, t in traces if b >= 20*1024*1024)
+            state.update(startup_s=startup, history_s=history, target_pass=startup < 30)
+        records.append(state)
+        status.write_text(json.dumps(dict(results=records), indent=2) + '\n')
+        print(json.dumps(state), flush=True)
+passed = len(records) == 8 and all(x['target_pass'] for x in records if x['label'] == 'after')
+status.write_text(json.dumps(dict(results=records, after_targets_pass=passed), indent=2) + '\n')
+print('PAIRED_GATE_EXIT=' + str(0 if passed else 1), flush=True)
+raise SystemExit(0 if passed else 1)

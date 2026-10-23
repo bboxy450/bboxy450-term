@@ -1,0 +1,63 @@
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--lib', '--locked', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized] target(s) in 3.52s
+     Running unittests src/lib.rs (target/w1-2f-profile/debug/deps/bbt_supervisor-45e7b1757b187788)
+
+running 39 tests
+closed-peer native SO_RCVTIMEO: Err(Os { code: 22, kind: InvalidInput, message: "Invalid argument" })
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeout_setup ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::checksum_tests::fixed_sha_vectors_and_a_software_written_cold_blob_still_verify ... ok
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+checksum CPU features: crc=true sha2=true
+test ring::checksum_tests::crc_matches_the_table_for_all_bytes_unaligned_splits_and_short_tails ... ok
+test ring::paging_tests::a_full_page_returns_before_decoding_the_following_entry ... ok
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test ring::paging_tests::output_weight_bounds_real_json_for_all_bytes_and_boundary_metadata ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test ring::writer::tests::ring_and_journal_paging_is_contiguous_wire_bounded_and_does_not_decode_past_full ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... ok
+test supervisor::capture_read_tests::exited_between_spawn_and_registration_emits_exactly_one_exit ... ok
+socket probe owned_fork_child_pid=33843
+inherited listener probe: another live supervisor owns the control socket: ownership lock Os { code: 35, kind: WouldBlock, message: "Resource temporarily unavailable" }
+test supervisor::child_events::tests::a_live_child_cannot_make_the_shutdown_wait_infinite ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test transport::tests::fork_inherited_listener_is_live_until_the_child_releases_it ... ok
+saturated live listener: 1 queued clients; connect error Os { code: 61, kind: ConnectionRefused, message: "Connection refused" }
+full backlog: replacement_bound=false same_inode=true original_listener_accepts=true
+test transport::tests::full_listener_backlog_is_live_and_never_unlinked ... ok
+test transport::tests::ownership_lock_persists_and_legacy_without_one_fails_closed ... ok
+test supervisor::capture_read_tests::an_early_exiting_writer_is_drained_before_reaping_without_blocking_the_actor ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+test transport::tests::stale_and_live_socket_paths_survive_2000_parallel_iterations ... ignored, manual 2000-iteration parallel stale/live socket stress
+test transport::tests::invalid_lock_types_permissions_and_owner_are_rejected_without_changes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit ... ok
+test ring::paging_tests::hot_and_cold_pages_fit_the_wire_and_keep_every_record_in_order ... ok
+test transport::tests::saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+test client::tests::a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained ... ok
+unanswered request disconnected after 10.001048916s: supervisor disconnected: request 01M5M2QT2JT0206HMZXGG1MSVE stayed unresolved beyond its recovery deadline; outcome remains unknown
+test client::tests::an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline ... ok
+
+test result: ok. 36 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 10.01s
+
+CHILD_EXIT=0
+COMMAND=['cargo', 'clippy', '-p', 'bbt-supervisor', '-p', 'bbt-mux', '--all-targets', '--locked', '--', '-D', 'warnings']
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `dev` profile [unoptimized] target(s) in 7.87s
+CHILD_EXIT=0
+COMMAND=['cargo', 'fmt', '-p', 'bbt-supervisor', '-p', 'bbt-mux', '--', '--check']
+CHILD_EXIT=0

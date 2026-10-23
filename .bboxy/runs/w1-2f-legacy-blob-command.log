@@ -1,0 +1,8 @@
+SOURCE=416eff60f423906189392b827b3e4c54fea56587
+GENERATOR_SHA256=cca51e470f048375536eb0ab71e5c26a50a586ed4fc555f912e0a6736710a80a
+COMMAND=['cargo', 'run', '--locked', '-p', 'bbt-supervisor', '--example', 'w12f_legacy_blob', '--', '/Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/legacy-object']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `dev` profile [unoptimized] target(s) in 3.23s
+     Running `target/w1-2f-profile/debug/examples/w12f_legacy_blob /Users/feral/mydev/bboxy450-term-rook/target/w1-2f-profile/legacy-object`
+digest=fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83 bytes=1048576
+CHILD_EXIT=0
