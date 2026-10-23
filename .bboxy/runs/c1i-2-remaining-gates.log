@@ -1,0 +1,77 @@
+COMMAND ['sh', 'scripts/ui-lint.sh']
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bboxy450-term)
+    Checking bbt-ui v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-render)
+    Checking bbt-supervisor v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 5.10s
+
+EXIT 0 elapsed=5.174s
+
+COMMAND ['cargo', 'run', '-p', 'bboxy450-term', '--locked', '--', '--smoke']
+    Finished `dev` profile [optimized] target(s) in 0.31s
+     Running `/tmp/ci-aster-c1i2-c2a6c41/target-ci/debug/bboxy450-term --smoke`
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+smoke bootstrap: early producer handled before GPU ready
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=15
+idle probe settling: producer_done=true queued=false redraw_pending=false frames=21 callbacks=21
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=11.151ms p99=11.881ms samples=21 warm_encode_p50=10.266ms warm_encode_p99=10.957ms
+
+EXIT 0 elapsed=14.164s
+
+COMMAND ['sh', 'scripts/invariants.sh']
+invariant clippy-clean: skipped (slow)
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling hashbrown v0.17.1
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling pulldown-cmark v0.13.4
+   Compiling indexmap v2.14.2
+   Compiling syn v3.0.9
+   Compiling serde_derive v1.0.229
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 6.81s
+     Running tests/corpus.rs (/tmp/ci-aster-c1i2-c2a6c41/target-ci/debug/deps/corpus-80a908cc437286bc)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.01s
+
+invariant frontmatter-parses: pass
+layering: held
+invariant layering: pass
+   Compiling memchr v2.8.3
+   Compiling serde_json v1.0.154
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-aster-c1i2-c2a6c41/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 1.02s
+     Running tests/seat_rows.rs (/tmp/ci-aster-c1i2-c2a6c41/target-ci/debug/deps/seat_rows-ec61c120ceb51aad)
+
+running 1 test
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+invariant modules-through-components: pass
+invariant parity-geometry: skipped (slow)
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant signed-main: pass
+    Finished `dev` profile [optimized] target(s) in 0.21s
+invariant ui-never-waits: pass
+invariants: 5 checks, 0 failures, 4 slow checks skipped
+
+EXIT 0 elapsed=27.397s

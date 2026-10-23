@@ -1,0 +1,9 @@
+{
+  "subject": "c2a6c415f16227fec084fa9afe56520bb255960a",
+  "worktree": "/tmp/ci-aster-c1i2-c2a6c41",
+  "target": "/tmp/ci-aster-c1i2-c2a6c41/target-ci",
+  "pid": 20812,
+  "command": "BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=/tmp/ci-aster-c1i2-c2a6c41/target-ci sh scripts/ci-local.sh",
+  "clean_before_start": true
+}
+CI_EXIT=101 elapsed_seconds=238.231

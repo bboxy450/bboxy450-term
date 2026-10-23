@@ -17,6 +17,23 @@ COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-
 ENV memory custody, debug0, incremental0
 EXIT 0 elapsed=10.139s
 
-COMMAND rustfmt --edition2024 --config skip_children=true crates/bboxy450-term/src/main.rs: EXIT0. COMMAND git diff --check: EXIT0.
+COMMAND rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs: EXIT0. COMMAND git diff --check: EXIT0.
 Read-only diff review/hunk-boundary inspection EXIT0. ICQ peer hunk coordination preview/send EXIT0.
 COMMAND git fetch origin: EXIT0; main advanced to772719b (R9), rebasing before the exact gate.
+
+COMMAND git commit -m 'Bound queued UI input and coalesce pending pane controls': EXIT0 (c178069).
+COMMAND git rebase --no-autostash origin/main: EXIT0; source rewritten to signedc2a6c41 on772719b; prior evidence-only parent09c8c8d.
+COMMAND git verify-commit c2a6c41: EXIT0.
+COMMAND git worktree add --detach /tmp/ci-aster-c1i2-c2a6c41 c2a6c41: EXIT0; clean status asserted before build.
+COMMAND BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=<private>/target-ci sh scripts/ci-local.sh: EXIT101/238.231s; metadata/log retained.
+COMMAND git diff --quiet772719b c2a6c41 -- .bboxy/specs/d1-providers.md crates/bbt-mermaid: EXIT0.
+COMMAND sh scripts/ui-lint.sh (same clean worktree/env): EXIT0.
+COMMAND cargo run -p bboxy450-term --locked -- --smoke (same clean worktree/env): EXIT0.
+COMMAND sh scripts/invariants.sh (same clean worktree/env): EXIT0.
+Independent read-only source/diff/status/ICQ inbox commands returned0. The test ! -d private-CI probe returned1 while its workspace diagnostic was still running (expected); no premature cleanup claim.
+Rendering function/body proof script EXIT0; no script/command extracted from earlier logs was executed.
+
+COMMAND cargo test --workspace --locked -- --skip every_bboxy_mermaid_block_has_a_fixture (same clean worktree/env): EXIT0/211.557s. Explicit diagnostic skip, original gate remains101.
+Read-only socket_backlog.rs timeout/source inspection EXIT0; no implementation edit. Read-only own diagnostic PID tree recording EXIT0; cargo33260 had no children at observation after it finished. No PID killed.
+COMMAND git worktree remove --force /tmp/ci-aster-c1i2-c2a6c41: EXIT0,2058084352 allocated target bytes removed.
+Oracle aff5ba19 accepts the exact frozen gate's single named fixture failure with the remaining same-tree checks0;0eb78941 authorizes no parity/no rebase. No third gate run.

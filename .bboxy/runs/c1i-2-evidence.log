@@ -1,0 +1,43 @@
+C1i-2 — bounded UI admission, Aster Cinderwing <EXECUTOR>
+
+Assignment: Oracle de5bc9ee (GO from2750175) and2a56b6a0 (bounds/policy).
+Tested source subject c2a6c415f16227fec084fa9afe56520bb255960a, based on main772719b (R9).
+Worktree /Users/feral/mydev/bboxy450-term-exec4, branch exec4.
+Parent09c8c8d carries only the prior C1i evidence logs; C1i code was accepted/merged2da2393.
+Oracle0eb78941 explicitly permits normal clean ci-local, no parity, and no rebase over later F5 main7bddcdb. Oracle verifies the merged tree.
+
+Mechanisms (only main.rs source changed):
+main.rs:120 — failed admission records an input/spawn refusal count and logs the cumulative values. Accepted queued input is retained.
+main.rs:746 — after child shutdown, a nonzero refusal summary is sent through existing Logger::finish; its IO task flushes stderr before sending Quit. Per-event logs remain best effort; final totals are flushed. No UI blocking IO added.
+main.rs:915 — constants: pending input1048576 bytes,256 entries; pending spawns8.
+main.rs:946 — rejects new input before adding bytes/entries when either limit would be exceeded. Adjacent same-seat/same-generation merging retains the original first ID, permits growth at the entry cap, and respects the total byte cap.
+main.rs:984 — latest Resize replaces the old same-seat resize, including old generation; latest Watched batch replaces the previous batch, preserving focused-first ordering, and removes sizes of no-longer-visible panes.
+main.rs:994 — ninth pending SpawnZsh is refused at admission.
+main.rs:1247,1293,1358 — queue tests: exact/oversize byte limits,256-entry limit and allowed merge at cap; latest pane controls;600 simulated seconds plus ordered reconnect drain. Existing key encoding, first-ID/generation and lost/full retry tests preserved.
+
+Acceptance / observed results:
+- cargo test -p bboxy450-term --bin bboxy450-term --locked input_tests -- --nocapture EXIT0:6/6 in0.25s, c1i-2-tests.log.
+-600 simulated seconds with100 input bursts of64 bytes per second, changing focus/watched tokens/sizes and attempting one spawn per second. Disconnected consumer does not drain. Bounds asserted throughout; reconnect channel capacity1 exercises repeated Full/retry.
+-60000 offered input events,1048576 accepted bytes,43616 refused input admissions and592 refused spawn admissions. Accepted bytes drain exactly in original order;8 spawns drain; final two pane sizes and latest watched focus/token preserved. This is simulated time, not a ten-minute wall-clock/native run.
+- Oversized first input leaves queue empty. A new input rejected at the byte/entry limit cannot modify accepted bytes/IDs. Merge at entry cap preserves first ID. Closing a visible pane removes its queued resize; accepted input remains.
+- cargo clippy --workspace --all-targets --locked -- -D warnings EXIT0, c1i-2-clippy.log.
+- Exact clean sh scripts/ci-local.sh EXIT101/238.231s, sourcec2a6c41, memory custody/private target. Build, strict workspace Clippy and app16/16 passed before the unchanged bbt-mermaid fixture check failed. Missing fixture for the sequenceDiagram in .bboxy/specs/d1-providers.md; test/fixtures/spec byte-identical to base772719b (diff EXIT0), c1i-2-baseline-fixture.log.
+- Oracle aff5ba19 explicitly accepts this one named external failure provided remaining checks pass on the same worktree; says the fixture is fixed on main and Oracle verifies the merged tree. No failing test/source edited here.
+- Remaining same-worktree UI lint EXIT0, native smoke/idle EXIT0 (10.002s idle,0 frames/callbacks), normal invariants EXIT0 (5 pass,4 slow skips). c1i-2-remaining-gates.log. These do not change the original ci-local EXIT101 into a pass.
+- Full workspace diagnostic EXIT0/211.557s: cargo test --workspace --locked -- --skip every_bboxy_mermaid_block_has_a_fixture; explicit exclusion recorded, not a full unfiltered gate claim.
+
+Rendering proof / coordination:
+c1i-2-render-proof.log binds base772719b and subjectc2a6c41. git diff --quiet over bbt-render/ui/ui-model, bboxybook, scene, gpu, lab, design and lock EXIT0. Nine app function bodies byte-identical to base: watch_panes, request_close, init, install_gpu, drain, demo, redraw, window_event and terminal_input.
+No new capture or visual fidelity claim; normal-CI-only exception explicitly authorized0eb78941.
+Seraph's F5 overlay/perf_hud and Kestrel's D1c host projection hunk boundaries coordinated by DM; neither overlaps these queue hunks. Future launcher spawn variants must use the cap policy; current UiMsg has SpawnZsh only.
+
+Gaps / work left alone:
+No new native keyboard overload, physical ten-minute disconnect, real recovery/stale-generation test, GPU/image capture, iTerm2/Ghostty, or sustained firehose/R5 test. Actual recovery and generation rejection remain C1c. The cumulative logging shutdown branch is compiled/linted; its real-window log-flush path was not separately driven to overload.
+No live.rs/cockpit/socket/proto, grid/model, renderer, scene, HUD, materials, fonts, keyboard/IME, pane geometry, watched/resize producers or supervisor edits.
+
+Commands / failures:
+See c1i-2-commands.log and exact test/lint/CI logs and metadata. Targeted tests/lint have no failed run.
+One scope correction: cargo fmt --all (EXIT0) reformatted23 previously clean out-of-scope files. Restored only those exact formatter changes from HEAD (EXIT0); main.rs formatted with rustfmt --config skip_children=true. Final crate diff is main.rs only. No pre-existing tracked WIP overwritten. git diff --check EXIT0.
+No push, merge, stash/autostash, reset, broad staging, borrowed ICQ identity or peer process/target deletion.
+
+Final cleanup: the diagnostic completed EXIT0; its wrapper removed the private CI worktree/target (git worktree remove EXIT0),2058084352 allocated target bytes freed. c1i-2-cleanup.log. No peer directories/PIDs touched. Historical c1i-evidence.log is the pre-acceptance snapshot: Oracle de5bc9ee subsequently accepted C1i and waived its648 existing null-geometry cases. This task uses the explicit queue-only no-parity ruling instead.

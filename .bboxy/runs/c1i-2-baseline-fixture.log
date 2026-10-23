@@ -1,0 +1,6 @@
+Exact clean CI EXIT101/238.231s.
+Failing test: bbt-mermaid/tests/fixtures.rs:123 every_bboxy_mermaid_block_has_a_fixture.
+Missing fixture for sequenceDiagram in .bboxy/specs/d1-providers.md (printed in c1i-2-ci.log:1547).
+COMMAND ['git', 'diff', '--quiet', '772719b', 'c2a6c41', '--', '.bboxy/specs/d1-providers.md', 'crates/bbt-mermaid']
+EXIT0: test, fixture files and failing spec byte-identical to base772719b.
+No Mermaid/spec/fixture edit by this task. No whole-main CI success claim.
