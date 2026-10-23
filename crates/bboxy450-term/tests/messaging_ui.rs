@@ -296,7 +296,7 @@ fn read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies() {
     let swarm = SwarmId::from_u128(52);
     records.select(swarm);
     let commands = records.commands();
-    assert_eq!(commands.len(), 3);
+    assert_eq!(commands.len(), 4);
     let task = commands
         .iter()
         .find(|c| matches!(c, UiMsg::Task { .. }))
@@ -368,4 +368,148 @@ fn task_review_does_not_repeat_an_unknown_effect_with_a_fresh_id_or_changed_reas
         records.review(task, None),
         Err("task_operation_in_flight")
     ));
+}
+
+fn projected_message(scope: SwarmId, sequence: u64) -> bbt_proto::messaging::MessageRow {
+    use bbt_proto::messaging::*;
+    MessageRow {
+        id: Ulid::new(),
+        bus: Some(BusPosition {
+            stream: format!("swarm-{scope}"),
+            seq: sequence,
+        }),
+        author: AuthorRef {
+            kind: AuthorKind::Seat,
+            id: "seat-author".into(),
+            name: "Actual shared author".into(),
+        },
+        issuer_kind: IssuerKind::LocalDev,
+        kind: MessageKind::Decision,
+        priority_class: bbt_proto::registry::Class::Worker,
+        priority: 8,
+        text: "shared projection".into(),
+        ts: 1000,
+        receipts: ReceiptSummary::default(),
+    }
+}
+#[test]
+fn receiving_does_not_mark_read_and_counts_require_complete_retained_coverage() {
+    use bboxy450_term::messaging::{History, HistoryAction};
+    use bbt_ui::modules::stream_dock::{Entry, UnreadCount};
+    let scope = SwarmId::from_u128(75);
+    let mut history = History::default();
+    history.select(scope);
+    assert!(
+        history
+            .actions()
+            .iter()
+            .any(|a| matches!(a, HistoryAction::Page { after: 0, .. }))
+    );
+    history.cursor(2, 8, 1);
+    let row = projected_message(scope, 5);
+    history.row(&row, Some("channels/review"), 100);
+    assert_eq!(history.seat_unread("seat-author"), UnreadCount::More);
+    history.page(1, 8, None);
+    assert_eq!(history.seat_unread("seat-author"), UnreadCount::Exact(1));
+    assert!(
+        history.actions().is_empty(),
+        "receive and page completion never prove viewed"
+    );
+    let model = bboxy450_term::model::Model::default();
+    let entries = history.entries(&model, &Default::default(), &[]);
+    assert!(entries.iter().any(|entry| matches!(entry, Entry::Message { data, .. } if data.unread && data.issuer_kind.as_deref()==Some("local-dev") && data.ch.as_deref()==Some("review"))));
+    assert!(matches!(
+        history.viewed_all(),
+        Some(HistoryAction::Read { sequence: 8, .. })
+    ));
+    assert!(
+        history
+            .entries(&model, &Default::default(), &[])
+            .iter()
+            .any(|entry| matches!(entry, Entry::Message { data, .. } if data.unread)),
+        "only the server cursor clears dots"
+    );
+    history.cursor(8, 8, 0);
+    assert_eq!(history.seat_unread("seat-author"), UnreadCount::Exact(0));
+}
+#[test]
+fn a_newer_live_cursor_cannot_make_an_old_empty_page_prove_newer_coverage() {
+    use bboxy450_term::messaging::{History, HistoryAction};
+    use bbt_ui::modules::stream_dock::UnreadCount;
+    let scope = SwarmId::from_u128(76);
+    let mut history = History::default();
+    history.select(scope);
+    history.actions();
+    history.cursor(0, 12, 1);
+    history.row(&projected_message(scope, 5), None, 100);
+    history.page(1, 8, None);
+    assert_eq!(history.seat_unread("seat-author"), UnreadCount::More);
+    history.more();
+    assert!(
+        history
+            .actions()
+            .iter()
+            .any(|a| matches!(a, HistoryAction::Page { after: 8, .. }))
+    );
+    history.page(2, 12, None); // empty completion, advancing its own revision
+    assert_eq!(history.seat_unread("seat-author"), UnreadCount::Exact(1));
+    history.gap(3, 4);
+    assert_eq!(history.seat_unread("seat-author"), UnreadCount::More);
+}
+
+#[test]
+fn role_send_is_one_view_with_receipts_only_when_all_its_real_projections_exist() {
+    use bboxy450_term::messaging::{SendGroup, message_entries};
+    use bbt_proto::messaging::AuthorKind;
+    use bbt_ui::modules::stream_dock::Entry;
+    let scope = SwarmId::from_u128(77);
+    let mut a = projected_message(scope, 11);
+    a.author.kind = AuthorKind::Operator;
+    a.receipts.delivered = 1;
+    let mut b = projected_message(scope, 12);
+    b.author.kind = AuthorKind::Operator;
+    b.receipts.acked = 1;
+    let groups = [SendGroup {
+        swarm: scope,
+        label: "executor".into(),
+        ids: vec![a.id, b.id],
+    }]
+    .into();
+    let model = bboxy450_term::model::Model::default();
+    let missing = message_entries(
+        std::slice::from_ref(&a),
+        &Default::default(),
+        &groups,
+        scope,
+        &model,
+        None,
+    );
+    assert!(matches!(&missing[0], Entry::Message { data, .. } if data.receipts.is_none()));
+    assert!(matches!(&missing[1], Entry::Note { text, .. } if text.contains("1 of 2")));
+    let complete = message_entries(&[a, b], &Default::default(), &groups, scope, &model, None);
+    assert_eq!(complete.len(), 1);
+    assert!(
+        matches!(&complete[0], Entry::Message { data, .. } if data.to_label.as_deref()==Some("executor · 2 recipients") && data.receipts.as_ref().is_some_and(|r|r.delivered==1 && r.acked==1))
+    );
+}
+
+#[test]
+fn older_display_projections_cannot_undo_new_receipts_or_release_evidence() {
+    use bboxy450_term::messaging::History;
+    use bbt_ui::modules::stream_dock::Entry;
+    let scope = SwarmId::from_u128(78);
+    let mut history = History::default();
+    history.select(scope);
+    let mut row = projected_message(scope, 5);
+    row.author.kind = bbt_proto::messaging::AuthorKind::Operator;
+    row.receipts.held = 1;
+    history.row(&row, None, 100);
+    row.receipts.held = 0;
+    row.receipts.delivered = 1;
+    history.row(&row, None, 101);
+    history.row(&row, None, 200); // identical value must still retain its newer projection time
+    row.receipts.held = 1;
+    row.receipts.delivered = 0;
+    history.row(&row, None, 199);
+    assert!(history.entries(&Default::default(),&Default::default(),&[]).iter().any(|entry|matches!(entry,Entry::Message {data,..} if data.receipts.as_ref().is_some_and(|r|r.held==0&&r.delivered==1))));
 }

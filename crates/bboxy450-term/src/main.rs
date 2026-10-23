@@ -805,7 +805,12 @@ struct App {
     composer: ComposeController,
     composer_client: messaging::Client,
     composer_scope: Option<bbt_proto::SwarmId>,
+    task_records: messaging::Records,
+    task_regions: bbt_ui::modules::stream_dock::Regions,
+    reject: Option<(bbt_mux::Ulid, composer::RejectController)>,
+    reject_focus: bool,
     conversation: bbt_ui::modules::stream_dock::StreamDock,
+    conversation_scroll: f32,
     conversation_layout: Option<scene::ConversationLayout>,
     composer_dragging: bool,
     compose_startup: bool,
@@ -857,7 +862,7 @@ impl App {
         let Some(stage) = &self.focus.stage else {
             return;
         };
-        let Some((channel, choices)) = messaging::catalog(model, stage) else {
+        let Some((channel, mut choices)) = messaging::catalog(model, stage) else {
             return;
         };
         if self.composer_scope != stage.swarm {
@@ -869,8 +874,169 @@ impl App {
                 self.composer.view.to = vec![channel];
             }
             self.composer_scope = stage.swarm;
+            self.task_records
+                .select(stage.swarm.expect("catalog has swarm"));
+            self.reject = None;
+            self.reject_focus = false;
+            self.conversation_scroll = 0.;
+        }
+        for (folder, title, kind) in [
+            ("channels/", "Channels", "channel"),
+            ("groups/", "Groups", "group"),
+        ] {
+            let items: Vec<_> = self
+                .task_records
+                .nodes()
+                .iter()
+                .filter(|n| n.path.starts_with(folder))
+                .map(|n| composer::Address {
+                    kind: kind.into(),
+                    id: n.path.clone(),
+                    label: n.path.trim_start_matches(folder).into(),
+                    destination: n.path.clone(),
+                    ..Default::default()
+                })
+                .collect();
+            if let Some(group) = choices.iter_mut().find(|g| g.title == title) {
+                group.items.extend(items);
+            } else if !items.is_empty() {
+                choices.push(composer::PickGroup {
+                    title: title.into(),
+                    items,
+                });
+            }
         }
         self.composer.replace_choices(choices);
+        self.composer.replace_attachments(
+            self.task_records
+                .tasks()
+                .iter()
+                .chain(self.task_records.unassigned())
+                .map(messaging::task_attachment)
+                .collect(),
+        );
+    }
+    fn blur_reject(&mut self) {
+        self.reject_focus = false;
+        if let Some((_, reject)) = &mut self.reject {
+            reject.focus(false);
+        }
+    }
+    fn refresh_conversation(&mut self) {
+        let Some(model) = self.live_state.as_deref() else {
+            return;
+        };
+        self.conversation.entries = self
+            .task_records
+            .entries(model, self.reject.as_ref().map(|(id, r)| (*id, &r.view)));
+        self.scene.set_tasks(
+            self.task_records
+                .tasks()
+                .iter()
+                .filter_map(|card| {
+                    let seat = messaging::assignee_seat(card.assignee.as_deref()?)?;
+                    let (row, exit) = messaging::task_row(card);
+                    Some((seat, card.id.to_string(), row, exit))
+                })
+                .collect(),
+        );
+        self.conversation_layout = None;
+    }
+    fn task_action(&mut self, action: bbt_ui::modules::stream_dock::Action) {
+        use bbt_ui::modules::stream_dock::Action;
+        let parse = |id: &str| id.parse::<bbt_mux::Ulid>().ok();
+        match action {
+            Action::Task(id) => {
+                if let Some(id) = parse(&id) {
+                    self.task_records.detail(id);
+                }
+            }
+            Action::Delegate(id) => {
+                if let Some(task) = parse(&id).and_then(|id| self.task_records.task(id)) {
+                    let attachment = messaging::task_attachment(task);
+                    self.blur_reject();
+                    self.composer_command(ComposeCommand::Delegate(attachment));
+                }
+            }
+            Action::Accept(id) => {
+                if let Some(id) = parse(&id) {
+                    self.review_task(id, None);
+                }
+            }
+            Action::Reject(id) => {
+                if let Some(id) = parse(&id) {
+                    self.composer.handle(ComposeCommand::Blur);
+                    if self.reject.as_ref().is_none_or(|(old, _)| *old != id) {
+                        self.reject = Some((id, composer::RejectController::default()));
+                    }
+                    if let Some((_, reject)) = &mut self.reject {
+                        reject.focus(true);
+                    }
+                    self.reject_focus = true;
+                }
+            }
+            Action::CancelReject(_) => {
+                self.reject = None;
+                self.reject_focus = false;
+            }
+            Action::SubmitReject(id) => {
+                if let Some(id) = parse(&id)
+                    && let Some((actual, reason)) = &mut self.reject
+                    && *actual == id
+                {
+                    match reason.submission() {
+                        Ok(reason) => self.review_task(id, Some(reason)),
+                        Err(reason) => self.reject.as_mut().unwrap().1.refused(reason),
+                    }
+                }
+            }
+            Action::RejectInput(id) => {
+                if let Some(id) = parse(&id)
+                    && let Some((actual, reason)) = &mut self.reject
+                    && *actual == id
+                {
+                    self.composer.handle(ComposeCommand::Blur);
+                    self.reject_focus = true;
+                    reason.focus(true);
+                    if let Some(layout) = &self.conversation_layout
+                        && let Some(at) = self.scene.reject_index(
+                            layout,
+                            &id.to_string(),
+                            &reason.view.reason,
+                            self.pointer,
+                        )
+                    {
+                        reason.handle(EditCommand::SetCaret {
+                            at,
+                            extend: self.modifiers.shift_key(),
+                        });
+                    }
+                    self.composer_dragging = true;
+                }
+            }
+            Action::Channel(_) => {}
+        }
+        self.operation_backlog.extend(self.task_records.commands());
+        self.refresh_conversation();
+        if let Some(window) = &self.window {
+            window.set_ime_allowed(
+                self.launcher.is_some() || self.composer.view.focus || self.reject_focus,
+            );
+        }
+        self.request_redraw();
+    }
+    fn review_task(&mut self, id: bbt_mux::Ulid, reason: Option<String>) {
+        match self.task_records.review(id, reason) {
+            Ok(command) => self.operation_backlog.push_back(command),
+            Err(reason) => {
+                self.task_records.issue = Some(reason.into());
+                if let Some((actual, edit)) = &mut self.reject
+                    && *actual == id
+                {
+                    edit.refused(reason);
+                }
+            }
+        }
     }
     fn composer_notice(&mut self) {
         self.composer.view.notice = match &self.composer_client.status {
@@ -906,6 +1072,37 @@ impl App {
         };
     }
     fn composer_command(&mut self, command: ComposeCommand) {
+        if self.reject_focus {
+            if let Some((_, reason)) = &mut self.reject {
+                match command {
+                    ComposeCommand::Edit(EditCommand::Insert(text) | EditCommand::Commit(text))
+                        if text.contains(['\n', '\r']) => {}
+                    ComposeCommand::Edit(edit) => {
+                        reason.handle(edit);
+                    }
+                    ComposeCommand::Escape => {
+                        if reason.composing() {
+                            reason.handle(EditCommand::CancelPreedit);
+                        } else {
+                            self.blur_reject();
+                        }
+                    }
+                    ComposeCommand::Focus(field) => {
+                        self.blur_reject();
+                        self.composer.handle(ComposeCommand::Focus(field));
+                    }
+                    _ => {}
+                }
+            }
+            self.refresh_conversation();
+            if let Some(window) = &self.window {
+                window.set_ime_allowed(
+                    self.launcher.is_some() || self.composer.view.focus || self.reject_focus,
+                );
+            }
+            self.request_redraw();
+            return;
+        }
         if matches!(command, ComposeCommand::Focus(ComposeField::Address)) {
             self.composer_catalog();
         }
@@ -952,6 +1149,19 @@ impl App {
         self.request_redraw();
     }
     fn composer_move(&mut self, vertical: Option<bool>, end: Option<bool>, extend: bool) {
+        if self.reject_focus {
+            if let Some(end) = end {
+                self.composer_command(ComposeCommand::Edit(EditCommand::Move {
+                    motion: if end {
+                        bbt_ui::text_edit::Motion::End
+                    } else {
+                        bbt_ui::text_edit::Motion::Start
+                    },
+                    extend,
+                }));
+            }
+            return;
+        }
         if self.composer.view.attach_pick.is_some() {
             if let Some(end) = end {
                 self.composer_command(ComposeCommand::Edit(EditCommand::Move {
@@ -1015,6 +1225,7 @@ impl App {
         }
     }
     fn open_launcher(&mut self) {
+        self.blur_reject();
         self.composer.handle(ComposeCommand::Blur);
         self.composer_dragging = false;
         let used = self
@@ -1080,6 +1291,7 @@ impl App {
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
+        self.blur_reject();
         self.composer.handle(ComposeCommand::Blur);
         self.composer_dragging = false;
         if self.launcher.is_none()
@@ -1458,15 +1670,36 @@ impl App {
                 .set_model(&state, self.focus.stage.as_ref().expect("published stage"));
             let (completed, follow_up) = self.composer_client.replies(&state.operation_results);
             if let Some(draft) = completed {
+                if draft.delegate {
+                    self.task_records.refresh();
+                }
                 self.composer.stored(&draft);
                 self.conversation_layout = None;
             }
             self.operation_backlog.extend(follow_up);
             self.composer_notice();
             self.live_state = Some(state);
-            if self.composer_scope != self.focus.stage.as_ref().and_then(|s| s.swarm) {
-                self.composer_catalog();
+            let records_changed = self
+                .task_records
+                .replies(&self.live_state.as_ref().unwrap().operation_results);
+            if records_changed && let Some((id, reason)) = &mut self.reject {
+                if let Some((actual, issue)) = &self.task_records.review_issue
+                    && *actual == *id
+                {
+                    reason.refused(issue);
+                }
+                if self
+                    .task_records
+                    .task(*id)
+                    .is_some_and(|card| card.status != "reported")
+                {
+                    self.reject = None;
+                    self.reject_focus = false;
+                }
             }
+            self.composer_catalog();
+            self.operation_backlog.extend(self.task_records.commands());
+            self.refresh_conversation();
             for (op, outcome) in results {
                 if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
                     self.focus_action(FocusAction::Activate(*seat, FocusOrigin::Keyboard));
@@ -1579,7 +1812,7 @@ impl App {
                 &composer::Conversation {
                     stream: self.conversation.clone(),
                     composer: self.composer.view.clone(),
-                    scroll: 0.,
+                    scroll: self.conversation_scroll,
                 },
             )?)
         } else {
@@ -1591,6 +1824,7 @@ impl App {
             self.conversation_layout.as_ref().map_or(0., |l| l.height),
         )?;
         let bounds = self.scene.pane_bounds(&layouts);
+        self.task_regions = self.scene.task_regions(&layouts);
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         if let Some(model) = &self.live_state {
             for event in self.focus.layout_ready(&model.ui, &self.focus_bounds) {
@@ -1618,10 +1852,17 @@ impl App {
             );
         }
         if self.launcher.is_none()
-            && self.composer.view.focus
+            && (self.composer.view.focus || self.reject_focus)
             && let Some(layout) = &self.conversation_layout
         {
-            let caret = layout.regions.candidate_area();
+            let caret = if self.reject_focus {
+                self.reject
+                    .as_ref()
+                    .and_then(|(id, _)| layout.actions.candidate_area(&id.to_string()))
+                    .unwrap_or_else(|| layout.regions.candidate_area())
+            } else {
+                layout.regions.candidate_area()
+            };
             self.window.as_ref().unwrap().set_ime_cursor_area(
                 winit::dpi::LogicalPosition::new(caret.x, caret.y),
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
@@ -2076,6 +2317,23 @@ impl ApplicationHandler<UiEvent> for App {
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
                 if self.composer_dragging && self.launcher.is_none() {
+                    if self.reject_focus {
+                        if let Some((id, reason)) = &self.reject
+                            && let Some(layout) = &self.conversation_layout
+                            && let Some(at) = self.scene.reject_index(
+                                layout,
+                                &id.to_string(),
+                                &reason.view.reason,
+                                self.pointer,
+                            )
+                        {
+                            self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
+                                at,
+                                extend: true,
+                            }));
+                        }
+                        return;
+                    }
                     if let Some(layout) = &self.conversation_layout {
                         let at = if let Some(p) = &self.composer.view.attach_pick {
                             self.scene
@@ -2177,6 +2435,15 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     return;
                 }
+                if let Some(action) = self
+                    .conversation_layout
+                    .as_ref()
+                    .and_then(|layout| layout.actions.hit(self.pointer))
+                    .or_else(|| self.task_regions.hit(self.pointer))
+                {
+                    self.task_action(action);
+                    return;
+                }
                 if let Some(layout) = &self.conversation_layout
                     && layout.regions.contains(self.pointer)
                 {
@@ -2196,6 +2463,7 @@ impl ApplicationHandler<UiEvent> for App {
                     } else {
                         None
                     };
+                    self.blur_reject();
                     match hit {
                         Some(Hit::Body) => {
                             self.composer_command(ComposeCommand::Focus(ComposeField::Body));
@@ -2254,10 +2522,41 @@ impl ApplicationHandler<UiEvent> for App {
                 self.query_dragging = false;
                 self.composer_dragging = false;
             }
+            WindowEvent::MouseWheel { delta, .. } => {
+                if self.launcher.is_none()
+                    && self.conversation_layout.as_ref().is_some_and(|layout| {
+                        layout.actions.contains("conversation/rows", self.pointer)
+                    })
+                {
+                    let dy = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => y * 28.,
+                        MouseScrollDelta::PixelDelta(p) => {
+                            p.y as f32
+                                / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
+                        }
+                    };
+                    let max = self
+                        .conversation_layout
+                        .as_ref()
+                        .and_then(|layout| {
+                            bbt_ui::modules::stream_dock::Regions::scroll_extent(
+                                &layout.layout,
+                                "conversation/rows",
+                            )
+                        })
+                        .map_or(0., |r| r[1]);
+                    self.conversation_scroll = (self.conversation_scroll - dy).clamp(0., max);
+                    if dy < 0. {
+                        self.task_records.more_tasks();
+                        self.operation_backlog.extend(self.task_records.commands());
+                    }
+                    self.request_redraw();
+                }
+            }
             WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
                 if self.launcher.is_some() {
                     self.launcher_command(preedit_command(text, cursor));
-                } else if self.composer.view.focus {
+                } else if self.composer.view.focus || self.reject_focus {
                     let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
                     else {
                         unreachable!()
@@ -2273,14 +2572,14 @@ impl ApplicationHandler<UiEvent> for App {
                     text: String::new(),
                     caret: None,
                 });
-                if self.composer.view.focus {
+                if self.composer.view.focus || self.reject_focus {
                     self.composer_command(ComposeCommand::Edit(EditCommand::CancelPreedit));
                 }
             }
             WindowEvent::Ime(Ime::Commit(text)) => {
                 if self.launcher.is_some() {
                     self.launcher_command(LauncherCommand::Commit(text));
-                } else if self.composer.view.focus {
+                } else if self.composer.view.focus || self.reject_focus {
                     self.composer_command(ComposeCommand::Edit(EditCommand::Commit(text)));
                 }
             }
@@ -2336,28 +2635,31 @@ impl ApplicationHandler<UiEvent> for App {
                             .get(&seat)
                             .map(|screen| screen.modes)
                     });
-                let routed = if self.launcher.is_none() && self.composer.view.focus {
-                    let routed = route_composer(
-                        &input,
-                        modes.unwrap_or_default(),
-                        if self.composer.view.kind_menu || self.composer.view.attach_pick.is_some()
-                        {
-                            ComposeField::Address
-                        } else {
-                            self.composer.view.field
-                        },
-                    );
-                    finish_route(&mut self.keyboard, &input, routed)
-                } else {
-                    route_input(
-                        &mut self.keyboard,
-                        &input,
-                        modes.unwrap_or_default(),
-                        self.launcher
-                            .as_ref()
-                            .map(|launcher| launcher.launcher.query.as_str()),
-                    )
-                };
+                let routed =
+                    if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus) {
+                        let routed = route_composer(
+                            &input,
+                            modes.unwrap_or_default(),
+                            if !self.reject_focus
+                                && (self.composer.view.kind_menu
+                                    || self.composer.view.attach_pick.is_some())
+                            {
+                                ComposeField::Address
+                            } else {
+                                self.composer.view.field
+                            },
+                        );
+                        finish_route(&mut self.keyboard, &input, routed)
+                    } else {
+                        route_input(
+                            &mut self.keyboard,
+                            &input,
+                            modes.unwrap_or_default(),
+                            self.launcher
+                                .as_ref()
+                                .map(|launcher| launcher.launcher.query.as_str()),
+                        )
+                    };
                 match routed {
                     RoutedKey::Quit => self.request_close(event_loop),
                     RoutedKey::OpenLauncher => self.open_launcher(),
@@ -3142,12 +3444,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }),
         composer_client: messaging::Client::default(),
         composer_scope: None,
+        task_records: messaging::Records::default(),
+        task_regions: Default::default(),
+        reject: None,
+        reject_focus: false,
         conversation: bbt_ui::modules::stream_dock::StreamDock {
             dock: true,
             framed: false,
             ..Default::default()
         },
         conversation_layout: None,
+        conversation_scroll: 0.,
         composer_dragging: false,
         compose_startup: args.iter().any(|arg| arg == "--compose"),
         operation_backlog: VecDeque::new(),
@@ -4563,6 +4870,7 @@ mod composer_host_tests {
         let operation = || live::UiMsg::Task {
             id: bbt_mux::Ulid::new(),
             request: bbt_proto::messaging::TaskRequest::List {
+                unassigned: false,
                 swarm_id: None,
                 status: None,
                 assignee: None,

@@ -221,6 +221,10 @@ pub(super) fn notice_line(key: &str, n: &Notice, report: bool) -> c::Element {
             false,
         )
     };
+    let mut text = c::Text::new(&n.text, text_style(size, 400, false, col));
+    text.wrap = report;
+    text.max_content_basis = report;
+    text.ellipsis = !report;
     row(
         key,
         s,
@@ -236,12 +240,7 @@ pub(super) fn notice_line(key: &str, n: &Notice, report: bool) -> c::Element {
                 },
             },
             c::Item {
-                element: label(
-                    format!("{key}/text"),
-                    &n.text,
-                    text_style(size, 400, false, col),
-                    report,
-                ),
+                element: named(format!("{key}/text"), c::Element::Text(text)),
                 extent: if report {
                     c::Extent::MinContent
                 } else {

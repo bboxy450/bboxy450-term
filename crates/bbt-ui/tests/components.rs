@@ -861,3 +861,49 @@ fn inline_middle_uses_the_parent_x_height_without_moving_the_content_box() {
             .is_ok()
     );
 }
+
+#[test]
+fn max_content_text_basis_keeps_left_aligned_glyphs_and_short_inline_width() {
+    let mut text = c::Text::new(
+        "word word word word",
+        bbt_ui::Text {
+            size: Some(12.),
+            ..Default::default()
+        },
+    );
+    let ordinary = c::Element::Text(text.clone());
+    let before = ordinary.natural(70., context(), &Metrics).unwrap();
+    text.max_content_basis = true;
+    assert_eq!(text.align, c::Alignment::Start);
+    let inline = c::Element::Text(text.clone());
+    let after = inline.natural(70., context(), &Metrics).unwrap();
+    assert!(before.0[0] < after.0[0]);
+    assert_eq!(after.0[0], 70.);
+    assert_eq!(before.0[1].to_bits(), after.0[1].to_bits());
+    assert_eq!(before.1.to_bits(), after.1.to_bits());
+    let a = ordinary
+        .layout(Rect::new(10., 20., 70., after.0[1]), context(), &Metrics)
+        .unwrap();
+    let b = inline
+        .layout(Rect::new(10., 20., 70., after.0[1]), context(), &Metrics)
+        .unwrap();
+    let c::LayoutKind::Text { runs: a, .. } = a.kind else {
+        unreachable!();
+    };
+    let c::LayoutKind::Text { runs: b, .. } = b.kind else {
+        unreachable!();
+    };
+    assert_eq!(a.len(), b.len());
+    for (a, b) in a.iter().zip(&b) {
+        assert_eq!(a.text, b.text);
+        assert_eq!(a.rect, b.rect);
+    }
+    text.runs[0].value = "word".into();
+    assert_eq!(
+        c::Element::Text(text)
+            .natural(70., context(), &Metrics)
+            .unwrap()
+            .0[0],
+        24.
+    );
+}

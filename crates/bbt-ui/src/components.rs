@@ -94,6 +94,8 @@ impl TextShadow {
 pub struct Text {
     pub runs: Vec<TextRun>,
     pub wrap: bool,
+    /// Keep the inline max-content measure as a flex basis before wrapping.
+    pub max_content_basis: bool,
     pub ellipsis: bool,
     /// Clamp wrapped content, ending the last visible line with an ellipsis.
     pub max_lines: Option<usize>,
@@ -112,6 +114,7 @@ impl Text {
                 style,
             }],
             wrap: true,
+            max_content_basis: false,
             ellipsis: false,
             max_lines: None,
             selectable: true,
@@ -950,7 +953,7 @@ impl Element {
             Self::Glyph { size, .. } => Ok(([*size; 2], *size)),
             Self::Text(t) => {
                 let (_, mut size, base) = text_lines(t, width, ctx, m)?;
-                if t.align != Alignment::Start && t.wrap && width.is_finite() {
+                if (t.max_content_basis || t.align != Alignment::Start) && t.wrap && width.is_finite() {
                     size[0] = size[0].max(self.natural_in(f32::INFINITY, pass)?.0[0].min(width));
                 }
                 Ok((size, base))

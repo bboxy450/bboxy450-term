@@ -6,6 +6,8 @@ use super::{
 use crate::{self as ui, components as c};
 use bbt_ui_model::{STYLE, TOKENS, draw::Color as DrawColor, layout::Axis};
 use serde::{Deserialize, Serialize};
+mod actions;
+pub use actions::{Action, Regions};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -165,6 +167,15 @@ pub enum Entry {
     },
     Epic {
         data: Epic,
+    },
+    Task {
+        data: WorkItem,
+        delegate: bool,
+    },
+    Report {
+        id: String,
+        data: super::composer::Report,
+        review: bool,
     },
     External {
         events: Vec<External>,
@@ -1110,6 +1121,109 @@ fn kind_chip(key: &str, value: &str) -> c::Element {
         vec![label(format!("{key}/text"), value, ts, false).into()],
     )
 }
+fn task_item(item: &WorkItem, k: &str, delegate: bool) -> c::Element {
+    let sp = &STYLE.spacing;
+    let t = &STYLE.r#type;
+    let (glyph, col) = match item.state.as_str() {
+        "running" => ("◑", ui::Color::Accent),
+        "reported" => ("◕", rgba(TOKENS.color.state.waiting)),
+        "accepted" => ("●", rgba(TOKENS.color.ui.ok)),
+        "done" => ("✓", rgba(TOKENS.color.ui.ok)),
+        "rejected" => ("✕", rgba(TOKENS.color.state.errored)),
+        "blocked" => ("⊘", rgba(TOKENS.color.state.errored)),
+        "claimed" => ("◔", ui::Color::Muted),
+        _ => ("○", ui::Color::Muted),
+    };
+    let mut cells = vec![
+        label(
+            format!("{k}/tglyph"),
+            glyph,
+            text_style(t.caption as f32, 400, false, col),
+            false,
+        )
+        .into(),
+        kind_chip(
+            &format!("{k}/ekind"),
+            if item.kind.is_empty() {
+                "task"
+            } else {
+                &item.kind
+            },
+        )
+        .into(),
+        fill(clipped_text(
+            &format!("{k}/etitle"),
+            &item.title,
+            text_style(t.caption as f32, 400, false, ui::Color::Foreground),
+        )),
+    ];
+    if !item.assignee.is_empty() {
+        cells.push(
+            label(
+                format!("{k}/eass"),
+                if item.state == "claimed" {
+                    format!("→ {}", item.assignee)
+                } else {
+                    item.assignee.clone()
+                },
+                text_style(t.small as f32, 400, false, ui::Color::Muted),
+                false,
+            )
+            .into(),
+        );
+    }
+    if item.state == "claimed" {
+        cells.push(
+            badge(
+                &format!("{k}/echip"),
+                "claimed",
+                text_style(t.micro as f32, 400, false, role_color("executor")),
+                None,
+                Some(tint(role_color("executor"), 0.6)),
+                (STYLE.radius.pill as f32, sp.s2 as f32, None, true),
+            )
+            .into(),
+        );
+    }
+    if delegate && item.state == "open" && item.assignee.is_empty() {
+        cells.push(
+            badge(
+                &format!("{k}/edel"),
+                "Delegate…",
+                text_style(t.small as f32, 400, false, ui::Color::Foreground),
+                None,
+                Some(ui::Paint {
+                    color: ui::Color::Line,
+                    alpha: ui::Alpha::Hairline,
+                }),
+                (STYLE.radius.pill as f32, sp.s3 as f32, None, false),
+            )
+            .into(),
+        );
+    }
+    if item.state == "blocked" && !item.waits.is_empty() {
+        cells.push(
+            label(
+                format!("{k}/twaits"),
+                format!("waits on {}", item.waits),
+                text_style(t.tiny as f32, 400, false, rgba(TOKENS.color.state.errored)),
+                false,
+            )
+            .into(),
+        );
+    }
+    row(
+        k,
+        plain(
+            None,
+            [sp.s1 as f32, sp.s4 as f32, sp.s1 as f32, sp.s10 as f32],
+            0.,
+        ),
+        sp.s3 as f32,
+        c::Alignment::Center,
+        cells,
+    )
+}
 impl Epic {
     pub fn element(&self, key: &str) -> c::Element {
         let t = &STYLE.r#type;
@@ -1168,103 +1282,7 @@ impl Epic {
                     "{key}/eitem{}",
                     if i == 0 { String::new() } else { i.to_string() }
                 );
-                let col = match item.state.as_str() {
-                    "running" => ui::Color::Accent,
-                    "reported" => rgba(TOKENS.color.state.waiting),
-                    "accepted" | "done" => rgba(TOKENS.color.ui.ok),
-                    "rejected" | "blocked" => rgba(TOKENS.color.state.errored),
-                    _ => ui::Color::Muted,
-                };
-                let mut cells = vec![
-                    named(
-                        format!("{k}/tglyph"),
-                        ui::marks::Mark::task(&item.state).element(11., ui::Paint::solid(col)),
-                    )
-                    .into(),
-                    kind_chip(
-                        &format!("{k}/ekind"),
-                        if item.kind.is_empty() {
-                            "task"
-                        } else {
-                            &item.kind
-                        },
-                    )
-                    .into(),
-                    fill(clipped_text(
-                        &format!("{k}/etitle"),
-                        &item.title,
-                        text_style(t.caption as f32, 400, false, ui::Color::Foreground),
-                    )),
-                ];
-                if !item.assignee.is_empty() {
-                    cells.push(
-                        label(
-                            format!("{k}/eass"),
-                            if item.state == "claimed" {
-                                format!("→ {}", item.assignee)
-                            } else {
-                                item.assignee.clone()
-                            },
-                            text_style(t.small as f32, 400, false, ui::Color::Muted),
-                            false,
-                        )
-                        .into(),
-                    );
-                }
-                if item.state == "claimed" {
-                    cells.push(
-                        badge(
-                            &format!("{k}/echip"),
-                            "claimed",
-                            text_style(t.micro as f32, 400, false, role_color("executor")),
-                            None,
-                            Some(tint(role_color("executor"), 0.6)),
-                            (STYLE.radius.pill as f32, sp.s2 as f32, None, true),
-                        )
-                        .into(),
-                    );
-                }
-                if self.delegate && item.state == "open" && item.assignee.is_empty() {
-                    cells.push(
-                        badge(
-                            &format!("{k}/edel"),
-                            "Delegate…",
-                            text_style(t.small as f32, 400, false, ui::Color::Foreground),
-                            None,
-                            Some(ui::Paint {
-                                color: ui::Color::Line,
-                                alpha: ui::Alpha::Hairline,
-                            }),
-                            (STYLE.radius.pill as f32, sp.s3 as f32, None, false),
-                        )
-                        .into(),
-                    );
-                }
-                if item.state == "blocked" && !item.waits.is_empty() {
-                    cells.push(
-                        label(
-                            format!("{k}/twaits"),
-                            format!("waits on {}", item.waits),
-                            text_style(t.tiny as f32, 400, false, rgba(TOKENS.color.state.errored)),
-                            false,
-                        )
-                        .into(),
-                    );
-                }
-                children.push(
-                    row(
-                        &k,
-                        plain(
-                            None,
-                            [sp.s1 as f32, sp.s4 as f32, sp.s1 as f32, sp.s10 as f32],
-                            0.,
-                        ),
-                        sp.s3 as f32,
-                        c::Alignment::Center,
-                        cells,
-                    )
-                    .into(),
-                );
+                children.push(task_item(item, &k, self.delegate).into());
             }
         }
         column(
@@ -1396,6 +1414,8 @@ impl StreamDock {
                         data.element(&key, self.dock, show_channel.unwrap_or(true), m)
                     }
                     Entry::Epic { data } => data.element(&key),
+                    Entry::Task { data, delegate } => task_item(data, &key, *delegate),
+                    Entry::Report { data, review, .. } => data.element(&key, *review),
                     Entry::External { events, open } => external(&key, events, *open),
                     Entry::Filter { name } => row(
                         &key,

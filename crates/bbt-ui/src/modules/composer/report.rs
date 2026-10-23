@@ -62,6 +62,15 @@ impl RejectController {
     pub fn composing(&self) -> bool {
         self.editor.composing()
     }
+    pub fn focus(&mut self, focused: bool) {
+        if !focused {
+            self.editor.handle(
+                &mut self.view.reason,
+                crate::text_edit::Command::CancelPreedit,
+            );
+        }
+        self.view.edit = focused.then(|| self.editor.edit());
+    }
     pub fn handle(&mut self, command: crate::text_edit::Command) -> bool {
         let changed = self.editor.handle(&mut self.view.reason, command);
         self.view.edit = Some(self.editor.edit());

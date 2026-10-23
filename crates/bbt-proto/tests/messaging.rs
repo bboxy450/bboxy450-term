@@ -141,3 +141,25 @@ fn task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_overr
         assert!(serde_json::from_value::<TaskRequest>(request).is_err());
     }
 }
+
+#[test]
+fn unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes() {
+    use bbt_proto::messaging::TaskRequest;
+    let old =
+        json!({"op":"list","swarm_id":ID,"status":null,"assignee":null,"after":null,"limit":128});
+    let request: TaskRequest = serde_json::from_value(old.clone()).unwrap();
+    assert!(matches!(
+        request,
+        TaskRequest::List {
+            unassigned: false,
+            ..
+        }
+    ));
+    assert_eq!(serde_json::to_value(request).unwrap(), old);
+    let inventory = json!({"op":"list","unassigned":true,"swarm_id":null,"status":"open","assignee":null,"after":null,"limit":128});
+    assert_eq!(
+        serde_json::to_value(serde_json::from_value::<TaskRequest>(inventory.clone()).unwrap())
+            .unwrap(),
+        inventory
+    );
+}

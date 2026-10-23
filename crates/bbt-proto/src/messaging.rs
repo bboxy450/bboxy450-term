@@ -449,6 +449,8 @@ pub enum Response {
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum TaskRequest {
     List {
+        #[serde(default, skip_serializing_if = "is_false")]
+        unassigned: bool,
         swarm_id: Option<Ulid>,
         status: Option<String>,
         assignee: Option<String>,
@@ -481,6 +483,9 @@ pub enum TaskRequest {
         commit: Option<String>,
         verify_result: Option<TaskVerification>,
     },
+}
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

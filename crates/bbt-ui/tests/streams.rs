@@ -49,6 +49,51 @@ fn messages(rows: Vec<Message>) -> StreamDock {
     }
 }
 #[test]
+fn task_review_hits_follow_the_painted_clip_and_zero_exit_gate() {
+    use bbt_ui::modules::composer::{Report, Verification};
+    let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+    let mut view = StreamDock {
+        dock: true,
+        framed: false,
+        entries: vec![Entry::Report {
+            id: "actual-task-id".into(),
+            data: Report {
+                task: "Real task".into(),
+                status: "reported".into(),
+                summary: "done".into(),
+                verify_result: Some(Verification {
+                    exit_code: 1,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            review: true,
+        }],
+    };
+    let tree = layout(view.clone(), 300.);
+    let accept = node(&tree, "e0/accept").unwrap().rect;
+    let at = [accept.x + accept.w / 2., accept.y + accept.h / 2.];
+    assert_eq!(Regions::dock(&tree, &view).hit(at), None);
+    let Entry::Report { data, .. } = &mut view.entries[0] else {
+        unreachable!();
+    };
+    data.verify_result.as_mut().unwrap().exit_code = 0;
+    let tree = layout(view.clone(), 300.);
+    assert_eq!(
+        Regions::dock(&tree, &view).hit(at),
+        Some(Action::Accept("actual-task-id".into()))
+    );
+    let scroll = c::Element::ScrollView(c::ScrollView {
+        viewport: [300., 12.],
+        offset: [0.; 2],
+        content_width: Some(300.),
+        content: Box::new(view.element(ctx, &Metrics)),
+    })
+    .layout(Rect::new(0., 0., 300., 12.), ctx, &Metrics)
+    .unwrap();
+    assert_eq!(Regions::dock(&scroll, &view).hit(at), None);
+}
+#[test]
 fn chronology_foreign_authority_and_unknown_delivery_remain_independent() {
     let a = Message {
         from: "first worker".into(),

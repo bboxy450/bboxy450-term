@@ -12,6 +12,8 @@ use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     sync::Arc,
 };
+mod history;
+pub use history::{History, HistoryAction};
 
 pub const MAX_RESULTS: usize = 64;
 pub const MAX_RESULT_BYTES: usize = 1024 * 1024;
@@ -194,10 +196,15 @@ pub fn message_view(
     }
 }
 
-fn assignee_name(reference: &str, model: &crate::model::Model) -> String {
+pub fn assignee_seat(reference: &str) -> Option<bbt_proto::SeatId> {
     reference
         .strip_prefix("seat:")
-        .and_then(|id| id.parse::<bbt_ui_model::SeatId>().ok())
+        .unwrap_or(reference)
+        .parse()
+        .ok()
+}
+fn assignee_name(reference: &str, model: &crate::model::Model) -> String {
+    assignee_seat(reference)
         .and_then(|id| model.ui.seats.get(&id))
         .map_or_else(|| reference.to_owned(), |seat| seat.name.clone())
 }
@@ -434,8 +441,19 @@ pub struct Client {
     pending: Option<Pending>,
     seen: BTreeMap<Ulid, u64>,
     pub status: Status,
+    groups: VecDeque<SendGroup>,
+}
+/// Presentation metadata binds a role pick to its actual journaled sends.
+/// Receipts always come from the shared MessageRow projections.
+pub struct SendGroup {
+    pub swarm: SwarmId,
+    pub label: String,
+    pub ids: Vec<Ulid>,
 }
 impl Client {
+    pub fn groups(&self) -> &VecDeque<SendGroup> {
+        &self.groups
+    }
     /// The caller reserves the whole bounded UI queue batch before `admitted`.
     /// Scope is captured from the selected stage; no first/default swarm exists.
     pub fn prepare(
@@ -612,6 +630,39 @@ impl Client {
         self.status = Status::Pending;
         self.seen.clear();
         let commands = std::mem::take(&mut batch.commands);
+        if !batch.pending.draft.delegate
+            && batch
+                .pending
+                .draft
+                .to
+                .iter()
+                .any(|address| address.kind == "role")
+        {
+            self.groups.push_back(SendGroup {
+                swarm: batch.pending.swarm,
+                label: batch
+                    .pending
+                    .draft
+                    .to
+                    .iter()
+                    .map(|address| address.label.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                ids: commands
+                    .iter()
+                    .filter_map(|message| {
+                        if let UiMsg::Messaging { id, .. } = message {
+                            Some(*id)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
+            });
+            while self.groups.len() > 32 {
+                self.groups.pop_front();
+            }
+        }
         self.pending = Some(batch.pending);
         commands
     }
@@ -708,6 +759,79 @@ impl Client {
     }
 }
 
+pub fn message_entries(
+    rows: &[wire::MessageRow],
+    contexts: &BTreeMap<Ulid, String>,
+    groups: &VecDeque<SendGroup>,
+    swarm: SwarmId,
+    model: &crate::model::Model,
+    read: Option<(&str, u64)>,
+) -> Vec<bbt_ui::modules::stream_dock::Entry> {
+    use bbt_ui::modules::stream_dock::{Entry, Receipts};
+    let mut out = vec![];
+    let mut shown = BTreeSet::new();
+    for row in rows {
+        if !shown.insert(row.id) {
+            continue;
+        }
+        let mut view = message_view(row, model);
+        view.ch = contexts
+            .get(&row.id)
+            .and_then(|path| path.strip_prefix("channels/"))
+            .map(String::from);
+        view.unread = read.is_some_and(|(stream, read)| {
+            row.bus
+                .as_ref()
+                .is_some_and(|bus| bus.stream == stream && bus.seq > read)
+        });
+        let mut gap = None;
+        if let Some(group) = groups
+            .iter()
+            .find(|group| group.swarm == swarm && group.ids.contains(&row.id))
+        {
+            let members: Vec<_> = group
+                .ids
+                .iter()
+                .filter_map(|id| rows.iter().find(|row| row.id == *id))
+                .collect();
+            shown.extend(group.ids.iter().copied());
+            view.to_label = Some(format!("{} · {} recipients", group.label, group.ids.len()));
+            if members.len() == group.ids.len() {
+                view.receipts = Some(Receipts {
+                    delivered: members.iter().map(|row| row.receipts.delivered).sum(),
+                    acked: members.iter().map(|row| row.receipts.acked).sum(),
+                    held: members.iter().map(|row| row.receipts.held).sum(),
+                });
+                view.unread = members.iter().any(|row| {
+                    read.is_some_and(|(stream, read)| {
+                        row.bus
+                            .as_ref()
+                            .is_some_and(|bus| bus.stream == stream && bus.seq > read)
+                    })
+                });
+            } else {
+                view.receipts = None;
+                gap = Some(format!(
+                    "receipt coverage incomplete · {} of {} message projections",
+                    members.len(),
+                    group.ids.len()
+                ));
+            }
+        }
+        out.push(Entry::Message {
+            data: Box::new(view),
+            show_channel: Some(true),
+        });
+        if let Some(text) = gap {
+            out.push(Entry::Note {
+                text,
+                padding: [4.; 4],
+            });
+        }
+    }
+    out
+}
+
 #[derive(Clone)]
 enum Saved {
     Message { swarm: SwarmId, request: Request },
@@ -781,16 +905,21 @@ pub struct Records {
     pending: BTreeMap<Ulid, RecordRequest>,
     waiting: VecDeque<Read>,
     tasks: VecDeque<wire::TaskCard>,
+    unassigned: VecDeque<wire::TaskCard>,
     docs: VecDeque<wire::TaskDoc>,
     nodes: Vec<wire::Node>,
     pub task_next: Option<Ulid>,
+    pub unassigned_next: Option<Ulid>,
     pub tree_next: BTreeMap<String, Option<String>>,
     pub issue: Option<String>,
     pub omitted: usize,
+    pub selected: Option<Ulid>,
+    pub review_issue: Option<(Ulid, String)>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Read {
     Tasks(Option<Ulid>),
+    Unassigned(Option<Ulid>),
     Detail(Ulid),
     Tree(String, Option<String>),
 }
@@ -808,14 +937,84 @@ impl Records {
     pub fn tasks(&self) -> &VecDeque<wire::TaskCard> {
         &self.tasks
     }
+    pub fn unassigned(&self) -> &VecDeque<wire::TaskCard> {
+        &self.unassigned
+    }
     pub fn task(&self, id: Ulid) -> Option<&wire::TaskCard> {
-        self.tasks.iter().find(|t| t.id == id)
+        self.tasks
+            .iter()
+            .chain(&self.unassigned)
+            .find(|t| t.id == id)
     }
     pub fn doc(&self, id: Ulid) -> Option<&wire::TaskDoc> {
         self.docs.iter().find(|t| t.id == id)
     }
     pub fn nodes(&self) -> &[wire::Node] {
         &self.nodes
+    }
+    pub fn entries(
+        &self,
+        model: &crate::model::Model,
+        reject: Option<(Ulid, &bbt_ui::modules::composer::Reject)>,
+    ) -> Vec<bbt_ui::modules::stream_dock::Entry> {
+        use bbt_ui::modules::stream_dock::Entry;
+        let mut out: Vec<_> = self
+            .tasks
+            .iter()
+            .map(|card| Entry::Task {
+                data: task_item(card, model),
+                delegate: true,
+            })
+            .collect();
+        if !self.unassigned.is_empty() {
+            out.push(Entry::Note {
+                text: "Unassigned tasks · account".into(),
+                padding: [4.; 4],
+            });
+            out.extend(self.unassigned.iter().map(|card| Entry::Task {
+                data: task_item(card, model),
+                delegate: true,
+            }));
+        }
+        if let Some(card) = self.selected.and_then(|id| self.task(id))
+            && let Some(doc) = self.doc(card.id)
+        {
+            match task_report(card, doc) {
+                Ok(Some(mut report)) => {
+                    if let Some((id, reason)) = reject
+                        && id == card.id
+                    {
+                        report.reject = Some(reason.clone());
+                    }
+                    out.push(Entry::Report {
+                        id: card.id.to_string(),
+                        data: report,
+                        review: true,
+                    });
+                }
+                Err(reason) => out.push(Entry::Note {
+                    text: reason.into(),
+                    padding: [4.; 4],
+                }),
+                _ => {}
+            }
+        }
+        if let Some(issue) = &self.issue {
+            out.push(Entry::Note {
+                text: issue.clone(),
+                padding: [4.; 4],
+            });
+        }
+        if self.omitted > 0 {
+            out.push(Entry::Note {
+                text: format!(
+                    "{} records outside this window · retained on the backend",
+                    self.omitted
+                ),
+                padding: [4.; 4],
+            });
+        }
+        out
     }
     pub fn select(&mut self, scope: SwarmId) {
         if self.scope == Some(scope) {
@@ -848,13 +1047,27 @@ impl Records {
         // ids until the operator repeats that same action explicitly.
         self.pending.retain(|_, p| p.read.is_none() || !p.unknown);
         self.enqueue(Read::Tasks(None));
+        self.enqueue(Read::Unassigned(None));
         for path in ["channels", "groups"] {
             self.enqueue(Read::Tree(path.into(), None));
+        }
+    }
+    pub fn task_notice(&mut self, id: Option<Ulid>) {
+        self.enqueue(Read::Tasks(None));
+        self.enqueue(Read::Unassigned(None));
+        if let Some(id) = id {
+            self.docs.retain(|doc| doc.id != id);
+            if self.task(id).is_some() {
+                self.enqueue(Read::Detail(id));
+            }
         }
     }
     pub fn more_tasks(&mut self) {
         if let Some(next) = self.task_next {
             self.enqueue(Read::Tasks(Some(next)));
+        }
+        if let Some(next) = self.unassigned_next {
+            self.enqueue(Read::Unassigned(Some(next)));
         }
     }
     pub fn more_tree(&mut self, path: &str) {
@@ -863,8 +1076,12 @@ impl Records {
         }
     }
     pub fn detail(&mut self, id: Ulid) {
-        if self.task(id).is_some() {
-            self.enqueue(Read::Detail(id));
+        if let Some(task) = self.task(id) {
+            let scoped = task.assignee.is_some();
+            self.selected = Some(id);
+            if scoped {
+                self.enqueue(Read::Detail(id));
+            }
         }
     }
     pub fn commands(&mut self) -> Vec<UiMsg> {
@@ -878,11 +1095,12 @@ impl Records {
             };
             let id = Ulid::new();
             let command = match &read {
-                Read::Tasks(after) => UiMsg::Task {
+                Read::Tasks(after) | Read::Unassigned(after) => UiMsg::Task {
                     id,
                     request: TaskRequest::List {
-                        swarm_id: Some(Ulid::from(scope.0.0)),
-                        status: None,
+                        unassigned: matches!(&read, Read::Unassigned(_)),
+                        swarm_id: matches!(&read, Read::Tasks(_)).then(|| Ulid::from(scope.0.0)),
+                        status: matches!(&read, Read::Unassigned(_)).then(|| "open".into()),
                         assignee: None,
                         after: *after,
                         limit: Some(128),
@@ -993,36 +1211,75 @@ impl Records {
             if let Reply::Unknown(reason) = &row.reply {
                 p.unknown = true;
                 self.issue = Some(format!("task/read outcome unknown · {reason}"));
+                if let Some(task) = p.task {
+                    self.review_issue = Some((
+                        task,
+                        format!("outcome unknown · repeat the same action to retry · {reason}"),
+                    ));
+                }
                 changed = true;
                 continue;
             }
             let p = self.pending.remove(&row.op).unwrap();
             match (&p.read, &row.reply) {
-                (Some(Read::Tasks(after)), Reply::Task(TaskResponse::Items { items, next })) => {
+                (
+                    Some(Read::Tasks(after) | Read::Unassigned(after)),
+                    Reply::Task(TaskResponse::Items { items, next }),
+                ) => {
+                    let unassigned = matches!(&p.read, Some(Read::Unassigned(_)));
+                    if unassigned
+                        && items
+                            .iter()
+                            .any(|card| card.status != "open" || card.assignee.is_some())
+                    {
+                        self.issue = Some("unassigned_inventory_mismatch".into());
+                        changed = true;
+                        continue;
+                    }
+                    for card in items {
+                        if self.task(card.id) != Some(card) {
+                            self.docs.retain(|doc| doc.id != card.id);
+                        }
+                    }
+                    let target = if unassigned {
+                        &mut self.unassigned
+                    } else {
+                        &mut self.tasks
+                    };
                     if after.is_none() {
-                        self.tasks.clear();
+                        target.clear();
                         self.omitted = 0;
                     }
-                    self.task_next = *next;
-                    for card in items {
-                        if let Some(i) = self.tasks.iter().position(|t| t.id == card.id) {
-                            self.tasks.remove(i);
-                        }
-                        self.tasks.push_back(card.clone());
-                        if card.status == "reported" && self.docs.iter().all(|d| d.id != card.id) {
-                            self.enqueue(Read::Detail(card.id));
-                        }
+                    if unassigned {
+                        self.unassigned_next = *next;
+                    } else {
+                        self.task_next = *next;
                     }
-                    while self.tasks.len() > 128
-                        || serde_json::to_vec(&self.tasks).map_or(true, |b| b.len() > 256 * 1024)
+                    for card in items {
+                        if let Some(i) = target.iter().position(|t| t.id == card.id) {
+                            target.remove(i);
+                        }
+                        target.push_back(card.clone());
+                    }
+                    while target.len() > 128
+                        || serde_json::to_vec(&target).map_or(true, |b| b.len() > 256 * 1024)
                     {
-                        if self.tasks.pop_front().is_none() {
+                        if target.pop_front().is_none() {
                             break;
                         }
                         self.omitted += 1;
                     }
-                    self.docs
-                        .retain(|d| self.tasks.iter().any(|t| t.id == d.id));
+                    for card in items {
+                        if card.status == "reported" && self.docs.iter().all(|d| d.id != card.id) {
+                            self.enqueue(Read::Detail(card.id));
+                        }
+                    }
+                    self.docs.retain(|d| {
+                        self.tasks
+                            .iter()
+                            .chain(&self.unassigned)
+                            .any(|t| t.id == d.id)
+                    });
                 }
                 (Some(Read::Detail(id)), Reply::Task(TaskResponse::Item { item }))
                     if item.id == *id =>
@@ -1062,6 +1319,7 @@ impl Records {
                 }
                 (None, Reply::Task(TaskResponse::Applied)) => {
                     self.issue = None;
+                    self.review_issue = None;
                     self.enqueue(Read::Tasks(None));
                     if let Some(task) = p.task {
                         self.docs.retain(|d| d.id != task);
@@ -1069,7 +1327,10 @@ impl Records {
                     }
                 }
                 (_, Reply::Refused(reason)) => {
-                    self.issue = Some(reason.chars().take(512).collect())
+                    self.issue = Some(reason.chars().take(512).collect());
+                    if let Some(task) = p.task {
+                        self.review_issue = Some((task, reason.chars().take(512).collect()));
+                    }
                 }
                 _ => self.issue = Some("unexpected_task_or_tree_reply".into()),
             }
