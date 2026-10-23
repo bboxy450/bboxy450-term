@@ -498,6 +498,13 @@ briefs Executors from the specs, never from this note.
     (old and new version, subjects added and removed, rows dropped), no new
     record type (rejected: new = head plus unsubscribe, which silently loses
     still-authorized pending rows; `Start::All` for the new version).
+    (h) The composer's role chip fans out at send time (Oracle, L9-M-c,
+    2026-10-23): the W2.4 tree has no role sink, so a role resolves to the
+    exact seats holding it in the current registry membership, one
+    `Messaging` request per seat with its own id, receipt and ledger row,
+    shown as one role send with N receipts; refused with a named reason
+    above 32 seats (rejected: an invented role path or a new tree sink;
+    groups remain their own destination from `Ls`).
     Rejected: an app-owned cursor tail instead of a durable consumer (loses
     restart-resume); ack on write (loses rows on a crash between poll and
     socket); unread from the consumer cursor (a restart would mark everything

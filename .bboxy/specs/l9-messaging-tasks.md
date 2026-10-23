@@ -13,7 +13,7 @@ links:
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[ux-prototype]]", rel: ui }
 created: 2026-10-23T18:28:25Z
-updated: 2026-10-23T20:16:00Z
+updated: 2026-10-23T21:13:25Z
 ---
 # L9-M — messaging and tasks in the app
 
@@ -75,7 +75,7 @@ Pushes to the app, all of them, travel on **Kestrel's W2.6b lane**: `GuiReply::E
 
 ## 4. The UI, from the lab
 
-- **Compose** (`compose.html`): a DM to a seat, a post to a channel or the swarm stream with `kind`, routed through the messaging tree; decision #26 keyboard rules apply (the composer is a text field).
+- **Compose** (`compose.html`): a DM to a seat, a post to a channel or the swarm stream with `kind`, routed through the messaging tree; decision #26 keyboard rules apply (the composer is a text field). **The role chip fans out at send time** (decision #38 (h), Oracle ruling for L9-M-c, 2026-10-23): the W2.4 tree has no role sink, so a send to a role resolves to the exact seats holding that role in the current registry membership and issues one `Messaging` request per seat, each with its own id, receipt and ledger row; the UI shows one role send with N receipts. Above 32 seats the send is refused with a named reason. No invented role path, no new tree sink; groups stay their own destination, as `Ls` lists them.
 - **Stream dock** (`stream.html`, `message-row.html`): rows from `List` pages plus live `Event`s, each showing its issuer kind (decision #4, §2b: `local-dev` marked), subchannel tabs with unread from the consumer cursor, receipts on the operator's own sends.
 - **Task rows** under seats ([[ux-prototype]] task rows): from `TaskRequest::List` plus `task/*/status` events; delegate from a seat row or the launcher; report arrives as an event and a notice on the delegating seat; accept and reject from the row.
 - Unread badges per seat row (`Seat.unread` in the ui-model) come from the lane, not from a second query.
