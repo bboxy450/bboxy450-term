@@ -1,0 +1,42 @@
+--- a/crates/bbt-mux/src/logic.rs
++++ b/crates/bbt-mux/src/logic.rs
+@@ -2270,7 +2270,38 @@
+                 | Action::ReadRing { .. }
+                 | Action::PublishCheckpoint { .. }
+         ));
+-        retry_capture(|| self.request_for_seat(seat, action.clone()))
++        // Temporary read-only measurement; never changes the request result or retry policy.
++        static TRACE: OnceLock<bool> = OnceLock::new();
++        let info = if *TRACE.get_or_init(|| std::env::var_os("BBOXY_TRACE_READRING_RTT").is_some()) {
++            match &action {
++                Action::ReadRing { attachment, from, to } => Some((attachment.generation, *from, *to)),
++                _ => None,
++            }
++        } else {
++            None
++        };
++        let Some((generation, from, to)) = info else {
++            return retry_capture(|| self.request_for_seat(seat, action.clone()));
++        };
++        let mut attempt = 0u32;
++        retry_capture(|| {
++            attempt += 1;
++            let start = Instant::now();
++            let result = self.request_for_seat(seat, action.clone());
++            let elapsed_us = start.elapsed().as_micros();
++            let (records, bytes) = match &result {
++                Ok(Reply::RingHistory { history }) => (
++                    history.records.len(),
++                    history.records.iter().map(|record| match &record.event {
++                        Event::Output { bytes, .. } => bytes.len(),
++                        _ => 0,
++                    }).sum::<usize>(),
++                ),
++                _ => (0, 0),
++            };
++            eprintln!("READRING_RTT wall_ms={} seat={seat} generation={generation} from={from} to={to} attempt={attempt} elapsed_us={elapsed_us} records={records} bytes={bytes} ok={}", now_ms(), result.is_ok());
++            result
++        })
+     }
+     fn run(&mut self, commands: &mut mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
+         let mut scan_at = Instant::now();

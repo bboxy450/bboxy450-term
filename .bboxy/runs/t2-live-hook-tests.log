@@ -1,0 +1,10 @@
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 3.19s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-8904b9b34a87a919)
+
+running 2 tests
+test verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds ... ok
+test verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.03s
+

@@ -1,0 +1,23 @@
+{
+  "gated_commit": "23caced7d4c59fc3e721f7560e5ee3189481767a",
+  "command": [
+    "git",
+    "diff",
+    "--exit-code",
+    "23caced",
+    "--",
+    "Cargo.toml",
+    "Cargo.lock",
+    "crates",
+    "scripts",
+    "lab",
+    "design",
+    ".cargo",
+    ".github",
+    "AGENTS.md"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "logic_restored_sha256": "16fdfd7e151fc08c666af9f7b40320208a26e3e276a99baf6898c2451eeb3c9d",
+  "meaning": "No tracked product source changes after exact passed gate; pending additions are t2 evidence logs only. Oracle71547b71 authorizes exact gated source handoff despite newer main."
+}

@@ -1,0 +1,9 @@
+SOURCE=23caced7d4c59fc3e721f7560e5ee3189481767a PLUS_PATCH_SHA256=4a4d1f2d9892276a18874311f67a631f411fb39f0da77904d109bee5b4827367
+COMMAND=["cargo", "build", "--release", "-p", "bboxy450-term", "--locked"] (optimized + debug assertions)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `release` profile [optimized] target(s) in 35.04s
+
+ACTUAL_EXIT=0 ELAPSED_SECONDS=35.10659224999836

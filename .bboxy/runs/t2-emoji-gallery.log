@@ -1,0 +1,44 @@
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.29s
+     Running `target/debug/examples/terminal_gallery target/t2-live-1792738261650322000/headless-emoji-fit`
+rendered codex-dark-1x
+rendered claude-dark-1x
+rendered palette-dark-1x
+rendered unicode-dark-1x
+rendered progress-dark-1x
+rendered alternate-dark-1x
+rendered scroll-links-sync-dark-1x
+rendered osc7501-claude-dark-1x
+rendered osc7501-preflight-dark-1x
+rendered osc7501-codex-dark-1x
+rendered codex-light-1x
+rendered claude-light-1x
+rendered palette-light-1x
+rendered unicode-light-1x
+rendered progress-light-1x
+rendered alternate-light-1x
+rendered scroll-links-sync-light-1x
+rendered osc7501-claude-light-1x
+rendered osc7501-preflight-light-1x
+rendered osc7501-codex-light-1x
+rendered codex-dark-2x
+rendered claude-dark-2x
+rendered palette-dark-2x
+rendered unicode-dark-2x
+rendered progress-dark-2x
+rendered alternate-dark-2x
+rendered scroll-links-sync-dark-2x
+rendered osc7501-claude-dark-2x
+rendered osc7501-preflight-dark-2x
+rendered osc7501-codex-dark-2x
+rendered codex-light-2x
+rendered claude-light-2x
+rendered palette-light-2x
+rendered unicode-light-2x
+rendered progress-light-2x
+rendered alternate-light-2x
+rendered scroll-links-sync-light-2x
+rendered osc7501-claude-light-2x
+rendered osc7501-preflight-light-2x
+rendered osc7501-codex-light-2x
+EXIT=0

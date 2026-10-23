@@ -1,0 +1,39 @@
+{
+  "unchanged_pngs": 36,
+  "total": 40,
+  "cases": [
+    {
+      "variant": "unicode-dark-1x.png",
+      "before_percent": 8.06032986111111,
+      "after_percent": 8.053819444444445,
+      "fullwidth_crop_before": 25.256410256410255,
+      "fullwidth_crop_after": 24.294871794871796
+    },
+    {
+      "variant": "unicode-light-1x.png",
+      "before_percent": 7.350694444444445,
+      "after_percent": 7.342447916666667,
+      "fullwidth_crop_before": 23.333333333333332,
+      "fullwidth_crop_after": 22.115384615384613
+    },
+    {
+      "variant": "unicode-dark-2x.png",
+      "before_percent": 5.872829861111111,
+      "after_percent": 5.871961805555555,
+      "fullwidth_crop_before": 19.006410256410255,
+      "fullwidth_crop_after": 18.878205128205128
+    },
+    {
+      "variant": "unicode-light-2x.png",
+      "before_percent": 5.888346354166667,
+      "after_percent": 5.888346354166667,
+      "fullwidth_crop_before": 17.94871794871795,
+      "fullwidth_crop_after": 17.94871794871795
+    }
+  ],
+  "read_image": "target/t2-live-1792738261650322000/cjk-before-after.png",
+  "sha256": "106cb188c7f05174f09d2bfd2a4bd5518377370db77d60712fb144d0b00cdbbf"
+}
+METRICS_EXIT0
+IMAGE READ original cjk-before-after.png: xterm/before/after/diff per density/theme. PingFang forms differ subtly from AppleSymbols; reference glyph/baseline residue remains, no claim of exact visual parity. Brown mark leaking from following emoji row is visible at crop bottom and belongs to upcoming color-ink cell fit.36/40 headless PNGs remain byte-identical; only unicode4 changes.
+Regression red-before EXIT101: fullwidth1 selected AppleSymbols; after EXIT0: fullwidth forms choosePingFang at1x/2x, ASCII keepsMenlo. Gallery render EXIT0.

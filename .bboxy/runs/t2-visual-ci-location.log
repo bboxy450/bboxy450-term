@@ -1,0 +1,8 @@
+{
+  "sha": "bedb0c9a0f68eaea2b98c9ec55ec7cc34f6327a3",
+  "worktree": "/tmp/ci-aster-t2-visual-3cv4df68",
+  "target": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-visual-ci-bedb0c9",
+  "parity": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-visual-parity-bedb0c9",
+  "clean_before_gate": true,
+  "gate_pid": 29079
+}

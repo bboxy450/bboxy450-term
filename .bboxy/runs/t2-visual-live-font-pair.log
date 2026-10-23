@@ -1,0 +1,7 @@
+SOURCE_TREE=6cd8969; binary dbfe8d8e21d991142d281e55152fbd7a6231d5375aef0fe1123c661f260fca12 built from baace3b. git diff --quiet baace3b HEAD -- crates/bbt-render crates/bboxy450-term crates/bboxy-firehose EXIT0.
+COMMAND=["python3", "crates/bboxy-firehose/reference/live_capture.py", "--app", "/Users/feral/mydev/bboxy450-term-exec4/target/release/bboxy450-term", "--out", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/t2-aster-font-pair-myhnd35l", "--scene", "unicode", "--theme", "both", "--after", "4", "--timeout", "20"]
+{"case": "unicode-dark-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+{"case": "unicode-light-1x", "match_expected": true, "app_exit": -15, "remaining_pids": []}
+
+ACTUAL_EXIT=0 ELAPSED_SECONDS=12.500954165996518
+RETAINED=/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/live-font-pair; only owned temporary output directory removed after app cleanup.

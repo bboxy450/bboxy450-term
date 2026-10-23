@@ -1,0 +1,217 @@
+{
+  "argv": [
+    "/private/tmp/aster-t2-cadence-dayzwfi1/bboxy450-term",
+    "--run-dir",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/t2-speed-r06bwsmz",
+    "--meter",
+    "--spawn-zsh",
+    "4",
+    "--capture-after",
+    "12",
+    "--capture",
+    "/tmp/aster-t2-cadence-dayzwfi1/probe/capture.png",
+    "--grid-hash"
+  ],
+  "binary_sha256": "1d91ec0920ec2e169b7941bf0f598a0263e96c2a7fc785b7ee9ca3ebbf79d60f",
+  "memory_selector_compiled": true,
+  "runtime": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/t2-speed-r06bwsmz",
+  "owned": {
+    "47000": {
+      "parent": 46999,
+      "command": "/private/tmp/aster-t2-cadence-dayzwfi1/bboxy450-term --run-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/t2-speed-r06bwsmz --meter --spawn-zsh 4 --capture-after 12 --capture /tmp/aster-t2-cadence-dayzwfi1/probe/capture.png --grid-hash"
+    },
+    "47007": {
+      "parent": 47000,
+      "command": "/private/tmp/aster-t2-cadence-dayzwfi1/bboxy450-term supervisor"
+    },
+    "47008": {
+      "parent": 47000,
+      "command": "/private/tmp/aster-t2-cadence-dayzwfi1/bboxy450-term logic"
+    },
+    "47014": {
+      "parent": 47007,
+      "command": "/bin/zsh -il"
+    },
+    "47018": {
+      "parent": 47007,
+      "command": "/bin/zsh -il"
+    },
+    "47024": {
+      "parent": 47007,
+      "command": "/bin/zsh -il"
+    },
+    "47033": {
+      "parent": 47014,
+      "command": "seq 1 2000000000"
+    },
+    "47028": {
+      "parent": 47007,
+      "command": "/bin/zsh -il"
+    },
+    "47034": {
+      "parent": 47018,
+      "command": "seq 1 2000000000"
+    },
+    "47035": {
+      "parent": 47024,
+      "command": "seq 1 2000000000"
+    },
+    "47038": {
+      "parent": 47028,
+      "command": "seq 1 2000000000"
+    }
+  },
+  "app_pid": 47000,
+  "custody_witness": [
+    {
+      "db": "account/object.sqlite",
+      "key": "identity/local-issuer-history/1",
+      "custody": "memory"
+    },
+    {
+      "db": "account/object.sqlite",
+      "key": "identity/local-issuer",
+      "custody": "memory"
+    }
+  ],
+  "grid": {
+    "frame": 225,
+    "panes": [
+      {
+        "cols": 37,
+        "crop": [
+          317,
+          77,
+          296,
+          855
+        ],
+        "cursor": [
+          56,
+          0
+        ],
+        "fnv1a64": "1edc584694e0c478",
+        "modes": 163969,
+        "rows": 57,
+        "seat": "01M5M3985N21TCGFPJT70K77KA"
+      },
+      {
+        "cols": 37,
+        "crop": [
+          640,
+          77,
+          296,
+          855
+        ],
+        "cursor": [
+          56,
+          0
+        ],
+        "fnv1a64": "bb53c53feca48e3f",
+        "modes": 163969,
+        "rows": 57,
+        "seat": "01M5M3988H302BXNQDP0GR2VRD"
+      },
+      {
+        "cols": 37,
+        "crop": [
+          963,
+          77,
+          296,
+          855
+        ],
+        "cursor": [
+          56,
+          0
+        ],
+        "fnv1a64": "19c5cbb54eb26fb9",
+        "modes": 163969,
+        "rows": 57,
+        "seat": "01M5M398EDR7VZATS6QFR74YRA"
+      },
+      {
+        "cols": 37,
+        "crop": [
+          1286,
+          77,
+          296,
+          855
+        ],
+        "cursor": [
+          56,
+          0
+        ],
+        "fnv1a64": "72b3458f6019e5f0",
+        "modes": 163969,
+        "rows": 57,
+        "seat": "01M5M398G6Y3H68M56E0KS217R"
+      }
+    ],
+    "png": "/tmp/aster-t2-cadence-dayzwfi1/probe/capture.png",
+    "scale": 1.0,
+    "schema": "bboxy-firehose-screen-v1",
+    "theme": "dark"
+  },
+  "healthy_before_cleanup": true,
+  "signals": [
+    {
+      "pid": 47038,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47035,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47034,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47028,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47033,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47024,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47018,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47014,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47008,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47007,
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 47000,
+      "signal": "SIGTERM"
+    }
+  ],
+  "remaining_pids": [],
+  "app_exit": -15,
+  "elapsed_seconds": 14.616782458004309,
+  "samples": [
+    {
+      "pid": 47000,
+      "file": "/tmp/aster-t2-cadence-dayzwfi1/probe/sample-app.txt",
+      "exit": 0
+    },
+    {
+      "pid": 47008,
+      "file": "/tmp/aster-t2-cadence-dayzwfi1/probe/sample-logic.txt",
+      "exit": 0
+    }
+  ],
+  "runtime_removed": true
+}

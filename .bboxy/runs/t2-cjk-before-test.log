@@ -1,0 +1,70 @@
+   Compiling smallvec v1.16.3
+   Compiling num-traits v0.2.19
+   Compiling thiserror v2.0.21
+   Compiling syn v3.0.9
+   Compiling bitflags v2.13.2
+   Compiling syn v2.0.119
+   Compiling indexmap v2.14.2
+   Compiling flate2 v1.1.10
+   Compiling dispatch2 v0.3.1
+   Compiling parking_lot_core v0.9.12
+   Compiling parking_lot v0.12.5
+   Compiling png v0.18.1
+   Compiling objc2-core-foundation v0.3.2
+   Compiling euclid v0.22.14
+   Compiling serde_derive v1.0.229
+   Compiling bytemuck_derive v1.12.1
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck v1.25.2
+   Compiling tiny-skia-path v0.12.0
+   Compiling rgb v0.8.53
+   Compiling naga-types v30.0.1
+   Compiling zerocopy-derive v0.8.63
+   Compiling wgpu-types v30.0.1
+   Compiling objc2-foundation v0.3.2
+   Compiling zerocopy v0.8.63
+   Compiling serde v1.0.229
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling polycool v0.4.0
+   Compiling lyon_geom v1.0.20
+   Compiling tiny-skia v0.12.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+   Compiling kurbo v0.13.1
+   Compiling objc2-metal v0.3.2
+   Compiling lyon_path v1.0.19
+   Compiling lyon_tessellation v1.0.22
+   Compiling svgtypes v0.16.1
+   Compiling usvg v0.48.1
+   Compiling resvg v0.48.1
+   Compiling half v2.7.1
+   Compiling naga v30.0.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 28.67s
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-7e09036cc843ee38)
+
+running 1 test
+
+thread 'text::terminal::platform::tests::fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face' (13243216) panicked at crates/bbt-render/src/text/terminal_macos.rs:347:17:
+１: ["AppleSymbols"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test text::terminal::platform::tests::fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face ... FAILED
+
+failures:
+
+failures:
+    text::terminal::platform::tests::fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 48 filtered out; finished in 0.08s
+
+error: test failed, to rerun pass `-p bbt-render --lib`
+ACTUAL_EXIT=101 (expected101 before fix)

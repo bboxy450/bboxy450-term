@@ -1,0 +1,33 @@
+{
+  "unchanged_pngs": 36,
+  "total": 40,
+  "cases": [
+    {
+      "variant": "unicode-dark-1x.png",
+      "before_percent": 8.053819444444445,
+      "after_percent": 8.169270833333334
+    },
+    {
+      "variant": "unicode-light-1x.png",
+      "before_percent": 7.342447916666667,
+      "after_percent": 7.457899305555555
+    },
+    {
+      "variant": "unicode-dark-2x.png",
+      "before_percent": 5.871961805555555,
+      "after_percent": 5.798719618055555
+    },
+    {
+      "variant": "unicode-light-2x.png",
+      "before_percent": 5.888346354166667,
+      "after_percent": 5.815538194444445
+    }
+  ],
+  "read_image": "target/t2-live-1792738261650322000/emoji-fit-before-after.png",
+  "sha256": "a6468d64ed3a5140fdcf3d1df69e383ced64a90fd8a55e032a9d895ec3fe8c58"
+}
+METRICS_EXIT0
+IMAGE READ emoji-fit-before-after.png: original1x/2x dark/light rows, DOM limitation labelled. All native clusters remain present at the same parser positions; complete color ink now fits the cell. Raw DOM diff gets worse at1x (~+0.115pp) and improves at2x (~-0.073pp); no claim of universal pixel improvement.36/40 headless PNGs unchanged, only Unicode4 differs.
+Before regression ACTUAL_EXIT101: fox1x alpha at(1,-1), outside16x15 cell. After ACTUAL_EXIT0: all tested fox/ZWJ/family/rainbow/skin-tone glyph alpha stays inside2-cell/line-height bounds at1x/2x and remains nonempty. Shape and buffer cell positions unchanged.
+Mechanism: CTLine image_bounds(None) measures complete shaped ink; uniform CoreGraphics transform fits width and line height, no enlargement; centered ink plus final fringe clip. BGRA atlas and linear-correct shader unchanged. No CTLine/CTRun/CGContext stored; Send-only Fonts invariant unchanged.
+Cross-thread rasterization regression EXIT0, identical main/worker glyph bytes after the fit.

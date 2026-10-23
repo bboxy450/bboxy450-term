@@ -1,0 +1,20 @@
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.00s
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-7e09036cc843ee38)
+
+running 1 test
+
+thread 'text::terminal::platform::tests::color_emoji_ink_fits_its_cell_box_at_each_density' (13274911) panicked at crates/bbt-render/src/text/terminal_macos.rs:368:25:
+🦊 1x: ink at (1, -1) outside 16x15
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test text::terminal::platform::tests::color_emoji_ink_fits_its_cell_box_at_each_density ... FAILED
+
+failures:
+
+failures:
+    text::terminal::platform::tests::color_emoji_ink_fits_its_cell_box_at_each_density
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 49 filtered out; finished in 0.09s
+
+error: test failed, to rerun pass `-p bbt-render --lib`
+ACTUAL_EXIT=101 (expected101 before cell fit)

@@ -1,0 +1,51 @@
+     Locking 66 packages to highest Rust 1.99.0 compatible versions
+   Compiling proc-macro2 v1.0.107
+   Compiling libc v0.2.191
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling zmij v1.0.23
+   Compiling serde_core v1.0.229
+   Compiling cfg-if v1.0.5
+   Compiling serde_json v1.0.154
+   Compiling serde v1.0.229
+   Compiling getrandom v0.3.4
+   Compiling zerocopy v0.8.63
+   Compiling winnow v1.0.4
+   Compiling parking_lot_core v0.9.12
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling winnow v0.7.15
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling smallvec v1.16.3
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling unicode-width v0.2.2
+   Compiling log v0.4.34
+   Compiling cursor-icon v1.2.0
+   Compiling syn v3.0.9
+   Compiling base64 v0.22.1
+   Compiling rand_core v0.9.5
+   Compiling parking_lot v0.12.5
+   Compiling serde_derive v1.0.229
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling bitflags v2.13.2
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui-model)
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.5
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling ulid v1.2.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+   Compiling t2-snapshot-cost v0.0.0 (/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/speed-bench)
+    Finished `release` profile [optimized] target(s) in 12.91s
+     Running `target/t2-live-1792738261650322000/speed-bench/target/release/t2-snapshot-cost`
+{"checkpoint_bytes":351360,"checkpoint_clone":{"mean_ms":0.005339579999999996,"min_ms":0.005,"n":100,"p50_ms":0.005125,"p95_ms":0.00625},"checkpoint_to_json_value":{"mean_ms":2.62138511,"min_ms":1.215875,"n":100,"p50_ms":2.203541,"p95_ms":5.2075000000000005},"cols":80,"history_limit":0,"rows":24,"screen_from_term":{"mean_ms":2.625455859999999,"min_ms":1.203125,"n":100,"p50_ms":2.517625,"p95_ms":4.740042},"screen_json_wire":{"mean_ms":0.17522538999999995,"min_ms":0.11445799999999999,"n":100,"p50_ms":0.121375,"p95_ms":0.329667},"visible_cells_clone":{"mean_ms":0.008237549999999998,"min_ms":0.003208,"n":100,"p50_ms":0.010125,"p95_ms":0.010667}}
+{"checkpoint_bytes":798105,"checkpoint_clone":{"mean_ms":0.012052020000000007,"min_ms":0.011792,"n":100,"p50_ms":0.012,"p95_ms":0.012292},"checkpoint_to_json_value":{"mean_ms":5.596433340000002,"min_ms":2.953916,"n":100,"p50_ms":5.25875,"p95_ms":9.241333},"cols":77,"history_limit":0,"rows":57,"screen_from_term":{"mean_ms":6.277299139999999,"min_ms":3.2075,"n":100,"p50_ms":6.047042,"p95_ms":10.338625},"screen_json_wire":{"mean_ms":0.4817178999999999,"min_ms":0.258834,"n":100,"p50_ms":0.387208,"p95_ms":0.883166},"visible_cells_clone":{"mean_ms":0.03402455,"min_ms":0.007958000000000002,"n":100,"p50_ms":0.023667,"p95_ms":0.10212500000000001}}
+{"checkpoint_bytes":1629643,"checkpoint_clone":{"mean_ms":0.025128300000000013,"min_ms":0.022291000000000002,"n":100,"p50_ms":0.022917,"p95_ms":0.051959000000000005},"checkpoint_to_json_value":{"mean_ms":12.286534600000003,"min_ms":6.63125,"n":100,"p50_ms":11.42,"p95_ms":19.072499999999998},"cols":158,"history_limit":0,"rows":57,"screen_from_term":{"mean_ms":10.97541629,"min_ms":6.989040999999999,"n":100,"p50_ms":10.299916,"p95_ms":17.088583},"screen_json_wire":{"mean_ms":0.86928418,"min_ms":0.5445,"n":100,"p50_ms":0.7494999999999999,"p95_ms":1.495917},"visible_cells_clone":{"mean_ms":0.03822665000000002,"min_ms":0.016458,"n":100,"p50_ms":0.046583,"p95_ms":0.059584}}
+{"checkpoint_bytes":7748113,"checkpoint_clone":{"mean_ms":0.20417450000000004,"min_ms":0.12879100000000002,"n":100,"p50_ms":0.15045799999999998,"p95_ms":0.364541},"checkpoint_to_json_value":{"mean_ms":56.578385880000006,"min_ms":38.948625,"n":100,"p50_ms":53.336957999999996,"p95_ms":77.94500000000001},"cols":77,"history_limit":1000,"rows":57,"screen_from_term":{"mean_ms":49.74886826,"min_ms":32.303041,"n":100,"p50_ms":47.107625,"p95_ms":77.1365},"screen_json_wire":{"mean_ms":0.5519829299999999,"min_ms":0.265791,"n":100,"p50_ms":0.632333,"p95_ms":0.814375},"visible_cells_clone":{"mean_ms":0.00900995,"min_ms":0.008041,"n":100,"p50_ms":0.008167,"p95_ms":0.008749999999999999}}
+EXIT=0

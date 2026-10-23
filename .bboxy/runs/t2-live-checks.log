@@ -1,0 +1,126 @@
+{
+  "source": "01026665606ebd78f44ab7a0d25702ecd5c09a10",
+  "binary_sha256": "7807e06e6f017980146e3f129bea0900d1d8fbfc6ba9f4b08a34cb089585244c",
+  "scenes": [
+    {
+      "scene": "codex",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/codex.ansi",
+      "input_bytes": 767,
+      "input_sha256": "33d676584500a40cd7126ddd233f1d3ededf1f88c5d7861448ad9c3775110cff",
+      "input_exit": 0,
+      "check": "codex seed=42 80x24 fnv1a64=af10134782b46681",
+      "check_exit": 0
+    },
+    {
+      "scene": "claude",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/claude.ansi",
+      "input_bytes": 778,
+      "input_sha256": "f264322502d5c622a55abfe12fbb789d40b9d59b763f38f5c63c76de7b6e6fe9",
+      "input_exit": 0,
+      "check": "claude seed=42 80x24 fnv1a64=383d92c5c132719a",
+      "check_exit": 0
+    },
+    {
+      "scene": "palette",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/palette.ansi",
+      "input_bytes": 2806,
+      "input_sha256": "624790b93f03d720a765c2589dbb1ecaf6b7dd34807fa6d86f4bd7e3c504a9d6",
+      "input_exit": 0,
+      "check": "palette seed=42 80x24 fnv1a64=374de81d0f7b8aa6",
+      "check_exit": 0
+    },
+    {
+      "scene": "unicode",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/unicode.ansi",
+      "input_bytes": 1409,
+      "input_sha256": "636e8c41ad26d99b7ab2dccc0d1e655f7e45d67156dc75e8d5e58f9d18b059b9",
+      "input_exit": 0,
+      "check": "unicode seed=42 80x24 fnv1a64=c585318383de0833",
+      "check_exit": 0
+    },
+    {
+      "scene": "progress",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/progress.ansi",
+      "input_bytes": 2452,
+      "input_sha256": "233358bea535800f904ef497404f5ebaf4b1108b575842dccb25e2decf8ca162",
+      "input_exit": 0,
+      "check": "progress seed=42 80x24 fnv1a64=a1a8923034c9b2f3",
+      "check_exit": 0
+    },
+    {
+      "scene": "alternate",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/alternate.ansi",
+      "input_bytes": 722,
+      "input_sha256": "864ce67fd330e958a44ec1b01d04a28448fe30af287698b7e05f1f9133222be1",
+      "input_exit": 0,
+      "check": "alternate seed=42 80x24 fnv1a64=7ae14925efd425d2",
+      "check_exit": 0
+    },
+    {
+      "scene": "scroll-links-sync",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/scroll-links-sync.ansi",
+      "input_bytes": 1254,
+      "input_sha256": "b1dc733c08207dbb4df134c2f60fb8c3cf517ed962df6f21209a10cbc7f2a953",
+      "input_exit": 0,
+      "check": "scroll-links-sync seed=42 80x24 fnv1a64=e8c8282603029a40",
+      "check_exit": 0
+    },
+    {
+      "scene": "osc7501-claude",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/osc7501-claude.ansi",
+      "input_bytes": 772,
+      "input_sha256": "4ef13a7cf8ab116bba7ea4f63c4d6490bd8a9990c86bfe16c8e2510d6f3f4db0",
+      "input_exit": 0,
+      "check": "osc7501-claude seed=42 80x24 fnv1a64=bc12654d7d8da675",
+      "check_exit": 0
+    },
+    {
+      "scene": "osc7501-preflight",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/osc7501-preflight.ansi",
+      "input_bytes": 587,
+      "input_sha256": "06303cc7dcb4d7780064e2626fe4c2bccb0da9f0ab33054cb20dd41d396451ef",
+      "input_exit": 0,
+      "check": "osc7501-preflight seed=42 80x24 fnv1a64=61637783be3702b6",
+      "check_exit": 0
+    },
+    {
+      "scene": "osc7501-codex",
+      "seed": 42,
+      "cols": 80,
+      "rows": 24,
+      "input_file": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/inputs/osc7501-codex.ansi",
+      "input_bytes": 627,
+      "input_sha256": "3abd0c44d1ad16a8e7140c5ffe7512d1690f2ab4a69f22f166ae92c13dd2684c",
+      "input_exit": 0,
+      "check": "osc7501-codex seed=42 80x24 fnv1a64=b822608a1187611d",
+      "check_exit": 0
+    }
+  ]
+}

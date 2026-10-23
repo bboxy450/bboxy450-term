@@ -1,0 +1,8 @@
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.58s
+EXIT=0

@@ -1,0 +1,26 @@
+T2 live audit restart — Aster Cinderwing <EXECUTOR>
+Oracle GO da817fa5; accepted C1i-2 base0102666.
+Only writing worktree exec4; rebase onto0102666 EXIT0. No new app/renderer changes.
+AGENTS now forbids desktop driving/screenshots/AppleEvents; own app flags/sockets/--capture only. No GUI automation will be used.
+Ghostty absent from /Applications, ~/Applications and PATH. iTerm installed. Missing-path ls returned nonzero; containing shell group ended0 from command -v screencapture. No screencapture executed.
+Initial rg used nonexistent cells/terminal/mod.rs (nonzero); corrected to cells/terminal.rs.
+Capture controls/reference scope decisions sent to Oracle ca5e4800 and Seraph26f3ea65; awaiting replies while deterministic input/reference prep continues.
+Run directory /Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000
+COMMAND ['cargo', 'build', '--release', '-p', 'bboxy-firehose', '--locked'] EXIT0 elapsed=0.209s
+
+Oracle e0a6f3b6: xterm headless reference stays primary; iTerm2/Ghostty screenshots explicitly UNPROVEN until operator supplies them. Main.rs --theme and --grid-hash hooks authorized. This Mac only1x Dell; actual live2x remainsUNPROVEN, headless scale2 is the2x gate. Never fake live2x.
+Source-read confirmation: model::build copies previous.ui.window including theme; only initial IO theme must be passed. Requested narrow live.rs RenderContext/theme/test-constructor scope extension and --grid-size80x24 verification control (frozen hash is80x24, present pane158x57). No app source edits yet.
+Seraph931214b8 confirms coming hooks only spawn-zsh/capture-after/VERIFY_INPUT, no theme/scale/grid/hash. Kestrel f3b3f8e9 plans provider readiness gate adjacent to capture; preserve it.
+Release firehose build EXIT0;20 scene/check CLI runs EXIT0. All four pinned xterm reports10/10 semantic viewport matches, each with identical input digest to current payloads. Inventory does not constitute new live visual evidence.
+No new app processes or desktop automation started. No Screen Recording permission request or screencapture attempted.
+COMMAND ['cargo', 'run', '--locked', '-p', 'bbt-render', '--example', 'terminal_gallery', '--', '/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless'] EXIT0 elapsed=43.775s
+COMMAND ['cargo', 'test', '-p', 'bboxy450-term', '--bin', 'bboxy450-term', '--locked', 'verification_tests', '--', '--nocapture'] EXIT101 elapsed=8.307s
+Initial hook test compile EXIT101: SeatId/Theme intentionally lack serde; metadata now uses canonical ULID/theme strings, no type changes.
+COMMAND ['cargo', 'test', '-p', 'bboxy450-term', '--bin', 'bboxy450-term', '--locked', 'verification_tests', '--', '--nocapture'] EXIT0 elapsed=3.641s
+COMMAND ['cargo', 'build', '-p', 'bboxy450-term', '--locked'] EXIT0 elapsed=3.197s
+First live probe EXIT1: runtime socket path exceeded macOS SUN_LEN. Moved runtime only to an owned short /tmp/t2-aster-* path; evidence stays in exec4 target.
+COMMAND ['python3', 'crates/bboxy-firehose/reference/live_capture.py', '--out', '/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/live-probe2', '--scene', 'palette', '--theme', 'dark'] EXIT0 elapsed=6.512s
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings'] EXIT0 elapsed=19.258s
+
+First20-case matrix EXIT1: 13/20 exact screen hashes; failures=osc7501-claude-dark,osc7501-preflight-dark,codex-light,palette-light,scroll-links-sync-light,osc7501-claude-light,osc7501-preflight-light. All remaining_pids empty; normal external cleanupSIGTERM app exit-15 except named grid timeout app1. Captures are retained, not a visual pass.
+FIFO comparison did not resolve early captures (1/4 matches, EXIT1); rejected pacing as explanation. OSC claude read shows echoed query reply ^[]7501;?^G at cursor23,11. Driver now disables PTY echo. Delayed capture originally started before fitting/typing; moving only grid-verification timer to readiness, normal Seraph path unchanged. A subsequent settled-probe was accidentally started before build completed; its app digests are old and cannot verify the timer fix.

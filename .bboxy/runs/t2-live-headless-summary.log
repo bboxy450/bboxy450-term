@@ -1,0 +1,607 @@
+{
+  "method": "max RGB channel difference>12/255, equal-size native canvases, no resampling",
+  "source": "0102666",
+  "path": "headless1x/2x, not a live2x window",
+  "cases": [
+    {
+      "name": "codex",
+      "variant": "codex-dark-1x",
+      "file": "codex-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 12004,
+      "changed_percent": 5.210069444444445,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "f156637e2aba6ad9b3edb057a9b1218b434bdfc6121cee969136b4603f5b5bbd",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/codex-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "claude",
+      "variant": "claude-dark-1x",
+      "file": "claude-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 13411,
+      "changed_percent": 5.820746527777778,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "7b45c2459c5f06717736cc0bd466e65848aff9f60595856419673a11c4ea55b9",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/claude-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "palette",
+      "variant": "palette-dark-1x",
+      "file": "palette-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 7671,
+      "changed_percent": 3.3294270833333335,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "6d3347c072d11ba961b2765d998a6a3444ec1a233375dd5867fca529cb8d4065",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/palette-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "unicode",
+      "variant": "unicode-dark-1x",
+      "file": "unicode-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 18571,
+      "changed_percent": 8.06032986111111,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "d8db77683444e1c780d38c3fa71263a3184bd468eaed001635c827f1ffe16d62",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/unicode-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "progress",
+      "variant": "progress-dark-1x",
+      "file": "progress-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 5508,
+      "changed_percent": 2.390625,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "7a34c235059580353bf29c3f06074e9e14ce38419ce81c4e19128fb3be5902cb",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/progress-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "alternate",
+      "variant": "alternate-dark-1x",
+      "file": "alternate-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 4404,
+      "changed_percent": 1.9114583333333333,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "d52313f71de9d09931dd2ccbf2de1945b8e6286b1cb47787c243a97d1e1062c7",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/alternate-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-dark-1x",
+      "file": "scroll-links-sync-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 12272,
+      "changed_percent": 5.326388888888889,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "fbe82ff2e792bc3d8ea3c1d3dc20e871cc2dbbe0798c488e6f2c025400654b90",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/scroll-links-sync-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-dark-1x",
+      "file": "osc7501-claude-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 5831,
+      "changed_percent": 2.5308159722222223,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "8b93d7913a6f1e0d0e54101c20a6e3df205e877d2dba051ce98bae89ebdc4915",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-claude-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-dark-1x",
+      "file": "osc7501-preflight-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 5751,
+      "changed_percent": 2.49609375,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "894a49d7c805be7b0ccc6302790122ebd3b0d5ba250275c2c62d613902d2a9f4",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-preflight-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-dark-1x",
+      "file": "osc7501-codex-dark-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 8286,
+      "changed_percent": 3.5963541666666665,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "0bce00d613a7deb4e39630c9901566a8c826ce9a7241c5e884b278b3f3f7278f",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-codex-dark-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "codex",
+      "variant": "codex-light-1x",
+      "file": "codex-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 12900,
+      "changed_percent": 5.598958333333333,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "d95f700b752c7b737cfc607d78eee01a04cc674b6953cd92ec8e2ffb10133003",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/codex-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "claude",
+      "variant": "claude-light-1x",
+      "file": "claude-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 11610,
+      "changed_percent": 5.0390625,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "7b2c0cbbaad583fdd27a020070483208309dad5fc3467816a26f9761f525c7a9",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/claude-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "palette",
+      "variant": "palette-light-1x",
+      "file": "palette-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 6788,
+      "changed_percent": 2.9461805555555554,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "659bff92fe6e0d8d850ad7189ef858749f1a15c299f901fa07114c65b95a9cd7",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/palette-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "unicode",
+      "variant": "unicode-light-1x",
+      "file": "unicode-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 16936,
+      "changed_percent": 7.350694444444445,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "e199c8a493a660f00d41dce2202757427a1ece606425c6b8f356bbc09cd0fba5",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/unicode-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "progress",
+      "variant": "progress-light-1x",
+      "file": "progress-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 5118,
+      "changed_percent": 2.2213541666666665,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "08af723b4327eb3f510e8d754704db6ac30ca83ec3afc71bcd7e141ccd80c8e2",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/progress-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "alternate",
+      "variant": "alternate-light-1x",
+      "file": "alternate-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 4073,
+      "changed_percent": 1.7677951388888888,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "d1e426b39754a8a5be0a1abac121d17676e87e007134abc7ecd9f175e77ab119",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/alternate-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-light-1x",
+      "file": "scroll-links-sync-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 12701,
+      "changed_percent": 5.512586805555555,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "bc69fa00193ae51d695917af7d4e53f19fa1df8e61a84bc0a81f01a895588d2a",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/scroll-links-sync-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-light-1x",
+      "file": "osc7501-claude-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 4982,
+      "changed_percent": 2.162326388888889,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "1dfd72fd8f624ed1b4974b12c05a8354d2faac2eb3b42d0d81cf8b18301d089f",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-claude-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-light-1x",
+      "file": "osc7501-preflight-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 4891,
+      "changed_percent": 2.122829861111111,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "1fd5ecf600cd2edb1323a55f8f07f637fad58f3c8fb8e68788fb1921205f2cf2",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-preflight-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-light-1x",
+      "file": "osc7501-codex-light-1x.png",
+      "size": [
+        640,
+        360
+      ],
+      "changed_pixels_gt12": 6880,
+      "changed_percent": 2.986111111111111,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "d91cf65a96ee89c91b82752ae4e471802b5c99833324701d102a04750f2da053",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-codex-light-1x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "codex",
+      "variant": "codex-dark-2x",
+      "file": "codex-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 32683,
+      "changed_percent": 3.5463324652777777,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "46ef1080d46a08cad5bb9e74fc6bea6ab6cc8735da639e238bc52523ea3f0959",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/codex-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "claude",
+      "variant": "claude-dark-2x",
+      "file": "claude-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 34916,
+      "changed_percent": 3.7886284722222223,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "55bdb61d83cae4eb818866894109298f2493a474f22b5b5a3652360331f46c66",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/claude-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "palette",
+      "variant": "palette-dark-2x",
+      "file": "palette-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 21113,
+      "changed_percent": 2.2909071180555554,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "87b5127de453be80e5f522b94d86ef98b4981cc04ff73c3ab68477cd147dd842",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/palette-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "unicode",
+      "variant": "unicode-dark-2x",
+      "file": "unicode-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 54124,
+      "changed_percent": 5.872829861111111,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "aa5524a61f3c97cb777987f53c801ec8cb03b793d627da5ea3268a79e979a929",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/unicode-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "progress",
+      "variant": "progress-dark-2x",
+      "file": "progress-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 14431,
+      "changed_percent": 1.5658637152777777,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "d907a65a0bc6b8cb3c7b5e958499750013df5e052fe2b5e6c59d70483e677961",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/progress-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "alternate",
+      "variant": "alternate-dark-2x",
+      "file": "alternate-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 11106,
+      "changed_percent": 1.205078125,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "cb04abc15b1af7bf6de0c82f8245554266c8aa832338970ae5f9f1cc096ded39",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/alternate-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-dark-2x",
+      "file": "scroll-links-sync-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 32528,
+      "changed_percent": 3.529513888888889,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "2b67b8f5fcad5d11da36959abd63c03c7e2accffb4dafaabd3664a2e2d04d911",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/scroll-links-sync-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-dark-2x",
+      "file": "osc7501-claude-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 14916,
+      "changed_percent": 1.6184895833333333,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "242c343479e83fe0f5e58887dfb29358dc4da8feb612fe86c309d059825bbb0b",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-claude-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-dark-2x",
+      "file": "osc7501-preflight-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 14595,
+      "changed_percent": 1.5836588541666667,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "9eebe115addb8b63a8deddd33ac635370a187b3c6a807829e5c8143bf6f369dd",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-preflight-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-dark-2x",
+      "file": "osc7501-codex-dark-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 21262,
+      "changed_percent": 2.3070746527777777,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "d0a2eaa67925c56120df8004a1ae9c35aebbf1f5105645e4a5525a6288c8316a",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-codex-dark-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "codex",
+      "variant": "codex-light-2x",
+      "file": "codex-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 35378,
+      "changed_percent": 3.8387586805555554,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "b2e21aabea05c5da38baae432a91dd25140fccae206798c7838521e026e6a777",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/codex-light-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "claude",
+      "variant": "claude-light-2x",
+      "file": "claude-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 33251,
+      "changed_percent": 3.6079644097222223,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "0113f9e36c42a170f408f808c3c9e8e775845c633ee227120d0e23529ac60a98",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/claude-light-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "palette",
+      "variant": "palette-light-2x",
+      "file": "palette-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 19588,
+      "changed_percent": 2.1254340277777777,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "d11fa9b16cf63b05089b7a16c0b1106a5180dbd380487224e88e96694881fc65",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/palette-light-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "unicode",
+      "variant": "unicode-light-2x",
+      "file": "unicode-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 54267,
+      "changed_percent": 5.888346354166667,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "44241985d881a0b2e4392d238335065e208ae7c629a9c1a1ba1bb4f6888b025d",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/unicode-light-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "progress",
+      "variant": "progress-light-2x",
+      "file": "progress-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 14264,
+      "changed_percent": 1.5477430555555556,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "e0cd443c17c91045f9791d244ab41c98424762c2f7ccb1bae24ee69b12ccd9c9",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/progress-light-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "alternate",
+      "variant": "alternate-light-2x",
+      "file": "alternate-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 10904,
+      "changed_percent": 1.1831597222222223,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "8a0995bfa302009e223bbe5914903934f292af3eaa84c88b2114c4451811a5ff",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/alternate-light-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-light-2x",
+      "file": "scroll-links-sync-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 33951,
+      "changed_percent": 3.6839192708333335,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "528ccd00491f9aaf9bca9260beac080386b2e7143cf07a4ce00352420c095fb9",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/scroll-links-sync-light-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-light-2x",
+      "file": "osc7501-claude-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 13864,
+      "changed_percent": 1.5043402777777777,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "39e5f0e25a8dbf5f3fb1a96a19b25033a1e1b6228bcf495eb267174675612400",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-claude-light-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-light-2x",
+      "file": "osc7501-preflight-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 13555,
+      "changed_percent": 1.4708116319444444,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "8da90c9029419e75efd548cd3237b6a09dacaa66b775a9ed4ac6d4b59cd6e9c1",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-preflight-light-2x.png",
+      "image_read_by_agent": false
+    },
+    {
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-light-2x",
+      "file": "osc7501-codex-light-2x.png",
+      "size": [
+        1280,
+        720
+      ],
+      "changed_pixels_gt12": 19523,
+      "changed_percent": 2.118381076388889,
+      "byte_equal_to_accepted_native": true,
+      "native_sha256": "25ec6f3a9952d5514156b84016c7fbbde693f40a6af3af684255de9f86e4a363",
+      "read_strip": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless-review/osc7501-codex-light-2x.png",
+      "image_read_by_agent": false
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+SCREEN_DUMP_EXIT=0
+Swift font probes EXIT0: all joined emoji strings shape to1 glyph with ligature0/1; simple ligature-toggle hypothesis REFUTED, no source change made. AppleSymbols covers fullwidth FF11/FF1A and precedes PingFang in font fallback; Menlo does not cover them.
+Isolated local CDP DOM probe EXIT0: ONLY unicode scene,1920/1920 buffer cells exact, cursor exact. Temporary copy retained stock10/10 display text; that printed summary is not a10-scene claim. Proper report semanticExactScenes=1 for1 scene.
+Image READ target/t2-live-1792738261650322000/emoji-before-crop.png: original2x emoji row, xterm vs headless. Native valid clusters retain parser positions and are larger; DOM compresses clusters and separates whiteflag/rainbow spans.
+{"text": "🦊", "html": "<span style=\"letter-spacing: 0px;\">🦊</span>", "rect": {"x": 112.203125, "y": 90, "w": 16, "h": 15}}
+{"text": "🚀", "html": "<span style=\"letter-spacing: 0px;\">🚀</span>", "rect": {"x": 136.21875, "y": 90, "w": 16, "h": 15}}
+{"text": "🔧", "html": "<span style=\"letter-spacing: 0px;\">🔧</span>", "rect": {"x": 160.234375, "y": 90, "w": 16, "h": 15}}
+{"text": "🌒", "html": "<span style=\"letter-spacing: 0px;\">🌒</span>", "rect": {"x": 184.25, "y": 90, "w": 16, "h": 15}}
+{"text": "👩‍💻", "html": "<span style=\"letter-spacing: 0px;\">👩‍💻</span>", "rect": {"x": 224.296875, "y": 90, "w": 16, "h": 15}}
+{"text": "👨‍👩‍👧‍👦", "html": "<span style=\"letter-spacing: 0px;\">👨‍👩‍👧‍👦</span>", "rect": {"x": 248.3125, "y": 90, "w": 16, "h": 15}}
+{"text": "🏳️‍", "html": "<span style=\"letter-spacing: -8px;\">🏳️‍</span>", "rect": {"x": 272.328125, "y": 90, "w": 8, "h": 15}}
+{"text": "🌈", "html": "<span style=\"letter-spacing: 0px;\">🌈</span>", "rect": {"x": 280.328125, "y": 90, "w": 16, "h": 15}}
+{"text": "👍🏽", "html": "<span style=\"letter-spacing: 0px;\">👍🏽</span>", "rect": {"x": 320.375, "y": 90, "w": 16, "h": 15}}
+No new font/render source edits yet. Oracle decision requested with these contradictory DOM pixel/buffer positions.
+Oracle eeda7436 ruling: native cluster positions/shaping are correct; DOM cluster compression is a reference limitation, do not copy. Fix CJK fullwidth fallback first, then fit color glyph ink to actual2-cell/line-height box, not DOM13px.

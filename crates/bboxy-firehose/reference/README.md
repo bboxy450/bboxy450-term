@@ -75,3 +75,41 @@ claim of exact reference parity. The reference DOM renderer has missing
 Powerline glyphs, and CoreText coverage/decoration shapes differ from Chrome.
 Real iTerm2/Ghostty, live pane input/selection, font resize latency and R5 load
 measurements remain outside this headless checkpoint.
+
+## Live pane audit
+
+From the repository root, build a debug app and the release fixture, then:
+
+    cargo build -p bboxy450-term --locked
+    cargo build --release -p bboxy-firehose --locked
+    python3 crates/bboxy-firehose/reference/live_capture.py --out target/terminal-live
+    python3 crates/bboxy-firehose/reference/live_gallery.py \
+      --live target/terminal-live --headless crates/bboxy-firehose/reference/gallery/native \
+      --out target/terminal-live-gallery
+
+The driver uses only our app's flags and GPU capture. It opens one zsh at a time
+in a private runtime, fits its actual window to an 80×24 pane, disables PTY echo,
+and sends the real seed42 scene through the app's input queue. Grid readiness
+holds input until both pane geometry and the received Screen report 80×24.
+The delayed capture interval starts after readiness. A missing grid fails after
+10 seconds with verification-grid-size-unreachable and orderly child shutdown.
+
+The theme, grid-size and grid-hash flags are for verification. Hash metadata
+accompanies the actual GPU PNG as .grid.json, with the model's dimensions,
+cursor, modes, exact firehose-v1 hash and pane crop. The driver rejects a hash
+mismatch. Cleanup signals only recorded private PIDs, records each signal and
+real app exit, and removes only its own runtime. External SIGTERM cleanup is
+reported as exit -15, never as a graceful exit0.
+
+The app must contain the debug-only memory-custody selector; the driver checks
+for it before launching and sets BBOXY_TEST_CUSTODY=memory. A plain release
+app is rejected. Optimized measurements require building with
+CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true; never assume the environment
+variable alone selects memory in a production release.
+
+The gallery keeps original pixels, checks captured-image digests and reports
+both raw live/headless differences and a separately named metric excluding the
+focused cursor cell. Every generated image starts with its read status unproven;
+record actual image reads separately. The current machine supplies actual live
+1x only. Use the headless scale2 gallery for the 2x gate, and keep live2x and
+operator-supplied iTerm2/Ghostty comparisons explicitly unproven.

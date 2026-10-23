@@ -1,0 +1,28 @@
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":0,"text":"🦊"}
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":1,"text":"🦊"}
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":0,"text":"👩‍💻"}
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":1,"text":"👩‍💻"}
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":0,"text":"👨‍👩‍👧‍👦"}
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":1,"text":"👨‍👩‍👧‍👦"}
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":0,"text":"🏳️‍🌈"}
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":1,"text":"🏳️‍🌈"}
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":0,"text":"👍🏽"}
+{"advance":17,"fonts":["AppleColorEmoji"],"glyph_count":1,"ligature":1,"text":"👍🏽"}
+FACE Menlo 中 covered false glyphs [0] advance 13.0
+FACE Menlo １ covered false glyphs [0] advance 13.0
+FACE Menlo ： covered false glyphs [0] advance 13.0
+FACE Apple Symbols 中 covered false glyphs [0] advance 13.0
+FACE Apple Symbols １ covered true glyphs [3314] advance 13.0
+FACE Apple Symbols ： covered true glyphs [3323] advance 13.0
+FACE PingFang SC 中 covered true glyphs [183] advance 13.0
+FACE PingFang SC １ covered true glyphs [46669] advance 13.0
+FACE PingFang SC ： covered true glyphs [46639] advance 13.0
+SHAPE Menlo 👩‍💻 AppleColorEmoji 13.0 glyphs [1438] bounds [(0.37375, -3.25, 16.25, 16.25)]
+SHAPE Menlo 👨‍👩‍👧‍👦 AppleColorEmoji 13.0 glyphs [3237] bounds [(0.37375, -3.25, 16.25, 16.25)]
+SHAPE Menlo 🏳️‍🌈 AppleColorEmoji 13.0 glyphs [992] bounds [(0.37375, -3.25, 16.25, 16.25)]
+SHAPE Menlo 👍🏽 AppleColorEmoji 13.0 glyphs [1139] bounds [(0.37375, -3.25, 16.25, 16.25)]
+SHAPE Apple Color Emoji 👩‍💻 AppleColorEmoji 13.0 glyphs [1438] bounds [(0.37375, -3.25, 16.25, 16.25)]
+SHAPE Apple Color Emoji 👨‍👩‍👧‍👦 AppleColorEmoji 13.0 glyphs [3237] bounds [(0.37375, -3.25, 16.25, 16.25)]
+SHAPE Apple Color Emoji 🏳️‍🌈 AppleColorEmoji 13.0 glyphs [992] bounds [(0.37375, -3.25, 16.25, 16.25)]
+SHAPE Apple Color Emoji 👍🏽 AppleColorEmoji 13.0 glyphs [1139] bounds [(0.37375, -3.25, 16.25, 16.25)]
+EXIT=0

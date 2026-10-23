@@ -1,0 +1,8 @@
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxybook)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-supervisor)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-doc)
+    Finished `dev` profile [unoptimized] target(s) in 19.11s

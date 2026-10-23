@@ -1,0 +1,95 @@
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling smallvec v1.16.3
+   Compiling num-traits v0.2.19
+   Compiling thiserror v2.0.21
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+   Compiling indexmap v2.14.2
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy-firehose)
+   Compiling parking_lot_core v0.9.12
+   Compiling parking_lot v0.12.5
+   Compiling euclid v0.22.14
+   Compiling serde_derive v1.0.229
+   Compiling bytemuck_derive v1.12.1
+   Compiling thiserror-impl v2.0.21
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling bytemuck v1.25.2
+   Compiling dispatch2 v0.3.1
+   Compiling png v0.18.1
+   Compiling naga-types v30.0.1
+   Compiling wgpu-types v30.0.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling rgb v0.8.53
+   Compiling objc2-core-foundation v0.3.2
+   Compiling zerocopy-derive v0.8.63
+   Compiling zerocopy v0.8.63
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling polycool v0.4.0
+   Compiling lyon_geom v1.0.20
+   Compiling tiny-skia v0.12.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+   Compiling kurbo v0.13.1
+   Compiling lyon_path v1.0.19
+   Compiling objc2-foundation v0.3.2
+   Compiling lyon_tessellation v1.0.22
+   Compiling svgtypes v0.16.1
+   Compiling usvg v0.48.1
+   Compiling resvg v0.48.1
+   Compiling objc2-metal v0.3.2
+   Compiling half v2.7.1
+   Compiling naga v30.0.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Finished `dev` profile [unoptimized] target(s) in 35.55s
+     Running `target/debug/examples/terminal_gallery /Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/headless`
+rendered codex-dark-1x
+rendered claude-dark-1x
+rendered palette-dark-1x
+rendered unicode-dark-1x
+rendered progress-dark-1x
+rendered alternate-dark-1x
+rendered scroll-links-sync-dark-1x
+rendered osc7501-claude-dark-1x
+rendered osc7501-preflight-dark-1x
+rendered osc7501-codex-dark-1x
+rendered codex-light-1x
+rendered claude-light-1x
+rendered palette-light-1x
+rendered unicode-light-1x
+rendered progress-light-1x
+rendered alternate-light-1x
+rendered scroll-links-sync-light-1x
+rendered osc7501-claude-light-1x
+rendered osc7501-preflight-light-1x
+rendered osc7501-codex-light-1x
+rendered codex-dark-2x
+rendered claude-dark-2x
+rendered palette-dark-2x
+rendered unicode-dark-2x
+rendered progress-dark-2x
+rendered alternate-dark-2x
+rendered scroll-links-sync-dark-2x
+rendered osc7501-claude-dark-2x
+rendered osc7501-preflight-dark-2x
+rendered osc7501-codex-dark-2x
+rendered codex-light-2x
+rendered claude-light-2x
+rendered palette-light-2x
+rendered unicode-light-2x
+rendered progress-light-2x
+rendered alternate-light-2x
+rendered scroll-links-sync-light-2x
+rendered osc7501-claude-light-2x
+rendered osc7501-preflight-light-2x
+rendered osc7501-codex-light-2x

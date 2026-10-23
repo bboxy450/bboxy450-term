@@ -1,0 +1,19 @@
+{
+  "method": "Last6s accepted GUI operation ULIDs; stable4-seat benchmark has only Applied operations after setup; server dispatch timestamps are an ACK-rate proxy, not direct publish instrumentation.",
+  "accepted_operations": 38,
+  "elapsed_between_first_last_seconds": 5.803,
+  "ack_operations_per_second": 6.376012407375495,
+  "estimated_per_pane_updates_per_second": 1.5940031018438738,
+  "six_second_counts": {
+    "0": 9,
+    "1": 4,
+    "2": 7,
+    "3": 4,
+    "4": 4,
+    "5": 9,
+    "6": 1
+  },
+  "source": "baace3b atop830511f (936de7a fix)",
+  "healthy": true
+}
+ANALYSIS_EXIT0

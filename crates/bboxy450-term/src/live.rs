@@ -27,6 +27,7 @@ use winit::event_loop::EventLoopProxy;
 pub struct RenderContext {
     pub context: Arc<DeviceContext>,
     pub scale: f32,
+    pub theme: bbt_ui_model::tokens::Theme,
 }
 pub use bboxy450_term::cockpit::UiMsg;
 const COMMAND_CAPACITY: usize = 64;
@@ -162,7 +163,9 @@ async fn run(
     options.font.scale = rendering.scale.round().max(1.0) as u32;
     let mut preparer = PanePreparer::with_options(rendering.context, options)?;
     let mut grids = Grids::new();
-    let mut model = Arc::new(Model::default());
+    let mut initial = Model::default();
+    initial.ui.window.theme = rendering.theme;
+    let mut model = Arc::new(initial);
     publish(
         &seats,
         &identity,
@@ -483,7 +486,11 @@ mod tests {
         let (sender, commands) = command_channel();
         let (render, rendering) = oneshot::channel();
         render
-            .send(RenderContext { context, scale: 1. })
+            .send(RenderContext {
+                context,
+                scale: 1.,
+                theme: bbt_ui_model::tokens::Theme::Dark,
+            })
             .ok()
             .unwrap();
         let (lost_sender, mut lost_receiver) = mpsc::unbounded_channel();

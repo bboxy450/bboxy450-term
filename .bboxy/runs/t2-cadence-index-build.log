@@ -1,0 +1,10 @@
+SOURCE=b65776dee9c7d067811b407326dd5c80ec92e1ac
+COMMAND CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true cargo build --release -p bboxy450-term --locked
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `release` profile [optimized] target(s) in 24.24s
+
+ACTUAL_EXIT=0 ELAPSED_SECONDS=24.273437291005393

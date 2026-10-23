@@ -1,0 +1,50 @@
+{
+  "app_pid": 69985,
+  "argv": [
+    "/Users/feral/mydev/bboxy450-term-exec4/target/debug/bboxy450-term",
+    "--run-dir",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/t2-grid-du_04k7f",
+    "--spawn-zsh",
+    "0",
+    "--grid-size",
+    "80x24",
+    "--capture",
+    "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/grid-timeout/capture.png"
+  ],
+  "owned": {
+    "69985": {
+      "parent": 69974,
+      "command": "/Users/feral/mydev/bboxy450-term-exec4/target/debug/bboxy450-term --run-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/t2-grid-du_04k7f --spawn-zsh 0 --grid-size 80x24 --capture /Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/grid-timeout/capture.png"
+    },
+    "69989": {
+      "parent": 69985,
+      "command": "/Users/feral/mydev/bboxy450-term-exec4/target/debug/bboxy450-term supervisor"
+    },
+    "69990": {
+      "parent": 69985,
+      "command": "/Users/feral/mydev/bboxy450-term-exec4/target/debug/bboxy450-term logic"
+    }
+  },
+  "app_exit": 1,
+  "elapsed_seconds": 10.93791120799142,
+  "named_error": true,
+  "children_reaped": true,
+  "remaining_pids": [],
+  "signals": [],
+  "capture_absent": true
+}
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=0
+cockpit ready: supervisor=69989 logic=69990
+logic: orderly shutdown requested
+verification-grid-size-unreachable: expected Some((80, 24))
+app close requested; stopping IO owner
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+Error: "verification-grid-size-unreachable: expected Some((80, 24))"

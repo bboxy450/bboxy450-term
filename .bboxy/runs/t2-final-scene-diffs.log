@@ -1,0 +1,286 @@
+{
+  "method": "Raw max RGB channel difference >12/255 against pinned xterm DOM, original pixels, no masking. DOM emoji compression/Powerline limitations remain; percentage is not a universal correctness score.",
+  "source": "23caced",
+  "cases": [
+    {
+      "variant": "alternate-dark-1x.png",
+      "before_percent": 1.9114583333333335,
+      "after_percent": 1.9114583333333335,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "alternate-dark-2x.png",
+      "before_percent": 1.205078125,
+      "after_percent": 1.205078125,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "alternate-light-1x.png",
+      "before_percent": 1.767795138888889,
+      "after_percent": 1.767795138888889,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "alternate-light-2x.png",
+      "before_percent": 1.1831597222222223,
+      "after_percent": 1.1831597222222223,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "claude-dark-1x.png",
+      "before_percent": 5.820746527777778,
+      "after_percent": 5.820746527777778,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "claude-dark-2x.png",
+      "before_percent": 3.788628472222222,
+      "after_percent": 3.788628472222222,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "claude-light-1x.png",
+      "before_percent": 5.0390625,
+      "after_percent": 5.0390625,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "claude-light-2x.png",
+      "before_percent": 3.6079644097222223,
+      "after_percent": 3.6079644097222223,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "codex-dark-1x.png",
+      "before_percent": 5.210069444444445,
+      "after_percent": 5.210069444444445,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "codex-dark-2x.png",
+      "before_percent": 3.546332465277778,
+      "after_percent": 3.546332465277778,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "codex-light-1x.png",
+      "before_percent": 5.598958333333334,
+      "after_percent": 5.598958333333334,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "codex-light-2x.png",
+      "before_percent": 3.8387586805555554,
+      "after_percent": 3.8387586805555554,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-claude-dark-1x.png",
+      "before_percent": 2.5308159722222223,
+      "after_percent": 2.5308159722222223,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-claude-dark-2x.png",
+      "before_percent": 1.6184895833333335,
+      "after_percent": 1.6184895833333335,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-claude-light-1x.png",
+      "before_percent": 2.162326388888889,
+      "after_percent": 2.162326388888889,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-claude-light-2x.png",
+      "before_percent": 1.5043402777777777,
+      "after_percent": 1.5043402777777777,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-codex-dark-1x.png",
+      "before_percent": 3.596354166666667,
+      "after_percent": 3.596354166666667,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-codex-dark-2x.png",
+      "before_percent": 2.307074652777778,
+      "after_percent": 2.307074652777778,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-codex-light-1x.png",
+      "before_percent": 2.986111111111111,
+      "after_percent": 2.986111111111111,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-codex-light-2x.png",
+      "before_percent": 2.118381076388889,
+      "after_percent": 2.118381076388889,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-preflight-dark-1x.png",
+      "before_percent": 2.49609375,
+      "after_percent": 2.49609375,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-preflight-dark-2x.png",
+      "before_percent": 1.5836588541666665,
+      "after_percent": 1.5836588541666665,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-preflight-light-1x.png",
+      "before_percent": 2.122829861111111,
+      "after_percent": 2.122829861111111,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "osc7501-preflight-light-2x.png",
+      "before_percent": 1.4708116319444444,
+      "after_percent": 1.4708116319444444,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "palette-dark-1x.png",
+      "before_percent": 3.3294270833333335,
+      "after_percent": 3.3294270833333335,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "palette-dark-2x.png",
+      "before_percent": 2.290907118055556,
+      "after_percent": 2.290907118055556,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "palette-light-1x.png",
+      "before_percent": 2.946180555555556,
+      "after_percent": 2.946180555555556,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "palette-light-2x.png",
+      "before_percent": 2.1254340277777777,
+      "after_percent": 2.1254340277777777,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "progress-dark-1x.png",
+      "before_percent": 2.390625,
+      "after_percent": 2.390625,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "progress-dark-2x.png",
+      "before_percent": 1.5658637152777777,
+      "after_percent": 1.5658637152777777,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "progress-light-1x.png",
+      "before_percent": 2.2213541666666665,
+      "after_percent": 2.2213541666666665,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "progress-light-2x.png",
+      "before_percent": 1.5477430555555556,
+      "after_percent": 1.5477430555555556,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "scroll-links-sync-dark-1x.png",
+      "before_percent": 5.326388888888889,
+      "after_percent": 5.326388888888889,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "scroll-links-sync-dark-2x.png",
+      "before_percent": 3.529513888888889,
+      "after_percent": 3.529513888888889,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "scroll-links-sync-light-1x.png",
+      "before_percent": 5.512586805555555,
+      "after_percent": 5.512586805555555,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "scroll-links-sync-light-2x.png",
+      "before_percent": 3.6839192708333335,
+      "after_percent": 3.6839192708333335,
+      "delta_percentage_points": 0.0,
+      "png_unchanged": true
+    },
+    {
+      "variant": "unicode-dark-1x.png",
+      "before_percent": 8.06032986111111,
+      "after_percent": 8.169270833333334,
+      "delta_percentage_points": 0.10894097222222321,
+      "png_unchanged": false
+    },
+    {
+      "variant": "unicode-dark-2x.png",
+      "before_percent": 5.872829861111111,
+      "after_percent": 5.798719618055555,
+      "delta_percentage_points": -0.07411024305555536,
+      "png_unchanged": false
+    },
+    {
+      "variant": "unicode-light-1x.png",
+      "before_percent": 7.350694444444445,
+      "after_percent": 7.457899305555555,
+      "delta_percentage_points": 0.10720486111111072,
+      "png_unchanged": false
+    },
+    {
+      "variant": "unicode-light-2x.png",
+      "before_percent": 5.888346354166667,
+      "after_percent": 5.815538194444445,
+      "delta_percentage_points": -0.07280815972222232,
+      "png_unchanged": false
+    }
+  ]
+}

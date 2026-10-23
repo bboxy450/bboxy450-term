@@ -1,0 +1,8 @@
+{
+  "source_claim": "Seraph f9a5c4bd, main1d9102b release p4 executable",
+  "source_path": "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/bboxy-before",
+  "copy_path": "/Users/feral/mydev/bboxy450-term-exec4/target/t2-live-1792738261650322000/bboxy-before-1d9102b",
+  "source_sha256": "052dc74fa00978396fff49f7f03ea062423a66ab701c537d1e25b3da9fd58d5e",
+  "copy_sha256": "052dc74fa00978396fff49f7f03ea062423a66ab701c537d1e25b3da9fd58d5e"
+}
+COPY_AND_HASH_EXIT0

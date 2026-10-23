@@ -1,0 +1,6 @@
+usage: live_capture.py [-h] [--app APP] [--firehose FIREHOSE] --out OUT
+                       [--scene SCENE] [--theme {dark,light,both}]
+                       [--after AFTER] [--timeout TIMEOUT]
+                       [--pacing {fifo,metal}]
+live_capture.py: error: app-without-memory-custody: use debug or release with debug assertions
+ACTUAL_EXIT=2 (expected2)
