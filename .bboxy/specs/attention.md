@@ -11,7 +11,7 @@ links:
   - { to: "[[gui-components]]", rel: focus-model }
   - { to: "[[c1-live-seats]]", rel: wire }
 created: 2026-10-23T22:28:21Z
-updated: 2026-10-23T22:28:21Z
+updated: 2026-10-23T22:31:44Z
 ---
 # Attention
 
@@ -42,10 +42,14 @@ The seat state the adapters already produce: `Activity::Waiting(kind)` with `kin
 
 - One notification per waiting episode: title the seat's name and harness, body the first line of the question or the permission being asked, **identifier = the seat id** so a repeat replaces rather than stacks, removed when the seat leaves `waiting`.
 - **Click → `Focus(seat)`**: raise the window, switch space and tab as needed, focus the pane; the same path as a sidebar click, including the landing rule (the swell fires after the switch).
-- **Mechanism.** `UNUserNotificationCenter` with the app as its own delegate, which requires a **bundle**: the build produces `bboxy450-term.app` (Info.plist with `CFBundleIdentifier`, the binary inside) for dev and release runs alike, ad-hoc signed; Developer ID signing stays deferred (decision #24). Without a bundle (a bare `cargo run`), the in-window swell still runs and the notification falls back to `osascript display notification`, which cannot route the click; the app says so once in the log.
+- **Mechanism.** `UNUserNotificationCenter` with the app as its own delegate, which requires a **bundle**: the build produces `bboxy450-term.app` (Info.plist with `CFBundleIdentifier`, the binary inside) for dev and release runs alike, ad-hoc signed; Developer ID signing stays deferred (decision #24). Without a bundle (a bare `cargo run`), the in-window swell still runs and **no notification is posted**; the app says so once in the log. No `osascript` fallback: `AGENTS.md` bans desktop scripting (Oracle, 2026-10-23).
 - Settings: notifications on by default; per-harness off; "only when the window is not frontmost" as the one option.
 
-## 4. Acceptance, the spec signs off
+## 4. Order
+
+G3 (the centred rim, Seraph) → G5 (the kit capability, Seraph) → attention, assigned after W2.6b lands because it rides the events lane (Oracle, 2026-10-23).
+
+## 5. Acceptance, the spec signs off
 
 1. A fixture seat entering `Waiting(Question)` shows the row and block loop within one event-lane delivery; leaving `waiting` stops it; focusing it stops it and plays one swell.
 2. Layout and focus unchanged by the loop: [[glow-never-moves-layout]] and [[rim-size-is-layout]] pass; a focus-model test shows focus unchanged until a click or a notification response.

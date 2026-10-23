@@ -676,8 +676,10 @@ briefs Executors from the specs, never from this note.
     path. Mechanism decision: the build produces `bboxy450-term.app` with an
     `Info.plist` for every run, ad-hoc signed (Developer ID stays deferred,
     #24), because a bare binary has no bundle identifier and cannot post a
-    clickable notification; the unbundled fallback is `osascript`, which
-    cannot route the click. Muted seats never notify. Rejected: polling
+    clickable notification; an unbundled run swells in the window and
+    posts nothing (no `osascript` fallback: `AGENTS.md` bans desktop
+    scripting, Oracle's correction). Ad-hoc signing is not identity
+    signing, so #24 holds (Oracle). Muted seats never notify. Rejected: polling
     the harness for questions (the adapters already report them); a
     notification that steals focus on its own; a separate notification
     daemon.
