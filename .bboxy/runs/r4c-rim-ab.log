@@ -1,0 +1,54 @@
+R4C rim re-measure (rim-glow spec §6 acceptance 3). Paired A/B, order rim, lane, lane, rim, 2026-10-23 13:45-14:00 PDT, shared Mac.
+Binaries: lane = main b639348, rim = g1 de40fce (G1 as merged in 9c9246b, pre-F3; both pre-F3), release with CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true.
+Run: BBOXY_TEST_CUSTODY=memory <bin> --animate --meter (frozen scene-15 fixture: 15 panes, no mux/identity, so no keychain path);
+  2.5 s settle, then xcrun xctrace record --template 'Metal System Trace' --time-limit 8s --attach <pid>; app killed when the window closes.
+  (--launch mode hung for minutes while saving at load 30-40 with the app still rendering; attach mode decouples them.)
+Parse: metal-gpu-intervals of the app process, whole 8 s window, grouped by GPU frame number; GPU time/frame = union of V/F/C;
+  per-pass rows = mean summed encoder duration per frame by label. Glow (lane or rim) draws inside "L2 named materials" (18 material passes/frame in both).
+Lane R4c figure (r4c-frame.log, a06ed28): L2 named materials 0.554 ms/frame.
+
+== rim-1
+578 frames mean=5.888 p50=5.525 p99=10.666 max=11.264
+  frosted separable Gaussian                 3.141
+  CSS gamma chrome and text                  2.900
+  L2 named materials                         0.430
+  isolated group source-over                 0.087
+  Command Buffer 89                          0.078
+  analytic path coverage                     0.054
+lane-1 load: 40.08 33.46 31.22
+lane-1 xctrace exit=0 save=116s
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+passes frame=600 total=43 flat=21 clear=0 path=1 group=1 blur=2 material=18 cells=0 copy=2
+== lane-1
+566 frames mean=5.874 p50=5.405 p99=10.726 max=12.371
+  frosted separable Gaussian                 3.160
+  CSS gamma chrome and text                  2.895
+  L2 named materials                         0.437
+  isolated group source-over                 0.086
+  Command Buffer 91                          0.081
+  analytic path coverage                     0.053
+lane-2 load: 20.56 28.15 29.44
+lane-2 xctrace exit=0 save=70s
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+passes frame=600 total=43 flat=21 clear=0 path=1 group=1 blur=2 material=18 cells=0 copy=2
+== lane-2
+624 frames mean=5.145 p50=5.278 p99=10.277 max=11.086
+  frosted separable Gaussian                 2.743
+  CSS gamma chrome and text                  2.562
+  L2 named materials                         0.382
+  isolated group source-over                 0.076
+  analytic path coverage                     0.048
+  Command Buffer 91                          0.041
+rim-2 load: 18.73 23.49 27.30
+grep: /private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r4r-rim-2.xct: No such file or directory
+rim-2 xctrace exit=0 save=144s
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+passes frame=600 total=42 flat=20 clear=0 path=1 group=1 blur=2 material=18 cells=0 copy=2
+== rim-2
+565 frames mean=5.783 p50=5.329 p99=10.721 max=11.892
+  frosted separable Gaussian                 3.086
+  CSS gamma chrome and text                  2.857
+  L2 named materials                         0.433
+  isolated group source-over                 0.090
+  Command Buffer 89                          0.078
+  analytic path coverage                     0.058
