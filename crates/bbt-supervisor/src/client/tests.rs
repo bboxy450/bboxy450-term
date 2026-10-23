@@ -14,6 +14,41 @@ fn output(seat: Ulid, generation: u64, seq: u64, byte: u8) -> Event {
 }
 
 #[test]
+fn a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeout_setup() {
+    let (stream, mut peer) = std::os::unix::net::UnixStream::pair().unwrap();
+    let request_id = Ulid::new();
+    write_frame(
+        &mut peer,
+        &Frame::new(Message::Reply {
+            request_id,
+            result: Ok(Reply::Seats { seats: vec![] }),
+        }),
+    )
+    .unwrap();
+    drop(peer); // deterministic peer close, before the client configures its read
+    let mut client = SocketSupervisor {
+        stream,
+        decoder: Default::default(),
+        events: Default::default(),
+        replies: Default::default(),
+        lease: None,
+    };
+    let native = client
+        .stream
+        .set_read_timeout(Some(Duration::from_millis(20)));
+    eprintln!("closed-peer native SO_RCVTIMEO: {native:?}");
+    client.read(Duration::from_millis(20)).unwrap();
+    assert!(
+        matches!(client.replies.remove(&request_id), Some(Ok(Reply::Seats { seats })) if seats.is_empty())
+    );
+    let error = client.receive(Duration::from_millis(20)).unwrap_err();
+    assert!(
+        error.to_string().contains("supervisor disconnected"),
+        "EOF misreported: {error:?}"
+    );
+}
+
+#[test]
 fn pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation() {
     let seat = Ulid::new();
     let mut events = PendingEvents::default();

@@ -352,6 +352,51 @@ mod tests {
     use super::*;
     use crate::protocol::Action;
 
+    #[test]
+    fn saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue() {
+        use crate::{Event, Failure, FailureCode, Reply, Ulid};
+
+        let (stream, _reader) = std::os::unix::net::UnixStream::pair().unwrap();
+        stream.set_nonblocking(true).unwrap();
+        let mut peer = SocketPeer::new(UnixStream::from_std(stream));
+        let event = Message::Event {
+            event: Event::Output {
+                seat: Ulid::new(),
+                generation: 1,
+                seq: 1,
+                bytes: vec![b'x'; crate::protocol::OUTPUT_CHUNK_BYTES],
+            },
+        };
+        let mut count = 0;
+        while peer.enqueue(event.clone()).unwrap() {
+            count += 1;
+            assert!(count < 1024, "outbound event queue is unbounded");
+        }
+        assert!(count > 0);
+        let mut failure = Failure::new(FailureCode::Invalid, "");
+        let id = Ulid::new();
+        let reply = |failure| Message::Reply {
+            request_id: id,
+            result: Err::<Reply, _>(failure),
+        };
+        let overhead = encode(&Frame::new(reply(failure.clone()))).unwrap().len() - 4;
+        failure.message = "x".repeat(MAX_FRAME_BYTES - overhead);
+        let reply = reply(failure);
+        assert_eq!(
+            encode(&Frame::new(reply.clone())).unwrap().len(),
+            MAX_FRAME_BYTES + 4
+        );
+        assert!(
+            peer.enqueue(reply.clone()).unwrap(),
+            "event traffic consumed the reply's reserved capacity"
+        );
+        assert!(peer.queued_bytes <= MAX_SOCKET_QUEUE_BYTES);
+        assert!(
+            !peer.enqueue(reply).unwrap(),
+            "total queue bound was bypassed"
+        );
+    }
+
     fn bind_orphan_fixture(path: &Path) -> BoundSocket {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
         loop {
