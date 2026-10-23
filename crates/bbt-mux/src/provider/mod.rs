@@ -1,4 +1,5 @@
 //! Providers yield supervisor links. The local provider adds no transport.
+pub mod fake;
 use std::{collections::HashMap, time::Duration};
 
 use bbt_supervisor::SupervisorConnection;
@@ -156,7 +157,11 @@ impl Connections {
     pub fn owned_seats(&mut self) -> Result<Vec<(HostId, SeatInfo)>> {
         let mut owned = Vec::new();
         for host in self.host_ids() {
-            if let Reply::Seats { seats } = self.request(&host, Action::ListOwnedSeats)? {
+            let reply = match self.request(&host, Action::ListOwnedSeats) {
+                Err(error) if host != HostId::Local && fake::is_link_down(&error) => continue,
+                result => result?,
+            };
+            if let Reply::Seats { seats } = reply {
                 owned.extend(seats.into_iter().map(|seat| (host.clone(), seat)));
             }
         }
