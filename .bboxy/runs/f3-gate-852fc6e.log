@@ -1,0 +1,201 @@
+F3 exact-source full gate — Velvet Vulpine <EXECUTOR>
+Recorded UTC: 2026-10-23T19:26:38.598688+00:00
+Tested signed source: 852fc6ebd7b9e90c2e79f6eed796663402dab7bb (exec6). Evidence-only successor c56f50c records the prior quiet-window stop; it changes no code.
+Scope: crates/bbt-render/src/chrome/chrome.wgsl:34 — stroke source-over fill in premultiplied sRGB; return straight RGB for the existing source-over blend; outer coverage applies once. F4b highlight order/inset is preserved.
+crates/bbt-render/src/chrome/mod.rs:1228 — GPU readback regression covers five fill/stroke alpha pairs and fractional outer/inner AA plus full border/fill points.
+Earlier focused proof and all command argv/statuses: .bboxy/runs/f3-current-composite.log. Prior stopped CI/attribution and owned-PID ledger: .bboxy/runs/f3-quiet-stop.log.
+Oracle release 75e6ec69 authorized this exact 852fc6e retry; gate slot acknowledged under 58dd4b1e. No second gate or development target was active.
+Command: BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity — actual exit 0; elapsed 2084.345 seconds.
+Clean detached worktree /tmp/velvet-f3-ci-852fc6e; own CARGO_TARGET_DIR=/tmp/velvet-f3-target-852fc6e-retry. Jobs=2, incremental=0, debug=0, DEV/TEST opt-level=1 with debug assertions=true. No gallery/reference overrides.
+Sequential CI commands (set -eu, all reached and returned 0): sh scripts/layering.sh; cargo build --workspace --locked; cargo clippy --workspace --all-targets --locked -- -D warnings; cargo test --workspace --locked; sh scripts/ui-lint.sh; cargo run -p bboxy450-term --locked -- --smoke; sh scripts/invariants.sh --parity.
+Focused commands: GPU red test exit 101 (expected failure before fix); complete renderer library 61 passed/0 failed, exit 0; bboxybook build exit 0; render all 280 scoped cases exit 0; scoped strict compare exit 0; strict renderer all-target Clippy exit 0; changed-file rustfmt check exit 0; git diff --check exit 0.
+Current gallery: 1768 unique cases; 1664 required/measured; 0 unproven; 0 geometry mismatches. All 64 launcher edit cases and all 16 surface cases remain within policy.
+Review comparison against accepted F4b 51c3cce: 174 -> 174; dropped 0; introduced 0; no added/removed case keys.
+Historical diagnostic remains separate: 1664 cases, 859 pixel reviews, non-gating; it does not claim measured geometry.
+Ghost sample components/button-cozy-dark.png at (120,103): web (37,40,69), before (33,36,64), after (37,40,68). One blue LSB remains; no per-channel compensation or tolerance changes.
+Scoped frozen proof: 280 cases; components 72 improved/56 unchanged/0 worsened, Style 56 improved/64 unchanged/0 worsened, Materials 32 unchanged; all 248 native layout records exactly equal. Same 8 Materials advisories before/after.
+Not checked: complete fixed-input RGBA attribution (first run stopped, not resumed under Oracle 43dcb9b0 scoped-proof-sufficient ruling); manual desktop; global DPR2/fractional-scale matrix; --slow and ignored Keychain tests. Full fresh canonical parity and the fractional-AA GPU probe are checked.
+Diagnostics: icq outbox --limit 6 returned 2 (unsupported option); help returned 0 and corrected icq outbox returned 0, confirming the earlier ACK without resending. Earlier checkpoint-path read returned 1 and was corrected with git show; a duplicate closed inbox poll was rejected. No product/verification failure is hidden.
+The prior CI/attribution ended by requested SIGTERM (child -15; wrapper 241), not a failed or passing gate. This retry has distinct log/target/report paths and preserves that evidence.
+No implementation edits after the exact-source gate. Any new main commits are listed separately in the handoff; no automatic rebase/re-gate.
+
+REVIEW_COUNTS_BY_MODULE
+module	cases	before	after	dropped	introduced
+components	128	0	0	0	0
+documents	136	44	44	0	0
+documents-surface	8	0	0	0	0
+glyph	56	0	0	0	0
+graph	64	16	16	0	0
+harness-icon	56	48	48	0	0
+launcher	144	0	0	0	0
+launcher-surface	8	0	0	0	0
+materials	32	8	8	0	0
+message-row	104	24	24	0	0
+mini-grid	64	0	0	0	0
+pane	48	0	0	0	0
+paths	48	0	0	0	0
+perf	48	0	0	0	0
+picker	64	0	0	0	0
+seat-row	232	2	2	0	0
+settings	72	24	24	0	0
+sidebar	40	0	0	0	0
+space-header	32	0	0	0	0
+stream	96	8	8	0	0
+style	120	0	0	0	0
+tab-row	40	0	0	0	0
+title-strip	88	0	0	0	0
+titlebar	40	0	0	0	0
+
+RAW_LOG_MILESTONES
+/tmp/velvet-f3-ci-852fc6e-retry.log:2902 — idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=2.821ms p99=3.646ms samples=21 warm_encode_p50=2.025ms warm_encode_p99=2.345ms
+/tmp/velvet-f3-ci-852fc6e-retry.log:2960 — lab-check: self-test ok (10 checks fire on checks/bad.html)
+/tmp/velvet-f3-ci-852fc6e-retry.log:2961 — lab-check: 37 pages × 4 densities · 0 findings
+/tmp/velvet-f3-ci-852fc6e-retry.log:3053 — legacy diagnostic: 1664 cases; 859 pixel reviews (non-gating)
+/tmp/velvet-f3-ci-852fc6e-retry.log:3125 — geometry: 1664 required; 1664 measured; 0 unproven; 0 mismatches
+/tmp/velvet-f3-ci-852fc6e-retry.log:3126 — parity gate: pass (174 pixel reviews advisory)
+/tmp/velvet-f3-ci-852fc6e-retry.log:3127 — invariant parity-geometry: pass
+/tmp/velvet-f3-ci-852fc6e-retry.log:3135 — ci-local: all gates passed
+/tmp/velvet-f3-ci-852fc6e-retry.log:3137 — actual ci exit: 0
+/tmp/velvet-f3-ci-852fc6e-retry.log:3138 — elapsed_seconds: 2084.345
+/tmp/velvet-f3-ci-852fc6e-retry.log:3140 — target_deleted: True
+
+CI_STATUS
+{
+  "source_sha": "852fc6ebd7b9e90c2e79f6eed796663402dab7bb",
+  "phase": "finished",
+  "wrapper_pid": 54805,
+  "started_utc": "2026-10-23T18:50:59.064036+00:00",
+  "target": "/tmp/velvet-f3-target-852fc6e-retry",
+  "report": "/Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry",
+  "log": "/tmp/velvet-f3-ci-852fc6e-retry.log",
+  "ci_pid": 54860,
+  "exit": 0,
+  "elapsed_seconds": 2084.345,
+  "socket_waiver": false,
+  "preserved_binary_sha256": "a5254c600aded3211887559bf9f638085ce182a7ad72e569953ce96f0522ba2b",
+  "target_deleted": true
+}
+
+VERDICT
+{
+  "source_sha": "852fc6ebd7b9e90c2e79f6eed796663402dab7bb",
+  "report_sha256": "d498d264eb358a67454d4ab351568ca45c52ad68a3fdcb65fec126e184a5698f",
+  "cases": 1768,
+  "unique_keys": 1768,
+  "required": 1664,
+  "measured": 1664,
+  "unproven": [],
+  "geometry_mismatches": [],
+  "advisory": 174,
+  "introduced_reviews": 0,
+  "dropped_reviews": 0,
+  "added_cases": [],
+  "removed_cases": [],
+  "edit_cases": 64,
+  "edit_reviews": [],
+  "modules": {
+    "components": {
+      "within policy": 128
+    },
+    "documents": {
+      "review pixels": 44,
+      "within policy": 92
+    },
+    "documents-surface": {
+      "within policy": 8
+    },
+    "glyph": {
+      "within policy": 56
+    },
+    "graph": {
+      "review pixels": 16,
+      "within policy": 48
+    },
+    "harness-icon": {
+      "review pixels": 48,
+      "within policy": 8
+    },
+    "launcher": {
+      "within policy": 144
+    },
+    "launcher-surface": {
+      "within policy": 8
+    },
+    "materials": {
+      "review pixels": 8,
+      "within policy": 24
+    },
+    "message-row": {
+      "review pixels": 24,
+      "within policy": 80
+    },
+    "mini-grid": {
+      "within policy": 64
+    },
+    "pane": {
+      "within policy": 48
+    },
+    "paths": {
+      "within policy": 48
+    },
+    "perf": {
+      "within policy": 48
+    },
+    "picker": {
+      "within policy": 64
+    },
+    "seat-row": {
+      "review pixels": 2,
+      "within policy": 230
+    },
+    "settings": {
+      "review pixels": 24,
+      "within policy": 48
+    },
+    "sidebar": {
+      "within policy": 40
+    },
+    "space-header": {
+      "within policy": 32
+    },
+    "stream": {
+      "review pixels": 8,
+      "within policy": 88
+    },
+    "style": {
+      "within policy": 120
+    },
+    "tab-row": {
+      "within policy": 40
+    },
+    "title-strip": {
+      "within policy": 88
+    },
+    "titlebar": {
+      "within policy": 40
+    }
+  },
+  "surface_reviews": [],
+  "pass": true
+}
+
+ARTIFACT_SHA256
+a6692e26cb8b15efeb96689bc7bdbefc7cbafb494f166dde3c682853c8714eb5  /tmp/velvet-f3-ci-852fc6e-retry.log (160503 bytes)
+7ceabfc83cd535cda1432b7f9fe6e7829939a2d759e9b3098ff29b8f79b0c286  /tmp/velvet-f3-ci-852fc6e-retry.log.status.json (559 bytes)
+d498d264eb358a67454d4ab351568ca45c52ad68a3fdcb65fec126e184a5698f  /Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/report.json (1130673 bytes)
+60576eed48713e747af2f12f7e6a2f15c4e13d1e5d6ae943f45bab316782e6ca  /Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/capture.json (3146 bytes)
+c2669d4f7fbbfe48bade6eeba8a7ce37971089ff59b43c28706aad337e4ccfbf  /Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/cases.json (73104096 bytes)
+7be3266eb2ab1611ddb83dc07185324a80a0f1a3947e00bcbec11ef1b4a4c651  /Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/ci-verdict.json (1941 bytes)
+88484e6702f94831c3846c72e54368aa37d3b6740d6304652937dbeac4e8b666  /Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/review-delta.json (5874 bytes)
+0a6737f8476ee0d606840036ba51a19f9f34d43e063a6bfa9f704a1ffb10f296  /Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/review-delta.tsv (660 bytes)
+e880b88119ceaa9bc041f8b71a49a6e56ab6dc7e1fb0725f8f1e2b66e54d8695  /Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/current-main-baseline/report.json (1130666 bytes)
+139fa8675e848d8ee208cbeb04f999ac6d835cc5c4daa3cad83f0420c5dd95d3  /Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/scope-metrics.json (2276 bytes)
+fc0dbddb9d9f2ba20cbb41c652ec561a56217312fd0bc3a139911a1af87cdac7  /Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/quiet-stop.json (16077 bytes)
+
+POST_GATE_AUDIT
+python3 /tmp/velvet-f3-current-ci-verdict.py <report root> — exit 0; asserts current keys, required/measured geometry, no new reviews, all edits/surfaces within policy.
+Detached source git status --short — exit 0, empty; git rev-parse HEAD — exit 0, exact 852fc6e. Private target existence check — false. Unified wrapper final exit — 0.
+git fetch origin main — exit 0; observed origin/main dfc207737a8e7722fdbabf0287483cdac9060859. Since source parent f8cc902: K1 keyboard/core changes, R12-3 pass counting/clear-load changes, duplex fake-peer test, architecture/spec/invariant/slot-rule records. R12-3 touches chrome/mod.rs production pass sites; no chrome.wgsl or F3 test hunk changes. No rebase under the exact-source/freeze instruction.
+Slot release DM 66ba0888-a9fb-428e-a87d-3b1e30d41ec7 is recipient-stored (storage receipt, not model acceptance).
+Current report stays at 174 because affected component/Style cases were already within policy; the frozen scope quantifies 128 pixel-fraction improvements without threshold/policy changes. No review-count drop is claimed.
+Full raw CI log, status, saved bboxybook, fresh report and clean source worktree are retained for Oracle review. The private build target is already deleted.
