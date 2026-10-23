@@ -238,7 +238,7 @@ fn tessellate(points: &[PathCommand], stroke: &PathStroke) -> Result<Vec<[f32; 4
     // Nonzero union removes internal tessellation/overlap edges. Otherwise a
     // translucent self-crossing would blend twice or gain an AA seam.
     let mut union = Path::builder();
-    for tri in mesh.indices.chunks_exact(3) {
+    for tri in mesh.indices.as_chunks::<3>().0 {
         let [a, mut b, mut c] = [
             mesh.vertices[tri[0] as usize],
             mesh.vertices[tri[1] as usize],
@@ -308,7 +308,7 @@ fn fill_edges(points: &[PathCommand]) -> Result<Vec<[f32; 4]>> {
 }
 fn boundary_edges(result: &VertexBuffers<[f32; 2], u32>) -> Vec<[f32; 4]> {
     let mut edges = BTreeMap::new();
-    for tri in result.indices.chunks_exact(3) {
+    for tri in result.indices.as_chunks::<3>().0 {
         for (a, b) in [(tri[0], tri[1]), (tri[1], tri[2]), (tri[2], tri[0])] {
             let k = if a < b { (a, b) } else { (b, a) };
             edges

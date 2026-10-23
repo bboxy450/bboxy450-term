@@ -363,7 +363,7 @@ fn prepare_text(scene: &Scene, limit: u32) -> Result<(GlyphAtlas, Vec<InstanceDa
             return Err("text run exceeds grid bounds".into());
         }
         for (offset, ch) in run.text.chars().enumerate() {
-            if !cache.contains_key(&ch) {
+            if let std::collections::hash_map::Entry::Vacant(entry) = cache.entry(ch) {
                 let glyph = match font.rasterize(ch)? {
                     Some(raster) => Some(PlacedGlyph {
                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
@@ -372,7 +372,7 @@ fn prepare_text(scene: &Scene, limit: u32) -> Result<(GlyphAtlas, Vec<InstanceDa
                     }),
                     None => None,
                 };
-                cache.insert(ch, glyph);
+                entry.insert(glyph);
             }
             if let Some(glyph) = cache[&ch] {
                 if instances.len() == MAX_INSTANCES {

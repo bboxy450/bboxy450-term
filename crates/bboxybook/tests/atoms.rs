@@ -162,7 +162,7 @@ fn every_atom_renders_across_density_and_theme_and_references_have_canonical_key
                 let list = atoms::preview(kind, theme, density).unwrap();
                 list.validate().unwrap();
                 let image = renderer.render_to_rgba(&list, 640, 160, 1.).unwrap();
-                assert!(image.chunks_exact(4).all(|p| p[3] == 255));
+                assert!(image.as_chunks::<4>().0.iter().all(|p| p[3] == 255));
                 let hash = image.iter().fold(0xcbf29ce484222325u64, |hash, &b| {
                     (hash ^ b as u64).wrapping_mul(0x100000001b3)
                 });

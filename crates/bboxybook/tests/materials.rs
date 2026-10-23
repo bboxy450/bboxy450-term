@@ -239,8 +239,8 @@ fn source_over_glow_keeps_destination_alpha() {
     .unwrap();
     assert!(
         result
-            .chunks_exact(4)
-            .zip(pixels.chunks_exact(4))
+            .as_chunks::<4>().0.iter()
+            .zip(pixels.as_chunks::<4>().0)
             .all(|(a, b)| a[3] == b[3])
     );
     assert_ne!(

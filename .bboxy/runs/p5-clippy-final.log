@@ -1,0 +1,17 @@
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+error: an inner attribute is not permitted in this context
+   --> crates/bbt-core/tests/checkpoint.rs:145:1
+    |
+145 | #![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+    = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: could not compile `bbt-core` (test "checkpoint") due to 1 previous error
+
+exit: 101
+elapsed_seconds: 0.903

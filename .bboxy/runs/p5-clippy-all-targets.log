@@ -1,0 +1,149 @@
+$ cargo clippy --workspace --all-targets --locked --keep-going -- -D warnings
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-supervisor)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy-firehose)
+error: using `chunks_exact` with a constant chunk size
+  --> crates/bbt-render/tests/terminal.rs:41:14
+   |
+41 |             .chunks_exact(4)
+   |              ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+   = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: using `chunks_exact` with a constant chunk size
+  --> crates/bbt-render/tests/terminal.rs:47:14
+   |
+47 |             .chunks_exact(4)
+   |              ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+error: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/tests/terminal.rs:162:18
+    |
+162 |                 .chunks_exact(4)
+    |                  ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+error: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/tests/terminal.rs:163:28
+    |
+163 |                 .zip(empty.chunks_exact(4))
+    |                            ^^^^^^^^^^^^^^^
+    |
+help: consider using `as_chunks::<4>()` instead
+   --> crates/bbt-render/tests/terminal.rs:163:28
+    |
+163 |                 .zip(empty.chunks_exact(4))
+    |                            ^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+error: could not compile `bbt-render` (test "terminal") due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-rt)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+error: using `chunks_exact` with a constant chunk size
+   --> crates/bboxybook/tests/materials.rs:242:14
+    |
+242 |             .chunks_exact(4)
+    |              ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: using `chunks_exact` with a constant chunk size
+   --> crates/bboxybook/tests/materials.rs:243:25
+    |
+243 |             .zip(pixels.chunks_exact(4))
+    |                         ^^^^^^^^^^^^^^^
+    |
+help: consider using `as_chunks::<4>()` instead
+   --> crates/bboxybook/tests/materials.rs:243:25
+    |
+243 |             .zip(pixels.chunks_exact(4))
+    |                         ^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+error: could not compile `bboxybook` (test "materials") due to 2 previous errors
+error: using `chunks_exact` with a constant chunk size
+  --> crates/bboxybook/tests/styles.rs:84:23
+   |
+84 |                 image.chunks_exact(4).all(|p| p[3] == 255),
+   |                       ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+   = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: could not compile `bboxybook` (test "styles") due to 1 previous error
+error: using `chunks_exact` with a constant chunk size
+   --> crates/bboxybook/tests/atoms.rs:165:31
+    |
+165 |                 assert!(image.chunks_exact(4).all(|p| p[3] == 255));
+    |                               ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: could not compile `bboxybook` (test "atoms") due to 1 previous error
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+error: use of a disallowed method `std::sync::Mutex::lock`
+  --> crates/bbt-core/tests/checkpoint.rs:57:14
+   |
+57 |             .lock()
+   |              ^^^^
+   |
+   = note: UI must use try_lock
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+   = note: `-D clippy::disallowed-methods` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
+
+error: use of a disallowed method `std::sync::Mutex::lock`
+  --> crates/bbt-core/tests/checkpoint.rs:64:16
+   |
+64 |         *calls.lock().unwrap(),
+   |                ^^^^
+   |
+   = note: UI must use try_lock
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::sync::Mutex::lock`
+  --> crates/bbt-core/tests/checkpoint.rs:86:14
+   |
+86 |             .lock()
+   |              ^^^^
+   |
+   = note: UI must use try_lock
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::sync::Mutex::lock`
+  --> crates/bbt-core/tests/checkpoint.rs:92:19
+   |
+92 |     assert!(calls.lock().unwrap().is_empty());
+   |                   ^^^^
+   |
+   = note: UI must use try_lock
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::sync::Mutex::lock`
+  --> crates/bbt-core/tests/checkpoint.rs:95:16
+   |
+95 |         *calls.lock().unwrap(),
+   |                ^^^^
+   |
+   = note: UI must use try_lock
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: could not compile `bbt-core` (test "checkpoint") due to 5 previous errors
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mermaid)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+
+exit: 101
+elapsed_seconds: 9.644

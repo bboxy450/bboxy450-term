@@ -1,0 +1,6 @@
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+    Finished `dev` profile [unoptimized] target(s) in 0.22s
+
+exit: 0
+elapsed_seconds: 0.309
