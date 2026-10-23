@@ -45,7 +45,10 @@ pub(crate) fn declare_fixed(
             fixed_dimensions(base)
         }
         c::Element::Box(b) => {
-            let s = b.style.resolve(ctx).expect("fixed sidebar Style");
+            // Invalid input keeps the normal layout validation/error path.
+            let Ok(s) = b.style.resolve(ctx) else {
+                return e;
+            };
             let outset = s
                 .shadow
                 .as_ref()
@@ -68,18 +71,19 @@ pub(crate) fn declare_fixed(
                         keys,
                     );
                 }
-                fixed_column(&b.children, b.gap.resolve(ctx.density).expect("gap")).map(
-                    |(h, child_outset)| {
-                        let border = s
-                            .border
-                            .as_ref()
-                            .filter(|b| !b.outside)
-                            .map_or(0., |b| b.width);
-                        let top = s.padding[0] + if s.border_sides[0] { border } else { 0. };
-                        let bottom = s.padding[2] + if s.border_sides[2] { border } else { 0. };
-                        (h + top + bottom, outset.max(child_outset))
-                    },
-                )
+                let Ok(gap) = b.gap.resolve(ctx.density) else {
+                    return e;
+                };
+                fixed_column(&b.children, gap).map(|(h, child_outset)| {
+                    let border = s
+                        .border
+                        .as_ref()
+                        .filter(|b| !b.outside)
+                        .map_or(0., |b| b.width);
+                    let top = s.padding[0] + if s.border_sides[0] { border } else { 0. };
+                    let bottom = s.padding[2] + if s.border_sides[2] { border } else { 0. };
+                    (h + top + bottom, outset.max(child_outset))
+                })
             } else {
                 None
             }
@@ -92,7 +96,10 @@ pub(crate) fn declare_fixed(
                     keys,
                 );
             }
-            fixed_column(&s.children, s.gap.resolve(ctx.density).expect("gap"))
+            let Ok(gap) = s.gap.resolve(ctx.density) else {
+                return e;
+            };
+            fixed_column(&s.children, gap)
         }
         _ => None,
     };

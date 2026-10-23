@@ -80,7 +80,7 @@ fn records(n: &c::Layout) -> BTreeMap<String, String> {
 }
 
 #[test]
-fn only_viewport_and_paint_overscan_rows_are_measured_with_exact_extent_and_geometry() {
+fn measurement_is_bounded_by_the_window_with_exact_extent_and_geometry() {
     let ids: Vec<_> = (0..1000).collect();
     let m = Metrics::default();
     let full = layout(view(&ids, 26.375, 1.125, 12345.625, false), &m);
@@ -108,6 +108,30 @@ fn only_viewport_and_paint_overscan_rows_are_measured_with_exact_extent_and_geom
         if y < 105. && y + 26.375 > 5. {
             assert!(visible.contains_key(&format!("row{i}")));
         }
+    }
+}
+
+#[test]
+fn invalid_style_or_gap_keeps_the_fallback_layout_error_instead_of_panicking() {
+    for invalid_style in [true, false] {
+        let mut sidebar = sidebar(2);
+        let mut style = ui::Style::new(ui::Preset::Card);
+        if invalid_style {
+            style.overrides.height = Some(ui::Length::Px(f32::NAN));
+        }
+        let mut b = c::Box::new(style, vec![]);
+        b.direction = Axis::Column;
+        b.align = c::Alignment::Stretch;
+        if !invalid_style {
+            b.gap = ui::Length::Px(f32::NAN);
+        }
+        sidebar.cards[0].extra.push(c::Element::Box(b));
+        let e = sidebar.element(ctx());
+        assert!(sidebar.anchor(ctx()).unwrap().is_none());
+        assert!(
+            e.layout(Rect::new(0., 0., 260., 558.), ctx(), &Metrics::default())
+                .is_err()
+        );
     }
 }
 
