@@ -1229,18 +1229,18 @@ impl App {
                         .saturating_sub(if metal { Duration::ZERO } else { wait });
                 self.budget.cpu(self.meter.total_frames(), cpu);
             }
-            if let Some(stall) = &mut self.stall {
-                if let Some(model) = &self.live_state {
-                    let cpu = bbt_rt::fault::thread_cpu_time().map_err(|e| e.to_string())?;
-                    stall.frame(
-                        self.meter.total_frames(),
-                        model,
-                        &self.pane_bounds,
-                        phases,
-                        cpu,
-                        scale,
-                    );
-                }
+            if let Some(stall) = &mut self.stall
+                && let Some(model) = &self.live_state
+            {
+                let cpu = bbt_rt::fault::thread_cpu_time().map_err(|e| e.to_string())?;
+                stall.frame(
+                    self.meter.total_frames(),
+                    model,
+                    &self.pane_bounds,
+                    phases,
+                    cpu,
+                    scale,
+                );
             }
             let stall = &mut self.stall;
             self.gpu
