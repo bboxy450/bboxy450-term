@@ -180,6 +180,10 @@ impl Drop for Fixture {
 fn key() -> SigningKey {
     SigningKey::from_bytes(&[53; 32])
 }
+fn data(value: Value) -> Value {
+    assert_eq!(value["isError"], false, "{value}");
+    value["structuredContent"].clone()
+}
 fn rpc(bridge: &mut Bridge, id: u64, method: &str, params: Value) -> Value {
     bridge
         .handle(
@@ -416,30 +420,41 @@ fn mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_
         .block_on(fixture.client().endpoint(own))
         .unwrap();
     for (capability, generation) in [([0; 32], 1), (endpoint.capability, 2)] {
-        let mut stream = UnixStream::connect(&endpoint.path).unwrap();
-        stream
-            .set_read_timeout(Some(Duration::from_secs(3)))
-            .unwrap();
-        let request = bbt_mux::seat_socket::Request {
-            version: 1,
-            capability,
-            seat: own,
-            generation,
-            action: bbt_mux::seat_socket::Action::Catalogue,
-        };
-        let mut bytes = serde_json::to_vec(&request).unwrap();
-        bytes.push(b'\n');
-        stream.write_all(&bytes).unwrap();
-        let mut out = Vec::new();
-        let result = stream.read_to_end(&mut out);
-        assert!(out.is_empty(), "unauthorized response bytes");
-        assert!(
-            matches!(result, Ok(0))
-                || result
-                    .as_ref()
-                    .is_err_and(|e| e.kind() == std::io::ErrorKind::ConnectionReset),
-            "admission did not close the connection: {result:?}"
-        );
+        for action in [
+            bbt_mux::seat_socket::Action::Catalogue,
+            bbt_mux::seat_socket::Action::Call {
+                call: Call {
+                    op_id: Ulid::new(),
+                    tool: "message_send".into(),
+                    args: json!({"destination":format!("seats/{}/inbox",fixture.peer.id),"text":"must not execute"}),
+                },
+            },
+        ] {
+            let mut stream = UnixStream::connect(&endpoint.path).unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            let request = bbt_mux::seat_socket::Request {
+                version: 1,
+                capability,
+                seat: own,
+                generation,
+                action,
+            };
+            let mut bytes = serde_json::to_vec(&request).unwrap();
+            bytes.push(b'\n');
+            stream.write_all(&bytes).unwrap();
+            let mut out = Vec::new();
+            let result = stream.read_to_end(&mut out);
+            assert!(out.is_empty(), "unauthorized response bytes");
+            assert!(
+                matches!(result, Ok(0))
+                    || result
+                        .as_ref()
+                        .is_err_and(|e| e.kind() == std::io::ErrorKind::ConnectionReset),
+                "admission did not close the connection: {result:?}"
+            );
+        }
     }
     assert!(
         fixture
@@ -800,4 +815,482 @@ fn configuration_digests() -> std::collections::BTreeMap<PathBuf, Option<String>
         (path, digest)
     })
     .collect()
+}
+
+#[test]
+fn mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24() {
+    let mut f = Fixture::new();
+    let own = f.own.id;
+    let peer = f.peer.id;
+    let destination = format!("seats/{peer}/inbox");
+    let op = Ulid::new();
+    let args = json!({"destination":destination,"text":"private fixture payload","priority":9,"attachments":["[[fixture-artifact]]"]});
+    let first = f.mutate(own, op, "message_send", args.clone());
+    let sent = data(first.clone());
+    assert_eq!(sent["status"], "accepted");
+    assert_eq!(sent["kind"], "stored");
+    let envelope = &sent["message"]["envelope"];
+    assert_eq!(envelope["id"], op.to_string());
+    assert_eq!(envelope["seat"], own.to_string());
+    assert_eq!(envelope["role"]["class"], "worker");
+    assert_eq!(envelope["priority_class"], "worker");
+    assert_eq!(f.mutate(own, op, "message_send", args.clone()), first);
+    let changed = f.mutate(
+        own,
+        op,
+        "message_send",
+        json!({"destination":destination,"text":"changed"}),
+    );
+    assert_eq!(changed["structuredContent"]["error"]["code"], "conflict");
+    f.restart();
+    assert_eq!(f.mutate(own, op, "message_send", args), first);
+    let inbox = data(f.call(peer, Ulid::new(), "message_list", json!({})));
+    assert_eq!(inbox["page"]["items"].as_array().unwrap().len(), 1);
+    assert_eq!(inbox["page"]["items"][0]["envelope"]["id"], op.to_string());
+    let receipts = data(f.call(own, Ulid::new(), "message_receipts", json!({"message":op})));
+    assert_ne!(
+        receipts["page"]["items"][0]["evidence"],
+        json!(bbt_mux::adapters::Evidence::ApplicationAcknowledged)
+    );
+    assert_eq!(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "message_ack",
+            json!({"message":op})
+        )["isError"],
+        true
+    );
+    let acknowledged = data(f.mutate(peer, Ulid::new(), "message_ack", json!({"message":op})));
+    assert_eq!(acknowledged["status"], "applied");
+    let receipts = data(f.call(own, Ulid::new(), "message_receipts", json!({"message":op})));
+    assert_eq!(
+        receipts["page"]["items"][0]["evidence"],
+        json!(bbt_mux::adapters::Evidence::ApplicationAcknowledged)
+    );
+    let reply = data(f.mutate(
+        peer,
+        Ulid::new(),
+        "message_send",
+        json!({"destination":format!("seats/{own}/inbox"),"text":"reply","reply_to":op}),
+    ));
+    assert_eq!(
+        reply["message"]["envelope"]["thread_id"],
+        envelope["thread_id"]
+    );
+    let thread = data(f.call(
+        own,
+        Ulid::new(),
+        "message_list",
+        json!({"thread":envelope["thread_id"],"limit":1}),
+    ));
+    assert_eq!(thread["page"]["items"].as_array().unwrap().len(), 1);
+    let next = thread["page"]["next"].as_u64().unwrap();
+    let second = data(f.call(
+        own,
+        Ulid::new(),
+        "message_list",
+        json!({"thread":envelope["thread_id"],"after":next,"limit":1}),
+    ));
+    assert_eq!(second["page"]["items"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        second["page"]["items"][0]["envelope"]["body"]["text"],
+        "reply"
+    );
+    let audits = f.audits(own, 7);
+    let serialized = serde_json::to_string(&audits).unwrap();
+    assert!(!serialized.contains("private fixture payload"));
+    assert!(!serialized.contains("fixture-artifact"));
+    assert!(
+        audits
+            .iter()
+            .any(|event| event.event.payload["outcome"] == "admitted")
+    );
+    assert!(
+        audits
+            .iter()
+            .any(|event| event.event.payload["outcome"] == "replay")
+    );
+}
+
+#[test]
+fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results() {
+    let f = Fixture::new();
+    let own = f.own.id;
+    let oracle = f.oracle.id;
+    let folder = "channels/fixture";
+    data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "ch_link",
+        json!({"node":{"path":folder,"kind":"folder"}}),
+    ));
+    data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":folder,"seat":own,"rights":["read","write","link"]}),
+    ));
+    let path = format!("{folder}/private-node-marker");
+    data(f.mutate(own,Ulid::new(),"ch_subscribe",json!({"folder":folder,"name":"private-node-marker","filter":{"kinds":["chunk"]},"rate":{"batch_ms":100,"coalesce":true}})));
+    let read_op = Ulid::new();
+    let before = data(f.call(own, read_op, "ch_ls", json!({"path":folder})));
+    let node = &before["nodes"][0];
+    assert_eq!(node["path"], path);
+    assert_eq!(node["target"], format!("seats/{own}/inbox"));
+    assert_eq!(node["filter"]["kinds"], json!(["chunk"]));
+    assert_eq!(node["filter"]["classes"], json!([]));
+    assert_eq!(node["rate"]["batch_ms"], 100);
+    data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "ch_pause",
+        json!({"path":path,"paused":true}),
+    ));
+    assert_eq!(
+        data(f.call(own, Ulid::new(), "ch_ls", json!({"path":folder})))["nodes"][0]["paused"],
+        true
+    );
+    data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "ch_pause",
+        json!({"path":path,"paused":false}),
+    ));
+    let worker = f
+        .runtime
+        .block_on(f.client().control_catalogue(own, 1))
+        .unwrap();
+    let admin = f
+        .runtime
+        .block_on(f.client().control_catalogue(oracle, 1))
+        .unwrap();
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 12);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 15);
+    for tool in [
+        "ch_link",
+        "ch_pause",
+        "ch_grant",
+        "seat_input_text",
+        "task_delegate",
+        "seat_mute",
+        "seat_unmute",
+    ] {
+        assert!(
+            !worker["tools"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|item| item["name"] == tool)
+        );
+        assert_eq!(f.call(own, Ulid::new(), tool, json!({}))["isError"], true);
+    }
+    let others = format!("swarms/{}/{}", f.own.swarm, f.peer.id);
+    assert_eq!(
+        f.mutate(own, Ulid::new(), "ch_unsubscribe", json!({"path":others}))["isError"],
+        true
+    );
+    let invalid = f.mutate(
+        own,
+        Ulid::new(),
+        "ch_subscribe",
+        json!({"folder":folder,"name":"../escape"}),
+    );
+    assert_eq!(invalid["isError"], true);
+    let epoch =
+        data(f.call(own, Ulid::new(), "self_status", json!({})))["actor"]["grant_epoch"].clone();
+    data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":folder,"seat":own,"rights":[]}),
+    ));
+    assert_eq!(
+        data(f.call(own, Ulid::new(), "self_status", json!({})))["actor"]["grant_epoch"],
+        epoch
+    );
+    let denied = f.call(own, read_op, "ch_ls", json!({"path":folder}));
+    assert_eq!(denied["isError"], true);
+    assert!(
+        !denied.to_string().contains("private-node-marker"),
+        "cached authorized read escaped current grants"
+    );
+    assert_eq!(
+        f.mutate(
+            own,
+            Ulid::new(),
+            "message_send",
+            json!({"destination":format!("{folder}/*"),"text":"revoked","kind":"chunk"})
+        )["isError"],
+        true
+    );
+    data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":folder,"seat":own,"rights":["read","write","link"]}),
+    ));
+    data(f.mutate(own, Ulid::new(), "ch_unsubscribe", json!({"path":path})));
+    assert!(
+        data(f.call(own, Ulid::new(), "ch_ls", json!({"path":folder})))["nodes"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+fn mcp_message_visibility_and_receipt_pages_preserve_current_w24_scope() {
+    let f = Fixture::new();
+    let own = f.own.id;
+    let peer = f.peer.id;
+    let oracle = f.oracle.id;
+    let private = data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "message_send",
+        json!({"destination":format!("seats/{peer}/inbox"),"text":"third party private payload"}),
+    ));
+    let private_id = private["message"]["envelope"]["id"].clone();
+    assert!(
+        data(f.call(own, Ulid::new(), "message_list", json!({})))["page"]["items"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        f.call(
+            own,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":private_id})
+        )["isError"],
+        true
+    );
+    assert_eq!(
+        f.call(
+            f.outside.id,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":private_id})
+        )["isError"],
+        true
+    );
+    let admin_page = data(f.call(
+        oracle,
+        Ulid::new(),
+        "message_list",
+        json!({"channel":format!("seats/{peer}/inbox")}),
+    ));
+    assert_eq!(admin_page["page"]["items"].as_array().unwrap().len(), 1);
+    let broadcast = data(f.mutate(
+        own,
+        Ulid::new(),
+        "message_send",
+        json!({"destination":format!("swarms/{}/*",f.own.swarm),"kind":"chunk","text":"chunk"}),
+    ));
+    let broadcast_id = broadcast["message"]["envelope"]["id"].clone();
+    let recipient = data(f.call(
+        peer,
+        Ulid::new(),
+        "message_receipts",
+        json!({"message":broadcast_id}),
+    ));
+    assert_eq!(recipient["page"]["items"].as_array().unwrap().len(), 1);
+    assert_eq!(recipient["page"]["items"][0]["recipient"], peer.to_string());
+    let mut cursor = 0;
+    let mut count = 0;
+    loop {
+        let page = data(f.call(
+            own,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":broadcast_id,"after":cursor,"limit":1}),
+        ));
+        count += page["page"]["items"].as_array().unwrap().len();
+        if let Some(next) = page["page"]["next"].as_u64() {
+            assert!(next > cursor);
+            cursor = next;
+        } else {
+            break;
+        }
+    }
+    assert_eq!(count, 3);
+    assert_eq!(
+        data(f.call(
+            oracle,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":broadcast_id})
+        ))["page"]["items"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
+    data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":format!("seats/{peer}/inbox"),"seat":own,"rights":[]}),
+    ));
+    let denied = f.mutate(
+        own,
+        Ulid::new(),
+        "message_send",
+        json!({"destination":format!("seats/{peer}/inbox"),"text":"explicitly revoked DM"}),
+    );
+    assert_eq!(denied["isError"], true);
+    assert!(denied.to_string().contains("write"));
+    // Even a controller-created foreign sink in this tree cannot bypass the
+    // registry's swarm fence at the W2.4 send boundary.
+    let foreign_folder = format!("seats/{}", f.outside.id);
+    data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "ch_link",
+        json!({"node":{"path":foreign_folder,"kind":"folder"}}),
+    ));
+    let foreign_sink = format!("{foreign_folder}/inbox");
+    data(f.mutate(
+        oracle,
+        Ulid::new(),
+        "ch_link",
+        json!({"node":{"path":foreign_sink,"kind":"sink"}}),
+    ));
+    let foreign = f.mutate(
+        own,
+        Ulid::new(),
+        "message_send",
+        json!({"destination":foreign_sink,"text":"no cross-swarm delivery"}),
+    );
+    assert_eq!(foreign["isError"], true);
+    assert!(foreign.to_string().contains("swarm"));
+    assert!(
+        data(f.call(f.outside.id, Ulid::new(), "message_list", json!({})))["page"]["items"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        f.mutate(
+            oracle,
+            Ulid::new(),
+            "ch_grant",
+            json!({"path":format!("swarms/{}",f.own.swarm),"seat":f.outside.id,"rights":["write"]})
+        )["isError"],
+        true
+    );
+}
+
+#[test]
+fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() {
+    let f = Fixture::new();
+    let own = f.own.id;
+    let mut bridge = f.bridge(own);
+    initialize(&mut bridge);
+    let args = json!({"destination":format!("seats/{}/inbox",f.peer.id),"text":"fixture"});
+    let missing = rpc(
+        &mut bridge,
+        2,
+        "tools/call",
+        json!({"name":"message_send","arguments":args}),
+    );
+    assert_eq!(missing["error"]["code"], -32602);
+    let op = Ulid::new();
+    for invalid_id in [json!("not-a-ulid"), json!(Ulid::nil())] {
+        let mut invalid = args.clone();
+        invalid["op_id"] = invalid_id;
+        assert_eq!(
+            rpc(
+                &mut bridge,
+                2,
+                "tools/call",
+                json!({"name":"message_send","arguments":invalid})
+            )["error"]["code"],
+            -32602
+        );
+    }
+    let mut original = args.clone();
+    original["op_id"] = json!(op);
+    let first = rpc(
+        &mut bridge,
+        3,
+        "tools/call",
+        json!({"name":"message_send","arguments":original}),
+    );
+    assert_eq!(first["result"]["isError"], false);
+    let compatible = rpc(
+        &mut bridge,
+        4,
+        "tools/call",
+        json!({"name":"message_send","arguments":args,"_meta":{"bboxy450/op_id":op}}),
+    );
+    assert_eq!(compatible["result"], first["result"]);
+    let mismatch = rpc(
+        &mut bridge,
+        5,
+        "tools/call",
+        json!({"name":"message_send","arguments":original,"_meta":{"bboxy450/op_id":Ulid::new()}}),
+    );
+    assert_eq!(mismatch["error"]["code"], -32602);
+    assert!(
+        mismatch["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("mismatch")
+    );
+    for (field, value) in [
+        ("sender", json!(f.oracle.id)),
+        ("role", json!("oracle")),
+        ("operator", json!(true)),
+        ("swarm_id", json!(f.outside.swarm)),
+        ("process_generation", json!(2)),
+    ] {
+        let mut forged = args.clone();
+        forged[field] = value;
+        assert_eq!(
+            f.mutate(own, Ulid::new(), "message_send", forged)["isError"],
+            true
+        );
+    }
+    for extra in [
+        json!({"kind":"task"}),
+        json!({"kind":"presence"}),
+        json!({"text":"x".repeat(16385)}),
+        json!({"text":"\u{1b}[escape"}),
+    ] {
+        let mut invalid = args.clone();
+        invalid
+            .as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        assert_eq!(
+            f.mutate(own, Ulid::new(), "message_send", invalid)["isError"],
+            true
+        );
+    }
+    assert_eq!(
+        f.mutate(
+            own,
+            Ulid::new(),
+            "message_send",
+            json!({"destination":format!("swarms/{}/*",f.own.swarm),"text":"plain progress"})
+        )["isError"],
+        true
+    );
+    for (tool, args) in [
+        ("message_list", json!({"limit":129})),
+        ("message_receipts", json!({"message":op,"limit":0})),
+        ("ch_ls", json!({"path":"../escape"})),
+    ] {
+        assert_eq!(f.call(own, Ulid::new(), tool, args)["isError"], true);
+    }
+    assert_eq!(
+        data(f.call(own, Ulid::new(), "message_list", json!({})))["page"]["items"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
 }

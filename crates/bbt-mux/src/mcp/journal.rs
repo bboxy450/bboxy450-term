@@ -237,6 +237,152 @@ mod tests {
     use crate::registry::{Class, Role};
     use crate::store::Store;
 
+    fn effect_fixture() -> (tempfile::TempDir, SqliteStore, Actor, Call) {
+        let temp = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(temp.path()).unwrap();
+        let actor = Actor {
+            seat_id: Ulid::new(),
+            process_generation: 1,
+            swarm_id: Ulid::new(),
+            role: Role {
+                name: "executor".into(),
+                class: Class::Worker,
+            },
+            grant_epoch: 1,
+            issuer_kind: IssuerKind::LocalDev,
+        };
+        let call = Call {
+            op_id: Ulid::new(),
+            tool: "ch_subscribe".into(),
+            args: json!({"folder":"channels/fixture","name":"own"}),
+        };
+        (temp, store, actor, call)
+    }
+
+    #[test]
+    fn mutation_requires_audit_admission_and_releases_the_transaction_before_dispatch() {
+        let (_temp, store, actor, call) = effect_fixture();
+        let journal = Journal::new(store.clone());
+        store.connection().unwrap().execute_batch("CREATE TRIGGER fail_effect_audit BEFORE INSERT ON kv WHEN substr(NEW.key,1,14)='control/audit/' BEGIN SELECT RAISE(ABORT,'fixture audit failure'); END;").unwrap();
+        let count = std::cell::Cell::new(0);
+        assert!(
+            journal
+                .effect(&actor, &call, || {
+                    count.set(count.get() + 1);
+                    super::super::success(call.op_id, json!({"status":"applied"}))
+                })
+                .is_err()
+        );
+        assert_eq!(count.get(), 0);
+        assert!(
+            store
+                .get(&format!("control/op/{}", call.op_id))
+                .unwrap()
+                .is_none()
+        );
+        store
+            .connection()
+            .unwrap()
+            .execute_batch("DROP TRIGGER fail_effect_audit")
+            .unwrap();
+        let first = journal
+            .effect(&actor, &call, || {
+                // This uses the very same SQLite object as the control journal.
+                // An admission transaction still held here would block this write.
+                store.put("fixture/effect", b"applied").unwrap();
+                count.set(count.get() + 1);
+                super::super::success(call.op_id, json!({"status":"applied"}))
+            })
+            .unwrap();
+        assert_eq!(store.get("fixture/effect").unwrap().unwrap(), b"applied");
+        assert_eq!(
+            journal
+                .effect(&actor, &call, || panic!(
+                    "completed effect dispatched twice"
+                ))
+                .unwrap(),
+            first
+        );
+        assert_eq!(count.get(), 1);
+        let mut changed = call.clone();
+        changed.args["name"] = json!("different");
+        assert_eq!(
+            journal
+                .effect(&actor, &changed, || panic!("conflict dispatched"))
+                .unwrap()["structuredContent"]["error"]["code"],
+            "conflict"
+        );
+        let events = journal.pending(128).unwrap();
+        assert_eq!(
+            events
+                .iter()
+                .map(|e| e.payload["outcome"].clone())
+                .collect::<Vec<_>>(),
+            vec![
+                json!("admitted"),
+                json!("applied"),
+                json!("replay"),
+                json!("rejected")
+            ]
+        );
+    }
+
+    #[test]
+    fn crashed_admitted_mutation_reopens_unknown_without_redispatch() {
+        let (temp, store, actor, call) = effect_fixture();
+        let journal = Journal::new(store.clone());
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let _ = journal.effect(&actor, &call, || {
+                    store.put("fixture/effect", b"before crash").unwrap();
+                    panic!("fixture crash after effect, before outcome");
+                });
+            }))
+            .is_err()
+        );
+        drop(journal);
+        let reopened = Journal::new(SqliteStore::open(temp.path()).unwrap());
+        let value = reopened
+            .effect(&actor, &call, || {
+                panic!("unknown mutation dispatched again")
+            })
+            .unwrap();
+        assert_eq!(value["structuredContent"]["status"], "unknown");
+        assert_eq!(value["structuredContent"]["error"]["code"], "unknown");
+        assert_eq!(
+            store.get("fixture/effect").unwrap().unwrap(),
+            b"before crash"
+        );
+    }
+
+    #[test]
+    fn outcome_audit_failure_keeps_the_original_unknown_intent() {
+        let (_temp, store, actor, call) = effect_fixture();
+        let journal = Journal::new(store.clone());
+        store.connection().unwrap().execute_batch("CREATE TRIGGER fail_outcome_audit BEFORE INSERT ON kv WHEN substr(NEW.key,1,14)='control/audit/' AND (SELECT COUNT(*) FROM kv WHERE substr(key,1,14)='control/audit/')>0 BEGIN SELECT RAISE(ABORT,'fixture outcome audit failure'); END;").unwrap();
+        assert!(
+            journal
+                .effect(&actor, &call, || {
+                    store.put("fixture/effect", b"committed").unwrap();
+                    super::super::success(call.op_id, json!({"status":"applied"}))
+                })
+                .is_err()
+        );
+        assert_eq!(store.get("fixture/effect").unwrap().unwrap(), b"committed");
+        store
+            .connection()
+            .unwrap()
+            .execute_batch("DROP TRIGGER fail_outcome_audit")
+            .unwrap();
+        let unknown = journal
+            .effect(&actor, &call, || {
+                panic!("uncertain effect dispatched again")
+            })
+            .unwrap();
+        assert_eq!(unknown["structuredContent"]["status"], "unknown");
+        assert_eq!(journal.pending(128).unwrap().len(), 2);
+    }
+
     #[test]
     fn control_result_and_audit_commit_atomically_and_reopen_without_redispatch() {
         let temp = tempfile::tempdir().unwrap();
