@@ -1,0 +1,161 @@
+L8 checkpoint A — native launcher hosting and Stage/key routing
+
+Frozen source 96709cdd5829b02241c2009f7012c49335d75607; host commit e0732a4; startup/capture support
+96709cd. Both machine-key signatures G. Branch nyx-l8-host, own worktree
+/Users/feral/mydev/bboxy450-term-nyx, based on accepted main 4bb0417 (P3).
+Scope decisions: ba4419d0 (A/B/C checkpoints), d1655251 (--launcher capture).
+Coordination: Aster c08d11d5/00bd58c5 (Verify/init/capture neighbours),
+Seraph b5029990 (launcher after cells, before HUD, no enclosing group).
+
+Mechanism:
+- main.rs:78 — FocusState owns the UI Stage, input timing and deferred Locate.
+  Snapshot reconciliation preserves surviving local focus; new membership can
+  select the new pane. Explicit focus calls the accepted Focus core on a scratch
+  UI model only for the input action; an ordinary publication/frame clones no scratch UI model.
+- main.rs:199 — real winit and synthetic tests share route_key. Terminal plain
+  Tab/arrows/text/control/Alt use the unchanged terminal_input encoder. Cmd+Opt
+  arrows/Tab use the pure pane navigation. Launcher keys are local; repeats move
+  selection but never repeat a pick, Escape or the global open/quit/HUD action.
+- main.rs:307/451/536 — catalog records use stable ids and D1c's provider projection;
+  open hosts the existing Launcher/Controller. The default plain root zsh pick
+  uses the existing bounded SpawnZsh. Other ids/modifier placements log the named
+  not_wired_yet outcome. Query text and IME commits are local; caret, selection
+  and preedit are explicitly a checkpoint C gap. Non-zsh dispatch is checkpoint B.
+- main.rs:584 — pane click and explicit keyboard navigation update Stage through
+  Focus; Scene no longer mutates focus independently. Watched ordering, generation
+  checks, admission and terminal body sizes keep the existing IO path.
+- scene.rs:237/333 — Scene projects the supplied Stage; spatial hit/navigation
+  rects are the outer panes, independent of terminal body sizing.
+- scene.rs:545/594 — the full-window Overlay and existing Launcher compose the
+  foreground. It retains its exact painted panel/query/row rects for input.
+  Live cells precede unwrapped launcher ops; HUD follows last. The frozen path
+  uses the same order. No renderer, gpu.rs, provider model or live.rs edits.
+- main.rs --launcher — debug/verification-only startup flag, same controller;
+  enables IME when the owned native window is created. Listed under Debug in help.
+
+Development checks, O1/debug assertions, own target, explicit memory custody:
+- Initial cargo test -p bboxy450-term --bin bboxy450-term --locked: exit 101;
+  a test constructor passed None to perf_record's f64 GPU argument. Corrected to 0.
+- Second bin-only run: exit 101, 23 pass / 1 fail: existing live.rs:445 requires
+  the app binary to be built first. No product waiver; build order was corrected.
+- cargo build -p bboxy450-term --locked: exit 0.
+- Final cargo test -p bboxy450-term --bin bboxy450-term --locked: exit 0,
+  24 pass / 0 fail. All 7 new routing/Stage/overlay/proof tests pass, including
+  modal isolation, repeat refusal, UTF8 backspace, stale snapshot preservation,
+  cross-stage Locate after the actual new layout, solved row hit regions and
+  unwrapped launcher-before-HUD order. The existing real IO echo/resize/loss test
+  also passes; no external waiver.
+- cargo clippy --workspace --all-targets --locked -- -D warnings: exit 0.
+- git diff --check: exit 0.
+
+Native image:
+target/l8-host/bin/bboxy450-term-96709cd --smoke --launcher --capture
+/Users/feral/mydev/bboxy450-term-nyx/target/l8-host/native/launcher.png — exit 0.
+The command used the just-built binary before it was preserved at that bin path.
+Read the image: sharp centered launcher, selected row and icons; actual blurred
+scene behind it. Native first frame presented; capture Ok. Idle probe 10.002 s:
+0 frames, 0 callbacks; 22 initial samples, warm encode p50 5.055 ms / p99 9.075 ms.
+This is a frozen native smoke view, not an OS-injected key test. No desktop input
+or operator-screen capture was used.
+
+No-menu regression proof:
+Accepted base 4bb041798a4a6f4bcd6bad5968ceae6e605d5723 in an owned detached probe worktree,
+with only a cfg(test) printer appended to scene.rs. The same frozen Scene::new,
+1600x960 layout, effects=false and paint-without-launcher call were printed on
+both sources. Compare every byte between L8_PAINT_BEGIN/L8_PAINT_END, not just
+image descriptions: 892932 before, 892932 after, exact equality.
+SHA256 both 6d3f1766189b207fe77d67ce4946590e116b259b6ce5a675c66531c2cc9451aa.
+This is complete paint-operation identity, including all primitive/material
+rects and text, not a claim that a live animated screenshot is byte-identical.
+Probe exit 0; accepted-source probe worktree removed after the comparison.
+The final 96709cd replay also matches. See target/l8-host/no-menu-proof.json.
+
+Final clean CI and canonical parity: completed on exact 96709cd; exit 0.
+The final result and raw log digest are recorded below.
+
+No-menu baseline replay harness (the accepted source needs only this test append):
+#[cfg(test)]
+mod l8_baseline_probe {
+    #[test]
+    fn no_launcher_paint_proof() {
+        let scene = super::Scene::new();
+        let size = [1600., 960.];
+        let layouts = scene.layout(size, false).unwrap();
+        let paints = scene.paint(&layouts, size, None);
+        println!("L8_PAINT_BEGIN{paints:#?}L8_PAINT_END");
+        assert_eq!(scene.pane_bounds(&layouts).len(), 15);
+    }
+}
+Run on base 4bb0417 with its own detached worktree and own CARGO_TARGET_DIR:
+cargo test -p bboxy450-term --bin bboxy450-term --locked
+no_launcher_paint_proof -- --nocapture
+Final source carries scene::launcher_tests::no_launcher_paint_proof, which calls
+paint(..., None, None). Extract bytes strictly between the same markers and
+compare with ==; sha256 is recorded above for identification. The probe uses
+only font shaping and painting; it starts no custody or processes.
+
+A deliberately leaves the later checkpoints explicit: generic harness/remote
+spawn and explicit placement are B; caret/selection/IME preedit are C. Name
+reroll, settings/graph/Go-to screen activation, preset/banner hosting, dwell,
+drag, resize and Locate/fx painting remain the later L8/W3.2c surfaces. The
+accepted focus core emits Locate exactly; A logs those events and retains the
+post-stage-layout timing, with no new effects painter.
+
+
+Native artifact SHA256 2a5ea647d688c87dea8736dea679e43b5d4bfd8cf2d55dde5ba6e0c2934ad25d
+Native log: w3-2c-launcher-host-native-96709cd.log
+SHA256 6d4ac3c3bfbcdf117c1cf855fc1e6d26444fee2940b0970007f186b6b1b01af0
+
+Read-only progress sample during the one exact gate: /usr/bin/sample on owned
+bboxybook child PID8887 for 1 s — exit 0. 491/526 main-thread samples were in
+launchers::render_case -> components::execute_at -> materials::render_composed_to_rgba;
+232 were under materials::Pass::new -> create_render_pipeline. Offline helper
+measurement only; no source change or application-performance conclusion.
+Raw retained target/l8-host/native-render.sample.txt; PID ancestry is recorded
+in target/l8-host/sampled-renderer.json. The gate continued unchanged.
+
+FINAL EXACT-COMMIT GATE:
+sh scripts/ci-local.sh --parity — exit 0, all gates passed. No gallery selector;
+canonical P3 catalogue plus the script's historical diagnostic both ran.
+Detached clean worktree /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8-host-1ue53zn7
+CARGO_TARGET_DIR /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8-host-ci-target-nnhob2ei
+Explicit BBOXY_TEST_CUSTODY=memory; default CI O1 with debug assertions.
+Build 0; strict workspace all-target Clippy 0; workspace 708 passed / 0 failed /
+15 ignored; UI IO lint 0; app --smoke 0. Invariants 7 checks / 0 failures, 3 named
+slow skips. Socket-backlog passed on the accepted root fix, with no waiver.
+Lab checks: 36 pages x 4 densities, 0 findings.
+Historical: 1664 web captures, 1664 native replays, 0 capture failures; 859 pixel
+reviews are explicitly non-gating in the historical report.
+Current: 1704 web captures, 1704 native images, 0 capture failures. Strict geometry:
+1600 required, 1600 measured, 0 unproven, 0 mismatches. 334 pixel reviews
+are advisory under the existing policy; 1370 cases are within pixel policy.
+Worst measured rect 0.5 px; baseline 0.046875 px.
+No thresholds, omissions policy or reference images were changed by A.
+Full gate wall time 2601.732 seconds. The read-only sample above identifies
+repeated offline pipeline creation; the Oracle queued reuse separately
+(b345a6fa). This checkpoint stayed frozen throughout that run.
+
+Raw CI w3-2c-launcher-host-ci-96709cd.log
+SHA256 40e191f2c9ccc747d24de49685e29dccf751708f809ee2bc055e75b053404994
+Report SHA256 4d7aa4a7523882891eddcb83975573b26bf7625cd28b58b173c5d18d3665f2af
+Capture revision in capture.json equals source 96709cdd5829b02241c2009f7012c49335d75607.
+Current index: /Users/feral/mydev/bboxy450-term-nyx/target/l8-host/parity-96709cd/index.html
+Historical index: /Users/feral/mydev/bboxy450-term-nyx/target/l8-host/parity-96709cd/legacy/index.html
+Each triplet is web/<key>, native/<key>, diff/<key> under the current root.
+Ten worst current triplets (diagram bodies remain advisory per renderer 4.4c):
+- documents/with-a-diagram-compact-light.png — changed 10.565382%, review pixels
+- documents/with-a-diagram-cozy-light.png — changed 10.565382%, review pixels
+- documents/with-a-diagram-touch-light.png — changed 10.565382%, review pixels
+- documents/with-a-diagram-comfortable-light.png — changed 10.565255%, review pixels
+- documents/with-a-diagram-comfortable-dark.png — changed 10.524875%, review pixels
+- documents/with-a-diagram-touch-dark.png — changed 10.524875%, review pixels
+- documents/with-a-diagram-compact-dark.png — changed 10.524748%, review pixels
+- documents/with-a-diagram-cozy-dark.png — changed 10.524748%, review pixels
+- title-strip/focused-vs-unfocused-comfortable-dark.png — changed 8.881337%, review pixels
+- title-strip/focused-vs-unfocused-touch-dark.png — changed 8.857929%, review pixels
+
+Cleanup: this gate's own target was deleted immediately after exit; detached
+worktree was clean afterward and removed (exit 0). The probe worktree was also
+removed; development target cleanup freed 1,254,402,437 logical bytes. Accepted
+capture and parity galleries remain retained. Only own directories were removed.
+Source was frozen throughout the gate; remaining changes are evidence only.
