@@ -248,20 +248,17 @@ table.tok { border-collapse: collapse; font-family: var(--font-mono); font-size:
 table.tok td, table.tok th { text-align: left; padding: 3px var(--s4); border-bottom: var(--hair-w) solid var(--line); }
 table.tok th { color: var(--fg-dim); font-weight: 500; }
 
-/* ---------- border glow spec: one mechanism, four readings, focused boost ----------
-   --gc = glow colour, --gr = radius, --ga = alpha. Pane and row share the rules; the row uses the reduced radius.
-   The real thing is a wgpu particle shader; this is the CSS fake so timing can be felt. */
-.pane, .seat-row { --gc: var(--seat); --gr: var(--glow-pane-r); --ga: var(--glow-idle-a); --boost: 1; --inset: 0 0 0 transparent; }
-.seat-row { --gr: var(--glow-row-r); }
-.pane.focused, .seat-row.focused { --boost: var(--glow-boost); }
-.seat-row.focused { --inset: inset 2px 0 0 var(--seat); }
-.pane, .seat-row { box-shadow: var(--inset), 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--ga) * var(--boost) * 100%), transparent); }
+/* ---------- row glow: one mechanism, four readings, focused boost ----------
+   --gc = glow colour, --gr = radius, --ga = alpha. Panes no longer use it: they draw silk in the glow lane (glow.js). */
+.seat-row { --gc: var(--seat); --gr: var(--glow-row-r); --ga: var(--glow-idle-a); --boost: 1; --inset: 0 0 0 transparent; }
+.seat-row.focused { --boost: var(--glow-boost); --inset: inset 2px 0 0 var(--seat); }
+.seat-row { box-shadow: var(--inset), 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--ga) * var(--boost) * 100%), transparent); }
 .seat-row.waiting { background: color-mix(in srgb, var(--c-waiting) 10%, transparent); }
 .seat-row.waiting .glyph { text-shadow: 0 0 6px var(--c-waiting); }
 .seat-row.errored { background: color-mix(in srgb, var(--c-errored) 8%, transparent); }
-.pane.active, .seat-row.active { animation: glowPulse var(--glow-active-ms) ease-in-out infinite; --ga: var(--glow-active-max); }
-.pane.waiting, .seat-row.waiting { --gc: var(--c-waiting); animation: glowPulseWait var(--pulse-ms) ease-in-out infinite; --ga: var(--glow-wait-max); }
-.pane.errored, .seat-row.errored { --gc: var(--c-errored); --ga: var(--glow-err-a); }
+.seat-row.active { animation: glowPulse var(--glow-active-ms) ease-in-out infinite; --ga: var(--glow-active-max); }
+.seat-row.waiting { --gc: var(--c-waiting); animation: glowPulseWait var(--pulse-ms) ease-in-out infinite; --ga: var(--glow-wait-max); }
+.seat-row.errored { --gc: var(--c-errored); --ga: var(--glow-err-a); }
 @keyframes glowPulse {
   0%, 100% { box-shadow: var(--inset), 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--glow-active-min) * var(--boost) * 100%), transparent); }
   50% { box-shadow: var(--inset), 0 0 calc(var(--gr) * 1.3) color-mix(in srgb, var(--gc) calc(var(--glow-active-max) * var(--boost) * 100%), transparent); }
@@ -500,32 +497,6 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; padding: var(--s1) 0 var(--s2); }
 .keys .kr { display: flex; align-items: center; justify-content: space-between; gap: var(--s6); height: 34px; border-bottom: var(--hair-w) solid var(--hair); font-size: var(--t-row); white-space: nowrap; }
 .keys .kr:nth-last-child(-n+2) { border-bottom: 0; }
-
-/* ---------- border glow spec: one mechanism, four readings, focused boost ----------
-   --gc = glow colour, --gr = radius, --ga = alpha. Pane and row share the rules; the row uses the reduced radius.
-   The real thing is a wgpu particle shader; this is the CSS fake so timing can be felt. */
-.pane, .seat-row { --gc: var(--seat); --gr: var(--glow-pane-r); --ga: var(--glow-idle-a); --boost: 1; --inset: 0 0 0 transparent; }
-.seat-row { --gr: var(--glow-row-r); }
-.pane.focused, .seat-row.focused { --boost: var(--glow-boost); }
-.seat-row.focused { --inset: inset 2px 0 0 var(--seat); }
-.pane, .seat-row { box-shadow: var(--inset), 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--ga) * var(--boost) * 100%), transparent); }
-.seat-row.waiting { background: color-mix(in srgb, var(--c-waiting) 10%, transparent); }
-.seat-row.waiting .glyph { text-shadow: 0 0 6px var(--c-waiting); }
-.seat-row.errored { background: color-mix(in srgb, var(--c-errored) 8%, transparent); }
-.pane.active, .seat-row.active { animation: glowPulse var(--glow-active-ms) ease-in-out infinite; --ga: var(--glow-active-max); }
-.pane.waiting, .seat-row.waiting { --gc: var(--c-waiting); animation: glowPulseWait var(--pulse-ms) ease-in-out infinite; --ga: var(--glow-wait-max); }
-.pane.errored, .seat-row.errored { --gc: var(--c-errored); --ga: var(--glow-err-a); }
-@keyframes glowPulse {
-  0%, 100% { box-shadow: var(--inset), 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--glow-active-min) * var(--boost) * 100%), transparent); }
-  50% { box-shadow: var(--inset), 0 0 calc(var(--gr) * 1.3) color-mix(in srgb, var(--gc) calc(var(--glow-active-max) * var(--boost) * 100%), transparent); }
-}
-@keyframes glowPulseWait {
-  0%, 100% { box-shadow: var(--inset), 0 0 var(--gr) color-mix(in srgb, var(--gc) calc(var(--glow-wait-min) * var(--boost) * 100%), transparent); }
-  50% { box-shadow: var(--inset), 0 0 calc(var(--gr) * 1.3) color-mix(in srgb, var(--gc) calc(var(--glow-wait-max) * var(--boost) * 100%), transparent); }
-}
-.pane-wrap { position: relative; }
-.pane-wrap canvas.particles { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; }
-.pane-wrap .pane { position: relative; z-index: 1; }
 
 /* phone sheet open/closed */
 .sb-frame.phone { overflow: hidden; }

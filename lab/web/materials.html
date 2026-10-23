@@ -19,7 +19,7 @@ Lab.page({ title: 'materials', wide: true, note: 'L2 materials, the web referenc
         const m = UI.material(s, { color: s === 'flat' ? 'var(--surface-2)' : 'var(--accent)' }); params = m.params;
         const sq = el('div', { class: 'ui-sq' }); Object.assign(sq.style, m.css); sq.style.borderRadius = r + 'px';
         const cell = UI.Stack({ gap: 4, align: 'center' });
-        if (s === 'glow') { const w = el('div', { class: 'pane-wrap', style: 'padding:0' }, sq); requestAnimationFrame(() => Glow.attach(w, { key: 'mat' + r, state: 'active' }, { color: TOKENS.color[theme].accent, focused: true })); cell.append(w); }
+        if (s === 'glow') { const w = el('div', { class: 'pane-wrap', style: 'padding:0' }, sq); requestAnimationFrame(() => Glow.attach(w, { key: 'mat' + r, state: 'active' }, { color: TOKENS.color[theme].accent, focused: true, legacy: true })); cell.append(w); }
         else cell.append(sq);
         cell.append(el('div', { class: 'ui-cap' }, 'r ' + r));
         row.append(cell);
