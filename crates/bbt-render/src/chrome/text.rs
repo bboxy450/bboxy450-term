@@ -114,8 +114,43 @@ fn upright_font(
     Ok(unsafe { CTFont::with_font_descriptor(&descriptor, size, std::ptr::null()) })
 }
 
+/// Fonts are rebuilt only when (mono, italic, weight, size) changes. The cache is
+/// per thread, so CTFont objects never cross threads through it (no Send wrapper);
+/// it is bounded and simply cleared when full.
 #[cfg(target_os = "macos")]
 fn native_font(
+    style: TextStyle,
+) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
+    use objc2_core_foundation::CFRetained;
+    use objc2_core_text::CTFont;
+    use std::{cell::RefCell, collections::HashMap};
+    const FONT_BUDGET: usize = 64;
+    /// (mono, italic, weight, pixel size bits): every input build_font reads.
+    type Fonts = HashMap<(bool, bool, u16, u32), CFRetained<CTFont>>;
+    thread_local! {
+        static FONTS: RefCell<Fonts> = RefCell::new(HashMap::new());
+    }
+    let key = (
+        style.mono,
+        style.italic,
+        style.weight,
+        style.pixels().to_bits(),
+    );
+    if let Some(font) = FONTS.with_borrow(|fonts| fonts.get(&key).cloned()) {
+        return Ok(font);
+    }
+    let font = build_font(style)?;
+    FONTS.with_borrow_mut(|fonts| {
+        if fonts.len() >= FONT_BUDGET {
+            fonts.clear();
+        }
+        fonts.insert(key, font.clone());
+    });
+    Ok(font)
+}
+
+#[cfg(target_os = "macos")]
+fn build_font(
     style: TextStyle,
 ) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
     use objc2_core_foundation::{CFDictionary, CFNumber, CFType, CGAffineTransform};
@@ -444,6 +479,38 @@ pub fn rasterize_at(_: &str, _: TextStyle, _: Option<f32>, _: f32, _: f32) -> Re
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn native_fonts_are_reused_per_thread_and_keyed_by_every_input() {
+        let style = TextStyle::default();
+        let a = native_font(style).unwrap();
+        let b = native_font(style).unwrap();
+        assert!(std::ptr::eq(&*a, &*b), "same inputs reuse the font object");
+        for other in [
+            TextStyle {
+                weight: 600,
+                ..style
+            },
+            TextStyle {
+                mono: true,
+                ..style
+            },
+            TextStyle {
+                italic: true,
+                ..style
+            },
+            TextStyle {
+                scale: bbt_ui_model::draw::TypeScale::Custom(21.),
+                ..style
+            },
+        ] {
+            assert_ne!(native_font(other).unwrap(), a);
+        }
+        assert_eq!(
+            native_font(style).unwrap(),
+            build_font(style).unwrap(),
+            "cached equals fresh"
+        );
+    }
     #[test]
     fn measurement_matches_painted_metrics_bit_for_bit() {
         use bbt_ui_model::draw::TypeScale;
