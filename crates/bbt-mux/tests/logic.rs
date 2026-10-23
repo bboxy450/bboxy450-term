@@ -580,6 +580,17 @@ fn wait_for_prefix(runtime: &tokio::runtime::Runtime, logic: &Logic, seat: Ulid)
 #[test]
 fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap()
  {
+    assert!(sealed_twenty_mib_roundtrip() < 2.0);
+}
+
+#[test]
+#[ignore = "W1.2f O0 cold-start profile; producer latency is separately reported and gated"]
+fn ring_cold_replay_twenty_mib_profile() {
+    let max_write = sealed_twenty_mib_roundtrip();
+    println!("W12F_PROFILE cold_start_only=true producer_max_write_s={max_write}");
+}
+
+fn sealed_twenty_mib_roundtrip() -> f64 {
     use sha2::{Digest, Sha256};
     let temp = tempfile::tempdir().unwrap();
     let runtime = runtime();
@@ -635,7 +646,7 @@ fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_the
         serde_json::from_slice(&std::fs::read(temp.path().join("writer.json")).unwrap()).unwrap();
     println!("20 MiB writer completed BEFORE logic restart: {stats}");
     assert_eq!(stats["bytes"], size);
-    assert!(stats["max_write_s"].as_f64().unwrap() < 2.0);
+    let max_write = stats["max_write_s"].as_f64().unwrap();
     let raw_size = size + 8 + b"\x1b[31mRING-TAIL\x1b[0m\r\n".len();
     let until = Instant::now() + Duration::from_secs(15);
     let mut last_observation = String::new();
@@ -778,6 +789,7 @@ fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_the
         panic!()
     };
     assert_eq!(seats[0].pid, info.pid);
+    max_write
 }
 
 #[test]
