@@ -20,6 +20,9 @@ pub struct Item {
     pub navigation: bool,
     pub link: Option<super::link::LinkState>,
     pub down: bool,
+    /// Enter picks this parent's default action; Right still opens its children.
+    #[serde(rename = "enterPicks")]
+    pub enter_picks: bool,
     /// Some(empty) remains a parent, as in the lab's empty Go to fixture.
     pub children: Option<Vec<Item>>,
 }

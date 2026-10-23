@@ -11,6 +11,17 @@ fn item(id: &str, label: &str) -> Item {
         ..Default::default()
     }
 }
+
+#[test]
+fn enter_picks_is_a_defaulted_public_constructor_input() {
+    let ordinary: Item = serde_json::from_str(r#"{"id":"ssh","children":[]}"#).unwrap();
+    assert!(!ordinary.enter_picks);
+    let harness: Item =
+        serde_json::from_str(r#"{"id":"codex","enterPicks":true,"children":[{"id":"codex:tab"}]}"#)
+            .unwrap();
+    assert!(harness.enter_picks);
+    assert!(!harness.children.unwrap()[0].enter_picks);
+}
 fn launch() -> Launcher {
     let mut remote = item("ssh", "SSH");
     let mut machine = item("ssh:rig", "rig");
