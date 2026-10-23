@@ -213,7 +213,8 @@ impl Surface {
             }
             Material::Frosted(f) => {
                 i.color = f.tint.0;
-                i.p0 = [0., f.blur_radius * scale, f.saturation, 0.];
+                let sigma = f.blur_radius * scale;
+                i.p0 = [frost_factor(sigma), sigma, f.saturation, 0.];
                 i.p2 = physical;
                 if !(0.0..=256.).contains(&f.blur_radius) || !(0.0..=4.).contains(&f.saturation) {
                     return Err("invalid frosted parameters".into());
@@ -311,6 +312,18 @@ impl Surface {
     }
 }
 
+/// Downsampling factor for a frosted blur of `sigma` physical pixels: a blur this wide
+/// keeps almost nothing finer than sigma, so it runs at 1/k resolution with sigma/k,
+/// k*k fewer pixels and k fewer taps; narrow blurs stay closer to full resolution.
+fn frost_factor(sigma: f32) -> f32 {
+    if sigma >= 16. {
+        4.
+    } else if sigma >= 8. {
+        2.
+    } else {
+        1.
+    }
+}
 fn blur_region(instance: &Instance, width: u32, height: u32) -> Option<[u32; 4]> {
     // Use the unsnapped border box used by mirror_box, not the rounded paint
     // rectangle. ceil(3*sigma) matches the shader's last Gaussian tap.
@@ -337,7 +350,7 @@ pub struct Frame<'a> {
 pub struct Pass {
     layout: wgpu::BindGroupLayout,
     pipelines: [wgpu::RenderPipeline; 8],
-    blur: [wgpu::RenderPipeline; 2],
+    blur: [wgpu::RenderPipeline; 3],
     sampler: wgpu::Sampler,
     format: wgpu::TextureFormat,
     /// Finished vertical-blur textures by blur key, most recent last.
@@ -469,13 +482,14 @@ impl Pass {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
-        let blur = std::array::from_fn(|axis| {
+        let blur = std::array::from_fn(|stage| {
+            let (label, entry) = [
+                ("frosted downsample", "blur_down"),
+                ("frosted Gaussian horizontal", "blur_x"),
+                ("frosted Gaussian vertical", "blur_y"),
+            ][stage];
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(if axis == 0 {
-                    "frosted Gaussian horizontal"
-                } else {
-                    "frosted Gaussian vertical"
-                }),
+                label: Some(label),
                 layout: Some(&pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: &module,
@@ -485,7 +499,7 @@ impl Pass {
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &module,
-                    entry_point: Some(if axis == 0 { "blur_x" } else { "blur_y" }),
+                    entry_point: Some(entry),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: wgpu::TextureFormat::Rgba16Float,
                         blend: None,
@@ -650,12 +664,14 @@ impl Pass {
                 )));
                 continue;
             }
+            // The blur runs at 1/k resolution; the frosted composite samples it bilinearly.
+            let k = instances[index].p0[0] as u32;
             let texture = || {
                 context.device.create_texture(&wgpu::TextureDescriptor {
                     label: Some("frosted sRGB-value intermediate"),
                     size: wgpu::Extent3d {
-                        width: target.width,
-                        height: target.height,
+                        width: target.width.div_ceil(k),
+                        height: target.height.div_ceil(k),
                         depth_or_array_layers: 1,
                     },
                     mip_level_count: 1,
@@ -667,12 +683,18 @@ impl Pass {
                     view_formats: &[],
                 })
             };
+            let (low_left, low_top) = (left / k, top / k);
+            let low_size = [
+                (left + width).div_ceil(k) - low_left,
+                (top + height).div_ceil(k) - low_top,
+            ];
+            // Ping-pong: downsample into `vertical`, blur across into `horizontal`, then back.
             let horizontal = texture();
             let vertical = texture();
             let x = horizontal.create_view(&Default::default());
             let y = vertical.create_view(&Default::default());
-            let bind_x = bind_backdrop(&x);
-            for (axis, output, source) in [(0, &x, &bind), (1, &y, &bind_x)] {
+            let (bind_x, bind_y) = (bind_backdrop(&x), bind_backdrop(&y));
+            for (stage, output, source) in [(0, &y, &bind), (1, &x, &bind_y), (2, &y, &bind_x)] {
                 crate::passes::count(crate::passes::Kind::Blur);
                 let mut blur = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("frosted separable Gaussian"),
@@ -690,11 +712,10 @@ impl Pass {
                     occlusion_query_set: None,
                     multiview_mask: None,
                 });
-                blur.set_pipeline(&self.blur[axis]);
+                blur.set_pipeline(&self.blur[stage]);
                 blur.set_bind_group(0, source, &[]);
-                // Keep the original full-target coordinates and sampling math;
-                // only omit fragments that the frosted element cannot use.
-                blur.set_scissor_rect(left, top, width, height);
+                // Only the fragments the frosted element can use, at 1/k.
+                blur.set_scissor_rect(low_left, low_top, low_size[0], low_size[1]);
                 blur.draw(0..3, index as u32..index as u32 + 1);
             }
             filtered.push(Some(bind_backdrop(&y)));
@@ -989,6 +1010,71 @@ mod tests {
         };
         assert_eq!(flat.backdrop_region(1., 200, 100).unwrap(), None);
         assert!(surface.backdrop_region(f32::NAN, 200, 100).is_err());
+    }
+    #[test]
+    fn downsampled_blur_matches_the_full_resolution_mirrored_gaussian() {
+        // A worst case for the 1/4 blur: 1-3 px stripes under a sigma-20 frosted box touching
+        // the top edge, so the taps mirror at the border box and at the target edge.
+        assert_eq!(
+            [1., 7.9, 8., 15.9, 16., 60.].map(frost_factor),
+            [1., 1., 2., 2., 4., 4.]
+        );
+        let (width, height, sigma) = (96usize, 64usize, 20f32);
+        let column = |x: usize| [0f32, 1., 1., 0., 1.][x % 5];
+        let row = |y: usize| [0.25f32, 1., 0.25][y % 3];
+        let pixels: Vec<u8> = (0..width * height)
+            .flat_map(|n| {
+                let v = (column(n % width) * row(n / width) * 255.).round() as u8;
+                [v, v, v, 255]
+            })
+            .collect();
+        let rect = Rect::new(8., 0., 64., 40.);
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let out = render_to_rgba(
+            &mut renderer,
+            Scene {
+                backdrop: Backdrop::Rgba(&pixels),
+                items: &[Surface {
+                    rect,
+                    radii: [0.; 4],
+                    clips: vec![],
+                    material: Material::Frosted(Frosted {
+                        tint: Color::TRANSPARENT,
+                        blur_radius: sigma,
+                        saturation: 1.,
+                    }),
+                }],
+                width: width as u32,
+                height: height as u32,
+                scale: 1.,
+                time_ms: 0.,
+                theme: Theme::Dark,
+            },
+        )
+        .unwrap();
+        // The full-resolution reference: separable Gaussian, taps to ceil(3 sigma), mirrored at
+        // the border box as CSS backdrop-filter does (materials.wgsl mirror_box).
+        let blur = |f: &dyn Fn(usize) -> f32, at: usize, origin: f32, size: f32| {
+            let support = (sigma * 3.).ceil() as i32;
+            let (mut sum, mut weight) = (0., 0.);
+            for d in -support..=support {
+                let t = ((at as f32 + 0.5 + d as f32 - origin) / size * 0.5).rem_euclid(1.) * 2.;
+                let mirrored = origin + if t > 1. { 2. - t } else { t } * size;
+                let w = (-0.5 * (d * d) as f32 / (sigma * sigma)).exp();
+                sum += f(mirrored.floor() as usize) * w;
+                weight += w;
+            }
+            sum / weight
+        };
+        let mut worst = 0f32;
+        for y in 0..40 {
+            for x in 9..71 {
+                let expected = blur(&column, x, rect.x, rect.w) * blur(&row, y, rect.y, rect.h);
+                let got = f32::from(out[(y * width + x) * 4]) / 255.;
+                worst = worst.max((got - expected).abs());
+            }
+        }
+        assert!(worst <= 2. / 255., "worst channel error {}", worst * 255.);
     }
     /// A checker backdrop under a frosted bar: the blur has real work to do.
     fn frosted_scene(list: &DrawList) -> (Vec<Surface>, Scene<'_>) {

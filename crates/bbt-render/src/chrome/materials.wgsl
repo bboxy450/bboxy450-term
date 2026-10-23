@@ -32,7 +32,7 @@ fn paint(c:vec4f,a:f32)->vec4f {let alpha=c.a*a;return vec4f(clamp(c.rgb,vec3f(0
     return paint(vec4f(c,i.color.a),coverage(v));
 }
 @fragment fn frosted(v:Vertex)->@location(0) vec4f {
-    let i=items[v.index];let blurred=textureSampleLevel(backdrop,backdrop_sampler,v.point/view.xy,0.0);let c=blurred.rgb;let l=dot(c,vec3f(0.2126,0.7152,0.0722));let saturated=clamp(mix(vec3f(l),c,i.p0.z),vec3f(0),vec3f(1));
+    let i=items[v.index];let blurred=textureSampleLevel(backdrop,backdrop_sampler,v.point/(frost_k(i)*vec2f(textureDimensions(backdrop))),0.0);let c=blurred.rgb;let l=dot(c,vec3f(0.2126,0.7152,0.0722));let saturated=clamp(mix(vec3f(l),c,i.p0.z),vec3f(0),vec3f(1));
     let alpha=i.color.a+blurred.a*(1.0-i.color.a);let rgb=i.color.rgb*i.color.a+saturated*blurred.a*(1.0-i.color.a);let mask=coverage(v);return vec4f(rgb*mask,alpha*mask);
 }
 @vertex fn vs_blur(@builtin(vertex_index) vertex:u32,@builtin(instance_index) index:u32)->Vertex {
@@ -45,12 +45,25 @@ fn mirror_box(point:vec2f,r:vec4f)->vec2f {
     let t=fract((point-r.xy)/r.zw*0.5)*2.0;
     return r.xy+select(t,vec2f(2)-t,t>vec2f(1))*r.zw;
 }
+// Frosted blur at 1/k resolution (k = p0.x, from frost_factor): blur_down averages each k x k block of
+// the backdrop, then two Gaussian passes with sigma/k mirror their taps at the border box scaled by 1/k,
+// as the full-resolution blur did. Box prefilter plus Gaussian adds (k*k-1)/12 to sigma^2.
+fn frost_k(i:Instance)->f32 {return max(i.p0.x,1.0);}
+@fragment fn blur_down(v:Vertex)->@location(0) vec4f {
+    let i=items[v.index];let k=i32(frost_k(i));let base=floor(v.position.xy)*f32(k);var sum=vec4f(0);
+    for(var y=0;y<k;y++){for(var x=0;x<k;x++){sum+=textureSampleLevel(backdrop,backdrop_sampler,mirror_box(base+vec2f(f32(x),f32(y))+0.5,i.p2)/view.xy,0.0);}}
+    return sum/f32(k*k);
+}
+// Weights by the incremental Gaussian (GPU Gems 3, 40.3): no exp per tap; normalised by their sum.
 fn gaussian(v:Vertex,axis:vec2f)->vec4f {
-    let radius=items[v.index].p0.y;
-    if radius<0.01 {return textureSampleLevel(backdrop,backdrop_sampler,v.point/view.xy,0.0);}
-    let support=i32(ceil(radius*3.0));var sum=vec4f(0);var weight=0.0;
-    for(var offset=-support;offset<=support;offset++) {let d=f32(offset);let w=exp(-0.5*d*d/(radius*radius));sum+=textureSampleLevel(backdrop,backdrop_sampler,mirror_box(v.point+axis*d,items[v.index].p2)/view.xy,0.0)*w;weight+=w;}
-    return sum/max(weight,0.00001);
+    let i=items[v.index];let k=frost_k(i);let sigma=i.p0.y/k;let support=i32(ceil(sigma*3.0));
+    let size=vec2f(textureDimensions(backdrop));let box=i.p2/k;
+    var sum=textureSampleLevel(backdrop,backdrop_sampler,mirror_box(v.position.xy,box)/size,0.0);var weight=1.0;var g=1.0;var step=exp(-0.5/(sigma*sigma));let ratio=step*step;
+    for(var d=1;d<=support;d++) {
+        g*=step;step*=ratio;let o=axis*f32(d);
+        sum+=(textureSampleLevel(backdrop,backdrop_sampler,mirror_box(v.position.xy+o,box)/size,0.0)+textureSampleLevel(backdrop,backdrop_sampler,mirror_box(v.position.xy-o,box)/size,0.0))*g;weight+=2.0*g;
+    }
+    return sum/weight;
 }
 @fragment fn blur_x(v:Vertex)->@location(0) vec4f {return gaussian(v,vec2f(1,0));}
 @fragment fn blur_y(v:Vertex)->@location(0) vec4f {return gaussian(v,vec2f(0,1));}
