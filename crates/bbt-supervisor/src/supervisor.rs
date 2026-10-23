@@ -531,9 +531,21 @@ impl Actor {
 
     fn socket_reply(&mut self, id: Ulid, request_id: Ulid, result: Result<Reply, Failure>) {
         let queued = match self.clients.get_mut(&id) {
-            Some(Target::Socket { peer, .. }) => peer
-                .enqueue(Message::Reply { request_id, result })
-                .unwrap_or(false),
+            Some(Target::Socket { peer, .. }) => {
+                match peer.enqueue(Message::Reply { request_id, result }) {
+                    Ok(true) => true,
+                    Ok(false) => {
+                        eprintln!("supervisor reply queue full: request={request_id}");
+                        false
+                    }
+                    Err(error) => {
+                        eprintln!(
+                            "supervisor reply encoding failed: request={request_id} error={error}"
+                        );
+                        false
+                    }
+                }
+            }
             _ => false,
         };
         if !queued {
