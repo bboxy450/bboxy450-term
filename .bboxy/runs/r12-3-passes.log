@@ -1,0 +1,17 @@
+# R12-3 pass counter: per-frame render passes and copies, custody-clean opt+debug-assertions build, throttled seq firehose x4, --meter (every 120th frame)
+passes frame=120 total=33 flat=12 clear=5 path=1 group=1 blur=2 material=9 cells=3 copy=6
+passes frame=240 total=35 flat=12 clear=6 path=1 group=1 blur=2 material=9 cells=4 copy=6
+passes frame=360 total=35 flat=12 clear=6 path=1 group=1 blur=2 material=9 cells=4 copy=6
+passes frame=480 total=35 flat=12 clear=6 path=1 group=1 blur=2 material=9 cells=4 copy=6
+passes frame=600 total=35 flat=12 clear=6 path=1 group=1 blur=2 material=9 cells=4 copy=6
+passes frame=720 total=35 flat=12 clear=6 path=1 group=1 blur=2 material=9 cells=4 copy=6
+passes frame=840 total=33 flat=12 clear=5 path=1 group=1 blur=2 material=9 cells=3 copy=6
+passes frame=960 total=35 flat=12 clear=6 path=1 group=1 blur=2 material=9 cells=4 copy=6
+passes frame=1080 total=33 flat=12 clear=5 path=1 group=1 blur=2 material=9 cells=3 copy=6
+passes frame=1200 total=31 flat=12 clear=4 path=1 group=1 blur=2 material=9 cells=2 copy=6
+passes frame=1320 total=31 flat=12 clear=4 path=1 group=1 blur=2 material=9 cells=2 copy=6
+passes frame=1440 total=31 flat=12 clear=4 path=1 group=1 blur=2 material=9 cells=2 copy=6
+passes frame=1560 total=31 flat=12 clear=4 path=1 group=1 blur=2 material=9 cells=2 copy=6
+
+# material order in one main frame (scratch trace build, not committed): Frosted@4 Gloss@30,144,174 Lane@213,228,243,258 of 272 ops; overlay: Frosted (HUD)
+# each pane: Lane, then its strip/body draws (D1 D1 U2 D3 U4 D5 x6 ...), then the next pane's Lane

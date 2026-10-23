@@ -5,6 +5,7 @@ pub mod cells;
 pub mod chrome;
 pub mod device;
 pub mod headless;
+pub mod passes;
 pub mod text;
 
 pub use headless::{HeadlessRenderer, render_to_rgba, write_png};

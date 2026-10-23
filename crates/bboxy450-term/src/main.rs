@@ -1288,6 +1288,14 @@ impl App {
             if let Some((phase, time)) = self.meter.record(Instant::now(), phases) {
                 self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3}",self.meter.total_frames(),time.as_secs_f64()*1000.,phases.cpu().as_secs_f64()*1000.,phases.drain.as_secs_f64()*1000.,phases.layout.as_secs_f64()*1000.,phases.draw.as_secs_f64()*1000.,phases.encode.as_secs_f64()*1000.,phases.present_wait.as_secs_f64()*1000.));
             }
+            // Under the meter, the render-pass mix of every 120th frame (R12-3 profiling).
+            if self.overlay && self.meter.total_frames().is_multiple_of(120) {
+                let p = self.gpu.as_ref().unwrap().passes;
+                self.logger.write(format!(
+                    "passes frame={} total={} flat={} clear={} path={} group={} blur={} material={} cells={} copy={}",
+                    self.meter.total_frames(), p.passes(), p.flat, p.clear, p.path, p.group, p.blur, p.material, p.cells, p.copy
+                ));
+            }
             if self.animation_start.is_some() && self.animate {
                 // The Metal path never waits for acquisition: include its full
                 // redraw wall time, including overlay/import/present overhead.

@@ -694,6 +694,7 @@ impl Pass {
             let y = vertical.create_view(&Default::default());
             let bind_x = bind_backdrop(&x);
             for (axis, output, source) in [(0, &x, &bind), (1, &y, &bind_x)] {
+                crate::passes::count(crate::passes::Kind::Blur);
                 let mut blur = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("frosted separable Gaussian"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -727,6 +728,7 @@ impl Pass {
                 cache.push((k, vertical));
             }
         }
+        crate::passes::count(crate::passes::Kind::Material);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("L2 named materials"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

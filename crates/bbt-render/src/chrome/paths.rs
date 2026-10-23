@@ -494,6 +494,7 @@ impl Renderer {
                 format: Some(format),
                 ..Default::default()
             });
+        crate::passes::count(crate::passes::Kind::Path);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("analytic path coverage"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

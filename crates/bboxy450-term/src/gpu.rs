@@ -98,6 +98,9 @@ struct FrameTime {
     /// The host drew into the target by other means before these ops (an
     /// external texture, a draw hook): no frosted blur is reused (backdrop_keys).
     external_before: bool,
+    /// The target is uncleared: its first pass clears it (to transparent) instead of a separate
+    /// clear pass. Identical pixels, one empty pass fewer.
+    clear: bool,
 }
 pub struct Panes<'a> {
     pub model: &'a Model,
@@ -114,6 +117,8 @@ pub struct Gpu {
     pub config: wgpu::SurfaceConfiguration,
     renderer: ChromeRenderer,
     materials: m::Pass,
+    /// Render passes and copies encoded by the last draw (profiling; see bbt_render::passes).
+    pub passes: bbt_render::passes::Counts,
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
     cells: BTreeMap<SeatId, CellTexture>,
@@ -141,6 +146,7 @@ fn texture(device: &wgpu::Device, size: [u32; 2]) -> wgpu::Texture {
     })
 }
 fn clear(view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
+    bbt_render::passes::count(bbt_render::passes::Kind::Clear);
     let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("app clear"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -228,6 +234,7 @@ impl Gpu {
             config,
             renderer,
             materials,
+            passes: Default::default(),
             target,
             backdrop,
             cells: BTreeMap::new(),
@@ -289,7 +296,6 @@ impl Gpu {
             .context
             .device
             .create_command_encoder(&Default::default());
-        clear(&self.target.create_view(&Default::default()), &mut encoder);
         encode_ops(
             &mut self.renderer,
             &self.materials,
@@ -300,6 +306,7 @@ impl Gpu {
                 scale,
                 time_ms: 450.,
                 external_before: false,
+                clear: true,
             },
             &mut encoder,
         )
@@ -390,7 +397,6 @@ impl Gpu {
             .device
             .create_command_encoder(&Default::default());
         let view = self.target.create_view(&Default::default());
-        clear(&view, &mut encoder);
         encode_ops(
             &mut self.renderer,
             &self.materials,
@@ -400,8 +406,9 @@ impl Gpu {
             FrameTime {
                 scale,
                 time_ms,
-                // Only clear() has touched the target this frame.
+                // Nothing has touched the target yet this frame; its first pass clears it.
                 external_before: false,
+                clear: true,
             },
             &mut encoder,
         )
@@ -419,6 +426,7 @@ impl Gpu {
                         scale,
                         time_ms,
                         external_before: true,
+                        clear: false,
                     },
                     &mut encoder,
                 )
@@ -426,9 +434,8 @@ impl Gpu {
             }
         }
         let surface_view = frame.texture().create_view(&Default::default());
-        clear(&surface_view, &mut encoder);
         self.renderer
-            .composite_group(
+            .composite_group_clearing(
                 &view,
                 group::Filter {
                     opacity: 1.,
@@ -452,6 +459,7 @@ impl Gpu {
         let gpu_start = timing_marker(&self.renderer.context.queue)?;
         gpu_start.commit();
         self.renderer.context.queue.submit([encoder.finish()]);
+        self.passes = bbt_render::passes::take();
         let gpu_end = timing_marker(&self.renderer.context.queue)?;
         let sender = self.gpu_sender.clone();
         let completed = RcBlock::new(
@@ -542,6 +550,7 @@ impl Gpu {
                 .min(frame.height)
                 .min(self.config.height.saturating_sub(y));
             if width > 0 && height > 0 {
+                bbt_render::passes::count(bbt_render::passes::Kind::Copy);
                 encoder.copy_texture_to_texture(
                     cached.texture.as_image_copy(),
                     wgpu::TexelCopyTextureInfo {
@@ -676,6 +685,8 @@ impl VerificationFrame {
                 scale: 1.,
                 time_ms: 450.,
                 external_before: false,
+                // R5 keeps its explicit clear above.
+                clear: false,
             },
             &mut encoder,
         )
@@ -726,6 +737,19 @@ fn encode_ops(
 ) -> bbt_render::Result<()> {
     let FrameTime { scale, time_ms, .. } = timing;
     let view = destination.create_view(&Default::default());
+    // An uncleared target is cleared by the first flat flush, in that pass; a material or group
+    // that comes first reads or composites the target, so it gets an explicit clear instead.
+    let uncleared = std::cell::Cell::new(timing.clear);
+    let flush = |renderer: &mut ChromeRenderer,
+                 list: &DrawList,
+                 encoder: &mut wgpu::CommandEncoder|
+     -> bbt_render::Result<()> {
+        if uncleared.take() {
+            renderer.draw_clearing(list, target(&view, scale), encoder)
+        } else {
+            renderer.draw_overlay(list, target(&view, scale), encoder)
+        }
+    };
     let mut underlay = DrawList::default();
     let mut pending = DrawList::default();
     let keys = backdrop_keys(&ops, timing, destination.size());
@@ -746,11 +770,10 @@ fn encode_ops(
                 clips,
             } => {
                 if !pending.primitives.is_empty() {
-                    renderer.draw_overlay(
-                        &std::mem::take(&mut pending),
-                        target(&view, scale),
-                        encoder,
-                    )?;
+                    flush(renderer, &std::mem::take(&mut pending), encoder)?;
+                }
+                if uncleared.take() {
+                    clear(&view, encoder);
                 }
                 let material = match kind {
                     ui::Material::Flat => m::Material::Flat(color),
@@ -841,6 +864,7 @@ fn encode_ops(
                     source.origin = origin;
                     let mut sampled = backdrop.as_image_copy();
                     sampled.origin = origin;
+                    bbt_render::passes::count(bbt_render::passes::Kind::Copy);
                     encoder.copy_texture_to_texture(
                         source,
                         sampled,
@@ -852,11 +876,7 @@ fn encode_ops(
                     );
                 }
                 if !underlay.primitives.is_empty() {
-                    renderer.draw_overlay(
-                        &std::mem::take(&mut underlay),
-                        target(&view, scale),
-                        encoder,
-                    )?;
+                    flush(renderer, &std::mem::take(&mut underlay), encoder)?;
                 }
                 pass.draw(
                     &renderer.context,
@@ -878,28 +898,23 @@ fn encode_ops(
                 mask,
             } => {
                 if !pending.primitives.is_empty() {
-                    renderer.draw_overlay(
-                        &std::mem::take(&mut pending),
-                        target(&view, scale),
-                        encoder,
-                    )?;
+                    flush(renderer, &std::mem::take(&mut pending), encoder)?;
+                }
+                if uncleared.take() {
+                    clear(&view, encoder);
                 }
                 if !underlay.primitives.is_empty() {
-                    renderer.draw_overlay(
-                        &std::mem::take(&mut underlay),
-                        target(&view, scale),
-                        encoder,
-                    )?;
+                    flush(renderer, &std::mem::take(&mut underlay), encoder)?;
                 }
                 let size = destination.size();
                 let layer = texture(&renderer.context.device, [size.width, size.height]);
                 let behind = texture(&renderer.context.device, [size.width, size.height]);
                 let layer_view = layer.create_view(&Default::default());
-                clear(&layer_view, encoder);
                 renderer.with_group_layer(|renderer| {
-                    // A group layer starts cleared: only these ops reach it.
+                    // A group layer starts cleared (by its first pass): only these ops reach it.
                     let timing = FrameTime {
                         external_before: false,
+                        clear: true,
                         ..timing
                     };
                     encode_ops(renderer, pass, &layer, &behind, ops, timing, encoder)
@@ -919,7 +934,10 @@ fn encode_ops(
     }
     pending.primitives.append(&mut underlay.primitives);
     if !pending.primitives.is_empty() {
-        renderer.draw_overlay(&pending, target(&view, scale), encoder)?;
+        flush(renderer, &pending, encoder)?;
+    }
+    if uncleared.take() {
+        clear(&view, encoder);
     }
     Ok(())
 }
@@ -957,6 +975,7 @@ mod backdrop_key_tests {
                 scale: 2.,
                 time_ms,
                 external_before: external,
+                clear: false,
             },
             size,
         )
@@ -988,5 +1007,120 @@ mod backdrop_key_tests {
         assert_ne!(keys(&timed, 0., false)[2], keys(&timed, 900., false)[2]);
         // Ops that are not frosted get no key.
         assert_eq!(keys(&timed, 0., false)[..2], [None, None]);
+    }
+}
+
+#[cfg(test)]
+mod clear_fold_tests {
+    use super::*;
+
+    /// Paint ops into a fresh 1600x960 target: `folded` folds the clear into the first pass,
+    /// else an explicit clear pass runs first (the old path). Pixels and pass counts.
+    fn render(ops: Vec<Paint>, folded: bool) -> (Vec<u8>, bbt_render::passes::Counts) {
+        let [w, h] = [1600, 960];
+        let mut renderer = ChromeRenderer::new(crate::assets::images().unwrap()).unwrap();
+        let pass = m::Pass::new(&renderer.context.device, FORMAT);
+        let target = texture(&renderer.context.device, [w, h]);
+        let backdrop = texture(&renderer.context.device, [w, h]);
+        bbt_render::passes::take();
+        renderer.begin_frame();
+        pass.begin_frame();
+        let mut encoder = renderer
+            .context
+            .device
+            .create_command_encoder(&Default::default());
+        if !folded {
+            clear(&target.create_view(&Default::default()), &mut encoder);
+        }
+        let timing = FrameTime {
+            scale: 1.,
+            time_ms: 450.,
+            external_before: false,
+            clear: folded,
+        };
+        encode_ops(
+            &mut renderer,
+            &pass,
+            &target,
+            &backdrop,
+            ops,
+            timing,
+            &mut encoder,
+        )
+        .unwrap();
+        let counts = bbt_render::passes::take();
+        let buffer = renderer
+            .context
+            .device
+            .create_buffer(&wgpu::BufferDescriptor {
+                label: None,
+                size: u64::from(w * 4 * h),
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+        encoder.copy_texture_to_buffer(
+            target.as_image_copy(),
+            wgpu::TexelCopyBufferInfo {
+                buffer: &buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(w * 4),
+                    rows_per_image: Some(h),
+                },
+            },
+            target.size(),
+        );
+        pass.flush(&renderer.context);
+        renderer.flush();
+        renderer.context.queue.submit([encoder.finish()]);
+        buffer
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, |r| r.unwrap());
+        renderer
+            .context
+            .device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .unwrap();
+        let pixels = buffer.slice(..).get_mapped_range().unwrap().to_vec();
+        (pixels, counts)
+    }
+
+    #[test]
+    fn a_folded_clear_draws_the_scene_byte_identically_in_one_pass_fewer() {
+        let scene = crate::scene::Scene::new();
+        let size = [1600., 960.];
+        let layouts = scene.layout(size, false).unwrap();
+        let ops = || scene.paint(&layouts, size, None, None);
+        let (reference, before) = render(ops(), false);
+        let (pixels, after) = render(ops(), true);
+        assert!(
+            reference.iter().any(|&v| v != 0),
+            "the scene drew something"
+        );
+        assert_eq!(pixels, reference);
+        assert_eq!(after.clear + 1, before.clear, "{before:?} -> {after:?}");
+        assert_eq!(after.passes() + 1, before.passes());
+    }
+
+    #[test]
+    fn a_target_whose_first_op_is_a_material_or_nothing_is_still_cleared() {
+        let frosted = || Paint::Material {
+            rect: Rect::new(10., 10., 300., 40.),
+            radii: [8.; 4],
+            kind: ui::Material::Frosted,
+            color: Color::hex("#2E6BFF"),
+            blur: None,
+            glow: None,
+            clips: vec![],
+        };
+        let mut after = DrawList::default();
+        after.rect(Rect::new(20., 20., 50., 20.), 4., Color::WHITE);
+        let ops = || vec![frosted(), Paint::Draw(after.clone())];
+        assert_eq!(render(ops(), true).0, render(ops(), false).0);
+        let (empty, counts) = render(vec![], true);
+        assert!(
+            empty.iter().all(|&v| v == 0) && counts.clear == 1,
+            "{counts:?}"
+        );
     }
 }
