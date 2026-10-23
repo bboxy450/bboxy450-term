@@ -173,6 +173,8 @@ fn four_watched_seats_advance_during_a_large_replay_and_match_serial_screens() {
         runtime.handle(),
     )
     .unwrap();
+    logic.client.enable_capture_diagnostics();
+    supervisor.enable_capture_diagnostics();
     let swarm = Ulid::new();
     let mut expected_bytes = BTreeMap::new();
     for (index, &seat) in order.iter().enumerate() {
@@ -305,6 +307,48 @@ time.sleep(60)
             through[&seat]
         );
     }
+    let diagnostics = logic.client.capture_diagnostics();
+    assert!(diagnostics.enabled);
+    assert_eq!(diagnostics.missed, 0);
+    assert_eq!(diagnostics.untracked_seat_samples, 0);
+    for &seat in &order {
+        let row = diagnostics
+            .seats
+            .iter()
+            .find(|row| row.seat == seat)
+            .unwrap();
+        assert!(row.applied_sequence >= through[&seat]);
+        assert!(row.captured_sequence >= through[&seat]);
+        assert!(row.last_progress_ns >= diagnostics.started_ns);
+    }
+    use bbt_mux::supervisor::capture_diagnostics::Phase;
+    assert!(
+        diagnostics
+            .totals
+            .iter()
+            .any(|(phase, total)| *phase == Phase::ReplayPage && total.calls > 0 && total.work > 0)
+    );
+    assert!(
+        diagnostics
+            .spans
+            .iter()
+            .filter(|span| span.phase == Phase::LogicTurn)
+            .all(|span| span.work <= 1),
+        "instrumentation observed more than one page per turn"
+    );
+    let supervisor_diagnostics = supervisor.capture_diagnostics();
+    assert!(
+        supervisor_diagnostics
+            .totals
+            .iter()
+            .any(|(phase, total)| *phase == Phase::SupervisorQuery && total.calls > 0)
+    );
+    assert!(
+        supervisor_diagnostics
+            .totals
+            .iter()
+            .any(|(phase, total)| *phase == Phase::SupervisorSweep && total.work >= 4)
+    );
     drop(gui);
     logic.shutdown().unwrap();
     supervisor.shutdown().unwrap();
