@@ -1,0 +1,30 @@
+$ BBOXY_TEST_CUSTODY=memory BBOXY_VERIFY_INPUT=<fixture printf> /Users/feral/mydev/bboxy450-term-exec5/target/debug/bboxy450-term --run-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-vntu0j5x --spawn-zsh 1 --capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar.png --capture-after 2
+owned app PID=34312 run_dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-vntu0j5x
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=0
+cockpit ready: supervisor=34318 logic=34319
+capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar.png: Ok(())
+seat 01M5KSVM2Y8MWPC857F81BZY2V activity=Idle process=Running { pid: 34339 }
+GUI operation 01M5KSVM5KT2P7T6WEYB8NGWBT accepted
+GUI operation 01M5KSVMC5ZNW7B6B02KDXP36A accepted
+GUI operation 01M5KSVMDXAW1R49VK6MBVYNZD accepted
+GUI operation 01M5KSVMEFW0J3ZZ9VZY8HVPZQ accepted
+GUI operation 01M5KSVMHDA6JB273YAHQW4GT8 accepted
+GUI operation 01M5KSVN0G607GF5MVRVFZ71T4 accepted
+seat 01M5KSVM2Y8MWPC857F81BZY2V activity=Active process=Running { pid: 34339 }
+GUI operation 01M5KSVN7EY6PWPZP78Y0AQ6YV accepted
+GUI operation 01M5KSVN9WSQ8QB3MS354ST848 accepted
+seat 01M5KSVM2Y8MWPC857F81BZY2V activity=Idle process=Running { pid: 34339 }
+GUI operation 01M5KSVNCYZN7GFGXFV2PGQATK accepted
+capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar.png: Ok(())
+recorded OWN process tree=[[34312, 34302, "/Users/feral/mydev/bboxy450-term-exec5/target/debug/bboxy450-term --run-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-vntu0j5x --spawn-zsh 1 --capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar.png --capture-after 2"], [34318, 34312, "/Users/feral/mydev/bboxy450-term-exec5/target/debug/bboxy450-term supervisor"], [34319, 34312, "/Users/feral/mydev/bboxy450-term-exec5/target/debug/bboxy450-term logic"], [34339, 34318, "/bin/zsh -il"]]
+SIGTERM owned pid=34339
+SIGTERM owned pid=34319
+SIGTERM owned pid=34318
+app exit=-15 (recorded PID SIGTERM after capture, no orderly-shutdown claim)
+capture=written sha256=bbf549fbe7eded78f2501f8ef60cea32d82d9c4b431716d3a45892a3e3b68b71
+capture assertion exit=0

@@ -1,0 +1,1686 @@
+$ cargo test --workspace --locked
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling aho-corasick v1.1.5
+   Compiling regex-syntax v0.8.11
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+   Compiling regex-automata v0.4.18
+   Compiling regex v1.13.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 55.22s
+     Running unittests src/lib.rs (target/debug/deps/bboxy_firehose-e37029a581a5db6d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/bboxy_firehose-95bd166ff32b6564)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (target/debug/deps/cli-7c9115fd81009409)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+
+     Running tests/corpus.rs (target/debug/deps/corpus-2e8cd9d70f8eba0b)
+
+running 3 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/lib.rs (target/debug/deps/bboxy450_term-f8b74dd6f95fc227)
+
+running 7 tests
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-a75b34c48fa29254)
+
+running 17 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test scene::lane_tests::the_lane_sets_gutter_and_inset_and_relayouts_at_runtime ... ok
+test scene::lane_tests::pane_rects_are_identical_across_activity_states ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+cockpit ready: supervisor=72423 logic=72427
+seat 01M5KV5SBP207MP1GP5E6WE8SM activity=Idle process=Running { pid: 72428 }
+seat 01M5KV5SBP207MP1GP5E6WE8SM activity=Idle process=Running { pid: 72428 }
+GUI operation 01M5KV5SDNSEAVDQT26NXYWMCP accepted
+GUI operation 01M5KV5SFVGVHAFDSVCBVBW470 accepted
+GUI operation 01M5KV5SF09KGYGX7FFDC6M551 accepted
+GUI operation 01M5KV5SK39WZ94AWFMWRNJEVH accepted
+GUI operation 01M5KV5SJP3T2PC0XND7J3B1P5 accepted
+seat 01M5KV5SBP207MP1GP5E6WE8SM activity=Active process=Running { pid: 72428 }
+GUI operation 01M5KV5SMDE0RN8MTV69AR1C2T accepted
+GUI operation 01M5KV5SNY8C4RD971CAWCY3WS accepted
+GUI operation 01M5KV5SN7JB7VSCMR6VN5MB5T accepted
+GUI operation 01M5KV5SN7X6M0AE0XRAT6432K accepted
+GUI operation 01M5KV5SN7331C0B8F6S35QK9W accepted
+GUI operation 01M5KV5SN7KDN8R11F4M9SMTXB accepted
+GUI operation 01M5KV5SN75P5TF3JWX1MDVFQ9 accepted
+GUI operation 01M5KV5SN7HP4C85EGG2HG8WPS accepted
+GUI operation 01M5KV5SN72HBPZYHJ9HXHCAXK accepted
+GUI operation 01M5KV5SN7T15TKCSFF6C982C5 accepted
+GUI operation 01M5KV5SN7Z5DEP3JBC8QGM47Q accepted
+GUI operation 01M5KV5SN7HR62BWEE7Z54D3BK accepted
+GUI operation 01M5KV5SN7Q93H5CNNPTZ6MG4W accepted
+GUI operation 01M5KV5SN7Q55SY1AW2AGR3TZJ accepted
+GUI operation 01M5KV5SN7D7NZ7VB4VK467046 accepted
+GUI operation 01M5KV5SN7M9TAWSD8KAEHW5FJ accepted
+GUI operation 01M5KV5SN72R4MPF76P2GRCZJV accepted
+GUI operation 01M5KV5SN7TDWR8BGNF74WBMMX accepted
+GUI operation 01M5KV5SN7TH8H13FYA3HC750J accepted
+GUI operation 01M5KV5SN79Q61KB7SGCFA8CD3 accepted
+GUI operation 01M5KV5SN78BG821X71P4G728B accepted
+GUI operation 01M5KV5SN7J4P1R5B5GKD763XB accepted
+GUI operation 01M5KV5SN7R9BXYYEPV2A0E5QY accepted
+GUI operation 01M5KV5SN7BPDAPFSR1Z0EE8XA accepted
+GUI operation 01M5KV5SN72XAYBBQMMJ007A3D accepted
+GUI operation 01M5KV5SN7Z85MB7CB7VQPY2GJ accepted
+GUI operation 01M5KV5SN776DHX4E6X7SC69R2 accepted
+GUI operation 01M5KV5SN7Z252YPENW6RHP9KW accepted
+GUI operation 01M5KV5SN7FC4YSTV3VD9GF6A0 accepted
+GUI operation 01M5KV5SN7HH14GXPW7BSYKD53 accepted
+GUI operation 01M5KV5SN7F3BYH7G352TCBKV8 accepted
+GUI operation 01M5KV5SN70KBPP9G5JJ85Q4XT accepted
+GUI operation 01M5KV5SN7RM3V9SC7HHXV6270 accepted
+GUI operation 01M5KV5SN75C18ZFWJM38G3F2W accepted
+GUI operation 01M5KV5SN7QMS3BMMWRTCG5G4E accepted
+GUI operation 01M5KV5SN70XKBQ0KSD9AG0MXB accepted
+GUI operation 01M5KV5SN7VQP56QJ79W3YT1MD accepted
+GUI operation 01M5KV5SN7KMDXHGMRZND5BWFF accepted
+GUI operation 01M5KV5SN7DAATRG67PHBCDESB accepted
+GUI operation 01M5KV5SN7QDRJ7HXR709QV50X accepted
+GUI operation 01M5KV5SN7HSD0G43YDEJ3DKEG accepted
+GUI operation 01M5KV5SN7Y02ACZFQQZXCC0CV accepted
+GUI operation 01M5KV5SN7RMATJ1HFP7RG1Y1F accepted
+GUI operation 01M5KV5SN7A87G4SV79XG8CTTZ accepted
+GUI operation 01M5KV5SN73KE2KMFCA9A2NF03 accepted
+GUI operation 01M5KV5SN7AVPA5N885R2BMSVQ accepted
+GUI operation 01M5KV5SN7QFTBG1ESPJMVRYMT accepted
+GUI operation 01M5KV5SN7CPZP1KKA6KZNNNQ8 accepted
+GUI operation 01M5KV5SN7QRJ8ZCZQ9VDA9WX0 accepted
+GUI operation 01M5KV5SN7C560046DSCAWT575 accepted
+GUI operation 01M5KV5SN7NYPS2EDSM14YS7HS accepted
+GUI operation 01M5KV5SN72VKXRAM7BT81TYQG accepted
+GUI operation 01M5KV5SN7CME5VE90ZRGQ74EP accepted
+GUI operation 01M5KV5SN74RGSSJBGD4D22WWM accepted
+GUI operation 01M5KV5SN7DPMW81KBJKW0KKJT accepted
+GUI operation 01M5KV5SN7N1R59HNW8SCAKZE3 accepted
+GUI operation 01M5KV5SN7D7STFV95G4FZX8KY accepted
+GUI operation 01M5KV5SN77XH0GAKZ1B190MCE accepted
+GUI operation 01M5KV5SN73MZAXGDSSKSSE35V accepted
+GUI operation 01M5KV5SN76H4PFV2PSPTDGAW7 accepted
+GUI operation 01M5KV5SN789Q69FJ5BFKK9D76 accepted
+GUI operation 01M5KV5SN7XN7RBJ1GP8CBV14H accepted
+GUI operation 01M5KV5SN7H9SHMY9SAGWTSPB7 accepted
+GUI operation 01M5KV5SN764047D6QQKQ8D2R9 accepted
+GUI operation 01M5KV5SN7R7VMNVG5FEXV23MT accepted
+GUI operation 01M5KV5SN75D5KPJTMGQ1Y2TM0 accepted
+GUI operation 01M5KV5SN7AGYZZQJVNA6E863B accepted
+GUI operation 01M5KV5SN7XE1190N30A0SQD30 accepted
+GUI operation 01M5KV5SN75DF1332HKWAW2QT1 accepted
+GUI operation 01M5KV5SN7D6XJ437RBYHFP0FY accepted
+GUI operation 01M5KV5SN7F1F7N1DZVAW87K4Y accepted
+GUI operation 01M5KV5SN7G5DFRW1H6HZRA79G accepted
+GUI operation 01M5KV5SN7V8XVS4GKZ9PYDCQW accepted
+GUI operation 01M5KV5SN7JV4757JG09QCK82Z accepted
+GUI operation 01M5KV5SN7S6BPX3YQG31VH4AB accepted
+GUI operation 01M5KV5SN7CS88W2FM1D05N26R accepted
+GUI operation 01M5KV5SN7N313N6CEW0NYKWGZ accepted
+GUI operation 01M5KV5SN7RC2DD8GKJYZF38GM accepted
+GUI operation 01M5KV5SN77151SPYJK037KNSH accepted
+GUI operation 01M5KV5SN79FMJTB79CCPK23TS accepted
+GUI operation 01M5KV5SN7G2MEXGH8FB7QK2CK accepted
+GUI operation 01M5KV5SN7MN1CJ05B220YWDSE accepted
+GUI operation 01M5KV5SN78Q2Z83J2DTVAHKNX accepted
+GUI operation 01M5KV5SN7QY7JZHGY559AG1AK accepted
+GUI operation 01M5KV5SN71RF61N1YJ7ATGYTR accepted
+GUI operation 01M5KV5SN7ZNSNZV3YN83AVCJW accepted
+GUI operation 01M5KV5SN7NPMK3AAB3C3FD7CT accepted
+GUI operation 01M5KV5SN7R50MDC4D14PRHKA7 accepted
+GUI operation 01M5KV5SN7B7FM3VRE2DA2F68E accepted
+GUI operation 01M5KV5SN7YGX9YZS4JKQ4D0HJ accepted
+GUI operation 01M5KV5SN7PRSYRE3DCJ6A3YYJ accepted
+GUI operation 01M5KV5SN7EG9GWXF6QYFR62PF accepted
+GUI operation 01M5KV5SN7ST58C3EYYR91YV3K accepted
+GUI operation 01M5KV5SN79W3V0FYED6WCT6B6 accepted
+GUI operation 01M5KV5SN7FQ994JNKHH42AK1T accepted
+GUI operation 01M5KV5SN78MFHXAA4S758HQAQ accepted
+GUI operation 01M5KV5SN7FNWF7DMH0YZ9YB4F accepted
+GUI operation 01M5KV5SN775N7GKGJ9FNJN5C8 accepted
+GUI operation 01M5KV5SN7NJ5R1VV8DBS20T19 accepted
+GUI operation 01M5KV5SN7F4Y2J5C42BZTZZ1X accepted
+GUI operation 01M5KV5SN70H6DE5QJ54Z21BVT accepted
+GUI operation 01M5KV5SN7AG9AYCZ3974YW6VM accepted
+GUI operation 01M5KV5SN7NSNNTQQBE3R9S7AG accepted
+GUI operation 01M5KV5SN7DSKD3MR1TCN2364Z accepted
+GUI operation 01M5KV5SN7CC1DY974JTPN8H1S accepted
+GUI operation 01M5KV5SN77ZFZHHZB7Y4XE28Z accepted
+GUI operation 01M5KV5SN7BFERYHNASDWMRG1F accepted
+GUI operation 01M5KV5SN7MZEXZQJP0V792806 accepted
+GUI operation 01M5KV5SN71BK88PRPFMNM04V0 accepted
+GUI operation 01M5KV5SN7CNFKKZ8394KEYY90 accepted
+GUI operation 01M5KV5SN7EDAE72G07BA66AW6 accepted
+GUI operation 01M5KV5SN7CY15AJ5ESGA94QTM accepted
+GUI operation 01M5KV5SN7AM41R3D1BQ92WWPM accepted
+GUI operation 01M5KV5SN7ET6B32TGK65QMQN0 accepted
+GUI operation 01M5KV5SN75HQJM4TXKS01GE6Q accepted
+GUI operation 01M5KV5SN7ZQ9MBFACW0XFZ6SS accepted
+GUI operation 01M5KV5SN7YFQF5W9S3GHKSNBS accepted
+GUI operation 01M5KV5SN7NT9FF20V373VPR2Q accepted
+GUI operation 01M5KV5SN7ADRMAE6ESM5GVRKB accepted
+GUI operation 01M5KV5SN743M164MW74D6BCBZ accepted
+GUI operation 01M5KV5WA6GNQN4ZJ5XRJNVYT8 accepted
+GUI operation 01M5KV5SN7HK987AG21M900HDK accepted
+GUI operation 01M5KV5SN7M2GCE8Y165NJGKV4 accepted
+GUI operation 01M5KV5SN78B3QN77BGEHJS9QG accepted
+GUI operation 01M5KV5SN7RJACWMT3D27MHYYD accepted
+GUI operation 01M5KV5SN7FEJ9CGKE8VC3FR4A accepted
+GUI operation 01M5KV5SN7YC7G703YJCAGPM67 accepted
+GUI operation 01M5KV5SN73TYZMCXJNZ5MBHW1 accepted
+GUI operation 01M5KV5SN7JN4KJSQH5FE731W9 accepted
+GUI operation 01M5KV5SN78V1CGND4PEBNDRQ2 accepted
+GUI operation 01M5KV5SN79NBAJMH2QAGQPJ8A accepted
+GUI operation 01M5KV5SN7Y6DY4NJQMFWCKP5V accepted
+GUI operation 01M5KV5SN73G3G1WN71PNK3DEH accepted
+GUI operation 01M5KV5SN7K52S44BJ7W9RYP4N accepted
+GUI operation 01M5KV5SN74EGQ1FATQBZCVEVC accepted
+GUI operation 01M5KV5SN7D2KXQVDWJV735EZH accepted
+GUI operation 01M5KV5SN73T9ZP5E1HXSKWQCK accepted
+GUI operation 01M5KV5SN71PPXX4EZPEKBDE7D accepted
+GUI operation 01M5KV5SN7TPCN0YBR13W0NY3V accepted
+GUI operation 01M5KV5SN72NZ6GYR31G0TMD6P accepted
+GUI operation 01M5KV5SN7PZZD6J86GMP5W5YQ accepted
+GUI operation 01M5KV5SN7P6RXMJ78PK8H4193 accepted
+GUI operation 01M5KV5SN7XQN9PRBMRM15KFAC accepted
+GUI operation 01M5KV5SN7YPTV51QCW59BPRQT accepted
+GUI operation 01M5KV5SN7T0ZXRZ70Q7DSJCPC accepted
+GUI operation 01M5KV5SN73ZAB08SNAZ3E5Q1P accepted
+GUI operation 01M5KV5SN7MDBSBTA6TMRMFGCJ accepted
+GUI operation 01M5KV5SN7GXF0PBCZVNPKRQ8W accepted
+GUI operation 01M5KV5SN720X1ZEM7AZ4RJC1E accepted
+GUI operation 01M5KV5SN7F3MH62SNYXX7XFA5 accepted
+GUI operation 01M5KV5SN75REXBYVTTYVKHR4F accepted
+GUI operation 01M5KV5SN7MG3T1GXGBWAD70FA accepted
+GUI operation 01M5KV5SN7Y2G03DXHWEPR2A1H accepted
+GUI operation 01M5KV5SN71ZCP9QQ6VW13DWV2 accepted
+GUI operation 01M5KV5SN74Z106ZS5185AJQ7Z accepted
+GUI operation 01M5KV5SN7BT8VF0Z52YAVBT4S accepted
+GUI operation 01M5KV5SN79N7XH0WZZS2JHCVA accepted
+GUI operation 01M5KV5SN71WWWGHT73W0WHSD8 accepted
+GUI operation 01M5KV5SN7ZTKEPX368A52FA63 accepted
+GUI operation 01M5KV5SN7P71XP0C3395RRYE6 accepted
+GUI operation 01M5KV5SN7YHEYKZY00KJVWMSM accepted
+GUI operation 01M5KV5SN7RDST4KF41KVWQVJR accepted
+GUI operation 01M5KV5SN7A7KY2CSB3YDH0PBX accepted
+GUI operation 01M5KV5SN70ESPD5WVYKZSXXY7 accepted
+GUI operation 01M5KV5SN7TAFZ2BB1QZ94QQE3 accepted
+GUI operation 01M5KV5SN78FJB47C3WZ9CS2CF accepted
+GUI operation 01M5KV5SN7BV0K2JWA7T9S5N13 accepted
+GUI operation 01M5KV5SN77BXATM56RM0X09TE accepted
+GUI operation 01M5KV5SN73YAVK31CDQ8R3TTD accepted
+GUI operation 01M5KV5SN7JJ3X3GBPZH057W4S accepted
+GUI operation 01M5KV5SN7S48G50KJCG5RJK7P accepted
+GUI operation 01M5KV5SN7NY63CSVMKH750SG0 accepted
+GUI operation 01M5KV5SN7F9QJTFMAD864TY65 accepted
+GUI operation 01M5KV5SN7NSPWZ0MND1GWQDRK accepted
+GUI operation 01M5KV5SN7F26TYWQNZFEN8E68 accepted
+GUI operation 01M5KV5SN7J414392SQPX6ZKQW accepted
+GUI operation 01M5KV5SN7Q8PV5EZB1TX1PZ2P accepted
+GUI operation 01M5KV5SN7C72Z93QEC2K5PNBX accepted
+GUI operation 01M5KV5SN7F6YSD2MP97ZB7HYC accepted
+GUI operation 01M5KV5SN7498XB4APZVSKE0ZQ accepted
+GUI operation 01M5KV5SN7JFR95TKB43GHJX74 accepted
+GUI operation 01M5KV5SN7A80GWH2V07GR3P9C accepted
+GUI operation 01M5KV5SN7HN7M51AWZAVVHWY6 accepted
+GUI operation 01M5KV5SN7VZK49X6ANNGZ834A accepted
+GUI operation 01M5KV5SN7VDEDSEGZF49F50XH accepted
+GUI operation 01M5KV5SN7FDSF6282XCMGF7JK accepted
+GUI operation 01M5KV5T5FFZY4HRND5934BSHT accepted
+GUI operation 01M5KV5T5F9SEGF06342E81XFV accepted
+GUI operation 01M5KV5T5FTNNK81H77KQG6AFM accepted
+GUI operation 01M5KV5T5F4R50CWRB4P9PYTT1 accepted
+GUI operation 01M5KV5T5FM5R9FW72MJF3GM6H accepted
+GUI operation 01M5KV5T5FYMV0WC72E0YQV66N accepted
+GUI operation 01M5KV5T5FR25PW9A432DFA6Y9 accepted
+GUI operation 01M5KV5T5F49S8VMRTHHGRVBMY accepted
+GUI operation 01M5KV5T5FFWQ292VQACKPCCTK accepted
+GUI operation 01M5KV5T5FA94BTDFJVB99H63B accepted
+GUI operation 01M5KV5T5FPJ9QVM44B85Y8J52 accepted
+GUI operation 01M5KV5T5FVKW7V1JQREBACTB6 accepted
+GUI operation 01M5KV5T5F6JTRY8A83E9G0J0W accepted
+GUI operation 01M5KV5T5FJ7MN914030JS9J3F accepted
+GUI operation 01M5KV5T5FP5S6HS0KN4FVWG6H accepted
+GUI operation 01M5KV5T5FGT0PJX2DYQMXTR72 accepted
+GUI operation 01M5KV5T5F7YNDQQX5F1XYNJDW accepted
+GUI operation 01M5KV5T5FA7NV375TDZXRVAD5 accepted
+GUI operation 01M5KV5T5FWZG7TNSAE04F0W8J accepted
+GUI operation 01M5KV5T5FW52KT7RRNX8E2T74 accepted
+GUI operation 01M5KV5T5FCH6AXT28W88AEBQB accepted
+GUI operation 01M5KV5T5F2ARVXFXSW0555EHY accepted
+GUI operation 01M5KV5T5FPJFE4487D68V71DS accepted
+GUI operation 01M5KV5T5FCSCJRMXNR1AS0TJH accepted
+GUI operation 01M5KV5T5FBMXFWBVP0BBA895P accepted
+GUI operation 01M5KV5T5F6N3WYDY2QMZPM31Q accepted
+GUI operation 01M5KV5T5FJW64K6DV0D1J5ANB accepted
+GUI operation 01M5KV5T5FWB16PJ4GTJS8KPXE accepted
+GUI operation 01M5KV5TXHX0Q90AMYAWFHF44A accepted
+GUI operation 01M5KV5TXHXJ4BC86QSHHKYGXQ accepted
+GUI operation 01M5KV5TXHD2094HDJSPT17D1W accepted
+GUI operation 01M5KV5TXHFWQMBC2DX0E3F3W5 accepted
+GUI operation 01M5KV5TXHCG1J7F19HWX7N42C accepted
+GUI operation 01M5KV5TXHWX424NJXWHZST47P accepted
+GUI operation 01M5KV5TXH030A6E2ZNVMCKWBA accepted
+GUI operation 01M5KV5TXHKMMTMQBCG7C0XGFQ accepted
+GUI operation 01M5KV5TXHNS4RTZJP8R23RNED accepted
+GUI operation 01M5KV5TXH6DSWYBF938TB07ZM accepted
+GUI operation 01M5KV5TXHY3MEF1GYFCSJKG6S accepted
+GUI operation 01M5KV5TXHYQKBNTA4CME7Y1TQ accepted
+GUI operation 01M5KV5TXHY6BJ89JVKN863ZSH accepted
+GUI operation 01M5KV5TXH3M9W8Y54M1W9E9S3 accepted
+GUI operation 01M5KV5TXH4J5H918EFZ0S03WF accepted
+GUI operation 01M5KV5TXHRZ6SNZGYK48S6Q3P accepted
+GUI operation 01M5KV5TXHFPCS156J4JDDXQ56 accepted
+GUI operation 01M5KV5TXHVAS6MHFYK90Y7VCM accepted
+GUI operation 01M5KV5TXHRF5Y2SJZZ6R8BKFZ accepted
+GUI operation 01M5KV5TXHC8839HXWKYFCGG8Y accepted
+GUI operation 01M5KV5TXHXM2D1Q8MYBYGRPXD accepted
+GUI operation 01M5KV5TXHDTR6RP4A5VDRHSTK accepted
+GUI operation 01M5KV5YZ899QMNB8EAEJQ9YWW accepted
+GUI operation 01M5KV5TXH66SB0RPHTNYGFM1E accepted
+GUI operation 01M5KV5TXHDJ6V1KP2R1HNR06P accepted
+GUI operation 01M5KV5TXHHV53T8PG6BQDNBSW accepted
+GUI operation 01M5KV5TXH7VRYNH2EJT1JRZ3Q accepted
+GUI operation 01M5KV5TXH2YYPV0KAVZ6VGZX5 accepted
+GUI operation 01M5KV5TXHTC4K6YC6NVAXYF87 accepted
+GUI operation 01M5KV5TXHV5WRAJWRVGVAH11N accepted
+GUI operation 01M5KV5VEQM2HJP3RGRA3Q1GNN accepted
+GUI operation 01M5KV5VERNZHD2EG8PMYZA9XB accepted
+GUI operation 01M5KV5VERQQTRHFJSX0DVKM7T accepted
+GUI operation 01M5KV5VER6FT1B31WPWPRGW54 accepted
+GUI operation 01M5KV5VERJ5W09S3QCREG2C4Z accepted
+GUI operation 01M5KV5VERRF769P9WCTMZT0V2 accepted
+GUI operation 01M5KV5VERYV9PRJXJ5D0VTV4S accepted
+GUI operation 01M5KV5VERA4M641333GBH1MY8 accepted
+GUI operation 01M5KV5VERTWKMHSSAB40W5GTH accepted
+GUI operation 01M5KV5VEREAJ8XJ2KZNZAGC45 accepted
+GUI operation 01M5KV5VERXZSZY4Z2KDMGM638 accepted
+GUI operation 01M5KV5VERTWVRYRQ9W0BZ128G accepted
+GUI operation 01M5KV5VERZT6KDXXQECS9T9J5 accepted
+GUI operation 01M5KV5VERT13NKMAPS4KP5FDJ accepted
+GUI operation 01M5KV5VERYGZ1QPJ9ZV5AKRPD accepted
+GUI operation 01M5KV5VER29SHN30BJCA9H88C accepted
+GUI operation 01M5KV5VER19D6NJX6R2CEE47W accepted
+GUI operation 01M5KV5ZP39W2YR6P963Z95WT8 accepted
+seat 01M5KV5SBP207MP1GP5E6WE8SM activity=Idle process=Running { pid: 72428 }
+GUI operation 01M5KV5ZQAP19YPNWWWYZMNS9C accepted
+GUI operation 01M5KV5ZRVQ9GR1Y9W128R02Y3 accepted
+GUI operation 01M5KV5ZT34VVAB1RKK76YW9HY accepted
+GUI operation 01M5KV5ZSS97TVFR2PPWV5KP64 accepted
+seat 01M5KV5SBP207MP1GP5E6WE8SM activity=Idle process=Running { pid: 72428 }
+GUI operation 01M5KV5ZVBMC5FTXY3Z9CPZ30Q accepted
+GUI operation 01M5KV5ZW992FRDS4G3CPAJY0C accepted
+GUI operation 01M5KV5ZVWGZKKXM21N9DJFVZ9 accepted
+GUI operation 01M5KV5ZXW7TV44S7JCQDZ6AZF accepted
+GUI operation 01M5KV5ZXWTNYVJ7D63D9PMYB3 accepted
+GUI operation 01M5KV5ZYPX6YMB7HE1NT4PVTT accepted
+GUI operation 01M5KV5ZYTCZM40510RDK2Y2A3 accepted
+seat 01M5KV5SBP207MP1GP5E6WE8SM activity=Idle process=Running { pid: 72428 }
+GUI operation 01M5KV6026CNK24BK3XHTDXYX5 accepted
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.62s
+
+     Running tests/cockpit.rs (target/debug/deps/cockpit-6397b5eece3ef667)
+
+running 5 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+
+     Running tests/custody.rs (target/debug/deps/custody-6b710164916018d1)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.09s
+
+     Running tests/hosts.rs (target/debug/deps/hosts-a6f92085f06b80ed)
+
+running 1 test
+test provider_data_binds_settings_launcher_and_survives_model_rebuilds ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/bboxybook-ade3129ab0fc882c)
+
+running 12 tests
+test documents::diagram_policy_tests::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+
+     Running unittests src/main.rs (target/debug/deps/bboxybook-9265e2ca39b65e20)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (target/debug/deps/atoms-f618475c49275791)
+
+running 3 tests
+test icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage ... ok
+test icon_size_gallery_renders_at_one_and_two_device_pixels_per_point ... ok
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/blending.rs (target/debug/deps/blending-1d27d27686ad07f9)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/clipping.rs (target/debug/deps/clipping-263083728e3478d4)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/components.rs (target/debug/deps/components-f59d0bc0403d9b74)
+
+running 4 tests
+test component_cases_are_canonical_and_box_gallery_covers_materials_and_radii ... ok
+test retained_image_preserves_asset_colour_rounding_and_group_filtering ... ok
+test a_retained_group_keeps_material_coverage_and_filters_the_completed_layer ... ok
+test retained_scroll_content_moves_but_never_paints_outside_the_viewport ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+
+     Running tests/documents.rs (target/debug/deps/documents-cf277159c7b7def9)
+
+running 4 tests
+test document_matrix_covers_all_types_and_both_modal_presentations_and_source ... ok
+test native_document_layout_consumes_public_records_not_css_or_child_geometry ... ok
+test document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records ... ok
+test every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.55s
+
+     Running tests/fixtures.rs (target/debug/deps/fixtures-f84288539346a72c)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/graphs.rs (target/debug/deps/graphs-2c59f3b369ce7251)
+
+running 4 tests
+test former_graph_and_provenance_hand_painters_are_removed ... ok
+test graph_matrix_covers_each_live_card_and_the_empty_swarm ... ok
+test channel_layout_never_consumes_browser_svg_diagnostics ... ok
+test graph_layout_is_driven_by_records_not_browser_child_positions ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/icon_filter.rs (target/debug/deps/icon_filter-93b2805963cd7bc2)
+
+running 1 test
+test icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/launchers.rs (target/debug/deps/launchers-343e47cfb04a7d25)
+
+running 3 tests
+test matrix_has_every_current_lab_state_and_separate_historical_keys ... ok
+test a_machine_subtitle_with_room_stays_on_one_line ... ok
+test geometry_uses_constructor_values_instead_of_child_dom_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/materials.rs (target/debug/deps/materials-b35d5fb0c143f823)
+
+running 3 tests
+test source_over_glow_keeps_destination_alpha ... ok
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/metrics.rs (target/debug/deps/metrics-05c4b2d538a850ab)
+
+running 3 tests
+test cache_hits_preserve_native_float_bits_and_instance_lifetime ... ok
+test every_app_font_key_field_including_float_bits_is_distinct ... ok
+test cached_coretext_values_match_the_raw_host_bit_for_bit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/overlays.rs (target/debug/deps/overlays-18c0fc16bfda569b)
+
+running 2 tests
+test layer_matrix_distinguishes_full_primitives_from_module_surfaces ... ok
+test overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/panes.rs (target/debug/deps/panes-a6f0c53f3ffb5c8b)
+
+running 4 tests
+test legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted ... ok
+test pane_registry_pairs_every_current_and_historical_case_without_collisions ... ok
+test legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip ... ok
+test native_panes_ignore_child_web_bounds_and_font_diagnostics ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/parity_gate.rs (target/debug/deps/parity_gate-0fe0334fd7686f2e)
+
+running 6 tests
+test historical_geometry_review_exits_zero ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_reference_does_not_hide_missing_geometry ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running tests/perf.rs (target/debug/deps/perf-df673526a379a1a1)
+
+running 2 tests
+test perf_cases_cover_six_states_with_ascii_slugs ... ok
+test hud_width_is_the_spark_and_every_part_is_named ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/render.rs (target/debug/deps/render-0d5ccd0502124813)
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+
+     Running tests/seat_rows.rs (target/debug/deps/seat_rows-0c36e185d3dc1b0d)
+
+running 2 tests
+test seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures ... ok
+test child_dom_rectangles_and_css_metrics_are_diagnostics_only ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/settings.rs (target/debug/deps/settings-a060476349eb1131)
+
+running 3 tests
+test placeholder_settings_hand_painter_is_removed ... ok
+test settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme ... ok
+test settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/shaders.rs (target/debug/deps/shaders-8f53a5eba6e99156)
+
+running 2 tests
+test lane_quad_and_parameters_are_validated ... ok
+test lane_effects_never_leave_the_lane ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+     Running tests/shadow.rs (target/debug/deps/shadow-39ca2e30ee34b407)
+
+running 2 tests
+test css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box ... ok
+test positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/streams.rs (target/debug/deps/streams-01fa76821f30dd33)
+
+running 3 tests
+test old_stream_painter_is_deleted_in_favor_of_the_retained_composition ... ok
+test stream_matrix_covers_every_current_state_and_labels_legacy_cases ... ok
+test stream_layout_consumes_public_entries_but_never_browser_child_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/styles.rs (target/debug/deps/styles-08e705aaf7a372bb)
+
+running 2 tests
+test per_node_glow_drives_state_grade_and_seed_without_changing_the_box ... ok
+test style_matrix_is_canonical_and_every_preset_renders_on_the_native_device ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+     Running tests/swarms.rs (target/debug/deps/swarms-12495b4bd4d649da)
+
+running 3 tests
+test old_swarm_card_and_sidebar_hand_painters_are_gone ... ok
+test swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys ... ok
+test captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/tabs.rs (target/debug/deps/tabs-f9b254ef7444e372)
+
+running 3 tests
+test old_module_and_json_painters_delegate_to_the_retained_compositions ... ok
+test all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions ... ok
+test tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/title_bars.rs (target/debug/deps/title_bars-d3001fec6e761566)
+
+running 2 tests
+test titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only ... ok
+test native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/widgets.rs (target/debug/deps/widgets-41c935272f6f0a58)
+
+running 3 tests
+test control_matrix_has_canonical_keys_and_all_constructor_families ... ok
+test transparent_layout_border_does_not_cut_the_background_fill ... ok
+test thousand_row_views_clip_output_and_the_table_header_stays_fixed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.34s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_core-348ec8df8d490e01)
+
+running 108 tests
+test vendor::alacritty::grid::storage::tests::rotate_wrap_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate ... ok
+test vendor::alacritty::grid::storage::tests::indexing ... ok
+test vendor::alacritty::grid::storage::tests::shrink_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::initialize ... ok
+test vendor::alacritty::grid::storage::tests::indexing_above_inner_len - should panic ... ok
+test vendor::alacritty::grid::storage::tests::grow_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::grow_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_then_grow ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning ... ok
+test vendor::alacritty::grid::storage::tests::with_capacity ... ok
+test vendor::alacritty::grid::tests::grow_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::grow_reflow ... ok
+test vendor::alacritty::grid::tests::accurate_size_hint ... ok
+test vendor::alacritty::grid::tests::grow_reflow_multiline ... ok
+test vendor::alacritty::grid::tests::scroll_down ... ok
+test vendor::alacritty::grid::tests::scroll_down_with_history ... ok
+test vendor::alacritty::grid::tests::scroll_up ... ok
+test vendor::alacritty::grid::tests::shrink_reflow ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_twice ... ok
+test vendor::alacritty::grid::tests::test_iter ... ok
+test vendor::alacritty::index::tests::add ... ok
+test vendor::alacritty::index::tests::add_clamp ... ok
+test vendor::alacritty::index::tests::add_grid_clamp ... ok
+test vendor::alacritty::index::tests::add_none_clamp ... ok
+test vendor::alacritty::index::tests::add_wrap ... ok
+test vendor::alacritty::index::tests::location_ordering ... ok
+test vendor::alacritty::index::tests::sub ... ok
+test vendor::alacritty::index::tests::sub_clamp ... ok
+test vendor::alacritty::index::tests::sub_grid_clamp ... ok
+test vendor::alacritty::index::tests::sub_none_clamp ... ok
+test vendor::alacritty::index::tests::sub_wrap ... ok
+test vendor::alacritty::term::cell::tests::cell_size_is_below_cap ... ok
+test vendor::alacritty::term::cell::tests::line_length_works ... ok
+test vendor::alacritty::term::cell::tests::line_length_works_with_wrapline ... ok
+test vendor::alacritty::term::tests::damage_cursor_movements ... ok
+test vendor::alacritty::term::tests::clear_saved_lines ... ok
+test vendor::alacritty::term::tests::input_line_drawing_character ... ok
+test vendor::alacritty::term::tests::parse_cargo_version ... ok
+test vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset ... ok
+test vendor::alacritty::term::tests::clearing_viewport_keeps_history_position ... ok
+test vendor::alacritty::term::tests::damage_public_usage ... ok
+test vendor::alacritty::term::tests::window_title ... ok
+test vendor::vte::ansi::tests::contrast ... ok
+test vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing ... ok
+test vendor::vte::ansi::tests::mixed_sync_escape ... ok
+test vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke ... ok
+test vendor::vte::ansi::tests::parse_control_attribute ... ok
+test vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_invalid_number ... ok
+test vendor::vte::ansi::tests::parse_invalid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_number_too_large ... ok
+test vendor::alacritty::term::tests::grid_serde ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_color ... ok
+test vendor::vte::ansi::tests::parse_osc4_set_color ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_csi ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_esc ... ok
+test vendor::vte::ansi::tests::parse_truecolor_attr ... ok
+test vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_valid_number ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos ... ok
+test vendor::alacritty::term::tests::full_damage ... ok
+test vendor::vte::ansi::tests::parse_valid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_zsh_startup ... ok
+test vendor::vte::ansi::tests::partial_sync_updates ... ok
+test vendor::vte::ansi::tests::sync_bsu_with_esu ... ok
+test vendor::vte::tests::c1s ... ok
+test vendor::vte::tests::csi_reset ... ok
+test vendor::vte::tests::csi_subparameters ... ok
+test vendor::vte::tests::dcs_reset ... ok
+test vendor::vte::tests::esc_reset ... ok
+test vendor::vte::tests::esc_reset_intermediates ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos ... ok
+test vendor::vte::tests::exceed_max_buffer_size ... ok
+test vendor::vte::tests::execute_anywhere ... ok
+test vendor::vte::tests::intermediate_reset_on_dcs_exit ... ok
+test vendor::vte::tests::invalid_utf8 ... ok
+test vendor::vte::tests::osc_bell_terminated ... ok
+test vendor::vte::tests::osc_c0_st_terminated ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos ... ok
+test vendor::vte::tests::osc_containing_string_terminator ... ok
+test vendor::vte::tests::params_buffer_filled_with_subparam ... ok
+test vendor::vte::tests::parse_csi_max_params ... ok
+test vendor::vte::tests::parse_csi_params_ignore_long_params ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos ... ok
+test vendor::vte::tests::parse_csi_params_leading_semicolon ... ok
+test vendor::vte::tests::parse_csi_params_trailing_semicolon ... ok
+test vendor::vte::tests::parse_dcs ... ok
+test vendor::vte::tests::parse_dcs_max_params ... ok
+test vendor::vte::tests::parse_empty_osc ... ok
+test vendor::vte::tests::parse_long_csi_param ... ok
+test vendor::vte::tests::parse_osc ... ok
+test vendor::vte::tests::parse_osc_max_params ... ok
+test vendor::vte::tests::parse_osc_with_utf8_arguments ... ok
+test vendor::vte::tests::partial_invalid_utf8_split ... ok
+test vendor::vte::tests::partial_invalid_utf8 ... ok
+test vendor::vte::tests::partial_utf8 ... ok
+test vendor::vte::tests::partial_utf8_into_esc ... ok
+test vendor::vte::tests::partial_utf8_separating_utf8 ... ok
+test vendor::vte::tests::unicode ... ok
+test vendor::vte::ansi::tests::sync_bursts_buffer ... ok
+
+test result: ok. 108 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/checkpoint.rs (target/debug/deps/checkpoint-6527d8f6d8b42b26)
+
+running 7 tests
+test osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st ... ok
+test viewport_only_drops_existing_history_even_while_the_primary_is_inactive ... ok
+test incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook ... ok
+test saved_cursor_and_inactive_primary_screen_survive_checkpoint ... ok
+test synchronized_output_buffer_and_preceding_character_survive_checkpoint ... ok
+test checkpoint_retains_an_incomplete_csi_and_utf8_codepoint ... ok
+test red_foreground_survives_4096_bytes_and_a_durable_checkpoint ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/resize.rs (target/debug/deps/resize-b291b95d234b489f)
+
+running 1 test
+test resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_doc-89ce6354ae4d06aa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/corpus.rs (target/debug/deps/corpus-139cbc45a247d3fd)
+
+running 2 tests
+test corpus_gate_rejects_nested_malformed_frontmatter_with_path_and_source_line ... ok
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/layout.rs (target/debug/deps/layout-8511f2ea4b243a64)
+
+running 7 tests
+test structured_frontmatter_links_project_to_chips_and_keep_the_original_mapping ... ok
+test real_mermaid_is_a_drawing_card_and_wide_code_scrolls_without_scaling ... ok
+test table_columns_keep_unbroken_words_and_scroll_when_their_minima_do_not_fit ... ok
+test long_paths_and_emoji_wrap_at_grapheme_boundaries_without_rewriting_source ... ok
+test matching_leading_h1_is_hidden_only_with_a_header_and_original_source_stays_intact ... ok
+test document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables ... ok
+test modal_body_override_preserves_the_shell_and_does_not_claim_yaml_signatures_verify ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/markdown.rs (target/debug/deps/markdown-462e70767a3952e8)
+
+running 5 tests
+test wikilinks_retain_labels_weights_and_do_not_activate_inside_code ... ok
+test gfm_tables_footnotes_links_and_mermaid_are_semantic_records ... ok
+test commonmark_builds_nested_blocks_and_keeps_original_utf8_offsets ... ok
+test metadata_errors_use_markdown_lines_including_delimiter_bom_and_crlf ... ok
+test malformed_metadata_and_html_remain_visible_source ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/mermaid.rs (target/debug/deps/mermaid-e7d439bde8f45a76)
+
+running 6 tests
+test circle_markers_are_hollow_at_both_ends ... ok
+test sequence_keeps_duplicate_participants_notes_activations_and_frame_dividers ... ok
+test geometry_uses_ui_fonts_and_true_size_and_retains_document_link_targets ... ok
+test figure_source_state_and_unsupported_syntax_keep_the_original_source_readable ... ok
+test lab_diagram_inputs_stay_aligned_and_supported_cases_use_the_native_engine ... ok
+test every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_mermaid-680f5ab4c870925d)
+
+running 11 tests
+test layered::tests::pav_keeps_order_and_gaps ... ok
+test text::tests::cleans_quotes_breaks_and_entities ... ok
+test flowchart::tests::rejects_unsupported ... ok
+test state::tests::notes_sit_beside_their_state ... ok
+test text::tests::statements_keep_quoted_newlines ... ok
+test sequence::tests::rejects_unsupported ... ok
+test state::tests::rejects_unsupported ... ok
+test sequence::tests::parses_messages_notes_and_blocks ... ok
+test state::tests::states_transitions_and_composites ... ok
+test flowchart::tests::links ... ok
+test flowchart::tests::shapes_groups_classes_and_subgraph_endpoints ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (target/debug/deps/fixtures-78626ccb56d08cdc)
+
+running 11 tests
+test multi_edges_take_distinct_paths ... ok
+test subgraph_direction_is_honoured_unless_linked_outside ... ok
+test unsupported_syntax_is_an_error ... ok
+test fixture_counts ... ok
+test clusters_hold_members_and_exclude_others ... ok
+test edges_start_and_end_on_borders ... ok
+test everything_inside_the_size ... ok
+test every_fixture_lays_out ... ok
+test no_overlapping_nodes ... ok
+test layout_is_deterministic ... ok
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-04716ee7683b571b)
+
+running 11 tests
+test identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test identity::io::debug_tests::debug_without_override_selects_keychain ... ok
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+
+test result: ok. 10 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+     Running tests/adapters.rs (target/debug/deps/adapters-4f3fe6a4a4483503)
+
+running 11 tests
+test adapters_custom_harness_cadence_and_reported_idle_never_create_readiness ... ok
+test adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows ... ok
+test adapters_codex_native_readiness_and_hooks_only_subagents ... ok
+test adapters_native_claude_socket_writes_priority_without_claiming_consumption ... ok
+test adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields ... ok
+test adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping ... ok
+test adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reuse ... ok
+test adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect ... ok
+test adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary ... ok
+test adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallback ... ok
+test adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+     Running tests/capture_busy.rs (target/debug/deps/capture_busy-551272bb0d1ca998)
+
+running 2 tests
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+test large_capture_catchup_yields_to_control_between_history_pages ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/gates_seats.rs (target/debug/deps/gates_seats-1ccd20c2ec9522aa)
+
+running 4 tests
+test gate_bus ... ignored, C1d gate 2: sh scripts/gates.sh bus
+test gate_memory ... ignored, C1d gate 1: sh scripts/gates.sh memory
+test gate_poller ... ignored, C1d gate 3: sh scripts/gates.sh poller
+test disk_guard_abort_terminates_owned_children_and_removes_the_run ... ok
+
+test result: ok. 1 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/identity.rs (target/debug/deps/identity-4f707b995ace90fa)
+
+running 14 tests
+test identity_keychain_device_local_item_and_cleanup ... ignored, uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+test identity_device_without_root_certification_is_refused_before_seat_issuance ... ok
+test identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history ... ok
+test identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences ... ok
+test identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts ... ok
+test identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs ... ok
+test identity_status_is_available_as_data_through_the_bounded_logic_client ... ok
+test identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history ... ok
+test identity_bootstrap_external_certification_and_custody ... ok
+test identity_hold_range_stays_ephemeral_until_throwaway_device_enrollment_then_closes ... ok
+test identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count ... ok
+test identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons ... ok
+
+test result: ok. 13 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running tests/identity_io.rs (target/debug/deps/identity_io-0735e8269ff13f2a)
+
+running 4 tests
+test memory_custody_process_fixture ... ignored, spawned-process fixture, invoked by debug_process_override_uses_only_memory_custody
+test interaction_required_is_pending_without_a_prompt_or_replacement ... ok
+test debug_process_override_uses_only_memory_custody ... ok
+test stuck_custody_has_a_two_second_bound_and_retry_does_not_add_workers ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+     Running tests/identity_local.rs (target/debug/deps/identity_local-a058a7b6b3b17f0b)
+
+running 7 tests
+test concurrent_creators_read_one_atomic_winner ... ok
+test unavailable_and_missing_custody_hold_without_replacement_or_secret_file ... ok
+test old_random_pin_is_not_silently_replaced ... ok
+test bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes ... ok
+test held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_routes ... ok
+test stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs ... ok
+test pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.10s
+
+     Running tests/logic.rs (target/debug/deps/logic-eb454b5f44c99746)
+
+running 11 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test ring_capture_throughput_with_logic_running_and_stopped ... ignored, cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+test a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 9 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 17.86s
+
+     Running tests/mcp.rs (target/debug/deps/mcp-bf7c96e2d7d15d59)
+
+running 7 tests
+test mcp_installed_claude_and_codex_call_orient ... ignored, live installed-client interop; BBOXY_TEST_EXE must name the built app
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_unread_is_unknown_and_application_ack_is_a_separate_count ... ok
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+
+test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.86s
+
+     Running tests/measurements.rs (target/debug/deps/measurements-62312254dd649188)
+
+running 2 tests
+test file_descriptors_at_200_live_seats_and_sqlite_objects ... ignored, finite 200-live-seat descriptor measurement
+test recursive_cte_vs_petgraph_and_thousand_subscriber_fanout ... ignored, finite synthetic 10k-document / 100k-link measurement
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (target/debug/deps/messaging-04922faa653b2f9e)
+
+running 15 tests
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo ... ok
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception ... ok
+test ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route ... ok
+test recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen ... ok
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... ok
+test supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+test live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/provider.rs (target/debug/deps/provider-531f77c2829f7f2b)
+
+running 3 tests
+test local_provider_preserves_the_existing_link_and_rejects_unknown_hosts ... ok
+test location_namespaces_select_one_link_and_only_the_local_link_waits ... ok
+test logic_routes_real_seats_recovery_history_ownership_and_close_by_location ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/provider_fake.rs (target/debug/deps/provider_fake-926c5915bdeff83f)
+
+running 3 tests
+test all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt ... ok
+test fixture_is_the_host_source_and_invalid_scripts_are_rejected ... ok
+test headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.66s
+
+     Running tests/provider_gui.rs (target/debug/deps/provider_gui-d3ef5c736a52e949)
+
+running 1 test
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.77s
+
+     Running tests/ring.rs (target/debug/deps/ring-4021e46265ea7955)
+
+running 9 tests
+test ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation ... ok
+test ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor ... ok
+test ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes ... ok
+test ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell ... ok
+test ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay ... ok
+test ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again ... ok
+test ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects ... ok
+test ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index ... ok
+test ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.57s
+
+     Running tests/socket_backlog.rs (target/debug/deps/socket_backlog-13331fbdcac33167)
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 59.70s
+
+     Running tests/storage_bus_index.rs (target/debug/deps/storage_bus_index-21df22fecdf11aa5)
+
+running 9 tests
+test grammar_matches_tokens_and_rejects_mid_path_tail_wildcards ... ok
+test registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart ... ok
+test index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite ... ok
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+test request_reply_has_no_responders_and_fanout_is_not_replayed ... ok
+test explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work ... ok
+test independent_streams_latest_snapshots_queue_gaps_and_nonretained_output ... ok
+test sqlite_objects_blobs_and_alarms_round_trip_across_reopen ... ok
+test mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/ui_guard.rs (target/debug/deps/ui_guard-bdfe880915bf77a6)
+
+running 1 test
+test ui_thread_is_rejected_before_creating_a_database_directory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_proto-c4cc748d146af531)
+
+running 5 tests
+test gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids ... ok
+test gui::tests::input_and_resize_require_an_explicit_displayed_generation ... ok
+test gui::tests::identity_status_is_portable_and_contains_only_state_and_reason ... ok
+test hosts::tests::host_states_and_namespaced_locations_round_trip_without_mux_types ... ok
+test gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_render-572252a5b2484aab)
+
+running 48 tests
+test chrome::diff::tests::tolerance_is_not_an_exact_byte_comparison ... ok
+test cells::terminal::gpu::tests::emoji_joining_preserves_parser_positions_and_style_boundaries ... ok
+test atlas::tests::color_atlas_growth_preserves_all_four_premultiplied_channels ... ok
+test atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks ... ok
+test chrome::icons::tests::size_and_scale_cache_preserves_prior_rasters_and_rejects_unbounded_inputs ... ok
+test chrome::materials::tests::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges ... ok
+test cells::terminal::gpu::tests::immutable_fonts_move_to_worker_with_identical_rasterization ... ok
+test chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected ... ok
+test chrome::materials::tests::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels ... ok
+test chrome::paths::tests::cubic_dash_geometry_is_finite_and_invalid_input_is_rejected ... ok
+test chrome::group::tests::css_saturation_unpremultiplies_before_filter_and_preserves_destination_alpha ... ok
+test chrome::group::tests::mask_bridge_preserves_destination_alpha_and_the_old_api ... ok
+test chrome::paths::tests::sub_ulp_dash_remainder_advances_instead_of_repeating_a_vertex ... ok
+test chrome::paths::tests::unrepresentable_pattern_cannot_cycle_through_zero_length_phases ... ok
+test chrome::group::tests::isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing ... ok
+test chrome::group::tests::outer_and_child_clips_survive_group_splits_and_do_not_leak_to_following_paint ... ok
+test chrome::group::tests::overlapping_children_dim_once_and_nested_groups_keep_painter_order ... ok
+test cells::terminal::gpu::tests::prepared_frame_encodes_pane_offsets_clips_and_survives_atlas_growth ... ok
+test chrome::group::tests::linear_mask_filters_the_completed_layer_once_at_1x_and_2x ... ok
+test chrome::group::tests::empty_and_identity_groups_are_transparent_and_use_the_same_device_at_scale ... ok
+test chrome::tests::empty_clipped_pass_retains_a_pending_gpu_reset_after_eviction ... ok
+test chrome::materials::tests::blur_reuse_is_pixel_identical_and_only_on_equal_keys ... ok
+test chrome::tests::growth_in_a_later_group_preserves_the_earlier_encoded_texture ... ok
+test chrome::tests::glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct ... ok
+test chrome::tests::sdf_rounding_stroke_and_clip_survive_gpu_readback ... ok
+test chrome::tests::immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes ... ok
+test chrome::text::tests::measurement_does_not_require_a_raster_canvas ... ok
+test chrome::tests::colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops ... ok
+test chrome::tests::svg_device_rasters_upload_once_and_survive_isolated_passes_and_scale_changes ... ok
+test chrome::text::tests::coretext_shapes_unicode_and_ellipsizes_at_the_given_width ... ok
+test chrome::text::tests::numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold ... ok
+test chrome::text::tests::ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face ... ok
+test chrome::text::tests::quarter_pixel_phases_change_coverage_without_changing_logical_metrics ... ok
+test chrome::text::tests::zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied ... ok
+test chrome::text_cache::tests::lru_evicts_unpinned_masks_and_repack_keeps_the_current_working_set ... ok
+test chrome::text_cache::tests::reordered_text_reuses_cached_glyph_phases ... ok
+test chrome::text_cache::tests::native_font_cache_moves_from_initializing_worker_to_renderer_thread ... ok
+test chrome::tests::lru_repack_in_later_groups_preserves_prior_gpu_generations ... ok
+test chrome::text::tests::italic_uses_real_family_faces_and_keeps_exact_ui_weight ... ok
+test chrome::text_glyphs::tests::fallback_font_variations_and_phases_bind_cache_keys ... ok
+test chrome::text::tests::optical_size_and_logical_shaping_do_not_change_with_backing_scale ... ok
+test chrome::tests::svg_origins_follow_measured_css_half_up_ties_at_both_device_scales ... ok
+test chrome::text_glyphs::tests::compact_state_symbols_keep_exact_coverage_at_each_origin ... ok
+test chrome::paths::tests::zero_length_round_dashes_render_dots_and_crossings_composite_once ... ok
+test chrome::paths::tests::gpu_path_preserves_order_clip_alpha_and_retained_geometry ... ok
+test chrome::paths::tests::filled_and_hollow_triangles_and_translucent_polygon_use_real_fill_geometry ... ok
+test chrome::text_glyphs::tests::cropped_glyph_components_reproduce_native_line_masks ... ok
+test chrome::text::tests::measurement_matches_painted_metrics_bit_for_bit ... ok
+
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.51s
+
+     Running tests/chrome_x_height.rs (target/debug/deps/chrome_x_height-f63461429b018812)
+
+running 1 test
+test coretext_x_height_uses_the_requested_logical_font_and_rejects_invalid_size ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/smoke.rs (target/debug/deps/smoke-401e1be74272a7c1)
+
+running 3 tests
+test asymmetric_glyph_is_upright ... ok
+test metal_quad_and_80_by_24_cell_backgrounds ... ok
+test coretext_ink_lands_only_in_expected_ascii_cells ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/terminal.rs (target/debug/deps/terminal-9f12140b6c00df8e)
+
+running 5 tests
+test integer_cells_double_with_backing_scale_and_reject_invalid_settings ... ok
+test coretext_fallback_styles_and_emoji_have_real_coverage ... ok
+test procedural_edges_join_and_second_frame_reuses_every_glyph ... ok
+test metal_grayscale_blending_preserves_coverage_in_both_polarities ... ok
+test cursor_shapes_and_bad_snapshots_are_observable ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/variants.rs (target/debug/deps/variants-48d1c25f6a6c6cca)
+
+running 1 test
+test generate_smoke_font_size_scale_theme_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_rt-77f7ed4e4c506196)
+
+running 3 tests
+test meter::tests::bounded_samples_keep_lifetime_count_and_phase_hitches ... ok
+test meter::tests::idle_gaps_draw_as_stubs_never_count_and_report_time_since ... ok
+test meter::tests::perf_record_windows_percentiles_and_late_frames ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime.rs (target/debug/deps/runtime-af13b1f30e27cb25)
+
+running 8 tests
+test latest_and_view_ring_replace_old_values ... ok
+test ten_thousand_dirty_sets_wake_once_until_drained ... ok
+test singleton_runtime_and_ui_thread_guard ... ok
+test spawn_failure_and_early_cancel_always_complete ... ok
+test command_argv_cwd_env_stderr_and_exit_are_observable ... ok
+test million_messages_per_second_never_wait_for_a_consumer ... ok
+test cancel_kills_the_process_group_including_a_grandchild ... ok
+test hundred_megabyte_command_finishes_with_a_bounded_view ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_supervisor-4575f2c058197968)
+
+running 29 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... ok
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test supervisor::capture_read_tests::exited_between_spawn_and_registration_emits_exactly_one_exit ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+test supervisor::child_events::tests::a_live_child_cannot_make_the_shutdown_wait_infinite ... ok
+test transport::tests::fork_inherited_listener_is_live_until_the_child_releases_it ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::stale_and_live_socket_paths_survive_2000_parallel_iterations ... ignored, manual 2000-iteration parallel stale/live socket stress
+test transport::tests::full_listener_backlog_is_live_and_never_unlinked ... ok
+test supervisor::capture_read_tests::an_early_exiting_writer_is_drained_before_reaping_without_blocking_the_actor ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test transport::tests::ownership_lock_persists_and_legacy_without_one_fails_closed ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+test transport::tests::invalid_lock_types_permissions_and_owner_are_rejected_without_changes ... ok
+test supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 26 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running tests/journal_config.rs (target/debug/deps/journal_config-38d97d37cd4d6e1e)
+
+running 2 tests
+test capture_requires_an_explicit_supervisor_journal_directory ... ok
+test supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/reaping.rs (target/debug/deps/reaping-9689a10801b69d02)
+
+running 3 tests
+test exit_events_at_machine_scale ... ignored, W1.2e before/after: GATE_SEATS=967 cargo test --release -p bbt-supervisor --test reaping -- --ignored --nocapture
+test stdio_eof_does_not_wait_for_a_still_running_child ... ok
+test final_output_and_exit_reach_the_owner ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/supervisor.rs (target/debug/deps/supervisor-7871d32dd01bbd1e)
+
+running 10 tests
+test natural_exit_follows_all_final_output ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test two_seats_interleave_without_cross_talk ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+test validation_rejects_stale_and_oversized_input ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+test fifty_seats_share_one_supervisor_poller ... ok
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.03s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_ui-b5cddadc0abfced2)
+
+running 1 test
+test modules::perf_hud::tests::lab_records_round_trip_and_idle_frames_stay_stubs ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (target/debug/deps/atoms-1ea7082a340a2a42)
+
+running 5 tests
+test a_waiting_kind_background_and_text_receive_dimming_once ... ok
+test glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloured ... ok
+test hairline_is_one_physical_pixel_and_spinner_phase_is_explicit ... ok
+test icons_keep_the_requested_logical_name_bounds_and_tint ... ok
+test kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/components.rs (target/debug/deps/components-c471e5f4ac894697)
+
+running 15 tests
+test a_retained_box_keeps_its_own_glow_state_until_after_its_content ... ok
+test a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height ... ok
+test column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine ... ok
+test image_has_square_intrinsics_a_baseline_and_validated_asset_geometry ... ok
+test inline_middle_uses_the_parent_x_height_without_moving_the_content_box ... ok
+test intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero ... ok
+test mixed_text_runs_align_baselines_and_keep_selection_metadata ... ok
+test mixed_type_rows_share_a_baseline ... ok
+test natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps ... ok
+test box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout ... ok
+test nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms ... ok
+test path_fill_survives_retained_layout_and_theme_resolution ... ok
+test path_uses_declared_viewport_and_keeps_its_retained_stroke ... ok
+test wrapping_and_ellipsis_use_the_allocated_width ... ok
+test scroll_offset_clamps_and_every_child_draw_is_clipped ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/documents.rs (target/debug/deps/documents-90e4a6daf1d3f81a)
+
+running 5 tests
+test unsupported_diagram_preserves_source_instead_of_a_partial_drawing ... ok
+test short_code_cells_center_within_the_keys_padded_grid_row ... ok
+test modal_retains_explicit_scroll_and_leaves_actions_as_visual_data ... ok
+test document_metadata_and_unsigned_or_broken_evidence_remain_visible ... ok
+test diagram_state_is_serializable_and_drawing_never_scales_to_the_document ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/flow.rs (target/debug/deps/flow-6eb0ea24fc188170)
+
+running 4 tests
+test flow_wraps_in_source_order_with_independent_gaps_and_shared_row_baselines ... ok
+test default_text_and_fitting_flow_keep_the_stack_geometry ... ok
+test nowrap_space_between_and_exact_fit_do_not_create_extra_rows ... ok
+test text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_spaces ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/graphs.rs (target/debug/deps/graphs-d414c43a83c4bcab)
+
+running 6 tests
+test annotated_links_preserve_source_identity_display_and_weight ... ok
+test work_tree_counts_terminal_items_and_keeps_artifacts_and_invariants_as_leaves ... ok
+test subscriptions_wrap_at_available_width_without_changing_patterns ... ok
+test channels_compose_published_edges_at_true_size_and_scroll_in_the_viewport ... ok
+test graph_projects_live_and_blocked_tasks_without_inferring_authority ... ok
+test provenance_and_history_respect_signed_flags_and_bounded_reverse_order ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/italic.rs (target/debug/deps/italic-66ab0b5e5b2dd97a)
+
+running 1 test
+test italic_is_backward_compatible_and_reaches_measurement_and_draw_records ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/launchers.rs (target/debug/deps/launchers-465e2f48e9d1a1ca)
+
+running 5 tests
+test legacy_launcher_delegates_without_hand_painting ... ok
+test lexical_tiers_are_stable_and_every_word_must_match ... ok
+test compact_selection_is_twenty_eight_percent_accent_over_surface ... ok
+test typed_virtual_descent_and_explicit_paths_select_the_same_placement_level ... ok
+test cap_keeps_navigation_available_and_dims_completed_launch_row_groups ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/links.rs (target/debug/deps/links-c0a30fa55d6741fc)
+
+running 1 test
+test all_link_states_render_and_unavailable_launcher_rows_cannot_activate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/masks.rs (target/debug/deps/masks-3ab96d8a132cf937)
+
+running 1 test
+test mask_keeps_layout_and_translates_local_coordinates_only_when_painted ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/measurement_cache.rs (target/debug/deps/measurement_cache-a0844084581304fb)
+
+running 3 tests
+test independent_passes_observe_changed_measurements_and_nodes ... ok
+test flow_keeps_distinct_node_sizes_while_reusing_min_content_queries ... ok
+test nesting_does_not_repeat_leaf_measurement_at_the_same_constraint ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/overlays.rs (target/debug/deps/overlays-74754f8566fd7515)
+
+running 2 tests
+test blur_parameters_round_trip_and_keep_the_backdrop_separate_from_foreground_fill ... ok
+test overlay_centres_the_panel_and_narrow_bounds_reflow_its_content ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/panes.rs (target/debug/deps/panes-3ee3b3f8aa04e5e5)
+
+running 2 tests
+test pane_height_is_content_or_minimum_and_an_unavailable_gap_never_invents_a_range ... ok
+test pane_preserves_history_content_and_capability_actions_while_disconnected ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/provider_settings.rs (target/debug/deps/provider_settings-ee07bd75ee3011be)
+
+running 2 tests
+test every_link_state_roundtrips_and_renders_in_both_settings_records ... ok
+test settings_accepts_live_link_records_and_legacy_four_field_cloud_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/seat_rows.rs (target/debug/deps/seat_rows-5f145f18c3db67a9)
+
+running 6 tests
+test flex_max_violation_freezes_before_redistributing_remaining_space ... ok
+test compact_artifact_row_preserves_natural_chip_height_outside_its_flow_slot ... ok
+test naturally_sized_text_is_not_truncated_by_float_subtraction ... ok
+test seat_identity_authority_and_activity_stay_independent_when_name_shrinks ... ok
+test subagents_filter_finished_work_and_overflow_after_seven ... ok
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/settings.rs (target/debug/deps/settings-9f4b3289ae422c08)
+
+running 5 tests
+test account_projects_the_pinned_identity_and_recovery_limits_without_actions ... ok
+test custom_role_order_and_defaults_drive_the_changed_marker ... ok
+test role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view ... ok
+test records_roundtrip_with_ordered_custom_harnesses_and_roles ... ok
+test draft_harness_never_claims_an_inferred_ready_state_can_submit ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/streams.rs (target/debug/deps/streams-e19795a5a4e03acd)
+
+running 6 tests
+test collapsed_epics_and_bounded_newest_first_external_lane_use_model_state ... ok
+test unread_marks_stay_round_and_compressed_chips_clip_their_text ... ok
+test chronology_foreign_authority_and_unknown_delivery_remain_independent ... ok
+test ended_subagent_holds_the_target_and_hides_the_delivery_ladder ... ok
+test routed_chips_keep_the_oracle_tint_visible_and_unknown_is_a_dashed_hollow_mark ... ok
+test message_body_reflows_with_width_without_changing_the_model ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/style.rs (target/debug/deps/style-5d8ea5bfb29ca815)
+
+running 5 tests
+test positioned_shadow_round_trips_validates_and_preserves_custom_defaults ... ok
+test token_references_and_nontrivial_overrides_round_trip_and_resolve_late ... ok
+test glow_state_round_trips_and_rejects_invalid_shader_inputs ... ok
+test malformed_override_data_fails_instead_of_silently_changing_the_style ... ok
+test presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/swarms.rs (target/debug/deps/swarms-574dd6781c8cf6ff)
+
+running 6 tests
+test caption_line_limit_preserves_two_lines_and_marks_truncated_content ... ok
+test a_literal_hyphen_is_a_wrap_opportunity_and_min_content_survives_flex_shrink ... ok
+test css_filter_uses_luminance_saturation_and_preserves_layout ... ok
+test unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper ... ok
+test collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_material ... ok
+test sidebar_scroll_and_phone_handle_use_the_supplied_viewport_without_reordering_cards ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/tabs.rs (target/debug/deps/tabs-7394c130e600b8cd)
+
+running 6 tests
+test state_color_wins_over_focus_and_a_single_cell_keeps_the_grid_wrapper ... ok
+test grid_preserves_ratio_nested_axis_and_big_root_gap ... ok
+test deeply_nested_grids_shrink_to_zero_but_their_cells_keep_the_two_pixel_minimum ... ok
+test single_seat_reduces_to_the_accepted_row_and_keeps_its_children ... ok
+test collapsed_rollup_is_stable_worst_first_and_capped ... ok
+test expanded_tab_has_indented_seats_and_only_a_parent_shortcut ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/title_bars.rs (target/debug/deps/title_bars-4d28ddc3b1de2dbf)
+
+running 3 tests
+test old_titlebar_is_a_component_delegate ... ok
+test narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls ... ok
+test blur_filters_only_identity_and_dots_while_sidebar_state_changes_its_toggle ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/widgets.rs (target/debug/deps/widgets-be6bf8ec094a618e)
+
+running 4 tests
+test pressed_button_scales_visually_without_changing_its_flow_slot ... ok
+test list_and_table_allocate_only_visible_rows_and_keep_full_scroll_extent ... ok
+test empty_input_keeps_its_control_height_and_invalid_input_keeps_its_error_caption ... ok
+test side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/bbt_ui_model-f26739e575d6365f)
+
+running 8 tests
+test draw::atoms::tests::dim_desaturates_content_and_preserves_identity ... ok
+test draw::atoms::tests::glyphs_encode_grade_and_wait_kind_and_clips_balance ... ok
+test draw::list::tests::group_filters_and_clip_scopes_validate_recursively ... ok
+test draw::path::tests::cubic_bounds_include_interior_extrema_not_control_hull ... ok
+test draw::prim::color_tests::valid_rgb_boundary_colours_round_trip_inside_the_unit_gamut ... ok
+test tokens::tests::density_and_theme_are_views_of_the_constants ... ok
+test model::ids::tests::canonical_ulid_round_trip_and_overflow ... ok
+test tokens::tests::every_exported_web_token_matches_generated_fields ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/layout.rs (target/debug/deps/layout-876069635e046024)
+
+running 11 tests
+test compact_and_touch_use_their_token_heights_and_scroll_stays_local ... ok
+test invalid_lengths_and_zero_flex_weights_stay_finite ... ok
+test phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame ... ok
+test row_box_allocates_fixed_measured_fill_and_weighted_flex ... ok
+test scene_fifteen_matches_the_tagged_lab_ratios_at_the_fixture_gutter ... ok
+test scene_fifteen_gutters_are_one_glow_lane_wide ... ok
+test sidebar_at_a_thousand_seats_only_allocates_the_visible_rows ... ok
+test sidebar_skips_closed_cards_outside_the_scroll_window ... ok
+test split_ratio_clamps_and_tiny_bounds_never_produce_negative_sizes ... ok
+test text_shrinks_before_flex_and_column_boxes_share_the_policy ... ok
+test the_same_split_solver_supports_minigrid_and_banner_scales ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/model.rs (target/debug/deps/model-adbfbecb71908cf9)
+
+running 15 tests
+test detach_removes_empty_tabs_without_touching_other_seats ... ok
+test cross_swarm_move_is_an_explicit_error_per_grant_contract ... ok
+test duplicate_and_mismatched_tree_ids_are_rejected ... ok
+test expired_replaced_and_conflicting_undo_do_not_mutate_the_model ... ok
+test mux_updates_do_not_locate_or_steal_focus ... ok
+test new_tab_uses_caller_id_and_preserves_the_remaining_order ... ok
+test move_within_one_split_recomputes_the_target_after_pruning ... ok
+test open_harness_role_class_and_color_override_are_preserved ... ok
+test placement_on_all_four_sides_is_half_and_collapses_the_source ... ok
+test close_and_undo_restore_the_exact_split_and_ratio ... ok
+test prune_parent_and_replacement_match_lab_tree_algebra ... ok
+test settings_closes_directly_without_harness_grace ... ok
+test reverse_undo_restores_multiple_closed_seats ... ok
+test undo_keeps_a_sibling_subtrees_intervening_resize ... ok
+test undo_restores_a_removed_tab_at_its_original_index ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/showcase_overrides.rs (target/debug/deps/showcase_overrides-cb65ef517a09894b)
+
+running 2 tests
+test the_guard_catches_an_override ... ok
+test showcase_sets_no_token_backed_property ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy_firehose
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy450_term
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxybook
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_core
+
+running 2 tests
+test crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2384) ... ok
+test crates/bbt-core/src/lib.rs - (line 3) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.39s; merged doctests compilation took 0.27s
+   Doc-tests bbt_doc
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_mermaid
+
+running 1 test
+test crates/bbt-mermaid/src/lib.rs - (line 8) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+all doctests ran in 0.34s; merged doctests compilation took 0.20s
+   Doc-tests bbt_mux
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_render
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_rt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui_model
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit=0 elapsed=268.573s
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Finished `dev` profile [optimized] target(s) in 2.42s
+
+exit=0 elapsed=2.573s

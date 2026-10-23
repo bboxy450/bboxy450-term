@@ -178,7 +178,7 @@ async fn run(
     // Accept one UI command's actions at a time. Watch diffs are finite;
     // the stream allows one unapplied update per watch. Deduplicate Unwatch
     // notifications so a full writer cannot create an unbounded control queue.
-    let mut outgoing = VecDeque::<GuiAction>::new();
+    let mut outgoing = VecDeque::from([GuiAction::ListHosts]);
     while !closing {
         let mut writer_blocked = false;
         if !lost {
@@ -231,6 +231,19 @@ async fn run(
                 ready=writer_ready, if writer_blocked && !lost=>{ready?;},
                 event=session.event()=>match event.unwrap_or_else(|error| cockpit::Event::Disconnected(error.to_string())) {
                     cockpit::Event::Reply(reply)=>match *reply {
+                        GuiReply::Hosts(hosts)=> {
+                            if model.hosts != hosts {
+                                Arc::make_mut(&mut model).hosts = hosts;
+                                publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            }
+                        }
+                        GuiReply::HostState {host}=> {
+                            let current = &mut Arc::make_mut(&mut model).hosts;
+                            let changed = if let Some(old) = current.iter_mut().find(|old| old.location == host.location) {
+                                if old == &host { false } else { *old = host; true }
+                            } else { current.push(host); true };
+                            if changed { publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?; }
+                        }
                         GuiReply::Identity(next)=> {
                             if identity!=next {
                                 identity=next;

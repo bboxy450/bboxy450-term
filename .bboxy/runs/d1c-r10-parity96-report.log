@@ -1,0 +1,2114 @@
+[
+  {
+    "changed_fraction": 0.024657346622965946,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/roles-comfortable-light.png",
+    "mean_error": 0.005331164457978576,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.024657346622965946,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/roles-compact-light.png",
+    "mean_error": 0.005331164457978576,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.024657346622965946,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/roles-cozy-light.png",
+    "mean_error": 0.005331164457978576,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.024657346622965946,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/roles-touch-light.png",
+    "mean_error": 0.005331164457978576,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.024441085725819628,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/roles-compact-dark.png",
+    "mean_error": 0.005291972470882991,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.024441085725819628,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/roles-cozy-dark.png",
+    "mean_error": 0.005291972470882991,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.024441085725819628,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/roles-touch-dark.png",
+    "mean_error": 0.005291972470882991,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.024441085725819628,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/roles-comfortable-dark.png",
+    "mean_error": 0.005291968937208201,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.022557213021789486,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/in-a-tab-compact-light.png",
+    "mean_error": 0.004925377269255277,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.02236017531550062,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/in-a-tab-compact-dark.png",
+    "mean_error": 0.0050736361287433635,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.02236017531550062,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 55
+    },
+    "key": "settings/account-comfortable-light.png",
+    "mean_error": 0.0038882107374336398,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.02236017531550062,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 55
+    },
+    "key": "settings/account-cozy-light.png",
+    "mean_error": 0.0038882107374336398,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.02236017531550062,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 55
+    },
+    "key": "settings/account-touch-light.png",
+    "mean_error": 0.0038882107374336398,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.02235897386607203,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 55
+    },
+    "key": "settings/account-compact-light.png",
+    "mean_error": 0.0038881706891193534,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.0222472390692131,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 55
+    },
+    "key": "settings/account-cozy-dark.png",
+    "mean_error": 0.004531277120954013,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.0222472390692131,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 55
+    },
+    "key": "settings/account-touch-dark.png",
+    "mean_error": 0.004531268875712836,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.022244836170355917,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 55
+    },
+    "key": "settings/account-comfortable-dark.png",
+    "mean_error": 0.004531234716856534,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.022244836170355917,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 55
+    },
+    "key": "settings/account-compact-dark.png",
+    "mean_error": 0.004531234716856534,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.021837544814063685,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/in-a-tab-comfortable-light.png",
+    "mean_error": 0.004962895472392011,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.021837544814063685,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/in-a-tab-cozy-light.png",
+    "mean_error": 0.004962895472392011,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.021837544814063685,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/in-a-tab-touch-light.png",
+    "mean_error": 0.004962895472392011,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.021555204198344884,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/in-a-tab-comfortable-dark.png",
+    "mean_error": 0.0051021104802009614,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.021534779558058843,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/in-a-tab-cozy-dark.png",
+    "mean_error": 0.005100906674989178,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.021534779558058843,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 81
+    },
+    "key": "settings/in-a-tab-touch-dark.png",
+    "mean_error": 0.005100906674989178,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "review pixels"
+  },
+  {
+    "changed_fraction": 0.015328091809959535,
+    "geometry": {
+      "baselines": 17,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 134
+    },
+    "key": "settings/new-harness-comfortable-light.png",
+    "mean_error": 0.0030364113619611877,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.015328091809959535,
+    "geometry": {
+      "baselines": 17,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 134
+    },
+    "key": "settings/new-harness-compact-light.png",
+    "mean_error": 0.0030364113619611877,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.015328091809959535,
+    "geometry": {
+      "baselines": 17,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 134
+    },
+    "key": "settings/new-harness-cozy-light.png",
+    "mean_error": 0.0030364113619611877,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.015328091809959535,
+    "geometry": {
+      "baselines": 17,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 134
+    },
+    "key": "settings/new-harness-touch-light.png",
+    "mean_error": 0.0030364113619611877,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.014970059880239521,
+    "geometry": {
+      "baselines": 17,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 134
+    },
+    "key": "settings/new-harness-comfortable-dark.png",
+    "mean_error": 0.003256049274315122,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.014970059880239521,
+    "geometry": {
+      "baselines": 17,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 134
+    },
+    "key": "settings/new-harness-compact-dark.png",
+    "mean_error": 0.003256049274315122,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.014970059880239521,
+    "geometry": {
+      "baselines": 17,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 134
+    },
+    "key": "settings/new-harness-cozy-dark.png",
+    "mean_error": 0.003256049274315122,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.014970059880239521,
+    "geometry": {
+      "baselines": 17,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 134
+    },
+    "key": "settings/new-harness-touch-dark.png",
+    "mean_error": 0.003256049274315122,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.013295239376784153,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 113
+    },
+    "key": "settings/harnesses-comfortable-light.png",
+    "mean_error": 0.002557447657795541,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.013295239376784153,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 113
+    },
+    "key": "settings/harnesses-compact-light.png",
+    "mean_error": 0.002557447657795541,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.013295239376784153,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 113
+    },
+    "key": "settings/harnesses-cozy-light.png",
+    "mean_error": 0.002557447657795541,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.013295239376784153,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 113
+    },
+    "key": "settings/harnesses-touch-light.png",
+    "mean_error": 0.002557447657795541,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.01308859007506656,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 113
+    },
+    "key": "settings/harnesses-comfortable-dark.png",
+    "mean_error": 0.0025401361849994655,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.01308859007506656,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 113
+    },
+    "key": "settings/harnesses-compact-dark.png",
+    "mean_error": 0.0025401361849994655,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.01308859007506656,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 113
+    },
+    "key": "settings/harnesses-cozy-dark.png",
+    "mean_error": 0.0025401361849994655,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.01308859007506656,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 113
+    },
+    "key": "settings/harnesses-touch-dark.png",
+    "mean_error": 0.0025401361849994655,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.011786218894474294,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 59
+    },
+    "key": "settings/appearance-comfortable-light.png",
+    "mean_error": 0.0025519162788576375,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.011786218894474294,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 59
+    },
+    "key": "settings/appearance-compact-light.png",
+    "mean_error": 0.0025519162788576375,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.011786218894474294,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 59
+    },
+    "key": "settings/appearance-cozy-light.png",
+    "mean_error": 0.0025519162788576375,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.011786218894474294,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 59
+    },
+    "key": "settings/appearance-touch-light.png",
+    "mean_error": 0.0025519162788576375,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.011746571063330801,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 59
+    },
+    "key": "settings/appearance-comfortable-dark.png",
+    "mean_error": 0.002513296747078028,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.011746571063330801,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 59
+    },
+    "key": "settings/appearance-compact-dark.png",
+    "mean_error": 0.002513296747078028,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.011746571063330801,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 59
+    },
+    "key": "settings/appearance-cozy-dark.png",
+    "mean_error": 0.002513296747078028,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.011746571063330801,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 59
+    },
+    "key": "settings/appearance-touch-dark.png",
+    "mean_error": 0.002513296747078028,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.009851195958213826,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.01788330078125,
+      "rects": 51
+    },
+    "key": "seat-row/remote-links-compact-light.png",
+    "mean_error": 0.0017243059500462554,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.009719627397837013,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.01788330078125,
+      "rects": 51
+    },
+    "key": "seat-row/remote-links-compact-dark.png",
+    "mean_error": 0.0012070222268314214,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007815428532982189,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 31
+    },
+    "key": "settings/shortcuts-comfortable-light.png",
+    "mean_error": 0.001591836862579251,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007815428532982189,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 31
+    },
+    "key": "settings/shortcuts-compact-light.png",
+    "mean_error": 0.001591836862579251,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007815428532982189,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 31
+    },
+    "key": "settings/shortcuts-cozy-light.png",
+    "mean_error": 0.001591836862579251,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007815428532982189,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 31
+    },
+    "key": "settings/shortcuts-touch-light.png",
+    "mean_error": 0.001591836862579251,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0077469459155525226,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 31
+    },
+    "key": "settings/shortcuts-comfortable-dark.png",
+    "mean_error": 0.0015752898414294063,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0077469459155525226,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 31
+    },
+    "key": "settings/shortcuts-compact-dark.png",
+    "mean_error": 0.0015752898414294063,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0077469459155525226,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 31
+    },
+    "key": "settings/shortcuts-cozy-dark.png",
+    "mean_error": 0.0015752898414294063,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0077469459155525226,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.016078948974609375,
+      "rects": 31
+    },
+    "key": "settings/shortcuts-touch-dark.png",
+    "mean_error": 0.0015752898414294063,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007531886467834796,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.01947784423828125,
+      "rects": 31
+    },
+    "key": "settings/cloud-comfortable-light.png",
+    "mean_error": 0.0011944044589510432,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007530685018406205,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.01947784423828125,
+      "rects": 31
+    },
+    "key": "settings/cloud-compact-light.png",
+    "mean_error": 0.00119438796846869,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007530685018406205,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.01947784423828125,
+      "rects": 31
+    },
+    "key": "settings/cloud-cozy-light.png",
+    "mean_error": 0.00119438796846869,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007530685018406205,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.01947784423828125,
+      "rects": 31
+    },
+    "key": "settings/cloud-touch-light.png",
+    "mean_error": 0.00119438796846869,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007509745471222197,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/ssh-machines-comfortable-dark.png",
+    "mean_error": 0.0019565410433836456,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007470163025081622,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/cloud-regions-comfortable-dark.png",
+    "mean_error": 0.0019424811122951053,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007440576311261906,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.01947784423828125,
+      "rects": 31
+    },
+    "key": "settings/cloud-comfortable-dark.png",
+    "mean_error": 0.0012035472535242987,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007440576311261906,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.01947784423828125,
+      "rects": 31
+    },
+    "key": "settings/cloud-compact-dark.png",
+    "mean_error": 0.0012035472535242987,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007440576311261906,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.01947784423828125,
+      "rects": 31
+    },
+    "key": "settings/cloud-cozy-dark.png",
+    "mean_error": 0.0012035472535242987,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007440576311261906,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.01947784423828125,
+      "rects": 31
+    },
+    "key": "settings/cloud-touch-dark.png",
+    "mean_error": 0.0012035472535242987,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007438770050556338,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/ssh-machines-compact-dark.png",
+    "mean_error": 0.0019465022499101298,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007438770050556338,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/ssh-machines-cozy-dark.png",
+    "mean_error": 0.0019464928828674328,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007438770050556338,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/ssh-machines-touch-dark.png",
+    "mean_error": 0.0019463925216956766,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007399187604415763,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/cloud-regions-compact-dark.png",
+    "mean_error": 0.0019324423188215897,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007399187604415763,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/cloud-regions-cozy-dark.png",
+    "mean_error": 0.0019324329517788924,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007399187604415763,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/cloud-regions-touch-dark.png",
+    "mean_error": 0.0019323325906071365,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007313198152455204,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/ssh-machines-comfortable-light.png",
+    "mean_error": 0.0017358842948629425,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007242222731789345,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/ssh-machines-compact-light.png",
+    "mean_error": 0.0017252513632526312,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007242222731789345,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/ssh-machines-cozy-light.png",
+    "mean_error": 0.0017252205858266259,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007242222731789345,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/ssh-machines-touch-light.png",
+    "mean_error": 0.0017252072043370584,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007217654316943471,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/cloud-regions-comfortable-light.png",
+    "mean_error": 0.00172389849465736,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007146678896277612,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/cloud-regions-compact-light.png",
+    "mean_error": 0.0017132655630470487,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007146678896277612,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/cloud-regions-cozy-light.png",
+    "mean_error": 0.0017132347856210436,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.007146678896277612,
+    "geometry": {
+      "baselines": 24,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03515625,
+      "rects": 54
+    },
+    "key": "launcher/cloud-regions-touch-light.png",
+    "mean_error": 0.0017132214041314761,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Launcher/picker and placement banner; enclosing backdrop remains shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.005806459458144851,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03570556640625,
+      "rects": 56
+    },
+    "key": "seat-row/remote-links-cozy-light.png",
+    "mean_error": 0.0009163369127017508,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.005721338586507126,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.03570556640625,
+      "rects": 56
+    },
+    "key": "seat-row/remote-links-cozy-dark.png",
+    "mean_error": 0.0008660631429963882,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0051714783080505505,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.026824951171875,
+      "rects": 56
+    },
+    "key": "seat-row/remote-links-comfortable-light.png",
+    "mean_error": 0.0007885354648268549,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00512908914159112,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.026824951171875,
+      "rects": 56
+    },
+    "key": "seat-row/remote-links-comfortable-dark.png",
+    "mean_error": 0.0007401508633204825,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004761344085504753,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02040863037109375,
+      "rects": 31
+    },
+    "key": "settings/machines-comfortable-light.png",
+    "mean_error": 0.000780039863620884,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004761344085504753,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02040863037109375,
+      "rects": 31
+    },
+    "key": "settings/machines-compact-light.png",
+    "mean_error": 0.000780039863620884,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004761344085504753,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02040863037109375,
+      "rects": 31
+    },
+    "key": "settings/machines-cozy-light.png",
+    "mean_error": 0.000780039863620884,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004761344085504753,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02040863037109375,
+      "rects": 31
+    },
+    "key": "settings/machines-touch-light.png",
+    "mean_error": 0.000780039863620884,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004696465816360858,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02040863037109375,
+      "rects": 31
+    },
+    "key": "settings/machines-comfortable-dark.png",
+    "mean_error": 0.0007780822077872393,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004696465816360858,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02040863037109375,
+      "rects": 31
+    },
+    "key": "settings/machines-compact-dark.png",
+    "mean_error": 0.0007780822077872393,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004696465816360858,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02040863037109375,
+      "rects": 31
+    },
+    "key": "settings/machines-cozy-dark.png",
+    "mean_error": 0.0007780822077872393,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004696465816360858,
+    "geometry": {
+      "baselines": 9,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02040863037109375,
+      "rects": 31
+    },
+    "key": "settings/machines-touch-dark.png",
+    "mean_error": 0.0007780822077872393,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00146402554107209,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.024261474609375,
+      "rects": 56
+    },
+    "key": "seat-row/remote-links-touch-dark.png",
+    "mean_error": 0.00014505153833357026,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0014309526749334133,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.024261474609375,
+      "rects": 56
+    },
+    "key": "seat-row/remote-links-touch-light.png",
+    "mean_error": 0.00012703223035108598,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "SeatRow/subagent/task/artifact content; row-menu overlays excluded",
+      "text": true
+    },
+    "status": "within policy"
+  }
+]

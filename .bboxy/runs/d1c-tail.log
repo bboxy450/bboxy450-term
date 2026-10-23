@@ -1,0 +1,94 @@
+source=5746f5b2daff975be0d465195d7cd10e75918d9d
+UI96 parity passed separately d1c-r10-parity.log at same5746f5b; this remainder intentionally runs default invariants (parity separately proven).
+$ sh scripts/ui-lint.sh
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bboxy450-term)
+    Checking bbt-ui v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-render)
+    Checking bbt-proto v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-proto)
+    Checking bbt-supervisor v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-supervisor)
+    Checking bbt-mux v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 7.63s
+
+exit=0 elapsed=7.812s
+$ cargo run -p bboxy450-term --locked -- --smoke
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-ui-model)
+   Compiling bbt-core v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-core)
+   Compiling bbt-rt v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bboxy450-term)
+   Compiling bbt-render v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-render)
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-ui)
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 24.78s
+     Running `/private/tmp/ci-kestrel-d1c-tail-target-5746f5b/debug/bboxy450-term --smoke`
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+smoke bootstrap: early producer handled before GPU ready
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=15
+idle probe settling: producer_done=true queued=false redraw_pending=false frames=21 callbacks=21
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=11.247ms p99=14.787ms samples=21 warm_encode_p50=10.368ms warm_encode_p99=11.137ms
+
+exit=0 elapsed=38.976s
+$ sh scripts/invariants.sh
+invariant clippy-clean: skipped (slow)
+   Compiling hashbrown v0.17.1
+   Compiling bitflags v2.13.2
+   Compiling bbt-mermaid v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-mermaid)
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-ui)
+   Compiling pulldown-cmark v0.13.4
+   Compiling indexmap v2.14.2
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-doc v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 8.39s
+     Running tests/corpus.rs (/private/tmp/ci-kestrel-d1c-tail-target-5746f5b/debug/deps/corpus-80a908cc437286bc)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.02s
+
+invariant frontmatter-parses: pass
+layering: held
+invariant layering: pass
+   Compiling bbt-mermaid v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-mermaid)
+    Finished `test` profile [optimized] target(s) in 1.24s
+     Running unittests src/lib.rs (/private/tmp/ci-kestrel-d1c-tail-target-5746f5b/debug/deps/bbt_mermaid-680f5ab4c870925d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/private/tmp/ci-kestrel-d1c-tail-target-5746f5b/debug/deps/fixtures-78626ccb56d08cdc)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.01s
+
+invariant mermaid-fixtures: pass
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-kestrel-d1c-5746f5b/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 0.37s
+     Running tests/seat_rows.rs (/private/tmp/ci-kestrel-d1c-tail-target-5746f5b/debug/deps/seat_rows-ec61c120ceb51aad)
+
+running 1 test
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+invariant modules-through-components: pass
+invariant parity-geometry: skipped (slow)
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant signed-main: pass
+    Finished `dev` profile [optimized] target(s) in 0.41s
+invariant ui-never-waits: pass
+invariants: 6 checks, 0 failures, 4 slow checks skipped
+
+exit=0 elapsed=25.108s

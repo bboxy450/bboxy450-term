@@ -1,4 +1,7 @@
-#![allow(clippy::disallowed_methods, reason = "headless storybook tool, not the app UI thread")]
+#![allow(
+    clippy::disallowed_methods,
+    reason = "headless storybook tool, not the app UI thread"
+)]
 use bboxybook::{Result, gallery, parity};
 use std::{fs, path::PathBuf};
 fn value(args: &[String], key: &str) -> Option<String> {
@@ -60,15 +63,30 @@ fn run() -> Result<()> {
         return bboxybook::settings::render(&out);
     }
     if command == "graphs" {
-        let out=PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/bboxybook/graphs".into()));
-        if args.iter().any(|a|a=="--geometry-only") { let path=value(&args,"--manifest").ok_or("--geometry-only requires --manifest")?; let cases:Vec<gallery::Case>=serde_json::from_str(&fs::read_to_string(path)?)?;fs::create_dir_all(&out)?;fs::write(out.join("layouts.json"),serde_json::to_vec_pretty(&bboxybook::graphs::snapshots(&cases)?)?)?;return Ok(()); }
+        let out = PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/graphs".into()),
+        );
+        if args.iter().any(|a| a == "--geometry-only") {
+            let path = value(&args, "--manifest").ok_or("--geometry-only requires --manifest")?;
+            let cases: Vec<gallery::Case> = serde_json::from_str(&fs::read_to_string(path)?)?;
+            fs::create_dir_all(&out)?;
+            fs::write(
+                out.join("layouts.json"),
+                serde_json::to_vec_pretty(&bboxybook::graphs::snapshots(&cases)?)?,
+            )?;
+            return Ok(());
+        }
         return bboxybook::graphs::render(&out);
     }
     if command == "paths" {
-        return bboxybook::paths::render(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/bboxybook/paths".into())));
+        return bboxybook::paths::render(&PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/paths".into()),
+        ));
     }
     if command == "streams" {
-        return bboxybook::streams::render(&PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/bboxybook/streams".into())));
+        return bboxybook::streams::render(&PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/streams".into()),
+        ));
     }
     if command == "launchers" {
         let out = PathBuf::from(
@@ -157,7 +175,23 @@ fn run() -> Result<()> {
         ));
     }
     if command == "manifest" {
-        let cases=match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref(){Some("paths")=>bboxybook::paths::cases(),Some("graphs")=>bboxybook::graphs::cases(),Some("settings")=>bboxybook::settings::cases(),Some("perf")=>bboxybook::perf::cases(),Some("documents")=>bboxybook::documents::cases(),Some("masks")=>bboxybook::components::mask_cases(),Some("flow")=>bboxybook::components::cases(),Some("streams")=>{let mut c=bboxybook::streams::cases();c.extend(bboxybook::streams::legacy_cases());c},None=>gallery::cases(),Some(_)=>return Err("unknown BBOXYBOOK_GALLERY".into())};
+        let cases = match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref() {
+            Some("providers") => provider_cases(),
+            Some("paths") => bboxybook::paths::cases(),
+            Some("graphs") => bboxybook::graphs::cases(),
+            Some("settings") => bboxybook::settings::cases(),
+            Some("perf") => bboxybook::perf::cases(),
+            Some("documents") => bboxybook::documents::cases(),
+            Some("masks") => bboxybook::components::mask_cases(),
+            Some("flow") => bboxybook::components::cases(),
+            Some("streams") => {
+                let mut c = bboxybook::streams::cases();
+                c.extend(bboxybook::streams::legacy_cases());
+                c
+            }
+            None => gallery::cases(),
+            Some(_) => return Err("unknown BBOXYBOOK_GALLERY".into()),
+        };
         println!("{}", serde_json::to_string_pretty(&cases)?);
         return Ok(());
     }
@@ -175,10 +209,15 @@ fn run() -> Result<()> {
     if let Some(limit) = value(&args, "--limit") {
         cases.truncate(limit.parse()?);
     }
-    if command=="replay-images" {
-        let out=PathBuf::from(value(&args,"--out").ok_or("replay-images requires --out")?);
-        let count=parity::replay_images(&out,&cases)?;
-        fs::write(out.join("image-replay.json"),serde_json::to_vec_pretty(&serde_json::json!({"scope":"image-only renderer regression; not a parity acceptance run","cases":count,"geometry_replayed":false}))?)?;
+    if command == "replay-images" {
+        let out = PathBuf::from(value(&args, "--out").ok_or("replay-images requires --out")?);
+        let count = parity::replay_images(&out, &cases)?;
+        fs::write(
+            out.join("image-replay.json"),
+            serde_json::to_vec_pretty(
+                &serde_json::json!({"scope":"image-only renderer regression; not a parity acceptance run","cases":count,"geometry_replayed":false}),
+            )?,
+        )?;
         println!("replayed {count} images; geometry not requested");
         return Ok(());
     }
@@ -210,4 +249,18 @@ fn run() -> Result<()> {
         _=>return Err("usage: bboxybook [gallery | paths | streams | launchers | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | shaders | styles | manifest | replay-images --manifest JSON --out DIR | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
     }
     Ok(())
+}
+
+fn provider_cases() -> Vec<gallery::Case> {
+    let mut cases: Vec<_> = bboxybook::launchers::cases()
+        .into_iter()
+        .filter(|case| matches!(case.state.as_str(), "SSH ▸ machines" | "Cloud ▸ regions"))
+        .collect();
+    cases.extend(bboxybook::settings::cases());
+    cases.extend(
+        bboxybook::seat_rows::cases()
+            .into_iter()
+            .filter(|case| case.state == "remote links"),
+    );
+    cases
 }

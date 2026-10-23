@@ -1,0 +1,166 @@
+$ cargo test --locked -p bbt-mux --test provider_gui -- --nocapture
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 22.51s
+     Running tests/provider_gui.rs (target/debug/deps/provider_gui-b4d98b1a61a0fbb4)
+
+running 1 test
+D1c: one supervisor/lease/journal, three labelled PTYs, portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.11s
+
+exit=0
+$ cargo test --locked -p bbt-ui --test links --test settings
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling memchr v2.8.3
+   Compiling serde_json v1.0.154
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 7.12s
+     Running tests/links.rs (target/debug/deps/links-ae58f8c49e115241)
+
+running 2 tests
+test all_link_states_render_and_unavailable_launcher_rows_cannot_activate ... ok
+test settings_accepts_live_link_records_and_legacy_four_field_cloud_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/settings.rs (target/debug/deps/settings-c11b674e42b61a5b)
+
+running 5 tests
+test account_projects_the_pinned_identity_and_recovery_limits_without_actions ... ok
+test role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view ... ok
+test records_roundtrip_with_ordered_custom_harnesses_and_roles ... ok
+test custom_role_order_and_defaults_drive_the_changed_marker ... ok
+test draft_harness_never_claims_an_inferred_ready_state_can_submit ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+exit=0
+$ cargo test --locked -p bboxy450-term --test hosts
+   Compiling log v0.4.34
+   Compiling objc2-encode v4.1.0
+   Compiling smallvec v1.16.3
+   Compiling zerocopy v0.8.63
+   Compiling hashbrown v0.17.1
+   Compiling bytemuck v1.25.2
+   Compiling simd-adler32 v0.3.10
+   Compiling adler2 v2.0.1
+   Compiling rustc-hash v1.1.0
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-vec v0.9.1
+   Compiling parking_lot_core v0.9.12
+   Compiling miniz_oxide v0.9.1
+   Compiling crc32fast v1.5.3
+   Compiling codespan-reporting v0.13.1
+   Compiling unicode-ident v1.0.27
+   Compiling zlib-rs v0.6.8
+   Compiling objc2 v0.6.5
+   Compiling parking_lot v0.12.5
+   Compiling bit-set v0.10.0
+   Compiling static_assertions v1.1.0
+   Compiling float-cmp v0.9.0
+   Compiling objc-sys v0.3.5
+   Compiling mio v1.2.4
+   Compiling strict-num v0.1.1
+   Compiling polycool v0.4.0
+   Compiling libloading v0.8.9
+   Compiling indexmap v2.14.2
+   Compiling arrayref v0.3.9
+   Compiling profiling v1.0.18
+   Compiling tiny-skia-path v0.12.0
+   Compiling tokio v1.54.1
+   Compiling kurbo v0.13.1
+   Compiling naga-types v30.0.1
+   Compiling objc2 v0.5.3
+   Compiling block2 v0.6.2
+   Compiling dispatch2 v0.3.1
+   Compiling wgpu-types v30.0.1
+   Compiling fdeflate v0.3.7
+   Compiling objc2-core-foundation v0.3.2
+   Compiling miniz_oxide v0.8.9
+   Compiling euclid v0.22.14
+   Compiling siphasher v1.0.4
+   Compiling svgtypes v0.16.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling lyon_geom v1.0.20
+   Compiling block2 v0.5.1
+   Compiling core-foundation v0.9.4
+   Compiling simplecss v0.2.2
+   Compiling roxmltree v0.21.1
+   Compiling imagesize v0.15.0
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling pico-args v0.5.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling foreign-types-shared v0.3.1
+   Compiling rand_chacha v0.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling data-url v0.3.2
+   Compiling objc2-foundation v0.3.2
+   Compiling flate2 v1.1.10
+   Compiling naga v30.0.1
+   Compiling rand v0.8.8
+   Compiling rand v0.9.5
+   Compiling png v0.18.1
+   Compiling num-bigint-dig v0.8.6
+   Compiling ulid v1.2.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling usvg v0.48.1
+   Compiling tungstenite v0.30.0
+   Compiling foreign-types v0.5.0
+   Compiling portable-pty v0.9.0
+   Compiling objc2-metal v0.3.2
+   Compiling rsa v0.9.10
+   Compiling dsa v0.6.3
+   Compiling tiny-skia v0.12.0
+   Compiling core-graphics-types v0.1.3
+   Compiling objc2-foundation v0.2.2
+   Compiling lyon_path v1.0.19
+   Compiling hashlink v0.12.2
+   Compiling rgb v0.8.53
+   Compiling tracing-core v0.1.36
+   Compiling float_next_after v1.0.0
+   Compiling pgp v0.21.0
+   Compiling lyon_tessellation v1.0.22
+   Compiling tracing v0.1.44
+   Compiling resvg v0.48.1
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling rusqlite v0.40.2
+   Compiling petgraph v0.8.3
+   Compiling objc2-core-graphics v0.3.2
+   Compiling objc2-app-kit v0.2.2
+   Compiling notify v8.2.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling core-graphics v0.23.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling pollster v0.4.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling smol_str v0.2.2
+   Compiling raw-window-metal v1.1.0
+   Compiling dpi v0.1.2
+   Compiling wgpu-hal v30.0.1
+   Compiling objc2-app-kit v0.3.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling winit v0.30.13
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 1m 00s
+     Running tests/hosts.rs (target/debug/deps/hosts-a6f92085f06b80ed)
+
+running 1 test
+test provider_data_binds_settings_launcher_and_survives_model_rebuilds ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+exit=0

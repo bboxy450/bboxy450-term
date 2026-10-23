@@ -339,6 +339,7 @@
       const kids=it=>typeof it.children==='function'?it.children():it.children;
       const tree=(items,depth=0)=>{if(depth>8)throw Error('Launcher tree exceeds eight levels');return items.map(it=>({
         id:it.id,label:it.label,sub:it.sub||'',harness:it.harness,kind:it.kind||it.hint||'',tile:it.tile||null,section:it.section||null,aliases:it.aliases||[],tags:it.tags||[],
+        link:it.link||null,down:!!it.down,
         navigation:!!(it.seat||it.swarm||it.graphOpen||it.settingsOpen||it.section==='Navigate'||it.section==='Swarms'||it.kind==='Navigate'||it.kind==='Open'),
         children:it.children?tree(kids(it)||[],depth+1):null,
       }));};

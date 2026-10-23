@@ -295,7 +295,7 @@ async fn logic_main() -> Result<()> {
         &bootstrap.supervisor.socket,
         bootstrap.supervisor.capability,
     )?;
-    let logic = Logic::start_custodied(
+    let logic = Logic::start_custodied_with_fixtures(
         connection,
         LogicConfig {
             run_dir: bootstrap.config.run_dir,
@@ -569,7 +569,11 @@ impl Session {
                 GuiReply::Seats(seats) => return Ok(seats),
                 GuiReply::Identity(identity) => self.endpoint.identity = identity,
                 GuiReply::Error { reason, .. } => return Err(invalid(reason)),
-                GuiReply::Seat(_) | GuiReply::Update { .. } | GuiReply::Ok { .. } => {}
+                GuiReply::Seat(_)
+                | GuiReply::Update { .. }
+                | GuiReply::Ok { .. }
+                | GuiReply::Hosts(_)
+                | GuiReply::HostState { .. } => {}
                 _ => return Err(invalid("unexpected GUI startup reply")),
             }
         }

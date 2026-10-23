@@ -1,0 +1,161 @@
+D1c GO 58701e43-8fbe-4b04-9fc8-c11163065a4d; D1b accepted 2750175.
+$ date '+%Y-%m-%d %H:%M:%S %Z'
+2026-10-22 23:05:39 PDT
+exit=0
+$ git status --short --branch
+## exec5
+?? .bboxy/runs/d1a-check.log
+?? .bboxy/runs/d1a-ci-final.log
+?? .bboxy/runs/d1a-final-commands.log
+?? .bboxy/runs/d1a-gate-state.log
+?? .bboxy/runs/d1a-handoff-preview.log
+?? .bboxy/runs/d1a-handoff-receipt.log
+?? .bboxy/runs/d1a-handoff.log
+?? .bboxy/runs/d1a-mux-app.log
+?? .bboxy/runs/d1a-mux.log
+?? .bboxy/runs/d1a-provider.log
+?? .bboxy/runs/d1b-ci-final.log
+?? .bboxy/runs/d1b-final-commands.log
+?? .bboxy/runs/d1b-gate-state.log
+?? .bboxy/runs/d1b-handoff-preview.log
+?? .bboxy/runs/d1b-handoff-receipt.log
+?? .bboxy/runs/d1b-handoff.log
+?? .bboxy/runs/d1c-commands.log
+?? .bboxy/runs/id1a-acceptance.log
+?? .bboxy/runs/id1a-check.log
+?? .bboxy/runs/id1a-ci-final.log
+?? .bboxy/runs/id1a-ci.log
+?? .bboxy/runs/id1a-handoff.log
+?? .bboxy/runs/id1a-keychain-dev.log
+?? .bboxy/runs/id1a-keychain.log
+?? .bboxy/runs/id1b-check.log
+?? .bboxy/runs/id1b-ci-followup.log
+?? .bboxy/runs/id1b-ci.log
+?? .bboxy/runs/id1b-fixture-followup.log
+?? .bboxy/runs/id1b-handoff.log
+?? .bboxy/runs/id1b-messaging.log
+?? .bboxy/runs/id1c-check.log
+?? .bboxy/runs/id1c-ci.log
+?? .bboxy/runs/id1c-handoff.log
+?? .bboxy/runs/id1d-check.log
+?? .bboxy/runs/id1d-ci.log
+?? .bboxy/runs/id1d-gate-state.log
+?? .bboxy/runs/id1d-handoff-digest.log
+?? .bboxy/runs/id1d-handoff-receipt.log
+?? .bboxy/runs/id1d-handoff.log
+?? .bboxy/runs/id1d-local.log
+?? .bboxy/runs/id1d-rook-bus-hunk.log
+?? .bboxy/runs/id1d-runtime-check.log
+?? .bboxy/runs/id1e-ci.log
+?? .bboxy/runs/id1e-gate-state.log
+?? .bboxy/runs/id1e-handoff-preview.log
+?? .bboxy/runs/id1e-handoff-receipt.log
+?? .bboxy/runs/id1e-handoff.log
+?? .bboxy/runs/id1f-ci.log
+?? .bboxy/runs/id1f-clippy.log
+?? .bboxy/runs/id1f-commands.log
+?? .bboxy/runs/id1f-extra.log
+?? .bboxy/runs/id1f-gate-state.log
+?? .bboxy/runs/id1f-handoff-preview.log
+?? .bboxy/runs/id1f-handoff-receipt.log
+?? .bboxy/runs/id1f-handoff.log
+?? .bboxy/runs/id1f-identity-memory.log
+?? .bboxy/runs/id1f-identity-unset.log
+?? .bboxy/runs/id1f-release.log
+exit=0
+$ git branch exec5-d1b-accepted
+exit=0
+$ git fetch origin
+exit=0
+$ git rebase --gpg-sign origin/main
+Successfully rebased and updated refs/heads/exec5.
+exit=0
+$ git log -5 --oneline origin/main
+2750175 merge D1b: FakeProvider/FakeLink from fixtures; dummy SSH and cloud hosts, events delayed by due-time queue, down hosts never execute
+2da2393 merge C1i: live panes on real terminals — echo, typing, resize/reflow, focus, Metal resize, logic kill survives
+fdc8a96 provider: record D1b headless and dependency gate evidence
+fa661bc provider: add fixture-driven fake hosts and headless recovery
+6bfe726 merge W1.2g: coalesce ring-backed supervisor events per (seat, generation, kind); no logic death under output floods
+exit=0
+Protocol/host adapter and minimal logic/socket edits plus scoped rustfmt: exit 0.
+$ cargo test --locked -p bbt-proto (compact O1 env)
+exit=0
+D1c scope narrowed by Oracle 643f4dfb: app hosts/sidebar/seat link state plus launcher/settings MODULES; no app launcher/settings host. Production sharing approved, one supervisor/lease/journal. Proto tests exit 0 (5 passed). Model/live/socket host path edits exit 0. Read errors retained: guessed model.rs path rg exit 2, shell config* unmatched glob exit 1, guessed computer-use skill alias cat exit 1; catalog skill path read exit 0. No desktop-control action taken.
+$ cargo check --locked -p bbt-mux -p bboxy450-term --all-targets (compact O1)
+exit=0
+$ cargo check --workspace --all-targets --locked (compact O1)
+exit=0
+$ cargo test --locked -p bbt-mux --test provider_gui -- --nocapture (memory custody, compact O1)
+owned cargo pid=99618
+exit=0
+$ cargo test --locked -p bbt-ui --test links --test settings (memory custody, compact O1)
+owned cargo pid=207
+exit=0
+$ cargo test --locked -p bboxy450-term --test hosts (memory custody, compact O1)
+owned cargo pid=1139
+exit=0
+UI data projection, module LinkState support, legacy cloud/machine decoding, named sidebar/capture hunks and 5-scene provider parity selection added; checked edits and scoped formatting exit 0. Public PendingEvents seam approved by Oracle 7036efee, Rook clear 5e70356c; only visibility/rustdoc changes. Source inventory guessed generated* and components dir failed 1/2 respectively; corrected known-file reads exit 0.
+$ scoped rustfmt --edition 2024 --config skip_children=true (27 named Rust files)
+exit=0
+Focused checks: provider_gui 1/0, links 2/0, settings 5/0, app hosts 1/0; raw d1c-focused.log. Poll after completion returned Unknown process id72891; finished log contains all three actual exit0 records. Latest bounded inbox received cursor5207. Native range helper remains Velvet-owned. Read guessed launcher.rs failed1; correct launchers.rs to follow.
+Signed checkpoint c692e79 committed0. git fetch origin0; git rebase --gpg-sign origin/main initially1 (single adjacent manifest-arm conflict). Resolved providers+perf arms together, scoped rustfmt0, git add exact main.rs0, GIT_EDITOR=true git rebase --continue0 -> signed3add5d0 atop4e28f11. No peer implementation removed.
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+exit=0
+$ BBOXYBOOK_GALLERY=providers sh scripts/parity.sh (own target/d1c-parity)
+exit=1
+$ cargo build --locked -p bboxy450-term
+exit=0
+$ cargo build --locked -p bboxybook
+exit=0
+$ target/debug/bboxybook render --all --out target/d1c-parity/native --manifest target/d1c-parity/cases.json
+exit=0
+$ target/debug/bboxybook compare --strict-geometry --out target/d1c-parity --manifest target/d1c-parity/cases.json
+exit=1
+UI geometry first gate1: 24/40 failed; settings16/16 within policy. Read four SSH/settings web/native images. Corrections: inline-flex dot baseline/anatomy, density chevron font, where-prefix negative margin via grouped gap. Corrected render0/compare1: seat-row+settings24/24 now pass; launcher16 still geometry pending. Source fixes retained before ID1c-a priority split. Oracle3e972033 explicitly leaves pulse/tooltip to L8. Inbox cursor5227. Unknown-source-path rg diagnostics retained in tool transcript; no code removed.
+$ cargo build --locked -p bboxybook -p bboxy450-term
+exit=0
+$ target/debug/bboxybook render --all --out target/d1c-parity/native --manifest target/d1c-parity/cases.json
+exit=0
+$ target/debug/bboxybook compare --strict-geometry --out target/d1c-parity --manifest target/d1c-parity/cases.json
+exit=0
+Native CLI capture fixture: assertion0, app exit-15 via recorded-own-PID SIGTERM, source current inline-baseline fix, memory custody, fresh private /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-vntu0j5x; process tree retained in d1c-native-capture.log.
+Oracle88719ada/2ccfc818/32cdfc19: whole D1c, all96 cases (Settings72+Launcherhosts16+remote8); pulse and host hover explicitly L8 (3e972033). Settings-only checkpoint844375d preserved; full branch resumed with dedicated provider_settings tests, no separate handoff. Dedicated test7/0 and clippy0 in d1c-a-focused.log. Scoped split/restore commands all0.
+Final inline-flex correction assigns the empty first-child dot its bottom-border baseline; last40-case native render0/compare0 with0reviews. Viewed corrected native launcher/seat images and native sidebar PNG. Native capture assertion0; owned process tree stopped via explicitPIDs, app -15 as documented. Temporary screenshot run dir createdbythissession remains until own cleanup.
+post-capture ps -p 34312 exit=1
+post-capture ps -p 34318 exit=1
+post-capture ps -p 34319 exit=1
+post-capture ps -p 34339 exit=1
+$ git diff --check
+exit=2 (four empty ps results left trailing spaces in command log; trimmed)
+git diff --check after trimming log0; scoped rustfmt links0; exact add0; signed99453e2 commit0. Oracle32cdfc19 authorized Velvet range dependency; git cherry-pick3c5916a0 (8995f60) authorship/hunks preserved. git fetch origin0; signedrebase origin/main0 ->626d34f atop1d9102b; no conflicts. Native captured rows read: Build box40ms, East worker60ms, West worker80ms, real zsh printed D1c local terminal alive. Own private native run dir deleted0; post-capture allfourrecordedPIDs absent(ps1).
+$ cargo test --locked -p bbt-mux --test provider_gui (memory/O1; providers96 gallery)
+exit=0
+$ cargo test --locked -p bbt-ui --test links --test provider_settings --test settings (memory/O1; providers96 gallery)
+exit=0
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (memory/O1; providers96 gallery)
+exit=0
+$ cargo test --locked -p bbt-mux --test provider_gui -- --nocapture (actual admitted GUI Spawn on SSH/cloud, early LinkDown no record)
+exit=101
+$ sh scripts/parity.sh (memory/O1; providers96 gallery)
+exit=0
+$ cargo test --locked -p bbt-mux --test provider_gui -- --nocapture (corrected test conversion between portable Where and registry Location)
+exit=0
+Expanded96 preflight: sh scripts/parity.sh0/199.102s; capture96/96, render96/96, zero geometry failures/unproven,24pixelreviews advisory. Native GUI-spawn test first compile101 (test confused Where/registryLocation and doubly-unwrapped Ulid), corrected conversion only, rerun0/5.010s; five real PTYs including two GUI Spawn calls; early LinkDown creates no record. Failed raw d1c-gui-spawn-first.log retained.
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (after GUI spawn acceptance extension)
+exit=0
+Final workspace strictclippy0 after GUI test extension. git fetch origin0 before final handoff gate; origin/main still1d9102b, already rebased. Viewed advisory Account native/web pair: same geometry/content, raster/avatar residue; remaining24advisory cases are Account8, Roles8, In-a-tab8. No change to those unrelated renderings; P3 owns broader parity. Native Screenshot uses prior same UI source; upstream rebase adds reaping only.
+Exact clean CI d46d15c failed101/175.031s at app cockpit spawn fixture receiving new HostState Connecting (cockpit4passed/1failed). Raw first log/state preserved. Immediate private target deletion0 and worktree removal0. Exact fixture hunk notified Sable/Oracle: recognize only HostState/Hosts as unrelated multiplexed replies; new-seat/error assertions retained.
+$ cargo test --locked -p bboxy450-term --test cockpit (multiplexed host notification fixture correction)
+exit=0
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (multiplexed host notification fixture correction)
+exit=0
+App fixture correction: cargo test --locked -p bboxy450-term --test cockpit0 (5/0/0) /22.092s; strict workspacealltargetclippy0 /0.747s. Native constructor, generation semantics and assertions unchanged. Scope DMdb7173f9 sent Sable, failure DM1de814cf sent Oracle; receipts stored only. git fetch origin0; origin/main remains1d9102b.
+Second exactCI98b5818 failed101/212.575s after all app checks and gallery renderer checks at bboxybook/tests/seat_rows.rs:6 hardcoded224 vs new232cases. Private target/worktree cleaned0. Capture-compatibility audit concurrently found optional main predicate excludes --animate/cadence with no live model; restore main.rs from origin/main removes only own hunk and preserves Seraph flags. Attempted own-gate stop found treeempty/shellalreadyexited: no PID was signalled (d1c-capture-compatibility.log). Update gallery contract to232 for eight remote-link density/theme cases. Warm full-workspace tests next before a new exactgate.
+$ cargo test --workspace --locked (after multiplexed reply+gallery contract corrections; main capture hunk removed)
+exit=0
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (after multiplexed reply+gallery contract corrections; main capture hunk removed)
+exit=0
+Final native capture with main.rs identical to origin/main: assertion0; app exit-15 via recorded-own-PID SIGTERM; run dir deleted0; raw d1c-native-final-capture.log.
+After fixture inventory corrections/main restore: cargo test --workspace --locked0/268.573s:635passed0failed15ignored. Strict workspacealltargetsClippy0/2.573s. Final native GPUcapture assertion0, app-15 via recorded ownPIDs, allfourPIDs absent(ps1), own run state removed0; finalPNG inspected, SHA828bf140f9342fc9ad44fe981e49967684deb9c922d819fea76e880a2c2cff44. git diff origin/main -- appmain is empty; existing animate/cadence capture remains byte-identical to main. git fetch origin0; still1d9102b. Aster5297 acknowledges no main.rs hunk; Sable5264 clears cockpit fixture.
+Exact clean1c04dbe ci-local --parity0/785.547s: all gates passed;96geometrycomplete/0failures/0unproven,24advisorypixels;7invariants0failures3slowskips. Private target deleted immediately0/worktree removed0. Before-handoff fetch0 found main advanced by R10 UI windowing (c2d1fee) and AGENTS optimized-memory rule(a585ece); policy read, follows existing O1 debug_assertions+memory setup. Rebase and exact post-R10 gate required; successful pre-R10 proof retained as d1c-ci-before-r10.log.
+Post-R10 gate5746f5b101/303.718s at socket_backlog adapter_status. Oracle d9a95149 explicitly accepts this one named external known4MiBqueue/reply starvation (Rook fix assigned); leave5746source unchanged, no Rook edits, finish tail checks. Before disposition read, source/main isolation had both completed0(source119.226s/main97.498s); source fresh compile, baseline reused only this private cache; no PID signalled at stop because tree empty. Both own worktrees/isolation target deleted0. Post-R1096parity0/225.023s,0incomplete/0geometryfailures/24advisorypixels. Fresh clean5746tail ui-lint0/7.812s, smoke0/38.976s, invariants0/25.108s(6pass,0failure,4namedslowskips;parityseparatelypassed); private APFS copy onlyowninactivecache, immediate target delete0/worktree remove0. Native5746R10captureassertion0, app-15(recorded-ownPIDs), allPIDsabsent(ps1), ownrundirremoved0; inspectedPNG SHAe73b71cec8320ff9d83b80071e08d1d61ae058c31cefcde913bfcf19e34775d2. Source remains5746perOracle despiteC1c85ffannouncement, agreed constructor/recover order retained forOracleintegration. Finalizer first driver1 from an overbroad pending-string guard matching the type name PendingEvents; narrowed placeholder guard and reran0.

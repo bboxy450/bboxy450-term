@@ -1,0 +1,33 @@
+source=5746f5b2daff975be0d465195d7cd10e75918d9d; binary freshly compiled in clean CI worktree
+$ BBOXY_TEST_CUSTODY=memory BBOXY_VERIFY_INPUT=<fixture printf> /private/tmp/ci-kestrel-d1c-target-5746f5b/debug/bboxy450-term --run-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-r10-04y9p8uq --spawn-zsh 1 --capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar-r10.png --capture-after 2
+owned app PID=25959 run_dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-r10-04y9p8uq
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=0
+capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar-r10.png: Ok(())
+cockpit ready: supervisor=26001 logic=26002
+seat 01M5KWPS0WCBPEVH5QVP181XER activity=Idle process=Running { pid: 26061 }
+GUI operation 01M5KWPS3H9J3CFY5H24V6GEXG accepted
+GUI operation 01M5KWPS4M5X4VE97TRTFDB4VR accepted
+GUI operation 01M5KWPS4ZVGERY8J8X9V3VWHP accepted
+GUI operation 01M5KWPSCA307KQR8D75F0DWA7 accepted
+GUI operation 01M5KWPSX5E0BAD0DKHEB3R5HD accepted
+seat 01M5KWPS0WCBPEVH5QVP181XER activity=Active process=Running { pid: 26061 }
+GUI operation 01M5KWPT536P8RGD7C0HBMH4ME accepted
+seat 01M5KWPS0WCBPEVH5QVP181XER activity=Idle process=Running { pid: 26061 }
+GUI operation 01M5KWPTEEAKTAAB9J65KHXK5S accepted
+capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar-r10.png: Ok(())
+recorded OWN process tree=[[25959, 25945, "/private/tmp/ci-kestrel-d1c-target-5746f5b/debug/bboxy450-term --run-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-r10-04y9p8uq --spawn-zsh 1 --capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar-r10.png --capture-after 2"], [26001, 25959, "/private/tmp/ci-kestrel-d1c-target-5746f5b/debug/bboxy450-term supervisor"], [26002, 25959, "/private/tmp/ci-kestrel-d1c-target-5746f5b/debug/bboxy450-term logic"], [26061, 26001, "/bin/zsh -il"]]
+SIGTERM own pid=26061
+SIGTERM own pid=26002
+SIGTERM own pid=26001
+app exit=-15 (recorded PID SIGTERM after capture; no orderly-shutdown claim)
+capture sha256=e73b71cec8320ff9d83b80071e08d1d61ae058c31cefcde913bfcf19e34775d2
+capture assertion exit=0
+post-capture pid=25959 ps_exit=1 state=
+post-capture pid=26001 ps_exit=1 state=
+post-capture pid=26002 ps_exit=1 state=
+post-capture pid=26061 ps_exit=1 state=

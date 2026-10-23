@@ -1,0 +1,1087 @@
+source=d46d15c613326a6e16906b1a49b8cf38f336eb85
+$ BBOXY_TEST_CUSTODY=memory BBOXYBOOK_GALLERY=providers CARGO_TARGET_DIR=/private/tmp/ci-kestrel-d1c-target-d46d15c PARITY_OUT=/Users/feral/mydev/bboxy450-term-exec5/target/d1c-ci-parity-d46d15c sh scripts/ci-local.sh --parity
+layering: held
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling serde v1.0.229
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+   Compiling log v0.4.34
+   Compiling zmij v1.0.23
+   Compiling zerocopy v0.8.63
+   Compiling memchr v2.8.3
+   Compiling generic-array v0.14.7
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling objc2-encode v4.1.0
+   Compiling smallvec v1.16.3
+   Compiling num-traits v0.2.19
+   Compiling crc32fast v1.5.3
+   Compiling thiserror v2.0.21
+   Compiling itoa v1.0.18
+   Compiling cfg_aliases v0.2.2
+   Compiling base64ct v1.8.3
+   Compiling objc2 v0.6.5
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling foldhash v0.2.0
+   Compiling pem-rfc7468 v0.7.0
+   Compiling hashbrown v0.17.1
+   Compiling serde_json v1.0.154
+   Compiling equivalent v1.0.3
+   Compiling radium v0.7.0
+   Compiling indexmap v2.14.2
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling cpufeatures v0.2.17
+   Compiling parking_lot_core v0.9.12
+   Compiling block2 v0.6.2
+   Compiling tap v1.0.1
+   Compiling unicode-width v0.2.2
+   Compiling wyz v0.5.1
+   Compiling jobserver v0.1.35
+   Compiling find-msvc-tools v0.1.15
+   Compiling base16ct v0.2.0
+   Compiling funty v2.0.0
+   Compiling simd-adler32 v0.3.10
+   Compiling scopeguard v1.2.0
+   Compiling shlex v2.0.1
+   Compiling lock_api v0.4.14
+   Compiling bytes v1.12.1
+   Compiling adler2 v2.0.1
+   Compiling cc v1.9.0
+   Compiling pkg-config v0.3.34
+   Compiling once_cell v1.21.4
+   Compiling winnow v1.0.4
+   Compiling bitvec v1.1.1
+   Compiling semver v1.0.28
+   Compiling arrayvec v0.7.8
+   Compiling rustc_version v0.4.1
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling bitflags v2.13.2
+   Compiling dispatch2 v0.3.1
+   Compiling parking_lot v0.12.5
+   Compiling objc2-core-foundation v0.3.2
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling rustc-hash v1.1.0
+   Compiling bytemuck v1.25.2
+   Compiling winnow v0.7.15
+   Compiling serde_spanned v1.1.2
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling float-cmp v0.9.0
+   Compiling strict-num v0.1.1
+   Compiling polycool v0.4.0
+   Compiling miniz_oxide v0.9.1
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling hybrid-array v0.4.15
+   Compiling ff v0.13.1
+   Compiling group v0.13.0
+   Compiling naga v30.0.1
+   Compiling bit-vec v0.9.1
+   Compiling arrayref v0.3.9
+   Compiling raw-window-handle v0.6.2
+   Compiling core-foundation-sys v0.8.7
+   Compiling pin-project-lite v0.2.17
+   Compiling bit-set v0.10.0
+   Compiling kurbo v0.13.1
+   Compiling naga-types v30.0.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling flate2 v1.1.10
+   Compiling miniz_oxide v0.8.9
+   Compiling zeroize_derive v1.5.0
+   Compiling zerocopy-derive v0.8.63
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling fdeflate v0.3.7
+   Compiling zeroize v1.9.1
+   Compiling codespan-reporting v0.13.1
+   Compiling der v0.7.10
+   Compiling objc2-foundation v0.3.2
+   Compiling zlib-rs v0.6.8
+   Compiling getrandom v0.3.4
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling inout v0.1.4
+   Compiling crypto-bigint v0.5.5
+   Compiling digest v0.10.7
+   Compiling cipher v0.4.4
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-ui-model)
+   Compiling siphasher v1.0.4
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling sha2 v0.10.9
+   Compiling hkdf v0.12.4
+   Compiling objc-sys v0.3.5
+   Compiling static_assertions v1.1.0
+   Compiling wgpu-types v30.0.1
+   Compiling spki v0.7.3
+   Compiling rfc6979 v0.4.0
+   Compiling pkcs8 v0.10.2
+   Compiling svgtypes v0.16.1
+   Compiling serdect v0.2.0
+   Compiling sec1 v0.7.3
+   Compiling png v0.18.1
+   Compiling simplecss v0.2.2
+   Compiling crypto-common v0.2.2
+   Compiling elliptic-curve v0.13.8
+   Compiling block-buffer v0.12.1
+   Compiling roxmltree v0.21.1
+   Compiling aho-corasick v1.1.5
+   Compiling wgpu-hal v30.0.1
+   Compiling fnv v1.0.7
+   Compiling pico-args v0.5.0
+   Compiling regex-syntax v0.8.11
+   Compiling imagesize v0.15.0
+   Compiling strsim v0.11.1
+   Compiling objc2-metal v0.3.2
+   Compiling const-oid v0.10.2
+   Compiling data-url v0.3.2
+   Compiling ident_case v1.0.1
+   Compiling usvg v0.48.1
+   Compiling darling_core v0.20.11
+   Compiling digest v0.11.3
+   Compiling tiny-skia v0.12.0
+   Compiling regex-automata v0.4.18
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling rgb v0.8.53
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling cursor-icon v1.2.0
+   Compiling objc2 v0.5.3
+   Compiling darling_macro v0.20.11
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling resvg v0.48.1
+   Compiling rand_chacha v0.3.1
+   Compiling rand_core v0.9.5
+   Compiling ecdsa v0.16.9
+   Compiling curve25519-dalek v4.1.3
+   Compiling num-integer v0.1.47
+   Compiling euclid v0.22.14
+   Compiling objc2-core-graphics v0.3.2
+   Compiling cpufeatures v0.3.1
+   Compiling errno v0.3.14
+   Compiling regex v1.13.1
+   Compiling wgpu-core v30.0.1
+   Compiling litrs v1.0.1
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling num-bigint-dig v0.8.6
+   Compiling crossbeam-utils v0.8.23
+   Compiling cfg_aliases v0.1.1
+   Compiling spin v0.9.9
+   Compiling thiserror v1.0.69
+   Compiling lazy_static v1.5.1
+   Compiling nix v0.28.0
+   Compiling document-features v0.2.12
+   Compiling lyon_geom v1.0.20
+   Compiling signal-hook-registry v1.4.8
+   Compiling num-iter v0.1.46
+   Compiling rand_chacha v0.9.0
+   Compiling block2 v0.5.1
+   Compiling rand v0.8.8
+   Compiling objc2-quartz-core v0.3.2
+   Compiling darling v0.20.11
+   Compiling primeorder v0.13.6
+   Compiling ctr v0.9.2
+   Compiling aead v0.5.2
+   Compiling universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+   Compiling core-foundation v0.9.4
+   Compiling foreign-types-macros v0.2.4
+   Compiling tokio-macros v2.7.2
+   Compiling raw-window-metal v1.1.0
+   Compiling mio v1.2.4
+   Compiling socket2 v0.6.5
+   Compiling wgpu v30.0.1
+   Compiling base64 v0.22.1
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling httparse v1.10.1
+   Compiling anyhow v1.0.104
+   Compiling rustversion v1.0.23
+   Compiling unsafe-libyaml v0.2.11
+   Compiling zstd-safe v8.2.0
+   Compiling unicode-segmentation v1.13.3
+   Compiling foreign-types-shared v0.3.1
+   Compiling opaque-debug v0.3.1
+   Compiling ryu v1.0.23
+   Compiling vcpkg v0.2.15
+   Compiling convert_case v0.10.0
+   Compiling polyval v0.6.2
+   Compiling foreign-types v0.5.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling libsqlite3-sys v0.38.2
+   Compiling core-graphics-types v0.1.3
+   Compiling objc2-foundation v0.2.2
+   Compiling tokio v1.54.1
+   Compiling derive_builder_core v0.20.2
+   Compiling lyon_path v1.0.19
+   Compiling rand v0.9.5
+   Compiling chacha20 v0.10.2
+   Compiling serde-big-array v0.5.1
+   Compiling aes v0.8.4
+   Compiling dbl v0.3.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling keccak v0.1.6
+   Compiling winit v0.30.13
+   Compiling float_next_after v1.0.0
+   Compiling crc24 v0.1.6
+   Compiling tracing-core v0.1.36
+   Compiling byteorder v1.5.0
+   Compiling heck v0.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling tracing v0.1.44
+   Compiling objc2-app-kit v0.2.2
+   Compiling lyon_tessellation v1.0.22
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling sha3 v0.10.9
+   Compiling cmac v0.7.2
+   Compiling rand v0.10.3
+   Compiling bbt-core v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-core)
+   Compiling crossbeam-queue v0.3.14
+   Compiling ulid v1.2.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling bitfields-impl v1.0.3
+   Compiling filedescriptor v0.8.3
+   Compiling core-graphics v0.23.2
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling ghash v0.5.1
+   Compiling objc2-core-text v0.3.2
+   Compiling sha1 v0.11.0
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-ui)
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling ed25519 v2.2.3
+   Compiling blake2 v0.10.6
+   Compiling sha1 v0.10.7
+   Compiling num_enum_derive v0.7.6
+   Compiling futures-macro v0.3.34
+   Compiling http v1.5.0
+   Compiling password-hash v0.5.0
+   Compiling serial2 v0.2.38
+   Compiling pollster v0.4.0
+   Compiling smol_str v0.2.2
+   Compiling futures-core v0.3.34
+   Compiling same-file v1.0.6
+   Compiling downcast-rs v1.2.1
+   Compiling futures-sink v0.3.34
+   Compiling pulldown-cmark v0.13.4
+   Compiling signature v3.0.0
+   Compiling futures-task v0.3.34
+   Compiling dpi v0.1.2
+   Compiling foldhash v0.1.5
+   Compiling shell-words v1.1.1
+   Compiling data-encoding v2.11.1
+   Compiling slab v0.4.12
+   Compiling futures-util v0.3.34
+   Compiling tungstenite v0.30.0
+   Compiling portable-pty v0.9.0
+   Compiling hashbrown v0.15.5
+   Compiling ed25519 v3.0.0
+   Compiling walkdir v2.5.0
+   Compiling argon2 v0.5.3
+   Compiling num_enum v0.7.6
+   Compiling sha1-checked v0.10.0
+   Compiling zstd v0.14.3
+   Compiling ed25519-dalek v2.2.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling aes-gcm v0.10.3
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-rt)
+   Compiling eax v0.5.0
+   Compiling snafu v0.9.2
+   Compiling derive_more v2.1.1
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling dsa v0.6.3
+   Compiling p256 v0.13.2
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling ocb3 v0.1.0
+   Compiling sha2 v0.11.1
+   Compiling k256 v0.13.4
+   Compiling idea v0.5.1
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling notify-types v2.1.0
+   Compiling fsevent-sys v4.1.0
+   Compiling hashlink v0.12.2
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling unicase v2.10.0
+   Compiling replace_with v0.1.8
+   Compiling fixedbitset v0.5.7
+   Compiling fallible-iterator v0.3.0
+   Compiling hex v0.4.3
+   Compiling bbt-render v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-render)
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling security-framework v3.7.0
+   Compiling pgp v0.21.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-supervisor)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-proto)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bboxy450-term)
+   Compiling bboxybook v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bboxybook)
+   Compiling bbt-mermaid v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-mermaid)
+   Compiling bbt-doc v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-doc)
+   Compiling objc2-app-kit v0.3.2
+   Compiling bboxy-firehose v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bboxy-firehose)
+   Compiling rusqlite v0.40.2
+   Compiling bbt-mux v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 1m 25s
+    Checking cfg-if v1.0.5
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking zmij v1.0.23
+    Checking log v0.4.34
+    Checking smallvec v1.16.3
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-ui-model)
+    Checking typenum v1.20.1
+    Checking zeroize v1.9.1
+    Checking zerocopy v0.8.63
+    Checking unicode-width v0.2.2
+    Checking scopeguard v1.2.0
+    Checking foldhash v0.2.0
+    Checking lock_api v0.4.14
+    Checking hashbrown v0.17.1
+    Checking libm v0.2.16
+    Checking equivalent v1.0.3
+    Checking cursor-icon v1.2.0
+    Checking once_cell v1.21.4
+    Checking thiserror v2.0.21
+    Checking subtle v2.6.1
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking pin-project-lite v0.2.17
+    Checking crc32fast v1.5.3
+    Checking miniz_oxide v0.9.1
+    Checking zlib-rs v0.6.8
+    Checking const-oid v0.9.6
+    Checking objc2-encode v4.1.0
+    Checking indexmap v2.14.2
+    Checking ryu v1.0.23
+    Checking unsafe-libyaml v0.2.11
+    Checking core-foundation-sys v0.8.7
+    Checking objc2 v0.6.5
+    Checking bytemuck v1.25.2
+    Checking generic-array v0.14.7
+    Checking rustc-hash v1.1.0
+    Checking bit-vec v0.9.1
+    Checking raw-window-handle v0.6.2
+    Checking num-traits v0.2.19
+    Checking bit-set v0.10.0
+    Checking getrandom v0.2.17
+    Checking parking_lot_core v0.9.12
+    Checking codespan-reporting v0.13.1
+    Checking rand_core v0.6.4
+    Checking naga-types v30.0.1
+    Checking parking_lot v0.12.5
+    Checking static_assertions v1.1.0
+    Checking unicode-ident v1.0.27
+    Checking float-cmp v0.9.0
+    Checking libloading v0.8.9
+    Checking profiling v1.0.18
+    Checking arrayref v0.3.9
+    Checking strict-num v0.1.1
+    Checking cpufeatures v0.2.17
+    Checking fdeflate v0.3.7
+    Checking miniz_oxide v0.8.9
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking tiny-skia-path v0.12.0
+    Checking siphasher v1.0.4
+    Checking digest v0.10.7
+    Checking base64 v0.22.1
+    Checking roxmltree v0.21.1
+    Checking simplecss v0.2.2
+    Checking euclid v0.22.14
+    Checking flate2 v1.1.10
+    Checking pico-args v0.5.0
+    Checking data-url v0.3.2
+    Checking imagesize v0.15.0
+    Checking rgb v0.8.53
+    Checking float_next_after v1.0.0
+    Checking pollster v0.4.0
+    Checking base64ct v1.8.3
+    Checking objc-sys v0.3.5
+    Checking bytes v1.12.1
+    Checking inout v0.1.4
+    Checking objc2 v0.5.3
+    Checking core-foundation v0.9.4
+    Checking block2 v0.6.2
+    Checking foreign-types-shared v0.3.1
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking pem-rfc7468 v0.7.0
+    Checking foreign-types v0.5.0
+    Checking cipher v0.4.4
+    Checking tracing-core v0.1.36
+    Checking bbt-mermaid v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-mermaid)
+    Checking der v0.7.10
+    Checking core-graphics-types v0.1.3
+    Checking core-graphics v0.23.2
+    Checking dpi v0.1.2
+    Checking smol_str v0.2.2
+    Checking tracing v0.1.44
+    Checking errno v0.3.14
+    Checking unicase v2.10.0
+    Checking tap v1.0.1
+    Checking radium v0.7.0
+    Checking hmac v0.12.1
+    Checking wyz v0.5.1
+    Checking sha2 v0.10.9
+    Checking unicode-segmentation v1.13.3
+    Checking base16ct v0.2.0
+    Checking funty v2.0.0
+    Checking serde v1.0.229
+    Checking serde_json v1.0.154
+    Checking bitflags v2.13.2
+    Checking getrandom v0.3.4
+    Checking signature v2.2.0
+    Checking dispatch2 v0.3.1
+    Checking wgpu-types v30.0.1
+    Checking png v0.18.1
+    Checking pulldown-cmark v0.13.4
+    Checking bitvec v1.1.1
+    Checking block2 v0.5.1
+    Checking objc2-core-foundation v0.3.2
+    Checking arrayvec v0.7.8
+    Checking bbt-ui v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-ui)
+    Checking serde_yaml v0.9.34+deprecated
+    Checking polycool v0.4.0
+    Checking lyon_geom v1.0.20
+    Checking kurbo v0.13.1
+    Checking serde-big-array v0.5.1
+    Checking lyon_path v1.0.19
+    Checking tiny-skia v0.12.0
+    Checking bbt-core v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-core)
+    Checking lyon_tessellation v1.0.22
+    Checking svgtypes v0.16.1
+    Checking objc2-foundation v0.2.2
+    Checking spki v0.7.3
+    Checking pkcs8 v0.10.2
+    Checking usvg v0.48.1
+    Checking serdect v0.2.0
+    Checking rand_core v0.9.5
+    Checking signal-hook-registry v1.4.8
+    Checking mio v1.2.4
+    Checking socket2 v0.6.5
+    Checking half v2.7.1
+    Checking ppv-lite86 v0.2.21
+    Checking rand_core v0.10.1
+    Checking ff v0.13.1
+    Checking tokio v1.54.1
+    Checking rand_chacha v0.9.0
+    Checking group v0.13.0
+    Checking naga v30.0.1
+    Checking sec1 v0.7.3
+    Checking crossbeam-utils v0.8.23
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+    Checking crossbeam-queue v0.3.14
+    Checking resvg v0.48.1
+    Checking objc2-foundation v0.3.2
+    Checking rand v0.9.5
+    Checking getrandom v0.4.3
+    Checking thiserror v1.0.69
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking rfc6979 v0.4.0
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+   Compiling bboxybook v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bboxybook)
+    Checking ulid v1.2.1
+    Checking const-oid v0.10.2
+    Checking zstd-safe v8.2.0
+    Checking nix v0.28.0
+    Checking filedescriptor v0.8.3
+    Checking anyhow v1.0.104
+    Checking serial2 v0.2.38
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+    Checking elliptic-curve v0.13.8
+    Checking zstd v0.14.3
+    Checking rand_chacha v0.3.1
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+    Checking digest v0.11.3
+    Checking spin v0.9.9
+    Checking lazy_static v1.5.1
+    Checking rand v0.8.8
+    Checking ecdsa v0.16.9
+    Checking num-iter v0.1.46
+    Checking primeorder v0.13.6
+    Checking aead v0.5.2
+    Checking ctr v0.9.2
+    Checking universal-hash v0.5.1
+   Compiling rustix v1.1.5
+    Checking opaque-debug v0.3.1
+    Checking curve25519-dalek v4.1.3
+    Checking polyval v0.6.2
+    Checking chacha20 v0.10.2
+    Checking num-bigint-dig v0.8.6
+    Checking portable-pty v0.9.0
+    Checking aes v0.8.4
+    Checking keccak v0.1.6
+    Checking dbl v0.3.2
+    Checking byteorder v1.5.0
+    Checking sha3 v0.10.9
+    Checking cmac v0.7.2
+    Checking rand v0.10.3
+    Checking ghash v0.5.1
+    Checking httparse v1.10.1
+    Checking sha1 v0.11.0
+    Checking pkcs1 v0.7.5
+    Checking serdect v0.3.0
+    Checking ed25519 v2.2.3
+    Checking http v1.5.0
+    Checking password-hash v0.5.0
+    Checking blake2 v0.10.6
+    Checking sha1 v0.10.7
+    Checking data-encoding v2.11.1
+    Checking futures-task v0.3.34
+    Checking foldhash v0.1.5
+    Checking slab v0.4.12
+    Checking fastrand v2.5.0
+    Checking futures-core v0.3.34
+    Checking objc2-metal v0.3.2
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking signature v3.0.0
+    Checking objc2-app-kit v0.2.2
+    Checking walkdir v2.5.0
+    Checking futures-util v0.3.34
+    Checking ed25519 v3.0.0
+    Checking hashbrown v0.15.5
+    Checking sha1-checked v0.10.0
+    Checking bbt-doc v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-doc)
+    Checking tungstenite v0.30.0
+    Checking rsa v0.9.10
+    Checking tempfile v3.27.0
+    Checking dsa v0.6.3
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking ed25519-dalek v2.2.0
+    Checking cx448 v0.1.1
+    Checking aes-gcm v0.10.3
+    Checking libsqlite3-sys v0.38.2
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking x25519-dalek v2.0.1
+    Checking curve25519-dalek v5.0.0
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking derive_more v2.1.1
+    Checking crc24 v0.1.6
+    Checking eax v0.5.0
+    Checking snafu v0.9.2
+    Checking aes-kw v0.2.1
+    Checking k256 v0.13.4
+    Checking p256 v0.13.2
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking ocb3 v0.1.0
+    Checking sha2 v0.11.1
+    Checking notify-types v2.1.0
+    Checking idea v0.5.1
+    Checking cast5 v0.11.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking block-padding v0.3.3
+    Checking fsevent-sys v4.1.0
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking hashlink v0.12.2
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking fixedbitset v0.5.7
+    Checking replace_with v0.1.8
+    Checking fallible-iterator v0.3.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking bbt-rt v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-rt)
+    Checking hex v0.4.3
+    Checking bbt-supervisor v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-supervisor)
+    Checking rusqlite v0.40.2
+    Checking petgraph v0.8.3
+    Checking tokio-tungstenite v0.30.0
+    Checking security-framework v3.7.0
+    Checking notify v8.2.0
+    Checking ed25519-dalek v3.0.0
+    Checking bbt-proto v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-proto)
+    Checking bboxy-firehose v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bboxy-firehose)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bboxy450-term)
+    Checking objc2-app-kit v0.3.2
+    Checking aho-corasick v1.1.5
+    Checking regex-syntax v0.8.11
+    Checking winit v0.30.13
+    Checking objc2-core-graphics v0.3.2
+    Checking regex-automata v0.4.18
+    Checking wgpu-naga-bridge v30.0.1
+    Checking pgp v0.21.0
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-hal v30.0.1
+    Checking regex v1.13.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking bbt-mux v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-mux)
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-render)
+    Finished `dev` profile [optimized] target(s) in 22.69s
+   Compiling rustix v1.1.5
+   Compiling fastrand v2.5.0
+   Compiling aho-corasick v1.1.5
+   Compiling regex-syntax v0.8.11
+   Compiling bbt-render v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-render)
+   Compiling bboxy-firehose v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bboxy-firehose)
+   Compiling bboxybook v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bboxybook)
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bboxy450-term)
+   Compiling regex-automata v0.4.18
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-supervisor)
+   Compiling regex v1.13.1
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-ui-model)
+   Compiling bbt-proto v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-proto)
+   Compiling bbt-rt v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-rt)
+   Compiling bbt-doc v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-doc)
+   Compiling bbt-mermaid v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-mermaid)
+   Compiling bbt-core v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-core)
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-kestrel-d1c-d46d15c/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 55.35s
+     Running unittests src/lib.rs (/private/tmp/ci-kestrel-d1c-target-d46d15c/debug/deps/bboxy_firehose-e37029a581a5db6d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/private/tmp/ci-kestrel-d1c-target-d46d15c/debug/deps/bboxy_firehose-95bd166ff32b6564)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/private/tmp/ci-kestrel-d1c-target-d46d15c/debug/deps/cli-7c9115fd81009409)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+     Running tests/corpus.rs (/private/tmp/ci-kestrel-d1c-target-d46d15c/debug/deps/corpus-2e8cd9d70f8eba0b)
+
+running 3 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/lib.rs (/private/tmp/ci-kestrel-d1c-target-d46d15c/debug/deps/bboxy450_term-f8b74dd6f95fc227)
+
+running 7 tests
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/main.rs (/private/tmp/ci-kestrel-d1c-target-d46d15c/debug/deps/bboxy450_term-a75b34c48fa29254)
+
+running 17 tests
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test scene::lane_tests::the_lane_sets_gutter_and_inset_and_relayouts_at_runtime ... ok
+test scene::lane_tests::pane_rects_are_identical_across_activity_states ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+cockpit ready: supervisor=53050 logic=53052
+seat 01M5KTHD6PBXX9C1FC57272SY4 activity=Idle process=Running { pid: 53053 }
+seat 01M5KTHD6PBXX9C1FC57272SY4 activity=Idle process=Running { pid: 53053 }
+GUI operation 01M5KTHD8Q7G8HAX79P9NEDNBS accepted
+GUI operation 01M5KTHDAFAFFJH0NWSSXDA8EA accepted
+GUI operation 01M5KTHDABWCKANNGZF8HTEGH9 accepted
+GUI operation 01M5KTHDE937CJ5W4EWT2TH9XE accepted
+GUI operation 01M5KTHDE064E57YNVFJAAZ8WV accepted
+GUI operation 01M5KTHDGQE906PSEV5GC11JT6 accepted
+seat 01M5KTHD6PBXX9C1FC57272SY4 activity=Active process=Running { pid: 53053 }
+GUI operation 01M5KTHDJMAP40ZQJ57Z9K0652 accepted
+GUI operation 01M5KTHDJ25REM87ET062P92FX accepted
+GUI operation 01M5KTHDJ2F61H22RQ2GT3B5Q8 accepted
+GUI operation 01M5KTHDJ2350CNPSJ6RT6BHA2 accepted
+GUI operation 01M5KTHDJ2K5Q9KRGZYTFQB02B accepted
+GUI operation 01M5KTHDJ2QAC7NAMWPWRAZ1R3 accepted
+GUI operation 01M5KTHDJ27YYK4HDXTT14ZKWY accepted
+GUI operation 01M5KTHDJ22QDJTE07MHC11BCJ accepted
+GUI operation 01M5KTHDJ2765TFAPX5D7W49BR accepted
+GUI operation 01M5KTHDJ2PWSEH9RV8TAJTE4V accepted
+GUI operation 01M5KTHDJ2MDT00HXMFGY1AZ35 accepted
+GUI operation 01M5KTHDJ2BZSB1FN3WXVEJTN0 accepted
+GUI operation 01M5KTHDJ2R4Q33ZDXVGGCG9KH accepted
+GUI operation 01M5KTHDJ2HZ4TYVMJAQ45HXRV accepted
+GUI operation 01M5KTHDJ2VYDRYZFHNDWMSW23 accepted
+GUI operation 01M5KTHDJ283567EDDMTGY53JG accepted
+GUI operation 01M5KTHDJ2GN5H9W6N9G3RBD9N accepted
+GUI operation 01M5KTHDJ2927986J9QK4PSSYR accepted
+GUI operation 01M5KTHDJ2YTD7F8AK2KRDMZ0G accepted
+GUI operation 01M5KTHDJ212ADJ3NCZXVXP09J accepted
+GUI operation 01M5KTHDJ2F81E0KMAAPP72MWA accepted
+GUI operation 01M5KTHDJ213T6W0RWH949Z682 accepted
+GUI operation 01M5KTHDJ27F7CVXG820EBNMAZ accepted
+GUI operation 01M5KTHDJ27WQT242993ZZMGY0 accepted
+GUI operation 01M5KTHDJ2SHV7V3DHD0PNKHXQ accepted
+GUI operation 01M5KTHDJ2JMFKM39G9V3EHN5T accepted
+GUI operation 01M5KTHDJ2ZKDNSNH4DSD2YVKK accepted
+GUI operation 01M5KTHDJ27R0X7JD721VYN8HC accepted
+GUI operation 01M5KTHDJ24AQBX191ZC6EFP1B accepted
+GUI operation 01M5KTHDJ2HXTYNZ7H353X33XZ accepted
+GUI operation 01M5KTHDJ2XR3S3DYG51JYZF4M accepted
+GUI operation 01M5KTHDJ222BZ2214V7XB68K6 accepted
+GUI operation 01M5KTHDJ23PW5HX8VCRKVBEDH accepted
+GUI operation 01M5KTHDJ29S1YGFXCRZV8NMBG accepted
+GUI operation 01M5KTHDJ26XSVCKHH7RP6PFN8 accepted
+GUI operation 01M5KTHDJ2JBQZ59SXYVBVQD8Z accepted
+GUI operation 01M5KTHDJ287FZJ93BAZ4JB5Z5 accepted
+GUI operation 01M5KTHDJ2AYC988AKFR1KCQ0D accepted
+GUI operation 01M5KTHDJ2X4JG13CCYA7695TZ accepted
+GUI operation 01M5KTHDJ2SW9BBNYJG0DNXQNW accepted
+GUI operation 01M5KTHDJ2J7PN3GDW21AEV8QJ accepted
+GUI operation 01M5KTHDJ2C5JVZG8F4KFGDS5D accepted
+GUI operation 01M5KTHDJ2CD68PF906TBFYE5V accepted
+GUI operation 01M5KTHDJ24ZW6W0V9ANE6YB2J accepted
+GUI operation 01M5KTHDJ2VQGCY66V78SMC6MN accepted
+GUI operation 01M5KTHDJ2PH1W7PXCB38RNN33 accepted
+GUI operation 01M5KTHDJ2YT7J9A5C4WPJS38P accepted
+GUI operation 01M5KTHDJ2HG5ZKCVM8J7W407T accepted
+GUI operation 01M5KTHDJ2SDBDE880X81GRHQ1 accepted
+GUI operation 01M5KTHDJ2T28A7TZWB1D5G22R accepted
+GUI operation 01M5KTHDJ2T0D90V9ZAY40AJS5 accepted
+GUI operation 01M5KTHDJ2SAB940XAZ1255RZG accepted
+GUI operation 01M5KTHDJ2FY1S2HVVZSBBXR02 accepted
+GUI operation 01M5KTHDJ2T0GCPZWQAQ13ANHN accepted
+GUI operation 01M5KTHDJ2NNGCFSNMB4D58Q9A accepted
+GUI operation 01M5KTHDJ2WCZF4DDKC2XPFNZE accepted
+GUI operation 01M5KTHDJ2SNEK8EDNNNNRY5ME accepted
+GUI operation 01M5KTHDJ2M2VFA9CBGHGGD2V1 accepted
+GUI operation 01M5KTHDJ2M4BF10VQ8HMHKKWZ accepted
+GUI operation 01M5KTHDJ26CBEGBQXFJB8ZKSP accepted
+GUI operation 01M5KTHDJ2HP9XCHPDHM8QKDR1 accepted
+GUI operation 01M5KTHDJ2QEKHVMY4TG3FZFZV accepted
+GUI operation 01M5KTHDJ2PSW6VC4T0DMNGAJC accepted
+GUI operation 01M5KTHDJ2BEFCMZFABGEVMWC6 accepted
+GUI operation 01M5KTHDJ252QK9C76GD2XCBVH accepted
+GUI operation 01M5KTHDJ2YG0QJ5X25WK877CZ accepted
+GUI operation 01M5KTHDJ20FD2XC1FBR53JAXG accepted
+GUI operation 01M5KTHDJ2N0F5AG5KMY4A56FP accepted
+GUI operation 01M5KTHDJ2NWNQMEX0PGRDZVTS accepted
+GUI operation 01M5KTHDJ2XQME31E03MH9KQT0 accepted
+GUI operation 01M5KTHDJ2CWTPDPEPH8AQ60V2 accepted
+GUI operation 01M5KTHDJ29WQNWEYVMS9C8671 accepted
+GUI operation 01M5KTHDJ25DVZBP8Q74FC9W62 accepted
+GUI operation 01M5KTHDJ2YS18ZHXN8W9Y9S5D accepted
+GUI operation 01M5KTHDJ27YYS3DY1A7PB5EQG accepted
+GUI operation 01M5KTHDJ2B8EPWVC6J861NFDP accepted
+GUI operation 01M5KTHDJ2T031M2AP9B1X3VQV accepted
+GUI operation 01M5KTHDJ20MK9AW0R3PRFDR18 accepted
+GUI operation 01M5KTHDJ2DXA5SDGRCP5X2REX accepted
+GUI operation 01M5KTHDJ2Z60N54YSHVCCQ8QQ accepted
+GUI operation 01M5KTHDJ241YBV65GB2C0BY5J accepted
+GUI operation 01M5KTHDJ2FNS1WDX0GFJX2BZ2 accepted
+GUI operation 01M5KTHDJ2CRWQW11H1GN4HG43 accepted
+GUI operation 01M5KTHDJ2VFSVMTNNYRD3GDB5 accepted
+GUI operation 01M5KTHDJ2BB5T9MEAMX7W7YSB accepted
+GUI operation 01M5KTHDJ2WCXMW2SVMQP2C5FQ accepted
+GUI operation 01M5KTHDJ2WJ5BF86CF5PEVBYP accepted
+GUI operation 01M5KTHDJ2TQQNGDSWQQ2SMRV4 accepted
+GUI operation 01M5KTHDJ26ZR666XN5QHFTKV4 accepted
+GUI operation 01M5KTHDJ2M06J3TA4Y6WRGQNS accepted
+GUI operation 01M5KTHDJ2ZFDHYBDM84Q84Y7E accepted
+GUI operation 01M5KTHDJ27CFAKB5G3NAWJ87V accepted
+GUI operation 01M5KTHDJ2AKEHGSWW8AMXWWJK accepted
+GUI operation 01M5KTHDJ2FD337X75XXPR8JEX accepted
+GUI operation 01M5KTHDJ23GBBTXPK8JF6YX4C accepted
+GUI operation 01M5KTHDJ2K1KMVV2Z42T84C3J accepted
+GUI operation 01M5KTHDJ2HQNMYP1GQ7NBSNTP accepted
+GUI operation 01M5KTHDJ2XXHXRRZV004PP8YG accepted
+GUI operation 01M5KTHDJ26MXH8QG3W20DNF3H accepted
+GUI operation 01M5KTHDJ2YF36QSDGVN4VA9VQ accepted
+GUI operation 01M5KTHDJ21Q6RNN73GSN5NNG6 accepted
+GUI operation 01M5KTHDJ2P9AWHV8FYGXRBR6G accepted
+GUI operation 01M5KTHDJ2KP5003WFCHH4X33X accepted
+GUI operation 01M5KTHDJ2KMKPBZQ2QFAHN762 accepted
+GUI operation 01M5KTHDJ2PJ9VNVFRCKP70FB1 accepted
+GUI operation 01M5KTHDJ2W7BVK5GJGJ7P8TA8 accepted
+GUI operation 01M5KTHDJ2CFY7FVA21B75W8MA accepted
+GUI operation 01M5KTHDJ20SYK49HV62NV125V accepted
+GUI operation 01M5KTHDJ26MWGG42T4GVD5BS4 accepted
+GUI operation 01M5KTHDJ21XPZWZ91CGRC9M3Y accepted
+GUI operation 01M5KTHDJ23QJ2KSZEBD67XKR8 accepted
+GUI operation 01M5KTHDJ2RRH5D9SY1NQK42GJ accepted
+GUI operation 01M5KTHDJ22M4RKFY4GPJ2HCGV accepted
+GUI operation 01M5KTHDJ2WRK7FPS52KW4B4T3 accepted
+GUI operation 01M5KTHDJ2YT3CHRA9E8XHBJNX accepted
+GUI operation 01M5KTHDJ2CRN3F79XE00FRQ58 accepted
+GUI operation 01M5KTHDJ2M483Q9HNWBPY1XRF accepted
+GUI operation 01M5KTHDJ27YD0KM4NT5EAPZWC accepted
+GUI operation 01M5KTHDJ295808EG73ZF570CA accepted
+GUI operation 01M5KTHDJ2B2YTDBFJME7F8JAE accepted
+GUI operation 01M5KTHDJ2FVFBKG3KAEBQN34K accepted
+GUI operation 01M5KTHDJ24D99KCQRMXR5EZE4 accepted
+GUI operation 01M5KTHDJ2QHVYRK9GY1RKF0BT accepted
+GUI operation 01M5KTHDJ2ERRDB0TRSSCY8C9B accepted
+GUI operation 01M5KTHDJ2QF46B37T92D0VVS0 accepted
+GUI operation 01M5KTHDJ2WSW5886JFJH192EY accepted
+GUI operation 01M5KTHDJ212WF234VYK8X00Z6 accepted
+GUI operation 01M5KTHGN2MCQZ7Z5WNA1RYYMK accepted
+GUI operation 01M5KTHDJ2CX4GSQQV3J21MZ18 accepted
+GUI operation 01M5KTHDJ2AX20746V6Q2HG8QP accepted
+GUI operation 01M5KTHDJ2SC5SSM7TY360HXBJ accepted
+GUI operation 01M5KTHDJ26EA33AEGVP8D2PWV accepted
+GUI operation 01M5KTHDJ27796904FW25PNGYD accepted
+GUI operation 01M5KTHDJ266VMBV7D6SWYJBK7 accepted
+GUI operation 01M5KTHDJ2DZW6TKDMB8X5TH7Z accepted
+GUI operation 01M5KTHDJ26SHP9RRS9ZQTHFGW accepted
+GUI operation 01M5KTHDJ2SCEG82DDMJ2KHQG3 accepted
+GUI operation 01M5KTHDJ290FNZED06SPKD29A accepted
+GUI operation 01M5KTHDJ2JY6PW43NWZFEYEE2 accepted
+GUI operation 01M5KTHDJ2QDV99TY2VS112RY0 accepted
+GUI operation 01M5KTHDJ25ST2WN5BFG9K46XX accepted
+GUI operation 01M5KTHDJ2RDQMSFMN8DH1W7MR accepted
+GUI operation 01M5KTHDJ2K5K3XAHEGF5VPKYJ accepted
+GUI operation 01M5KTHDJ226V5QM77C4PV4Q80 accepted
+GUI operation 01M5KTHDJ22GM2Z7E4E9M0DRRA accepted
+GUI operation 01M5KTHDJ2FYVS1XDY79MM3H33 accepted
+GUI operation 01M5KTHDJ2GFV7VGKATBECNNJA accepted
+GUI operation 01M5KTHDJ2MJCPHS289CGFTH1Q accepted
+GUI operation 01M5KTHDJ21KMZF8V5AWZQ65K5 accepted
+GUI operation 01M5KTHDJ2BDV0NVZR0BPHYBS3 accepted
+GUI operation 01M5KTHDJ2Q0N4400J8CYA8HR2 accepted
+GUI operation 01M5KTHDJ2B0P8XBJHXK6J40N0 accepted
+GUI operation 01M5KTHDJ2SK72C6Z8G36H4DQ7 accepted
+GUI operation 01M5KTHDJ2S23749EQ86V21B9K accepted
+GUI operation 01M5KTHDJ2HDE7ZV7EB5ZG3DW5 accepted
+GUI operation 01M5KTHDJ2CEQPX8A8W38YSMQ3 accepted
+GUI operation 01M5KTHDJ24TSDT4NM59Y9F60P accepted
+GUI operation 01M5KTHDJ2HGMJEFACCQHA53PF accepted
+GUI operation 01M5KTHDJ25XDYTG3YM780D4BE accepted
+GUI operation 01M5KTHDJ27RT9A2D97PVK2EYK accepted
+GUI operation 01M5KTHDJ2TNA6X3EF812A1639 accepted
+GUI operation 01M5KTHDJ2KKJMYSNMXKS3S2N8 accepted
+GUI operation 01M5KTHDJ25F4QM0T2B3JKQWV0 accepted
+GUI operation 01M5KTHDJ296M098HH2C69NDBH accepted
+GUI operation 01M5KTHDJ22PAFJXHD1J700KXX accepted
+GUI operation 01M5KTHDJ21W1AKK98JM106TQE accepted
+GUI operation 01M5KTHDJ27CAPREG4X69MP9BS accepted
+GUI operation 01M5KTHDJ2ZYTSPGMP7MQMDKYS accepted
+GUI operation 01M5KTHDJ2GNY0KRX431BBMKXG accepted
+GUI operation 01M5KTHDJ2DMVHZHYWFVM0J14W accepted
+GUI operation 01M5KTHDJ27FN13G7H8CNRWH2V accepted
+GUI operation 01M5KTHDJ2K34X7MPSM3EPPS9G accepted
+GUI operation 01M5KTHDJ242TBEV877SPYR51H accepted
+GUI operation 01M5KTHDJ241Y13ANSN2EVSQE2 accepted
+GUI operation 01M5KTHDJ2JGHHDAFS6QEENGST accepted
+GUI operation 01M5KTHDJ2JSXA69PFBWRVAEJ4 accepted
+GUI operation 01M5KTHDJ29P17PGVN42C44W8S accepted
+GUI operation 01M5KTHDJ2R8N3Q7KA8NSFE4NM accepted
+GUI operation 01M5KTHDJ2MDQGQ9ZJ8W315D9D accepted
+GUI operation 01M5KTHDJ2HF6TTGXQRHZCT218 accepted
+GUI operation 01M5KTHDJ2P3AF28X0N0SZT9CE accepted
+GUI operation 01M5KTHDJ28ZGK9YJ64GBQMDDK accepted
+GUI operation 01M5KTHDJ24JNVFGXAAGKYBC78 accepted
+GUI operation 01M5KTHDJ22XP3XF9263M6RT3X accepted
+GUI operation 01M5KTHDJ25G9N3EYXY4DPJDXT accepted
+GUI operation 01M5KTHDJ27VJ8PTD6WK6HN6ZB accepted
+GUI operation 01M5KTHDJ22ES0JHEPAWTWMR90 accepted
+GUI operation 01M5KTHDJ2P2RAJHZXN8XGR289 accepted
+GUI operation 01M5KTHDJ2QVMSQ40ZY26GRKQ1 accepted
+GUI operation 01M5KTHDJ2EB66MBMSZ5MVYTMD accepted
+GUI operation 01M5KTHDJ2TCHAGP1KZCWJHYRH accepted
+GUI operation 01M5KTHDJ26J09442V3F1ZTMVH accepted
+GUI operation 01M5KTHDJ2A9P8JX7B3S2YHA58 accepted
+GUI operation 01M5KTHE7W9TRVM4KKMXHWCRKD accepted
+GUI operation 01M5KTHE7W82DYDDTMXBTTGZRZ accepted
+GUI operation 01M5KTHE7WTE5KQS4RZV23TSPY accepted
+GUI operation 01M5KTHE7W69F8EC4TJNXCMPVD accepted
+GUI operation 01M5KTHE7WKTV73SYSW0B9DWA3 accepted
+GUI operation 01M5KTHE7WRP0GBDW4M5H7WFFA accepted
+GUI operation 01M5KTHE7WRDC02Q7N0FGD76JA accepted
+GUI operation 01M5KTHE7W6AVMD1A9VM4XXJWQ accepted
+GUI operation 01M5KTHE7W0S8JRRNG745HVE39 accepted
+GUI operation 01M5KTHE7W1KEVA25BDT1H56KF accepted
+GUI operation 01M5KTHE7WZNP4V6X2DFZTED0Y accepted
+GUI operation 01M5KTHE7W23DVCNDVCYZDBKK3 accepted
+GUI operation 01M5KTHE7WMZWWW2BE50FTK1G4 accepted
+GUI operation 01M5KTHE7W088N4BK0HS3GZEPV accepted
+GUI operation 01M5KTHE7WZ5C7ECZVXEBQ0JSH accepted
+GUI operation 01M5KTHE7WHMS2DPWE4AS5ERST accepted
+GUI operation 01M5KTHE7W43SGEEZ5F5WM1978 accepted
+GUI operation 01M5KTHE7W8ZXP9DN03A60X8WQ accepted
+GUI operation 01M5KTHE7W1ZSSHDRE2QSD3GSF accepted
+GUI operation 01M5KTHE7W5VCDGA2VYPQAFJTJ accepted
+GUI operation 01M5KTHE7W1NWCEV496YCKB0ND accepted
+GUI operation 01M5KTHE7W2AB4RAT08WED19GM accepted
+GUI operation 01M5KTHE7WXPTHGX85H2894CJR accepted
+GUI operation 01M5KTHE7W14B1C5836NKWPQJB accepted
+GUI operation 01M5KTHE7WTYQ71C6S4R8FBK3X accepted
+GUI operation 01M5KTHE7W544DEET61AN8MT4Z accepted
+GUI operation 01M5KTHE7WEG0T55DNQ5P4ZG0B accepted
+GUI operation 01M5KTHE7W8J6QT0GCPD0J04BJ accepted
+GUI operation 01M5KTHE7WZG0T6P204C0TEK1K accepted
+GUI operation 01M5KTHF01CV4R95G5VKC3ZFYQ accepted
+GUI operation 01M5KTHF01BJW0K739QJ890V2Y accepted
+GUI operation 01M5KTHF01ZH2JX9REEYDXM34B accepted
+GUI operation 01M5KTHF01SV2Q8H34Y3QSR8RB accepted
+GUI operation 01M5KTHF01S0JE9SXX6AB2PYGS accepted
+GUI operation 01M5KTHF0111KN001Z83MHHHFK accepted
+GUI operation 01M5KTHF01GPG8EJDRDSHR6129 accepted
+GUI operation 01M5KTHF0143QFGZ5QSR7K3K02 accepted
+GUI operation 01M5KTHF01PMD0GAWQFYH8A1K7 accepted
+GUI operation 01M5KTHF01K20HMP4MA85FVG6C accepted
+GUI operation 01M5KTHF013M988TBQMCDSCG6R accepted
+GUI operation 01M5KTHF0189Q64NFGXEWQ9NPG accepted
+GUI operation 01M5KTHF01W7F1C3G46J6WCM3Z accepted
+GUI operation 01M5KTHF01DVC099HTM6YVD98J accepted
+GUI operation 01M5KTHF01FB6DJ4WABZCYQ773 accepted
+GUI operation 01M5KTHF013MM7S9948ZC8GVSC accepted
+GUI operation 01M5KTHF01VH4DBPYYH7ADAQ4N accepted
+GUI operation 01M5KTHF01ND65WRG58T276535 accepted
+GUI operation 01M5KTHF018XFT6XQPC7CVTGAM accepted
+GUI operation 01M5KTHF01V3612P4MT25CD3QF accepted
+GUI operation 01M5KTHF019PWN45JZ6AD2QRGH accepted
+GUI operation 01M5KTHF01F6DBWM4WXWB99972 accepted
+GUI operation 01M5KTHF01GD9FDY82F5PNDJW9 accepted
+GUI operation 01M5KTHF01HP20SQZH5Q3Y7M2N accepted
+GUI operation 01M5KTHF01NZJJR4VEDRZJ7TTD accepted
+GUI operation 01M5KTHKMKWWT091RMZ3522Y57 accepted
+GUI operation 01M5KTHF01WMPYYAGTJHVH5GF3 accepted
+GUI operation 01M5KTHF018Y0XWDV61A5G36GK accepted
+GUI operation 01M5KTHF01CVP45VKQ4RM9RQC0 accepted
+GUI operation 01M5KTHF014637R486NVQRRR7P accepted
+GUI operation 01M5KTHF01M2V0TH23CNFHS3J8 accepted
+GUI operation 01M5KTHFS7CDZM851QK3K5F89G accepted
+GUI operation 01M5KTHFS754WEZPB2TA1B0HK9 accepted
+GUI operation 01M5KTHFS7VQ4MCFN19E5BQX4Y accepted
+GUI operation 01M5KTHFS7R4YND89JBY18D7Q3 accepted
+GUI operation 01M5KTHFS7WJXA01KFSPZ482FK accepted
+GUI operation 01M5KTHFS7KZ9B8GDR04V6VK4W accepted
+GUI operation 01M5KTHFS76PM3JK6J5A34CA3V accepted
+GUI operation 01M5KTHKVMDGWY8D9XM91QS8T2 accepted
+seat 01M5KTHD6PBXX9C1FC57272SY4 activity=Idle process=Running { pid: 53053 }
+GUI operation 01M5KTHKWTBW4VVE4SEVN73E75 accepted
+GUI operation 01M5KTHKWTR36JJKEPFCAXKK39 accepted
+GUI operation 01M5KTHKYJ2F6496M0922KEFT7 accepted
+GUI operation 01M5KTHKXPEZBG8B1MXHPPEQ6Z accepted
+seat 01M5KTHD6PBXX9C1FC57272SY4 activity=Idle process=Running { pid: 53053 }
+GUI operation 01M5KTHM0TXHWNGGEK19BG1WTD accepted
+GUI operation 01M5KTHM353THJYG56J01FRG7W accepted
+GUI operation 01M5KTHM1PVDZ8JAQDBEZJ9Q0J accepted
+GUI operation 01M5KTHM57SX9C7VX4GFD9G2MB accepted
+GUI operation 01M5KTHM5QAYS6Q93QH6YC0AH2 accepted
+GUI operation 01M5KTHM6JSB6VDHW76SQ5EY1Q accepted
+GUI operation 01M5KTHM6G0EF5S1P6GVRSJJ5X accepted
+seat 01M5KTHD6PBXX9C1FC57272SY4 activity=Idle process=Running { pid: 53053 }
+GUI operation 01M5KTHMAJP0MY68DMH1RCGXG9 accepted
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.06s
+
+     Running tests/cockpit.rs (/private/tmp/ci-kestrel-d1c-target-d46d15c/debug/deps/cockpit-6397b5eece3ef667)
+
+running 5 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... FAILED
+
+failures:
+
+---- real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection stdout ----
+
+thread 'real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection' (12681692) panicked at crates/bboxy450-term/tests/cockpit.rs:72:26:
+unexpected spawn response: HostState { host: GuiHost { location: Ssh { host: "build-box" }, provider: "fixture-ssh", label: "Build box", address: Some("agent@build-box.invalid"), region: None, state: Connecting } }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+error: test failed, to rerun pass `-p bboxy450-term --test cockpit`
+
+ci_exit=101 elapsed=175.031s

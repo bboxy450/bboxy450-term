@@ -1,0 +1,15 @@
+$ BBOXYBOOK_GALLERY=providers sh scripts/parity.sh (post-R105746f5b)
+lab-check: self-test ok (10 checks fire on checks/bad.html)
+lab-check: 36 pages × 4 densities · 0 findings
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Finished `dev` profile [optimized] target(s) in 9.38s
+web: 96/96 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-exec5/target/d1c-r10-parity96/native/layouts.json
+rendered 96 PNGs to /Users/feral/mydev/bboxy450-term-exec5/target/d1c-r10-parity96/native
+parity: 96 cases, 24 review; /Users/feral/mydev/bboxy450-term-exec5/target/d1c-r10-parity96/index.html
+parity gate: pass (24 pixel reviews advisory)
+
+exit=0 elapsed=225.023s

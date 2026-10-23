@@ -1,0 +1,13 @@
+Oracle d9a95149: accept named external socket failure, finish remaining gates on unchanged5746f5b.
+worktree add exit=0
+HEAD is now at 5746f5b provider: record successful gate before R10 integration
+Preparing worktree (detached HEAD 5746f5b)
+
+initial git status exit=0 bytes=0
+private APFS clone of now inactive own exec5 target/debug exit=0
+owned tail PID=42650 cmd=['sh', 'scripts/ui-lint.sh']
+owned tail PID=42749 cmd=['cargo', 'run', '-p', 'bboxy450-term', '--locked', '--', '--smoke']
+owned tail PID=43219 cmd=['sh', 'scripts/invariants.sh']
+owned private target removed immediately exit=0
+worktree remove exit=0
+

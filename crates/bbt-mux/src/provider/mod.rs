@@ -1,5 +1,7 @@
 //! Providers yield supervisor links. The local provider adds no transport.
 pub mod fake;
+mod gui;
+pub mod shared;
 use std::{collections::HashMap, time::Duration};
 
 use bbt_supervisor::SupervisorConnection;
@@ -65,6 +67,10 @@ pub trait Provider: Send {
     fn id(&self) -> ProviderId;
     fn kind(&self) -> ProviderKind;
     fn hosts(&self) -> Vec<Host>;
+    /// Public display metadata, never a credential or a network dial target.
+    fn address(&self, _host: &HostId) -> Option<String> {
+        None
+    }
     fn link(&mut self, host: HostId) -> Result<Box<dyn SupervisorConnection>>;
     /// Called by logic; providers own no polling thread.
     fn poll(&mut self) -> Vec<ProviderEvent>;
@@ -199,6 +205,19 @@ impl Connections {
         self.providers
             .iter()
             .flat_map(|provider| provider.hosts())
+            .collect()
+    }
+    pub fn gui_hosts(&self) -> Vec<bbt_proto::GuiHost> {
+        self.providers
+            .iter()
+            .flat_map(|provider| {
+                provider.hosts().into_iter().map(move |host| {
+                    let address = provider.address(&host.id);
+                    let mut view: bbt_proto::GuiHost = host.into();
+                    view.address = address;
+                    view
+                })
+            })
             .collect()
     }
 }

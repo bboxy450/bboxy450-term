@@ -24,6 +24,7 @@ use std::{cell::RefCell, collections::HashMap};
 pub const LANE_MIN: f32 = TOKENS.glow.lane_min as f32;
 pub const LANE_MAX: f32 = TOKENS.glow.lane_max as f32;
 pub struct Scene {
+    hosts: Vec<bbt_proto::GuiHost>,
     pub seats: Vec<SeatRow>,
     tree: Option<SplitNode>,
     seat_index: HashMap<SeatId, usize>,
@@ -161,6 +162,7 @@ impl Scene {
             live: false,
             backend_lost: false,
             identity: None,
+            hosts: vec![],
             metrics: Metrics::default(),
             lane: TOKENS.glow.lane as f32,
         }
@@ -192,6 +194,7 @@ impl Scene {
             live: true,
             backend_lost: false,
             identity: None,
+            hosts: vec![],
             metrics: Metrics::default(),
             lane: TOKENS.glow.lane as f32,
         }
@@ -199,6 +202,7 @@ impl Scene {
     }
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model) {
         self.identity = model.identity.clone();
+        self.hosts = model.hosts.clone();
         let tab = model
             .ui
             .window
@@ -244,6 +248,11 @@ impl Scene {
                     row.activity = Activity::Errored;
                     row.title = "backend lost".into();
                 }
+                row.link = self
+                    .hosts
+                    .iter()
+                    .find(|host| host.location == seat.where_)
+                    .map(|host| bboxy450_term::hosts::link(&host.state));
                 row.where_ = match &seat.where_ {
                     bbt_ui_model::Where::Local => None,
                     bbt_ui_model::Where::Ssh { .. } => Some("ssh".into()),
@@ -385,8 +394,10 @@ impl Scene {
                 })
                 .unwrap_or_default(),
         };
+        let mut cards = vec![card];
+        cards.extend(bboxy450_term::hosts::sidebar_cards(&self.hosts));
         let sidebar = Sidebar {
-            cards: vec![card],
+            cards,
             size: [sidebar_width, sidebar_height],
             scroll: 0.,
             phone: false,
@@ -397,7 +408,7 @@ impl Scene {
                 crumb: if !self.live {
                     "swarm / all fifteen"
                 } else {
-                    "local / seats"
+                    "swarm / seats"
                 }
                 .into(),
                 ..Default::default()

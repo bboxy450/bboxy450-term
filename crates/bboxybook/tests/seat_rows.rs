@@ -3,17 +3,18 @@ use std::collections::BTreeSet;
 #[test]
 fn seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures() {
     let cases = seat_rows::cases();
-    assert_eq!(cases.len(), 224);
+    assert_eq!(cases.len(), 232);
     assert_eq!(
         cases
             .iter()
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        224
+        232
     );
-    assert_eq!(seat_rows::STATES.len(), 26);
+    assert_eq!(seat_rows::STATES.len(), 27);
     for state in [
+        "remote-links",
         "subagents-12",
         "muted-held",
         "authority-forked",

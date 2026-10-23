@@ -1,0 +1,35 @@
+$ BBOXY_TEST_CUSTODY=memory BBOXY_VERIFY_INPUT=<fixture printf> /Users/feral/mydev/bboxy450-term-exec5/target/debug/bboxy450-term --run-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-final-8jysp793 --spawn-zsh 1 --capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar-final.png --capture-after 2
+owned app PID=84227 run_dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-final-8jysp793
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+cockpit ready: supervisor=84245 logic=84252
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 60.865ms cpu=61.002ms drain=0.002 layout=0.114 draw=0.022 encode=60.865 present_wait=0.032
+first frame: native scene presented, seats=0
+capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar-final.png: Ok(())
+seat 01M5KVF1VR5VAR2H3P6P30WSJR activity=Idle process=Running { pid: 84411 }
+GUI operation 01M5KVF1XY8DDBFMJC7X2ESTNS accepted
+GUI operation 01M5KVF234TZ6VRN1M1YZ8MDTV accepted
+GUI operation 01M5KVF23F7287MGPV8WVJX5QC accepted
+GUI operation 01M5KVF27PKCTTCY4JX4NCJCAX accepted
+GUI operation 01M5KVF2PAQ3J886HF22AMTNGA accepted
+seat 01M5KVF1VR5VAR2H3P6P30WSJR activity=Idle process=Running { pid: 84411 }
+GUI operation 01M5KVF2WMED4EH3R7AD3S4Z2T accepted
+seat 01M5KVF1VR5VAR2H3P6P30WSJR activity=Active process=Running { pid: 84411 }
+GUI operation 01M5KVF2Z1K6HNPHPQN6TQZZJR accepted
+seat 01M5KVF1VR5VAR2H3P6P30WSJR activity=Idle process=Running { pid: 84411 }
+GUI operation 01M5KVF33DFDWHZC62KP29V4YF accepted
+capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar-final.png: Ok(())
+recorded OWN process tree=[[84227, 84203, "/Users/feral/mydev/bboxy450-term-exec5/target/debug/bboxy450-term --run-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-final-8jysp793 --spawn-zsh 1 --capture /Users/feral/mydev/bboxy450-term-exec5/.bboxy/runs/d1c-native-sidebar-final.png --capture-after 2"], [84245, 84227, "/Users/feral/mydev/bboxy450-term-exec5/target/debug/bboxy450-term supervisor"], [84252, 84227, "/Users/feral/mydev/bboxy450-term-exec5/target/debug/bboxy450-term logic"], [84411, 84245, "/bin/zsh -il"]]
+SIGTERM own pid=84411
+SIGTERM own pid=84252
+SIGTERM own pid=84245
+app exit=-15 (recorded PID SIGTERM after capture; no orderly-shutdown claim)
+capture sha256=828bf140f9342fc9ad44fe981e49967684deb9c922d819fea76e880a2c2cff44
+capture assertion exit=0
+post-capture pid=84227 ps_exit=1 state=
+post-capture pid=84245 ps_exit=1 state=
+post-capture pid=84252 ps_exit=1 state=
+post-capture pid=84411 ps_exit=1 state=

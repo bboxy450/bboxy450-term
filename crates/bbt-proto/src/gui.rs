@@ -32,6 +32,7 @@ pub struct GuiRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
 pub enum GuiAction {
+    ListHosts,
     ListSeats,
     Watch {
         #[serde(with = "text_id")]
@@ -89,6 +90,10 @@ pub enum GuiAction {
     reason = "keep the decided C1 shared API; transport bounds each message"
 )]
 pub enum GuiReply {
+    Hosts(Vec<crate::GuiHost>),
+    HostState {
+        host: crate::GuiHost,
+    },
     Identity(GuiIdentity),
     Seats(Vec<GuiSeat>),
     Update {

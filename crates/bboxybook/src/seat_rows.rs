@@ -22,6 +22,7 @@ pub const STATES: &[&str] = &[
     "subtitle opt-in",
     "zsh seat",
     "long names",
+    "remote links",
     "muted · held",
     "unmuted · still held",
     "subagents · claude",
@@ -154,6 +155,7 @@ pub fn seat(v: &Value, o: &Value, height: Option<f32>) -> row::SeatRow {
         .as_str()
         .filter(|x| *x != "local")
         .map(Into::into);
+    s.link = serde_json::from_value(v["link"].clone()).ok();
     s.focused = o["focused"] == true;
     s.muted = v["muted"] == true;
     s.authority = v["authority"].as_str().map(Into::into);
