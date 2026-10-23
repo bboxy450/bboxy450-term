@@ -39,7 +39,7 @@ impl Journal {
         call: &Call,
         dispatch: impl FnOnce() -> Value,
     ) -> Result<Value> {
-        self.record(actor, call, dispatch, Mode::Read)
+        self.record(actor, call, dispatch, Mode::Read, |_| true)
             .map(|(value, _)| value)
     }
 
@@ -47,11 +47,27 @@ impl Journal {
     /// audited and returned without revealing or replacing an old success.
     pub fn checked(&self, actor: &Actor, call: &Call, value: Value) -> Result<Value> {
         if value["isError"] == true {
-            self.record(actor, call, || value, Mode::Rejected)
+            self.record(actor, call, || value, Mode::Rejected, |_| true)
                 .map(|(value, _)| value)
         } else {
             self.call(actor, call, || value)
         }
+    }
+
+    /// A retained page can contain items removed from the caller's current
+    /// authority. Deny that replay without destroying the original evidence.
+    pub fn checked_authorized(
+        &self,
+        actor: &Actor,
+        call: &Call,
+        value: Value,
+        retained_allowed: impl FnOnce(&Value) -> bool,
+    ) -> Result<Value> {
+        if value["isError"] == true {
+            return self.checked(actor, call, value);
+        }
+        self.record(actor, call, || value, Mode::Read, retained_allowed)
+            .map(|(value, _)| value)
     }
 
     /// Commit an intent and audit before dispatch, with no SQLite transaction
@@ -64,7 +80,7 @@ impl Journal {
     ) -> Result<Value> {
         let (retained, fresh) = self.record(actor, call, || error(
             call.op_id, "unknown", "durable attempt has no recorded outcome; retain the operation ID and check its receipts"
-        ), Mode::Effect)?;
+        ), Mode::Effect, |_| true)?;
         if !fresh {
             return Ok(retained);
         }
@@ -116,6 +132,7 @@ impl Journal {
         call: &Call,
         dispatch: impl FnOnce() -> Value,
         mode: Mode,
+        retained_allowed: impl FnOnce(&Value) -> bool,
     ) -> Result<(Value, bool)> {
         let hash = digest(&serde_json::to_vec(&call.args)?);
         let key = format!("control/op/{}", call.op_id);
@@ -142,6 +159,15 @@ impl Journal {
                 )
             } else if mode == Mode::Rejected {
                 (dispatch(), false)
+            } else if !retained_allowed(&old.result) {
+                (
+                    error(
+                        call.op_id,
+                        "rejected",
+                        "retained read contains items outside current task authority; use a new operation ID",
+                    ),
+                    false,
+                )
             } else {
                 (old.result, true)
             }

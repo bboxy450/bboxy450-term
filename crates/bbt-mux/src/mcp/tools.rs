@@ -63,6 +63,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
         "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}
     })).collect();
     tools.extend(super::messaging::catalogue(actor));
+    tools.extend(super::work_items::catalogue(actor));
     json!({"tools":tools})
 }
 
@@ -102,10 +103,50 @@ pub(crate) fn page_limit(limit: Option<usize>) -> std::result::Result<usize, Str
     }
 }
 pub(crate) fn own_document(doc: &Document, seat: &SeatRecord) -> bool {
-    seat.tasks.iter().any(|id| id.to_string() == doc.id)
-        || doc.metadata["assignee"]
+    // A current assignment overrides a stale historical registry task list.
+    if let Some(assignee) = doc.metadata.get("assignee") {
+        return assignee
             .as_str()
-            .is_some_and(|id| id == seat.id.to_string() || id == format!("seat:{}", seat.id))
+            .is_some_and(|id| id == seat.id.to_string() || id == format!("seat:{}", seat.id));
+    }
+    seat.tasks.iter().any(|id| id.to_string() == doc.id)
+}
+
+pub(crate) fn retained_documents(
+    index: &Index,
+    actor: &Actor,
+    seat: &SeatRecord,
+    call: &super::Call,
+    value: &Value,
+) -> bool {
+    if value["isError"] == true {
+        return true;
+    }
+    let document_allowed = |item: &Value| {
+        item["path"]
+            .as_str()
+            .and_then(|path| index.documents.get(path))
+            .is_some_and(|doc| doc.id == item["id"] && own_document(doc, seat))
+    };
+    let data = &value["structuredContent"];
+    match call.tool.as_str() {
+        "orient" => data["tasks"]["items"]
+            .as_array()
+            .is_some_and(|items| items.iter().all(document_allowed)),
+        "graph_read" if actor.role.class != Class::Oracle => {
+            data["nodes"].as_array().is_some_and(|items| {
+                items.iter().all(|item| {
+                    if item["path"].is_null() {
+                        item["id"] == seat.id.to_string()
+                            || item["id"] == format!("seat:{}", seat.id)
+                    } else {
+                        document_allowed(item)
+                    }
+                })
+            })
+        }
+        _ => true,
+    }
 }
 pub(crate) fn clip(text: &str, bound: usize) -> &str {
     let mut n = bound.min(text.len());
