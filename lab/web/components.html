@@ -37,7 +37,7 @@ const DEMO = {
       fade('diagonal ramp', { start: [0, 0], end: [220, 88], alpha0: 1, alpha1: 0.15 }, [220, 88]));
   },
   button: () => UI.Stack({ gap: 6 }, ...['primary', 'ghost', 'danger'].map(k => UI.Stack({ dir: 'row', gap: 6, wrap: true }, ...['idle', 'hover', 'pressed', 'focus', 'disabled'].map(st => UI.Button(st, { kind: k, state: st }))))),
-  list: () => UI.List([{ label: 'Claude', sub: 'oracle by default', icon: 'claude', kbd: '1' }, { label: 'Codex', sub: 'executor by default', icon: 'codex', kbd: '2' }, { label: 'pi', icon: 'pi', kbd: '3' }, { label: 'zsh', icon: 'zsh', kbd: '4' }], { selected: 1, more: 996 }),
+  list: () => UI.List([{ label: 'Claude', sub: 'executor by default', icon: 'claude', kbd: '1' }, { label: 'Codex', sub: 'executor by default', icon: 'codex', kbd: '2' }, { label: 'pi', icon: 'pi', kbd: '3' }, { label: 'zsh', icon: 'zsh', kbd: '4' }], { selected: 1, more: 996 }),
   table: () => UI.Table([{ label: 'seat', w: '1.4fr' }, { label: 'role' }, { label: 'now', w: '1.6fr' }], [['Vesper Greywind', 'oracle', 'swarm control'], ['Nyx Copperwing', 'executor', 'W3.2d L2'], ['Rook Ashwhisker', 'executor', 'W2.2 bus'], ['Wren Thistledown', 'creativity', 'lab galleries']], { zebra: true, selected: 1 }),
   input: () => UI.Stack({ gap: 8 }, UI.Input({ state: 'empty', placeholder: 'launch or go to', icon: 'sidebarfoxopen' }), UI.Input({ state: 'value', value: 'ssh rig cod' }), UI.Input({ state: 'focus', value: 'Rook Ash' }), UI.Input({ state: 'invalid', value: 'Rook', error: 'type the full seat name' })),
   overlay: () => UI.Overlay(UI.Box('chip', UI.Text('anything over a dimmed, blurred backdrop', { step: 'caption' }))),

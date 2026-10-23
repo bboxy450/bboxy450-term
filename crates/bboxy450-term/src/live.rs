@@ -1,7 +1,7 @@
 //! GUI socket IO, immutable model publication and worker-only preparation.
 use std::{
     collections::{BTreeMap, VecDeque},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -31,6 +31,29 @@ pub struct RenderContext {
 }
 pub use bboxy450_term::cockpit::UiMsg;
 const COMMAND_CAPACITY: usize = 64;
+
+/// Pure translation on the IO side. UI inputs never choose argv, cwd, role
+/// authority or a process handle; the existing backend validates the spec.
+fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
+    let (harness_kind, name, location) = match message {
+        UiMsg::Spawn {
+            harness_kind,
+            name,
+            location,
+        } => (harness_kind.as_str(), name.clone(), location.clone()),
+        UiMsg::SpawnZsh => ("zsh", None, Where::Local),
+        _ => return None,
+    };
+    Some(SpawnSpec {
+        swarm: SwarmId::from_u128(swarm.0),
+        harness_kind: harness_kind.into(),
+        name,
+        role: None,
+        cwd: cwd.to_string_lossy().into_owned(),
+        location,
+        resume: None,
+    })
+}
 
 pub struct CommandSender {
     sender: mpsc::Sender<UiMsg>,
@@ -214,10 +237,9 @@ async fn run(
                     Some(message)=> {
                     in_flight=Some(message);
                     match in_flight.as_ref().unwrap() {
-                    UiMsg::SpawnZsh=>queue_action(&mut outgoing, GuiAction::Spawn {spec:SpawnSpec {
-                        swarm:SwarmId::from_u128(swarm.0),harness_kind:"zsh".into(),name:None,role:None,
-                        cwd:cwd.to_string_lossy().into_owned(),location:Where::Local,resume:None,
-                    }}),
+                    message @ (UiMsg::SpawnZsh | UiMsg::Spawn {..})=>queue_action(&mut outgoing, GuiAction::Spawn {
+                        spec:spawn_spec(message,swarm,&cwd).expect("spawn intent branch"),
+                    }),
                     UiMsg::Input {seat,generation,id,bytes}=>queue_action(&mut outgoing, GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()}),
                     UiMsg::Resize {seat,generation,cols,rows}=>queue_action(&mut outgoing, GuiAction::Resize {seat:*seat,generation:*generation,cols:*cols,rows:*rows}),
                     UiMsg::Watched(panes)=> {
@@ -332,6 +354,57 @@ async fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn generic_spawn_preserves_inputs_and_uses_io_defaults() {
+        let swarm = Ulid::from(42_u128);
+        let cwd = Path::new("/fixture/repository with spaces");
+        for location in [
+            Where::Local,
+            Where::Ssh { host: "rig".into() },
+            Where::Cloud {
+                provider: "provider".into(),
+                host: "worker".into(),
+            },
+        ] {
+            let message = UiMsg::Spawn {
+                harness_kind: "codex".into(),
+                name: Some("named seat".into()),
+                location: location.clone(),
+            };
+            let spec = spawn_spec(&message, swarm, cwd).unwrap();
+            assert_eq!(spec.swarm, SwarmId::from_u128(swarm.0));
+            assert_eq!(spec.harness_kind, "codex");
+            assert_eq!(spec.name.as_deref(), Some("named seat"));
+            assert_eq!(spec.location, location);
+            assert_eq!(spec.cwd, "/fixture/repository with spaces");
+            assert_eq!(spec.role, None);
+            assert_eq!(spec.resume, None);
+            let wire = serde_json::to_value(&spec).unwrap();
+            assert_eq!(serde_json::from_value::<SpawnSpec>(wire).unwrap(), spec);
+        }
+        let generic = UiMsg::Spawn {
+            harness_kind: "zsh".into(),
+            name: None,
+            location: Where::Local,
+        };
+        assert_eq!(
+            spawn_spec(&generic, swarm, cwd),
+            spawn_spec(&UiMsg::SpawnZsh, swarm, cwd)
+        );
+        assert!(spawn_spec(&UiMsg::Watched(vec![]), swarm, cwd).is_none());
+        // Unsupported kinds reach the existing backend rejection, never a
+        // shell fallback or a command guessed from a label.
+        let unsupported = UiMsg::Spawn {
+            harness_kind: "pi".into(),
+            name: None,
+            location: Where::Local,
+        };
+        assert_eq!(
+            spawn_spec(&unsupported, swarm, cwd).unwrap().harness_kind,
+            "pi"
+        );
+    }
     use std::{os::unix::fs::PermissionsExt, time::Duration};
 
     #[test]
@@ -510,9 +583,26 @@ mod tests {
             .await
         });
         let mut current = Arc::new(Model::default());
-        sender.send(UiMsg::SpawnZsh).await.unwrap();
+        sender
+            .send(UiMsg::Spawn {
+                harness_kind: "pi".into(),
+                name: None,
+                location: Where::Local,
+            })
+            .await
+            .unwrap();
+        sender
+            .send(UiMsg::Spawn {
+                harness_kind: "zsh".into(),
+                name: Some("generic shell".into()),
+                location: Where::Local,
+            })
+            .await
+            .unwrap();
         until(&updates, &mut current, |model| model.ui.seats.len() == 1).await;
         let (&seat, metadata) = current.ui.seats.first_key_value().unwrap();
+        assert_eq!(metadata.name, "generic shell");
+        assert_eq!(metadata.harness.0, "zsh");
         let view = bbt_proto::View {
             seat: Ulid(seat.0.0),
             generation: metadata.process_generation,

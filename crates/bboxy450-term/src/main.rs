@@ -222,11 +222,59 @@ fn input_modifiers(mods: ModifiersState) -> Modifiers {
         shift: mods.shift_key(),
     }
 }
-fn zsh_pick(id: &str, modifiers: Modifiers) -> bool {
-    // A only wires the existing default launch. Explicit placement and every
-    // other action have a named outcome until the generic spawn checkpoint.
-    id == "zsh" && modifiers == Modifiers::default()
+const LAUNCHABLES: [(&str, &str, &str, &str, &str); 5] = [
+    (
+        "claude",
+        "Claude",
+        "executor by default",
+        "#D97757",
+        "Suggestions",
+    ),
+    (
+        "codex",
+        "Codex",
+        "executor by default",
+        "#1F2937",
+        "Suggestions",
+    ),
+    ("pi", "pi", "executor by default", "#7C3AED", "Harnesses"),
+    ("omp", "omp", "executor by default", "#0EA5E9", "Harnesses"),
+    ("zsh", "zsh", "~", "#111827", "Shells"),
+];
+
+fn default_spawn(
+    id: &str,
+    modifiers: Modifiers,
+    model: Option<&bboxy450_term::model::Model>,
+) -> Option<live::UiMsg> {
+    if modifiers != Modifiers::default() {
+        return None;
+    }
+    for (kind, _, _, _, _) in LAUNCHABLES {
+        let location = if id == kind {
+            Some(bbt_proto::Where::Local)
+        } else {
+            model.and_then(|model| {
+                model
+                    .hosts
+                    .iter()
+                    .find(|host| {
+                        id == format!("{}:{kind}", bboxy450_term::hosts::key(&host.location))
+                    })
+                    .map(|host| host.location.clone())
+            })
+        };
+        if let Some(location) = location {
+            return Some(live::UiMsg::Spawn {
+                harness_kind: kind.into(),
+                name: None,
+                location,
+            });
+        }
+    }
+    None
 }
+
 /// This is the same routing entry point used by winit and the synthetic tests.
 fn route_key(
     key: &Key,
@@ -341,39 +389,28 @@ fn launcher_items(
 ) -> Vec<bbt_ui::modules::launcher::Item> {
     use bbt_ui::modules::launcher::Item;
     let launchables = || {
-        [
-            (
-                "claude",
-                "Claude",
-                "oracle by default",
-                "#D97757",
-                "Suggestions",
-            ),
-            (
-                "codex",
-                "Codex",
-                "executor by default",
-                "#1F2937",
-                "Suggestions",
-            ),
-            ("pi", "pi", "executor by default", "#7C3AED", "Harnesses"),
-            ("omp", "omp", "executor by default", "#0EA5E9", "Harnesses"),
-            ("zsh", "zsh", "~", "#111827", "Shells"),
-        ]
-        .into_iter()
-        .map(|(id, label, sub, tile, section)| Item {
-            id: id.into(),
-            label: label.into(),
-            sub: sub.into(),
-            harness: id.into(),
-            kind: if id == "zsh" { "Shell" } else { "Harness" }.into(),
-            tile: Some(tile.into()),
-            section: Some(section.into()),
-            aliases: vec![id.into()],
-            enter_picks: true,
-            ..Default::default()
-        })
-        .collect::<Vec<_>>()
+        LAUNCHABLES
+            .into_iter()
+            .map(|(id, label, sub, tile, section)| Item {
+                id: id.into(),
+                label: label.into(),
+                sub: if id == "zsh" {
+                    sub.into()
+                } else {
+                    bbt_mux::adapters::HarnessRecord::builtin(id).map_or_else(
+                        |_| sub.into(),
+                        |harness| format!("{} by default", harness.default_role.name),
+                    )
+                },
+                harness: id.into(),
+                kind: if id == "zsh" { "Shell" } else { "Harness" }.into(),
+                tile: Some(tile.into()),
+                section: Some(section.into()),
+                aliases: vec![id.into()],
+                enter_picks: true,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>()
     };
     let mut items = launchables();
     for item in &mut items {
@@ -400,10 +437,14 @@ fn launcher_items(
         for host in root.children.iter_mut().flatten() {
             if host.children.is_some() {
                 host.children = Some(
-                    launchables()
+                    items
+                        .clone()
                         .into_iter()
                         .map(|mut item| {
                             item.id = format!("{}:{}", host.id, item.id);
+                            for child in item.children.iter_mut().flatten() {
+                                child.id = format!("{}:{}", host.id, child.id);
+                            }
                             item
                         })
                         .collect(),
@@ -568,7 +609,7 @@ impl App {
         let used = self
             .pending_commands
             .iter()
-            .filter(|m| matches!(m, live::UiMsg::SpawnZsh))
+            .filter(|m| m.is_spawn())
             .count();
         self.launcher = Some(new_launcher(self.live_state.as_deref(), used));
         self.launcher_layout = None;
@@ -599,8 +640,12 @@ impl App {
                 self.request_redraw();
             }
             LauncherOutcome::Pick { id, modifiers } => {
-                if zsh_pick(&id, modifiers) && self.live_commands.is_some() {
-                    self.queue(live::UiMsg::SpawnZsh);
+                if let Some(message) = default_spawn(&id, modifiers, self.live_state.as_deref())
+                    && self.live_commands.is_some()
+                {
+                    self.logger
+                        .write(format!("launcher default spawn requested: id={id}"));
+                    self.queue(message);
                     self.close_launcher();
                 } else {
                     self.logger.write(format!(
@@ -1640,12 +1685,9 @@ fn queue_pending(
             live::UiMsg::Resize { seat, .. } => panes.iter().any(|(id, _)| id == seat),
             _ => true,
         }),
-        live::UiMsg::SpawnZsh
-            if pending
-                .iter()
-                .filter(|old| matches!(old, live::UiMsg::SpawnZsh))
-                .count()
-                >= PENDING_SPAWNS =>
+        message
+            if message.is_spawn()
+                && pending.iter().filter(|old| old.is_spawn()).count() >= PENDING_SPAWNS =>
         {
             return Err(AdmissionRefused::Spawn);
         }
@@ -2560,7 +2602,7 @@ mod input_tests {
                     sizes.insert(seat, (cols, rows));
                 }
                 live::UiMsg::Watched(panes) => watched = panes,
-                live::UiMsg::SpawnZsh => spawns += 1,
+                live::UiMsg::SpawnZsh | live::UiMsg::Spawn { .. } => spawns += 1,
             }
         }
         assert_eq!(delivered, expected);
@@ -2855,23 +2897,28 @@ mod launcher_host_tests {
                 modifiers: Modifiers::default()
             }
         );
-        assert!(zsh_pick("zsh", Modifiers::default()));
+        assert!(
+            matches!(default_spawn("zsh", Modifiers::default(), None), Some(live::UiMsg::Spawn { harness_kind, .. }) if harness_kind == "zsh")
+        );
         for id in [
-            "claude",
             "settings",
             "zsh:right",
             "ssh:rig:zsh",
             "anything labelled zsh",
         ] {
-            assert!(!zsh_pick(id, Modifiers::default()));
+            assert!(default_spawn(id, Modifiers::default(), None).is_none());
         }
-        assert!(!zsh_pick(
-            "zsh",
-            Modifiers {
-                command: true,
-                ..Default::default()
-            }
-        ));
+        assert!(
+            default_spawn(
+                "zsh",
+                Modifiers {
+                    command: true,
+                    ..Default::default()
+                },
+                None
+            )
+            .is_none()
+        );
         launcher.handle(LauncherCommand::Right);
         assert_eq!(launcher.launcher.path, ["zsh"]);
         assert_eq!(
@@ -2967,5 +3014,151 @@ mod launcher_host_tests {
             matches!(focus.layout_ready(&model, &pane).as_slice(), [InputEvent::Locate { seat, .. }] if *seat == SeatId::from_u128(3))
         );
         assert!(focus.layout_ready(&model, &pane).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod spawn_admission_tests {
+    use super::*;
+
+    fn generic() -> live::UiMsg {
+        live::UiMsg::Spawn {
+            harness_kind: "codex".into(),
+            name: Some("named seat".into()),
+            location: bbt_proto::Where::Local,
+        }
+    }
+    #[test]
+    fn generic_and_legacy_spawns_share_the_same_cap() {
+        let mut pending = VecDeque::new();
+        for n in 0..PENDING_SPAWNS {
+            queue_pending(
+                &mut pending,
+                if n % 2 == 0 {
+                    generic()
+                } else {
+                    live::UiMsg::SpawnZsh
+                },
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            queue_pending(&mut pending, generic()),
+            Err(AdmissionRefused::Spawn)
+        );
+        assert_eq!(
+            queue_pending(&mut pending, live::UiMsg::SpawnZsh),
+            Err(AdmissionRefused::Spawn)
+        );
+        assert_eq!(pending.len(), PENDING_SPAWNS);
+        assert!(pending.iter().all(live::UiMsg::is_spawn));
+        queue_pending(&mut pending, live::UiMsg::Watched(vec![])).unwrap();
+        assert_eq!(pending.len(), PENDING_SPAWNS + 1);
+        assert!(!pending.back().unwrap().is_spawn());
+    }
+}
+
+#[cfg(test)]
+mod default_spawn_tests {
+    use super::*;
+
+    #[test]
+    fn default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred() {
+        for (kind, _, _, _, _) in LAUNCHABLES {
+            assert!(
+                matches!(default_spawn(kind, Modifiers::default(), None), Some(live::UiMsg::Spawn { harness_kind, name: None, location: bbt_proto::Where::Local }) if harness_kind == kind)
+            );
+            for place in ["tab", "right", "bottom"] {
+                assert!(
+                    default_spawn(&format!("{kind}:{place}"), Modifiers::default(), None).is_none()
+                );
+            }
+        }
+        for id in ["settings", "graph", "seat:zsh", "something labelled zsh"] {
+            assert!(default_spawn(id, Modifiers::default(), None).is_none());
+        }
+        for modifiers in [
+            Modifiers {
+                command: true,
+                ..Default::default()
+            },
+            Modifiers {
+                alt: true,
+                ..Default::default()
+            },
+            Modifiers {
+                shift: true,
+                ..Default::default()
+            },
+        ] {
+            assert!(default_spawn("zsh", modifiers, None).is_none());
+        }
+        let rows = launcher_items(None);
+        assert_eq!(
+            rows.iter().find(|row| row.id == "claude").unwrap().sub,
+            "executor by default"
+        );
+    }
+
+    #[test]
+    fn host_picks_preserve_structured_location_without_parsing_labels() {
+        let mut model = bboxy450_term::model::Model::default();
+        for location in [
+            bbt_proto::Where::Ssh { host: "rig".into() },
+            bbt_proto::Where::Cloud {
+                provider: "cloud:one".into(),
+                host: "worker:two".into(),
+            },
+        ] {
+            model.hosts = vec![bbt_proto::GuiHost {
+                location: location.clone(),
+                provider: "fixture".into(),
+                label: "a label is not an executable".into(),
+                address: None,
+                region: None,
+                state: bbt_proto::HostState::Connected { rtt_ms: 4 },
+            }];
+            let host = bboxy450_term::hosts::key(&location);
+            let id = format!("{host}:codex");
+            assert!(
+                matches!(default_spawn(&id, Modifiers::default(), Some(&model)), Some(live::UiMsg::Spawn { harness_kind, name: None, location: actual }) if harness_kind == "codex" && actual == location)
+            );
+            assert!(
+                default_spawn(&format!("{id}:right"), Modifiers::default(), Some(&model)).is_none()
+            );
+            let root = if matches!(location, bbt_proto::Where::Ssh { .. }) {
+                "ssh"
+            } else {
+                "cloud"
+            };
+            let rows = launcher_items(Some(&model));
+            let host_row = rows
+                .iter()
+                .find(|row| row.id == root)
+                .unwrap()
+                .children
+                .as_ref()
+                .unwrap()
+                .iter()
+                .find(|row| row.id == host)
+                .unwrap();
+            let codex = host_row
+                .children
+                .as_ref()
+                .unwrap()
+                .iter()
+                .find(|row| row.id == id)
+                .unwrap();
+            assert!(codex.enter_picks);
+            assert!(
+                codex
+                    .children
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .any(|row| row.id == format!("{id}:right"))
+            );
+        }
+        assert!(default_spawn("ssh:missing:codex", Modifiers::default(), Some(&model)).is_none());
     }
 }
