@@ -4,6 +4,7 @@ type: invariant
 title: an Oracle broadcast reaches 1000 seats within budget
 status: active
 slow: true
+gate: seats
 check: GATE_SEATS=1000 GATE_BUDGET=13299 sh scripts/gates.sh bus
 cost: a slower pump means the Oracle's decisions reach the swarm late; the number creeps back toward the 120 s it was
 links:

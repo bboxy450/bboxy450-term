@@ -4,6 +4,7 @@ type: invariant
 title: 400 idle seats fit in 420 MiB
 status: active
 slow: true
+gate: seats
 check: GATE_SEATS=400 GATE_RATE=idle GATE_SECONDS=20 GATE_BUDGET=420 sh scripts/gates.sh memory
 cost: per-seat memory creeping up is the one thing that makes 1000 seats impossible again
 links:

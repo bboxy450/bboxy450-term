@@ -4,6 +4,7 @@ type: invariant
 title: web and native geometry agree for every parity case
 status: active
 slow: true
+gate: parity
 check: sh scripts/parity.sh
 cost: a geometry miss is a layout bug shipped as a pixel difference; the library drifts from the lab it is matched against
 links:

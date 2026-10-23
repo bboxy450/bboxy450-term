@@ -3,7 +3,7 @@
 One file per invariant, type `invariant` ([[work-items]]): property, check
 command, the exit status that means held, cost of a violation. No command, no
 invariant. Owner: the Architect; anyone runs the checks; `sh scripts/ci-local.sh`
-runs every invariant before every handoff, except those marked `slow: true` in frontmatter (parity and the seat gates), which run under the slow flag; `scripts/invariants.sh` (P1 follow-up) will run every `check:` line here, so each line is one command, side-effect free apart from cargo's target dir.
+runs every invariant before every handoff, except those marked `slow: true` in frontmatter, which run under `--slow` (all of them) or `--parity` (only `gate: parity`); the seat gates carry `gate: seats`; `scripts/invariants.sh` (P1 follow-up) will run every `check:` line here, so each line is one command, side-effect free apart from cargo's target dir.
 
 | Invariant | Check | Last result |
 |---|---|---|
