@@ -1,0 +1,17 @@
+SOURCE 76fce0c49afeca9af608780f11d87db7bb879b64
+BASE 9fdfd94d6b057613de0fe3f1f175999af4a8662c
+OWNED_ROOT /tmp/kestrel-w2-6a-ci-fbyvik4d
+OWNED_TARGET /tmp/kestrel-w2-6a-ci-fbyvik4d/target
+Owned exec5 target/debug cleanup: exit 0
+COMMAND ['git', 'worktree', 'add', '--detach', '/tmp/kestrel-w2-6a-ci-fbyvik4d/tree', '76fce0c49afeca9af608780f11d87db7bb879b64']
+Preparing worktree (detached HEAD 76fce0c)
+HEAD is now at 76fce0c feat: record bounded local artifact provenance and signed activity
+EXIT 0
+Clean detached worktree status: exit 0, empty
+OWNED_PID 43881
+CI_EXIT 0; elapsed 982.755s
+CI_SHA256 0201480cf16c79a2141e950fa9de2e2ae434c34d85d1c3ead04a3b7f9bbc8772
+Private gate target deleted: exit 0
+COMMAND ['git', 'worktree', 'remove', '/tmp/kestrel-w2-6a-ci-fbyvik4d/tree']
+EXIT 0
+Owned CI parent directory removed: exit 0
