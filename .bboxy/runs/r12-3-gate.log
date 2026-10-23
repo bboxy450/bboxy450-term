@@ -1,0 +1,10 @@
+# R12-3 (a) gate on d8febf5 (main 697e9e2 + R12-3 step 1 + (a), VerificationFrame clear: false)
+before 697e9e2 after d8febf5
+reusing capture <scratch>/r13-cat (captured on main 92e60dc; both binaries render these same inputs, 1704 cases)
+replay before exit=0 189 s: replayed 1704 images; geometry not requested
+replay after  exit=0 328 s: replayed 1704 images; geometry not requested
+sha256 per PNG: before 1704, after 1704, missing 0, extra 0, byte-different 0
+ci-local --parity exit=0 parity: 1664 cases, 859 review; target/parity/legacy/index.html parity: 1768 cases, 178 review; target/parity/index.html parity gate: pass (178 pixel reviews advisory) ci-local: all gates passed 
+done
+# replay inputs: one capture of the canonical catalogue (taken on main 92e60dc), rendered by release bboxybook at main and at R12-3
+# earlier, same capture, main 9fdfd94 vs 6625dad: 1704/1704 identical (before the R5 rebase)
