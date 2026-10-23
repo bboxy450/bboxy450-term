@@ -116,6 +116,66 @@ pub struct Progress {
     pub fault_ns: AtomicU64,
     pub synthetic: std::sync::OnceLock<SyntheticStates>,
     pub background: std::sync::OnceLock<bbt_rt::TaskId>,
+    native_settle: NativeSettleProbe,
+}
+
+/// UI writes only atomics. The timeout diagnostic reads the last observed
+/// predicates without asking the UI to take an IO-owned lock.
+#[derive(Default)]
+struct NativeSettleProbe {
+    flags: AtomicU64,
+    frames: AtomicU64,
+    callbacks: AtomicU64,
+    paused_frame: AtomicU64,
+    completed_frame: AtomicU64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+struct NativeSettleWitness {
+    observed: bool,
+    phase: u8,
+    pending: bool,
+    has_paused_frame: bool,
+    gpu_complete: bool,
+    stable_counts: bool,
+    frames: u64,
+    callbacks: u64,
+    paused_frame: Option<u64>,
+    completed_frame: u64,
+}
+impl NativeSettleProbe {
+    fn record(&self, witness: NativeSettleWitness) {
+        self.frames.store(witness.frames, Ordering::Relaxed);
+        self.callbacks.store(witness.callbacks, Ordering::Relaxed);
+        self.paused_frame
+            .store(witness.paused_frame.unwrap_or(0), Ordering::Relaxed);
+        self.completed_frame
+            .store(witness.completed_frame, Ordering::Relaxed);
+        let flags = u64::from(witness.observed)
+            | (u64::from(witness.pending) << 1)
+            | (u64::from(witness.has_paused_frame) << 2)
+            | (u64::from(witness.gpu_complete) << 3)
+            | (u64::from(witness.stable_counts) << 4)
+            | (u64::from(witness.phase) << 8);
+        self.flags.store(flags, Ordering::Release);
+    }
+
+    fn snapshot(&self) -> NativeSettleWitness {
+        let flags = self.flags.load(Ordering::Acquire);
+        let has_paused_frame = flags & 4 != 0;
+        NativeSettleWitness {
+            observed: flags & 1 != 0,
+            phase: (flags >> 8) as u8,
+            pending: flags & 2 != 0,
+            has_paused_frame,
+            gpu_complete: flags & 8 != 0,
+            stable_counts: flags & 16 != 0,
+            frames: self.frames.load(Ordering::Relaxed),
+            callbacks: self.callbacks.load(Ordering::Relaxed),
+            paused_frame: has_paused_frame.then(|| self.paused_frame.load(Ordering::Relaxed)),
+            completed_frame: self.completed_frame.load(Ordering::Relaxed),
+        }
+    }
 }
 pub struct SyntheticStates {
     pub dirty: bbt_rt::DirtySet,
@@ -351,6 +411,20 @@ impl Native {
                 self.previous.clear();
             }
         }
+        self.progress.native_settle.record(NativeSettleWitness {
+            observed: true,
+            phase,
+            pending,
+            has_paused_frame: self.paused_frame.is_some(),
+            gpu_complete: self
+                .paused_frame
+                .is_some_and(|frame| self.completed_frame >= frame),
+            stable_counts: self.settled == Some((frames, callbacks)),
+            frames,
+            callbacks,
+            paused_frame: self.paused_frame,
+            completed_frame: self.completed_frame,
+        });
         if phase == MEASURE && self.probe_started.is_none() && self.cpu.len() >= 8 {
             let id = 1;
             let admitted = Instant::now();

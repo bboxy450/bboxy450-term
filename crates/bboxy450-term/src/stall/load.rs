@@ -4,13 +4,13 @@ use bboxy450_term::{
     model::{self, PanePreparer},
 };
 use bbt_mux::{
-    LaunchSpec, Supervisor, Ulid,
+    Action, Attachment, Event, LaunchSpec, Reply, Supervisor, Ulid,
     bus::{Consumer, Delivery},
-    logic::{Logic, LogicConfig},
+    logic::{Logic, LogicConfig, SupervisorConnection},
     store::events::Draft,
 };
 use bbt_proto::{GuiAction, GuiReply, GuiRequest, SeatRecord, Snapshot, Update, View};
-use std::{collections::VecDeque, ffi::OsString, path::Path};
+use std::{collections::VecDeque, ffi::OsString, path::Path, sync::Mutex};
 use tokio::{
     io::{AsyncWriteExt, BufReader},
     net::UnixStream,
@@ -20,6 +20,7 @@ use tokio::{
 struct Core {
     logic: Logic,
     supervisor: Supervisor,
+    ring_probe: RingProbe,
 }
 impl Core {
     #[allow(
@@ -40,8 +41,9 @@ impl Core {
                 })
                 .map_err(|e| e.to_string())?;
                 let connection = supervisor.connect().map_err(|e| e.to_string())?;
+                let ring_probe = RingProbe::new(connection);
                 let logic = Logic::start_custodied(
-                    connection,
+                    ObservedConnection(ring_probe.clone()),
                     LogicConfig {
                         run_dir: root.join("logic"),
                         repository,
@@ -50,7 +52,11 @@ impl Core {
                     bbt_rt::handle(),
                 )
                 .map_err(|e| e.to_string())?;
-                Ok(Self { logic, supervisor })
+                Ok(Self {
+                    logic,
+                    supervisor,
+                    ring_probe,
+                })
             })
             .await
             .map_err(|e| e.to_string())?
@@ -64,6 +70,212 @@ impl Core {
             })
             .await
             .map_err(|e| e.to_string())?
+    }
+}
+
+// This wrapper shares the already admitted connection. A second connect()
+// would acquire a new logic lease and invalidate the run being diagnosed.
+#[derive(Clone)]
+struct RingProbe {
+    client: Arc<Mutex<Box<dyn SupervisorConnection>>>,
+    attachments: Arc<Mutex<BTreeMap<Ulid, Attachment>>>,
+}
+struct ObservedConnection(RingProbe);
+
+#[allow(
+    clippy::disallowed_methods,
+    reason = "R5 diagnostic state and blocking client are owned by IO tasks, never the UI"
+)]
+fn io_lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    bbt_rt::assert_not_ui_thread();
+    value
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+#[allow(
+    clippy::disallowed_methods,
+    reason = "bounded diagnostic lock wait on the blocking pool after the run has already failed"
+)]
+fn diagnostic_lock<T>(
+    value: &Mutex<T>,
+    deadline: Instant,
+) -> Result<std::sync::MutexGuard<'_, T>, String> {
+    bbt_rt::assert_not_ui_thread();
+    loop {
+        match value.try_lock() {
+            Ok(lock) => return Ok(lock),
+            Err(std::sync::TryLockError::Poisoned(error)) => return Ok(error.into_inner()),
+            Err(std::sync::TryLockError::WouldBlock) => {
+                if Instant::now() >= deadline {
+                    return Err("ring diagnostic connection lock deadline reached".into());
+                }
+                std::thread::sleep(Duration::from_millis(1));
+            }
+        }
+    }
+}
+
+impl SupervisorConnection for ObservedConnection {
+    fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
+        let reply = io_lock(&self.0.client).request(action)?;
+        if let Reply::Attached { attachment, .. } = &reply {
+            io_lock(&self.0.attachments).insert(attachment.seat, attachment.clone());
+        }
+        Ok(reply)
+    }
+
+    fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<Event>> {
+        io_lock(&self.0.client).receive(timeout)
+    }
+}
+
+#[derive(Debug, Default, serde::Serialize)]
+struct RingWitness {
+    captured_sequence: Option<u64>,
+    committed_sequence: Option<u64>,
+    first_sequence: Option<u64>,
+    examined_from: Option<u64>,
+    examined_to: Option<u64>,
+    paused_in_examined_tail: Option<bool>,
+    paused_marker_sequence: Option<u64>,
+    tail_complete: bool,
+    gap: Option<bbt_mux::ring::HistoryGap>,
+    sampled_after_timeout_ms: f64,
+    error: Option<String>,
+}
+
+#[derive(Default)]
+struct PauseBytes {
+    suffix: Vec<u8>,
+    found_at: Option<u64>,
+}
+impl PauseBytes {
+    fn output(&mut self, sequence: u64, bytes: &[u8]) {
+        self.suffix.extend_from_slice(bytes);
+        if self
+            .suffix
+            .windows(b"R5PAUSED".len())
+            .any(|w| w == b"R5PAUSED")
+        {
+            self.found_at = Some(sequence);
+        }
+        let keep = self.suffix.len().saturating_sub(b"R5PAUSED".len() - 1);
+        self.suffix.drain(..keep);
+    }
+}
+
+impl RingProbe {
+    fn new(client: impl SupervisorConnection + 'static) -> Self {
+        Self {
+            client: Arc::new(Mutex::new(Box::new(client))),
+            attachments: Arc::new(Mutex::new(BTreeMap::new())),
+        }
+    }
+
+    fn tail(&self, seat: Ulid, deadline: Instant, row: &mut RingWitness) -> Result<(), String> {
+        let attachment = io_lock(&self.attachments)
+            .get(&seat)
+            .cloned()
+            .ok_or("no attachment observed on the admitted connection")?;
+        let reply = diagnostic_lock(&self.client, deadline)?
+            .request(Action::RingRecovery {
+                attachment: attachment.clone(),
+            })
+            .map_err(|e| e.to_string())?;
+        let Reply::RingRecovery { status, .. } = reply else {
+            return Err("unexpected ring status reply".into());
+        };
+        row.captured_sequence = Some(status.captured_sequence);
+        row.committed_sequence = Some(status.committed_sequence);
+        row.first_sequence = Some(status.first_sequence);
+        if status.captured_sequence <= status.first_sequence {
+            row.tail_complete = true;
+            row.paused_in_examined_tail = Some(false);
+            return Ok(());
+        }
+        // A bounded final-output probe, not a claim about all retained history.
+        // Keep sequence ranges and gaps so absence is never inferred from a
+        // failed or truncated read. Final PAUSED may span two Output records.
+        let from = status
+            .captured_sequence
+            .saturating_sub(1)
+            .max(status.first_sequence + 1);
+        let to = status.captured_sequence;
+        row.examined_from = Some(from);
+        row.examined_to = Some(to);
+        let mut next = from;
+        let mut marker = PauseBytes::default();
+        for _ in 0..4 {
+            if Instant::now() >= deadline {
+                return Err("ring diagnostic deadline reached".into());
+            }
+            let reply = diagnostic_lock(&self.client, deadline)?
+                .request(Action::ReadRing {
+                    attachment: attachment.clone(),
+                    from: next,
+                    to,
+                })
+                .map_err(|e| e.to_string())?;
+            let Reply::RingHistory { history } = reply else {
+                return Err("unexpected ring history reply".into());
+            };
+            let bbt_mux::ring::History {
+                records,
+                gap,
+                next: after,
+                ..
+            } = *history;
+            if gap.is_some() {
+                row.gap = gap;
+                marker.suffix.clear();
+            }
+            for record in records {
+                if let Event::Output { seq, bytes, .. } = record.event {
+                    marker.output(seq, &bytes);
+                }
+            }
+            row.paused_marker_sequence = marker.found_at;
+            if marker.found_at.is_some() {
+                row.paused_in_examined_tail = Some(true);
+            }
+            match after {
+                None => {
+                    row.tail_complete = true;
+                    if row.gap.is_none() && row.paused_in_examined_tail.is_none() {
+                        row.paused_in_examined_tail = Some(false);
+                    }
+                    return Ok(());
+                }
+                Some(after) if after > next && after <= to => next = after,
+                _ => {
+                    return Err(
+                        "ring history cursor did not advance within the requested range".into(),
+                    );
+                }
+            }
+        }
+        Err("ring diagnostic page limit reached".into())
+    }
+
+    fn collect(&self, seats: Vec<Ulid>, started: Instant) -> BTreeMap<Ulid, RingWitness> {
+        let deadline = Instant::now() + Duration::from_secs(20);
+        seats
+            .into_iter()
+            .map(|seat| {
+                let mut row = RingWitness::default();
+                // Existing Client RPCs have a 5s bound; one already-started RPC can
+                // outlast this collection budget. No request is started after it.
+                let result = if Instant::now() < deadline {
+                    self.tail(seat, deadline, &mut row)
+                } else {
+                    Err("ring diagnostic collection budget exhausted".into())
+                };
+                row.error = result.err();
+                row.sampled_after_timeout_ms = started.elapsed().as_secs_f64() * 1000.;
+                (seat, row)
+            })
+            .collect()
     }
 }
 
@@ -172,11 +384,70 @@ async fn disk_guard(path: &Path, real: bool) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+struct UpdateCursor {
+    view: View,
+    sequence: u64,
+}
+impl UpdateCursor {
+    fn of(update: &Update) -> Self {
+        match update {
+            Update::Snapshot { snapshot } => Self {
+                view: snapshot.view,
+                sequence: snapshot.sequence,
+            },
+            Update::Delta { delta } => Self {
+                view: delta.view,
+                sequence: delta.sequence,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, serde::Serialize)]
+struct GuiSeatTrace {
+    received: Option<UpdateCursor>,
+    applied: Option<UpdateCursor>,
+    applied_has_paused: Option<bool>,
+    applied_queued: Option<UpdateCursor>,
+    applied_written: Option<UpdateCursor>,
+}
+
+#[derive(Default)]
+struct GuiTrace(Mutex<BTreeMap<SeatId, GuiSeatTrace>>);
+impl GuiTrace {
+    fn new(seats: impl IntoIterator<Item = SeatId>) -> Self {
+        Self(Mutex::new(
+            seats
+                .into_iter()
+                .map(|seat| (seat, GuiSeatTrace::default()))
+                .collect(),
+        ))
+    }
+
+    fn with_rows<R>(&self, f: impl FnOnce(&mut BTreeMap<SeatId, GuiSeatTrace>) -> R) -> R {
+        f(&mut io_lock(&self.0))
+    }
+
+    fn record(&self, seat: SeatId, f: impl FnOnce(&mut GuiSeatTrace)) {
+        self.with_rows(|rows| {
+            if let Some(row) = rows.get_mut(&seat) {
+                f(row);
+            }
+        });
+    }
+
+    fn snapshot(&self) -> BTreeMap<SeatId, GuiSeatTrace> {
+        self.with_rows(|rows| rows.clone())
+    }
+}
+
 struct Wire {
     out: mpsc::Sender<GuiAction>,
     incoming: mpsc::Receiver<Result<GuiReply, String>>,
     reader: tokio::task::JoinHandle<()>,
     writer: tokio::task::JoinHandle<()>,
+    trace: Arc<GuiTrace>,
 }
 impl Drop for Wire {
     fn drop(&mut self) {
@@ -185,7 +456,7 @@ impl Drop for Wire {
     }
 }
 impl Wire {
-    async fn open(core: &Core) -> Result<Self, String> {
+    async fn open(core: &Core, trace: Arc<GuiTrace>) -> Result<Self, String> {
         let endpoint = core
             .logic
             .client
@@ -195,13 +466,14 @@ impl Wire {
         let stream = UnixStream::connect(endpoint.path)
             .await
             .map_err(|e| e.to_string())?;
-        Ok(Self::from_stream(stream, endpoint.capability))
+        Ok(Self::from_stream(stream, endpoint.capability, trace))
     }
 
-    fn from_stream(stream: UnixStream, capability: [u8; 32]) -> Self {
+    fn from_stream(stream: UnixStream, capability: [u8; 32], trace: Arc<GuiTrace>) -> Self {
         let (read, mut write) = stream.into_split();
         let (out, mut requests) = mpsc::channel(64);
         let (reply, incoming) = mpsc::channel(8);
+        let received_trace = trace.clone();
         let reader = tokio::spawn(async move {
             let mut read = BufReader::new(read);
             loop {
@@ -212,14 +484,33 @@ impl Wire {
                     Ok(None) => Err("r5-gui-eof".into()),
                     Err(e) => Err(e.to_string()),
                 };
+                if let Ok(GuiReply::Update { seat, update }) = &parsed {
+                    received_trace
+                        .record(*seat, |row| row.received = Some(UpdateCursor::of(update)));
+                }
                 let end = parsed.is_err();
                 if reply.send(parsed).await.is_err() || end {
                     break;
                 }
             }
         });
+        let written_trace = trace.clone();
         let writer = tokio::spawn(async move {
             while let Some(action) = requests.recv().await {
+                let applied = match &action {
+                    GuiAction::Applied {
+                        seat,
+                        view,
+                        sequence,
+                    } => Some((
+                        *seat,
+                        UpdateCursor {
+                            view: *view,
+                            sequence: *sequence,
+                        },
+                    )),
+                    _ => None,
+                };
                 let request = GuiRequest {
                     version: bbt_proto::gui::VERSION,
                     capability,
@@ -232,6 +523,9 @@ impl Wire {
                 if write.write_all(&bytes).await.is_err() {
                     break;
                 }
+                if let Some((seat, cursor)) = applied {
+                    written_trace.record(seat, |row| row.applied_written = Some(cursor));
+                }
             }
         });
         Self {
@@ -239,6 +533,7 @@ impl Wire {
             incoming,
             reader,
             writer,
+            trace,
         }
     }
 }
@@ -258,7 +553,7 @@ impl GuiTask {
     fn start(
         wire: Wire,
         outgoing: VecDeque<GuiAction>,
-        apply: impl FnMut(SeatId, &Update) -> Result<(), String> + Send + 'static,
+        apply: impl FnMut(SeatId, &Update) -> Result<bool, String> + Send + 'static,
     ) -> Self {
         let (actions, incoming) = mpsc::channel(64);
         let task = tokio::spawn(drain_gui(wire, outgoing, incoming, apply));
@@ -289,7 +584,7 @@ async fn drain_gui(
     mut wire: Wire,
     mut outgoing: VecDeque<GuiAction>,
     mut actions: mpsc::Receiver<GuiAction>,
-    mut apply: impl FnMut(SeatId, &Update) -> Result<(), String>,
+    mut apply: impl FnMut(SeatId, &Update) -> Result<bool, String>,
 ) -> Result<(), String> {
     let mut input = None;
     loop {
@@ -317,12 +612,14 @@ async fn drain_gui(
             },
             reply=wire.incoming.recv()=>match reply.ok_or("r5-gui-reader-closed")?? {
                 GuiReply::Update {seat,update}=> {
-                    let (view,sequence)=match &update {
-                        Update::Snapshot {snapshot}=>(snapshot.view,snapshot.sequence),
-                        Update::Delta {delta}=>(delta.view,delta.sequence),
-                    };
-                    apply(seat,&update)?;
-                    outgoing.push_back(GuiAction::Applied {seat,view,sequence});
+                    let cursor=UpdateCursor::of(&update);
+                    let paused=apply(seat,&update)?;
+                    outgoing.push_back(GuiAction::Applied {seat,view:cursor.view,sequence:cursor.sequence});
+                    wire.trace.record(seat, |row| {
+                        row.applied=Some(cursor);
+                        row.applied_has_paused=Some(paused);
+                        row.applied_queued=Some(cursor);
+                    });
                 }
                 GuiReply::Error {op,reason}=> {
                     let error=gui_error(op,&reason,input);
@@ -342,7 +639,7 @@ struct PaneWork {
     preparer: PanePreparer,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, serde::Serialize)]
 struct PaneState {
     ready: bool,
     paused: bool,
@@ -358,6 +655,180 @@ impl PaneState {
                     .all(|screen| contains(screen, "R5PAUSED")),
         }
     }
+}
+
+#[derive(Default, serde::Serialize)]
+struct LogicWitness {
+    cursor: Option<UpdateCursor>,
+    has_paused: Option<bool>,
+    sampled_after_timeout_ms: f64,
+    error: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+struct SettleSeat {
+    watched_index: usize,
+    name: String,
+    seat: Ulid,
+    generation: u64,
+    producer_pid: Option<u32>,
+    gui_at_timeout: GuiSeatTrace,
+    applied_written_to_socket: Option<bool>,
+    logic_current_snapshot: LogicWitness,
+    supervisor_ring_tail: RingWitness,
+}
+
+fn false_settle_predicates(
+    phase: u8,
+    panes: PaneState,
+    native: NativeSettleWitness,
+) -> Vec<&'static str> {
+    let mut predicates = Vec::new();
+    if !panes.paused {
+        predicates.push("IO: every watched published Screen contains R5PAUSED");
+    }
+    if phase < SETTLE {
+        predicates.push("IO: phase reached SETTLE");
+    }
+    if !native.observed {
+        predicates.push("UI: Native::poll has been observed");
+    } else if phase < IDLE && native.phase != SETTLE {
+        predicates.push(
+            "UI: latest Native::poll observed phase SETTLE (other UI settle checks inactive)",
+        );
+    } else if native.phase == SETTLE {
+        if native.pending {
+            predicates.push("UI: no pending work");
+        }
+        if !native.has_paused_frame {
+            predicates.push("UI: a frame containing all paused panes was encoded");
+        }
+        if !native.gpu_complete {
+            predicates.push("UI: paused frame reached GPU completion");
+        }
+        if !native.stable_counts {
+            predicates.push("UI: frame and callback counts match the previous settle poll");
+        }
+    }
+    predicates
+}
+
+// Diagnostic queries happen only AFTER a timeout. They cannot turn a failed
+// run into a pass. GUI and native predicates are frozen before any queries;
+// backend snapshots are explicitly later observations, not a consistent cut.
+async fn settle_timeout(
+    reason: &str,
+    config: &Config,
+    core: &Core,
+    (records, pids): (&[SeatRecord], &[u32]),
+    progress: &Progress,
+    panes: PaneState,
+    gui: &GuiTrace,
+) -> String {
+    let started = Instant::now();
+    let phase = progress.phase();
+    let native = progress.native_settle.snapshot();
+    let mut received = gui.snapshot();
+    let mut rows: Vec<_> = records
+        .iter()
+        .take(config.watched)
+        .enumerate()
+        .map(|(index, record)| {
+            let trace = received
+                .remove(&SeatId::from_u128(record.id.0))
+                .unwrap_or_default();
+            let written = trace
+                .applied
+                .map(|applied| trace.applied_written == Some(applied));
+            SettleSeat {
+                watched_index: index,
+                name: record.name.clone(),
+                seat: record.id,
+                generation: record.generation,
+                producer_pid: pids.get(index).copied(),
+                gui_at_timeout: trace,
+                applied_written_to_socket: written,
+                logic_current_snapshot: LogicWitness::default(),
+                supervisor_ring_tail: RingWitness::default(),
+            }
+        })
+        .collect();
+    // Query logic first, without holding its shared supervisor connection.
+    // These are current parser Snapshots, NOT the GUI server's offered Update.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    for row in &mut rows {
+        let result = if config.real && tokio::time::Instant::now() < deadline {
+            tokio::time::timeout_at(
+                deadline.min(tokio::time::Instant::now() + Duration::from_secs(1)),
+                core.logic.client.snapshot(row.seat, row.generation),
+            )
+            .await
+            .map_err(|_| "logic current snapshot deadline reached".to_owned())
+            .and_then(|reply| reply.map_err(|e| e.to_string()))
+        } else {
+            Err(
+                "logic current snapshot unavailable (synthetic or collection budget exhausted)"
+                    .into(),
+            )
+        };
+        match result {
+            Ok(snapshot) => {
+                row.logic_current_snapshot.cursor = Some(UpdateCursor {
+                    view: snapshot.view,
+                    sequence: snapshot.sequence,
+                });
+                row.logic_current_snapshot.has_paused =
+                    Some(contains(&snapshot.screen, "R5PAUSED"));
+            }
+            Err(error) => row.logic_current_snapshot.error = Some(error),
+        }
+        row.logic_current_snapshot.sampled_after_timeout_ms =
+            started.elapsed().as_secs_f64() * 1000.;
+    }
+    if config.real {
+        let probe = core.ring_probe.clone();
+        let seats = rows.iter().map(|row| row.seat).collect();
+        match bbt_rt::handle()
+            .spawn_blocking(move || probe.collect(seats, started))
+            .await
+        {
+            Ok(mut rings) => {
+                for row in &mut rows {
+                    row.supervisor_ring_tail = rings.remove(&row.seat).unwrap_or_default();
+                }
+            }
+            Err(error) => {
+                for row in &mut rows {
+                    row.supervisor_ring_tail.error = Some(format!("ring diagnostic task: {error}"));
+                }
+            }
+        }
+    }
+    let table = serde_json::json!({
+        "reason": reason,
+        "phase_at_timeout": phase,
+        "panes_at_timeout": panes,
+        "native_last_poll_at_timeout": native,
+        "false_settle_predicates": false_settle_predicates(phase, panes, native),
+        "notes": [
+            "GUI checkpoints frozen at timeout; native flags are from its last poll and counters may be newer",
+            "Applied written means socket write_all completed, not server acceptance",
+            "logic current snapshot is a later parser observation, NOT GUI offered/published",
+            "ring query examines the final two captured sequences, up to four pages, not all historical output",
+            "null means unknown; a gap, failed read or truncated tail never proves marker absence",
+            "R5PAUSED is the existing marker; an initial pause is not distinguished from the final pause",
+        ],
+        "seats": rows,
+    });
+    let json = serde_json::to_string_pretty(&table).expect("diagnostic fields serialize");
+    let path = config.report.with_extension("diagnostics.json");
+    let saved = tokio::fs::write(&path, &json).await;
+    let location = match saved {
+        Ok(()) => format!("table={}", path.display()),
+        Err(error) => format!("table-write-failed={} error={error}", path.display()),
+    };
+    // Keep the complete per-seat table in stderr even if report IO fails.
+    format!("{reason}; {location}\nR5 settle diagnostic table:\n{json}")
 }
 
 fn publish(
@@ -519,8 +990,9 @@ async fn exercise(
         preparer,
     });
     let (state, latest_state) = watch::channel(PaneState::default());
+    let gui_trace = Arc::new(GuiTrace::new(panes.iter().map(|(seat, _)| *seat)));
     let mut gui = if config.real {
-        let wire = Wire::open(core).await?;
+        let wire = Wire::open(core, gui_trace.clone()).await?;
         let mut work = work.take().unwrap();
         let records = records.clone();
         let updates = updates.clone();
@@ -543,7 +1015,10 @@ async fn exercise(
             }
             progress.updates.fetch_add(1, Ordering::Relaxed);
             state.send_replace(PaneState::from_model(&work.previous, watched));
-            Ok(())
+            Ok(work
+                .grids
+                .screen(seat)
+                .is_some_and(|screen| contains(&screen, "R5PAUSED")))
         }))
     } else {
         None
@@ -562,12 +1037,38 @@ async fn exercise(
     let mut sides = SideStats::default();
     loop {
         if start.elapsed() > Duration::from_secs(240) {
-            return Err("r5-setup-or-settle-timeout".into());
+            let panes = work.as_ref().map_or_else(
+                || *latest_state.borrow(),
+                |work| PaneState::from_model(&work.previous, config.watched),
+            );
+            return Err(settle_timeout(
+                "r5-setup-or-settle-timeout",
+                config,
+                core,
+                (&records, &pids),
+                &progress,
+                panes,
+                &gui_trace,
+            )
+            .await);
         }
         if stopped_at.is_some_and(|at: Instant| at.elapsed() > Duration::from_secs(20))
             && progress.phase() < IDLE
         {
-            return Err("r5-unsettled-after-producers-stopped".into());
+            let panes = work.as_ref().map_or_else(
+                || *latest_state.borrow(),
+                |work| PaneState::from_model(&work.previous, config.watched),
+            );
+            return Err(settle_timeout(
+                "r5-unsettled-after-producers-stopped",
+                config,
+                core,
+                (&records, &pids),
+                &progress,
+                panes,
+                &gui_trace,
+            )
+            .await);
         }
         if config.real && last_disk.elapsed() >= Duration::from_secs(1) {
             disk_guard(&config.run_dir, true).await?;
@@ -930,6 +1431,311 @@ pub fn private_entry(args: &[String]) -> Option<Result<(), String>> {
 mod tests {
     use super::*;
 
+    struct ScriptedConnection {
+        calls: Arc<Mutex<Vec<Action>>>,
+        replies: VecDeque<Reply>,
+    }
+    impl SupervisorConnection for ScriptedConnection {
+        fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
+            io_lock(&self.calls).push(action);
+            Ok(self
+                .replies
+                .pop_front()
+                .expect("unexpected diagnostic request"))
+        }
+        fn receive(&mut self, _: Duration) -> bbt_mux::store::Result<Option<Event>> {
+            Ok(None)
+        }
+    }
+
+    fn ring_status() -> bbt_mux::ring::Status {
+        bbt_mux::ring::Status {
+            generation: 1,
+            first_sequence: 0,
+            captured_sequence: 2,
+            committed_sequence: 1,
+            byte_start: 0,
+            byte_end: 8,
+            hot_bytes: 8,
+            paused: false,
+            recovery_notice: None,
+            capture: Default::default(),
+        }
+    }
+
+    fn output_page(sequence: u64, bytes: &[u8], next: Option<u64>, gap: bool) -> Reply {
+        Reply::RingHistory {
+            history: Box::new(bbt_mux::ring::History {
+                status: ring_status(),
+                records: vec![bbt_mux::ring::IndexedEvent {
+                    event: Event::Output {
+                        seat: Ulid::from(1),
+                        generation: 1,
+                        seq: sequence,
+                        bytes: bytes.into(),
+                    },
+                    row: None,
+                }],
+                gap: gap.then(|| bbt_mux::ring::HistoryGap {
+                    requested_from: 1,
+                    requested_to: 2,
+                    retained_from: Some(2),
+                    retained_to: Some(2),
+                    reason: "fixture gap".into(),
+                }),
+                next,
+            }),
+        }
+    }
+
+    fn scripted_probe(pages: Vec<Reply>) -> (RingProbe, Arc<Mutex<Vec<Action>>>) {
+        let attachment = Attachment {
+            seat: Ulid::from(1),
+            generation: 1,
+            writer_lease: Ulid::from(99),
+        };
+        let mut replies = VecDeque::from([
+            Reply::Attached {
+                attachment,
+                info: bbt_mux::SeatInfo {
+                    seat: Ulid::from(1),
+                    generation: 1,
+                    pid: 1,
+                    size: Default::default(),
+                    next_sequence: 1,
+                    exited: None,
+                },
+                first_available_sequence: 1,
+            },
+            Reply::RingRecovery {
+                status: Box::new(ring_status()),
+                checkpoint: None,
+            },
+        ]);
+        replies.extend(pages);
+        let calls = Arc::new(Mutex::new(Vec::new()));
+        let probe = RingProbe::new(ScriptedConnection {
+            calls: calls.clone(),
+            replies,
+        });
+        // The normal logic's original Attach is observed, never re-issued by
+        // the diagnostic. No AcquireLogic or second connection exists here.
+        ObservedConnection(probe.clone())
+            .request(Action::Attach {
+                seat: Ulid::from(1),
+                generation: 1,
+            })
+            .unwrap();
+        (probe, calls)
+    }
+
+    #[test]
+    fn ring_probe_follows_pages_and_never_combines_marker_bytes_across_a_gap() {
+        for gap in [false, true] {
+            let (probe, calls) = scripted_probe(vec![
+                output_page(1, b"R5PA", Some(2), false),
+                output_page(2, b"USED", None, gap),
+            ]);
+            let mut row = RingWitness::default();
+            probe
+                .tail(
+                    Ulid::from(1),
+                    Instant::now() + Duration::from_secs(60),
+                    &mut row,
+                )
+                .unwrap();
+            assert_eq!(
+                row.paused_in_examined_tail,
+                if gap { None } else { Some(true) }
+            );
+            assert_eq!(row.paused_marker_sequence, if gap { None } else { Some(2) });
+            assert_eq!(row.captured_sequence, Some(2));
+            assert_eq!(row.committed_sequence, Some(1));
+            assert!(row.tail_complete);
+            let calls = io_lock(&calls);
+            assert_eq!(calls.len(), 4);
+            assert!(matches!(&calls[1], Action::RingRecovery { .. }));
+            assert!(matches!(&calls[2], Action::ReadRing { from: 1, to: 2, .. }));
+            assert!(matches!(&calls[3], Action::ReadRing { from: 2, to: 2, .. }));
+            assert!(
+                !serde_json::to_string(&row)
+                    .unwrap()
+                    .contains("writer_lease")
+            );
+        }
+    }
+
+    #[test]
+    fn failed_tail_keeps_known_ring_cursor_and_does_not_report_marker_absence() {
+        let (probe, _) = scripted_probe(vec![output_page(1, b"R5PA", Some(1), false)]);
+        let mut row = RingWitness::default();
+        row.error = probe
+            .tail(
+                Ulid::from(1),
+                Instant::now() + Duration::from_secs(60),
+                &mut row,
+            )
+            .err();
+        assert!(row.error.as_ref().unwrap().contains("did not advance"));
+        assert_eq!(row.captured_sequence, Some(2));
+        assert_eq!(row.paused_in_examined_tail, None);
+        assert!(!row.tail_complete);
+        let (probe, _) = scripted_probe(vec![output_page(2, b"no marker", None, false)]);
+        let rows = probe.collect(vec![Ulid::from(1), Ulid::from(2)], Instant::now());
+        assert_eq!(rows[&Ulid::from(1)].paused_in_examined_tail, Some(false));
+        assert!(rows[&Ulid::from(2)].error.is_some());
+        assert_eq!(rows[&Ulid::from(2)].paused_in_examined_tail, None);
+    }
+
+    #[test]
+    fn settle_diagnostic_names_the_active_predicates_without_inventing_ui_results() {
+        let probe = NativeSettleProbe::default();
+        let predicates = false_settle_predicates(MEASURE, PaneState::default(), probe.snapshot());
+        assert!(predicates.contains(&"IO: every watched published Screen contains R5PAUSED"));
+        assert!(predicates.contains(&"UI: Native::poll has been observed"));
+        assert!(!predicates.iter().any(|p| p.contains("GPU")));
+        let native = NativeSettleWitness {
+            observed: true,
+            phase: SETTLE,
+            pending: true,
+            has_paused_frame: true,
+            gpu_complete: false,
+            stable_counts: false,
+            frames: 12,
+            callbacks: 13,
+            paused_frame: Some(12),
+            completed_frame: 11,
+        };
+        probe.record(native);
+        let snapshot = probe.snapshot();
+        assert_eq!(snapshot.paused_frame, Some(12));
+        assert_eq!(snapshot.completed_frame, 11);
+        let predicates = false_settle_predicates(
+            SETTLE,
+            PaneState {
+                ready: true,
+                paused: true,
+            },
+            snapshot,
+        );
+        assert_eq!(
+            predicates,
+            [
+                "UI: no pending work",
+                "UI: paused frame reached GPU completion",
+                "UI: frame and callback counts match the previous settle poll"
+            ]
+        );
+    }
+
+    #[tokio::test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "non-UI diagnostic test owns its memory-custody fixture and temporary report"
+    )]
+    async fn timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results() {
+        let root = tempfile::tempdir().unwrap();
+        let config = Config {
+            real: false,
+            headless: true,
+            frame_gate: false,
+            seats: 2,
+            watched: 2,
+            seconds: 3.,
+            idle: 1.,
+            report: root.path().join("report.json"),
+            run_dir: root.path().join("fixture"),
+            budget: None,
+        };
+        // An explicit fixture issuer works even without a memory-selector
+        // environment variable; this unit test never invokes real custody.
+        let fixture = config.run_dir.clone();
+        let core = bbt_rt::handle()
+            .spawn_blocking(move || {
+                let repository = fixture.join("repository");
+                std::fs::create_dir_all(repository.join(".bboxy")).unwrap();
+                let supervisor = Supervisor::start(bbt_mux::Config {
+                    journal_directory: Some(fixture.join("journal")),
+                    ..Default::default()
+                })
+                .unwrap();
+                let ring_probe = RingProbe::new(supervisor.connect().unwrap());
+                let logic = Logic::start(
+                    ObservedConnection(ring_probe.clone()),
+                    LogicConfig {
+                        run_dir: fixture.join("logic"),
+                        repository,
+                        ring: Default::default(),
+                    },
+                    ed25519_dalek::SigningKey::from_bytes(&[73; 32]),
+                    bbt_rt::handle(),
+                )
+                .unwrap();
+                Core {
+                    logic,
+                    supervisor,
+                    ring_probe,
+                }
+            })
+            .await
+            .unwrap();
+        let records: Vec<_> = (1..=2)
+            .map(|id| SeatRecord::new(Ulid::from(id), Ulid::from(1), format!("pane-{id}"), "zsh"))
+            .collect();
+        let progress = Progress::default();
+        progress.set_phase(MEASURE);
+        let gui = GuiTrace::new([SeatId::from_u128(1), SeatId::from_u128(2)]);
+        let cursor = UpdateCursor {
+            view: View {
+                seat: Ulid::from(1),
+                generation: 1,
+                view_generation: Ulid::from(9),
+            },
+            sequence: 7,
+        };
+        gui.record(SeatId::from_u128(1), |row| {
+            row.received = Some(cursor);
+            row.applied = Some(cursor);
+            row.applied_queued = Some(cursor);
+            row.applied_has_paused = Some(false);
+        });
+        let error = settle_timeout(
+            "forced diagnostic fixture timeout",
+            &config,
+            &core,
+            (&records, &[]),
+            &progress,
+            PaneState {
+                ready: true,
+                paused: false,
+            },
+            &gui,
+        )
+        .await;
+        core.close().await.unwrap();
+        let bytes = tokio::fs::read(config.report.with_extension("diagnostics.json"))
+            .await
+            .unwrap();
+        let table: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert!(error.starts_with("forced diagnostic fixture timeout; table="));
+        assert!(error.contains("pane-1") && error.contains("pane-2"));
+        assert_eq!(table["seats"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            table["seats"][0]["gui_at_timeout"]["received"]["sequence"],
+            7
+        );
+        assert_eq!(table["seats"][0]["applied_written_to_socket"], false);
+        assert!(table["seats"][1]["applied_written_to_socket"].is_null());
+        assert!(table["seats"][0]["logic_current_snapshot"]["cursor"].is_null());
+        assert!(table["seats"][0]["supervisor_ring_tail"]["paused_in_examined_tail"].is_null());
+        assert!(
+            !table["false_settle_predicates"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+
     async fn write_reply(stream: &mut tokio::net::unix::OwnedWriteHalf, reply: &GuiReply) {
         let mut bytes = serde_json::to_vec(reply).unwrap();
         bytes.push(b'\n');
@@ -944,17 +1750,18 @@ mod tests {
     async fn gui_keeps_applying_and_acknowledging_while_side_finish_is_held() {
         const COUNT: u64 = 128;
         let (client, server) = UnixStream::pair().unwrap();
+        let trace = Arc::new(GuiTrace::new([SeatId::from_u128(1)]));
         let published = Arc::new(AtomicU64::new(0));
         let applied = published.clone();
         let gui = GuiTask::start(
-            Wire::from_stream(client, [0; 32]),
+            Wire::from_stream(client, [0; 32], trace.clone()),
             VecDeque::new(),
             move |_, update| {
                 let Update::Snapshot { snapshot } = update else {
                     panic!("fixture sends snapshots")
                 };
                 applied.store(snapshot.sequence, Ordering::Release);
-                Ok(())
+                Ok(false)
             },
         );
         let (release, held) = oneshot::channel();
@@ -1014,6 +1821,11 @@ mod tests {
             .unwrap()
             .unwrap();
         assert!(!waiting.is_finished());
+        let row = trace.snapshot().remove(&SeatId::from_u128(1)).unwrap();
+        assert_eq!(row.received.unwrap().sequence, COUNT);
+        assert_eq!(row.applied.unwrap().sequence, COUNT);
+        assert_eq!(row.applied_written, row.applied);
+        assert_eq!(row.applied_has_paused, Some(false));
         release.send(()).unwrap();
         waiting.await.unwrap().unwrap();
         drop(gui);
@@ -1034,9 +1846,9 @@ mod tests {
         ] {
             let (client, server) = UnixStream::pair().unwrap();
             let mut gui = GuiTask::start(
-                Wire::from_stream(client, [0; 32]),
+                Wire::from_stream(client, [0; 32], Arc::new(GuiTrace::default())),
                 VecDeque::new(),
-                |_, _| Ok(()),
+                |_, _| Ok(false),
             );
             let (_, mut write) = server.into_split();
             write_reply(
