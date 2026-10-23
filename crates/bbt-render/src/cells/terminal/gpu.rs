@@ -206,7 +206,6 @@ impl TerminalRenderer {
                     metrics.cell_width,
                     metrics.cell_height,
                     self.options.font.scale,
-                    metrics.baseline,
                 );
                 let rect = self
                     .gray
@@ -249,9 +248,16 @@ impl TerminalRenderer {
         };
         for row in 0..grid.rows {
             let mut joined_until = 0;
+            let mut underline_start = 0;
+            let mut previous_underline = None;
             for col in 0..grid.columns {
                 let cell =
                     &grid.cells[usize::from(row) * usize::from(grid.columns) + usize::from(col)];
+                let underline = (cell.underline, cell.underline_color);
+                if previous_underline != Some(underline) {
+                    underline_start = col;
+                    previous_underline = Some(underline);
+                }
                 let mut fg = cell.foreground;
                 let mut bg = cell.background;
                 if let Some(cursor) = grid.cursor
@@ -287,9 +293,15 @@ impl TerminalRenderer {
                     append(self, key, col, row, fg, bg, sprite)?;
                 }
                 if cell.underline != super::Underline::None {
+                    let width = self.metrics().cell_width;
                     append(
                         self,
-                        Key::Sprite(Sprite::Underline(cell.underline)),
+                        Key::Sprite(Sprite::underline(
+                            cell.underline,
+                            u32::from(col - underline_start) * width,
+                            width,
+                            self.options.font.scale,
+                        )),
                         col,
                         row,
                         cell.underline_color,

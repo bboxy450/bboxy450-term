@@ -4,9 +4,20 @@ use super::{CursorShape, Underline};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Sprite {
     Character(char),
-    Underline(Underline),
+    Underline(Underline, u32),
     Strike,
     Cursor(CursorShape, bool),
+}
+
+impl Sprite {
+    pub fn underline(style: Underline, offset: u32, width: u32, scale: u32) -> Self {
+        let period = match style {
+            Underline::Dotted => 2 * scale,
+            Underline::Dashed => 5 * scale,
+            _ => width,
+        };
+        Self::Underline(style, offset % period)
+    }
 }
 
 pub fn character(ch: char) -> bool {
@@ -162,7 +173,7 @@ fn segment(x: f32, y: f32, ax: f32, ay: f32, bx: f32, by: f32, radius: f32) -> b
     (x - ax - u * dx).powi(2) + (y - ay - u * dy).powi(2) <= radius * radius
 }
 
-pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32, baseline: i16) -> Vec<u8> {
+pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32) -> Vec<u8> {
     let mut mask = vec![0; (w * h) as usize];
     let (wf, hf, s) = (w as f32, h as f32, scale as f32);
     let (cx, cy) = ((wf * 0.5).floor() + 0.5, (hf * 0.5).floor() + 0.5);
@@ -180,20 +191,22 @@ pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32, baseline: i16) -> Vec<
                 (CursorShape::Bar, true) => x < 2. * s,
                 (CursorShape::Underline, true) => y >= hf - 2. * s,
             },
-            Sprite::Strike => (y - (f32::from(baseline) - hf * 0.22).round() - 0.5).abs() < s * 0.5,
-            Sprite::Underline(style) => {
-                let base = (hf - 2. * s).floor() + 0.5;
+            Sprite::Strike => {
+                let top = ((hf - s) * 0.5).floor();
+                y >= top && y < top + s
+            }
+            Sprite::Underline(style, phase) => {
+                let base = (hf - 2. * s).floor() + s * 0.5;
+                let x = x + phase as f32;
                 match style {
                     Underline::None => false,
                     Underline::Single => (y - base).abs() < s * 0.5,
                     Underline::Double => {
-                        (y - (hf - 3. * s + 0.5)).abs() < s * 0.5
-                            || (y - (hf - s + 0.5)).abs() < s * 0.5
+                        (y - (hf - 3. * s + s * 0.5)).abs() < s * 0.5
+                            || (y - (hf - s + s * 0.5)).abs() < s * 0.5
                     }
-                    Underline::Dotted => {
-                        ((x / s).rem_euclid(4.) - 1.).powi(2) + ((y - base) / s).powi(2) <= 0.7
-                    }
-                    Underline::Dashed => (y - base).abs() < s * 0.5 && (x / s).rem_euclid(6.) < 4.,
+                    Underline::Dotted => (y - base).abs() < s * 0.5 && (x / s).rem_euclid(2.) < 1.,
+                    Underline::Dashed => (y - base).abs() < s * 0.5 && (x / s).rem_euclid(5.) < 3.,
                     Underline::Curly => {
                         (y - (hf - 2. * s + (x / wf * std::f32::consts::TAU).sin() * s)).abs()
                             < s * 0.55
@@ -395,7 +408,7 @@ mod tests {
     fn double_rules_join_without_stubs_or_filled_crossings() {
         for scale in [1, 2] {
             let (w, h) = (8 * scale, 15 * scale);
-            let draw = |ch| raster(Sprite::Character(ch), w, h, scale, 12 * scale as i16);
+            let draw = |ch| raster(Sprite::Character(ch), w, h, scale);
             let horizontal = draw('═');
             let vertical = draw('║');
             for ch in '═'..='╬' {

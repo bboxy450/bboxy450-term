@@ -5,7 +5,7 @@
 )]
 use bbt_render::{
     FontConfig,
-    cells::terminal::{Cell, Cursor, CursorShape, Grid, Options, TerminalRenderer},
+    cells::terminal::{Cell, Cursor, CursorShape, Grid, Options, TerminalRenderer, Underline},
     device::DeviceContext,
     text::terminal::{Fonts, Format},
 };
@@ -38,13 +38,17 @@ fn coretext_fallback_styles_and_emoji_have_real_coverage() {
     assert!(
         emoji
             .pixels
-            .as_chunks::<4>().0.iter()
+            .as_chunks::<4>()
+            .0
+            .iter()
             .any(|p| p[3] > 0 && (p[0] != p[1] || p[1] != p[2]))
     );
     assert!(
         emoji
             .pixels
-            .as_chunks::<4>().0.iter()
+            .as_chunks::<4>()
+            .0
+            .iter()
             .all(|p| p[0] <= p[3] && p[1] <= p[3] && p[2] <= p[3])
     );
 }
@@ -159,7 +163,9 @@ fn cursor_shapes_and_bad_snapshots_are_observable() {
         counts.push(
             image
                 .rgba
-                .as_chunks::<4>().0.iter()
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .zip(empty.as_chunks::<4>().0)
                 .filter(|(a, b)| a != b)
                 .count(),
@@ -169,6 +175,66 @@ fn cursor_shapes_and_bad_snapshots_are_observable() {
     assert_ne!(counts[1], counts[2]);
     grid.cursor.as_mut().unwrap().column = 2;
     assert!(renderer.render_to_rgba(&context, &grid).is_err());
+}
+
+#[test]
+fn patterned_underlines_continue_across_cells_and_restart_after_a_gap() {
+    let context = pollster::block_on(DeviceContext::new()).unwrap();
+    for scale in [1, 2] {
+        let mut renderer = TerminalRenderer::new(
+            &context,
+            Options {
+                font: FontConfig {
+                    scale,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let metrics = renderer.metrics();
+        for (style, period, on) in [(Underline::Dotted, 2, 1), (Underline::Dashed, 5, 3)] {
+            for (foreground, background) in [
+                ([232, 237, 247, 255], [15, 20, 29, 255]),
+                ([23, 31, 43, 255], [242, 244, 248, 255]),
+            ] {
+                let grid = Grid {
+                    columns: 8,
+                    rows: 1,
+                    cells: (0..8)
+                        .map(|col| Cell {
+                            foreground,
+                            background,
+                            underline_color: foreground,
+                            underline: if matches!(col, 1 | 2 | 4..=6) {
+                                style
+                            } else {
+                                Underline::None
+                            },
+                            ..Default::default()
+                        })
+                        .collect(),
+                    cursor: None,
+                };
+                let image = renderer.render_to_rgba(&context, &grid).unwrap();
+                let y = metrics.cell_height - 2 * scale;
+                for x in 0..image.width {
+                    let start = match x / metrics.cell_width {
+                        1 | 2 => Some(metrics.cell_width),
+                        4..=6 => Some(4 * metrics.cell_width),
+                        _ => None,
+                    };
+                    let ink = start.is_some_and(|start| ((x - start) / scale) % period < on);
+                    let offset = ((y * image.width + x) * 4) as usize;
+                    assert_eq!(
+                        &image.rgba[offset..offset + 4],
+                        if ink { &foreground } else { &background },
+                        "{style:?}, {scale}x, x={x}"
+                    );
+                }
+            }
+        }
+    }
 }
 
 #[test]
