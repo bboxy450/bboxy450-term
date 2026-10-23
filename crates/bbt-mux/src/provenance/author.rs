@@ -11,6 +11,27 @@ pub(crate) struct Author<'a> {
     pub public: Value,
 }
 impl<'a> Author<'a> {
+    pub fn operator(
+        device_id: Ulid,
+        issuer: crate::messaging::wire::IssuerKind,
+        key: &'a SigningKey,
+    ) -> Self {
+        use base64::Engine;
+        let id = format!("device:{device_id}");
+        let kind = if issuer == crate::messaging::wire::IssuerKind::GpgRoot {
+            "device"
+        } else {
+            "local-dev"
+        };
+        Self {
+            id: id.clone(),
+            seat: None,
+            generation: None,
+            key,
+            public: json!({"signer":id,"kind":kind,"principal":format!("operator:{device_id}"),
+                "device_id":device_id,"public_key":base64::engine::general_purpose::STANDARD.encode(key.verifying_key().to_bytes())}),
+        }
+    }
     pub fn seat(seat: Ulid, generation: Option<u64>, key: &'a SigningKey) -> Self {
         use base64::Engine;
         let id = format!("seat:{seat}");

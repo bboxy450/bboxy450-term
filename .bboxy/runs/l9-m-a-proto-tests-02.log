@@ -1,0 +1,13 @@
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-proto)
+    Finished `test` profile [unoptimized] target(s) in 2.38s
+     Running tests/messaging.rs (target/l9-m-a-dev/debug/deps/messaging-1db86fbf3c269eda)
+
+running 6 tests
+test operator_recipients_are_named_while_legacy_seat_receipts_remain_ulids ... ok
+test task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_override ... ok
+test gui_messaging_wraps_the_existing_payload_and_correlates_its_reply ... ok
+test existing_messaging_requests_keep_their_tags_and_nested_fields ... ok
+test existing_stored_message_and_receipt_pages_keep_their_wire_shape ... ok
+test carried_messages_preserve_canonical_decimal_counters ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s

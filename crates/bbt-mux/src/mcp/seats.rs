@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use ulid::Ulid;
 
-use super::{Actor, Call, tools};
+use super::{Call, SeatActor as Actor, tools};
 use crate::{
     adapters::{Evidence, WakeOutcome},
     registry::{Class, SeatRecord},

@@ -6,7 +6,7 @@ use crate::{
     Ulid,
     adapters::Grade,
     index::{Index, Update},
-    mcp::{Actor, Call, work_items::Plan},
+    mcp::{Call, SeatActor as Actor, work_items::Plan},
     store::{Result, events::Envelope, invalid},
 };
 

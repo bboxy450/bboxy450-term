@@ -1,0 +1,8 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 5.65s
+     Running tests/mcp.rs (target/l9-m-a-dev/debug/deps/mcp-d15c0064ae7b8fd0)
+
+running 1 test
+test gui_operator_dm_replays_once_and_tasks_share_mcp_verification ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.82s

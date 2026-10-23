@@ -50,7 +50,7 @@ impl Call {
 
 /// Resolved by logic from admission and current policy, never from tool input.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Actor {
+pub struct SeatActor {
     pub seat_id: Ulid,
     pub process_generation: u64,
     pub swarm_id: Ulid,
@@ -60,20 +60,43 @@ pub struct Actor {
 }
 
 /// Logic resolves authority; GUI input never supplies an operator identity.
-/// Untagged seat encoding retains the existing journal's on-disk Actor shape.
+/// Seat authority retains its existing fields and untagged journal encoding.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
-pub(crate) enum Principal {
-    Seat(Actor),
+pub enum Actor {
+    Seat(SeatActor),
     Operator { device_id: Ulid },
 }
-impl From<&Actor> for Principal {
-    fn from(actor: &Actor) -> Self {
+impl Actor {
+    pub(crate) fn class(&self) -> crate::registry::Class {
+        match self {
+            Self::Seat(actor) => actor.role.class,
+            Self::Operator { .. } => crate::registry::Class::Oracle,
+        }
+    }
+    pub(crate) fn seat(&self) -> Option<&SeatActor> {
+        match self {
+            Self::Seat(actor) => Some(actor),
+            Self::Operator { .. } => None,
+        }
+    }
+    pub(crate) fn reference(&self) -> String {
+        match self {
+            Self::Seat(actor) => format!("seat:{}", actor.seat_id),
+            Self::Operator { device_id } => format!("operator:{device_id}"),
+        }
+    }
+}
+
+pub(crate) type Principal = Actor;
+
+impl From<&SeatActor> for Actor {
+    fn from(actor: &SeatActor) -> Self {
         Self::Seat(actor.clone())
     }
 }
-impl From<&Principal> for Principal {
-    fn from(principal: &Principal) -> Self {
+impl From<&Actor> for Actor {
+    fn from(principal: &Actor) -> Self {
         principal.clone()
     }
 }

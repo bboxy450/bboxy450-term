@@ -1,6 +1,7 @@
 //! Shared terminal viewport and GUI wire schema. No transport or renderer.
 pub mod gui;
 pub mod hosts;
+pub mod messaging;
 pub mod registry;
 pub mod seat_state;
 pub mod streams;

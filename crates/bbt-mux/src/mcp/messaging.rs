@@ -11,7 +11,7 @@ use crate::{
     messaging::{
         api::{Request, Response},
         tree::{EntryKind, Filter, Node, Rate, Right, normalize},
-        wire::{MessageKind, SendRequest},
+        wire::{MessageKind, SendRequest, SendRequestExt},
     },
     registry::Class,
 };
@@ -90,7 +90,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
             vec!["path"],
         ),
     ];
-    if actor.role.class == Class::Oracle {
+    if actor.class() == Class::Oracle {
         definitions.extend([
             ("ch_link", "Create or replace a W2.4 folder, sink or routing link in your own swarm. Requires Oracle class; grants remain W2.4 policy.",
              json!({"node":{"type":"object","additionalProperties":false,"required":["path","kind"],"properties":{
@@ -242,9 +242,57 @@ fn id(value: Ulid) -> Result<Ulid, String> {
         .then_some(value)
         .ok_or_else(|| "nil message or seat ID".into())
 }
+/// Adapt the shared GUI record through the same parsers as the MCP tools.
+pub(crate) fn gui_request(actor: &Actor, op_id: Ulid, value: Request) -> Result<Request, String> {
+    if let Request::Mute { seat, .. } = &value {
+        if actor.class() != Class::Oracle {
+            return Err("tool requires oracle-class authority".into());
+        }
+        id(*seat)?;
+        return Ok(value);
+    }
+    let tool = match &value {
+        Request::Send { .. } => "message_send",
+        Request::List { .. } => "message_list",
+        Request::Receipts { .. } => "message_receipts",
+        Request::Acknowledge { .. } => "message_ack",
+        Request::Ls { .. } => "ch_ls",
+        Request::Subscribe { .. } => "ch_subscribe",
+        Request::Unsubscribe { .. } => "ch_unsubscribe",
+        Request::Link { .. } => "ch_link",
+        Request::Pause { .. } => "ch_pause",
+        Request::Grant { .. } => "ch_grant",
+        Request::Mute { .. } => unreachable!(),
+    };
+    let mut args = match value {
+        Request::Send { message } => {
+            if message.id != op_id {
+                return Err("message ID must equal the correlated operation ID".into());
+            }
+            let mut args = serde_json::to_value(message).map_err(|e| e.to_string())?;
+            args.as_object_mut()
+                .ok_or("message request is not an object")?
+                .remove("id");
+            args
+        }
+        other => serde_json::to_value(other).map_err(|e| e.to_string())?,
+    };
+    args.as_object_mut()
+        .ok_or("messaging request is not an object")?
+        .remove("op");
+    request(
+        actor,
+        &Call {
+            op_id,
+            tool: tool.into(),
+            args,
+        },
+    )?
+    .ok_or_else(|| "unsupported messaging operation".into())
+}
 pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Option<Request>, String> {
     if matches!(call.tool.as_str(), "ch_link" | "ch_pause" | "ch_grant")
-        && actor.role.class != Class::Oracle
+        && actor.class() != Class::Oracle
     {
         return Err("tool requires oracle-class authority".into());
     }

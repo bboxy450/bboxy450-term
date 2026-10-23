@@ -452,6 +452,8 @@ async fn run(
                         Arc::make_mut(&mut model).consume_spawn(*id);
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                     },
+                    UiMsg::Messaging {id,swarm_id,request}=>queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}),
+                    UiMsg::Task {id,request}=>queue_action(&mut outgoing,GuiAction::Task {id:*id,request:request.clone()}),
                     UiMsg::Input {seat,generation,id,bytes}=>queue_action(&mut outgoing, GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()}),
                     UiMsg::Resize {seat,generation,cols,rows}=> {
                         if seats.get(&Ulid(seat.0.0)).is_some_and(|metadata| metadata.state.generation==*generation) {
@@ -551,6 +553,8 @@ async fn run(
                             logger.write(format!("GUI operation {op} rejected: {reason}"));
                         }
                         GuiReply::History {..}=>logger.write("history reply deferred to C1c"),
+                        GuiReply::Messaging {op,..}=>logger.write(format!("messaging operation {op} replied; UI projection belongs to L9-M-c")),
+                        GuiReply::Task {op,..}=>logger.write(format!("task operation {op} replied; UI projection belongs to L9-M-c")),
                     },
                     cockpit::Event::Exited {process,status}=> {
                         let reason=format!("{process} exited: {status}");

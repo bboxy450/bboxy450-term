@@ -4,7 +4,7 @@ use bbt_mux::Ulid;
 use bbt_mux::messaging::{
     keys::{LocalSeatKeys, SeatKeys},
     tree::{Actor, Filter, Node, Rate, Right, Tree},
-    wire::{Body, Envelope, MessageKind, SendRequest, public},
+    wire::{Body, Envelope, EnvelopeExt, MessageKind, SendRequest, SendRequestExt, public},
 };
 use bbt_mux::registry::{Class, Role};
 use bbt_mux::store::{digest, sqlite::SqliteStore};
@@ -97,6 +97,87 @@ fn add_sink(tree: &mut Tree, seat: Ulid) {
         .unwrap();
     tree.put(Actor::Operator, Node::sink(seat)).unwrap();
 }
+
+#[test]
+fn nil_seat_requires_the_local_operator_device_and_reserved_role() {
+    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+    use ed25519_dalek::Signer;
+    let device = SigningKey::from_bytes(&[42; 32]);
+    let keys = LocalSeatKeys::new(device.clone());
+    let mut signed = envelope(&keys, Ulid::new(), Ulid::new());
+    signed.seat = Ulid::nil();
+    signed.process_generation = 0;
+    signed.author = public(&device.verifying_key().to_bytes());
+    signed.role = Role {
+        name: "operator".into(),
+        class: Class::Oracle,
+    };
+    signed.priority_class = Class::Oracle;
+    signed.sign(&device).unwrap();
+    keys.verify(&signed).unwrap();
+    assert!(
+        LocalSeatKeys::new(SigningKey::from_bytes(&[43; 32]))
+            .verify(&signed)
+            .is_err()
+    );
+    for which in 0..4 {
+        let mut forged = signed.clone();
+        match which {
+            0 => forged.role.name = "executor".into(),
+            1 => forged.role.class = Class::Worker,
+            2 => forged.process_generation = 1,
+            _ => forged.device = "11".repeat(32),
+        }
+        // A valid cryptographic signature must not bypass operator policy.
+        forged.signature =
+            URL_SAFE_NO_PAD.encode(device.sign(&forged.signing_bytes().unwrap()).to_bytes());
+        assert!(keys.verify(&forged).is_err(), "forgery {which}");
+    }
+}
+
+#[test]
+fn message_bus_position_survives_reopen_without_reusing_the_ledger_sequence() {
+    use bbt_mux::messaging::ledger::{BusPosition, Ledger};
+    let tmp = tempfile::tempdir().unwrap();
+    let store = SqliteStore::open(tmp.path()).unwrap();
+    let swarm = Ulid::new();
+    let seat = Ulid::new();
+    let keys = LocalSeatKeys::new(SigningKey::from_bytes(&[42; 32]));
+    let mut signed = envelope(&keys, seat, swarm);
+    signed.sign(&keys.leaf(seat, 1).unwrap()).unwrap();
+    let mut request = SendRequest::text(&signed.context, signed.body.text().unwrap());
+    request.id = signed.id;
+    request.attachments = signed.attachments.clone();
+    let ledger = Ledger::open(store.clone(), swarm).unwrap();
+    let stored = ledger.accept(&request, &signed, &[], None, 1).unwrap();
+    assert!(stored.bus.is_none());
+    let bus = BusPosition {
+        stream: format!("swarm-{swarm}"),
+        seq: 9_007_199_254_740_993,
+    };
+    assert_ne!(stored.sequence, bus.seq);
+    ledger.record_publication(signed.id, &bus).unwrap();
+    ledger.record_publication(signed.id, &bus).unwrap();
+    let mut conflict = bus.clone();
+    conflict.seq += 1;
+    assert!(ledger.record_publication(signed.id, &conflict).is_err());
+    drop(ledger);
+    let reopened = Ledger::open(store, swarm).unwrap();
+    let stored = reopened.by_id(signed.id).unwrap();
+    assert_eq!(stored.bus, Some(bus));
+    assert_eq!(
+        serde_json::to_value(&stored).unwrap()["bus"]["seq"],
+        "9007199254740993"
+    );
+    assert_eq!(
+        reopened.existing(&request, seat).unwrap().unwrap().bus,
+        stored.bus
+    );
+    assert_eq!(
+        reopened.list(Some(seat), None, None, 0, 128).unwrap().items[0].bus,
+        stored.bus
+    );
+}
 #[test]
 fn nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen() {
     let tmp = tempfile::tempdir().unwrap();
@@ -147,7 +228,15 @@ fn nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths
         )
         .unwrap();
     assert_eq!(routes.len(), 2);
-    assert!(routes.iter().find(|r| r.seat == b).unwrap().arrivals.len() >= 2);
+    assert!(
+        routes
+            .iter()
+            .find(|r| r.recipient == b)
+            .unwrap()
+            .arrivals
+            .len()
+            >= 2
+    );
     let direct = tree
         .resolve(
             Actor::Operator,
@@ -158,7 +247,7 @@ fn nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths
         )
         .unwrap();
     assert_eq!(direct.len(), 1);
-    assert_eq!(direct[0].seat, a);
+    assert_eq!(direct[0].recipient, a);
     let narrow = tree
         .resolve(
             Actor::Operator,
@@ -169,7 +258,7 @@ fn nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths
         )
         .unwrap();
     assert_eq!(narrow.len(), 1);
-    assert_eq!(narrow[0].seat, b);
+    assert_eq!(narrow[0].recipient, b);
     assert!(
         narrow[0].arrivals[0]
             .path
@@ -930,7 +1019,7 @@ fn recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen() 
     req.id = message.id;
     let routes = (0..3)
         .map(|_| Route {
-            seat: Ulid::new(),
+            recipient: Ulid::new().into(),
             agent: None,
             arrivals: vec![Arrival {
                 path: message.context.clone(),

@@ -7,7 +7,7 @@ use serde::{Deserialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use ulid::Ulid;
 
-use super::Actor;
+use super::SeatActor as Actor;
 use crate::index::{Document, GraphKind, Index};
 use crate::registry::{Class, SeatRecord};
 
@@ -62,8 +62,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
         "outputSchema":{"type":"object","additionalProperties":true},
         "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}
     })).collect();
-    tools.extend(super::messaging::catalogue(actor));
-    tools.extend(super::work_items::catalogue(actor));
+    tools.extend(super::messaging::catalogue(&super::Actor::from(actor)));
+    tools.extend(super::work_items::catalogue(&super::Actor::from(actor)));
     tools.extend(super::seats::catalogue(actor));
     json!({"tools":tools})
 }

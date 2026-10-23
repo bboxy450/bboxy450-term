@@ -4,8 +4,33 @@ use hkdf::Hkdf;
 use sha2::Sha256;
 use ulid::Ulid;
 
-use super::wire::{Envelope, Issuer, IssuerKind, public};
+use super::wire::{Envelope, EnvelopeExt, Issuer, IssuerKind, public};
 use crate::store::{Result, invalid};
+
+/// IO-owned device authority for an admitted local operator. Never a wire DTO.
+pub(crate) struct OperatorSigning {
+    pub device_id: Ulid,
+    pub issuer: Issuer,
+    pub device: String,
+    pub grant: String,
+    pub epoch: u64,
+    pub key: SigningKey,
+}
+
+/// Public fields of the persisted ID1d custody record, not IssuerState.
+pub(crate) fn local_operator_grant(bytes: &[u8]) -> Result<(String, u64)> {
+    #[derive(serde::Deserialize)]
+    struct Grant {
+        public_key: String,
+        epoch: String,
+    }
+    let grant: Grant = serde_json::from_slice(bytes)?;
+    let epoch: u64 = grant.epoch.parse()?;
+    if epoch == 0 || epoch.to_string() != grant.epoch {
+        return Err(invalid("noncanonical local operator epoch"));
+    }
+    Ok((grant.public_key, epoch))
+}
 
 pub trait SeatKeys: Send + Sync {
     fn issuer(&self) -> Issuer;
@@ -61,6 +86,18 @@ impl SeatKeys for LocalSeatKeys {
     }
     fn verify(&self, envelope: &Envelope) -> Result<()> {
         let issuer = self.issuer();
+        if envelope.seat == Ulid::nil() {
+            if envelope.issuer_kind != issuer.kind
+                || envelope.issuer != issuer.key
+                || envelope.account != issuer.key
+                || envelope.device != issuer.key
+                || envelope.author != issuer.key
+            {
+                return Err(invalid("untrusted local operator device key"));
+            }
+            // The messaging service also checks the persisted issuer digest/epoch.
+            return envelope.verify_signature();
+        }
         if envelope.issuer_kind != issuer.kind
             || envelope.issuer != issuer.key
             || envelope.account != envelope.issuer
@@ -76,5 +113,22 @@ impl SeatKeys for LocalSeatKeys {
             return Err(invalid("untrusted local issuer or seat key"));
         }
         envelope.verify_signature()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn local_operator_grant_requires_a_key_field_and_canonical_positive_epoch() {
+        let bytes = br#"{"public_key":"fixture","epoch":"1","device_id":"retained by ID1d"}"#;
+        assert_eq!(local_operator_grant(bytes).unwrap(), ("fixture".into(), 1));
+        for epoch in ["0", "01", "+1", "18446744073709551616"] {
+            let record = serde_json::json!({"public_key":"fixture","epoch":epoch});
+            assert!(local_operator_grant(&serde_json::to_vec(&record).unwrap()).is_err());
+        }
+        assert!(local_operator_grant(br#"{"epoch":"1"}"#).is_err());
+        assert!(local_operator_grant(br#"{"public_key":"fixture","epoch":1}"#).is_err());
     }
 }

@@ -1,0 +1,28 @@
+{
+  "source_sha": "59e5614f6c95ea18d1c64e917f442954f7fe55ce",
+  "worktree": "/tmp/ci-nyx-l9-m-a-59e5614",
+  "target": "/tmp/nyx-l9-m-a-ci-59e5614",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "gate_slot": 2,
+  "grant_message": "70f913d9-57b0-4350-b227-c108f2a8f51e",
+  "started": 1792785754.839547,
+  "free_before": 30994436096,
+  "env": {
+    "CARGO_TARGET_DIR": "/tmp/nyx-l9-m-a-ci-59e5614",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "pid": 78151,
+  "exit_code": 0,
+  "finished": 1792786605.974598,
+  "git_status_after": "",
+  "target_allocated_bytes": 2786639872,
+  "target_removed": true,
+  "free_after": 26577092608,
+  "log_sha256": "e23d1be34d2b48e0230d628d5e883ac785068cec261125bf324f04b33d164d18"
+}

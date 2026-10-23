@@ -80,6 +80,16 @@ pub enum GuiAction {
         id: Ulid,
         spec: SpawnSpec,
     },
+    Messaging {
+        id: Ulid,
+        #[serde(with = "text_id")]
+        swarm_id: crate::SwarmId,
+        request: crate::messaging::Request,
+    },
+    Task {
+        id: Ulid,
+        request: crate::messaging::TaskRequest,
+    },
     ScheduleClose {
         #[serde(with = "text_id")]
         seat: SeatId,
@@ -126,6 +136,14 @@ pub enum GuiReply {
         op: Ulid,
         #[serde(with = "text_id")]
         seat: SeatId,
+    },
+    Messaging {
+        op: Ulid,
+        response: crate::messaging::Response,
+    },
+    Task {
+        op: Ulid,
+        response: crate::messaging::TaskResponse,
     },
     Ok {
         op: Ulid,

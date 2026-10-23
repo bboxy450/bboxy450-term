@@ -1,94 +1,18 @@
+//! Mux-owned validation and signing over shared messaging DTOs.
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
-use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-use crate::registry::{Class, Role};
 use crate::store::{Result, invalid};
+pub use bbt_proto::messaging::{
+    Body, Envelope, Issuer, IssuerKind, MAX_ENVELOPE, MAX_TEXT, MessageKind, SendRequest,
+};
 
-pub const MAX_TEXT: usize = 16 * 1024;
-pub const MAX_ENVELOPE: usize = 64 * 1024;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum IssuerKind {
-    LocalDev,
-    GpgRoot,
+pub trait SendRequestExt {
+    fn validate(&self) -> Result<()>;
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Issuer {
-    pub kind: IssuerKind,
-    pub key: String,
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MessageKind {
-    Text,
-    Chunk,
-    Decision,
-    Presence,
-    Task,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-pub enum Body {
-    Text {
-        text: String,
-    },
-    Presence {
-        event: String,
-        name: String,
-        harness: String,
-        state: crate::adapters::State,
-        muted: bool,
-        #[serde(with = "decimal")]
-        policy_epoch: u64,
-    },
-    Task {
-        task_id: Ulid,
-        event: String,
-        path: String,
-        summary: String,
-    },
-}
-impl Body {
-    pub fn text(&self) -> Option<&str> {
-        match self {
-            Self::Text { text } => Some(text),
-            Self::Task { summary, .. } => Some(summary),
-            Self::Presence { .. } => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SendRequest {
-    pub id: Ulid,
-    pub destination: String,
-    pub thread_id: Option<Ulid>,
-    pub reply_to: Option<Ulid>,
-    pub priority: u8,
-    pub kind: MessageKind,
-    pub text: String,
-    pub attachments: Vec<String>,
-}
-impl SendRequest {
-    pub fn text(destination: impl Into<String>, text: impl Into<String>) -> Self {
-        Self {
-            id: Ulid::new(),
-            destination: destination.into(),
-            thread_id: None,
-            reply_to: None,
-            priority: 0,
-            kind: MessageKind::Text,
-            text: text.into(),
-            attachments: Vec::new(),
-        }
-    }
-    pub fn validate(&self) -> Result<()> {
+impl SendRequestExt for SendRequest {
+    fn validate(&self) -> Result<()> {
         if self.id == Ulid::nil()
             || self.thread_id == Some(Ulid::nil())
             || self.reply_to == Some(Ulid::nil())
@@ -115,40 +39,13 @@ impl SendRequest {
     }
 }
 
-/// Every field except signature is covered by the fixed-order v1 tuple.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Envelope {
-    pub version: u16,
-    pub id: Ulid,
-    pub issuer_kind: IssuerKind,
-    pub issuer: String,
-    pub account: String,
-    pub device: String,
-    pub seat: Ulid,
-    pub author: String,
-    pub swarm_id: Ulid,
-    #[serde(with = "decimal")]
-    pub process_generation: u64,
-    pub context: String,
-    pub role: Role,
-    pub role_grant_id: String,
-    #[serde(with = "decimal")]
-    pub role_epoch: u64,
-    pub priority_class: Class,
-    #[serde(with = "decimal")]
-    pub sender_sequence: u64,
-    pub thread_id: Ulid,
-    pub reply_to: Option<Ulid>,
-    pub timestamp: u64,
-    pub priority: u8,
-    pub kind: MessageKind,
-    pub body: Body,
-    pub attachments: Vec<String>,
-    pub signature: String,
+pub trait EnvelopeExt {
+    fn signing_bytes(&self) -> Result<Vec<u8>>;
+    fn sign(&mut self, key: &SigningKey) -> Result<()>;
+    fn verify_signature(&self) -> Result<()>;
 }
-impl Envelope {
-    pub fn signing_bytes(&self) -> Result<Vec<u8>> {
+impl EnvelopeExt for Envelope {
+    fn signing_bytes(&self) -> Result<Vec<u8>> {
         // Nest two fixed tuples to stay within serde's tuple implementation bound.
         let payload = serde_json::to_vec(&(
             (
@@ -184,14 +81,14 @@ impl Envelope {
         bytes.extend(payload);
         Ok(bytes)
     }
-    pub fn sign(&mut self, key: &SigningKey) -> Result<()> {
+    fn sign(&mut self, key: &SigningKey) -> Result<()> {
         if self.author != public(&key.verifying_key().to_bytes()) {
             return Err(invalid("seat signing key mismatch"));
         }
         self.signature = URL_SAFE_NO_PAD.encode(key.sign(&self.signing_bytes()?).to_bytes());
         self.verify_signature()
     }
-    pub fn verify_signature(&self) -> Result<()> {
+    fn verify_signature(&self) -> Result<()> {
         SendRequest {
             id: self.id,
             destination: self.context.clone(),
@@ -203,10 +100,15 @@ impl Envelope {
             attachments: self.attachments.clone(),
         }
         .validate()?;
+        let operator = self.seat == Ulid::nil();
         if self.version != 1
-            || self.seat == Ulid::nil()
+            || (operator
+                && (self.process_generation != 0
+                    || self.role.name != "operator"
+                    || self.role.class != bbt_proto::registry::Class::Oracle
+                    || self.author != self.device))
             || self.swarm_id == Ulid::nil()
-            || self.process_generation == 0
+            || (!operator && self.process_generation == 0)
             || self.sender_sequence == 0
             || self.role_epoch == 0
             || self.role.name.is_empty()
@@ -290,18 +192,4 @@ pub fn parse_public(value: &str) -> Result<[u8; 32]> {
         *byte = u8::from_str_radix(&value[2 * i..2 * i + 2], 16)?;
     }
     Ok(key)
-}
-mod decimal {
-    use serde::{Deserialize, Deserializer, Serializer};
-    pub fn serialize<S: Serializer>(value: &u64, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&value.to_string())
-    }
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<u64, D::Error> {
-        let value = String::deserialize(d)?;
-        let n = value.parse::<u64>().map_err(serde::de::Error::custom)?;
-        if n.to_string() != value {
-            return Err(serde::de::Error::custom("noncanonical counter"));
-        }
-        Ok(n)
-    }
 }

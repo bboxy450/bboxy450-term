@@ -142,16 +142,7 @@ pub enum Priority {
     Later,
     Now,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Evidence {
-    SenderStored,
-    RecipientStored,
-    NativeQueued,
-    NativeWritten,
-    NativeUnknown,
-    ApplicationAcknowledged,
-}
+pub use bbt_proto::messaging::Evidence;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WakeOutcome {
     pub evidence: Evidence,

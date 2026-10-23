@@ -2872,6 +2872,9 @@ mod input_tests {
                 live::UiMsg::Watched(panes) => watched = panes,
                 live::UiMsg::SpawnZsh | live::UiMsg::Spawn { .. } => spawns += 1,
                 live::UiMsg::ConsumeSpawn { .. } => {}
+                live::UiMsg::Messaging { .. } | live::UiMsg::Task { .. } => {
+                    panic!("pane admission fixture produced a messaging intent")
+                }
             }
         }
         assert_eq!(delivered, expected);

@@ -1,5 +1,6 @@
 #![allow(clippy::disallowed_methods)] // Controlled blocking IO/process fixtures.
 
+use bbt_mux::messaging::wire::EnvelopeExt;
 mod common;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;
@@ -231,6 +232,320 @@ impl Drop for Fixture {
 }
 fn key() -> SigningKey {
     SigningKey::from_bytes(&[53; 32])
+}
+
+impl Fixture {
+    fn prepare_operator(&self) -> Ulid {
+        struct Provided(SigningKey);
+        impl bbt_mux::identity::DeviceKeyStore for Provided {
+            fn custody(&self) -> bbt_mux::identity::Custody {
+                bbt_mux::identity::Custody::Memory
+            }
+            fn load(&self, _: Ulid) -> bbt_mux::identity::Result<Option<SigningKey>> {
+                Ok(Some(self.0.clone()))
+            }
+            fn create(&self, _: Ulid, _: &SigningKey) -> bbt_mux::identity::Result<()> {
+                Err(bbt_mux::identity::PendingReason::JournalConflict)
+            }
+        }
+        assert!(matches!(
+            bbt_mux::identity::local_dev_issuer_with_store(&self.config.run_dir, &Provided(key())),
+            bbt_mux::identity::LocalIssuerOutcome::Ready(_)
+        ));
+        self.runtime
+            .block_on(self.client().identity_status())
+            .unwrap()
+            .device_id
+            .unwrap()
+    }
+    fn gui(&self, id: Ulid, action: bbt_proto::GuiAction) -> bbt_proto::GuiReply {
+        let endpoint = self.runtime.block_on(self.client().gui_endpoint()).unwrap();
+        let mut socket = UnixStream::connect(endpoint.path).unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut bytes = serde_json::to_vec(&bbt_proto::GuiRequest {
+            version: bbt_proto::gui::VERSION,
+            capability: endpoint.capability,
+            action,
+        })
+        .unwrap();
+        bytes.push(b'\n');
+        socket.write_all(&bytes).unwrap();
+        let mut read = std::io::BufReader::new(socket);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            assert!(Instant::now() < deadline, "GUI operation {id} timed out");
+            let bytes = read_frame(&mut read)
+                .unwrap()
+                .expect("admitted GUI stays open");
+            let reply: bbt_proto::GuiReply = serde_json::from_slice(&bytes).unwrap();
+            let matched = match &reply {
+                bbt_proto::GuiReply::Messaging { op, .. }
+                | bbt_proto::GuiReply::Task { op, .. }
+                | bbt_proto::GuiReply::Error { op, .. } => *op == id,
+                _ => false,
+            };
+            if matched {
+                return reply;
+            }
+        }
+    }
+    fn gui_task(&self, request: bbt_proto::messaging::TaskRequest) -> bbt_proto::GuiReply {
+        let id = Ulid::new();
+        self.gui(id, bbt_proto::GuiAction::Task { id, request })
+    }
+}
+
+#[test]
+fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
+    use bbt_proto::messaging::{AuthorKind, Request, Response, TaskRequest, TaskResponse};
+    use bbt_proto::{GuiAction, GuiReply, SwarmId};
+    let mut f = Fixture::new();
+    let device = f.prepare_operator();
+    let id = Ulid::new();
+    let mut message = bbt_mux::messaging::SendRequest::text(
+        format!("seats/{}/inbox", f.own.id),
+        "GUI operator fixture DM",
+    );
+    message.id = id;
+    let action = GuiAction::Messaging {
+        id,
+        swarm_id: SwarmId::from_u128(f.own.swarm.0),
+        request: Request::Send { message },
+    };
+    let first = f.gui(id, action.clone());
+    let GuiReply::Messaging {
+        response: Response::Stored { message },
+        ..
+    } = &first
+    else {
+        panic!("{first:?}")
+    };
+    assert_eq!(message.envelope.seat, Ulid::nil());
+    assert_eq!(message.envelope.process_generation, 0);
+    assert_eq!(message.envelope.role.name, "operator");
+    assert_eq!(message.envelope.role.class, Class::Oracle);
+    assert_eq!(message.envelope.author, message.envelope.device);
+    message.envelope.verify_signature().unwrap();
+    let account = SqliteStore::open(&f.config.run_dir.join("account")).unwrap();
+    let local_issuer = account.get("identity/local-issuer").unwrap().unwrap();
+    assert_eq!(
+        message.envelope.role_grant_id,
+        bbt_mux::store::digest(&local_issuer)
+    );
+    let local_issuer: Value = serde_json::from_slice(&local_issuer).unwrap();
+    assert_eq!(
+        json!(message.envelope.role_epoch.to_string()),
+        local_issuer["epoch"]
+    );
+    assert_eq!(
+        serde_json::to_value(f.gui(id, action.clone())).unwrap(),
+        serde_json::to_value(&first).unwrap()
+    );
+    f.restart();
+    assert_eq!(
+        serde_json::to_value(f.gui(id, action.clone())).unwrap(),
+        serde_json::to_value(&first).unwrap()
+    );
+    let mut different = action;
+    if let GuiAction::Messaging {
+        request: Request::Send { message },
+        ..
+    } = &mut different
+    {
+        message.text = "reused id must not send".into();
+    }
+    assert!(
+        matches!(f.gui(id,different), GuiReply::Error {reason,..} if reason.contains("different arguments"))
+    );
+    let message_count: i64 =
+        SqliteStore::open(&f.config.run_dir.join(format!("swarm-{}", f.own.swarm)))
+            .unwrap()
+            .connection()
+            .unwrap()
+            .query_row(
+                "SELECT COUNT(*) FROM msg_messages WHERE id=?1",
+                [id.to_string()],
+                |row| row.get(0),
+            )
+            .unwrap();
+    assert_eq!(message_count, 1);
+    let entry: Value =
+        serde_json::from_slice(&account.get(&format!("control/op/{id}")).unwrap().unwrap())
+            .unwrap();
+    assert_eq!(entry["actor"]["device_id"], json!(device));
+    assert_eq!(entry["tool"], "gui_messaging");
+    let inbox = f.call(f.own.id, Ulid::new(), "message_list", json!({"limit":128}));
+    assert!(!inbox["isError"].as_bool().unwrap(), "{inbox}");
+    assert!(inbox.to_string().contains("GUI operator fixture DM"));
+    let ack = f.mutate(f.own.id, Ulid::new(), "message_ack", json!({"message":id}));
+    assert_eq!(ack["isError"], false, "{ack}");
+    let receipt_op = Ulid::new();
+    let receipts = f.gui(
+        receipt_op,
+        GuiAction::Messaging {
+            id: receipt_op,
+            swarm_id: SwarmId::from_u128(f.own.swarm.0),
+            request: Request::Receipts {
+                message: id,
+                after: 0,
+                limit: 128,
+            },
+        },
+    );
+    let GuiReply::Messaging {
+        response: Response::Receipts { page },
+        ..
+    } = receipts
+    else {
+        panic!("{receipts:?}")
+    };
+    assert!(page.items.iter().any(|receipt| receipt.evidence == bbt_mux::adapters::Evidence::ApplicationAcknowledged));
+    let published = Instant::now() + Duration::from_secs(5);
+    let row = loop {
+        let row = f
+            .runtime
+            .block_on(f.client().gui_message_row(f.own.swarm, id))
+            .unwrap();
+        let log = EventLog::open(&f.config.run_dir.join(format!("swarm-{}", f.own.swarm))).unwrap();
+        let ack_published = log.after(0, 128).unwrap().iter().any(|event| {
+            event.event.subject == "operator/inbox/receipt"
+                && event.event.payload["message"] == json!(id)
+                && event.event.payload["evidence"] == "application-acknowledged"
+        });
+        if row.bus.is_some() && ack_published {
+            break row;
+        }
+        assert!(
+            Instant::now() < published,
+            "operator receipt or message bus position not published"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    assert_eq!(row.author.kind, AuthorKind::Operator);
+    assert_eq!(row.author.id, device.to_string());
+    assert_eq!(
+        row.issuer_kind,
+        bbt_mux::messaging::wire::IssuerKind::LocalDev
+    );
+    assert_eq!(row.receipts.acked, 1);
+    assert_eq!(
+        row.bus.as_ref().unwrap().stream,
+        format!("swarm-{}", f.own.swarm)
+    );
+    let wrong = Ulid::new();
+    let mut bad =
+        bbt_mux::messaging::SendRequest::text(format!("seats/{}/inbox", f.own.id), "wrong swarm");
+    bad.id = wrong;
+    assert!(
+        matches!(f.gui(wrong,GuiAction::Messaging {id:wrong,swarm_id:SwarmId::from_u128(f.outside.swarm.0),
+        request:Request::Send {message:bad}}),GuiReply::Error {reason,..} if reason.contains("swarm mismatch"))
+    );
+    let wrong = Ulid::new();
+    let mut bad = bbt_mux::messaging::SendRequest::text(
+        format!("swarms/{}/**", f.outside.swarm),
+        "wrong swarm path",
+    );
+    bad.id = wrong;
+    bad.kind = bbt_mux::messaging::MessageKind::Decision;
+    assert!(matches!(f.gui(wrong,GuiAction::Messaging {
+        id:wrong,swarm_id:SwarmId::from_u128(f.own.swarm.0),request:Request::Send {message:bad}
+    }),GuiReply::Error {reason,..} if reason.contains("swarm mismatch")));
+    let wrong = Ulid::new();
+    assert!(matches!(f.gui(wrong,GuiAction::Messaging {
+        id:wrong,swarm_id:SwarmId::from_u128(f.outside.swarm.0),request:Request::Receipts {message:id,after:0,limit:128}
+    }),GuiReply::Error {reason,..} if reason.contains("requested swarm")));
+
+    assert!(matches!(
+        f.gui_task(TaskRequest::Delegate {
+            task_path: f.task_path(),
+            seat_id: f.own.id,
+            role: None
+        }),
+        GuiReply::Task {
+            response: TaskResponse::Applied,
+            ..
+        }
+    ));
+    assert_eq!(
+        f.task_document().metadata["delegated_by"],
+        format!("operator:{device}")
+    );
+    let report = f.mutate(
+        f.own.id,
+        Ulid::new(),
+        "task_report",
+        json!({"task_path":f.task_path(),"summary":"reported without verification"}),
+    );
+    assert_eq!(report["isError"], false, "{report}");
+    let refused = f.gui_task(TaskRequest::Accept {
+        task_path: f.task_path(),
+    });
+    assert!(
+        matches!(refused,GuiReply::Error {reason,..} if reason.contains("recorded verify_result"))
+    );
+    assert_eq!(f.task_document().metadata["status"], "reported");
+    let report = f.report(verification("true", 0, json!([])));
+    assert_eq!(report["isError"], false, "{report}");
+    let accept_id = Ulid::new();
+    let accept = GuiAction::Task {
+        id: accept_id,
+        request: TaskRequest::Accept {
+            task_path: f.task_path(),
+        },
+    };
+    let accepted = f.gui(accept_id, accept.clone());
+    assert!(matches!(
+        accepted,
+        GuiReply::Task {
+            response: TaskResponse::Applied,
+            ..
+        }
+    ));
+    assert_eq!(
+        serde_json::to_value(f.gui(accept_id, accept)).unwrap(),
+        serde_json::to_value(accepted).unwrap()
+    );
+    let document = f.task_document();
+    assert_eq!(document.metadata["status"], "accepted");
+    assert_eq!(
+        document.metadata["authorship"]["signer"],
+        format!("device:{device}")
+    );
+    assert_eq!(document.metadata["authorship"]["kind"], "local-dev");
+    let listed = f.gui_task(TaskRequest::List {
+        swarm_id: Some(f.own.swarm),
+        status: Some("accepted".into()),
+        assignee: None,
+        after: None,
+        limit: Some(128),
+    });
+    let GuiReply::Task {
+        response: TaskResponse::Items { items, .. },
+        ..
+    } = listed
+    else {
+        panic!("{listed:?}")
+    };
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].id, f.task);
+    assert_eq!(items[0].delegated_by, Some(format!("operator:{device}")));
+    assert_eq!(items[0].verify.as_ref().unwrap().exit_code, 0);
+    let status = f.gui_task(TaskRequest::Status {
+        task_path: None,
+        task_id: Some(f.task),
+    });
+    assert!(
+        matches!(status,GuiReply::Task {response:TaskResponse::Item {item},..} if item.metadata["status"] == "accepted")
+    );
+    let subjects = f
+        .runtime
+        .block_on(f.client().gui_messaging_subjects())
+        .unwrap();
+    assert!(subjects.contains(&"operator/inbox/receipt".to_string()));
+    assert!(subjects.contains(&format!("swarms/{}/message", f.own.swarm)));
+    assert!(subjects.iter().all(|subject| !subject.contains(['*', '>'])));
 }
 
 impl Fixture {

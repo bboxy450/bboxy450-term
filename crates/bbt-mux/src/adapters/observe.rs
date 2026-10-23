@@ -15,14 +15,7 @@ pub enum Grade {
     Shim,
     Reported,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum State {
-    Active,
-    Idle,
-    Waiting,
-    Errored,
-}
+pub use bbt_proto::messaging::State;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WaitingKind {

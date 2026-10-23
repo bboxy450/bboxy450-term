@@ -1,43 +1,19 @@
 //! Durable inbox/outbox, receipt history and receiver-local scheduling.
+pub use bbt_proto::messaging::{BusPosition, Page, Receipt, Recipient, StoredMessage};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use super::{
-    tree::{self, Arrival, Route},
-    wire::{Body, Envelope, SendRequest},
+    tree::{self, Route},
+    wire::{Body, Envelope, EnvelopeExt, SendRequest},
 };
 use crate::{
     adapters::{Evidence, WakeOutcome},
     registry::Class,
-    store::{Result, events::Draft, invalid, sqlint, sqlite::SqliteStore},
+    store::{Result, Store, events::Draft, invalid, sqlint, sqlite::SqliteStore},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct StoredMessage {
-    pub sequence: u64,
-    pub envelope: Envelope,
-    pub held_out: Option<String>,
-}
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Receipt {
-    pub message_sequence: u64,
-    pub message: Ulid,
-    pub sender: Ulid,
-    pub recipient: Ulid,
-    pub agent: Option<String>,
-    pub evidence: Evidence,
-    pub note: String,
-    pub held: Option<String>,
-    pub arrivals: Vec<Arrival>,
-    pub received_ms: u64,
-    pub eligible_ms: u64,
-    pub batch_key: String,
-    pub class: Class,
-    pub attempt: Option<Ulid>,
-    pub native_id: Option<String>,
-    pub relayed_via_main: bool,
-}
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReceiptEvent {
     pub sequence: u64,
@@ -45,11 +21,7 @@ pub struct ReceiptEvent {
     pub evidence: Evidence,
     pub note: String,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Page<T> {
-    pub items: Vec<T>,
-    pub next: Option<u64>,
-}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Work {
     pub id: Ulid,
@@ -84,7 +56,12 @@ impl Ledger {
         ledger.recover()?;
         Ok(ledger)
     }
-    pub fn existing(&self, request: &SendRequest, sender: Ulid) -> Result<Option<StoredMessage>> {
+    pub fn existing(
+        &self,
+        request: &SendRequest,
+        sender: impl Into<Recipient>,
+    ) -> Result<Option<StoredMessage>> {
+        let sender = sender.into();
         type Existing = (u64, Vec<u8>, Vec<u8>, String, Option<String>);
         let row: Option<Existing> = self
             .store
@@ -108,6 +85,7 @@ impl Ledger {
             }
             Ok(StoredMessage {
                 sequence,
+                bus: self.bus_position(envelope.id)?,
                 envelope,
                 held_out,
             })
@@ -120,9 +98,11 @@ impl Ledger {
             [sqlint(sequence)?],
             |r| Ok((r.get(0)?, r.get(1)?)),
         )?;
+        let envelope: Envelope = serde_json::from_slice(&bytes)?;
         Ok(StoredMessage {
             sequence,
-            envelope: serde_json::from_slice(&bytes)?,
+            bus: self.bus_position(envelope.id)?,
+            envelope,
             held_out,
         })
     }
@@ -134,6 +114,14 @@ impl Ledger {
         )?;
         self.message(sequence)
     }
+    pub(crate) fn sender(&self, id: Ulid) -> Result<Recipient> {
+        let value: String = self.store.connection()?.query_row(
+            "SELECT sender FROM msg_messages WHERE id=?1",
+            [id.to_string()],
+            |row| row.get(0),
+        )?;
+        Recipient::try_from(value).map_err(invalid)
+    }
     pub fn accept(
         &self,
         request: &SendRequest,
@@ -142,7 +130,25 @@ impl Ledger {
         held: Option<&str>,
         now: u64,
     ) -> Result<StoredMessage> {
-        if let Some(old) = self.existing(request, envelope.seat)? {
+        self.accept_from(
+            request,
+            envelope,
+            routes,
+            held,
+            now,
+            Recipient::Seat(envelope.seat),
+        )
+    }
+    pub(crate) fn accept_from(
+        &self,
+        request: &SendRequest,
+        envelope: &Envelope,
+        routes: &[Route],
+        held: Option<&str>,
+        now: u64,
+        sender: Recipient,
+    ) -> Result<StoredMessage> {
+        if let Some(old) = self.existing(request, sender)? {
             return Ok(old);
         }
         envelope.verify_signature()?;
@@ -152,7 +158,7 @@ impl Ledger {
             "INSERT INTO msg_messages(id,sender,request,envelope,held_out) VALUES(?1,?2,?3,?4,?5)",
             params![
                 envelope.id.to_string(),
-                envelope.seat.to_string(),
+                sender.to_string(),
                 serde_json::to_vec(request)?,
                 serde_json::to_vec(envelope)?,
                 held
@@ -162,7 +168,10 @@ impl Ledger {
         tree::queue_event(
             &tx,
             &Draft::new(
-                format!("seat/{}/sender_stored", envelope.seat),
+                match sender {
+                    Recipient::Seat(seat) => format!("seat/{seat}/sender_stored"),
+                    Recipient::Operator(_) => "operator/inbox/receipt".into(),
+                },
                 "messaging",
                 serde_json::json!({"message":envelope.id,"sequence":sequence,"held":held}),
             ),
@@ -174,6 +183,7 @@ impl Ledger {
         tx.commit()?;
         Ok(StoredMessage {
             sequence,
+            bus: self.bus_position(envelope.id)?,
             envelope: envelope.clone(),
             held_out: held.map(str::to_string),
         })
@@ -190,9 +200,11 @@ impl Ledger {
         })?;
         rows.map(|r| {
             let (sequence, bytes, held_out) = r?;
+            let envelope: Envelope = serde_json::from_slice(&bytes)?;
             Ok(StoredMessage {
                 sequence,
-                envelope: serde_json::from_slice(&bytes)?,
+                bus: self.bus_position(envelope.id)?,
+                envelope,
                 held_out,
             })
         })
@@ -337,7 +349,7 @@ impl Ledger {
     }
     pub fn targets(&self, now: u64) -> Result<Vec<Ulid>> {
         let db = self.store.connection()?;
-        let mut q=db.prepare_cached("SELECT DISTINCT recipient FROM msg_deliveries WHERE evidence='recipient-stored' AND held IS NULL AND eligible_ms<=?1 ORDER BY recipient LIMIT 1024")?;
+        let mut q=db.prepare_cached("SELECT DISTINCT recipient FROM msg_deliveries WHERE evidence='recipient-stored' AND recipient NOT LIKE 'operator:%' AND held IS NULL AND eligible_ms<=?1 ORDER BY recipient LIMIT 1024")?;
         q.query_map([sqlint(now)?], |r| r.get::<_, String>(0))?
             .map(|r| Ok(r?.parse()?))
             .collect()
@@ -450,6 +462,7 @@ impl Ledger {
             bytes += size;
             messages.push(StoredMessage {
                 sequence: r.message_sequence,
+                bus: self.bus_position(envelope.id)?,
                 envelope,
                 held_out: None,
             });
@@ -558,7 +571,14 @@ impl Ledger {
         tx.commit()?;
         Ok(())
     }
-    pub fn acknowledge(&self, actor: Ulid, id: Ulid, agent: Option<&str>, now: u64) -> Result<()> {
+    pub fn acknowledge(
+        &self,
+        actor: impl Into<Recipient>,
+        id: Ulid,
+        agent: Option<&str>,
+        now: u64,
+    ) -> Result<()> {
+        let actor = actor.into();
         let mut db = self.store.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let bytes:Vec<u8>=tx.query_row("SELECT d.data FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 AND d.recipient=?2 AND d.agent=?3",params![id.to_string(),actor.to_string(),agent.unwrap_or("")],|r|r.get(0))?;
@@ -575,6 +595,16 @@ impl Ledger {
     pub fn list(
         &self,
         actor: Option<Ulid>,
+        thread: Option<Ulid>,
+        channel: Option<&str>,
+        after: u64,
+        limit: usize,
+    ) -> Result<Page<StoredMessage>> {
+        self.list_for(actor.map(Recipient::Seat), thread, channel, after, limit)
+    }
+    pub(crate) fn list_for(
+        &self,
+        actor: Option<Recipient>,
         thread: Option<Ulid>,
         channel: Option<&str>,
         after: u64,
@@ -615,6 +645,7 @@ impl Ledger {
             bytes += raw.len();
             items.push(StoredMessage {
                 sequence,
+                bus: self.bus_position(envelope.id)?,
                 envelope,
                 held_out: row.get(2)?,
             });
@@ -642,6 +673,32 @@ impl Ledger {
             [id.to_string()],
         )?;
         Ok(())
+    }
+    fn bus_position(&self, id: Ulid) -> Result<Option<BusPosition>> {
+        self.store
+            .get(&format!("message/bus/{id}"))?
+            .map(|bytes| serde_json::from_slice(&bytes).map_err(Into::into))
+            .transpose()
+    }
+    /// Persist the canonical publication position before marking its outbox sent.
+    /// Receipt/presence outbox IDs that are not message IDs need no association.
+    pub fn record_publication(&self, id: Ulid, position: &BusPosition) -> Result<()> {
+        let is_message: bool = self.store.connection()?.query_row(
+            "SELECT EXISTS(SELECT 1 FROM msg_messages WHERE id=?1)",
+            [id.to_string()],
+            |row| row.get(0),
+        )?;
+        if !is_message {
+            return Ok(());
+        }
+        if let Some(old) = self.bus_position(id)? {
+            if old != *position {
+                return Err(invalid("message publication position conflict"));
+            }
+            return Ok(());
+        }
+        self.store
+            .put(&format!("message/bus/{id}"), &serde_json::to_vec(position)?)
     }
     pub fn swarm(&self) -> Ulid {
         self.swarm
@@ -705,7 +762,7 @@ fn insert_deliveries(
             message_sequence: sequence,
             message: envelope.id,
             sender: envelope.seat,
-            recipient: route.seat,
+            recipient: route.recipient,
             agent: route.agent.clone(),
             evidence: Evidence::SenderStored,
             note: "sender stored signed envelope".into(),
@@ -730,7 +787,7 @@ fn insert_deliveries(
             "INSERT INTO msg_deliveries VALUES(?1,?2,?3,?4,?5,?6,?7,?8,NULL,?9)",
             params![
                 sqlint(sequence)?,
-                route.seat.to_string(),
+                route.recipient.to_string(),
                 route.agent.as_deref().unwrap_or(""),
                 "recipient-stored",
                 class_int(receipt.class),
@@ -779,11 +836,24 @@ fn receipt_event(tx: &rusqlite::Transaction<'_>, receipt: &Receipt, now: u64) ->
     tree::queue_event(
         tx,
         &Draft::new(
-            format!("seat/{}/receipt", receipt.recipient),
+            match receipt.recipient {
+                Recipient::Seat(seat) => format!("seat/{seat}/receipt"),
+                Recipient::Operator(_) => "operator/inbox/receipt".into(),
+            },
             "messaging",
             serde_json::to_value(receipt)?,
         ),
     )?;
+    if receipt.sender == Ulid::nil() && matches!(receipt.recipient, Recipient::Seat(_)) {
+        tree::queue_event(
+            tx,
+            &Draft::new(
+                "operator/inbox/receipt",
+                "messaging",
+                serde_json::to_value(receipt)?,
+            ),
+        )?;
+    }
     Ok(())
 }
 fn publication(tx: &rusqlite::Transaction<'_>, envelope: &Envelope) -> Result<()> {
@@ -799,7 +869,24 @@ fn publication(tx: &rusqlite::Transaction<'_>, envelope: &Envelope) -> Result<()
         serde_json::to_value(envelope)?,
     );
     draft.id = envelope.id;
-    draft.seat = Some(envelope.seat);
-    draft.generation = Some(envelope.process_generation);
-    tree::queue_event(tx, &draft)
+    draft.seat = (envelope.seat != Ulid::nil()).then_some(envelope.seat);
+    draft.generation = (envelope.process_generation > 0).then_some(envelope.process_generation);
+    tree::queue_event(tx, &draft)?;
+    let operator: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 AND d.recipient LIKE 'operator:%')",
+        [envelope.id.to_string()],
+        |row| row.get(0),
+    )?;
+    if operator && envelope.context != "operator/inbox" {
+        let mut mirror = Draft::new(
+            "operator/inbox/message",
+            "messaging",
+            serde_json::to_value(envelope)?,
+        );
+        mirror.seat = (envelope.seat != Ulid::nil()).then_some(envelope.seat);
+        mirror.generation =
+            (envelope.process_generation > 0).then_some(envelope.process_generation);
+        tree::queue_event(tx, &mirror)?;
+    }
+    Ok(())
 }
