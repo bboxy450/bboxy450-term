@@ -165,6 +165,45 @@ impl Fixture {
         assert!(results.complete(id, reply));
         id
     }
+    async fn task_refresh(&mut self, records: &mut Records, results: &mut Results) {
+        records.refresh();
+        for _ in 0..4 {
+            let commands = records.commands();
+            if commands.is_empty() {
+                return;
+            }
+            for command in commands {
+                self.command(command, results).await;
+            }
+            records.replies(results);
+        }
+        assert!(
+            records.commands().is_empty(),
+            "bounded fixture reads settled"
+        );
+    }
+    async fn report(&self, verified: bool) {
+        let mut args = serde_json::json!({"task_path":self.task_path,"summary":"Actual MCP report shown in the native review card","commit":"0123456789012345678901234567890123456789"});
+        if verified {
+            args["verify_result"] =
+                serde_json::json!({"command":"true","exit_code":0,"evidence":[]});
+        }
+        let result = self
+            .logic()
+            .client
+            .control_call(
+                self.own.id,
+                self.own.generation,
+                bbt_mux::mcp::Call {
+                    op_id: Ulid::new(),
+                    tool: "task_report".into(),
+                    args,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(result["isError"], false, "{result}");
+    }
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
@@ -370,4 +409,37 @@ async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
         records.review(f.task, None),
         Err("task_requires_reported_zero_exit")
     ));
+    f.report(false).await;
+    f.task_refresh(&mut records, &mut results).await;
+    let card = records.task(f.task).unwrap();
+    let report = messaging::task_report(card, records.doc(f.task).unwrap())
+        .unwrap()
+        .unwrap();
+    assert_eq!(report.status, "reported");
+    assert_eq!(
+        report.summary,
+        "Actual MCP report shown in the native review card"
+    );
+    assert!(matches!(
+        records.review(f.task, None),
+        Err("task_requires_reported_zero_exit")
+    ));
+    f.report(true).await;
+    f.task_refresh(&mut records, &mut results).await;
+    let card = records.task(f.task).unwrap();
+    let report = messaging::task_report(card, records.doc(f.task).unwrap())
+        .unwrap()
+        .unwrap();
+    assert!(
+        report
+            .verify_result
+            .as_ref()
+            .is_some_and(|verify| verify.exit_code == 0)
+    );
+    assert!(messaging::task_row(card).0.may_accept);
+    let accept = records.review(f.task, None).unwrap();
+    f.command(accept, &mut results).await;
+    records.replies(&results);
+    f.task_refresh(&mut records, &mut results).await;
+    assert_eq!(records.task(f.task).unwrap().status, "accepted");
 }

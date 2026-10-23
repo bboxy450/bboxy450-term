@@ -70,6 +70,19 @@ pub struct WindowArtifactCounts {
     pub deleted: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PageSnapshot {
+    pub revision: u64,
+    pub high: u64,
+    pub next: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PageError {
+    pub revision: u64,
+    pub reason: String,
+}
+
 /// IO-owned, immutable once published. The serialized row window is bounded
 /// by both count and bytes; per-stream positions have a separate finite cap.
 /// SQLite, not this cache, owns delivery and operator-read state.
@@ -83,6 +96,12 @@ pub struct EventLane {
     omitted: BTreeMap<String, EventGap>,
     cursors: BTreeMap<String, GuiEventCursor>,
     page_next: BTreeMap<String, Option<u64>>,
+    page_snapshots: BTreeMap<String, PageSnapshot>,
+    page_errors: BTreeMap<String, PageError>,
+    read_page: Vec<Arc<GuiEventRecord>>,
+    read_sizes: Vec<usize>,
+    read_bytes: usize,
+    read_gap: Option<EventGap>,
     state: EventLaneState,
     attach: Option<Ulid>,
     artifacts: WindowArtifactCounts,
@@ -103,6 +122,20 @@ impl EventLane {
     pub fn pages(&self) -> &BTreeMap<String, Option<u64>> {
         &self.page_next
     }
+    pub fn page_snapshots(&self) -> &BTreeMap<String, PageSnapshot> {
+        &self.page_snapshots
+    }
+    pub fn page_errors(&self) -> &BTreeMap<String, PageError> {
+        &self.page_errors
+    }
+    /// The latest explicit read remains separate from the rolling live window.
+    /// These are the server's shared projections, including their original proof.
+    pub fn read_page(&self) -> &[Arc<GuiEventRecord>] {
+        &self.read_page
+    }
+    pub fn read_gap(&self) -> Option<&EventGap> {
+        self.read_gap.as_ref()
+    }
     pub fn state(&self) -> &EventLaneState {
         &self.state
     }
@@ -110,7 +143,7 @@ impl EventLane {
         self.artifacts
     }
     pub fn bytes(&self) -> usize {
-        self.bytes
+        self.bytes + self.read_bytes
     }
 
     fn register(&mut self, stream: &str) -> Result<(), &'static str> {
@@ -203,18 +236,71 @@ impl EventLane {
         {
             return Err("event history page exceeds bounds or crosses streams");
         }
-        let stream = page.cursor.stream.clone();
-        let mut changed = self.apply_cursor(page.cursor)?;
-        for row in page.records {
-            changed |= self.apply(row)?;
+        if !cursor_consistent(&page.cursor) {
+            return Err("inconsistent event cursor");
         }
-        changed |= self.page_next.get(&stream) != Some(&page.next);
-        self.page_next.insert(stream, page.next);
-        Ok(changed)
+        for row in &page.records {
+            self.validate_record(row)?;
+        }
+        let stream = page.cursor.stream.clone();
+        let high = page.cursor.high;
+        self.apply_cursor(page.cursor)?;
+        self.read_page.clear();
+        self.read_sizes.clear();
+        self.read_bytes = 0;
+        self.read_gap = None;
+        for row in page.records {
+            let size = serde_json::to_vec(&row)
+                .map_err(|_| "invalid event page record")?
+                .len();
+            self.read_bytes += size;
+            self.read_sizes.push(size);
+            self.read_page.push(Arc::new(row));
+        }
+        self.trim_window();
+        let revision = self.next_page_revision(&stream)?;
+        self.page_next.insert(stream.clone(), page.next);
+        self.page_errors.remove(&stream);
+        self.page_snapshots.insert(
+            stream,
+            PageSnapshot {
+                revision,
+                high,
+                next: page.next,
+            },
+        );
+        // Even an identical or empty page completes a particular read.
+        Ok(true)
     }
 
-    pub fn apply(&mut self, record: GuiEventRecord) -> Result<bool, &'static str> {
+    fn next_page_revision(&self, stream: &str) -> Result<u64, &'static str> {
+        self.page_snapshots
+            .get(stream)
+            .map_or(0, |page| page.revision)
+            .max(
+                self.page_errors
+                    .get(stream)
+                    .map_or(0, |error| error.revision),
+            )
+            .checked_add(1)
+            .ok_or("event page revision exhausted")
+    }
+
+    pub fn page_refused(&mut self, stream: &str, reason: &str) -> Result<bool, &'static str> {
         bbt_rt::assert_not_ui_thread();
+        self.register(stream)?;
+        let revision = self.next_page_revision(stream)?;
+        self.page_errors.insert(
+            stream.into(),
+            PageError {
+                revision,
+                reason: reason.chars().take(256).collect(),
+            },
+        );
+        Ok(true)
+    }
+
+    fn validate_record(&self, record: &GuiEventRecord) -> Result<(String, u64, u64), &'static str> {
         let (stream, first, last) = match &record {
             GuiEventRecord::Event(row) => {
                 let reference = &row.metadata.reference;
@@ -243,8 +329,6 @@ impl EventLane {
             }
         };
         let stream = stream.clone();
-        self.register(&stream)?;
-        let mut changed = false;
         if let GuiEventRecord::Event(row) = &record {
             let reference = &row.metadata.reference;
             if let Some((id, hash)) = self.positions.get(&(stream.clone(), last))
@@ -252,6 +336,25 @@ impl EventLane {
             {
                 return Err("event sequence conflicts with the published canonical row");
             }
+            for old in &self.read_page {
+                if let GuiEventRecord::Event(old) = old.as_ref()
+                    && old.metadata.reference.position == reference.position
+                    && (old.metadata.id != row.metadata.id
+                        || old.metadata.reference.hash != reference.hash)
+                {
+                    return Err("event sequence conflicts with the requested canonical row");
+                }
+            }
+        }
+        Ok((stream, first, last))
+    }
+
+    pub fn apply(&mut self, record: GuiEventRecord) -> Result<bool, &'static str> {
+        bbt_rt::assert_not_ui_thread();
+        let (stream, first, last) = self.validate_record(&record)?;
+        self.register(&stream)?;
+        let mut changed = false;
+        if let GuiEventRecord::Event(row) = &record {
             if let Some(cursor) = &row.cursor {
                 changed |= self.apply_cursor(cursor.clone())?;
             }
@@ -298,8 +401,36 @@ impl EventLane {
         self.records.insert(at, Arc::new(record));
         self.sizes.insert(at, size);
         self.bytes += size;
-        while self.records.len() > EVENT_ROWS || self.bytes > EVENT_BYTES {
-            let old = self.records.pop_front().unwrap();
+        self.trim_window();
+        Ok(true)
+    }
+
+    fn trim_window(&mut self) {
+        // Ordinary reads reserve their bounded share of the window. A large
+        // newest live record always wins if the two cannot coexist at all.
+        let newest = self.sizes.back().copied().unwrap_or(0);
+        while newest + self.read_bytes > EVENT_BYTES && !self.read_page.is_empty() {
+            let old = self.read_page.remove(0);
+            self.read_bytes -= self.read_sizes.remove(0);
+            let (stream, first) = record_start(&old);
+            let last = match old.as_ref() {
+                GuiEventRecord::Gap(gap) => gap.last,
+                _ => first,
+            };
+            let gap = self.read_gap.get_or_insert_with(|| EventGap {
+                stream: stream.into(),
+                first,
+                last,
+                reason: "app_read_page_byte_bound; live window takes precedence; original retained"
+                    .into(),
+            });
+            gap.first = gap.first.min(first);
+            gap.last = gap.last.max(last);
+        }
+        while self.records.len() + self.read_page.len() > EVENT_ROWS || self.bytes() > EVENT_BYTES {
+            let Some(old) = self.records.pop_front() else {
+                break;
+            };
             self.bytes -= self.sizes.pop_front().unwrap();
             let (stream, first, last) = match old.as_ref() {
                 GuiEventRecord::Event(row) => {
@@ -341,7 +472,6 @@ impl EventLane {
                 }
             }
         }
-        Ok(true)
     }
 }
 
@@ -1605,6 +1735,15 @@ mod event_lane_tests {
             .unwrap()
         );
         assert_eq!(lane.pages()["index"], Some(80));
+        assert_eq!(
+            lane.page_snapshots()["index"],
+            PageSnapshot {
+                revision: 1,
+                high: 100,
+                next: Some(80)
+            }
+        );
+        assert_eq!(lane.read_page().len(), 1);
         assert_eq!(lane.cursors()["index"], cursor);
         assert!(
             lane.apply_page(GuiEventPage {
@@ -1615,7 +1754,9 @@ mod event_lane_tests {
             .unwrap()
         );
         assert_eq!(lane.pages()["index"], None);
-        assert_eq!(lane.records().len(), 1);
+        assert!(lane.records().is_empty());
+        assert!(lane.read_page().is_empty());
+        assert_eq!(lane.page_snapshots()["index"].revision, 2);
         assert!(
             lane.apply_page(GuiEventPage {
                 records: vec![row("account", 2)],
@@ -1625,6 +1766,108 @@ mod event_lane_tests {
             .is_err()
         );
         assert!(!lane.cursors().contains_key("account"));
+    }
+
+    #[test]
+    fn requested_old_page_survives_a_full_live_window_until_replaced() {
+        let mut lane = EventLane::default();
+        for sequence in 1..=600 {
+            lane.apply(row("index", sequence)).unwrap();
+        }
+        let cursor = GuiEventCursor {
+            stream: "index".into(),
+            admitted: 600,
+            acknowledged: 599,
+            read: 2,
+            high: 600,
+            unread: 0,
+        };
+        let original = row("index", 4);
+        lane.apply_page(GuiEventPage {
+            records: vec![original.clone()],
+            next: Some(80),
+            cursor: cursor.clone(),
+        })
+        .unwrap();
+        assert_eq!(lane.read_page()[0].as_ref(), &original);
+        assert_eq!(lane.records().len() + lane.read_page().len(), EVENT_ROWS);
+        lane.apply(row("index", 601)).unwrap();
+        assert_eq!(lane.read_page()[0].as_ref(), &original);
+        assert!(lane.bytes() <= EVENT_BYTES);
+        lane.apply_page(GuiEventPage {
+            records: vec![row("index", 81)],
+            next: Some(150),
+            cursor,
+        })
+        .unwrap();
+        assert_eq!(record_start(&lane.read_page()[0]), ("index", 81));
+        assert_eq!(lane.page_snapshots()["index"].revision, 2);
+    }
+
+    #[test]
+    fn empty_pages_and_refusals_have_distinct_monotonic_completion_revisions() {
+        let mut lane = EventLane::default();
+        let page = GuiEventPage {
+            records: vec![],
+            next: None,
+            cursor: GuiEventCursor {
+                stream: "index".into(),
+                admitted: 0,
+                acknowledged: 0,
+                read: 0,
+                high: 0,
+                unread: 0,
+            },
+        };
+        assert!(lane.apply_page(page.clone()).unwrap());
+        assert!(lane.apply_page(page).unwrap());
+        assert_eq!(lane.page_snapshots()["index"].revision, 2);
+        assert!(
+            lane.page_refused("account", "refused another stream")
+                .unwrap()
+        );
+        assert_eq!(lane.page_errors()["account"].revision, 1);
+        lane.page_refused("index", &"x".repeat(1000)).unwrap();
+        assert_eq!(lane.page_errors()["index"].revision, 3);
+        assert_eq!(lane.page_errors()["index"].reason.len(), 256);
+        assert_eq!(lane.page_snapshots()["index"].revision, 2);
+    }
+
+    #[test]
+    fn a_large_newest_live_record_takes_precedence_over_read_page_bytes() {
+        let mut lane = EventLane::default();
+        let mut page_row = row("index", 1);
+        if let GuiEventRecord::Event(row) = &mut page_row {
+            row.metadata.source = "p".repeat(100_000);
+        }
+        let cursor = GuiEventCursor {
+            stream: "index".into(),
+            admitted: 2,
+            acknowledged: 1,
+            read: 0,
+            high: 2,
+            unread: 0,
+        };
+        lane.apply_page(GuiEventPage {
+            records: vec![page_row],
+            next: None,
+            cursor,
+        })
+        .unwrap();
+        let mut live = row("index", 2);
+        if let GuiEventRecord::Event(row) = &mut live {
+            row.metadata.source = "l".repeat(980_000);
+        }
+        lane.apply(live).unwrap();
+        assert_eq!(lane.records().len(), 1);
+        assert!(lane.read_page().is_empty());
+        assert!(
+            lane.read_gap()
+                .unwrap()
+                .reason
+                .contains("live window takes precedence")
+        );
+        assert!(lane.bytes() <= EVENT_BYTES);
     }
 
     #[test]

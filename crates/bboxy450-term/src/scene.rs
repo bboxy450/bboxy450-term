@@ -19,7 +19,11 @@ use bbt_ui_model::{
     draw::{Color, DrawList, TextStyle, TypeScale},
     layout::{Axis, Rect, TextMeasure, TextStyle as MeasureStyle, stage_split},
 };
-use std::{cell::RefCell, collections::HashMap, time::Instant};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    time::Instant,
+};
 
 /// Settings > Rim size range (rim-glow §3).
 pub const RIM_MIN: f32 = TOKENS.glow.rim_min as f32;
@@ -361,6 +365,17 @@ impl Scene {
         tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
     ) {
         self.tasks = tasks;
+    }
+    pub fn set_unread(&mut self, unread: &BTreeMap<SeatId, ui::modules::stream_dock::UnreadCount>) {
+        for row in &mut self.seats {
+            row.unread = row
+                .key
+                .parse::<SeatId>()
+                .ok()
+                .and_then(|id| unread.get(&id))
+                .filter(|count| count.any())
+                .map(|count| (count.to_string(), row.role.clone().unwrap_or_default()));
+        }
     }
     fn task_children(&self, row: &SeatRow, ctx: ui::Context) -> Vec<c::Element> {
         self.tasks

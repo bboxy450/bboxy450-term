@@ -472,6 +472,28 @@ fn a_refused_retained_page_finishes_the_read_and_waits_for_an_explicit_retry() {
             .any(|entry| matches!(entry, Entry::Note {text,..} if text.contains("refused")))
     );
 }
+
+#[test]
+fn a_refused_inbox_page_retries_its_actual_cursor_only_on_explicit_view() {
+    use bboxy450_term::messaging::History;
+    let mut history = History::default();
+    history.select(SwarmId::from_u128(80));
+    let UiMsg::Messaging { id, .. } = history.commands().pop().unwrap() else {
+        unreachable!()
+    };
+    let mut results = Results::default();
+    results.push(id, Reply::Refused("read refused".into()));
+    assert!(history.replies(&results));
+    assert!(history.commands().is_empty());
+    history.more();
+    assert!(matches!(
+        history.commands().as_slice(),
+        [UiMsg::Messaging {
+            request: Request::List { after: 0, .. },
+            ..
+        }]
+    ));
+}
 #[test]
 fn a_newer_live_cursor_cannot_make_an_old_empty_page_prove_newer_coverage() {
     use bboxy450_term::messaging::{History, HistoryAction};

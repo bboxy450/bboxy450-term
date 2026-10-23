@@ -185,7 +185,7 @@ fn return_live(history: &mut History, model: &mut Arc<Model>, seat: SeatId) -> b
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum ActionReply {
     Operation,
     Seats,
@@ -193,7 +193,7 @@ enum ActionReply {
     History(SeatId),
     Messaging(Ulid),
     Task(Ulid),
-    Events,
+    Events { stream: String },
     EventCursor,
 }
 
@@ -214,7 +214,9 @@ impl ActionReplies {
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
             GuiAction::Messaging { id, .. } => ActionReply::Messaging(*id),
             GuiAction::Task { id, .. } => ActionReply::Task(*id),
-            GuiAction::GetEvents { .. } => ActionReply::Events,
+            GuiAction::GetEvents { stream, .. } => ActionReply::Events {
+                stream: stream.clone(),
+            },
             GuiAction::GetEventCursor { .. } | GuiAction::MarkEventsRead { .. } => {
                 ActionReply::EventCursor
             }
@@ -238,7 +240,9 @@ impl ActionReplies {
             GuiReply::Seats(_) => *expected == ActionReply::Seats,
             GuiReply::Hosts(_) => *expected == ActionReply::Hosts,
             GuiReply::History { seat, .. } => *expected == ActionReply::History(*seat),
-            GuiReply::Events { .. } => *expected == ActionReply::Events,
+            GuiReply::Events { page } => {
+                matches!(expected, ActionReply::Events { stream } if *stream == page.cursor.stream)
+            }
             GuiReply::EventCursor { .. } => *expected == ActionReply::EventCursor,
             _ => false,
         };
@@ -251,6 +255,33 @@ impl ActionReplies {
 
 fn event_model(model: &mut Arc<Model>) -> &mut model::EventLane {
     Arc::make_mut(&mut Arc::make_mut(model).events)
+}
+
+fn publish_page(
+    model: &mut Arc<Model>,
+    updates: &Latest<Arc<Model>>,
+    page: bbt_proto::events::GuiEventPage,
+) -> Result<()> {
+    if event_model(model).apply_page(page).map_err(invalid)? {
+        updates.publish(model.clone());
+    }
+    Ok(())
+}
+
+fn publish_page_refusal(
+    model: &mut Arc<Model>,
+    updates: &Latest<Arc<Model>>,
+    terminal: Option<&ActionReply>,
+    reason: &str,
+) -> Result<()> {
+    if let Some(ActionReply::Events { stream }) = terminal
+        && event_model(model)
+            .page_refused(stream, reason)
+            .map_err(invalid)?
+    {
+        updates.publish(model.clone());
+    }
+    Ok(())
 }
 
 fn publish_delivery(
@@ -763,8 +794,7 @@ async fn run(
                             None
                         }
                         GuiReply::Events {page}=> {
-                            let changed=event_model(&mut model).apply_page(page).map_err(invalid)?;
-                            if changed {updates.publish(model.clone());}
+                            publish_page(&mut model,&updates,page)?;
                             None
                         }
                         GuiReply::EventCursor {cursor}=> {
@@ -862,7 +892,8 @@ async fn run(
                         },
                         GuiReply::Error {op,reason}=> {
                             operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Refused(reason.clone()));
-                            if matches!(terminal_reply,Some(ActionReply::History(_)))
+                            publish_page_refusal(&mut model,&updates,terminal_reply.as_ref(),&reason)?;
+                            if matches!(&terminal_reply,Some(ActionReply::History(_)))
                                 && let Some(seat) = history.rejected(reason.starts_with("Busy:"),Instant::now())
                                 && return_live(&mut history,&mut model,seat) {
                                 publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
@@ -984,7 +1015,9 @@ mod tests {
                         cursor: cursor.clone(),
                     },
                 },
-                ActionReply::Events,
+                ActionReply::Events {
+                    stream: "account".into(),
+                },
             ),
             (
                 GuiAction::GetEventCursor {
@@ -1042,7 +1075,7 @@ mod tests {
                 }),
                 None
             );
-            assert_eq!(replies.take(terminal), Some(*expected));
+            assert_eq!(replies.take(terminal), Some(expected.clone()));
         }
         assert!(replies.0.is_empty());
         // Refusals must release the same typed slots, including read queries.
@@ -1060,7 +1093,7 @@ mod tests {
                     op: Ulid::new(),
                     reason: "Busy: fixture".into()
                 }),
-                Some(*expected)
+                Some(expected.clone())
             );
         }
         for _ in 0..128 {
@@ -1660,6 +1693,73 @@ mod tests {
     }
 
     #[test]
+    fn empty_page_completions_publish_and_refusals_complete_only_the_matched_stream() {
+        use bbt_proto::events::{GuiEventCursor, GuiEventPage};
+        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
+        let updates = Latest::new(dirty.source(0));
+        let mut model = Arc::new(Model::default());
+        let page = GuiEventPage {
+            records: vec![],
+            next: None,
+            cursor: GuiEventCursor {
+                stream: "swarm-exact".into(),
+                admitted: 0,
+                acknowledged: 0,
+                read: 0,
+                high: 0,
+                unread: 0,
+            },
+        };
+        for revision in 1..=2 {
+            publish_page(&mut model, &updates, page.clone()).unwrap();
+            assert_eq!(
+                updates
+                    .take()
+                    .expect("empty completion published")
+                    .events
+                    .page_snapshots()["swarm-exact"]
+                    .revision,
+                revision
+            );
+        }
+        let mut replies = ActionReplies::default();
+        replies.sent(&GuiAction::GetEvents {
+            stream: "other".into(),
+            after: 42,
+            limit: 128,
+        });
+        for push in [
+            GuiReply::EventStatus {
+                attached: true,
+                reason: None,
+            },
+            GuiReply::Gap {
+                stream: "other".into(),
+                first: 1,
+                last: 2,
+                reason: "not a read reply".into(),
+            },
+        ] {
+            let terminal = replies.take(&push);
+            publish_page_refusal(&mut model, &updates, terminal.as_ref(), "unrelated").unwrap();
+            assert!(updates.take().is_none());
+        }
+        let terminal = replies.take(&GuiReply::Error {
+            op: Ulid::new(),
+            reason: "HistoryDenied".into(),
+        });
+        publish_page_refusal(&mut model, &updates, terminal.as_ref(), "HistoryDenied").unwrap();
+        let published = updates.take().unwrap();
+        assert_eq!(
+            published.events.page_errors()["other"].reason,
+            "HistoryDenied"
+        );
+        assert_eq!(published.events.page_snapshots()["swarm-exact"].revision, 2);
+        assert!(!published.events.page_errors().contains_key("swarm-exact"));
+        assert!(replies.0.is_empty());
+    }
+
+    #[test]
     fn event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice() {
         let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
         let updates = Latest::new(dirty.source(0));
@@ -1755,6 +1855,151 @@ mod tests {
             })
             .await
             .unwrap();
+    }
+
+    async fn messaging_through_the_one_io_owner(
+        sender: &CommandSender,
+        updates: &Latest<Arc<Model>>,
+        current: &mut Arc<Model>,
+        seat: SeatId,
+        task_id: Ulid,
+        task_path: &str,
+    ) {
+        use bboxy450_term::messaging::{Client, History, Records};
+        use bbt_ui::modules::{composer, stream_dock::Entry};
+        let scope = current.ui.seats[&seat].swarm;
+        let mut editor = composer::Controller::new(composer::Composer {
+            focus: true,
+            kind: "decision".into(),
+            to: vec![composer::Address {
+                kind: "channel".into(),
+                destination: format!("swarms/{scope}"),
+                label: "Actual selected swarm".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        });
+        editor.handle(composer::Command::Edit(bbt_ui::text_edit::Command::Insert(
+            "Decision through the production GUI IO owner".into(),
+        )));
+        let composer::Outcome::Submit(draft) = editor.handle(composer::Command::Send) else {
+            panic!("committed decision");
+        };
+        let mut client = Client::default();
+        let batch = client.prepare(Some(scope), draft).unwrap();
+        let command = client.admitted(batch).pop().unwrap();
+        let UiMsg::Messaging { id, .. } = &command else {
+            unreachable!()
+        };
+        let id = *id;
+        let stage = current.ui.window.stage.clone();
+        sender.send(command).await.unwrap();
+        until(updates, current, |model| model.operation_results.rows().any(|result| result.op == id)
+            && model.events.records().iter().any(|record| matches!(record.as_ref(), GuiEventRecord::Event(event) if matches!(&event.payload, GuiEventPayload::Message {row} if row.id == id)))).await;
+        let committed = client
+            .replies(&current.operation_results)
+            .0
+            .expect("actual Stored result");
+        editor.stored(&committed);
+        assert!(editor.view.text.is_empty());
+        assert_eq!(
+            stage, current.ui.window.stage,
+            "message pushes cannot place or focus a pane"
+        );
+        let mut history = History::default();
+        history.select(scope);
+        history.observe(&current.events);
+        let stream = history.stream().unwrap();
+        let revision = current
+            .events
+            .page_snapshots()
+            .get(&stream)
+            .map_or(0, |page| page.revision);
+        for action in history.actions() {
+            sender.send(action.into()).await.unwrap();
+        }
+        until(updates, current, |model| {
+            model
+                .events
+                .page_snapshots()
+                .get(&stream)
+                .is_some_and(|page| page.revision > revision)
+        })
+        .await;
+        history.observe(&current.events);
+        assert!(history.entries(current, client.groups(), &[]).iter().any(|entry| matches!(entry, Entry::Message {data,..} if data.text == "Decision through the production GUI IO owner" && data.kind.as_deref() == Some("decision") && data.issuer_kind.as_deref() == Some("local-dev") && data.unread)));
+        assert!(
+            history.actions().is_empty(),
+            "receive, publication and transport ACK do not mark read"
+        );
+        let action = history
+            .viewed_all()
+            .expect("explicit view advances the durable read-mark");
+        let read = current.events.cursors()[&stream].high;
+        sender.send(action.into()).await.unwrap();
+        until(updates, current, |model| {
+            model
+                .events
+                .cursors()
+                .get(&stream)
+                .is_some_and(|cursor| cursor.read >= read)
+        })
+        .await;
+        history.observe(&current.events);
+        assert!(history.entries(current, client.groups(), &[]).iter().any(|entry| matches!(entry, Entry::Message {data,..} if data.text == "Decision through the production GUI IO owner" && !data.unread)));
+        eprintln!(
+            "PASS compose/send -> one IO owner -> published MessageRow; only confirmed operator-read clears its dot"
+        );
+
+        let op = Ulid::new();
+        sender
+            .send(UiMsg::Task {
+                id: op,
+                request: bbt_proto::messaging::TaskRequest::Delegate {
+                    task_path: task_path.into(),
+                    seat_id: Ulid::from(seat.0.0),
+                    role: None,
+                },
+            })
+            .await
+            .unwrap();
+        until(updates, current, |model| model.operation_results.rows().any(|result| result.op == op)
+            && model.events.records().iter().any(|record| matches!(record.as_ref(), GuiEventRecord::Event(event) if matches!(&event.payload, GuiEventPayload::Activity {summary} if event.metadata.subject.starts_with("task/") && summary.id == Some(task_id) && summary.status.as_deref() == Some("claimed"))))).await;
+        let notices = history.observe(&current.events);
+        assert!(
+            notices.contains(&Some(task_id)),
+            "the one lane carries canonical task status"
+        );
+        let mut records = Records::default();
+        records.select(scope);
+        for id in notices {
+            records.task_notice(id);
+        }
+        let mut pending = Vec::new();
+        for command in records.commands() {
+            if let UiMsg::Task { id, .. } | UiMsg::Messaging { id, .. } = &command {
+                pending.push(*id);
+            }
+            sender.send(command).await.unwrap();
+        }
+        until(updates, current, |model| {
+            pending.iter().all(|op| {
+                model
+                    .operation_results
+                    .rows()
+                    .any(|result| result.op == *op)
+            })
+        })
+        .await;
+        records.replies(&current.operation_results);
+        let card = records
+            .task(task_id)
+            .expect("TaskCard refreshed from the existing TaskRequest API");
+        assert_eq!(card.status, "claimed");
+        assert!(records.entries(current, None).iter().any(|entry| matches!(entry, Entry::Task {data,..} if data.id == task_id.to_string() && data.state == "claimed")));
+        eprintln!(
+            "PASS one task-status event -> existing TaskCard read -> canonical claimed task row"
+        );
     }
 
     /// Scroll through the real admitted socket, IO replay and prepared model.
@@ -1968,6 +2213,12 @@ mod tests {
         let repository = root.path().join("repository");
         let shell_config = root.path().join("zsh-config");
         tokio::fs::create_dir(&repository).await.unwrap();
+        let task_id = Ulid::new();
+        let task_path = format!(".bboxy/tasks/{task_id}.md");
+        tokio::fs::create_dir_all(repository.join(".bboxy/tasks"))
+            .await
+            .unwrap();
+        tokio::fs::write(repository.join(&task_path), format!("---\nid: {task_id}\ntype: task\ntitle: Production GUI pump fixture\nstatus: open\nverify: 'true'\n---\nTask delegation through the same event lane.\n")).await.unwrap();
         tokio::fs::create_dir(&shell_config).await.unwrap();
         tokio::fs::write(shell_config.join(".zshrc"), "PROMPT='> '\nRPROMPT=''\n")
             .await
@@ -2091,6 +2342,15 @@ mod tests {
         })
         .await;
         eprintln!("PASS real IO: standalone hi row in Replica, prepared frame published");
+        messaging_through_the_one_io_owner(
+            &sender,
+            &updates,
+            &mut current,
+            seat,
+            task_id,
+            &task_path,
+        )
+        .await;
         let expected: String = (0..256)
             .map(|i| "0123456789abcdef".as_bytes()[i % 16] as char)
             .collect();

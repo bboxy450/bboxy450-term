@@ -11,6 +11,19 @@ pub enum HistoryAction {
     Page { stream: String, after: u64 },
     Read { stream: String, sequence: u64 },
 }
+impl From<HistoryAction> for UiMsg {
+    fn from(action: HistoryAction) -> Self {
+        match action {
+            HistoryAction::Cursor { stream } => Self::EventCursor { stream },
+            HistoryAction::Page { stream, after } => Self::EventPage {
+                stream,
+                after,
+                limit: 128,
+            },
+            HistoryAction::Read { stream, sequence } => Self::MarkEventsRead { stream, sequence },
+        }
+    }
+}
 struct Row {
     row: wire::MessageRow,
     context: String,
@@ -30,6 +43,7 @@ pub struct History {
     list: Option<List>,
     list_wanted: Option<u64>,
     list_next: Option<u64>,
+    list_failed_after: Option<u64>,
     cursor: Option<(u64, u64, u64)>, // confirmed read, high, unread
     cursor_wanted: bool,
     page_wanted: Option<u64>,
@@ -41,12 +55,117 @@ pub struct History {
     covered_high: Option<u64>,
     chain_next: Option<u64>,
     gap_after: Option<u64>,
+    seen_activity: BTreeMap<String, u64>,
+    artifacts: VecDeque<bbt_ui::modules::composer::Attachment>,
+    lane_issue: Option<String>,
     read_sent: u64,
     selected: String,
     pub issue: Option<String>,
     pub omitted: u64,
 }
 impl History {
+    /// Consume the IO owner's one published lane. Neither transport ACKs nor
+    /// a model publication imply that the operator has read a message.
+    pub fn observe(&mut self, lane: &crate::model::EventLane) -> Vec<Option<bbt_mux::Ulid>> {
+        use bbt_proto::events::{GuiEventPayload, GuiEventRecord};
+        let Some(stream) = self.stream() else {
+            return vec![];
+        };
+        self.lane_issue = match lane.state() {
+            crate::model::EventLaneState::Held(reason) => Some(format!("events held · {reason}")),
+            crate::model::EventLaneState::Detached | crate::model::EventLaneState::Attaching => {
+                Some("events attaching".into())
+            }
+            crate::model::EventLaneState::Active => None,
+        };
+        if let Some(cursor) = lane.cursors().get(&stream) {
+            self.cursor(cursor.read, cursor.high, cursor.unread);
+        }
+        let mut tasks = vec![];
+        for record in lane.records().iter().chain(lane.read_page()) {
+            match record.as_ref() {
+                GuiEventRecord::Event(event) => match &event.payload {
+                    GuiEventPayload::Message { row } => {
+                        // A receipt's retained position is not the message's
+                        // publication position and cannot supply its context.
+                        let position = &event.metadata.reference.position;
+                        let context = row
+                            .bus
+                            .as_ref()
+                            .filter(|bus| {
+                                bus.stream == position.stream && bus.seq == position.sequence
+                            })
+                            .and_then(|_| event.metadata.subject.strip_suffix("/message"));
+                        self.row(row, context, event.projected_at);
+                    }
+                    GuiEventPayload::Activity { summary } => {
+                        let position = &event.metadata.reference.position;
+                        let seen = self
+                            .seen_activity
+                            .entry(position.stream.clone())
+                            .or_default();
+                        if position.sequence <= *seen {
+                            continue;
+                        }
+                        *seen = position.sequence;
+                        if event.metadata.subject.starts_with("task/")
+                            && event.metadata.subject.ends_with("/status")
+                        {
+                            tasks.push(summary.id);
+                        }
+                        if event.metadata.subject.starts_with("artifact/")
+                            && !summary.path_redacted
+                            && let Some(path) = &summary.path
+                        {
+                            self.artifacts.retain(|attachment| attachment.path != *path);
+                            if summary.action != "deleted" {
+                                self.artifacts
+                                    .push_back(bbt_ui::modules::composer::Attachment {
+                                        id: summary
+                                            .id
+                                            .map_or_else(|| path.clone(), |id| id.to_string()),
+                                        path: path.clone(),
+                                        title: path.clone(),
+                                        kind: "artifact".into(),
+                                        ..Default::default()
+                                    });
+                            }
+                            while self.artifacts.len() > 128
+                                || serde_json::to_vec(&self.artifacts)
+                                    .map_or(true, |bytes| bytes.len() > 128 * 1024)
+                            {
+                                if self.artifacts.pop_front().is_none() {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    _ => (),
+                },
+                GuiEventRecord::Gap(gap) if gap.stream == stream => self.gap(gap.first, gap.last),
+                _ => (),
+            }
+        }
+        if let Some(gap) = lane.omitted().get(&stream) {
+            self.gap(gap.first, gap.last);
+        }
+        if let Some(gap) = lane.read_gap().filter(|gap| gap.stream == stream) {
+            self.gap(gap.first, gap.last);
+        }
+        let valid = lane.page_snapshots().get(&stream);
+        let error = lane.page_errors().get(&stream);
+        if let Some(error) =
+            error.filter(|error| valid.is_none_or(|page| error.revision > page.revision))
+        {
+            self.page_failed(error.revision, &error.reason);
+        } else if let Some(page) = valid {
+            self.page(page.revision, page.high, page.next);
+        }
+        tasks
+    }
+    pub fn artifacts(&self) -> impl Iterator<Item = &bbt_ui::modules::composer::Attachment> {
+        self.artifacts.iter()
+    }
     pub fn select(&mut self, scope: SwarmId) {
         if self.scope == Some(scope) {
             return;
@@ -73,11 +192,15 @@ impl History {
         if self.page_pending.is_none() && self.failed_after.is_some() {
             self.page_wanted = self.failed_after.take();
         }
+        if self.list.is_none() && self.list_failed_after.is_some() {
+            self.list_wanted = self.list_failed_after.take();
+        }
         if self.selected != path {
             self.selected = path.into();
             self.list = None;
             self.listed.clear();
             self.list_next = None;
+            self.list_failed_after = None;
             self.list_wanted = Some(0);
         }
     }
@@ -233,7 +356,7 @@ impl History {
     }
     pub fn more(&mut self) {
         if self.list.is_none() {
-            self.list_wanted = self.list_next;
+            self.list_wanted = self.list_failed_after.take().or(self.list_next);
         }
         if self.page_pending.is_none() {
             self.page_wanted = self.failed_after.take().or(self.page_next).or_else(|| {
@@ -267,6 +390,7 @@ impl History {
         match &reply.reply {
             Reply::Messaging(wire::Response::Messages { page }) => {
                 self.issue = None;
+                self.list_failed_after = None;
                 self.list_next = page.next;
                 self.listed = page
                     .items
@@ -309,6 +433,7 @@ impl History {
                 }
             }
             Reply::Refused(reason) | Reply::Unknown(reason) => {
+                self.list_failed_after = Some(after);
                 self.issue = Some(format!("inbox after {after} · {reason}"));
             }
             _ => self.issue = Some("unexpected_inbox_reply".into()),
@@ -418,7 +543,12 @@ impl History {
                         .any(|r| r.row.id == *id && r.row.bus.as_ref() == bus.as_ref())
             })
             .count();
-        let note = if let Some(issue) = self.page_issue.as_ref().or(self.issue.as_ref()) {
+        let note = if let Some(issue) = self
+            .lane_issue
+            .as_ref()
+            .or(self.page_issue.as_ref())
+            .or(self.issue.as_ref())
+        {
             Some(issue.clone())
         } else if missing > 0 {
             Some(format!(

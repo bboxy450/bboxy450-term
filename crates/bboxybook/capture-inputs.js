@@ -414,6 +414,9 @@
           const array=all.filter(p=>!drop(p));
           for(const p of array){
             const n=entry.node;
+            // The unread count is always the tab's badge. Its optional CSS
+            // class (including the explicit null class) is not its identity.
+            if(entry.kind==='tabs')p.key=p.key.replace(/(\/ch-tab\d*)\/(?:null|more)$/, '$1/b');
             if(entry.kind==='message'){
               p.key=p.key.replace('/head/prio','/head/p1').replace('/head/rcpt','/head/receipts').replace('/body/tol','/body/to');
               const chip=/\/head\/kchip(\d*)/.exec(p.key);

@@ -812,6 +812,8 @@ struct App {
     composer_client: messaging::Client,
     composer_scope: Option<bbt_proto::SwarmId>,
     task_records: messaging::Records,
+    message_history: messaging::History,
+    events_seen: Option<Arc<bboxy450_term::model::EventLane>>,
     task_regions: bbt_ui::modules::stream_dock::Regions,
     reject: Option<(bbt_mux::Ulid, composer::RejectController)>,
     reject_report: Option<composer::Report>,
@@ -883,11 +885,15 @@ impl App {
             self.composer_scope = stage.swarm;
             self.task_records
                 .select(stage.swarm.expect("catalog has swarm"));
+            self.message_history
+                .select(stage.swarm.expect("catalog has swarm"));
+            self.events_seen = None;
             self.reject = None;
             self.reject_report = None;
             self.reject_focus = false;
             self.conversation_scroll = 0.;
         }
+        self.conversation_events();
         for (folder, title, kind) in [
             ("channels/", "Channels", "channel"),
             ("groups/", "Groups", "group"),
@@ -921,8 +927,50 @@ impl App {
                 .iter()
                 .chain(self.task_records.unassigned())
                 .map(messaging::task_attachment)
+                .chain(self.message_history.artifacts().cloned())
                 .collect(),
         );
+    }
+    fn conversation_events(&mut self) {
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        if self
+            .events_seen
+            .as_ref()
+            .is_some_and(|old| Arc::ptr_eq(old, &model.events))
+        {
+            return;
+        }
+        if self
+            .events_seen
+            .as_ref()
+            .is_some_and(|old| !matches!(old.state(), bboxy450_term::model::EventLaneState::Active))
+            && matches!(
+                model.events.state(),
+                bboxy450_term::model::EventLaneState::Active
+            )
+        {
+            self.message_history.reconnect();
+            self.task_records.refresh();
+        }
+        for task in self.message_history.observe(&model.events) {
+            self.task_records.task_notice(task);
+        }
+        self.events_seen = Some(model.events.clone());
+    }
+    fn conversation_reads(&mut self, viewed: bool) {
+        if viewed && let Some(action) = self.message_history.viewed_all() {
+            self.operation_backlog.push_back(action.into());
+        }
+        self.operation_backlog.extend(
+            self.message_history
+                .actions()
+                .into_iter()
+                .map(live::UiMsg::from),
+        );
+        self.operation_backlog
+            .extend(self.message_history.commands());
     }
     fn blur_reject(&mut self) {
         self.reject_focus = false;
@@ -934,9 +982,15 @@ impl App {
         let Some(model) = self.live_state.as_deref() else {
             return;
         };
-        self.conversation.entries = self
-            .task_records
-            .entries(model, self.reject.as_ref().map(|(id, r)| (*id, &r.view)));
+        self.conversation.entries = self.message_history.entries(
+            model,
+            self.composer_client.groups(),
+            self.task_records.nodes(),
+        );
+        self.conversation.entries.extend(
+            self.task_records
+                .entries(model, self.reject.as_ref().map(|(id, r)| (*id, &r.view))),
+        );
         if let Some((id, editor)) = &self.reject
             && !self.conversation.entries.iter().any(|entry| matches!(entry, bbt_ui::modules::stream_dock::Entry::Report {id: actual,..} if actual == &id.to_string()))
             && let Some(snapshot) = &self.reject_report {
@@ -958,6 +1012,14 @@ impl App {
                 })
                 .collect(),
         );
+        let unread = model
+            .ui
+            .seats
+            .iter()
+            .filter(|(_, seat)| Some(seat.swarm) == self.composer_scope)
+            .map(|(id, _)| (*id, self.message_history.seat_unread(&id.to_string())))
+            .collect();
+        self.scene.set_unread(&unread);
         self.conversation_layout = None;
     }
     fn task_action(&mut self, action: bbt_ui::modules::stream_dock::Action) {
@@ -1045,7 +1107,15 @@ impl App {
                     self.composer_dragging = true;
                 }
             }
-            Action::Channel(_) => {}
+            Action::Channel(name) => {
+                self.message_history.channel(&if name == "all" {
+                    name
+                } else {
+                    format!("channels/{}", name.trim_start_matches("channels/"))
+                });
+                self.conversation_scroll = 0.;
+                self.conversation_reads(true);
+            }
         }
         self.operation_backlog.extend(self.task_records.commands());
         self.refresh_conversation();
@@ -1747,6 +1817,8 @@ impl App {
             let records_changed = self
                 .task_records
                 .replies(&self.live_state.as_ref().unwrap().operation_results);
+            self.message_history
+                .replies(&self.live_state.as_ref().unwrap().operation_results);
             if records_changed
                 && let Some((id, reason)) = &mut self.reject
                 && let Some((actual, issue)) = &self.task_records.review_issue
@@ -1765,6 +1837,7 @@ impl App {
                 self.reject_focus = false;
             }
             self.composer_catalog();
+            self.conversation_reads(false);
             self.operation_backlog.extend(self.task_records.commands());
             self.refresh_conversation();
             for (op, outcome) in results {
@@ -2477,9 +2550,11 @@ impl ApplicationHandler<UiEvent> for App {
                     .map_or(0., |r| r[1]);
                 self.conversation_scroll = (self.conversation_scroll - dy).clamp(0., max);
                 if dy < 0. {
+                    self.message_history.more();
                     self.task_records.more_tasks();
                     self.operation_backlog.extend(self.task_records.commands());
                 }
+                self.conversation_reads(true);
                 self.request_redraw();
             }
             WindowEvent::MouseWheel { delta, .. } if self.launcher.is_none() => {
@@ -2613,6 +2688,12 @@ impl ApplicationHandler<UiEvent> for App {
                     .or_else(|| self.task_regions.hit(self.pointer))
                 {
                     self.task_action(action);
+                    return;
+                }
+                if self.conversation_layout.as_ref().is_some_and(|layout| {
+                    layout.actions.contains("conversation/rows", self.pointer)
+                }) {
+                    self.conversation_reads(true);
                     return;
                 }
                 if let Some((id, _)) = self.focus_bounds.iter().find(|(_, rect)| {
@@ -3526,6 +3607,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         composer_client: messaging::Client::default(),
         composer_scope: None,
         task_records: messaging::Records::default(),
+        message_history: messaging::History::default(),
+        events_seen: None,
         task_regions: Default::default(),
         reject: None,
         reject_report: None,
