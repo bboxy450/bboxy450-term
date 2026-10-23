@@ -268,10 +268,13 @@ impl Gpu {
             logger,
         );
     }
-    pub fn collect_gpu(&self, budget: &mut crate::budget::Budget) {
+    pub fn collect_gpu(&self, budget: &mut crate::budget::Budget) -> Option<(u64, Instant)> {
+        let mut completed = None;
         for sample in self.gpu_samples.try_iter() {
+            completed = Some((sample.frame, sample.completed_at));
             budget.gpu(sample);
         }
+        completed
     }
     /// Prepare first-use text and pipelines on IO, before handing state to UI.
     pub fn warm(&mut self, ops: Vec<Paint>, scale: f32) -> Result<(), String> {
@@ -460,6 +463,7 @@ impl Gpu {
                     let _ = sender.try_send(GpuSample {
                         frame: frame_id,
                         time: Duration::from_secs_f64(end - start),
+                        completed_at: Instant::now(),
                     });
                 }
             },
@@ -614,6 +618,100 @@ fn backdrop_keys(ops: &[Paint], timing: FrameTime, size: wgpu::Extent3d) -> Vec<
     }
     keys
 }
+/// R5's windowless consumer exercises the same chrome ordering and retained
+/// terminal grids. It owns a submission boundary, just like Gpu::draw.
+pub(crate) struct VerificationFrame {
+    renderer: ChromeRenderer,
+    materials: m::Pass,
+    target: wgpu::Texture,
+    backdrop: wgpu::Texture,
+}
+impl VerificationFrame {
+    pub async fn new() -> Result<Self, String> {
+        bbt_rt::assert_not_ui_thread();
+        let renderer = ChromeRenderer::new(crate::assets::images()?).map_err(|e| e.to_string())?;
+        let materials = m::Pass::new(&renderer.context.device, FORMAT);
+        let target = texture(&renderer.context.device, [1600, 900]);
+        let backdrop = texture(&renderer.context.device, [1600, 900]);
+        Ok(Self {
+            renderer,
+            materials,
+            target,
+            backdrop,
+        })
+    }
+    pub fn context(&self) -> std::sync::Arc<DeviceContext> {
+        std::sync::Arc::new(DeviceContext {
+            device: self.renderer.context.device.clone(),
+            queue: self.renderer.context.queue.clone(),
+            adapter_info: self.renderer.context.adapter_info.clone(),
+        })
+    }
+    pub fn draw(
+        &mut self,
+        ops: Vec<Paint>,
+        model: &Model,
+        bounds: &[(SeatId, Rect)],
+        frame: u64,
+        completed: SyncSender<(u64, Instant)>,
+    ) -> Result<Duration, String> {
+        let start = Instant::now();
+        self.renderer.begin_frame();
+        self.materials.begin_frame();
+        let mut encoder = self
+            .renderer
+            .context
+            .device
+            .create_command_encoder(&Default::default());
+        clear(&self.target.create_view(&Default::default()), &mut encoder);
+        encode_ops(
+            &mut self.renderer,
+            &self.materials,
+            &self.target,
+            &self.backdrop,
+            ops,
+            FrameTime {
+                scale: 1.,
+                time_ms: 450.,
+                external_before: false,
+            },
+            &mut encoder,
+        )
+        .map_err(|e| e.to_string())?;
+        let cells = self.target.create_view(&wgpu::TextureViewDescriptor {
+            format: Some(FORMAT.add_srgb_suffix()),
+            ..Default::default()
+        });
+        for (seat, rect) in bounds {
+            if let Some(prepared) = model.frames.get(seat) {
+                bboxy450_term::model::draw_pane(
+                    &model.screens[seat],
+                    *rect,
+                    &mut bboxy450_term::model::DrawCtx {
+                        frame: prepared,
+                        encoder: &mut encoder,
+                        target: &cells,
+                        scale: 1.,
+                    },
+                );
+            }
+        }
+        // R12-2b's flush pair belongs here when that API lands.
+        self.renderer.context.queue.submit([encoder.finish()]);
+        let marker = timing_marker(&self.renderer.context.queue)?;
+        let handler = RcBlock::new(move |_: NonNull<ProtocolObject<dyn MTLCommandBuffer>>| {
+            let _ = completed.try_send((frame, Instant::now()));
+        });
+        // SAFETY: Metal retains the handler, whose only capture is a bounded
+        // thread-safe sender. The marker follows this fixture's submission.
+        unsafe {
+            marker.addCompletedHandler(RcBlock::as_ptr(&handler));
+        }
+        marker.commit();
+        Ok(start.elapsed())
+    }
+}
+
 fn encode_ops(
     renderer: &mut ChromeRenderer,
     pass: &m::Pass,

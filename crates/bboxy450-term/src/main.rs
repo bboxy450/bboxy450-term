@@ -7,6 +7,7 @@ mod gpu;
 mod live;
 mod log;
 mod scene;
+mod stall;
 
 use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
@@ -53,6 +54,7 @@ pub enum UiEvent {
     VerifyGridDeadline,
     VerifyFailed(String),
     Capture,
+    StallPoll,
 }
 struct Wake(EventLoopProxy<UiEvent>);
 impl bbt_rt::Waker for Wake {
@@ -639,6 +641,7 @@ struct App {
     animation_start: Option<(Instant, u64)>,
     frozen_ms: f32,
     verify: Verify,
+    stall: Option<stall::Native>,
 }
 impl App {
     fn open_launcher(&mut self) {
@@ -819,6 +822,10 @@ impl App {
         self.closing = true;
         self.pending_commands.clear();
         self.logger.write("app close requested; stopping IO owner");
+        if let Some(stall) = &mut self.stall {
+            stall.cancel();
+            return;
+        }
         if self.live_commands.take().is_none() {
             event_loop.exit();
         }
@@ -1002,6 +1009,9 @@ impl App {
         Ok(())
     }
     fn drain(&mut self) {
+        if let Some(stall) = &self.stall {
+            stall.drain();
+        }
         self.inbox.dirty.drain();
         let start = Instant::now();
         while start.elapsed() < Duration::from_millis(1) {
@@ -1216,7 +1226,22 @@ impl App {
                         .saturating_sub(if metal { Duration::ZERO } else { wait });
                 self.budget.cpu(self.meter.total_frames(), cpu);
             }
-            self.gpu.as_ref().unwrap().collect_gpu(&mut self.budget);
+            let completed = self.gpu.as_ref().unwrap().collect_gpu(&mut self.budget);
+            if let Some(stall) = &mut self.stall {
+                if let Some((id, at)) = completed {
+                    stall.gpu_complete(id, at);
+                }
+                if let Some(model) = &self.live_state {
+                    let cpu = bbt_rt::fault::thread_cpu_time().map_err(|e| e.to_string())?;
+                    stall.frame(
+                        self.meter.total_frames(),
+                        model,
+                        &self.pane_bounds,
+                        phases,
+                        cpu,
+                    );
+                }
+            }
             if !self.animate {
                 self.pacer.as_ref().unwrap().set_active(false)?;
             }
@@ -1285,6 +1310,43 @@ impl ApplicationHandler<UiEvent> for App {
     }
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UiEvent) {
         match event {
+            UiEvent::StallPoll => {
+                let completed = self
+                    .gpu
+                    .as_ref()
+                    .and_then(|gpu| gpu.collect_gpu(&mut self.budget));
+                if let Some(stall) = &mut self.stall {
+                    if let Some((id, at)) = completed {
+                        stall.gpu_complete(id, at);
+                    }
+                    let pending = self.redraw_pending.get()
+                        || !self.inbox.messages.is_empty()
+                        || !self.inbox.output.is_empty();
+                    let result = stall.poll(
+                        self.meter.total_frames(),
+                        self.pacer.as_ref().map_or(0, DisplayLink::callbacks),
+                        pending,
+                        self.maximum_hz,
+                    );
+                    match result {
+                        Ok(Some(report)) => {
+                            if !report.failures.is_empty() {
+                                self.error = Some(format!("r5-gate-failed: {:?}", report.failures));
+                            }
+                            event_loop.exit();
+                        }
+                        Err(error) => {
+                            self.error.get_or_insert(error);
+                            if self.closing {
+                                event_loop.exit();
+                            } else {
+                                self.request_close(event_loop);
+                            }
+                        }
+                        Ok(None) => {}
+                    }
+                }
+            }
             UiEvent::DemoFinished => self.demo_finished = true,
             UiEvent::Capture => {
                 self.capture_pending = true;
@@ -2156,8 +2218,11 @@ fn screen_hash(screen: &bbt_proto::Screen) -> String {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    if let Some(result) = stall::private_entry(&hook_args) {
+        return result.map_err(Into::into);
+    }
     if hook_args.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{HELP}");
+        println!("{HELP}\n{}", stall::HELP);
         return Ok(());
     }
     if hook_args.iter().any(|arg| arg == "--capture") {
@@ -2185,6 +2250,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     let verify = Verify::from_args(&hook_args)?;
+    let stall_config = stall::Config::parse(&hook_args)?;
+    if let Some(config) = stall_config.as_ref().filter(|config| config.headless) {
+        return stall::headless(config.clone()).map_err(Into::into);
+    }
     let mut event_loop_builder = EventLoop::<UiEvent>::with_user_event();
     #[cfg(target_os = "macos")]
     {
@@ -2226,18 +2295,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|pair| std::path::PathBuf::from(&pair[1]));
     let logger = log::Logger::new();
     let (render_context, rendering) = tokio::sync::oneshot::channel();
-    let live_commands = if fake || animate {
-        None
+    let (stall, live_commands) = if let Some(config) = stall_config {
+        let proxy = proxy.clone();
+        (
+            Some(stall::Native::start(
+                config,
+                live_updates.clone(),
+                rendering,
+                inbox.sender.clone(),
+                move || {
+                    let _ = proxy.send_event(UiEvent::StallPoll);
+                },
+            )),
+            None,
+        )
+    } else if fake || animate {
+        (None, None)
     } else {
-        Some(live::start(
-            live_updates.clone(),
-            proxy.clone(),
-            logger.clone(),
-            args.windows(2)
-                .find(|pair| pair[0] == "--run-dir")
-                .map(|pair| std::path::PathBuf::from(&pair[1])),
-            rendering,
-        ))
+        (
+            None,
+            Some(live::start(
+                live_updates.clone(),
+                proxy.clone(),
+                logger.clone(),
+                args.windows(2)
+                    .find(|pair| pair[0] == "--run-dir")
+                    .map(|pair| std::path::PathBuf::from(&pair[1])),
+                rendering,
+            )),
+        )
     };
     let mut app = App {
         proxy,
@@ -2300,6 +2386,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         animation_start: None,
         frozen_ms: 450.,
         verify,
+        stall,
     };
     event_loop.run_app(&mut app)?;
     if let Some(error) = app.error {

@@ -1,10 +1,14 @@
 //! Pair asynchronous Metal GPU timestamps with the same frame's CPU work.
-use std::{collections::VecDeque, time::Duration};
+use std::{
+    collections::VecDeque,
+    time::{Duration, Instant},
+};
 pub const SAMPLES: usize = 1024;
 
 pub struct GpuSample {
     pub frame: u64,
     pub time: Duration,
+    pub completed_at: Instant,
 }
 struct Sample {
     frame: u64,
@@ -95,10 +99,12 @@ mod tests {
         budget.gpu(GpuSample {
             frame: 2,
             time: Duration::from_millis(3),
+            completed_at: Instant::now(),
         });
         budget.gpu(GpuSample {
             frame: 0,
             time: Duration::from_secs(1),
+            completed_at: Instant::now(),
         });
         assert_eq!(budget.0.len(), SAMPLES);
         assert!(budget.report().contains("paired=1 pending=1023"));
@@ -112,6 +118,7 @@ mod tests {
             budget.gpu(GpuSample {
                 frame,
                 time: Duration::from_millis(ms),
+                completed_at: Instant::now(),
             });
         }
         assert!(budget.report().contains("paired=0"));
