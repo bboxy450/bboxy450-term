@@ -1,0 +1,12 @@
+source_sha=b437f4fc12416484715b9db866e538b619e30f58
+worktree=/private/tmp/ci-kestrel-w2-5c-b437f4f-y96he1m7
+target=/private/tmp/ci-kestrel-w2-5c-b437f4f-y96he1m7/target
+Preparing worktree (detached HEAD b437f4f)
+HEAD is now at b437f4f test: prove MCP messaging scope retries and effect crash boundaries
+worktree_add_exit=0
+initial_git_status=''
+gate_pid=92451
+ci_exit=0
+private_target_deleted=true
+worktree_remove_exit=0
+ci_log_sha256=c3e3a13dd093af16e92a360a5e372ad3e06074adcfd7ecc9b61ef926f8b8d60b
