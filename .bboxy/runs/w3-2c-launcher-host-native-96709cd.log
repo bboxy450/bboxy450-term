@@ -1,0 +1,12 @@
+debug launcher open; query gap: caret, selection and IME preedit are not wired yet
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+smoke bootstrap: early producer handled before GPU ready
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=15
+capture /Users/feral/mydev/bboxy450-term-nyx/target/l8-host/native/launcher.png: Ok(())
+idle probe settling: producer_done=true queued=false redraw_pending=false frames=22 callbacks=22
+idle probe begins: frames=22 last_update=20
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=6.290ms p99=13.677ms samples=22 warm_encode_p50=5.055ms warm_encode_p99=9.075ms
