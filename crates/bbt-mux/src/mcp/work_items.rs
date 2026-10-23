@@ -3,6 +3,9 @@
 use std::collections::BTreeSet;
 use std::path::{Component, Path};
 
+use bbt_proto::messaging::{
+    Recipient, TaskCard, TaskDoc, TaskRequest, TaskResponse, TaskVerifySummary,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -62,7 +65,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
             vec!["kind", "ref"],
         ),
     ];
-    if actor.role.class == Class::Oracle {
+    if actor.class() == Class::Oracle {
         definitions.extend([
             ("task_delegate", "Assign a scoped task to an existing seat and send its signed Task brief.", json!({"task_path":path,"seat_id":id,"role":{"enum":["executor","oracle","creativity"]}}), vec!["task_path","seat_id"]),
             ("task_reassign", "Move responsibility to an existing seat, releasing the old assignee and waking the new one.", json!({"task_path":path,"seat_id":id}), vec!["task_path","seat_id"]),
@@ -177,7 +180,7 @@ pub(crate) enum Action {
 }
 pub(crate) struct Wake {
     pub id: Ulid,
-    pub to: Ulid,
+    pub to: Recipient,
     pub task_id: Ulid,
     pub event: String,
     pub path: String,
@@ -189,13 +192,87 @@ pub(crate) struct Plan {
     pub data: Value,
 }
 
+pub(crate) fn call(op_id: Ulid, request: TaskRequest) -> Checked<Call> {
+    let tool = match &request {
+        TaskRequest::List { .. } => "task_list",
+        TaskRequest::Status { .. } => "task_status",
+        TaskRequest::Delegate { .. } => "task_delegate",
+        TaskRequest::Reassign { .. } => "task_reassign",
+        TaskRequest::Accept { .. } => "task_accept",
+        TaskRequest::Reject { .. } => "task_reject",
+        TaskRequest::Report { .. } => "task_report",
+    };
+    let mut args = serde_json::to_value(request).map_err(|e| e.to_string())?;
+    args.as_object_mut()
+        .ok_or("task request is not an object")?
+        .remove("op");
+    Ok(Call {
+        op_id,
+        tool: tool.into(),
+        args,
+    })
+}
+
+pub(crate) fn response(tool: &str, result: Value) -> Checked<TaskResponse> {
+    if result["isError"] == true {
+        let error = &result["structuredContent"]["error"];
+        return Err(format!(
+            "{}: {}",
+            error["code"].as_str().unwrap_or("unknown"),
+            error["message"]
+                .as_str()
+                .unwrap_or("task outcome unavailable")
+        ));
+    }
+    let data = &result["structuredContent"];
+    match tool {
+        "task_status" => Ok(TaskResponse::Item {
+            item: serde_json::from_value::<TaskDoc>(data.clone()).map_err(|e| e.to_string())?,
+        }),
+        "task_list" => {
+            let items = data["items"]
+                .as_array()
+                .ok_or("task page missing items")?
+                .iter()
+                .map(|item| {
+                    let doc: TaskDoc =
+                        serde_json::from_value(item.clone()).map_err(|e| e.to_string())?;
+                    let m = &doc.metadata;
+                    Ok(TaskCard {
+                        id: doc.id,
+                        path: doc.path,
+                        title: m["title"].as_str().unwrap_or_default().into(),
+                        status: m["status"].as_str().unwrap_or_default().into(),
+                        assignee: m["assignee"]
+                            .as_str()
+                            .filter(|s| *s != "none")
+                            .map(str::to_owned),
+                        delegated_by: m["delegated_by"]
+                            .as_str()
+                            .filter(|s| *s != "none")
+                            .map(str::to_owned),
+                        updated: m["updated"].as_str().map(str::to_owned),
+                        verify: m["verify_result"]["exit_code"]
+                            .as_i64()
+                            .and_then(|code| i32::try_from(code).ok())
+                            .map(|exit_code| TaskVerifySummary { exit_code }),
+                    })
+                })
+                .collect::<Checked<Vec<_>>>()?;
+            let next = serde_json::from_value(data["next"].clone()).map_err(|e| e.to_string())?;
+            Ok(TaskResponse::Items { items, next })
+        }
+        _ => Ok(TaskResponse::Applied),
+    }
+}
+
 pub(crate) fn prepare(
     index: &Index,
     registry: &Registry,
     actor: &Actor,
     call: &Call,
 ) -> Checked<Prepared> {
-    let oracle = actor.role.class == Class::Oracle;
+    let oracle = actor.class() == Class::Oracle;
     if matches!(
         call.tool.as_str(),
         "task_delegate" | "task_reassign" | "task_accept" | "task_reject"
@@ -205,7 +282,18 @@ pub(crate) fn prepare(
     }
     let task = |path: &str| -> Checked<Document> {
         let doc = locate(index, path)?;
-        authorize(&doc, registry, actor)?;
+        if actor.seat().is_none()
+            && call.tool == "task_delegate"
+            && reference(&doc, "assignee")?.is_none()
+        {
+            let args: Delegate = tools::parse(&call.args)?;
+            let target = target(registry, actor, args.seat_id)?;
+            let mut scoped = doc.clone();
+            scoped.metadata["assignee"] = json!(format!("seat:{}", target.id));
+            authorize(&scoped, registry, actor)?;
+        } else {
+            authorize(&doc, registry, actor)?;
+        }
         Ok(doc)
     };
     let effect = match call.tool.as_str() {
@@ -220,14 +308,17 @@ pub(crate) fn prepare(
         }
         "task_list" => {
             let args: List = tools::parse(&call.args)?;
-            if args.swarm_id.is_some_and(|id| id != actor.swarm_id) {
+            if args
+                .swarm_id
+                .is_some_and(|id| actor.seat().is_some_and(|seat| id != seat.swarm_id))
+            {
                 return Err("task list outside caller swarm".into());
             }
             if let Some(status) = &args.status {
                 task_state(status)?;
             }
             let assignee = args.assignee.as_deref().map(seat_reference).transpose()?;
-            if !oracle && assignee.is_some_and(|id| id != Some(actor.seat_id)) {
+            if !oracle && assignee.is_some_and(|id| id != actor.seat().map(|seat| seat.seat_id)) {
                 return Err("workers list only their assigned tasks".into());
             }
             let limit = tools::page_limit(args.limit)?;
@@ -237,6 +328,14 @@ pub(crate) fn prepare(
                 .filter(|d| {
                     is_task(d)
                         && authorize(d, registry, actor).is_ok()
+                        && (actor.seat().is_some()
+                            || args.swarm_id.is_none_or(|swarm| {
+                                reference(d, "assignee")
+                                    .ok()
+                                    .flatten()
+                                    .and_then(|seat| registry.get(seat).ok())
+                                    .is_some_and(|seat| seat.swarm == swarm)
+                            }))
                         && args
                             .status
                             .as_ref()
@@ -426,29 +525,54 @@ fn reference(doc: &Document, field: &str) -> Checked<Option<Ulid>> {
         _ => Err(format!("task {field} must name a seat")),
     }
 }
+fn delegator(doc: &Document) -> Checked<Option<Recipient>> {
+    match doc.metadata.get("delegated_by") {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(value)) if value == "none" => Ok(None),
+        Some(Value::String(value)) if value.starts_with("operator:") => {
+            Recipient::try_from(value.clone())
+                .map(Some)
+                .map_err(str::to_owned)
+        }
+        Some(Value::String(value)) => seat_reference(value).map(|id| id.map(Recipient::Seat)),
+        _ => Err("task delegated_by must name a seat or operator".into()),
+    }
+}
 fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> Checked<()> {
     // Every present registry reference, never the directory, establishes scope.
     if doc.error.is_some() || !is_task(doc) {
         return Err("task frontmatter is invalid".into());
     }
     let assignee = reference(doc, "assignee")?;
-    let delegator = reference(doc, "delegated_by")?;
+    let delegator = delegator(doc)?.and_then(Recipient::seat);
     if assignee.is_none() && delegator.is_none() {
         return Err("task swarm is ambiguous".into());
     }
+    let swarm = match actor {
+        Actor::Seat(actor) => actor.swarm_id,
+        Actor::Operator { .. } => {
+            registry
+                .get(assignee.ok_or("task swarm requires an assignee")?)
+                .map_err(|_| "task assignee unavailable")?
+                .swarm
+        }
+    };
     for id in [assignee, delegator].into_iter().flatten() {
-        if registry.get(id).map_err(|_| "task seat unavailable")?.swarm != actor.swarm_id {
+        if registry.get(id).map_err(|_| "task seat unavailable")?.swarm != swarm {
             return Err("task outside caller swarm".into());
         }
     }
-    if actor.role.class != Class::Oracle && assignee != Some(actor.seat_id) {
+    if actor.class() != Class::Oracle && assignee != actor.seat().map(|seat| seat.seat_id) {
         return Err("task is not assigned to caller".into());
     }
     Ok(())
 }
 fn target(registry: &Registry, actor: &Actor, id: Ulid) -> Checked<SeatRecord> {
     let target = registry.get(id).map_err(|_| "target seat unavailable")?;
-    if target.swarm != actor.swarm_id {
+    if actor
+        .seat()
+        .is_some_and(|actor| target.swarm != actor.swarm_id)
+    {
         return Err("target outside caller swarm".into());
     }
     Ok(target)
@@ -506,7 +630,12 @@ impl Verification {
 
 pub(crate) fn plan(effect: Effect, actor: &Actor, call: &Call) -> Checked<Plan> {
     match effect {
-        Effect::Artifact { claim, task } => artifact(claim, task, actor, call),
+        Effect::Artifact { claim, task } => artifact(
+            claim,
+            task,
+            actor.seat().ok_or("artifact claims require a seat")?,
+            call,
+        ),
         Effect::Task { document, action } => transition(document, *action, actor, call),
     }
 }
@@ -518,12 +647,12 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
     let current = doc.metadata["status"].as_str().unwrap_or_default();
     match action {
         Action::Report(report) => {
-            let delegator = reference(&doc, "delegated_by")?.ok_or("task has no delegator")?;
+            let delegator = delegator(&doc)?.ok_or("task has no delegator")?;
             if matches!(current, "accepted" | "done") {
                 return Err("closed task cannot be reported".into());
             }
             doc.metadata["status"] = json!("reported");
-            doc.metadata["report"] = json!({"summary":report.summary,"commit":report.commit,"reported_by":format!("seat:{}",actor.seat_id),"op_id":call.op_id});
+            doc.metadata["report"] = json!({"summary":report.summary,"commit":report.commit,"reported_by":actor.reference(),"op_id":call.op_id});
             if let Some(result) = &report.verify_result {
                 doc.metadata["verify_result"] = json!(result);
             } else {
@@ -532,13 +661,16 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
                     .unwrap()
                     .remove("verify_result");
             }
-            doc.body.push_str(&format!("\n\n## Report from seat:{}\n\n{}\n\n```json\n{}\n```\n",actor.seat_id,report.summary,serde_json::to_string_pretty(&json!({"op_id":call.op_id,"commit":report.commit,"verify_result":report.verify_result})).unwrap()));
+            doc.body.push_str(&format!("\n\n## Report from {}\n\n{}\n\n```json\n{}\n```\n",actor.reference(),report.summary,serde_json::to_string_pretty(&json!({"op_id":call.op_id,"commit":report.commit,"verify_result":report.verify_result})).unwrap()));
             notices.push((
                 delegator,
                 "report",
                 format!(
                     "Task {task_id} reported by {}: {}",
-                    actor.seat_id, report.summary
+                    actor
+                        .seat()
+                        .map_or_else(|| actor.reference(), |seat| seat.seat_id.to_string()),
+                    report.summary
                 ),
             ));
         }
@@ -546,16 +678,18 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
             if matches!(current, "accepted" | "done") {
                 return Err("closed task cannot be delegated".into());
             }
-            if assignee.is_some_and(|id| id != target.id && id != actor.seat_id) {
+            if assignee.is_some_and(|id| {
+                id != target.id && actor.seat().is_none_or(|seat| id != seat.seat_id)
+            }) {
                 return Err("already assigned; use task_reassign".into());
             }
             doc.metadata["assignee"] = json!(format!("seat:{}", target.id));
-            doc.metadata["delegated_by"] = json!(format!("seat:{}", actor.seat_id));
+            doc.metadata["delegated_by"] = json!(actor.reference());
             doc.metadata["role"] = json!(role);
             doc.metadata["status"] = json!("claimed");
             clear_report(&mut doc.metadata);
             notices.push((
-                target.id,
+                Recipient::Seat(target.id),
                 "delegate",
                 format!(
                     "ROLE: {}. Execute this: {path}\n\n{}",
@@ -577,12 +711,12 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
                 return Err("requested task role exceeds target authority".into());
             }
             notices.push((
-                assignee,
+                Recipient::Seat(assignee),
                 "release",
                 format!("Released from task {task_id}: {path}"),
             ));
             notices.push((
-                target.id,
+                Recipient::Seat(target.id),
                 "delegate",
                 format!(
                     "ROLE: {}. Execute this: {path}\n\n{}",
@@ -591,7 +725,7 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
                 ),
             ));
             doc.metadata["assignee"] = json!(format!("seat:{}", target.id));
-            doc.metadata["delegated_by"] = json!(format!("seat:{}", actor.seat_id));
+            doc.metadata["delegated_by"] = json!(actor.reference());
             doc.metadata["status"] = json!("claimed");
             clear_report(&mut doc.metadata);
         }
@@ -603,7 +737,7 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
             acceptance(&doc)?;
             doc.metadata["status"] = json!("accepted");
             notices.push((
-                assignee,
+                Recipient::Seat(assignee),
                 "accept",
                 format!("Task {task_id} accepted: {path}"),
             ));
@@ -611,10 +745,9 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
         Action::Reject(reason) => {
             let assignee = assignee.ok_or("task has no assignee")?;
             doc.metadata["status"] = json!("rejected");
-            doc.metadata["rejection"] =
-                json!({"reason":reason,"by":format!("seat:{}",actor.seat_id)});
+            doc.metadata["rejection"] = json!({"reason":reason,"by":actor.reference()});
             notices.push((
-                assignee,
+                Recipient::Seat(assignee),
                 "reject",
                 format!("Task {task_id} rejected: {reason}"),
             ));
@@ -689,10 +822,15 @@ fn acceptance(doc: &Document) -> Checked<()> {
     }
     Ok(())
 }
-fn artifact(claim: Claim, mut task: Option<Document>, actor: &Actor, call: &Call) -> Checked<Plan> {
+fn artifact(
+    claim: Claim,
+    mut task: Option<Document>,
+    actor: &super::SeatActor,
+    call: &Call,
+) -> Checked<Plan> {
     let id = call.op_id;
     let path = format!("artifacts/{id}.md");
-    let mut metadata = json!({"id":id,"type":"artifact","kind":claim.kind,"ref":claim.reference,"produced_by":format!("seat:{}",actor.seat_id),"claimed":true,"grade":"reported","for":[],"derived_from":[]});
+    let mut metadata = json!({"id":id,"type":"artifact","kind":claim.kind,"ref":claim.reference,"produced_by":format!("seat:{}", actor.seat_id),"claimed":true,"grade":"reported","for":[],"derived_from":[]});
     if let Some(digest) = claim.digest {
         metadata["digest"] = json!(digest);
     }
@@ -732,11 +870,17 @@ fn artifact(claim: Claim, mut task: Option<Document>, actor: &Actor, call: &Call
         data: json!({"status":"accepted","artifact_id":id,"path":format!(".bboxy/{path}"),"grade":"reported"}),
     })
 }
-fn wake_id(op: Ulid, seat: Ulid, event: &str) -> Ulid {
+fn wake_id(op: Ulid, recipient: Recipient, event: &str) -> Ulid {
     let mut hash = Sha256::new();
     hash.update(b"bboxy450/task-wake/v1");
     hash.update(op.to_bytes());
-    hash.update(seat.to_bytes());
+    match recipient {
+        Recipient::Seat(seat) => hash.update(seat.to_bytes()),
+        Recipient::Operator(device) => {
+            hash.update(b"operator:");
+            hash.update(device.to_bytes());
+        }
+    }
     hash.update(event.as_bytes());
     Ulid::from_bytes(hash.finalize()[..16].try_into().unwrap())
 }

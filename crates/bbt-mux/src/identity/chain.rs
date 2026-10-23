@@ -20,7 +20,7 @@ use super::{
 use crate::{
     messaging::{
         keys::{LocalSeatKeys, SeatKeys},
-        wire::{Envelope, Issuer, IssuerKind, parse_public, public},
+        wire::{Envelope, EnvelopeExt, Issuer, IssuerKind, parse_public, public},
     },
     registry::SeatRecord,
     store::{Result, Store, digest, invalid, object_dir, sqlite::SqliteStore},
@@ -213,6 +213,26 @@ impl ChainSeatKeys {
             return Err(invalid("device key mismatch"));
         }
         Ok(key)
+    }
+    pub(crate) fn operator_signing(&self) -> Result<crate::messaging::keys::OperatorSigning> {
+        let state = transition::read(&self.account)?
+            .ok_or_else(|| invalid("held: missing issuer journal"))?;
+        if state.kind != IssuerKind::GpgRoot {
+            return Err(invalid("held: certified device authority is not active"));
+        }
+        let key = self.event_signer()?;
+        let grant = &self.identity.grant.payload;
+        Ok(crate::messaging::keys::OperatorSigning {
+            device_id: grant.device_id,
+            issuer: Issuer {
+                kind: IssuerKind::GpgRoot,
+                key: grant.root_pubkey.clone(),
+            },
+            device: grant.device_pubkey.clone(),
+            grant: self.identity.grant.digest.clone(),
+            epoch: transition::counter(&grant.device_epoch)?,
+            key,
+        })
     }
     pub(super) fn sign_hold_closure(
         &self,
@@ -783,6 +803,30 @@ impl SeatKeys for ChainSeatKeys {
         Ok(key)
     }
     fn verify(&self, env: &Envelope) -> Result<()> {
+        if env.seat == Ulid::nil() {
+            if env.issuer_kind != IssuerKind::GpgRoot {
+                return Err(invalid(
+                    "certified receivers refuse local-dev operator messages",
+                ));
+            }
+            self.device_current((self.clock)())?;
+            let state = transition::read(&self.account)?
+                .ok_or_else(|| invalid("missing issuer journal"))?;
+            let grant = &self.identity.grant.payload;
+            if state.kind != IssuerKind::GpgRoot
+                || env.issuer != grant.root_pubkey
+                || env.account != grant.root_pubkey
+                || env.device != grant.device_pubkey
+                || env.author != grant.device_pubkey
+                || env.role_grant_id != self.identity.grant.digest
+                || env.role_epoch != transition::counter(&grant.device_epoch)?
+                || env.timestamp < grant.not_before
+                || env.timestamp >= grant.expires_at
+            {
+                return Err(invalid("operator envelope does not match DeviceGrant"));
+            }
+            return env.verify_signature();
+        }
         if env.issuer_kind == IssuerKind::LocalDev {
             return self.verify_local(env);
         }

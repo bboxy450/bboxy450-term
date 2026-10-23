@@ -7,6 +7,7 @@ use ulid::Ulid;
 use super::wire::MessageKind;
 use crate::registry::Class;
 use crate::store::{Result, digest, events::Draft, invalid, sqlite::SqliteStore};
+pub use bbt_proto::messaging::{Arrival, EntryKind, Filter, Node, Rate, Recipient, Right};
 
 const MAX_NODES: usize = 16_384;
 const MAX_STEPS: usize = 65_536;
@@ -34,15 +35,11 @@ impl Actor {
         )
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Right {
-    Read,
-    Write,
-    Link,
-    Admin,
+
+trait RightExt {
+    fn name(self) -> &'static str;
 }
-impl Right {
+impl RightExt for Right {
     fn name(self) -> &'static str {
         match self {
             Self::Read => "read",
@@ -52,81 +49,22 @@ impl Right {
         }
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EntryKind {
-    Folder,
-    Sink,
-    Link,
+
+trait FilterExt {
+    fn accepts(&self, kind: MessageKind, class: Class, priority: u8) -> bool;
 }
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Filter {
-    pub kinds: Vec<MessageKind>,
-    pub classes: Vec<Class>,
-    pub priorities: Vec<u8>,
-}
-impl Filter {
+impl FilterExt for Filter {
     fn accepts(&self, kind: MessageKind, class: Class, priority: u8) -> bool {
         (self.kinds.is_empty() || self.kinds.contains(&kind))
             && (self.classes.is_empty() || self.classes.contains(&class))
             && (self.priorities.is_empty() || self.priorities.contains(&priority))
     }
 }
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Rate {
-    pub batch_ms: u64,
-    pub coalesce: bool,
-}
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Node {
-    pub path: String,
-    pub kind: EntryKind,
-    pub target: Option<String>,
-    pub filter: Filter,
-    pub rate: Rate,
-    pub paused: bool,
-    pub grants: BTreeMap<Ulid, Vec<Right>>,
-}
-impl Node {
-    pub fn folder(path: impl Into<String>) -> Self {
-        Self {
-            path: path.into(),
-            kind: EntryKind::Folder,
-            target: None,
-            filter: Filter::default(),
-            rate: Rate::default(),
-            paused: false,
-            grants: BTreeMap::new(),
-        }
-    }
-    pub fn link(path: impl Into<String>, target: impl Into<String>) -> Self {
-        Self {
-            kind: EntryKind::Link,
-            target: Some(target.into()),
-            ..Self::folder(path)
-        }
-    }
-    pub fn sink(seat: Ulid) -> Self {
-        Self {
-            kind: EntryKind::Sink,
-            ..Self::folder(format!("seats/{seat}/inbox"))
-        }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Arrival {
-    pub path: String,
-    pub links: Vec<String>,
-    pub paused: bool,
-    pub batch_ms: u64,
-    pub coalesce: bool,
-}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Route {
-    pub seat: Ulid,
+    #[serde(rename = "seat")]
+    pub recipient: Recipient,
     pub agent: Option<String>,
     pub arrivals: Vec<Arrival>,
 }
@@ -135,6 +73,7 @@ pub struct Tree {
     store: SqliteStore,
     swarm: Ulid,
     nodes: BTreeMap<String, Node>,
+    operator_device: Option<Ulid>,
 }
 pub(crate) fn schema(store: &SqliteStore) -> Result<()> {
     store.connection()?.execute_batch("CREATE TABLE IF NOT EXISTS msg_tree(path TEXT PRIMARY KEY,kind TEXT NOT NULL,target TEXT,filter BLOB NOT NULL,rate BLOB NOT NULL,paused INTEGER NOT NULL,grants BLOB NOT NULL);
@@ -182,8 +121,11 @@ impl Tree {
             store,
             swarm,
             nodes,
+            operator_device: None,
         };
-        for path in ["", "seats", "channels", "groups", "swarms", "ext"] {
+        for path in [
+            "", "seats", "channels", "groups", "swarms", "ext", "operator",
+        ] {
             if !tree.nodes.contains_key(path) {
                 tree.put(Actor::Operator, Node::folder(path))?;
             }
@@ -192,7 +134,19 @@ impl Tree {
         if !tree.nodes.contains_key(&swarm_path) {
             tree.put(Actor::Operator, Node::folder(swarm_path))?;
         }
+        if !tree.nodes.contains_key("operator/inbox") {
+            tree.put(
+                Actor::Operator,
+                Node {
+                    kind: EntryKind::Sink,
+                    ..Node::folder("operator/inbox")
+                },
+            )?;
+        }
         Ok(tree)
+    }
+    pub(crate) fn set_operator(&mut self, device_id: Ulid) {
+        self.operator_device = Some(device_id);
     }
     pub fn check(&self, actor: Actor, path: &str, right: Right) -> Result<()> {
         if actor.controls() {
@@ -291,7 +245,7 @@ impl Tree {
         } else {
             self.check(actor, &node.path, Right::Admin)?;
         }
-        if node.kind == EntryKind::Sink {
+        if node.kind == EntryKind::Sink && node.path != "operator/inbox" {
             sink(&node.path)?;
         }
         if node.kind != EntryKind::Link && node.target.is_some() {
@@ -454,7 +408,7 @@ struct Walk<'a> {
     seen: BTreeSet<String>,
     steps: usize,
     bytes: usize,
-    routes: BTreeMap<(Ulid, Option<String>), Route>,
+    routes: BTreeMap<(Recipient, Option<String>), Route>,
 }
 impl Walk<'_> {
     fn visit(&mut self, path: &str, alias: &str, mode: u8, mut arrival: Arrival) -> Result<()> {
@@ -482,13 +436,23 @@ impl Walk<'_> {
                 if mode != 0 {
                     return Err(invalid("cannot publish wildcards below a sink"));
                 }
-                let (seat, agent) = sink(path)?;
+                let (recipient, agent) = if path == "operator/inbox" {
+                    (
+                        Recipient::Operator(self.tree.operator_device.ok_or_else(|| {
+                            invalid("held: operator device custody is unavailable")
+                        })?),
+                        None,
+                    )
+                } else {
+                    let (seat, agent) = sink(path)?;
+                    (Recipient::Seat(seat), agent)
+                };
                 arrival.path = alias.into();
                 let route = self
                     .routes
-                    .entry((seat, agent.clone()))
+                    .entry((recipient, agent.clone()))
                     .or_insert_with(|| Route {
-                        seat,
+                        recipient,
                         agent,
                         arrivals: Vec::new(),
                     });

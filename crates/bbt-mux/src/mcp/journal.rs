@@ -298,7 +298,7 @@ fn audit(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mcp::Actor;
+    use crate::mcp::SeatActor as Actor;
     use crate::messaging::wire::IssuerKind;
     use crate::registry::{Class, Role};
     use crate::store::Store;

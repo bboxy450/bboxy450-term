@@ -1,7 +1,7 @@
 //! The logic owner mediates keys, current grants, inboxes and the local bus.
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use ulid::Ulid;
@@ -9,13 +9,15 @@ use ulid::Ulid;
 use super::{
     keys::SeatKeys,
     ledger::{Ledger, Page, Receipt, StoredMessage, Work, u64_at},
-    tree::{Actor, Node, Right, Route, Tree},
-    wire::{Body, Envelope, MessageKind, SendRequest, public},
+    tree::{Actor, Node, Recipient, Right, Route, Tree},
+    wire::{Body, Envelope, EnvelopeExt, MessageKind, SendRequest, SendRequestExt, public},
 };
 use crate::{
     adapters::{State, WakeOutcome},
     registry::{Class, Registry, SeatRecord},
-    store::{Result, digest, events::Draft, invalid, object_dir, sqlint, sqlite::SqliteStore},
+    store::{
+        Result, Store, digest, events::Draft, invalid, object_dir, sqlint, sqlite::SqliteStore,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,6 +31,22 @@ struct Grant {
     #[serde(default)]
     operator_direct: bool,
     author: String,
+}
+fn task_event_name<'a>(request: &SendRequest, body: &'a Body) -> Result<&'a str> {
+    request.validate()?;
+    let Body::Task { event, summary, .. } = body else {
+        return Err(invalid("task producer requires a Task body"));
+    };
+    if request.kind != MessageKind::Task
+        || request.text != *summary
+        || !matches!(
+            event.as_str(),
+            "delegate" | "release" | "accept" | "reject" | "report"
+        )
+    {
+        return Err(invalid("invalid task producer request"));
+    }
+    Ok(event)
 }
 #[derive(Serialize, Deserialize)]
 struct HeldSend {
@@ -79,13 +97,14 @@ struct Swarm {
     /// Last reconcile pass: pending rowid -> (stored-bytes hash, message, recipient),
     /// each message's resolution and each recipient's mute. A receipt whose bytes,
     /// message resolution and recipient are all unchanged would reconcile to itself.
-    seen: HashMap<u64, (u128, u64, Ulid)>,
+    seen: HashMap<u64, (u128, u64, Recipient)>,
     resolved: HashMap<u64, Option<Resolved>>,
-    muted: HashMap<Ulid, std::result::Result<bool, String>>,
+    muted: HashMap<Recipient, std::result::Result<bool, String>>,
 }
 
 /// A message's sender class, operator-direct flag and routes by (seat, agent), or the reason it cannot route.
-type Resolved = std::result::Result<(Class, bool, HashMap<(Ulid, Option<String>), Route>), String>;
+type Resolved =
+    std::result::Result<(Class, bool, HashMap<(Recipient, Option<String>), Route>), String>;
 
 fn hash128(bytes: &[u8]) -> u128 {
     // Two independent multiply-rotate lanes over 8-byte words, then a
@@ -111,12 +130,42 @@ fn hash128(bytes: &[u8]) -> u128 {
     let w = u64::from_le_bytes(tail);
     (u128::from(mix(a ^ w)) << 64) | u128::from(mix(b.wrapping_add(w) ^ a))
 }
+#[derive(Clone, Copy)]
+enum Source<'a> {
+    Seat {
+        record: &'a SeatRecord,
+        operator: bool,
+    },
+    Operator(&'a super::keys::OperatorSigning),
+}
+impl Source<'_> {
+    fn actor(self) -> Actor {
+        match self {
+            Self::Seat {
+                record,
+                operator: false,
+            } => Actor::Seat {
+                seat: record.id,
+                class: record.role.class,
+            },
+            _ => Actor::Operator,
+        }
+    }
+    fn inbox(self) -> String {
+        match self {
+            Self::Seat { record, .. } => format!("seats/{}/inbox", record.id),
+            Self::Operator(_) => "operator/inbox".into(),
+        }
+    }
+}
+
 pub struct Messaging {
     root: PathBuf,
     account: SqliteStore,
     registry: Registry,
     keys: Arc<dyn SeatKeys>,
     swarms: BTreeMap<Ulid, Swarm>,
+    operator_device: Option<Ulid>,
 }
 impl Messaging {
     pub fn request(
@@ -128,29 +177,104 @@ impl Messaging {
         mute_state: Option<State>,
         now: u64,
     ) -> Result<super::api::Response> {
+        let record = self.record(seat, generation)?;
+        self.request_from(
+            record.swarm,
+            Source::Seat {
+                record: &record,
+                operator,
+            },
+            request,
+            mute_state,
+            now,
+        )
+    }
+    pub(crate) fn request_operator(
+        &mut self,
+        authority: &super::keys::OperatorSigning,
+        swarm: Ulid,
+        request: super::api::Request,
+        mute_state: Option<State>,
+        now: u64,
+    ) -> Result<super::api::Response> {
+        if swarm == Ulid::nil() || !self.registry.list()?.iter().any(|seat| seat.swarm == swarm) {
+            return Err(invalid("unknown operator messaging swarm"));
+        }
+        self.set_operator_device(authority.device_id)?;
+        self.request_from(swarm, Source::Operator(authority), request, mute_state, now)
+    }
+    fn request_from(
+        &mut self,
+        swarm: Ulid,
+        source: Source<'_>,
+        request: super::api::Request,
+        mute_state: Option<State>,
+        now: u64,
+    ) -> Result<super::api::Response> {
         use super::api::{Request, Response};
-        let (swarm, actor) = self.actor(seat, generation)?;
-        let actor = if operator { Actor::Operator } else { actor };
+        let actor = source.actor();
         match request {
-            Request::Send { message } => {
-                self.send_inner(seat, generation, message, now, operator, None)
-            }
+            Request::Send { message } => match source {
+                Source::Seat { record, operator } => {
+                    self.send_inner(record.id, record.generation, message, now, operator, None)
+                }
+                Source::Operator(authority) => {
+                    self.send_operator(authority, swarm, message, None, now)
+                }
+            },
             Request::List {
                 thread,
                 channel,
                 after,
                 limit,
-            } => Ok(Response::Messages {
-                page: self.list(seat, thread, channel.as_deref(), after, limit)?,
-            }),
+            } => match source {
+                Source::Seat { record, .. } => Ok(Response::Messages {
+                    page: self.list(record.id, thread, channel.as_deref(), after, limit)?,
+                }),
+                Source::Operator(authority) => {
+                    let channel = channel
+                        .map(|path| super::tree::normalize(&path, true))
+                        .transpose()?;
+                    if let Some(path) = &channel {
+                        self.swarm(swarm)?.tree.check(
+                            Actor::Operator,
+                            path.trim_end_matches("/**").trim_end_matches("/*"),
+                            Right::Read,
+                        )?;
+                    }
+                    let page = self.swarm(swarm)?.ledger.list_for(
+                        channel
+                            .is_none()
+                            .then_some(Recipient::Operator(authority.device_id)),
+                        thread,
+                        channel.as_deref(),
+                        after,
+                        limit,
+                    )?;
+                    Ok(Response::Messages { page })
+                }
+            },
             Request::Receipts {
                 message,
                 after,
                 limit,
             } => {
-                let m = self.swarm(swarm)?.ledger.by_id(message)?;
-                self.can_read(seat, &m)?;
-                let recipient = (!actor.controls() && m.envelope.seat != seat).then_some(seat);
+                let stored = self
+                    .swarm(swarm)?
+                    .ledger
+                    .by_id(message)
+                    .map_err(|_| invalid("message is not in the requested swarm"))?;
+                if let Source::Seat { record, .. } = source {
+                    self.can_read(record.id, &stored)?;
+                }
+                let recipient = match source {
+                    Source::Seat { record, .. }
+                        if !actor.controls() && stored.envelope.seat != record.id =>
+                    {
+                        Some(record.id)
+                    }
+                    _ => None,
+                };
                 Ok(Response::Receipts {
                     page: self
                         .swarm(swarm)?
@@ -159,7 +283,17 @@ impl Messaging {
                 })
             }
             Request::Acknowledge { message, agent } => {
-                self.acknowledge(seat, message, agent.as_deref(), now)?;
+                match source {
+                    Source::Seat { record, .. } => {
+                        self.acknowledge(record.id, message, agent.as_deref(), now)?
+                    }
+                    Source::Operator(authority) => self.swarm(swarm)?.ledger.acknowledge(
+                        Recipient::Operator(authority.device_id),
+                        message,
+                        agent.as_deref(),
+                        now,
+                    )?,
+                }
                 Ok(Response::Applied)
             }
             Request::Ls { path, after, limit } => {
@@ -194,7 +328,7 @@ impl Messaging {
                     return Err(invalid("subscription name must be one path token"));
                 }
                 let path = format!("{}/{}", super::tree::normalize(&folder, false)?, name);
-                let mut node = Node::link(path, format!("seats/{seat}/inbox"));
+                let mut node = Node::link(path, source.inbox());
                 node.filter = filter;
                 node.rate = rate;
                 self.swarm(swarm)?.tree.put(actor, node)?;
@@ -260,6 +394,7 @@ impl Messaging {
             registry,
             keys,
             swarms: BTreeMap::new(),
+            operator_device: None,
         };
         for record in messaging.registry.list()? {
             messaging.sync_seat(&record)?;
@@ -307,10 +442,14 @@ impl Messaging {
     fn swarm(&mut self, id: Ulid) -> Result<&mut Swarm> {
         if !self.swarms.contains_key(&id) {
             let store = SqliteStore::open(&object_dir(&self.root, &format!("swarm-{id}"))?)?;
+            let mut tree = Tree::open(store.clone(), id)?;
+            if let Some(device_id) = self.operator_device {
+                tree.set_operator(device_id);
+            }
             self.swarms.insert(
                 id,
                 Swarm {
-                    tree: Tree::open(store.clone(), id)?,
+                    tree,
                     ledger: Ledger::open(store, id)?,
                     seen: HashMap::new(),
                     resolved: HashMap::new(),
@@ -319,6 +458,111 @@ impl Messaging {
             );
         }
         Ok(self.swarms.get_mut(&id).unwrap())
+    }
+    pub(crate) fn set_operator_device(&mut self, device_id: Ulid) -> Result<()> {
+        if device_id == Ulid::nil() {
+            return Err(invalid("operator device must be non-nil"));
+        }
+        if self.operator_device != Some(device_id) {
+            self.operator_device = Some(device_id);
+            for swarm in self.swarms.values_mut() {
+                swarm.tree.set_operator(device_id);
+                swarm.seen.clear();
+                swarm.resolved.clear();
+                swarm.muted.clear();
+            }
+        }
+        Ok(())
+    }
+    pub(crate) fn operator_subjects(&self) -> Result<Vec<String>> {
+        if self.operator_device.is_none() {
+            return Err(invalid("held: operator device custody is unavailable"));
+        }
+        // Enumerate retained subjects from the current tree, rather than a
+        // wildcard that would admit new subchannels or unrelated bus traffic.
+        // State/task/artifact/audit subjects and consumer versions belong to the lane.
+        let mut subjects = BTreeSet::from([
+            "operator/inbox/message".to_owned(),
+            "operator/inbox/receipt".to_owned(),
+        ]);
+        for swarm in self.swarms.values() {
+            let mut folders = vec![
+                "channels".to_owned(),
+                "swarms".to_owned(),
+                "groups".to_owned(),
+                "ext".to_owned(),
+            ];
+            while let Some(path) = folders.pop() {
+                subjects.insert(format!("{path}/message"));
+                for node in swarm.tree.ls(Actor::Operator, &path)? {
+                    subjects.insert(format!("{}/message", node.path));
+                    if node.kind == super::tree::EntryKind::Folder {
+                        folders.push(node.path);
+                    }
+                }
+            }
+        }
+        Ok(subjects.into_iter().collect())
+    }
+    pub(crate) fn operator_message_row(
+        &mut self,
+        swarm: Ulid,
+        id: Ulid,
+    ) -> Result<bbt_proto::messaging::MessageRow> {
+        use bbt_proto::messaging::{AuthorKind, AuthorRef, MessageRow, ReceiptSummary};
+        let message = self
+            .swarm(swarm)?
+            .ledger
+            .by_id(id)
+            .map_err(|_| invalid("message is not in the requested swarm"))?;
+        if message.envelope.swarm_id != swarm {
+            return Err(invalid("messaging swarm mismatch: retained message"));
+        }
+        let sender = self.swarm(swarm)?.ledger.sender(id)?;
+        let author = match sender {
+            Recipient::Seat(seat) => AuthorRef {
+                kind: AuthorKind::Seat,
+                id: seat.to_string(),
+                name: self
+                    .registry
+                    .get(seat)
+                    .map(|seat| seat.name)
+                    .unwrap_or_else(|_| format!("seat {seat}")),
+            },
+            Recipient::Operator(device) => AuthorRef {
+                kind: AuthorKind::Operator,
+                id: device.to_string(),
+                name: "operator".into(),
+            },
+        };
+        let raw = self.swarm(swarm)?.ledger.receipts(id)?;
+        let receipts = ReceiptSummary {
+            // Inbox commit is delivery; a native write remains its own evidence rung.
+            delivered: raw
+                .iter()
+                .filter(|receipt| receipt.evidence != crate::adapters::Evidence::SenderStored)
+                .count(),
+            acked: raw
+                .iter()
+                .filter(|receipt| {
+                    receipt.evidence == crate::adapters::Evidence::ApplicationAcknowledged
+                })
+                .count(),
+            held: raw.iter().filter(|receipt| receipt.held.is_some()).count()
+                + usize::from(message.held_out.is_some()),
+        };
+        Ok(MessageRow {
+            id,
+            bus: message.bus,
+            author,
+            issuer_kind: message.envelope.issuer_kind,
+            kind: message.envelope.kind,
+            priority_class: message.envelope.priority_class,
+            priority: message.envelope.priority,
+            text: message.envelope.body.text().unwrap_or_default().into(),
+            ts: message.envelope.timestamp,
+            receipts,
+        })
     }
     pub fn sync_seat(&mut self, record: &SeatRecord) -> Result<()> {
         let mut db = self.account.connection()?;
@@ -345,6 +589,7 @@ impl Messaging {
             ("seats", vec![Right::Write]),
             ("channels", vec![Right::Read]),
             ("groups", vec![Right::Read]),
+            ("operator", vec![Right::Write]),
             (
                 swarm_path.as_str(),
                 vec![Right::Read, Right::Write, Right::Link],
@@ -392,25 +637,15 @@ impl Messaging {
         body: Body,
         now: u64,
     ) -> Result<StoredMessage> {
-        request.validate()?;
-        let Body::Task { event, summary, .. } = &body else {
-            return Err(invalid("task producer requires a Task body"));
-        };
-        if request.kind != MessageKind::Task
-            || request.text != *summary
-            || !matches!(
-                event.as_str(),
-                "delegate" | "release" | "accept" | "reject" | "report"
-            )
-        {
-            return Err(invalid("invalid task producer request"));
-        }
+        let event = task_event_name(&request, &body)?;
         let record = self.record(from, generation)?;
         if event != "report" && record.role.class != Class::Oracle {
             return Err(invalid("task control requires oracle-class authority"));
         }
         request.destination = super::tree::normalize(&request.destination, false)?;
-        super::tree::sink(&request.destination)?;
+        if request.destination != "operator/inbox" {
+            super::tree::sink(&request.destination)?;
+        }
         self.sync_seat(&record)?;
         if let Some(old) = self.swarm(record.swarm)?.ledger.existing(&request, from)? {
             if old.envelope.body != body {
@@ -458,6 +693,165 @@ impl Messaging {
             .accept(&request, &envelope, &routes, held, now)?;
         self.reconcile(now)?;
         Ok(message)
+    }
+    pub(crate) fn task_event_operator(
+        &mut self,
+        authority: &super::keys::OperatorSigning,
+        swarm: Ulid,
+        request: SendRequest,
+        body: Body,
+        now: u64,
+    ) -> Result<StoredMessage> {
+        task_event_name(&request, &body)?;
+        if request.destination != "operator/inbox" {
+            let (target, _) = super::tree::sink(&request.destination)?;
+            if self.registry.get(target)?.swarm != swarm {
+                return Err(invalid("task target outside assignee swarm"));
+            }
+        }
+        match self.send_operator(authority, swarm, request, Some(body), now)? {
+            super::api::Response::Stored { message } => Ok(*message),
+            super::api::Response::Held { reason, .. } => Err(invalid(format!("held: {reason}"))),
+            _ => unreachable!(),
+        }
+    }
+    fn send_operator(
+        &mut self,
+        authority: &super::keys::OperatorSigning,
+        swarm: Ulid,
+        mut request: SendRequest,
+        body: Option<Body>,
+        now: u64,
+    ) -> Result<super::api::Response> {
+        request.validate()?;
+        if body.is_none() && matches!(request.kind, MessageKind::Presence | MessageKind::Task) {
+            return Err(invalid(
+                "typed presence/task messages require their producer API",
+            ));
+        }
+        if let Some(reason) = self.keys.signing_hold() {
+            return Err(invalid(format!("held: {reason}")));
+        }
+        self.set_operator_device(authority.device_id)?;
+        request.destination = super::tree::normalize(&request.destination, true)?;
+        let destination_swarm = request
+            .destination
+            .split_once('/')
+            .and_then(|(kind, tail)| {
+                tail.split('/')
+                    .next()?
+                    .parse::<Ulid>()
+                    .ok()
+                    .map(|id| (kind, id))
+            });
+        let destination_swarm = match destination_swarm {
+            Some(("seats", seat)) => Some(self.registry.get(seat)?.swarm),
+            Some(("swarms", swarm)) => Some(swarm),
+            _ => None, // Other channel paths are resolved in the explicitly named swarm tree.
+        };
+        if destination_swarm.is_some_and(|destination| destination != swarm) {
+            return Err(invalid("messaging swarm mismatch: destination"));
+        }
+        if request.destination == format!("swarms/{swarm}") {
+            request.destination.push_str("/*");
+        }
+        let body = body.unwrap_or_else(|| Body::Text {
+            text: request.text.clone(),
+        });
+        let sender = Recipient::Operator(authority.device_id);
+        if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, sender)? {
+            if old.envelope.body != body {
+                return Err(invalid("message ID body conflict"));
+            }
+            return Ok(super::api::Response::Stored {
+                message: Box::new(old),
+            });
+        }
+        if let Some(reply) = request.reply_to {
+            let old = self.swarm(swarm)?.ledger.by_id(reply)?;
+            if request
+                .thread_id
+                .is_some_and(|thread| thread != old.envelope.thread_id)
+            {
+                return Err(invalid("reply thread mismatch"));
+            }
+            request.thread_id = Some(old.envelope.thread_id);
+        }
+        let routes = self.swarm(swarm)?.tree.resolve(
+            Actor::Operator,
+            &request.destination,
+            request.kind,
+            Class::Oracle,
+            request.priority,
+        )?;
+        self.check_recipients(swarm, &routes)?;
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let counter = sender.to_string();
+        let last: Option<u64> = tx
+            .query_row(
+                "SELECT sequence FROM msg_counters WHERE seat=?1 AND generation=0",
+                [&counter],
+                |row| u64_at(row, 0),
+            )
+            .optional()?;
+        let sequence = last
+            .unwrap_or(0)
+            .checked_add(1)
+            .ok_or_else(|| invalid("sender sequence exhausted"))?;
+        let mut envelope = Envelope {
+            version: 1,
+            id: request.id,
+            issuer_kind: authority.issuer.kind,
+            issuer: authority.issuer.key.clone(),
+            account: authority.issuer.key.clone(),
+            device: authority.device.clone(),
+            seat: Ulid::nil(),
+            author: authority.device.clone(),
+            swarm_id: swarm,
+            process_generation: 0,
+            context: request.destination.clone(),
+            role: crate::registry::Role {
+                name: "operator".into(),
+                class: Class::Oracle,
+            },
+            role_grant_id: authority.grant.clone(),
+            role_epoch: authority.epoch,
+            priority_class: Class::Oracle,
+            sender_sequence: sequence,
+            thread_id: request.thread_id.unwrap_or(request.id),
+            reply_to: request.reply_to,
+            timestamp: now / 1000,
+            priority: request.priority,
+            kind: request.kind,
+            body,
+            attachments: request.attachments.clone(),
+            signature: String::new(),
+        };
+        envelope.sign(&authority.key)?;
+        self.validate(&envelope)?;
+        tx.execute("INSERT INTO msg_counters VALUES(?1,0,?2) ON CONFLICT(seat,generation) DO UPDATE SET sequence=excluded.sequence",
+            params![counter, sqlint(sequence)?])?;
+        tx.commit()?;
+        let message = self
+            .swarm(swarm)?
+            .ledger
+            .accept_from(&request, &envelope, &routes, None, now, sender)
+            .map_err(|error| {
+                invalid(format!(
+                    "unknown: message {} store outcome unavailable: {error}",
+                    request.id
+                ))
+            })?;
+        self.reconcile(now).map_err(|error| {
+            invalid(format!(
+                "unknown: message {} stored; delivery reconciliation failed: {error}",
+                request.id
+            ))
+        })?;
+        Ok(super::api::Response::Stored {
+            message: Box::new(message),
+        })
     }
     fn send_inner(
         &mut self,
@@ -703,14 +1097,34 @@ impl Messaging {
     }
     fn check_recipients(&self, swarm: Ulid, routes: &[Route]) -> Result<()> {
         for route in routes {
-            if self.registry.get(route.seat)?.swarm != swarm {
-                return Err(invalid("destination seat is outside this swarm scope"));
+            match route.recipient {
+                Recipient::Seat(seat) if self.registry.get(seat)?.swarm == swarm => {}
+                Recipient::Operator(device) if self.operator_device == Some(device) => {}
+                _ => return Err(invalid("destination is outside this account/swarm scope")),
             }
         }
         Ok(())
     }
-    fn validate(&self, message: &Envelope) -> Result<(SeatRecord, Class, bool)> {
+    fn validate(&self, message: &Envelope) -> Result<(Option<SeatRecord>, Class, bool)> {
         self.keys.verify(message)?;
+        if message.seat == Ulid::nil() {
+            if message.issuer_kind == super::wire::IssuerKind::LocalDev {
+                let bytes = self
+                    .account
+                    .get("identity/local-issuer")?
+                    .ok_or_else(|| invalid("missing local operator custody record"))?;
+                let (public_key, epoch) = super::keys::local_operator_grant(&bytes)?;
+                if public_key != message.issuer
+                    || digest(&bytes) != message.role_grant_id
+                    || epoch != message.role_epoch
+                {
+                    return Err(invalid(
+                        "operator grant does not match the local issuer journal",
+                    ));
+                }
+            }
+            return Ok((None, Class::Oracle, true));
+        }
         let record = self.record(message.seat, message.process_generation)?;
         let grant: Option<Vec<u8>> = self
             .account
@@ -742,7 +1156,7 @@ impl Messaging {
             Class::Worker
         };
         Ok((
-            record,
+            Some(record),
             class,
             grant.operator_direct && super::tree::sink(&message.context).is_ok(),
         ))
@@ -983,17 +1397,19 @@ impl Messaging {
                 for message in &held {
                     let routes = (|| -> Result<Vec<Route>> {
                         let (sender, class, direct) = self.validate(&message.envelope)?;
-                        if sender.muted && !direct {
+                        if sender.as_ref().is_some_and(|sender| sender.muted) && !direct {
                             return Err(invalid("sender muted"));
                         }
                         self.swarm(swarm_id)?.tree.resolve(
                             if direct {
                                 Actor::Operator
                             } else {
-                                Actor::Seat {
-                                    seat: sender.id,
-                                    class: sender.role.class,
-                                }
+                                sender
+                                    .as_ref()
+                                    .map_or(Actor::Operator, |sender| Actor::Seat {
+                                        seat: sender.id,
+                                        class: sender.role.class,
+                                    })
                             },
                             &message.envelope.context,
                             message.envelope.kind,
@@ -1023,7 +1439,7 @@ impl Messaging {
             // whose stored bytes, message resolution and recipient mute all match
             // the previous pass would reconcile to itself, so it is not decoded.
             let mut messages: HashMap<u64, (Option<Resolved>, bool)> = HashMap::new();
-            let mut targets: HashMap<Ulid, (std::result::Result<bool, String>, bool)> =
+            let mut targets: HashMap<Recipient, (std::result::Result<bool, String>, bool)> =
                 HashMap::new();
             let mut seen = HashMap::new();
             let mut after = 0;
@@ -1116,17 +1532,19 @@ impl Messaging {
             Some(
                 (|| -> Result<_> {
                     let (sender, class, direct) = self.validate(&message.envelope)?;
-                    if sender.muted && !direct {
+                    if sender.as_ref().is_some_and(|sender| sender.muted) && !direct {
                         return Err(invalid("sender muted"));
                     }
                     let routes = self.swarm(swarm_id)?.tree.resolve(
                         if direct {
                             Actor::Operator
                         } else {
-                            Actor::Seat {
-                                seat: sender.id,
-                                class: sender.role.class,
-                            }
+                            sender
+                                .as_ref()
+                                .map_or(Actor::Operator, |sender| Actor::Seat {
+                                    seat: sender.id,
+                                    class: sender.role.class,
+                                })
                         },
                         &message.envelope.context,
                         message.envelope.kind,
@@ -1136,7 +1554,7 @@ impl Messaging {
                     // First route per (seat, agent), as a linear `find` picks.
                     let mut by = HashMap::new();
                     for r in routes {
-                        by.entry((r.seat, r.agent.clone())).or_insert(r);
+                        by.entry((r.recipient, r.agent.clone())).or_insert(r);
                     }
                     Ok((class, direct, by))
                 })()
@@ -1151,17 +1569,23 @@ impl Messaging {
     fn muted_once(
         &mut self,
         swarm_id: Ulid,
-        recipient: Ulid,
-        memo: &mut HashMap<Ulid, (std::result::Result<bool, String>, bool)>,
+        recipient: Recipient,
+        memo: &mut HashMap<Recipient, (std::result::Result<bool, String>, bool)>,
     ) -> (std::result::Result<bool, String>, bool) {
         if let Some(hit) = memo.get(&recipient) {
             return hit.clone();
         }
-        let muted = self
-            .registry
-            .get(recipient)
-            .map(|t| t.muted)
-            .map_err(|e| e.to_string());
+        let muted = match recipient {
+            Recipient::Seat(seat) => self
+                .registry
+                .get(seat)
+                .map(|t| t.muted)
+                .map_err(|e| e.to_string()),
+            Recipient::Operator(device) if self.operator_device == Some(device) => Ok(false),
+            Recipient::Operator(_) => {
+                Err("operator device is not the active account device".into())
+            }
+        };
         let same = self
             .swarm(swarm_id)
             .ok()
@@ -1225,6 +1649,27 @@ impl Messaging {
             .ok_or_else(|| invalid("unknown swarm stream"))?
             .ledger
             .bus_sent(id)
+    }
+    pub fn event_published(&self, stream: &str, id: Ulid, sequence: u64) -> Result<()> {
+        let swarm = stream
+            .strip_prefix("swarm-")
+            .ok_or_else(|| invalid("invalid messaging stream"))?
+            .parse::<Ulid>()?;
+        let ledger = &self
+            .swarms
+            .get(&swarm)
+            .ok_or_else(|| invalid("unknown swarm stream"))?
+            .ledger;
+        if sequence > 0 {
+            ledger.record_publication(
+                id,
+                &bbt_proto::messaging::BusPosition {
+                    stream: stream.into(),
+                    seq: sequence,
+                },
+            )?;
+        }
+        ledger.bus_sent(id)
     }
 }
 fn policy(tx: &rusqlite::Transaction<'_>, record: &SeatRecord) -> Result<u64> {

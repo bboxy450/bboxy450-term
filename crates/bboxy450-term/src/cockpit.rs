@@ -46,6 +46,15 @@ pub enum UiMsg {
     ConsumeSpawn {
         id: bbt_mux::Ulid,
     },
+    Messaging {
+        id: bbt_mux::Ulid,
+        swarm_id: bbt_proto::SwarmId,
+        request: bbt_proto::messaging::Request,
+    },
+    Task {
+        id: bbt_mux::Ulid,
+        request: bbt_proto::messaging::TaskRequest,
+    },
     Input {
         seat: SeatId,
         generation: u64,

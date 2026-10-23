@@ -5,6 +5,7 @@
 //! Disposable interoperability/custody checks. Every GnuPG command has an
 //! explicit throwaway homedir; these tests never query the operator keyring.
 mod common;
+use bbt_mux::messaging::wire::EnvelopeExt;
 use std::{
     cell::RefCell,
     collections::BTreeMap,
@@ -566,6 +567,84 @@ impl SeatFixture {
             .unwrap()
     }
 }
+#[test]
+fn identity_operator_uses_the_current_device_grant_and_refuses_seat_or_local_authority() {
+    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+    use bbt_mux::{
+        identity::DeviceIdentity,
+        messaging::{
+            keys::SeatKeys,
+            wire::{IssuerKind, public},
+        },
+        registry::{Class, Role},
+    };
+    use ed25519_dalek::Signer;
+    let mut f = SeatFixture::new(false);
+    let mut operator = f.send("device-signed operator").envelope;
+    let head: Signed<AccountHead> =
+        serde_json::from_slice(&f.account.get("identity/head").unwrap().unwrap()).unwrap();
+    let device_id = head.payload.active_devices[0].device_id;
+    let identity: DeviceIdentity = serde_json::from_slice(
+        &f.account
+            .get(&format!("identity/device/{device_id}"))
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    let key = f.custody.load(device_id).unwrap().unwrap();
+    operator.seat = Ulid::nil();
+    operator.process_generation = 0;
+    operator.author = identity.grant.payload.device_pubkey.clone();
+    operator.role = Role {
+        name: "operator".into(),
+        class: Class::Oracle,
+    };
+    operator.priority_class = Class::Oracle;
+    operator.role_grant_id = identity.grant.digest.clone();
+    operator.role_epoch = identity.grant.payload.device_epoch.parse().unwrap();
+    operator.sign(&key).unwrap();
+    f.chain.verify(&operator).unwrap();
+    for which in 0..5 {
+        let mut forged = operator.clone();
+        match which {
+            0 => forged.role_grant_id = "11".repeat(32),
+            1 => forged.role_epoch += 1,
+            2 => forged.timestamp = identity.grant.payload.not_before - 1,
+            3 => forged.role.name = "executor".into(),
+            _ => forged.process_generation = 1,
+        }
+        forged.signature =
+            URL_SAFE_NO_PAD.encode(key.sign(&forged.signing_bytes().unwrap()).to_bytes());
+        assert!(f.chain.verify(&forged).is_err(), "forgery {which}");
+    }
+    let local_key = SigningKey::from_bytes(&[42; 32]);
+    let mut local = operator.clone();
+    local.issuer_kind = IssuerKind::LocalDev;
+    local.issuer = public(&local_key.verifying_key().to_bytes());
+    local.account = local.issuer.clone();
+    local.device = local.issuer.clone();
+    local.author = local.issuer.clone();
+    local.sign(&local_key).unwrap();
+    assert!(
+        f.chain
+            .verify(&local)
+            .unwrap_err()
+            .to_string()
+            .contains("refuse local-dev operator")
+    );
+    f.clock.store(
+        identity.grant.payload.expires_at,
+        std::sync::atomic::Ordering::Relaxed,
+    );
+    assert!(
+        f.chain
+            .verify(&operator)
+            .unwrap_err()
+            .to_string()
+            .contains("expired DeviceGrant")
+    );
+}
+
 #[test]
 fn identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs() {
     use bbt_mux::messaging::{keys::SeatKeys, wire::IssuerKind};

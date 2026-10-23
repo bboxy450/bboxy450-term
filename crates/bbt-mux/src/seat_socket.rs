@@ -369,7 +369,7 @@ async fn gui_session(
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                     }
                     let op=match &request.action {
-                        GuiAction::Spawn {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}=>*id,
+                        GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -378,6 +378,8 @@ async fn gui_session(
                             GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
                             GuiAction::ListHosts=>Ok(GuiReply::Hosts(client.gui_hosts().await?)),
                             GuiAction::Spawn {id,spec}=>Ok(GuiReply::Spawned {op:id,seat:client.gui_spawn(id,spec).await?}),
+                            GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request).await?}),
+                            GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request).await?}),
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}
                                 if views.len()>=1024&&!views.contains_key(&seat) {return Err(invalid("watch limit reached"));}

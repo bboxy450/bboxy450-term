@@ -51,6 +51,23 @@ enum Command {
         bbt_proto::SpawnSpec,
         oneshot::Sender<Result<bbt_proto::SeatId>>,
     ),
+    GuiMessaging(
+        Ulid,
+        Ulid,
+        crate::messaging::api::Request,
+        oneshot::Sender<Result<crate::messaging::api::Response>>,
+    ),
+    GuiTask(
+        Ulid,
+        bbt_proto::messaging::TaskRequest,
+        oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
+    ),
+    GuiMessageRow(
+        Ulid,
+        Ulid,
+        oneshot::Sender<Result<bbt_proto::messaging::MessageRow>>,
+    ),
+    GuiMessagingSubjects(oneshot::Sender<Result<Vec<String>>>),
     GuiInput(
         Ulid,
         u64,
@@ -113,6 +130,20 @@ enum Command {
     Record(Ulid, oneshot::Sender<Result<SeatRecord>>),
     Endpoint(Ulid, oneshot::Sender<Result<EndpointInfo>>),
     IdentityStatus(oneshot::Sender<Result<crate::identity::IdentityStatus>>),
+}
+
+fn operator_response<T: serde::de::DeserializeOwned>(result: serde_json::Value) -> Result<T> {
+    if result["isError"] == true {
+        let error = &result["structuredContent"]["error"];
+        return Err(invalid(format!(
+            "{}: {}",
+            error["code"].as_str().unwrap_or("unknown"),
+            error["message"]
+                .as_str()
+                .unwrap_or("operation outcome unavailable")
+        )));
+    }
+    Ok(serde_json::from_value(result["structuredContent"].clone())?)
 }
 
 /// Private discovery result; never include the admission capability in logs.
@@ -220,6 +251,57 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
             .map_err(|_| self.unavailable("spawn outcome unknown; inspect the seat list"))?
+    }
+    pub async fn gui_messaging(
+        &self,
+        id: Ulid,
+        swarm: Ulid,
+        request: crate::messaging::api::Request,
+    ) -> Result<crate::messaging::api::Response> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiMessaging(id, swarm, request, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("messaging outcome unknown; retry the original operation ID")
+        })?
+    }
+    pub async fn gui_task(
+        &self,
+        id: Ulid,
+        request: bbt_proto::messaging::TaskRequest,
+    ) -> Result<bbt_proto::messaging::TaskResponse> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiTask(id, request, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("task outcome unknown; retry the original operation ID")
+        })?
+    }
+    pub async fn gui_message_row(
+        &self,
+        swarm: Ulid,
+        message: Ulid,
+    ) -> Result<bbt_proto::messaging::MessageRow> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiMessageRow(swarm, message, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("message projection unavailable"))?
+    }
+    pub async fn gui_messaging_subjects(&self) -> Result<Vec<String>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiMessagingSubjects(tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("message subjects unavailable"))?
     }
     /// Enqueue operator input fenced to the process generation shown by the GUI.
     pub async fn gui_input(
@@ -864,7 +946,7 @@ struct Delivery {
     relayed: bool,
 }
 struct ControlDelivery {
-    actor: crate::mcp::Actor,
+    actor: crate::mcp::SeatActor,
     call: crate::mcp::Call,
     journal: crate::mcp::journal::Journal,
     reply: oneshot::Sender<Result<serde_json::Value>>,
@@ -935,7 +1017,10 @@ impl Worker {
         std::fs::DirBuilder::new()
             .mode(0o700)
             .create(&endpoint_root)?;
-        let messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
+        let mut messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
+        if let Some(device_id) = identity.status()?.device_id {
+            messaging.set_operator_device(device_id)?;
+        }
         let mut capability = [0; 32];
         getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
         let gui_info = EndpointInfo {
@@ -1009,7 +1094,7 @@ impl Worker {
         &mut self,
         id: Ulid,
         generation: u64,
-    ) -> Result<(crate::mcp::Actor, SeatRecord)> {
+    ) -> Result<(crate::mcp::SeatActor, SeatRecord)> {
         self.snapshot(id, generation)?;
         let Reply::Seats { seats } = self.request_for_seat(id, Action::ListOwnedSeats)? else {
             return Err(invalid("supervisor ownership unavailable"));
@@ -1022,7 +1107,7 @@ impl Worker {
         }
         let (record, grant_epoch, issuer_kind) = self.messaging.authority(id, generation)?;
         Ok((
-            crate::mcp::Actor {
+            crate::mcp::SeatActor {
                 seat_id: id,
                 process_generation: generation,
                 swarm_id: record.swarm,
@@ -1066,6 +1151,7 @@ impl Worker {
         call: crate::mcp::Call,
     ) -> Result<serde_json::Value> {
         let (actor, record) = self.control_actor(id, generation)?;
+        let authority = crate::mcp::Actor::from(&actor);
         call.validate()?;
         let journal = self.control_journal(id)?;
         if crate::mcp::seats::handles(&call.tool) {
@@ -1087,43 +1173,13 @@ impl Worker {
                 ),
             };
         }
-        if crate::mcp::work_items::handles(&call.tool)
-            || matches!(call.tool.as_str(), "orient" | "graph_read")
-        {
+        if crate::mcp::work_items::handles(&call.tool) {
+            return self.work_item_call(&authority, &call, &journal);
+        }
+        if matches!(call.tool.as_str(), "orient" | "graph_read") {
             self.scan()?;
         }
-        if crate::mcp::work_items::handles(&call.tool) {
-            // Resolve current Markdown and assignment before disclosing a
-            // retained result, including after a task was reassigned.
-            return match crate::mcp::work_items::prepare(&self.index, &self.registry, &actor, &call)
-            {
-                Ok(crate::mcp::work_items::Prepared::Read(value)) => journal.checked_authorized(
-                    &actor,
-                    &call,
-                    crate::mcp::success(call.op_id, value),
-                    |old| {
-                        crate::mcp::work_items::retained_allowed(
-                            &self.index,
-                            &self.registry,
-                            &actor,
-                            &call,
-                            old,
-                        )
-                    },
-                ),
-                Ok(crate::mcp::work_items::Prepared::Effect(effect)) => {
-                    journal.effect(&actor, &call, || {
-                        self.control_work_item(&actor, &call, *effect)
-                    })
-                }
-                Err(reason) => journal.checked(
-                    &actor,
-                    &call,
-                    crate::mcp::error(call.op_id, "rejected", &reason),
-                ),
-            };
-        }
-        match crate::mcp::messaging::request(&actor, &call) {
+        match crate::mcp::messaging::request(&authority, &call) {
             Ok(Some(request)) if crate::mcp::messaging::mutation(&call.tool) => {
                 journal.effect(&actor, &call, || {
                     self.control_message(&record, &call, request)
@@ -1151,6 +1207,38 @@ impl Worker {
             }
         }
     }
+    fn work_item_call(
+        &mut self,
+        actor: &crate::mcp::Actor,
+        call: &crate::mcp::Call,
+        journal: &crate::mcp::journal::Journal,
+    ) -> Result<serde_json::Value> {
+        self.scan()?;
+        match crate::mcp::work_items::prepare(&self.index, &self.registry, actor, call) {
+            Ok(crate::mcp::work_items::Prepared::Read(value)) => journal.checked_authorized(
+                actor,
+                call,
+                crate::mcp::success(call.op_id, value),
+                |old| {
+                    crate::mcp::work_items::retained_allowed(
+                        &self.index,
+                        &self.registry,
+                        actor,
+                        call,
+                        old,
+                    )
+                },
+            ),
+            Ok(crate::mcp::work_items::Prepared::Effect(effect)) => {
+                journal.effect(actor, call, || self.control_work_item(actor, call, *effect))
+            }
+            Err(reason) => journal.checked(
+                actor,
+                call,
+                crate::mcp::error(call.op_id, "rejected", &reason),
+            ),
+        }
+    }
     fn control_work_item(
         &mut self,
         actor: &crate::mcp::Actor,
@@ -1165,10 +1253,15 @@ impl Worker {
             if self.provenance.recovering() {
                 return crate::mcp::error(call.op_id, "held", "artifact catalog recovery pending");
             }
+            let Some(seat_actor) = actor.seat() else {
+                return crate::mcp::error(call.op_id, "rejected", "artifact claim requires a seat");
+            };
             let original = call.args["ref"].as_str().unwrap_or_default();
-            let normalized =
-                self.provenance
-                    .normalize(actor.seat_id, actor.process_generation, original);
+            let normalized = self.provenance.normalize(
+                seat_actor.seat_id,
+                seat_actor.process_generation,
+                original,
+            );
             let reference = normalized.as_deref().unwrap_or(original);
             if !self
                 .provenance
@@ -1180,7 +1273,7 @@ impl Worker {
             if let Err(reason) = crate::provenance::artifacts::reconcile_claim(
                 &self.index,
                 &mut plan,
-                actor,
+                seat_actor,
                 call,
                 reference,
             ) {
@@ -1195,16 +1288,106 @@ impl Worker {
                 &format!("work-item signing held: {reason}"),
             );
         }
-        let key = match keys.leaf(actor.seat_id, actor.process_generation) {
-            Ok(key) if keys.ready_issuer().is_some() => key,
-            _ => {
-                return crate::mcp::error(
-                    call.op_id,
-                    "held",
-                    "work-item signing held: identity pending",
-                );
-            }
+        let operator = match actor {
+            crate::mcp::Actor::Seat(_) => None,
+            crate::mcp::Actor::Operator { device_id } => match self.identity.operator_signing() {
+                Ok(authority) if authority.device_id == *device_id => Some(authority),
+                Ok(_) => return crate::mcp::error(call.op_id, "held", "operator device changed"),
+                Err(error) => return crate::mcp::error(call.op_id, "held", &error.to_string()),
+            },
         };
+        let key = match actor {
+            crate::mcp::Actor::Seat(actor) => {
+                match keys.leaf(actor.seat_id, actor.process_generation) {
+                    Ok(key) if keys.ready_issuer().is_some() => key,
+                    _ => {
+                        return crate::mcp::error(
+                            call.op_id,
+                            "held",
+                            "work-item signing held: identity pending",
+                        );
+                    }
+                }
+            }
+            crate::mcp::Actor::Operator { .. } => match &operator {
+                Some(authority) => authority.key.clone(),
+                None => return crate::mcp::error(call.op_id, "held", "operator signer missing"),
+            },
+        };
+        let author = match actor {
+            crate::mcp::Actor::Seat(actor) => crate::provenance::author::Author::seat(
+                actor.seat_id,
+                Some(actor.process_generation),
+                &key,
+            ),
+            crate::mcp::Actor::Operator { device_id } => match &operator {
+                Some(authority) => crate::provenance::author::Author::operator(
+                    *device_id,
+                    authority.issuer.kind,
+                    &key,
+                ),
+                None => return crate::mcp::error(call.op_id, "held", "operator signer missing"),
+            },
+        };
+        for wake in &plan.wakes {
+            if let bbt_proto::messaging::Recipient::Operator(device) = wake.to {
+                let current = match self.identity.status() {
+                    Ok(status) => status.device_id,
+                    Err(error) => return crate::mcp::error(call.op_id, "held", &error.to_string()),
+                };
+                if current != Some(device) {
+                    return crate::mcp::error(
+                        call.op_id,
+                        "held",
+                        "task delegator operator device is unavailable",
+                    );
+                }
+                if let Err(error) = self.messaging.set_operator_device(device) {
+                    return crate::mcp::error(call.op_id, "held", &error.to_string());
+                }
+            }
+        }
+        let task_swarm = plan.writes.iter().find_map(|update| {
+            update.metadata["assignee"]
+                .as_str()
+                .and_then(|reference| {
+                    reference
+                        .strip_prefix("seat:")
+                        .unwrap_or(reference)
+                        .parse::<Ulid>()
+                        .ok()
+                })
+                .and_then(|id| self.registry.get(id).ok())
+                .map(|seat| seat.swarm)
+        });
+        let mut wake_swarms = Vec::with_capacity(plan.wakes.len());
+        for wake in &plan.wakes {
+            // A reassignment can notify both the old and the new assignee.
+            // Scope each notice by its actual recipient, never by a default swarm.
+            let swarm = match wake.to {
+                bbt_proto::messaging::Recipient::Seat(seat) => match self.registry.get(seat) {
+                    Ok(record) => record.swarm,
+                    Err(_) => {
+                        return crate::mcp::error(
+                            call.op_id,
+                            "rejected",
+                            "task recipient is unavailable",
+                        );
+                    }
+                },
+                bbt_proto::messaging::Recipient::Operator(_) => match task_swarm {
+                    Some(swarm) => swarm,
+                    None => {
+                        return crate::mcp::error(
+                            call.op_id,
+                            "rejected",
+                            "task swarm requires an assignee",
+                        );
+                    }
+                },
+            };
+            wake_swarms.push(swarm);
+        }
         // Validate every source before the first write of a multi-file claim.
         for update in &plan.writes {
             match self.index.current(&update.path) {
@@ -1227,18 +1410,7 @@ impl Worker {
             .collect();
         for update in plan.writes {
             let artifact = (update.metadata["type"] == "artifact").then(|| update.metadata.clone());
-            if self
-                .index
-                .apply_author(
-                    update,
-                    &crate::provenance::author::Author::seat(
-                        actor.seat_id,
-                        Some(actor.process_generation),
-                        &key,
-                    ),
-                )
-                .is_err()
-            {
+            if self.index.apply_author(update, &author).is_err() {
                 return crate::mcp::error(
                     call.op_id,
                     "unknown",
@@ -1251,9 +1423,12 @@ impl Worker {
                 self.provenance.note_claim(&artifact);
             }
         }
-        for wake in plan.wakes {
+        for (wake, wake_swarm) in plan.wakes.into_iter().zip(wake_swarms) {
             let mut request = crate::messaging::wire::SendRequest::text(
-                format!("seats/{}/inbox", wake.to),
+                match wake.to {
+                    bbt_proto::messaging::Recipient::Seat(seat) => format!("seats/{seat}/inbox"),
+                    bbt_proto::messaging::Recipient::Operator(_) => "operator/inbox".into(),
+                },
                 wake.summary.clone(),
             );
             request.id = wake.id;
@@ -1265,13 +1440,26 @@ impl Worker {
                 path: wake.path,
                 summary: wake.summary,
             };
-            match self.messaging.task_event(
-                actor.seat_id,
-                actor.process_generation,
-                request,
-                body,
-                now_ms(),
-            ) {
+            let sent = match actor {
+                crate::mcp::Actor::Seat(actor) => self.messaging.task_event(
+                    actor.seat_id,
+                    actor.process_generation,
+                    request,
+                    body,
+                    now_ms(),
+                ),
+                crate::mcp::Actor::Operator { .. } => match &operator {
+                    Some(authority) => self.messaging.task_event_operator(
+                        authority,
+                        wake_swarm,
+                        request,
+                        body,
+                        now_ms(),
+                    ),
+                    _ => Err(invalid("operator task scope/signing is unavailable")),
+                },
+            };
+            match sent {
                 Ok(message) => completed.push(message.envelope.id),
                 Err(_) => {
                     return crate::mcp::error(
@@ -1298,7 +1486,7 @@ impl Worker {
     }
     fn prepare_seat_control(
         &self,
-        actor: &crate::mcp::Actor,
+        actor: &crate::mcp::SeatActor,
         caller: &SeatRecord,
         call: &crate::mcp::Call,
     ) -> std::result::Result<crate::mcp::seats::Request, String> {
@@ -1485,7 +1673,7 @@ impl Worker {
     }
     fn effect_seat_control(
         &mut self,
-        actor: &crate::mcp::Actor,
+        actor: &crate::mcp::SeatActor,
         call: &crate::mcp::Call,
         request: crate::mcp::seats::Request,
     ) -> serde_json::Value {
@@ -1830,7 +2018,7 @@ impl Worker {
     }
     fn control_read(
         &mut self,
-        actor: &crate::mcp::Actor,
+        actor: &crate::mcp::SeatActor,
         record: &SeatRecord,
         call: &crate::mcp::Call,
     ) -> std::result::Result<serde_json::Value, String> {
@@ -2773,8 +2961,8 @@ impl Worker {
         // publish followed by a crash is deduplicated by its original bus id.
         for (stream, draft) in self.messaging.events()? {
             let id = draft.id;
-            self.publish(&stream, draft)?;
-            self.messaging.event_sent(&stream, id)?;
+            let published = self.handle.block_on(self.bus.publish(&stream, draft))?;
+            self.messaging.event_published(&stream, id, published.seq)?;
         }
         for (swarm, seat) in targets {
             if self.deliveries.len() >= 32 {
@@ -3108,6 +3296,99 @@ impl Worker {
             message: reason,
         }))
     }
+    fn gui_messaging(
+        &mut self,
+        id: Ulid,
+        swarm: Ulid,
+        request: crate::messaging::api::Request,
+    ) -> Result<crate::messaging::api::Response> {
+        let device_id = self
+            .identity
+            .status()?
+            .device_id
+            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let actor = crate::mcp::Actor::Operator { device_id };
+        let call = crate::mcp::Call {
+            op_id: id,
+            tool: "gui_messaging".into(),
+            args: serde_json::json!({"swarm_id":swarm,"request":request}),
+        };
+        call.validate()?;
+        let journal = self.operator_journal.clone();
+        let request = match crate::mcp::messaging::gui_request(&actor, id, request) {
+            Ok(request) => request,
+            Err(reason) => {
+                let result =
+                    journal.checked(&actor, &call, crate::mcp::error(id, "rejected", &reason))?;
+                return operator_response(result);
+            }
+        };
+        let authority = self.identity.operator_signing()?;
+        if authority.device_id != device_id {
+            return Err(invalid("held: operator device changed"));
+        }
+        let mute_state = match &request {
+            crate::messaging::api::Request::Mute { seat, .. } => {
+                self.views.get(seat).map(|view| view.adapter.status.state)
+            }
+            _ => None,
+        };
+        let mutation = !matches!(
+            request,
+            crate::messaging::api::Request::List { .. }
+                | crate::messaging::api::Request::Receipts { .. }
+                | crate::messaging::api::Request::Ls { .. }
+        );
+        let dispatch = || match self.messaging.request_operator(
+            &authority,
+            swarm,
+            request,
+            mute_state,
+            now_ms(),
+        ) {
+            Ok(response) => match serde_json::to_value(response) {
+                Ok(value) => crate::mcp::success(id, value),
+                Err(error) => crate::mcp::error(id, "unknown", &error.to_string()),
+            },
+            Err(error) => {
+                let reason = error.to_string();
+                let code = if reason.starts_with("unknown:") {
+                    "unknown"
+                } else if reason.starts_with("held:") {
+                    "held"
+                } else {
+                    "rejected"
+                };
+                crate::mcp::error(id, code, &reason)
+            }
+        };
+        let result = if mutation {
+            journal.effect(&actor, &call, dispatch)?
+        } else {
+            journal.call(&actor, &call, dispatch)?
+        };
+        operator_response(result)
+    }
+    fn gui_task(
+        &mut self,
+        id: Ulid,
+        request: bbt_proto::messaging::TaskRequest,
+    ) -> Result<bbt_proto::messaging::TaskResponse> {
+        let device_id = self
+            .identity
+            .status()?
+            .device_id
+            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let actor = crate::mcp::Actor::Operator { device_id };
+        let call = crate::mcp::work_items::call(id, request).map_err(invalid)?;
+        call.validate()?;
+        if crate::mcp::work_items::mutation(&call.tool) {
+            self.identity.operator_signing()?;
+        }
+        let journal = self.operator_journal.clone();
+        let result = self.work_item_call(&actor, &call, &journal)?;
+        crate::mcp::work_items::response(&call.tool, result).map_err(invalid)
+    }
     fn gui_spawn(&mut self, id: Ulid, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::SeatId> {
         let call = crate::mcp::Call {
             op_id: id,
@@ -3351,6 +3632,34 @@ impl Worker {
                     }
                     Command::GuiSpawn(id, spec, reply) => {
                         let result = self.gui_spawn(id, spec);
+                        let _ = reply.send(result);
+                    }
+                    Command::GuiMessaging(id, swarm, request, reply) => {
+                        let result = self.gui_messaging(id, swarm, request);
+                        let _ = reply.send(result);
+                    }
+                    Command::GuiTask(id, request, reply) => {
+                        let result = self.gui_task(id, request);
+                        let _ = reply.send(result);
+                    }
+                    Command::GuiMessageRow(swarm, message, reply) => {
+                        let result = self.identity.status().and_then(|status| {
+                            let device = status.device_id.ok_or_else(|| {
+                                invalid("held: operator device custody is unavailable")
+                            })?;
+                            self.messaging.set_operator_device(device)?;
+                            self.messaging.operator_message_row(swarm, message)
+                        });
+                        let _ = reply.send(result);
+                    }
+                    Command::GuiMessagingSubjects(reply) => {
+                        let result = self.identity.status().and_then(|status| {
+                            let device = status.device_id.ok_or_else(|| {
+                                invalid("held: operator device custody is unavailable")
+                            })?;
+                            self.messaging.set_operator_device(device)?;
+                            self.messaging.operator_subjects()
+                        });
                         let _ = reply.send(result);
                     }
                     Command::GuiInput(id, generation, input_id, bytes, reply) => {

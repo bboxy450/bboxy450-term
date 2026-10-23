@@ -120,6 +120,41 @@ impl IdentityRuntime {
         }
         Ok(self.bus_key.clone())
     }
+    pub(crate) fn operator_signing(&self) -> Result<crate::messaging::keys::OperatorSigning> {
+        let device_id = self
+            .status()?
+            .device_id
+            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        if let Some(chain) = &self.chain {
+            return chain.operator_signing();
+        }
+        let key = self
+            .bus_signer()?
+            .ok_or_else(|| invalid("held: operator device signing is unavailable"))?;
+        let issuer = self
+            .keys
+            .ready_issuer()
+            .ok_or_else(|| invalid("held: operator issuer is unavailable"))?;
+        let bytes = self
+            .account
+            .get("identity/local-issuer")?
+            .ok_or_else(|| invalid("held: missing local issuer custody record"))?;
+        let (public_key, epoch) = crate::messaging::keys::local_operator_grant(&bytes)?;
+        let device = crate::messaging::wire::public(&key.verifying_key().to_bytes());
+        if issuer.kind != IssuerKind::LocalDev || issuer.key != device || public_key != device {
+            return Err(invalid(
+                "held: local operator issuer does not match custody",
+            ));
+        }
+        Ok(crate::messaging::keys::OperatorSigning {
+            device_id,
+            issuer,
+            device,
+            grant: crate::store::digest(&bytes),
+            epoch,
+            key,
+        })
+    }
     pub(crate) fn close_open_holds(&self, root: &std::path::Path) -> Result<usize> {
         self.chain
             .as_ref()
