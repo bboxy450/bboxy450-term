@@ -1,4 +1,5 @@
 //! One ordered, instanced chrome pass on the caller's device; no window ownership.
+mod arena;
 mod atlas_gpu;
 pub mod diff;
 pub mod group;
@@ -16,7 +17,6 @@ use bbt_ui_model::{
 };
 use pipeline::Instance;
 use std::{collections::HashMap, sync::mpsc, time::Duration};
-use wgpu::util::DeviceExt;
 
 pub struct ChromeTarget<'a> {
     pub width: u32,
@@ -49,8 +49,15 @@ pub struct ChromeRenderer {
     /// Headless material renders reuse one Pass (bind layout and pipelines) per target
     /// format; see materials::render_layered_to_rgba.
     material_pass: Option<(wgpu::TextureFormat, materials::Pass)>,
+    /// Per-draw uniform/instance slices, rewound by begin_frame at a submission boundary.
+    arenas: arena::Arenas,
 }
 impl ChromeRenderer {
+    /// A submission boundary: per-draw buffer slices may be reused from here on. Call it
+    /// before encoding each submitted command buffer, never while one is being encoded.
+    pub fn begin_frame(&mut self) {
+        self.arenas.begin_frame();
+    }
     /// Read-only diagnostics for cache-capacity and long-lived-renderer gates.
     pub fn text_cache_stats(&self) -> TextCacheStats {
         TextCacheStats {
@@ -97,6 +104,7 @@ impl ChromeRenderer {
             group_depth: 0,
             paths: paths::Renderer::default(),
             material_pass: None,
+            arenas: arena::Arenas::new("chrome draw"),
         })
     }
     pub fn draw(
@@ -234,7 +242,8 @@ impl ChromeRenderer {
                     wgpu::LoadOp::Load,
                 )?;
                 self.paths.draw(
-                    &self.context.device,
+                    &self.context,
+                    &mut self.arenas,
                     ChromeTarget {
                         width,
                         height,
@@ -567,16 +576,13 @@ impl ChromeRenderer {
             format: Some(gamma_format),
             ..Default::default()
         });
-        let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("chrome view"),
-            contents: bytemuck::cast_slice(&[width as f32, height as f32, scale, 0.0]),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
-        let items = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("retained chrome list"),
-            contents: bytemuck::cast_slice(&instances),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let uniform = self.arenas.uniform(
+            &self.context,
+            bytemuck::cast_slice(&[width as f32, height as f32, scale, 0.0]),
+        );
+        let items = self
+            .arenas
+            .storage(&self.context, bytemuck::cast_slice(&instances));
         let mask = &self
             .glyph_gpu
             .as_ref()
@@ -589,11 +595,11 @@ impl ChromeRenderer {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: uniform.as_entire_binding(),
+                    resource: uniform.binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: items.as_entire_binding(),
+                    resource: items.binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -660,6 +666,7 @@ impl ChromeRenderer {
                 view_formats: &[format.add_srgb_suffix()],
             });
         let view = texture.create_view(&Default::default());
+        self.begin_frame();
         let mut encoder = self
             .context
             .device
@@ -807,6 +814,48 @@ fn upload(
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth() {
+        use bbt_ui_model::draw::{PathCommand, PathStroke};
+        let mut list = DrawList::default();
+        for i in 0..400 {
+            let (x, y) = ((i % 40) as f32 * 6., (i / 40) as f32 * 6.);
+            let c = Color([
+                (i % 7) as f32 / 7.,
+                (i % 11) as f32 / 11.,
+                (i % 13) as f32 / 13.,
+                1.,
+            ]);
+            list.rect(Rect::new(x, y, 4., 4.), 1., c);
+            // A path ends the flat batch, so every rect is its own draw: 800 draws, each
+            // with its own uniform and instance (or clip) slice, in one submission.
+            list.push(Prim::Path {
+                origin: [x + 1., y + 1.],
+                scale: 1.,
+                points: std::sync::Arc::from([
+                    PathCommand::Move([0., 0.]),
+                    PathCommand::Line([3., 3.]),
+                ]),
+                stroke: PathStroke::default(),
+                color: Color([c.0[2], c.0[0], c.0[1], 1.]),
+                fill: None,
+            });
+        }
+        let mut fallback = ChromeRenderer::new(vec![]).unwrap();
+        fallback.arenas.fallback_only();
+        let expected = fallback.render_to_rgba(&list, 240, 64, 1.).unwrap();
+        assert_eq!(fallback.arenas.capacity(), [0, 0], "per-draw buffers only");
+        let mut arenas = ChromeRenderer::new(vec![]).unwrap();
+        assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
+        let grown = arenas.arenas.capacity();
+        assert!(
+            grown.iter().all(|&c| c > 64 * 1024),
+            "the frame outgrew both first arenas mid-frame: {grown:?}"
+        );
+        // The next frame rewinds into the grown arenas and still matches.
+        assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
+        assert_eq!(arenas.arenas.capacity(), grown);
+    }
     #[test]
     fn svg_origins_follow_measured_css_half_up_ties_at_both_device_scales() {
         let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="white"/></svg>"#;

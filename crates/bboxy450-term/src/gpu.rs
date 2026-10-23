@@ -276,6 +276,9 @@ impl Gpu {
     /// Prepare first-use text and pipelines on IO, before handing state to UI.
     pub fn warm(&mut self, ops: Vec<Paint>, scale: f32) -> Result<(), String> {
         bbt_rt::assert_not_ui_thread();
+        // A submission boundary: per-draw buffer slices may be reused from here.
+        self.renderer.begin_frame();
+        self.materials.begin_frame();
         let mut encoder = self
             .renderer
             .context
@@ -372,6 +375,8 @@ impl Gpu {
         };
         let wait = acquire.elapsed();
         let encode = Instant::now();
+        self.renderer.begin_frame();
+        self.materials.begin_frame();
         let mut encoder = self
             .renderer
             .context

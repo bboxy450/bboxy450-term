@@ -2,7 +2,6 @@
 use super::{ChromeRenderer, ChromeTarget};
 use crate::Result;
 use bbt_ui_model::draw::LinearAlphaMask;
-use wgpu::util::DeviceExt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Filter {
@@ -140,11 +139,9 @@ impl ChromeRenderer {
             values[8] = mask.alpha0;
             values[9] = mask.alpha1;
         }
-        let params = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("group opacity and saturation"),
-            contents: bytemuck::cast_slice(&values),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params = self
+            .arenas
+            .uniform(&self.context, bytemuck::cast_slice(&values));
         let bindings = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("group composite bindings"),
             layout: &pipeline.get_bind_group_layout(0),
@@ -155,7 +152,7 @@ impl ChromeRenderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: params.as_entire_binding(),
+                    resource: params.binding(),
                 },
             ],
         });
@@ -258,6 +255,7 @@ impl ChromeRenderer {
                 },
             );
         }
+        self.arenas.begin_frame();
         let mut encoder = device.create_command_encoder(&Default::default());
         self.composite_group_with_mask(
             &source.create_view(&Default::default()),

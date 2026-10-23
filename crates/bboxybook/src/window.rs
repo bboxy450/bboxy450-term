@@ -258,6 +258,7 @@ impl Gallery {
         };
         let target = frame.texture.create_view(&Default::default());
         let renderer = self.renderer.as_mut().unwrap();
+        renderer.begin_frame();
         let mut encoder = renderer
             .context
             .device

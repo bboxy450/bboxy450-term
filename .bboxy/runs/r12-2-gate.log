@@ -1,0 +1,22 @@
+# R12-2 gate (45d6a24 on main 33d1f9b)
+before 33d1f9b after 45d6a24
+reusing capture <scratch>/r13-cat (captured on main 92e60dc; both binaries render these same inputs, 1704 cases)
+replay before exit=0 276 s: replayed 1704 images; geometry not requested
+replay after  exit=0 338 s: replayed 1704 images; geometry not requested
+sha256 per PNG: before 1704, after 1704, missing 0, extra 0, byte-different 0
+ci-local --parity exit=0 parity: 1664 cases, 859 review; target/parity/legacy/index.html parity: 1704 cases, 226 review; target/parity/index.html parity gate: pass (226 pixel reviews advisory) ci-local: all gates passed 
+done
+# also on the old base: main 92e60dc vs 289d3a1, same capture: 1704/1704 byte-identical (replay 801 s vs 594 s; replay wall time swings with load both ways)
+
+# Perf, 3 custody-clean pairs (opt + debug assertions; footers 'unsigned, local only'), throttled seq firehose x4, --meter, sample 8 s
+# before 33d1f9b 61e65dd97c516b97, after 45d6a24 ec1f4d897cf00188. Counts are main-thread samples.
+pair build  busy create_buffer_init maintain write_buffer | old cost (cbi+maint) | new cost (maint+write_buffer)
+1    before 443 98 28 0 | 28.4% | 6.3%
+1    after 301 0 10 38 | 3.3% | 15.9%
+2    before 230 46 15 0 | 26.5% | 6.5%
+2    after 196 0 9 39 | 4.6% | 24.5%
+3    before 242 56 19 0 | 31.0% | 7.9%
+3    after 233 0 8 42 | 3.4% | 21.5%
+# create_buffer_init+maintain 26.5-31.0% -> 3.3-4.6% of busy; but wgpu 30 write_buffer allocates a staging buffer per call
+# (StagingBuffer::new 26 of 38 samples) plus a blit copy, so net per-draw buffer cost is 28.4->15.9, 26.5->24.5, 31.0->21.5%.
+# HUD per-frame CPU swung 2x between runs of the same binary (machine load); not claimed. Footers and HUDs: r12-2-huds.png

@@ -337,7 +337,8 @@ struct PathPaint<'a> {
 impl Renderer {
     pub fn draw(
         &mut self,
-        device: &wgpu::Device,
+        context: &crate::device::DeviceContext,
+        arenas: &mut super::arena::Arenas,
         target: ChromeTarget<'_>,
         encoder: &mut wgpu::CommandEncoder,
         primitive: &Prim,
@@ -362,7 +363,8 @@ impl Renderer {
             .chain(std::iter::once((*color, Some(stroke))))
         {
             self.draw_geometry(
-                device,
+                context,
+                arenas,
                 &target,
                 encoder,
                 PathPaint {
@@ -379,7 +381,8 @@ impl Renderer {
     }
     fn draw_geometry(
         &mut self,
-        device: &wgpu::Device,
+        context: &crate::device::DeviceContext,
+        arenas: &mut super::arena::Arenas,
         target: &ChromeTarget<'_>,
         encoder: &mut wgpu::CommandEncoder,
         path: PathPaint<'_>,
@@ -392,6 +395,7 @@ impl Renderer {
             origin,
             scale,
         } = path;
+        let device = &context.device;
         let key = key(points, stroke);
         if !self.geometry.contains_key(&key) {
             let edges = match stroke {
@@ -462,16 +466,8 @@ impl Renderer {
             geometry.bounds,
             color.0,
         ];
-        let u = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("path transform"),
-            contents: bytemuck::cast_slice(&data),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
-        let clips = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("path clips"),
-            contents: bytemuck::cast_slice(&clip_data),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let u = arenas.uniform(context, bytemuck::cast_slice(&data));
+        let clips = arenas.storage(context, bytemuck::cast_slice(&clip_data));
         let pipeline = &self.pipelines[&format];
         let bindings = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("path bindings"),
@@ -479,7 +475,7 @@ impl Renderer {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: u.as_entire_binding(),
+                    resource: u.binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -487,7 +483,7 @@ impl Renderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: clips.as_entire_binding(),
+                    resource: clips.binding(),
                 },
             ],
         });
