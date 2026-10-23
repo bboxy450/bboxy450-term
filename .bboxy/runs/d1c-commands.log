@@ -112,3 +112,18 @@ exit=0
 $ target/debug/bboxybook compare --strict-geometry --out target/d1c-parity --manifest target/d1c-parity/cases.json
 exit=1
 UI geometry first gate1: 24/40 failed; settings16/16 within policy. Read four SSH/settings web/native images. Corrections: inline-flex dot baseline/anatomy, density chevron font, where-prefix negative margin via grouped gap. Corrected render0/compare1: seat-row+settings24/24 now pass; launcher16 still geometry pending. Source fixes retained before ID1c-a priority split. Oracle3e972033 explicitly leaves pulse/tooltip to L8. Inbox cursor5227. Unknown-source-path rg diagnostics retained in tool transcript; no code removed.
+$ cargo build --locked -p bboxybook -p bboxy450-term
+exit=0
+$ target/debug/bboxybook render --all --out target/d1c-parity/native --manifest target/d1c-parity/cases.json
+exit=0
+$ target/debug/bboxybook compare --strict-geometry --out target/d1c-parity --manifest target/d1c-parity/cases.json
+exit=0
+Native CLI capture fixture: assertion0, app exit-15 via recorded-own-PID SIGTERM, source current inline-baseline fix, memory custody, fresh private /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kv-d1c-vntu0j5x; process tree retained in d1c-native-capture.log.
+Oracle88719ada/2ccfc818/32cdfc19: whole D1c, all96 cases (Settings72+Launcherhosts16+remote8); pulse and host hover explicitly L8 (3e972033). Settings-only checkpoint844375d preserved; full branch resumed with dedicated provider_settings tests, no separate handoff. Dedicated test7/0 and clippy0 in d1c-a-focused.log. Scoped split/restore commands all0.
+Final inline-flex correction assigns the empty first-child dot its bottom-border baseline; last40-case native render0/compare0 with0reviews. Viewed corrected native launcher/seat images and native sidebar PNG. Native capture assertion0; owned process tree stopped via explicitPIDs, app -15 as documented. Temporary screenshot run dir createdbythissession remains until own cleanup.
+post-capture ps -p 34312 exit=1
+post-capture ps -p 34318 exit=1
+post-capture ps -p 34319 exit=1
+post-capture ps -p 34339 exit=1
+$ git diff --check
+exit=2 (four empty ps results left trailing spaces in command log; trimmed)

@@ -74,7 +74,18 @@ impl LinkState {
                 }
             }
         };
-        let mut children = vec![named("/i", self.dot()).into()];
+        // An inline flex item's empty dot uses its bottom border edge as its
+        // baseline. The retained empty Box reports its top content inset.
+        let dot = c::Element::Baseline {
+            content: Box::new(self.dot()),
+            offset: 8.
+                - if matches!(self, Self::Offline) {
+                    1.5
+                } else {
+                    0.
+                },
+        };
+        let mut children = vec![named("/i", dot).into()];
         if text {
             let mut label = c::Text::new(
                 self.label(),

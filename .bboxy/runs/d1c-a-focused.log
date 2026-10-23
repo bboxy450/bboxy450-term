@@ -1,0 +1,35 @@
+$ cargo test --locked -p bbt-ui --test provider_settings --test settings
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 14.91s
+     Running tests/provider_settings.rs (target/debug/deps/provider_settings-118a5e66471bca48)
+
+running 2 tests
+test settings_accepts_live_link_records_and_legacy_four_field_cloud_records ... ok
+test every_link_state_roundtrips_and_renders_in_both_settings_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/settings.rs (target/debug/deps/settings-c11b674e42b61a5b)
+
+running 5 tests
+test records_roundtrip_with_ordered_custom_harnesses_and_roles ... ok
+test account_projects_the_pinned_identity_and_recovery_limits_without_actions ... ok
+test role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view ... ok
+test custom_role_order_and_defaults_drive_the_changed_marker ... ok
+test draft_harness_never_claims_an_inferred_ready_state_can_submit ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+exit=0 elapsed=15.303s
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 18.60s
+
+exit=0 elapsed=18.744s

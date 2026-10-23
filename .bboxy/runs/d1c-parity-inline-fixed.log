@@ -1,0 +1,23 @@
+$ cargo build --locked -p bboxybook -p bboxy450-term
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling pulldown-cmark v0.13.4
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 22.54s
+
+exit=0 elapsed=22.569s
+$ target/debug/bboxybook render --all --out target/d1c-parity/native --manifest target/d1c-parity/cases.json
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/d1c-parity/native/layouts.json
+rendered 40 PNGs to target/d1c-parity/native
+
+exit=0 elapsed=17.095s
+$ target/debug/bboxybook compare --strict-geometry --out target/d1c-parity --manifest target/d1c-parity/cases.json
+parity: 40 cases, 0 review; target/d1c-parity/index.html
+parity gate: pass (0 pixel reviews advisory)
+
+exit=0 elapsed=0.891s

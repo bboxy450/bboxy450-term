@@ -1,0 +1,8 @@
+D1c-a priority b0ddcc6c /3e972033. Full D1c preserved signedba63350 at exec5-d1c-full-parked; sole writing worktree exec5, branch exec5 restarted from origin/main4e28f11. Exact settings, link module and export restored from checkpoint; range/Appearance helper untouched. New provider-settings gallery selects Cloud+Machines across four densities/two themes (16 cases); launcher/seat rows remain parked.
+Prior evidence: settings+links7/0 and Cloud+Machines16/16 strictgeometry within policy under full checkpoint; dedicated exact-commit gate follows.
+All parking commands exit0: git add exact paths; git commit; git switch --detach origin/main; branch rename; switch -c exec5 origin/main; git restore three exact UI module paths.
+$ cargo test --locked -p bbt-ui --test provider_settings --test settings
+exit=0
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+exit=0
+Oracle88719ada revises priority: do not split; handoff whole D1c with all Settings72+Launcherhosts16. Dedicated tests7/0, workspaceClippy0; no gate/handoff was started. Preserve split checkpoint then return whole.

@@ -3,7 +3,6 @@ use bbt_ui::{
     modules::{
         launcher::{Item, Launcher},
         link::LinkState,
-        settings::Settings,
     },
 };
 use bbt_ui_model::layout::{Rect, TextMeasure, TextStyle};
@@ -67,23 +66,5 @@ fn all_link_states_render_and_unavailable_launcher_rows_cannot_activate() {
             .layout(Rect::new(0., 0., 760., 0.), ctx, &Metrics)
             .unwrap();
         assert!(labels(&layout).contains(text));
-    }
-}
-#[test]
-fn settings_accepts_live_link_records_and_legacy_four_field_cloud_records() {
-    for cloud in [
-        serde_json::json!(["nebula", "east", true, "#2E6BFF"]),
-        serde_json::json!(["nebula","east",true,"#2E6BFF",{"Degraded":{"rtt_ms":380}}]),
-    ] {
-        let view: Settings = serde_json::from_value(
-            serde_json::json!({"section":"Cloud","values":{"cloud":[cloud]}}),
-        )
-        .unwrap();
-        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
-        let layout = view
-            .element(ctx, &Metrics, 1216., 638.)
-            .layout(Rect::new(0., 0., 1216., 638.), ctx, &Metrics)
-            .unwrap();
-        assert!(labels(&layout).contains("nebula"));
     }
 }

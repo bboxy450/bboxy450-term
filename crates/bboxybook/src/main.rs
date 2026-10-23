@@ -256,11 +256,7 @@ fn provider_cases() -> Vec<gallery::Case> {
         .into_iter()
         .filter(|case| matches!(case.state.as_str(), "SSH ▸ machines" | "Cloud ▸ regions"))
         .collect();
-    cases.extend(
-        bboxybook::settings::cases()
-            .into_iter()
-            .filter(|case| matches!(case.state.as_str(), "Cloud" | "Machines")),
-    );
+    cases.extend(bboxybook::settings::cases());
     cases.extend(
         bboxybook::seat_rows::cases()
             .into_iter()
