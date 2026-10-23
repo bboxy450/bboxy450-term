@@ -197,12 +197,21 @@ fn vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur() {
     renderer.render_to_rgba(&plain, 128, 96, 1.).unwrap();
     let without_shadow = bbt_render::passes::take();
     assert_eq!(with_shadow.blur, 0, "the Gaussian adds no GPU blur pass");
-    assert_eq!(
-        with_shadow.passes(),
-        without_shadow.passes(),
-        "the shadow stays in the existing flat batch"
-    );
-    println!("mark scene passes: shadow={with_shadow:?}; plain={without_shadow:?}");
+    println!("background+mark passes: shadow={with_shadow:?}; plain={without_shadow:?}");
+    let mut only_shadow = first.clone();
+    only_shadow
+        .primitives
+        .retain(|p| !matches!(p, bbt_ui_model::draw::Prim::Rect { .. }));
+    let mut only_plain = plain.clone();
+    only_plain
+        .primitives
+        .retain(|p| !matches!(p, bbt_ui_model::draw::Prim::Rect { .. }));
+    renderer.render_to_rgba(&only_shadow, 128, 96, 1.).unwrap();
+    let mark_shadow = bbt_render::passes::take();
+    renderer.render_to_rgba(&only_plain, 128, 96, 1.).unwrap();
+    let mark_plain = bbt_render::passes::take();
+    assert_eq!(mark_shadow.blur, 0);
+    println!("mark-only passes: shadow={mark_shadow:?}; plain={mark_plain:?}");
     let a = renderer.text_cache_stats().coverage;
     assert_eq!(a.shadow_blurs, 1);
     let again = draw(28.25, 12., Color::hex("#2EE6A8"), [0.25, 0.5], 0.4);

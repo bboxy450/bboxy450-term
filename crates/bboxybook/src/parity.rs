@@ -150,8 +150,14 @@ impl CasePolicy {
         }
         let f = case.fixture.as_ref();
         let surface_only = f.is_some_and(|f| f["layer"] == "floating-surfaces");
-        let vector = f.is_some_and(|f| f["layer"] == "paths");
-        let text = if case.component == "materials" || surface_only || f.is_some_and(|f|f["layer"]=="paths") {
+        // Geometric glyphs have no font baseline. A waiting-kind annotation
+        // still does, so mixed/waiting cases retain the text geometry checks.
+        let vector_glyphs = f.is_some_and(|f| f["layer"] == "atoms"
+            && f["atoms"].as_array().is_some_and(|atoms| !atoms.is_empty()
+                && atoms.iter().all(|atom| atom["kind"] == "glyph"
+                    && matches!(atom["activity"].as_str(), Some("active" | "idle" | "errored")))));
+        let vector = vector_glyphs || f.is_some_and(|f| f["layer"] == "paths");
+        let text = if case.component == "materials" || surface_only || vector {
             false
         } else if case.component == "style"
             || f.is_some_and(|f| {
@@ -206,7 +212,7 @@ impl CasePolicy {
             } else if f.is_some_and(|f| f["layer"] == "seat-row") {
                 "SeatRow/subagent/task/artifact content; row-menu overlays excluded"
             } else if f.is_some_and(|f| f["layer"] == "atoms") {
-                "L5 Glyph/Icon in caller-owned slots; child text geometry independently measured"
+                "L5 Glyph/Icon in caller-owned slots; vector viewports and kind text independently measured"
             } else if surface_only {
                 "container surfaces only; module children hidden"
             } else {
@@ -821,6 +827,35 @@ mod tests {
         assert_eq!(p.status(0.,Some(&Geometry::from_tree(&tree))),"review geometry");
         assert_eq!(p.status(0.,None),"unproven geometry");
         assert_eq!(CasePolicy::for_case(&crate::materials::cases()[0])?.changed_pixel_budget,0.001);
+        Ok(())
+    }
+
+    #[test]
+    fn glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline() -> Result<()> {
+        let mut case = crate::atoms::cases().into_iter().find(|c| c.component == "glyph").unwrap();
+        let mut tree = serde_json::json!({"kind":"box","native":[4.,8.,12.,12.],"web":[4.,8.,12.,12.],"children":[]});
+        for activity in ["active", "idle", "errored"] {
+            case.fixture = Some(serde_json::json!({"layer":"atoms","atoms":[{"kind":"glyph","activity":activity}]}));
+            let policy = CasePolicy::for_case(&case)?;
+            assert!(!policy.text);
+            assert_eq!(policy.geometry_tolerance_px, Some(0.));
+            assert_eq!(policy.changed_pixel_budget, 0.005);
+            assert_eq!(policy.status(0.005, Some(&Geometry::from_tree(&tree))), "within policy");
+            assert_eq!(policy.status(0.005001, Some(&Geometry::from_tree(&tree))), "review pixels");
+            assert_eq!(policy.status(0., None), "unproven geometry");
+            let mut shifted = tree.clone();
+            shifted["native"][0] = serde_json::json!(4.000001);
+            assert_eq!(policy.status(0., Some(&Geometry::from_tree(&shifted))), "review geometry");
+        }
+        case.fixture = Some(serde_json::json!({"layer":"atoms","atoms":[{"kind":"glyph","activity":"waiting","wait_kind":"question"}]}));
+        let policy = CasePolicy::for_case(&case)?;
+        assert!(policy.text);
+        assert_eq!(policy.geometry_tolerance_px, Some(0.5));
+        assert_eq!(policy.changed_pixel_budget, 0.02);
+        tree["kind"] = serde_json::json!("text");
+        assert_eq!(policy.status(0., Some(&Geometry::from_tree(&tree))), "unproven geometry");
+        tree["baseline"] = serde_json::json!({"native":10.,"web":10.});
+        assert_eq!(policy.status(0.02, Some(&Geometry::from_tree(&tree))), "within policy");
         Ok(())
     }
 
