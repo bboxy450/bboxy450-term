@@ -397,10 +397,11 @@ impl Native {
                 frame_work_samples_ms: self.wall.clone(),
                 probe_clipped: self.probe_clipped,
             };
-            self.commands
-                .try_send(Control::Finish(metrics))
-                .map_err(|_| "r5-finalization-channel-full")?;
-            self.finish_sent = true;
+            // Pressure leaves finalization pending. Only the result channel
+            // can report an error, after the IO owner has completed teardown.
+            if self.commands.try_send(Control::Finish(metrics)).is_ok() {
+                self.finish_sent = true;
+            }
         }
         Ok(None)
     }

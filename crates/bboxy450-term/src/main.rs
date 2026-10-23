@@ -1347,11 +1347,9 @@ impl ApplicationHandler<UiEvent> for App {
                         }
                         Err(error) => {
                             self.error.get_or_insert(error);
-                            if self.closing {
-                                event_loop.exit();
-                            } else {
-                                self.request_close(event_loop);
-                            }
+                            // The R5 IO owner has already completed teardown.
+                            // Its final poll may also be the last timer wake.
+                            event_loop.exit();
                         }
                         Ok(None) => {}
                     }
