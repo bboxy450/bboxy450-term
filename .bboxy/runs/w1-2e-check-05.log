@@ -1,0 +1,138 @@
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--locked', '--', '--nocapture']
+OWN_CHILD_PID=38321
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [optimized] target(s) in 11.05s
+     Running unittests src/lib.rs (target/w1-2e-check/debug/deps/bbt_supervisor-bac4711fa5046bbf)
+
+running 24 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test supervisor::capture_read_tests::exited_between_spawn_and_registration_emits_exactly_one_exit ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test supervisor::child_events::tests::a_live_child_cannot_make_the_shutdown_wait_infinite ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+test supervisor::capture_read_tests::an_early_exiting_writer_is_drained_before_reaping_without_blocking_the_actor ... ok
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 22 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/journal_config.rs (target/w1-2e-check/debug/deps/journal_config-6a4e560438ef83c3)
+
+running 2 tests
+test capture_requires_an_explicit_supervisor_journal_directory ... ok
+test supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/reaping.rs (target/w1-2e-check/debug/deps/reaping-a60c38242cc4d5ed)
+
+running 3 tests
+test exit_events_at_machine_scale ... ignored, W1.2e before/after: GATE_SEATS=967 cargo test --release -p bbt-supervisor --test reaping -- --ignored --nocapture
+test stdio_eof_does_not_wait_for_a_still_running_child ... ok
+EXIT_FIXTURE ready=8; releasing all producers
+EXIT_LATENCY seats=8 p50_ms=0.917000 p99_ms=1.145000 max_ms=1.145000 all_exit_zero=true clock=CLOCK_MONOTONIC span=producer_marker_to_client_exit
+test final_output_and_exit_reach_the_owner ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/supervisor.rs (target/w1-2e-check/debug/deps/supervisor-9c379a875a6bc41f)
+
+running 10 tests
+test natural_exit_follows_all_final_output ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+test validation_rejects_stale_and_oversized_input ... ok
+test two_seats_interleave_without_cross_talk ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+50 distinct PTY seats echoed under one Supervisor / one mio::Poll
+slow subscriber: complete 4 MiB + TAIL recovered with contiguous record sequences
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+test fifty_seats_share_one_supervisor_poller ... ok
+blocked write: 1022 of 65536 bytes, PartialUnknown retained across logic replacement
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.05s
+
+   Doc-tests bbt_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+CHILD_EXIT=0
+COMMAND=['cargo', 'clippy', '-p', 'bbt-supervisor', '--all-targets', '--locked', '--', '-D', 'warnings']
+OWN_CHILD_PID=38723
+    Checking cfg-if v1.0.5
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking typenum v1.20.1
+    Checking zerocopy v0.8.63
+    Checking smallvec v1.16.3
+    Checking scopeguard v1.2.0
+    Checking log v0.4.34
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking thiserror v1.0.69
+    Checking memchr v2.8.3
+    Checking zmij v1.0.23
+    Checking lock_api v0.4.14
+    Checking zstd-safe v8.2.0
+    Checking anyhow v1.0.104
+    Checking unicode-width v0.2.2
+    Checking downcast-rs v1.2.1
+    Checking cursor-icon v1.2.0
+    Checking base64 v0.22.1
+    Checking itoa v1.0.18
+    Checking shell-words v1.1.1
+    Checking zstd v0.14.3
+    Checking once_cell v1.21.4
+    Checking fastrand v2.5.0
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+    Checking generic-array v0.14.7
+    Checking getrandom v0.3.4
+    Checking parking_lot_core v0.9.12
+    Checking errno v0.3.14
+    Checking cpufeatures v0.2.17
+    Checking serial2 v0.2.38
+    Checking filedescriptor v0.8.3
+    Checking mio v1.2.4
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking rand_core v0.9.5
+    Checking getrandom v0.4.3
+    Checking digest v0.10.7
+    Checking parking_lot v0.12.5
+    Checking sha2 v0.10.9
+    Checking bitflags v2.13.2
+    Checking serde v1.0.229
+    Checking serde_json v1.0.154
+    Checking nix v0.28.0
+    Checking rustix v1.1.5
+    Checking serde-big-array v0.5.1
+    Checking arrayvec v0.7.8
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+    Checking tempfile v3.27.0
+    Checking portable-pty v0.9.0
+    Checking ppv-lite86 v0.2.21
+    Checking rand_chacha v0.9.0
+    Checking rand v0.9.5
+    Checking ulid v1.2.1
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `dev` profile [optimized] target(s) in 5.44s
+CHILD_EXIT=0

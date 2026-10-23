@@ -1,0 +1,6 @@
+SOURCE=3ad1fc5f6ee00169249b7d15809bb4e88dc03d40
+COMMAND=['cargo', 'build', '--release', '--locked', '-p', 'bboxy-firehose']
+OWN_CHILD_PID=43327
+   Compiling bboxy-firehose v0.0.1 (/private/tmp/rook-w1-2e-after-3ad1fc5/crates/bboxy-firehose)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.48s
+CHILD_EXIT=0

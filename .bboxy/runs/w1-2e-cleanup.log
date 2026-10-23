@@ -1,0 +1,11 @@
+All owned commands exited before cleanup (after driver0, paired drivers0, scoped checks completed).
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1   460Gi   413Gi    19Gi    96%    4.5M  204M    2%   /System/Volumes/Data
+REMOVED_OWN_DIR=/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-check allocated_bytes=232783872
+REMOVED_OWN_DIR=/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-profile allocated_bytes=1038086144
+REMOVED_OWN_DIR=/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-isolated-after allocated_bytes=247394304
+REMOVED_OWN_DIR=/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-paired allocated_bytes=10731520
+REMOVED_OWN_DIR=/Users/feral/mydev/bboxy450-term-rook/target/w1-2e-runs allocated_bytes=0
+ALLOCATED_BYTES_FREED=1528995840
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1   460Gi   411Gi    21Gi    96%    4.5M  218M    2%   /System/Volumes/Data

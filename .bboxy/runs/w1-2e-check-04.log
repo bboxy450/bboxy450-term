@@ -1,0 +1,48 @@
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--locked', '--', '--nocapture']
+OWN_CHILD_PID=32637
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [optimized] target(s) in 7.79s
+     Running unittests src/lib.rs (target/w1-2e-check/debug/deps/bbt_supervisor-bac4711fa5046bbf)
+
+running 23 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+test supervisor::capture_read_tests::exited_between_spawn_and_registration_emits_exactly_one_exit ... ok
+supervisor child shutdown unconfirmed: seat=01M5KQ4VXZJH5H3G1BNYTVD1VH generation=1 pid=32848 result=Oktest supervisor::child_events::tests::a_live_child_cannot_make_the_shutdown_wait_infinite ... ok
+(None)
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+supervisor child shutdown unconfirmed: seat=01M5KQ4W05Z3E1RGKGX9B0ZD5R generation=1 pid=32852 result=Ok(None)
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... ok
+
+thread 'supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit' (12169963) panicked at crates/bbt-supervisor/src/supervisor.rs:1873:13:
+assertion `left == right` failed
+  left: 0
+ right: -1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit ... FAILED
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+failures:
+
+failures:
+    supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit
+
+test result: FAILED. 20 passed; 1 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+CHILD_EXIT=101

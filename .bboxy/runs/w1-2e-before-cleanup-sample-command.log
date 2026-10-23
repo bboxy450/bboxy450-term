@@ -1,0 +1,4 @@
+Sampling process 72498 for 1 second with 1 millisecond of run time between samples
+Sampling completed, processing symbols...
+Sample analysis of process 72498 written to file .bboxy/runs/w1-2e-before-cleanup-sample.log
+CHILD_EXIT=0
