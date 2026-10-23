@@ -356,10 +356,12 @@ fn showcase(r: Rect, n: usize, ctx: &DrawCtx, out: &mut DrawList) {
     let w = TOKENS.sidebar.width_compact as f32;
     sidebar(Rect::new(r.x, r.y + h, w, r.h - h), n, ctx, out);
     let tree = if n == 15 { tree15() } else { tree3() };
+    // The stage pads every outer edge by the glow lane; the gutter is the lane.
+    let l = TOKENS.glow.lane as f32;
     for (id, rect) in solve_split(
         &tree,
-        Rect::new(r.x + w, r.y + h, r.w - w, r.h - h),
-        TOKENS.layout.gutter as f32,
+        Rect::new(r.x + w + l, r.y + h + l, r.w - w - 2. * l, r.h - h - 2. * l),
+        l,
     )
     .panes
     {

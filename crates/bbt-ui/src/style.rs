@@ -65,6 +65,8 @@ pub enum Material {
     Gloss,
     Frosted,
     Glow,
+    /// The pane border lane (silk, `glow.lane` px outside the box; G1-G2).
+    Lane,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,6 +98,15 @@ pub struct Glow {
     pub seed: u32,
     pub halo_alpha: Option<f32>,
     pub particles: Option<u32>,
+    /// The lane brightens the focused pane (x1.3).
+    #[serde(default)]
+    pub focused: bool,
+    /// The lane's colour (the seat's), RGBA; the effect box itself is transparent.
+    #[serde(default)]
+    pub tint: Option<[f32; 4]>,
+    /// The lane width in px (the host's runtime setting); None: the glow.lane token.
+    #[serde(default)]
+    pub lane: Option<f32>,
 }
 impl Default for Glow {
     fn default() -> Self {
@@ -105,6 +116,9 @@ impl Default for Glow {
             seed: 7,
             halo_alpha: None,
             particles: None,
+            focused: false,
+            tint: None,
+            lane: None,
         }
     }
 }
@@ -819,7 +833,7 @@ fn defaults(p: Preset) -> Base {
             }
         }
         Preset::PaneGlow => {
-            b.material = Material::Glow;
+            b.material = Material::Lane;
             b.fill = Paint::solid(Color::Surface);
             b.border = Some(Border {
                 width: Px(1.5),

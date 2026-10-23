@@ -1714,7 +1714,7 @@ fn paint_contents(
                     radii: s.radii,
                 });
             }
-            if s.material == Material::Glow {
+            if matches!(s.material, Material::Glow | Material::Lane) {
                 after = Some(Paint::Material {
                     rect: node.rect,
                     radii: s.radii,

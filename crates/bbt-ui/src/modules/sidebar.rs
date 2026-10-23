@@ -19,8 +19,9 @@ pub struct Sidebar {
 impl Sidebar {
     pub fn element(&self, ctx: ui::Context) -> c::Element {
         let border = STYLE.material.hairline_px as f32;
-        let gutter = bbt_ui_model::TOKENS.layout.gutter as f32;
-        let width = self.size[0] - if self.phone { 0. } else { border } - gutter;
+        // The sidebar's own left inset (the pane gutter now follows the glow lane).
+        let edge = bbt_ui_model::TOKENS.sidebar.edge as f32;
+        let width = self.size[0] - if self.phone { 0. } else { border } - edge;
         let top_height = bbt_ui_model::TOKENS.strip.height as f32;
         let handle_height = if self.phone { 44. } else { 0. };
         let scroll_height =
@@ -195,7 +196,7 @@ impl Sidebar {
         children.extend([top.into(), scroll.into()]);
         let mut style = plain(
             Some(self.size[1]),
-            [0., 0., 0., gutter],
+            [0., 0., 0., edge],
             ui::Color::Rgba(
                 bbt_ui_model::draw::Color::hex(ctx.theme.palette().bg)
                     .mix(

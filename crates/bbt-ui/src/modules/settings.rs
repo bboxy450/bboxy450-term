@@ -62,7 +62,8 @@ pub struct Harness {
 pub struct Appearance {
     pub theme: String,
     pub density: String,
-    pub gutter: f32,
+    /// Glow lane in px (glow.lane_min..=glow.lane_max): the gutter, the stage inset and the pane effect width.
+    pub lane: f32,
     pub glow: bool,
     pub subtitle: bool,
     pub opacity: f32,
@@ -2246,13 +2247,28 @@ impl Settings {
             )
             .into(),
         );
+        let (lo, hi) = (TOKENS.glow.lane_min as f32, TOKENS.glow.lane_max as f32);
+        let lane = row(
+            "",
+            plain(None, [0.; 4], 0.),
+            10.,
+            vec![
+                fixed(slider(((v.lane - lo) / (hi - lo)).clamp(0., 1.)), 124.),
+                fixed(
+                    b.text("", format!("{} px", v.lane), 11., 500, true, false),
+                    35.2,
+                ),
+            ],
+        );
         rows.push(
             b.setting_row(
                 "card0/r2",
-                "Gutter",
-                Some("between panes"),
-                b.segment("", &["2 px", "4 px"], &format!("{} px", v.gutter)),
-                v.gutter != self.defaults.appearance.gutter,
+                "Glow lane",
+                Some(&format!(
+                    "space around and between panes for the border effect · {lo} to {hi} px"
+                )),
+                lane,
+                v.lane != self.defaults.appearance.lane,
                 false,
                 false,
             )
@@ -2609,42 +2625,11 @@ impl Settings {
         )
     }
     fn opacity_slider(&self, _b: &Build) -> c::Element {
-        let fraction = ((self.values.appearance.opacity - TOKENS.window.opacity_min as f32)
-            / (1. - TOKENS.window.opacity_min as f32))
-            .clamp(0., 1.);
-        let base = row(
-            "",
-            plain(Some(16.), [0.; 4], 0.),
-            0.,
-            vec![fixed(c::Element::Spacer, 124.)],
-        );
-        let track = row(
-            "",
-            surface(ui::Color::Accent, 1., 2., [0.; 4], Some(4.)),
-            0.,
-            vec![fixed(c::Element::Spacer, 120.)],
-        );
-        let knob = row(
-            "",
-            surface(ui::Color::Accent, 1., 8., [0.; 4], Some(16.)),
-            0.,
-            vec![fixed(c::Element::Spacer, 16.)],
-        );
-        c::Element::Layers {
-            base: Box::new(base),
-            overlays: vec![
-                c::Placed {
-                    content: track,
-                    left: 2.,
-                    bottom: 6.,
-                },
-                c::Placed {
-                    content: knob,
-                    left: 2. + 104. * fraction,
-                    bottom: 0.,
-                },
-            ],
-        }
+        slider(
+            ((self.values.appearance.opacity - TOKENS.window.opacity_min as f32)
+                / (1. - TOKENS.window.opacity_min as f32))
+                .clamp(0., 1.),
+        )
     }
     fn opacity_preview(&self, b: &Build) -> c::Element {
         let mut base = c::Box::new(
@@ -2830,4 +2815,41 @@ fn align_box(mut e: c::Element, align: c::Alignment) -> c::Element {
         _ => {}
     }
     e
+}
+
+/// A 124 px range control: track and knob at `fraction` (the lab's input type=range).
+fn slider(fraction: f32) -> c::Element {
+    let base = row(
+        "",
+        plain(Some(16.), [0.; 4], 0.),
+        0.,
+        vec![fixed(c::Element::Spacer, 124.)],
+    );
+    let track = row(
+        "",
+        surface(ui::Color::Accent, 1., 2., [0.; 4], Some(4.)),
+        0.,
+        vec![fixed(c::Element::Spacer, 120.)],
+    );
+    let knob = row(
+        "",
+        surface(ui::Color::Accent, 1., 8., [0.; 4], Some(16.)),
+        0.,
+        vec![fixed(c::Element::Spacer, 16.)],
+    );
+    c::Element::Layers {
+        base: Box::new(base),
+        overlays: vec![
+            c::Placed {
+                content: track,
+                left: 2.,
+                bottom: 6.,
+            },
+            c::Placed {
+                content: knob,
+                left: 2. + 104. * fraction,
+                bottom: 0.,
+            },
+        ],
+    }
 }
