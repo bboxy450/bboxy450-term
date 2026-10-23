@@ -112,6 +112,51 @@ fn drive(
 }
 
 #[test]
+fn scrollback_dimension_admission_uses_the_heap_budget() {
+    let token = view(SeatId::from_u128(1), 1);
+    for (cols, rows) in [(768, 4), (8, 300)] {
+        let term = Term::new_with_spare_rows(cols, rows, 0, 0);
+        let screen = Arc::new(Screen::from_term(&term, String::new(), None, None));
+        let playback = Playback::new(token, 0, screen)
+            .unwrap_or_else(|reason| panic!("fitting {cols}x{rows} viewport refused: {reason}"));
+        assert!(playback.retained_heap_bytes().unwrap() < HEAP_BUDGET);
+    }
+
+    let term = Term::new_with_spare_rows(2, 1, 0, 0);
+    let template = Screen::from_term(&term, String::new(), None, None);
+    for (cols, rows) in [(0, 1), (1, 1), (2, 0)] {
+        let screen = Arc::new(Screen {
+            cols,
+            rows,
+            cells: vec![],
+            ..template.clone()
+        });
+        assert!(matches!(
+            Playback::new(token, 0, screen),
+            Err("history_dimensions_unsupported")
+        ));
+    }
+    // The last case reaches the saturating preflight multiplication; none
+    // may attempt to allocate a terminal for the deliberately huge viewport.
+    for (cols, rows) in [
+        (512, 256),
+        (usize::MAX, usize::MAX),
+        (usize::MAX / (mem::size_of::<bbt_core::Cell>() * 2), 1),
+    ] {
+        let screen = Arc::new(Screen {
+            cols,
+            rows,
+            cells: vec![],
+            ..template.clone()
+        });
+        assert!(matches!(
+            Playback::new(token, 0, screen),
+            Err("history_viewport_exceeds_budget")
+        ));
+    }
+}
+
+#[test]
 fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded() {
     let mut bytes = b"\x1b[32m\x1b[?1h".to_vec();
     for index in 0..256 {

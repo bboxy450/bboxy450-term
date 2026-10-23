@@ -191,6 +191,10 @@ fn screen_heap(screen: &Screen) -> usize {
 impl Playback {
     pub fn new(view: View, through: u64, screen: Arc<Screen>) -> Result<Self, &'static str> {
         bbt_rt::assert_not_ui_thread();
+        // These are the core Term's minimum dimensions, not a heap limit.
+        if screen.cols < 2 || screen.rows == 0 {
+            return Err("history_dimensions_unsupported");
+        }
         let row_bytes = screen
             .cols
             .checked_mul(mem::size_of::<Cell>())
@@ -199,12 +203,7 @@ impl Playback {
         let view_bytes = row_bytes
             .checked_mul(screen.rows)
             .ok_or("history_viewport_exceeds_budget")?;
-        if screen.cols < 2
-            || screen.rows == 0
-            || screen.cols > 512
-            || screen.rows > 256
-            || view_bytes.saturating_mul(4) + PAGE_RESERVE >= HEAP_BUDGET
-        {
+        if view_bytes.saturating_mul(4).saturating_add(PAGE_RESERVE) >= HEAP_BUDGET {
             return Err("history_viewport_exceeds_budget");
         }
         let base = Term::new_with_spare_rows(screen.cols, screen.rows, 0, 0);
