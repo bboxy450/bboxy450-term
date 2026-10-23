@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import threading
 import time
 
 
@@ -75,6 +76,15 @@ def main():
         process = subprocess.Popen(command, cwd=worktree, env=env, stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT, text=True)
         log.write(f"OWN_CHILD_PID={process.pid}\n"); log.flush()
+        # A baseline teardown held a PTY while waiting forever. Keep an owned
+        # diagnostic run bounded as well as recording its actual child status.
+        def stop_owned_gate():
+            if process.poll() is None:
+                prefix.with_name(prefix.name + "-watchdog.log").write_text(
+                    f"TIMEOUT_SECONDS=360 OWN_GATE_PID={process.pid} ACTION=SIGTERM\n")
+                process.terminate()
+        watchdog = threading.Timer(360, stop_owned_gate)
+        watchdog.start()
         for line in process.stdout:
             log.write(line); log.flush()
             if "GATE resumed staged_children=967" in line:
@@ -85,6 +95,8 @@ def main():
                 sample = subprocess.Popen(sample_args, stdout=sample_log, stderr=subprocess.STDOUT)
                 sample_log.write(f"OWN_SAMPLE_PID={sample.pid}\n"); sample_log.flush()
         code = process.wait()
+        watchdog.cancel()
+        watchdog.join()
         log.write(f"CHILD_EXIT={code}\n"); log.flush()
         assert sample is not None, "gate never reached the measured phase"
         sample_code = sample.wait()
