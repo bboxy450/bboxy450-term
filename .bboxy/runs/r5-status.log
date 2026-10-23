@@ -1,0 +1,246 @@
+{
+  "utc": "2026-10-23T17:31:46.679845+00:00",
+  "role": "Aster Cinderwing <EXECUTOR>",
+  "stage": "functional R5 switch gated; slow timing trial pending Oracle quiet window",
+  "source": "470a7b5e433a08c58181dd0592ac752edf535dd9",
+  "branch": "exec4",
+  "files_and_mechanisms": {
+    "crates/bbt-rt/src/lib.rs:70": "count violations at the existing debug UI-blocking guard; the counter is not an exhaustive OS wait trace",
+    "crates/bbt-rt/src/fault.rs:9": "calling-thread CPU clock and host loadavg witnesses; :42 holds a pipe-backed File read pending on the blocking pool for2s",
+    "crates/bbt-rt/tests/r5_instruments.rs:5": "actual stalled File read plus independent UI progress and thread CPU regression",
+    "crates/bboxy450-term/src/stall.rs:24": "bounded verification options; :140 raw measurements; :238 controller; :503 pinned helper ACK/clip predicate",
+    "crates/bboxy450-term/src/stall/load.rs:69": "owned public-API Logic/Supervisor fixture, custody/disk/PTY guards, cleanup; :186 admitted bounded GUI wire; :241 build/prepare/publish; :613 mixed background IO/bus",
+    "crates/bboxy450-term/src/stall/headless.rs:13": "windowless actual Scene/chrome/cells consumer with120Hz reference scheduler; no native120Hz claim",
+    "crates/bboxy450-term/src/main.rs:1035": "verification-only model/frame/completion hooks; :2232 CLI; :2312 selects fixture source; normal keyboard/launcher/live socket code left alone",
+    "crates/bboxy450-term/src/gpu.rs:271": "forward every completion in order; :625 windowless encoder uses begin_frame and flush pairs",
+    "crates/bboxy450-term/src/budget.rs:9": "GPU callback timestamp alongside existing frame/time sample",
+    "crates/bboxy450-term/tests/r5_stall.rs:11": "default1000 actual bounded synthetic state slots/15 encoded panes mixed-load contract; timing not a default-CI gate",
+    "scripts/gates.sh:11": "frame command builds optimized+debug assertions/memory; actual host PTY ceiling-32,50 watched; GATE_BUDGET and unchanged R5 timing limits; rejects startload>8"
+  },
+  "decisions": {
+    "scope_GO": "63d218a6-09c5-4f86-a8bc-12ea7c99267e",
+    "functional_default_timing_slow": "3aa0ee6c-0eef-4176-a3c9-bf905a3d6485",
+    "external_header_rebase": "46a45b8f-c9d3-4acb-aca3-1584e14e7265",
+    "retire_merged_pixels": "8a81befc-4127-46b2-99cb-a7abf6db9e9d"
+  },
+  "clean_ci": {
+    "command": [
+      "sh",
+      "scripts/ci-local.sh",
+      "--parity"
+    ],
+    "exit": 0,
+    "elapsed_s": 2975.3446041249845,
+    "source": "470a7b5e433a08c58181dd0592ac752edf535dd9",
+    "artifacts": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000",
+    "required_geometry": 1664,
+    "measured_geometry": 1664,
+    "unproven_geometry": 0,
+    "mismatches": 0,
+    "current_cases": 1768,
+    "advisory_pixel_reviews": 194,
+    "fast_invariants": 7,
+    "slow_skips": 4,
+    "initial_and_final_source_status": "clean",
+    "raw_log": ".bboxy/runs/r5-ci-470a7b5.log",
+    "proof_lines": [
+      768,
+      1169,
+      2106,
+      2853,
+      2854,
+      2861,
+      2862
+    ]
+  },
+  "native": {
+    "profile": "dev O1 debug assertions; memory custody witnessed",
+    "command_result": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/bboxy450-term",
+        "--stall-test",
+        "--stall-real",
+        "--stall-seats",
+        "15",
+        "--stall-watched",
+        "15",
+        "--stall-seconds",
+        "3",
+        "--stall-idle",
+        "1",
+        "--stall-run-dir",
+        "/tmp/aster-r5-run-npve9tzz/fixture",
+        "--stall-report",
+        "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/native-proof/report.json",
+        "--capture",
+        "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/native-proof/window.png",
+        "--capture-after",
+        "4"
+      ],
+      "exit": 0,
+      "elapsed_s": 20.341357333993074,
+      "load_end": [
+        27.39990234375,
+        39.740234375,
+        63.21484375
+      ],
+      "artifacts": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/native-proof"
+    },
+    "rows": 15,
+    "real_ptys": 15,
+    "watched": 15,
+    "encoded_changes_min": 464,
+    "encoded_changes_max": 566,
+    "stdout_bytes": 1000000000,
+    "fault_read_ms": 2002.7007079999998,
+    "idle_frames": 0,
+    "idle_callbacks": 0,
+    "guard_violations": 0,
+    "probe_clipped": false,
+    "image_read": true,
+    "reaped": {
+      "pids": [
+        8759,
+        8761,
+        8764,
+        8766,
+        8768,
+        8782,
+        8785,
+        8793,
+        8806,
+        8811,
+        8814,
+        8818,
+        8820,
+        8822,
+        8825,
+        8867,
+        8710
+      ],
+      "ps_exit": 1,
+      "stdout": "  PID  PPID COMMAND\n",
+      "fixture_removed": true
+    },
+    "load_before": [
+      26.11328125,
+      40.39306640625,
+      63.9990234375
+    ],
+    "load_after": [
+      27.39990234375,
+      39.740234375,
+      63.21484375
+    ],
+    "timing_gated": false,
+    "timing_failures_reported": [
+      "ui-cpu-p99-over4ms",
+      "input-to-gpu-over-two-display-intervals",
+      "bus-below10k-events-per-second"
+    ],
+    "not_a_timing_verdict": "host started above8; this is functional evidence only"
+  },
+  "measurement_definitions": {
+    "CPU": "calling UI thread CPU consumed between submitted damage frames; separate from elapsed HitchMeter phase sums",
+    "frame_gate_value": "p99 sum drain+layout+draw+encode+present_wait, milliseconds",
+    "hz": "reference display/scheduler Hz, not observed damage-driven FPS",
+    "input": "fixture ControlProbe admission -> actual Input GUI wire -> PTY helper pinned top-row nonce+spinner -> UI receives prepared model -> encoded frame -> earliest GPU-complete callback",
+    "wait_witness": "zero instrumented application guard violations; exhaustive framework/OS lock/IO waits unproven",
+    "real_fixture": "real PTY processes and admitted gui.sock; public Logic and Supervisor hosted in app process/IO. Separate cockpit child lifecycle and native key routing not exercised"
+  },
+  "first_clean_gate_failure": {
+    "source": "9f0203c6fada2961e5b692e5e365abd5346b2f3f",
+    "exit": 101,
+    "elapsed_s": 435.50398608398973,
+    "cause": "pre-existing invalid Kitty YAML check string; same as basee27cd32 (git diff --quiet exit0), fixed by main9fdfd94",
+    "raw_log": ".bboxy/runs/r5-ci-failed-9f0203c.log"
+  },
+  "other_failures": [
+    "initial Clippy101 manual_is_multiple_of in helper, fixed; later all-target checks0",
+    "release Clippy101 missed cadence idle collect_gpu caller after signature change, fixed; rerun0",
+    "old dev/optimized timing experiments EXIT1; startloads>8, not performance verdicts, and old any-row/clipped marker was invalidated",
+    "1548369 native attempt timed out124 after90s: IO setup failed before any PTY; UI waited after final worker wake. Exit path fixed9f0203c; busy-host rejection control nowEXIT1 in0.596s with discardedJSON",
+    "9f0203c native refresh refused EXIT1 in0.174s: free7184457728<10GiB. Guard unchanged; rerun only after Oracle freed disk",
+    "read-only guessed paths command.rs, check-ui-io.sh, model/tree.rs returned1; actual paths then inspected. Other initial missing-path rg inspections returned2. No edits based on missing files",
+    "ps on recorded reaped PIDs returns1 with no PID rows (expected positive cleanup evidence)"
+  ],
+  "commands": ".bboxy/runs/r5-commands.log (verification, execution and mutation ledger; grouped read-only inspection failures above)",
+  "unproven": [
+    "967-real-PTY/50-watched quiet triple; no slow run started",
+    "CPU p99<=4ms, helper marker-to-GPU within2 reference intervals and bus>=10k/s on a quiet host",
+    "exact1000 real PTYs on this999-PTY host (script default967, actualcount always reported)",
+    "native120Hz/ProMotion on the75Hz Dell",
+    "physical keyboard-to-scanout/photon latency",
+    "exhaustive framework/OS lock/IO wait tracing",
+    "quinn never-answering peer (not implemented)",
+    "production cockpit separate-child placement/recovery and keyboard encoder in this fixture"
+  ],
+  "left_alone": [
+    "mux/ring/server/supervisor implementation",
+    "live.rs/grids.rs/model.rs/proto/schema",
+    "chrome text/materials/shaders/layout library",
+    "CI/invariant/spec budgets (Architect owns budget after3 quiet measurements)",
+    "push/merge/task creation"
+  ],
+  "pending_merge_seams": [
+    "R12-3 adds FrameTime.clear; VerificationFrame keeps explicitclear, so add clear:false to that literal when merging",
+    "L8-D may bump GUI admission version; current fixture Wire uses version1. Nyx notified"
+  ],
+  "cleanup": {
+    "this_CI": {
+      "allocated_bytes_freed": 2595594240,
+      "final_source_status": "",
+      "worktree_remove_exit": 0,
+      "worktree_remove_output": ""
+    },
+    "prior_R5_caches_allocated_bytes_removed": 4740534272,
+    "superseded_binary_allocated_bytes_removed": 31023104,
+    "retirement": {
+      "authorization": "Oracle8a81befc-4127-46b2-99cb-a7abf6db9e9d",
+      "scope": "closed merged C1b/C1i/T2 own galleries and binaries only; active R5 and open baselines excluded",
+      "kept": "reports,manifests,logs,source and existing per-file hash lists",
+      "allocated_bytes_freed": 1522216960,
+      "logical_bytes_retired": 1428309521,
+      "file_count": 44111,
+      "cleanup_json": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-retirement-1792776013384214000/cleanup.json",
+      "cleanup_sha256": "6e4c3b2eb4f7bf82a832b341756d5ca78cbdbb0289503ad357183e3880d68e35"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/ci.log",
+      "sha256": "0fd05b9b7203f8d003a8072ed74562e6c8548774bb8a30f57cd265d9eaa94aab",
+      "bytes": 153884
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/parity/report.json",
+      "sha256": "2875e18685cca49992165a682113c8429bf98eac35aac23ff4268c4d86183dd3",
+      "bytes": 1130655
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/native-proof/window.png",
+      "sha256": "348c9e20bdf3b7019e742fc6ef3b207dd68a9a7c0084410169a7a27a0c94b339",
+      "bytes": 178027
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/native-proof/report.json",
+      "sha256": "4a7f82efc17933c0ccf2a12f4000a31bd7cf7a4bc775020f3db5e03fb4ce4953",
+      "bytes": 32792
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/native-proof/command.json",
+      "sha256": "3f55393f7efe45b2b11dd25c57caa9a4217b3f47543af6fe12390b2ff5ffbd74",
+      "bytes": 1022
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/native-proof/reaped.json",
+      "sha256": "4ed792783f5ba2817b4368ae35a408a2f08e01ae9d27a42515ba7a62bad546bf",
+      "bytes": 268
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-ci-470a7b5-1792773144579513000/binary.json",
+      "sha256": "543aeee8f72b0dac034f2f2481e0bcc4aa751e5cadc082467c027f367334ec84",
+      "bytes": 285
+    }
+  ]
+}

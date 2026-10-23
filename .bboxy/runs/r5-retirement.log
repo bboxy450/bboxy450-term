@@ -1,0 +1,10 @@
+{
+  "authorization": "Oracle8a81befc-4127-46b2-99cb-a7abf6db9e9d",
+  "scope": "closed merged C1b/C1i/T2 own galleries and binaries only; active R5 and open baselines excluded",
+  "kept": "reports,manifests,logs,source and existing per-file hash lists",
+  "allocated_bytes_freed": 1522216960,
+  "logical_bytes_retired": 1428309521,
+  "file_count": 44111,
+  "cleanup_json": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-retirement-1792776013384214000/cleanup.json",
+  "cleanup_sha256": "6e4c3b2eb4f7bf82a832b341756d5ca78cbdbb0289503ad357183e3880d68e35"
+}
