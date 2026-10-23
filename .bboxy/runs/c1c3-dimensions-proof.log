@@ -1,0 +1,18 @@
+C1c-3 decision40(e) supplementary proof. Source d6d49d5792f2e86b32b476e5f8af95ec1eab2b4d.
+Paired full-parity source d1d917325da101fde92d58a12460efb731dd10ce; previously reviewed application source 6c6d06dd3a3e88f739fa505e680ba7a938a2d45b.
+Oracle8c0fff4c requests NORMAL CI for the narrow dimension correction; paired gallery producer trees stay identical.
+IDENTICAL Cargo.toml 769f4612af53ee1c5e927cf0b7505c6f66037cb2
+IDENTICAL Cargo.lock 7758bb7c114390285af1ce4b4b396659f3818754
+IDENTICAL crates/bbt-core 63f7582003b33eb0680e9d9b29e8351831cae799
+IDENTICAL crates/bbt-ui-model a33edfbd41b72b4a2d77ee2bc2f0018294c1fef8
+IDENTICAL crates/bbt-ui 56f15092486a0c76abc2fdea9713f3836ff0ee22
+IDENTICAL crates/bbt-render 8b097079ceeef070d364b0fa65a192a962c668b1
+IDENTICAL crates/bboxybook 19bb672fba23fa697d36b5279bb1614680ede59b
+IDENTICAL lab/web e004458cb2b0cbf832695d4a125cb6f1a87c8029
+IDENTICAL crates/bbt-doc/src dc159a7f05cc3af6687204b4678585ef09a4c60a
+IDENTICAL crates/bbt-mermaid/src b0d2b55519ca0abcaad7b760cc9972c6f06b20df
+scrollback.rs differs from the reviewed source ONLY by the core-minimum named outcome and the dimension/budget preflight guard; parsing, history windowing, publication and display data are byte-identical.
+reviewed scrollback.rs SHA256 e4d0a65fdbf4e80ce5048debc64ccbe3295baff3a0035b15446ffe49b7084fb2
+corrected scrollback.rs SHA256 562cee858b3d14b19eeda24a59fe254bb7eb033e771e2a9b38ab4804c4551df4
+Own signed correction changes exactly crates/bboxy450-term/src/scrollback.rs, crates/bboxy450-term/tests/scrollback.rs.
+Focused-tested dd4a5ab files are byte-identical after the clean rebase to the exact gated source.

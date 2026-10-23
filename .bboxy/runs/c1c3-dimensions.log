@@ -1,0 +1,33 @@
+C1c-3 final review correction. Exact source d6d49d5792f2e86b32b476e5f8af95ec1eab2b4d, rebased onto e480cfe4e76525d5aba20c1c2e0d96d9e3e00018.
+Resolves Corvin2b59a843 and Oracle8c0fff4c, decision40(e), recorded by Architect at e480cfe. Original full implementation/mechanisms/limits remain in c1c3-summary.log; this record supersedes only its final source/gate status.
+crates/bboxy450-term/src/scrollback.rs:192 — remove arbitrary512-column/256-row upper caps. True retained-heap accounting governs admission. Below core2columns/1row returns history_dimensions_unsupported; budget arithmetic overflow and actual excess return history_viewport_exceeds_budget. Saturating preflight reserve addition prevents extreme inputs from panicking.
+crates/bboxy450-term/tests/scrollback.rs:115 —768x4 and8x300 are admitted and remain below4,000,000 retained bytes; invalid core minima return their own outcome;512x256, multiply overflow and saturating-preflight overflow refuse without allocating a huge Term.
+Focused suite2/2 EXIT0/262.518s including cold compilation. Existing20k exact replay/live join/gap/fairness/cancel/50slot budget fixture also passes. Requested50slot heap27,238,288bytes, conservative53,761,974bytes vs200M. Focused source files are byte-identical across rebase (dimensions-proof.log).
+Focused observed optimized-O1 seek: top172.958us, capture-prefix-to-live12.353209ms, row10000seek6.817459ms, longest parse turn0.547292ms. These are observations under current host load, not a controlled performance comparison.
+Exact detached NORMAL ci-local: EXIT0, all gates passed. Raw log SHA256 185da381a9405d7bb25bd988d78a42236288f6a4c16a21fe74a70f2a78ae89b3, wall seconds 905.3304589590407.
+Gate slot2 explicitly granted by d3f2c7a9. Strict all-target workspace Clippy, workspace tests/doctests, UI IO lint, native idle and default invariants all ran in that one gate. The gate exclusively reused this worktree's inactive dev cache; no concurrent writer or shared-tree source.
+Paired gallery producer trees (core/ui-model/ui/render/bboxybook/lab plus Cargo/deps) are byte-identical to full-parity d1d9173:1768cases,1664measured,0unproven/0mismatches,174reviews with0new. No additional parity replay requested by Oracle for this admission-only correction. See c1c3-dimensions-proof.log.
+No core, mux, proto, renderer/shader, layout, marker paint, live Replica/Applied or socket/wire change in this fix. No wide/tall native GUI screenshot or new physical120Hz/RSS claim; the requested dimension proof is an executable public-Playback component regression.
+Own private target/worktree removed after completion; allocated bytes freed 2904395776. Original accepted galleries retained. No push/merge/publish.
+Main moved during the gate to691ad3c: R5 window3/R5e evidence plus rim/invariant records. No late rebase or redundant gate; source remains the exact gated d6d49d5 and the Oracle verifies the merged tree per AGENTS.
+
+Exact NORMAL command record:
+{
+  "id": "1935433447944716be914a71d60dc576",
+  "argv": [
+    "env",
+    "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1c3-review-dev",
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "cwd": "/private/tmp/sable-c1c3-h2c7tke9/ci-dimensions-d6d49d5",
+  "started_utc": "2026-10-23T21:52:07.341066+00:00",
+  "pid": 5805,
+  "exit": 0,
+  "elapsed_seconds": 905.3304589590407,
+  "log": "/private/tmp/sable-c1c3-h2c7tke9/cmd-1935433447944716be914a71d60dc576.log",
+  "sha256": "185da381a9405d7bb25bd988d78a42236288f6a4c16a21fe74a70f2a78ae89b3"
+}
+
+NORMAL idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=2.792ms p99=3.652ms samples=21 warm_encode_p50=1.966ms warm_encode_p99=2.395ms
+NORMAL invariants: 10 checks, 0 failures, 4 slow checks skipped

@@ -1,0 +1,319 @@
+C1c-3 post-handoff commands and decision40(e) correction.
+Continuation after the last seal of c1c3-commands.log. Every entry has real argv/cwd/PID/UTC/exit/elapsed/output hash.
+ICQ contents are omitted; raw coordination stays private. apply_patch edits are tool operations, not shell commands.
+2026-10-23T21:35:35.378447+00:00 id=eaca8aae158a4a91b9adf901450c060a pid=67056 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ python3 /private/tmp/sable-c1c3-h2c7tke9/seal.py
+exit=0 elapsed_seconds=0.053794 output_sha256=6fbe55448a90108f9a5afe97f8a65afd8ec8a618dde4950e1c4b1fa40a6952a9
+
+2026-10-23T21:35:35.534042+00:00 id=07e64b6effd8450e83543b682550b196 pid=67079 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git add .bboxy/runs/c1c3-baseline.log .bboxy/runs/c1c3-ci-normal.log .bboxy/runs/c1c3-ci.log .bboxy/runs/c1c3-cleanup.log .bboxy/runs/c1c3-commands.log .bboxy/runs/c1c3-markers.log .bboxy/runs/c1c3-native.log .bboxy/runs/c1c3-prechecks.log .bboxy/runs/c1c3-producer-identity.log .bboxy/runs/c1c3-summary.log
+exit=0 elapsed_seconds=0.047819 output_sha256=81a065e3b37230a4390ffad0ffb497226240b21bc851c8f89044760199382a6c
+
+2026-10-23T21:35:35.678630+00:00 id=3f2573ef2e6f41e9a666f56a49a19eb5 pid=67098 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git diff --cached --name-only
+exit=0 elapsed_seconds=0.025718 output_sha256=e4d8c1d1edd569d83d7fa72ec0b95a8316c8148ca2d0860edf40e0ab7c53182c
+
+2026-10-23T21:35:41.546014+00:00 id=cb58cb17c274495e8d45fb44cf9a1ec8 pid=67160 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git commit -m 'Record C1c-3 scrollback parity and exact normal CI evidence' -m 'Normal CI passed on 6c6d06d. Reuse the paired parity by explicit producer identity. Credit Wren Thistledown for the paired one-row marker reference ea790f6. Keep measured limits and failed probes visible.'
+exit=0 elapsed_seconds=0.745471 output_sha256=8f9cb9052a7c5f50ba37a72a0b1f06258acacd041c1ea9f9c19d49e4a518f054
+
+2026-10-23T21:35:49.996245+00:00 id=e1a1d9e4471d4433957ff12d80aa30ca pid=67292 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git status --short --branch
+exit=0 elapsed_seconds=0.039582 output_sha256=9a8075e8be38028cd9e6e27343d0625ca220d01d80760b8e15c3a27c486e0dc0
+
+2026-10-23T21:35:50.006864+00:00 id=d11589e7f9934fca90404bb4b7ce569a pid=67297 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git diff 'HEAD^' HEAD --name-only
+exit=0 elapsed_seconds=0.030259 output_sha256=c13c945cc37032e2233567a7031d4acd837de3d1e6d9d3de67a0e842d64eadf5
+
+2026-10-23T21:35:49.996150+00:00 id=986420a6ae9e49ffa680bec3483be4a9 pid=67291 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git verify-commit HEAD
+exit=0 elapsed_seconds=0.042692 output_sha256=59b1d3857943f5024f9453c13febbb669f1eaf32d89c32566daa577780d36c4f
+
+2026-10-23T21:35:49.997867+00:00 id=723faf1c2dd94436b31d721f797bff2a pid=67293 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git log -2 '--format=%H %G? %s'
+exit=0 elapsed_seconds=0.053086 output_sha256=b2c38e3ec7fc35dfa6175148da4f0492c8bcec004e4fdcda59915e0ad0f8446a
+
+2026-10-23T21:36:27.984245+00:00 id=6f5ccbc6dbf640519ec4b7b58a7a3479 pid=69128 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=552a654bb579776e4507737b5ad9fc1a3b8102185c592de26eda1c7a5f4174d1, contents omitted>
+exit=0 elapsed_seconds=0.020584 output_sha256=7b51f6bdb6db9cc7fc22b6d5dfab877c6fc28d39142f3b84cb65a9c387720341
+
+2026-10-23T21:37:00.291473+00:00 id=10c7c2d1ce984aa3b1bb3712029f6699 pid=70673 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ python3 /private/tmp/sable-c1c3-h2c7tke9/send-handoff.py
+exit=0 elapsed_seconds=0.052148 output_sha256=ee9e578a74b423206e69b807703178767fcb3d86083f1fc7d4bec50b246c6d06
+
+2026-10-23T21:37:05.607334+00:00 id=34e3bf0bc1f34af4a4b28b4313ba85b1 pid=70824 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ python3 /private/tmp/sable-c1c3-h2c7tke9/send-handoff.py --send
+exit=0 elapsed_seconds=0.438055 output_sha256=0279ec1a4aabb0c7883f31ee2a2ff1f10edf70d8cd3de29cefda79c7a1d5e9b8
+
+2026-10-23T21:37:47.661534+00:00 id=83f5e9db43fa49c68509449f0f095ddf pid=71883 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ date -u
+exit=0 elapsed_seconds=0.006788 output_sha256=a384e8ee65e8b7f59c4fca4a78e9973782b522dc2892687cc1335f2017f331da
+
+2026-10-23T21:37:47.661726+00:00 id=d9b91c94b3424af2863eeca456e27abd pid=71885 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ rg -n 'lane|depth|gap_marker|rim_invariants|rim_never' crates/bbt-ui/src/modules/pane.rs crates/bbt-ui/src/lib.rs .bboxy/graph.md
+exit=0 elapsed_seconds=0.077508 output_sha256=242a8498c8d7c2dc3a683e7198cc44773f2f0d1c5a6d82a19ec3bd4c479cbb71
+
+2026-10-23T21:37:47.661661+00:00 id=305f88b3545f4292a1d8aa8c880a4ca7 pid=71886 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git status --short --branch
+exit=0 elapsed_seconds=0.143262 output_sha256=b25090f32ab1330b12f0df6351e494ab851f59082029fc03e795af7fa48d2023
+
+2026-10-23T21:37:47.661628+00:00 id=5bdb3da120104828b38847e8b2fd270d pid=71884 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=1ffbfc395df628ee8cae8bfb3df0a7b6df1a98824788f0bafcacf61d7c4845ec, contents omitted>
+exit=0 elapsed_seconds=1.306150 output_sha256=76d87de6b59fff02b4de16e4a514e2f6666d4f8af7ee5c475e3e5a400fd96e12
+
+2026-10-23T21:38:01.217490+00:00 id=6146bd05404d4babaa95ff987bfa29eb pid=72029 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=78fc5c0410500ba0c4b4802f43633aab25422fb878202f8743a70ecd54dcc407, contents omitted>
+exit=0 elapsed_seconds=0.010196 output_sha256=fd6bd20dd15afaae723e3992abd6fca80a3464afb3685186b5674827f95cf809
+
+2026-10-23T21:38:06.648508+00:00 id=e5fd7158a8044780b47d0b004515df16 pid=72082 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=1d7e315c354eec291aaf94af2eb07e558f6d2a353656b50867142e3587a19328, contents omitted>
+exit=0 elapsed_seconds=0.352042 output_sha256=50dbb186bc35fb7c21f3981e1c091b8b4c536153d7144f826413a8295db94cf5
+
+2026-10-23T21:38:26.803213+00:00 id=e8b83a1cdae84498ab9bd902ad976090 pid=72360 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=9e3588f7844bb51e3f6b6e025ecffebf097ecb112216d29463afc53acddacb92, contents omitted>
+exit=0 elapsed_seconds=0.008576 output_sha256=eabde70248282f054adadbe72e59932b4a42fc8e8b7dd3a8c9a6ec9910f92b30
+
+2026-10-23T21:38:32.135152+00:00 id=d51d79c8a2274d7facf42c836bc80482 pid=72474 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=f64e0d12d6d523873d5235bf85652598c3385f470892bb36778e4450671a6e5f, contents omitted>
+exit=0 elapsed_seconds=0.281241 output_sha256=52e6d71212f102590d7ac31bb863720e54025116c87f5af027d214962f9f4c49
+
+2026-10-23T21:38:50.944953+00:00 id=1d0e49c47f314c618cf670a98ac50016 pid=72851 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git status --short --branch
+exit=0 elapsed_seconds=0.064980 output_sha256=b6c853d6df413698a2cc3a566f916d0b189c963c31a760367d20dbff9867c933
+
+2026-10-23T21:38:50.944947+00:00 id=2f431faf0e7e4281a6a0bf096eebff9d pid=72850 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=1ffbfc395df628ee8cae8bfb3df0a7b6df1a98824788f0bafcacf61d7c4845ec, contents omitted>
+exit=0 elapsed_seconds=0.575685 output_sha256=5b0073b1102685807e1b97c73ddc9c076615055aef7682bce445be06c1abef16
+
+2026-10-23T21:38:58.007215+00:00 id=ea799ad6920b41c28bd199b4f2132d32 pid=72954 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=e4a84631700d75cc109c85769afae0c66d98aa796b03488aed64f624474b0685, contents omitted>
+exit=0 elapsed_seconds=0.008123 output_sha256=ef846f40db2446f4832173f3cbaf154a27694ae7cca5a2ca33e5338481e4df59
+
+2026-10-23T21:39:02.869466+00:00 id=0d5d48faef11452f831104491979917e pid=73053 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=886fde825b1e42a22576c96d21e874d3f37fe8523ee4b9a3a7469e9680986043, contents omitted>
+exit=0 elapsed_seconds=0.314376 output_sha256=90b669332b91a73bec1fd9769abbb0f503189b4fd43f12797d49b6ad7400ce4c
+
+2026-10-23T21:39:22.243452+00:00 id=006dd093fb434139ac5fb1cf9bc4ddd7 pid=73525 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ rg -n 'capture start|checkpoint|rolling|retained heap|4 MB|40\(c\)|40' .bboxy/specs/c1-live-seats.md
+exit=0 elapsed_seconds=0.023740 output_sha256=3f1655f5ebfe896f45820cb5b97098bd82e927d6468d49b7e8b97bfbdf7114bd
+
+2026-10-23T21:39:33.913674+00:00 id=dce16213fc6645ba95e9489a9aab3c66 pid=73950 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=bd16802a6b0438d399827bfd9a4261dd918339d149924fa708a7654fd15e37fa, contents omitted>
+exit=0 elapsed_seconds=0.008525 output_sha256=b50c194fa61ffcc7f251a86517692f278a111f48e7d037cb83891867a8405f65
+
+2026-10-23T21:39:39.947158+00:00 id=8098d833379e4b7bb070ad4c1f254784 pid=74235 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=bc800eecddce1aaded666503bb877922b8db664c882d442a97651e71181813f0, contents omitted>
+exit=0 elapsed_seconds=0.336461 output_sha256=feaccb5faa0f82c6f5ca711423af9157fc9fd5c865bef5b7ee03a850b0c11551
+
+2026-10-23T21:42:18.591349+00:00 id=a41cf9e6959e49cd9ec918e31d6cfa69 pid=81218 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=554bd15d85c0859ae3c2e0fc193d9ba5c04a3a5e0d7de1e42040b8f082b2513e, contents omitted>
+exit=0 elapsed_seconds=0.011197 output_sha256=d8705644841a760a5f6d69daa83461dfe627e3ad2575f9c1856f98dcf70705a3
+
+2026-10-23T21:42:18.587707+00:00 id=3f4943026be54c3f9a9d04e0331b056b pid=81216 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git status --short --branch
+exit=0 elapsed_seconds=0.063403 output_sha256=f07d5c18ad641b0204fa5454b54b1eed2e408c7e22a32fdf3b929bce43d8ba8e
+
+2026-10-23T21:42:24.396829+00:00 id=698ea5f7d89844dca8cbeb0b929fb045 pid=81874 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=e958bd392691abd3fa9cbb8ee0a8117ac1d9949ff3e93c939073246eb767768e, contents omitted>
+exit=0 elapsed_seconds=0.477114 output_sha256=c064f503cdd7540c23b8730599b83554643b3278bf9b5a5b8e1665bff439f5a2
+
+2026-10-23T21:42:48.544802+00:00 id=ce45d46514d84fe3acfbfcffa2f7aad2 pid=83898 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ date -u
+exit=0 elapsed_seconds=0.048662 output_sha256=c2a6824c295af6cfbec79b3d32187160be6d07177baeed0a624825035ebc49d0
+
+2026-10-23T21:42:48.587919+00:00 id=c305d0c900b940878e6ac95bf8eaa034 pid=83901 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=fe686c7d9f10807dd7604ac91b8438385193e1e688acff35b0a8ed3dc0484f60, contents omitted>
+exit=0 elapsed_seconds=0.347861 output_sha256=95bc1d7baf31114c729493e3b7a24c6a2225211e86835784833a1dbdcdcd4caa
+
+2026-10-23T21:43:26.796386+00:00 id=8283f700d9b34a978ba976be97a94f7f pid=86182 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ sed -n 170,285p crates/bboxy450-term/src/scrollback.rs
+exit=0 elapsed_seconds=0.008907 output_sha256=107c71d69e2d3731f4bf55a0780def49cad30994f27bb97b2a883787e40fd41c
+
+2026-10-23T21:43:26.797938+00:00 id=207d1e8af5b240bf94d8bf70f09809e8 pid=86183 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=02d783d988148988fe6857a71287d61b829da8dd4582ecbe2dc1e559d29bf4d0, contents omitted>
+exit=0 elapsed_seconds=0.017370 output_sha256=4a8f0f5bced3140eff79a3fa78c8a3574b1144162057a00d49214b578632621e
+
+2026-10-23T21:43:26.806260+00:00 id=a9770b08f43848c6bcdc142211f78cda pid=86184 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ rg -n '512|256|viewport_exceeds|budget|dimensions' crates/bboxy450-term/tests/scrollback.rs crates/bboxy450-term/src/scrollback.rs crates/bbt-core/src/lib.rs
+exit=0 elapsed_seconds=0.017041 output_sha256=d63bdc94ece14b198cc7a8ad9aebade6b89195562053a2a0b023eb2ac84e8ce5
+
+2026-10-23T21:43:47.326878+00:00 id=f7c59c59abe3428f88a4e15088661b40 pid=87198 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=50b53752cb801dd97bc903c89c873edc6ddfa324003339d17b9c744ac7210acc, contents omitted>
+exit=0 elapsed_seconds=0.420134 output_sha256=0bd795b9e5ea6f40f8d9d1480b11ba359497bede8b0a4eb044055c6668fda3cf
+
+2026-10-23T21:43:47.907183+00:00 id=a67831a7056a476a9ff3590252d94d74 pid=87272 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ sed -n 330,415p crates/bboxy450-term/tests/scrollback.rs
+exit=0 elapsed_seconds=0.006873 output_sha256=9bcf18272c793f1d230b18110c945e43ac8426ad9bedaa30b880133571268e53
+
+2026-10-23T21:43:47.908174+00:00 id=02a8808c4aee489a88802f5173f227f4 pid=87273 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ sed -n 80,150p crates/bbt-core/src/lib.rs
+exit=0 elapsed_seconds=0.007147 output_sha256=9e4c79d1c538dc49cde1f1444e98ac65d716bb1a9b42f5613a7fa207909e0af0
+
+2026-10-23T21:43:47.920340+00:00 id=4e584243014f4a33872c664ee738dfd3 pid=87275 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ sed -n 1,150p crates/bboxy450-term/tests/scrollback.rs
+exit=0 elapsed_seconds=0.009653 output_sha256=dffdcc1927b11580284d415bc38645f78bf5bfdec2408552653e2aef8583988c
+
+2026-10-23T21:44:02.276669+00:00 id=ab594fc1b89040c88cc0c903e2249985 pid=87620 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ sed -n 60,92p crates/bbt-core/src/lib.rs
+exit=0 elapsed_seconds=0.017972 output_sha256=14fb038c5722300f492fb6909766c3e958991f4df3f816ebbe6d36bd6419410e
+
+2026-10-23T21:44:02.466880+00:00 id=d1f17a6847974405890adc10190eda93 pid=87634 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ rg -n 'MIN_SCREEN|MIN_COLUMN|columns.*max|columns.*2|screen_lines.*max' crates/bbt-core/src/vendor/alacritty/term/mod.rs
+exit=0 elapsed_seconds=0.015573 output_sha256=68a6877488b795042b3322899fd985963867f0f9b3bd7089fedfbf929f7fb067
+
+2026-10-23T21:45:20.978939+00:00 id=bfc1cd7756ab49aebb5bfaa8ca8b258f pid=90839 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=6f7f6a3313f5a5273a0a9d05f4d5fe4e1f69d8781bada4b72427bbbb83c3b87d, contents omitted>
+exit=0 elapsed_seconds=0.033565 output_sha256=05bfa120ea7555af3d8804f97677b122fa9711e1b997dfeb009c93672604d96b
+
+2026-10-23T21:45:21.206178+00:00 id=b65e7592e78841dbb3049ffeebcdc8f4 pid=90856 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=9b8481f34b49109530379e34c64d5535407426a59f73488dcde2e4a158797e76, contents omitted>
+exit=0 elapsed_seconds=0.033895 output_sha256=0b4fede525376533f086d0bbd9791abeb368820340d967c84ccf21165d5654a4
+
+2026-10-23T21:45:42.507276+00:00 id=fb859cbf737f402281d7d88b72e83485 pid=91337 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=b591c1f6af307228d096e27cfe40603325f4080129519e769cda6881a09d53ba, contents omitted>
+exit=0 elapsed_seconds=0.633382 output_sha256=98e6b33699dc8729f2006537b372389249a41b3ae2fff2b8ac037e7a5e40c78e
+
+2026-10-23T21:45:43.261182+00:00 id=a437b83b19b749be84c8b473221a1102 pid=91388 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=6820ebef72d63577055a496568956930381d8ae340003fe70e31f10884a89212, contents omitted>
+exit=0 elapsed_seconds=0.396660 output_sha256=c6270c181112662c4841d1a9b25dc7f18bdee8eb39cc6c79aa12d0062b55ac98
+
+2026-10-23T21:46:13.869509+00:00 id=3d48820bb3e742549f9290559fa048b1 pid=92788 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ rustfmt --edition 2024 crates/bboxy450-term/src/scrollback.rs crates/bboxy450-term/tests/scrollback.rs
+exit=0 elapsed_seconds=0.086438 output_sha256=9c92ddd558f7d0814c4fe41a25fdfc007b7b0ee39774fe61bc5a33af825cf584
+
+2026-10-23T21:46:14.130885+00:00 id=194f4ce4101e4071b1a67ca882a18e7a pid=92816 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git diff -- crates/bboxy450-term/src/scrollback.rs crates/bboxy450-term/tests/scrollback.rs
+exit=0 elapsed_seconds=0.082041 output_sha256=4acb5d2061bb5b580778ca8f7b392486a0761f647626904bfa8f343faca6a441
+
+2026-10-23T21:46:14.128426+00:00 id=bed3a903243d4484a822fd5526c383a5 pid=92815 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=2f65b9d541645ae3ab6570a5b73cd3ea5b676e8a32692b47e9fe95db76a8350f, contents omitted>
+exit=0 elapsed_seconds=1.442737 output_sha256=fbbd9db5a80a0d664aef613fbf2d0b8106c794e556d745ef72bed430467eda10
+
+2026-10-23T21:47:18.607530+00:00 id=442b9cfed8924f72a3830dd7b068e581 pid=96763 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=2f65b9d541645ae3ab6570a5b73cd3ea5b676e8a32692b47e9fe95db76a8350f, contents omitted>
+exit=0 elapsed_seconds=0.540897 output_sha256=01783200d1060b5f2ad899370394257b95631562c994f5b2e9f1ab1ff51646c3
+
+2026-10-23T21:48:17.318078+00:00 id=5b3a1a226ea444a3b07b2363f4e65dc5 pid=99554 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=cb2425f0ab4c695aaeab981bca5e6a62271ed9bd49a7b094d8eeb3b0ea383187, contents omitted>
+exit=0 elapsed_seconds=0.024778 output_sha256=d374b7304eaf794b87345caa4566eee753aace1436ea6ad779c44c5b325a0ab7
+
+2026-10-23T21:48:23.395244+00:00 id=6f2d8e3151af41009f7759eafbd6785d pid=99699 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=b9a86048488fd7d741e8abf832cc26bcd1bb39b438a49c764111db1f40772c26, contents omitted>
+exit=0 elapsed_seconds=0.386989 output_sha256=30c84577a5d5fc44afda723026ce931f7641406da41c9e26bbf0340602f14a65
+
+2026-10-23T21:49:03.108420+00:00 id=76ea06650de340288a91f5d8ded01f3b pid=1581 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=51cabee288c50cfa633198cfb93c58cc9671a4f4917dbe8185f2d52a7ad390c0, contents omitted>
+exit=0 elapsed_seconds=0.312521 output_sha256=e5542afe2afa996bf282fab8c65b4481aa65f10309e59d9a42ab72270ab58dde
+
+2026-10-23T21:50:18.344561+00:00 id=0d4d5b06da994becaa73ffe4bd11b1a5 pid=3516 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=0411903ef6de6dfc1fa6bdb8951a3b848b0a36605d1d5f7c936dc0e6c8ed069d, contents omitted>
+exit=0 elapsed_seconds=0.393861 output_sha256=c09d026215eee44ae285c5ab75c4681596d9fdb5f7a1944fedbef56d2d2edddc
+
+2026-10-23T21:46:35.616160+00:00 id=7a43a1f25de74764aa56dcce6ca7caad pid=93637 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1c3-review-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 cargo test -p bboxy450-term --locked --test scrollback -- --nocapture
+exit=0 elapsed_seconds=262.518314 output_sha256=ed88bf3da8dfa3e9c0e1b5dd9744e287deb050ac9987dfa6e8a617f04f692a02
+
+2026-10-23T21:51:38.995582+00:00 id=0e86ac06c2564f3d99721fafa6167fb8 pid=4827 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git diff --check
+exit=0 elapsed_seconds=0.053414 output_sha256=a21510eccd9d5a9101e83c8e92da0363040c4ae53e5fec59cc99abc0ce7f42be
+
+2026-10-23T21:51:39.167876+00:00 id=706f34b4656a405389a3854bc640bda4 pid=4847 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git add crates/bboxy450-term/src/scrollback.rs crates/bboxy450-term/tests/scrollback.rs
+exit=0 elapsed_seconds=0.033504 output_sha256=fee8273d22a99d66b0b49434781a74d03fd04f9effa5208c518463aa55e09056
+
+2026-10-23T21:51:39.353215+00:00 id=201010fa888749599151b0f2aaf50e38 pid=4864 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git commit -m 'Admit scrollback viewports by retained heap budget' -m 'Resolve decision 40(e): remove fixed upper dimension limits, keep overflow-safe budget preflight, and name core minimum dimension refusal separately. Test fitting wide/tall grids and genuine over-budget or overflow rejection.'
+exit=0 elapsed_seconds=0.172794 output_sha256=a9bc6da3c9cf32206e93ef7d48b477d9855c98080d2617442df6ebcb7b188ca3
+
+2026-10-23T21:51:39.622565+00:00 id=5afa0de4494c4833b2b32ff0410b860f pid=4900 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git fetch origin
+exit=0 elapsed_seconds=0.771360 output_sha256=2561a26abbe7921d90ed54dfb8321ac3248a6e242adb9f831699d0ebfa9b9db5
+
+2026-10-23T21:51:43.055505+00:00 id=929e83147b57412fa6a65b3767d7fa22 pid=5040 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git rebase origin/main
+exit=0 elapsed_seconds=1.290371 output_sha256=7fdf9412a1a7ec59e7feb3004a57c54e164fabab4060a794e83a228af2c2f16c
+
+2026-10-23T21:51:52.463502+00:00 id=8837d1e3027848d0895544cbb816c853 pid=5320 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git log -1 '--format=%H %s' origin/main
+exit=0 elapsed_seconds=0.041755 output_sha256=498801e2b0df877e8f87ea4c0f0c39f60d0eb664d158b01e8453b410e849d337
+
+2026-10-23T21:51:52.459172+00:00 id=756a8d9d1a0d462fb2b429c6e9628e7b pid=5317 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git status --short --branch
+exit=0 elapsed_seconds=0.060712 output_sha256=e95b043d4db59f2a06a284d62edc830bed615797a0d23f1a986669e2a803c4a3
+
+2026-10-23T21:51:52.460066+00:00 id=1564f504623f47eba499685899e73d41 pid=5318 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git log -3 '--format=%H %G? %s'
+exit=0 elapsed_seconds=0.090369 output_sha256=985b2fd7e3e12ba351f766d914ea7f791697e5c1902714ac211873ed58bffd1b
+
+2026-10-23T21:52:06.339026+00:00 id=eaafc1d4178f4eeb9fa7be786ab8f76f pid=5740 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git worktree add --detach /private/tmp/sable-c1c3-h2c7tke9/ci-dimensions-d6d49d5 d6d49d5792f2e86b32b476e5f8af95ec1eab2b4d
+exit=0 elapsed_seconds=0.719315 output_sha256=c14fc467acb3b772d431369c61855f0e5e976b85371add8dbe5f171ad36a15f5
+
+2026-10-23T21:52:07.153207+00:00 id=270709ee82c64952a084025fb0cdb5c2 pid=5787 cwd=/private/tmp/sable-c1c3-h2c7tke9/ci-dimensions-d6d49d5
+$ git status --porcelain=v1
+exit=0 elapsed_seconds=0.056799 output_sha256=ab0c46eba4492a34706e2eb2561f07900f31af2f0a1e103ca0aae902db513c1c
+
+2026-10-23T21:52:47.215609+00:00 id=d4ecae66acea42acbf1be2c72cc0f12a pid=7218 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=d3a6ec9c2fe445c2682dc0ac3ce2051b085ee078340cdfe796c2e08da033b1b4, contents omitted>
+exit=0 elapsed_seconds=0.015999 output_sha256=6582d5464c8ae1b2bc9c8610a59772c75d35b597aa1c391277542faf8df0a818
+
+2026-10-23T21:53:02.873845+00:00 id=9ac88014271c40ecb1bc0a31e24e7bb8 pid=7624 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=70334e45285fd87ecf040b5501e68c296e4f79be80cbef5fd3a7dad7975d383b, contents omitted>
+exit=0 elapsed_seconds=0.339703 output_sha256=1ca3a039e11a14facb6c2c804af934f81400c63d6a6d2dfbe4d4b826ca5bb9b3
+
+2026-10-23T21:54:16.203770+00:00 id=bfad969df0e24af5b418bb2b91fef20f pid=11959 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ python3 /private/tmp/sable-c1c3-h2c7tke9/dimensions-proof.py
+exit=0 elapsed_seconds=0.993570 output_sha256=e732a37fe2a2dadbc1439a61a00e82eb203bb2deb82cfb4f4aa50024c8735e16
+
+2026-10-23T21:56:48.589785+00:00 id=81e8f3598cde445e848426c49f931fda pid=17215 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=ddac018514499423c4cf5182e58aadaf64431e06da7e428e65ac90cce48bfef4, contents omitted>
+exit=0 elapsed_seconds=0.346669 output_sha256=2d3ff1c7af046d68e8ed88e5fad6665fcb627a97064a6603796fea0b401c414c
+
+2026-10-23T21:59:52.236636+00:00 id=cd6f4d7474a64504acd365b2aadbac41 pid=21474 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=958a59aadc145eed3882435cd2b4391dc06079843d8400ead18012217826f67a, contents omitted>
+exit=0 elapsed_seconds=19.333568 output_sha256=66b4b34c8d460c05bb396460c12bff40c926f70bb848d15fc7259b3f1b017461
+
+2026-10-23T22:02:05.902039+00:00 id=f5cf19ef0e97476db9f35018f954872c pid=24528 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=958a59aadc145eed3882435cd2b4391dc06079843d8400ead18012217826f67a, contents omitted>
+exit=0 elapsed_seconds=4.572364 output_sha256=f4a8cd0fa79118c160479bbb060fb957d5edc4ee147b55a04d421cbe1d7c2ad7
+
+2026-10-23T22:04:36.143672+00:00 id=dd316c9697d6494aa6b98e6f5940d539 pid=29992 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=958a59aadc145eed3882435cd2b4391dc06079843d8400ead18012217826f67a, contents omitted>
+exit=0 elapsed_seconds=4.466369 output_sha256=44974a8f9cf8be80aef55b5e812cbfd73b42619f8b98da145e12416ef81b7da9
+
+2026-10-23T21:52:07.341066+00:00 id=1935433447944716be914a71d60dc576 pid=5805 cwd=/private/tmp/sable-c1c3-h2c7tke9/ci-dimensions-d6d49d5
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1c3-review-dev sh scripts/ci-local.sh
+exit=0 elapsed_seconds=905.330459 output_sha256=185da381a9405d7bb25bd988d78a42236288f6a4c16a21fe74a70f2a78ae89b3
+
+2026-10-23T22:07:29.960434+00:00 id=66091e977d2d42139faeb6ae888f877e pid=37196 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ python3 /private/tmp/sable-c1c3-h2c7tke9/cleanup-dimensions.py
+exit=0 elapsed_seconds=2.236569 output_sha256=9664b71fb0eda2bb448e79fa872d8e4a01368a4140ec08d1923c656c4e1e96a5
+
+2026-10-23T22:07:40.429522+00:00 id=a2462ff2cf4648f3a13d4f8b08b15a79 pid=37492 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ python3 /private/tmp/sable-c1c3-h2c7tke9/seal-dimensions.py
+exit=0 elapsed_seconds=0.059014 output_sha256=b6138f2a99f5190915fa7a639fb72c7490e91aa6762e646f1e77b1d225fa702c
+
+2026-10-23T22:07:40.591310+00:00 id=24dea2762fa84047a72cf0efea85b633 pid=37505 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=31e852b5475b614387322f895c56de15f3e4750e9bc19a65f7f876c3533086c9, contents omitted>
+exit=0 elapsed_seconds=0.013899 output_sha256=321af03e4a65f377062be734c0b858970a3e07584de764f627265e57da4c0708
+
+2026-10-23T22:07:52.354596+00:00 id=a3cb6a582a554987b4e28602da3a117e pid=38128 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ icq <coordination argv sha256=dd110cae2f93a4bb79e948e181b13914a9306e366ddc1c3df2d4d8655dc4a28c, contents omitted>
+exit=0 elapsed_seconds=0.412010 output_sha256=2e52906f5f70da70fddc1075f356664799bf1b489e882e00e7137233c995a642
+
+2026-10-23T22:07:52.884710+00:00 id=47f15677744c486f9f5bcda0aeaa02a8 pid=38184 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ cat .bboxy/runs/c1c3-dimensions.log
+exit=0 elapsed_seconds=0.008044 output_sha256=69d1cc870c676e72a348c9acca4eb795b3e35be9b57e29dd8d9a7f05ca1325da
+
+2026-10-23T22:07:52.893569+00:00 id=67b347b17d834e368417ca9a18836d6f pid=38186 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git log --oneline d6d49d5792f2e86b32b476e5f8af95ec1eab2b4d..origin/main
+exit=0 elapsed_seconds=0.042711 output_sha256=6aff0bbf6e707bee1cdf12ffdc108120cef728cdc844f1e12564cd26e1f94658
+
+2026-10-23T22:07:52.889567+00:00 id=3cf1c5bfce644c34b1926520b5ada879 pid=38185 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git status --short --branch
+exit=0 elapsed_seconds=0.074728 output_sha256=7bba2b7f274bcdd5aaa587c91367213a1ffb387c366b5f8f78196cd485e2c9b4
+
+2026-10-23T22:08:31.727383+00:00 id=1d7a50ed839e4090904e8b8d12421491 pid=38867 cwd=/Users/feral/mydev/bboxy450-term-exec3
+$ git verify-commit d6d49d5792f2e86b32b476e5f8af95ec1eab2b4d
+exit=0 elapsed_seconds=0.070485 output_sha256=ca0168e3ac318e681e98a36ee349cc8012ad4a7b532c86167a9dda689a26d4b8
+
