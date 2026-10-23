@@ -1,0 +1,181 @@
+F4b — inner highlight stays inside and beneath border — Velvet Vulpine <EXECUTOR>
+Date: 2026-10-23T17:08:26.390866+00:00
+Oracle authorization 0b3a7e97-2cf3-40e5-a8b4-ca446586f28b, reaffirmed 1aadf4f8-a27a-4c0a-81be-5358c5a8c7e0 after F4 accepted at6a8f214.
+Starting accepted main04577f0f1498aaf0b5da01569c5e4e427fbb0610, writing tree exec6.
+Scope: chrome.wgsl highlight order/inset only; existing chrome/mod.rs GPU regression; no other renderer logic. Seraph test spot cleared fa0d5cc6.
+Source chrome.wgsl:32 — highlight applies to fill inside stroke width, then stroke paints over it. Zero-width border keeps old highlight placement. No alpha/token/tolerance changes.
+chrome/mod.rs:1228 — GPU test dark/light fills and0/1/2px border; stroke unchanged, first inner row highlighted, next row unchanged.
+Before proof: old shader red101 on real Metal output [59,64,99,255] versus expected Line[42,47,85,255], exactly the gallery defect.
+After: named regression1/0, complete renderer library60/0, strict bbt-render all-target Clippy-Dwarnings0.
+Scoped16surface cases use acceptedF4 full capture3f97803 unchanged; public inputs/backdrops and web pixels reused.
+Render2.887s exit0; strictcompare2.881s exit0.16/16withinpolicy: Launcher8/0reviews, Document8/0reviews.
+Each dark Launcher0.1329561173%->0.00268417464%; light Launcher0.00161050479% unchanged. Unchanged pixel budget0.1%.
+All16native surface-layout records EXACTLY equal to acceptedF4. Note these surface policies are pixel-only; required geometry is proved by the full gate, not claimed from this scope.
+Viewed crop target/f4b-highlight-04577f0/inspection/dark-top-rows.png; hashes/rows in inspection/manifest.json.
+Sample x623,y42: web and after [42,47,85]; y43 web[37,39,56],after[32,34,55] (within8channel tolerance). No compensating color changes.
+gitdiff--check0 and changedmod.rs rustfmt--check0. No workspace-wide formatting.
+Before binary from accepted3f97803 has identical render/UI/book/model/doc/mermaid/Cargo source to base04577f0 (gitdiff0bytes); retained for exact same-input attribution.
+COMMANDS_RESULTS
+{
+  "highlight-red": {
+    "phase": "finished",
+    "source_head": "04577f0f1498aaf0b5da01569c5e4e427fbb0610",
+    "working_diff_sha256": "7188cfb42bc54de98169ff53a99f7e0b2dac7d185e2337dda4a16cb8da67bc7b",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-render",
+      "--locked",
+      "--lib",
+      "inner_highlight_stays_inside_light_and_dark_borders",
+      "--",
+      "--exact",
+      "chrome::tests::inner_highlight_stays_inside_light_and_dark_borders"
+    ],
+    "wrapper_pid": 44678,
+    "started_utc": "2026-10-23T16:50:15.134681+00:00",
+    "child_pid": 44744,
+    "exit": 101,
+    "seconds": 368.529
+  },
+  "highlight-green": {
+    "phase": "finished",
+    "source_head": "04577f0f1498aaf0b5da01569c5e4e427fbb0610",
+    "working_diff_sha256": "0c679b45adaedc6ae4f64d0a8d46466d50aa409a82c088f2fb3efa325c7009a5",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-render",
+      "--locked",
+      "--lib",
+      "chrome::tests::inner_highlight_stays_inside_light_and_dark_borders",
+      "--",
+      "--exact"
+    ],
+    "wrapper_pid": 57335,
+    "started_utc": "2026-10-23T16:56:38.137163+00:00",
+    "child_pid": 57349,
+    "exit": 0,
+    "seconds": 25.706
+  },
+  "renderer-lib": {
+    "phase": "finished",
+    "source_head": "04577f0f1498aaf0b5da01569c5e4e427fbb0610",
+    "working_diff_sha256": "0c679b45adaedc6ae4f64d0a8d46466d50aa409a82c088f2fb3efa325c7009a5",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-render",
+      "--locked",
+      "--lib"
+    ],
+    "wrapper_pid": 58076,
+    "started_utc": "2026-10-23T16:57:14.216415+00:00",
+    "child_pid": 58097,
+    "exit": 0,
+    "seconds": 21.746
+  },
+  "highlight-after": {
+    "phase": "finished",
+    "source_head": "04577f0f1498aaf0b5da01569c5e4e427fbb0610",
+    "working_diff_sha256": "0c679b45adaedc6ae4f64d0a8d46466d50aa409a82c088f2fb3efa325c7009a5",
+    "command": [
+      "cargo",
+      "build",
+      "-p",
+      "bboxybook",
+      "--locked"
+    ],
+    "wrapper_pid": 58606,
+    "started_utc": "2026-10-23T16:57:47.979148+00:00",
+    "child_pid": 58621,
+    "exit": 0,
+    "seconds": 393.454,
+    "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/bboxybook-highlight-after",
+    "binary_sha256": "caa31473069f4d1d0532344cf78650b1b89f48b69b1823cb864c68e35b5fed7a"
+  },
+  "clippy-render": {
+    "phase": "finished",
+    "source_head": "04577f0f1498aaf0b5da01569c5e4e427fbb0610",
+    "working_diff_sha256": "0c679b45adaedc6ae4f64d0a8d46466d50aa409a82c088f2fb3efa325c7009a5",
+    "command": [
+      "cargo",
+      "clippy",
+      "-p",
+      "bbt-render",
+      "--all-targets",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "wrapper_pid": 75023,
+    "started_utc": "2026-10-23T17:05:50.013187+00:00",
+    "child_pid": 75037,
+    "exit": 0,
+    "seconds": 110.488
+  }
+}
+SCOPED_COMMANDS_RESULTS
+{
+  "phase": "finished",
+  "label": "after",
+  "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/bboxybook-highlight-after",
+  "binary_sha256": "caa31473069f4d1d0532344cf78650b1b89f48b69b1823cb864c68e35b5fed7a",
+  "source_head": "04577f0f1498aaf0b5da01569c5e4e427fbb0610",
+  "wrapper_pid": 74452,
+  "commands": [
+    {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/bboxybook-highlight-after",
+        "render",
+        "--all",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/after/native",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/scope/cases.json"
+      ],
+      "exit": 0,
+      "seconds": 2.887
+    },
+    {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/bboxybook-highlight-after",
+        "compare",
+        "--strict-geometry",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/after",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/scope/cases.json"
+      ],
+      "exit": 0,
+      "seconds": 2.881
+    }
+  ],
+  "child_pid": 74547,
+  "statuses": {
+    "within policy": 16
+  },
+  "modules": {
+    "launcher-surface": {
+      "within policy": 8
+    },
+    "documents-surface": {
+      "within policy": 8
+    }
+  },
+  "report_sha256": "624d0aabfb7c2b13ec4c66b395c72af6b5d30a1d92a0d49035f83f6c29ae1000",
+  "exit": 0
+}
+PRIVATE_DEV_TARGET_CLEANUP
+{
+  "target": "/tmp/velvet-f4b-dev",
+  "allocated_bytes_removed": 971374592,
+  "target_deleted": true,
+  "free_gib": 5.48
+}
+Full clean exact-head CI--parity and all-module same-input pixel/layout attribution remain pending at this checkpoint. No claim of final completion.
+Not checked here: manual desktop, ignored Keychain, fullDPR2/fractional, scale gates. F3 stays parked.

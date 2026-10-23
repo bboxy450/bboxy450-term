@@ -1225,6 +1225,48 @@ mod tests {
         }
     }
     #[test]
+    fn inner_highlight_stays_inside_light_and_dark_borders() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        for (fill, line) in [
+            (Color::hex("#11132A"), Color::hex("#2A2F55")),
+            (Color::hex("#F6F4FF"), Color::hex("#CDC9E2")),
+        ] {
+            for width in [0_u32, 1, 2] {
+                let mut list = DrawList::default();
+                list.push(Prim::Rect {
+                    rect: Rect::new(4., 4., 24., 16.),
+                    radii: [0.; 4],
+                    fill,
+                    stroke: (width > 0).then_some((width as f32, line)),
+                    inner_highlight: Some(Color::WHITE.alpha(0.08)),
+                    shadow: None,
+                });
+                let pixels = renderer.render_to_rgba(&list, 32, 24, 1.).unwrap();
+                let pixel = |y: u32| &pixels[((y * 32 + 16) * 4) as usize..][..4];
+                let rgba = |color: Color| color.0.map(|v| (v * 255.).round() as u8);
+                for y in 4..4 + width {
+                    assert_eq!(
+                        pixel(y),
+                        rgba(line),
+                        "highlight must stay under {width}px border"
+                    );
+                }
+                let highlighted = fill.0.map(|v| ((v + (1. - v) * 0.08) * 255.).round() as u8);
+                for (actual, expected) in pixel(4 + width).iter().zip(highlighted) {
+                    assert!(
+                        actual.abs_diff(expected) <= 1,
+                        "inset highlight: {actual} vs {expected}, border {width}px"
+                    );
+                }
+                assert_eq!(
+                    pixel(5 + width),
+                    rgba(fill),
+                    "one highlight row inside {width}px border"
+                );
+            }
+        }
+    }
+    #[test]
     fn sdf_rounding_stroke_and_clip_survive_gpu_readback() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
         let mut list = DrawList::default();

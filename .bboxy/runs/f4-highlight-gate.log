@@ -1,0 +1,234 @@
+F4b final exact-head gate — Velvet Vulpine <EXECUTOR>
+Date: 2026-10-23T18:10:06.190557+00:00
+Exact signed source 51c3cce870306c936a29a0862c94b51e2461ae4f, branchexec6; base615bb3bdebecbadf4e020bb3e7e3ac54154e517f.
+Code already in f4-highlight-inset.log; this successor changes evidence only. No code rebase after gate start.
+Command: BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity
+Clean detached /tmp/velvet-f4b-ci-51c3cce, own /tmp/velvet-f4b-target-51c3cce, O1DEV/TEST, debug assertions true, jobs2.
+Actualexit0;3201.35s; no waiver; private targetdeletedtrue. Preserved tested binary SHA256 e658ccbe357318c776edfaa6a0f83efc7c476df7f9fc96da8129d8deb0da8ca5.
+Raw /tmp/velvet-f4b-ci-51c3cce.log:2631 idle10.002s,0frames/0callbacks; :2852 geometry1664required/measured,0unproven/mismatch; :2853 gatepass174advisory; :2862 allgatespassed; :2864 exit0; :2867 targetdeleted.
+Workspacebuild, strictworkspacealltargetClippy-Dwarnings, workspacetests, UIthreadlint, native smoke, lab37pagesx4densitieszero,7selectedinvariants/0failures pass;6slowchecks skipped.
+Fresh1768uniquecases; surfaces16/16withinpolicy; samekeysetasacceptedF4,178->174reviews,4drops,0newkeys;64L8-Ceditingcasesallwithinpolicy.
+Command python3 /tmp/velvet-f4b-ci-verdict.py target/f4b-parity-51c3cce — exit0; assertsallrequiredlines; perkey review-delta.json/.tsv retained.
+Independent SAME-INPUT native attribution: replay saved modifiedbinary againstacceptedF4 exact1768publicinputs/backdrops/web. No freshbrowserpixel differences conflated with native change.
+Command python3 /tmp/velvet-f4b-attribution.py target/f4b-native-51c3cce target/f4-parity-3f97803 target/f4b-highlight-04577f0/bboxybook-highlight-after — exit0.
+Actualrender709.728s exit0, strictcompare35.821s exit0, checker0.178->174reviews/0new. All1720native layout records AND16surface records exactly equal.
+Every moved module: Launcher144/144images,157248pixels; LauncherSurface8/8images,8736pixels. Only152images move,allother1616RGBAimages identical. Full per-image changed-pixel counts plus binary/source hashes and lineage in pixel-attribution.json.
+Attributionbinary compiled on04577f0+sourcepatch0c679b45adaedc6ae4f64d0a8d46466d50aa409a82c088f2fb3efa325c7009a5; equivalent render tree to51c3cce (gitrenderdependencydiff0bytes). Fresh CI independently compiles exact51c3cce.
+EachdarkLauncherSurface0.1329561173%->0.00268417464%, unchanged0.1%budget; lightandDocumentSurfacesremainwithinpolicy.
+Remaining174advisory:documents44,graph16,harness-icon48,materials8,message-row24,seat-row2,settings24,stream8. No status reclassification or tolerance change.
+Earlier redGPUregression101 on[59,64,99]vsLine[42,47,85], green1/0, renderlibrary60/0, strictalltargetrenderclippy0, scoped16/0, changedfileformat0,diffcheck0 allrecorded in f4-highlight-inset.log.
+Main moved during gate to5c2ef84 (Y1vendoring,R5functionalharness,Mermaidfixturepresence,architecture records). gitdiff615bb3b..origin/main in chrome.wgsl/mod.rs is0bytes. FrozenexactheadhandoffperAGENTS; Oracle verifies merged tree.
+No push/merge. gitfetch0, exactsource and current worktree statusclean0, machineGPGsignaturesgood.
+Disk: followed Oracle10GiBstartthreshold;df/preflight13.768GiB before launch. Earliercleanup164966400netbytes; devtarget971374592bytes; mergedgalleryretirement2719997952allocatedbytes,netestimate2701058048afterhashindex.
+Retirementpermissioneed22c4f, audit target/retirement-merged-20261023/cleanup.json and retired-files.jsonl with per-fileSHA256. Allreport/manifest/layout/capture/log/committed provenance retained. Active/openF4b baseline3f97803 and queuedF3 replay preserved.
+Notchecked: --slow scale/pendingG1checks, ignoredrealKeychain, manualdesktop, fullgalleryfractional/DPR2. No binarycodesigning. F3remainsparkeduntilF4baccepted.
+
+ARTIFACT_HASHES
+{
+  "/tmp/velvet-f4b-ci-51c3cce.log": "b16041bd4594a03e2c0c69cb1f2f45b663195d4c7b3d4c50d47fabd638e483e7",
+  "target/f4b-parity-51c3cce/report.json": "e880b88119ceaa9bc041f8b71a49a6e56ab6dc7e1fb0725f8f1e2b66e54d8695",
+  "target/f4b-parity-51c3cce/ci-verdict.json": "5ad920e740c69ff8e7cf9e708a0b96d8cedead7831b9629de7a2b425cb8e8c2b",
+  "target/f4b-parity-51c3cce/review-delta.json": "f6dfe2467b62bcf7ea8644daa3b946d031bea2c6fac3cb87bdde3c1fa02042f4",
+  "target/f4b-native-51c3cce/pixel-attribution.json": "99fdebdd531059fab0e6539f7a7503c73286c2656ce56e9b1dab197df7048dd3",
+  "target/f4b-native-51c3cce/attribution.status.json": "99fdebdd531059fab0e6539f7a7503c73286c2656ce56e9b1dab197df7048dd3"
+}
+CI_STATUS
+{
+  "source_sha": "51c3cce870306c936a29a0862c94b51e2461ae4f",
+  "phase": "finished",
+  "wrapper_pid": 89183,
+  "started_utc": "2026-10-23T17:14:41.064679+00:00",
+  "target": "/tmp/velvet-f4b-target-51c3cce",
+  "report": "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-parity-51c3cce",
+  "log": "/tmp/velvet-f4b-ci-51c3cce.log",
+  "ci_pid": 89268,
+  "exit": 0,
+  "elapsed_seconds": 3201.35,
+  "socket_waiver": false,
+  "preserved_binary_sha256": "e658ccbe357318c776edfaa6a0f83efc7c476df7f9fc96da8129d8deb0da8ca5",
+  "target_deleted": true
+}
+FRESH_GATE_VERDICT
+{
+  "source_sha": "51c3cce870306c936a29a0862c94b51e2461ae4f",
+  "report_sha256": "e880b88119ceaa9bc041f8b71a49a6e56ab6dc7e1fb0725f8f1e2b66e54d8695",
+  "cases": 1768,
+  "unique_keys": 1768,
+  "required": 1664,
+  "measured": 1664,
+  "unproven": [],
+  "geometry_mismatches": [],
+  "advisory": 174,
+  "introduced_reviews": 0,
+  "dropped_reviews": 4,
+  "added_cases": [],
+  "removed_cases": [],
+  "edit_cases": 64,
+  "edit_reviews": [],
+  "modules": {
+    "components": {
+      "within policy": 128
+    },
+    "documents": {
+      "review pixels": 44,
+      "within policy": 92
+    },
+    "documents-surface": {
+      "within policy": 8
+    },
+    "glyph": {
+      "within policy": 56
+    },
+    "graph": {
+      "review pixels": 16,
+      "within policy": 48
+    },
+    "harness-icon": {
+      "review pixels": 48,
+      "within policy": 8
+    },
+    "launcher": {
+      "within policy": 144
+    },
+    "launcher-surface": {
+      "within policy": 8
+    },
+    "materials": {
+      "review pixels": 8,
+      "within policy": 24
+    },
+    "message-row": {
+      "review pixels": 24,
+      "within policy": 80
+    },
+    "mini-grid": {
+      "within policy": 64
+    },
+    "pane": {
+      "within policy": 48
+    },
+    "paths": {
+      "within policy": 48
+    },
+    "perf": {
+      "within policy": 48
+    },
+    "picker": {
+      "within policy": 64
+    },
+    "seat-row": {
+      "review pixels": 2,
+      "within policy": 230
+    },
+    "settings": {
+      "review pixels": 24,
+      "within policy": 48
+    },
+    "sidebar": {
+      "within policy": 40
+    },
+    "space-header": {
+      "within policy": 32
+    },
+    "stream": {
+      "review pixels": 8,
+      "within policy": 88
+    },
+    "style": {
+      "within policy": 120
+    },
+    "tab-row": {
+      "within policy": 40
+    },
+    "title-strip": {
+      "within policy": 88
+    },
+    "titlebar": {
+      "within policy": 40
+    }
+  },
+  "surface_reviews": [],
+  "pass": true
+}
+ATTRIBUTION_SUMMARY
+{
+  "phase": "finished",
+  "wrapper_pid": 82924,
+  "started_utc": "2026-10-23T17:11:07.946268+00:00",
+  "before_native_source": "3f978038b522675c696728b72bb0dd63973c3e62",
+  "after_equivalent_source": "51c3cce870306c936a29a0862c94b51e2461ae4f",
+  "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/bboxybook-highlight-after",
+  "binary_sha256": "caa31473069f4d1d0532344cf78650b1b89f48b69b1823cb864c68e35b5fed7a",
+  "build_parent": "04577f0f1498aaf0b5da01569c5e4e427fbb0610",
+  "build_source_diff_sha256": "0c679b45adaedc6ae4f64d0a8d46466d50aa409a82c088f2fb3efa325c7009a5",
+  "render_dependency_rebase_diff_bytes": 0,
+  "baseline": "/Users/feral/mydev/bboxy450-term-exec6/target/f4-parity-3f97803",
+  "web_source": "3f978038b522675c696728b72bb0dd63973c3e62",
+  "fresh_ci_gate": "pending; this is a same-input native attribution replay",
+  "commands": [
+    {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/bboxybook-highlight-after",
+        "render",
+        "--all",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-native-51c3cce/native",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-native-51c3cce/cases.json"
+      ],
+      "exit": 0,
+      "seconds": 709.728
+    },
+    {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-highlight-04577f0/bboxybook-highlight-after",
+        "compare",
+        "--strict-geometry",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-native-51c3cce",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-native-51c3cce/cases.json"
+      ],
+      "exit": 0,
+      "seconds": 35.821
+    }
+  ],
+  "child_pid": 2571,
+  "exit": 0,
+  "cases": 1768,
+  "geometry": {
+    "layouts.json": {
+      "before_rows": 1720,
+      "after_rows": 1720,
+      "exactly_equal": true
+    },
+    "surface-layouts.json": {
+      "before_rows": 16,
+      "after_rows": 16,
+      "exactly_equal": true
+    }
+  },
+  "new_reviews": 0,
+  "before_reviews": 178,
+  "after_reviews": 174,
+  "launcher_surface_reviews": []
+}
+MOVED_MODULES
+{
+  "launcher-surface": {
+    "cases": 8,
+    "changed_native_images": 8,
+    "changed_pixels": 8736,
+    "before_reviews": 4,
+    "after_reviews": 0,
+    "introduced_review_keys": []
+  },
+  "launcher": {
+    "cases": 144,
+    "changed_native_images": 144,
+    "changed_pixels": 157248,
+    "before_reviews": 0,
+    "after_reviews": 0,
+    "introduced_review_keys": []
+  }
+}
