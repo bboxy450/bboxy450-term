@@ -1,0 +1,542 @@
+Paired marker gallery:24/24 within policy;0 reviews. Prior utility printed reviews24 because it incorrectly treated within-policy as not-pass; this correct classification uses actual report status.
+Image-read web/native/diff triplets: pane/gap-retained-cozy-dark, pane/gap-unavailable-compact-light, pane/resumed-comfortable-light. Hairline/caption centered in one terminal row, following output aligned; residual sparse glyph/rim edge pixels remain below policy.
+{
+  "cases": 24,
+  "statuses": [
+    "within policy"
+  ],
+  "reviews": 0,
+  "max_rect_error": 0.033782958984375,
+  "max_baseline_error": 0.0078125,
+  "report_sha256": "6b7d50e07279a18ce918817195f8a6b3653a0aeeed196146ea92a420442528fc"
+}
+[
+  {
+    "changed_fraction": 0.0008527287319422151,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.033782958984375,
+      "rects": 43
+    },
+    "key": "pane/resumed-cozy-light.png",
+    "mean_error": 0.0001117326735543419,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0008052082453324322,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.023529052734375,
+      "rects": 43
+    },
+    "key": "pane/resumed-touch-light.png",
+    "mean_error": 0.00010749568899114938,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.000794648137196925,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.033782958984375,
+      "rects": 43
+    },
+    "key": "pane/resumed-cozy-dark.png",
+    "mean_error": 0.00010122433065479297,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.000747127650587142,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.023529052734375,
+      "rects": 43
+    },
+    "key": "pane/resumed-touch-dark.png",
+    "mean_error": 9.777417767816766e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0007365675424516348,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.025482177734375,
+      "rects": 43
+    },
+    "key": "pane/resumed-comfortable-light.png",
+    "mean_error": 9.925983995017286e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0006679268395708372,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.025482177734375,
+      "rects": 43
+    },
+    "key": "pane/resumed-comfortable-dark.png",
+    "mean_error": 9.06564577338919e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0006388865421981921,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.026458740234375,
+      "rects": 43
+    },
+    "key": "pane/resumed-compact-light.png",
+    "mean_error": 9.28849511418997e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0006336064881304384,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.033782958984375,
+      "rects": 40
+    },
+    "key": "pane/gap-retained-cozy-dark.png",
+    "mean_error": 8.83011394977861e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0006151262988933006,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.033782958984375,
+      "rects": 40
+    },
+    "key": "pane/gap-retained-cozy-light.png",
+    "mean_error": 9.812359302088665e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0005966461096561629,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.023529052734375,
+      "rects": 40
+    },
+    "key": "pane/gap-retained-touch-dark.png",
+    "mean_error": 8.526769667062567e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0005808059474529019,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.026458740234375,
+      "rects": 43
+    },
+    "key": "pane/resumed-compact-dark.png",
+    "mean_error": 8.588111471673234e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0005676058122835178,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.023529052734375,
+      "rects": 40
+    },
+    "key": "pane/gap-retained-touch-light.png",
+    "mean_error": 9.412990506669847e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0005596857311818873,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.01953125,
+      "rects": 40
+    },
+    "key": "pane/gap-unavailable-comfortable-light.png",
+    "mean_error": 8.536346235714865e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0005306454338092422,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.025482177734375,
+      "rects": 40
+    },
+    "key": "pane/gap-retained-comfortable-light.png",
+    "mean_error": 8.691124291230389e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0005280054067753654,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.01953125,
+      "rects": 40
+    },
+    "key": "pane/gap-unavailable-touch-light.png",
+    "mean_error": 8.099706470406022e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0005280054067753654,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.023223876953125,
+      "rects": 40
+    },
+    "key": "pane/gap-unavailable-cozy-light.png",
+    "mean_error": 8.075117983325796e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0005253653797414885,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.025482177734375,
+      "rects": 40
+    },
+    "key": "pane/gap-retained-comfortable-dark.png",
+    "mean_error": 7.98452882039865e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0004910450283010898,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.01953125,
+      "rects": 40
+    },
+    "key": "pane/gap-unavailable-comfortable-dark.png",
+    "mean_error": 7.800244580386856e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0004778448931317057,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.01953125,
+      "rects": 40
+    },
+    "key": "pane/gap-unavailable-touch-dark.png",
+    "mean_error": 7.095202066633868e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00046728478499619835,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.023223876953125,
+      "rects": 40
+    },
+    "key": "pane/gap-unavailable-cozy-dark.png",
+    "mean_error": 7.052495746968214e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0004593647038945679,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.01953125,
+      "rects": 40
+    },
+    "key": "pane/gap-unavailable-compact-light.png",
+    "mean_error": 7.710173069819294e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00041448424431866183,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.026458740234375,
+      "rects": 40
+    },
+    "key": "pane/gap-retained-compact-light.png",
+    "mean_error": 7.948810807587375e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.000411844217284785,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.026458740234375,
+      "rects": 40
+    },
+    "key": "pane/gap-retained-compact-dark.png",
+    "mean_error": 7.284404004061707e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.000396004055081524,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.01953125,
+      "rects": 40
+    },
+    "key": "pane/gap-unavailable-compact-dark.png",
+    "mean_error": 6.740092547959456e-05,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Pane/Strip; supplied terminal spans, notes and adjacent SeatRows retained as shared context",
+      "text": true
+    },
+    "status": "within policy"
+  }
+]

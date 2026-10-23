@@ -1,0 +1,15 @@
+{
+  "baseline": "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-baseline-16b4c98/report.json",
+  "baseline_sha256": "50eaa61ac6c4930ac4c60c8d479bef3cfb5f7edcd0d3ce198536f4efd47df9de",
+  "candidate": "/Users/feral/mydev/bboxy450-term-exec3/target/c1c3-parity-d1d9173/parity/report.json",
+  "candidate_sha256": "6b7d50e07279a18ce918817195f8a6b3653a0aeeed196146ea92a420442528fc",
+  "baseline_cases": 1768,
+  "candidate_cases": 1768,
+  "added_cases": [],
+  "removed_cases": [],
+  "baseline_reviews": 174,
+  "candidate_reviews": 174,
+  "new_reviews": [],
+  "cleared_reviews": [],
+  "native_byte_comparison": "Not checked. An initial guessed native root yielded zero matching file pairs; no PNG byte-identity claim is made. This proof compares actual report case/review sets only."
+}

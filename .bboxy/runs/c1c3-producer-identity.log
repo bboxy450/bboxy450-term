@@ -1,0 +1,27 @@
+Parity producer identity: full paired gate d1d917325da101fde92d58a12460efb731dd10ce; candidate 6c6d06dd3a3e88f739fa505e680ba7a938a2d45b.
+Oracle b8cadc44 and fad24878 allow parity reuse for typed FIFO + Input admission: paint/layout/scene/model/renderer/lab unchanged.
+IDENTICAL Cargo.toml 769f4612af53ee1c5e927cf0b7505c6f66037cb2
+IDENTICAL Cargo.lock 7758bb7c114390285af1ce4b4b396659f3818754
+IDENTICAL crates/bbt-core 63f7582003b33eb0680e9d9b29e8351831cae799
+IDENTICAL crates/bbt-ui-model a33edfbd41b72b4a2d77ee2bc2f0018294c1fef8
+IDENTICAL crates/bbt-ui 56f15092486a0c76abc2fdea9713f3836ff0ee22
+IDENTICAL crates/bbt-render 8b097079ceeef070d364b0fa65a192a962c668b1
+IDENTICAL crates/bboxybook 19bb672fba23fa697d36b5279bb1614680ede59b
+IDENTICAL lab/web e004458cb2b0cbf832695d4a125cb6f1a87c8029
+IDENTICAL crates/bbt-doc/src dc159a7f05cc3af6687204b4678585ef09a4c60a
+IDENTICAL crates/bbt-mermaid/src b0d2b55519ca0abcaad7b760cc9972c6f06b20df
+IDENTICAL crates/bbt-proto/src/streams.rs 8df49d18b3c4ffbd15258b5624f87667905244a9
+IDENTICAL crates/bboxy450-term/build.rs 47df374c5c0ca4ab4300c89bdd69ba74761ed8cb
+IDENTICAL crates/bboxy450-term/src/assets.rs 0c879b077fe96afac973ed2f4c8319b3314224e5
+IDENTICAL crates/bboxy450-term/src/model.rs 5139d9845cc0a0161fc7e1fcea6245f6bfe97da9
+IDENTICAL crates/bboxy450-term/src/grids.rs 32d96213399c43af77e1dddccb2ebb60c35bc30b
+IDENTICAL crates/bboxy450-term/src/scene.rs 7f78a785931e80c8a62f1725ae3454170ca7e9c1
+IDENTICAL crates/bboxy450-term/src/gpu.rs a65209af20c27e669fb29c5c5d764a1da8bbaa1c
+IDENTICAL crates/bboxy450-term/src/capture.rs dd338fa4c942b4b8be288cab98de9fb854bba74d
+IDENTICAL crates/bboxy450-term/src/keyboard.rs f7695e0c51c1da3e357674f3e7e889131ba4ff24
+IDENTICAL crates/bboxy450-term/src/scrollback.rs 33050716ef30ba9cfeb8907e8587b056a866c93b
+main.rs differs ONLY by five queue_pending admission/comment lines and cfg(test) arms/regression; removing those exact bounded additions gives gated main.rs byte-for-byte (all routing, painting, layout and verification code identical).
+Admission regression source SHA256 a83d4695ef00822af31b355ca8c6e6fa78fc41a5de03fde3d08898a208ef8378
+main.rs normalized SHA256 7ddcce5224b43f793fa3010dc65889384f86e02d48ef556b09eba40c1e456fda
+Follow-up fc2f44b00fe5682e703b9337a62b0d77ec07510e changes ONLY crates/bboxy450-term/src/live.rs. No Screen/Replica/model/prepare/draw change.
+Follow-up 6c6d06dd3a3e88f739fa505e680ba7a938a2d45b changes ONLY crates/bboxy450-term/src/main.rs. No Screen/Replica/model/prepare/draw change.

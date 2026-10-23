@@ -1,0 +1,21 @@
+Final NORMAL CI cleanup.
+{
+  "id": "d530c4193d52490093413b91eedcd13c",
+  "argv": [
+    "env",
+    "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1c3-final-6c6d06d",
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "cwd": "/private/tmp/sable-c1c3-h2c7tke9/ci-final-6c6d06d",
+  "started_utc": "2026-10-23T21:20:00.332478+00:00",
+  "pid": 37733,
+  "exit": 0,
+  "elapsed_seconds": 820.8849364170164,
+  "log": "/private/tmp/sable-c1c3-h2c7tke9/cmd-d530c4193d52490093413b91eedcd13c.log",
+  "sha256": "a3af29b5a2b6269fc17881f71f6e6e0b199e200a9eb187e6372d83bc58a8c47c"
+}
+ALLOCATED_BYTES_FREED 2883764224
+Target /Users/feral/mydev/bboxy450-term-exec3/target/c1c3-final-6c6d06d
+Worktree /private/tmp/sable-c1c3-h2c7tke9/ci-final-6c6d06d
+Accepted full-parity galleries retained separately.

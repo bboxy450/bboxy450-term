@@ -1,0 +1,419 @@
+C1c-3 native scroll verification. No desktop driving or injected OS keys.
+Fixture: fresh private repository/run/ZDOTDIR, zsh startup writes20000 numbered lines then execs cat.
+Each app uses explicit debug memory custody; exact env/argv/PIDs/executable hash below.
+Historical Screen is separate from live Screen; reported hashes select the displayed cells.
+
+REJECTED DEBUG VISUAL/TIMING PROOF: driver initially exited0, but image inspection found the initial empty window.
+Its delayed PNG write did not finish before11s quit. Sidecar line1 alone was insufficient proof.
+Debug post-scroll CPU max21.934625ms, one hitch; not accepted as the no-stall measurement.
+
+ACCEPTED OPTIMIZED OBSERVATION: gate binary from exact d1d917325da101fde92d58a12460efb731dd10ce.
+ci-local profile: dev opt-level1 with debug assertions, memory custody selector logged.
+Binary SHA2565489907d106269942abfe69d794908310e4e51e2975cc6804ccd77cd9ec791a9.
+Two PNG writes completed; final PNG image-read: a real zsh pane, line00001 through00058 in order.
+Post-scroll frames12-14 CPU3.506375 /1.916832 /2.688459ms; zero hitch logs after scroll marker.
+Independent cold frame1 CPU290.137ms (encode289.059ms) is reported, excluded from paging window.
+This is an observed one-pane functional/paging window with concurrent workspace CI, not a quiet control or a50-pane timing claim.
+App exit0, orderly logic/supervisor close, recorded owned children absent on return.
+
+RUN /private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew
+process.json SHA256 21140ba9466a36c684f66f104e11e9f85a7c808446eac309b9dc9aceb71776e6
+{
+  "argv": [
+    "/Users/feral/mydev/bboxy450-term-exec3/target/dev/debug/bboxy450-term",
+    "--meter",
+    "--spawn-zsh",
+    "1",
+    "--scroll-top-after",
+    "5",
+    "--capture",
+    "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/scroll.png",
+    "--capture-after",
+    "8",
+    "--grid-hash",
+    "--quit-after",
+    "11",
+    "--run-dir",
+    "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/run"
+  ],
+  "cwd": "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/repository",
+  "env": {
+    "BBOXY_TEST_CUSTODY": "memory",
+    "ZDOTDIR": "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/zsh"
+  },
+  "pid": 17687,
+  "utc": "2026-10-23T20:21:07.773077+00:00",
+  "binary_sha256": "20448e57dbdf58bdb10c1fd8d0b56cd22371e3600706bed02f3c03d12774d7c4",
+  "exit": 0,
+  "elapsed_seconds": 14.81274295799085
+}
+app.log SHA256 24962e9e2c8d34952231e34d6599a01e3638c8e808aadccd933d2d7c3fdcf66d
+cockpit ready: supervisor=17705 logic=17707
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 36.187ms cpu=38.201ms drain=0.009 layout=0.716 draw=1.289 encode=36.187 present_wait=0.087
+first frame: native scene presented, seats=0
+seat 01M5N6SD6D28W6YDAPWBNJM7YA activity=Idle process=Running { pid: 17791 }
+ui input: Locate { seat: SeatId(Ulid(2167346338023779343201493257875496906)), where_: Both }
+GUI operation 01M5N6SDC15BTH524C9CVJT573 accepted
+GUI operation 01M5N6SDH6AF9DV1MPK8DXYCD6 accepted
+GUI operation 01M5N6SDJTA3WEDHRNRDYF59RW accepted
+GUI operation 01M5N6SDKP272N3JB3YF7PX8R1 accepted
+GUI operation 01M5N6SDMEG3WKS2N9AJ2ZTXDF accepted
+GUI operation 01M5N6SDN3AFSZ05FPXAZ4MJA9 accepted
+GUI operation 01M5N6SDT4KK5A1DCT4KYHY3MJ accepted
+GUI operation 01M5N6SDVP4RJDVP45WTQ5W9SC accepted
+GUI operation 01M5N6SDW37WDZBPBQFFHNTFPP accepted
+GUI operation 01M5N6SDY30XSFHZJ1QNY0BYJY accepted
+GUI operation 01M5N6SDYEZWPBQN9WHD99TY0X accepted
+GUI operation 01M5N6SE49JJDEGVFCHF1D9H0M accepted
+GUI operation 01M5N6SE4P2GMMXQCZY29AR13E accepted
+GUI operation 01M5N6SE59YVVC59EAK9243CKK accepted
+capture /private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/scroll.png: Ok(())
+GUI operation 01M5N6SEB17NCP9HT6YJVT50FZ accepted
+GUI operation 01M5N6SFK60P5HMAACRDERRR2W accepted
+GUI operation 01M5N6SGBDW8D7VBYGC0W6A60R accepted
+GUI operation 01M5N6SH4S6NCEXNXG74KC79A8 accepted
+scroll verification start: frame=15
+hitch frame=18 phase=encode 14.521ms cpu=21.935ms drain=0.008 layout=4.916 draw=2.490 encode=14.521 present_wait=0.098
+grid-hash /private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/scroll.grid.json: Ok(())
+app close requested; stopping IO owner
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+
+scroll.grid.json SHA256 d96226c07c7931a89bb456b53d602f48cf8bb0905a73fc26c42349d781487e01
+{
+  "frame": 18,
+  "panes": [
+    {
+      "cols": 159,
+      "crop": [
+        311,
+        71,
+        1272,
+        870
+      ],
+      "cursor": [
+        -1,
+        0
+      ],
+      "fnv1a64": "72cb2631446c7055",
+      "history": {
+        "gaps": [],
+        "lines": [
+          "line 00001",
+          "line 00002",
+          "line 00003",
+          "line 00004",
+          "line 00005",
+          "line 00006",
+          "line 00007",
+          "line 00008",
+          "line 00009",
+          "line 00010",
+          "line 00011",
+          "line 00012",
+          "line 00013",
+          "line 00014",
+          "line 00015",
+          "line 00016",
+          "line 00017",
+          "line 00018",
+          "line 00019",
+          "line 00020",
+          "line 00021",
+          "line 00022",
+          "line 00023",
+          "line 00024",
+          "line 00025",
+          "line 00026",
+          "line 00027",
+          "line 00028",
+          "line 00029",
+          "line 00030",
+          "line 00031",
+          "line 00032",
+          "line 00033",
+          "line 00034",
+          "line 00035",
+          "line 00036",
+          "line 00037",
+          "line 00038",
+          "line 00039",
+          "line 00040",
+          "line 00041",
+          "line 00042",
+          "line 00043",
+          "line 00044",
+          "line 00045",
+          "line 00046",
+          "line 00047",
+          "line 00048",
+          "line 00049",
+          "line 00050",
+          "line 00051",
+          "line 00052",
+          "line 00053",
+          "line 00054",
+          "line 00055",
+          "line 00056",
+          "line 00057",
+          "line 00058"
+        ],
+        "live_fnv1a64": "9f530641f9ae4238"
+      },
+      "modes": 163969,
+      "rows": 58,
+      "seat": "01M5N6SD6D28W6YDAPWBNJM7YA"
+    }
+  ],
+  "png": "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/scroll.png",
+  "scale": 1.0,
+  "schema": "bboxy-firehose-screen-v1",
+  "scroll_meter": {
+    "cpu_max_ms": 21.934625,
+    "cpu_ms": [
+      13.984915,
+      11.970333,
+      21.934625
+    ],
+    "first_frame": 16,
+    "last_frame": 18,
+    "samples": 3
+  },
+  "theme": "dark"
+}
+owned-child-pids.json SHA256 4788534688dd656f2eaf9487ac2ace121b2dfe4abdd4e57a974c64ff6c6f324b
+[17705, 17707]
+/private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/scroll.png SHA256 0959bf4019044dee49635174fa1194625fffa7208c57f65a17c231a61e426ac4
+
+RUN /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64
+process.json SHA256 953a38bdd01e23535a064c79939cddad419d1b47d9b610ea8429ddc829e16a30
+{
+  "argv": [
+    "/private/tmp/sable-c1c3-h2c7tke9/bboxy450-term-ci",
+    "--meter",
+    "--spawn-zsh",
+    "1",
+    "--scroll-top-after",
+    "5",
+    "--capture",
+    "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.png",
+    "--capture-after",
+    "8",
+    "--grid-hash",
+    "--quit-after",
+    "20",
+    "--run-dir",
+    "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/run"
+  ],
+  "cwd": "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/repository",
+  "env": {
+    "BBOXY_TEST_CUSTODY": "memory",
+    "ZDOTDIR": "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/zsh"
+  },
+  "pid": 38376,
+  "utc": "2026-10-23T20:32:20.212904+00:00",
+  "binary_sha256": "5489907d106269942abfe69d794908310e4e51e2975cc6804ccd77cd9ec791a9",
+  "exit": 0,
+  "elapsed_seconds": 21.13218537499779
+}
+app.log SHA256 f01bb4a59a94f1a05426e88907fdf064042fb27edc0d81067f796ecb2851eb9c
+cockpit ready: supervisor=38385 logic=38386
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 289.059ms cpu=290.137ms drain=0.002 layout=0.713 draw=0.363 encode=289.059 present_wait=0.047
+first frame: native scene presented, seats=0
+grid-hash /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.grid.json: Ok(())
+ui input: Locate { seat: SeatId(Ulid(2167347147647840490461354912854909952)), where_: Both }
+GUI operation 01M5N7DVF7DWW0EXJGY3M81F2B accepted
+capture /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.png: Ok(())
+GUI operation 01M5N7DVG6ZPSAT3BQ7XG9V2J2 accepted
+GUI operation 01M5N7DVH21XT5MJ7BGJP9X31M accepted
+GUI operation 01M5N7DVHMVDQR94NBZANCDRCP accepted
+GUI operation 01M5N7DVJDBRKDNZQKD61HWYPM accepted
+GUI operation 01M5N7DVJW3TKDW9GQNEDD4Z8D accepted
+GUI operation 01M5N7DVK2PDHQN5XZQNZAH5B3 accepted
+GUI operation 01M5N7DVKBAR1EM222ZXAPHMFY accepted
+GUI operation 01M5N7DVMN4907JXAFAVFNHDKX accepted
+GUI operation 01M5N7DVN9P6BGZ7B0JHEFQ1T8 accepted
+GUI operation 01M5N7DVP8CZZ2EBDVKTCVT265 accepted
+scroll verification start: frame=11
+grid-hash /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.grid.json: Ok(())
+capture /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.png: Ok(())
+logic: orderly shutdown requested
+app close requested; stopping IO owner
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+
+scroll.grid.json SHA256 dbbba5959c49bad026ba6c7a9e182c1804d1909179b7efe123585eaf56c71d60
+{
+  "frame": 14,
+  "panes": [
+    {
+      "cols": 159,
+      "crop": [
+        311,
+        71,
+        1272,
+        870
+      ],
+      "cursor": [
+        -1,
+        0
+      ],
+      "fnv1a64": "72cb2631446c7055",
+      "history": {
+        "gaps": [],
+        "lines": [
+          "line 00001",
+          "line 00002",
+          "line 00003",
+          "line 00004",
+          "line 00005",
+          "line 00006",
+          "line 00007",
+          "line 00008",
+          "line 00009",
+          "line 00010",
+          "line 00011",
+          "line 00012",
+          "line 00013",
+          "line 00014",
+          "line 00015",
+          "line 00016",
+          "line 00017",
+          "line 00018",
+          "line 00019",
+          "line 00020",
+          "line 00021",
+          "line 00022",
+          "line 00023",
+          "line 00024",
+          "line 00025",
+          "line 00026",
+          "line 00027",
+          "line 00028",
+          "line 00029",
+          "line 00030",
+          "line 00031",
+          "line 00032",
+          "line 00033",
+          "line 00034",
+          "line 00035",
+          "line 00036",
+          "line 00037",
+          "line 00038",
+          "line 00039",
+          "line 00040",
+          "line 00041",
+          "line 00042",
+          "line 00043",
+          "line 00044",
+          "line 00045",
+          "line 00046",
+          "line 00047",
+          "line 00048",
+          "line 00049",
+          "line 00050",
+          "line 00051",
+          "line 00052",
+          "line 00053",
+          "line 00054",
+          "line 00055",
+          "line 00056",
+          "line 00057",
+          "line 00058"
+        ],
+        "live_fnv1a64": "7354a6513b901c58"
+      },
+      "modes": 163969,
+      "rows": 58,
+      "seat": "01M5N7DV6PCQJ0VR52P08R2900"
+    }
+  ],
+  "png": "/private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.png",
+  "scale": 1.0,
+  "schema": "bboxy-firehose-screen-v1",
+  "scroll_meter": {
+    "cpu_max_ms": 3.506375,
+    "cpu_ms": [
+      3.506375,
+      1.916832,
+      2.688459
+    ],
+    "first_frame": 12,
+    "last_frame": 14,
+    "samples": 3
+  },
+  "theme": "dark"
+}
+owned-child-pids.json SHA256 1b3303a3cbfee73deb44575f323bfa0304f88cd708e928d832497c475773d81a
+[38385, 38386]
+/private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.png SHA256 394f5552143b8896704bb2c7621ec4d1c8d72b3c57ced4535b8e413f7b57a6b9
+
+Final driver (first run used the documented11s variant before PNG completion checks):
+from pathlib import Path
+import datetime,hashlib,json,os,re,subprocess,tempfile,time,sys
+
+scratch=Path(__file__).parent
+root=Path(tempfile.mkdtemp(prefix='native-scroll-',dir=scratch))
+repo=root/'repository';repo.mkdir()
+config=root/'zsh';config.mkdir()
+(config/'.zshrc').write_text("for ((i=1;i<=20000;i++)); do printf 'line %05d\\r\\n' \"$i\"; done\nexec /bin/cat\n")
+binary=Path(sys.argv[1]) if len(sys.argv)>1 else Path('/Users/feral/mydev/bboxy450-term-exec3/target/dev/debug/bboxy450-term')
+png=root/'scroll.png'
+argv=[str(binary),'--meter','--spawn-zsh','1','--scroll-top-after','5','--capture',str(png),'--capture-after','8','--grid-hash','--quit-after','20','--run-dir',str(root/'run')]
+env=dict(os.environ,BBOXY_TEST_CUSTODY='memory',ZDOTDIR=str(config))
+env.pop('BBOXY_VERIFY_INPUT',None)
+start=time.monotonic()
+with (root/'app.log').open('w') as log:
+    app=subprocess.Popen(argv,cwd=repo,env=env,stdout=log,stderr=subprocess.STDOUT)
+    process={'argv':argv,'cwd':str(repo),'env':{'BBOXY_TEST_CUSTODY':'memory','ZDOTDIR':str(config)},'pid':app.pid,'utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest()}
+    (root/'process.json').write_text(json.dumps(process,indent=2))
+    print('NATIVE_ROOT',root,'OWNED_APP_PID',app.pid,flush=True)
+    try:
+        code=app.wait(timeout=45)
+    except subprocess.TimeoutExpired:
+        app.terminate()
+        try:code=app.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            app.kill();code=app.wait()
+        raise RuntimeError(f'owned app timed out; exit {code}; inspect recorded children in {root}')
+process.update(exit=code,elapsed_seconds=time.monotonic()-start)
+(root/'process.json').write_text(json.dumps(process,indent=2))
+text=(root/'app.log').read_text()
+pids=[int(pid) for pid in re.findall(r'(?:supervisor|logic)=(\d+)',text)]
+(root/'owned-child-pids.json').write_text(json.dumps(pids))
+print(text)
+print('APP_EXIT',code,'ELAPSED',process['elapsed_seconds'])
+assert code==0
+report=json.loads(png.with_suffix('.grid.json').read_text())
+assert len(report['panes'])==1,report
+pane=report['panes'][0]
+assert pane['history']['lines'][0]=='line 00001',pane
+print('PASS_NATIVE_FIRST_ROW',pane['history']['lines'][0],'FNV',pane['fnv1a64'],'LIVE_FNV',pane['history']['live_fnv1a64'])
+assert png.is_file()
+assert text.count(f'capture {png}: Ok(())')==2,'both the initial and delayed PNG writes must finish'
+assert png.stat().st_mtime_ns>=png.with_suffix('.grid.json').stat().st_mtime_ns,'delayed capture did not replace initial PNG'
+assert 'cockpit children reaped after orderly shutdown' in text
+assert 'memory custody (debug)' in text or 'unsigned, local only' in text, 'read footer for actual custody before accepting this run'
+for pid in pids:
+    try:os.kill(pid,0)
+    except ProcessLookupError:continue
+    raise AssertionError(f'owned child {pid} still exists after app exit')
+print('PASS_NATIVE_OWNED_CHILDREN_REAPED')
+(scratch/'last-native.json').write_text(json.dumps({'root':str(root),'process':process},indent=2))

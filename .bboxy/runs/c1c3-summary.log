@@ -1,0 +1,78 @@
+C1c-3 execution evidence. Source tip 6c6d06dd3a3e88f739fa505e680ba7a938a2d45b. Worktree /Users/feral/mydev/bboxy450-term-exec3, branch sable-c1c3.
+Status: full paired parity passed; final normal gate completed EXIT0.
+
+Files and mechanisms (line numbers refer to this source; inherited M-a changes are not claimed as C1c-3):
+crates/bboxy450-term/src/scrollback.rs:124 — IO-owned independent Term, rolling resident window, one retained page per seat, one fenced history read globally, fair bounded parsing and epoch cancellation; no history parser in UI.
+crates/bboxy450-term/src/scrollback.rs:245 — 4,000,000-byte total retained Playback cap including both grids, parser buffers, held page, baseline and two published viewport reserves; <=10k rows, >=3 viewports only when hard cap fits.
+crates/bboxy450-term/src/live.rs:188 — bounded128 terminal-result FIFO, definitive History refusal correlation, Busy backoff and no ambiguous timeout retry; typed Messaging/Task wrappers matched by op.
+crates/bboxy450-term/src/live.rs:585 — generation/view baseline validation, lazy GetHistory, parser quantum selected alongside incoming/commands/close; model prepare/publish before live Applied remains.
+crates/bboxy450-term/src/cockpit.rs:71 — memory-only scroll intent; no socket implementation/wire change.
+crates/bboxy450-term/src/grids.rs:85 — capture cursor and exact View token from the watched live Replica.
+crates/bboxy450-term/src/model.rs:59 — historical cells/markers are separate immutable display data; live modes/Replica/acks remain live; worker prepares the selected historical viewport.
+crates/bboxy450-term/src/main.rs:215 — Shift PageUp/PageDown/Home/End remain local across repeat/release; mouse/trackpad intent uses hovered pane and bounded per-pane coalescing.
+crates/bboxy450-term/src/main.rs:1995 — input cap/refusal behavior preserved; admitted key supersedes obsolete scroll anchor, rejected key is inert.
+crates/bboxy450-term/src/main.rs:2199 — own-app delayed scroll, clean close and displayed-history sidecar/post-scroll phase samples; no OS key injection.
+crates/bboxy450-term/src/scene.rs:660 — shared marker painted after cells, at its replay row, clipped to the exact cell device origin/scissor and inside the rim.
+crates/bbt-ui/src/modules/pane.rs:136 — one-row clipped hairline/caption/hairline component; Pane gap/resumed height and caption line-height match Wren paired reference.
+crates/bbt-core/src/lib.rs:94 — opt-in bounded replay constructor; normal live constructor unchanged; expose row windows/bounds and conservative heap accounting.
+crates/bbt-core/src/vendor/alacritty/grid/mod.rs:141 — serde-defaulted stable row counter and both cursor-cell extra accounting; old checkpoints load.
+crates/bbt-core/src/vendor/alacritty/grid/storage.rs:95 — zero-spare allocation policy avoids upstream1000 speculative rows; default policy unchanged;20 test literals retain normal default.
+crates/bbt-core/src/vendor/alacritty/grid/row.rs:33 — actual allocated cell capacity and shared extra capacities counted conservatively.
+crates/bbt-core/src/vendor/alacritty/term/mod.rs:411 — both grids, titles, tabs, keyboard stacks, damage and config allocations included.
+crates/bbt-core/src/vendor/alacritty/term/cell.rs:167 — documented CellExtra/hyperlink capacity helper, shared references deliberately overcounted.
+crates/bbt-core/src/vendor/vte/mod.rs:83 — OSC parser capacity accounting and release of unused reserve.
+crates/bbt-core/src/vendor/vte/ansi.rs:292 — bounded constructor releases unused2MiB sync reserve; normal constructor policy retained.
+crates/bboxy450-term/src/lib.rs:8 — exports the pure scroll request/display data and IO replay manager.
+crates/bboxy450-term/tests/scrollback.rs:115 — 20k exact serial-reference cells, top and live join, re-seek, gap row, Busy/cancellation fencing, fairness, viewport refusal and independent50-slot allocation count.
+crates/bbt-core/tests/history.rs:63 — core row eviction/replay, old checkpoint compatibility, queued-effect accounting and50 bounded Term allocation proof.
+lab/web/lab.css:187 — Wren ea790f6 paired source: one inherited terminal line box, zero spacer, small caption line-height1; retained provenance in cherry-pick.
+
+Acceptance evidence:
+20k row fixture: app component exact serial Term windows; actual admitted gui.sock/PTY/IO/Metal preparation test reaches line00001 and joins live with no duplicated/missing row; input and unwatch return/release verified.
+Native image proof: optimized d1d9173 binary SHA5489907d106269942abfe69d794908310e4e51e2975cc6804ccd77cd9ec791a9; both PNG writes completed, final image read, line00001..00058. App exit0, owned children reaped. c1c3-native.log.
+Gap: explicit capture gap2..4 becomes marker at viewport row3 (fourth row), between line3 and line4. Geometry tests align/clamp at1x and2x;24 module cases within policy,0reviews;3 triplets image-read. c1c3-markers.log.
+50 synthetic watched Playback slots with palette overrides/hyperlinks: requested heap27,238,288 bytes, conservative53,761,974 bytes vs200,000,000 aggregate cap. This is Playback retained-heap evidence, not whole-process RSS or50 live PTY timing.
+Native paging window: three post-scroll UI frames3.506375/1.916832/2.688459ms; no post-scroll hitch. Independent cold frame1 CPU290.137ms retained in evidence; not a quiet control or a50-pane frame-time claim.
+Full clean paired ci-local --parity d1d9173 EXIT0/2066.105s; raw log SHAca8a9998ab06ca15c4b741c55baa549bba372477ef3ceb68df08a0fcdaf04185. Build, strict workspace Clippy, tests, UI lint, idle0frames/0callbacks,11 invariants/0failures/3slow skips.
+Current parity1768 cases,1664 geometry required/measured,0unproven/0mismatches,174 advisory reviews; baseline exact review key-set comparison0new/0cleared. Legacy1664 pixel-only diagnostics859 reviews are non-gating.
+Final typed FIFO and input-admission regressions passed in the final NORMAL gate. Source/image parity reuse expressly approved by Oracle b8cadc44 and fad24878; c1c3-producer-identity.log binds unchanged producers and the exact main normalization.
+
+Scope and limits:
+Replay starts at capture start at CURRENT pane dimensions (decision40(c)); no historical resize/checkpoint payload exists in the wire, so historical resize semantics are not reconstructed.20k prefix-to-live seek measured54.9ms in an earlier focused run and131.7ms in a loaded post-rebase run, sliced into IO quanta; no performance optimization added.
+A viewport whose mandatory state cannot fit is refused with history_viewport_exceeds_budget; the live view stays usable. Shared extras are overcounted, so the bound is conservative.
+Not checked: physical120Hz,50 real PTY/UI paging timing, whole-process RSS budget, or live-window gap-loss injection. Gap ordering, metadata and device-row clipping are executable component/geometry proofs; native window proof covers a focused gapless pane.
+Left alone: mux/proto/wire, durability, archive retention, live parser/Replica contents, renderer/shaders, pane rim/glow, identity policy, composer UI, remote transports and checkpoint/resize protocol additions.
+No push/merge/publish. All source commits signed. Commands/actual exits/failures are in c1c3-commands.log and c1c3-prechecks.log.
+
+Recorded corrections:
+Initial fairness test allowed only one parse quantum despite a >4KiB palette prelude; corrected bound is one first-page turn per peer and two four-seat parsing rounds. Separate request/parser cursors prevent starvation.
+Initial test compile used crate::scrollback from the binary; corrected to the library path. Strict Clippy map-entry/type-complexity findings fixed. Initial native driver0 was rejected on image read because delayed PNG was incomplete; optimized proof waits for both writes.
+A marker utility incorrectly counted within-policy statuses as reviews; corrected actual classification is24 within policy,0reviews. A guessed baseline native path found0 file pairs; no PNG byte-identity claim is made.
+Quiet reservation2: two focused checks ran before release and were disclosed. Aster later supplied actual run19:40:34.533–19:42:10.874; neither check overlapped it, so no measured-result contamination was attributed. Checks began19:42:46.481 and19:47:02.297 UTC.
+Standalone final Clippy precheck ea55127 exited0/85.357s; Oracle classified its separate target beside full parity as an extra gate under resource pressure. Target/worktree removed on instruction, no live PID remained. Final NORMAL slot2 was explicitly granted by cf352b8f. Two full-gate cap observed.
+Cleanup: own inactive dev target1,887,428,608 bytes; extra precheck577,540,096 bytes; completed paired gate compiled cache3,093,377,024 bytes removed. Accepted galleries preserved at target/c1c3-parity-d1d9173.
+
+Normal gate record:
+{
+  "id": "d530c4193d52490093413b91eedcd13c",
+  "argv": [
+    "env",
+    "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1c3-final-6c6d06d",
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "cwd": "/private/tmp/sable-c1c3-h2c7tke9/ci-final-6c6d06d",
+  "started_utc": "2026-10-23T21:20:00.332478+00:00",
+  "pid": 37733,
+  "exit": 0,
+  "elapsed_seconds": 820.8849364170164,
+  "log": "/private/tmp/sable-c1c3-h2c7tke9/cmd-d530c4193d52490093413b91eedcd13c.log",
+  "sha256": "a3af29b5a2b6269fc17881f71f6e6e0b199e200a9eb187e6372d83bc58a8c47c"
+}
+Final NORMAL exact source6c6d06dd3a3e88f739fa505e680ba7a938a2d45b, parent of evidence-only handoff; base d5e4224b599a4feca0c03c3a369c6f2af21172aa.
+NORMAL raw log SHA256 a3af29b5a2b6269fc17881f71f6e6e0b199e200a9eb187e6372d83bc58a8c47c; EXIT0/820.885s; ci-local: all gates passed.
+NORMAL: strict all-target workspace Clippy0, workspace tests/doctests0, UI IO lint0; new typed Messaging/Task FIFO and admitted-Input scroll-anchor regressions both explicitly ok.
+NORMAL native idle10.002s:0frames/0callbacks, CPU p50=3.091ms/p99=8.620ms, warm encode p50=2.225ms/p99=6.272ms. Not a quiet-control performance run.
+NORMAL invariants10checks/0failures/4named slow skips; the paired --parity run had11checks/3skips because it ran parity.
+Main moved during this exact gate: R5d diagnostics865443f, duplex pressure fixtureec43ccc. No late rebase or redundant gate; the Oracle verifies the merged tree per AGENTS.
+Final own private CI target and detached tree removed immediately after completion:2,883,764,224 allocated bytes freed, c1c3-cleanup.log. Accepted paired galleries remain in exec3/target/c1c3-parity-d1d9173.
