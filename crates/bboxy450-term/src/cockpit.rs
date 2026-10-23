@@ -28,11 +28,13 @@ pub enum UiMsg {
     SpawnZsh,
     Input {
         seat: SeatId,
+        generation: u64,
         id: bbt_mux::Ulid,
         bytes: Vec<u8>,
     },
     Resize {
         seat: SeatId,
+        generation: u64,
         cols: u16,
         rows: u16,
     },

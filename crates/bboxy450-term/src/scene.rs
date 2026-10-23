@@ -25,6 +25,10 @@ pub const LANE_MAX: f32 = TOKENS.glow.lane_max as f32;
 pub struct Scene {
     pub seats: Vec<SeatRow>,
     tree: Option<SplitNode>,
+    seat_index: HashMap<SeatId, usize>,
+    focused: Option<SeatId>,
+    live: bool,
+    backend_lost: bool,
     identity: Option<bbt_proto::GuiIdentity>,
     metrics: Metrics,
     /// The glow lane (Settings > Glow lane, 2-8 px): the gutter between panes,
@@ -151,6 +155,10 @@ impl Scene {
         Self {
             seats,
             tree: Some(tree(&fixture["tree"])),
+            seat_index: (0..15).map(|i| (SeatId::from_u128(i as u128), i)).collect(),
+            focused: Some(SeatId::from_u128(0)),
+            live: false,
+            backend_lost: false,
             identity: None,
             metrics: Metrics::default(),
             lane: TOKENS.glow.lane as f32,
@@ -178,6 +186,10 @@ impl Scene {
         Self {
             seats: vec![],
             tree: None,
+            seat_index: HashMap::new(),
+            focused: None,
+            live: true,
+            backend_lost: false,
             identity: None,
             metrics: Metrics::default(),
             lane: TOKENS.glow.lane as f32,
@@ -186,6 +198,35 @@ impl Scene {
     }
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model) {
         self.identity = model.identity.clone();
+        let tab = model
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .iter()
+            .flat_map(|swarm| &swarm.tabs)
+            .find(|tab| Some(tab.id) == model.ui.window.stage.tab);
+        self.tree = tab.map(|tab| tab.tree.clone());
+        let visible = self
+            .tree
+            .as_ref()
+            .map(SplitNode::leaves)
+            .unwrap_or_default();
+        // Command-T focuses the new pane; later screen publications preserve
+        // the operator's local focus until its watched-set message reaches IO.
+        self.focused = visible
+            .iter()
+            .find(|id| !self.seat_index.contains_key(id))
+            .copied()
+            .or(self.focused.filter(|id| visible.contains(id)))
+            .or(model.ui.window.stage.focused);
+        self.seat_index = model
+            .ui
+            .seats
+            .keys()
+            .enumerate()
+            .map(|(i, id)| (*id, i))
+            .collect();
         self.seats = model
             .ui
             .seats
@@ -197,6 +238,11 @@ impl Scene {
                 row.activity = seat.activity;
                 row.grade = seat.grade;
                 row.muted = seat.muted;
+                row.focused = Some(*id) == self.focused;
+                if self.backend_lost {
+                    row.activity = Activity::Errored;
+                    row.title = "backend lost".into();
+                }
                 row.where_ = match &seat.where_ {
                     bbt_ui_model::Where::Local => None,
                     bbt_ui_model::Where::Ssh { .. } => Some("ssh".into()),
@@ -205,6 +251,56 @@ impl Scene {
                 row
             })
             .collect();
+    }
+    pub fn focused(&self) -> Option<SeatId> {
+        self.focused
+    }
+    pub fn focus(&mut self, id: SeatId) {
+        self.focused = Some(id);
+        for (seat, index) in &self.seat_index {
+            self.seats[*index].focused = *seat == id;
+        }
+    }
+    pub fn backend_lost(&mut self) {
+        self.backend_lost = true;
+        for row in &mut self.seats {
+            row.activity = Activity::Errored;
+            row.title = "backend lost".into();
+        }
+    }
+    pub fn backend_ready(&mut self) {
+        self.backend_lost = false;
+    }
+    /// Read the actual pane body after lane-aware layout, including its padding.
+    pub fn pane_bounds(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect)> {
+        fn body(layout: &c::Layout) -> Option<Rect> {
+            if matches!(&layout.kind, c::LayoutKind::Named(name) if name == "pane/term") {
+                let mut rect = layout.rect;
+                if let Some(c::Layout {
+                    kind: c::LayoutKind::Box { style, .. },
+                    ..
+                }) = layout.children.first()
+                {
+                    let [top, right, bottom, left] = style.padding;
+                    rect = Rect::new(
+                        rect.x + left,
+                        rect.y + top,
+                        (rect.w - left - right).max(0.),
+                        (rect.h - top - bottom).max(0.),
+                    );
+                }
+                return Some(rect);
+            }
+            layout.children.iter().find_map(body)
+        }
+        self.tree
+            .as_ref()
+            .map(SplitNode::leaves)
+            .unwrap_or_default()
+            .into_iter()
+            .zip(layouts.iter().skip(2))
+            .filter_map(|(id, layout)| body(layout).map(|rect| (id, rect)))
+            .collect()
     }
     pub fn update(&mut self, sequence: usize) {
         self.seats[1].title = format!("runtime update {sequence}");
@@ -217,7 +313,7 @@ impl Scene {
     fn mini(&self, node: &SplitNode) -> Node {
         match node {
             SplitNode::Leaf(id) => {
-                let s = &self.seats[id.0.0 as usize];
+                let s = &self.seats[self.seat_index[id]];
                 Node::Cell {
                     key: s.key.clone(),
                     name: s.name.clone(),
@@ -268,7 +364,7 @@ impl Scene {
                 .as_ref()
                 .map(|tree| {
                     vec![TabRow {
-                        name: "all fifteen".into(),
+                        name: if self.live { "seats" } else { "all fifteen" }.into(),
                         shortcut: Some("⌘1".into()),
                         tree: self.mini(tree),
                         seats: self
@@ -280,7 +376,10 @@ impl Scene {
                             })
                             .collect(),
                         expanded: true,
-                        focused_key: Some("sc0".into()),
+                        focused_key: self
+                            .focused
+                            .and_then(|id| self.seat_index.get(&id))
+                            .map(|index| self.seats[*index].key.clone()),
                     }]
                 })
                 .unwrap_or_default(),
@@ -294,7 +393,7 @@ impl Scene {
         };
         let mut layouts = vec![
             TitleBar {
-                crumb: if self.tree.is_some() {
+                crumb: if !self.live {
                     "swarm / all fifteen"
                 } else {
                     "local / seats"
@@ -329,7 +428,7 @@ impl Scene {
             .map(|tree| solve_split(tree, bounds, l).panes)
             .unwrap_or_default()
         {
-            let seat = self.seats[id.0.0 as usize].clone();
+            let seat = self.seats[self.seat_index[&id]].clone();
             let pane_ctx = ui::Context {
                 seat: seat.color.unwrap_or(ctx.seat),
                 focused: seat.focused,
@@ -400,7 +499,13 @@ impl Scene {
             );
             ops.push(c::Paint::Draw(footer));
         }
-        if let Some(text) = overlay {
+        if let Some(overlay) = Self::overlay(size, overlay) {
+            ops.push(overlay);
+        }
+        ops
+    }
+    pub fn overlay(size: [f32; 2], overlay: Option<&str>) -> Option<c::Paint> {
+        overlay.map(|text| {
             let mut list = DrawList::default();
             let rect = Rect::new((size[0] - 460.).max(0.), size[1] - 95., 450., 85.);
             list.rect(rect, 8., Color::hex("#070D19").alpha(0.95));
@@ -416,9 +521,8 @@ impl Scene {
                     Color::hex("#D4E7FF"),
                 );
             }
-            ops.push(c::Paint::Draw(list));
-        }
-        ops
+            c::Paint::Draw(list)
+        })
     }
 }
 
