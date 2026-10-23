@@ -157,7 +157,7 @@ flowchart TD
   H --> I["row shows the restarted notice; pane shows the gap marker"]
 ```
 
-- The app owns both children and watches their exit. Logic death is already proven in tests (`M/supervisor.rs:527-547` lease re-acquire); C1 makes the app do it. Supervisor death: every seat record with a harness session id resumes through `resume_command` (`M/adapters/mod.rs:192`, first production caller); plain zsh respawns; the ring replays for scrollback; the row carries the `restarted` signal ([[ux-prototype]]). Unflushed bytes are lost and that is accepted; `Screen.gap` already carries the marker.
+- The app owns both children and watches their exit. Logic death is already proven in tests (`M/supervisor.rs:527-547` lease re-acquire); C1 makes the app do it. Supervisor death: every seat record with a harness session id resumes through **the launch planner**, the single resume path (C1c-1, 2026-10-23: `M/logic.rs:1344-1389` relaunches with `LaunchOptions.resume = true` and the saved `adapter_record`; `M/adapters/launch.rs:148-156` emits `--resume <id>` for Claude, `:220-225` `resume <id>` for Codex; Sable's recovery test records the argv of both launches). `Adapter::resume_command` (`M/adapters/mod.rs:192`) is a dead second path: removed, or made to delegate to the planner, in C1c-2. Plain zsh respawns; the ring replays for scrollback; the row carries the `restarted` signal ([[ux-prototype]]). Unflushed bytes are lost and that is accepted; `Screen.gap` already carries the marker.
 - The GUI endpoint root changes per logic instance (`M/logic.rs:486-497`); the app learns it from one JSON line logic prints at startup, never from a fixed path.
 
 ## 4. Scrollback, close, undo
