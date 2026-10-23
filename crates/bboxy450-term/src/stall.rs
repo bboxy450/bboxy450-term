@@ -320,7 +320,7 @@ impl Native {
             && model
                 .screens
                 .values()
-                .any(|screen| contains(screen, &format!("R5P{id:08X}")))
+                .any(|screen| probe_acknowledged(screen, &format!("R5P{id:08X}")))
         {
             self.model_ms = Some(start.elapsed().as_secs_f64() * 1000.);
         }
@@ -455,7 +455,7 @@ impl Native {
             }
             if self.probe_frame.is_none()
                 && let Some((id, _)) = self.probe_started
-                && contains(screen, &format!("R5P{id:08X}"))
+                && probe_acknowledged(screen, &format!("R5P{id:08X}"))
             {
                 let prepared = &model.frames[seat];
                 let cell_width = prepared.width as f32 / screen.cols as f32;
@@ -500,14 +500,17 @@ fn contains(screen: &bbt_proto::Screen, needle: &str) -> bool {
 }
 
 /// Count the helper's pinned acknowledgement, never a PTY echo in a lower row.
-fn probe_visible(screen: &bbt_proto::Screen, needle: &str, clip: [f32; 2], cell: [f32; 2]) -> bool {
+fn probe_acknowledged(screen: &bbt_proto::Screen, needle: &str) -> bool {
     let columns = needle.chars().count();
     screen.cells.first().is_some_and(|row| {
         row.iter().take(columns).map(|c| c.c).eq(needle.chars())
             && row.get(columns).is_some_and(|c| matches!(c.c, '|' | '/'))
-            && ((columns + 1) as f32 * cell[0]).ceil() <= clip[0].floor()
-            && cell[1].ceil() <= clip[1].floor()
     })
+}
+fn probe_visible(screen: &bbt_proto::Screen, needle: &str, clip: [f32; 2], cell: [f32; 2]) -> bool {
+    probe_acknowledged(screen, needle)
+        && ((needle.chars().count() + 1) as f32 * cell[0]).ceil() <= clip[0].floor()
+        && cell[1].ceil() <= clip[1].floor()
 }
 fn percentile(values: &[f64], p: f64) -> f64 {
     if values.is_empty() {
