@@ -815,6 +815,8 @@ mod gui_io_tests {
         let capability = [17; 32];
         let mut io = GuiIo::new(stream, capability);
         let started = std::time::Instant::now();
+        let (release_reader, reader_ready) = tokio::sync::oneshot::channel();
+        let mut release_reader = Some(release_reader);
         let peer = tokio::spawn(async move {
             let (read, mut write) = peer.into_split();
             // Exceed the socket buffers and bounded reply queue while both
@@ -833,6 +835,8 @@ mod gui_io_tests {
                 }
             };
             let inputs = async {
+                // Force queue pressure before allowing the concurrent drain.
+                reader_ready.await.unwrap();
                 let mut reader = BufReader::new(read);
                 for index in 0..COUNT {
                     let bytes = read_line(&mut reader).await.unwrap().unwrap();
@@ -869,7 +873,13 @@ mod gui_io_tests {
                         seat: SeatId::from_u128(7), generation: 7, id: bbt_mux::Ulid::from(sent as u128 + 1), bytes,
                     }) {
                         Ok(()) => sent += 1,
-                        Err(error) if error.is::<Busy>() => {busy += 1; break;}
+                        Err(error) if error.is::<Busy>() => {
+                            busy += 1;
+                            if let Some(release) = release_reader.take() {
+                                release.send(()).unwrap();
+                            }
+                            break;
+                        }
                         Err(error) => panic!("enqueue failed: {error}"),
                     }
                 }
