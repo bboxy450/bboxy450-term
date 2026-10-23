@@ -446,6 +446,22 @@ briefs Executors from the specs, never from this note.
     crate (a crate per license is not a design); keeping the encoder in the
     app under Apache alone (silently makes the app Apache-only).
 
+37. **Messaging and tasks reach the app through two wrapper variants on
+    the GUI wire and one events lane (2026-10-23, Oracle's ask for L9-M).**
+    `GuiAction::Messaging {{ id, request }}` wraps the whole W2.4 API and
+    `GuiAction::Task {{ id, request }}` mirrors the W2.5d tool arguments;
+    the W2.4 request and wire types move to `bbt-proto::messaging` (as #6
+    did for streams); logic dispatches through the same functions the MCP
+    tools use, under `Operator {{ device_id }}` (#31), journaled and replayed
+    by id; every push to the app, messages, receipts, task status, seat
+    state, artifacts and audit, rides Kestrel's W2.6b lane from one durable
+    consumer per device, and unread is derived from that cursor. Spec
+    [[l9-messaging-tasks]]. Rejected: one GUI variant per tool (twenty
+    variants that drift from the tools); a second validation path for GUI
+    callers (two authority models); a separate message stream beside the
+    events lane (two cursors, two reconnect stories); storing unread counts
+    (a second source of truth).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
