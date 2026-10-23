@@ -1,0 +1,9 @@
+{
+  "path": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/build",
+  "allocated_bytes_removed": 1264611328,
+  "lsof_exit": 0,
+  "du_exit": 0,
+  "removed": true,
+  "raw_logs_preserved": true,
+  "meaning": "allocated blocks removed, not net df delta"
+}

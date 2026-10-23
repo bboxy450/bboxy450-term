@@ -1,0 +1,43 @@
+{
+  "source": "db512198a19536a31eca3ba8733987367ea4d1d2",
+  "mechanisms": {
+    "crates/bboxy450-term/src/live.rs:158": "100ms minimum control retry interval",
+    "crates/bboxy450-term/src/live.rs:173": "latest watched views; one coalesced intent per known pane, prune invisible/old-view queued controls",
+    "crates/bboxy450-term/src/live.rs:218": "retain early Resize intent and clamp to exact logic limits (2..512 cols,1..256 rows,32768cells)",
+    "crates/bboxy450-term/src/live.rs:262": "missing Screen requests Watch; mismatched Screen requests latest Resize",
+    "crates/bboxy450-term/src/live.rs:295": "successful transport enqueue disarms blind retransmission until Screen/refusal",
+    "crates/bboxy450-term/src/live.rs:302": "Busy re-arms desired controls without extending an already scheduled retry",
+    "crates/bboxy450-term/src/live.rs:319": "no timer for converged panes or unanswered first Watch",
+    "crates/bboxy450-term/src/live.rs:389": "existing ordered outbox and writer_ready retain transport backpressure",
+    "crates/bboxy450-term/src/live.rs:493": "after apply/prepare/publish, observe desired state; Applied still queued only after publication",
+    "crates/bboxy450-term/src/live.rs:505": "server Busy-class error triggers reconciliation; every error still logged"
+  },
+  "tests": {
+    "first_refused_resize_converges_without_another_ui_resize": "explicit Busy error with unrelated server op; real Term/Replica/Model80x24->37x57; repeated Busy cannot starve due retry; deadline absent at convergence",
+    "refused_watch_retries_stay_bounded_and_coalesce_the_latest_size": "6000attempts over ten virtual minutes; one queued control/pane, latest size69x57; Unwatch cancels",
+    "controls_obey_logic_size_limits_and_discard_old_generations": "clamped grids converge; old generation control pruned; Input ID/bytes retained",
+    "sent_control_waits_for_an_observation_or_refusal_before_retrying": "unanswered Watch emits no duplicate or timer; permanent stale-generation error not Busy",
+    "resize_before_a_coalesced_watch_keeps_its_desired_grid": "early size intent, same-generation new view and newer process-generation watch preserve latest valid size"
+  },
+  "deliberately_unchanged": [
+    "Input bytes, stable ID and stale-generation policy",
+    "prepare -> publish -> Applied order",
+    "socket/GUI schema and server admission",
+    "W3.6 cadence/pacing",
+    "rendering/layout/fonts/shaders/selection"
+  ],
+  "not_checked": [
+    "actual production server Busy refusal under live firehose; explicit error-boundary fixture used",
+    "new native screenshot or full parity: no rendering source changed"
+  ],
+  "prechecks_after_rebase": "git diff --quiet906b9e8 db51219 --live.rs EXIT0; precheck implementation unchanged by rebase",
+  "peer_review": {
+    "message": "e60e8aa9-ead5-4a6e-9d05-8f75fa9fb2c6",
+    "reviewer": "Sable Embertail",
+    "reviewed_source": "906b9e8",
+    "source_identity_to_gate_exit": 0,
+    "result": "static review found no blocking IO seam defect; no socket/server/W3.6 overlap",
+    "limit": "Refusal regression is explicit policy injection and real Term/Replica/Model; not actual server rejection through run Error/timer/send. Nominal real-IO test covers PTY path. Reviewer ran no runtime test and made no edits."
+  },
+  "received_cursor": 6143
+}

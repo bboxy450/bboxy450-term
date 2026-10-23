@@ -38,3 +38,13 @@ apply_patch edits succeeded except one test insertion context failure (tool erro
 Precheck commands and actual exits including deliberate red101: c1i-admission-prechecks.log plus full raw output in c1i-admission-prechecks-raw.log. Initial live7/7, coalesced-order successor8/8, final reviewed8/8; strict app all-target clippy0. Changes between runs were new identified ordering/backoff concerns, not identical reruns.
 Rendering-source proof: git diff --quiet HEAD -- crates/bbt-render crates/bbt-ui crates/bbt-ui-model crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/gpu.rs crates/bboxy450-term/src/main.rs crates/bboxybook lab design: EXIT0.
 ICQ CLI help/each preview/send/inbox EXIT0, except no failures. New received cursor6093. Coordination: Oraclec8b9180e desired-state ruling; Sable90920cf3 unchanged server-only ops/no resume event; own replies ebc774fc,5cdb1332,61178eb2. Nyx scope657c7bb7. No schema/server edits.
+
+FINAL VERIFIED COMMANDS
+git add (five exact source/precheck paths), git commit, git rebase origin/main: EXIT0; source now db51219, good machine signature verified by git log -1 --format=%H/%G?/%GF.
+git worktree add --detach /tmp/ci-aster-admission-db51219-1792763921007351000 db51219: EXIT0; git status --porcelain --untracked-files=all before and after: EXIT0, empty.
+BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-ci-db51219 sh scripts/ci-local.sh: EXIT0,574.996722s. Exact argv/env/worktree/PID in ci-location/status; raw full output ci.log.
+Clean gate: workspace759 passed/0failed/18ignored (124 summaries before invariants); strict all-target workspaceclippy/build/UIlint/native smoke0; idle10.002s0frames0callbacks; fast invariants6checks0failures4namedslow skips.
+lsof -nP -Fpcftn (two immediate deletion guards), du -sk and own-cache Python removal: EXIT0; no open files; dev1264611328bytes and CI2198274048bytes allocated removed. git worktree remove exactownpath: EXIT0; raw logs/galleries retained. Separate Oracle disk request initial7034580992bytes removed, t2-disk-cleanup-20261023.log.
+git diff --quiet906b9e8 db51219 --live.rs: EXIT0. git diff --quiet BASE SOURCE --. excludinglive.rs and .bboxy/runs: EXIT0; dedicated renderer/ui/scene/gpu/main/book/lab/design proof EXIT0. git diff --check EXIT0. No rebase or second gate after source freeze.
+Final git fetch origin EXIT0; latestmain a8cbcc0535dad6888becc1a56432eecd79148104; base->main live.rs diff exit 0.
+ICQ previews/sends/bounded inbox reads EXIT0; Sable static review e60e8aa9, acknowledged8734841f; final received cursor6143. Own outgoing receipts are not a received cursor or evidence of model action.

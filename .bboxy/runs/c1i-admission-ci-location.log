@@ -1,0 +1,36 @@
+{
+  "source": "db512198a19536a31eca3ba8733987367ea4d1d2",
+  "base": "ed74a2b171a4d9de588e8abbc82c94a0f9f18f70",
+  "worktree": "/tmp/ci-aster-admission-db51219-1792763921007351000",
+  "target": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-ci-db51219",
+  "clean_before": true,
+  "setup_exit": 0,
+  "render_source_proof_command": [
+    "git",
+    "diff",
+    "--quiet",
+    "ed74a2b171a4d9de588e8abbc82c94a0f9f18f70",
+    "db512198a19536a31eca3ba8733987367ea4d1d2",
+    "--",
+    "crates/bbt-render",
+    "crates/bbt-ui",
+    "crates/bbt-ui-model",
+    "crates/bboxy450-term/src/scene.rs",
+    "crates/bboxy450-term/src/gpu.rs",
+    "crates/bboxy450-term/src/main.rs",
+    "crates/bboxybook",
+    "lab",
+    "design"
+  ],
+  "render_source_proof_exit": 0,
+  "command": [
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "environment": {
+    "BBOXY_TEST_CUSTODY": "memory",
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-ci-db51219"
+  },
+  "gate": "normal CI; only IO reconciliation source changed, no paint/layout/shader source",
+  "pid": 8992
+}
