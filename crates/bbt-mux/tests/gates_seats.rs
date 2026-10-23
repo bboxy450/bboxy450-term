@@ -420,15 +420,39 @@ impl Rig {
         else {
             panic!("fixture seat list reply mismatch")
         };
+        let exited = seats.iter().filter(|seat| seat.exited.is_some()).count();
+        eprintln!(
+            "GATE cleanup owned_seats={} exited_before_cleanup={exited}",
+            seats.len()
+        );
+        let mut already_closed = 0;
+        let mut unexpected = Vec::new();
         for seat in seats.into_iter().filter(|seat| seat.exited.is_none()) {
-            let attachment = client.attach(seat.seat, seat.generation).unwrap();
-            client.kill(&attachment).unwrap();
+            let result = client
+                .attach(seat.seat, seat.generation)
+                .and_then(|attachment| client.kill(&attachment));
+            match result {
+                Ok(_) => {}
+                // EOF/exit may arrive between ListOwnedSeats and Kill. The
+                // supervisor still owns/reaps it during shutdown below.
+                Err(error) if error.code == bbt_mux::FailureCode::Exited => already_closed += 1,
+                Err(error) => unexpected.push(error),
+            }
         }
+        eprintln!("GATE cleanup already_closed={already_closed} unexpected={unexpected:?}");
         drop(client);
         self.supervisor.shutdown().unwrap();
         if keep {
             eprintln!("GATE retained owned fixture {}", self.run.keep().display());
         }
+        assert!(
+            unexpected.is_empty(),
+            "unexpected fixture termination errors"
+        );
+        assert_eq!(
+            exited, 0,
+            "fixture producers exited during the measured run"
+        );
         disk
     }
 }

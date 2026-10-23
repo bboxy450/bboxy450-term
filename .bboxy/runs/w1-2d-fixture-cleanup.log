@@ -11,3 +11,4 @@ OWN_ALLOCATED_BYTES_REMOVED_THIS_PASS=1317216256
 AFTER_PROFILE_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-lS7QWZ allocated_bytes=1317335040
 AFTER_WAKE_COALESCED_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-EaW5oC allocated_bytes=1409462272
 OWN_INACTIVE_DEBUG_CACHE_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d/debug allocated_du_bytes=1049636864; release gate70023 continues
+AFTER_STAGED_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-7bUCh5 allocated_du_bytes=1015156736

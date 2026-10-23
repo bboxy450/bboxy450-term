@@ -1,0 +1,19 @@
+Change: a post-snapshot Exited/EOF response during cleanup is already quiescent, not a test panic; unexpected errors are reported after every owned termination attempt. Record/assert live producer count at end.
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', 'disk_guard_abort', '--', '--nocapture']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 3.09s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+
+running 1 test
+GATE aborted reason=disk_low free_bytes=39622115328 min_free_bytes=39622115329; stopping owned producers and removing owned run
+GATE cleanup owned_seats=2 exited_before_cleanup=0
+GATE cleanup already_closed=0 unexpected=[]
+
+thread 'disk_guard_abort_terminates_owned_children_and_removes_the_run' (10498151) panicked at crates/bbt-mux/tests/gates_seats.rs:408:9:
+disk reserve guard aborted gate before ENOSPC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test disk_guard_abort_terminates_owned_children_and_removes_the_run ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.15s
+
+EXIT=0
