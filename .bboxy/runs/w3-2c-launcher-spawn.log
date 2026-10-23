@@ -1,0 +1,122 @@
+L8 checkpoint B — generic default harness/host spawn intent
+
+Code source 2e038c5d5195fd5d977dc17f95419d2f60369d46, parent feature 05dce49.
+Both machine-key signed G, branch nyx-l8-spawn in
+/Users/feral/mydev/bboxy450-term-nyx. Paired lab reference 6a4776d141723e4b4f10c7f94173109392f5631e
+(Wren, signed G), based on accepted main 7c4bae7. Rebase range-diff proves
+the two B patches unchanged from 9cf733e/d735f2b; Aster's theme/Verify hooks
+and the accepted A/idle-probe changes are preserved.
+Oracle scope/rulings: ba4419d0 and 044e43c6. Aster coordination 14e26483:
+no overlap beyond RenderContext.theme/initial theme/ctor; spawn arms/tests clear.
+
+Mechanism:
+- cockpit.rs:35 — UiMsg::Spawn carries owned harness_kind/name/location only.
+  No argv, cwd, role or process handle. Legacy SpawnZsh remains for Verify.
+  is_spawn() places both under the same existing admission budget.
+- live.rs:37 — pure translation supplies cwd and swarm on IO, preserves names
+  and structured Local/SSH/Cloud locations, emits the existing SpawnSpec with
+  role=None/resume=None. Backend role defaults and validation stay authoritative.
+  Unknown kinds pass through to the existing named backend rejection, with no
+  shell fallback. The existing ordered queue and GUI action path are reused.
+- main.rs:245 — exact catalog IDs map default local and registered-host picks to
+  the generic message. Display labels never become commands. Explicit modifiers
+  and tab/right/down IDs stay named not_wired_yet. No SpawnSpec protocol change
+  or placement/result correlation was introduced (deferred by the Oracle).
+- main.rs:387 — local/host rows share the same launchable records; host placement
+  rows remain visible with fully namespaced IDs but do not dispatch yet. Known
+  harness subtitles read the backend builtin role: worker/executor until Settings
+  roles exist. Unsupported pi/omp preserve the existing backend rejection.
+- main.rs admission — legacy and generic messages share cap 8, including the
+  launcher's pending-cap projection. Non-spawn control admission is unchanged.
+
+Development verification before the paired-reference rebase (own target,
+O1/debug assertions, memory custody; original B sources 9cf733e/d735f2b):
+cargo build -p bboxy450-term --locked — exit 0.
+cargo test -p bboxy450-term --bin bboxy450-term --locked — exit 0, 30/0.
+New tests cover mixed legacy/generic cap, exact ID/default projection, structured
+host identity, explicit placement refusal, role caption and SpawnSpec roundtrip.
+The existing real-process echo/resize/reflow/logic-loss test now sends generic
+pi (named rejection) then a generic zsh with a supplied name (one actual seat,
+name and harness preserved); it passes without starting Claude/Codex or any
+real SSH/cloud client. Raw dev log line39: GUI operation rejected: not a built-in
+harness. Pure translation covers all three locations, with roles left to backend.
+cargo clippy -p bboxy450-term --all-targets --locked -- -D warnings — exit 0.
+cargo clippy --workspace --all-targets --locked -- -D warnings — exit 0.
+git diff --check — exit 0. No development check failures so far.
+
+Native capture target/l8-spawn/native/launcher.png — read the image: Claude now
+says executor by default, matching the backend, with the same retained launcher
+composition. --smoke --launcher --capture — exit 0; idle 10.002 s, 0 frames/
+callbacks. Frozen 15-seat smoke fixture, no OS keystroke injection. Binary uses
+the same product sources; the later d735f2b delta is test-only.
+No-menu replay through scene::launcher_tests::no_launcher_paint_proof — exit 0:
+892932 operation bytes exactly equal accepted A source96709cd;
+SHA256 6d3f1766189b207fe77d67ce4946590e116b259b6ce5a675c66531c2cc9451aa.
+Scene and the renderer are unchanged by B.
+
+Superseded gate d735f2b: deliberately cancelled before parity once the isolated
+caption reference arrived, per Oracle 38926677. Actual child exit -15/SIGTERM
+(the original Python driver propagated process exit 241);
+not a passing gate. Only the recorded CI descendants were stopped. Its private
+target and worktree were removed after exit. Local raw log:
+target/l8-spawn/ci-d735f2b.log; cancellation process record:
+target/l8-spawn/cancelled-gate-processes.json.
+
+Final paired exact-commit clean CI: EXIT 0 on 2e038c5 with lab reference 6a4776d.
+One full, unfiltered sh scripts/ci-local.sh --parity, separate detached worktree
+and target, BBOXY_TEST_CUSTODY=memory. Raw log and parity artifacts:
+target/l8-spawn/ci-2e038c5.log and target/l8-spawn/parity-2e038c5/.
+Complete raw command output is committed at
+.bboxy/runs/w3-2c-launcher-spawn-ci-2e038c5.log.
+SHA256 fb23edadd18f94c97a2fd73d35d5974bd2be2a03d163288c8df104ea9f213880.
+
+The exact paired run's workspace tests completed: 731 passed, 0 failed,
+17 ignored; app binary 32/0. Strict workspace all-target Clippy and UI IO lint
+exited 0. Native smoke: idle 10.001 s, 0 frames/callbacks. Captured metadata pins
+2e038c5; all 1704 current web cases captured, 0 failures. The captured Launcher
+and List inputs contain executor-by-default captions. Both changed lab blobs
+equal 6a4776d (components.js SHA256 46f83f9b9e84c6af5646adfbccbbf4fa299b1f78939ccaaa9072a1c4bad4f695;
+components.html SHA256 3e7abfc31e9f17af5a34f29bb4f70e9eb27ab2d2c1635d563fdcfe4c10097bce).
+
+Deliberately outside B: explicit tab/right/down and modifier placements;
+SpawnSpec placement/correlation changes; Settings roles; C's caret/selection/
+IME preedit. Real Claude/Codex and SSH/cloud clients were not launched by this
+verification. Local/remote intent translation is tested as data, and the real
+process fixture exercises a generic zsh and the named pi rejection. The lab
+uses fixture providers for remote targets. C awaits Wren's deterministic editing
+reference (Oracle 14f02411); no C source edits are part of this handoff.
+
+Final acceptance evidence:
+- CI elapsed 2062.087 s (34.37 min), O1/debug assertions and memory custody.
+- Invariants: 7 passed, 0 failed; 3 named slow checks skipped. --slow and ignored manual tests deliberately not run.
+- Current: 1704 web/1704 native; 1600 required geometry cases measured, 0 unproven, 0 mismatches. Worst rect 0.5 px, baseline 0.046875 px.
+- 1370 cases within pixel policy, 334 advisory pixel reviews. Advisory key set exactly equals accepted A (no added or cleared cases), not merely an equal count.
+- Historical: 1664 web/native pairs, 859 pixel advisories, non-gating.
+- Exact no-menu replay test exit 0; all 892932 paint-operation bytes equal A/96709cd. SHA256 6d3f1766189b207fe77d67ce4946590e116b259b6ce5a675c66531c2cc9451aa.
+- Exact native --smoke --launcher --capture exit 0; idle 10.003 s, 0 frames/callbacks. Read the 1600x960 PNG: corrected executor captions, retained launcher over the blurred stage.
+- PNG target/l8-spawn/native/launcher-2e038c5.png SHA256 d3341935dfa5fde0e90c76ec60962f0bfb1f0bf5c16fc1c09b8d0cdb5fc314ac. Its bytes also equal the development capture.
+- Read launcher/root-cozy-dark web/native/diff: same composition and corrected caption; existing text-edge and panel-ring residue remains. Read the worst diagram triplet: own-engine body layout/height differs under the existing advisory policy; surrounding document chrome is unchanged. No policy changes.
+- Private CI target removed after all processes exited: 2491488525 logical bytes; clean detached worktree removed (exit 0). Accepted images, reports, binary and logs retained.
+
+Artifacts, all under /Users/feral/mydev/bboxy450-term-nyx/target/l8-spawn/:
+- parity-2e038c5/index.html (web/native/diff)
+- parity-2e038c5/report.json SHA256 2e2c1dcf0a3216441e988824f051e731c8c099dc1f7f496eb4088fd0990201ff
+- parity-2e038c5/native/layouts.json SHA256 30f171a9a26e6bae07b97d1e6ed00ed9f7ef0a125498caece4db554a9fbcdd16
+- parity-2e038c5/capture.json SHA256 c053ef8d7bd122c8bc1104e042b5cf51d4b0edbe16b698e268cb0067dc1b838a
+- paint-proof-2e038c5.log (full operation stream), paint-proof-paired.json (byte comparison)
+- ci-state-2e038c5.json (source, environment, owned process IDs, exact exits and cleanup)
+
+Ten worst triplets (changed pixels, advisory; each has web/native/diff at that relative key):
+- documents/with-a-diagram-compact-light.png — 10.565382%
+- documents/with-a-diagram-cozy-light.png — 10.565382%
+- documents/with-a-diagram-touch-light.png — 10.565382%
+- documents/with-a-diagram-comfortable-light.png — 10.565255%
+- documents/with-a-diagram-comfortable-dark.png — 10.524875%
+- documents/with-a-diagram-compact-dark.png — 10.524875%
+- documents/with-a-diagram-cozy-dark.png — 10.524875%
+- documents/with-a-diagram-touch-dark.png — 10.524875%
+- title-strip/focused-vs-unfocused-comfortable-dark.png — 8.881337%
+- title-strip/focused-vs-unfocused-touch-dark.png — 8.857929%
+
+Scoped current reports: {"components": {"within policy": 96}, "launcher": {"within policy": 112}, "picker": {"within policy": 64}}.
+All source commits are signed. The evidence commit changes records only; the exact tested product tip is 2e038c5.
