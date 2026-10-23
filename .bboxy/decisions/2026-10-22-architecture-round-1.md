@@ -372,6 +372,22 @@ briefs Executors from the specs, never from this note.
     path); a second encoder for injected text (two encoders drift);
     enabling the protocol without the invariant (a preference, not a gate).
 
+33. **Vendor the operator's `reactor!` macro as `bbt-yarn` (operator,
+    2026-10-23: "if yes just create this as bboxy450-crate, name it somehow
+    sexy").** Yes, because the two scale bugs of 2026-10-22 were arbitration
+    policy hidden in hand-written loops and this macro makes that policy a
+    compiler-checked declaration; starvation waivers are decision records in
+    code. Spec [[yarn]]: vendored unchanged from `Gonzih/kittens-old`
+    293e134 (the operator's own code; provenance in the README; license set
+    by the operator at vendoring, MIT OR Apache-2.0 proposed), first in the
+    layering order, adopted one loop at a time starting with the app IO task
+    where operator input must never starve behind deltas, with a no-raw-
+    select source scan per adopted file. Rejected: depending on the
+    archived crate (a retired identity's archive is not a supply chain);
+    adopting everywhere at once (logic's Worker loop is mid-churn and sync);
+    renaming the grammar (the KTR codes and agent guide are the value).
+    Names rejected: litter, ears, pounce, purr.
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
