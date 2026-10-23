@@ -1,0 +1,4685 @@
+{
+  "false_settle_predicates": [
+    "IO: every watched published Screen contains R5PAUSED",
+    "IO: phase reached SETTLE",
+    "UI: latest Native::poll observed phase SETTLE (other UI settle checks inactive)"
+  ],
+  "native_last_poll_at_timeout": {
+    "callbacks": 1023,
+    "completed_frame": 1023,
+    "frames": 1023,
+    "gpu_complete": false,
+    "has_paused_frame": false,
+    "observed": true,
+    "paused_frame": null,
+    "pending": false,
+    "phase": 2,
+    "stable_counts": false
+  },
+  "notes": [
+    "GUI checkpoints frozen at timeout; native flags are from its last poll and counters may be newer",
+    "Applied written means socket write_all completed, not server acceptance",
+    "logic current snapshot is a later parser observation, NOT GUI offered/published",
+    "ring query examines the final two captured sequences, up to four pages, not all historical output",
+    "null means unknown; a gap, failed read or truncated tail never proves marker absence",
+    "R5PAUSED is the existing marker; an initial pause is not distinguished from the final pause"
+  ],
+  "panes_at_timeout": {
+    "paused": false,
+    "ready": true
+  },
+  "phase_at_timeout": 2,
+  "reason": "r5-unsettled-after-producers-stopped",
+  "seats": [
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HFSGTC1Y4G51TR20DRF",
+            "view_generation": "01M5NB2HGYNA7CY4CKD2M0C6VW"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HFSGTC1Y4G51TR20DRF",
+            "view_generation": "01M5NB2HGYNA7CY4CKD2M0C6VW"
+          }
+        },
+        "applied_written": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HFSGTC1Y4G51TR20DRF",
+            "view_generation": "01M5NB2HGYNA7CY4CKD2M0C6VW"
+          }
+        },
+        "received": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HFSGTC1Y4G51TR20DRF",
+            "view_generation": "01M5NB2HGYNA7CY4CKD2M0C6VW"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HFSGTC1Y4G51TR20DRF",
+            "view_generation": "01M5NB2HGYNA7CY4CKD2M0C6VW"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 43.487292
+      },
+      "name": "r5-pty-0",
+      "producer_pid": 67754,
+      "seat": "01M5NB2HFSGTC1Y4G51TR20DRF",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1733,
+        "committed_sequence": 1733,
+        "error": null,
+        "examined_from": 1732,
+        "examined_to": 1733,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1733,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 564.1414580000001,
+            "error": null,
+            "finished_after_timeout_ms": 565.393833,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 554.8480420000001,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 565.394583,
+            "error": null,
+            "finished_after_timeout_ms": 566.954333,
+            "from": 1732,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 565.394458,
+            "to": 1733
+          }
+        ],
+        "sampled_after_timeout_ms": 566.9561669999999,
+        "tail_complete": true
+      },
+      "watched_index": 0
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 649,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HH1W7790E79AH6V1Q95",
+            "view_generation": "01M5NB2HJG417SE1D3WYGVR5JW"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 649,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HH1W7790E79AH6V1Q95",
+            "view_generation": "01M5NB2HJG417SE1D3WYGVR5JW"
+          }
+        },
+        "applied_written": {
+          "sequence": 649,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HH1W7790E79AH6V1Q95",
+            "view_generation": "01M5NB2HJG417SE1D3WYGVR5JW"
+          }
+        },
+        "received": {
+          "sequence": 649,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HH1W7790E79AH6V1Q95",
+            "view_generation": "01M5NB2HJG417SE1D3WYGVR5JW"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 649,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HH1W7790E79AH6V1Q95",
+            "view_generation": "01M5NB2HJG417SE1D3WYGVR5JW"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 169.02183300000002
+      },
+      "name": "r5-pty-1",
+      "producer_pid": 67756,
+      "seat": "01M5NB2HH1W7790E79AH6V1Q95",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1735,
+        "committed_sequence": 1735,
+        "error": null,
+        "examined_from": 1734,
+        "examined_to": 1735,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1735,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 566.9572499999999,
+            "error": null,
+            "finished_after_timeout_ms": 568.833208,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 566.957208,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 568.834167,
+            "error": null,
+            "finished_after_timeout_ms": 571.051667,
+            "from": 1734,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 568.834,
+            "to": 1735
+          }
+        ],
+        "sampled_after_timeout_ms": 571.057583,
+        "tail_complete": true
+      },
+      "watched_index": 1
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 628,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HJKK5JRAFDQ0W962F5W",
+            "view_generation": "01M5NB2HKSNNBM7C0BB042YR2B"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 628,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HJKK5JRAFDQ0W962F5W",
+            "view_generation": "01M5NB2HKSNNBM7C0BB042YR2B"
+          }
+        },
+        "applied_written": {
+          "sequence": 628,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HJKK5JRAFDQ0W962F5W",
+            "view_generation": "01M5NB2HKSNNBM7C0BB042YR2B"
+          }
+        },
+        "received": {
+          "sequence": 628,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HJKK5JRAFDQ0W962F5W",
+            "view_generation": "01M5NB2HKSNNBM7C0BB042YR2B"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 628,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HJKK5JRAFDQ0W962F5W",
+            "view_generation": "01M5NB2HKSNNBM7C0BB042YR2B"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 266.072792
+      },
+      "name": "r5-pty-2",
+      "producer_pid": 67758,
+      "seat": "01M5NB2HJKK5JRAFDQ0W962F5W",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1740,
+        "committed_sequence": 1740,
+        "error": null,
+        "examined_from": 1739,
+        "examined_to": 1740,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1740,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 571.0600000000001,
+            "error": null,
+            "finished_after_timeout_ms": 572.3545829999999,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 571.059917,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 572.3551249999999,
+            "error": null,
+            "finished_after_timeout_ms": 573.365208,
+            "from": 1739,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 572.355042,
+            "to": 1740
+          }
+        ],
+        "sampled_after_timeout_ms": 573.367,
+        "tail_complete": true
+      },
+      "watched_index": 2
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HKVR0T23TS1JB0KWX43",
+            "view_generation": "01M5NB2HN7PV4R517XZYF50EQP"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HKVR0T23TS1JB0KWX43",
+            "view_generation": "01M5NB2HN7PV4R517XZYF50EQP"
+          }
+        },
+        "applied_written": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HKVR0T23TS1JB0KWX43",
+            "view_generation": "01M5NB2HN7PV4R517XZYF50EQP"
+          }
+        },
+        "received": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HKVR0T23TS1JB0KWX43",
+            "view_generation": "01M5NB2HN7PV4R517XZYF50EQP"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HKVR0T23TS1JB0KWX43",
+            "view_generation": "01M5NB2HN7PV4R517XZYF50EQP"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 316.301375
+      },
+      "name": "r5-pty-3",
+      "producer_pid": 67761,
+      "seat": "01M5NB2HKVR0T23TS1JB0KWX43",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1741,
+        "committed_sequence": 1741,
+        "error": null,
+        "examined_from": 1740,
+        "examined_to": 1741,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1741,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 573.36775,
+            "error": null,
+            "finished_after_timeout_ms": 574.328792,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 573.367708,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 574.32925,
+            "error": null,
+            "finished_after_timeout_ms": 575.401958,
+            "from": 1740,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 574.329167,
+            "to": 1741
+          }
+        ],
+        "sampled_after_timeout_ms": 575.4033750000001,
+        "tail_complete": true
+      },
+      "watched_index": 3
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 634,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HNA32DYDSHPSF94V00Q",
+            "view_generation": "01M5NB2HPQ7V4CFDHDREDPB5XY"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 634,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HNA32DYDSHPSF94V00Q",
+            "view_generation": "01M5NB2HPQ7V4CFDHDREDPB5XY"
+          }
+        },
+        "applied_written": {
+          "sequence": 634,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HNA32DYDSHPSF94V00Q",
+            "view_generation": "01M5NB2HPQ7V4CFDHDREDPB5XY"
+          }
+        },
+        "received": {
+          "sequence": 634,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HNA32DYDSHPSF94V00Q",
+            "view_generation": "01M5NB2HPQ7V4CFDHDREDPB5XY"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 634,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HNA32DYDSHPSF94V00Q",
+            "view_generation": "01M5NB2HPQ7V4CFDHDREDPB5XY"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 324.092333
+      },
+      "name": "r5-pty-4",
+      "producer_pid": 67765,
+      "seat": "01M5NB2HNA32DYDSHPSF94V00Q",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1718,
+        "committed_sequence": 1718,
+        "error": null,
+        "examined_from": 1717,
+        "examined_to": 1718,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1718,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 575.403833,
+            "error": null,
+            "finished_after_timeout_ms": 576.487292,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 575.4037920000001,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 576.487792,
+            "error": null,
+            "finished_after_timeout_ms": 577.5359169999999,
+            "from": 1717,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 576.48775,
+            "to": 1718
+          }
+        ],
+        "sampled_after_timeout_ms": 577.537333,
+        "tail_complete": true
+      },
+      "watched_index": 4
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 647,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HPSMTYF1YF36MTHPHRC",
+            "view_generation": "01M5NB2HQRZ794SCFCKBDTVNR6"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 647,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HPSMTYF1YF36MTHPHRC",
+            "view_generation": "01M5NB2HQRZ794SCFCKBDTVNR6"
+          }
+        },
+        "applied_written": {
+          "sequence": 647,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HPSMTYF1YF36MTHPHRC",
+            "view_generation": "01M5NB2HQRZ794SCFCKBDTVNR6"
+          }
+        },
+        "received": {
+          "sequence": 647,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HPSMTYF1YF36MTHPHRC",
+            "view_generation": "01M5NB2HQRZ794SCFCKBDTVNR6"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 656,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HPSMTYF1YF36MTHPHRC",
+            "view_generation": "01M5NB2HQRZ794SCFCKBDTVNR6"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 337.69125
+      },
+      "name": "r5-pty-5",
+      "producer_pid": 67767,
+      "seat": "01M5NB2HPSMTYF1YF36MTHPHRC",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1729,
+        "committed_sequence": 1729,
+        "error": null,
+        "examined_from": 1728,
+        "examined_to": 1729,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1729,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 577.537917,
+            "error": null,
+            "finished_after_timeout_ms": 578.524333,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 577.537875,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 578.524667,
+            "error": null,
+            "finished_after_timeout_ms": 579.60375,
+            "from": 1728,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 578.524625,
+            "to": 1729
+          }
+        ],
+        "sampled_after_timeout_ms": 579.6045829999999,
+        "tail_complete": true
+      },
+      "watched_index": 5
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HQVR2S51EXM13H3MW56",
+            "view_generation": "01M5NB2HRN3NRPBMAH51YQ5E02"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HQVR2S51EXM13H3MW56",
+            "view_generation": "01M5NB2HRN3NRPBMAH51YQ5E02"
+          }
+        },
+        "applied_written": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HQVR2S51EXM13H3MW56",
+            "view_generation": "01M5NB2HRN3NRPBMAH51YQ5E02"
+          }
+        },
+        "received": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HQVR2S51EXM13H3MW56",
+            "view_generation": "01M5NB2HRN3NRPBMAH51YQ5E02"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HQVR2S51EXM13H3MW56",
+            "view_generation": "01M5NB2HRN3NRPBMAH51YQ5E02"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 355.187458
+      },
+      "name": "r5-pty-6",
+      "producer_pid": 67769,
+      "seat": "01M5NB2HQVR2S51EXM13H3MW56",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1723,
+        "committed_sequence": 1723,
+        "error": null,
+        "examined_from": 1722,
+        "examined_to": 1723,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1723,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 579.6050419999999,
+            "error": null,
+            "finished_after_timeout_ms": 580.8987920000001,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 579.605,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 580.899375,
+            "error": null,
+            "finished_after_timeout_ms": 581.965417,
+            "from": 1722,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 580.8992079999999,
+            "to": 1723
+          }
+        ],
+        "sampled_after_timeout_ms": 581.969458,
+        "tail_complete": true
+      },
+      "watched_index": 6
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 625,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HRRZMG5DWN2XPJBNV8P",
+            "view_generation": "01M5NB2HSWBCM12PWXEFS6B8EQ"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 625,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HRRZMG5DWN2XPJBNV8P",
+            "view_generation": "01M5NB2HSWBCM12PWXEFS6B8EQ"
+          }
+        },
+        "applied_written": {
+          "sequence": 625,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HRRZMG5DWN2XPJBNV8P",
+            "view_generation": "01M5NB2HSWBCM12PWXEFS6B8EQ"
+          }
+        },
+        "received": {
+          "sequence": 625,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HRRZMG5DWN2XPJBNV8P",
+            "view_generation": "01M5NB2HSWBCM12PWXEFS6B8EQ"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 639,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HRRZMG5DWN2XPJBNV8P",
+            "view_generation": "01M5NB2HSWBCM12PWXEFS6B8EQ"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 360.768458
+      },
+      "name": "r5-pty-7",
+      "producer_pid": 67771,
+      "seat": "01M5NB2HRRZMG5DWN2XPJBNV8P",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1740,
+        "committed_sequence": 1740,
+        "error": null,
+        "examined_from": 1739,
+        "examined_to": 1740,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1740,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 581.971,
+            "error": null,
+            "finished_after_timeout_ms": 583.226417,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 581.970958,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 583.226833,
+            "error": null,
+            "finished_after_timeout_ms": 584.332792,
+            "from": 1739,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 583.226708,
+            "to": 1740
+          }
+        ],
+        "sampled_after_timeout_ms": 584.3355,
+        "tail_complete": true
+      },
+      "watched_index": 7
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 653,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HSY94P59FX5PTCPVN6M",
+            "view_generation": "01M5NB2HTSAYHR657WXD6W8AFG"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 653,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HSY94P59FX5PTCPVN6M",
+            "view_generation": "01M5NB2HTSAYHR657WXD6W8AFG"
+          }
+        },
+        "applied_written": {
+          "sequence": 653,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HSY94P59FX5PTCPVN6M",
+            "view_generation": "01M5NB2HTSAYHR657WXD6W8AFG"
+          }
+        },
+        "received": {
+          "sequence": 653,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HSY94P59FX5PTCPVN6M",
+            "view_generation": "01M5NB2HTSAYHR657WXD6W8AFG"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 653,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HSY94P59FX5PTCPVN6M",
+            "view_generation": "01M5NB2HTSAYHR657WXD6W8AFG"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 363.18845799999997
+      },
+      "name": "r5-pty-8",
+      "producer_pid": 67774,
+      "seat": "01M5NB2HSY94P59FX5PTCPVN6M",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1721,
+        "committed_sequence": 1721,
+        "error": null,
+        "examined_from": 1720,
+        "examined_to": 1721,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1721,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 598.2721250000001,
+            "error": null,
+            "finished_after_timeout_ms": 599.448583,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 584.3365,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 599.449583,
+            "error": null,
+            "finished_after_timeout_ms": 600.6185,
+            "from": 1720,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 599.4495,
+            "to": 1721
+          }
+        ],
+        "sampled_after_timeout_ms": 600.620417,
+        "tail_complete": true
+      },
+      "watched_index": 8
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HTV6X4KBJE2TPAZK9H0",
+            "view_generation": "01M5NB2HVQBJYG3G6HKQSED9VN"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HTV6X4KBJE2TPAZK9H0",
+            "view_generation": "01M5NB2HVQBJYG3G6HKQSED9VN"
+          }
+        },
+        "applied_written": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HTV6X4KBJE2TPAZK9H0",
+            "view_generation": "01M5NB2HVQBJYG3G6HKQSED9VN"
+          }
+        },
+        "received": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HTV6X4KBJE2TPAZK9H0",
+            "view_generation": "01M5NB2HVQBJYG3G6HKQSED9VN"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HTV6X4KBJE2TPAZK9H0",
+            "view_generation": "01M5NB2HVQBJYG3G6HKQSED9VN"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 387.306875
+      },
+      "name": "r5-pty-9",
+      "producer_pid": 67776,
+      "seat": "01M5NB2HTV6X4KBJE2TPAZK9H0",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1735,
+        "committed_sequence": 1734,
+        "error": null,
+        "examined_from": 1734,
+        "examined_to": 1735,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1735,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 600.621958,
+            "error": null,
+            "finished_after_timeout_ms": 601.759042,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 600.621917,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 601.759583,
+            "error": null,
+            "finished_after_timeout_ms": 602.716,
+            "from": 1734,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 601.759542,
+            "to": 1735
+          }
+        ],
+        "sampled_after_timeout_ms": 602.716833,
+        "tail_complete": true
+      },
+      "watched_index": 9
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 629,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HVSWYVVSVKPDB8GPE68",
+            "view_generation": "01M5NB2HWM72JWEHJ7A2V5KTF4"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 629,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HVSWYVVSVKPDB8GPE68",
+            "view_generation": "01M5NB2HWM72JWEHJ7A2V5KTF4"
+          }
+        },
+        "applied_written": {
+          "sequence": 629,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HVSWYVVSVKPDB8GPE68",
+            "view_generation": "01M5NB2HWM72JWEHJ7A2V5KTF4"
+          }
+        },
+        "received": {
+          "sequence": 629,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HVSWYVVSVKPDB8GPE68",
+            "view_generation": "01M5NB2HWM72JWEHJ7A2V5KTF4"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 642,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HVSWYVVSVKPDB8GPE68",
+            "view_generation": "01M5NB2HWM72JWEHJ7A2V5KTF4"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 391.80616699999996
+      },
+      "name": "r5-pty-10",
+      "producer_pid": 67778,
+      "seat": "01M5NB2HVSWYVVSVKPDB8GPE68",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1722,
+        "committed_sequence": 1722,
+        "error": null,
+        "examined_from": 1721,
+        "examined_to": 1722,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1722,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 602.71725,
+            "error": null,
+            "finished_after_timeout_ms": 603.663083,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 602.7172079999999,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 603.663542,
+            "error": null,
+            "finished_after_timeout_ms": 604.889458,
+            "from": 1721,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 603.6635,
+            "to": 1722
+          }
+        ],
+        "sampled_after_timeout_ms": 604.89075,
+        "tail_complete": true
+      },
+      "watched_index": 10
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 644,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HWQGHXF5Q7SWRQAJQYX",
+            "view_generation": "01M5NB2HXYYNF1GJFAKSYHERSJ"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 644,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HWQGHXF5Q7SWRQAJQYX",
+            "view_generation": "01M5NB2HXYYNF1GJFAKSYHERSJ"
+          }
+        },
+        "applied_written": {
+          "sequence": 644,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HWQGHXF5Q7SWRQAJQYX",
+            "view_generation": "01M5NB2HXYYNF1GJFAKSYHERSJ"
+          }
+        },
+        "received": {
+          "sequence": 644,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HWQGHXF5Q7SWRQAJQYX",
+            "view_generation": "01M5NB2HXYYNF1GJFAKSYHERSJ"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 644,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HWQGHXF5Q7SWRQAJQYX",
+            "view_generation": "01M5NB2HXYYNF1GJFAKSYHERSJ"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 394.620458
+      },
+      "name": "r5-pty-11",
+      "producer_pid": 67780,
+      "seat": "01M5NB2HWQGHXF5Q7SWRQAJQYX",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1735,
+        "committed_sequence": 1735,
+        "error": null,
+        "examined_from": 1734,
+        "examined_to": 1735,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1735,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 604.891292,
+            "error": null,
+            "finished_after_timeout_ms": 605.8659170000001,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 604.89125,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 605.866333,
+            "error": null,
+            "finished_after_timeout_ms": 607.0160420000001,
+            "from": 1734,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 605.86625,
+            "to": 1735
+          }
+        ],
+        "sampled_after_timeout_ms": 607.016917,
+        "tail_complete": true
+      },
+      "watched_index": 11
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 638,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HY1JDHMR3P10YMPX608",
+            "view_generation": "01M5NB2HYWCNEZ74ERWD82GH4S"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 638,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HY1JDHMR3P10YMPX608",
+            "view_generation": "01M5NB2HYWCNEZ74ERWD82GH4S"
+          }
+        },
+        "applied_written": {
+          "sequence": 638,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HY1JDHMR3P10YMPX608",
+            "view_generation": "01M5NB2HYWCNEZ74ERWD82GH4S"
+          }
+        },
+        "received": {
+          "sequence": 638,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HY1JDHMR3P10YMPX608",
+            "view_generation": "01M5NB2HYWCNEZ74ERWD82GH4S"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 638,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HY1JDHMR3P10YMPX608",
+            "view_generation": "01M5NB2HYWCNEZ74ERWD82GH4S"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 399.59195800000003
+      },
+      "name": "r5-pty-12",
+      "producer_pid": 67782,
+      "seat": "01M5NB2HY1JDHMR3P10YMPX608",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1710,
+        "committed_sequence": 1710,
+        "error": null,
+        "examined_from": 1709,
+        "examined_to": 1710,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1710,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 607.017292,
+            "error": null,
+            "finished_after_timeout_ms": 608.052833,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 607.01725,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 608.0532499999999,
+            "error": null,
+            "finished_after_timeout_ms": 609.115583,
+            "from": 1709,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 608.0532079999999,
+            "to": 1710
+          }
+        ],
+        "sampled_after_timeout_ms": 609.1410000000001,
+        "tail_complete": true
+      },
+      "watched_index": 12
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 647,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HYY03HWXYRGJ4F86CKC",
+            "view_generation": "01M5NB2HZT2YWW2DRC55EMS6CV"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 647,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HYY03HWXYRGJ4F86CKC",
+            "view_generation": "01M5NB2HZT2YWW2DRC55EMS6CV"
+          }
+        },
+        "applied_written": {
+          "sequence": 647,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HYY03HWXYRGJ4F86CKC",
+            "view_generation": "01M5NB2HZT2YWW2DRC55EMS6CV"
+          }
+        },
+        "received": {
+          "sequence": 647,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HYY03HWXYRGJ4F86CKC",
+            "view_generation": "01M5NB2HZT2YWW2DRC55EMS6CV"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 647,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HYY03HWXYRGJ4F86CKC",
+            "view_generation": "01M5NB2HZT2YWW2DRC55EMS6CV"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 409.375333
+      },
+      "name": "r5-pty-13",
+      "producer_pid": 67784,
+      "seat": "01M5NB2HYY03HWXYRGJ4F86CKC",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1732,
+        "committed_sequence": 1732,
+        "error": null,
+        "examined_from": 1731,
+        "examined_to": 1732,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1732,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 626.7072919999999,
+            "error": null,
+            "finished_after_timeout_ms": 627.410167,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 609.1419999999999,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 627.411125,
+            "error": null,
+            "finished_after_timeout_ms": 628.436833,
+            "from": 1731,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 627.4110000000001,
+            "to": 1732
+          }
+        ],
+        "sampled_after_timeout_ms": 628.4387919999999,
+        "tail_complete": true
+      },
+      "watched_index": 13
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 632,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HZWHNFR647NDMPEJDPP",
+            "view_generation": "01M5NB2J0QYGDXE4EN36AXZXYK"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 632,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HZWHNFR647NDMPEJDPP",
+            "view_generation": "01M5NB2J0QYGDXE4EN36AXZXYK"
+          }
+        },
+        "applied_written": {
+          "sequence": 632,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HZWHNFR647NDMPEJDPP",
+            "view_generation": "01M5NB2J0QYGDXE4EN36AXZXYK"
+          }
+        },
+        "received": {
+          "sequence": 632,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HZWHNFR647NDMPEJDPP",
+            "view_generation": "01M5NB2J0QYGDXE4EN36AXZXYK"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 632,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2HZWHNFR647NDMPEJDPP",
+            "view_generation": "01M5NB2J0QYGDXE4EN36AXZXYK"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 413.103792
+      },
+      "name": "r5-pty-14",
+      "producer_pid": 67786,
+      "seat": "01M5NB2HZWHNFR647NDMPEJDPP",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1738,
+        "committed_sequence": 1738,
+        "error": null,
+        "examined_from": 1737,
+        "examined_to": 1738,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1738,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 628.439583,
+            "error": null,
+            "finished_after_timeout_ms": 629.4847500000001,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 628.439542,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 629.48525,
+            "error": null,
+            "finished_after_timeout_ms": 630.538583,
+            "from": 1737,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 629.48525,
+            "to": 1738
+          }
+        ],
+        "sampled_after_timeout_ms": 630.5404580000001,
+        "tail_complete": true
+      },
+      "watched_index": 14
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 661,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J0T2C1XANDYSJ45HF2H",
+            "view_generation": "01M5NB2J20ZH79EQBJZBA4VFEQ"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 661,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J0T2C1XANDYSJ45HF2H",
+            "view_generation": "01M5NB2J20ZH79EQBJZBA4VFEQ"
+          }
+        },
+        "applied_written": {
+          "sequence": 661,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J0T2C1XANDYSJ45HF2H",
+            "view_generation": "01M5NB2J20ZH79EQBJZBA4VFEQ"
+          }
+        },
+        "received": {
+          "sequence": 661,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J0T2C1XANDYSJ45HF2H",
+            "view_generation": "01M5NB2J20ZH79EQBJZBA4VFEQ"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 661,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J0T2C1XANDYSJ45HF2H",
+            "view_generation": "01M5NB2J20ZH79EQBJZBA4VFEQ"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 418.756125
+      },
+      "name": "r5-pty-15",
+      "producer_pid": 67788,
+      "seat": "01M5NB2J0T2C1XANDYSJ45HF2H",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1732,
+        "committed_sequence": 1732,
+        "error": null,
+        "examined_from": 1731,
+        "examined_to": 1732,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1732,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 630.541292,
+            "error": null,
+            "finished_after_timeout_ms": 631.556167,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 630.541292,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 631.5565829999999,
+            "error": null,
+            "finished_after_timeout_ms": 632.601917,
+            "from": 1731,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 631.556542,
+            "to": 1732
+          }
+        ],
+        "sampled_after_timeout_ms": 632.603083,
+        "tail_complete": true
+      },
+      "watched_index": 15
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J230ATZJV8GP1XBCHDS",
+            "view_generation": "01M5NB2J35T5G4CXN95WC11MM6"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J230ATZJV8GP1XBCHDS",
+            "view_generation": "01M5NB2J35T5G4CXN95WC11MM6"
+          }
+        },
+        "applied_written": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J230ATZJV8GP1XBCHDS",
+            "view_generation": "01M5NB2J35T5G4CXN95WC11MM6"
+          }
+        },
+        "received": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J230ATZJV8GP1XBCHDS",
+            "view_generation": "01M5NB2J35T5G4CXN95WC11MM6"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 646,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J230ATZJV8GP1XBCHDS",
+            "view_generation": "01M5NB2J35T5G4CXN95WC11MM6"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 423.745167
+      },
+      "name": "r5-pty-16",
+      "producer_pid": 67790,
+      "seat": "01M5NB2J230ATZJV8GP1XBCHDS",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1730,
+        "committed_sequence": 1729,
+        "error": null,
+        "examined_from": 1729,
+        "examined_to": 1730,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1730,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 632.604,
+            "error": null,
+            "finished_after_timeout_ms": 633.7280830000001,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 632.603958,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 633.728708,
+            "error": null,
+            "finished_after_timeout_ms": 634.884417,
+            "from": 1729,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 633.728667,
+            "to": 1730
+          }
+        ],
+        "sampled_after_timeout_ms": 634.886,
+        "tail_complete": true
+      },
+      "watched_index": 16
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 630,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J37FW8WFTBH2ZZM9FE1",
+            "view_generation": "01M5NB2J47E8V4VPB7NDWN6E4A"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 630,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J37FW8WFTBH2ZZM9FE1",
+            "view_generation": "01M5NB2J47E8V4VPB7NDWN6E4A"
+          }
+        },
+        "applied_written": {
+          "sequence": 630,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J37FW8WFTBH2ZZM9FE1",
+            "view_generation": "01M5NB2J47E8V4VPB7NDWN6E4A"
+          }
+        },
+        "received": {
+          "sequence": 630,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J37FW8WFTBH2ZZM9FE1",
+            "view_generation": "01M5NB2J47E8V4VPB7NDWN6E4A"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 630,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J37FW8WFTBH2ZZM9FE1",
+            "view_generation": "01M5NB2J47E8V4VPB7NDWN6E4A"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 424.132583
+      },
+      "name": "r5-pty-17",
+      "producer_pid": 67792,
+      "seat": "01M5NB2J37FW8WFTBH2ZZM9FE1",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1732,
+        "committed_sequence": 1732,
+        "error": null,
+        "examined_from": 1731,
+        "examined_to": 1732,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1732,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 634.88675,
+            "error": null,
+            "finished_after_timeout_ms": 636.002833,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 634.886708,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 636.003333,
+            "error": null,
+            "finished_after_timeout_ms": 637.0577079999999,
+            "from": 1731,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 636.0032920000001,
+            "to": 1732
+          }
+        ],
+        "sampled_after_timeout_ms": 637.059208,
+        "tail_complete": true
+      },
+      "watched_index": 17
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 590,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J49PNH950QVSM02E84C",
+            "view_generation": "01M5NB2J5YMDKN5QZ9BAJE6EBM"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 590,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J49PNH950QVSM02E84C",
+            "view_generation": "01M5NB2J5YMDKN5QZ9BAJE6EBM"
+          }
+        },
+        "applied_written": {
+          "sequence": 590,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J49PNH950QVSM02E84C",
+            "view_generation": "01M5NB2J5YMDKN5QZ9BAJE6EBM"
+          }
+        },
+        "received": {
+          "sequence": 590,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J49PNH950QVSM02E84C",
+            "view_generation": "01M5NB2J5YMDKN5QZ9BAJE6EBM"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 590,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J49PNH950QVSM02E84C",
+            "view_generation": "01M5NB2J5YMDKN5QZ9BAJE6EBM"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 431.51966699999997
+      },
+      "name": "r5-pty-18",
+      "producer_pid": 67794,
+      "seat": "01M5NB2J49PNH950QVSM02E84C",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1732,
+        "committed_sequence": 1732,
+        "error": null,
+        "examined_from": 1731,
+        "examined_to": 1732,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1732,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 637.060167,
+            "error": null,
+            "finished_after_timeout_ms": 638.2205829999999,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 637.060125,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 638.221417,
+            "error": null,
+            "finished_after_timeout_ms": 639.306333,
+            "from": 1731,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 638.221333,
+            "to": 1732
+          }
+        ],
+        "sampled_after_timeout_ms": 639.307625,
+        "tail_complete": true
+      },
+      "watched_index": 18
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J60WB0R05VVE2WWZSZF",
+            "view_generation": "01M5NB2J7562P3HHHAH3NJA2PS"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J60WB0R05VVE2WWZSZF",
+            "view_generation": "01M5NB2J7562P3HHHAH3NJA2PS"
+          }
+        },
+        "applied_written": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J60WB0R05VVE2WWZSZF",
+            "view_generation": "01M5NB2J7562P3HHHAH3NJA2PS"
+          }
+        },
+        "received": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J60WB0R05VVE2WWZSZF",
+            "view_generation": "01M5NB2J7562P3HHHAH3NJA2PS"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 658,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J60WB0R05VVE2WWZSZF",
+            "view_generation": "01M5NB2J7562P3HHHAH3NJA2PS"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 433.99516700000004
+      },
+      "name": "r5-pty-19",
+      "producer_pid": 67796,
+      "seat": "01M5NB2J60WB0R05VVE2WWZSZF",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1721,
+        "committed_sequence": 1721,
+        "error": null,
+        "examined_from": 1720,
+        "examined_to": 1721,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1721,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 639.3085,
+            "error": null,
+            "finished_after_timeout_ms": 640.323875,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 639.308458,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 640.3241670000001,
+            "error": null,
+            "finished_after_timeout_ms": 641.2967080000001,
+            "from": 1720,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 640.324125,
+            "to": 1721
+          }
+        ],
+        "sampled_after_timeout_ms": 641.297875,
+        "tail_complete": true
+      },
+      "watched_index": 19
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J7806D1W7B1NKFDZXR5",
+            "view_generation": "01M5NB2J8E5Y4WYZDM0T28KGYJ"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J7806D1W7B1NKFDZXR5",
+            "view_generation": "01M5NB2J8E5Y4WYZDM0T28KGYJ"
+          }
+        },
+        "applied_written": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J7806D1W7B1NKFDZXR5",
+            "view_generation": "01M5NB2J8E5Y4WYZDM0T28KGYJ"
+          }
+        },
+        "received": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J7806D1W7B1NKFDZXR5",
+            "view_generation": "01M5NB2J8E5Y4WYZDM0T28KGYJ"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J7806D1W7B1NKFDZXR5",
+            "view_generation": "01M5NB2J8E5Y4WYZDM0T28KGYJ"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 437.34475
+      },
+      "name": "r5-pty-20",
+      "producer_pid": 67798,
+      "seat": "01M5NB2J7806D1W7B1NKFDZXR5",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1711,
+        "committed_sequence": 1711,
+        "error": null,
+        "examined_from": 1710,
+        "examined_to": 1711,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1711,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 641.298375,
+            "error": null,
+            "finished_after_timeout_ms": 642.3160829999999,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 641.2983330000001,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 642.316583,
+            "error": null,
+            "finished_after_timeout_ms": 644.080417,
+            "from": 1710,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 642.316542,
+            "to": 1711
+          }
+        ],
+        "sampled_after_timeout_ms": 644.082583,
+        "tail_complete": true
+      },
+      "watched_index": 20
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J8G97EGNJ8N0AZPQTBN",
+            "view_generation": "01M5NB2J9VNZ1PK1BR2Q79WK40"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J8G97EGNJ8N0AZPQTBN",
+            "view_generation": "01M5NB2J9VNZ1PK1BR2Q79WK40"
+          }
+        },
+        "applied_written": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J8G97EGNJ8N0AZPQTBN",
+            "view_generation": "01M5NB2J9VNZ1PK1BR2Q79WK40"
+          }
+        },
+        "received": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J8G97EGNJ8N0AZPQTBN",
+            "view_generation": "01M5NB2J9VNZ1PK1BR2Q79WK40"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2J8G97EGNJ8N0AZPQTBN",
+            "view_generation": "01M5NB2J9VNZ1PK1BR2Q79WK40"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 445.93283299999996
+      },
+      "name": "r5-pty-21",
+      "producer_pid": 67800,
+      "seat": "01M5NB2J8G97EGNJ8N0AZPQTBN",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1723,
+        "committed_sequence": 1722,
+        "error": null,
+        "examined_from": 1722,
+        "examined_to": 1723,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1723,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 644.083458,
+            "error": null,
+            "finished_after_timeout_ms": 646.013542,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 644.083417,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 646.0142079999999,
+            "error": null,
+            "finished_after_timeout_ms": 648.039458,
+            "from": 1722,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 646.013958,
+            "to": 1723
+          }
+        ],
+        "sampled_after_timeout_ms": 648.044958,
+        "tail_complete": true
+      },
+      "watched_index": 21
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JA0AKEK72K3Z22GGB9M",
+            "view_generation": "01M5NB2JB05ZAASR7903GWE05W"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JA0AKEK72K3Z22GGB9M",
+            "view_generation": "01M5NB2JB05ZAASR7903GWE05W"
+          }
+        },
+        "applied_written": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JA0AKEK72K3Z22GGB9M",
+            "view_generation": "01M5NB2JB05ZAASR7903GWE05W"
+          }
+        },
+        "received": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JA0AKEK72K3Z22GGB9M",
+            "view_generation": "01M5NB2JB05ZAASR7903GWE05W"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JA0AKEK72K3Z22GGB9M",
+            "view_generation": "01M5NB2JB05ZAASR7903GWE05W"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 447.369542
+      },
+      "name": "r5-pty-22",
+      "producer_pid": 67803,
+      "seat": "01M5NB2JA0AKEK72K3Z22GGB9M",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1708,
+        "committed_sequence": 1708,
+        "error": null,
+        "examined_from": 1707,
+        "examined_to": 1708,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1708,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 648.046833,
+            "error": null,
+            "finished_after_timeout_ms": 649.671625,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 648.04675,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 649.67625,
+            "error": null,
+            "finished_after_timeout_ms": 651.965333,
+            "from": 1707,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 649.674333,
+            "to": 1708
+          }
+        ],
+        "sampled_after_timeout_ms": 651.968125,
+        "tail_complete": true
+      },
+      "watched_index": 22
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 607,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JB3Q8P5F9RDY75F8360",
+            "view_generation": "01M5NB2JC4ABWRDESHR6EJ62SE"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 607,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JB3Q8P5F9RDY75F8360",
+            "view_generation": "01M5NB2JC4ABWRDESHR6EJ62SE"
+          }
+        },
+        "applied_written": {
+          "sequence": 607,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JB3Q8P5F9RDY75F8360",
+            "view_generation": "01M5NB2JC4ABWRDESHR6EJ62SE"
+          }
+        },
+        "received": {
+          "sequence": 607,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JB3Q8P5F9RDY75F8360",
+            "view_generation": "01M5NB2JC4ABWRDESHR6EJ62SE"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 607,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JB3Q8P5F9RDY75F8360",
+            "view_generation": "01M5NB2JC4ABWRDESHR6EJ62SE"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 448.96445800000004
+      },
+      "name": "r5-pty-23",
+      "producer_pid": 67805,
+      "seat": "01M5NB2JB3Q8P5F9RDY75F8360",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1726,
+        "committed_sequence": 1726,
+        "error": null,
+        "examined_from": 1725,
+        "examined_to": 1726,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1726,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 651.969542,
+            "error": null,
+            "finished_after_timeout_ms": 653.112958,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 651.9694999999999,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 653.113792,
+            "error": null,
+            "finished_after_timeout_ms": 654.317542,
+            "from": 1725,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 653.1137500000001,
+            "to": 1726
+          }
+        ],
+        "sampled_after_timeout_ms": 654.319208,
+        "tail_complete": true
+      },
+      "watched_index": 23
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JC6RKERAWQDTAM0QVDD",
+            "view_generation": "01M5NB2JDGKP8RQ9JZWZT0CSBW"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JC6RKERAWQDTAM0QVDD",
+            "view_generation": "01M5NB2JDGKP8RQ9JZWZT0CSBW"
+          }
+        },
+        "applied_written": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JC6RKERAWQDTAM0QVDD",
+            "view_generation": "01M5NB2JDGKP8RQ9JZWZT0CSBW"
+          }
+        },
+        "received": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JC6RKERAWQDTAM0QVDD",
+            "view_generation": "01M5NB2JDGKP8RQ9JZWZT0CSBW"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 645,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JC6RKERAWQDTAM0QVDD",
+            "view_generation": "01M5NB2JDGKP8RQ9JZWZT0CSBW"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 451.13575000000003
+      },
+      "name": "r5-pty-24",
+      "producer_pid": 67807,
+      "seat": "01M5NB2JC6RKERAWQDTAM0QVDD",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1727,
+        "committed_sequence": 1727,
+        "error": null,
+        "examined_from": 1726,
+        "examined_to": 1727,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1727,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 654.320083,
+            "error": null,
+            "finished_after_timeout_ms": 655.348625,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 654.3200420000001,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 655.3490419999999,
+            "error": null,
+            "finished_after_timeout_ms": 656.4387499999999,
+            "from": 1726,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 655.3489999999999,
+            "to": 1727
+          }
+        ],
+        "sampled_after_timeout_ms": 656.439875,
+        "tail_complete": true
+      },
+      "watched_index": 24
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 589,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JDM4RH47DSYR631EWAS",
+            "view_generation": "01M5NB2JEJ0VWPQ89NJ71DRFTM"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 589,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JDM4RH47DSYR631EWAS",
+            "view_generation": "01M5NB2JEJ0VWPQ89NJ71DRFTM"
+          }
+        },
+        "applied_written": {
+          "sequence": 589,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JDM4RH47DSYR631EWAS",
+            "view_generation": "01M5NB2JEJ0VWPQ89NJ71DRFTM"
+          }
+        },
+        "received": {
+          "sequence": 589,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JDM4RH47DSYR631EWAS",
+            "view_generation": "01M5NB2JEJ0VWPQ89NJ71DRFTM"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 589,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JDM4RH47DSYR631EWAS",
+            "view_generation": "01M5NB2JEJ0VWPQ89NJ71DRFTM"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 452.599625
+      },
+      "name": "r5-pty-25",
+      "producer_pid": 67820,
+      "seat": "01M5NB2JDM4RH47DSYR631EWAS",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1722,
+        "committed_sequence": 1722,
+        "error": null,
+        "examined_from": 1721,
+        "examined_to": 1722,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1722,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 656.440292,
+            "error": null,
+            "finished_after_timeout_ms": 657.40775,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 656.44025,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 657.407958,
+            "error": null,
+            "finished_after_timeout_ms": 658.370625,
+            "from": 1721,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 657.407917,
+            "to": 1722
+          }
+        ],
+        "sampled_after_timeout_ms": 658.371208,
+        "tail_complete": true
+      },
+      "watched_index": 25
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 585,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JENVZSR25CG3NXYPSKD",
+            "view_generation": "01M5NB2JFGXQBT5Z03CWQ2W66R"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 585,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JENVZSR25CG3NXYPSKD",
+            "view_generation": "01M5NB2JFGXQBT5Z03CWQ2W66R"
+          }
+        },
+        "applied_written": {
+          "sequence": 585,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JENVZSR25CG3NXYPSKD",
+            "view_generation": "01M5NB2JFGXQBT5Z03CWQ2W66R"
+          }
+        },
+        "received": {
+          "sequence": 585,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JENVZSR25CG3NXYPSKD",
+            "view_generation": "01M5NB2JFGXQBT5Z03CWQ2W66R"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 585,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JENVZSR25CG3NXYPSKD",
+            "view_generation": "01M5NB2JFGXQBT5Z03CWQ2W66R"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 453.786
+      },
+      "name": "r5-pty-26",
+      "producer_pid": 67822,
+      "seat": "01M5NB2JENVZSR25CG3NXYPSKD",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1729,
+        "committed_sequence": 1729,
+        "error": null,
+        "examined_from": 1728,
+        "examined_to": 1729,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1729,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 658.371375,
+            "error": null,
+            "finished_after_timeout_ms": 659.508333,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 658.3713329999999,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 659.5087080000001,
+            "error": null,
+            "finished_after_timeout_ms": 660.480958,
+            "from": 1728,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 659.508667,
+            "to": 1729
+          }
+        ],
+        "sampled_after_timeout_ms": 660.482167,
+        "tail_complete": true
+      },
+      "watched_index": 26
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 639,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JFKYR4H2W6RQ0SKEZC5",
+            "view_generation": "01M5NB2JGWGXQ1NDX9CDCBRGKA"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 639,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JFKYR4H2W6RQ0SKEZC5",
+            "view_generation": "01M5NB2JGWGXQ1NDX9CDCBRGKA"
+          }
+        },
+        "applied_written": {
+          "sequence": 639,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JFKYR4H2W6RQ0SKEZC5",
+            "view_generation": "01M5NB2JGWGXQ1NDX9CDCBRGKA"
+          }
+        },
+        "received": {
+          "sequence": 639,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JFKYR4H2W6RQ0SKEZC5",
+            "view_generation": "01M5NB2JGWGXQ1NDX9CDCBRGKA"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 639,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JFKYR4H2W6RQ0SKEZC5",
+            "view_generation": "01M5NB2JGWGXQ1NDX9CDCBRGKA"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 454.820333
+      },
+      "name": "r5-pty-27",
+      "producer_pid": 67824,
+      "seat": "01M5NB2JFKYR4H2W6RQ0SKEZC5",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1727,
+        "committed_sequence": 1727,
+        "error": null,
+        "examined_from": 1726,
+        "examined_to": 1727,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1727,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 660.4829169999999,
+            "error": null,
+            "finished_after_timeout_ms": 661.433375,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 660.4829169999999,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 661.433875,
+            "error": null,
+            "finished_after_timeout_ms": 662.848833,
+            "from": 1726,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 661.4337919999999,
+            "to": 1727
+          }
+        ],
+        "sampled_after_timeout_ms": 662.850542,
+        "tail_complete": true
+      },
+      "watched_index": 27
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JGYQJSXHDMTBBH215BK",
+            "view_generation": "01M5NB2JJ0M5GZ11YKY4DEE8Q9"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JGYQJSXHDMTBBH215BK",
+            "view_generation": "01M5NB2JJ0M5GZ11YKY4DEE8Q9"
+          }
+        },
+        "applied_written": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JGYQJSXHDMTBBH215BK",
+            "view_generation": "01M5NB2JJ0M5GZ11YKY4DEE8Q9"
+          }
+        },
+        "received": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JGYQJSXHDMTBBH215BK",
+            "view_generation": "01M5NB2JJ0M5GZ11YKY4DEE8Q9"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JGYQJSXHDMTBBH215BK",
+            "view_generation": "01M5NB2JJ0M5GZ11YKY4DEE8Q9"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 456.931083
+      },
+      "name": "r5-pty-28",
+      "producer_pid": 67826,
+      "seat": "01M5NB2JGYQJSXHDMTBBH215BK",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1726,
+        "committed_sequence": 1726,
+        "error": null,
+        "examined_from": 1725,
+        "examined_to": 1726,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1726,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 662.8512079999999,
+            "error": null,
+            "finished_after_timeout_ms": 664.0621249999999,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 662.851167,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 664.0638749999999,
+            "error": null,
+            "finished_after_timeout_ms": 666.420167,
+            "from": 1725,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 664.063458,
+            "to": 1726
+          }
+        ],
+        "sampled_after_timeout_ms": 666.423542,
+        "tail_complete": true
+      },
+      "watched_index": 28
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 608,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JJ25PN956E4A4YYHKPE",
+            "view_generation": "01M5NB2JK55Z1Z8BMGPBM8CH28"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 608,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JJ25PN956E4A4YYHKPE",
+            "view_generation": "01M5NB2JK55Z1Z8BMGPBM8CH28"
+          }
+        },
+        "applied_written": {
+          "sequence": 608,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JJ25PN956E4A4YYHKPE",
+            "view_generation": "01M5NB2JK55Z1Z8BMGPBM8CH28"
+          }
+        },
+        "received": {
+          "sequence": 608,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JJ25PN956E4A4YYHKPE",
+            "view_generation": "01M5NB2JK55Z1Z8BMGPBM8CH28"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 608,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JJ25PN956E4A4YYHKPE",
+            "view_generation": "01M5NB2JK55Z1Z8BMGPBM8CH28"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 457.978792
+      },
+      "name": "r5-pty-29",
+      "producer_pid": 67833,
+      "seat": "01M5NB2JJ25PN956E4A4YYHKPE",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1725,
+        "committed_sequence": 1725,
+        "error": null,
+        "examined_from": 1724,
+        "examined_to": 1725,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1725,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 666.425583,
+            "error": null,
+            "finished_after_timeout_ms": 668.6006249999999,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 666.4254579999999,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 668.602667,
+            "error": null,
+            "finished_after_timeout_ms": 669.766667,
+            "from": 1724,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 668.6018329999999,
+            "to": 1725
+          }
+        ],
+        "sampled_after_timeout_ms": 669.768667,
+        "tail_complete": true
+      },
+      "watched_index": 29
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 574,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JK8DYMPZSCEEMGKW41D",
+            "view_generation": "01M5NB2JMN8KY9J3XWGPVWBWDE"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 574,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JK8DYMPZSCEEMGKW41D",
+            "view_generation": "01M5NB2JMN8KY9J3XWGPVWBWDE"
+          }
+        },
+        "applied_written": {
+          "sequence": 574,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JK8DYMPZSCEEMGKW41D",
+            "view_generation": "01M5NB2JMN8KY9J3XWGPVWBWDE"
+          }
+        },
+        "received": {
+          "sequence": 574,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JK8DYMPZSCEEMGKW41D",
+            "view_generation": "01M5NB2JMN8KY9J3XWGPVWBWDE"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 574,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JK8DYMPZSCEEMGKW41D",
+            "view_generation": "01M5NB2JMN8KY9J3XWGPVWBWDE"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 458.99870799999997
+      },
+      "name": "r5-pty-30",
+      "producer_pid": 67840,
+      "seat": "01M5NB2JK8DYMPZSCEEMGKW41D",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1733,
+        "committed_sequence": 1733,
+        "error": null,
+        "examined_from": 1732,
+        "examined_to": 1733,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1733,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 671.032458,
+            "error": null,
+            "finished_after_timeout_ms": 671.8873749999999,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 669.7699580000001,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 671.888583,
+            "error": null,
+            "finished_after_timeout_ms": 673.025542,
+            "from": 1732,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 671.888375,
+            "to": 1733
+          }
+        ],
+        "sampled_after_timeout_ms": 673.026958,
+        "tail_complete": true
+      },
+      "watched_index": 30
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 601,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JMS5H8DA5774YJQS345",
+            "view_generation": "01M5NB2JNTVJV85RHC6D12YFN0"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 601,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JMS5H8DA5774YJQS345",
+            "view_generation": "01M5NB2JNTVJV85RHC6D12YFN0"
+          }
+        },
+        "applied_written": {
+          "sequence": 601,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JMS5H8DA5774YJQS345",
+            "view_generation": "01M5NB2JNTVJV85RHC6D12YFN0"
+          }
+        },
+        "received": {
+          "sequence": 601,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JMS5H8DA5774YJQS345",
+            "view_generation": "01M5NB2JNTVJV85RHC6D12YFN0"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 601,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JMS5H8DA5774YJQS345",
+            "view_generation": "01M5NB2JNTVJV85RHC6D12YFN0"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 460.71875
+      },
+      "name": "r5-pty-31",
+      "producer_pid": 67843,
+      "seat": "01M5NB2JMS5H8DA5774YJQS345",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1722,
+        "committed_sequence": 1722,
+        "error": null,
+        "examined_from": 1721,
+        "examined_to": 1722,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1722,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 673.027542,
+            "error": null,
+            "finished_after_timeout_ms": 674.085792,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 673.0275,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 674.087583,
+            "error": null,
+            "finished_after_timeout_ms": 675.2165,
+            "from": 1721,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 674.0867499999999,
+            "to": 1722
+          }
+        ],
+        "sampled_after_timeout_ms": 675.217667,
+        "tail_complete": true
+      },
+      "watched_index": 31
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 616,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JNXTXPEQCJZDWMK9R7N",
+            "view_generation": "01M5NB2JQ3M1RPPHYY6YVFYMTY"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 616,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JNXTXPEQCJZDWMK9R7N",
+            "view_generation": "01M5NB2JQ3M1RPPHYY6YVFYMTY"
+          }
+        },
+        "applied_written": {
+          "sequence": 616,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JNXTXPEQCJZDWMK9R7N",
+            "view_generation": "01M5NB2JQ3M1RPPHYY6YVFYMTY"
+          }
+        },
+        "received": {
+          "sequence": 616,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JNXTXPEQCJZDWMK9R7N",
+            "view_generation": "01M5NB2JQ3M1RPPHYY6YVFYMTY"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 616,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JNXTXPEQCJZDWMK9R7N",
+            "view_generation": "01M5NB2JQ3M1RPPHYY6YVFYMTY"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 462.129708
+      },
+      "name": "r5-pty-32",
+      "producer_pid": 67845,
+      "seat": "01M5NB2JNXTXPEQCJZDWMK9R7N",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1723,
+        "committed_sequence": 1723,
+        "error": null,
+        "examined_from": 1722,
+        "examined_to": 1723,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1723,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 675.218125,
+            "error": null,
+            "finished_after_timeout_ms": 676.853417,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 675.218083,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 676.854125,
+            "error": null,
+            "finished_after_timeout_ms": 680.379625,
+            "from": 1722,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 676.8540830000001,
+            "to": 1723
+          }
+        ],
+        "sampled_after_timeout_ms": 680.384875,
+        "tail_complete": true
+      },
+      "watched_index": 32
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 625,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JQ6430D3K65SKWSRERP",
+            "view_generation": "01M5NB2JRE9F55S6KS7FTDFK66"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 625,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JQ6430D3K65SKWSRERP",
+            "view_generation": "01M5NB2JRE9F55S6KS7FTDFK66"
+          }
+        },
+        "applied_written": {
+          "sequence": 625,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JQ6430D3K65SKWSRERP",
+            "view_generation": "01M5NB2JRE9F55S6KS7FTDFK66"
+          }
+        },
+        "received": {
+          "sequence": 625,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JQ6430D3K65SKWSRERP",
+            "view_generation": "01M5NB2JRE9F55S6KS7FTDFK66"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 625,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JQ6430D3K65SKWSRERP",
+            "view_generation": "01M5NB2JRE9F55S6KS7FTDFK66"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 472.927292
+      },
+      "name": "r5-pty-33",
+      "producer_pid": 67847,
+      "seat": "01M5NB2JQ6430D3K65SKWSRERP",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1723,
+        "committed_sequence": 1723,
+        "error": null,
+        "examined_from": 1722,
+        "examined_to": 1723,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1723,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 689.281792,
+            "error": null,
+            "finished_after_timeout_ms": 693.233333,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 680.386667,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 700.964208,
+            "error": null,
+            "finished_after_timeout_ms": 706.137292,
+            "from": 1722,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 693.2381250000001,
+            "to": 1723
+          }
+        ],
+        "sampled_after_timeout_ms": 706.1391249999999,
+        "tail_complete": true
+      },
+      "watched_index": 33
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JRG2XHDDAAD44NFMG8R",
+            "view_generation": "01M5NB2JSG47D6E8VZQCDJN811"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JRG2XHDDAAD44NFMG8R",
+            "view_generation": "01M5NB2JSG47D6E8VZQCDJN811"
+          }
+        },
+        "applied_written": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JRG2XHDDAAD44NFMG8R",
+            "view_generation": "01M5NB2JSG47D6E8VZQCDJN811"
+          }
+        },
+        "received": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JRG2XHDDAAD44NFMG8R",
+            "view_generation": "01M5NB2JSG47D6E8VZQCDJN811"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 611,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JRG2XHDDAAD44NFMG8R",
+            "view_generation": "01M5NB2JSG47D6E8VZQCDJN811"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 474.97116700000004
+      },
+      "name": "r5-pty-34",
+      "producer_pid": 67850,
+      "seat": "01M5NB2JRG2XHDDAAD44NFMG8R",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1728,
+        "committed_sequence": 1728,
+        "error": null,
+        "examined_from": 1727,
+        "examined_to": 1728,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1728,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 706.140167,
+            "error": null,
+            "finished_after_timeout_ms": 709.098875,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 706.140125,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 716.0275,
+            "error": null,
+            "finished_after_timeout_ms": 719.530833,
+            "from": 1727,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 709.099917,
+            "to": 1728
+          }
+        ],
+        "sampled_after_timeout_ms": 719.535042,
+        "tail_complete": true
+      },
+      "watched_index": 34
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 581,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JSJD844JDVGBSF012AM",
+            "view_generation": "01M5NB2JTT3E6D1AZHGX0RBTGA"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 581,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JSJD844JDVGBSF012AM",
+            "view_generation": "01M5NB2JTT3E6D1AZHGX0RBTGA"
+          }
+        },
+        "applied_written": {
+          "sequence": 581,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JSJD844JDVGBSF012AM",
+            "view_generation": "01M5NB2JTT3E6D1AZHGX0RBTGA"
+          }
+        },
+        "received": {
+          "sequence": 581,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JSJD844JDVGBSF012AM",
+            "view_generation": "01M5NB2JTT3E6D1AZHGX0RBTGA"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 595,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JSJD844JDVGBSF012AM",
+            "view_generation": "01M5NB2JTT3E6D1AZHGX0RBTGA"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 477.89466699999997
+      },
+      "name": "r5-pty-35",
+      "producer_pid": 67852,
+      "seat": "01M5NB2JSJD844JDVGBSF012AM",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1726,
+        "committed_sequence": 1726,
+        "error": null,
+        "examined_from": 1725,
+        "examined_to": 1726,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1726,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 727.2362919999999,
+            "error": null,
+            "finished_after_timeout_ms": 728.84275,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 719.536667,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 728.843333,
+            "error": null,
+            "finished_after_timeout_ms": 730.266708,
+            "from": 1725,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 728.843208,
+            "to": 1726
+          }
+        ],
+        "sampled_after_timeout_ms": 730.270667,
+        "tail_complete": true
+      },
+      "watched_index": 35
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 546,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JTXAJXMH7G8WPRFR72H",
+            "view_generation": "01M5NB2JWJG3NZ9APAD1ZMFC0D"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 546,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JTXAJXMH7G8WPRFR72H",
+            "view_generation": "01M5NB2JWJG3NZ9APAD1ZMFC0D"
+          }
+        },
+        "applied_written": {
+          "sequence": 546,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JTXAJXMH7G8WPRFR72H",
+            "view_generation": "01M5NB2JWJG3NZ9APAD1ZMFC0D"
+          }
+        },
+        "received": {
+          "sequence": 546,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JTXAJXMH7G8WPRFR72H",
+            "view_generation": "01M5NB2JWJG3NZ9APAD1ZMFC0D"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 546,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JTXAJXMH7G8WPRFR72H",
+            "view_generation": "01M5NB2JWJG3NZ9APAD1ZMFC0D"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 480.918875
+      },
+      "name": "r5-pty-36",
+      "producer_pid": 67855,
+      "seat": "01M5NB2JTXAJXMH7G8WPRFR72H",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1712,
+        "committed_sequence": 1712,
+        "error": null,
+        "examined_from": 1711,
+        "examined_to": 1712,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1712,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 730.272333,
+            "error": null,
+            "finished_after_timeout_ms": 732.018375,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 730.272292,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 732.0190829999999,
+            "error": null,
+            "finished_after_timeout_ms": 733.244083,
+            "from": 1711,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 732.018792,
+            "to": 1712
+          }
+        ],
+        "sampled_after_timeout_ms": 733.2464170000001,
+        "tail_complete": true
+      },
+      "watched_index": 36
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 514,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JWNMMK385F7WMYGW1RY",
+            "view_generation": "01M5NB2JXTW1S125683NHH5ZS8"
+          }
+        },
+        "applied_has_paused": true,
+        "applied_queued": {
+          "sequence": 514,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JWNMMK385F7WMYGW1RY",
+            "view_generation": "01M5NB2JXTW1S125683NHH5ZS8"
+          }
+        },
+        "applied_written": {
+          "sequence": 514,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JWNMMK385F7WMYGW1RY",
+            "view_generation": "01M5NB2JXTW1S125683NHH5ZS8"
+          }
+        },
+        "received": {
+          "sequence": 514,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JWNMMK385F7WMYGW1RY",
+            "view_generation": "01M5NB2JXTW1S125683NHH5ZS8"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 514,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JWNMMK385F7WMYGW1RY",
+            "view_generation": "01M5NB2JXTW1S125683NHH5ZS8"
+          }
+        },
+        "error": null,
+        "has_paused": true,
+        "sampled_after_timeout_ms": 499.161042
+      },
+      "name": "r5-pty-37",
+      "producer_pid": 67857,
+      "seat": "01M5NB2JWNMMK385F7WMYGW1RY",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1721,
+        "committed_sequence": 1721,
+        "error": null,
+        "examined_from": 1720,
+        "examined_to": 1721,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1721,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 733.24775,
+            "error": null,
+            "finished_after_timeout_ms": 734.415875,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 733.2477080000001,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 734.416458,
+            "error": null,
+            "finished_after_timeout_ms": 735.650083,
+            "from": 1720,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 734.416333,
+            "to": 1721
+          }
+        ],
+        "sampled_after_timeout_ms": 735.6515,
+        "tail_complete": true
+      },
+      "watched_index": 37
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JXXWXNS5AKXF7RPRTMN",
+            "view_generation": "01M5NB2JZ34N6Z90V360BKGPB1"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JXXWXNS5AKXF7RPRTMN",
+            "view_generation": "01M5NB2JZ34N6Z90V360BKGPB1"
+          }
+        },
+        "applied_written": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JXXWXNS5AKXF7RPRTMN",
+            "view_generation": "01M5NB2JZ34N6Z90V360BKGPB1"
+          }
+        },
+        "received": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JXXWXNS5AKXF7RPRTMN",
+            "view_generation": "01M5NB2JZ34N6Z90V360BKGPB1"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JXXWXNS5AKXF7RPRTMN",
+            "view_generation": "01M5NB2JZ34N6Z90V360BKGPB1"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 506.813208
+      },
+      "name": "r5-pty-38",
+      "producer_pid": 67859,
+      "seat": "01M5NB2JXXWXNS5AKXF7RPRTMN",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1709,
+        "committed_sequence": 1709,
+        "error": null,
+        "examined_from": 1708,
+        "examined_to": 1709,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1709,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 739.399375,
+            "error": null,
+            "finished_after_timeout_ms": 740.299125,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 735.6525,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 740.29975,
+            "error": null,
+            "finished_after_timeout_ms": 741.3602080000001,
+            "from": 1708,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 740.299625,
+            "to": 1709
+          }
+        ],
+        "sampled_after_timeout_ms": 741.3616669999999,
+        "tail_complete": true
+      },
+      "watched_index": 38
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 602,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JZ6556QYWH94S1NZMDV",
+            "view_generation": "01M5NB2K0K71QT3SGH6FDDYQ0W"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 602,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JZ6556QYWH94S1NZMDV",
+            "view_generation": "01M5NB2K0K71QT3SGH6FDDYQ0W"
+          }
+        },
+        "applied_written": {
+          "sequence": 602,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JZ6556QYWH94S1NZMDV",
+            "view_generation": "01M5NB2K0K71QT3SGH6FDDYQ0W"
+          }
+        },
+        "received": {
+          "sequence": 602,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JZ6556QYWH94S1NZMDV",
+            "view_generation": "01M5NB2K0K71QT3SGH6FDDYQ0W"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 602,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2JZ6556QYWH94S1NZMDV",
+            "view_generation": "01M5NB2K0K71QT3SGH6FDDYQ0W"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 509.989417
+      },
+      "name": "r5-pty-39",
+      "producer_pid": 67861,
+      "seat": "01M5NB2JZ6556QYWH94S1NZMDV",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1709,
+        "committed_sequence": 1709,
+        "error": null,
+        "examined_from": 1708,
+        "examined_to": 1709,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1709,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 756.509583,
+            "error": null,
+            "finished_after_timeout_ms": 757.542583,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 741.362792,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 757.543542,
+            "error": null,
+            "finished_after_timeout_ms": 759.0527500000001,
+            "from": 1708,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 757.543375,
+            "to": 1709
+          }
+        ],
+        "sampled_after_timeout_ms": 759.054667,
+        "tail_complete": true
+      },
+      "watched_index": 39
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 620,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K0PHPV5Z271JKAP18GT",
+            "view_generation": "01M5NB2K1WBV54VNBQZR78N2BS"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 620,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K0PHPV5Z271JKAP18GT",
+            "view_generation": "01M5NB2K1WBV54VNBQZR78N2BS"
+          }
+        },
+        "applied_written": {
+          "sequence": 620,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K0PHPV5Z271JKAP18GT",
+            "view_generation": "01M5NB2K1WBV54VNBQZR78N2BS"
+          }
+        },
+        "received": {
+          "sequence": 620,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K0PHPV5Z271JKAP18GT",
+            "view_generation": "01M5NB2K1WBV54VNBQZR78N2BS"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 635,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K0PHPV5Z271JKAP18GT",
+            "view_generation": "01M5NB2K1WBV54VNBQZR78N2BS"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 518.8803330000001
+      },
+      "name": "r5-pty-40",
+      "producer_pid": 67864,
+      "seat": "01M5NB2K0PHPV5Z271JKAP18GT",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1729,
+        "committed_sequence": 1729,
+        "error": null,
+        "examined_from": 1728,
+        "examined_to": 1729,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1729,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 826.804292,
+            "error": null,
+            "finished_after_timeout_ms": 828.252125,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 759.056125,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 828.253042,
+            "error": null,
+            "finished_after_timeout_ms": 829.667917,
+            "from": 1728,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 828.252833,
+            "to": 1729
+          }
+        ],
+        "sampled_after_timeout_ms": 829.669792,
+        "tail_complete": true
+      },
+      "watched_index": 40
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 584,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K219S7GVD2SHQ3GD51K",
+            "view_generation": "01M5NB2K351YRKSVA6P17025D7"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 584,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K219S7GVD2SHQ3GD51K",
+            "view_generation": "01M5NB2K351YRKSVA6P17025D7"
+          }
+        },
+        "applied_written": {
+          "sequence": 584,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K219S7GVD2SHQ3GD51K",
+            "view_generation": "01M5NB2K351YRKSVA6P17025D7"
+          }
+        },
+        "received": {
+          "sequence": 584,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K219S7GVD2SHQ3GD51K",
+            "view_generation": "01M5NB2K351YRKSVA6P17025D7"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 584,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K219S7GVD2SHQ3GD51K",
+            "view_generation": "01M5NB2K351YRKSVA6P17025D7"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 524.540583
+      },
+      "name": "r5-pty-41",
+      "producer_pid": 67867,
+      "seat": "01M5NB2K219S7GVD2SHQ3GD51K",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1721,
+        "committed_sequence": 1721,
+        "error": null,
+        "examined_from": 1720,
+        "examined_to": 1721,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1721,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 829.670792,
+            "error": null,
+            "finished_after_timeout_ms": 830.7659170000001,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 829.67075,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 830.766542,
+            "error": null,
+            "finished_after_timeout_ms": 835.680917,
+            "from": 1720,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 830.7665,
+            "to": 1721
+          }
+        ],
+        "sampled_after_timeout_ms": 835.6837919999999,
+        "tail_complete": true
+      },
+      "watched_index": 41
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 641,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K37GJFX3MEC5HDY7C4J",
+            "view_generation": "01M5NB2K4FPME9AA73WH3FQEH7"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 641,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K37GJFX3MEC5HDY7C4J",
+            "view_generation": "01M5NB2K4FPME9AA73WH3FQEH7"
+          }
+        },
+        "applied_written": {
+          "sequence": 641,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K37GJFX3MEC5HDY7C4J",
+            "view_generation": "01M5NB2K4FPME9AA73WH3FQEH7"
+          }
+        },
+        "received": {
+          "sequence": 641,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K37GJFX3MEC5HDY7C4J",
+            "view_generation": "01M5NB2K4FPME9AA73WH3FQEH7"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 641,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K37GJFX3MEC5HDY7C4J",
+            "view_generation": "01M5NB2K4FPME9AA73WH3FQEH7"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 538.047333
+      },
+      "name": "r5-pty-42",
+      "producer_pid": 67869,
+      "seat": "01M5NB2K37GJFX3MEC5HDY7C4J",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1712,
+        "committed_sequence": 1712,
+        "error": null,
+        "examined_from": 1711,
+        "examined_to": 1712,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1712,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 835.6850000000001,
+            "error": null,
+            "finished_after_timeout_ms": 839.714667,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 835.684917,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 839.716958,
+            "error": null,
+            "finished_after_timeout_ms": 841.551125,
+            "from": 1711,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 839.716,
+            "to": 1712
+          }
+        ],
+        "sampled_after_timeout_ms": 841.554875,
+        "tail_complete": true
+      },
+      "watched_index": 42
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 601,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K4JZPM2VS38H15BHJQF",
+            "view_generation": "01M5NB2K5N0N6QBSXYGW3TDR3M"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 601,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K4JZPM2VS38H15BHJQF",
+            "view_generation": "01M5NB2K5N0N6QBSXYGW3TDR3M"
+          }
+        },
+        "applied_written": {
+          "sequence": 601,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K4JZPM2VS38H15BHJQF",
+            "view_generation": "01M5NB2K5N0N6QBSXYGW3TDR3M"
+          }
+        },
+        "received": {
+          "sequence": 601,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K4JZPM2VS38H15BHJQF",
+            "view_generation": "01M5NB2K5N0N6QBSXYGW3TDR3M"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 614,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K4JZPM2VS38H15BHJQF",
+            "view_generation": "01M5NB2K5N0N6QBSXYGW3TDR3M"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 546.525833
+      },
+      "name": "r5-pty-43",
+      "producer_pid": 67871,
+      "seat": "01M5NB2K4JZPM2VS38H15BHJQF",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1720,
+        "committed_sequence": 1720,
+        "error": null,
+        "examined_from": 1719,
+        "examined_to": 1720,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1720,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 854.680458,
+            "error": null,
+            "finished_after_timeout_ms": 860.002958,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 841.556792,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 860.0042500000001,
+            "error": null,
+            "finished_after_timeout_ms": 870.206,
+            "from": 1719,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 860.003792,
+            "to": 1720
+          }
+        ],
+        "sampled_after_timeout_ms": 870.208708,
+        "tail_complete": true
+      },
+      "watched_index": 43
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 635,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K5R72V93DJGGK2K5EA9",
+            "view_generation": "01M5NB2K6REBZ7SW6MVQCEJQXS"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 635,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K5R72V93DJGGK2K5EA9",
+            "view_generation": "01M5NB2K6REBZ7SW6MVQCEJQXS"
+          }
+        },
+        "applied_written": {
+          "sequence": 635,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K5R72V93DJGGK2K5EA9",
+            "view_generation": "01M5NB2K6REBZ7SW6MVQCEJQXS"
+          }
+        },
+        "received": {
+          "sequence": 635,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K5R72V93DJGGK2K5EA9",
+            "view_generation": "01M5NB2K6REBZ7SW6MVQCEJQXS"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 635,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K5R72V93DJGGK2K5EA9",
+            "view_generation": "01M5NB2K6REBZ7SW6MVQCEJQXS"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 547.87575
+      },
+      "name": "r5-pty-44",
+      "producer_pid": 67873,
+      "seat": "01M5NB2K5R72V93DJGGK2K5EA9",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1712,
+        "committed_sequence": 1711,
+        "error": null,
+        "examined_from": 1711,
+        "examined_to": 1712,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1712,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 870.210542,
+            "error": null,
+            "finished_after_timeout_ms": 875.387958,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 870.2105,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 875.388958,
+            "error": null,
+            "finished_after_timeout_ms": 878.957208,
+            "from": 1711,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 875.388542,
+            "to": 1712
+          }
+        ],
+        "sampled_after_timeout_ms": 878.9615,
+        "tail_complete": true
+      },
+      "watched_index": 44
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 624,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K6WS70FPH1JPZVF5SFH",
+            "view_generation": "01M5NB2K8626G9K84EZK51NQBM"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 624,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K6WS70FPH1JPZVF5SFH",
+            "view_generation": "01M5NB2K8626G9K84EZK51NQBM"
+          }
+        },
+        "applied_written": {
+          "sequence": 624,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K6WS70FPH1JPZVF5SFH",
+            "view_generation": "01M5NB2K8626G9K84EZK51NQBM"
+          }
+        },
+        "received": {
+          "sequence": 624,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K6WS70FPH1JPZVF5SFH",
+            "view_generation": "01M5NB2K8626G9K84EZK51NQBM"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 624,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K6WS70FPH1JPZVF5SFH",
+            "view_generation": "01M5NB2K8626G9K84EZK51NQBM"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 548.898
+      },
+      "name": "r5-pty-45",
+      "producer_pid": 67875,
+      "seat": "01M5NB2K6WS70FPH1JPZVF5SFH",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1705,
+        "committed_sequence": 1705,
+        "error": null,
+        "examined_from": 1704,
+        "examined_to": 1705,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1705,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 878.963583,
+            "error": null,
+            "finished_after_timeout_ms": 881.356458,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 878.9635,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 881.358208,
+            "error": null,
+            "finished_after_timeout_ms": 882.920125,
+            "from": 1704,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 881.357583,
+            "to": 1705
+          }
+        ],
+        "sampled_after_timeout_ms": 882.9221670000001,
+        "tail_complete": true
+      },
+      "watched_index": 45
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 587,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K889QRGT54C4MG81W3Y",
+            "view_generation": "01M5NB2K95YRQDQNZ6W1N4NC0M"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 587,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K889QRGT54C4MG81W3Y",
+            "view_generation": "01M5NB2K95YRQDQNZ6W1N4NC0M"
+          }
+        },
+        "applied_written": {
+          "sequence": 587,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K889QRGT54C4MG81W3Y",
+            "view_generation": "01M5NB2K95YRQDQNZ6W1N4NC0M"
+          }
+        },
+        "received": {
+          "sequence": 587,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K889QRGT54C4MG81W3Y",
+            "view_generation": "01M5NB2K95YRQDQNZ6W1N4NC0M"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 587,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K889QRGT54C4MG81W3Y",
+            "view_generation": "01M5NB2K95YRQDQNZ6W1N4NC0M"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 550.241
+      },
+      "name": "r5-pty-46",
+      "producer_pid": 67877,
+      "seat": "01M5NB2K889QRGT54C4MG81W3Y",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1727,
+        "committed_sequence": 1727,
+        "error": null,
+        "examined_from": 1726,
+        "examined_to": 1727,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1727,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 882.9234580000001,
+            "error": null,
+            "finished_after_timeout_ms": 884.261167,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 882.923417,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 884.2624999999999,
+            "error": null,
+            "finished_after_timeout_ms": 885.659792,
+            "from": 1726,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 884.262,
+            "to": 1727
+          }
+        ],
+        "sampled_after_timeout_ms": 885.6644580000001,
+        "tail_complete": true
+      },
+      "watched_index": 46
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 622,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K98Q39Q9CR2WAPYHWSG",
+            "view_generation": "01M5NB2KAE21R9GAFX52XTW3V5"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 622,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K98Q39Q9CR2WAPYHWSG",
+            "view_generation": "01M5NB2KAE21R9GAFX52XTW3V5"
+          }
+        },
+        "applied_written": {
+          "sequence": 622,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K98Q39Q9CR2WAPYHWSG",
+            "view_generation": "01M5NB2KAE21R9GAFX52XTW3V5"
+          }
+        },
+        "received": {
+          "sequence": 622,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K98Q39Q9CR2WAPYHWSG",
+            "view_generation": "01M5NB2KAE21R9GAFX52XTW3V5"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 622,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2K98Q39Q9CR2WAPYHWSG",
+            "view_generation": "01M5NB2KAE21R9GAFX52XTW3V5"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 551.232458
+      },
+      "name": "r5-pty-47",
+      "producer_pid": 67879,
+      "seat": "01M5NB2K98Q39Q9CR2WAPYHWSG",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1712,
+        "committed_sequence": 1712,
+        "error": null,
+        "examined_from": 1711,
+        "examined_to": 1712,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1712,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 885.665833,
+            "error": null,
+            "finished_after_timeout_ms": 887.318625,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 885.6657919999999,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 887.320667,
+            "error": null,
+            "finished_after_timeout_ms": 889.506833,
+            "from": 1711,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 887.32,
+            "to": 1712
+          }
+        ],
+        "sampled_after_timeout_ms": 889.5097920000001,
+        "tail_complete": true
+      },
+      "watched_index": 47
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KAM5M611QVR30PW1TJN",
+            "view_generation": "01M5NB2KBYBB0FG6NQ886WC51W"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KAM5M611QVR30PW1TJN",
+            "view_generation": "01M5NB2KBYBB0FG6NQ886WC51W"
+          }
+        },
+        "applied_written": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KAM5M611QVR30PW1TJN",
+            "view_generation": "01M5NB2KBYBB0FG6NQ886WC51W"
+          }
+        },
+        "received": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KAM5M611QVR30PW1TJN",
+            "view_generation": "01M5NB2KBYBB0FG6NQ886WC51W"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 643,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KAM5M611QVR30PW1TJN",
+            "view_generation": "01M5NB2KBYBB0FG6NQ886WC51W"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 552.923458
+      },
+      "name": "r5-pty-48",
+      "producer_pid": 67881,
+      "seat": "01M5NB2KAM5M611QVR30PW1TJN",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1722,
+        "committed_sequence": 1722,
+        "error": null,
+        "examined_from": 1721,
+        "examined_to": 1722,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1722,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 889.510917,
+            "error": null,
+            "finished_after_timeout_ms": 892.085,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 889.510875,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 892.086417,
+            "error": null,
+            "finished_after_timeout_ms": 893.749333,
+            "from": 1721,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 892.086042,
+            "to": 1722
+          }
+        ],
+        "sampled_after_timeout_ms": 893.7532500000001,
+        "tail_complete": true
+      },
+      "watched_index": 48
+    },
+    {
+      "applied_written_to_socket": true,
+      "generation": 1,
+      "gui_at_timeout": {
+        "applied": {
+          "sequence": 623,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KC1DWQN9AM5FF5PCHNB",
+            "view_generation": "01M5NB2KD7BMK6WHNCFY0CYF1Z"
+          }
+        },
+        "applied_has_paused": false,
+        "applied_queued": {
+          "sequence": 623,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KC1DWQN9AM5FF5PCHNB",
+            "view_generation": "01M5NB2KD7BMK6WHNCFY0CYF1Z"
+          }
+        },
+        "applied_written": {
+          "sequence": 623,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KC1DWQN9AM5FF5PCHNB",
+            "view_generation": "01M5NB2KD7BMK6WHNCFY0CYF1Z"
+          }
+        },
+        "received": {
+          "sequence": 623,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KC1DWQN9AM5FF5PCHNB",
+            "view_generation": "01M5NB2KD7BMK6WHNCFY0CYF1Z"
+          }
+        }
+      },
+      "logic_current_snapshot": {
+        "cursor": {
+          "sequence": 623,
+          "view": {
+            "generation": 1,
+            "seat": "01M5NB2KC1DWQN9AM5FF5PCHNB",
+            "view_generation": "01M5NB2KD7BMK6WHNCFY0CYF1Z"
+          }
+        },
+        "error": null,
+        "has_paused": false,
+        "sampled_after_timeout_ms": 554.740625
+      },
+      "name": "r5-pty-49",
+      "producer_pid": 67883,
+      "seat": "01M5NB2KC1DWQN9AM5FF5PCHNB",
+      "supervisor_ring_tail": {
+        "captured_sequence": 1720,
+        "committed_sequence": 1720,
+        "error": null,
+        "examined_from": 1719,
+        "examined_to": 1720,
+        "first_sequence": 1,
+        "gap": null,
+        "paused_in_examined_tail": true,
+        "paused_marker_sequence": 1720,
+        "queries": [
+          {
+            "dispatched_after_timeout_ms": 902.5712500000001,
+            "error": null,
+            "finished_after_timeout_ms": 905.3322499999999,
+            "from": null,
+            "gap": null,
+            "kind": "RingRecovery",
+            "next": null,
+            "started_after_timeout_ms": 893.77,
+            "to": null
+          },
+          {
+            "dispatched_after_timeout_ms": 905.333042,
+            "error": null,
+            "finished_after_timeout_ms": 906.3500829999999,
+            "from": 1719,
+            "gap": null,
+            "kind": "ReadRing",
+            "next": null,
+            "started_after_timeout_ms": 905.3328750000001,
+            "to": 1720
+          }
+        ],
+        "sampled_after_timeout_ms": 906.3520000000001,
+        "tail_complete": true
+      },
+      "watched_index": 49
+    }
+  ]
+}

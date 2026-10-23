@@ -1,0 +1,318 @@
+{
+  "task": "R5d single diagnostic run, Window #3; no fix and no rerun",
+  "source": "ec43cccd46d4b1da08733af2eeb8d85363958f35",
+  "accepted_diagnostics_main": "865443fd2ab5341c343063b4b54a1933a549229d",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec4",
+  "branch": "exec4",
+  "authorizations": {
+    "build": "dfa2fe73-e3a2-4936-a70c-84db4821a97c",
+    "refresh": "c11e5f2f-29fb-4c6f-b1fc-2aff6854c540",
+    "window_open": "8d990cf7-1dde-4538-b914-3e20c7c3bd50",
+    "window_release_notice": "715d696a-f032-42e6-9804-65d57dbab963",
+    "read_only_findings_notice": "6cc40f7e-9f90-4dae-aad6-fd12a8d671f7"
+  },
+  "attempts": 1,
+  "result": {
+    "exit": 1,
+    "elapsed_s": 100.70173533301568,
+    "timed_out": false,
+    "host_load_before": [
+      7.197265625,
+      12.8056640625,
+      16.28466796875
+    ],
+    "host_load_after": [
+      8.4267578125,
+      11.46484375,
+      15.34521484375
+    ],
+    "disk_free_after_bytes": 109595426816,
+    "owned_pid_count": 969,
+    "remaining_owned": [],
+    "binary_sha256_before": "d5339950e047844e9ee0c218100a1a28e77030af85bf34bd55ee1181e372bb0c",
+    "binary_sha256_after": "d5339950e047844e9ee0c218100a1a28e77030af85bf34bd55ee1181e372bb0c",
+    "binary_unchanged": true,
+    "memory_custody_witness": true,
+    "diagnostic_table": "/private/tmp/aster-r5-window3-aeniqxeb/run-1/r5-frame.fXvvuJ/report.diagnostics.json",
+    "diagnostic_summary": {
+      "phase_at_timeout": 2,
+      "false_settle_predicates": [
+        "IO: every watched published Screen contains R5PAUSED",
+        "IO: phase reached SETTLE",
+        "UI: latest Native::poll observed phase SETTLE (other UI settle checks inactive)"
+      ],
+      "rows": 50,
+      "gui_has_paused": 1,
+      "logic_has_paused": 1,
+      "ring_tail_has_paused": 50
+    },
+    "last_error_excerpt": "Error: \"r5-unsettled-after-producers-stopped; table=/private/tmp/aster-r5-window3-aeniqxeb/run-1/r5-frame.fXvvuJ/report.diagnostics.json\\nR5 settle diagnostic table:\\n{\\n  \\\"false_settle_predicates\\\": [\\n    \\\"IO: every watched published Screen contains R5PAUSED\\\",\\n    \\\"IO: phase reached SETTLE\\\",\\n    \\\"UI: latest Native::poll observed phase SETTLE (other UI settle checks inactive)\\\"\\n  ],\\n  \\\"native_last_poll_at_timeout\\\": {\\n    \\\"callbacks\\\": 1023,\\n    \\\"completed_frame\\\": 1023,\\n    \\\"frames\\\": 1023,\\n    \\\"gpu_complete\\\": false,\\n    \\\"has_paused_frame\\\": false,\\n    \\\"observed\\\": tr",
+    "full_error_in": ".bboxy/runs/r5-window3-raw-ec43ccc.log"
+  },
+  "command": {
+    "source": "ec43cccd46d4b1da08733af2eeb8d85363958f35",
+    "command": [
+      "sh",
+      "scripts/gates.sh",
+      "frame"
+    ],
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+    "environment": {
+      "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-frame-865443f-1792790692629276000",
+      "CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS": "true",
+      "CARGO_PROFILE_RELEASE_DEBUG": "0",
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_BUILD_JOBS": "4",
+      "BBOXY_TEST_CUSTODY": "memory",
+      "GATE_SEATS": "967",
+      "GATE_WATCHED": "50",
+      "GATE_SECONDS": "10",
+      "GATE_RUN_DIR": "/private/tmp/aster-r5-window3-aeniqxeb/run-1"
+    },
+    "preflight": {
+      "utc": "2026-10-23T21:36:02.818902+00:00",
+      "loadavg": [
+        7.197265625,
+        12.8056640625,
+        16.28466796875
+      ],
+      "disk_free_bytes": 109730406400
+    }
+  },
+  "builds": [
+    {
+      "command": [
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-q",
+        "-p",
+        "bboxy450-term"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "source": "865443fd2ab5341c343063b4b54a1933a549229d",
+      "environment": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-frame-865443f-1792790692629276000",
+        "CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_RELEASE_DEBUG": "0",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "GATE_SEATS": "967",
+        "GATE_WATCHED": "50",
+        "GATE_SECONDS": "10"
+      },
+      "started_utc": "2026-10-23T21:25:16.309300+00:00",
+      "pid": 50800,
+      "exit": 0,
+      "elapsed_s": 209.81338508301997,
+      "ended_utc": "2026-10-23T21:28:46.122900+00:00"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-q",
+        "-p",
+        "bboxy450-term"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec4",
+      "source": "ec43cccd46d4b1da08733af2eeb8d85363958f35",
+      "environment": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-frame-865443f-1792790692629276000",
+        "CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_RELEASE_DEBUG": "0",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "4",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "GATE_SEATS": "967",
+        "GATE_WATCHED": "50",
+        "GATE_SECONDS": "10"
+      },
+      "started_utc": "2026-10-23T21:31:30.344158+00:00",
+      "pid": 60463,
+      "exit": 0,
+      "elapsed_s": 39.33646854100516,
+      "ended_utc": "2026-10-23T21:32:09.681644+00:00"
+    }
+  ],
+  "identity": "Observed R5 identity witness custody=Some(Memory), label memory custody (debug); release debug assertions enabled; no production custody run",
+  "table": {
+    "committed": ".bboxy/runs/r5-window3-table-ec43ccc.log",
+    "private": "/private/tmp/aster-r5-window3-aeniqxeb/run-1/r5-frame.fXvvuJ/report.diagnostics.json",
+    "bytes": 137201,
+    "sha256": "468088270cce44b52a3a3a9bc0f9c38a24a09341cfb3addc274cd6e664403e1a",
+    "rows": 50,
+    "row_summary_csv": "/private/tmp/aster-r5-window3-aeniqxeb/run-1/per-seat-summary.csv"
+  },
+  "observed": {
+    "ring_marker_present": 50,
+    "logic_current_snapshot_has_paused": 1,
+    "logic_current_snapshot_lacks_paused": 49,
+    "gui_applied_has_paused": 1,
+    "gui_applied_lacks_paused": 49,
+    "latest_applied_written_to_socket": 50,
+    "ring_errors": 0,
+    "logic_errors": 0,
+    "ring_gaps": 0,
+    "gui_views_match_logic_views": 50,
+    "gui_received_equals_applied_equals_written": 50,
+    "gui_matches_later_logic_sequence": 44,
+    "raw_event_cursor_lag_to_sampled_capture": {
+      "min": 1063,
+      "median": 1096.0,
+      "max": 1207
+    },
+    "logic_cursor_range": [
+      514,
+      661
+    ],
+    "ring_captured_range": [
+      1705,
+      1741
+    ],
+    "committed_minus_logic_min": 1063,
+    "logic_queries_sample_after_timeout_ms": [
+      43.487292,
+      554.740625
+    ],
+    "ring_queries_sample_after_timeout_ms": [
+      566.9561669999999,
+      906.3520000000001
+    ],
+    "phase": 2,
+    "false_predicates": [
+      "IO: every watched published Screen contains R5PAUSED",
+      "IO: phase reached SETTLE",
+      "UI: latest Native::poll observed phase SETTLE (other UI settle checks inactive)"
+    ],
+    "native_last_poll": {
+      "callbacks": 1023,
+      "completed_frame": 1023,
+      "frames": 1023,
+      "gpu_complete": false,
+      "has_paused_frame": false,
+      "observed": true,
+      "paused_frame": null,
+      "pending": false,
+      "phase": 2,
+      "stable_counts": false
+    }
+  },
+  "read_only_mechanisms": [
+    "bbt-mux/src/logic.rs:2625,2639 \u2014 Snapshot.sequence is ViewState/Playback.sequence; screen is from that Term",
+    "bbt-mux/src/logic.rs:930 \u2014 ViewState dereferences to Playback",
+    "bbt-supervisor/src/ring.rs:300,304,327 \u2014 Playback requires contiguous event.sequence then advances the raw event cursor",
+    "bbt-mux/src/logic.rs:2792 \u2014 catch_up reads history and applies it to Playback; :3959 serves pending replay one page per seat/round; rate/cause was NOT measured",
+    "bboxy450-term/src/stall/load.rs:1456-1462 \u2014 helper emits R5PAUSED every 100ms while go is absent, both before go and after stop; producers are NOT silent after stop"
+  ],
+  "interpretation": "Observed backlog before the logic Screen: all 50 parsed cursors lag the sampled ring tail. This is not merely a GUI-only final-Screen loss. The scheduling/throughput cause is UNPROVEN; no fix proposed or implemented.",
+  "marker_limit": "The sole paused snapshot, r5-pty-37, is sequence 514 versus sampled marker 1721. It does not prove final-marker progress. The initial/final repeated marker is identical.",
+  "image": {
+    "path": "/private/tmp/aster-r5-window3-aeniqxeb/run-1/r5-frame.fXvvuJ/window.png",
+    "read": true,
+    "mtime_utc": "2026-10-23T21:37:08.913540+00:00",
+    "table_mtime_utc": "2026-10-23T21:37:38.469714+00:00",
+    "limitation": "Capture is about 29.56s earlier than the table file, shows earlier paused placeholders and blanks, and is not the frozen timeout state."
+  },
+  "commands_and_actual_results": [
+    "cargo build --release --locked -q -p bboxy450-term on 865443f \u2014 EXIT 0, 209.813385s",
+    "git fetch origin main; signed rebase onto ec43ccc \u2014 each EXIT 0; only cockpit cfg(test) changed since 865443f",
+    "same cargo build on ec43ccc, same own target \u2014 EXIT 0, 39.336469s; binary SHA256 unchanged",
+    "sh scripts/gates.sh frame with GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10 and release debug assertions/memory \u2014 EXIT 1, 100.701735s, settle guard; no retry",
+    "ps -p recorded PID set -o pid=,command= \u2014 EXIT 1, no PID rows; all 969 reaped, as retained reaped.json",
+    "table/sequence read-only Python, rg and sed probes \u2014 shell EXIT 0; image read via view_image tool",
+    "own completed target cleanup \u2014 Python EXIT 0; exact binary copied and rehashed before removal",
+    "No new CI, profiler, workload, or code test was run after the single diagnostic attempt"
+  ],
+  "not_checked": [
+    "No timing triple or frame/CPU/input/bus SLO verdict; no normal report.json or GATE line was emitted",
+    "No server acknowledgement-acceptance probe: socket Applied writes do not prove server acceptance",
+    "No consistent-cut claim across later backend queries and frozen GUI state",
+    "No measurement of replay scheduling/throughput mechanism, no parser/capture/fixture fix",
+    "Exact 1000 real PTYs, native 120Hz, physical input/photon/scanout, exhaustive OS waits and quinn remain unproven"
+  ],
+  "left_alone": [
+    "Production source, mux/live/socket/ring internals",
+    "Readiness/settle predicates and 20s deadline",
+    "GATE_BUDGET and SLO thresholds",
+    "Helper PAUSED emission behavior, despite observed fixture flaw"
+  ],
+  "cleanup": {
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-frame-865443f-1792790692629276000",
+    "files": 3326,
+    "unique_file_allocated_bytes_removed": 1064628224,
+    "retained_binary": "/private/tmp/aster-r5-window3-aeniqxeb/bboxy450-term-ec43ccc",
+    "retained_binary_sha256": "d5339950e047844e9ee0c218100a1a28e77030af85bf34bd55ee1181e372bb0c",
+    "retained_binary_allocated_bytes": 33325056,
+    "net_allocated_bytes_retired": 1031303168,
+    "target_removed": true,
+    "free_bytes_after": 104585289728
+  },
+  "files": {
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-1/command.json": {
+      "bytes": 833,
+      "sha256": "6971b1b5e69d06b6683f2937faae42b82b0be9e91915b35a70216d9bdbe367b0"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-1/process.json": {
+      "bytes": 63,
+      "sha256": "6dd7fe988f73e364954fe4652f637c75af112d058a3ab38fd4304b2f8eec203b"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-1/result.json": {
+      "bytes": 174106,
+      "sha256": "9a37118868ccc2eb8bf39dd69b18e8a07df226df8062bc4835de102585f57ce4"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-1/reaped.json": {
+      "bytes": 10719,
+      "sha256": "a73bd8c63bb1b6c80295ee59966ae950c331ed2809eb41eb076776ab1f3f49bc"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-1/stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-1/stderr.log": {
+      "bytes": 209801,
+      "sha256": "5210412deb079a8353100628743d9d1209925c9be67c32657421ae8ab2936d08"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-1/r5-frame.fXvvuJ/report.diagnostics.json": {
+      "bytes": 137201,
+      "sha256": "468088270cce44b52a3a3a9bc0f9c38a24a09341cfb3addc274cd6e664403e1a"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-1/per-seat-summary.csv": {
+      "bytes": 3553,
+      "sha256": "8f577e1bca5132a298a55a8501f0a321eec17bfba9db288674574d680f75699a"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-1/r5-frame.fXvvuJ/window.png": {
+      "bytes": 269583,
+      "sha256": "9f06481d06d8c270b839ed8da917a377c3447614e490e7763a0a1e87784c26ff"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/build-result-865443f.json": {
+      "bytes": 796,
+      "sha256": "09a4932341ab875410b988e86052f35c1acabd8e92d275d7d3198b0bd7ea510e"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/build-result.json": {
+      "bytes": 795,
+      "sha256": "487ba544dc045b22da574ee3c7b36a0de6cc76b02134b328df9e1ac6e98edd0a"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/binary.json": {
+      "bytes": 377,
+      "sha256": "08f341b162cb179db637eeec470f81a4ce3e2234536299d51b4ec28e83804e1c"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/cleanup.json": {
+      "bytes": 506,
+      "sha256": "5702e4e6e74d567f14f60a2ecddc6f1cd2762e1b6ac1745929ed0865587d0096"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/run-one.py": {
+      "bytes": 6647,
+      "sha256": "7be0b2b6c4af5223c0c56cba9e5cf70123a597d77d4a4cda19b4f9361b893f75"
+    },
+    "/private/tmp/aster-r5-window3-aeniqxeb/build.py": {
+      "bytes": 1622,
+      "sha256": "e192304caad8c8031ec9bde4d1c16a85635c197c98d0922dc775bedc3af2f4da"
+    }
+  },
+  "no_source_change_proof_exit": 0
+}
