@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>glow inside · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+<style>
+  .gi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); gap: 20px; }
+  .gi-card { display: flex; flex-direction: column; gap: var(--s4); }
+  .gi-card h3 { margin: 0; font-size: var(--t-row); font-weight: 600; color: var(--fg); }
+  .gi-card p { margin: 0; font-size: var(--t-caption); color: var(--fg-dim); line-height: 1.45; }
+  .gi-stage { position: relative; background: var(--bg); border-radius: var(--r-pill); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 112px 112px; }
+  .gi-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+  .gi-stage .pane { min-width: 0; }
+  .gi-lane { display: flex; align-items: center; gap: var(--s5); margin-bottom: var(--s6); font-size: var(--t-caption); color: var(--fg-dim); }
+  .gi-lane input { width: 120px; }
+  .gi-lane b { color: var(--fg); font-weight: 600; min-width: 34px; }
+</style>
+</head><body><script>
+// Glow inside the pane (operator, 2026-10-23: "can visually we move activity glow inside of the terminal window? or only
+// glow header? ... to save space"). Six readings of the same activity on the same 2x3 grid. Variants drawn inside the pane
+// pack the panes GAP px apart instead of a lane apart, so the space they win shows up as bigger panes in the same frame.
+// Inside variants live in the terminal's own padding (.pane .term, var(--s4)) or the title strip, never over text cells.
+// Same silk equation and activity table as the native lane (materials.wgsl lane): idle .32/.35, active 1/1, waiting .9/.6
+// with a breath, errored .65/still; focused x1.3. Lab only: nothing here is a token or a parity reference yet.
+const el = Lab.el, T = window.TOKENS, GAP = 2;
+const q = new URLSearchParams(location.search);
+let lane = Math.min(T.glow.lane_max, Math.max(T.glow.lane_min, +(q.get('lane') || T.glow.lane)));
+
+const SEATS = [
+  { key: 'gi-vesper', name: 'Vesper Greywind', harness: 'claude', role: 'oracle', title: 'swarm control', state: 'active', focused: true },
+  { key: 'gi-nyx', name: 'Nyx Copperwing', harness: 'codex', role: 'executor', title: 'L8 launcher', state: 'active' },
+  { key: 'gi-rook', name: 'Rook Ashwhisker', harness: 'codex', role: 'executor', title: 'needs an answer', state: 'waiting' },
+  { key: 'gi-sable', name: 'Sable Embertail', harness: 'codex', role: 'executor', title: 'cadence plan', state: 'idle' },
+  { key: 'gi-aster', name: 'Aster Cinderwing', harness: 'codex', role: 'executor', title: 'stall test', state: 'active' },
+  { key: 'gi-zsh', name: 'zsh', harness: 'zsh', role: null, title: '~', state: 'idle' },
+];
+
+// mode: what region the effect lives in. outside = [0, L] beyond the pane (today); the rest stay inside the pane.
+const VARIANTS = [
+  { id: 'outside', mode: 0, gap: 'lane', title: 'Today: silk outside the pane',
+    say: L => `The lane sits ${L} px outside every pane, so neighbours stand ${L} px apart and the window keeps ${L} px at each edge. Baseline for the space below.` },
+  { id: 'inside', mode: 1, gap: GAP, title: 'Silk inside the terminal edge',
+    say: L => `The same silk, moved into the terminal's own ${Math.min(L, 8)} px padding; text cells never move. Panes sit ${GAP} px apart: each neighbouring pair gains ${L - GAP} px, a row of three gains ${4 * (L - GAP)} px.` },
+  { id: 'header', mode: 2, gap: GAP, title: 'Header only',
+    say: L => `Silk runs through the title strip; the terminal body stays still and clean. Gains ${L - GAP} px per pair. Quietest on busy screens.` },
+  { id: 'rim', mode: 3, gap: GAP, title: 'Wild card: a 2 px inner rim',
+    say: L => `A 2 px rim just inside the border, crests sliding round it. The thinnest reading that still moves. Gains ${L - GAP} px per pair; the lane setting does not apply.` },
+  { id: 'underline', mode: 4, gap: GAP, title: 'Wild card: a breathing header underline',
+    say: L => `A 2 px line under the title strip that breathes and carries a travelling crest. Reads like a progress pulse. Gains ${L - GAP} px per pair.` },
+  { id: 'ember', mode: 5, gap: GAP, title: 'Wild card: an ember on the edge',
+    say: L => `One soft ember travels the inside edge with a fading tail: busier seats run it faster, waiting seats glow amber. Gains ${L - GAP} px per pair.` },
+];
+
+const VS = `#version 300 es
+void main(){ vec2 p = vec2(gl_VertexID == 1 ? 3. : -1., gl_VertexID == 2 ? 3. : -1.); gl_Position = vec4(p, 0., 1.); }`;
+const FS = `#version 300 es
+precision highp float;
+uniform int uMode, uN; uniform float uLane, uIn, uDpr, uH, uTime;
+uniform vec4 uRect[6], uCol[6], uP[6];   // uRect: the region (css px); uCol: rgb + alpha; uP: activity, focus, phase ms, radius
+out vec4 o;
+const float TAU = 6.2831853;
+float sdf(vec2 q, vec2 hs, float r){ r = min(r, min(hs.x, hs.y)); vec2 d = abs(q) - hs + vec2(r); return min(max(d.x, d.y), 0.) + length(max(d, vec2(0.))) - r; }
+float perimLen(vec2 hs, float r0){ float r = max(r0, .001); vec2 b = hs - r; return 4.*(b.x + b.y) + TAU*r; }
+float perim(vec2 q, vec2 hs, float r0){
+  float r = max(r0, .001); vec2 b = hs - r; float sx = 2.*b.x, sy = 2.*b.y, a = .25*TAU*r;
+  if (abs(q.x) <= b.x) return q.y < 0. ? q.x + b.x : sx + 2.*a + sy + (b.x - q.x);
+  if (abs(q.y) <= b.y) return q.x > 0. ? sx + a + (q.y + b.y) : 2.*sx + 3.*a + sy + (b.y - q.y);
+  if (q.x > 0. && q.y < 0.) { vec2 v = q - vec2(b.x, -b.y); return sx + r*atan(v.x, -v.y); }
+  if (q.x > 0.) { vec2 v = q - vec2(b.x, b.y); return sx + a + sy + r*atan(v.y, v.x); }
+  if (q.y > 0.) { vec2 v = q - vec2(-b.x, b.y); return 2.*sx + 2.*a + sy + r*atan(-v.x, v.y); }
+  vec2 v = q - vec2(-b.x, -b.y); return 2.*sx + 3.*a + 2.*sy + r*atan(-v.y, -v.x);
+}
+float wl(float lambda, float P){ return P / max(1., floor(P/lambda + .5)); }
+float silk(float u, float s, float P, float t){
+  float c0 = .40 + .14*sin(TAU*(s/wl(190., P) - t*.31)) + .07*sin(TAU*(s/wl(73., P) + t*.43) + 1.3);
+  float k = (u - c0)/.16, core = exp(-(k*k));
+  float crest = .5 + .5*sin(TAU*(s/wl(260., P) - t*.22));
+  return core*(.55 + .45*crest) + exp(-u*2.2)*(.15 + .55*crest*crest);
+}
+void main(){
+  vec2 p = vec2(gl_FragCoord.x, uH - gl_FragCoord.y) / uDpr;
+  vec4 acc = vec4(0.);
+  for (int i = 0; i < 6; i++) {
+    if (i >= uN) break;
+    vec4 R = uRect[i]; vec2 hs = R.zw*.5, q = p - R.xy - hs; float r = uP[i].w, d = sdf(q, hs, r);
+    float act = uP[i].x, spd = 0., amp = .65;
+    if (act == 0.) { spd = .35; amp = .32; } if (act == 1.) { spd = 1.; amp = 1.; } if (act == 2.) { spd = .6; amp = .9; }
+    float time = uTime + uP[i].z, t = time*.001*spd, I = 0.;
+    float P = perimLen(hs, r), s = perim(q, hs, r);
+    if (uMode == 0) {                       // outside: [0, L] beyond the edge
+      float m = smoothstep(0., .6, d)*(1. - smoothstep(uLane - .6, uLane, d));
+      if (m > 0.) I = silk(clamp(d/uLane, 0., 1.), s, P, t)*m;
+    } else if (uMode == 1) {                // inside: [-In, 0] within the terminal padding
+      float m = smoothstep(0., .6, -d)*(1. - smoothstep(uIn - .6, uIn, -d));
+      if (m > 0.) I = silk(clamp(-d/uIn, 0., 1.), s, P, t)*m;
+    } else if (uMode == 2) {                // header: the strip itself, u across its height, s along it
+      float m = 1. - smoothstep(-.6, 0., d);
+      if (m > 0.) I = .42*silk(clamp((p.y - R.y)/R.w, 0., 1.), p.x - R.x, R.z, t)*m;   // gentle: the strip carries the name
+    } else if (uMode == 3) {                // rim: 2 px inside the border, crests only
+      float m = smoothstep(0., .6, -d)*(1. - smoothstep(1.4, 2., -d));
+      float crest = .5 + .5*sin(TAU*(s/wl(150., P) - t*.35));
+      if (m > 0.) I = (.3 + .7*crest*crest)*m;
+    } else if (uMode == 4) {                // underline: 2 px at the strip's foot, breath + travelling crest
+      float m = (1. - smoothstep(-.6, 0., d));
+      float x = (p.x - R.x)/R.z, crest = exp(-pow((fract(x - t*.18) - .5)/.12, 2.));
+      if (m > 0.) I = (.35 + .25*(.5 - .5*cos(time/1800.*TAU)) + .6*crest)*m;
+    } else {                                // ember: one travelling ember with a tail, inside the padding
+      float m = smoothstep(0., .6, -d)*(1. - smoothstep(uIn - .6, uIn, -d));
+      float head = fract(t*.09 + uP[i].z*.0001)*P, back = mod(head - s, P);
+      float tail = exp(-back/(.18*P)) * step(0., back), u = clamp(-d/uIn, 0., 1.), k = (u - .35)/.3;
+      if (m > 0.) I = (1.4*tail*exp(-(k*k)) + .12*exp(-u*2.))*m;
+    }
+    I *= amp * mix(1., 1.3, uP[i].y);
+    if (act == 2.) I *= .6 + .4*(.5 - .5*cos(time/1600.*TAU));
+    I = clamp(I, 0., 1.)*uCol[i].a;
+    vec3 c = uMode == 2 ? mix(uCol[i].rgb, vec3(1.), .3) : uCol[i].rgb;   // a touch of white so it reads on a seat-coloured strip
+    acc = vec4(c*I, I) + acc*(1. - I);
+  }
+  o = acc;
+}`;
+
+let GL = null;   // one shared context; each stage copies its frame into its own 2D canvas
+function shared() {
+  if (GL !== null) return GL;
+  const cv = document.createElement('canvas'), gl = cv.getContext('webgl2', { premultipliedAlpha: true, antialias: false });
+  if (!gl) return (GL = false);
+  const sh = (type, src) => { const x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
+  const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+  const U = {}; for (const n of ['uMode', 'uN', 'uLane', 'uIn', 'uDpr', 'uH', 'uTime', 'uRect', 'uCol', 'uP']) U[n] = gl.getUniformLocation(prog, n);
+  return (GL = { gl, cv, prog, U });
+}
+const probe = document.createElement('canvas').getContext('2d');
+function rgb(css) { probe.clearRect(0, 0, 1, 1); probe.fillStyle = '#000'; probe.fillStyle = css; probe.fillRect(0, 0, 1, 1); const d = probe.getImageData(0, 0, 1, 1).data; return [d[0] / 255, d[1] / 255, d[2] / 255]; }
+const ACT = { idle: 0, active: 1, waiting: 2, errored: 3 };
+
+function stage(v) {
+  const g = v.gap === 'lane' ? lane : v.gap;
+  const st = el('div', { class: 'gi-stage', style: `padding:${g}px;gap:${g}px` });
+  const panes = SEATS.map(s => { const p = C.pane(s, { focused: !!s.focused, unfocused: !s.focused, height: 112 }); st.append(p); return { s, p }; });
+  const cv = el('canvas'); st.append(cv); const ctx = cv.getContext('2d');
+  function frame(ts) {
+    if (!cv.isConnected) return;
+    const S = shared(); if (!S) return;
+    const dpr = devicePixelRatio, cr = cv.getBoundingClientRect(), w = Math.round(cr.width * dpr), h = Math.round(cr.height * dpr);
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    const root = getComputedStyle(document.documentElement), rect = [], col = [], par = [];
+    let inner = lane;
+    for (const { s, p } of panes) {
+      const target = v.mode === 2 || v.mode === 4 ? p.querySelector('.strip') : v.mode === 1 || v.mode === 5 ? p.querySelector('.term') : p;
+      let r = target.getBoundingClientRect(), x = r.left - cr.left, y = r.top - cr.top, rw = r.width, rh = r.height;
+      if (v.mode === 4) { y += rh - 2; rh = 2; }   // the strip's foot
+      rect.push(x, y, rw, rh);
+      const c = rgb(s.state === 'waiting' ? root.getPropertyValue('--c-waiting') : s.state === 'errored' ? root.getPropertyValue('--c-errored') : C.seatColor(s));
+      col.push(c[0], c[1], c[2], 1);
+      par.push(ACT[s.state] || 0, s.focused ? 1 : 0, C.hash32(s.key) % 10000, v.mode === 0 || v.mode === 3 ? parseFloat(getComputedStyle(p).borderTopLeftRadius) || 0 : v.mode === 2 || v.mode === 4 ? 0 : 4);
+      if (v.mode === 1 || v.mode === 5) inner = Math.min(inner, parseFloat(getComputedStyle(target).paddingLeft) || lane);   // never over text cells
+    }
+    const { gl, U } = S; S.cv.width = w; S.cv.height = h;
+    gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.useProgram(S.prog);
+    gl.uniform1i(U.uMode, v.mode); gl.uniform1i(U.uN, panes.length); gl.uniform1f(U.uLane, lane); gl.uniform1f(U.uIn, inner);
+    gl.uniform1f(U.uDpr, dpr); gl.uniform1f(U.uH, h); gl.uniform1f(U.uTime, ts);
+    gl.uniform4fv(U.uRect, rect); gl.uniform4fv(U.uCol, col); gl.uniform4fv(U.uP, par);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    ctx.clearRect(0, 0, w, h); ctx.drawImage(S.cv, 0, 0);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  return st;
+}
+
+function card(v) { return el('div', { class: 'gi-card' }, el('h3', {}, v.title), stage(v), el('p', {}, v.say(lane))); }
+
+Lab.page({ title: 'glow inside', wide: true,
+  note: 'Can the activity glow live inside the pane, to save the lane between panes? Six readings of the same seats (Vesper focused and active, Nyx and Aster active, Rook waiting, Sable and zsh idle). Variants inside the pane pack panes 2 px apart, so the space they win shows as bigger panes in the same frame. The lane slider is the Settings glow lane (2 to 8 px). Needs WebGL2.',
+  states: ['gallery', ...VARIANTS.map(v => v.id)],
+  render(s, body) {
+    const slider = el('input', { type: 'range', min: T.glow.lane_min, max: T.glow.lane_max, step: 1, value: lane });
+    const val = el('b', {}, lane + ' px');
+    const grid = el('div', { class: 'gi-grid' });
+    const draw = () => { grid.innerHTML = ''; for (const v of VARIANTS) if (s === 'gallery' || s === v.id) grid.append(card(v)); };
+    slider.addEventListener('input', () => { lane = +slider.value; val.textContent = lane + ' px'; draw(); });
+    body.append(el('div', { class: 'gi-lane' }, el('span', {}, 'glow lane'), slider, val), grid);
+    draw();
+  } });
+</script></body></html>
