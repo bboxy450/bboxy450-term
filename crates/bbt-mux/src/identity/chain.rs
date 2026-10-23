@@ -172,6 +172,9 @@ impl ChainSeatKeys {
     pub fn status_at(&self, now: u64) -> Result<super::IdentityStatus> {
         bbt_rt::assert_not_ui_thread();
         let mut status = super::status::read(&self.account, now)?;
+        if status.custody == Some(self.custody.custody()) {
+            status.custody_label = Some(self.custody.custody_label().into());
+        }
         if status.bootstrapped
             && let Some(reason) = self.signing_hold(now)
         {

@@ -88,6 +88,9 @@ impl DeviceKeyStore for BoundedStore {
     fn custody(&self) -> Custody {
         self.store.custody()
     }
+    fn custody_label(&self) -> &'static str {
+        self.store.custody_label()
+    }
     fn load(&self, id: Ulid) -> Result<Option<SigningKey>> {
         let store = self.store.clone();
         self.io.run(move || store.load(id))
@@ -129,6 +132,9 @@ impl DeviceKeyStore for MemoryKeys {
     fn custody(&self) -> Custody {
         Custody::Memory
     }
+    fn custody_label(&self) -> &'static str {
+        "memory custody (debug)"
+    }
     fn load(&self, id: Ulid) -> Result<Option<SigningKey>> {
         Ok(self
             .0
@@ -164,6 +170,28 @@ mod release_tests {
 
 #[cfg(all(test, debug_assertions))]
 mod debug_tests {
+    #[test]
+    fn labels_describe_the_actual_store_and_survive_the_io_wrapper() {
+        use super::{Custody, DeviceKeyStore, E, Result};
+        struct Fixture;
+        impl DeviceKeyStore for Fixture {
+            fn custody(&self) -> Custody {
+                Custody::Memory
+            }
+            fn load(&self, _: super::Ulid) -> Result<Option<super::SigningKey>> {
+                Err(E::InvalidProof)
+            }
+            fn create(&self, _: super::Ulid, _: &super::SigningKey) -> Result<()> {
+                Err(E::InvalidProof)
+            }
+        }
+        assert_eq!(Custody::Memory.label(), "test custody");
+        let fixture = super::bounded_store(super::Arc::new(Fixture));
+        assert_eq!(fixture.custody_label(), "test custody");
+        let debug = super::bounded_store(super::Arc::new(super::MemoryKeys::default()));
+        assert_eq!(debug.custody_label(), "memory custody (debug)");
+    }
+
     #[test]
     #[ignore = "spawned-process fixture, invoked by debug_without_override_selects_keychain"]
     fn unset_process_fixture() {

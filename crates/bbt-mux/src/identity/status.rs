@@ -92,6 +92,13 @@ impl IdentityRuntime {
         }
         let mut status = read(&self.account, now)?;
         super::local::decorate(&self.account, &mut status)?;
+        if let Some(label) = self
+            .retry
+            .as_ref()
+            .and_then(|retry| retry.custody_label(status.custody))
+        {
+            status.custody_label = Some(label.into());
+        }
         if let Some(reason) = self.pending {
             status.hold(reason);
         }

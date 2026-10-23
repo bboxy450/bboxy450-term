@@ -18,13 +18,7 @@ impl Custody {
         match self {
             Self::DataProtection => "data protection",
             Self::LoginKeychain => "dev custody",
-            Self::Memory => {
-                #[cfg(debug_assertions)]
-                if super::io::process_test_store().is_some() {
-                    return "memory custody (debug)";
-                }
-                "test custody"
-            }
+            Self::Memory => "test custody",
         }
     }
 }
@@ -32,6 +26,10 @@ impl Custody {
 /// Internal IO-owner seam; never hand this store or a device key to a harness.
 pub trait DeviceKeyStore {
     fn custody(&self) -> Custody;
+    /// Describes this store, independently of the process's default selection.
+    fn custody_label(&self) -> &'static str {
+        self.custody().label()
+    }
     fn load(&self, device: Ulid) -> Result<Option<SigningKey>>;
     fn create(&self, device: Ulid, key: &SigningKey) -> Result<()>;
 }

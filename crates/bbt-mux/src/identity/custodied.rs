@@ -26,6 +26,12 @@ pub(super) struct Retry {
     handle: tokio::runtime::Handle,
 }
 impl Retry {
+    pub(super) fn custody_label(&self, recorded: Option<super::Custody>) -> Option<&'static str> {
+        self.store
+            .as_ref()
+            .filter(|store| Some(store.custody()) == recorded)
+            .map(|store| store.custody_label())
+    }
     fn load(&self) -> LocalIssuerOutcome {
         match &self.store {
             Some(store) => local_dev_issuer_with_store(&self.root, store.as_ref()),
