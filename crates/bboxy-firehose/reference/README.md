@@ -25,11 +25,11 @@ lockfile records the package tarball integrity. Never vendor a floating version.
 
 Every input comes from the real release CLI with seed 42, 80×24, Menlo at 13px.
 Foreground/background match `bbt-render::Scene::smoke`'s dark/light values.
-The reference saves ten final screenshots and two intermediate screenshots
+The reference saves twelve final screenshots and two intermediate screenshots
 (50% progress and the active alternate screen). Reports record browser version,
 input/image digests and the exact viewport comparison against `bbt-core`.
 The comparison includes every cell's content, width, colours and six style
-flags, plus the cursor. It deliberately does not equate the implementations'
+flags, plus cursor position and shape. The two cursor scenes also verify steady (nonblinking) state. It deliberately does not equate the implementations'
 private mode bits or claim a complete OSC 8/underline-style semantic comparison.
 
 `--strict` fails if any viewport differs. Without it the script still reports
@@ -113,3 +113,24 @@ focused cursor cell. Every generated image starts with its read status unproven;
 record actual image reads separately. The current machine supplies actual live
 1x only. Use the headless scale2 gallery for the 2x gate, and keep live2x and
 operator-supplied iTerm2/Ghostty comparisons explicitly unproven.
+
+## Additional T2 layers
+
+`cursor-beam` and `cursor-underline` use DECSCUSR 6 and 4. They show a steady,
+focused cursor over the blue lower-left cell. Other scenes retain the unfocused
+cursor used by the original gallery. Every scene prefix restores the default
+cursor style so seeded playback cannot inherit a previous fixture's shape. The
+frozen screen hash schema remains unchanged; cursor shape and steady state are
+checked separately against the pinned xterm parser.
+
+The xterm DOM clips double and wavy underlines at its 15px row boundary. Native
+keeps both double strokes and the complete wave inside the cell. The overflow
+probe and its image read are recorded in `.bboxy/runs/t2-decorations.log`; this
+reference limitation is retained in raw pixel scores.
+
+The additional layer gallery is `layers/index.html` (48 web | native | diff
+cases). Its baseline uses the accepted pre-layer terminal renderer, with new
+cursor fixtures captured before their thickness correction. Rebuild its report
+with `python3 crates/bboxy-firehose/reference/gallery.py --root crates/bboxy-firehose/reference/layers`.
+The original `gallery/` remains the historical T2a comparison. The new `proofs/`
+contains the per-layer before/after crops and the DOM clipping diagnostic.

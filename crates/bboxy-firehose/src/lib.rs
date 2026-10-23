@@ -4,7 +4,7 @@ pub mod options;
 
 /// Every scene starts from a clean primary screen and ends with normal SGR,
 /// full-height scrolling, synchronized output off and a visible cursor.
-pub const START: &[u8] = b"\x1b[?2026l\x1b[?1049l\x1b[0m\x1b[r\x1b[2J\x1b[H";
+pub const START: &[u8] = b"\x1b[?2026l\x1b[?1049l\x1b[0 q\x1b[0m\x1b[r\x1b[2J\x1b[H";
 pub const END: &[u8] = b"\x1b[0m\x1b[r\x1b[?2026l\x1b[?25h\x1b[24;1H";
 pub const COLS: usize = 80;
 pub const ROWS: usize = 24;
@@ -65,6 +65,16 @@ pub const SCENES: &[Scene] = &[
         name: "osc7501-codex",
         description: "empty Codex captures, labelled synthetic protocol coverage",
         bytes: include_bytes!("../corpus/osc7501-codex.ansi"),
+    },
+    Scene {
+        name: "cursor-beam",
+        description: "steady focused beam cursor (DECSCUSR 6)",
+        bytes: include_bytes!("../corpus/cursor-beam.ansi"),
+    },
+    Scene {
+        name: "cursor-underline",
+        description: "steady focused underline cursor (DECSCUSR 4)",
+        bytes: include_bytes!("../corpus/cursor-underline.ansi"),
     },
 ];
 

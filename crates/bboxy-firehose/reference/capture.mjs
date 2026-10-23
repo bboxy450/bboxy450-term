@@ -93,7 +93,8 @@ try {
   };
   for (const name of names) {
     const bytes = execFileSync(binary, ['--scene', name, '--seed', seed, '--rate', 'max']);
-    await cdp.eval(`openFixture(${light},${fixedGrid})`);
+    await cdp.call('Emulation.setFocusEmulationEnabled', {enabled: name.startsWith('cursor-')});
+    await cdp.eval(`openFixture(${light},${fixedGrid},${name.startsWith('cursor-')})`);
     const endAlt = name === 'alternate' ? bytes.lastIndexOf(Buffer.from('\x1b[?1049l')) : -1;
     const halfProgress = name === 'progress' ? bytes.indexOf(Buffer.from(' 50%')) + 4 : -1;
     const split = endAlt > 0 ? endAlt : halfProgress > 4 ? halfProgress : -1;
@@ -113,22 +114,28 @@ try {
       }
     }
     const cursorMatch = JSON.stringify(expected.cursor) === JSON.stringify(grid.cursor);
+    const cursorStyleMatch = expected.cursorStyle === grid.cursorStyle;
+    const steadyCursorMatch = !name.startsWith('cursor-') || (expected.cursorBlink === false && grid.cursorBlink === false);
+    const cursorFocusMatch = grid.focused === name.startsWith('cursor-');
     const result = {name, seed, inputBytes: bytes.length, inputSha256: sha256(bytes),
       ...(await capture(name, grid)), intermediate, cursor: grid.cursor, cursorMatch,
+      cursorStyle: grid.cursorStyle, cursorStyleMatch, steadyCursorMatch,
+      focused: grid.focused, cursorFocusMatch,
       differingCells: differences.length, firstDifferences: differences.slice(0, 12),
       buffer: grid.buffer, lines: grid.lines};
     results.push(result);
-    console.log(`${name}: captured; core/xterm differing cells=${differences.length}, cursor=${cursorMatch ? 'match' : 'DIFFERENT'}`);
+    console.log(`${name}: captured; core/xterm differing cells=${differences.length}, cursor=${cursorMatch && cursorStyleMatch && steadyCursorMatch ? 'match' : 'DIFFERENT'}`);
   }
   const report = {xterm: '6.0.0', unicode: '11 (addon-unicode11 0.9.0)', vendor, browser: version.Browser, seed, font: 'Menlo', fontSize: 13,
     cols: 80, rows: 24, scale, theme: light ? 'light' : 'dark', profile: 'isolated ephemeral',
     reference: 'xterm.js DOM renderer; iTerm2/Ghostty comparison remains unproven',
     semanticSchema: '[chars,width,fg,bg,bold,dim,italic,inverse,underline,strike]',
-    semanticExactScenes: results.filter(r => r.differingCells === 0 && r.cursorMatch).length,
+    semanticExactScenes: results.filter(r => r.differingCells === 0 && r.cursorMatch && r.cursorStyleMatch && r.steadyCursorMatch).length,
+    captureReadyScenes: results.filter(r => r.cursorFocusMatch).length,
     scenes: results};
   await fs.writeFile(path.join(out, `report-${variant}.json`), JSON.stringify(report, null, 2) + '\n');
-  console.log(`10/10 scenes captured; ${report.semanticExactScenes}/10 semantic viewport matches; variant=${variant}`);
-  if (process.argv.includes('--strict') && report.semanticExactScenes !== 10) process.exitCode = 1;
+  console.log(`${results.length}/${names.length} scenes captured; ${report.semanticExactScenes}/${names.length} semantic viewport matches; ${report.captureReadyScenes}/${names.length} focus states match; variant=${variant}`);
+  if (process.argv.includes('--strict') && (report.semanticExactScenes !== names.length || report.captureReadyScenes !== names.length)) process.exitCode = 1;
 } finally {
   ws?.close(); browser.kill('SIGTERM');
   await Promise.race([new Promise(resolve => browser.once('exit', resolve)), pause(2000)]);

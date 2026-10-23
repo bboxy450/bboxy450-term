@@ -12,7 +12,7 @@
 <script src="vendor/addon-unicode11.js"></script>
 <script>
 let terminal;
-window.openFixture = async (light, fixedGrid = false) => {
+window.openFixture = async (light, fixedGrid = false, focused = false) => {
   terminal?.dispose();
   document.querySelector('#terminal').replaceChildren();
   const background = light ? '#f2f4f8' : '#0f141d';
@@ -27,7 +27,7 @@ window.openFixture = async (light, fixedGrid = false) => {
   terminal.loadAddon(new Unicode11Addon.Unicode11Addon());
   terminal.unicode.activeVersion = '11';
   terminal.open(document.querySelector('#terminal'));
-  terminal.blur();
+  focused ? terminal.focus() : terminal.blur();
   await document.fonts.ready;
   if (fixedGrid) {
     document.querySelector('#terminal').style.padding = '0';
@@ -63,7 +63,11 @@ window.fixtureGrid = () => {
     }
   }
   const r = document.querySelector('#terminal').getBoundingClientRect();
+  const modes = terminal._core.coreService.decPrivateModes;
   return {cursor: [buffer.cursorY, buffer.cursorX], cells, lines,
+    focused: document.hasFocus() && document.activeElement === terminal.textarea,
+    cursorStyle: modes.cursorStyle ?? terminal.options.cursorStyle,
+    cursorBlink: modes.cursorBlink ?? terminal.options.cursorBlink,
     buffer: buffer.type, width: Math.ceil(r.width), height: Math.ceil(r.height)};
 };
 </script>

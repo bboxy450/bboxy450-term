@@ -1,0 +1,58 @@
+{
+  "method": "original-pixel crops; row14 cols12..41; max absolute RGB difference >16; mean absolute RGB over same region",
+  "base": "e877187",
+  "cases": [
+    {
+      "variant": "dark-1x",
+      "before": {
+        "pixels_gt16_percent": 21.17816091954023,
+        "mean_absolute_rgb": 33.57911877394636
+      },
+      "after": {
+        "pixels_gt16_percent": 16.436781609195403,
+        "mean_absolute_rgb": 6.01139846743295
+      }
+    },
+    {
+      "variant": "light-1x",
+      "before": {
+        "pixels_gt16_percent": 21.465517241379313,
+        "mean_absolute_rgb": 32.98409961685824
+      },
+      "after": {
+        "pixels_gt16_percent": 10.229885057471265,
+        "mean_absolute_rgb": 4.31772030651341
+      }
+    },
+    {
+      "variant": "dark-2x",
+      "before": {
+        "pixels_gt16_percent": 18.72844827586207,
+        "mean_absolute_rgb": 18.932112068965516
+      },
+      "after": {
+        "pixels_gt16_percent": 10.21551724137931,
+        "mean_absolute_rgb": 4.471048850574713
+      }
+    },
+    {
+      "variant": "light-2x",
+      "before": {
+        "pixels_gt16_percent": 17.37787356321839,
+        "mean_absolute_rgb": 19.638433908045975
+      },
+      "after": {
+        "pixels_gt16_percent": 9.10919540229885,
+        "mean_absolute_rgb": 7.178352490421456
+      }
+    }
+  ],
+  "changed_pngs": [
+    "unicode-dark-1x.png",
+    "unicode-dark-2x.png",
+    "unicode-light-1x.png",
+    "unicode-light-2x.png"
+  ],
+  "unchanged_pngs": 36,
+  "read_image_sha256": "3066f3f317a47ea8203ec858ac7c27dea21200c5117fd1b84a507f417fa7e56f"
+}

@@ -173,6 +173,17 @@ fn cursor_shapes_and_bad_snapshots_are_observable() {
     }
     assert!(counts[0] > counts[1] && counts[0] > counts[2]);
     assert_ne!(counts[1], counts[2]);
+    let metrics = renderer.metrics();
+    // The focused bar and underline are one logical pixel, as in the reference.
+    assert_eq!(
+        counts,
+        [
+            metrics.cell_width * metrics.cell_height,
+            metrics.cell_height,
+            metrics.cell_width
+        ]
+        .map(|n| n as usize)
+    );
     grid.cursor.as_mut().unwrap().column = 2;
     assert!(renderer.render_to_rgba(&context, &grid).is_err());
 }

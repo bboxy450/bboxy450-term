@@ -1,0 +1,6 @@
+[1mCursor styles: steady beam[0m
+
+DECSCUSR 6: focused beam, blinking disabled.
+The lower-left blue cell contains the cursor.
+The cursor must stay within that cell at both pixel densities.
+[24;1H[48;2;40;58;82m [0m beam at column 1[6 q

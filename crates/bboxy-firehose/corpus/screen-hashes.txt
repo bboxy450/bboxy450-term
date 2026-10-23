@@ -8,3 +8,5 @@ scroll-links-sync e8c8282603029a40
 osc7501-claude bc12654d7d8da675
 osc7501-preflight 61637783be3702b6
 osc7501-codex b822608a1187611d
+cursor-beam 60fe0daafe6a3037
+cursor-underline 41d83d1c9a30d5b4

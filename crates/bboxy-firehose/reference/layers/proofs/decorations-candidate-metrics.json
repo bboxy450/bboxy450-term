@@ -1,0 +1,254 @@
+[
+  {
+    "variant": "dark-1x",
+    "strike": {
+      "before": {
+        "pixels_gt16_percent": 34.5833,
+        "mean_absolute_rgb": 40.5319
+      },
+      "after": {
+        "pixels_gt16_percent": 25.8333,
+        "mean_absolute_rgb": 21.9454
+      }
+    },
+    "dotted": {
+      "before": {
+        "pixels_gt16_percent": 72.9167,
+        "mean_absolute_rgb": 60.1157
+      },
+      "after": {
+        "pixels_gt16_percent": 34.7222,
+        "mean_absolute_rgb": 18.9236
+      }
+    },
+    "dashed": {
+      "before": {
+        "pixels_gt16_percent": 56.9444,
+        "mean_absolute_rgb": 53.7847
+      },
+      "after": {
+        "pixels_gt16_percent": 43.0556,
+        "mean_absolute_rgb": 23.5995
+      }
+    },
+    "single": {
+      "before": {
+        "pixels_gt16_percent": 11.1111,
+        "mean_absolute_rgb": 9.0231
+      },
+      "after": {
+        "pixels_gt16_percent": 11.1111,
+        "mean_absolute_rgb": 9.0231
+      }
+    },
+    "double_DOM_clipped": {
+      "before": {
+        "pixels_gt16_percent": 100.0,
+        "mean_absolute_rgb": 214.7801
+      },
+      "after": {
+        "pixels_gt16_percent": 100.0,
+        "mean_absolute_rgb": 214.7801
+      }
+    },
+    "curly_DOM_clipped": {
+      "before": {
+        "pixels_gt16_percent": 70.8333,
+        "mean_absolute_rgb": 93.5667
+      },
+      "after": {
+        "pixels_gt16_percent": 70.8333,
+        "mean_absolute_rgb": 93.5667
+      }
+    }
+  },
+  {
+    "variant": "light-1x",
+    "strike": {
+      "before": {
+        "pixels_gt16_percent": 33.4722,
+        "mean_absolute_rgb": 37.744
+      },
+      "after": {
+        "pixels_gt16_percent": 24.1667,
+        "mean_absolute_rgb": 18.7106
+      }
+    },
+    "dotted": {
+      "before": {
+        "pixels_gt16_percent": 58.3333,
+        "mean_absolute_rgb": 53.1505
+      },
+      "after": {
+        "pixels_gt16_percent": 33.3333,
+        "mean_absolute_rgb": 17.9097
+      }
+    },
+    "dashed": {
+      "before": {
+        "pixels_gt16_percent": 55.5556,
+        "mean_absolute_rgb": 51.9722
+      },
+      "after": {
+        "pixels_gt16_percent": 41.6667,
+        "mean_absolute_rgb": 22.4815
+      }
+    },
+    "single": {
+      "before": {
+        "pixels_gt16_percent": 5.5556,
+        "mean_absolute_rgb": 8.2014
+      },
+      "after": {
+        "pixels_gt16_percent": 5.5556,
+        "mean_absolute_rgb": 8.2014
+      }
+    },
+    "double_DOM_clipped": {
+      "before": {
+        "pixels_gt16_percent": 100.0,
+        "mean_absolute_rgb": 210.912
+      },
+      "after": {
+        "pixels_gt16_percent": 100.0,
+        "mean_absolute_rgb": 210.912
+      }
+    },
+    "curly_DOM_clipped": {
+      "before": {
+        "pixels_gt16_percent": 69.1667,
+        "mean_absolute_rgb": 63.6639
+      },
+      "after": {
+        "pixels_gt16_percent": 69.1667,
+        "mean_absolute_rgb": 63.6639
+      }
+    }
+  },
+  {
+    "variant": "dark-2x",
+    "strike": {
+      "before": {
+        "pixels_gt16_percent": 29.1667,
+        "mean_absolute_rgb": 39.9801
+      },
+      "after": {
+        "pixels_gt16_percent": 18.9931,
+        "mean_absolute_rgb": 20.3647
+      }
+    },
+    "dotted": {
+      "before": {
+        "pixels_gt16_percent": 48.7847,
+        "mean_absolute_rgb": 58.8987
+      },
+      "after": {
+        "pixels_gt16_percent": 18.5764,
+        "mean_absolute_rgb": 10.0602
+      }
+    },
+    "dashed": {
+      "before": {
+        "pixels_gt16_percent": 50.8681,
+        "mean_absolute_rgb": 55.8634
+      },
+      "after": {
+        "pixels_gt16_percent": 24.4792,
+        "mean_absolute_rgb": 12.9074
+      }
+    },
+    "single": {
+      "before": {
+        "pixels_gt16_percent": 38.0208,
+        "mean_absolute_rgb": 40.5909
+      },
+      "after": {
+        "pixels_gt16_percent": 6.9444,
+        "mean_absolute_rgb": 7.2679
+      }
+    },
+    "double_DOM_clipped": {
+      "before": {
+        "pixels_gt16_percent": 99.8264,
+        "mean_absolute_rgb": 167.9572
+      },
+      "after": {
+        "pixels_gt16_percent": 100.0,
+        "mean_absolute_rgb": 214.735
+      }
+    },
+    "curly_DOM_clipped": {
+      "before": {
+        "pixels_gt16_percent": 55.4167,
+        "mean_absolute_rgb": 87.0854
+      },
+      "after": {
+        "pixels_gt16_percent": 55.4167,
+        "mean_absolute_rgb": 87.0854
+      }
+    }
+  },
+  {
+    "variant": "light-2x",
+    "strike": {
+      "before": {
+        "pixels_gt16_percent": 29.8611,
+        "mean_absolute_rgb": 35.0795
+      },
+      "after": {
+        "pixels_gt16_percent": 19.1667,
+        "mean_absolute_rgb": 18.678
+      }
+    },
+    "dotted": {
+      "before": {
+        "pixels_gt16_percent": 43.0556,
+        "mean_absolute_rgb": 51.724
+      },
+      "after": {
+        "pixels_gt16_percent": 18.2292,
+        "mean_absolute_rgb": 9.3304
+      }
+    },
+    "dashed": {
+      "before": {
+        "pixels_gt16_percent": 42.1875,
+        "mean_absolute_rgb": 46.0793
+      },
+      "after": {
+        "pixels_gt16_percent": 23.7847,
+        "mean_absolute_rgb": 11.9936
+      }
+    },
+    "single": {
+      "before": {
+        "pixels_gt16_percent": 34.8958,
+        "mean_absolute_rgb": 36.5694
+      },
+      "after": {
+        "pixels_gt16_percent": 4.1667,
+        "mean_absolute_rgb": 6.5336
+      }
+    },
+    "double_DOM_clipped": {
+      "before": {
+        "pixels_gt16_percent": 100.0,
+        "mean_absolute_rgb": 150.5214
+      },
+      "after": {
+        "pixels_gt16_percent": 100.0,
+        "mean_absolute_rgb": 210.7992
+      }
+    },
+    "curly_DOM_clipped": {
+      "before": {
+        "pixels_gt16_percent": 46.875,
+        "mean_absolute_rgb": 68.1181
+      },
+      "after": {
+        "pixels_gt16_percent": 46.875,
+        "mean_absolute_rgb": 68.1181
+      }
+    }
+  }
+]

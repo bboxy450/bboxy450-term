@@ -1,0 +1,819 @@
+{
+  "adapter": "AdapterInfo { name: \"Apple M4\", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: \"\", driver: \"\", driver_info: \"\", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }",
+  "baseline": false,
+  "cases": [
+    {
+      "cachedGlyphs": 72,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Regular"
+      ],
+      "file": "codex-dark-1x.png",
+      "height": 360,
+      "name": "codex",
+      "variant": "codex-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 116,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "claude-dark-1x.png",
+      "height": 360,
+      "name": "claude",
+      "variant": "claude-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 139,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "palette-dark-1x.png",
+      "height": 360,
+      "name": "palette",
+      "variant": "palette-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 272,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "unicode-dark-1x.png",
+      "height": 360,
+      "name": "unicode",
+      "variant": "unicode-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 281,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "progress-dark-1x.png",
+      "height": 360,
+      "name": "progress",
+      "variant": "progress-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 283,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "alternate-dark-1x.png",
+      "height": 360,
+      "name": "alternate",
+      "variant": "alternate-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 288,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "scroll-links-sync-dark-1x.png",
+      "height": 360,
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-claude-dark-1x.png",
+      "height": 360,
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-preflight-dark-1x.png",
+      "height": 360,
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 293,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-codex-dark-1x.png",
+      "height": 360,
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 299,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "cursor-beam-dark-1x.png",
+      "height": 360,
+      "name": "cursor-beam",
+      "variant": "cursor-beam-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 300,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "cursor-underline-dark-1x.png",
+      "height": 360,
+      "name": "cursor-underline",
+      "variant": "cursor-underline-dark-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 72,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Regular"
+      ],
+      "file": "codex-light-1x.png",
+      "height": 360,
+      "name": "codex",
+      "variant": "codex-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 116,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "claude-light-1x.png",
+      "height": 360,
+      "name": "claude",
+      "variant": "claude-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 139,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "palette-light-1x.png",
+      "height": 360,
+      "name": "palette",
+      "variant": "palette-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 272,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "unicode-light-1x.png",
+      "height": 360,
+      "name": "unicode",
+      "variant": "unicode-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 281,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "progress-light-1x.png",
+      "height": 360,
+      "name": "progress",
+      "variant": "progress-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 283,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "alternate-light-1x.png",
+      "height": 360,
+      "name": "alternate",
+      "variant": "alternate-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 288,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "scroll-links-sync-light-1x.png",
+      "height": 360,
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-claude-light-1x.png",
+      "height": 360,
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-preflight-light-1x.png",
+      "height": 360,
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 293,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-codex-light-1x.png",
+      "height": 360,
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 299,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "cursor-beam-light-1x.png",
+      "height": 360,
+      "name": "cursor-beam",
+      "variant": "cursor-beam-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 300,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "cursor-underline-light-1x.png",
+      "height": 360,
+      "name": "cursor-underline",
+      "variant": "cursor-underline-light-1x",
+      "width": 640
+    },
+    {
+      "cachedGlyphs": 72,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Regular"
+      ],
+      "file": "codex-dark-2x.png",
+      "height": 720,
+      "name": "codex",
+      "variant": "codex-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 116,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "claude-dark-2x.png",
+      "height": 720,
+      "name": "claude",
+      "variant": "claude-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 139,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "palette-dark-2x.png",
+      "height": 720,
+      "name": "palette",
+      "variant": "palette-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 272,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "unicode-dark-2x.png",
+      "height": 720,
+      "name": "unicode",
+      "variant": "unicode-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 281,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "progress-dark-2x.png",
+      "height": 720,
+      "name": "progress",
+      "variant": "progress-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 283,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "alternate-dark-2x.png",
+      "height": 720,
+      "name": "alternate",
+      "variant": "alternate-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 288,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "scroll-links-sync-dark-2x.png",
+      "height": 720,
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-claude-dark-2x.png",
+      "height": 720,
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-preflight-dark-2x.png",
+      "height": 720,
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 293,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-codex-dark-2x.png",
+      "height": 720,
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 299,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "cursor-beam-dark-2x.png",
+      "height": 720,
+      "name": "cursor-beam",
+      "variant": "cursor-beam-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 300,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "cursor-underline-dark-2x.png",
+      "height": 720,
+      "name": "cursor-underline",
+      "variant": "cursor-underline-dark-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 72,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Regular"
+      ],
+      "file": "codex-light-2x.png",
+      "height": 720,
+      "name": "codex",
+      "variant": "codex-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 116,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "claude-light-2x.png",
+      "height": 720,
+      "name": "claude",
+      "variant": "claude-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 139,
+      "faces": [
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "palette-light-2x.png",
+      "height": 720,
+      "name": "palette",
+      "variant": "palette-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 272,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "unicode-light-2x.png",
+      "height": 720,
+      "name": "unicode",
+      "variant": "unicode-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 281,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "progress-light-2x.png",
+      "height": 720,
+      "name": "progress",
+      "variant": "progress-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 283,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "alternate-light-2x.png",
+      "height": 720,
+      "name": "alternate",
+      "variant": "alternate-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 288,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "scroll-links-sync-light-2x.png",
+      "height": 720,
+      "name": "scroll-links-sync",
+      "variant": "scroll-links-sync-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-claude-light-2x.png",
+      "height": 720,
+      "name": "osc7501-claude",
+      "variant": "osc7501-claude-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 289,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-preflight-light-2x.png",
+      "height": 720,
+      "name": "osc7501-preflight",
+      "variant": "osc7501-preflight-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 293,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "osc7501-codex-light-2x.png",
+      "height": 720,
+      "name": "osc7501-codex",
+      "variant": "osc7501-codex-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 299,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "cursor-beam-light-2x.png",
+      "height": 720,
+      "name": "cursor-beam",
+      "variant": "cursor-beam-light-2x",
+      "width": 1280
+    },
+    {
+      "cachedGlyphs": 300,
+      "faces": [
+        "AppleColorEmoji",
+        "AppleSDGothicNeo-Regular",
+        "Menlo-Bold",
+        "Menlo-BoldItalic",
+        "Menlo-Italic",
+        "Menlo-Regular",
+        "PingFangSC-Regular",
+        "STIXTwoMath-Regular"
+      ],
+      "file": "cursor-underline-light-2x.png",
+      "height": 720,
+      "name": "cursor-underline",
+      "variant": "cursor-underline-light-2x",
+      "width": 1280
+    }
+  ],
+  "baselineDescription": "Accepted e877187 terminal pixels for the original ten scenes (frozen23caced, terminal source unchanged); the two new cursor fixtures use the same renderer before the one-pixel cursor fix. No ASCII replacements."
+}

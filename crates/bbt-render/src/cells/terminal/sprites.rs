@@ -188,8 +188,8 @@ pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32) -> Vec<u8> {
             Sprite::Cursor(shape, focused) => match (shape, focused) {
                 (_, false) => x < s || x >= wf - s || y < s || y >= hf - s,
                 (CursorShape::Block, true) => true,
-                (CursorShape::Bar, true) => x < 2. * s,
-                (CursorShape::Underline, true) => y >= hf - 2. * s,
+                (CursorShape::Bar, true) => x < s,
+                (CursorShape::Underline, true) => y >= hf - s,
             },
             Sprite::Strike => {
                 let top = ((hf - s) * 0.5).floor();

@@ -1,6 +1,6 @@
 # bboxy-firehose
 
-Ten embedded terminal scenes for PTY, parser and renderer checks. Visible content
+Twelve embedded terminal scenes for PTY, parser and renderer checks. Visible content
 is synthetic. The original Claude OSC 7501 status-only captures are embedded
 unchanged; all ten original Codex capture files are empty. The Codex protocol
 scene labels that gap and emits explicitly synthetic status sequences.
@@ -16,7 +16,7 @@ target/release/bboxy-firehose --rate max --loop 10000000 > /dev/null
 target/release/bboxy-firehose --check --scene palette --seed 42
 ```
 
-Playback defaults to one flood-speed pass over all ten scenes in seeded order.
+Playback defaults to one flood-speed pass over all twelve scenes in seeded order.
 `--scene` fixes the bytes independently of the seed; the seed controls scene
 order and real-mode burst sizes and pause durations. Real pacing is a deterministic
 schedule, subject to OS scheduling. Rate caps use cumulative bytes or LF characters

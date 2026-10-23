@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Build local, true-size web | native | diff evidence. Never rescales an image."""
 from pathlib import Path
+import argparse
 import hashlib
 import html
 import json
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parent / 'gallery'
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parent / 'gallery')
+ROOT = parser.parse_args().root.resolve()
 before = json.loads((ROOT / 'before/manifest.json').read_text())
 native = json.loads((ROOT / 'native/manifest.json').read_text())
 before_cases = {case['variant']: case for case in before['cases']}
@@ -83,7 +86,7 @@ summary = [{
 } for name, group in groups.items()]
 report = {
     'metric': 'max absolute RGB channel difference >12/255; same padded union canvas before/after, no resampling',
-    'baseline': 'actual legacy renderer where supported; visibly labelled ASCII-replacement diagnostic where original rendering errored',
+    'baseline': before.get('baselineDescription', 'actual legacy renderer where supported; visibly labelled ASCII-replacement diagnostic where original rendering errored'),
     'cases': cases, 'perScene': summary,
 }
 (ROOT / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
@@ -94,6 +97,6 @@ for case in sorted(cases, key=lambda case: case['changedPercent'], reverse=True)
     if case['beforeLegacyError']:
         warning = f" Legacy failed: {html.escape(case['beforeLegacyError'])}; before PNG uses {case['beforeDiagnosticReplacements']} diagnostic replacements."
     rows.append(f'''<section><h2>{variant}</h2><p>Before {case['beforeChangedPercent']:.3f}% → after {case['changedPercent']:.3f}% on the shared comparison canvas; native viewport {case['viewportChangedPercent']:.3f}%; geometry {'matches' if case['geometryMatch'] else 'DIFFERS'}.{warning} <a href="before/{file}">Before image</a></p><div class="comparison"><figure><figcaption>xterm.js</figcaption><img src="web/{file}"></figure><figure><figcaption>Native cells</figcaption><img src="native/{file}"></figure><figure><figcaption>Difference ×4</figcaption><img src="diff/{file}"></figure></div></section>''')
-(ROOT / 'index.html').write_text('''<!doctype html><meta charset="utf-8"><title>Terminal fidelity</title><style>body{background:#0f141d;color:#e8edf7;font:13px Menlo,monospace;margin:24px}h1{font-size:22px}h2{font-size:16px}p{line-height:1.6}a{color:#40b4ff}.comparison{display:flex;gap:16px;overflow:auto}figure{margin:0;flex:none}figcaption{margin:8px 0}img{display:block;max-width:none}section{margin:32px 0;border-top:1px solid #364254}</style><h1>Terminal fidelity</h1><p>Seed 42 · Menlo 13 · 80×24 · dark/light · 1x/2x. Images retain original pixels. Metric: channel difference &gt;12/255 on the same padded comparison canvas. Actual iTerm2/Ghostty comparison remains unproven.</p>''' + '\n'.join(rows))
+(ROOT / 'index.html').write_text('''<!doctype html><meta charset="utf-8"><title>Terminal fidelity</title><style>body{background:#0f141d;color:#e8edf7;font:13px Menlo,monospace;margin:24px}h1{font-size:22px}h2{font-size:16px}p{line-height:1.6}a{color:#40b4ff}.comparison{display:flex;gap:16px;overflow:auto}figure{margin:0;flex:none}figcaption{margin:8px 0}img{display:block;max-width:none}section{margin:32px 0;border-top:1px solid #364254}</style><h1>Terminal fidelity</h1><p>Seed 42 · Menlo 13 · 80×24 · dark/light · 1x/2x. Images retain original pixels. Metric: channel difference &gt;12/255 on the same padded comparison canvas. Actual iTerm2/Ghostty comparison remains unproven.</p>''' + '<p>Baseline: ' + html.escape(report['baseline']) + '</p>' + '\n'.join(rows))
 for scene in summary:
     print(f"{scene['scene']}: before={scene['beforeMeanPercent']:.3f}% after={scene['afterMeanPercent']:.3f}% worst={scene['afterWorstPercent']:.3f}% geometry={scene['geometryMatches']}/4 baseline_failures={scene['beforeRenderFailures']}/4")
