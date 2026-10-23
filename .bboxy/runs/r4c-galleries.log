@@ -1,0 +1,10 @@
+R4c galleries byte-identity: R4b's 1808-case replay manifests (4 parts: 451/452/453/452), replayed with release bboxybook built at main 0a44d70 and at a06ed28.
+$ bboxybook-base replay-images --manifest part-0.json --out out-base/part-0 : replayed 451 images; geometry not requested (exit=0)
+$ bboxybook-base replay-images --manifest part-1.json --out out-base/part-1 : replayed 452 images; geometry not requested (exit=0)
+$ bboxybook-base replay-images --manifest part-2.json --out out-base/part-2 : replayed 453 images; geometry not requested (exit=0)
+$ bboxybook-base replay-images --manifest part-3.json --out out-base/part-3 : replayed 452 images; geometry not requested (exit=0)
+$ bboxybook-r4c replay-images --manifest part-0.json --out out-r4c/part-0 : replayed 451 images; geometry not requested (exit=0)
+$ bboxybook-r4c replay-images --manifest part-1.json --out out-r4c/part-1 : replayed 452 images; geometry not requested (exit=0)
+$ bboxybook-r4c replay-images --manifest part-2.json --out out-r4c/part-2 : replayed 453 images; geometry not requested (exit=0)
+$ bboxybook-r4c replay-images --manifest part-3.json --out out-r4c/part-3 : replayed 452 images; geometry not requested (exit=0)
+sha256 per PNG: base 1808, r4c 1808, missing 0, extra 0, byte-different 0.
