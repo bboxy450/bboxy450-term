@@ -43,9 +43,12 @@ pub struct Pane {
     /// The host freezes/advances the effect clock. A seed identifies the emitter.
     pub glow_seed: Option<u32>,
     pub opacity: f32,
-    /// The host's glow depth (Settings, px): how far the rim's bloom reaches inside the
-    /// border. Paint only: it never moves layout.
+    /// How far the rim's bloom reaches inside the border, px (glow.depth, fixed at 8).
+    /// Paint only: it never moves layout.
     pub depth: f32,
+    /// The host's rim size R (Settings › Rim size, px), R/2 each side of the border. Paint
+    /// here; the host's stage spaces panes R apart (rim-glow §2, layout::stage_split).
+    pub rim: f32,
 }
 fn column(children: Vec<c::Item>) -> c::Element {
     c::Element::Stack(c::Stack {
@@ -409,6 +412,7 @@ impl Pane {
             // The cell edge rule (rim-glow §3): the band stops at the terminal's padding, so
             // no text cell is ever lit, whatever the setting.
             depth: Some(self.depth.min(STYLE.spacing.s4 as f32)),
+            rim: Some(self.rim),
             tint: match seat.color(ctx) {
                 ui::Color::Rgba(c) => Some(c),
                 _ => None,
@@ -573,6 +577,7 @@ mod tests {
             glow_seed: None,
             opacity: 1.,
             depth: TOKENS.glow.depth as f32,
+            rim: TOKENS.glow.rim as f32,
         };
         for activity in [
             Activity::Idle,
@@ -648,8 +653,8 @@ pub(crate) mod rim_invariants {
     use super::*;
     use crate::modules::seat_row::SeatRow;
     use bbt_ui_model::{
-        WaitKind,
-        layout::{Rect, TextMeasure, TextStyle as MeasureStyle},
+        SeatId, SplitNode, WaitKind,
+        layout::{Rect, TextMeasure, TextStyle as MeasureStyle, stage_split},
     };
 
     struct Metrics;
@@ -669,7 +674,7 @@ pub(crate) mod rim_invariants {
         Activity::Waiting(WaitKind::Question),
         Activity::Errored,
     ];
-    fn pane(activity: Activity, focused: bool, depth: f32, glow: bool) -> Pane {
+    fn pane(activity: Activity, focused: bool, depth: f32, rim: f32, glow: bool) -> Pane {
         let mut strip = Strip::new(SeatRow::new("pane", "Vesper Greywind", "claude"));
         strip.seat.activity = activity;
         strip.seat.focused = focused;
@@ -693,6 +698,7 @@ pub(crate) mod rim_invariants {
             glow_seed: glow.then_some(7),
             opacity: 1.,
             depth,
+            rim,
         }
     }
     fn find<'a>(l: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
@@ -722,59 +728,138 @@ pub(crate) mod rim_invariants {
         qx.max(qy).min(0.) + (qx.max(0.).powi(2) + qy.max(0.).powi(2)).sqrt() - radius
     }
 
+    /// Every rim size the setting allows.
+    fn rims() -> std::ops::RangeInclusive<i32> {
+        TOKENS.glow.rim_min as i32..=TOKENS.glow.rim_max as i32
+    }
+    /// A 2 x 2 stage, the four panes as a host lays them out at rim size `rim`.
+    fn stage(rim: f32) -> Vec<Rect> {
+        let leaf = |n| SplitNode::Leaf(SeatId::from_u128(n));
+        let tree = SplitNode::split(
+            Axis::Row,
+            0.5,
+            SplitNode::split(Axis::Column, 0.5, leaf(1), leaf(2)),
+            SplitNode::split(Axis::Column, 0.4, leaf(3), leaf(4)),
+        );
+        stage_split(&tree, Rect::new(0., 0., 900., 640.), rim)
+            .panes
+            .into_iter()
+            .map(|(_, r)| r)
+            .collect()
+    }
+    fn laid_out(p: &Pane, rect: Rect, ctx: ui::Context) -> c::Layout {
+        let p = Pane {
+            min_height: rect.h,
+            ..p.clone()
+        };
+        p.element(ctx).layout(rect, ctx, &Metrics).unwrap()
+    }
+    /// The painted rim: its rect, radii, bloom depth and size.
+    fn rim_op(layout: &c::Layout, ctx: ui::Context) -> (Rect, [f32; 4], f32, f32) {
+        c::paint(layout, ctx)
+            .into_iter()
+            .find_map(|op| match op {
+                c::Paint::Material {
+                    kind: ui::Material::Rim,
+                    rect,
+                    radii,
+                    glow: Some(g),
+                    ..
+                } => Some((rect, radii, g.depth.unwrap(), g.rim.unwrap())),
+                _ => None,
+            })
+            .expect("a pane draws its rim")
+    }
+    /// The text cell grid: the terminal box inside its padding.
+    fn cells(layout: &c::Layout) -> Rect {
+        let term = find(layout, "pane/term").unwrap().rect;
+        let pad = STYLE.spacing.s4 as f32;
+        Rect::new(
+            term.x + pad,
+            term.y + pad,
+            term.w - 2. * pad,
+            term.h - 2. * pad,
+        )
+    }
+    fn overlap(a: Rect, b: Rect) -> f32 {
+        let w = a.right().min(b.right()) - a.x.max(b.x);
+        let h = a.bottom().min(b.bottom()) - a.y.max(b.y);
+        w.max(0.) * h.max(0.)
+    }
+
     pub(crate) fn rim_never_covers_text() {
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         let lo = TOKENS.glow.depth_min as i32;
         let hi = TOKENS.glow.depth_max as i32;
-        // Every depth the setting allows, and one past it: the cap is the pane's own.
+        // Inside the border: every depth and one past it (the cap is the pane's own), at every
+        // rim size; the band is [0, band) inside, so every cell point lies at least `band`
+        // inside, checked on the grid's corners and edge midpoints.
         for depth in (lo..=hi).chain([hi + 4]) {
-            for activity in ACTIVITIES {
-                for focused in [true, false] {
-                    let p = pane(activity, focused, depth as f32, true);
-                    let layout = p
-                        .element(ctx)
-                        .layout(Rect::new(10., 20., 420., 0.), ctx, &Metrics)
-                        .unwrap();
-                    let (rect, radii, band) = c::paint(&layout, ctx)
-                        .into_iter()
-                        .find_map(|op| match op {
-                            c::Paint::Material {
-                                kind: ui::Material::Rim,
-                                rect,
-                                radii,
-                                glow: Some(g),
-                                ..
-                            } => Some((rect, radii, g.depth.unwrap())),
-                            _ => None,
-                        })
-                        .expect("a pane draws its rim");
-                    // The text cell grid: the terminal box inside its padding.
-                    let term = find(&layout, "pane/term").unwrap().rect;
-                    let pad = STYLE.spacing.s4 as f32;
-                    let cells = Rect::new(
-                        term.x + pad,
-                        term.y + pad,
-                        term.w - 2. * pad,
-                        term.h - 2. * pad,
-                    );
-                    // The band is [0, band) inside the border: every cell point lies at
-                    // least `band` inside, checked on the grid's corners and edge midpoints.
-                    for p in [
-                        [cells.x, cells.y],
-                        [cells.right(), cells.y],
-                        [cells.x, cells.bottom()],
-                        [cells.right(), cells.bottom()],
-                        [cells.x + cells.w / 2., cells.y],
-                        [cells.x + cells.w / 2., cells.bottom()],
-                        [cells.x, cells.y + cells.h / 2.],
-                        [cells.right(), cells.y + cells.h / 2.],
-                    ] {
-                        let inside = -sdf(p, rect, radii);
-                        assert!(
-                            inside >= band - 1e-3,
-                            "depth {depth} {activity:?} focused={focused}: a cell edge {inside:.2} px inside, band {band}"
-                        );
+            for rim in rims() {
+                for activity in ACTIVITIES {
+                    for focused in [true, false] {
+                        let p = pane(activity, focused, depth as f32, rim as f32, true);
+                        let layout = p
+                            .element(ctx)
+                            .layout(Rect::new(10., 20., 420., 0.), ctx, &Metrics)
+                            .unwrap();
+                        let (rect, radii, band, _) = rim_op(&layout, ctx);
+                        let cells = cells(&layout);
+                        for p in [
+                            [cells.x, cells.y],
+                            [cells.right(), cells.y],
+                            [cells.x, cells.bottom()],
+                            [cells.right(), cells.bottom()],
+                            [cells.x + cells.w / 2., cells.y],
+                            [cells.x + cells.w / 2., cells.bottom()],
+                            [cells.x, cells.y + cells.h / 2.],
+                            [cells.right(), cells.y + cells.h / 2.],
+                        ] {
+                            let inside = -sdf(p, rect, radii);
+                            assert!(
+                                inside >= band - 1e-3,
+                                "depth {depth} rim {rim} {activity:?} focused={focused}: a cell edge {inside:.2} px inside, band {band}"
+                            );
+                        }
                     }
+                }
+            }
+        }
+        // Outside the border: the outer half [-R/2, 0) of every pane on a stage stays in the
+        // window, meets its neighbours' outer halves without overlapping them, and covers no
+        // pane's cells.
+        for rim in rims() {
+            let panes: Vec<_> = stage(rim as f32)
+                .into_iter()
+                .map(|r| {
+                    let layout =
+                        laid_out(&pane(Activity::Active, true, 8., rim as f32, true), r, ctx);
+                    let (rect, _, _, size) = rim_op(&layout, ctx);
+                    assert_eq!(size, rim as f32, "the rim paints the setting's size");
+                    let h = size / 2.;
+                    let outer = Rect::new(rect.x - h, rect.y - h, rect.w + size, rect.h + size);
+                    (outer, cells(&layout))
+                })
+                .collect();
+            for (i, (outer, _)) in panes.iter().enumerate() {
+                assert!(
+                    outer.x >= -1e-3
+                        && outer.y >= -1e-3
+                        && outer.right() <= 900.001
+                        && outer.bottom() <= 640.001,
+                    "rim {rim}: pane {i}'s outer half leaves the window: {outer:?}"
+                );
+                // Its own cells are checked inside the border above; here, the neighbours'.
+                for (j, (other, cells)) in panes.iter().enumerate().filter(|(j, _)| *j != i) {
+                    assert!(
+                        overlap(*outer, *cells) <= 1e-3,
+                        "rim {rim}: pane {i}'s rim covers pane {j}'s cells"
+                    );
+                    // Two outer halves may share an edge (they meet), never area.
+                    assert!(
+                        overlap(*outer, *other) <= 1e-3,
+                        "rim {rim}: the outer halves of panes {i} and {j} overlap"
+                    );
                 }
             }
         }
@@ -787,7 +872,7 @@ pub(crate) mod rim_invariants {
                 let layout = |depth: f32, glow: bool| {
                     let mut out = vec![];
                     rects(
-                        &pane(activity, focused, depth, glow)
+                        &pane(activity, focused, depth, TOKENS.glow.rim as f32, glow)
                             .element(ctx)
                             .layout(Rect::new(10., 20., 420., 0.), ctx, &Metrics)
                             .unwrap(),
@@ -804,6 +889,71 @@ pub(crate) mod rim_invariants {
                             "{activity:?} focused={focused}: depth {depth}, glow {glow} moved layout"
                         );
                     }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn rim_size_moves_only_gutter_and_inset() {
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let base = TOKENS.glow.rim as f32;
+        let reference = stage(base);
+        let nodes = |p: &Pane, r: Rect| {
+            let mut out = vec![];
+            rects(&laid_out(p, r, ctx), &mut out);
+            out
+        };
+        for rim in rims() {
+            let r = rim as f32;
+            let rects = stage(r);
+            assert_eq!(rects.len(), reference.len());
+            // The stage inset is R/2 on every window edge.
+            let left = rects.iter().map(|p| p.x).fold(f32::MAX, f32::min);
+            let top = rects.iter().map(|p| p.y).fold(f32::MAX, f32::min);
+            let right = rects.iter().map(|p| p.right()).fold(f32::MIN, f32::max);
+            let bottom = rects.iter().map(|p| p.bottom()).fold(f32::MIN, f32::max);
+            for (edge, inset) in [
+                ("left", left),
+                ("top", top),
+                ("right", 900. - right),
+                ("bottom", 640. - bottom),
+            ] {
+                assert!(
+                    (inset - r / 2.).abs() < 1e-3,
+                    "rim {rim}: the {edge} stage inset is {inset}, not R/2"
+                );
+            }
+            // Neighbours sit exactly R apart: every pane's edge either meets the window inset or
+            // faces another pane across a gutter of R.
+            for (i, a) in rects.iter().enumerate() {
+                for (j, b) in rects.iter().enumerate() {
+                    let rows = a.y < b.bottom() && b.y < a.bottom();
+                    let cols = a.x < b.right() && b.x < a.right();
+                    if i != j && rows && b.x >= a.right() - 1e-3 {
+                        assert!(
+                            (b.x - a.right() - r).abs() < 1e-3,
+                            "rim {rim}: panes {i}, {j} are {} apart",
+                            b.x - a.right()
+                        );
+                    }
+                    if i != j && cols && b.y >= a.bottom() - 1e-3 {
+                        assert!(
+                            (b.y - a.bottom() - r).abs() < 1e-3,
+                            "rim {rim}: panes {i}, {j} are {} apart",
+                            b.y - a.bottom()
+                        );
+                    }
+                }
+            }
+            // Inside a pane the rim size is paint: a pane laid out in the same rect has the same
+            // strip, padding and cell grid at every rim size, so only the stage moved.
+            for (activity, focused) in ACTIVITIES.into_iter().zip([true, false, true, false]) {
+                for rect in &reference {
+                    assert_eq!(
+                        nodes(&pane(activity, focused, 8., r, true), *rect),
+                        nodes(&pane(activity, focused, 8., base, true), *rect),
+                        "rim {rim} {activity:?}: the rim size moved a node inside a pane"
+                    );
                 }
             }
         }

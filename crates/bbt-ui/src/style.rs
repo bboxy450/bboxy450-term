@@ -68,8 +68,8 @@ pub enum Material {
     Gloss,
     Frosted,
     Glow,
-    /// The pane's alive rim: 2 px just inside the border plus a bloom to `glow.depth`
-    /// px (rim-glow); all of it inside the box.
+    /// The pane's alive rim: `glow.rim` px centred on the border, half outside the box,
+    /// plus a bloom inside to `glow.depth` px (rim-glow).
     Rim,
 }
 
@@ -108,10 +108,14 @@ pub struct Glow {
     /// The rim's colour (the seat's), RGBA; the effect box itself is transparent.
     #[serde(default)]
     pub tint: Option<[f32; 4]>,
-    /// How far the rim's bloom reaches inside, px (the host's Settings glow depth, already
-    /// capped at the content padding); None: the glow.depth token.
+    /// How far the rim's bloom reaches inside, px (glow.depth, already capped at the
+    /// content padding); None: the glow.depth token.
     #[serde(default)]
     pub depth: Option<f32>,
+    /// The rim size R, px (the host's Settings › Rim size), R/2 each side of the border;
+    /// None: the glow.rim token.
+    #[serde(default)]
+    pub rim: Option<f32>,
 }
 impl Default for Glow {
     fn default() -> Self {
@@ -124,6 +128,7 @@ impl Default for Glow {
             focused: false,
             tint: None,
             depth: None,
+            rim: None,
         }
     }
 }

@@ -133,9 +133,11 @@ fn rim_hue(c:vec3f,a:f32)->vec3f {let k=vec3f(0.57735);let ca=cos(a);return c*ca
 @fragment fn rim(v:Vertex)->@location(0) vec4f {
     let i=items[v.index];let mask=clip_mask(v);if mask<=0.0 {discard;}
     let k=view.w;let depth=i.p1.w/k;let d=rounded_sdf(v.point,i.rect,i.radii)/k;
-    // The 2 px rim and the bloom to depth: the half-open band [0, depth) inside the border.
-    let core=smoothstep(0.0,0.6,-d)*(1.0-smoothstep(1.6,2.4,-d));
-    let bloom=step(1.6,-d)*exp(-(-d-2.0)/(0.3*depth))*(1.0-smoothstep(depth-1.0,depth,-d));
+    // The rim of size R centred on the border, R/2 out and R/2 in, and the bloom from its
+    // inner edge to depth: the band [-R/2, depth) across the border (rim-glow §1).
+    let size=i.p1.x/k;let out=size*0.5;let inner=size-out;
+    let core=smoothstep(-out,-out+0.6,-d)*(1.0-smoothstep(inner-0.4,inner+0.4,-d));
+    let bloom=step(inner-0.4,-d)*exp(-(-d-inner)/(0.3*depth))*(1.0-smoothstep(depth-1.0,depth,-d));
     if core+bloom<=0.0 {discard;}
     let hs=i.rect.zw*0.5/k;let q=(v.point-i.rect.xy)/k-hs;let r=i.radii.x/k;
     let p=rim_perim_len(hs,r);let s=rim_perim(q,hs,r);

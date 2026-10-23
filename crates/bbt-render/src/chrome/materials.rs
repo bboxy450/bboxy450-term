@@ -87,7 +87,10 @@ pub struct Rim {
     pub activity: Activity,
     /// 1 for the focused pane (x1.3), 0 otherwise.
     pub focus: f32,
-    /// How far the bloom reaches inside the border, px: min(Settings glow depth, padding).
+    /// The rim size R, px (Settings › Rim size): the rim runs R/2 outside the border to R/2
+    /// inside it (rim-glow §1).
+    pub size: f32,
+    /// How far the bloom reaches inside the border, px: min(glow.depth, padding).
     pub depth: f32,
     /// Added to the frame clock, so neighbouring panes do not move in step.
     pub phase_ms: f32,
@@ -279,10 +282,10 @@ impl Surface {
                 };
                 // The state colour keeps the seat's alpha (an inferred seat draws at .5).
                 i.color = [state[0], state[1], state[2], r.color.0[3]];
-                // Wholly inside the box: the quad needs no outset (vs adds one pixel).
-                i.p0[3] = 0.;
+                // The rim's outer half lies outside the box: the quad grows by R/2 (vs adds one pixel).
+                i.p0[3] = r.size * 0.5 * scale;
                 i.p1 = [
-                    0.,
+                    r.size * scale,
                     match r.activity {
                         Activity::Idle => 0.,
                         Activity::Active => 1.,
@@ -293,7 +296,10 @@ impl Surface {
                     r.depth * scale,
                 ];
                 i.p2[0] = r.phase_ms;
-                if !(1.0..=32.).contains(&r.depth) || !(0.0..=1.).contains(&r.focus) {
+                if !(1.0..=32.).contains(&r.depth)
+                    || !(1.0..=16.).contains(&r.size)
+                    || !(0.0..=1.).contains(&r.focus)
+                {
                     return Err("invalid rim parameters".into());
                 }
             }

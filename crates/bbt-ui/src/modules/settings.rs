@@ -63,9 +63,9 @@ pub struct Harness {
 pub struct Appearance {
     pub theme: String,
     pub density: String,
-    /// Glow depth in px (glow.depth_min..=glow.depth_max): how far the rim's bloom reaches
-    /// inside each pane. Paint only; it never moves layout.
-    pub depth: f32,
+    /// Rim size in px (glow.rim_min..=glow.rim_max): the alive rim centred on each pane's
+    /// border, half outside and half inside; the gutter follows it, so it relayouts (rim-glow §3).
+    pub rim: f32,
     pub glow: bool,
     pub subtitle: bool,
     pub opacity: f32,
@@ -2276,15 +2276,15 @@ impl Settings {
             )
             .into(),
         );
-        let (lo, hi) = (TOKENS.glow.depth_min as f32, TOKENS.glow.depth_max as f32);
-        let depth = row(
+        let (lo, hi) = (TOKENS.glow.rim_min as f32, TOKENS.glow.rim_max as f32);
+        let rim = row(
             "",
             plain(None, [0.; 4], 0.),
             10.,
             vec![
-                fixed(slider(((v.depth - lo) / (hi - lo)).clamp(0., 1.)), 120.),
+                fixed(slider(((v.rim - lo) / (hi - lo)).clamp(0., 1.)), 120.),
                 fixed(
-                    b.text("", format!("{} px", v.depth), 11., 500, true, false),
+                    b.text("", format!("{} px", v.rim), 11., 500, true, false),
                     35.2,
                 ),
             ],
@@ -2292,12 +2292,12 @@ impl Settings {
         rows.push(
             b.setting_row(
                 "card0/r2",
-                "Glow depth",
+                "Rim size",
                 Some(&format!(
-                    "how far the rim glows into each pane · {lo} to {hi} px"
+                    "the glowing border, half outside and half inside · panes space to fit · {lo} to {hi} px"
                 )),
-                depth,
-                v.depth != self.defaults.appearance.depth,
+                rim,
+                v.rim != self.defaults.appearance.rim,
                 false,
                 false,
             )
