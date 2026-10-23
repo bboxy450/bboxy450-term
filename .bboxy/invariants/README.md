@@ -17,6 +17,8 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[clippy-clean]] zero clippy warnings on every target | `cargo clippy --workspace --all-targets --locked -- -D warnings` (run by ci-local itself; `gate: ci`) | clean at 3adccc6, 2026-10-22 |
 | [[mermaid-fixtures]] every .bboxy Mermaid block has a fixture the engine lays out | `cargo test -p bbt-mermaid --locked every_bboxy_mermaid_block_has_a_fixture -- --exact` | held, 2026-10-22 |
 | [[kitty-keyboard]] every key encoded once, kitty protocol against the seat's live mode | `cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact \| grep -q 'ok. 1 passed; 0 failed'` (pending K1; `gate: pending-k1`) | none yet |
+| [[rim-never-covers-text]] the glow rim never covers a text cell | `cargo test -p bbt-ui --locked --lib rim_never_covers_text -- --exact \| grep -q 'ok. 1 passed; 0 failed'` (pending G1) | none yet |
+| [[glow-never-moves-layout]] glow settings never move layout | `cargo test -p bbt-ui --locked --lib glow_never_moves_layout -- --exact \| grep -q 'ok. 1 passed; 0 failed'` (pending G1) | none yet |
 | [[signed-main]] every commit on main carries a good signature | `git log --format='%G?' HEAD \| grep -vc '^G$'` is 0 and the log is non-empty, on the handed-off commit | runner pass at 0bab92f, 2026-10-22 |
 
 A violation halts the work that broke it: the task goes `blocked` with

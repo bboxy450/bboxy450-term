@@ -410,6 +410,20 @@ briefs Executors from the specs, never from this note.
     can already elect); MIT-only (no patent grant, and impossible for
     bbt-core); relicensing alacritty code (not ours to relicense).
 
+35. **The pane glow is a 2 px rim inside the border (operator, 2026-10-23,
+    verbatim: "I ACTUALLY LOVE RIM EFFECT").** Spec [[rim-glow]]: crest
+    term only, wavelength 150 snapped to the perimeter, the lab's activity
+    table, focus ×1.3; the outside 8 px silk lane retires, the gutter
+    becomes a fixed 2 px, the Settings row becomes "Glow rim 1–4 px" and
+    controls width only, drawn inside the pane padding, never over text;
+    two invariants with named tests (rim never covers text, glow never
+    moves layout); the `materials.wgsl` lane pass keeps the silk equation
+    and changes geometry to the inside perimeter strip, no blur; R12-3 is
+    retargeted to the rim pass; R4c glow numbers are re-measured. Rejected:
+    keeping the lane as an option (two glow models to keep in parity);
+    letting the rim width change the gutter (a glow setting that moves
+    layout); drawing the rim over the cell inset (unreadable edges).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
