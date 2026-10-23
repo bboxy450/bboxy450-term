@@ -1,7 +1,7 @@
 //! Owner-only, capability-bound seat observation and semantic-control socket.
 //! Raw input is unavailable here; messaging uses the common adapter/guard broker.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -187,13 +187,101 @@ struct GuiView {
     generation: u64,
     last: Option<(View, u64)>,
 }
+#[derive(Default)]
+struct GuiChecks {
+    queued: BTreeSet<bbt_proto::SeatId>,
+    order: VecDeque<bbt_proto::SeatId>,
+}
+impl GuiChecks {
+    fn schedule(&mut self, seat: bbt_proto::SeatId) {
+        if self.queued.insert(seat) {
+            self.order.push_back(seat);
+        }
+    }
+    fn remove(&mut self, seat: bbt_proto::SeatId) {
+        if self.queued.remove(&seat) {
+            self.order.retain(|id| *id != seat);
+        }
+    }
+    fn next(&mut self) -> Option<bbt_proto::SeatId> {
+        let seat = self.order.pop_front()?;
+        self.queued.remove(&seat);
+        Some(seat)
+    }
+    fn is_empty(&self) -> bool {
+        self.order.is_empty()
+    }
+}
+async fn gui_check_view(
+    client: &LogicClient,
+    write: &mut tokio::net::unix::OwnedWriteHalf,
+    seat: bbt_proto::SeatId,
+    watched: &mut GuiView,
+) -> Result<()> {
+    let snapshot = client
+        .snapshot(Ulid::from(seat.0.0), watched.generation)
+        .await?;
+    let identity = Some((snapshot.view, snapshot.sequence));
+    if identity != watched.last {
+        watched.stream.offer(snapshot)?;
+        watched.last = identity;
+    }
+    if let Some(update) = watched.stream.next_update() {
+        send(write, &GuiReply::Update { seat, update }).await?;
+    }
+    Ok(())
+}
+async fn gui_state_event(
+    event: crate::bus::Delivery,
+    client: &LogicClient,
+    write: &mut tokio::net::unix::OwnedWriteHalf,
+) -> Result<()> {
+    match event {
+        crate::bus::Delivery::Event { envelope, .. } => {
+            if envelope.event.subject == "account/identity/state" {
+                send(write, &GuiReply::Identity(client.gui_identity().await?)).await?;
+            } else if envelope.event.subject == crate::provider::fake::STATE_SUBJECT {
+                let crate::provider::ProviderEvent::HostState { host, state } =
+                    serde_json::from_value(envelope.event.payload)?;
+                for mut view in client.gui_hosts().await? {
+                    if crate::provider::HostId::from(&view.location) == host {
+                        // Preserve the original transition, even if a later
+                        // provider state is already current.
+                        view.state = bbt_proto::HostState::from(state.clone());
+                        send(write, &GuiReply::HostState { host: view }).await?;
+                    }
+                }
+            } else {
+                let id = envelope
+                    .event
+                    .subject
+                    .split('/')
+                    .nth(1)
+                    .ok_or_else(|| invalid("state event has no seat"))?
+                    .parse()?;
+                if let Ok(seat) = client.gui_seat(id).await {
+                    send(write, &GuiReply::Seat(seat)).await?;
+                }
+            }
+        }
+        crate::bus::Delivery::Gap { .. } => {
+            send(write, &GuiReply::Identity(client.gui_identity().await?)).await?;
+            send(write, &GuiReply::Seats(client.gui_seats().await?)).await?;
+            send(write, &GuiReply::Hosts(client.gui_hosts().await?)).await?;
+        }
+    }
+    Ok(())
+}
 async fn gui_session(
     stream: tokio::net::UnixStream,
     client: LogicClient,
     capability: [u8; 32],
 ) -> Result<()> {
     let (read, mut write) = stream.into_split();
-    let (lines, mut incoming) = tokio::sync::mpsc::channel(2);
+    // Absorb simultaneous ACKs, but a waiting pane gets a work turn after
+    // one action. Otherwise one fast ACK loop can delay the other panes.
+    const ACTION_BURST: usize = 4;
+    let (lines, mut incoming) = tokio::sync::mpsc::channel(16);
     let task = tokio::spawn(async move {
         let mut reader = BufReader::new(read);
         loop {
@@ -213,11 +301,18 @@ async fn gui_session(
     let _reader = Reader(task);
     let mut consumer = None;
     let mut views: BTreeMap<bbt_proto::SeatId, GuiView> = BTreeMap::new();
+    let mut checks = GuiChecks::default();
+    let mut state_events = VecDeque::new();
+    let mut actions = 0;
+    let mut prefer_view = true;
     let mut tick = tokio::time::interval(Duration::from_millis(20));
+    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let result:Result<()>=async {
         loop {
             tokio::select! {
-                line=incoming.recv()=> {
+                biased;
+                line=incoming.recv(),if actions<ACTION_BURST&&(actions==0||checks.is_empty())=> {
+                    actions+=1;
                     let Some(Ok(Some(line)))=line else {break;};
                     let request:GuiRequest=serde_json::from_slice(&line)?;
                     if request.version!=1||request.capability!=capability {
@@ -249,12 +344,18 @@ async fn gui_session(
                                 let last=Some((snapshot.view,snapshot.sequence));
                                 let mut stream=ViewStream::default();stream.offer(snapshot)?;
                                 views.insert(seat,GuiView {stream,generation:view.generation,last});
+                                checks.schedule(seat);
                                 Ok(GuiReply::Ok {op})
                             }
-                            GuiAction::Unwatch {seat}=>{views.remove(&seat);Ok(GuiReply::Ok {op})}
+                            GuiAction::Unwatch {seat}=>{views.remove(&seat);checks.remove(seat);Ok(GuiReply::Ok {op})}
                             GuiAction::Applied {seat,view,sequence}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("ack seat and view disagree"));}
-                                views.get_mut(&seat).ok_or_else(||invalid("seat is not watched"))?.stream.applied(view,sequence)?;
+                                let watched=views.get_mut(&seat).ok_or_else(||invalid("seat is not watched"))?;
+                                watched.stream.applied(view,sequence)?;
+                                checks.remove(seat);
+                                let result=gui_check_view(&client,&mut write,seat,watched).await;
+                                if result.is_err() {views.remove(&seat);}
+                                result?;
                                 Ok(GuiReply::Ok {op})
                             }
                             GuiAction::Input {seat,generation,id,bytes}=> {
@@ -291,51 +392,31 @@ async fn gui_session(
                     send(&mut write,&reply.unwrap_or_else(|e|GuiReply::Error {op,reason:e.to_string()})).await?;
                 }
                 _=tick.tick(),if consumer.is_some()=> {
-                    for event in client.bus.poll(consumer.as_deref().unwrap(),128).await? {
-                        match event {
-                            crate::bus::Delivery::Event {envelope,..}=> {
-                                if envelope.event.subject=="account/identity/state" {
-                                    send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
-                                    continue;
-                                }
-                                if envelope.event.subject==crate::provider::fake::STATE_SUBJECT {
-                                    let crate::provider::ProviderEvent::HostState {host,state} = serde_json::from_value(envelope.event.payload)?;
-                                    for mut view in client.gui_hosts().await? {
-                                        if crate::provider::HostId::from(&view.location) == host {
-                                            // Keep the original transition even if a later state is already current.
-                                            view.state = bbt_proto::HostState::from(state.clone());
-                                            send(&mut write,&GuiReply::HostState {host:view}).await?;
-                                        }
-                                    }
-                                    continue;
-                                }
-                                let id=envelope.event.subject.split('/').nth(1).ok_or_else(||invalid("state event has no seat"))?.parse()?;
-                                if let Ok(seat)=client.gui_seat(id).await {send(&mut write,&GuiReply::Seat(seat)).await?;}
-                            }
-                            crate::bus::Delivery::Gap {..}=> {
-                                send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
-                                send(&mut write,&GuiReply::Seats(client.gui_seats().await?)).await?;
-                                send(&mut write,&GuiReply::Hosts(client.gui_hosts().await?)).await?;
-                            }
-                        }
+                    if state_events.is_empty() {
+                        state_events.extend(client.bus.poll(consumer.as_deref().unwrap(),128).await?);
                     }
-                    let mut stale=Vec::new();
-                    for (&seat,watched) in &mut views {
-                        match client.snapshot(Ulid::from(seat.0.0),watched.generation).await {
-                            Ok(snapshot)=> {
-                                let identity=Some((snapshot.view,snapshot.sequence));
-                                if identity!=watched.last {watched.stream.offer(snapshot)?;watched.last=identity;}
-                                if let Some(update)=watched.stream.next_update() {
-                                    send(&mut write,&GuiReply::Update {seat,update}).await?;
-                                }
-                            }
-                            Err(error)=> {
-                                stale.push(seat);
-                                send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:error.to_string()}).await?;
-                            }
+                    for &seat in views.keys() {checks.schedule(seat);}
+                }
+                _=async {},if !checks.is_empty()||!state_events.is_empty()=> {
+                    // One awaited unit, then incoming actions are polled again.
+                    // Alternate state and pane work so neither can monopolize.
+                    if !checks.is_empty()&&(prefer_view||state_events.is_empty()) {
+                        let seat=checks.next().unwrap();
+                        if let Some(watched)=views.get_mut(&seat)
+                            && let Err(error)=gui_check_view(&client,&mut write,seat,watched).await {
+                            views.remove(&seat);
+                            send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:error.to_string()}).await?;
                         }
+                        prefer_view=false;
+                    } else if let Some(event)=state_events.pop_front() {
+                        gui_state_event(event,&client,&mut write).await?;
+                        prefer_view=true;
                     }
-                    for seat in stale {views.remove(&seat);}
+                    actions=0;
+                }
+                _=async {},if actions>=ACTION_BURST=> {
+                    actions=0;
+                    tokio::task::yield_now().await;
                 }
             }
         }
@@ -554,6 +635,42 @@ mod gui_tests {
         logic::{Logic, LogicConfig},
         registry::SeatRecord,
     };
+
+    #[test]
+    fn repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back() {
+        let mut checks = GuiChecks::default();
+        let seats: Vec<_> = (1..=1024).map(bbt_proto::SeatId::from_u128).collect();
+        for _ in 0..10 {
+            for &seat in &seats {
+                checks.schedule(seat);
+            }
+        }
+        assert_eq!(checks.order.len(), seats.len());
+        assert_eq!(checks.queued.len(), seats.len());
+        let first = checks.next().unwrap();
+        checks.schedule(first);
+        for &seat in &seats[1..] {
+            assert_eq!(checks.next(), Some(seat));
+        }
+        assert_eq!(checks.next(), Some(first));
+        assert!(checks.is_empty());
+    }
+
+    #[test]
+    fn unwatch_removes_pending_work_and_rewatch_schedules_only_once() {
+        let mut checks = GuiChecks::default();
+        let a = bbt_proto::SeatId::from_u128(1);
+        let b = bbt_proto::SeatId::from_u128(2);
+        checks.schedule(a);
+        checks.schedule(b);
+        checks.remove(a);
+        checks.schedule(a);
+        checks.schedule(a);
+        assert_eq!(checks.next(), Some(b));
+        assert_eq!(checks.next(), Some(a));
+        assert!(checks.is_empty());
+        assert!(checks.queued.is_empty());
+    }
 
     async fn update(rx: &mut tokio::sync::mpsc::Receiver<GuiReply>) -> (View, u64, bool) {
         tokio::time::timeout(Duration::from_secs(5), async {

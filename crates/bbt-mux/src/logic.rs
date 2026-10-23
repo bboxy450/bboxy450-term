@@ -738,6 +738,99 @@ struct ViewState {
     checkpoint_sequence: u64,
     changed_at: Instant,
 }
+
+// A replay target belongs to a seat, not its entire supervisor host. Keep the
+// active target fixed until it finishes; subsequent captured notifications use
+// the same bounded coalescer as the supervisor connection.
+#[derive(Default)]
+struct PendingSeats {
+    seats: BTreeMap<(HostId, Ulid), PendingSeat>,
+    ready: VecDeque<(HostId, Ulid)>,
+    parked: BTreeSet<HostId>,
+}
+struct PendingSeat {
+    active: Event,
+    generation: u64,
+    latest: u64,
+    exited: bool,
+    queued: bbt_supervisor::client::PendingEvents,
+}
+impl PendingSeats {
+    #[cfg(test)]
+    fn is_empty(&self) -> bool {
+        self.seats.is_empty()
+    }
+    fn has_ready(&self) -> bool {
+        self.ready
+            .iter()
+            .any(|(host, _)| !self.parked.contains(host))
+    }
+    fn park(&mut self, host: &HostId) {
+        self.parked.insert(host.clone());
+    }
+    fn resume(&mut self, host: &HostId) {
+        self.parked.remove(host);
+    }
+    fn push(&mut self, host: HostId, event: Event, generation: u64, first: u64) -> Result<()> {
+        let key = (host, event.seat());
+        let sequence = event.sequence().unwrap();
+        let exited = matches!(event, Event::Exited { .. });
+        if let Some(pending) = self.seats.get_mut(&key)
+            && pending.generation == generation
+        {
+            if sequence <= pending.latest {
+                return Ok(());
+            }
+            if pending.exited {
+                return Err(invalid("supervisor event follows process exit"));
+            }
+            pending.queued.push(event)?;
+            pending.latest = sequence;
+            pending.exited = exited;
+            return Ok(());
+        }
+        let mut queued = bbt_supervisor::client::PendingEvents::default();
+        queued.confirm_ring(key.1, generation, first)?;
+        let replaced = self.seats.insert(
+            key.clone(),
+            PendingSeat {
+                active: event,
+                generation,
+                latest: sequence,
+                exited,
+                queued,
+            },
+        );
+        if replaced.is_none() {
+            self.ready.push_back(key);
+        }
+        Ok(())
+    }
+    fn next(&mut self) -> Option<((HostId, Ulid), Event)> {
+        for _ in 0..self.ready.len() {
+            let key = self.ready.pop_front()?;
+            if self.parked.contains(&key.0) {
+                self.ready.push_back(key);
+            } else {
+                return Some((key.clone(), self.seats[&key].active.clone()));
+            }
+        }
+        None
+    }
+    fn finish(&mut self, key: (HostId, Ulid), complete: bool) {
+        if complete {
+            let pending = self.seats.get_mut(&key).unwrap();
+            match pending.queued.pop_front() {
+                Some(event) => pending.active = event,
+                None => {
+                    self.seats.remove(&key);
+                    return;
+                }
+            }
+        }
+        self.ready.push_back(key);
+    }
+}
 struct NativeReader {
     session: String,
     task: tokio::task::JoinHandle<()>,
@@ -2407,7 +2500,11 @@ impl Worker {
         )?;
         self.gui_seat(info.seat)
     }
-    fn refresh_providers(&mut self, recoveries: &mut BTreeSet<HostId>) -> Result<()> {
+    fn refresh_providers(
+        &mut self,
+        recoveries: &mut BTreeSet<HostId>,
+        pending: &mut PendingSeats,
+    ) -> Result<()> {
         use crate::provider::fake::{STATE_SUBJECT, is_link_down};
         use crate::provider::{LinkState, ProviderEvent};
         for event in self.connections.poll() {
@@ -2416,8 +2513,10 @@ impl Worker {
                 state,
                 LinkState::Connected { .. } | LinkState::Degraded { .. }
             ) {
+                pending.resume(host);
                 recoveries.insert(host.clone());
             } else {
+                pending.park(host);
                 recoveries.remove(host);
             }
             self.publish(
@@ -2469,9 +2568,12 @@ impl Worker {
         let mut messages_at = Instant::now();
         let mut identity_at = Instant::now();
         let mut providers_at = Instant::now();
-        let mut pending_events = BTreeMap::new();
+        let mut pending_events = PendingSeats::default();
         let mut provider_recoveries = BTreeSet::new();
+        let mut made_progress = false;
         while !stop.load(Ordering::Acquire) {
+            let poll_ready = made_progress && pending_events.has_ready();
+            made_progress = false;
             for _ in 0..32 {
                 let Ok(command) = commands.try_recv() else {
                     break;
@@ -2772,33 +2874,49 @@ impl Worker {
                 }
             }
             for host in self.connections.host_ids() {
-                let event = match pending_events.remove(&host) {
-                    Some(event) => Some(event),
-                    None => self.connections.receive_from(&host)?,
+                let event = if poll_ready {
+                    self.connections.receive_ready_from(&host)?
+                } else {
+                    self.connections.receive_from(&host)?
                 };
                 if let Some(event) = event {
                     if self.host_for_seat(event.seat())? != host {
                         continue;
                     }
-                    match self.event(event.clone()) {
-                        Ok(true) => {}
-                        Ok(false) => {
-                            // One page applied; retain the live event and cursor
-                            // while commands and other hosts get their turn.
-                            pending_events.insert(host, event);
-                        }
-                        Err(error)
-                            if is_capture_busy(&error)
-                                || crate::provider::fake::is_link_down(&error) =>
-                        {
-                            pending_events.insert(host, event);
-                        }
-                        Err(error) => return Err(error),
+                    let generation = match &event {
+                        Event::Output { generation, .. }
+                        | Event::Resized { generation, .. }
+                        | Event::Exited { generation, .. } => *generation,
+                    };
+                    if let Some(view) = self.views.get(&event.seat())
+                        && generation == view.generation
+                        && event.sequence().unwrap() > view.sequence
+                    {
+                        pending_events.push(host, event, generation, view.sequence + 1)?;
                     }
                 }
             }
+            if let Some((key, event)) = pending_events.next() {
+                let before = self.views.get(&key.1).map(|view| view.sequence);
+                let complete = match self.event(event) {
+                    Ok(complete) => {
+                        made_progress =
+                            complete || self.views.get(&key.1).map(|view| view.sequence) != before;
+                        complete
+                    }
+                    Err(error) if crate::provider::fake::is_link_down(&error) => {
+                        pending_events.park(&key.0);
+                        false
+                    }
+                    Err(error) if is_capture_busy(&error) => false,
+                    Err(error) => return Err(error),
+                };
+                // One page per seat per round, with command service and fresh
+                // notifications between pages. A long gap cannot hold a host.
+                pending_events.finish(key, complete);
+            }
             if providers_at.elapsed() >= Duration::from_millis(200) {
-                self.refresh_providers(&mut provider_recoveries)?;
+                self.refresh_providers(&mut provider_recoveries, &mut pending_events)?;
                 providers_at = Instant::now();
             }
             if adapters_at.elapsed() >= Duration::from_millis(200) {
@@ -2897,4 +3015,142 @@ fn check_size(cols: usize, rows: usize) -> Result<()> {
         return Err(invalid("viewport dimensions exceed bounded logic model"));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod pending_tests {
+    use super::*;
+    fn output(seat: Ulid, generation: u64, seq: u64) -> Event {
+        Event::Output {
+            seat,
+            generation,
+            seq,
+            bytes: vec![b'x'],
+        }
+    }
+    #[test]
+    fn pending_seats_rotate_without_changing_an_unfinished_target() {
+        let mut pending = PendingSeats::default();
+        let seats = [Ulid::from(1), Ulid::from(2), Ulid::from(3), Ulid::from(4)];
+        for seat in seats {
+            pending
+                .push(HostId::Local, output(seat, 1, 1000), 1, 1)
+                .unwrap();
+        }
+        let mut quantum = 0;
+        let mut last = BTreeMap::new();
+        for _ in 0..3 {
+            for expected in seats {
+                let (key, event) = pending.next().unwrap();
+                quantum += 1;
+                let previous = last.insert(event.seat(), quantum).unwrap_or(0);
+                assert!(
+                    quantum - previous <= seats.len(),
+                    "a seat missed its N-quanta bound"
+                );
+                assert_eq!(event.seat(), expected);
+                assert_eq!(event.sequence(), Some(1000));
+                pending.finish(key, false);
+            }
+        }
+        assert_eq!(pending.seats.len(), 4);
+        assert_eq!(pending.ready.len(), 4);
+    }
+    #[test]
+    fn pending_notifications_stay_bounded_and_preserve_resize_and_exit_order() {
+        let mut pending = PendingSeats::default();
+        let seat = Ulid::from(1);
+        for seq in 1..10_001 {
+            pending
+                .push(HostId::Local, output(seat, 1, seq), 1, 1)
+                .unwrap();
+        }
+        pending
+            .push(
+                HostId::Local,
+                Event::Resized {
+                    seat,
+                    generation: 1,
+                    seq: 10_001,
+                    size: Default::default(),
+                },
+                1,
+                1,
+            )
+            .unwrap();
+        for seq in 10_002..20_001 {
+            pending
+                .push(HostId::Local, output(seat, 1, seq), 1, 1)
+                .unwrap();
+        }
+        pending
+            .push(
+                HostId::Local,
+                Event::Exited {
+                    seat,
+                    generation: 1,
+                    seq: 20_001,
+                    status: crate::protocol::ExitInfo {
+                        code: 0,
+                        signal: None,
+                    },
+                },
+                1,
+                1,
+            )
+            .unwrap();
+        assert_eq!(pending.ready.len(), 1);
+        let mut sequences = Vec::new();
+        while let Some((key, event)) = pending.next() {
+            sequences.push(event.sequence().unwrap());
+            pending.finish(key, true);
+        }
+        assert_eq!(sequences, [1, 10_001, 20_000, 20_001]);
+        assert!(pending.is_empty());
+    }
+    #[test]
+    fn replacement_generation_discards_only_the_old_generation_work() {
+        let mut pending = PendingSeats::default();
+        let seat = Ulid::from(1);
+        pending
+            .push(HostId::Local, output(seat, 1, 1000), 1, 1)
+            .unwrap();
+        pending
+            .push(HostId::Local, output(seat, 1, 2000), 1, 1)
+            .unwrap();
+        pending
+            .push(HostId::Local, output(seat, 2, 1), 2, 1)
+            .unwrap();
+        let (key, event) = pending.next().unwrap();
+        assert!(matches!(
+            event,
+            Event::Output {
+                generation: 2,
+                seq: 1,
+                ..
+            }
+        ));
+        pending.finish(key, true);
+        assert!(pending.is_empty());
+        assert!(pending.ready.is_empty());
+    }
+    #[test]
+    fn down_host_work_is_parked_until_a_provider_up_transition() {
+        let mut pending = PendingSeats::default();
+        pending
+            .push(HostId::Local, output(Ulid::from(1), 1, 1000), 1, 1)
+            .unwrap();
+        pending.park(&HostId::Local);
+        assert!(!pending.has_ready());
+        for _ in 0..100 {
+            assert!(pending.next().is_none());
+        }
+        assert_eq!(pending.ready.len(), 1);
+        pending.resume(&HostId::Local);
+        assert!(pending.has_ready());
+        let (key, event) = pending.next().unwrap();
+        assert_eq!(event.sequence(), Some(1000));
+        pending.finish(key, true);
+        assert!(pending.is_empty());
+    }
 }
