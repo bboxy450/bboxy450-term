@@ -1,0 +1,88 @@
+C1i handoff evidence — Aster Cinderwing <EXECUTOR>
+
+Source subject: a0c667fc99b50c662b6ba301bb600cd54e8ab373, branch exec4.
+Base: origin/main f308e37d75ac504da4961e4159a25abe0880c2f1.
+Writing worktree: /Users/feral/mydev/bboxy450-term-exec4.
+Four signed source commits: a5fcbe2f233a8a56c8966319396caa80b05c6042,
+868449d0cfe6fcb811d8bc0bf282c0ccbc3b3c29,
+2eda0caf1d48352015e6b776a96ea93a19864dd5,
+a0c667fc99b50c662b6ba301bb600cd54e8ab373.
+All four git log %G? = G, machine signature; no push or merge performed.
+Oracle 08aa88f3 freezes this subject: no additional rebase required while this gate runs; Oracle verifies later merged tree.
+This log will be committed separately from the tested source; source-tree equality must hold.
+
+Files and mechanisms:
+crates/bboxy450-term/src/scene.rs:199 — projects the Model's selected pane tree, maps real ULIDs to row indices, preserves local focus and focuses newly spawned seats.
+crates/bboxy450-term/src/scene.rs:264 — marks backend loss in rows without replacing terminal models; :275 resolves actual pane/term body bounds with layout padding/lane.
+crates/bboxy450-term/src/gpu.rs:102 — retained per-pane Screen/frame Arcs and sRGB-compatible texture; :469 encodes changed prepared grids with model::draw_pane, then blits retained textures into clipped bodies.
+crates/bboxy450-term/src/gpu.rs:409 — external_before=true invalidates frosted backdrops encoded after cells.
+crates/bboxy450-term/src/main.rs:132 — visible pane set drives stable generation-bearing Watch tokens and physical-cell Resize; focused pane is first.
+crates/bboxy450-term/src/main.rs:404 — frame-start model swap, pane draw and frame-boundary pacer detach/reconfigure/recreate; terminal keyboard and mouse focus in window_event :761.
+crates/bboxy450-term/src/main.rs:898 — retained UI retry list, ordered input coalescing up to16KiB per entry; :945 maps operator keys to PTY bytes including Named Space, UTF8 and controls.
+crates/bboxy450-term/src/live.rs:101 — build -> apply portable states/identity -> prepare -> publish. Applied is queued only afterward at :262-268; unchanged valid watched updates ack, rejected/unwatched ones do not.
+crates/bboxy450-term/src/live.rs:185 — ordered control outbox retains exact action on Busy, drains replies and selects owned writer_ready; independently selected close signal works with full64+64 worker/channel queues.
+crates/bboxy450-term/src/live.rs:241 — fresh Seats is published before BackendReady; socket events remain polled while lost; :278 retains last model on backend exit/disconnect.
+crates/bboxy450-term/src/cockpit.rs:29 — UiMsg Input/Resize carry required displayed generation; only enum/test constructors changed, socket implementation untouched.
+crates/bbt-proto/src/gui.rs:51 — Input/Resize require generation (no serde default); missing-generation payloads rejected by unit test.
+crates/bbt-mux/src/seat_socket.rs:254 — authorized enum pattern compatibility: generation deliberately ignored pending C1c; tests supply actual view generation.
+crates/bboxy450-term/tests/custody.rs:186 — Input fixture supplies seat record generation.
+No grids.rs/model.rs, terminal cells/fonts, Chrome renderer, supervisor/ring/client, logic internals or display_link.rs changes.
+R8 Scene::Metrics block preserved byte for byte against f308e37; inherited Seraph lane/encode_ops and Sable smoke/identity/control-pipe semantics preserved.
+
+Acceptance evidence:
+1. Actual IO integration test live.rs:413 uses owned real supervisor/logic/zsh, memory custody, real PTY, Grids Replica, worker PanePreparer and Latest model.
+   It asserts a standalone hi output row; 256 unique one-byte Inputs preserve exact byte order (BURST_ORDER_OK); PTY stty12x40 ->12x20 and marker reflow; own logic SIGKILL retains Screen/frame Arcs and live IO task. Both64-entry worker/channel queues fill and independent close still reaps children.
+   Post-C1a-2 bin test run:12/12, EXIT0,13.81s, c1i-post-writer-tests.log. Final exact a0c667f workspace run:13/13 including inherited smoke-quiescence unit test, EXIT0,4.24s; real IO regression passed.
+2. Final-subject native9 (default CAMetalDisplayLink, actual1x display), private memory custody/run dir:
+   target/c1i-native-1792733422035790000/echo-hi.png — real Command-T zsh, typed echo hi -> standalone hi; stty57x158; shell status0. Actually read.
+   metal-1200x760-stty.png — actual window1200x760, stty44x108, resize_status0. Actually read. Returned to1600x960 without abort; two-pane split then reports57x77 each.
+   two-pane-focus-before-loss.png — RIGHT_PANE appears in right zsh, click left sends LEFT_PANE to left zsh. Actually read.
+   Recorded own logic24948 (validated PPID24943 and exact executable) received SIGKILL. two-pane-backend-lost.png shows app alive and both rows backend lost. Actually read.
+   Both616x855 terminal body crops are byte-identical before/after kill (0 different pixels each). Exact boxes and hashes: native-acceptance.json and c1i-native-final.log.
+   Command-Q orderly shutdown: APP_EXIT0; recorded app24943/supervisor24947/logic24948/zsh25076/27734 absent (ps exit1, no rows). No restart/restored-output claim.
+3. Completed one-shot Unicode firehose, native8:
+   target/c1i-native-1792731254709277000/unicode-complete.png, SHA256 cabee6cecce2dba70896f53707ac90408727380117e370954636290585bd4caf; shell later showed firehose_status0.
+   Actually read alongside crates/bboxy-firehose/reference/gallery/web/unicode-dark-1x.png and accepted target/c1b-terminal/unicode-dark-1x.png.
+   First80x24 body crop at(317,77,957,437):78 different pixels vs accepted native, all in focused-cursor interior;0 differences outside cursor cell. Against xterm:18,649/230,400 pixels exceed12/255 RGBA threshold (8.094184%). This is remaining reference residue, not a zero-diff claim.
+   Native8 binary subject7c6e536 precedes final cfg(test) fixes and inherited R8/smoke/D1a changes; own pane glue unchanged. Native9 separately verifies final a0c667f application behavior.
+   Native8 APP_EXIT0 after normal Command-Q, all recorded child PIDs absent. Ctrl-C interruption of its long hold was not proven; do not infer it from later hold_status0.
+4. Build/strict lint and CI:
+   cargo clippy --workspace --all-targets --locked -- -D warnings EXIT0 (c1i-final-clippy-2.log).
+   First clean a0c667f --parity run EXIT101/353.393s at unchanged bbt-supervisor stale-socket test; isolated exact same test binary1/1 EXIT0. Logs c1i-ci-socket-flake{,-meta}.log and c1i-supervisor-socket-probe.log. Oracle1f0e8ac7 approves one clean rerun; routed to Sable.
+   Earlier9ccbdc4 full gate cancelled only own recorded PIDs after required main moved: inner SIGTERM=-15/959.123s (driver241), c1i-ci-superseded{,-meta}.log. This is superseded validation, not a passing gate or code-failure attribution.
+   Final clean retry EXIT1/951.630s solely at parity-geometry:648 nonhistorical cases have null geometry evidence, no measured geometry comparisons.1664/1664 web capture (0 failures) and1664 native PNGs completed;181 pixel reviews. All workspace build/strict all-target clippy/tests, UI IO lint, native smoke/idle and five other invariants passed. Three slow invariants skipped as designed. The648 gated failure keys exactly match retained accepted C1b d973716 (both set differences empty); all1320 unproven keys also match (672 historical +648 gated). Gallery/render/lab/design/lock sources byte-unchanged from base f308e37. This is NOT a fresh clean-main comparison. Oracle disposition of the P3 evidence gap is pending. Full report/gallery retained in target/c1i-parity-a0c667f; c1i-parity-summary.log records counts/proof.
+   Exact clean detached worktree /tmp/ci-aster-c1i-a0c667f; CARGO_TARGET_DIR=<worktree>/target-ci; BBOXY_TEST_CUSTODY=memory; no incremental/debug info. Command sh scripts/ci-local.sh --parity. No --slow or ignored Keychain tests.
+
+Peer review / explicit gaps:
+Sable a9f98729 reviewed frozen a0c667f live.rs publication/Applied, Busy/writer_ready, input ID/generation, visible pane watches and loss/fresh-Seats paths. Socket implementation unchanged. Review is source evidence, not independent test proof.
+NAMED CAPACITY GAP: main.rs pending_commands is currently an unbounded UI VecDeque during prolonged backend loss. Worker/channel64+64 bounds do not bound this list. Oracle2a56b6a0 explicitly permits frozen C1i handoff and assigns immediate C1i-2: latest resize/watch per pane, input1MiB/256entries with counted refused admission, spawn8, simulated10-minute disconnect/order test. No bound is claimed for this candidate.
+Stale generation rejection is intentionally C1c: endpoint currently ignores the new field. Restart, reattach, restored output and Watch restoration are C1c, not implemented.
+Sustained high-rate firehose is UNPROVEN: native7 exposed supervisor event-backlog1024 failure; Oracle463d8c76 routes W1.2g to Rook and permits one-shot firehose/normal input for C1i.
+Actual live2x, cross-monitor DPI, iTerm2/Ghostty comparison, all10 live scenes and R5 stall gate not checked.
+No per-pane dropped-input notice added (withdrawn by Oracle; C1c counts/logs stale input).
+
+Failures and disposition:
+- First real-IO fixture used absolute cursor-home/clear output and a long inherited prompt; its reflow predicate timed out. Changed fixture to short PROMPT and ordinary sequential output; subsequent test passed. No core/parser changes.
+- Strict app lint initially rejected test module before main (items_after_test_module); moved it to file end. Later strict workspace lint passed.
+- Required-generation compile check found one multiline test call missing its generation; corrected it; app/proto tests and strict lint then passed.
+- Native1 bundle executable/name mismatch caused computer-use AppleEvent timeouts; matching bundle/executable names resolved it.
+- Native2 typed echohi because Space arrived as NamedKey::Space; added explicit space mapping plus regression check.
+- Native4/5 resize aborted in winit's native callback paths (SIGABRT; child exit status not collected). Fixed capture hook deferral to about_to_wait plus detach/recreate pacer at frame-boundary surface reconfigure; native7 Metal round trip then passed. Original exact cause was not isolated between those two changes.
+- Native6 had a 2 s write_json deadline under command bursts. Oracle confirmed bounded-reader/full-duplex deadlock and assigned Sable C1a-2 (84b02852).
+- Native7 Unicode loop later lost its logic ACTOR, not its process. Orderly shutdown exposed 'supervisor event backlog exceeded; continuity unavailable'. Separate W1.2g assigned to Rook; sustained high-rate continuity explicitly UNPROVEN/waived for C1i (463d8c76).
+- target/c1i-native-1792728518714835000/unicode-stream-partial-lost.png is a partial/lost frame, not completed-scene fidelity proof. SHA256 060c47b386e06325d18505fb61bc33e3a3ad479fcab12c8608316a3ae5f27b34.
+
+
+Additional resolved check failures:
+- Post-C1a-2 workspace strict clippy initially EXIT101: inherited new cockpit test constructors lacked required generation; corrected only constructors/pattern assert, then strict workspace lint EXIT0 (c1i-final-clippy-2.log).
+- R8/smoke rebase paused with a main.rs cfg(test) tail conflict; preserved both smoke_tests and input_tests. Rebase/fmt check EXIT0. R8 metrics equality checked EXIT0.
+
+Commands and statuses:
+See c1i-commands.log (original sequential command inventory), c1i-command-records.log (bounded command-only recovery, no transcript/reasoning), individual named command outputs, and CI meta logs. Process sessions are not inferred successful merely because launch yielded; final statuses are explicit in owned-process.json or CI meta.
+Shell group statuses apply to the group; an earlier failed read hidden by a later successful command is not asserted individually successful. Native UI actions have tool success/error, no POSIX exit status. Timeout after Command-Q is resolved by actual APP_EXIT0 and child-reap logs.
+
+Cleanup (own areas only):
+Old requested exec4 idle build cleanup10068578304 allocated bytes; private lint-CI target2750799872 bytes. Six obsolete own bundle executables447184896 bytes removed, PNG/log evidence retained.
+Superseded9ccbdc4 target2356092928 bytes removed after termination. First a0c667f failed-gate target1956909056 bytes removed before clean retry. Final exited CI target2376798208 allocated bytes removed with its clean worktree (git worktree remove EXIT0); complete parity gallery/report copied into own target/c1i-parity-a0c667f before removal.
+Native1..9 recorded app/child PIDs absent after own shutdown/cleanup. No peer process/target/worktree was killed or deleted. Accepted galleries retained.
+No push, merge, stash/autostash, broad staging or shared-worktree writes.

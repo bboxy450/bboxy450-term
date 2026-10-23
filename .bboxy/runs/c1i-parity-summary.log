@@ -1,0 +1,27 @@
+{
+  "subject": "a0c667fc99b50c662b6ba301bb600cd54e8ab373",
+  "ci_exit": 1,
+  "ci_elapsed_seconds": 951.63,
+  "case_count": 1664,
+  "status_counts": {
+    "review pixels": 181,
+    "unproven geometry": 1320,
+    "within policy": 163
+  },
+  "missing_geometry_count": 1320,
+  "missing_have_null_geometry": true,
+  "historical_c1b_missing_geometry_count": 1320,
+  "new_minus_c1b_missing_keys": [],
+  "c1b_minus_new_missing_keys": [],
+  "parity_sources_equal_to_main_exit": 0,
+  "retained_gallery": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-parity-a0c667f",
+  "not_a_clean_main_comparison": true,
+  "nonhistorical_missing_geometry_count": 648,
+  "historical_missing_geometry_count": 672,
+  "nonhistorical_new_minus_c1b": [],
+  "nonhistorical_c1b_minus_new": [],
+  "measured_geometry_count": 0,
+  "nonhistorical_pixel_reviews": 181,
+  "report_sha256": "b1ab68d2f5aa224316587f742973a01d5f9825e35826ecb595ede23ade6fd59a",
+  "ci_log_sha256": "0a12506ec7bc77f907ee73becdd68340c10b830b249b44866746921a12d2e675"
+}

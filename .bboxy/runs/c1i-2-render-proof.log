@@ -1,0 +1,46 @@
+{
+  "base": "772719b759f7833134fbe8126a9f15811e17ce72",
+  "subject": "c2a6c415f16227fec084fa9afe56520bb255960a",
+  "rendering_source_diff_exit": 0,
+  "unchanged_app_functions": {
+    "watch_panes": {
+      "byte_equal": true,
+      "sha256": "b2ba1f342ca9497a48d3d5e383d461a0a9284e64fafe65ae86f7a4adf7196908"
+    },
+    "request_close": {
+      "byte_equal": true,
+      "sha256": "21e936cdef6db8c880fe3a4a36df5319f6fddafc0fc0a81e80064669a159133a"
+    },
+    "init": {
+      "byte_equal": true,
+      "sha256": "592d52eb49c007b5cf280fd2fa761b28a53bb140a3748d771b9d20abc7b66f5f"
+    },
+    "install_gpu": {
+      "byte_equal": true,
+      "sha256": "c41ffa9563ab45e4d8860b44003f7623b9fc6acb491faaf9f2075b0fdb6693be"
+    },
+    "drain": {
+      "byte_equal": true,
+      "sha256": "fd2ef3dd1e9a3db437b0e022de56f09bd300ee86a082411250724dfd5abbc852"
+    },
+    "demo": {
+      "byte_equal": true,
+      "sha256": "2233b0c15b1ad1918a66aad4eeec11d69630030ff45b5347e9aa5e77c83585f3"
+    },
+    "redraw": {
+      "byte_equal": true,
+      "sha256": "e40e2e2545d594da5f514b852e800cfdf921905c03c6bce4fed4afdcd7660831"
+    },
+    "window_event": {
+      "byte_equal": true,
+      "sha256": "23613e4754ca655bb612b9e2734a819772b2c717de90a354f13f193e993a11a1"
+    },
+    "terminal_input": {
+      "byte_equal": true,
+      "sha256": "d7a04f9f2a3532f7d753e3be4f27e716d8e4917ff7ae408bb154849e460249e4"
+    }
+  },
+  "not_a_new_pixel_capture": true,
+  "ci_log_sha256": "be03ee69f4081640bd5d2cb64ec77270e45df70b4cce7af34a4e57c9d854d6a6",
+  "source_commit_signature_exit": 0
+}

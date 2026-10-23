@@ -1,0 +1,24 @@
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-supervisor)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+error: items after a test module
+   --> crates/bboxy450-term/src/main.rs:796:1
+    |
+796 | mod input_tests {
+    | ^^^^^^^^^^^^^^^
+...
+835 | fn main() -> Result<(), Box<dyn std::error::Error>> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#items_after_test_module
+    = note: `-D clippy::items-after-test-module` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::items_after_test_module)]`
+    = help: move the items to before the test module was defined
+
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 1 previous error

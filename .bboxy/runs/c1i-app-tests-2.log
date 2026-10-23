@@ -1,0 +1,47 @@
+    Blocking waiting for file lock on package cache
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 8.57s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-8904b9b34a87a919)
+
+running 8 tests
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test scene::lane_tests::the_lane_sets_gutter_and_inset_and_relayouts_at_runtime ... ok
+owned supervisor=59079 logic=59118
+cockpit ready: supervisor=59079 logic=59118
+seat 01M5KE4725YWHVAG058JEVPRXH activity=Idle process=Running { pid: 59128 }
+seat 01M5KE4725YWHVAG058JEVPRXH activity=Idle process=Running { pid: 59128 }
+GUI operation 01M5KE476GR98VZNPMEB0Z1NGX accepted
+GUI operation 01M5KE47QA51A9EZZS7XH977BK accepted
+GUI operation 01M5KE479JB2B01ZHY477J6ZBR accepted
+PASS real IO: standalone hi row in Replica, prepared frame published
+GUI operation 01M5KE47RFY52T8CA79H61R51R accepted
+GUI operation 01M5KE47RFDKHXJZWMBHGZ8QYT accepted
+GUI operation 01M5KE47XYCZGB1HAN4KEW8D08 accepted
+GUI operation 01M5KE47XYHRP3WWHMFQ38AH44 accepted
+GUI operation 01M5KE47YXB1XVCJBJQNY22RH4 accepted
+seat 01M5KE4725YWHVAG058JEVPRXH activity=Idle process=Running { pid: 59128 }
+GUI operation 01M5KE47ZGCB04Y4QNFDJX58E7 accepted
+GUI operation 01M5KE481CMTTHPPHFHPS181HR accepted
+test scene::lane_tests::pane_rects_are_identical_across_activity_states ... ok
+GUI operation 01M5KE480H2E4VD7SBG093BK1R accepted
+GUI operation 01M5KE484DY7Q0PQ9WTBWSGW3W accepted
+GUI operation 01M5KE484D1JDJA4527Q3H8JKZ accepted
+GUI operation 01M5KE486C8TQ4BX5JCZT50YWT accepted
+GUI operation 01M5KE4864SX18XZJE1E6F639Q accepted
+GUI operation 01M5KE488F09VWVA55AFN0YCMS accepted
+seat 01M5KE4725YWHVAG058JEVPRXH activity=Idle process=Running { pid: 59128 }
+PASS resize: PTY stty reports 12x40 then 12x20; prior output reflows
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: GUI connection closed
+PASS logic SIGKILL: Some("logic exited: signal: 9 (SIGKILL)"); retained Screen/frame; no restoration claimed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+PASS orderly shutdown at full retained/channel capacity after backend loss, supervisor 59079 reaped
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.53s

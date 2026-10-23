@@ -1,0 +1,47 @@
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 4.85s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-8904b9b34a87a919)
+
+running 8 tests
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test scene::lane_tests::the_lane_sets_gutter_and_inset_and_relayouts_at_runtime ... ok
+owned supervisor=51514 logic=51518
+cockpit ready: supervisor=51514 logic=51518
+test scene::lane_tests::pane_rects_are_identical_across_activity_states ... ok
+seat 01M5KDR1RNTC8AZC4BFY88G4G1 activity=Idle process=Running { pid: 51520 }
+seat 01M5KDR1RNTC8AZC4BFY88G4G1 activity=Idle process=Running { pid: 51520 }
+GUI operation 01M5KDR1XSK1TGS8JPK9ZMJHK4 accepted
+GUI operation 01M5KDR20V9T7T236DVSX4TQSE accepted
+GUI operation 01M5KDR1ZS3M2ZVW3HAHNZTYSF accepted
+PASS real IO: standalone hi row in Replica, prepared frame published
+GUI operation 01M5KDR224YD52YQ8EDSMVQ06A accepted
+GUI operation 01M5KDR23240PDM9E84V8HMRR9 accepted
+GUI operation 01M5KDR289Q8T0ZCJAF3A4XBDM accepted
+GUI operation 01M5KDR26HFVXV0JDJCY51DY6H accepted
+GUI operation 01M5KDR293BYBP5BDKS1SADQBD accepted
+seat 01M5KDR1RNTC8AZC4BFY88G4G1 activity=Idle process=Running { pid: 51520 }
+GUI operation 01M5KDR2CVBVN8DGJY19KBN0GH accepted
+GUI operation 01M5KDR2DTMM1JC87HX89RBH44 accepted
+GUI operation 01M5KDR2DJC3Z7J5DTPM1SJR9S accepted
+GUI operation 01M5KDR2G71M1YDXXVZ385KAZW accepted
+GUI operation 01M5KDR2JJFMGTE8FF1Y817N91 accepted
+GUI operation 01M5KDR2MS6ZYNMH896QNDRGPD accepted
+GUI operation 01M5KDR2MKVXNT7BQ63WQQGN7T accepted
+seat 01M5KDR1RNTC8AZC4BFY88G4G1 activity=Idle process=Running { pid: 51520 }
+GUI operation 01M5KDR2NTRYSZ3T5EGZC8DPNC accepted
+PASS resize: PTY stty reports 12x40 then 12x20; prior output reflows
+GUI operation 01M5KDR2PYQVSVZZTWYFAQE029 accepted
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: GUI connection closed
+PASS logic SIGKILL: Some("logic exited: signal: 9 (SIGKILL)"); retained Screen/frame; no restoration claimed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+PASS orderly shutdown after backend loss, supervisor 51514 reaped
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.21s

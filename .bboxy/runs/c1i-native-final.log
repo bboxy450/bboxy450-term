@@ -1,0 +1,136 @@
+{
+  "source": "a0c667fc99b50c662b6ba301bb600cd54e8ab373",
+  "killed_pid": 24948,
+  "app_pid": 24943,
+  "app_alive_after_kill": true,
+  "body_comparisons": {
+    "left": {
+      "box": [
+        317,
+        77,
+        933,
+        932
+      ],
+      "different_pixels": 0,
+      "before_sha256": "dfa7fa526d0b2bf0da74e7482f7bf7383051b4a27e0dbdf2667bb70de728093a",
+      "after_sha256": "dfa7fa526d0b2bf0da74e7482f7bf7383051b4a27e0dbdf2667bb70de728093a"
+    },
+    "right": {
+      "box": [
+        963,
+        77,
+        1579,
+        932
+      ],
+      "different_pixels": 0,
+      "before_sha256": "78c4aa809b8e1d7d0a36124be6cdf58ea37a101d6dc71f3bdea326b86e4a0810",
+      "after_sha256": "78c4aa809b8e1d7d0a36124be6cdf58ea37a101d6dc71f3bdea326b86e4a0810"
+    }
+  },
+  "files": {
+    "echo-hi.png": "9b6c52ef453026dc09805366872c61261afd456421c6ff306961247ff37af046",
+    "metal-1200x760-stty.png": "42780ac0edf7c669c5172becfb00b05ebcffa68354337ee93be3719490f26043",
+    "two-pane-focus-before-loss.png": "f951e068c0b856e615d4da3d2384d8e191e045957b34411d535076035a5ebab1",
+    "two-pane-backend-lost.png": "bd9c5571e0a5fa3891e064411e8c31a1f4260429623c269f86765500b806d5be"
+  }
+}
+
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+cockpit ready: supervisor=24947 logic=24948
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 75.633ms cpu=76.285ms drain=0.006 layout=0.610 draw=0.036 encode=75.633 present_wait=0.069
+first frame: native scene presented, seats=0
+capture /Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/screen.png: Ok(())
+seat 01M5KKTJTCMNZFR5JVTH3F30Z7 activity=Idle process=Running { pid: 25076 }
+seat 01M5KKTJTCMNZFR5JVTH3F30Z7 activity=Idle process=Running { pid: 25076 }
+GUI operation 01M5KKTK3A5T69N72MCTNEJYC9 accepted
+GUI operation 01M5KKTK5315KQ39RJG21ZTY2V accepted
+GUI operation 01M5KKTKZ5J37RDHEPD1SM5K2W accepted
+GUI operation 01M5KKVWA5K23N17WQN6KD36MN accepted
+GUI operation 01M5KKVWAVTFNHTR7ZK7ET4X4X accepted
+GUI operation 01M5KKVWBHR3MWKTWYXKWZES8B accepted
+GUI operation 01M5KKVWC47VZVXH1G9HNQE7GT accepted
+GUI operation 01M5KKVWCR37WZXKN7494WR2N7 accepted
+GUI operation 01M5KKVWDAN307GHNCPNT4M1RD accepted
+GUI operation 01M5KKVXG25Y46BDMVT620T9J5 accepted
+seat 01M5KKTJTCMNZFR5JVTH3F30Z7 activity=Idle process=Running { pid: 25076 }
+GUI operation 01M5KKW03Y89FBJMRJHVEB9387 accepted
+GUI operation 01M5KKW0D13CAM35X0TENAVF9J accepted
+capture /Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/screen.png: Ok(())
+verification window resize: 1200x760 physical pixels
+GUI operation 01M5KKWP2C1DJYXDR0363HNRRZ accepted
+GUI operation 01M5KKWP5HJCT70WKP02M9QZZG accepted
+GUI operation 01M5KKWP65YFZ21GRZV24G61YN accepted
+GUI operation 01M5KKWP68HZNYT7BBTNPQR6GY accepted
+GUI operation 01M5KKWP6H2H1DV854GFYSXXST accepted
+GUI operation 01M5KKWP76HNJXX1GGNGR1RH5D accepted
+GUI operation 01M5KKWP7VR1RKM0EE86RVPXXC accepted
+GUI operation 01M5KKWP7X1BVVQVAB1VXE6PFD accepted
+GUI operation 01M5KKWP8KQA66BACVGVRR9A83 accepted
+GUI operation 01M5KKWP966E5HKGTYYTXV5VMJ accepted
+GUI operation 01M5KKWT3RR7MREJ0JYNBSAHEX accepted
+seat 01M5KKTJTCMNZFR5JVTH3F30Z7 activity=Active process=Running { pid: 25076 }
+seat 01M5KKTJTCMNZFR5JVTH3F30Z7 activity=Idle process=Running { pid: 25076 }
+GUI operation 01M5KKWVCCQXSB8YM0D7VAT7SY accepted
+capture /Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/screen.png: Ok(())
+verification window resize: 1600x960 physical pixels
+GUI operation 01M5KKXPB43JC02596HTJ3367R accepted
+seat 01M5KKXQT000V44JKNN73WRPYP activity=Idle process=Running { pid: 27734 }
+seat 01M5KKXQT000V44JKNN73WRPYP activity=Idle process=Running { pid: 27734 }
+GUI operation 01M5KKXTD60D9A1N1RXE2MQ5TE accepted
+GUI operation 01M5KKXTD66NZN6NJAK5TKRSC9 accepted
+GUI operation 01M5KKXTMHZWHC6M7G2GX20M72 accepted
+hitch frame=40 phase=encode 19.808ms cpu=21.095ms drain=0.006 layout=1.222 draw=0.059 encode=19.808 present_wait=0.053
+GUI operation 01M5KKXTY0DRQ7Q4NBXAY3QBSH accepted
+GUI operation 01M5KKXWZ02ZNA9M7T3PPK1TF4 accepted
+GUI operation 01M5KKXXKHXPA8FAKQH14MGSKJ accepted
+GUI operation 01M5KKXXZYWYVG173NAVNAWPQA accepted
+GUI operation 01M5KKXXZYGQDMSF3C5PQCJ248 accepted
+hitch frame=45 phase=encode 19.536ms cpu=20.839ms drain=0.006 layout=1.241 draw=0.056 encode=19.536 present_wait=0.083
+GUI operation 01M5KKY9Y0Y9YWH66ES00FERQ0 accepted
+GUI operation 01M5KKY9YMSAN93DXG5N5CWCWB accepted
+GUI operation 01M5KKY9YQZFRAHN5EBQ52MPYG accepted
+GUI operation 01M5KKY9ZEPKQDJ9NDHQPXF1ZM accepted
+GUI operation 01M5KKY9ZHZEY6NKS5WVXBQPE2 accepted
+hitch frame=54 phase=encode 19.734ms cpu=21.018ms drain=0.006 layout=1.223 draw=0.056 encode=19.734 present_wait=0.056
+GUI operation 01M5KKYA0F8EFR4XRHVZHY6114 accepted
+GUI operation 01M5KKYA140XFHDHGX4MM20N48 accepted
+GUI operation 01M5KKYCVF18C53GSV9879ZXEB accepted
+seat 01M5KKXQT000V44JKNN73WRPYP activity=Idle process=Running { pid: 27734 }
+GUI operation 01M5KKYB0A14CBE77BFG84PYXD accepted
+GUI operation 01M5KKYB17EVDJTP00E2WGJMEJ accepted
+hitch frame=57 phase=encode 18.821ms cpu=20.110ms drain=0.006 layout=1.228 draw=0.056 encode=18.821 present_wait=0.057
+GUI operation 01M5KKYB21JBVWASDDWF2E5JAQ accepted
+GUI operation 01M5KKYB2460T0MZH1DAJ2A0VY accepted
+GUI operation 01M5KKYB326HAX7GZDCFBX7XSE accepted
+GUI operation 01M5KKYB34M74GTZHMDV8P3FCZ accepted
+GUI operation 01M5KKYGEB8SR8VAEXB0BERJT2 accepted
+GUI operation 01M5KKYGEBVPV8QAM8N6G1C2HQ accepted
+seat 01M5KKTJTCMNZFR5JVTH3F30Z7 activity=Idle process=Running { pid: 25076 }
+GUI operation 01M5KKYJBFEKP9SJA75K7F8DKF accepted
+hitch frame=61 phase=encode 19.496ms cpu=20.760ms drain=0.002 layout=1.208 draw=0.054 encode=19.496 present_wait=0.051
+GUI operation 01M5KKYJFSC14APXBGZGCAMPFD accepted
+hitch frame=62 phase=encode 18.929ms cpu=20.238ms drain=0.006 layout=1.246 draw=0.056 encode=18.929 present_wait=0.065
+capture /Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/screen.png: Ok(())
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: GUI connection closed
+backend lost; retaining last pane frame: logic exited: signal: 9 (SIGKILL)
+hitch frame=64 phase=encode 18.910ms cpu=21.951ms drain=0.008 layout=2.877 draw=0.156 encode=18.910 present_wait=0.082
+capture /Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/screen.png: Ok(())
+
+Final close: APP_EXIT0; all recorded app/supervisor/logic/zsh PIDs absent (ps EXIT1, no rows).
+JFSC14APXBGZGCAMPFD accepted
+hitch frame=62 phase=encode 18.929ms cpu=20.238ms drain=0.006 layout=1.246 draw=0.056 encode=18.929 present_wait=0.065
+capture /Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/screen.png: Ok(())
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: GUI connection closed
+backend lost; retaining last pane frame: logic exited: signal: 9 (SIGKILL)
+hitch frame=64 phase=encode 18.910ms cpu=21.951ms drain=0.008 layout=2.877 draw=0.156 encode=18.910 present_wait=0.082
+capture /Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/screen.png: Ok(())
+app close requested; stopping IO owner
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown

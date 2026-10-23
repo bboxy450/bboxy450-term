@@ -1,0 +1,69 @@
+[
+  {
+    "pid": 69365,
+    "parent": 69350,
+    "command": "sh scripts/ci-local.sh --parity"
+  },
+  {
+    "pid": 85020,
+    "parent": 69365,
+    "command": "sh scripts/invariants.sh --parity"
+  },
+  {
+    "pid": 86118,
+    "parent": 85020,
+    "command": "sh scripts/parity.sh"
+  },
+  {
+    "pid": 89572,
+    "parent": 86118,
+    "command": "node crates/bboxybook/capture.mjs target/parity target/parity/requested.json"
+  },
+  {
+    "pid": 89895,
+    "parent": 89572,
+    "command": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --headless=new --remote-debugging-port=0 --user-data-dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxybook-chrome-NSW324 --no-first-run --no-default-browser-check --disable-extensions --hide-scrollbars --enable-unsafe-swiftshader about:blank"
+  },
+  {
+    "pid": 89901,
+    "parent": 89895,
+    "command": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/156.0.8078.48/Helpers/Google Chrome Helper (GPU).app/Contents/MacOS/Google Chrome Helper (GPU) --type=gpu-process --gpu-recent-crash-count=0 --headless=new --enable-unsafe-swiftshader --noerrdialogs --user-data-dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxybook-chrome-NSW324 --gpu-preferences=WAAAAAAAAAAgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAADAAAAAEAAAAAAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --shared-files --field-trial-handle=1718379636,r,14354353243350265225,4178092323494445073,262144 --disable-features=PaintHolding --variations-seed-version --pseudonymization-salt-handle=1935764596,r,3729698872488466039,7236837517148095496,4 --trace-process-track-uuid=3190708988185955192 --seatbelt-client=19"
+  },
+  {
+    "pid": 89902,
+    "parent": 89895,
+    "command": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/156.0.8078.48/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=network --noerrdialogs --user-data-dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxybook-chrome-NSW324 --shared-files --field-trial-handle=1718379636,r,14354353243350265225,4178092323494445073,262144 --disable-features=PaintHolding --variations-seed-version --pseudonymization-salt-handle=1935764596,r,3729698872488466039,7236837517148095496,4 --trace-process-track-uuid=3190708989122997041 --seatbelt-client=19"
+  },
+  {
+    "pid": 89903,
+    "parent": 89895,
+    "command": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/156.0.8078.48/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper --type=utility --utility-sub-type=storage.mojom.StorageService --lang=en-US --service-sandbox-type=service --noerrdialogs --user-data-dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxybook-chrome-NSW324 --shared-files --field-trial-handle=1718379636,r,14354353243350265225,4178092323494445073,262144 --disable-features=PaintHolding --variations-seed-version --pseudonymization-salt-handle=1935764596,r,3729698872488466039,7236837517148095496,4 --trace-process-track-uuid=3190708990060038890 --seatbelt-client=40"
+  },
+  {
+    "pid": 89906,
+    "parent": 89895,
+    "command": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/156.0.8078.48/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer) --type=renderer --top-chrome-webui --noerrdialogs --user-data-dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxybook-chrome-NSW324 --remote-debugging-port=0 --lang=en-US --num-raster-threads=4 --enable-zero-copy --enable-gpu-memory-buffer-compositor-resources --enable-main-frame-before-activation --renderer-client-id=6 --launch-time-ticks=201311703955 --shared-files --field-trial-handle=1718379636,r,14354353243350265225,4178092323494445073,262144 --disable-features=PaintHolding --variations-seed-version --pseudonymization-salt-handle=1935764596,r,3729698872488466039,7236837517148095496,4 --trace-process-track-uuid=3190708991934122588 --seatbelt-client=74"
+  },
+  {
+    "pid": 89909,
+    "parent": 89895,
+    "command": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/156.0.8078.48/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer) --type=renderer --noerrdialogs --user-data-dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxybook-chrome-NSW324 --remote-debugging-port=0 --lang=en-US --num-raster-threads=4 --enable-zero-copy --enable-gpu-memory-buffer-compositor-resources --enable-main-frame-before-activation --renderer-client-id=7 --launch-time-ticks=201311738737 --shared-files --field-trial-handle=1718379636,r,14354353243350265225,4178092323494445073,262144 --disable-features=PaintHolding --variations-seed-version --pseudonymization-salt-handle=1935764596,r,3729698872488466039,7236837517148095496,4 --trace-process-track-uuid=3190708992871164437 --seatbelt-client=74"
+  },
+  {
+    "pid": 89930,
+    "parent": 89895,
+    "command": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/156.0.8078.48/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer) --type=renderer --noerrdialogs --user-data-dir=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxybook-chrome-NSW324 --remote-debugging-port=0 --lang=en-US --num-raster-threads=4 --enable-zero-copy --enable-gpu-memory-buffer-compositor-resources --enable-main-frame-before-activation --renderer-client-id=21 --launch-time-ticks=201314162820 --shared-files --field-trial-handle=1718379636,r,14354353243350265225,4178092323494445073,262144 --disable-features=PaintHolding --variations-seed-version --pseudonymization-salt-handle=1935764596,r,3729698872488466039,7236837517148095496,4 --trace-process-track-uuid=3190709005989750323 --seatbelt-client=127"
+  }
+]
+reason: Oracle R8 rebase instruction46d1049a arrived after this source gate started.
+SIGTERM recorded own CI PID 69365
+SIGTERM recorded own CI PID 85020
+SIGTERM recorded own CI PID 86118
+PID 89572 already exited
+PID 89895 already exited
+PID 89901 already exited
+PID 89902 already exited
+PID 89903 already exited
+PID 89906 already exited
+PID 89909 already exited
+PID 89930 already exited

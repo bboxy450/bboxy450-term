@@ -1,0 +1,37 @@
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 3.72s
+     Running unittests src/main.rs (target/debug/deps/bboxy450_term-8904b9b34a87a919)
+
+running 1 test
+owned supervisor=36072 logic=36075
+cockpit ready: supervisor=36072 logic=36075
+seat 01M5KCYSZSPBX2AX0TK99FQ65M activity=Idle process=Running { pid: 36077 }
+seat 01M5KCYSZSPBX2AX0TK99FQ65M activity=Idle process=Running { pid: 36077 }
+GUI operation 01M5KCYT4TJK1VMT4ZEV8WSGQT accepted
+GUI operation 01M5KCYT8YXEM6M5X87DXKM7Z2 accepted
+GUI operation 01M5KCYT7FMAKP2VQ0HHPRH7BP accepted
+PASS real IO: standalone hi row in Replica, prepared frame published
+GUI operation 01M5KCYTEZJJ8MBXHQ5QAAP1V0 accepted
+GUI operation 01M5KCYTFNKTW3NMKYHSEHEAA4 accepted
+GUI operation 01M5KCYTMJTW9SYA7NQ7D1EKG1 accepted
+GUI operation 01M5KCYTJBJF3W63RDHXHD2B85 accepted
+GUI operation 01M5KCYTNMN1MQ8359HEFMQB3E accepted
+seat 01M5KCYSZSPBX2AX0TK99FQ65M activity=Idle process=Running { pid: 36077 }
+GUI operation 01M5KCYTQJRNTV05DEE9HANQT8 accepted
+GUI operation 01M5KCYTPDY150S2XKPXQQX4P8 accepted
+GUI operation 01M5KCYTRP012V3W8AKQYZATWS accepted
+GUI operation 01M5KCYTT4M3MHYVWQVWVWQWK6 accepted
+GUI operation 01M5KCYTWR02BGEKWBCHTGCMPP accepted
+GUI operation 01M5KCYTW2Y74XN3H9AJWVNC7Y accepted
+seat 01M5KCYSZSPBX2AX0TK99FQ65M activity=Idle process=Running { pid: 36077 }
+GUI operation 01M5KCYTZ00W4SJMV7TCESR5MM accepted
+PASS resize: PTY stty reports 12x40 then 12x20; prior output reflows
+GUI disconnected: GUI connection closed
+PASS logic SIGKILL: GUI connection closed; retained Screen/frame; no restoration claimed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+PASS orderly shutdown after backend loss, supervisor 36072 reaped
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 1.38s

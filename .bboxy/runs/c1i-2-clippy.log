@@ -1,0 +1,12 @@
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui-model)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-supervisor)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mermaid)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-render)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-doc)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxybook)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 10.00s

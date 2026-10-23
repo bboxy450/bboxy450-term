@@ -1,0 +1,26 @@
+{"pid": 40550, "bundle": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726409439307000/AsterC1i.app", "root": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726409439307000", "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726409439307000/app.log"}
+SIGTERM own app 40550; replacing mismatched bundle executable name
+{"pid": 50512, "bundle": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726971350667000/AsterC1i2.app", "root": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726971350667000", "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792726971350667000/app.log"}
+Owned first-instance child PIDs from app.log: supervisor=40561 logic=40563; cleanup check
+SIGTERM own recorded child 40561
+SIGTERM own recorded child 40563
+{"pid": 53843, "bundle": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727190692361000/AsterC1i3.app", "root": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727190692361000", "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727190692361000/app.log"}
+{"pid": 61132, "bundle": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727554569725000/AsterC1i4.app", "root": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727554569725000", "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727554569725000/app.log"}
+Owned fourth-instance child PIDs from app.log: supervisor=61151 logic=61152; app aborted on resize
+SIGTERM own child 61151
+SIGTERM own child 61152
+{"pid": 63914, "bundle": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727812147187000/AsterC1i5.app", "root": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727812147187000", "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727812147187000/app.log"}
+Owned fifth-instance children from app.log: supervisor=63954 logic=63957; app aborted during resize
+SIGTERM own child 63954
+SIGTERM own child 63957
+{"pid": 65211, "bundle": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727949459320000/AsterC1i6.app", "root": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727949459320000", "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792727949459320000/app.log"}
+{"pid": 73971, "bundle": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000/AsterC1i7.app", "root": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000", "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792728518714835000/app.log"}
+{"pid": 58776, "bundle": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792731254709277000/AsterC1i8.app", "root": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792731254709277000", "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792731254709277000/app.log", "source": "7c6e536989183fff0154436dd0e8a3dee9c5f736", "binary_sha256": "392851524692b949e2fa0ad138231af5d2ede29a1fc8ff2b7d768f0810eb54d1"}
+{"app": 58776, "supervisor": 58779, "logic": 58780, "seats": [{"zsh": 59613, "lookup_exit": 0, "children": [71092]}]}
+native8 actual app exit=0
+
+{"pid": 24943, "bundle": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/AsterC1i9.app", "root": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000", "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/app.log", "source": "a0c667fc99b50c662b6ba301bb600cd54e8ab373", "binary_sha256": "edb44bd09acf5a03557d0ebdd199fb26c82a88ca52c89c087a374240d19e61c0", "argv": ["/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/AsterC1i9.app/Contents/MacOS/AsterC1i9", "--run-dir", "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/run", "--capture", "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/screen.png"]}
+
+{"app": 24943, "descendants": [{"pid": 24947, "ppid": 24943, "command": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/AsterC1i9.app/Contents/MacOS/AsterC1i9 supervisor"}, {"pid": 24948, "ppid": 24943, "command": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/AsterC1i9.app/Contents/MacOS/AsterC1i9 logic"}, {"pid": 25076, "ppid": 24947, "command": "/bin/zsh -il"}]}
+
+{"pid": 24948, "signal": "SIGKILL", "validated_ppid": 24943, "validated_command": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-native-1792733422035790000/AsterC1i9.app/Contents/MacOS/AsterC1i9 logic", "time_ns": 1792733619753344000}
