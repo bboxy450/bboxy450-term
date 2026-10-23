@@ -72,7 +72,8 @@
     if (st.border === 'hairline outside') css.boxShadow = `0 0 0 ${S.material.hairline_px}px var(--hair, var(--line))`;
     if (st.border === 'hairline ring') css.boxShadow = `0 0 0 ${S.material.hairline_px}px var(--hair, var(--line)), inset 0 1px 0 rgba(255,255,255,${S.material.inner_highlight_alpha})`;
     if (st.border === 'seat 1.5px') css.border = '1.5px solid ' + (swarm || 'var(--accent)');
-    if (st.shadow) css.boxShadow = (css.boxShadow ? css.boxShadow + ', ' : '') + 'var(--sh-float)';
+    // canonical order: the floating shadow first (on top), the outside hair beneath it, as the module shells draw it
+    if (st.shadow) css.boxShadow = 'var(--sh-float)' + (css.boxShadow ? ', ' + css.boxShadow : '');
     if (st.height) css.height = resolve(st.height);
     if (st.padding) css.padding = st.padding.map(resolve).join(' ');
     if (st.margin) css.margin = st.margin.map(resolve).join(' ');
