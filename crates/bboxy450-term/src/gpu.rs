@@ -403,7 +403,11 @@ impl Gpu {
                     &self.target,
                     &self.backdrop,
                     vec![overlay],
-                    FrameTime { scale, time_ms },
+                    FrameTime {
+                        scale,
+                        time_ms,
+                        external_before: true,
+                    },
                     &mut encoder,
                 )
                 .map_err(|e| e.to_string())?;
