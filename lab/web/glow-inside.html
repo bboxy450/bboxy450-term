@@ -66,7 +66,7 @@ void main(){ vec2 p = vec2(gl_VertexID == 1 ? 3. : -1., gl_VertexID == 2 ? 3. : 
 const FS = `#version 300 es
 precision highp float;
 uniform int uMode, uN; uniform float uLane, uRim, uRimOut, uIn, uDpr, uH, uTime;
-uniform vec4 uRect[6], uCol[6], uP[6];   // uRect: the region (css px); uCol: rgb + alpha; uP: activity, focus, phase ms, radius
+uniform vec4 uRect[6], uCol[6], uP[6], uF[6];   // uF: focus swell reach px, envelope 0-1   // uRect: the region (css px); uCol: rgb + alpha; uP: activity, focus, phase ms, radius
 out vec4 o;
 const float TAU = 6.2831853;
 float sdf(vec2 q, vec2 hs, float r){ r = min(r, min(hs.x, hs.y)); vec2 d = abs(q) - hs + vec2(r); return min(max(d.x, d.y), 0.) + length(max(d, vec2(0.))) - r; }
@@ -122,6 +122,22 @@ void main(){
         tint = hue(uCol[i].rgb, .55*sin(TAU*(s/P - t*.12)) + .3*sin(TAU*(s/wl(230., P) + t*.2))) ;
         tint = mix(tint, vec3(1.), .22*crest*rim);
       }
+    } else if (uMode == 10) {               // focus swell: the alive rim, and on focus its silk swells out to uF.x px and back
+      float inner = uRim - uRimOut, ext = uF[i].x, env = uF[i].y;
+      float rim = smoothstep(-uRimOut, -uRimOut + .6, -d)*(1. - smoothstep(inner - .4, inner + .4, -d));
+      float bloom = step(inner - .4, -d)*exp(-(-d - inner)/(.3*uLane))*(1. - smoothstep(uLane - 1., uLane, -d));
+      float sw = ext > .5 ? step(uRimOut - .4, d)*(1. - smoothstep(uRimOut + ext*.8, uRimOut + ext, d)) : 0.;
+      if (rim + bloom + sw > 0.) {
+        float a1 = .5 + .5*sin(TAU*(s/wl(170., P) - t*.45)), a2 = .5 + .5*sin(TAU*(s/wl(110., P) + t*.30) + 1.7);
+        float crest = max(a1*a1, .8*a2*a2), pulse = .5 - .5*cos(time/(2600./(.5 + spd))*TAU);
+        float Ir = (.42 + .58*crest)*(.72 + .28*pulse)*rim + .3*crest*(.6 + .4*pulse)*bloom;
+        // the swell is a soft bloom carrying the silk's crests, fading with distance; only a faint core, so neighbours stay readable
+        float u = clamp((d - uRimOut)/max(ext, 1.), 0., 1.), c0 = .35 + .1*sin(TAU*(s/wl(190., P) - t*.31)), kc = (u - c0)/.22;
+        float Is = sw > 0. ? env*(.6*exp(-u*2.8)*(.45 + .55*crest) + .18*exp(-(kc*kc)))*sw : 0.;
+        I = Ir + Is*(1. - Ir);
+        tint = hue(uCol[i].rgb, .55*sin(TAU*(s/P - t*.12)) + .3*sin(TAU*(s/wl(230., P) + t*.2)));
+        tint = mix(tint, vec3(1.), .22*crest*rim);
+      }
     } else if (uMode == 4) {                // underline: 2 px at the strip's foot, breath + travelling crest
       float m = (1. - smoothstep(-.6, 0., d));
       float x = (p.x - R.x)/R.z, crest = exp(-pow((fract(x - t*.18) - .5)/.12, 2.));
@@ -151,7 +167,7 @@ function shared() {
   if (!gl) return (GL = false);
   const sh = (type, src) => { const x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
   const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
-  const U = {}; for (const n of ['uMode', 'uN', 'uLane', 'uRim', 'uRimOut', 'uIn', 'uDpr', 'uH', 'uTime', 'uRect', 'uCol', 'uP']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uF', 'uMode', 'uN', 'uLane', 'uRim', 'uRimOut', 'uIn', 'uDpr', 'uH', 'uTime', 'uRect', 'uCol', 'uP']) U[n] = gl.getUniformLocation(prog, n);
   return (GL = { gl, cv, prog, U });
 }
 const probe = document.createElement('canvas').getContext('2d');
@@ -160,7 +176,7 @@ const ACT = { idle: 0, active: 1, waiting: 2, errored: 3 };
 
 function stage(v) {
   const g = v.gap === 'lane' ? lane : v.gap;
-  const st = el('div', { class: 'gi-stage' + (v.small ? ' small' : ''), style: `padding:${g}px;gap:${g}px` });
+  const st = el('div', { class: 'gi-stage' + (v.small ? ' small' : ''), style: `padding:${v.inset != null ? v.inset : g}px;gap:${g}px` });
   const panes = (v.small ? SEATS.slice(0, 4) : SEATS).map(s => { const p = C.pane(s, { focused: !!s.focused, unfocused: !s.focused, height: v.small ? 84 : 112 }); st.append(p); return { s, p }; });
   const cv = el('canvas'); st.append(cv); const ctx = cv.getContext('2d');
   function frame(ts) {
@@ -168,7 +184,9 @@ function stage(v) {
     const S = shared(); if (!S) return;
     const dpr = devicePixelRatio, cr = cv.getBoundingClientRect(), w = Math.round(cr.width * dpr), h = Math.round(cr.height * dpr);
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-    const root = getComputedStyle(document.documentElement), rect = [], col = [], par = [];
+    const root = getComputedStyle(document.documentElement), rect = [], col = [], par = [], fsw = [];
+    // focus swell demo: focus moves every 2.2 s; the newly focused pane swells out to v.swell px and back over 900 ms (sin envelope)
+    const hold = q.get('hold') === '1', fIdx = v.swell ? (hold ? 0 : Math.floor(ts / 2200) % panes.length) : -1, ft = ts % 2200, env = v.swell ? (hold ? 1 : ft < 900 ? Math.sin(Math.PI * ft / 900) : 0) : 0;   // ?hold=1 freezes pane 1 at full swell
     let inner = lane;
     for (const { s, p } of panes) {
       const target = v.mode === 2 || v.mode === 4 || v.mode === 6 ? p.querySelector('.strip') : v.mode === 1 || v.mode === 5 ? p.querySelector('.term') : p;
@@ -177,7 +195,8 @@ function stage(v) {
       rect.push(x, y, rw, rh);
       const c = rgb(s.state === 'waiting' ? root.getPropertyValue('--c-waiting') : s.state === 'errored' ? root.getPropertyValue('--c-errored') : C.seatColor(s));
       col.push(c[0], c[1], c[2], 1);
-      par.push(ACT[s.state] || 0, s.focused ? 1 : 0, C.hash32(s.key) % 10000, v.mode === 0 || v.mode === 3 || v.mode === 6 || v.mode === 7 ? parseFloat(getComputedStyle(p).borderTopLeftRadius) || 0 : v.mode === 2 || v.mode === 4 ? 0 : 4);
+      const k = par.length / 4; fsw.push(k === fIdx ? v.swell * env : 0, k === fIdx ? env : 0, 0, 0);
+      par.push(ACT[s.state] || 0, (v.swell ? k === fIdx : s.focused) ? 1 : 0, C.hash32(s.key) % 10000, v.mode === 0 || v.mode === 3 || v.mode === 6 || v.mode === 7 || v.mode === 10 ? parseFloat(getComputedStyle(p).borderTopLeftRadius) || 0 : v.mode === 2 || v.mode === 4 ? 0 : 4);
       if (v.mode === 1 || v.mode === 5) inner = Math.min(inner, parseFloat(getComputedStyle(target).paddingLeft) || lane);   // never over text cells
       if (v.mode === 6) inner = Math.min(lane, 8);
     }
@@ -185,7 +204,7 @@ function stage(v) {
     gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.useProgram(S.prog);
     gl.uniform1i(U.uMode, v.mode); gl.uniform1i(U.uN, panes.length); gl.uniform1f(U.uLane, lane); gl.uniform1f(U.uRim, v.rim != null ? v.rim : T.glow.rim); gl.uniform1f(U.uRimOut, v.rimOut != null ? v.rimOut : (v.rim != null ? v.rim : T.glow.rim) / 2); gl.uniform1f(U.uIn, inner);
     gl.uniform1f(U.uDpr, dpr); gl.uniform1f(U.uH, h); gl.uniform1f(U.uTime, ts);
-    gl.uniform4fv(U.uRect, rect); gl.uniform4fv(U.uCol, col); gl.uniform4fv(U.uP, par);
+    gl.uniform4fv(U.uRect, rect); gl.uniform4fv(U.uCol, col); gl.uniform4fv(U.uP, par); gl.uniform4fv(U.uF, fsw);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     ctx.clearRect(0, 0, w, h); ctx.drawImage(S.cv, 0, 0);
     requestAnimationFrame(frame);
@@ -198,7 +217,7 @@ function card(v) { return el('div', { class: 'gi-card' }, el('h3', {}, v.title),
 
 Lab.page({ title: 'glow inside', wide: true,
   note: 'Can the activity glow live inside the pane, to save the lane between panes? Eight readings of the same seats (Vesper focused and active, Nyx and Aster active, Rook waiting, Sable and zsh idle). Variants inside the pane pack panes 2 px apart, so the space they win shows as bigger panes in the same frame. The lane slider is the Settings glow lane (2 to 8 px). Needs WebGL2.',
-  states: ['gallery', ...VARIANTS.map(v => v.id), 'rim sizes'],
+  states: ['gallery', ...VARIANTS.map(v => v.id), 'rim sizes', 'focus swell'],
   render(s, body) {
     const slider = el('input', { type: 'range', min: T.glow.depth_min, max: T.glow.depth_max, step: 1, value: lane });
     const val = el('b', {}, lane + ' px');
@@ -213,7 +232,12 @@ Lab.page({ title: 'glow inside', wide: true,
       for (const R of [2, 4, 6, 8]) t.append(el('div', { class: 'rs-size' }, R + ' px', el('small', {}, R / 2 + ' · ' + R / 2 + ' | 1 · ' + (R - 1))),
         stage({ mode: 7, small: true, rim: R, rimOut: R / 2, gap: R }), stage({ mode: 7, small: true, rim: R, rimOut: R / 2, gap: 2 }), stage({ mode: 7, small: true, rim: R, rimOut: 1, gap: 2 }));
       return t; };
-    const draw = () => { grid.innerHTML = ''; if (s === 'rim sizes') { grid.style.display = 'block'; grid.append(sizes()); return; } for (const v of VARIANTS) if (s === 'gallery' || s === v.id) grid.append(card(v)); };
+    // focus swell (operator 2026-10-23: "change focus circle effect to just using silk border glow, and pulsing it to say 40px and
+    // then back ... without changing spacing between blocks"): replaces the locate ripple; the swell is paint over the gap, never layout
+    const swells = () => [10, 20, 30, 40].map(N => el('div', { class: 'gi-card' }, el('h3', {}, 'Focus swell · ' + N + ' px'),
+      stage({ mode: 10, rim: T.glow.rim, rimOut: T.glow.rim / 2, gap: T.glow.rim, inset: T.glow.rim / 2, swell: N }),
+      el('p', {}, `Focus moves every 2.2 s; the newly focused pane's silk swells ${N} px past its rim and settles back in 0.9 s, over the gap and its neighbours. Spacing never changes (gap ${T.glow.rim} px, the rim size).`)));
+    const draw = () => { grid.innerHTML = ''; if (s === 'focus swell') { grid.style.display = ''; grid.append(...swells()); return; } if (s === 'rim sizes') { grid.style.display = 'block'; grid.append(sizes()); return; } for (const v of VARIANTS) if (s === 'gallery' || s === v.id) grid.append(card(v)); };
     slider.addEventListener('input', () => { lane = +slider.value; val.textContent = lane + ' px'; draw(); });
     body.append(el('div', { class: 'gi-lane' }, el('span', {}, 'glow lane'), slider, val), grid);
     draw();
