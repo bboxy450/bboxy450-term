@@ -1,0 +1,70 @@
+{
+  "retirement_authorization": "59db9494-ad78-4591-b4b5-c3058ec466ca",
+  "cleanup": [
+    {
+      "time": 1792775440.030835,
+      "owner": "Nyx",
+      "reason": "Oracle disk request; accepted final galleries retained, inactive private binaries and superseded duplicate replay outputs only",
+      "free_before": 4019716096,
+      "removed": [
+        {
+          "path": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-edit/bin",
+          "logical_bytes": 130235992
+        },
+        {
+          "path": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-edit/baseline-workspace-33d1f9b",
+          "logical_bytes": 132608072
+        },
+        {
+          "path": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-edit/default-after-33d1f9b",
+          "logical_bytes": 132764624
+        },
+        {
+          "path": "/Users/feral/mydev/bboxy450-term-nyx/target/r6/corpus-after-single",
+          "logical_bytes": 75481880
+        },
+        {
+          "path": "/Users/feral/mydev/bboxy450-term-nyx/target/r6/corpus-after02-single",
+          "logical_bytes": 75481935
+        },
+        {
+          "path": "/Users/feral/mydev/bboxy450-term-nyx/target/r6/layers-before-image-only",
+          "logical_bytes": 147255383
+        }
+      ],
+      "logical_bytes_freed": 693827886,
+      "free_after": 4729438208
+    },
+    {
+      "started": 1792775557.5968971,
+      "authorization": "Vesper 59db9494-ad78-4591-b4b5-c3058ec466ca",
+      "reason": "Retire reproducible PNGs/binaries for merged Nyx handoffs; keep reports, manifests, source/hashes/logs; keep ef851ed baseline and in-flight D outputs",
+      "free_before": 4429115392,
+      "finished": 1792775607.383065,
+      "logical_bytes_freed": 2397424295,
+      "free_after": 14882091008
+    }
+  ],
+  "release_target_bytes_removed": 572032506,
+  "release_target_removed": true,
+  "id1_support_target_bytes_removed": 2212400874,
+  "id1_support_evidence": "l8-d-id1-evidence.json",
+  "named_baseline_retained": "target/l8-edit/parity-ef851ed",
+  "peers_directories_touched": false,
+  "development_cache": {
+    "directory": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-placement-dev",
+    "reason": "development checks finished; frozen full CI uses its own active target; retire only my inactive dev cache",
+    "started": 1792777905.874518,
+    "free_before": 5183582208,
+    "logical_bytes_freed": 2046348652,
+    "finished": 1792777908.380105,
+    "free_after": 6833967104,
+    "removed": true
+  },
+  "final_ci": {
+    "logical_bytes_removed": 2571693261,
+    "target_removed": true,
+    "worktree_removed": true
+  },
+  "total_logical_bytes_freed": 10493727474
+}

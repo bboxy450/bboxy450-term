@@ -1,0 +1,25 @@
+{
+  "target": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-placement-release",
+  "started": 1792775824.085212,
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--lib",
+    "--release",
+    "identity::io::release_tests"
+  ],
+  "profile": {
+    "release_opt_level": 0,
+    "debug_assertions": false,
+    "lto": false,
+    "debug": 0
+  },
+  "pid": 92106,
+  "exit": 0,
+  "finished": 1792775949.346606,
+  "logical_bytes_removed": 572032506,
+  "target_removed": true
+}
