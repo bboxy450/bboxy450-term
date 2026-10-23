@@ -99,6 +99,6 @@ pub fn run(config: Config) -> Result<(), String> {
         frame += 1;
         phases.encode = gpu.draw(ops, &model, &bounds, frame, completed.clone())?;
         let cpu = bbt_rt::fault::thread_cpu_time().map_err(|e| e.to_string())?;
-        controller.frame(frame, &model, &bounds, phases, cpu);
+        controller.frame(frame, &model, &bounds, phases, cpu, 1.);
     }
 }

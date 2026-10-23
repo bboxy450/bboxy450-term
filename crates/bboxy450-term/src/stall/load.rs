@@ -75,7 +75,25 @@ pub async fn run(
     commands: mpsc::Receiver<Control>,
     mut stopped: oneshot::Receiver<()>,
 ) -> Result<Report, String> {
-    let result=async {
+    let host_load_before = bbt_rt::fault::host_load_average().map_err(|e| e.to_string())?;
+    eprintln!("R5 host load before: {host_load_before:?}");
+    if config.frame_gate && host_load_before[0] > 8. {
+        let reason = format!(
+            "r5-timing-run-discarded: starting loadavg {} exceeds8",
+            host_load_before[0]
+        );
+        tokio::fs::write(
+            &config.report,
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "discarded": true, "reason": reason, "host_load_before": host_load_before,
+            }))
+            .map_err(|e| e.to_string())?,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+        return Err(reason);
+    }
+    let mut result=async {
         disk_guard(&config.run_dir).await?;
         if config.real {
             let output=tokio::process::Command::new("sysctl").args(["-n","kern.tty.ptmx_max"]).output().await.map_err(|e|e.to_string())?;
@@ -103,7 +121,9 @@ pub async fn run(
         if !background_reaped {return Err("r5-background-command-not-reaped".into());}
         outcome
     }.await;
-    if let Ok(report) = &result {
+    if let Ok(report) = &mut result {
+        report.host_load_before = host_load_before;
+        report.host_load_after = bbt_rt::fault::host_load_average().map_err(|e| e.to_string())?;
         let json = serde_json::to_vec_pretty(report).map_err(|e| e.to_string())?;
         tokio::fs::write(&config.report, json)
             .await
@@ -218,10 +238,46 @@ fn publish(
     updates: &Latest<Arc<Model>>,
 ) -> Result<(), String> {
     let mut next = model::build(records, grids, previous);
+    // A fixture grid keeps the probe's entire row visible. The production
+    // membership builder's one-row fallback would make 50 sliver panes.
+    for swarm in &mut next.ui.window.sidebar.swarms {
+        if swarm.id == bbt_ui_model::model::SwarmId::from_u128(1) {
+            for tab in &mut swarm.tabs {
+                tab.tree = fixture_grid(&tab.seats);
+            }
+        }
+    }
     preparer.prepare(&mut next).map_err(|e| e.to_string())?;
     *previous = Arc::new(next);
     updates.publish(previous.clone());
     Ok(())
+}
+
+fn fixture_grid(seats: &[SeatId]) -> bbt_ui_model::model::SplitNode {
+    use bbt_ui_model::model::{Axis, SplitNode};
+    fn join(nodes: &[SplitNode], axis: Axis) -> SplitNode {
+        if nodes.len() == 1 {
+            return nodes[0].clone();
+        }
+        let half = nodes.len() / 2;
+        SplitNode::split(
+            axis,
+            half as f32 / nodes.len() as f32,
+            join(&nodes[..half], axis),
+            join(&nodes[half..], axis),
+        )
+    }
+    let columns = ((seats.len() as f64 * 1.5).sqrt().ceil() as usize).max(1);
+    let rows: Vec<_> = seats
+        .chunks(columns)
+        .map(|row| {
+            join(
+                &row.iter().copied().map(SplitNode::Leaf).collect::<Vec<_>>(),
+                Axis::Row,
+            )
+        })
+        .collect();
+    join(&rows, Axis::Column)
 }
 
 async fn exercise(
@@ -423,20 +479,24 @@ async fn exercise(
                     if config.real {outgoing.push_back(GuiAction::Input {seat:panes[0].0,generation:1,id:Ulid::new(),bytes:format!("R5P{id:08X}\n").into_bytes()});}
                 }
                 Some(Control::Finish(metrics))=>{
-                    let mut failures=Vec::new();
-                    if metrics.frames<30{failures.push("insufficient-measured-frames".into());}
-                    if metrics.encoded_changes.len()!=config.watched || metrics.encoded_changes.values().any(|n|*n<2){failures.push("non-advancing-watched-pane".into());}
-                    if metrics.idle_frames!=0 || metrics.idle_callbacks!=0 {failures.push("idle-frame-or-callback".into());}
-                    if metrics.guard_violations!=0{failures.push("ui-blocking-guard-violation".into());}
-                    if config.budget.is_some_and(|b|metrics.frame_work_p99_ms>b){failures.push("frame-budget-exceeded".into());}
-                    if !config.frame_gate {
-                        if metrics.cpu_p99_ms>4.{failures.push("ui-cpu-p99-over4ms".into());}
-                        if metrics.input_to_gpu_complete_ms.is_none_or(|ms|ms>metrics.input_budget_ms){failures.push("input-to-gpu-over-two-display-intervals".into());}
-                        if sides.stdout_bytes!=1_000_000_000{failures.push("stdout-not1GB".into());}
-                        if sides.fault_ms<2000.{failures.push("file-read-not-stalled2s".into());}
-                        if sides.bus_hz<10_000.{failures.push("bus-below10k-events-per-second".into());}
-                    }
-                    return Ok(Report {kind:if config.real{"real-pty"}else{"synthetic-render-state"},rows:records.len(),real_ptys:pids.len(),watched:config.watched,seconds:config.seconds,observed_seconds,metrics,stdout_bytes:sides.stdout_bytes,bus_published:sides.bus_published,bus_delivered:sides.bus_delivered,bus_hz:sides.bus_hz,bus_seconds:sides.bus_seconds,fault_read_ms:sides.fault_ms,synthetic_states_consumed:progress.synthetic.get().map_or(0,|s|s.consumed.load(Ordering::Relaxed)),owned_producer_pids:pids.clone(),background_pid:progress.background.get().and_then(bbt_rt::TaskId::pid),failures,unproven:vec!["1000 real PTYs on this host","120Hz native panel","physical keystroke/scanout/photon","exhaustive framework/OS lock and IO tracing","quinn non-answering peer"]});
+                    let (failures,timing_failures)=assess(config,&metrics,&sides);
+                    return Ok(Report {
+                        kind:if config.real {"real-pty"} else {"synthetic-render-state"},
+                        rows:records.len(), real_ptys:pids.len(), watched:config.watched,
+                        seconds:config.seconds, observed_seconds, metrics,
+                        stdout_bytes:sides.stdout_bytes,
+                        bus_published:sides.bus_published, bus_delivered:sides.bus_delivered,
+                        bus_hz:sides.bus_hz, bus_seconds:sides.bus_seconds,
+                        fault_read_ms:sides.fault_ms,
+                        synthetic_states_consumed:progress.synthetic.get().map_or(0,|s|s.consumed.load(Ordering::Relaxed)),
+                        owned_producer_pids:pids.clone(),
+                        background_pid:progress.background.get().and_then(bbt_rt::TaskId::pid),
+                        host_load_before:[0.;3], host_load_after:[0.;3],
+                        timing_gated:config.frame_gate, timing_failures, failures,
+                        unproven:vec!["1000 real PTYs on this host","120Hz native panel",
+                            "physical keystroke/scanout/photon",
+                            "exhaustive framework/OS lock and IO tracing","quinn non-answering peer"],
+                    });
                 }
                 None=>return Err("r5-ui-commands-closed".into()),
             },
@@ -480,6 +540,57 @@ struct SideStats {
     bus_seconds: f64,
     fault_ms: f64,
 }
+
+fn assess(
+    config: &Config,
+    metrics: &Measurements,
+    sides: &SideStats,
+) -> (Vec<String>, Vec<String>) {
+    let mut failures = Vec::new();
+    if metrics.encoded_changes.len() != config.watched
+        || metrics.encoded_changes.values().any(|n| *n < 2)
+    {
+        failures.push("non-advancing-watched-pane".into());
+    }
+    if metrics.idle_frames != 0 || metrics.idle_callbacks != 0 {
+        failures.push("idle-frame-or-callback".into());
+    }
+    if metrics.guard_violations != 0 {
+        failures.push("ui-blocking-guard-violation".into());
+    }
+    if sides.stdout_bytes != 1_000_000_000 {
+        failures.push("stdout-not1GB".into());
+    }
+    if sides.fault_ms < 2000. {
+        failures.push("file-read-not-stalled2s".into());
+    }
+    if metrics.probe_clipped {
+        failures.push("probe-glyphs-clipped-by-pane".into());
+    }
+    let mut timing = Vec::new();
+    if metrics.frames < 30 {
+        timing.push("insufficient-measured-frames".into());
+    }
+    if metrics.cpu_p99_ms > 4. {
+        timing.push("ui-cpu-p99-over4ms".into());
+    }
+    if metrics
+        .input_to_gpu_complete_ms
+        .is_none_or(|ms| ms > metrics.input_budget_ms)
+    {
+        timing.push("input-to-gpu-over-two-display-intervals".into());
+    }
+    if sides.bus_hz < 10_000. {
+        timing.push("bus-below10k-events-per-second".into());
+    }
+    if config.budget.is_some_and(|b| metrics.frame_work_p99_ms > b) {
+        timing.push("frame-budget-exceeded".into());
+    }
+    if config.frame_gate {
+        failures.extend(timing.clone());
+    }
+    (failures, timing)
+}
 struct AbortTask(tokio::task::JoinHandle<Result<SideStats, String>>);
 impl Drop for AbortTask {
     fn drop(&mut self) {
@@ -504,6 +615,16 @@ async fn side_loads(
         vec![],
     );
     let _ = progress.background.set(task.clone());
+    let spawn_deadline = Instant::now() + Duration::from_secs(5);
+    while task.pid().is_none() && task.status().is_none() {
+        if Instant::now() > spawn_deadline {
+            return Err("r5-background-spawn-timeout".into());
+        }
+        tokio::time::sleep(Duration::from_millis(1)).await;
+    }
+    if let Some(pid) = task.pid() {
+        eprintln!("R5 owned background stdout pid={pid}");
+    }
     let read = tokio::spawn(bbt_rt::fault::stalled_file_read(Duration::from_secs(2)));
     let consumer = client
         .bus
@@ -515,7 +636,7 @@ async fn side_loads(
     let mut delivered = 0;
     while start.elapsed().as_secs_f64() < seconds {
         let target = (start.elapsed().as_secs_f64() * 10_000.) as u64 + 128;
-        while published < target {
+        while published < target && start.elapsed().as_secs_f64() < seconds {
             client
                 .bus
                 .publish(
@@ -668,4 +789,64 @@ pub fn private_entry(args: &[String]) -> Option<Result<(), String>> {
             }
         }
     })())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn probe_row_fits_every_fifteen_and_fifty_pane_fixture() {
+        for count in [15, 50] {
+            let seats: Vec<_> = (1..=count).map(SeatId::from_u128).collect();
+            let tree = fixture_grid(&seats);
+            let solved = bbt_ui_model::layout::solve_split(
+                &tree,
+                bbt_ui_model::layout::Rect::new(0., 0., 1280., 860.),
+                4.,
+            );
+            assert_eq!(solved.panes.len(), count as usize);
+            for (_, rect) in solved.panes {
+                assert!(rect.w >= 120. && rect.h >= 100., "{count}: {rect:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn functional_ci_reports_timing_failures_and_the_slow_switch_enforces_them() {
+        let mut config = Config {
+            real: false,
+            headless: true,
+            frame_gate: false,
+            seats: 1000,
+            watched: 15,
+            seconds: 3.,
+            idle: 1.,
+            report: PathBuf::new(),
+            run_dir: PathBuf::new(),
+            budget: Some(4.),
+        };
+        let metrics = Measurements {
+            frames: 30,
+            cpu_p99_ms: 5.,
+            frame_work_p99_ms: 5.,
+            input_to_gpu_complete_ms: Some(30.),
+            input_budget_ms: 2000. / 120.,
+            encoded_changes: (0..15).map(|id| (id.to_string(), 2)).collect(),
+            ..Default::default()
+        };
+        let sides = SideStats {
+            stdout_bytes: 1_000_000_000,
+            fault_ms: 2000.,
+            bus_hz: 9999.,
+            ..Default::default()
+        };
+        let (functional, timing) = assess(&config, &metrics, &sides);
+        assert!(functional.is_empty());
+        assert_eq!(timing.len(), 4);
+        config.frame_gate = true;
+        let (gated, same_timing) = assess(&config, &metrics, &sides);
+        assert_eq!(same_timing, timing);
+        assert_eq!(gated, timing);
+    }
 }

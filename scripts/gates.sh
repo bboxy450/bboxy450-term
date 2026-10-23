@@ -12,6 +12,7 @@ case "${1:-}" in
     # The app custody selector exists only with debug assertions. Keep the
     # optimized profile, but never let this gate use the operator's keychain.
     export CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true BBOXY_TEST_CUSTODY=memory CARGO_INCREMENTAL=0
+    unset BBOXY_VERIFY_INPUT
     cargo build --release --locked -q -p bboxy450-term
     limit=$(sysctl -n kern.tty.ptmx_max)
     count=${GATE_SEATS:-$((limit - 32))}

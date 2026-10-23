@@ -1239,6 +1239,7 @@ impl App {
                         &self.pane_bounds,
                         phases,
                         cpu,
+                        scale,
                     );
                 }
             }

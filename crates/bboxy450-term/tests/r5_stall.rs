@@ -68,7 +68,10 @@ fn synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io() 
     assert_eq!(value["watched"], 15);
     assert_eq!(value["stdout_bytes"], 1_000_000_000u64);
     assert!(value["fault_read_ms"].as_f64().unwrap() >= 2000.);
-    assert!(value["bus_hz"].as_f64().unwrap() >= 10_000.);
+    assert!(value["bus_published"].as_u64().unwrap() > 0);
+    assert!(value["bus_delivered"].as_u64().unwrap() > 0);
+    assert_eq!(value["timing_gated"], false);
+    assert_eq!(value["metrics"]["probe_clipped"], false);
     assert!(value["synthetic_states_consumed"].as_u64().unwrap() >= 1000);
     assert_eq!(
         value["metrics"]["encoded_changes"]

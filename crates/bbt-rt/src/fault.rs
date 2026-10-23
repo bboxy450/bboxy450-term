@@ -19,6 +19,16 @@ pub fn thread_cpu_time() -> io::Result<Duration> {
     Ok(Duration::new(value.tv_sec as u64, value.tv_nsec as u32))
 }
 
+/// Host load witness for accepting or discarding an R5 timing run.
+pub fn host_load_average() -> io::Result<[f64; 3]> {
+    let mut values = [0.; 3];
+    // SAFETY: getloadavg receives space for exactly the three requested values.
+    if unsafe { libc::getloadavg(values.as_mut_ptr(), 3) } != 3 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(values)
+}
+
 #[derive(Debug)]
 pub struct StalledRead {
     pub bytes: Vec<u8>,

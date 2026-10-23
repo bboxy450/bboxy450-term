@@ -18,7 +18,7 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 
-pub const HELP: &str = "  --stall-test          R5 verification fixture (debug guards required)\n  --stall-headless      render without an NSWindow\n  --stall-real          real PTYs; otherwise explicitly synthetic state fixtures\n  --stall-frame-gate    C1 frame budget only; other R5 limits remain reported\n  --stall-seats N       fixture rows / real PTYs (default 1000 synthetic)\n  --stall-watched N     encoded watched panes (default 15)\n  --stall-seconds N     measured overlap (default 5, range 3..60)\n  --stall-idle N        settled idle seconds (default 2)\n  --stall-report PATH   JSON result (required)\n  --stall-run-dir PATH  fresh private directory (default /tmp/r5-<id>)";
+pub const HELP: &str = "  --stall-test          R5 functional fixture (debug guards required)\n  --stall-headless      render without an NSWindow\n  --stall-real          real PTYs; otherwise explicitly synthetic state fixtures\n  --stall-frame-gate    also enforce timing limits; requires starting loadavg <=8\n  --stall-seats N       fixture rows / real PTYs (default 1000 synthetic)\n  --stall-watched N     encoded watched panes (default 15)\n  --stall-seconds N     measured overlap (default 5, range 3..60)\n  --stall-idle N        settled idle seconds (default 2)\n  --stall-report PATH   JSON result (required)\n  --stall-run-dir PATH  fresh private directory (default /tmp/r5-<id>)";
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -152,6 +152,7 @@ pub struct Measurements {
     pub guard_violations: u64,
     pub cpu_samples_ms: Vec<f64>,
     pub frame_work_samples_ms: Vec<f64>,
+    pub probe_clipped: bool,
 }
 
 #[derive(Serialize)]
@@ -172,13 +173,17 @@ pub struct Report {
     pub synthetic_states_consumed: u64,
     pub owned_producer_pids: Vec<u32>,
     pub background_pid: Option<u32>,
+    pub host_load_before: [f64; 3],
+    pub host_load_after: [f64; 3],
+    pub timing_gated: bool,
+    pub timing_failures: Vec<String>,
     pub failures: Vec<String>,
     pub unproven: Vec<&'static str>,
 }
 impl Report {
     pub fn gate_line(&self, config: &Config) -> String {
         format!(
-            "GATE frame value={:.6} unit=ms budget={} {} rows={} real_ptys={} watched={} frames={} cpu_p99_ms={:.6} input_gpu_ms={:?} idle_frames={} idle_callbacks={} failures={:?}",
+            "GATE frame value={:.6} unit=ms budget={} {} rows={} real_ptys={} watched={} frames={} cpu_p99_ms={:.6} input_gpu_ms={:?} idle_frames={} idle_callbacks={} timing_gated={} timing_failures={:?} failures={:?}",
             self.metrics.frame_work_p99_ms,
             config.budget.map_or("none".into(), |b| b.to_string()),
             if self.failures.is_empty() {
@@ -194,6 +199,8 @@ impl Report {
             self.metrics.input_to_gpu_complete_ms,
             self.metrics.idle_frames,
             self.metrics.idle_callbacks,
+            self.timing_gated,
+            self.timing_failures,
             self.failures
         )
     }
@@ -221,6 +228,7 @@ pub struct Native {
     last_cpu: Option<Duration>,
     paused_frame: Option<u64>,
     completed_frame: u64,
+    probe_clipped: bool,
 }
 impl Native {
     pub fn start(
@@ -285,6 +293,7 @@ impl Native {
             last_cpu: None,
             paused_frame: None,
             completed_frame: 0,
+            probe_clipped: false,
         }
     }
     pub fn cancel(&mut self) {
@@ -367,6 +376,7 @@ impl Native {
                 guard_violations: bbt_rt::ui_blocking_violations().saturating_sub(self.guards),
                 cpu_samples_ms: self.cpu.clone(),
                 frame_work_samples_ms: self.wall.clone(),
+                probe_clipped: self.probe_clipped,
             };
             self.commands
                 .try_send(Control::Finish(metrics))
@@ -382,6 +392,7 @@ impl Native {
         bounds: &[(SeatId, bbt_ui_model::layout::Rect)],
         phases: Phases,
         cpu: Duration,
+        scale: f32,
     ) {
         let cpu = self
             .last_cpu
@@ -426,7 +437,14 @@ impl Native {
                 && let Some((id, _)) = self.probe_started
                 && contains(screen, &format!("R5P{id:08X}"))
             {
-                self.probe_frame = Some(frame);
+                let prepared = &model.frames[seat];
+                let cell_width = prepared.width as f32 / screen.cols as f32;
+                let line_height = prepared.height as f32 / screen.rows as f32;
+                if rect.w * scale >= 11. * cell_width && rect.h * scale >= line_height {
+                    self.probe_frame = Some(frame);
+                } else {
+                    self.probe_clipped = true;
+                }
             }
         }
     }
