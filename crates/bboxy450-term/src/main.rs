@@ -2048,6 +2048,11 @@ fn queue_pending(
         *request = old;
     }
     match &message {
+        // An admitted key returns live before it is delivered. Older scroll
+        // intents are superseded, so a later wheel delta cannot inherit their
+        // Top anchor across this input while the worker is backpressured.
+        live::UiMsg::Input { seat, .. } => pending
+            .retain(|old| !matches!(old,live::UiMsg::Scroll {seat:old_seat,..} if old_seat==seat)),
         live::UiMsg::Resize { seat, .. } => pending.retain(
             |old| !matches!(old, live::UiMsg::Resize { seat: old_seat, .. } if old_seat == seat),
         ),
@@ -3194,6 +3199,42 @@ mod input_tests {
 #[cfg(test)]
 mod scroll_input_tests {
     use super::*;
+
+    #[test]
+    fn admitted_input_resets_a_queued_scroll_anchor_and_refusal_does_not() {
+        let seat = SeatId::from_u128(1);
+        let scroll = |request| live::UiMsg::Scroll {
+            seat,
+            generation: 1,
+            request,
+        };
+        let input = |bytes: Vec<u8>| live::UiMsg::Input {
+            seat,
+            generation: 1,
+            id: bbt_mux::Ulid::new(),
+            bytes,
+        };
+        let mut pending = VecDeque::new();
+        queue_pending(&mut pending, scroll(ScrollRequest::top())).unwrap();
+        queue_pending(&mut pending, input(b"x".to_vec())).unwrap();
+        queue_pending(&mut pending, scroll(ScrollRequest::lines(1))).unwrap();
+        assert_eq!(pending.len(), 2);
+        assert!(matches!(pending.front(),Some(live::UiMsg::Input {bytes,..}) if bytes==b"x"));
+        assert!(
+            matches!(pending.back(),Some(live::UiMsg::Scroll {request,..}) if *request==ScrollRequest::lines(1)),
+            "a post-key wheel step starts behind live, not at an older Top anchor"
+        );
+        pending.clear();
+        queue_pending(&mut pending, scroll(ScrollRequest::top())).unwrap();
+        assert_eq!(
+            queue_pending(&mut pending, input(vec![0; PENDING_INPUT_BYTES + 1])),
+            Err(AdmissionRefused::Input)
+        );
+        assert!(
+            matches!(pending.front(),Some(live::UiMsg::Scroll {request,..}) if *request==ScrollRequest::top()),
+            "a refused key must not alter the pending viewport intent"
+        );
+    }
 
     #[test]
     fn scroll_shortcuts_stay_local_for_repeats_and_kitty_releases() {
