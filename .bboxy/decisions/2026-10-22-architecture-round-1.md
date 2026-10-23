@@ -296,6 +296,22 @@ briefs Executors from the specs, never from this note.
     (the bug); a separate placement message after spawn (two round trips
     and a window where the seat has no home).
 
+30. **Three W2.6 rulings (2026-10-23, Oracle, recorded in [[provenance]] and
+    [[events]]).** (a) Attribution ambiguity: several seats matching a
+    worktree and activity window → `produced_by: null`, `grade: inferred`,
+    bounded candidates, a named reason; an authenticated claim resolves it;
+    an owner is never invented. (b) Signing: signed rows plus the hash
+    chain are the acceptance; observer-made detections are attributed to a
+    seat but signed by the observer; daily GPG checkpoints stay pending
+    while the root is held, with no device-signed substitute. (c) Scope:
+    cockpit-local (filesystem, hooks, git metadata, local GUI events); GitHub
+    ingress, webhooks, cloud and hook installation deferred; split 2.6a
+    detection/claims/log and 2.6b GUI events lane after L8-D's version bump.
+    Rejected: picking the most recent seat as owner (a guess signed as a
+    fact); observer signing with a seat's key (a key the observer does not
+    hold); device-signed daily checkpoints standing in for the root
+    (changes what the checkpoint proves).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate

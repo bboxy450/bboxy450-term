@@ -38,7 +38,13 @@ Nodes: markdown, artifact, activity, seat, grant, root. Edges: `generated`, `use
 
 `[[slug]]` and `[[slug|display]]` stay exactly Obsidian's forms, so `.bboxy/` opens cleanly in Obsidian, Foam and Logseq. Relation and weight move out of the pipe into a trailing annotation: `[[slug]]{rel:w}`, e.g. `[[messaging]]{spec:2}`, `[[01JAX…]]{blocks}`. Obsidian renders the braces as literal text after the link, harmless. The `links:` frontmatter list remains the YAML equivalent. [[work-items]] is updated to this.
 
-## Later (recorded)
+## W2.6 decisions (Architect, 2026-10-23, decision #30)
+
+- **Attribution is never invented.** When more than one seat matches a detected artifact's worktree and activity window, the record gets `produced_by: null`, `grade: inferred`, a bounded list of candidate seat ids and a named reason; a later authenticated `artifact_claim` resolves it. This replaces the implicit single-seat assumption above: an unclaimed detection with several plausible seats stays unowned until a seat says so under its key.
+- **Who signs what.** W2.6 acceptance is signed rows plus the hash chain. A detection made by the observer (filesystem, hooks, git metadata) is attributed to a seat but **signed by the observer**, never by a key the observer does not hold; a claim is signed by the claiming seat's leaf (the W2.5d write path). The daily GPG checkpoints of §2 stay pending while the real root is held; there is no device-signed substitute for a root checkpoint.
+- **Scope.** W2.6 is cockpit-local: filesystem detection, hooks, git metadata and local GUI events. Split: 2.6a detection, claims and the log; 2.6b the GUI events lane, after L8-D's admission-version bump. External ingress stays in [[events]] as design, deferred.
+
+
 
 Signed activity lines with seat leaf custody; device-key checkpoints; Rekor export; OTel GenAI span export over the seat socket; `.bboxy/schema.yml` with an inverse-relation table; Lamport ordering for concurrent frontmatter edits; Foam link-reference definitions so GitHub renders wikilinks; JSON Canvas export of any graph.
 

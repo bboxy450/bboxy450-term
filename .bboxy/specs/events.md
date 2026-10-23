@@ -30,6 +30,10 @@ Anyone with a grant can subscribe: a seat (so a harness is woken when a doc it w
 
 The same evidence vocabulary as messages: stored, delivered-to-socket, acknowledged. Replay from `since` with explicit `gap` when evicted. Wake of a harness goes through the adapter's input guard; an event never types into a PTY by itself. Backpressure: bounded per-subscriber queues, coalescing of `modified` events per doc, never drop without a `gap`.
 
+## W2.6 scope (Architect, 2026-10-23, decision #30)
+
+W2.6 builds the cockpit-local part of this spec only: the bus subjects for filesystem, hook and git-metadata detections and the GUI events lane (2.6b, after L8-D's admission-version bump). Everything in the next section, GitHub ingress, webhooks in and out, CI and cloud sources, hook installation into external systems, is deferred past the cockpit despite this file's older W2.6 wording; the subjects and envelope shape stand so the ingress slots in later without a schema change.
+
 ## External events in
 
 An `ext` ingress per source: GitHub (webhook receiver on a local port or a polling adapter using `gh`; signed payloads verified), CI (GitHub Actions run events), cloud providers (via the CloudProvider trait in [[networking]]), cron (the mux's own scheduler), generic HTTP webhook (operator-defined, token-authenticated). Each ingress normalises to the envelope and records provenance `source: ext/github`, signer = the ingress's own leaf key, with the original payload digest.
