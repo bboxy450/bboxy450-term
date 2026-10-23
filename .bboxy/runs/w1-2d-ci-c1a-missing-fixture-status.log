@@ -1,0 +1,31 @@
+[
+  {
+    "sha": "27cd4096218446c091083a44a38456ed855d47cd",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--test",
+      "cockpit",
+      "--test",
+      "custody",
+      "--",
+      "--nocapture"
+    ],
+    "exit": 0,
+    "wall_seconds": 113.46361791697564,
+    "child_pid": 11659
+  },
+  {
+    "sha": "27cd4096218446c091083a44a38456ed855d47cd",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "exit": 101,
+    "wall_seconds": 404.4577351670014,
+    "child_pid": 16580
+  }
+]
