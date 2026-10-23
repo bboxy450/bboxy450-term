@@ -424,6 +424,17 @@ async fn run(
         .map(|seat| (seat.record.id, seat))
         .collect();
     let mut identity = session.endpoint.identity.clone();
+    let custody = if cfg!(debug_assertions)
+        && std::env::var("BBOXY_TEST_CUSTODY").as_deref() == Ok("memory")
+    {
+        "memory custody (debug)"
+    } else {
+        "native custody"
+    };
+    logger.write(format!(
+        "initial identity status: {:?}, reason={:?}, selector={custody}",
+        identity.state, identity.reason
+    ));
     let swarm = seats
         .values()
         .next()

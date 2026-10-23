@@ -676,21 +676,20 @@ impl Scene {
             if history.screen.rows == 0 {
                 continue;
             }
-            let row_height = frame.height as f32 / scale / history.screen.rows as f32;
-            let width = (frame.width as f32 / scale).min(body.w);
             for gap in &history.gaps {
-                if gap.row >= history.screen.rows {
+                let Some(rect) = history_row_rect(
+                    *body,
+                    [frame.width, frame.height],
+                    history.screen.rows,
+                    gap.row,
+                    scale,
+                ) else {
                     continue;
-                }
-                let y = body.y + gap.row as f32 * row_height;
-                let height = row_height.min((body.bottom() - y).max(0.));
-                if width <= 0. || height <= 0. {
-                    continue;
-                }
+                };
                 let key = format!("pane/history/{seat}/{}/gap", gap.from);
-                let marker = bbt_ui::modules::pane::gap_marker(&key, None, height);
+                let marker = bbt_ui::modules::pane::gap_marker(&key, None, rect.h);
                 let layout = marker
-                    .layout(Rect::new(body.x, y, width, height), ctx, &self.metrics)
+                    .layout(rect, ctx, &self.metrics)
                     .map_err(|error| format!("history marker: {error}"))?;
                 ops.extend(c::paint(&layout, ctx));
             }
@@ -710,9 +709,49 @@ impl Scene {
     }
 }
 
+fn history_row_rect(
+    body: Rect,
+    grid: [u32; 2],
+    rows: usize,
+    row: usize,
+    scale: f32,
+) -> Option<Rect> {
+    if rows == 0 || row >= rows || !scale.is_finite() || scale <= 0. {
+        return None;
+    }
+    let body = body.normalized();
+    // Match draw_pane's device origin and scissor, including fractional layouts.
+    let x = (body.x * scale).round().max(0.) / scale;
+    let top = (body.y * scale).round().max(0.) / scale;
+    let width = (grid[0] as f32).min((body.w * scale).floor().max(0.)) / scale;
+    let bottom = top + (body.h * scale).floor().max(0.) / scale;
+    let row_height = grid[1] as f32 / scale / rows as f32;
+    let y = top + row as f32 * row_height;
+    let height = row_height.min((bottom - y).max(0.));
+    (width > 0. && height > 0.).then_some(Rect::new(x, y, width, height))
+}
+
 #[cfg(test)]
 mod depth_tests {
     use super::*;
+
+    #[test]
+    fn historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales() {
+        let body = Rect::new(10.3, 20.3, 100.8, 33.8);
+        assert_eq!(
+            history_row_rect(body, [100, 36], 3, 1, 1.),
+            Some(Rect::new(10., 32., 100., 12.))
+        );
+        assert_eq!(
+            history_row_rect(body, [200, 72], 3, 1, 2.),
+            Some(Rect::new(10.5, 32.5, 100., 12.))
+        );
+        assert_eq!(
+            history_row_rect(body, [200, 72], 3, 2, 2.),
+            Some(Rect::new(10.5, 44.5, 100., 9.5))
+        );
+        assert!(history_row_rect(body, [200, 72], 3, 3, 2.).is_none());
+    }
 
     /// Pane rects (layouts after the title bar and the sidebar).
     fn panes(scene: &Scene) -> Vec<Rect> {

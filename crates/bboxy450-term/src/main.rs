@@ -1485,6 +1485,11 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_redraw();
             }
             UiEvent::VerifyScrollTop => {
+                self.logger.write(format!(
+                    "scroll verification start: frame={}",
+                    self.meter.total_frames()
+                ));
+                self.verify.scroll_frame = Some(self.meter.total_frames());
                 self.verify.scroll_due = true;
                 self.verify();
             }
@@ -2201,6 +2206,7 @@ struct Verify {
     quit_after: Option<Duration>,
     scroll_due: bool,
     scrolled: std::collections::BTreeSet<(SeatId, u64)>,
+    scroll_frame: Option<u64>,
 }
 impl Verify {
     fn from_args(args: &[String]) -> Result<Self, String> {
@@ -2382,6 +2388,13 @@ impl App {
         };
         let bounds = self.pane_bounds.clone();
         let frame_number = self.meter.total_frames();
+        let scroll_meter=self.verify.scroll_frame.map(|start| {
+            let first=frame_number.saturating_sub(self.meter.samples().len() as u64);
+            let samples:Vec<_>=self.meter.samples().iter().enumerate().filter(|(index,_)|first+*index as u64>=start)
+                .map(|(_,sample)|sample.phases.cpu().as_secs_f64()*1000.).collect();
+            serde_json::json!({"first_frame":start+1,"last_frame":frame_number,"samples":samples.len(),
+                "cpu_max_ms":samples.iter().copied().fold(0.,f64::max),"cpu_ms":samples})
+        });
         let logger = self.logger.clone();
         let proxy = self.proxy.clone();
         bbt_rt::handle().spawn(async move {
@@ -2406,8 +2419,9 @@ impl App {
                 })
                 .collect();
             let theme = match model.ui.window.theme { Theme::Dark => "dark", Theme::Light => "light" };
-            let report = serde_json::json!({"schema":"bboxy-firehose-screen-v1","png":png,
+            let mut report = serde_json::json!({"schema":"bboxy-firehose-screen-v1","png":png,
                 "theme":theme,"scale":scale,"frame":frame_number,"panes":panes});
+            if let Some(scroll_meter)=scroll_meter {report["scroll_meter"]=scroll_meter;}
             let path = png.with_extension("grid.json");
             let result = tokio::fs::write(&path, serde_json::to_vec_pretty(&report).unwrap()).await;
             logger.write(format!("grid-hash {}: {result:?}", path.display()));

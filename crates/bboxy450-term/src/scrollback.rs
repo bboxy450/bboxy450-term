@@ -111,6 +111,8 @@ pub struct Historical {
     pub gaps: Vec<GapMarker>,
 }
 
+pub type DisplayUpdate = (SeatId, Result<Option<Arc<Historical>>, &'static str>);
+
 struct Gap {
     row: u64,
     from: u64,
@@ -526,13 +528,13 @@ impl History {
         screen: Arc<Screen>,
         request: Request,
     ) -> Result<(), &'static str> {
-        if !self.seats.contains_key(&seat) {
+        if let std::collections::btree_map::Entry::Vacant(entry) = self.seats.entry(seat) {
             if request.anchor != Anchor::Top && request.lines <= 0 {
                 return Ok(());
             }
             let mut playback = Playback::new(view, sequence, screen.clone())?;
             playback.goal = Goal::BehindLive(0);
-            self.seats.insert(seat, playback);
+            entry.insert(playback);
         }
         if !self
             .seats
@@ -666,7 +668,7 @@ impl History {
     }
 
     /// Return at most one changed display per IO turn.
-    pub fn step(&mut self) -> Option<(SeatId, Result<Option<Arc<Historical>>, &'static str>)> {
+    pub fn step(&mut self) -> Option<DisplayUpdate> {
         let seat = self
             .seats
             .iter()
