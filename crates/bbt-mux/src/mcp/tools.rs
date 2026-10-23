@@ -64,6 +64,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
     })).collect();
     tools.extend(super::messaging::catalogue(actor));
     tools.extend(super::work_items::catalogue(actor));
+    tools.extend(super::seats::catalogue(actor));
     json!({"tools":tools})
 }
 

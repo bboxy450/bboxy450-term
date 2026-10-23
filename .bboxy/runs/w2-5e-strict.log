@@ -1,0 +1,193 @@
+
+COMMAND ['cargo', 'test', '--locked', '-p', 'bbt-mux', '--test', 'mcp', 'mcp_seat_native_interrupt', '--', '--nocapture']
+    Finished `test` profile [optimized] target(s) in 0.27s
+     Running tests/mcp.rs (target/debug/deps/mcp-019433207deba1d9)
+
+running 1 test
+isolated native fixture PID 42499
+test mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 27 filtered out; finished in 3.61s
+
+EXIT 0 duration 3.935s
+
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+    Checking log v0.4.34
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking smallvec v1.16.3
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+    Checking parking_lot_core v0.9.12
+    Checking parking_lot v0.12.5
+    Checking hashbrown v0.17.1
+   Compiling crc32fast v1.5.3
+    Checking indexmap v2.14.2
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking miniz_oxide v0.9.1
+    Checking zlib-rs v0.6.8
+    Checking flate2 v1.1.10
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking serde_yaml v0.9.34+deprecated
+    Checking objc2-encode v4.1.0
+   Compiling cfg_aliases v0.2.2
+   Compiling objc2 v0.6.5
+   Compiling bytemuck_derive v1.12.1
+    Checking block2 v0.6.2
+    Checking dispatch2 v0.3.1
+    Checking bytemuck v1.25.2
+    Checking objc2-core-foundation v0.3.2
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+   Compiling naga v30.0.1
+    Checking bit-vec v0.9.1
+    Checking raw-window-handle v0.6.2
+    Checking bit-set v0.10.0
+    Checking half v2.7.1
+    Checking objc2-foundation v0.3.2
+    Checking codespan-reporting v0.13.1
+    Checking static_assertions v1.1.0
+    Checking unicode-ident v1.0.27
+    Checking objc2-metal v0.3.2
+    Checking objc2-core-graphics v0.3.2
+    Checking objc2-quartz-core v0.3.2
+    Checking wgpu-types v30.0.1
+   Compiling wgpu-hal v30.0.1
+    Checking float-cmp v0.9.0
+    Checking strict-num v0.1.1
+    Checking raw-window-metal v1.1.0
+    Checking polycool v0.4.0
+    Checking libloading v0.8.9
+    Checking arrayref v0.3.9
+    Checking profiling v1.0.18
+    Checking tiny-skia-path v0.12.0
+    Checking wgpu-naga-bridge v30.0.1
+    Checking kurbo v0.13.1
+   Compiling wgpu-core v30.0.1
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking euclid v0.22.14
+    Checking siphasher v1.0.4
+   Compiling litrs v1.0.1
+   Compiling arrayvec v0.7.8
+   Compiling document-features v0.2.12
+    Checking lyon_geom v1.0.20
+    Checking svgtypes v0.16.1
+    Checking png v0.18.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling wgpu v30.0.1
+    Checking simplecss v0.2.2
+    Checking roxmltree v0.21.1
+    Checking imagesize v0.15.0
+    Checking pico-args v0.5.0
+   Compiling cfg-if v1.0.5
+    Checking data-url v0.3.2
+    Checking usvg v0.48.1
+    Checking tiny-skia v0.12.0
+    Checking lyon_path v1.0.19
+    Checking rgb v0.8.53
+    Checking float_next_after v1.0.0
+    Checking lyon_tessellation v1.0.22
+    Checking resvg v0.48.1
+    Checking objc2-core-text v0.3.2
+   Compiling bitflags v2.13.2
+   Compiling objc-sys v0.3.5
+    Checking pollster v0.4.0
+   Compiling aho-corasick v1.1.5
+   Compiling regex-syntax v0.8.11
+   Compiling regex-automata v0.4.18
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking ppv-lite86 v0.2.21
+    Checking objc2 v0.5.3
+   Compiling regex v1.13.1
+    Checking core-foundation v0.9.4
+    Checking block2 v0.5.1
+   Compiling foreign-types-macros v0.2.4
+    Checking foreign-types-shared v0.3.1
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking core-graphics-types v0.1.3
+    Checking objc2-foundation v0.2.2
+    Checking foreign-types v0.5.0
+   Compiling winit v0.30.13
+    Checking tracing-core v0.1.36
+    Checking tracing v0.1.44
+    Checking core-graphics v0.23.2
+    Checking dpi v0.1.2
+    Checking smol_str v0.2.2
+    Checking mio v1.2.4
+    Checking tokio v1.54.1
+    Checking objc2-app-kit v0.2.2
+    Checking rand_chacha v0.9.0
+   Compiling pulldown-cmark v0.13.4
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking rand v0.9.5
+    Checking unicase v2.10.0
+    Checking ulid v1.2.1
+    Checking unicode-segmentation v1.13.3
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking portable-pty v0.9.0
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking rand_chacha v0.3.1
+    Checking rand v0.8.8
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking num-bigint-dig v0.8.6
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking tungstenite v0.30.0
+    Checking rsa v0.9.10
+    Checking dsa v0.6.3
+    Checking hashlink v0.12.2
+    Checking pgp v0.21.0
+    Checking rusqlite v0.40.2
+    Checking petgraph v0.8.3
+    Checking notify v8.2.0
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Checking objc2-app-kit v0.3.2
+error: this `if` statement can be collapsed
+    --> crates/bbt-mux/src/logic.rs:1173:9
+     |
+1173 | /         if let crate::mcp::seats::Request::Spawn(args) = &request {
+1174 | |             if !args.cwd.is_dir() {
+1175 | |                 return Err("spawn cwd is not an available directory".into());
+1176 | |             }
+1177 | |         }
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+     = note: `-D clippy::collapsible-if` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+     |
+1173 ~         if let crate::mcp::seats::Request::Spawn(args) = &request
+1174 ~             && !args.cwd.is_dir() {
+1175 |                 return Err("spawn cwd is not an available directory".into());
+1176 ~             }
+     |
+
+error: could not compile `bbt-mux` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+EXIT 101 duration 56.435s
+
+COMMAND ['rustfmt', '--edition', '2024', '--config', 'skip_children=true,reorder_modules=false', 'crates/bbt-mux/src/logic.rs']
+EXIT 0 duration 0.118s
+
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Finished `dev` profile [optimized] target(s) in 17.51s
+EXIT 0 duration 17.614s

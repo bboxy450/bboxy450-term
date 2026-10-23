@@ -1,0 +1,34 @@
+$ ['date']
+Fri Oct 23 06:32:10 PDT 2026
+EXIT 0; elapsed 0.007s
+$ ['git', 'status', '--porcelain', '--untracked-files=no']
+EXIT 0; elapsed 0.054s
+Own idle dev target removal EXIT 0: /Users/feral/mydev/bboxy450-term-exec5/target/debug
+$ ['df', '-h', '/Users/feral/mydev/bboxy450-term-exec5']
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1   460Gi   416Gi    16Gi    97%    4.7M  166M    3%   /System/Volumes/Data
+EXIT 0; elapsed 0.010s
+$ ['git', 'rev-parse', 'HEAD']
+89c9e5505e008fea1b8a0b4c7951eeddc0938df6
+EXIT 0; elapsed 0.032s
+OWNED_BASE /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-kestrel-w2-5e-rjw08_36
+SOURCE_SHA 89c9e5505e008fea1b8a0b4c7951eeddc0938df6
+$ ['git', 'worktree', 'add', '--detach', '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-kestrel-w2-5e-rjw08_36/source', '89c9e5505e008fea1b8a0b4c7951eeddc0938df6']
+Preparing worktree (detached HEAD 89c9e55)
+HEAD is now at 89c9e55 feat: add generation-bound guarded seat MCP controls
+EXIT 0; elapsed 0.461s
+$ ['git', 'status', '--porcelain']
+EXIT 0; elapsed 0.296s
+$ ['git', 'verify-commit', '89c9e5505e008fea1b8a0b4c7951eeddc0938df6']
+gpg: Signature made Fri Oct 23 06:31:24 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0; elapsed 0.094s
+ENV {"BBOXY_TEST_CUSTODY": "memory", "CARGO_BUILD_JOBS": "2", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_TARGET_DIR": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-kestrel-w2-5e-rjw08_36/target"}
+CI_PID 54472
+CI_EXIT 0; elapsed 871.534s
+Own private target deletion EXIT 0
+$ ['git', 'worktree', 'remove', '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-kestrel-w2-5e-rjw08_36/source']
+EXIT 0; elapsed 0.742s
+Own empty CI base removal EXIT 0
+CI_LOG_SHA256 ad3c402ce98134dde447b058609c8619123b6dc1d1a871a1eea70320ecdd32b5

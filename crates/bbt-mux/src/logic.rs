@@ -858,6 +858,16 @@ struct Delivery {
     outcome: crate::adapters::WakeOutcome,
     relayed: bool,
 }
+struct ControlDelivery {
+    actor: crate::mcp::Actor,
+    call: crate::mcp::Call,
+    journal: crate::mcp::journal::Journal,
+    reply: oneshot::Sender<Result<serde_json::Value>>,
+    target: crate::mcp::seats::Target,
+    input_id: Ulid,
+    outcome: Option<crate::adapters::WakeOutcome>,
+    result: serde_json::Value,
+}
 struct Worker {
     connections: Connections,
     config: LogicConfig,
@@ -878,6 +888,7 @@ struct Worker {
     bus_window: Option<Ulid>,
     last_identity: Option<Vec<u8>>,
     deliveries: tokio::task::JoinSet<Delivery>,
+    control_deliveries: tokio::task::JoinSet<ControlDelivery>,
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
     stale_gui_requests: u64,
 }
@@ -944,6 +955,7 @@ impl Worker {
             bus_window,
             last_identity: None,
             deliveries: tokio::task::JoinSet::new(),
+            control_deliveries: tokio::task::JoinSet::new(),
             control_journals: BTreeMap::new(),
             stale_gui_requests: 0,
         };
@@ -1035,6 +1047,25 @@ impl Worker {
         let (actor, record) = self.control_actor(id, generation)?;
         call.validate()?;
         let journal = self.control_journal(id)?;
+        if crate::mcp::seats::handles(&call.tool) {
+            return match self.prepare_seat_control(&actor, &record, &call) {
+                Ok(request) if request.is_read() => {
+                    let value = match self.read_seat_control(&request) {
+                        Ok(value) => crate::mcp::success(call.op_id, value),
+                        Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
+                    };
+                    journal.checked(&actor, &call, value)
+                }
+                Ok(request) => journal.effect(&actor, &call, || {
+                    self.effect_seat_control(&actor, &call, request)
+                }),
+                Err(reason) => journal.checked(
+                    &actor,
+                    &call,
+                    crate::mcp::error(call.op_id, "rejected", &reason),
+                ),
+            };
+        }
         if crate::mcp::work_items::handles(&call.tool)
             || matches!(call.tool.as_str(), "orient" | "graph_read")
         {
@@ -1202,6 +1233,505 @@ impl Worker {
             );
         }
         crate::mcp::success(call.op_id, plan.data)
+    }
+    fn prepare_seat_control(
+        &self,
+        actor: &crate::mcp::Actor,
+        caller: &SeatRecord,
+        call: &crate::mcp::Call,
+    ) -> std::result::Result<crate::mcp::seats::Request, String> {
+        let request = crate::mcp::seats::request(actor, call)?;
+        let target = request
+            .target()
+            .map(|target| {
+                self.registry
+                    .get(target.seat)
+                    .map_err(|_| "target unavailable".to_string())
+            })
+            .transpose()?;
+        crate::mcp::seats::authorize(actor, caller, &request, target.as_ref())?;
+        if let Some(expected) = request.target() {
+            let view = self
+                .views
+                .get(&expected.seat)
+                .ok_or("target viewport unavailable")?;
+            if view.generation != expected.generation
+                || target
+                    .as_ref()
+                    .is_none_or(|r| r.harness_kind != view.adapter.record.kind)
+            {
+                return Err("target process binding changed".into());
+            }
+        }
+        if let crate::mcp::seats::Request::Spawn(args) = &request
+            && !args.cwd.is_dir()
+        {
+            return Err("spawn cwd is not an available directory".into());
+        }
+        Ok(request)
+    }
+    fn read_seat_control(
+        &mut self,
+        request: &crate::mcp::seats::Request,
+    ) -> std::result::Result<serde_json::Value, String> {
+        use crate::mcp::seats::{self, Request};
+        use serde_json::json;
+        match request {
+            Request::Screen {
+                target,
+                cursor,
+                limit,
+            } => {
+                let snapshot = self
+                    .snapshot(target.seat, target.generation)
+                    .map_err(|e| e.to_string())?;
+                let row = if let Some(cursor) = cursor {
+                    let cursor: seats::ViewCursor = seats::decode_cursor(cursor)?;
+                    if cursor.seat != target.seat
+                        || cursor.generation != target.generation
+                        || cursor.view != snapshot.view.view_generation
+                        || cursor.sequence != snapshot.sequence
+                        || cursor.row >= snapshot.screen.rows
+                    {
+                        return Err("stale viewport cursor".into());
+                    }
+                    cursor.row
+                } else {
+                    0
+                };
+                let end = (row + limit).min(snapshot.screen.rows);
+                let mut rows = Vec::new();
+                for cells in &snapshot.screen.cells[row..end] {
+                    let mut text = String::new();
+                    for cell in cells {
+                        if cell.flags.intersects(
+                            bbt_core::term::cell::Flags::WIDE_CHAR_SPACER
+                                | bbt_core::term::cell::Flags::LEADING_WIDE_CHAR_SPACER,
+                        ) {
+                            continue;
+                        }
+                        text.push(cell.c);
+                        if let Some(extra) = cell.zerowidth() {
+                            text.extend(extra);
+                        }
+                    }
+                    rows.push(text);
+                }
+                if serde_json::to_vec(&rows)
+                    .map_err(|_| "viewport encoding unavailable")?
+                    .len()
+                    > 128 * 1024
+                {
+                    return Err("viewport page exceeds MCP byte bound".into());
+                }
+                let next = if end < snapshot.screen.rows {
+                    Some(seats::encode_cursor(&seats::ViewCursor {
+                        seat: target.seat,
+                        generation: target.generation,
+                        view: snapshot.view.view_generation,
+                        sequence: snapshot.sequence,
+                        row: end,
+                    })?)
+                } else {
+                    None
+                };
+                Ok(
+                    json!({"seat_id":target.seat,"process_generation":target.generation.to_string(),"view_generation":snapshot.view.view_generation,"sequence":snapshot.sequence.to_string(),"format":"text","row_start":row,"rows":rows,"cols":snapshot.screen.cols,"total_rows":snapshot.screen.rows,"cursor":snapshot.screen.cursor,"modes":snapshot.screen.modes.to_string(),"title":crate::mcp::tools::clip(&snapshot.screen.title,512),"gap":snapshot.screen.gap,"next":next}),
+                )
+            }
+            Request::History {
+                target,
+                cursor,
+                limit,
+            } => {
+                use base64::Engine;
+                let sequence = self
+                    .views
+                    .get(&target.seat)
+                    .ok_or("target viewport unavailable")?
+                    .sequence;
+                let (from, to) = if let Some(cursor) = cursor {
+                    let cursor: seats::CaptureCursor = seats::decode_cursor(cursor)?;
+                    if cursor.seat != target.seat
+                        || cursor.generation != target.generation
+                        || cursor.next == 0
+                        || cursor.next > cursor.to
+                        || cursor.to > sequence
+                    {
+                        return Err("stale or invalid capture cursor".into());
+                    }
+                    (cursor.next, cursor.to)
+                } else {
+                    (1, sequence)
+                };
+                if to == 0 {
+                    return Ok(
+                        json!({"seat_id":target.seat,"process_generation":target.generation.to_string(),"records":[],"gaps":[],"next":null,"capture_to":"0"}),
+                    );
+                }
+                let history = self
+                    .history(target.seat, target.generation, from, to)
+                    .map_err(|e| e.to_string())?;
+                let mut records = Vec::new();
+                let mut bytes = 0;
+                let mut next = history.next;
+                for record in history.records {
+                    let seq = record
+                        .event
+                        .sequence()
+                        .ok_or("capture record has no sequence")?;
+                    let value = match record.event {
+                        Event::Output { bytes, .. } => {
+                            json!({"sequence":seq.to_string(),"kind":"output","encoding":"base64","bytes":base64::engine::general_purpose::STANDARD.encode(&bytes),"byte_length":bytes.len(),"index":record.row})
+                        }
+                        Event::Resized { size, .. } => {
+                            json!({"sequence":seq.to_string(),"kind":"resized","size":size,"index":record.row})
+                        }
+                        Event::Exited { status, .. } => {
+                            json!({"sequence":seq.to_string(),"kind":"exited","status":status,"index":record.row})
+                        }
+                    };
+                    let weight = serde_json::to_vec(&value)
+                        .map_err(|_| "capture encoding unavailable")?
+                        .len();
+                    if records.len() == *limit || bytes + weight > 128 * 1024 {
+                        if records.is_empty() {
+                            return Err("capture record exceeds MCP page byte bound".into());
+                        }
+                        next = Some(seq);
+                        break;
+                    }
+                    bytes += weight;
+                    records.push(value);
+                }
+                let next = next
+                    .map(|next| {
+                        seats::encode_cursor(&seats::CaptureCursor {
+                            seat: target.seat,
+                            generation: target.generation,
+                            next,
+                            to,
+                        })
+                    })
+                    .transpose()?;
+                Ok(
+                    json!({"seat_id":target.seat,"process_generation":target.generation.to_string(),"capture_from":from.to_string(),"capture_to":to.to_string(),"format":"capture_records","status":history.status,"records":records,"gaps":history.gap.into_iter().collect::<Vec<_>>(),"next":next}),
+                )
+            }
+            _ => Err("seat control is not a read".into()),
+        }
+    }
+    fn effect_seat_control(
+        &mut self,
+        actor: &crate::mcp::Actor,
+        call: &crate::mcp::Call,
+        request: crate::mcp::seats::Request,
+    ) -> serde_json::Value {
+        use crate::mcp::seats::{self, Request};
+        use serde_json::json;
+        let (current, caller) = match self.control_actor(actor.seat_id, actor.process_generation) {
+            Ok(value) => value,
+            Err(_) => {
+                return crate::mcp::error(
+                    call.op_id,
+                    "rejected",
+                    "caller binding unavailable before effect",
+                );
+            }
+        };
+        if current != *actor {
+            return crate::mcp::error(
+                call.op_id,
+                "rejected",
+                "caller authority changed before effect",
+            );
+        }
+        if let Err(reason) = self.prepare_seat_control(actor, &caller, call) {
+            return crate::mcp::error(call.op_id, "rejected", &reason);
+        }
+        let id = seats::effect_id(actor, call, request.target());
+        match request {
+            Request::Input {
+                target,
+                text,
+                submit,
+            } => match self.guarded_input(
+                target.seat,
+                target.generation,
+                crate::adapters::guard::LiteralInput {
+                    id,
+                    text: &text,
+                    submit,
+                },
+            ) {
+                Ok(outcome) => seats::input_result(call, id, outcome),
+                Err(error) => seats::failure(
+                    call.op_id,
+                    "not_submitted",
+                    &format!("input guard refused: {error}"),
+                    json!({"input_id":id}),
+                ),
+            },
+            Request::Spawn(args) => {
+                let result = (|| -> Result<SeatInfo> {
+                    let harness = HarnessRecord::builtin(&args.approved_profile)?;
+                    let mut record = SeatRecord::new(
+                        id,
+                        args.swarm_id,
+                        harness.name.clone(),
+                        harness.kind.clone(),
+                    );
+                    record.role = harness.default_role.clone();
+                    if let Some(name) = args.role {
+                        record.role.name = name;
+                    }
+                    self.launch(
+                        record,
+                        harness,
+                        crate::adapters::launch::LaunchOptions {
+                            cwd: args.cwd.canonicalize()?,
+                            role_prompt: String::new(),
+                            executable: std::env::current_exe()?,
+                            user_home: std::env::var_os("HOME")
+                                .map(PathBuf::from)
+                                .ok_or_else(|| invalid("missing user home"))?,
+                            user_zdotdir: std::env::var_os("ZDOTDIR").map(PathBuf::from),
+                            resume: false,
+                        },
+                    )
+                })();
+                match result {
+                    Ok(info) => crate::mcp::success(
+                        call.op_id,
+                        json!({"status":"applied","seat_id":info.seat,"process_generation":info.generation.to_string(),"pid":info.pid}),
+                    ),
+                    Err(_) => seats::failure(
+                        call.op_id,
+                        "unknown",
+                        "spawn outcome unavailable; inspect the reserved seat ID; no automatic relaunch",
+                        json!({"seat_id":id,"process_generation":"1"}),
+                    ),
+                }
+            }
+            Request::Mute {
+                target,
+                epoch,
+                muted,
+            } => {
+                let state = self.views[&target.seat].adapter.status.state;
+                let result = self.messaging.set_mute_checked(
+                    crate::messaging::tree::Actor::Seat {
+                        seat: actor.seat_id,
+                        class: actor.role.class,
+                    },
+                    target.seat,
+                    muted,
+                    state,
+                    now_ms(),
+                    (target.generation, epoch),
+                );
+                match result {
+                    Ok(notice) => match self.messaging.authority(target.seat, target.generation) {
+                        Ok((record, epoch, _)) => crate::mcp::success(
+                            call.op_id,
+                            json!({"status":"applied","seat_id":target.seat,"process_generation":target.generation.to_string(),"muted":record.muted,"policy_epoch":epoch.to_string(),"notice_id":notice}),
+                        ),
+                        Err(_) => seats::failure(
+                            call.op_id,
+                            "unknown",
+                            "mute outcome committed; current policy unavailable",
+                            json!({"seat_id":target.seat}),
+                        ),
+                    },
+                    Err(error)
+                        if matches!(
+                            error.to_string().as_str(),
+                            "stale target process generation" | "stale target policy epoch"
+                        ) =>
+                    {
+                        crate::mcp::error(call.op_id, "stale_policy", &error.to_string())
+                    }
+                    Err(_) => seats::failure(
+                        call.op_id,
+                        "unknown",
+                        "mute outcome unavailable; inspect current policy and presence receipts",
+                        json!({"seat_id":target.seat}),
+                    ),
+                }
+            }
+            _ => crate::mcp::error(
+                call.op_id,
+                "rejected",
+                "control requires its native asynchronous path",
+            ),
+        }
+    }
+    fn start_control_interrupt(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+    ) {
+        use crate::mcp::seats::{self, Request};
+        use serde_json::json;
+        let mut reply = Some(reply);
+        let started = (|| -> Result<Option<serde_json::Value>> {
+            let (actor, caller) = self.control_actor(id, generation)?;
+            call.validate()?;
+            let journal = self.control_journal(id)?;
+            let request = match self.prepare_seat_control(&actor, &caller, &call) {
+                Ok(value) => value,
+                Err(reason) => {
+                    return journal
+                        .checked(
+                            &actor,
+                            &call,
+                            crate::mcp::error(call.op_id, "rejected", &reason),
+                        )
+                        .map(Some);
+                }
+            };
+            let Request::Interrupt { target, text } = request else {
+                return Err(invalid("invalid interrupt dispatch"));
+            };
+            let input_id = seats::effect_id(&actor, &call, Some(target));
+            let (retained, fresh) = journal.admit(&actor, &call)?;
+            if !fresh {
+                return Ok(Some(retained));
+            }
+            let view = &self.views[&target.seat];
+            let harness = view.adapter.record.kind.clone();
+            let endpoint = view.delivery_endpoint.clone();
+            let binding = view.adapter.binding.clone();
+            let available = match (&endpoint, harness.as_str()) {
+                (crate::adapters::Endpoint::Claude { .. }, "claude") => true,
+                (
+                    crate::adapters::Endpoint::Codex {
+                        thread,
+                        turn: Some(turn),
+                        ..
+                    },
+                    "codex",
+                ) => thread == &binding.session && !turn.is_empty(),
+                _ => false,
+            };
+            if !available {
+                return journal
+                    .complete(
+                        &actor,
+                        &call,
+                        seats::failure(
+                            call.op_id,
+                            "unavailable",
+                            &format!("interrupt unavailable for {harness}"),
+                            json!({"input_id":input_id}),
+                        ),
+                    )
+                    .map(Some);
+            }
+            if self.control_deliveries.len() >= 8 {
+                return journal
+                    .complete(
+                        &actor,
+                        &call,
+                        seats::failure(
+                            call.op_id,
+                            "busy",
+                            "native interrupt capacity is full",
+                            json!({"input_id":input_id}),
+                        ),
+                    )
+                    .map(Some);
+            }
+            let run_dir = self.config.run_dir.clone();
+            let handle = self.handle.clone();
+            let call = call.clone();
+            let sender = reply.take().unwrap();
+            self.control_deliveries.spawn_on(
+                async move {
+                    let checked_actor = actor.clone();
+                    let checked_harness = harness.clone();
+                    let native = tokio::task::spawn_blocking(move || {
+                        seats::revalidate_native(
+                            &run_dir,
+                            &checked_actor,
+                            target,
+                            &checked_harness,
+                        )?;
+                        Ok::<_, String>(handle.block_on(crate::adapters::native::wake(
+                            &binding,
+                            &endpoint,
+                            input_id,
+                            &text,
+                            crate::adapters::Priority::Now,
+                            true,
+                        )))
+                    })
+                    .await;
+                    let (outcome, result) = match native {
+                        Ok(Ok(outcome)) => {
+                            let value =
+                                if outcome.evidence == crate::adapters::Evidence::RecipientStored {
+                                    seats::failure(
+                                        call.op_id,
+                                        "unavailable",
+                                        &format!(
+                                            "interrupt unavailable for {harness}: {}",
+                                            outcome.note
+                                        ),
+                                        json!({"input_id":input_id}),
+                                    )
+                                } else {
+                                    seats::input_result(&call, input_id, outcome.clone())
+                                };
+                            (Some(outcome), value)
+                        }
+                        Ok(Err(reason)) => (
+                            None,
+                            seats::failure(
+                                call.op_id,
+                                "rejected",
+                                &reason,
+                                json!({"input_id":input_id}),
+                            ),
+                        ),
+                        Err(_) => (
+                            None,
+                            seats::failure(
+                                call.op_id,
+                                "unknown",
+                                "native task lost; retain the input ID and never redispatch",
+                                json!({"input_id":input_id}),
+                            ),
+                        ),
+                    };
+                    ControlDelivery {
+                        actor,
+                        call,
+                        journal,
+                        reply: sender,
+                        target,
+                        input_id,
+                        outcome,
+                        result,
+                    }
+                },
+                &self.handle,
+            );
+            Ok(None)
+        })();
+        if let Some(reply) = reply {
+            match started {
+                Ok(Some(value)) => {
+                    let _ = reply.send(Ok(value));
+                }
+                Err(error) => {
+                    let _ = reply.send(Err(error));
+                }
+                Ok(None) => {}
+            }
+        }
     }
     fn control_message(
         &mut self,
@@ -2118,6 +2648,28 @@ impl Worker {
     }
     fn pump_messages(&mut self) -> Result<()> {
         use crate::adapters::{Evidence, Priority, WakeMethod, WakeOutcome};
+        while let Some(result) = self.control_deliveries.try_join_next() {
+            let delivery = match result {
+                Ok(delivery) => delivery,
+                Err(_) => {
+                    eprintln!("native control task lost; admitted outcome remains unknown");
+                    continue;
+                }
+            };
+            if let Some(outcome) = &delivery.outcome
+                && let Some(view) = self
+                    .views
+                    .get_mut(&delivery.target.seat)
+                    .filter(|view| view.generation == delivery.target.generation)
+            {
+                view.adapter.record_outcome(delivery.input_id, outcome);
+            }
+            let result =
+                delivery
+                    .journal
+                    .complete(&delivery.actor, &delivery.call, delivery.result);
+            let _ = delivery.reply.send(result);
+        }
         while let Some(result) = self.deliveries.try_join_next() {
             let delivery = result.map_err(|_| {
                 invalid("delivery task lost; restart to mark the journaled attempt unknown")
@@ -2218,6 +2770,27 @@ impl Worker {
         work: &crate::messaging::ledger::Work,
         text: &str,
     ) -> Result<crate::adapters::WakeOutcome> {
+        let generation = self
+            .views
+            .get(&seat)
+            .ok_or_else(|| invalid("recipient viewport unavailable"))?
+            .generation;
+        self.guarded_input(
+            seat,
+            generation,
+            crate::adapters::guard::LiteralInput {
+                id: work.id,
+                text,
+                submit: true,
+            },
+        )
+    }
+    fn guarded_input(
+        &mut self,
+        seat: Ulid,
+        generation: u64,
+        input: crate::adapters::guard::LiteralInput<'_>,
+    ) -> Result<crate::adapters::WakeOutcome> {
         use crate::adapters::{ArbiterView, Evidence, WakeOutcome};
         let pending = |note: &str| WakeOutcome {
             evidence: Evidence::RecipientStored,
@@ -2227,6 +2800,7 @@ impl Worker {
         let attachment = self
             .attachments
             .get(&seat)
+            .filter(|attachment| attachment.generation == generation)
             .ok_or_else(|| invalid("recipient has no writer lease"))?
             .clone();
         let host = self.host_for_seat(seat)?;
@@ -2244,7 +2818,11 @@ impl Worker {
             }
         };
         let connections = &mut self.connections;
-        let view = self.views.get_mut(&seat).unwrap();
+        let view = self
+            .views
+            .get_mut(&seat)
+            .filter(|view| view.generation == generation)
+            .ok_or_else(|| invalid("stale target viewport generation"))?;
         let now = now_ms();
         if !context.settled
             || context.sequence != view.state.sequence
@@ -2255,9 +2833,11 @@ impl Worker {
                 .is_none_or(|p| p.observed_ms <= context.last_input_ms)
             || now.saturating_sub(context.last_input_ms) < 500
         {
-            return Ok(pending(
-                "pending for operator: fresh readiness after the last input and a caught-up PTY are required",
-            ));
+            return Ok(pending(if view.adapter.proof.is_none() {
+                "no positive composer-ready indication"
+            } else {
+                "pending for operator: fresh readiness after the last input and a caught-up PTY are required"
+            }));
         }
         let arbiter = ArbiterView {
             binding: view.adapter.binding.clone(),
@@ -2277,25 +2857,21 @@ impl Worker {
         };
         let directory = object_dir(&self.config.run_dir, &format!("seat-{seat}"))?;
         let journal = SqliteStore::open(&directory)?;
-        view.adapter.submit_pty(
-            &arbiter,
-            now,
-            work.id,
-            text,
-            &journal,
-            |bytes| match connections.request(
-                &host,
-                Action::GuardedInput {
-                    attachment,
-                    input_id: work.id,
-                    bytes,
-                    expected: context,
-                },
-            )? {
-                Reply::Input { receipt } => Ok(receipt),
-                _ => Err(invalid("guarded input result unknown")),
-            },
-        )
+        view.adapter
+            .submit_literal(&arbiter, now, input, &journal, |bytes| {
+                match connections.request(
+                    &host,
+                    Action::GuardedInput {
+                        attachment,
+                        input_id: input.id,
+                        bytes,
+                        expected: context,
+                    },
+                )? {
+                    Reply::Input { receipt } => Ok(receipt),
+                    _ => Err(invalid("guarded input result unknown")),
+                }
+            })
     }
     fn publish_adapter(&self, id: Ulid, status: crate::adapters::Status) -> Result<()> {
         self.publish(
@@ -2592,8 +3168,12 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::ControlCall(id, generation, call, reply) => {
-                        let result = self.control_call(id, generation, call);
-                        let _ = reply.send(result);
+                        if call.tool == "seat_interrupt" {
+                            self.start_control_interrupt(id, generation, call, reply);
+                        } else {
+                            let result = self.control_call(id, generation, call);
+                            let _ = reply.send(result);
+                        }
                     }
                     Command::RecoverSeats(reply) => {
                         let result = self.recover_seats();

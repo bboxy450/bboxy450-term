@@ -42,6 +42,11 @@ struct HeldSend {
     operator: bool,
     routes: Vec<Route>,
 }
+/// The target policy/version observed by an admitted operator-side control.
+pub(crate) struct MuteGuard {
+    pub generation: u64,
+    pub epoch: u64,
+}
 fn pin_issuer(account: &SqliteStore, keys: &dyn SeatKeys) -> Result<()> {
     let Some(issuer) = keys.ready_issuer() else {
         return Ok(());
@@ -813,17 +818,75 @@ impl Messaging {
         state: State,
         now: u64,
     ) -> Result<Option<Ulid>> {
+        self.change_mute(actor, seat, (muted, state), now, None)
+    }
+    /// Compare the process and policy versions in the same transaction that
+    /// writes mute state and its one signed presence notice.
+    pub(crate) fn set_mute_checked(
+        &mut self,
+        actor: Actor,
+        seat: Ulid,
+        muted: bool,
+        state: State,
+        now: u64,
+        expected: (u64, u64),
+    ) -> Result<Option<Ulid>> {
+        self.change_mute(
+            actor,
+            seat,
+            (muted, state),
+            now,
+            Some(MuteGuard {
+                generation: expected.0,
+                epoch: expected.1,
+            }),
+        )
+    }
+    fn change_mute(
+        &mut self,
+        actor: Actor,
+        seat: Ulid,
+        change: (bool, State),
+        now: u64,
+        expected: Option<MuteGuard>,
+    ) -> Result<Option<Ulid>> {
+        let (muted, state) = change;
         if !actor.controls() {
             return Err(invalid("mute requires operator or oracle class"));
         }
-        let mut record = self.registry.get(seat)?;
-        if let Some(controller) = actor.seat()
-            && self.registry.get(controller)?.swarm != record.swarm
-        {
-            return Err(invalid("mute outside caller swarm"));
-        }
         let mut db = self.account.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let bytes: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key=?1",
+                [format!("seat/{seat}")],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let mut record: SeatRecord =
+            serde_json::from_slice(&bytes.ok_or_else(|| invalid("unknown seat"))?)?;
+        if let Some(controller) = actor.seat() {
+            let bytes: Vec<u8> = tx.query_row(
+                "SELECT value FROM kv WHERE key=?1",
+                [format!("seat/{controller}")],
+                |row| row.get(0),
+            )?;
+            let controller: SeatRecord = serde_json::from_slice(&bytes)?;
+            if controller.swarm != record.swarm {
+                return Err(invalid("mute outside caller swarm"));
+            }
+            if expected.is_some() && controller.role.class != Class::Oracle {
+                return Err(invalid("mute caller authority changed"));
+            }
+        }
+        if let Some(expected) = expected {
+            if record.generation != expected.generation {
+                return Err(invalid("stale target process generation"));
+            }
+            if policy(&tx, &record)? != expected.epoch {
+                return Err(invalid("stale target policy epoch"));
+            }
+        }
         if record.muted == muted {
             let old:Option<String>=tx.query_row("SELECT id FROM msg_notices WHERE json_extract(CAST(envelope AS TEXT),'$.seat')=?1 ORDER BY rowid DESC LIMIT 1",[seat.to_string()],|r|r.get(0)).optional()?;
             return old.map(|id| Ok(id.parse()?)).transpose();

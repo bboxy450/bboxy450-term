@@ -197,6 +197,68 @@ fn adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping() {
 }
 
 #[test]
+fn adapters_literal_paste_requires_positive_readiness_and_submit_false_has_no_enter() {
+    use bbt_mux::adapters::guard::LiteralInput;
+    for bracketed in [false, true] {
+        let temp = tempfile::tempdir().unwrap();
+        let journal = SqliteStore::open(temp.path()).unwrap();
+        let mut session = session("claude");
+        let mut view = arbiter(&session);
+        view.bracketed_paste = bracketed;
+        let input = LiteralInput {
+            id: Ulid::new(),
+            text: "literal text",
+            submit: false,
+        };
+        let refused = session
+            .submit_literal(&view, 1600, input, &journal, |_| {
+                panic!("idle without a positive native observation must not write")
+            })
+            .unwrap();
+        assert_eq!(refused.evidence, Evidence::RecipientStored);
+        let file = native::ClaudeSessionFile {
+            pid: session.binding.pid,
+            session_id: session.binding.session.clone(),
+            process_start: session.binding.process_start.clone(),
+            status: "idle".into(),
+            waiting_for: None,
+            messaging_socket_path: None,
+        };
+        session.observe_claude_session(&file, 5, 1000).unwrap();
+        let outcome = session
+            .submit_literal(&view, 1600, input, &journal, |bytes| {
+                assert_eq!(
+                    bytes,
+                    if bracketed {
+                        b"\x1b[200~literal text\x1b[201~".to_vec()
+                    } else {
+                        b"literal text".to_vec()
+                    }
+                );
+                assert!(!bytes.ends_with(b"\r"));
+                Ok(bbt_mux::InputReceipt {
+                    input_id: input.id,
+                    state: InputState::PtyWritten,
+                    bytes_written: bytes.len(),
+                    bytes_total: bytes.len(),
+                })
+            })
+            .unwrap();
+        assert_eq!(outcome.evidence, Evidence::NativeWritten);
+        assert!(matches!(
+            session.input_guard(&view, 1601),
+            Readiness::NotReady(_)
+        ));
+        let replay = session
+            .submit_literal(&view, 1601, input, &journal, |_| {
+                panic!("must not paste twice")
+            })
+            .unwrap();
+        assert_eq!(replay, outcome);
+    }
+}
+
+#[test]
 fn adapters_codex_native_readiness_and_hooks_only_subagents() {
     let mut session = session("codex");
     let thread = session.binding.session.clone();
@@ -766,4 +828,83 @@ fn adapters_custom_harness_cadence_and_reported_idle_never_create_readiness() {
         session.input_guard(&arbiter(&session), 5000),
         Readiness::OperatorHandoff
     ));
+}
+
+#[test]
+fn adapters_literal_guard_negatives_write_no_bytes() {
+    for case in [
+        "active",
+        "waiting",
+        "subagent",
+        "expired",
+        "generation",
+        "attachment",
+        "pid",
+        "draft",
+        "tool",
+        "sync",
+        "screen",
+        "foreground",
+        "canonical",
+        "echo",
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        let shell = matches!(case, "canonical" | "echo");
+        let mut session = session(if shell { "zsh" } else { "claude" });
+        if shell {
+            session.on_osc(&[b"133".to_vec(), b"B".to_vec()], 5, 1000);
+        } else {
+            let file = native::ClaudeSessionFile {
+                pid: session.binding.pid,
+                session_id: session.binding.session.clone(),
+                process_start: session.binding.process_start.clone(),
+                status: "idle".into(),
+                waiting_for: None,
+                messaging_socket_path: None,
+            };
+            session.observe_claude_session(&file, 5, 1000).unwrap();
+        }
+        let mut view = arbiter(&session);
+        let now = if case == "expired" { 3001 } else { 1600 };
+        match case {
+            "active" => session.status.state = State::Active,
+            "waiting" => session.status.state = State::Waiting,
+            "subagent" => session
+                .status
+                .subagents
+                .push(bbt_mux::adapters::observe::Subagent {
+                    id: "fixture-child".into(),
+                    title: "fixture".into(),
+                    state: State::Active,
+                    waiting_kind: None,
+                    grade: bbt_mux::adapters::Grade::Reported,
+                    started_sequence: 5,
+                }),
+            "generation" => view.binding.generation += 1,
+            "attachment" => view.binding.attachment_generation += 1,
+            "pid" => view.binding.pid += 1,
+            "draft" => view.operator_draft = true,
+            "tool" => view.active_tool = true,
+            "sync" => view.sync_pending = true,
+            "screen" => view.screen_switch_pending = true,
+            "foreground" => view.foreground_pid = None,
+            "canonical" => view.canonical = false,
+            "echo" => view.echo = false,
+            _ => {}
+        }
+        let result = session
+            .submit_literal(
+                &view,
+                now,
+                bbt_mux::adapters::guard::LiteralInput {
+                    id: Ulid::new(),
+                    text: "never write",
+                    submit: true,
+                },
+                &SqliteStore::open(temp.path()).unwrap(),
+                |_| panic!("{case} wrote bytes"),
+            )
+            .unwrap();
+        assert_eq!(result.evidence, Evidence::RecipientStored, "{case}");
+    }
 }

@@ -1,0 +1,44 @@
+Kestrel Voidwing <EXECUTOR> — W2.5e handoff for Oracle verification (not acceptance)
+Source: 89c9e5505e008fea1b8a0b4c7951eeddc0938df6 on exec5, signed and rebased onto origin/main3f18f9f before the exact gate. Only writing worktree: /Users/feral/mydev/bboxy450-term-exec5. No push or merge.
+
+Changed files and mechanisms (source commit):
+crates/bbt-mux/src/mcp/seats.rs:24 — seven schemas, Oracle controls hidden AND refused for workers; strict explicit decimal-string generation, target swarm and mute policy, approved builtin spawn profile/cwd/role-name only.
+crates/bbt-mux/src/mcp/seats.rs:306 — caller/op/tool/target generation-derived effect IDs; truthful written/queued/unknown/not-submitted results, no false recipient storage claim.
+crates/bbt-mux/src/mcp/seats.rs:387 — off-Worker read-only account snapshot rechecks canonical caller role/gen/swarm/mute/epoch plus target gen/swarm/mute/harness immediately before native IO; transaction ends before the attempt.
+crates/bbt-mux/src/mcp/mod.rs:9 and mcp/tools.rs:67 — classifier/catalogue integration; Oracle30, worker18.
+crates/bbt-mux/src/mcp/journal.rs:90 — split admit/complete for async work; original synchronous effect semantics preserved. Admission/audit before effect, no transaction across effect, retained UNKNOWN never redispatches.
+crates/bbt-mux/src/logic.rs:1144 — named seat-control preparation/read/effect helpers: current binding authorization, bounded snapshot text pages and capture records/gaps/next, checked mute and existing launch planner.
+crates/bbt-mux/src/logic.rs:1476 — native-only interrupt; availability named by harness, cap8 Busy, one native attempt; no PTY control-key fallback. Field/init, ControlCall arm and pump_messages completion drain are the approved async hunks.
+crates/bbt-mux/src/logic.rs:2695 — guarded_input shared with messaging's existing deliver_pty; caught-up fresh-proof checks and supervisor GuardedInput fence retained. No positive source gets its named reason.
+crates/bbt-mux/src/adapters/guard.rs:38 — LiteralInput submit flag; old submit_pty/prepare_input wrap submit=true with unchanged bytes/evidence. submit=false consumes readiness without Enter.
+crates/bbt-mux/src/messaging/service.rs:825 — target generation + policy epoch checked in the same account transaction as mute + its signed notice; old public set_mute is preserved.
+crates/bbt-mux/tests/mcp.rs:312 — authority/schema/read bounds/generation, real guarded PTY, lost receipt across restart, explicit Enter, capture cursor/gap, signed mute notice fixtures.
+crates/bbt-mux/tests/mcp.rs:2499 — subprocesses use disposable HOME, cleared credential environment and fake native sockets; builtin zsh spawn/wiring once, Claude Now written, Codex steer queued, cap8/nonblocking Worker, timeout UNKNOWN and Worker cancellation after write with no redispatch.
+crates/bbt-mux/tests/adapters.rs:200 and :834 — literal paste and negative guard matrix, no write on active/waiting/subagent/expired/binding/draft/tool/sync/screen/foreground/canonical/echo refusal.
+.bboxy/runs/w2-5e-* — approved plan/addendum, commands and actual build/test/Clippy/gate outputs, failures retained.
+
+Acceptance evidence:
+- Workers: catalogue omits all five controls; direct calls are refused and audited. Oracle target reads/controls stay in its own swarm; worker reads stay on itself. Stale generation, spoofed identity fields and malformed revisions refused. mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments.
+- Positive guard: no-proof fixture writes nothing; real OSC133B canonical/echo/foreground zsh accepts one literal input, repeat/conflict/restart never paste twice; submit=false produces a draft and only fixture operator Enter submits it. mcp_seat_input_consumes_readiness_and_enter_is_explicit plus adapters_literal_guard_negatives_write_no_bytes; W2.4 final-fence regressions remain green.
+- Unknown: injected loss after actual GuardedInput causes UNKNOWN; restart/retry retains it and the observed output occurs once. Native withheld response and cancellation after mutation likewise retain UNKNOWN with no second native frame. Generic journal tests prove audit-admission failure executes nothing and a crash after admission never redispatches.
+- Spawn: isolated builtin zsh, one registry/process identity and existing overlay, same result/PID through retry/restart; role name oracle remains class Worker, arbitrary class/program/env/profile refused. No real Claude/Codex spawned.
+- Mute/unmute: expected epoch/gen checked, stale epoch no policy change, one cryptographically verified Presence notice per transition, repeated already-state reuses the notice. Muted caller/target boundaries and retained read/unmute access tested; existing messaging hold/release/unknown semantics unchanged.
+- Reads: real screen and base64 capture pages bounded, cursor advancement and stale viewport refusal; injected backend gap is passed through by name with no invented rows. History is capture records, not semantic rows.
+- Native: Claude frame priority now and stable input ID; Codex expected-turn steer acceptance; cap8 returns Busy and self_status remains responsive while native2s operations wait; timeout/cancellation never replays. Native authority unit matrix changes every canonical caller/target binding field and refuses before the attempt.
+
+Commands/results before exact gate (full outputs in build/focused/strict/commands/final-commands logs):
+- cargo check --locked -p bbt-mux --all-targets: first101/143.994s (u64 FromSql unsupported); corrected checked i64 conversion, then0/8.721s.
+- cargo test --locked -p bbt-mux --lib --test adapters --test mcp --test messaging: initial63/0 exit0/147.438s; final72/0 exit0/143.012s (lib19, adapters13, MCP25, messaging15). Ignored real interop/corpus/subprocess drivers are explicit; subprocess drivers are invoked by their parent tests.
+- Intermediate MCP development runs: compile101/25.455s (Presence fields), test101/6.089s (schema error text assertion), test101/11.193s (native barrier timed out), diagnostic native0/7.464s; later combined compile101/97.670s (Subagent path). Final suite and native repeat pass. Original missing-frame cause from that one barrier failure was not captured; no root-cause claim is made for it.
+- Extra final native cap/timeout/cancel fixture: exit0/3.935s.
+- cargo clippy --workspace --all-targets --locked -- -D warnings: first101/56.435s (own collapsible_if), corrected; final0/17.614s.
+- Scoped rustfmt and final rustfmt --check, git diff --check:0. Exact path git add, signed commit, fetch and signed rebase:0. git verify-commit:0, good machine signature. Tracked tree clean before gate:0.
+- Exact clean sh scripts/ci-local.sh with BBOXY_TEST_CUSTODY=memory, own target, O1/debug guards, jobs2: exit0/871.534s; ci-local: all gates passed. Workspace build, strict Clippy, tests, UI lint, native smoke, and default invariants passed (6 checks,0 failures,4 slow skips). All seven new MCP acceptance tests passed in the gate. Private target deletion0, worktree remove0, empty base removal0, wrapper real exit0. CI log SHA256 ad3c402ce98134dde447b058609c8619123b6dc1d1a871a1eea70320ecdd32b5.
+
+Not checked/deliberately untouched:
+- Real Claude/Codex model/receiver acceptance and real-harness first-turn use remain UNPROVEN; local native fixtures prove framing/admission evidence only. No credentials, real keychain or real root enrollment used by the new fixtures.
+- No semantic history-row API, GUI placement, launcher/settings role hydration, new profiles/layout/key/role/permission tools, native fallback for ordinary text, or PTY Ctrl-C. No proto, supervisor/ring/client queue algorithm, provider/capture retry or Sable event scheduler edits.
+- No visual changes, so no parity gate requested. No pushes, merge, shared-tree writes, peer process/cache/worktree cleanup.
+
+Gate provenance/final tree:
+Main moved during the gate to 33d1f9b742b2ecbb5477f39d26c0f3afd931e337 (T2 layers0cb3f11, L8 editing lab9f3ddf6, R13b864a28, Style Lane33d1f9b). Intersection with this source commit paths is EMPTY. Per AGENTS.md:52, exact gated source is retained with an evidence-only successor; no rebase/re-gate loop. Fetch/log/path-intersection/diff/status/signature checks0; source tracked tree clean. No private gate directory remains.

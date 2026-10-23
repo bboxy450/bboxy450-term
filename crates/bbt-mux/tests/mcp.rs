@@ -28,10 +28,15 @@ struct Fixture {
     outside: SeatRecord,
     task: Ulid,
     foreign_task: Ulid,
+    input_attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
     _temp: tempfile::TempDir,
 }
 impl Fixture {
     fn new() -> Self {
+        Self::with_lost_input_receipt(false)
+    }
+    fn with_lost_input_receipt(lose: bool) -> Self {
         let temp = tempfile::tempdir().unwrap();
         let repository = temp.path().join("repository");
         std::fs::create_dir_all(repository.join(".bboxy/tasks")).unwrap();
@@ -62,8 +67,15 @@ impl Fixture {
             .build()
             .unwrap();
         let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
+        let input_attempts = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let history_gap = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let logic = Logic::start(
-            supervisor.connect().unwrap(),
+            LostInputReceipt {
+                client: supervisor.connect().unwrap(),
+                lose,
+                attempts: input_attempts.clone(),
+                history_gap: history_gap.clone(),
+            },
             config.clone(),
             key(),
             runtime.handle(),
@@ -93,6 +105,8 @@ impl Fixture {
             outside,
             task,
             foreign_task,
+            input_attempts,
+            history_gap,
             _temp: temp,
         }
     }
@@ -167,6 +181,44 @@ impl Fixture {
         );
     }
 }
+struct LostInputReceipt {
+    client: bbt_mux::Client,
+    lose: bool,
+    attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+impl bbt_mux::logic::SupervisorConnection for LostInputReceipt {
+    fn request(&mut self, action: bbt_mux::Action) -> bbt_mux::store::Result<bbt_mux::Reply> {
+        let input = matches!(action, bbt_mux::Action::GuardedInput { .. });
+        let mut result = self.client.request(action)?;
+        if let bbt_mux::Reply::RingHistory { history } = &mut result
+            && self
+                .history_gap
+                .swap(false, std::sync::atomic::Ordering::SeqCst)
+        {
+            history.records.clear();
+            history.next = None;
+            history.gap = Some(bbt_mux::ring::HistoryGap {
+                requested_from: 1,
+                requested_to: 10,
+                retained_from: None,
+                retained_to: None,
+                reason: "fixture capture unavailable".into(),
+            });
+        }
+        if input {
+            self.attempts
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if std::mem::take(&mut self.lose) {
+                return Err(bbt_mux::store::invalid("fixture lost the write receipt"));
+            }
+        }
+        Ok(result)
+    }
+    fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<bbt_mux::Event>> {
+        bbt_mux::logic::SupervisorConnection::receive(&mut self.client, timeout)
+    }
+}
 impl Drop for Fixture {
     fn drop(&mut self) {
         if let Some(logic) = self.logic.take() {
@@ -179,6 +231,480 @@ impl Drop for Fixture {
 }
 fn key() -> SigningKey {
     SigningKey::from_bytes(&[53; 32])
+}
+
+impl Fixture {
+    fn target(&self, seat: Ulid) -> Value {
+        json!({"seat_id":seat,"expected_process_generation":"1"})
+    }
+    fn spawn_fixture(&self, kind: &str, script: &str) -> SeatRecord {
+        let mut record = SeatRecord::new(Ulid::new(), self.own.swarm, "Controlled target", kind);
+        record.harness_session_id = Some(format!("fixture-{}", record.id));
+        let mut spec = LaunchSpec::new("/bin/zsh", self._temp.path());
+        spec.seat = record.id;
+        spec.generation = record.generation;
+        spec.args = vec!["-f".into(), "-c".into(), script.into()];
+        self.runtime
+            .block_on(self.client().spawn(record.clone(), spec))
+            .unwrap();
+        record
+    }
+    fn screen(&self, seat: Ulid) -> String {
+        let snapshot = self
+            .runtime
+            .block_on(self.client().snapshot(seat, 1))
+            .unwrap();
+        snapshot
+            .screen
+            .cells
+            .iter()
+            .map(|row| row.iter().map(|c| c.c).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+    fn wait_screen(&self, seat: Ulid, text: &str) {
+        let until = Instant::now() + Duration::from_secs(5);
+        loop {
+            if self.screen(seat).contains(text) {
+                return;
+            }
+            assert!(
+                Instant::now() < until,
+                "missing {text:?}: {}",
+                self.screen(seat)
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+    fn input_args(&self, seat: Ulid, text: &str, submit: bool) -> Value {
+        let mut args = self.target(seat);
+        args["text"] = json!(text);
+        args["submit"] = json!(submit);
+        args
+    }
+    fn epoch(&self, seat: Ulid) -> String {
+        // Resolve policy through the production authority path before reading its version.
+        let _ = self.call(seat, Ulid::new(), "self_status", json!({}));
+        let store = SqliteStore::open(&self.config.run_dir.join("account")).unwrap();
+        let epoch: i64 = store
+            .connection()
+            .unwrap()
+            .query_row(
+                "SELECT epoch FROM msg_policies WHERE seat=?1",
+                [seat.to_string()],
+                |row| row.get(0),
+            )
+            .unwrap();
+        epoch.to_string()
+    }
+}
+
+fn refused(value: Value, fragment: &str) -> Value {
+    assert_eq!(value["isError"], true, "{value}");
+    assert!(
+        value.to_string().contains(fragment),
+        "expected {fragment:?}: {value}"
+    );
+    value["structuredContent"].clone()
+}
+
+#[test]
+fn mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments() {
+    let f = Fixture::new();
+    let controls = [
+        "seat_input_text",
+        "seat_spawn",
+        "seat_mute",
+        "seat_unmute",
+        "seat_interrupt",
+    ];
+    for (caller, visible) in [(f.own.id, false), (f.oracle.id, true)] {
+        let catalogue = f
+            .runtime
+            .block_on(f.client().control_catalogue(caller, 1))
+            .unwrap();
+        for name in controls {
+            assert_eq!(
+                catalogue["tools"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|t| t["name"] == name),
+                visible
+            );
+        }
+    }
+    for tool in controls {
+        refused(
+            f.call(f.own.id, Ulid::new(), tool, f.target(f.peer.id)),
+            "oracle-class",
+        );
+    }
+    assert_eq!(
+        f.audits(f.own.id, controls.len())
+            .iter()
+            .filter(|event| controls.contains(&event.event.payload["tool"].as_str().unwrap_or("")))
+            .count(),
+        5
+    );
+    for tool in ["screen_read", "history_read"] {
+        assert_eq!(
+            data(f.call(f.own.id, Ulid::new(), tool, f.target(f.own.id)))["seat_id"],
+            json!(f.own.id)
+        );
+        refused(
+            f.call(f.own.id, Ulid::new(), tool, f.target(f.peer.id)),
+            "own seat",
+        );
+        refused(
+            f.call(f.oracle.id, Ulid::new(), tool, f.target(f.outside.id)),
+            "outside caller swarm",
+        );
+        let mut stale = f.target(f.peer.id);
+        stale["expected_process_generation"] = json!("2");
+        refused(
+            f.call(f.oracle.id, Ulid::new(), tool, stale),
+            "stale target process generation",
+        );
+        for revision in [
+            json!(1),
+            json!("0"),
+            json!("01"),
+            json!("18446744073709551616"),
+        ] {
+            let mut args = f.target(f.own.id);
+            args["expected_process_generation"] = revision;
+            refused(f.call(f.own.id, Ulid::new(), tool, args), "tool schema");
+        }
+        let mut spoof = f.target(f.own.id);
+        spoof["operator"] = json!(true);
+        refused(f.call(f.own.id, Ulid::new(), tool, spoof), "tool schema");
+    }
+    let no_proof = refused(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(f.peer.id, "DO-NOT-WRITE", true),
+        ),
+        "not ready: no positive readiness",
+    );
+    assert_eq!(no_proof["error"]["code"], "not_submitted");
+    assert!(!f.screen(f.peer.id).contains("DO-NOT-WRITE"));
+    let mut interrupt = f.target(f.peer.id);
+    interrupt["text"] = json!("native only");
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_interrupt", interrupt),
+        "interrupt unavailable for zsh",
+    );
+    assert!(
+        f.runtime
+            .block_on(f.client().snapshot(f.peer.id, 1))
+            .is_ok()
+    );
+    let mut control_bytes = f.input_args(f.peer.id, "\u{3}", true);
+    refused(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            control_bytes.clone(),
+        ),
+        "terminal control bytes",
+    );
+    control_bytes["text"] = json!("safe");
+    control_bytes["caller"] = json!(f.oracle.id);
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_input_text", control_bytes),
+        "tool schema",
+    );
+}
+
+const READY_SHELL: &str = "stty icanon echo; printf 'FIXTURE-READY\\n'; while true; do printf '\\033]133;B\\007'; if IFS= read -r -t 1 line; then printf '\\033]133;C\\007'; printf 'OBSERVED:%s\\n' \"$line\"; sleep 0.6; fi; done";
+
+#[test]
+fn mcp_seat_input_consumes_readiness_and_enter_is_explicit() {
+    let mut f = Fixture::new();
+    let target = f.spawn_fixture("zsh", READY_SHELL);
+    f.wait_screen(target.id, "FIXTURE-READY");
+    std::thread::sleep(Duration::from_millis(80));
+    let op = Ulid::new();
+    let args = f.input_args(target.id, "ONE-PASTE", true);
+    let first = f.mutate(f.oracle.id, op, "seat_input_text", args.clone());
+    assert_eq!(data(first.clone())["evidence"], "native-written");
+    f.wait_screen(target.id, "OBSERVED:ONE-PASTE");
+    assert_eq!(
+        f.mutate(f.oracle.id, op, "seat_input_text", args.clone()),
+        first
+    );
+    refused(
+        f.mutate(
+            f.oracle.id,
+            op,
+            "seat_input_text",
+            f.input_args(target.id, "DIFFERENT", true),
+        ),
+        "conflict",
+    );
+    refused(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(target.id, "BUSY-PASTE", true),
+        ),
+        "not ready",
+    );
+    f.restart();
+    assert_eq!(f.mutate(f.oracle.id, op, "seat_input_text", args), first);
+    assert_eq!(f.screen(target.id).matches("OBSERVED:ONE-PASTE").count(), 1);
+    assert!(!f.screen(target.id).contains("BUSY-PASTE"));
+
+    let draft = f.spawn_fixture("zsh", READY_SHELL);
+    f.wait_screen(draft.id, "FIXTURE-READY");
+    std::thread::sleep(Duration::from_millis(80));
+    assert_eq!(
+        data(f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(draft.id, "DRAFT-ONLY", false)
+        ))["status"],
+        "applied"
+    );
+    f.wait_screen(draft.id, "DRAFT-ONLY");
+    assert!(!f.screen(draft.id).contains("OBSERVED:DRAFT-ONLY"));
+    refused(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(draft.id, "SECOND", true),
+        ),
+        "not ready",
+    );
+    // The fixture's operator, rather than another automatic paste, submits the draft.
+    f.runtime
+        .block_on(f.client().gui_input(draft.id, 1, Ulid::new(), vec![b'\r']))
+        .unwrap();
+    f.wait_screen(draft.id, "OBSERVED:DRAFT-ONLY");
+    assert!(!f.screen(draft.id).contains("SECOND"));
+}
+
+#[test]
+fn mcp_seat_input_lost_receipt_is_unknown_and_never_repeated_after_restart() {
+    let mut f = Fixture::with_lost_input_receipt(true);
+    let target = f.spawn_fixture("zsh", READY_SHELL);
+    f.wait_screen(target.id, "FIXTURE-READY");
+    std::thread::sleep(Duration::from_millis(80));
+    let op = Ulid::new();
+    let args = f.input_args(target.id, "UNKNOWN-PASTE", true);
+    let first = f.mutate(f.oracle.id, op, "seat_input_text", args.clone());
+    refused(first.clone(), "unknown");
+    f.wait_screen(target.id, "OBSERVED:UNKNOWN-PASTE");
+    assert_eq!(
+        f.mutate(f.oracle.id, op, "seat_input_text", args.clone()),
+        first
+    );
+    assert_eq!(
+        f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
+        1
+    );
+    f.restart();
+    assert_eq!(f.mutate(f.oracle.id, op, "seat_input_text", args), first);
+    assert_eq!(
+        f.screen(target.id)
+            .matches("OBSERVED:UNKNOWN-PASTE")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn mcp_seat_reads_page_real_capture_and_refuse_stale_view_cursors() {
+    use base64::Engine;
+    let f = Fixture::new();
+    for text in ["CAPTURE-ONE\r", "CAPTURE-TWO\r", "CAPTURE-THREE\r"] {
+        f.runtime
+            .block_on(
+                f.client()
+                    .gui_input(f.own.id, 1, Ulid::new(), text.as_bytes().to_vec()),
+            )
+            .unwrap();
+        f.wait_screen(f.own.id, text.trim_end_matches('\r'));
+    }
+    let mut args = f.target(f.own.id);
+    args["limit_rows"] = json!(2);
+    let page = data(f.call(f.own.id, Ulid::new(), "screen_read", args.clone()));
+    assert_eq!(page["rows"].as_array().unwrap().len(), 2);
+    assert!(page["next"].is_string());
+    args["view_cursor"] = page["next"].clone();
+    assert_eq!(
+        data(f.call(f.own.id, Ulid::new(), "screen_read", args.clone()))["row_start"],
+        2
+    );
+    f.runtime
+        .block_on(
+            f.client()
+                .gui_input(f.own.id, 1, Ulid::new(), b"CHANGED\r".to_vec()),
+        )
+        .unwrap();
+    f.wait_screen(f.own.id, "CHANGED");
+    refused(
+        f.call(f.own.id, Ulid::new(), "screen_read", args),
+        "stale viewport cursor",
+    );
+    for (tool, limit) in [
+        ("screen_read", "limit_rows"),
+        ("history_read", "limit_records"),
+    ] {
+        for value in [0, 129] {
+            let mut args = f.target(f.own.id);
+            args[limit] = json!(value);
+            refused(f.call(f.own.id, Ulid::new(), tool, args), "limit");
+        }
+    }
+    let mut args = f.target(f.own.id);
+    args["limit_records"] = json!(1);
+    let mut output = Vec::new();
+    let mut last = 0;
+    let mut pages = 0;
+    loop {
+        let page = data(f.call(f.own.id, Ulid::new(), "history_read", args.clone()));
+        assert_eq!(page["format"], "capture_records");
+        assert!(page["gaps"].as_array().unwrap().is_empty());
+        assert!(page["records"].as_array().unwrap().len() <= 1);
+        for record in page["records"].as_array().unwrap() {
+            let seq: u64 = record["sequence"].as_str().unwrap().parse().unwrap();
+            assert!(seq > last);
+            last = seq;
+            if record["kind"] == "output" {
+                assert_eq!(record["encoding"], "base64");
+                let bytes = base64::engine::general_purpose::STANDARD
+                    .decode(record["bytes"].as_str().unwrap())
+                    .unwrap();
+                assert_eq!(
+                    bytes.len(),
+                    record["byte_length"].as_u64().unwrap() as usize
+                );
+                output.extend(bytes);
+            }
+        }
+        pages += 1;
+        assert!(pages < 64, "capture cursor did not advance");
+        if page["next"].is_null() {
+            break;
+        }
+        args["cursor"] = page["next"].clone();
+    }
+    assert!(String::from_utf8(output).unwrap().contains("CAPTURE-THREE"));
+    f.history_gap
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    let gap = data(f.call(f.own.id, Ulid::new(), "history_read", f.target(f.own.id)));
+    assert!(gap["records"].as_array().unwrap().is_empty());
+    assert_eq!(gap["gaps"][0]["reason"], "fixture capture unavailable");
+    assert!(gap["next"].is_null());
+}
+
+#[test]
+fn mcp_seat_mute_is_epoch_checked_signed_and_preserves_read_access() {
+    let f = Fixture::new();
+    let mut args = f.target(f.peer.id);
+    let old_epoch = f.epoch(f.peer.id);
+    args["expected_policy_epoch"] = json!(old_epoch);
+    let op = Ulid::new();
+    let first = f.mutate(f.oracle.id, op, "seat_mute", args.clone());
+    let muted = data(first.clone());
+    assert_eq!(muted["muted"], true);
+    assert_ne!(muted["policy_epoch"], args["expected_policy_epoch"]);
+    assert_eq!(f.mutate(f.oracle.id, op, "seat_mute", args.clone()), first);
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_unmute", args.clone()),
+        "stale target policy epoch",
+    );
+    assert!(f.registry().get(f.peer.id).unwrap().muted);
+    refused(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(f.peer.id, "NOT-WRITTEN", true),
+        ),
+        "muted target",
+    );
+    assert_eq!(
+        data(f.call(f.peer.id, Ulid::new(), "screen_read", f.target(f.peer.id)))["seat_id"],
+        json!(f.peer.id)
+    );
+    args["expected_policy_epoch"] = muted["policy_epoch"].clone();
+    let already = data(f.mutate(f.oracle.id, Ulid::new(), "seat_mute", args.clone()));
+    assert_eq!(already["notice_id"], muted["notice_id"]);
+    let clear = data(f.mutate(f.oracle.id, Ulid::new(), "seat_unmute", args));
+    assert_eq!(clear["muted"], false);
+    assert_ne!(clear["notice_id"], muted["notice_id"]);
+
+    let response = f
+        .runtime
+        .block_on(f.client().messaging(
+            f.oracle.id,
+            1,
+            bbt_mux::messaging::api::Request::List {
+                thread: None,
+                channel: None,
+                after: 0,
+                limit: 128,
+            },
+        ))
+        .unwrap();
+    let bbt_mux::messaging::api::Response::Messages { page } = response else {
+        panic!("messages expected");
+    };
+    let notices: Vec<_> = page
+        .items
+        .iter()
+        .filter(|message| {
+            message.envelope.seat == f.peer.id
+                && matches!(
+                    message.envelope.body,
+                    bbt_mux::messaging::wire::Body::Presence { .. }
+                )
+        })
+        .collect();
+    assert_eq!(notices.len(), 2);
+    for notice in notices {
+        notice.envelope.verify_signature().unwrap();
+    }
+
+    let mut self_mute = f.target(f.oracle.id);
+    self_mute["expected_policy_epoch"] = json!(f.epoch(f.oracle.id));
+    let result = data(f.mutate(f.oracle.id, Ulid::new(), "seat_mute", self_mute.clone()));
+    refused(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(f.peer.id, "DENIED", true),
+        ),
+        "muted caller",
+    );
+    refused(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_spawn",
+            json!({"swarm_id":f.own.swarm,"approved_profile":"zsh","cwd":f._temp.path()}),
+        ),
+        "muted caller",
+    );
+    assert_eq!(
+        data(f.call(f.oracle.id, Ulid::new(), "screen_read", f.target(f.peer.id)))["seat_id"],
+        json!(f.peer.id)
+    );
+    self_mute["expected_policy_epoch"] = result["policy_epoch"].clone();
+    assert_eq!(
+        data(f.mutate(f.oracle.id, Ulid::new(), "seat_unmute", self_mute))["muted"],
+        false
+    );
 }
 fn data(value: Value) -> Value {
     assert_eq!(value["isError"], false, "{value}");
@@ -223,7 +749,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 16);
+    assert_eq!(tools.len(), 18);
     assert!(
         tools
             .iter()
@@ -965,8 +1491,8 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 16);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 23);
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 18);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 30);
     for tool in [
         "ch_link",
         "ch_pause",
@@ -1924,4 +2450,387 @@ fn mcp_work_item_signing_hold_keeps_the_original_file_and_terminals() {
     assert!(held.to_string().contains("signing held"));
     assert_eq!(f.task_document().digest, original.digest);
     assert_eq!(f.runtime.block_on(f.client().gui_seats()).unwrap().len(), 4);
+}
+
+fn isolated_seat_fixture(mode: &str) {
+    let temp = tempfile::tempdir().unwrap();
+    let stdout = temp.path().join("stdout");
+    let stderr = temp.path().join("stderr");
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "mcp_seat_isolated_process",
+            "--ignored",
+            "--nocapture",
+        ])
+        .env_clear()
+        .env("HOME", temp.path())
+        .env("PATH", "/usr/bin:/bin")
+        .env("CLAUDE_CONFIG_DIR", temp.path().join("claude"))
+        .env("CODEX_HOME", temp.path().join("codex"))
+        .env("BBOXY_TEST_CUSTODY", "memory")
+        .env("BBOXY_MCP_SEAT_FIXTURE", mode)
+        .stdout(std::fs::File::create(&stdout).unwrap())
+        .stderr(std::fs::File::create(&stderr).unwrap())
+        .spawn()
+        .unwrap();
+    eprintln!("isolated {mode} fixture PID {}", child.id());
+    let until = Instant::now() + Duration::from_secs(30);
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if Instant::now() > until {
+            child.kill().unwrap(); // Only the exact child PID started above.
+            let status = child.wait().unwrap();
+            panic!("isolated {mode} fixture timed out: {status}");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    assert!(
+        status.success(),
+        "isolated {mode}: {status}\n{}\n{}",
+        std::fs::read_to_string(stdout).unwrap(),
+        std::fs::read_to_string(stderr).unwrap()
+    );
+}
+
+#[test]
+fn mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring() {
+    isolated_seat_fixture("spawn");
+}
+
+#[test]
+fn mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed() {
+    isolated_seat_fixture("native");
+}
+
+#[test]
+#[ignore = "subprocess fixture; parent supplies a disposable HOME and no credential environment"]
+fn mcp_seat_isolated_process() {
+    match std::env::var("BBOXY_MCP_SEAT_FIXTURE").unwrap().as_str() {
+        "spawn" => seat_spawn_fixture(),
+        "native" => seat_native_fixture(),
+        _ => panic!("unknown fixture mode"),
+    }
+}
+
+fn seat_spawn_fixture() {
+    let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+    std::fs::write(home.join(".zshrc"), "printf 'ISOLATED-SPAWN\\n'\n").unwrap();
+    let mut f = Fixture::new();
+    let baseline = f.registry().list().unwrap().len();
+    let args = json!({"swarm_id":f.own.swarm,"approved_profile":"zsh","cwd":f._temp.path(),"role":"oracle"});
+    let op = Ulid::new();
+    let first = f.mutate(f.oracle.id, op, "seat_spawn", args.clone());
+    let result = data(first.clone());
+    assert_eq!(result["status"], "applied");
+    let seat: Ulid = serde_json::from_value(result["seat_id"].clone()).unwrap();
+    assert!(result["pid"].as_u64().unwrap() > 0);
+    f.wait_screen(seat, "ISOLATED-SPAWN");
+    let record = f.registry().get(seat).unwrap();
+    assert_eq!(record.role.name, "oracle");
+    assert_eq!(record.role.class, Class::Worker);
+    assert_eq!(record.swarm, f.own.swarm);
+    assert_eq!(f.registry().list().unwrap().len(), baseline + 1);
+    assert_eq!(f.mutate(f.oracle.id, op, "seat_spawn", args.clone()), first);
+    let overlays = f.config.run_dir.join(format!("seat-{seat}/overlays"));
+    let dirs: Vec<_> = std::fs::read_dir(&overlays)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    assert_eq!(dirs.len(), 1);
+    assert!(
+        dirs[0].join(".zshrc").exists(),
+        "missing wiring at {overlays:?}"
+    );
+    f.restart();
+    assert_eq!(f.mutate(f.oracle.id, op, "seat_spawn", args.clone()), first);
+    assert_eq!(f.registry().list().unwrap().len(), baseline + 1);
+    assert!(f.screen(seat).contains("ISOLATED-SPAWN"));
+    for (field, value) in [
+        ("class", json!("oracle")),
+        ("env", json!({"HOME":"/untrusted"})),
+        ("program", json!("/bin/sh")),
+    ] {
+        let mut invalid = args.clone();
+        invalid[field] = value;
+        refused(
+            f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", invalid),
+            "tool schema",
+        );
+    }
+    let mut invalid = args;
+    invalid["approved_profile"] = json!("arbitrary");
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", invalid),
+        "unapproved spawn profile",
+    );
+    assert_eq!(f.registry().list().unwrap().len(), baseline + 1);
+    assert!(!home.join(".claude").exists());
+    assert!(!home.join(".codex").exists());
+}
+
+fn seat_native_fixture() {
+    use bbt_mux::adapters::Endpoint;
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::tungstenite::Message;
+    let mut f = Fixture::new();
+    let path = std::env::temp_dir().join(format!("mcp-native-{}.sock", Ulid::new()));
+    let claude = f.spawn_fixture(
+        "claude",
+        "printf 'NATIVE-READY\\n'; while IFS= read -r line; do :; done",
+    );
+    let (server, mut frames) = f.runtime.block_on(async {
+        let listener = tokio::net::UnixListener::bind(&path).unwrap();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let task = tokio::spawn(async move {
+            loop {
+                let (stream, _) = listener.accept().await.unwrap();
+                let mut reader = tokio::io::BufReader::new(stream);
+                if let Ok(Ok(Some(bytes))) = tokio::time::timeout(
+                    Duration::from_secs(1),
+                    bbt_mux::seat_socket::read_line(&mut reader),
+                )
+                .await
+                {
+                    tx.send(serde_json::from_slice::<Value>(&bytes).unwrap())
+                        .unwrap();
+                }
+            }
+        });
+        (task, rx)
+    });
+    f.runtime
+        .block_on(f.client().bind_delivery_endpoint(
+            claude.id,
+            1,
+            Endpoint::Claude { path: path.clone() },
+        ))
+        .unwrap();
+    let mut args = f.target(claude.id);
+    args["text"] = json!("literal native fixture");
+    let op = Ulid::new();
+    let first = f.mutate(f.oracle.id, op, "seat_interrupt", args.clone());
+    let result = data(first.clone());
+    assert_eq!(result["evidence"], "native-written");
+    assert!(
+        result["note"]
+            .as_str()
+            .unwrap()
+            .contains("acceptance unverified")
+    );
+    let frame = f.runtime.block_on(async {
+        tokio::time::timeout(Duration::from_secs(1), frames.recv())
+            .await
+            .unwrap()
+            .unwrap()
+    });
+    assert_eq!(frame["priority"], "now");
+    assert_eq!(frame["message"]["content"], args["text"]);
+    assert_eq!(frame["uuid"], result["input_id"]);
+    assert_eq!(
+        f.mutate(f.oracle.id, op, "seat_interrupt", args.clone()),
+        first
+    );
+    f.restart();
+    assert_eq!(
+        f.mutate(f.oracle.id, op, "seat_interrupt", args.clone()),
+        first
+    );
+    args["text"] = json!("different");
+    refused(
+        f.mutate(f.oracle.id, op, "seat_interrupt", args),
+        "conflict",
+    );
+    assert!(frames.try_recv().is_err());
+    server.abort();
+    std::fs::remove_file(path).unwrap();
+
+    let codex = f.spawn_fixture(
+        "codex",
+        "printf 'CODEX-READY\\n'; while IFS= read -r line; do :; done",
+    );
+    let path = std::env::temp_dir().join(format!("mcp-codex-{}.sock", Ulid::new()));
+    let thread = codex.harness_session_id.clone().unwrap();
+    let hold = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let flag = hold.clone();
+    let (server, mut frames) = f.runtime.block_on(async {
+        let listener = tokio::net::UnixListener::bind(&path).unwrap();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let task = tokio::spawn(async move {
+            let mut connections = tokio::task::JoinSet::new();
+            loop {
+                let (stream, _) = listener.accept().await.unwrap();
+                let tx = tx.clone();
+                let thread = thread.clone();
+                let flag = flag.clone();
+                connections.spawn(async move {
+                    let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+                    while let Some(Ok(frame)) = ws.next().await {
+                        let Ok(text) = frame.to_text() else {
+                            continue;
+                        };
+                        let value: Value = serde_json::from_str(text).unwrap();
+                        let result = match value["method"].as_str().unwrap() {
+                            "initialize" => json!({}),
+                            "initialized" => continue,
+                            "thread/read" => {
+                                json!({"thread":{"id":thread,"status":{"type":"idle"}}})
+                            }
+                            "turn/steer" => {
+                                assert_eq!(value["params"]["expectedTurnId"], "turn-fixture");
+                                tx.send(value.clone()).unwrap();
+                                if flag.load(std::sync::atomic::Ordering::SeqCst) {
+                                    // No acknowledgement: production's own 2 s native bound decides UNKNOWN.
+                                    let _ = ws.next().await;
+                                    break;
+                                }
+                                json!({"turnId":"turn-fixture"})
+                            }
+                            other => panic!("unexpected native method {other}"),
+                        };
+                        if ws
+                            .send(Message::Text(
+                                json!({"id":value["id"],"result":result}).to_string().into(),
+                            ))
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                });
+                while connections.try_join_next().is_some() {}
+            }
+        });
+        (task, rx)
+    });
+    // Let automatic endpoint discovery install its reader before binding the fixture endpoint.
+    std::thread::sleep(Duration::from_millis(350));
+    f.runtime
+        .block_on(f.client().bind_delivery_endpoint(
+            codex.id,
+            1,
+            Endpoint::Codex {
+                path: path.clone(),
+                thread: codex.harness_session_id.clone().unwrap(),
+                turn: Some("turn-fixture".into()),
+            },
+        ))
+        .unwrap();
+    let mut args = f.target(codex.id);
+    args["text"] = json!("steer fixture");
+    let first = data(f.mutate(f.oracle.id, Ulid::new(), "seat_interrupt", args.clone()));
+    assert_eq!(first["evidence"], "native-queued");
+    assert_eq!(first["native_id"], "turn-fixture");
+    f.runtime.block_on(async {
+        tokio::time::timeout(Duration::from_secs(1), frames.recv())
+            .await
+            .unwrap()
+            .unwrap();
+    });
+    hold.store(true, std::sync::atomic::Ordering::SeqCst);
+    let actor = f.oracle.id;
+    let mut ops = Vec::new();
+    let mut jobs = tokio::task::JoinSet::new();
+    f.runtime.block_on(async {
+        for _ in 0..8 {
+            let client = f.client().clone();
+            let op_id = Ulid::new();
+            ops.push(op_id);
+            let args = args.clone();
+            jobs.spawn(async move {
+                client
+                    .control_call(
+                        actor,
+                        1,
+                        Call {
+                            op_id,
+                            tool: "seat_interrupt".into(),
+                            args,
+                        },
+                    )
+                    .await
+                    .unwrap()
+            });
+        }
+        for received in 0..8 {
+            if !matches!(
+                tokio::time::timeout(Duration::from_secs(2), frames.recv()).await,
+                Ok(Some(_))
+            ) {
+                let mut completed = Vec::new();
+                while let Some(value) = jobs.try_join_next() {
+                    completed.push(value.unwrap());
+                }
+                panic!("only {received}/8 native attempts; completed={completed:?}");
+            }
+        }
+    });
+    let start = Instant::now();
+    let busy = f.call(actor, Ulid::new(), "seat_interrupt", args.clone());
+    refused(busy, "capacity is full");
+    assert_eq!(
+        data(f.call(actor, Ulid::new(), "self_status", json!({})))["actor"]["seat_id"],
+        json!(actor)
+    );
+    assert!(
+        start.elapsed() < Duration::from_millis(1500),
+        "Worker blocked on native I/O"
+    );
+    f.runtime.block_on(async {
+        while let Some(result) = jobs.join_next().await {
+            refused(result.unwrap(), "unknown");
+        }
+    });
+    for op in ops {
+        refused(
+            f.mutate(actor, op, "seat_interrupt", args.clone()),
+            "unknown",
+        );
+    }
+    assert!(
+        frames.try_recv().is_err(),
+        "an unknown operation was redispatched"
+    );
+    // Cancel the Worker after a native mutation but before its acknowledgement.
+    // The durable admission survives and the next Worker cannot redispatch it.
+    let crash_op = Ulid::new();
+    let client = f.client().clone();
+    let crash_args = args.clone();
+    let pending = f.runtime.spawn(async move {
+        client
+            .control_call(
+                actor,
+                1,
+                Call {
+                    op_id: crash_op,
+                    tool: "seat_interrupt".into(),
+                    args: crash_args,
+                },
+            )
+            .await
+    });
+    f.runtime.block_on(async {
+        tokio::time::timeout(Duration::from_secs(2), frames.recv())
+            .await
+            .unwrap()
+            .unwrap();
+    });
+    f.restart();
+    assert!(f.runtime.block_on(pending).unwrap().is_err());
+    refused(f.mutate(actor, crash_op, "seat_interrupt", args), "unknown");
+    assert!(frames.try_recv().is_err());
+    let audit = f.audits(actor, 30);
+    assert!(
+        audit
+            .iter()
+            .any(|event| event.event.payload["tool"] == "seat_interrupt")
+    );
+    for event in audit {
+        event.verify().unwrap();
+    }
+    server.abort();
+    std::fs::remove_file(path).unwrap();
 }
