@@ -1,0 +1,3908 @@
+R8: chrome text measurement without bitmap allocation
+Code: d9d3cff6495d1a0751cad5c52d06b419c87263c5
+Base54d9e0f; rebased onto accepted R4c39cdb5c. App caches retained.
+Source clean CI passes. The separate full1624 native render comparison is still running at this evidence snapshot; its final proof is target/r8/{geometry-byte-proof,byte-proof}.json. No result is claimed here before those files exist.
+
+
+=== timings [timing-summary.json] ===
+{
+  "source_base": "54d9e0f",
+  "original_code_commit": "c0c7437",
+  "rebased_code_commit": "9755083",
+  "profile": "release optimized, debug symbols, incremental off",
+  "warmup": 3,
+  "timed": "Element::layout only; tree construction and Layout destruction excluded",
+  "note": "Uncached headless adapters on a busy shared M4 host, not application frame times. N10 p99 is empirical maximum. Calls per layout are unchanged; cost per measurement changed.",
+  "rows": [
+    {
+      "workload": "launcher",
+      "iterations": 100,
+      "p50_before_ms": 1596.8015,
+      "p50_after_ms": 158.34925,
+      "p99_before_ms": 3500.358959,
+      "p99_after_ms": 307.436417,
+      "p50_speedup": 10.084048393029963,
+      "p99_speedup": 11.385635420673017,
+      "width_calls_before": 1590,
+      "width_calls_after": 1590,
+      "font_metrics_calls_before": 996,
+      "font_metrics_calls_after": 996
+    },
+    {
+      "workload": "sidebar1000",
+      "iterations": 100,
+      "p50_before_ms": 2757.5276660000004,
+      "p50_after_ms": 341.517833,
+      "p99_before_ms": 4661.934208,
+      "p99_after_ms": 405.888959,
+      "p50_speedup": 8.074329945751325,
+      "p99_speedup": 11.485737920749896,
+      "width_calls_before": 2721,
+      "width_calls_after": 2721,
+      "font_metrics_calls_before": 1456,
+      "font_metrics_calls_after": 1456
+    },
+    {
+      "workload": "expanded",
+      "iterations": 10,
+      "p50_before_ms": 5340.100541,
+      "p50_after_ms": 3427.881,
+      "p99_before_ms": 14226.237292000002,
+      "p99_after_ms": 4622.746875,
+      "p50_speedup": 1.5578430350995265,
+      "p99_speedup": 3.0774424117695176,
+      "width_calls_before": 31794,
+      "width_calls_after": 31794,
+      "font_metrics_calls_before": 20150,
+      "font_metrics_calls_after": 20150
+    }
+  ]
+}
+
+=== sample counts [samples-summary.json] ===
+[
+  {
+    "phase": "before",
+    "workload": "launcher",
+    "main_samples": 542,
+    "layout_samples": 542,
+    "rasterize_samples": 538,
+    "measure_samples": 0,
+    "file": "target/r8/before-launcher.sample.txt",
+    "layout_lines": [
+      {
+        "samples": 440,
+        "line": 31
+      },
+      {
+        "samples": 102,
+        "line": 3626
+      }
+    ],
+    "rasterize_lines": [
+      {
+        "samples": 85,
+        "line": 68
+      },
+      {
+        "samples": 13,
+        "line": 144
+      },
+      {
+        "samples": 11,
+        "line": 210
+      },
+      {
+        "samples": 3,
+        "line": 273
+      },
+      {
+        "samples": 9,
+        "line": 316
+      },
+      {
+        "samples": 2,
+        "line": 388
+      },
+      {
+        "samples": 7,
+        "line": 414
+      },
+      {
+        "samples": 3,
+        "line": 480
+      },
+      {
+        "samples": 5,
+        "line": 530
+      },
+      {
+        "samples": 4,
+        "line": 581
+      },
+      {
+        "samples": 8,
+        "line": 633
+      },
+      {
+        "samples": 1,
+        "line": 677
+      },
+      {
+        "samples": 5,
+        "line": 686
+      },
+      {
+        "samples": 1,
+        "line": 721
+      },
+      {
+        "samples": 3,
+        "line": 729
+      },
+      {
+        "samples": 2,
+        "line": 750
+      },
+      {
+        "samples": 12,
+        "line": 794
+      },
+      {
+        "samples": 3,
+        "line": 864
+      },
+      {
+        "samples": 14,
+        "line": 914
+      },
+      {
+        "samples": 9,
+        "line": 989
+      },
+      {
+        "samples": 5,
+        "line": 1053
+      },
+      {
+        "samples": 7,
+        "line": 1110
+      },
+      {
+        "samples": 6,
+        "line": 1162
+      },
+      {
+        "samples": 7,
+        "line": 1220
+      },
+      {
+        "samples": 2,
+        "line": 1276
+      },
+      {
+        "samples": 9,
+        "line": 1313
+      },
+      {
+        "samples": 8,
+        "line": 1351
+      },
+      {
+        "samples": 2,
+        "line": 1390
+      },
+      {
+        "samples": 1,
+        "line": 1423
+      },
+      {
+        "samples": 1,
+        "line": 1433
+      },
+      {
+        "samples": 1,
+        "line": 1449
+      },
+      {
+        "samples": 14,
+        "line": 1466
+      },
+      {
+        "samples": 6,
+        "line": 1539
+      },
+      {
+        "samples": 14,
+        "line": 1601
+      },
+      {
+        "samples": 2,
+        "line": 1683
+      },
+      {
+        "samples": 8,
+        "line": 1717
+      },
+      {
+        "samples": 4,
+        "line": 1781
+      },
+      {
+        "samples": 6,
+        "line": 1838
+      },
+      {
+        "samples": 3,
+        "line": 1902
+      },
+      {
+        "samples": 6,
+        "line": 1925
+      },
+      {
+        "samples": 1,
+        "line": 1977
+      },
+      {
+        "samples": 3,
+        "line": 2013
+      },
+      {
+        "samples": 2,
+        "line": 2034
+      },
+      {
+        "samples": 2,
+        "line": 2062
+      },
+      {
+        "samples": 2,
+        "line": 2096
+      },
+      {
+        "samples": 1,
+        "line": 2114
+      },
+      {
+        "samples": 3,
+        "line": 2140
+      },
+      {
+        "samples": 1,
+        "line": 2180
+      },
+      {
+        "samples": 1,
+        "line": 2198
+      },
+      {
+        "samples": 1,
+        "line": 2226
+      },
+      {
+        "samples": 2,
+        "line": 2250
+      },
+      {
+        "samples": 1,
+        "line": 2284
+      },
+      {
+        "samples": 1,
+        "line": 2305
+      },
+      {
+        "samples": 2,
+        "line": 2323
+      },
+      {
+        "samples": 1,
+        "line": 2346
+      },
+      {
+        "samples": 1,
+        "line": 2370
+      },
+      {
+        "samples": 2,
+        "line": 2400
+      },
+      {
+        "samples": 1,
+        "line": 2433
+      },
+      {
+        "samples": 1,
+        "line": 2447
+      },
+      {
+        "samples": 3,
+        "line": 2472
+      },
+      {
+        "samples": 3,
+        "line": 2503
+      },
+      {
+        "samples": 3,
+        "line": 2550
+      },
+      {
+        "samples": 2,
+        "line": 2600
+      },
+      {
+        "samples": 2,
+        "line": 2632
+      },
+      {
+        "samples": 1,
+        "line": 2680
+      },
+      {
+        "samples": 2,
+        "line": 2695
+      },
+      {
+        "samples": 2,
+        "line": 2741
+      },
+      {
+        "samples": 7,
+        "line": 2777
+      },
+      {
+        "samples": 2,
+        "line": 2785
+      },
+      {
+        "samples": 8,
+        "line": 2830
+      },
+      {
+        "samples": 7,
+        "line": 2885
+      },
+      {
+        "samples": 1,
+        "line": 2921
+      },
+      {
+        "samples": 5,
+        "line": 2943
+      },
+      {
+        "samples": 2,
+        "line": 2996
+      },
+      {
+        "samples": 5,
+        "line": 3036
+      },
+      {
+        "samples": 1,
+        "line": 3077
+      },
+      {
+        "samples": 7,
+        "line": 3109
+      },
+      {
+        "samples": 4,
+        "line": 3163
+      },
+      {
+        "samples": 3,
+        "line": 3209
+      },
+      {
+        "samples": 1,
+        "line": 3227
+      },
+      {
+        "samples": 2,
+        "line": 3244
+      },
+      {
+        "samples": 1,
+        "line": 3248
+      },
+      {
+        "samples": 1,
+        "line": 3269
+      },
+      {
+        "samples": 3,
+        "line": 3288
+      },
+      {
+        "samples": 1,
+        "line": 3326
+      },
+      {
+        "samples": 3,
+        "line": 3342
+      },
+      {
+        "samples": 2,
+        "line": 3393
+      },
+      {
+        "samples": 1,
+        "line": 3411
+      },
+      {
+        "samples": 2,
+        "line": 3440
+      },
+      {
+        "samples": 1,
+        "line": 3479
+      },
+      {
+        "samples": 2,
+        "line": 3506
+      },
+      {
+        "samples": 1,
+        "line": 3548
+      },
+      {
+        "samples": 1,
+        "line": 3560
+      },
+      {
+        "samples": 1,
+        "line": 3583
+      },
+      {
+        "samples": 1,
+        "line": 3587
+      },
+      {
+        "samples": 1,
+        "line": 3596
+      },
+      {
+        "samples": 1,
+        "line": 3617
+      },
+      {
+        "samples": 10,
+        "line": 3655
+      },
+      {
+        "samples": 4,
+        "line": 3707
+      },
+      {
+        "samples": 5,
+        "line": 3771
+      },
+      {
+        "samples": 1,
+        "line": 3823
+      },
+      {
+        "samples": 6,
+        "line": 3845
+      },
+      {
+        "samples": 4,
+        "line": 3901
+      },
+      {
+        "samples": 1,
+        "line": 3959
+      },
+      {
+        "samples": 3,
+        "line": 3980
+      },
+      {
+        "samples": 1,
+        "line": 4032
+      },
+      {
+        "samples": 2,
+        "line": 4047
+      },
+      {
+        "samples": 1,
+        "line": 4067
+      },
+      {
+        "samples": 2,
+        "line": 4081
+      },
+      {
+        "samples": 10,
+        "line": 4112
+      },
+      {
+        "samples": 2,
+        "line": 4181
+      },
+      {
+        "samples": 5,
+        "line": 4219
+      },
+      {
+        "samples": 2,
+        "line": 4277
+      },
+      {
+        "samples": 4,
+        "line": 4315
+      },
+      {
+        "samples": 3,
+        "line": 4364
+      },
+      {
+        "samples": 3,
+        "line": 4414
+      },
+      {
+        "samples": 1,
+        "line": 4472
+      },
+      {
+        "samples": 1,
+        "line": 4491
+      },
+      {
+        "samples": 2,
+        "line": 4517
+      },
+      {
+        "samples": 2,
+        "line": 4544
+      },
+      {
+        "samples": 1,
+        "line": 4565
+      },
+      {
+        "samples": 1,
+        "line": 4597
+      },
+      {
+        "samples": 1,
+        "line": 4625
+      },
+      {
+        "samples": 2,
+        "line": 4659
+      },
+      {
+        "samples": 1,
+        "line": 4702
+      },
+      {
+        "samples": 1,
+        "line": 4727
+      },
+      {
+        "samples": 3,
+        "line": 4735
+      },
+      {
+        "samples": 1,
+        "line": 4773
+      },
+      {
+        "samples": 1,
+        "line": 4791
+      },
+      {
+        "samples": 1,
+        "line": 4825
+      },
+      {
+        "samples": 5,
+        "line": 4849
+      },
+      {
+        "samples": 3,
+        "line": 4904
+      },
+      {
+        "samples": 1,
+        "line": 4952
+      },
+      {
+        "samples": 1,
+        "line": 4966
+      },
+      {
+        "samples": 2,
+        "line": 4986
+      },
+      {
+        "samples": 1,
+        "line": 5018
+      }
+    ],
+    "measure_lines": []
+  },
+  {
+    "phase": "before",
+    "workload": "sidebar1000",
+    "main_samples": 545,
+    "layout_samples": 544,
+    "rasterize_samples": 534,
+    "measure_samples": 0,
+    "file": "target/r8/before-sidebar1000.sample.txt",
+    "layout_lines": [
+      {
+        "samples": 544,
+        "line": 31
+      }
+    ],
+    "rasterize_lines": [
+      {
+        "samples": 62,
+        "line": 72
+      },
+      {
+        "samples": 4,
+        "line": 147
+      },
+      {
+        "samples": 11,
+        "line": 206
+      },
+      {
+        "samples": 9,
+        "line": 281
+      },
+      {
+        "samples": 11,
+        "line": 339
+      },
+      {
+        "samples": 2,
+        "line": 393
+      },
+      {
+        "samples": 5,
+        "line": 414
+      },
+      {
+        "samples": 3,
+        "line": 460
+      },
+      {
+        "samples": 5,
+        "line": 503
+      },
+      {
+        "samples": 2,
+        "line": 558
+      },
+      {
+        "samples": 1,
+        "line": 594
+      },
+      {
+        "samples": 1,
+        "line": 615
+      },
+      {
+        "samples": 6,
+        "line": 645
+      },
+      {
+        "samples": 1,
+        "line": 666
+      },
+      {
+        "samples": 5,
+        "line": 678
+      },
+      {
+        "samples": 22,
+        "line": 710
+      },
+      {
+        "samples": 2,
+        "line": 799
+      },
+      {
+        "samples": 6,
+        "line": 844
+      },
+      {
+        "samples": 3,
+        "line": 900
+      },
+      {
+        "samples": 4,
+        "line": 952
+      },
+      {
+        "samples": 4,
+        "line": 1001
+      },
+      {
+        "samples": 5,
+        "line": 1054
+      },
+      {
+        "samples": 3,
+        "line": 1101
+      },
+      {
+        "samples": 7,
+        "line": 1144
+      },
+      {
+        "samples": 1,
+        "line": 1211
+      },
+      {
+        "samples": 1,
+        "line": 1240
+      },
+      {
+        "samples": 11,
+        "line": 1256
+      },
+      {
+        "samples": 7,
+        "line": 1297
+      },
+      {
+        "samples": 8,
+        "line": 1347
+      },
+      {
+        "samples": 3,
+        "line": 1407
+      },
+      {
+        "samples": 1,
+        "line": 1450
+      },
+      {
+        "samples": 5,
+        "line": 1458
+      },
+      {
+        "samples": 4,
+        "line": 1513
+      },
+      {
+        "samples": 6,
+        "line": 1557
+      },
+      {
+        "samples": 2,
+        "line": 1614
+      },
+      {
+        "samples": 5,
+        "line": 1650
+      },
+      {
+        "samples": 1,
+        "line": 1702
+      },
+      {
+        "samples": 14,
+        "line": 1723
+      },
+      {
+        "samples": 9,
+        "line": 1779
+      },
+      {
+        "samples": 1,
+        "line": 1794
+      },
+      {
+        "samples": 14,
+        "line": 1813
+      },
+      {
+        "samples": 7,
+        "line": 1898
+      },
+      {
+        "samples": 5,
+        "line": 1956
+      },
+      {
+        "samples": 1,
+        "line": 1983
+      },
+      {
+        "samples": 4,
+        "line": 2003
+      },
+      {
+        "samples": 1,
+        "line": 2029
+      },
+      {
+        "samples": 3,
+        "line": 2055
+      },
+      {
+        "samples": 1,
+        "line": 2109
+      },
+      {
+        "samples": 8,
+        "line": 2132
+      },
+      {
+        "samples": 1,
+        "line": 2172
+      },
+      {
+        "samples": 4,
+        "line": 2193
+      },
+      {
+        "samples": 3,
+        "line": 2226
+      },
+      {
+        "samples": 2,
+        "line": 2248
+      },
+      {
+        "samples": 5,
+        "line": 2253
+      },
+      {
+        "samples": 2,
+        "line": 2288
+      },
+      {
+        "samples": 2,
+        "line": 2289
+      },
+      {
+        "samples": 1,
+        "line": 2291
+      },
+      {
+        "samples": 6,
+        "line": 2303
+      },
+      {
+        "samples": 1,
+        "line": 2372
+      },
+      {
+        "samples": 6,
+        "line": 2424
+      },
+      {
+        "samples": 2,
+        "line": 2487
+      },
+      {
+        "samples": 3,
+        "line": 2509
+      },
+      {
+        "samples": 3,
+        "line": 2532
+      },
+      {
+        "samples": 3,
+        "line": 2565
+      },
+      {
+        "samples": 3,
+        "line": 2609
+      },
+      {
+        "samples": 2,
+        "line": 2628
+      },
+      {
+        "samples": 1,
+        "line": 2646
+      },
+      {
+        "samples": 1,
+        "line": 2675
+      },
+      {
+        "samples": 1,
+        "line": 2694
+      },
+      {
+        "samples": 6,
+        "line": 2706
+      },
+      {
+        "samples": 6,
+        "line": 2757
+      },
+      {
+        "samples": 3,
+        "line": 2802
+      },
+      {
+        "samples": 1,
+        "line": 2839
+      },
+      {
+        "samples": 2,
+        "line": 2847
+      },
+      {
+        "samples": 1,
+        "line": 2876
+      },
+      {
+        "samples": 1,
+        "line": 2897
+      },
+      {
+        "samples": 2,
+        "line": 2911
+      },
+      {
+        "samples": 1,
+        "line": 2939
+      },
+      {
+        "samples": 1,
+        "line": 2962
+      },
+      {
+        "samples": 16,
+        "line": 2981
+      },
+      {
+        "samples": 4,
+        "line": 3009
+      },
+      {
+        "samples": 1,
+        "line": 3044
+      },
+      {
+        "samples": 10,
+        "line": 3053
+      },
+      {
+        "samples": 4,
+        "line": 3069
+      },
+      {
+        "samples": 3,
+        "line": 3082
+      },
+      {
+        "samples": 2,
+        "line": 3104
+      },
+      {
+        "samples": 1,
+        "line": 3125
+      },
+      {
+        "samples": 2,
+        "line": 3164
+      },
+      {
+        "samples": 1,
+        "line": 3200
+      },
+      {
+        "samples": 1,
+        "line": 3218
+      },
+      {
+        "samples": 1,
+        "line": 3231
+      },
+      {
+        "samples": 1,
+        "line": 3249
+      },
+      {
+        "samples": 1,
+        "line": 3274
+      },
+      {
+        "samples": 1,
+        "line": 3300
+      },
+      {
+        "samples": 1,
+        "line": 3319
+      },
+      {
+        "samples": 1,
+        "line": 3347
+      },
+      {
+        "samples": 1,
+        "line": 3362
+      },
+      {
+        "samples": 1,
+        "line": 3378
+      },
+      {
+        "samples": 2,
+        "line": 3396
+      },
+      {
+        "samples": 1,
+        "line": 3450
+      },
+      {
+        "samples": 1,
+        "line": 3459
+      },
+      {
+        "samples": 1,
+        "line": 3494
+      },
+      {
+        "samples": 1,
+        "line": 3511
+      },
+      {
+        "samples": 2,
+        "line": 3545
+      },
+      {
+        "samples": 1,
+        "line": 3582
+      },
+      {
+        "samples": 1,
+        "line": 3616
+      },
+      {
+        "samples": 1,
+        "line": 3626
+      },
+      {
+        "samples": 2,
+        "line": 3667
+      },
+      {
+        "samples": 1,
+        "line": 3717
+      },
+      {
+        "samples": 1,
+        "line": 3740
+      },
+      {
+        "samples": 1,
+        "line": 3780
+      },
+      {
+        "samples": 2,
+        "line": 3820
+      },
+      {
+        "samples": 1,
+        "line": 3863
+      },
+      {
+        "samples": 1,
+        "line": 3887
+      },
+      {
+        "samples": 1,
+        "line": 3903
+      },
+      {
+        "samples": 4,
+        "line": 3936
+      },
+      {
+        "samples": 1,
+        "line": 3972
+      },
+      {
+        "samples": 2,
+        "line": 3977
+      },
+      {
+        "samples": 2,
+        "line": 4009
+      },
+      {
+        "samples": 4,
+        "line": 4057
+      },
+      {
+        "samples": 2,
+        "line": 4110
+      },
+      {
+        "samples": 1,
+        "line": 4159
+      },
+      {
+        "samples": 4,
+        "line": 4209
+      },
+      {
+        "samples": 3,
+        "line": 4219
+      },
+      {
+        "samples": 2,
+        "line": 4236
+      },
+      {
+        "samples": 6,
+        "line": 4261
+      },
+      {
+        "samples": 3,
+        "line": 4281
+      },
+      {
+        "samples": 3,
+        "line": 4301
+      },
+      {
+        "samples": 2,
+        "line": 4343
+      },
+      {
+        "samples": 1,
+        "line": 4380
+      },
+      {
+        "samples": 11,
+        "line": 4406
+      },
+      {
+        "samples": 5,
+        "line": 4448
+      },
+      {
+        "samples": 3,
+        "line": 4466
+      },
+      {
+        "samples": 4,
+        "line": 4522
+      },
+      {
+        "samples": 1,
+        "line": 4562
+      },
+      {
+        "samples": 1,
+        "line": 4586
+      },
+      {
+        "samples": 1,
+        "line": 4605
+      },
+      {
+        "samples": 4,
+        "line": 4628
+      },
+      {
+        "samples": 3,
+        "line": 4670
+      },
+      {
+        "samples": 1,
+        "line": 4713
+      },
+      {
+        "samples": 1,
+        "line": 4738
+      },
+      {
+        "samples": 1,
+        "line": 4751
+      },
+      {
+        "samples": 1,
+        "line": 4767
+      }
+    ],
+    "measure_lines": []
+  },
+  {
+    "phase": "before",
+    "workload": "expanded",
+    "main_samples": 538,
+    "layout_samples": 538,
+    "rasterize_samples": 536,
+    "measure_samples": 0,
+    "file": "target/r8/before-expanded.sample.txt",
+    "layout_lines": [
+      {
+        "samples": 538,
+        "line": 31
+      }
+    ],
+    "rasterize_lines": [
+      {
+        "samples": 38,
+        "line": 77
+      },
+      {
+        "samples": 2,
+        "line": 187
+      },
+      {
+        "samples": 2,
+        "line": 194
+      },
+      {
+        "samples": 12,
+        "line": 216
+      },
+      {
+        "samples": 9,
+        "line": 316
+      },
+      {
+        "samples": 12,
+        "line": 373
+      },
+      {
+        "samples": 7,
+        "line": 461
+      },
+      {
+        "samples": 6,
+        "line": 514
+      },
+      {
+        "samples": 5,
+        "line": 571
+      },
+      {
+        "samples": 7,
+        "line": 622
+      },
+      {
+        "samples": 3,
+        "line": 700
+      },
+      {
+        "samples": 1,
+        "line": 722
+      },
+      {
+        "samples": 1,
+        "line": 734
+      },
+      {
+        "samples": 1,
+        "line": 747
+      },
+      {
+        "samples": 12,
+        "line": 775
+      },
+      {
+        "samples": 1,
+        "line": 856
+      },
+      {
+        "samples": 8,
+        "line": 879
+      },
+      {
+        "samples": 2,
+        "line": 957
+      },
+      {
+        "samples": 1,
+        "line": 981
+      },
+      {
+        "samples": 5,
+        "line": 989
+      },
+      {
+        "samples": 5,
+        "line": 1059
+      },
+      {
+        "samples": 6,
+        "line": 1095
+      },
+      {
+        "samples": 2,
+        "line": 1171
+      },
+      {
+        "samples": 4,
+        "line": 1194
+      },
+      {
+        "samples": 2,
+        "line": 1251
+      },
+      {
+        "samples": 1,
+        "line": 1271
+      },
+      {
+        "samples": 1,
+        "line": 1279
+      },
+      {
+        "samples": 36,
+        "line": 1294
+      },
+      {
+        "samples": 7,
+        "line": 1372
+      },
+      {
+        "samples": 3,
+        "line": 1425
+      },
+      {
+        "samples": 4,
+        "line": 1444
+      },
+      {
+        "samples": 4,
+        "line": 1483
+      },
+      {
+        "samples": 7,
+        "line": 1519
+      },
+      {
+        "samples": 1,
+        "line": 1572
+      },
+      {
+        "samples": 7,
+        "line": 1587
+      },
+      {
+        "samples": 2,
+        "line": 1652
+      },
+      {
+        "samples": 101,
+        "line": 1686
+      },
+      {
+        "samples": 15,
+        "line": 1746
+      },
+      {
+        "samples": 1,
+        "line": 1796
+      },
+      {
+        "samples": 28,
+        "line": 1804
+      },
+      {
+        "samples": 1,
+        "line": 1879
+      },
+      {
+        "samples": 24,
+        "line": 1906
+      },
+      {
+        "samples": 1,
+        "line": 1983
+      },
+      {
+        "samples": 20,
+        "line": 1998
+      },
+      {
+        "samples": 14,
+        "line": 2062
+      },
+      {
+        "samples": 2,
+        "line": 2116
+      },
+      {
+        "samples": 2,
+        "line": 2145
+      },
+      {
+        "samples": 2,
+        "line": 2166
+      },
+      {
+        "samples": 2,
+        "line": 2180
+      },
+      {
+        "samples": 1,
+        "line": 2219
+      },
+      {
+        "samples": 2,
+        "line": 2230
+      },
+      {
+        "samples": 1,
+        "line": 2266
+      },
+      {
+        "samples": 3,
+        "line": 2285
+      },
+      {
+        "samples": 1,
+        "line": 2332
+      },
+      {
+        "samples": 1,
+        "line": 2357
+      },
+      {
+        "samples": 2,
+        "line": 2403
+      },
+      {
+        "samples": 1,
+        "line": 2430
+      },
+      {
+        "samples": 4,
+        "line": 2481
+      },
+      {
+        "samples": 1,
+        "line": 2531
+      },
+      {
+        "samples": 2,
+        "line": 2546
+      },
+      {
+        "samples": 1,
+        "line": 2567
+      },
+      {
+        "samples": 3,
+        "line": 2575
+      },
+      {
+        "samples": 1,
+        "line": 2611
+      },
+      {
+        "samples": 1,
+        "line": 2620
+      },
+      {
+        "samples": 1,
+        "line": 2651
+      },
+      {
+        "samples": 2,
+        "line": 2681
+      },
+      {
+        "samples": 1,
+        "line": 2713
+      },
+      {
+        "samples": 1,
+        "line": 2734
+      },
+      {
+        "samples": 4,
+        "line": 2769
+      },
+      {
+        "samples": 4,
+        "line": 2806
+      },
+      {
+        "samples": 1,
+        "line": 2815
+      },
+      {
+        "samples": 1,
+        "line": 2835
+      },
+      {
+        "samples": 1,
+        "line": 2862
+      },
+      {
+        "samples": 1,
+        "line": 2880
+      },
+      {
+        "samples": 18,
+        "line": 2904
+      },
+      {
+        "samples": 11,
+        "line": 2965
+      },
+      {
+        "samples": 2,
+        "line": 2985
+      },
+      {
+        "samples": 1,
+        "line": 3022
+      },
+      {
+        "samples": 2,
+        "line": 3049
+      },
+      {
+        "samples": 1,
+        "line": 3067
+      },
+      {
+        "samples": 1,
+        "line": 3086
+      },
+      {
+        "samples": 1,
+        "line": 3105
+      },
+      {
+        "samples": 3,
+        "line": 3130
+      },
+      {
+        "samples": 1,
+        "line": 3148
+      },
+      {
+        "samples": 1,
+        "line": 3173
+      },
+      {
+        "samples": 1,
+        "line": 3181
+      },
+      {
+        "samples": 4,
+        "line": 3184
+      },
+      {
+        "samples": 3,
+        "line": 3217
+      },
+      {
+        "samples": 1,
+        "line": 3258
+      },
+      {
+        "samples": 2,
+        "line": 3278
+      },
+      {
+        "samples": 1,
+        "line": 3313
+      }
+    ],
+    "measure_lines": []
+  },
+  {
+    "phase": "after",
+    "workload": "launcher",
+    "main_samples": 533,
+    "layout_samples": 533,
+    "rasterize_samples": 0,
+    "measure_samples": 529,
+    "file": "target/r8/after-launcher.sample.txt",
+    "layout_lines": [
+      {
+        "samples": 185,
+        "line": 31
+      },
+      {
+        "samples": 182,
+        "line": 2247
+      },
+      {
+        "samples": 92,
+        "line": 4636
+      },
+      {
+        "samples": 74,
+        "line": 6247
+      }
+    ],
+    "rasterize_lines": [],
+    "measure_lines": [
+      {
+        "samples": 4,
+        "line": 63
+      },
+      {
+        "samples": 4,
+        "line": 105
+      },
+      {
+        "samples": 4,
+        "line": 136
+      },
+      {
+        "samples": 3,
+        "line": 164
+      },
+      {
+        "samples": 2,
+        "line": 182
+      },
+      {
+        "samples": 4,
+        "line": 204
+      },
+      {
+        "samples": 3,
+        "line": 243
+      },
+      {
+        "samples": 2,
+        "line": 273
+      },
+      {
+        "samples": 2,
+        "line": 294
+      },
+      {
+        "samples": 2,
+        "line": 320
+      },
+      {
+        "samples": 1,
+        "line": 343
+      },
+      {
+        "samples": 8,
+        "line": 363
+      },
+      {
+        "samples": 7,
+        "line": 444
+      },
+      {
+        "samples": 6,
+        "line": 502
+      },
+      {
+        "samples": 5,
+        "line": 575
+      },
+      {
+        "samples": 2,
+        "line": 640
+      },
+      {
+        "samples": 11,
+        "line": 681
+      },
+      {
+        "samples": 7,
+        "line": 776
+      },
+      {
+        "samples": 7,
+        "line": 844
+      },
+      {
+        "samples": 5,
+        "line": 933
+      },
+      {
+        "samples": 4,
+        "line": 1018
+      },
+      {
+        "samples": 9,
+        "line": 1085
+      },
+      {
+        "samples": 6,
+        "line": 1171
+      },
+      {
+        "samples": 3,
+        "line": 1237
+      },
+      {
+        "samples": 2,
+        "line": 1276
+      },
+      {
+        "samples": 1,
+        "line": 1294
+      },
+      {
+        "samples": 8,
+        "line": 1316
+      },
+      {
+        "samples": 1,
+        "line": 1398
+      },
+      {
+        "samples": 1,
+        "line": 1415
+      },
+      {
+        "samples": 1,
+        "line": 1433
+      },
+      {
+        "samples": 1,
+        "line": 1449
+      },
+      {
+        "samples": 2,
+        "line": 1472
+      },
+      {
+        "samples": 8,
+        "line": 1506
+      },
+      {
+        "samples": 8,
+        "line": 1566
+      },
+      {
+        "samples": 4,
+        "line": 1630
+      },
+      {
+        "samples": 2,
+        "line": 1676
+      },
+      {
+        "samples": 2,
+        "line": 1707
+      },
+      {
+        "samples": 4,
+        "line": 1738
+      },
+      {
+        "samples": 4,
+        "line": 1789
+      },
+      {
+        "samples": 3,
+        "line": 1825
+      },
+      {
+        "samples": 3,
+        "line": 1860
+      },
+      {
+        "samples": 2,
+        "line": 1907
+      },
+      {
+        "samples": 1,
+        "line": 1940
+      },
+      {
+        "samples": 1,
+        "line": 1963
+      },
+      {
+        "samples": 1,
+        "line": 1985
+      },
+      {
+        "samples": 3,
+        "line": 2023
+      },
+      {
+        "samples": 1,
+        "line": 2069
+      },
+      {
+        "samples": 2,
+        "line": 2090
+      },
+      {
+        "samples": 1,
+        "line": 2118
+      },
+      {
+        "samples": 1,
+        "line": 2146
+      },
+      {
+        "samples": 1,
+        "line": 2166
+      },
+      {
+        "samples": 1,
+        "line": 2181
+      },
+      {
+        "samples": 2,
+        "line": 2211
+      },
+      {
+        "samples": 1,
+        "line": 2236
+      },
+      {
+        "samples": 6,
+        "line": 2284
+      },
+      {
+        "samples": 4,
+        "line": 2352
+      },
+      {
+        "samples": 3,
+        "line": 2405
+      },
+      {
+        "samples": 2,
+        "line": 2447
+      },
+      {
+        "samples": 1,
+        "line": 2472
+      },
+      {
+        "samples": 4,
+        "line": 2503
+      },
+      {
+        "samples": 4,
+        "line": 2531
+      },
+      {
+        "samples": 4,
+        "line": 2571
+      },
+      {
+        "samples": 2,
+        "line": 2600
+      },
+      {
+        "samples": 5,
+        "line": 2622
+      },
+      {
+        "samples": 5,
+        "line": 2682
+      },
+      {
+        "samples": 4,
+        "line": 2740
+      },
+      {
+        "samples": 4,
+        "line": 2789
+      },
+      {
+        "samples": 2,
+        "line": 2849
+      },
+      {
+        "samples": 3,
+        "line": 2886
+      },
+      {
+        "samples": 3,
+        "line": 2910
+      },
+      {
+        "samples": 2,
+        "line": 2945
+      },
+      {
+        "samples": 2,
+        "line": 2966
+      },
+      {
+        "samples": 2,
+        "line": 2989
+      },
+      {
+        "samples": 7,
+        "line": 3027
+      },
+      {
+        "samples": 5,
+        "line": 3111
+      },
+      {
+        "samples": 4,
+        "line": 3179
+      },
+      {
+        "samples": 4,
+        "line": 3230
+      },
+      {
+        "samples": 3,
+        "line": 3286
+      },
+      {
+        "samples": 4,
+        "line": 3338
+      },
+      {
+        "samples": 4,
+        "line": 3362
+      },
+      {
+        "samples": 3,
+        "line": 3392
+      },
+      {
+        "samples": 2,
+        "line": 3421
+      },
+      {
+        "samples": 2,
+        "line": 3444
+      },
+      {
+        "samples": 8,
+        "line": 3477
+      },
+      {
+        "samples": 3,
+        "line": 3555
+      },
+      {
+        "samples": 3,
+        "line": 3590
+      },
+      {
+        "samples": 2,
+        "line": 3634
+      },
+      {
+        "samples": 1,
+        "line": 3661
+      },
+      {
+        "samples": 6,
+        "line": 3685
+      },
+      {
+        "samples": 6,
+        "line": 3752
+      },
+      {
+        "samples": 3,
+        "line": 3810
+      },
+      {
+        "samples": 1,
+        "line": 3852
+      },
+      {
+        "samples": 3,
+        "line": 3870
+      },
+      {
+        "samples": 2,
+        "line": 3911
+      },
+      {
+        "samples": 4,
+        "line": 3940
+      },
+      {
+        "samples": 2,
+        "line": 3994
+      },
+      {
+        "samples": 2,
+        "line": 4019
+      },
+      {
+        "samples": 1,
+        "line": 4046
+      },
+      {
+        "samples": 2,
+        "line": 4058
+      },
+      {
+        "samples": 1,
+        "line": 4082
+      },
+      {
+        "samples": 1,
+        "line": 4100
+      },
+      {
+        "samples": 3,
+        "line": 4125
+      },
+      {
+        "samples": 1,
+        "line": 4156
+      },
+      {
+        "samples": 4,
+        "line": 4167
+      },
+      {
+        "samples": 2,
+        "line": 4209
+      },
+      {
+        "samples": 1,
+        "line": 4237
+      },
+      {
+        "samples": 1,
+        "line": 4256
+      },
+      {
+        "samples": 1,
+        "line": 4272
+      },
+      {
+        "samples": 1,
+        "line": 4300
+      },
+      {
+        "samples": 3,
+        "line": 4330
+      },
+      {
+        "samples": 1,
+        "line": 4370
+      },
+      {
+        "samples": 1,
+        "line": 4383
+      },
+      {
+        "samples": 2,
+        "line": 4410
+      },
+      {
+        "samples": 1,
+        "line": 4441
+      },
+      {
+        "samples": 1,
+        "line": 4459
+      },
+      {
+        "samples": 1,
+        "line": 4484
+      },
+      {
+        "samples": 1,
+        "line": 4510
+      },
+      {
+        "samples": 1,
+        "line": 4539
+      },
+      {
+        "samples": 1,
+        "line": 4544
+      },
+      {
+        "samples": 2,
+        "line": 4575
+      },
+      {
+        "samples": 1,
+        "line": 4610
+      },
+      {
+        "samples": 4,
+        "line": 4673
+      },
+      {
+        "samples": 3,
+        "line": 4723
+      },
+      {
+        "samples": 2,
+        "line": 4764
+      },
+      {
+        "samples": 2,
+        "line": 4798
+      },
+      {
+        "samples": 1,
+        "line": 4825
+      },
+      {
+        "samples": 2,
+        "line": 4845
+      },
+      {
+        "samples": 2,
+        "line": 4871
+      },
+      {
+        "samples": 1,
+        "line": 4897
+      },
+      {
+        "samples": 1,
+        "line": 4912
+      },
+      {
+        "samples": 1,
+        "line": 4931
+      },
+      {
+        "samples": 3,
+        "line": 4951
+      },
+      {
+        "samples": 2,
+        "line": 4993
+      },
+      {
+        "samples": 1,
+        "line": 5019
+      },
+      {
+        "samples": 1,
+        "line": 5035
+      },
+      {
+        "samples": 1,
+        "line": 5062
+      },
+      {
+        "samples": 2,
+        "line": 5094
+      },
+      {
+        "samples": 1,
+        "line": 5122
+      },
+      {
+        "samples": 1,
+        "line": 5140
+      },
+      {
+        "samples": 1,
+        "line": 5159
+      },
+      {
+        "samples": 4,
+        "line": 5183
+      },
+      {
+        "samples": 3,
+        "line": 5232
+      },
+      {
+        "samples": 3,
+        "line": 5265
+      },
+      {
+        "samples": 1,
+        "line": 5319
+      },
+      {
+        "samples": 1,
+        "line": 5333
+      },
+      {
+        "samples": 2,
+        "line": 5356
+      },
+      {
+        "samples": 2,
+        "line": 5374
+      },
+      {
+        "samples": 2,
+        "line": 5393
+      },
+      {
+        "samples": 1,
+        "line": 5413
+      },
+      {
+        "samples": 3,
+        "line": 5447
+      },
+      {
+        "samples": 3,
+        "line": 5478
+      },
+      {
+        "samples": 2,
+        "line": 5513
+      },
+      {
+        "samples": 2,
+        "line": 5553
+      },
+      {
+        "samples": 2,
+        "line": 5588
+      },
+      {
+        "samples": 2,
+        "line": 5628
+      },
+      {
+        "samples": 1,
+        "line": 5667
+      },
+      {
+        "samples": 1,
+        "line": 5693
+      },
+      {
+        "samples": 1,
+        "line": 5718
+      },
+      {
+        "samples": 2,
+        "line": 5740
+      },
+      {
+        "samples": 1,
+        "line": 5782
+      },
+      {
+        "samples": 4,
+        "line": 5815
+      },
+      {
+        "samples": 1,
+        "line": 5867
+      },
+      {
+        "samples": 1,
+        "line": 5885
+      },
+      {
+        "samples": 1,
+        "line": 5904
+      },
+      {
+        "samples": 1,
+        "line": 5925
+      },
+      {
+        "samples": 2,
+        "line": 5960
+      },
+      {
+        "samples": 1,
+        "line": 6005
+      },
+      {
+        "samples": 1,
+        "line": 6026
+      },
+      {
+        "samples": 1,
+        "line": 6052
+      },
+      {
+        "samples": 1,
+        "line": 6088
+      },
+      {
+        "samples": 1,
+        "line": 6111
+      },
+      {
+        "samples": 1,
+        "line": 6127
+      },
+      {
+        "samples": 1,
+        "line": 6155
+      },
+      {
+        "samples": 1,
+        "line": 6167
+      },
+      {
+        "samples": 1,
+        "line": 6180
+      },
+      {
+        "samples": 1,
+        "line": 6207
+      },
+      {
+        "samples": 1,
+        "line": 6230
+      },
+      {
+        "samples": 3,
+        "line": 6279
+      },
+      {
+        "samples": 3,
+        "line": 6307
+      },
+      {
+        "samples": 2,
+        "line": 6330
+      },
+      {
+        "samples": 1,
+        "line": 6357
+      },
+      {
+        "samples": 1,
+        "line": 6371
+      },
+      {
+        "samples": 2,
+        "line": 6394
+      },
+      {
+        "samples": 1,
+        "line": 6414
+      },
+      {
+        "samples": 1,
+        "line": 6433
+      },
+      {
+        "samples": 1,
+        "line": 6452
+      },
+      {
+        "samples": 5,
+        "line": 6470
+      },
+      {
+        "samples": 3,
+        "line": 6531
+      },
+      {
+        "samples": 1,
+        "line": 6576
+      },
+      {
+        "samples": 3,
+        "line": 6597
+      },
+      {
+        "samples": 3,
+        "line": 6643
+      },
+      {
+        "samples": 2,
+        "line": 6681
+      },
+      {
+        "samples": 2,
+        "line": 6715
+      },
+      {
+        "samples": 1,
+        "line": 6756
+      },
+      {
+        "samples": 4,
+        "line": 6795
+      },
+      {
+        "samples": 1,
+        "line": 6845
+      },
+      {
+        "samples": 1,
+        "line": 6871
+      },
+      {
+        "samples": 1,
+        "line": 6891
+      },
+      {
+        "samples": 6,
+        "line": 6917
+      },
+      {
+        "samples": 1,
+        "line": 6992
+      },
+      {
+        "samples": 1,
+        "line": 7017
+      },
+      {
+        "samples": 4,
+        "line": 7049
+      },
+      {
+        "samples": 2,
+        "line": 7097
+      },
+      {
+        "samples": 1,
+        "line": 7130
+      },
+      {
+        "samples": 3,
+        "line": 7152
+      },
+      {
+        "samples": 2,
+        "line": 7206
+      },
+      {
+        "samples": 2,
+        "line": 7237
+      },
+      {
+        "samples": 2,
+        "line": 7271
+      },
+      {
+        "samples": 1,
+        "line": 7303
+      },
+      {
+        "samples": 1,
+        "line": 7332
+      },
+      {
+        "samples": 1,
+        "line": 7342
+      },
+      {
+        "samples": 1,
+        "line": 7365
+      },
+      {
+        "samples": 1,
+        "line": 7393
+      },
+      {
+        "samples": 1,
+        "line": 7413
+      }
+    ]
+  },
+  {
+    "phase": "after",
+    "workload": "sidebar1000",
+    "main_samples": 594,
+    "layout_samples": 594,
+    "rasterize_samples": 0,
+    "measure_samples": 589,
+    "file": "target/r8/after-sidebar1000.sample.txt",
+    "layout_lines": [
+      {
+        "samples": 316,
+        "line": 31
+      },
+      {
+        "samples": 1,
+        "line": 3856
+      },
+      {
+        "samples": 269,
+        "line": 3879
+      },
+      {
+        "samples": 8,
+        "line": 7535
+      }
+    ],
+    "rasterize_lines": [],
+    "measure_lines": [
+      {
+        "samples": 9,
+        "line": 71
+      },
+      {
+        "samples": 6,
+        "line": 135
+      },
+      {
+        "samples": 5,
+        "line": 187
+      },
+      {
+        "samples": 4,
+        "line": 257
+      },
+      {
+        "samples": 4,
+        "line": 299
+      },
+      {
+        "samples": 2,
+        "line": 345
+      },
+      {
+        "samples": 2,
+        "line": 366
+      },
+      {
+        "samples": 7,
+        "line": 390
+      },
+      {
+        "samples": 6,
+        "line": 454
+      },
+      {
+        "samples": 4,
+        "line": 512
+      },
+      {
+        "samples": 3,
+        "line": 547
+      },
+      {
+        "samples": 3,
+        "line": 585
+      },
+      {
+        "samples": 7,
+        "line": 639
+      },
+      {
+        "samples": 7,
+        "line": 710
+      },
+      {
+        "samples": 5,
+        "line": 782
+      },
+      {
+        "samples": 4,
+        "line": 835
+      },
+      {
+        "samples": 3,
+        "line": 891
+      },
+      {
+        "samples": 1,
+        "line": 933
+      },
+      {
+        "samples": 1,
+        "line": 970
+      },
+      {
+        "samples": 1,
+        "line": 986
+      },
+      {
+        "samples": 1,
+        "line": 1011
+      },
+      {
+        "samples": 1,
+        "line": 1038
+      },
+      {
+        "samples": 9,
+        "line": 1059
+      },
+      {
+        "samples": 8,
+        "line": 1140
+      },
+      {
+        "samples": 7,
+        "line": 1214
+      },
+      {
+        "samples": 7,
+        "line": 1294
+      },
+      {
+        "samples": 6,
+        "line": 1361
+      },
+      {
+        "samples": 2,
+        "line": 1432
+      },
+      {
+        "samples": 5,
+        "line": 1468
+      },
+      {
+        "samples": 5,
+        "line": 1504
+      },
+      {
+        "samples": 3,
+        "line": 1566
+      },
+      {
+        "samples": 2,
+        "line": 1598
+      },
+      {
+        "samples": 2,
+        "line": 1636
+      },
+      {
+        "samples": 3,
+        "line": 1691
+      },
+      {
+        "samples": 2,
+        "line": 1733
+      },
+      {
+        "samples": 2,
+        "line": 1767
+      },
+      {
+        "samples": 1,
+        "line": 1802
+      },
+      {
+        "samples": 3,
+        "line": 1831
+      },
+      {
+        "samples": 1,
+        "line": 1872
+      },
+      {
+        "samples": 1,
+        "line": 1898
+      },
+      {
+        "samples": 1,
+        "line": 1919
+      },
+      {
+        "samples": 1,
+        "line": 1941
+      },
+      {
+        "samples": 1,
+        "line": 1950
+      },
+      {
+        "samples": 1,
+        "line": 1971
+      },
+      {
+        "samples": 1,
+        "line": 2010
+      },
+      {
+        "samples": 1,
+        "line": 2035
+      },
+      {
+        "samples": 1,
+        "line": 2067
+      },
+      {
+        "samples": 1,
+        "line": 2106
+      },
+      {
+        "samples": 1,
+        "line": 2134
+      },
+      {
+        "samples": 8,
+        "line": 2178
+      },
+      {
+        "samples": 1,
+        "line": 2247
+      },
+      {
+        "samples": 9,
+        "line": 2256
+      },
+      {
+        "samples": 8,
+        "line": 2352
+      },
+      {
+        "samples": 8,
+        "line": 2421
+      },
+      {
+        "samples": 6,
+        "line": 2499
+      },
+      {
+        "samples": 10,
+        "line": 2581
+      },
+      {
+        "samples": 7,
+        "line": 2692
+      },
+      {
+        "samples": 5,
+        "line": 2763
+      },
+      {
+        "samples": 5,
+        "line": 2823
+      },
+      {
+        "samples": 2,
+        "line": 2858
+      },
+      {
+        "samples": 1,
+        "line": 2891
+      },
+      {
+        "samples": 1,
+        "line": 2925
+      },
+      {
+        "samples": 1,
+        "line": 2940
+      },
+      {
+        "samples": 13,
+        "line": 2950
+      },
+      {
+        "samples": 12,
+        "line": 3080
+      },
+      {
+        "samples": 5,
+        "line": 3160
+      },
+      {
+        "samples": 5,
+        "line": 3212
+      },
+      {
+        "samples": 3,
+        "line": 3279
+      },
+      {
+        "samples": 2,
+        "line": 3319
+      },
+      {
+        "samples": 6,
+        "line": 3352
+      },
+      {
+        "samples": 5,
+        "line": 3412
+      },
+      {
+        "samples": 4,
+        "line": 3478
+      },
+      {
+        "samples": 4,
+        "line": 3512
+      },
+      {
+        "samples": 4,
+        "line": 3542
+      },
+      {
+        "samples": 3,
+        "line": 3591
+      },
+      {
+        "samples": 3,
+        "line": 3662
+      },
+      {
+        "samples": 2,
+        "line": 3696
+      },
+      {
+        "samples": 2,
+        "line": 3729
+      },
+      {
+        "samples": 1,
+        "line": 3763
+      },
+      {
+        "samples": 1,
+        "line": 3782
+      },
+      {
+        "samples": 1,
+        "line": 3816
+      },
+      {
+        "samples": 1,
+        "line": 3844
+      },
+      {
+        "samples": 1,
+        "line": 3869
+      },
+      {
+        "samples": 10,
+        "line": 3910
+      },
+      {
+        "samples": 9,
+        "line": 3990
+      },
+      {
+        "samples": 8,
+        "line": 4107
+      },
+      {
+        "samples": 6,
+        "line": 4190
+      },
+      {
+        "samples": 5,
+        "line": 4235
+      },
+      {
+        "samples": 7,
+        "line": 4314
+      },
+      {
+        "samples": 4,
+        "line": 4375
+      },
+      {
+        "samples": 3,
+        "line": 4425
+      },
+      {
+        "samples": 2,
+        "line": 4464
+      },
+      {
+        "samples": 1,
+        "line": 4493
+      },
+      {
+        "samples": 1,
+        "line": 4521
+      },
+      {
+        "samples": 4,
+        "line": 4549
+      },
+      {
+        "samples": 1,
+        "line": 4587
+      },
+      {
+        "samples": 1,
+        "line": 4602
+      },
+      {
+        "samples": 11,
+        "line": 4621
+      },
+      {
+        "samples": 8,
+        "line": 4711
+      },
+      {
+        "samples": 7,
+        "line": 4771
+      },
+      {
+        "samples": 6,
+        "line": 4838
+      },
+      {
+        "samples": 4,
+        "line": 4903
+      },
+      {
+        "samples": 2,
+        "line": 4953
+      },
+      {
+        "samples": 5,
+        "line": 4986
+      },
+      {
+        "samples": 4,
+        "line": 5053
+      },
+      {
+        "samples": 4,
+        "line": 5092
+      },
+      {
+        "samples": 4,
+        "line": 5152
+      },
+      {
+        "samples": 4,
+        "line": 5201
+      },
+      {
+        "samples": 3,
+        "line": 5274
+      },
+      {
+        "samples": 3,
+        "line": 5356
+      },
+      {
+        "samples": 2,
+        "line": 5395
+      },
+      {
+        "samples": 2,
+        "line": 5425
+      },
+      {
+        "samples": 1,
+        "line": 5445
+      },
+      {
+        "samples": 1,
+        "line": 5463
+      },
+      {
+        "samples": 1,
+        "line": 5494
+      },
+      {
+        "samples": 1,
+        "line": 5525
+      },
+      {
+        "samples": 1,
+        "line": 5546
+      },
+      {
+        "samples": 6,
+        "line": 5586
+      },
+      {
+        "samples": 5,
+        "line": 5628
+      },
+      {
+        "samples": 5,
+        "line": 5682
+      },
+      {
+        "samples": 2,
+        "line": 5742
+      },
+      {
+        "samples": 1,
+        "line": 5784
+      },
+      {
+        "samples": 6,
+        "line": 5812
+      },
+      {
+        "samples": 4,
+        "line": 5866
+      },
+      {
+        "samples": 3,
+        "line": 5924
+      },
+      {
+        "samples": 3,
+        "line": 5956
+      },
+      {
+        "samples": 2,
+        "line": 5996
+      },
+      {
+        "samples": 7,
+        "line": 6029
+      },
+      {
+        "samples": 5,
+        "line": 6103
+      },
+      {
+        "samples": 4,
+        "line": 6151
+      },
+      {
+        "samples": 3,
+        "line": 6192
+      },
+      {
+        "samples": 2,
+        "line": 6230
+      },
+      {
+        "samples": 1,
+        "line": 6265
+      },
+      {
+        "samples": 1,
+        "line": 6295
+      },
+      {
+        "samples": 1,
+        "line": 6314
+      },
+      {
+        "samples": 1,
+        "line": 6345
+      },
+      {
+        "samples": 1,
+        "line": 6368
+      },
+      {
+        "samples": 1,
+        "line": 6395
+      },
+      {
+        "samples": 1,
+        "line": 6416
+      },
+      {
+        "samples": 8,
+        "line": 6438
+      },
+      {
+        "samples": 7,
+        "line": 6524
+      },
+      {
+        "samples": 4,
+        "line": 6596
+      },
+      {
+        "samples": 2,
+        "line": 6653
+      },
+      {
+        "samples": 2,
+        "line": 6679
+      },
+      {
+        "samples": 1,
+        "line": 6707
+      },
+      {
+        "samples": 4,
+        "line": 6723
+      },
+      {
+        "samples": 3,
+        "line": 6773
+      },
+      {
+        "samples": 2,
+        "line": 6802
+      },
+      {
+        "samples": 1,
+        "line": 6836
+      },
+      {
+        "samples": 1,
+        "line": 6849
+      },
+      {
+        "samples": 3,
+        "line": 6902
+      },
+      {
+        "samples": 3,
+        "line": 6942
+      },
+      {
+        "samples": 2,
+        "line": 6994
+      },
+      {
+        "samples": 2,
+        "line": 7037
+      },
+      {
+        "samples": 1,
+        "line": 7065
+      },
+      {
+        "samples": 1,
+        "line": 7096
+      },
+      {
+        "samples": 3,
+        "line": 7106
+      },
+      {
+        "samples": 3,
+        "line": 7143
+      },
+      {
+        "samples": 2,
+        "line": 7195
+      },
+      {
+        "samples": 1,
+        "line": 7222
+      },
+      {
+        "samples": 1,
+        "line": 7242
+      },
+      {
+        "samples": 1,
+        "line": 7271
+      },
+      {
+        "samples": 1,
+        "line": 7327
+      },
+      {
+        "samples": 1,
+        "line": 7340
+      },
+      {
+        "samples": 1,
+        "line": 7358
+      },
+      {
+        "samples": 1,
+        "line": 7394
+      },
+      {
+        "samples": 1,
+        "line": 7425
+      },
+      {
+        "samples": 1,
+        "line": 7451
+      },
+      {
+        "samples": 1,
+        "line": 7483
+      },
+      {
+        "samples": 1,
+        "line": 7518
+      },
+      {
+        "samples": 2,
+        "line": 7576
+      },
+      {
+        "samples": 2,
+        "line": 7618
+      },
+      {
+        "samples": 1,
+        "line": 7654
+      },
+      {
+        "samples": 1,
+        "line": 7679
+      },
+      {
+        "samples": 1,
+        "line": 7706
+      },
+      {
+        "samples": 1,
+        "line": 7731
+      }
+    ]
+  },
+  {
+    "phase": "after",
+    "workload": "expanded",
+    "main_samples": 562,
+    "layout_samples": 562,
+    "rasterize_samples": 0,
+    "measure_samples": 554,
+    "file": "target/r8/after-expanded.sample.txt",
+    "layout_lines": [
+      {
+        "samples": 562,
+        "line": 31
+      }
+    ],
+    "rasterize_lines": [],
+    "measure_lines": [
+      {
+        "samples": 46,
+        "line": 78
+      },
+      {
+        "samples": 45,
+        "line": 269
+      },
+      {
+        "samples": 39,
+        "line": 471
+      },
+      {
+        "samples": 38,
+        "line": 682
+      },
+      {
+        "samples": 35,
+        "line": 879
+      },
+      {
+        "samples": 6,
+        "line": 1049
+      },
+      {
+        "samples": 3,
+        "line": 1084
+      },
+      {
+        "samples": 2,
+        "line": 1113
+      },
+      {
+        "samples": 2,
+        "line": 1133
+      },
+      {
+        "samples": 2,
+        "line": 1157
+      },
+      {
+        "samples": 34,
+        "line": 1185
+      },
+      {
+        "samples": 24,
+        "line": 1380
+      },
+      {
+        "samples": 23,
+        "line": 1533
+      },
+      {
+        "samples": 21,
+        "line": 1701
+      },
+      {
+        "samples": 16,
+        "line": 1852
+      },
+      {
+        "samples": 1,
+        "line": 1936
+      },
+      {
+        "samples": 2,
+        "line": 1962
+      },
+      {
+        "samples": 1,
+        "line": 1980
+      },
+      {
+        "samples": 1,
+        "line": 1999
+      },
+      {
+        "samples": 22,
+        "line": 2035
+      },
+      {
+        "samples": 19,
+        "line": 2161
+      },
+      {
+        "samples": 1,
+        "line": 2304
+      },
+      {
+        "samples": 20,
+        "line": 2313
+      },
+      {
+        "samples": 18,
+        "line": 2473
+      },
+      {
+        "samples": 14,
+        "line": 2606
+      },
+      {
+        "samples": 8,
+        "line": 2714
+      },
+      {
+        "samples": 2,
+        "line": 2776
+      },
+      {
+        "samples": 2,
+        "line": 2798
+      },
+      {
+        "samples": 1,
+        "line": 2813
+      },
+      {
+        "samples": 1,
+        "line": 2824
+      },
+      {
+        "samples": 3,
+        "line": 2840
+      },
+      {
+        "samples": 3,
+        "line": 2886
+      },
+      {
+        "samples": 3,
+        "line": 2931
+      },
+      {
+        "samples": 2,
+        "line": 2986
+      },
+      {
+        "samples": 2,
+        "line": 3022
+      },
+      {
+        "samples": 2,
+        "line": 3042
+      },
+      {
+        "samples": 2,
+        "line": 3074
+      },
+      {
+        "samples": 2,
+        "line": 3101
+      },
+      {
+        "samples": 2,
+        "line": 3142
+      },
+      {
+        "samples": 1,
+        "line": 3184
+      },
+      {
+        "samples": 2,
+        "line": 3212
+      },
+      {
+        "samples": 5,
+        "line": 3263
+      },
+      {
+        "samples": 3,
+        "line": 3313
+      },
+      {
+        "samples": 2,
+        "line": 3339
+      },
+      {
+        "samples": 2,
+        "line": 3372
+      },
+      {
+        "samples": 2,
+        "line": 3403
+      },
+      {
+        "samples": 1,
+        "line": 3444
+      },
+      {
+        "samples": 4,
+        "line": 3471
+      },
+      {
+        "samples": 2,
+        "line": 3515
+      },
+      {
+        "samples": 1,
+        "line": 3536
+      },
+      {
+        "samples": 1,
+        "line": 3558
+      },
+      {
+        "samples": 1,
+        "line": 3586
+      },
+      {
+        "samples": 4,
+        "line": 3614
+      },
+      {
+        "samples": 1,
+        "line": 3645
+      },
+      {
+        "samples": 1,
+        "line": 3650
+      },
+      {
+        "samples": 3,
+        "line": 3672
+      },
+      {
+        "samples": 1,
+        "line": 3706
+      },
+      {
+        "samples": 1,
+        "line": 3718
+      },
+      {
+        "samples": 1,
+        "line": 3736
+      },
+      {
+        "samples": 7,
+        "line": 3759
+      },
+      {
+        "samples": 7,
+        "line": 3832
+      },
+      {
+        "samples": 5,
+        "line": 3920
+      },
+      {
+        "samples": 5,
+        "line": 3977
+      },
+      {
+        "samples": 1,
+        "line": 4034
+      },
+      {
+        "samples": 6,
+        "line": 4061
+      },
+      {
+        "samples": 5,
+        "line": 4112
+      },
+      {
+        "samples": 4,
+        "line": 4163
+      },
+      {
+        "samples": 3,
+        "line": 4207
+      },
+      {
+        "samples": 2,
+        "line": 4249
+      }
+    ]
+  }
+]
+
+=== static adapter proof [no-raster-proof.json] ===
+[
+  {
+    "command": [
+      "rg",
+      "-n",
+      "rasterize",
+      "crates/bboxy450-term/src/scene.rs",
+      "crates/bboxybook/src/components.rs"
+    ],
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "rg",
+      "-n",
+      "text::measure|fn measure|fn logical_line|fn typographic_bounds",
+      "crates/bboxy450-term/src/scene.rs",
+      "crates/bboxybook/src/components.rs",
+      "crates/bbt-render/src/chrome/text.rs"
+    ],
+    "exit_code": 0,
+    "stdout": "crates/bboxy450-term/src/scene.rs:65:        let width = bbt_render::chrome::text::measure(text, font(style), None)\ncrates/bboxy450-term/src/scene.rs:78:        let metrics = bbt_render::chrome::text::measure(\"Hg\", font(style), None)\ncrates/bboxybook/src/components.rs:32:        bbt_render::chrome::text::measure(text, font(style), None)\ncrates/bboxybook/src/components.rs:43:        let m = bbt_render::chrome::text::measure(\"Hg\", font(style), None)\ncrates/bbt-render/src/chrome/text.rs:44:fn typographic_bounds(line: &objc2_core_text::CTLine) -> NativeMetrics {\ncrates/bbt-render/src/chrome/text.rs:58:pub fn measure(text: &str, style: TextStyle, max_width: Option<f32>) -> Result<TextMetrics> {\ncrates/bbt-render/src/chrome/text.rs:63:pub fn measure(_: &str, _: TextStyle, _: Option<f32>) -> Result<TextMetrics> {\ncrates/bbt-render/src/chrome/text.rs:231:fn logical_line(\ncrates/bbt-render/src/chrome/text.rs:448:    fn measurement_matches_painted_metrics_bit_for_bit() {\ncrates/bbt-render/src/chrome/text.rs:501:    fn measurement_does_not_require_a_raster_canvas() {\n",
+    "stderr": ""
+  }
+]
+
+=== host conditions [host-conditions.json] ===
+{
+  "time": "2026-10-22T20:59:10.463150-07:00",
+  "results": [
+    {
+      "command": [
+        "sysctl",
+        "hw.model",
+        "hw.logicalcpu",
+        "hw.memsize",
+        "machdep.cpu.brand_string"
+      ],
+      "exit_code": 0,
+      "stdout": "hw.model: Mac16,10\nhw.logicalcpu: 10\nhw.memsize: 25769803776\nmachdep.cpu.brand_string: Apple M4\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "uptime"
+      ],
+      "exit_code": 0,
+      "stdout": "20:59  up 2 days,  6:42, 19 users, load averages: 32.35 54.97 65.80\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "pmset",
+        "-g",
+        "therm"
+      ],
+      "exit_code": 0,
+      "stdout": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded\n",
+      "stderr": ""
+    }
+  ],
+  "note": "Shared host with other agent gates; release headless timings are not app frame budgets."
+}
+
+=== rebase/runtime equivalence [rebase.json] ===
+{
+  "original_source_commit": "c0c743741417ac96f337ae5303f83fa03a5a4776",
+  "baseline": "54d9e0f1ddc9d6ca0d9c5fac1683df9dd4a20f81",
+  "origin_before_rebase": "39cdb5c7e09b6a1292b7be41094ae80b37c84731",
+  "incoming_paths": [
+    ".bboxy/runs/r4c-ci.log",
+    ".bboxy/runs/r4c-frame.log",
+    ".bboxy/runs/r4c-galleries.log",
+    "crates/bboxy450-term/src/gpu.rs",
+    "crates/bbt-render/src/chrome/materials.rs"
+  ],
+  "note": "R4c accepted blur reuse only; no text, layout or adapter overlap. Frozen comparison retains original source binaries; exact CI will use rebased source.",
+  "rebased_source_commit": "9755083a087f3ad938106205395c995980e7b463",
+  "same_source_blobs": {
+    "crates/bbt-render/src/chrome/text.rs": true,
+    "crates/bboxy450-term/src/scene.rs": true,
+    "crates/bboxybook/src/components.rs": true
+  },
+  "post_lint_source_commit": "d9d3cff6495d1a0751cad5c52d06b419c87263c5",
+  "test_only_change_after_frozen_binary": "diff --git a/crates/bbt-render/src/chrome/text.rs b/crates/bbt-render/src/chrome/text.rs\nindex c5cf337..d4e555f 100644\n--- a/crates/bbt-render/src/chrome/text.rs\n+++ b/crates/bbt-render/src/chrome/text.rs\n@@ -461,7 +461,6 @@ mod tests {\n                                     weight,\n                                     tracking_em,\n                                     uppercase,\n-                                    ..Default::default()\n                                 };\n                                 for text in [\n                                     \"\",\n",
+  "text_before_test_module_byte_identical": true,
+  "test_only_fix_current_source": "d9d3cff6495d1a0751cad5c52d06b419c87263c5"
+}
+
+=== binary freeze [baseline-build.json] ===
+{
+  "source": "54d9e0f1ddc9d6ca0d9c5fac1683df9dd4a20f81",
+  "profile": "release optimized + symbols, CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=1",
+  "binaries": {
+    "layout-bench-before": "13f6b055efe64e484e114369c36f16c67660767a420269b9d253d4692c0de74a",
+    "bboxybook-before": "4f4f19950edefbb2fb13c2fb2c4541990294c0fcb783daebfc0c31b4da243e76"
+  }
+}
+
+=== candidate binary freeze [after-build-binaries.json] ===
+{
+  "bboxybook-after": "1bdd47456894b13060bd8a9f79e620559348b902e06ddc48c7d43bff549b140e",
+  "layout-bench-after": "daf2fd7d64ddb1b66b83c788ec9394839c51419d9954819c9dbe3706dfaf6842"
+}
+
+=== initial probe compile error; fixed [metrics-probe.log] ===
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling syn v3.0.9
+   Compiling indexmap v2.14.2
+   Compiling base64 v0.22.1
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy-firehose)
+   Compiling serde_derive v1.0.229
+   Compiling bytemuck_derive v1.12.1
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck v1.25.2
+   Compiling thiserror v2.0.21
+   Compiling naga-types v30.0.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling rgb v0.8.53
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling dispatch2 v0.3.1
+   Compiling wgpu-types v30.0.1
+   Compiling png v0.18.1
+   Compiling objc2-core-foundation v0.3.2
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling naga v30.0.1
+   Compiling polycool v0.4.0
+   Compiling lyon_geom v1.0.20
+   Compiling tiny-skia v0.12.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-core)
+   Compiling kurbo v0.13.1
+   Compiling lyon_path v1.0.19
+   Compiling lyon_tessellation v1.0.22
+   Compiling objc2-foundation v0.3.2
+   Compiling svgtypes v0.16.1
+   Compiling usvg v0.48.1
+   Compiling objc2-metal v0.3.2
+   Compiling resvg v0.48.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-render)
+error[E0308]: `?` operator has incompatible types
+  --> crates/bbt-render/src/chrome/text.rs:59:28
+   |
+59 |     Ok(typographic_bounds(&logical_line(text, style, max_width)?).logical())
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `CTLine`, found `CFRetained<CTLine>`
+   |
+   = note: `?` operator cannot convert from `CFRetained<CTLine>` to `CTLine`
+   = note: expected struct `CTLine`
+              found struct `CFRetained<CTLine>`
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `bbt-render` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+
+
+=== corrected probe status [metrics-probe-02-status.json] ===
+{
+  "command": [
+    "env",
+    "CARGO_TARGET_DIR=target/r8-build",
+    "CARGO_INCREMENTAL=0",
+    "CARGO_PROFILE_RELEASE_DEBUG=1",
+    "cargo",
+    "test",
+    "-p",
+    "bbt-render",
+    "--release",
+    "--locked",
+    "text::tests::measurement",
+    "--",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-nyx",
+  "exit_code": 0,
+  "seconds": 49.04130787498434,
+  "log": "/Users/feral/mydev/bboxy450-term-nyx/target/r8/metrics-probe-02.log"
+}
+
+=== corrected probe output [metrics-probe-02.log] ===
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-render)
+    Finished `release` profile [optimized + debuginfo] target(s) in 11.64s
+     Running unittests src/lib.rs (target/r8-build/release/deps/bbt_render-df89430648e35d23)
+
+running 2 tests
+test chrome::text::tests::measurement_does_not_require_a_raster_canvas ... ok
+test chrome::text::tests::measurement_matches_painted_metrics_bit_for_bit ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 45 filtered out; finished in 36.42s
+
+     Running tests/chrome_x_height.rs (target/r8-build/release/deps/chrome_x_height-adf2b2c0c15ff9ff)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/smoke.rs (target/r8-build/release/deps/smoke-0336afba282f1283)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/terminal.rs (target/r8-build/release/deps/terminal-7b569d4e7cc1ba34)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/variants.rs (target/r8-build/release/deps/variants-a1789b745d1ffe36)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+
+
+=== failed clean Clippy; test-only needless-update fixed [ci-source-9755083-failed-status.json] ===
+{
+  "source": "9755083a087f3ad938106205395c995980e7b463",
+  "cwd": "/tmp/ci-nyx-r8-9755083",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "environment": {
+    "CARGO_TARGET_DIR": "/tmp/ci-nyx-r8-9755083-target",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "BBOXYBOOK_GALLERY": "flow",
+    "BBOXYBOOK_REFERENCE_HEAD": "54d9e0f",
+    "PARITY_OUT": "/tmp/ci-nyx-r8-9755083/target/parity"
+  },
+  "clean_before": true,
+  "controller_pid": 77262,
+  "pid": 77277,
+  "exit_code": 101,
+  "seconds": 220.95746595799574,
+  "clean_after": true
+}
+
+=== passing clean CI status [ci-source-d9d3cff-status.json] ===
+{
+  "source": "d9d3cff6495d1a0751cad5c52d06b419c87263c5",
+  "cwd": "/tmp/ci-nyx-r8-d9d3cff",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "environment": {
+    "CARGO_TARGET_DIR": "/tmp/ci-nyx-r8-d9d3cff-target",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "BBOXYBOOK_GALLERY": "flow",
+    "BBOXYBOOK_REFERENCE_HEAD": "54d9e0f",
+    "PARITY_OUT": "/tmp/ci-nyx-r8-d9d3cff/target/parity"
+  },
+  "clean_before": true,
+  "controller_pid": 84657,
+  "pid": 84672,
+  "exit_code": 0,
+  "seconds": 756.2758637079969,
+  "clean_after": true
+}
+
+=== baseline full render status [before-pipeline-status.json] ===
+[
+  {
+    "label": "before-measure",
+    "command": [
+      "python3",
+      "-u",
+      "target/r8/measure.py",
+      "before"
+    ],
+    "exit_code": 0,
+    "seconds": 509.2184002500144,
+    "log": "/Users/feral/mydev/bboxy450-term-nyx/target/r8/before-measure.log"
+  },
+  {
+    "label": "before-expanded-measure",
+    "command": [
+      "python3",
+      "-u",
+      "target/r8/expanded_measure.py",
+      "before"
+    ],
+    "exit_code": 0,
+    "seconds": 139.25706925001577,
+    "log": "/Users/feral/mydev/bboxy450-term-nyx/target/r8/before-expanded-measure.log"
+  },
+  {
+    "label": "before-render",
+    "command": [
+      "/Users/feral/mydev/bboxy450-term-nyx/target/r8/bboxybook-before",
+      "render",
+      "--all",
+      "--manifest",
+      "/Users/feral/mydev/bboxy450-term-nyx/target/r8/cases.json",
+      "--out",
+      "/Users/feral/mydev/bboxy450-term-nyx/target/r8/before-native"
+    ],
+    "exit_code": 0,
+    "seconds": 1622.4112436670111,
+    "log": "/Users/feral/mydev/bboxy450-term-nyx/target/r8/before-render.log"
+  }
+]
+
+=== raw sample files retained locally ===
+[
+  {
+    "path": "target/r8/after-expanded.sample.txt",
+    "bytes": 1199255,
+    "sha256": "6e69beffeb93a14db3b217ddb74deb7e6adc0d248e55bdc435f9b4e9499eba27"
+  },
+  {
+    "path": "target/r8/after-launcher.sample.txt",
+    "bytes": 1884896,
+    "sha256": "38a1bff4e633e06d041d7dd1bca1d7523b632c7869f4fee4b94f84745e0e30f5"
+  },
+  {
+    "path": "target/r8/after-sidebar1000.sample.txt",
+    "bytes": 2046703,
+    "sha256": "4011a752e948d27fc3c4e79f3d3b858dd1afac57ef007a73c2840325f9c18988"
+  },
+  {
+    "path": "target/r8/before-expanded.sample.txt",
+    "bytes": 1002373,
+    "sha256": "0d5fed843e69a9d2c75a8ca226caf2b010b5c5c41aec7854bb5b96a921908c2f"
+  },
+  {
+    "path": "target/r8/before-launcher.sample.txt",
+    "bytes": 1392485,
+    "sha256": "52ebb06e9c0045b1e947e19abcd0274d91192cf8f57ef8b63c1425b91c74760d"
+  },
+  {
+    "path": "target/r8/before-sidebar1000.sample.txt",
+    "bytes": 1326658,
+    "sha256": "f242f2efb5cd7c32f2b99b4f70c2ef314bb7d61f53a89d5765e234491a5a8d30"
+  }
+]
+
+=== mechanism ===
+text.rs:58 measure -> logical_line:231 -> native_font / CTLine creation -> typographic_bounds:44; no glyph-run extraction, bitmap context or draw. shape_at keeps the original f64 canvas arithmetic. scene.rs:65/:78 and bboxybook components.rs:32/:43 now use measure. App caches at scene.rs:37/:38 remain.
+Measurement tests: text.rs:448 compares advance/ascent/descent float bits across16384 cases; :500 measures10000W beyond the raster limit.
+CI scope: exact source d9d3cff, memory custody, workspace build/tests and strict all-target Clippy, UI IO lint, app smoke, invariants, and Flow40-case web/native strict geometry parity. Full frozen catalog image/native-geometry proof runs separately.
+
+=== source CI summary ===
+{
+  "result_records": 106,
+  "passed": 571,
+  "failed": 0,
+  "ignored": 11,
+  "note": "Includes invariant test re-runs. Explicit strict workspace Clippy occurs inside ci-local before tests; passing later gates proves exit0.",
+  "ci_source": "d9d3cff6495d1a0751cad5c52d06b419c87263c5",
+  "ci_exit": 0,
+  "parity_cases": 40,
+  "parity_review": 0
+}
+=== final base and code equivalence ===
+{
+  "pre_evidence_source": "828abc01df02d5094c34d57da6a2523293ccd14e",
+  "base": "9577b61f0484d034ab19648e380b27c423cff563",
+  "ci_tested_source": "d9d3cff6495d1a0751cad5c52d06b419c87263c5",
+  "three_r8_files_byte_identical": true,
+  "incoming": "Wren9577b61 perf HUD only, no R8 source overlap",
+  "frozen_release_source_branch": "nyx-r8-frozen at c0c7437"
+}
+A separate exact-tip clean CI will validate the evidence commit; its raw log is retained under target/r8/ci-final.log. The committed CI log above describes d9d3cff and is unchanged actual output.
