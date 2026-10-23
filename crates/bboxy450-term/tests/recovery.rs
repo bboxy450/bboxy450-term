@@ -4,12 +4,15 @@
     reason = "headless integration tests own their Tokio runtimes"
 )]
 
+#[path = "support/events.rs"]
+mod events;
 use bboxy450_term::cockpit::{Config, Event, Session};
 use bbt_mux::{Ulid, streams::Replica};
 use bbt_proto::{
     GuiAction, GuiReply, GuiSeat, ProcessStatus, Screen, SeatId, SpawnSpec, SwarmId, Update, View,
     Where,
 };
+use events::StateEvents;
 use std::{os::unix::fs::PermissionsExt, path::Path, time::Duration};
 
 async fn script(path: &Path, text: String) {
@@ -41,7 +44,7 @@ async fn start(root: &Path) -> Session {
         ),
     )
     .await;
-    Session::start(Config {
+    let mut session = Session::start(Config {
         executable,
         socket: root.join("run/mux.sock"),
         run_dir: root.join("run"),
@@ -49,7 +52,9 @@ async fn start(root: &Path) -> Session {
         shell_config: Some(root.join("zsh-config")),
     })
     .await
-    .unwrap()
+    .unwrap();
+    events::attach(&mut session).await.unwrap();
+    session
 }
 fn pid(seat: &GuiSeat) -> u32 {
     match seat.state.process {
@@ -86,7 +91,7 @@ async fn spawn(session: &mut Session, root: &Path, harness: &str, resume: Option
         .unwrap();
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            match session.receive().await.unwrap() {
+            match session.receive_state().await.unwrap() {
                 GuiReply::Seat(seat) if !known.contains(&seat.record.id) => return seat,
                 GuiReply::Error { reason, .. } => panic!("spawn: {reason}"),
                 _ => {}
@@ -112,7 +117,7 @@ async fn watch(session: &mut Session, seat: &GuiSeat) {
 async fn update(session: &mut Session, seat: SeatId) -> Update {
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            match session.receive().await.unwrap() {
+            match session.receive_state().await.unwrap() {
                 GuiReply::Update { seat: got, update } if got == seat => return update,
                 GuiReply::Error { reason, .. } => panic!("GUI: {reason}"),
                 _ => {}
@@ -296,7 +301,10 @@ async fn logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressu
     let window = tokio::time::timeout(Duration::from_millis(250), async {
         loop {
             assert!(
-                !matches!(session.receive().await.unwrap(), GuiReply::Update { .. }),
+                !matches!(
+                    session.receive_state().await.unwrap(),
+                    GuiReply::Update { .. }
+                ),
                 "second update before Applied"
             );
         }
@@ -438,7 +446,7 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     tokio::time::timeout(Duration::from_secs(10), async {
         for dropped in 1..=2 {
             loop {
-                match session.receive().await.unwrap() {
+                match session.receive_state().await.unwrap() {
                     GuiReply::Error { op, reason } => {
                         if dropped == 1 {
                             assert_eq!(op, stale_id, "Input rejection lost its operation ID");

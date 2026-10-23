@@ -1,0 +1,25 @@
+Source cc1d87c2bba963137c2daef99503082ff2895a6d, clean detached ci-local --parity, EXIT0.
+Read-only baseline: Oracle79baccad, post-rim16b4c98 report.
+Baseline sha256 50eaa61ac6c4930ac4c60c8d479bef3cfb5f7edcd0d3ce198536f4efd47df9de.
+{
+  "report": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/gate-evidence/report.json",
+  "sha256": "021b7fed277e8b6845c133a9b04fd8ce89154f4965766a058fd3eb665c5dfd27",
+  "cases": 1768,
+  "required_geometry": 1664,
+  "unproven": 0,
+  "mismatches": 0,
+  "statuses": {
+    "review pixels": 174,
+    "within policy": 1594
+  },
+  "new_review_keys": [],
+  "resolved_review_keys": [],
+  "added_cases": [],
+  "removed_cases": []
+}
+
+SUMMARY_EXIT 0
+
+Visual QA: opened web/native/diff triplets for graph/provenance-compact-dark.png and seat-row/waiting-compact-dark.png. Composition and text positioning align; existing text/halo raster differences remain advisory. No pixel-byte-identity claim. The provenance card is a static gallery fixture, not proof of real-root enrollment or primary checkpoints.
+Retained local report and six PNGs: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-w2-6b-r4yg89q1/gate-evidence
+Private cargo target and clean worktree were removed after the gate; only selected PNGs plus report/manifest evidence were copied before deletion.

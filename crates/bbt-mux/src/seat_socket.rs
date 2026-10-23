@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -263,46 +263,151 @@ async fn gui_fallback_check(
     }
     gui_check_view(client, write, seat, watched).await
 }
-async fn gui_state_event(
-    event: crate::bus::Delivery,
-    client: &LogicClient,
-    write: &mut tokio::net::unix::OwnedWriteHalf,
-) -> Result<()> {
-    match event {
-        crate::bus::Delivery::Event { envelope, .. } => {
-            if envelope.event.subject == "account/identity/state" {
-                send(write, &GuiReply::Identity(client.gui_identity().await?)).await?;
-            } else if envelope.event.subject == crate::provider::fake::STATE_SUBJECT {
-                let crate::provider::ProviderEvent::HostState { host, state } =
-                    serde_json::from_value(envelope.event.payload)?;
-                for mut view in client.gui_hosts().await? {
-                    if crate::provider::HostId::from(&view.location) == host {
-                        // Preserve the original transition, even if a later
-                        // provider state is already current.
-                        view.state = bbt_proto::HostState::from(state.clone());
-                        send(write, &GuiReply::HostState { host: view }).await?;
-                    }
-                }
-            } else {
-                let id = envelope
-                    .event
-                    .subject
-                    .split('/')
-                    .nth(1)
-                    .ok_or_else(|| invalid("state event has no seat"))?
-                    .parse()?;
-                if let Ok(seat) = client.gui_seat(id).await {
-                    send(write, &GuiReply::Seat(seat)).await?;
-                }
-            }
+struct GuiLane {
+    bus: crate::bus::BusHandle,
+    lease: crate::bus::GuiLease,
+    detached: bool,
+}
+impl Drop for GuiLane {
+    fn drop(&mut self) {
+        if self.detached {
+            return;
         }
-        crate::bus::Delivery::Gap { .. } => {
-            send(write, &GuiReply::Identity(client.gui_identity().await?)).await?;
-            send(write, &GuiReply::Seats(client.gui_seats().await?)).await?;
-            send(write, &GuiReply::Hosts(client.gui_hosts().await?)).await?;
+        let bus = self.bus.clone();
+        let lease = self.lease.clone();
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(async move {
+                let _ = bus.gui_detach(&lease).await;
+            });
         }
     }
-    Ok(())
+}
+impl GuiLane {
+    async fn close(mut self) {
+        if self.bus.gui_detach(&self.lease).await.is_ok() {
+            self.detached = true;
+        }
+    }
+}
+async fn gui_attach_lane(client: &LogicClient) -> Result<(GuiLane, Option<crate::bus::Delivery>)> {
+    let device = client.gui_device().await?;
+    let filter = crate::gui_events::filters(client.gui_messaging_subjects().await?);
+    let lease = client.bus.gui_attach(device, filter).await?;
+    let lane = GuiLane {
+        bus: client.bus.clone(),
+        lease,
+        detached: false,
+    };
+    let latest = client
+        .bus
+        .gui_latest(&lane.lease, "account", "account/identity/state")
+        .await?
+        .map(|envelope| crate::bus::Delivery::Event {
+            stream: "account".into(),
+            envelope: Box::new(envelope),
+            deliveries: 0,
+        });
+    Ok((lane, latest))
+}
+fn gui_gap(stream: String, first: u64, last: u64, reason: String) -> GuiReply {
+    GuiReply::Gap {
+        stream,
+        first,
+        last,
+        reason,
+    }
+}
+async fn gui_event_reply(
+    delivery: crate::bus::Delivery,
+    client: &LogicClient,
+    cursor: Option<bbt_proto::events::GuiEventCursor>,
+) -> Result<GuiReply> {
+    match delivery {
+        crate::bus::Delivery::Event {
+            stream, envelope, ..
+        } => {
+            let seq = envelope.seq;
+            let subject = envelope.event.subject.clone();
+            let projected = crate::gui_events::project(client, &stream, *envelope, cursor).await?;
+            let reply = GuiReply::Event {
+                stream: stream.clone(),
+                seq,
+                subject,
+                envelope: Box::new(projected),
+            };
+            if serde_json::to_vec(&reply)?.len() > crate::gui_events::LIVE_BYTES {
+                return Ok(gui_gap(
+                    stream,
+                    seq,
+                    seq,
+                    "GUI projection exceeds live byte bound; original retained".into(),
+                ));
+            }
+            Ok(reply)
+        }
+        crate::bus::Delivery::Gap {
+            stream,
+            first,
+            last,
+            reason,
+        } => Ok(gui_gap(stream, first, last, reason)),
+    }
+}
+fn gui_events_page(page: crate::bus::GuiPage) -> Result<GuiReply> {
+    use bbt_proto::events::{
+        EventGap, GuiEventEnvelope, GuiEventPage, GuiEventPayload, GuiEventRecord,
+    };
+    let mut records = Vec::new();
+    let mut used = 0;
+    let mut next = page.next;
+    for delivery in page.records {
+        let (record, before) = match delivery {
+            crate::bus::Delivery::Event {
+                stream, envelope, ..
+            } => {
+                let sequence = envelope.seq;
+                // A retained history page is activity data, never a request to
+                // replace a live pane or historical identity with old state.
+                let record = GuiEventRecord::Event(Box::new(GuiEventEnvelope {
+                    metadata: crate::gui_events::metadata(&stream, &envelope)?,
+                    projected_at: crate::store::now_ms(),
+                    cursor: None,
+                    payload: GuiEventPayload::Activity {
+                        summary: crate::gui_events::summary(&envelope)?,
+                    },
+                }));
+                (record, sequence.saturating_sub(1))
+            }
+            crate::bus::Delivery::Gap {
+                stream,
+                first,
+                last,
+                reason,
+            } => (
+                GuiEventRecord::Gap(EventGap {
+                    stream,
+                    first,
+                    last,
+                    reason,
+                }),
+                first.saturating_sub(1),
+            ),
+        };
+        let bytes = serde_json::to_vec(&record)?.len();
+        if used + bytes > crate::gui_events::PAGE_BYTES - 2048 {
+            next = Some(before);
+            break;
+        }
+        used += bytes;
+        records.push(record);
+    }
+    Ok(GuiReply::Events {
+        page: GuiEventPage {
+            records,
+            next,
+            cursor: crate::gui_events::cursor(page.cursor),
+        },
+    })
 }
 async fn gui_session(
     stream: tokio::net::UnixStream,
@@ -331,7 +436,14 @@ async fn gui_session(
         }
     }
     let _reader = Reader(task);
-    let mut consumer = None;
+    let mut admitted = false;
+    let mut lane: Option<GuiLane> = None;
+    let mut want_events = None;
+    let mut lane_at: Option<Instant> = None;
+    let mut events_at: Option<Instant> = None;
+    let mut lane_error: Option<String> = None;
+    let mut filters_at = Instant::now();
+    let mut event_cursors = BTreeMap::new();
     let mut views: BTreeMap<bbt_proto::SeatId, GuiView> = BTreeMap::new();
     let mut checks = GuiChecks::default();
     let mut state_events = VecDeque::new();
@@ -359,17 +471,12 @@ async fn gui_session(
                         return Err(invalid("GUI socket version mismatch"));
                     }
                     let request:GuiRequest=serde_json::from_slice(&line)?;
-                    if consumer.is_none() {
-                        // Subscribe before ListSeats: no state transition can
-                        // disappear between the initial list and live events.
-                        let mut subscription=Consumer::gui("seat/*/state");
-                        subscription.filter.push("account/identity/state".into());
-                        subscription.filter.push(crate::provider::fake::STATE_SUBJECT.into());
-                        consumer=Some(client.bus.subscribe(subscription).await?);
+                    if !admitted {
+                        admitted=true;
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                     }
                     let op=match &request.action {
-                        GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}=>*id,
+                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -377,6 +484,44 @@ async fn gui_session(
                         match request.action {
                             GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
                             GuiAction::ListHosts=>Ok(GuiReply::Hosts(client.gui_hosts().await?)),
+                            GuiAction::AttachEvents {id}=> {
+                                want_events=Some(id);
+                                if lane.is_none() {
+                                    lane_at=Some(Instant::now());
+                                    match gui_attach_lane(&client).await {
+                                        Ok((attached,latest))=> {
+                                            lane=Some(attached); lane_error=None;
+                                            state_events.extend(latest);
+                                        }
+                                        Err(error)=> {
+                                            let reason=error.to_string();
+                                            if !reason.starts_with("GuiEventsHeld:") {want_events=None;}
+                                            lane_error=Some(reason);
+                                            return Err(error);
+                                        }
+                                    }
+                                }
+                                Ok(GuiReply::Ok {op:id})
+                            }
+                            GuiAction::EventAck {stream,seq}=> {
+                                let active=lane.as_ref().ok_or_else(||invalid("GuiEventsHeld: events lane is not attached"))?;
+                                client.bus.gui_ack(&active.lease,&stream,seq).await?;
+                                Ok(GuiReply::Ok {op})
+                            }
+                            GuiAction::GetEventCursor {stream}=> {
+                                let active=lane.as_ref().ok_or_else(||invalid("GuiEventsHeld: events lane is not attached"))?;
+                                Ok(GuiReply::EventCursor {cursor:crate::gui_events::cursor(client.bus.gui_cursor(&active.lease,&stream).await?)})
+                            }
+                            GuiAction::MarkEventsRead {stream,seq}=> {
+                                let active=lane.as_ref().ok_or_else(||invalid("GuiEventsHeld: events lane is not attached"))?;
+                                let cursor=crate::gui_events::cursor(client.bus.gui_read(&active.lease,&stream,seq).await?);
+                                event_cursors.remove(&stream);
+                                Ok(GuiReply::EventCursor {cursor})
+                            }
+                            GuiAction::GetEvents {stream,after,limit}=> {
+                                let active=lane.as_ref().ok_or_else(||invalid("GuiEventsHeld: events lane is not attached"))?;
+                                gui_events_page(client.bus.gui_page(&active.lease,&stream,after,limit,crate::gui_events::PAGE_BYTES).await?)
+                            }
                             GuiAction::Spawn {id,spec}=>Ok(GuiReply::Spawned {op:id,seat:client.gui_spawn(id,spec).await?}),
                             GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request).await?}),
                             GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request).await?}),
@@ -434,9 +579,51 @@ async fn gui_session(
                     }.await;
                     send(&mut write,&reply.unwrap_or_else(|e|GuiReply::Error {op,reason:e.to_string()})).await?;
                 }
-                _=tick.tick(),if consumer.is_some()=> {
-                    if state_events.is_empty() {
-                        state_events.extend(client.bus.poll(consumer.as_deref().unwrap(),128).await?);
+                _=tick.tick(),if admitted=> {
+                    if filters_at.elapsed()>=Duration::from_secs(1) && let Some(active)=&mut lane {
+                        filters_at=Instant::now();
+                        let filters=async {
+                            if client.gui_device().await?!=active.lease.device {
+                                return Err(invalid("GuiDeviceChanged: reattaching current custody device"));
+                            }
+                            client.gui_messaging_subjects().await
+                        }.await;
+                        match filters {
+                            Ok(filters)=> {
+                                let next=client.bus.gui_refresh(&active.lease,crate::gui_events::filters(filters)).await?;
+                                if next!=active.lease {
+                                    active.lease=next;state_events.clear();event_cursors.clear();events_at=None;
+                                }
+                            }
+                            Err(error)=> {
+                                let reason=format!("GuiEventsHeld: {error}");
+                                if let Some(active)=lane.take() {active.close().await;}
+                                state_events.clear();event_cursors.clear();
+                                lane_error=Some(reason.clone());lane_at=Some(Instant::now());
+                                send(&mut write,&GuiReply::EventStatus {attached:false,reason:Some(reason)}).await?;
+                            }
+                        }
+                    }
+                    if want_events.is_some() && lane.is_none() && lane_at.is_none_or(|at|at.elapsed()>=Duration::from_secs(1)) {
+                        lane_at=Some(Instant::now());
+                        match gui_attach_lane(&client).await {
+                            Ok((attached,latest))=> {
+                                lane=Some(attached);lane_error=None;state_events.extend(latest);
+                                send(&mut write,&GuiReply::EventStatus {attached:true,reason:None}).await?;
+                            }
+                            Err(error)=> {
+                                let reason=error.to_string();
+                                if lane_error.as_deref()!=Some(&reason) {
+                                    send(&mut write,&GuiReply::EventStatus {attached:false,reason:Some(reason.clone())}).await?;
+                                    lane_error=Some(reason.clone());
+                                }
+                                if !reason.starts_with("GuiEventsHeld:") {want_events=None;}
+                            }
+                        }
+                    }
+                    if state_events.is_empty() && events_at.is_none_or(|at|at.elapsed()>=Duration::from_millis(100)) && let Some(active)=&lane {
+                        state_events.extend(client.bus.gui_poll(&active.lease,crate::gui_events::PAGE_RECORDS,crate::gui_events::PAGE_BYTES).await?);
+                        event_cursors.clear();events_at=Some(Instant::now());
                     }
                     for &seat in views.keys() {checks.schedule(seat);}
                 }
@@ -452,7 +639,18 @@ async fn gui_session(
                         }
                         prefer_view=false;
                     } else if let Some(event)=state_events.pop_front() {
-                        gui_state_event(event,&client,&mut write).await?;
+                        let cursor=if let crate::bus::Delivery::Event {stream,envelope,..}=&event {
+                            if envelope.event.subject.ends_with("/message")||envelope.event.subject.ends_with("/receipt") {
+                                if !event_cursors.contains_key(stream) && let Some(active)=&lane {
+                                    event_cursors.insert(stream.clone(),crate::gui_events::cursor(client.bus.gui_cursor(&active.lease,stream).await?));
+                                }
+                                event_cursors.get(stream).cloned()
+                            } else {None}
+                        } else {None};
+                        match gui_event_reply(event,&client,cursor).await {
+                            Ok(reply)=>send(&mut write,&reply).await?,
+                            Err(error)=>send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:error.to_string()}).await?,
+                        }
                         prefer_view=true;
                     }
                     actions=0;
@@ -465,8 +663,8 @@ async fn gui_session(
         }
         Ok(())
     }.await;
-    if let Some(consumer) = consumer {
-        let _ = client.bus.unsubscribe(&consumer).await;
+    if let Some(active) = lane.take() {
+        active.close().await;
     }
     result
 }

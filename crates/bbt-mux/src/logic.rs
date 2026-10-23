@@ -80,6 +80,7 @@ enum Command {
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
     GuiIdentity(oneshot::Sender<Result<bbt_proto::GuiIdentity>>),
+    GuiDevice(oneshot::Sender<Result<Ulid>>),
     Messaging(
         Ulid,
         u64,
@@ -198,6 +199,16 @@ impl LogicClient {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiIdentity(tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
+    /// Logic resolves the device for the admitted GUI; the peer cannot choose
+    /// another device's durable consumer or substitute an ephemeral identity.
+    pub(crate) async fn gui_device(&self) -> Result<Ulid> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiDevice(tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
@@ -3215,6 +3226,18 @@ impl Worker {
             reason: status.reason_label,
         })
     }
+    fn gui_device(&self) -> Result<Ulid> {
+        let status = self.identity.status()?;
+        status.device_id.ok_or_else(|| {
+            invalid(format!(
+                "GuiEventsHeld: {}",
+                status
+                    .reason_label
+                    .as_deref()
+                    .unwrap_or("device custody unavailable")
+            ))
+        })
+    }
     fn gui_seat(&self, id: Ulid) -> Result<crate::seat_socket::GuiSeat> {
         let view = self
             .views
@@ -3713,6 +3736,9 @@ impl Worker {
                     }
                     Command::GuiIdentity(reply) => {
                         let _ = reply.send(self.gui_identity());
+                    }
+                    Command::GuiDevice(reply) => {
+                        let _ = reply.send(self.gui_device());
                     }
                     Command::GuiSeats(reply) => {
                         let seats = self.views.keys().map(|id| self.gui_seat(*id)).collect();

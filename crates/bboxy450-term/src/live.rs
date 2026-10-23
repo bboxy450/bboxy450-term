@@ -17,6 +17,7 @@ use bbt_mux::{
     Ulid,
     store::{Result, invalid},
 };
+use bbt_proto::events::{EventGap, GuiEventPayload, GuiEventRecord};
 use bbt_proto::{
     GuiAction, GuiIdentity, GuiReply, GuiSeat, ProcessStatus, SeatId, SpawnSpec, SwarmId, Update,
     View, Where,
@@ -192,6 +193,8 @@ enum ActionReply {
     History(SeatId),
     Messaging(Ulid),
     Task(Ulid),
+    Events,
+    EventCursor,
 }
 
 /// gui_session produces one terminal result per action in request order.
@@ -211,13 +214,21 @@ impl ActionReplies {
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
             GuiAction::Messaging { id, .. } => ActionReply::Messaging(*id),
             GuiAction::Task { id, .. } => ActionReply::Task(*id),
+            GuiAction::GetEvents { .. } => ActionReply::Events,
+            GuiAction::GetEventCursor { .. } | GuiAction::MarkEventsRead { .. } => {
+                ActionReply::EventCursor
+            }
             _ => ActionReply::Operation,
         });
     }
     fn take(&mut self, reply: &GuiReply) -> Option<ActionReply> {
         let expected = self.0.front()?;
         let matches = match reply {
-            GuiReply::Ok { .. } | GuiReply::Spawned { .. } => *expected == ActionReply::Operation,
+            // Unsolicited seat state is wrapped in Event; a raw Seat is the
+            // terminal ScheduleClose/UndoClose result.
+            GuiReply::Ok { .. } | GuiReply::Spawned { .. } | GuiReply::Seat(_) => {
+                *expected == ActionReply::Operation
+            }
             GuiReply::Error { op, .. } => match expected {
                 ActionReply::Messaging(id) | ActionReply::Task(id) => op == id,
                 _ => *op != Ulid::nil(),
@@ -227,6 +238,8 @@ impl ActionReplies {
             GuiReply::Seats(_) => *expected == ActionReply::Seats,
             GuiReply::Hosts(_) => *expected == ActionReply::Hosts,
             GuiReply::History { seat, .. } => *expected == ActionReply::History(*seat),
+            GuiReply::Events { .. } => *expected == ActionReply::Events,
+            GuiReply::EventCursor { .. } => *expected == ActionReply::EventCursor,
             _ => false,
         };
         if matches { self.0.pop_front() } else { None }
@@ -234,6 +247,58 @@ impl ActionReplies {
     fn clear(&mut self) {
         self.0.clear();
     }
+}
+
+fn event_model(model: &mut Arc<Model>) -> &mut model::EventLane {
+    Arc::make_mut(&mut Arc::make_mut(model).events)
+}
+
+fn publish_delivery(
+    model: &mut Arc<Model>,
+    updates: &Latest<Arc<Model>>,
+    record: GuiEventRecord,
+) -> Result<Option<GuiAction>> {
+    let (stream, seq) = match &record {
+        GuiEventRecord::Event(row) => (
+            row.metadata.reference.position.stream.clone(),
+            row.metadata.reference.position.sequence,
+        ),
+        GuiEventRecord::Gap(gap) => (gap.stream.clone(), gap.last),
+    };
+    if event_model(model).apply(record).map_err(invalid)? {
+        updates.publish(model.clone());
+    }
+    Ok((seq != 0).then_some(GuiAction::EventAck { stream, seq }))
+}
+
+fn attach_events(model: &mut Arc<Model>, outgoing: &mut VecDeque<GuiAction>) {
+    let id = Ulid::new();
+    event_model(model).begin_attach(id);
+    queue_action(outgoing, GuiAction::AttachEvents { id });
+    // Reconcile state changed between the initial catalogue and Start::New.
+    queue_action(outgoing, GuiAction::ListSeats);
+    queue_action(outgoing, GuiAction::ListHosts);
+}
+
+fn disconnected_events(
+    model: &mut Arc<Model>,
+    outgoing: &mut VecDeque<GuiAction>,
+    reason: &str,
+) -> bool {
+    let changed = event_model(model).disconnected(reason);
+    // A new socket must bind its device lease before any retained ACK/query.
+    outgoing.retain(|action| {
+        !matches!(
+            action,
+            GuiAction::Spawn { .. }
+                | GuiAction::AttachEvents { .. }
+                | GuiAction::EventAck { .. }
+                | GuiAction::GetEvents { .. }
+                | GuiAction::GetEventCursor { .. }
+                | GuiAction::MarkEventsRead { .. }
+        )
+    });
+    changed
 }
 
 const CONTROL_RETRY: Duration = Duration::from_millis(100);
@@ -476,7 +541,9 @@ async fn run(
     // Accept one UI command's actions at a time. Watch diffs are finite;
     // the stream allows one unapplied update per watch. Deduplicate Unwatch
     // notifications so a full writer cannot create an unbounded control queue.
-    let mut outgoing = VecDeque::from([GuiAction::ListHosts]);
+    let mut outgoing = VecDeque::new();
+    attach_events(&mut model, &mut outgoing);
+    updates.publish(model.clone());
     while !closing {
         let mut writer_blocked = false;
         if !lost {
@@ -522,8 +589,10 @@ async fn run(
                         if Arc::make_mut(&mut model).spawns_disconnected(&error.to_string()) {
                             updates.publish(model.clone());
                         }
-                        outgoing.retain(|action| !matches!(action, GuiAction::Spawn { .. }));
                         outgoing.retain(|action| !matches!(action, GuiAction::GetHistory { .. }));
+                        if disconnected_events(&mut model, &mut outgoing, &error.to_string()) {
+                            updates.publish(model.clone());
+                        }
                         break;
                     }
                 }
@@ -573,6 +642,9 @@ async fn run(
                         }
                         queue_action(&mut outgoing, GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()});
                     },
+                    UiMsg::EventPage {stream,after,limit}=>queue_action(&mut outgoing,GuiAction::GetEvents {stream:stream.clone(),after:*after,limit:*limit}),
+                    UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
+                    UiMsg::MarkEventsRead {stream,sequence}=>queue_action(&mut outgoing,GuiAction::MarkEventsRead {stream:stream.clone(),seq:*sequence}),
                     UiMsg::Resize {seat,generation,cols,rows}=> {
                         if seats.get(&Ulid(seat.0.0)).is_some_and(|metadata| metadata.state.generation==*generation) {
                             if grids.screen(*seat).is_some_and(|screen| (screen.cols,screen.rows) != (usize::from(*cols),usize::from(*rows)))
@@ -626,8 +698,55 @@ async fn run(
                 },
                 event=session.event()=>match event.unwrap_or_else(|error| cockpit::Event::Disconnected(error.to_string())) {
                     cockpit::Event::Reply(reply)=> {
+                    // Classify the raw reply before an async Seat event becomes a state update.
                     let terminal_reply = action_replies.take(&reply);
-                    match *reply {
+                      let mut ack=None;
+                      let reply=match *reply {
+                        GuiReply::Event {stream,seq,subject,envelope}=> {
+                            if envelope.metadata.reference.position.stream!=stream
+                                || envelope.metadata.reference.position.sequence!=seq
+                                || envelope.metadata.subject!=subject {
+                                logger.write("event routing metadata disagrees; no ACK");
+                                return Ok(());
+                            }
+                            let payload=envelope.payload.clone();
+                            match publish_delivery(&mut model,&updates,GuiEventRecord::Event(envelope)) {
+                                Ok(action)=>ack=action,
+                                Err(error)=> {logger.write(format!("event rejected (no ACK): {error}"));return Ok(());}
+                            }
+                            match payload {
+                                GuiEventPayload::Seat {seat}=>Some(GuiReply::Seat(*seat)),
+                                GuiEventPayload::Identity {identity}=>Some(GuiReply::Identity(identity)),
+                                GuiEventPayload::Host {host,..}=>Some(GuiReply::HostState {host}),
+                                GuiEventPayload::Activity {..}|GuiEventPayload::Message {..}=>None,
+                            }
+                        }
+                        GuiReply::Gap {stream,first,last,reason}=> {
+                            match publish_delivery(&mut model,&updates,GuiEventRecord::Gap(EventGap {stream,first,last,reason})) {
+                                Ok(action)=>ack=action,
+                                Err(error)=> {logger.write(format!("event gap rejected (no ACK): {error}"));return Ok(());}
+                            }
+                            None
+                        }
+                        GuiReply::Events {page}=> {
+                            let changed=event_model(&mut model).apply_page(page).map_err(invalid)?;
+                            if changed {updates.publish(model.clone());}
+                            None
+                        }
+                        GuiReply::EventCursor {cursor}=> {
+                            if event_model(&mut model).apply_cursor(cursor).map_err(invalid)? {updates.publish(model.clone());}
+                            None
+                        }
+                        GuiReply::EventStatus {attached,reason}=> {
+                            if event_model(&mut model).status(if attached {None} else {Some(reason.as_deref().unwrap_or("events held"))}) {
+                                updates.publish(model.clone());
+                                if attached {queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:format!("swarm-{swarm}")});}
+                            }
+                            None
+                        }
+                        reply=>Some(reply),
+                      };
+                      if let Some(reply)=reply {match reply {
                         GuiReply::Hosts(hosts)=> {
                             if model.hosts != hosts {
                                 Arc::make_mut(&mut model).hosts = hosts;
@@ -654,10 +773,14 @@ async fn run(
                         GuiReply::Seats(next)=> {
                             seats=next.into_iter().map(|seat|(seat.record.id,seat)).collect();
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
-                            if lost { lost=false; backend_lost(None); }
+                            if lost {
+                                lost=false; backend_lost(None);
+                                attach_events(&mut model,&mut outgoing);
+                                updates.publish(model.clone());
+                            }
                         }
                         GuiReply::Seat(seat)=> {
-                            if seats.get(&seat.record.id).is_some_and(|old|old==&seat||old.state.generation>seat.state.generation) {return Ok(());}
+                            if !seats.get(&seat.record.id).is_some_and(|old|old==&seat||old.state.generation>seat.state.generation) {
                             let id=SeatId::from_u128(seat.record.id.0);
                             if matches!(seat.state.process,ProcessStatus::Exited {..}|ProcessStatus::Retained) {
                                 grids.forget(id);
@@ -668,6 +791,7 @@ async fn run(
                             logger.write(format!("seat {} activity={:?} process={:?}",seat.record.id,seat.state.activity,seat.state.process));
                             seats.insert(seat.record.id,seat);
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            }
                         }
                          GuiReply::Spawned {op,seat}=> {
                              if Arc::make_mut(&mut model).spawned(op,seat) {
@@ -695,13 +819,20 @@ async fn run(
                                 Err(error)=>logger.write(format!("grid update rejected (no ack): {error}")),
                             }
                         }
-                        GuiReply::Ok {op}=>logger.write(format!("GUI operation {op} accepted")),
+                        GuiReply::Ok {op}=> {
+                            if event_model(&mut model).attach_result(op,None) {
+                                updates.publish(model.clone());
+                                queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:format!("swarm-{swarm}")});
+                            }
+                            logger.write(format!("GUI operation {op} accepted"));
+                        },
                         GuiReply::Error {op,reason}=> {
                             if matches!(terminal_reply,Some(ActionReply::History(_)))
                                 && let Some(seat) = history.rejected(reason.starts_with("Busy:"),Instant::now())
                                 && return_live(&mut history,&mut model,seat) {
                                 publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                             }
+                            if event_model(&mut model).attach_result(op,Some(&reason)) {updates.publish(model.clone());}
                             controls.refused(&reason,Instant::now());
                              if Arc::make_mut(&mut model).spawn_rejected(op,reason.clone()) {
                                  publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
@@ -718,7 +849,12 @@ async fn run(
                                 if changed {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
                             }
                         },
-                    }},
+                        GuiReply::Event {..}|GuiReply::Gap {..}|GuiReply::Events {..}|GuiReply::EventCursor {..}|GuiReply::EventStatus {..}=>unreachable!("handled before state dispatch"),
+                      }}
+                      // Every accepted projection is in the published Model
+                      // before its transport ACK can enter the writer queue.
+                      if let Some(action)=ack {queue_action(&mut outgoing,action);}
+                    },
                     cockpit::Event::Exited {process,status}=> {
                         let reason=format!("{process} exited: {status}");
                         logger.write(&reason);
@@ -729,8 +865,8 @@ async fn run(
                          if Arc::make_mut(&mut model).spawns_disconnected(&reason) {
                              updates.publish(model.clone());
                          }
-                         outgoing.retain(|action| !matches!(action,GuiAction::Spawn {..}));
                          outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
+                         if disconnected_events(&mut model,&mut outgoing,&reason) {updates.publish(model.clone());}
                     }
                     cockpit::Event::Disconnected(reason)=> {
                         logger.write(format!("GUI disconnected: {reason}"));
@@ -741,8 +877,8 @@ async fn run(
                          if Arc::make_mut(&mut model).spawns_disconnected(&reason) {
                              updates.publish(model.clone());
                          }
-                         outgoing.retain(|action| !matches!(action,GuiAction::Spawn {..}));
                          outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
+                         if disconnected_events(&mut model,&mut outgoing,&reason) {updates.publish(model.clone());}
                     }
                 }
             }
@@ -759,8 +895,10 @@ async fn run(
             if Arc::make_mut(&mut model).spawns_disconnected(&error.to_string()) {
                 updates.publish(model.clone());
             }
-            outgoing.retain(|action| !matches!(action, GuiAction::Spawn { .. }));
             outgoing.retain(|action| !matches!(action, GuiAction::GetHistory { .. }));
+            if disconnected_events(&mut model, &mut outgoing, &error.to_string()) {
+                updates.publish(model.clone());
+            }
             if let Some(message) = in_flight.take() {
                 if let UiMsg::Watched(panes) = &message {
                     for (seat, _) in panes {
@@ -781,6 +919,127 @@ async fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do() {
+        use bbt_proto::events::{GuiEventCursor, GuiEventPage};
+        let cursor = GuiEventCursor {
+            stream: "account".into(),
+            admitted: 7,
+            acknowledged: 6,
+            read: 3,
+            high: 7,
+            unread: 2,
+        };
+        let cases = [
+            (
+                GuiAction::GetEvents {
+                    stream: "account".into(),
+                    after: 0,
+                    limit: 32,
+                },
+                GuiReply::Events {
+                    page: GuiEventPage {
+                        records: Vec::new(),
+                        next: None,
+                        cursor: cursor.clone(),
+                    },
+                },
+                ActionReply::Events,
+            ),
+            (
+                GuiAction::GetEventCursor {
+                    stream: "account".into(),
+                },
+                GuiReply::EventCursor {
+                    cursor: cursor.clone(),
+                },
+                ActionReply::EventCursor,
+            ),
+            (
+                GuiAction::MarkEventsRead {
+                    stream: "account".into(),
+                    seq: 3,
+                },
+                GuiReply::EventCursor {
+                    cursor: cursor.clone(),
+                },
+                ActionReply::EventCursor,
+            ),
+            (
+                GuiAction::AttachEvents { id: Ulid::new() },
+                GuiReply::Ok { op: Ulid::new() },
+                ActionReply::Operation,
+            ),
+            (
+                GuiAction::EventAck {
+                    stream: "account".into(),
+                    seq: 6,
+                },
+                GuiReply::Ok { op: Ulid::new() },
+                ActionReply::Operation,
+            ),
+        ];
+        let mut replies = ActionReplies::default();
+        for (action, _, _) in &cases {
+            replies.sent(action);
+        }
+        for (_, terminal, expected) in &cases {
+            for attached in [false, true] {
+                assert_eq!(
+                    replies.take(&GuiReply::EventStatus {
+                        attached,
+                        reason: (!attached).then(|| "custody held".into()),
+                    }),
+                    None
+                );
+            }
+            assert_eq!(
+                replies.take(&GuiReply::Gap {
+                    stream: "account".into(),
+                    first: 1,
+                    last: 2,
+                    reason: "projection bound".into(),
+                }),
+                None
+            );
+            assert_eq!(replies.take(terminal), Some(*expected));
+        }
+        assert!(replies.0.is_empty());
+        // Refusals must release the same typed slots, including read queries.
+        for (action, _, expected) in &cases {
+            replies.sent(action);
+            assert_eq!(
+                replies.take(&GuiReply::EventStatus {
+                    attached: false,
+                    reason: Some("held".into())
+                }),
+                None
+            );
+            assert_eq!(
+                replies.take(&GuiReply::Error {
+                    op: Ulid::new(),
+                    reason: "Busy: fixture".into()
+                }),
+                Some(*expected)
+            );
+        }
+        for _ in 0..128 {
+            replies.sent(&GuiAction::GetEventCursor {
+                stream: "account".into(),
+            });
+        }
+        assert!(replies.full());
+        for _ in 0..128 {
+            assert_eq!(
+                replies.take(&GuiReply::EventCursor {
+                    cursor: cursor.clone()
+                }),
+                Some(ActionReply::EventCursor)
+            );
+        }
+        assert!(replies.0.is_empty());
+    }
 
     #[test]
     fn messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots() {
@@ -1330,6 +1589,51 @@ mod tests {
         fn wake(&self) {}
     }
 
+    #[test]
+    fn event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice() {
+        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
+        let updates = Latest::new(dirty.source(0));
+        let mut model = Arc::new(Model::default());
+        let gap = GuiEventRecord::Gap(EventGap {
+            stream: "index".into(),
+            first: 7,
+            last: 7,
+            reason: "projection bound; retained".into(),
+        });
+        let ack = publish_delivery(&mut model, &updates, gap.clone()).unwrap();
+        assert!(matches!(ack, Some(GuiAction::EventAck { seq: 7, .. })));
+        let published = updates
+            .take()
+            .expect("publication precedes returning the ACK");
+        assert_eq!(published.events.records().len(), 1);
+        assert!(Arc::ptr_eq(&model, &published));
+        assert!(published.ui.window.stage.focused.is_none());
+        assert!(published.frames.is_empty());
+        assert!(
+            publish_delivery(&mut model, &updates, gap)
+                .unwrap()
+                .is_some()
+        );
+        assert!(
+            updates.take().is_none(),
+            "published duplicate is ACKed without another dirty frame"
+        );
+        assert!(
+            publish_delivery(
+                &mut model,
+                &updates,
+                GuiEventRecord::Gap(EventGap {
+                    stream: "index".into(),
+                    first: 8,
+                    last: 7,
+                    reason: "invalid".into()
+                })
+            )
+            .is_err()
+        );
+        assert!(updates.take().is_none());
+    }
+
     fn lines(screen: &bbt_proto::Screen) -> Vec<String> {
         screen
             .cells
@@ -1838,7 +2142,24 @@ mod tests {
             !task.is_finished(),
             "backend loss must not stop the app's IO owner"
         );
-        assert!(updates.take().is_none());
+        if let Some(next) = updates.take() {
+            assert!(matches!(
+                next.events.state(),
+                model::EventLaneState::Held(_)
+            ));
+            assert_ne!(
+                next.events.state(),
+                current.events.state(),
+                "a duplicate hold must not dirty the frame"
+            );
+            assert_eq!(next.ui.window.stage.swarm, current.ui.window.stage.swarm);
+            assert_eq!(next.ui.window.stage.tab, current.ui.window.stage.tab);
+            assert_eq!(
+                next.ui.window.stage.focused,
+                current.ui.window.stage.focused
+            );
+            current = next;
+        }
         assert!(Arc::ptr_eq(&last_screen, &current.screens[&seat]));
         assert!(Arc::ptr_eq(&last_frame, &current.frames[&seat]));
         // Fill both bounded queues while disconnected. Dropping the UI owner

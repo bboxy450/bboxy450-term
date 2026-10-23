@@ -73,6 +73,20 @@ pub enum UiMsg {
         generation: u64,
         request: crate::scrollback::Request,
     },
+    /// Explicit history hydration; transport delivery does not mark it read.
+    EventPage {
+        stream: String,
+        after: u64,
+        limit: usize,
+    },
+    EventCursor {
+        stream: String,
+    },
+    /// View/mark-read intent, separate from a transport acknowledgement.
+    MarkEventsRead {
+        stream: String,
+        sequence: u64,
+    },
     Watched(Vec<(SeatId, View)>),
 }
 impl UiMsg {
@@ -600,9 +614,27 @@ impl Session {
     /// Obtain the catalogue before any views are watched.
     pub async fn list(&mut self) -> Result<Vec<GuiSeat>> {
         self.send(GuiAction::ListSeats).await?;
+        let mut events = VecDeque::new();
+        let mut bytes = 0;
         loop {
             match self.receive().await? {
-                GuiReply::Seats(seats) => return Ok(seats),
+                GuiReply::Seats(seats) => {
+                    self.deferred.extend(events);
+                    return Ok(seats);
+                }
+                reply @ (GuiReply::Event { .. }
+                | GuiReply::Gap { .. }
+                | GuiReply::Events { .. }
+                | GuiReply::EventCursor { .. }
+                | GuiReply::EventStatus { .. }) => {
+                    bytes += serde_json::to_vec(&reply)?.len();
+                    if events.len() == 128 || bytes > 256 * 1024 {
+                        return Err(invalid(
+                            "startup event staging bound reached; events remain unacknowledged",
+                        ));
+                    }
+                    events.push_back(Event::Reply(Box::new(reply)));
+                }
                 GuiReply::Identity(identity) => self.endpoint.identity = identity,
                 GuiReply::Error { reason, .. } => return Err(invalid(reason)),
                 GuiReply::Seat(_)

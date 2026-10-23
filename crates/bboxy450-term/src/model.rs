@@ -1,6 +1,6 @@
 //! Back-model assembly and terminal pane preparation. Socket ownership is C1a's.
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet, VecDeque},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -10,6 +10,7 @@ use bbt_core::{
     term::{TermMode, cell::Flags},
 };
 use bbt_mux::Ulid;
+use bbt_proto::events::{EventGap, GuiEventCursor, GuiEventPage, GuiEventPayload, GuiEventRecord};
 use bbt_proto::{GuiSeat, Screen, SeatId, SeatRecord, SeatState, registry};
 use bbt_render::{
     cells::terminal::{
@@ -47,6 +48,320 @@ pub struct SpawnRequest {
     pub ordinal: u64,
 }
 
+const EVENT_ROWS: usize = 512;
+const EVENT_BYTES: usize = 1024 * 1024;
+const EVENT_STREAMS: usize = 4096;
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum EventLaneState {
+    #[default]
+    Detached,
+    Attaching,
+    Active,
+    Held(String),
+}
+
+/// Counts within the retained event window, not a global artifact inventory.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct WindowArtifactCounts {
+    pub created: usize,
+    pub modified: usize,
+    pub claimed: usize,
+    pub deleted: usize,
+}
+
+/// IO-owned, immutable once published. The serialized row window is bounded
+/// by both count and bytes; per-stream positions have a separate finite cap.
+/// SQLite, not this cache, owns delivery and operator-read state.
+#[derive(Clone, Default)]
+pub struct EventLane {
+    records: VecDeque<Arc<GuiEventRecord>>,
+    sizes: VecDeque<usize>,
+    bytes: usize,
+    positions: BTreeMap<(String, u64), (Ulid, String)>,
+    streams: BTreeSet<String>,
+    omitted: BTreeMap<String, EventGap>,
+    cursors: BTreeMap<String, GuiEventCursor>,
+    page_next: BTreeMap<String, Option<u64>>,
+    state: EventLaneState,
+    attach: Option<Ulid>,
+    artifacts: WindowArtifactCounts,
+}
+
+impl EventLane {
+    pub fn records(&self) -> &VecDeque<Arc<GuiEventRecord>> {
+        &self.records
+    }
+    pub fn omitted(&self) -> &BTreeMap<String, EventGap> {
+        &self.omitted
+    }
+    pub fn cursors(&self) -> &BTreeMap<String, GuiEventCursor> {
+        &self.cursors
+    }
+    /// Read-through pagination: absent means no page yet; None means its end.
+    /// A sparse page's next position need not equal its last displayed row.
+    pub fn pages(&self) -> &BTreeMap<String, Option<u64>> {
+        &self.page_next
+    }
+    pub fn state(&self) -> &EventLaneState {
+        &self.state
+    }
+    pub fn artifacts(&self) -> WindowArtifactCounts {
+        self.artifacts
+    }
+    pub fn bytes(&self) -> usize {
+        self.bytes
+    }
+
+    fn register(&mut self, stream: &str) -> Result<(), &'static str> {
+        if stream.is_empty()
+            || stream.len() > 128
+            || !stream
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || b"-_".contains(&c))
+        {
+            return Err("invalid event stream");
+        }
+        if !self.streams.contains(stream) && self.streams.len() == EVENT_STREAMS {
+            return Err("event stream limit reached; original retained");
+        }
+        self.streams.insert(stream.into());
+        Ok(())
+    }
+
+    pub fn begin_attach(&mut self, id: Ulid) {
+        bbt_rt::assert_not_ui_thread();
+        self.attach = Some(id);
+        self.state = EventLaneState::Attaching;
+    }
+
+    pub fn attach_result(&mut self, id: Ulid, error: Option<&str>) -> bool {
+        bbt_rt::assert_not_ui_thread();
+        if self.attach != Some(id) {
+            return false;
+        }
+        self.status(error)
+    }
+
+    pub fn status(&mut self, error: Option<&str>) -> bool {
+        bbt_rt::assert_not_ui_thread();
+        let next = error.map_or(EventLaneState::Active, |reason| {
+            EventLaneState::Held(reason.chars().take(256).collect())
+        });
+        if self.state == next {
+            return false;
+        }
+        self.state = next;
+        true
+    }
+
+    pub fn disconnected(&mut self, reason: &str) -> bool {
+        bbt_rt::assert_not_ui_thread();
+        self.attach = None;
+        let next = EventLaneState::Held(reason.chars().take(256).collect());
+        if self.state == next {
+            return false;
+        }
+        self.state = next;
+        true
+    }
+
+    pub fn apply_cursor(&mut self, mut cursor: GuiEventCursor) -> Result<bool, &'static str> {
+        bbt_rt::assert_not_ui_thread();
+        if !cursor_consistent(&cursor) {
+            return Err("inconsistent event cursor");
+        }
+        self.register(&cursor.stream)?;
+        if let Some(old) = self.cursors.get(&cursor.stream) {
+            // An in-flight projection can predate a later read-mark reply.
+            // It cannot move operator-read state backwards.
+            if cursor.read < old.read || cursor.high < old.high || old == &cursor {
+                return Ok(false);
+            }
+            cursor.admitted = cursor.admitted.max(old.admitted);
+            cursor.acknowledged = cursor.acknowledged.max(old.acknowledged);
+            if old == &cursor {
+                return Ok(false);
+            }
+        }
+        self.cursors.insert(cursor.stream.clone(), cursor);
+        Ok(true)
+    }
+
+    pub fn apply_page(&mut self, page: GuiEventPage) -> Result<bool, &'static str> {
+        bbt_rt::assert_not_ui_thread();
+        if page.records.len() > 128
+            || serde_json::to_vec(&page)
+                .map_err(|_| "invalid event page")?
+                .len()
+                > 256 * 1024
+            || page.next.is_some_and(|next| next > page.cursor.high)
+            || page
+                .records
+                .iter()
+                .any(|row| record_start(row).0 != page.cursor.stream)
+        {
+            return Err("event history page exceeds bounds or crosses streams");
+        }
+        let stream = page.cursor.stream.clone();
+        let mut changed = self.apply_cursor(page.cursor)?;
+        for row in page.records {
+            changed |= self.apply(row)?;
+        }
+        changed |= self.page_next.get(&stream) != Some(&page.next);
+        self.page_next.insert(stream, page.next);
+        Ok(changed)
+    }
+
+    pub fn apply(&mut self, record: GuiEventRecord) -> Result<bool, &'static str> {
+        bbt_rt::assert_not_ui_thread();
+        let (stream, first, last) = match &record {
+            GuiEventRecord::Event(row) => {
+                let reference = &row.metadata.reference;
+                if reference.position.sequence == 0
+                    || reference.hash.len() != 64
+                    || !reference.hash.bytes().all(|byte| byte.is_ascii_hexdigit())
+                {
+                    return Err("invalid retained event reference");
+                }
+                if let Some(cursor) = &row.cursor
+                    && (cursor.stream != reference.position.stream || !cursor_consistent(cursor))
+                {
+                    return Err("event cursor and row streams disagree");
+                }
+                (
+                    &reference.position.stream,
+                    reference.position.sequence,
+                    reference.position.sequence,
+                )
+            }
+            GuiEventRecord::Gap(gap) => {
+                if gap.first > gap.last {
+                    return Err("invalid event gap");
+                }
+                (&gap.stream, gap.first, gap.last)
+            }
+        };
+        let stream = stream.clone();
+        self.register(&stream)?;
+        let mut changed = false;
+        if let GuiEventRecord::Event(row) = &record {
+            let reference = &row.metadata.reference;
+            if let Some((id, hash)) = self.positions.get(&(stream.clone(), last))
+                && (*id != row.metadata.id || hash != &reference.hash)
+            {
+                return Err("event sequence conflicts with the published canonical row");
+            }
+            if let Some(cursor) = &row.cursor {
+                changed |= self.apply_cursor(cursor.clone())?;
+            }
+            if self.positions.contains_key(&(stream.clone(), last))
+                || self
+                    .omitted
+                    .get(&stream)
+                    .is_some_and(|gap| first >= gap.first && last <= gap.last)
+            {
+                return Ok(changed);
+            }
+        } else if self.records.iter().any(|old| old.as_ref() == &record) {
+            return Ok(false);
+        }
+        let size = serde_json::to_vec(&record)
+            .map_err(|_| "event projection cannot be encoded")?
+            .len();
+        if size > EVENT_BYTES {
+            return self
+                .apply(GuiEventRecord::Gap(EventGap {
+                    stream,
+                    first,
+                    last,
+                    reason: "app_record_exceeds_byte_bound; original retained".into(),
+                }))
+                .map(|inserted| inserted || changed);
+        }
+        if let GuiEventRecord::Event(row) = &record {
+            self.positions.insert(
+                (stream.clone(), last),
+                (row.metadata.id, row.metadata.reference.hash.clone()),
+            );
+        }
+        // Each stream is ordered. Cross-stream arrival order is only a display
+        // order and never becomes a fabricated global sequence.
+        let at = self
+            .records
+            .iter()
+            .position(|old| {
+                let (old_stream, old_first) = record_start(old);
+                old_stream == stream && old_first > first
+            })
+            .unwrap_or(self.records.len());
+        self.records.insert(at, Arc::new(record));
+        self.sizes.insert(at, size);
+        self.bytes += size;
+        while self.records.len() > EVENT_ROWS || self.bytes > EVENT_BYTES {
+            let old = self.records.pop_front().unwrap();
+            self.bytes -= self.sizes.pop_front().unwrap();
+            let (stream, first, last) = match old.as_ref() {
+                GuiEventRecord::Event(row) => {
+                    let position = &row.metadata.reference.position;
+                    self.positions
+                        .remove(&(position.stream.clone(), position.sequence));
+                    (&position.stream, position.sequence, position.sequence)
+                }
+                GuiEventRecord::Gap(gap) => (&gap.stream, gap.first, gap.last),
+            };
+            self.omitted
+                .entry(stream.clone())
+                .and_modify(|gap| {
+                    gap.first = gap.first.min(first);
+                    gap.last = gap.last.max(last);
+                })
+                .or_insert_with(|| EventGap {
+                    stream: stream.clone(),
+                    first,
+                    last,
+                    reason: "app_window_evicted; original retained".into(),
+                });
+        }
+        self.artifacts = WindowArtifactCounts::default();
+        for record in &self.records {
+            if let GuiEventRecord::Event(row) = record.as_ref()
+                && let GuiEventPayload::Activity { summary } = &row.payload
+                && (row.metadata.subject.starts_with("artifact/")
+                    || (row.metadata.subject.starts_with("doc/")
+                        && row.metadata.subject.ends_with("/written")
+                        && summary.action == "claimed"))
+            {
+                match summary.action.as_str() {
+                    "created" => self.artifacts.created += 1,
+                    "modified" => self.artifacts.modified += 1,
+                    "claimed" => self.artifacts.claimed += 1,
+                    "deleted" => self.artifacts.deleted += 1,
+                    _ => (),
+                }
+            }
+        }
+        Ok(true)
+    }
+}
+
+fn record_start(record: &GuiEventRecord) -> (&str, u64) {
+    match record {
+        GuiEventRecord::Event(row) => (
+            &row.metadata.reference.position.stream,
+            row.metadata.reference.position.sequence,
+        ),
+        GuiEventRecord::Gap(gap) => (&gap.stream, gap.first),
+    }
+}
+
+fn cursor_consistent(cursor: &GuiEventCursor) -> bool {
+    cursor.acknowledged <= cursor.admitted
+        && cursor.admitted <= cursor.high
+        && cursor.read <= cursor.high
+        && cursor.unread <= cursor.high - cursor.read
+}
+
 /// A complete immutable UI frame. The IO owner publishes one Arc<Model>; no
 /// terminal rows are cloned or locked by the UI while taking that Arc.
 #[derive(Clone)]
@@ -64,6 +379,7 @@ pub struct Model {
     /// Correlation survives Latest replacing an intermediate publication.
     pub spawns: BTreeMap<Ulid, SpawnRequest>,
     pub metadata_initialized: bool,
+    pub events: Arc<EventLane>,
 }
 impl Default for Model {
     fn default() -> Self {
@@ -77,6 +393,7 @@ impl Default for Model {
             hosts: vec![],
             spawns: BTreeMap::new(),
             metadata_initialized: false,
+            events: Arc::new(EventLane::default()),
         }
     }
 }
@@ -546,6 +863,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         identity: previous.identity.clone(),
         spawns: previous.spawns.clone(),
         metadata_initialized: true,
+        events: previous.events.clone(),
     };
     next.place_ready_spawns();
     next
@@ -1123,5 +1441,208 @@ mod tests {
         preparer.prepare(&mut next).unwrap();
         assert!(Arc::ptr_eq(&first.screens[&id], &next.screens[&id]));
         assert!(!Arc::ptr_eq(&first.frames[&id], &next.frames[&id]));
+    }
+}
+
+#[cfg(test)]
+mod event_lane_tests {
+    use super::*;
+    use bbt_proto::events::{
+        ActivitySummary, EventMetadata, EventPosition, EventProof, EventReference,
+        EventSignatureScope, GuiEventEnvelope,
+    };
+
+    fn row(stream: &str, sequence: u64) -> GuiEventRecord {
+        GuiEventRecord::Event(Box::new(GuiEventEnvelope {
+            metadata: EventMetadata {
+                reference: EventReference {
+                    position: EventPosition {
+                        stream: stream.into(),
+                        sequence,
+                    },
+                    hash: format!("{sequence:064x}"),
+                },
+                id: Ulid::from(u128::from(sequence)),
+                ts: sequence,
+                subject: "artifact/fixture/created".into(),
+                source: "fixture".into(),
+                seat: None,
+                generation: None,
+                proof: EventProof {
+                    scope: EventSignatureScope::OriginalRetainedEnvelope,
+                    public_key: "opaque fixture proof".into(),
+                    signature: "not independently verified by the display cache".into(),
+                    prev: String::new(),
+                },
+            },
+            projected_at: sequence,
+            cursor: None,
+            payload: GuiEventPayload::Activity {
+                summary: ActivitySummary {
+                    action: "created".into(),
+                    id: Some(Ulid::from(u128::from(sequence))),
+                    path: None,
+                    path_redacted: false,
+                    digest: None,
+                    before_digest: None,
+                    grade: Some("inferred".into()),
+                    producer: None,
+                    candidates: vec![],
+                    status: None,
+                    previous_status: None,
+                    outcome: None,
+                    reason: None,
+                    position: None,
+                    payload_digest: "f".repeat(64),
+                },
+            },
+        }))
+    }
+
+    #[test]
+    fn rows_dedupe_by_canonical_identity_and_keep_per_stream_order() {
+        let mut lane = EventLane::default();
+        lane.apply(row("index", 3)).unwrap();
+        lane.apply(row("account", 1)).unwrap();
+        lane.apply(row("index", 2)).unwrap();
+        assert!(!lane.apply(row("index", 2)).unwrap());
+        let order: Vec<_> = lane.records().iter().map(|row| record_start(row)).collect();
+        assert_eq!(order, [("index", 2), ("index", 3), ("account", 1)]);
+        let mut conflict = row("index", 2);
+        if let GuiEventRecord::Event(value) = &mut conflict {
+            value.metadata.reference.hash = "a".repeat(64);
+        }
+        assert!(lane.apply(conflict).is_err());
+        assert_eq!(lane.records().len(), 3);
+    }
+
+    #[test]
+    fn window_eviction_is_visible_and_old_replays_do_not_repopulate_it() {
+        let mut lane = EventLane::default();
+        for sequence in 1..=520 {
+            lane.apply(row("index", sequence)).unwrap();
+        }
+        assert_eq!(lane.records().len(), 512);
+        assert!(lane.bytes() <= EVENT_BYTES);
+        assert_eq!(
+            (lane.omitted()["index"].first, lane.omitted()["index"].last),
+            (1, 8)
+        );
+        assert!(lane.omitted()["index"].reason.contains("original retained"));
+        assert!(!lane.apply(row("index", 4)).unwrap());
+        assert_eq!(lane.artifacts().created, 512);
+    }
+
+    #[test]
+    fn byte_budget_is_independent_of_row_count() {
+        let mut lane = EventLane::default();
+        for sequence in 1..=500 {
+            let mut event = row("index", sequence);
+            if let GuiEventRecord::Event(event) = &mut event {
+                event.metadata.source = "s".repeat(512);
+                if let GuiEventPayload::Activity { summary } = &mut event.payload {
+                    summary.path = Some("p".repeat(512));
+                    summary.reason = Some("r".repeat(256));
+                    summary.candidates = (0..16_u128).map(Ulid::from).collect();
+                }
+            }
+            lane.apply(event).unwrap();
+        }
+        assert!(lane.records().len() < 500);
+        assert!(lane.bytes() <= EVENT_BYTES);
+        assert!(lane.omitted().contains_key("index"));
+    }
+
+    #[test]
+    fn stale_transport_snapshots_cannot_roll_back_operator_read_state() {
+        let mut lane = EventLane::default();
+        let cursor = GuiEventCursor {
+            stream: "index".into(),
+            admitted: 20,
+            acknowledged: 15,
+            read: 10,
+            high: 20,
+            unread: 2,
+        };
+        lane.apply_cursor(cursor.clone()).unwrap();
+        let mut old = cursor.clone();
+        old.read = 0;
+        old.high = 21;
+        old.unread = 12;
+        assert!(!lane.apply_cursor(old).unwrap());
+        assert_eq!(lane.cursors()["index"].read, 10);
+        let mut delayed = cursor.clone();
+        delayed.admitted = 18;
+        delayed.acknowledged = 12;
+        assert!(!lane.apply_cursor(delayed).unwrap());
+        assert_eq!(lane.cursors()["index"].acknowledged, 15);
+        let mut invalid = cursor;
+        invalid.read = 30;
+        assert!(lane.apply_cursor(invalid).is_err());
+        assert_eq!(lane.cursors()["index"].read, 10);
+    }
+
+    #[test]
+    fn sparse_history_pages_keep_next_without_acknowledging_or_marking_read() {
+        let mut lane = EventLane::default();
+        let cursor = GuiEventCursor {
+            stream: "index".into(),
+            admitted: 20,
+            acknowledged: 10,
+            read: 3,
+            high: 100,
+            unread: 7,
+        };
+        assert!(
+            lane.apply_page(GuiEventPage {
+                records: vec![row("index", 50)],
+                next: Some(80),
+                cursor: cursor.clone()
+            })
+            .unwrap()
+        );
+        assert_eq!(lane.pages()["index"], Some(80));
+        assert_eq!(lane.cursors()["index"], cursor);
+        assert!(
+            lane.apply_page(GuiEventPage {
+                records: vec![],
+                next: None,
+                cursor: cursor.clone()
+            })
+            .unwrap()
+        );
+        assert_eq!(lane.pages()["index"], None);
+        assert_eq!(lane.records().len(), 1);
+        assert!(
+            lane.apply_page(GuiEventPage {
+                records: vec![row("account", 2)],
+                next: None,
+                cursor
+            })
+            .is_err()
+        );
+        assert!(!lane.cursors().contains_key("account"));
+    }
+
+    #[test]
+    fn metadata_rebuild_and_reconnect_preserve_the_published_window() {
+        let mut model = Model::default();
+        let id = Ulid::new();
+        let lane = Arc::make_mut(&mut model.events);
+        lane.begin_attach(id);
+        lane.attach_result(id, None);
+        lane.apply(row("index", 1)).unwrap();
+        let next = build(&[], &Grids::new(), &model);
+        assert!(Arc::ptr_eq(&next.events, &model.events));
+        let mut next = next;
+        let lane = Arc::make_mut(&mut next.events);
+        lane.disconnected("logic restarted");
+        assert_eq!(lane.records().len(), 1);
+        assert!(!lane.attach_result(Ulid::new(), None));
+        let retry = Ulid::new();
+        lane.begin_attach(retry);
+        assert!(lane.attach_result(retry, None));
+        assert!(!lane.apply(row("index", 1)).unwrap());
+        assert_eq!(lane.records().len(), 1);
     }
 }

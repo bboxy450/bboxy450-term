@@ -156,6 +156,104 @@ struct Subscriber {
     queue: VecDeque<Envelope>,
     gap: Option<(u64, u64)>,
     cursor: u64,
+    gui: Option<GuiPending>,
+}
+
+// GUI replay is read through in finite quanta. No full envelopes are retained
+// in this attachment state; the signed log and pending table own the history.
+struct GuiPending {
+    policy: GuiPolicy,
+    after: u64,
+    replay_through: u64,
+    next_due: u64,
+    sweep_due: Option<u64>,
+}
+
+// GUI-only metadata in the existing consumers.filter column. Each subject's
+// activation head survives policy versions; the Consumer policy stays intact.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GuiPolicy {
+    starts: BTreeMap<String, u64>,
+    inherited_from: Option<String>,
+}
+impl GuiPolicy {
+    fn new(config: &Consumer, head: u64) -> Self {
+        Self {
+            starts: config
+                .filter
+                .iter()
+                .map(|filter| (filter.clone(), head))
+                .collect(),
+            inherited_from: None,
+        }
+    }
+    fn accepts(&self, subject: &str, sequence: u64) -> bool {
+        self.starts
+            .iter()
+            .any(|(filter, start)| sequence > *start && matches(filter, subject))
+    }
+}
+
+fn gui_consumer(config: &Consumer) -> bool {
+    config.deliver == "gui"
+        && config.ack == Ack::Explicit
+        && config
+            .name
+            .as_deref()
+            .is_some_and(|name| name.starts_with("gui-"))
+}
+
+fn gui_uint(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<u64> {
+    u64::try_from(row.get::<_, i64>(index)?).map_err(|error| {
+        rusqlite::Error::FromSqlConversionFailure(
+            index,
+            rusqlite::types::Type::Integer,
+            Box::new(error),
+        )
+    })
+}
+
+struct GuiUndeliverable {
+    stream: String,
+    sequence: u64,
+    ts: u64,
+}
+
+struct GuiStreamPoll {
+    deliveries: Vec<Delivery>,
+    bytes: usize,
+    undeliverable: Vec<GuiUndeliverable>,
+}
+
+/// One active drain of the device's durable consumer. The token is in-process
+/// attachment state, never a second identity or a caller-supplied principal.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GuiLease {
+    pub consumer: String,
+    pub device: Ulid,
+    token: Ulid,
+}
+
+struct GuiAttachment {
+    lease: GuiLease,
+    last_stream: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct GuiCursor {
+    pub stream: String,
+    pub admitted: u64,
+    pub published: u64,
+    pub read: u64,
+    pub high: u64,
+    pub unread: u64,
+}
+
+pub(crate) struct GuiPage {
+    pub records: Vec<Delivery>,
+    pub next: Option<u64>,
+    pub cursor: GuiCursor,
 }
 
 struct Stream {
@@ -165,6 +263,13 @@ struct Stream {
 }
 
 impl Stream {
+    fn gui_notify(&mut self) {
+        for sub in self.consumers.values_mut() {
+            if let Some(gui) = &mut sub.gui {
+                gui.next_due = 0;
+            }
+        }
+    }
     fn subscribe(&mut self, id: &str, config: &Consumer) -> Result<()> {
         let db = sqlite::open(&self.log.path)?;
         let old: Option<(i64, String)> = db
@@ -204,6 +309,30 @@ impl Stream {
                 ],
             )?;
         }
+        let policy = if gui_consumer(config) {
+            let stored: String =
+                db.query_row("SELECT filter FROM consumers WHERE name=?1", [id], |row| {
+                    row.get(0)
+                })?;
+            // Legacy GUI rows contain the plain filter array. Initialize only
+            // that known representation; malformed policy metadata is refused.
+            let policy = if stored.starts_with('[') {
+                let filters: Vec<String> = serde_json::from_str(&stored)?;
+                if filters != config.filter {
+                    return Err(invalid("GUI filter metadata disagrees"));
+                }
+                GuiPolicy::new(config, cursor)
+            } else {
+                serde_json::from_str(&stored)?
+            };
+            db.execute(
+                "UPDATE consumers SET filter=?2 WHERE name=?1",
+                params![id, serde_json::to_string(&policy)?],
+            )?;
+            Some(policy)
+        } else {
+            None
+        };
         self.consumers.insert(
             id.into(),
             Subscriber {
@@ -211,8 +340,35 @@ impl Stream {
                 queue: VecDeque::new(),
                 gap: None,
                 cursor,
+                gui: gui_consumer(config).then_some(GuiPending {
+                    policy: policy.unwrap_or_else(|| GuiPolicy::new(config, 0)),
+                    after: 0,
+                    replay_through: cursor,
+                    next_due: 0,
+                    sweep_due: None,
+                }),
             },
         );
+        if gui_consumer(config) {
+            // Start::New seeds a new device at the retained head. A restored
+            // device keeps its cursor and pending rows; bounded poll repairs
+            // a crash between an append and pending admission.
+            let pending: bool = db.query_row(
+                "SELECT EXISTS(SELECT 1 FROM pending WHERE consumer=?1)",
+                [id],
+                |row| row.get(0),
+            )?;
+            if !pending && cursor == self.log.last_sequence()? {
+                self.consumers
+                    .get_mut(id)
+                    .unwrap()
+                    .gui
+                    .as_mut()
+                    .unwrap()
+                    .next_due = u64::MAX;
+            }
+            return Ok(());
+        }
         let mut latest = BTreeMap::new();
         let mut after = cursor;
         loop {
@@ -254,6 +410,14 @@ impl Stream {
     }
     fn enqueue(&mut self, id: &str, event: Envelope) -> Result<()> {
         let subscriber = self.consumers.get_mut(id).unwrap();
+        if let Some(gui) = &mut subscriber.gui {
+            if event.seq != 0 {
+                gui.next_due = 0;
+            }
+            // The retained row is the queue. Admission advances contiguously
+            // on the next bounded GUI poll, not ahead of a replay hole.
+            return Ok(());
+        }
         if subscriber.config.ack == Ack::Explicit && event.seq != 0 {
             sqlite::open(&self.log.path)?.execute(
                 "INSERT OR IGNORE INTO pending VALUES(?1,?2,0,0)",
@@ -288,7 +452,10 @@ impl Stream {
             .collect();
         for id in &ids {
             self.enqueue(id, event.clone())?;
-            if event.seq > 0 && self.consumers[id].config.ack == Ack::Explicit {
+            if event.seq > 0
+                && self.consumers[id].config.ack == Ack::Explicit
+                && self.consumers[id].gui.is_none()
+            {
                 self.set_cursor(id, event.seq)?;
             }
         }
@@ -358,6 +525,229 @@ impl Stream {
         }
         Ok(result)
     }
+    fn gui_migrate(&mut self, old: &str, new: &str) -> Result<u64> {
+        let previous = self.consumers[old].gui.as_ref().unwrap().policy.clone();
+        let mut policy = self.consumers[new].gui.as_ref().unwrap().policy.clone();
+        let config = self.consumers[new].config.clone();
+        let mut db = sqlite::open(&self.log.path)?;
+        let mut dropped = 0;
+        {
+            let mut statement=db.prepare("SELECT e.subject,COUNT(*) FROM pending p JOIN events e ON e.seq=p.seq WHERE p.consumer=?1 GROUP BY e.subject")?;
+            let mut rows = statement.query([old])?;
+            while let Some(row) = rows.next()? {
+                if !config.accepts(&row.get::<_, String>(0)?) {
+                    dropped += gui_uint(row, 1)?;
+                }
+            }
+        }
+        if policy.inherited_from.as_deref() == Some(old) {
+            return Ok(dropped);
+        }
+        for (filter, start) in &mut policy.starts {
+            if let Some(previous) = previous.starts.get(filter) {
+                *start = *previous;
+            }
+        }
+        policy.inherited_from = Some(old.into());
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let (cursor, acked): (u64, u64) = tx.query_row(
+            "SELECT cursor,acked FROM consumers WHERE name=?1",
+            [old],
+            |row| Ok((gui_uint(row, 0)?, gui_uint(row, 1)?)),
+        )?;
+        tx.execute("INSERT OR IGNORE INTO pending SELECT ?2,seq,delivered_at,deliveries FROM pending WHERE consumer=?1",params![old,new])?;
+        tx.execute(
+            "UPDATE consumers SET cursor=?2,acked=?3,filter=?4 WHERE name=?1",
+            params![
+                new,
+                sqlint(cursor)?,
+                sqlint(acked)?,
+                serde_json::to_string(&policy)?
+            ],
+        )?;
+        tx.commit()?;
+        let subscriber = self.consumers.get_mut(new).unwrap();
+        subscriber.cursor = cursor;
+        subscriber.gui.as_mut().unwrap().policy = policy;
+        Ok(dropped)
+    }
+
+    fn gui_poll(
+        &mut self,
+        id: &str,
+        limit: usize,
+        byte_limit: usize,
+        whole_quantum: usize,
+        now: u64,
+    ) -> Result<GuiStreamPoll> {
+        let sub = self
+            .consumers
+            .get(id)
+            .ok_or_else(|| invalid("unknown GUI consumer"))?;
+        if sub.gui.is_none() {
+            return Err(invalid("consumer is not a durable GUI consumer"));
+        }
+        let cursor = sub.cursor;
+        let config = sub.config.clone();
+        let policy = sub.gui.as_ref().unwrap().policy.clone();
+        let limit = limit.min(128).min(config.queue_max);
+        if limit == 0 || byte_limit == 0 {
+            return Err(invalid("empty GUI poll budget"));
+        }
+        let mut db = sqlite::open(&self.log.path)?;
+        // Only small routing metadata is read here. The cursor and pending
+        // admissions commit together, so a crash cannot advance past a hole.
+        let rows = {
+            let mut statement =
+                db.prepare("SELECT seq,subject FROM events WHERE seq>?1 ORDER BY seq LIMIT ?2")?;
+            statement
+                .query_map(params![sqlint(cursor)?, limit as i64], |row| {
+                    Ok((gui_uint(row, 0)?, row.get::<_, String>(1)?))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        if let Some((last, _)) = rows.last() {
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            for (sequence, subject) in &rows {
+                if policy.accepts(subject, *sequence) {
+                    tx.execute(
+                        "INSERT OR IGNORE INTO pending VALUES(?1,?2,0,0)",
+                        params![id, sqlint(*sequence)?],
+                    )?;
+                }
+            }
+            tx.execute(
+                "UPDATE consumers SET cursor=?2 WHERE name=?1",
+                params![id, sqlint(*last)?],
+            )?;
+            tx.commit()?;
+            self.consumers.get_mut(id).unwrap().cursor = *last;
+        }
+        let state = self.consumers[id].gui.as_ref().unwrap();
+        let after = state.after;
+        let replay_through = state.replay_through;
+        let pending = {
+            let mut statement = db.prepare(
+                "SELECT p.seq,p.delivered_at,p.deliveries,length(e.payload),e.hash,e.ts,e.subject \
+                 FROM pending p JOIN events e ON e.seq=p.seq \
+                 WHERE p.consumer=?1 AND p.seq>?2 ORDER BY p.seq LIMIT ?3",
+            )?;
+            statement
+                .query_map(params![id, sqlint(after)?, limit as i64], |row| {
+                    Ok((
+                        gui_uint(row, 0)?,
+                        gui_uint(row, 1)?,
+                        row.get::<_, u32>(2)?,
+                        gui_uint(row, 3)?,
+                        row.get::<_, String>(4)?,
+                        gui_uint(row, 5)?,
+                        row.get::<_, String>(6)?,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        let mut result = GuiStreamPoll {
+            deliveries: vec![],
+            bytes: 0,
+            undeliverable: vec![],
+        };
+        let mut scanned = after;
+        let mut future_due = None;
+        let mut complete = pending.len() < limit;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        for (sequence, delivered_at, deliveries, length, expected_hash, ts, subject) in &pending {
+            if !policy.accepts(subject, *sequence) {
+                tx.execute(
+                    "DELETE FROM pending WHERE consumer=?1 AND seq=?2",
+                    params![id, sqlint(*sequence)?],
+                )?;
+                scanned = *sequence;
+                continue;
+            }
+            let length = usize::try_from(*length)?;
+            let due = delivered_at.saturating_add(config.ack_wait_ms);
+            if *deliveries != 0 && *sequence > replay_through && due > now {
+                future_due = Some(future_due.map_or(due, |old: u64| old.min(due)));
+                scanned = *sequence;
+                continue;
+            }
+            // Oversize is relative to a fresh quantum, never the budget left
+            // by a previous stream. A row that merely does not fit waits.
+            let cost = if length > whole_quantum { 128 } else { length };
+            if result.bytes + cost > byte_limit {
+                complete = false;
+                break;
+            }
+            if *deliveries >= config.max_deliver {
+                result.undeliverable.push(GuiUndeliverable {
+                    stream: self.name.clone(),
+                    sequence: *sequence,
+                    ts: *ts,
+                });
+            }
+            let attempts = deliveries.saturating_add(1).min(config.max_deliver);
+            if length > whole_quantum {
+                result.deliveries.push(Delivery::Gap {
+                    stream: self.name.clone(),
+                    first: *sequence,
+                    last: *sequence,
+                    reason: "event_exceeds_gui_page_byte_limit; original retained".into(),
+                });
+                result.bytes += 128;
+            } else {
+                let bytes: Vec<u8> = tx.query_row(
+                    "SELECT payload FROM events WHERE seq=?1",
+                    [sqlint(*sequence)?],
+                    |row| row.get(0),
+                )?;
+                let envelope: Envelope = serde_json::from_slice(&bytes)?;
+                envelope.verify()?;
+                if envelope.seq != *sequence
+                    || envelope.hash()? != *expected_hash
+                    || !config.accepts(&envelope.event.subject)
+                {
+                    return Err(invalid(
+                        "retained GUI event hash, sequence or subject mismatch",
+                    ));
+                }
+                result.bytes += bytes.len();
+                result.deliveries.push(Delivery::Event {
+                    stream: self.name.clone(),
+                    envelope: Box::new(envelope),
+                    deliveries: attempts,
+                });
+            }
+            tx.execute(
+                "UPDATE pending SET delivered_at=?3,deliveries=?4 WHERE consumer=?1 AND seq=?2",
+                params![id, sqlint(*sequence)?, sqlint(now)?, attempts],
+            )?;
+            scanned = *sequence;
+            let next = now.saturating_add(config.ack_wait_ms);
+            future_due = Some(future_due.map_or(next, |old: u64| old.min(next)));
+        }
+        tx.commit()?;
+        let sub = self.consumers.get_mut(id).unwrap();
+        let gui = sub.gui.as_mut().unwrap();
+        gui.sweep_due = match (gui.sweep_due, future_due) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        };
+        // A full metadata quantum can leave admission work even if no
+        // selected subject was present; never scan an unbounded tail here.
+        if complete {
+            gui.after = 0;
+            gui.replay_through = 0;
+            gui.next_due = if rows.len() == limit {
+                0
+            } else {
+                gui.sweep_due.take().unwrap_or(u64::MAX)
+            };
+        } else {
+            gui.after = scanned;
+            gui.next_due = 0;
+        }
+        Ok(result)
+    }
     fn ack(&mut self, id: &str, sequence: u64) -> Result<()> {
         let mut db = sqlite::open(&self.log.path)?;
         let tx = db.transaction()?;
@@ -409,6 +799,7 @@ pub struct Broker {
     catalog: SqliteStore,
     streams: BTreeMap<String, Stream>,
     consumers: BTreeMap<String, Consumer>,
+    gui_attachments: BTreeMap<Ulid, GuiAttachment>,
 }
 
 impl Broker {
@@ -424,6 +815,7 @@ impl Broker {
             catalog,
             streams: BTreeMap::new(),
             consumers: BTreeMap::new(),
+            gui_attachments: BTreeMap::new(),
         };
         for (name, bytes) in broker.catalog.list("consumer/")? {
             broker
@@ -547,6 +939,7 @@ impl Broker {
                 if draft != event {
                     return Err(invalid("event id conflicts with retained event"));
                 }
+                self.streams.get_mut(stream).unwrap().gui_notify();
                 return Ok(old);
             }
         }
@@ -559,6 +952,7 @@ impl Broker {
             self.streams[stream].log.append(event, &key)?
         };
         if envelope.seq != 0 && envelope.seq <= previous {
+            self.streams.get_mut(stream).unwrap().gui_notify();
             return Ok(envelope);
         }
         if envelope.seq != 0
@@ -604,6 +998,444 @@ impl Broker {
         }
         Ok(envelope)
     }
+    fn gui_attach(&mut self, device: Ulid, mut filter: Vec<String>) -> Result<GuiLease> {
+        if self.gui_attachments.contains_key(&device) {
+            return Err(invalid(
+                "GuiConsumerAttached: device already has an active drain",
+            ));
+        }
+        filter.sort();
+        filter.dedup();
+        let base = format!("gui-{device}");
+        let mut versions: Vec<_> = self
+            .consumers
+            .keys()
+            .filter_map(|name| {
+                if name == &base {
+                    Some((0_u32, name.clone()))
+                } else {
+                    name.strip_prefix(&format!("{base}-v"))?
+                        .parse::<u32>()
+                        .ok()
+                        .map(|n| (n, name.clone()))
+                }
+            })
+            .collect();
+        let previous = versions.iter().max_by_key(|(version, _)| version);
+        let name = match previous {
+            Some((_, name)) if self.consumers[name].filter == filter => name.clone(),
+            Some((version, _)) => format!(
+                "{base}-v{}",
+                version
+                    .checked_add(1)
+                    .ok_or_else(|| invalid("GUI consumer version exhausted"))?
+            ),
+            None => base,
+        };
+        let mut config = Consumer::gui("seat/*/state");
+        config.name = Some(name.clone());
+        config.filter = filter;
+        config.start = Start::New;
+        config.ack = Ack::Explicit;
+        self.subscribe(config)?;
+        if !versions.iter().any(|(_, old)| old == &name) {
+            versions.push((previous.map_or(0, |(version, _)| version + 1), name.clone()));
+        }
+        versions.sort_by_key(|(version, _)| *version);
+        // A per-stream atomic migration can be resumed after a crash between
+        // objects. Finish incomplete older versions before moving forward.
+        for pair in versions.windows(2) {
+            let old = &pair[0].1;
+            let new = &pair[1].1;
+            let mut dropped = 0_u64;
+            for stream in self.streams.values_mut() {
+                dropped = dropped.saturating_add(stream.gui_migrate(old, new)?);
+            }
+            let audit_key = format!("gui-migration/{new}");
+            let audit = if let Some(bytes) = self.catalog.get(&audit_key)? {
+                serde_json::from_slice(&bytes)?
+            } else {
+                let previous = &self.consumers[old].filter;
+                let next = &self.consumers[new].filter;
+                let mut audit = Draft::new(
+                    "account/control",
+                    "gui/consumer",
+                    serde_json::json!({
+                        "activity":"gui-filter-migration","old":old,"new":new,
+                        "added":next.iter().filter(|f|!previous.contains(f)).collect::<Vec<_>>(),
+                        "removed":previous.iter().filter(|f|!next.contains(f)).collect::<Vec<_>>(),
+                        "pending_dropped":dropped.to_string(),
+                    }),
+                );
+                use sha2::{Digest, Sha256};
+                let digest = Sha256::digest(audit_key.as_bytes());
+                audit.id = Ulid::from_bytes(digest[..16].try_into().unwrap());
+                // This is the migration's own resumable metadata, in the
+                // existing consumer catalogue, not another events ledger.
+                self.catalog.put(&audit_key, &serde_json::to_vec(&audit)?)?;
+                audit
+            };
+            self.publish("account", audit)?;
+        }
+        // New policy is live before deleting an old version's consumer state.
+        // Signed history and operator read-marks are never deleted here.
+        for (_, old) in &versions {
+            if old != &name {
+                self.unsubscribe(old)?;
+            }
+        }
+        for (_, version) in &versions {
+            self.catalog.sql(
+                "DELETE FROM kv WHERE key=?1",
+                &[format!("gui-migration/{version}").into()],
+            )?;
+        }
+        for stream in self.streams.values_mut() {
+            let subscriber = stream.consumers.get_mut(&name).unwrap();
+            let pending: bool = sqlite::open(&stream.log.path)?.query_row(
+                "SELECT EXISTS(SELECT 1 FROM pending WHERE consumer=?1)",
+                [&name],
+                |row| row.get(0),
+            )?;
+            let gui = subscriber.gui.as_mut().unwrap();
+            gui.after = 0;
+            gui.replay_through = subscriber.cursor;
+            gui.sweep_due = None;
+            gui.next_due = if pending || subscriber.cursor < stream.log.last_sequence()? {
+                0
+            } else {
+                u64::MAX
+            };
+        }
+        let lease = GuiLease {
+            consumer: name,
+            device,
+            token: Ulid::new(),
+        };
+        self.gui_attachments.insert(
+            device,
+            GuiAttachment {
+                lease: lease.clone(),
+                last_stream: None,
+            },
+        );
+        Ok(lease)
+    }
+
+    fn gui_attachment(&self, lease: &GuiLease) -> Result<&GuiAttachment> {
+        self.gui_attachments
+            .get(&lease.device)
+            .filter(|active| active.lease == *lease)
+            .ok_or_else(|| invalid("GuiConsumerDetached: stale GUI attachment"))
+    }
+
+    fn gui_refresh(&mut self, lease: &GuiLease, mut filters: Vec<String>) -> Result<GuiLease> {
+        self.gui_attachment(lease)?;
+        filters.sort();
+        filters.dedup();
+        if self.consumers[&lease.consumer].filter == filters {
+            return Ok(lease.clone());
+        }
+        let old = self.gui_attachments.remove(&lease.device).unwrap();
+        match self.gui_attach(lease.device, filters) {
+            Ok(next) => Ok(next),
+            Err(error) => {
+                self.gui_attachments.insert(lease.device, old);
+                Err(error)
+            }
+        }
+    }
+
+    fn gui_detach(&mut self, lease: &GuiLease) -> Result<()> {
+        if self.gui_attachments.contains_key(&lease.device) {
+            self.gui_attachment(lease)?;
+            self.gui_attachments.remove(&lease.device);
+        }
+        Ok(())
+    }
+
+    fn gui_poll(
+        &mut self,
+        lease: &GuiLease,
+        limit: usize,
+        bytes: usize,
+        now: u64,
+    ) -> Result<Vec<Delivery>> {
+        let after = self.gui_attachment(lease)?.last_stream.clone();
+        if limit == 0 || bytes < 128 {
+            return Err(invalid("invalid GUI poll budget"));
+        }
+        let limit = limit.min(128);
+        let bytes = bytes.min(256 * 1024);
+        let mut names: Vec<_> = self
+            .streams
+            .iter()
+            .filter(|(_, stream)| {
+                stream
+                    .consumers
+                    .get(&lease.consumer)
+                    .and_then(|s| s.gui.as_ref())
+                    .is_some_and(|g| g.next_due <= now)
+            })
+            .map(|(name, _)| name.clone())
+            .collect();
+        if let Some(after) = after {
+            let at = names.partition_point(|name| name <= &after);
+            names.rotate_left(at);
+        }
+        let mut result = Vec::new();
+        let mut used = 0;
+        let mut undeliverable = Vec::new();
+        for name in names.into_iter().take(8) {
+            if result.len() >= limit || used + 128 > bytes {
+                break;
+            }
+            let batch = self.streams.get_mut(&name).unwrap().gui_poll(
+                &lease.consumer,
+                (limit - result.len()).min(32),
+                bytes - used,
+                bytes,
+                now,
+            )?;
+            used += batch.bytes;
+            result.extend(batch.deliveries);
+            undeliverable.extend(batch.undeliverable);
+            self.gui_attachments
+                .get_mut(&lease.device)
+                .unwrap()
+                .last_stream = Some(name);
+        }
+        // Read transactions have ended before appending this audit. Stable IDs
+        // make repeated redelivery or a process crash produce one audit row.
+        for failure in undeliverable {
+            use sha2::{Digest, Sha256};
+            let bytes = serde_json::to_vec(&(&lease.consumer, &failure.stream, failure.sequence))?;
+            let hash = Sha256::digest(bytes);
+            let mut audit = Draft::new(
+                "account/control",
+                "gui/consumer",
+                serde_json::json!({
+                    "activity":"undeliverable", "consumer":lease.consumer,
+                    "stream":failure.stream, "seq":failure.sequence.to_string(),
+                }),
+            );
+            audit.id = Ulid::from_bytes(hash[..16].try_into().unwrap());
+            audit.ts = failure.ts;
+            self.publish("account", audit)?;
+        }
+        Ok(result)
+    }
+
+    fn gui_ack(&mut self, lease: &GuiLease, stream: &str, sequence: u64) -> Result<()> {
+        self.gui_attachment(lease)?;
+        let stream = self
+            .streams
+            .get_mut(stream)
+            .ok_or_else(|| invalid("unknown GUI stream"))?;
+        let sub = stream
+            .consumers
+            .get(&lease.consumer)
+            .ok_or_else(|| invalid("GUI consumer does not cover stream"))?;
+        if sequence == 0 || sequence > sub.cursor {
+            return Err(invalid("GUI ACK is outside the admitted stream cursor"));
+        }
+        let deliveries: Option<u32> = sqlite::open(&stream.log.path)?
+            .query_row(
+                "SELECT deliveries FROM pending WHERE consumer=?1 AND seq=?2",
+                params![lease.consumer, sqlint(sequence)?],
+                |row| row.get(0),
+            )
+            .optional()?;
+        match deliveries {
+            Some(0) => Err(invalid("GUI ACK precedes delivery")),
+            Some(_) => stream.ack(&lease.consumer, sequence),
+            None => Ok(()), // An ACK retry never advances an unrelated cursor.
+        }
+    }
+
+    fn gui_cursor(&self, lease: &GuiLease, name: &str) -> Result<GuiCursor> {
+        self.gui_attachment(lease)?;
+        let stream = self
+            .streams
+            .get(name)
+            .ok_or_else(|| invalid("unknown GUI stream"))?;
+        let config = &stream
+            .consumers
+            .get(&lease.consumer)
+            .ok_or_else(|| invalid("GUI consumer does not cover stream"))?
+            .config;
+        let db = sqlite::open(&stream.log.path)?;
+        let (admitted, published): (u64, u64) = db.query_row(
+            "SELECT cursor,acked FROM consumers WHERE name=?1",
+            [&lease.consumer],
+            |row| Ok((gui_uint(row, 0)?, gui_uint(row, 1)?)),
+        )?;
+        let account = SqliteStore::open(&object_dir(&self.root, "account")?)?;
+        let read: u64 = account
+            .get(&format!("read/{name}"))?
+            .map(|bytes| serde_json::from_slice(&bytes))
+            .transpose()?
+            .unwrap_or(0);
+        // The messaging service supplies exact retained message subjects. An
+        // indexed aggregate derives unread without loading bodies, a second
+        // counter, or a Rust allocation/dispatch for every historical row.
+        let subjects: Vec<_> = config
+            .filter
+            .iter()
+            .filter(|subject| subject.ends_with("/message") && !subject.contains(['*', '>']))
+            .collect();
+        let unread = if subjects.is_empty() {
+            0
+        } else {
+            let placeholders = std::iter::repeat_n("?", subjects.len())
+                .collect::<Vec<_>>()
+                .join(",");
+            let query =
+                format!("SELECT COUNT(*) FROM events WHERE seq>? AND subject IN ({placeholders})");
+            let values = std::iter::once(rusqlite::types::Value::Integer(sqlint(read)?)).chain(
+                subjects
+                    .into_iter()
+                    .map(|subject| rusqlite::types::Value::Text(subject.clone())),
+            );
+            db.query_row(&query, rusqlite::params_from_iter(values), |row| {
+                gui_uint(row, 0)
+            })?
+        };
+        Ok(GuiCursor {
+            stream: name.into(),
+            admitted,
+            published,
+            read,
+            high: stream.log.last_sequence()?,
+            unread,
+        })
+    }
+
+    fn gui_read(&mut self, lease: &GuiLease, stream: &str, through: u64) -> Result<GuiCursor> {
+        let state = self.gui_cursor(lease, stream)?;
+        if through > state.high {
+            return Err(invalid("operator read-mark exceeds retained stream head"));
+        }
+        if through > state.read {
+            SqliteStore::open(&object_dir(&self.root, "account")?)?
+                .put(&format!("read/{stream}"), &serde_json::to_vec(&through)?)?;
+        }
+        self.gui_cursor(lease, stream)
+    }
+
+    fn gui_page(
+        &self,
+        lease: &GuiLease,
+        name: &str,
+        after: u64,
+        limit: usize,
+        bytes: usize,
+    ) -> Result<GuiPage> {
+        let cursor = self.gui_cursor(lease, name)?;
+        if after > cursor.high || limit == 0 || bytes < 128 {
+            return Err(invalid("invalid GUI retained page cursor or budget"));
+        }
+        let stream = &self.streams[name];
+        let config = &stream.consumers[&lease.consumer].config;
+        let limit = limit.min(128);
+        let bytes = bytes.min(256 * 1024);
+        let db = sqlite::open(&stream.log.path)?;
+        let metadata = {
+            let mut statement = db.prepare(
+                "SELECT seq,length(payload),hash,subject FROM events WHERE seq>?1 ORDER BY seq LIMIT ?2",
+            )?;
+            statement
+                .query_map(params![sqlint(after)?, limit as i64], |row| {
+                    Ok((
+                        gui_uint(row, 0)?,
+                        gui_uint(row, 1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        let mut used = 0;
+        let mut through = after;
+        let mut records = Vec::new();
+        for (sequence, length, hash, subject) in metadata {
+            if !config.accepts(&subject) {
+                through = sequence;
+                continue;
+            }
+            let length = usize::try_from(length)?;
+            let cost = if length > bytes { 128 } else { length };
+            if used + cost > bytes {
+                break;
+            }
+            through = sequence;
+            used += cost;
+            if length > bytes {
+                records.push(Delivery::Gap {
+                    stream: name.into(),
+                    first: sequence,
+                    last: sequence,
+                    reason: "event_exceeds_gui_page_byte_limit; original retained".into(),
+                });
+                continue;
+            }
+            let envelope = stream
+                .log
+                .at(sequence)?
+                .ok_or_else(|| invalid("retained GUI event missing"))?;
+            envelope.verify()?;
+            if envelope.seq != sequence || envelope.hash()? != hash {
+                return Err(invalid("retained GUI event hash or sequence mismatch"));
+            }
+            if config.accepts(&envelope.event.subject) {
+                records.push(Delivery::Event {
+                    stream: name.into(),
+                    envelope: Box::new(envelope),
+                    deliveries: 0,
+                });
+            }
+        }
+        let next = (through < cursor.high).then_some(through);
+        Ok(GuiPage {
+            records,
+            next,
+            cursor,
+        })
+    }
+
+    fn gui_latest(&self, lease: &GuiLease, name: &str, subject: &str) -> Result<Option<Envelope>> {
+        self.gui_attachment(lease)?;
+        let Some(stream) = self.streams.get(name) else {
+            return Ok(None);
+        };
+        if !stream.consumers[&lease.consumer].config.accepts(subject) {
+            return Err(invalid("GUI subject is outside the consumer filter"));
+        }
+        let metadata: Option<(i64, i64, String)> = sqlite::open(&stream.log.path)?.query_row(
+            "SELECT seq,length(payload),hash FROM events WHERE subject=?1 ORDER BY seq DESC LIMIT 1",
+            [subject], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        ).optional()?;
+        let Some((sequence, length, expected_hash)) = metadata else {
+            return Ok(None);
+        };
+        if usize::try_from(length)? > 256 * 1024 {
+            return Err(invalid("latest GUI event exceeds bounded history read"));
+        }
+        let sequence = u64::try_from(sequence)?;
+        let envelope = stream
+            .log
+            .at(sequence)?
+            .ok_or_else(|| invalid("retained GUI event missing"))?;
+        envelope.verify()?;
+        if envelope.hash()? != expected_hash
+            || envelope.seq != sequence
+            || envelope.event.subject != subject
+        {
+            return Err(invalid("latest GUI event metadata mismatch"));
+        }
+        Ok(Some(envelope))
+    }
+
     pub fn poll(&mut self, consumer: &str, limit: usize, now: u64) -> Result<Vec<Delivery>> {
         if !self.consumers.contains_key(consumer) {
             return Err(invalid("unknown consumer"));
@@ -648,6 +1480,32 @@ enum Command {
     Poll(String, usize, oneshot::Sender<Result<Vec<Delivery>>>),
     Ack(String, String, u64, oneshot::Sender<Result<()>>),
     Unsubscribe(String, oneshot::Sender<Result<()>>),
+    GuiAttach(Ulid, Vec<String>, oneshot::Sender<Result<GuiLease>>),
+    GuiRefresh(GuiLease, Vec<String>, oneshot::Sender<Result<GuiLease>>),
+    GuiPoll(
+        GuiLease,
+        usize,
+        usize,
+        oneshot::Sender<Result<Vec<Delivery>>>,
+    ),
+    GuiAck(GuiLease, String, u64, oneshot::Sender<Result<()>>),
+    GuiDetach(GuiLease, oneshot::Sender<Result<()>>),
+    GuiCursor(GuiLease, String, oneshot::Sender<Result<GuiCursor>>),
+    GuiRead(GuiLease, String, u64, oneshot::Sender<Result<GuiCursor>>),
+    GuiPage(
+        GuiLease,
+        String,
+        u64,
+        usize,
+        usize,
+        oneshot::Sender<Result<GuiPage>>,
+    ),
+    GuiLatest(
+        GuiLease,
+        String,
+        String,
+        oneshot::Sender<Result<Option<Envelope>>>,
+    ),
     IdentitySigner(SigningKey, Option<Ulid>, oneshot::Sender<Vec<HoldRange>>),
     HoldRanges(oneshot::Sender<Vec<HoldRange>>),
     Shutdown(oneshot::Sender<()>),
@@ -694,6 +1552,33 @@ impl BusHandle {
                     }
                     Command::Unsubscribe(name, reply) => {
                         let _ = reply.send(broker.unsubscribe(&name));
+                    }
+                    Command::GuiAttach(device, filter, reply) => {
+                        let _ = reply.send(broker.gui_attach(device, filter));
+                    }
+                    Command::GuiRefresh(lease, filter, reply) => {
+                        let _ = reply.send(broker.gui_refresh(&lease, filter));
+                    }
+                    Command::GuiPoll(lease, limit, bytes, reply) => {
+                        let _ = reply.send(broker.gui_poll(&lease, limit, bytes, now_ms()));
+                    }
+                    Command::GuiAck(lease, stream, sequence, reply) => {
+                        let _ = reply.send(broker.gui_ack(&lease, &stream, sequence));
+                    }
+                    Command::GuiDetach(lease, reply) => {
+                        let _ = reply.send(broker.gui_detach(&lease));
+                    }
+                    Command::GuiCursor(lease, stream, reply) => {
+                        let _ = reply.send(broker.gui_cursor(&lease, &stream));
+                    }
+                    Command::GuiRead(lease, stream, sequence, reply) => {
+                        let _ = reply.send(broker.gui_read(&lease, &stream, sequence));
+                    }
+                    Command::GuiPage(lease, stream, after, limit, bytes, reply) => {
+                        let _ = reply.send(broker.gui_page(&lease, &stream, after, limit, bytes));
+                    }
+                    Command::GuiLatest(lease, stream, subject, reply) => {
+                        let _ = reply.send(broker.gui_latest(&lease, &stream, &subject));
                     }
                     Command::IdentitySigner(key, hold, reply) => {
                         let _ = reply.send(broker.identity_signer(key, hold));
@@ -773,6 +1658,121 @@ impl BusHandle {
             .map_err(|_| invalid("router stopped"))?;
         rx.await.map_err(|_| invalid("router stopped"))?
     }
+    pub(crate) async fn gui_attach(&self, device: Ulid, filter: Vec<String>) -> Result<GuiLease> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiAttach(device, filter, tx))
+            .await
+            .map_err(|_| invalid("GUI event router stopped"))?;
+        rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    pub(crate) async fn gui_refresh(
+        &self,
+        lease: &GuiLease,
+        filter: Vec<String>,
+    ) -> Result<GuiLease> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiRefresh(lease.clone(), filter, tx))
+            .await
+            .map_err(|_| invalid("GUI event router stopped"))?;
+        rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    pub(crate) async fn gui_poll(
+        &self,
+        lease: &GuiLease,
+        limit: usize,
+        bytes: usize,
+    ) -> Result<Vec<Delivery>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiPoll(lease.clone(), limit, bytes, tx))
+            .await
+            .map_err(|_| invalid("GUI event router stopped"))?;
+        rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    pub(crate) async fn gui_ack(
+        &self,
+        lease: &GuiLease,
+        stream: &str,
+        sequence: u64,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiAck(lease.clone(), stream.into(), sequence, tx))
+            .await
+            .map_err(|_| invalid("GUI event router stopped"))?;
+        rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    pub(crate) async fn gui_detach(&self, lease: &GuiLease) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiDetach(lease.clone(), tx))
+            .await
+            .map_err(|_| invalid("GUI event router stopped"))?;
+        rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    pub(crate) async fn gui_cursor(&self, lease: &GuiLease, stream: &str) -> Result<GuiCursor> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiCursor(lease.clone(), stream.into(), tx))
+            .await
+            .map_err(|_| invalid("GUI event router stopped"))?;
+        rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    pub(crate) async fn gui_read(
+        &self,
+        lease: &GuiLease,
+        stream: &str,
+        through: u64,
+    ) -> Result<GuiCursor> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiRead(lease.clone(), stream.into(), through, tx))
+            .await
+            .map_err(|_| invalid("GUI event router stopped"))?;
+        rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    pub(crate) async fn gui_page(
+        &self,
+        lease: &GuiLease,
+        stream: &str,
+        after: u64,
+        limit: usize,
+        bytes: usize,
+    ) -> Result<GuiPage> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiPage(
+                lease.clone(),
+                stream.into(),
+                after,
+                limit,
+                bytes,
+                tx,
+            ))
+            .await
+            .map_err(|_| invalid("GUI event router stopped"))?;
+        rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    pub(crate) async fn gui_latest(
+        &self,
+        lease: &GuiLease,
+        stream: &str,
+        subject: &str,
+    ) -> Result<Option<Envelope>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiLatest(
+                lease.clone(),
+                stream.into(),
+                subject.into(),
+                tx,
+            ))
+            .await
+            .map_err(|_| invalid("GUI event router stopped"))?;
+        rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
     pub async fn identity_signer(
         &self,
         key: SigningKey,
@@ -802,5 +1802,396 @@ impl BusHandle {
             .map_err(|_| invalid("router stopped"))?;
         rx.await.map_err(|_| invalid("router stopped"))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "test/fixture IO, not the UI thread"
+)]
+mod gui_tests {
+    use super::*;
+
+    struct Fixture(PathBuf);
+    impl Fixture {
+        fn new() -> Self {
+            Self(std::env::temp_dir().join(format!("bbt-gui-bus-{}", Ulid::new())))
+        }
+        fn open(&self) -> Broker {
+            Broker::open(&self.0, SigningKey::from_bytes(&[83; 32])).unwrap()
+        }
+    }
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    fn filters() -> Vec<String> {
+        vec!["artifact/>".into(), "operator/inbox/message".into()]
+    }
+    fn event(subject: &str) -> Draft {
+        Draft::new(subject, "fixture", serde_json::json!({"id":"fixture"}))
+    }
+    fn sequences(deliveries: &[Delivery]) -> Vec<(String, u64)> {
+        deliveries
+            .iter()
+            .filter_map(|delivery| match delivery {
+                Delivery::Event {
+                    stream, envelope, ..
+                } => Some((stream.clone(), envelope.seq)),
+                Delivery::Gap { .. } => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn gui_filter_migration_resumes_after_a_crash_between_streams() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        let device = Ulid::new();
+        broker.ensure_stream("account").unwrap();
+        let old = broker.gui_attach(device, filters()).unwrap();
+        broker
+            .publish("index", event("artifact/a/created"))
+            .unwrap();
+        broker.gui_poll(&old, 128, 256 * 1024, 1).unwrap();
+        broker
+            .publish("index", event("artifact/b/created"))
+            .unwrap();
+        let mut config = broker.consumers[&old.consumer].clone();
+        let next = format!("{}-v1", old.consumer);
+        config.name = Some(next.clone());
+        config.filter.push("account/control".into());
+        config.filter.sort();
+        let filter = config.filter.clone();
+        broker.subscribe(config).unwrap();
+        broker
+            .streams
+            .get_mut("index")
+            .unwrap()
+            .gui_migrate(&old.consumer, &next)
+            .unwrap();
+        // Account has not migrated, the old catalog entry still exists, and
+        // index's copied pending state must not be reset on recovery.
+        drop(broker);
+        let mut broker = fixture.open();
+        let resumed = broker.gui_attach(device, filter).unwrap();
+        assert_eq!(resumed.consumer, next);
+        let rows = broker.gui_poll(&resumed, 128, 256 * 1024, 2).unwrap();
+        assert_eq!(
+            sequences(&rows)
+                .into_iter()
+                .filter(|(s, _)| s == "index")
+                .collect::<Vec<_>>(),
+            [("index".into(), 1), ("index".into(), 2)]
+        );
+        assert_eq!(broker.catalog.list("consumer/").unwrap().len(), 1);
+        assert!(broker.catalog.list("gui-migration/").unwrap().is_empty());
+        assert_eq!(broker.streams["account"].log.last_sequence().unwrap(), 1);
+    }
+
+    #[test]
+    fn gui_filter_migration_keeps_pending_and_tail_but_new_subjects_start_at_head() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        let device = Ulid::new();
+        let old = broker
+            .gui_attach(
+                device,
+                vec![
+                    "artifact/a/created".into(),
+                    "artifact/b/created".into(),
+                    "account/control".into(),
+                ],
+            )
+            .unwrap();
+        broker
+            .publish("index", event("artifact/a/created"))
+            .unwrap();
+        broker
+            .publish("index", event("artifact/b/created"))
+            .unwrap();
+        broker.publish("index", event("activity/new")).unwrap();
+        assert_eq!(
+            sequences(&broker.gui_poll(&old, 128, 256 * 1024, 1).unwrap()),
+            [("index".into(), 1), ("index".into(), 2)]
+        );
+        broker
+            .publish("index", event("artifact/a/created"))
+            .unwrap();
+        let next = broker
+            .gui_refresh(
+                &old,
+                vec![
+                    "artifact/a/created".into(),
+                    "activity/new".into(),
+                    "account/control".into(),
+                ],
+            )
+            .unwrap();
+        assert_ne!(old.consumer, next.consumer);
+        assert_eq!(broker.gui_cursor(&next, "index").unwrap().admitted, 3);
+        let records = broker.gui_poll(&next, 128, 256 * 1024, 2).unwrap();
+        assert_eq!(
+            sequences(&records)
+                .into_iter()
+                .filter(|(s, _)| s == "index")
+                .collect::<Vec<_>>(),
+            [("index".into(), 1), ("index".into(), 4)]
+        );
+        let audit = broker.streams["account"].log.after(0, 10).unwrap();
+        assert_eq!(audit.len(), 1);
+        assert_eq!(audit[0].event.payload["pending_dropped"], "1");
+        broker.publish("index", event("activity/new")).unwrap();
+        drop(broker);
+        let mut broker = fixture.open();
+        let resumed = broker
+            .gui_attach(
+                device,
+                vec![
+                    "artifact/a/created".into(),
+                    "activity/new".into(),
+                    "account/control".into(),
+                ],
+            )
+            .unwrap();
+        let records = broker.gui_poll(&resumed, 128, 256 * 1024, 3).unwrap();
+        assert_eq!(
+            sequences(&records)
+                .into_iter()
+                .filter(|(s, _)| s == "index")
+                .collect::<Vec<_>>(),
+            [
+                ("index".into(), 1),
+                ("index".into(), 4),
+                ("index".into(), 5)
+            ]
+        );
+        assert_eq!(broker.catalog.list("consumer/").unwrap().len(), 1);
+    }
+
+    #[test]
+    fn gui_deduplicated_publish_wakes_a_retained_append_not_yet_routed() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        let lease = broker.gui_attach(Ulid::new(), filters()).unwrap();
+        let event = event("artifact/a/created");
+        broker.ensure_stream("index").unwrap();
+        broker.streams["index"]
+            .log
+            .append(event.clone(), &broker.key)
+            .unwrap();
+        broker
+            .streams
+            .get_mut("index")
+            .unwrap()
+            .consumers
+            .get_mut(&lease.consumer)
+            .unwrap()
+            .gui
+            .as_mut()
+            .unwrap()
+            .next_due = u64::MAX;
+        broker.publish("index", event).unwrap();
+        assert_eq!(
+            sequences(&broker.gui_poll(&lease, 128, 256 * 1024, 1).unwrap()),
+            [("index".into(), 1)]
+        );
+    }
+
+    #[test]
+    fn gui_defers_a_row_that_fits_a_fresh_quantum_without_emitting_a_gap() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        let lease = broker.gui_attach(Ulid::new(), filters()).unwrap();
+        for (stream, bytes) in [("a", 240 * 1024), ("b", 32 * 1024)] {
+            broker
+                .publish(
+                    stream,
+                    Draft::new(
+                        "artifact/a/created",
+                        "fixture",
+                        serde_json::json!({"padding": "x".repeat(bytes)}),
+                    ),
+                )
+                .unwrap();
+        }
+        let first = broker.gui_poll(&lease, 128, 256 * 1024, 1).unwrap();
+        assert_eq!(sequences(&first), [("a".into(), 1)]);
+        assert_eq!(first.len(), 1, "remaining budget must never produce a Gap");
+        let pending = &broker.streams["b"];
+        let db = sqlite::open(&pending.log.path).unwrap();
+        let attempts: u32 = db
+            .query_row(
+                "SELECT deliveries FROM pending WHERE consumer=?1 AND seq=1",
+                [&lease.consumer],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(attempts, 0, "a deferred row has not been delivered");
+        let next = broker.gui_poll(&lease, 128, 256 * 1024, 2).unwrap();
+        assert_eq!(sequences(&next), [("b".into(), 1)]);
+        assert_eq!(next.len(), 1);
+    }
+
+    #[test]
+    fn gui_starts_new_but_replays_unpublished_pending_after_logic_restart() {
+        let fixture = Fixture::new();
+        let device = Ulid::new();
+        let mut broker = fixture.open();
+        broker
+            .publish("index", event("artifact/old/created"))
+            .unwrap();
+        let lease = broker.gui_attach(device, filters()).unwrap();
+        assert!(
+            broker
+                .gui_poll(&lease, 128, 256 * 1024, 1)
+                .unwrap()
+                .is_empty()
+        );
+        broker
+            .publish("index", event("artifact/a/created"))
+            .unwrap();
+        broker
+            .publish("index", event("artifact/b/created"))
+            .unwrap();
+        let rows = broker.gui_poll(&lease, 128, 256 * 1024, 2).unwrap();
+        assert_eq!(sequences(&rows), [("index".into(), 2), ("index".into(), 3)]);
+        broker.gui_ack(&lease, "index", 2).unwrap();
+        drop(broker);
+        let mut broker = fixture.open();
+        let resumed = broker.gui_attach(device, filters()).unwrap();
+        assert_eq!(resumed.consumer, lease.consumer);
+        assert_ne!(resumed.token, lease.token);
+        // No real clock wait: a new attachment reads through old pending rows
+        // even when their previous delivery's ACK deadline is still future.
+        let rows = broker.gui_poll(&resumed, 128, 256 * 1024, 3).unwrap();
+        assert_eq!(sequences(&rows), [("index".into(), 3)]);
+        broker.gui_ack(&resumed, "index", 3).unwrap();
+        broker.gui_ack(&resumed, "index", 3).unwrap();
+        assert_eq!(broker.gui_cursor(&resumed, "index").unwrap().published, 3);
+        assert_eq!(broker.catalog.list("consumer/").unwrap().len(), 1);
+        assert!(broker.gui_ack(&lease, "index", 3).is_err());
+    }
+
+    #[test]
+    fn gui_transport_ack_is_not_operator_read_and_read_marks_survive_restart() {
+        let fixture = Fixture::new();
+        let device = Ulid::new();
+        let mut broker = fixture.open();
+        broker
+            .publish("swarm-fixture", event("operator/inbox/message"))
+            .unwrap();
+        let lease = broker.gui_attach(device, filters()).unwrap();
+        assert_eq!(
+            broker.gui_cursor(&lease, "swarm-fixture").unwrap().unread,
+            1
+        );
+        let page = broker
+            .gui_page(&lease, "swarm-fixture", 0, 128, 256 * 1024)
+            .unwrap();
+        assert_eq!(sequences(&page.records), [("swarm-fixture".into(), 1)]);
+        assert!(page.next.is_none());
+        broker
+            .publish("swarm-fixture", event("operator/inbox/message"))
+            .unwrap();
+        let rows = broker.gui_poll(&lease, 128, 256 * 1024, 1).unwrap();
+        assert_eq!(sequences(&rows), [("swarm-fixture".into(), 2)]);
+        broker.gui_ack(&lease, "swarm-fixture", 2).unwrap();
+        let state = broker.gui_cursor(&lease, "swarm-fixture").unwrap();
+        assert_eq!(state.published, 2);
+        assert_eq!(state.read, 0);
+        assert_eq!(state.unread, 2);
+        assert_eq!(
+            broker.gui_read(&lease, "swarm-fixture", 1).unwrap().unread,
+            1
+        );
+        assert_eq!(broker.gui_read(&lease, "swarm-fixture", 0).unwrap().read, 1);
+        assert!(broker.gui_read(&lease, "swarm-fixture", 3).is_err());
+        drop(broker);
+        let mut broker = fixture.open();
+        let lease = broker.gui_attach(device, filters()).unwrap();
+        let state = broker.gui_cursor(&lease, "swarm-fixture").unwrap();
+        assert_eq!((state.read, state.unread), (1, 1));
+    }
+
+    #[test]
+    fn gui_one_attachment_detaches_without_deleting_and_filter_change_versions() {
+        let fixture = Fixture::new();
+        let device = Ulid::new();
+        let mut broker = fixture.open();
+        let lease = broker.gui_attach(device, filters()).unwrap();
+        assert!(broker.gui_attach(device, filters()).is_err());
+        broker
+            .publish("index", event("artifact/a/created"))
+            .unwrap();
+        broker.gui_poll(&lease, 128, 256 * 1024, 1).unwrap();
+        broker.gui_detach(&lease).unwrap();
+        assert_eq!(broker.catalog.list("consumer/").unwrap().len(), 1);
+        let resumed = broker.gui_attach(device, filters()).unwrap();
+        assert_eq!(resumed.consumer, lease.consumer);
+        assert!(broker.gui_detach(&lease).is_err());
+        assert_eq!(
+            sequences(&broker.gui_poll(&resumed, 128, 256 * 1024, 2).unwrap()),
+            [("index".into(), 1)]
+        );
+        broker.gui_detach(&resumed).unwrap();
+        let changed = broker
+            .gui_attach(device, vec!["account/control".into()])
+            .unwrap();
+        assert_eq!(changed.consumer, format!("gui-{device}-v1"));
+        assert!(!broker.consumers.contains_key(&lease.consumer));
+        assert_eq!(broker.catalog.list("consumer/").unwrap().len(), 1);
+        assert_eq!(broker.streams["index"].log.last_sequence().unwrap(), 1);
+    }
+
+    #[test]
+    fn gui_delivery_limit_is_audited_without_discarding_the_original_row() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        let lease = broker.gui_attach(Ulid::new(), filters()).unwrap();
+        broker
+            .publish("index", event("artifact/a/created"))
+            .unwrap();
+        for now in [1, 30_001, 60_001, 90_001, 120_001] {
+            assert_eq!(
+                sequences(&broker.gui_poll(&lease, 128, 256 * 1024, now).unwrap()),
+                [("index".into(), 1)]
+            );
+        }
+        let account = &broker.streams["account"].log;
+        assert_eq!(account.last_sequence().unwrap(), 1);
+        let audit = account.at(1).unwrap().unwrap();
+        audit.verify().unwrap();
+        assert_eq!(audit.event.payload["activity"], "undeliverable");
+        assert_eq!(audit.event.payload["stream"], "index");
+        assert_eq!(audit.event.payload["seq"], "1");
+        let pending: bool = sqlite::open(&broker.streams["index"].log.path)
+            .unwrap()
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM pending WHERE consumer=?1 AND seq=1)",
+                [&lease.consumer],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(pending);
+        broker.gui_ack(&lease, "index", 1).unwrap();
+    }
+
+    #[test]
+    fn gui_oversized_rows_have_a_visible_gap_and_retained_original() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        let lease = broker.gui_attach(Ulid::new(), filters()).unwrap();
+        let mut large = event("artifact/a/created");
+        large.payload = serde_json::json!({"text":"x".repeat(4096)});
+        broker.publish("index", large).unwrap();
+        let rows = broker.gui_poll(&lease, 128, 1024, 1).unwrap();
+        assert!(
+            matches!(&rows[..], [Delivery::Gap {stream,first:1,last:1,reason}] if stream=="index" && reason.contains("original retained"))
+        );
+        assert!(broker.streams["index"].log.at(1).unwrap().is_some());
+        broker.gui_ack(&lease, "index", 1).unwrap();
     }
 }

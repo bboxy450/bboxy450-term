@@ -1,4 +1,5 @@
 //! Shared terminal viewport and GUI wire schema. No transport or renderer.
+pub mod events;
 pub mod gui;
 pub mod hosts;
 pub mod messaging;

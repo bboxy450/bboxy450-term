@@ -46,6 +46,31 @@ pub struct GuiRequest {
 pub enum GuiAction {
     ListHosts,
     ListSeats,
+    /// Start the one device-bound durable events drain on this connection.
+    AttachEvents {
+        id: Ulid,
+    },
+    GetEvents {
+        stream: String,
+        #[serde(with = "crate::events::decimal")]
+        after: u64,
+        limit: usize,
+    },
+    GetEventCursor {
+        stream: String,
+    },
+    /// ACK follows publication to the model, not a socket write.
+    EventAck {
+        stream: String,
+        #[serde(with = "crate::events::decimal")]
+        seq: u64,
+    },
+    /// Only an operator view/mark-read advances this independent watermark.
+    MarkEventsRead {
+        stream: String,
+        #[serde(with = "crate::events::decimal")]
+        seq: u64,
+    },
     Watch {
         #[serde(with = "text_id")]
         seat: SeatId,
@@ -120,6 +145,32 @@ pub enum GuiAction {
     reason = "keep the decided C1 shared API; transport bounds each message"
 )]
 pub enum GuiReply {
+    /// Asynchronous attachment transitions, never a terminal action result.
+    EventStatus {
+        attached: bool,
+        reason: Option<String>,
+    },
+    Event {
+        stream: String,
+        #[serde(with = "crate::events::decimal")]
+        seq: u64,
+        subject: String,
+        envelope: Box<crate::events::GuiEventEnvelope>,
+    },
+    Gap {
+        stream: String,
+        #[serde(with = "crate::events::decimal")]
+        first: u64,
+        #[serde(with = "crate::events::decimal")]
+        last: u64,
+        reason: String,
+    },
+    Events {
+        page: crate::events::GuiEventPage,
+    },
+    EventCursor {
+        cursor: crate::events::GuiEventCursor,
+    },
     Hosts(Vec<crate::GuiHost>),
     HostState {
         host: crate::GuiHost,
