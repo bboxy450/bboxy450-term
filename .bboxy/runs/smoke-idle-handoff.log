@@ -1,0 +1,25 @@
+Smoke idle quiescence — Sable Embertail <EXECUTOR>
+Assignment: Vesper2caa5a41-a535-4143-85b8-57dfed1dd1e8, confirmed8e57b38a-0c23-4b59-8e1a-32d8e19a4c27, after accepted C1a-2. Oracle's baseline observation:4 frames spilled into the idle window at load~30. This local run did not reproduce that old stochastic failure; the new deterministic trace exercises the causal ordering that the old fixed timer did not test.
+Branch exec3-smoke-idle, writing worktree bboxy450-term-exec3, initial basef248c6b. C1c checkpoint e1a74f2 stays on exec3, not included. Main smoke hunks coordinated with Aster by DMb744e06f; no input/keyboard/live/outbox changes.
+
+Changed only crates/bboxy450-term/src/main.rs plus these evidence logs:
+- DemoFinished is sent after the producer has posted its final Changed notice; observing latest value20 alone cannot stand in for producer completion.
+- A UI-only pending-redraw flag clears when redraw starts. Queue/output emptiness and this flag prevent an idle window while work remains admitted but undrawn.
+- IdleQuiescence requires producer completion, update20 rendered, no pending work, and identical frame/callback counts across consecutive one-second checks. Late work invalidates the prior observation; queued notices trigger their usual redraw and retry.
+- Once idle begins, its original10-second frame/callback delta check remains unchanged. Frames during the measured window still fail. The30-second smoke deadline remains unchanged. Non-fake cadence probing bypasses this extra fake-update barrier.
+- Unit trace: update20 can appear stable before producer completion; queued work, a late redraw, a late callback, and newly pending work all postpone admission. Only a complete quiet interval returns ready.
+
+Actual preflights (full commands/output in smoke-idle-commands.log):
+- cargo fmt -p bboxy450-term:0.
+- cargo test -p bboxy450-term --locked --bin bboxy450-term smoke_tests:0/22.138s,1 passed including build.
+- uptime immediately before native command:0; one-minute load55.29 (5min36.76,15min31.91).
+- cargo run -p bboxy450-term --locked -- --smoke:0/20.125s including4.25s build. Native log: producer_done=true, queued=false, redraw_pending=false at the settling check; starts at21 frames/update20; idle10.002s,0 frames,0 callbacks,updates20. No synthetic CPU load process was created.
+- Complete app tests:0/35.493s,21 passed,0 failed,0 ignored (7lib+8bin+5process+1custody).
+- Strict workspace/all-target clippy -Dwarnings:0/6.911s.
+- git diff --check:0/0.062s.
+All cargo commands use BBOXY_TEST_CUSTODY=memory, incremental0 and dev/test debug0; no real Keychain mutation.
+
+Final exact-commit clean CI result, raw log path/hash and post-gate clean state are supplied in the DM handoff after completion, so this tested commit does not change afterward. CI uses a detached checkout and its own target; default transport/probe-only gate, no parity.
+Not checked: a forced replay of Seraph's exact old4-frame timing; constant load55 throughout the run (uptime is a sampled load average); visual parity/slow scale gates. Actual late-work behavior is covered deterministically by the regression trace and native probe/CI.
+Left alone: the10-second measured interval and30-second failure deadline, cadence/animation policy, input producers/live outbox, drawing/layout/renderer/materials, protocol/process recovery, journal/admission, shared worktree and peer processes. No main push or merge.
+Final base update before gate: git fetch/rebase0 onto accepted R8 main7111b11 (app/bboxybook text measurement). Smoke source applied unchanged; exact signed candidate will receive fresh workspace CI including native smoke. No source preflight result is represented as a test of a different commit.
