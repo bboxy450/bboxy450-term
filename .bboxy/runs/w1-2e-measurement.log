@@ -118,3 +118,12 @@ git diff --check=0. All four rebased implementation/fixture commits signed G.
 Cleanup: private before/after diagnostic worktrees removed after actual child
 exits. Own profiling/scoped targets and copied binaries removed; bytes/free-space
 in cleanup.log. Accepted galleries and peers' processes/directories untouched.
+
+Exact clean-worktree CI at c5adca3c25a63d2362beb37f93e4351fa947a075:
+sh scripts/ci-local.sh exit0, wall505.256s, memory custody, private fresh target.
+Workspace build/clippy(-D warnings, all targets)/tests, UI IO lint, app smoke and
+6 invariants all passed; 4 named slow checks skipped by policy. Full stdout
+and actual child status in ci-c5adca3{,-status}.log. No parity change requested.
+Origin/main moved to4fa924d (Sable socket-lifetime ownership fix), so the final
+head will rebase and run exact CI again; this first pass is not substituted for
+that new integration run. Own reaping source stays unchanged.
