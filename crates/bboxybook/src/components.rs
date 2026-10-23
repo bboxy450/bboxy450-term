@@ -734,6 +734,23 @@ fn snapshot(
     for (a, b) in native.into_iter().zip(web) {
         *worst = worst.max((a - b).abs());
     }
+    if let Some(parts) = reference["editing"].as_array() {
+        let mut names = std::collections::BTreeMap::new();
+        crate::seat_rows::named(layout, &mut names);
+        let children = parts.iter().map(|part| {
+            let key = part["key"].as_str().ok_or("editing part key missing")?;
+            let node = names.get(key).ok_or_else(|| format!("editing part missing: {key}"))?;
+            let r = node.rect;
+            let n = [r.x-crop[0],r.y-crop[1],r.w,r.h];
+            let w = [num(&part["rect"],"x")?,num(&part["rect"],"y")?,num(&part["rect"],"w")?,num(&part["rect"],"h")?];
+            for (a,b) in n.into_iter().zip(w) { *worst = worst.max((a-b).abs()); }
+            let baseline = if part["kind"] == "text" {
+                Some(json!({"native":crate::seat_rows::text_baseline(node).ok_or("editing text baseline missing")?-crop[1],"web":num(&part["font_diagnostics"],"baseline")?+w[1]}))
+            } else {None};
+                Ok(json!({"key":key,"kind":part["kind"],"native":n,"web":w,"baseline":baseline}))
+        }).collect::<Result<Vec<_>>>()?;
+        return Ok(json!({"kind":"input","native":native,"web":web,"children":children}));
+    }
     let empty = vec![];
     let reference_children = reference["children"].as_array().unwrap_or(&empty);
     if reference_children.len() != layout.children.len() {

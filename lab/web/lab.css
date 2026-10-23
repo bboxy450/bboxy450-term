@@ -1231,7 +1231,8 @@ body.resizing, body.resizing * { cursor: inherit !important; user-select: none; 
 .ui-td.sel { background: var(--sel) !important; }
 .ui-input-wrap { display: flex; flex-direction: column; gap: var(--s1); min-width: 200px; }
 .ui-input { display: flex; align-items: center; gap: var(--s3); padding: var(--s4) var(--s5); border-radius: var(--r-row); border: var(--hair-w) solid var(--hair, var(--line)); background: var(--bg); color: var(--fg-dim); --icon: 14px; }
-.ui-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--t-body); }
+.ui-input { --in-pad: 1px 2px; }   /* the text inset inside the field: ours, not the UA's (it was the UA default; same geometry) */
+.ui-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--t-body); padding: var(--in-pad); }
 .ui-input input::placeholder { color: var(--fg-dim); }
 .ui-input.st-focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
 .ui-input.st-invalid { border-color: var(--c-errored); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-errored) 18%, transparent); }
@@ -1503,14 +1504,14 @@ details[open] > summary::before { transform: rotate(90deg); }
 .ui-edit > input { flex: 1; min-width: 0; color: transparent !important; caret-color: transparent; }
 .ui-edit > input::placeholder { color: transparent !important; }
 .ui-edit > .edit-field { position: absolute; inset: 0; display: flex; align-items: center; white-space: pre; overflow: hidden; pointer-events: none; color: var(--fg); }
-.ui-input .edit-field { font-size: var(--t-body); }
+.ui-input .edit-field { font-size: var(--t-body); padding: var(--in-pad); }
 .picker .ui-edit > .edit-field { padding: var(--s5) var(--s6); border-bottom: var(--hair-w) solid transparent; }
 .spot-back .picker .ui-edit > .edit-field { font-size: var(--t-input); padding: var(--s9) var(--s10) 18px; border-bottom: 0; font-weight: 400; }
-.edit-field .ph { color: var(--fg-dim); }
-.spot-back .picker .edit-field .ph { color: color-mix(in srgb, var(--fg-dim) 80%, transparent); }
-.edit-field .sel { background: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 2px; }
-.edit-field .ime { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
-.edit-field .caret { position: relative; display: inline-block; width: 0; height: 1.2em; vertical-align: -0.2em; }
-.edit-field .caret::after { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: var(--accent); }
-.edit-field.blink .caret::after { animation: caret-blink 1.06s linear infinite; }   /* off in reference states: a frozen blink is a random phase */
+.edit-field .ed-ph { color: var(--fg-dim); }
+.spot-back .picker .edit-field .ed-ph { color: color-mix(in srgb, var(--fg-dim) 80%, transparent); }
+.edit-field .ed-sel { background: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 2px; }
+.edit-field .ed-ime { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.edit-field .ed-caret { position: relative; display: inline-block; width: 0; height: 1.2em; vertical-align: -0.2em; }
+.edit-field .ed-caret::after { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: var(--accent); }
+.edit-field.blink .ed-caret::after { animation: caret-blink 1.06s linear infinite; }   /* off in reference states: a frozen blink is a random phase */
 @keyframes caret-blink { 0%, 49.9% { opacity: 1; } 50%, 100% { opacity: 0; } }

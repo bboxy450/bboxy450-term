@@ -30,6 +30,10 @@ pub const STATES: &[&str] = &[
     "preset · split right",
     "preset · split down",
     "cap reached",
+    "query · focused empty",
+    "query · caret",
+    "query · selection",
+    "query · preedit",
 ];
 pub const PICKER_STATES: &[&str] = &[
     "open",
@@ -102,6 +106,7 @@ fn view(f: &Value) -> Result<Launcher> {
         actions: serde_json::from_value(a["actions"].clone())?,
         cap: serde_json::from_value(a["cap"].clone())?,
         spotlight: f["spotlight"] == true,
+        edit: serde_json::from_value(a["edit"].clone())?,
     })
 }
 pub fn layout_case(case: &Case) -> Result<c::Layout> {
@@ -383,6 +388,7 @@ pub fn paint_legacy(r: Rect, state: &str, draw: &DrawCtx, out: &mut DrawList) {
         ],
         cap: None,
         spotlight: true,
+        edit: None,
     };
     let mut layout = launcher
         .element(ctx)

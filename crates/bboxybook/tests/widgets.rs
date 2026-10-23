@@ -10,14 +10,14 @@ use std::collections::BTreeSet;
 #[test]
 fn control_matrix_has_canonical_keys_and_all_constructor_families() {
     let cases = widgets::cases();
-    assert_eq!(cases.len(), 32);
+    assert_eq!(cases.len(), 64);
     assert_eq!(
         cases
             .iter()
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        32
+        64
     );
     for state in ["button", "list", "table", "input"] {
         assert!(
@@ -25,6 +25,14 @@ fn control_matrix_has_canonical_keys_and_all_constructor_families() {
                 .iter()
                 .any(|c| c.relative() == format!("components/{state}-cozy-dark.png"))
         );
+    }
+    for state in [
+        "input · focused empty",
+        "input · caret",
+        "input · selection",
+        "input · preedit",
+    ] {
+        assert_eq!(cases.iter().filter(|c| c.state == state).count(), 8);
     }
 }
 

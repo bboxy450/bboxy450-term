@@ -76,6 +76,7 @@ fn controller() -> Controller {
             actions: vec![],
             cap: None,
             spotlight: true,
+            edit: None,
         },
         1,
     )
@@ -133,11 +134,11 @@ fn left_and_backspace_leave_nonempty_queries_to_the_text_field() {
     control.handle(Command::Right);
     assert_eq!(control.launcher.path, ["codex"]);
     control.handle(Command::Query("split".into()));
-    for command in [Command::Left, Command::Backspace] {
-        assert_eq!(control.handle(command), Outcome::Local);
-        assert_eq!(control.launcher.query, "split");
-        assert_eq!(control.launcher.path, ["codex"]);
-    }
+    assert_eq!(control.handle(Command::Left), Outcome::Changed);
+    assert_eq!(control.launcher.query, "split");
+    assert_eq!(control.handle(Command::Backspace), Outcome::Changed);
+    assert_eq!(control.launcher.query, "splt");
+    assert_eq!(control.launcher.path, ["codex"]);
     control.handle(Command::Query(String::new()));
     assert_eq!(control.handle(Command::Backspace), Outcome::Changed);
     assert!(control.launcher.path.is_empty());
@@ -170,6 +171,95 @@ fn reroll_is_a_pure_name_request_and_does_not_discard_navigation() {
         assert_eq!(control.launcher.query, "split");
         assert_eq!(control.launcher.path, ["codex"]);
     }
+}
+
+#[test]
+fn preedit_never_filters_or_activates_and_commit_replaces_the_original_selection() {
+    let mut control = controller();
+    control.handle(Command::Query("codex".into()));
+    let before = control
+        .launcher
+        .view()
+        .rows
+        .iter()
+        .map(|r| r.id.clone())
+        .collect::<Vec<_>>();
+    control.handle(Command::SelectAll);
+    control.handle(Command::Preedit {
+        text: "Claude".into(),
+        caret: Some(6),
+    });
+    assert_eq!(control.launcher.query, "codex");
+    assert_eq!(control.handle(Command::Insert("x".into())), Outcome::Local);
+    assert_eq!(control.launcher.query, "codex");
+    assert_eq!(
+        control
+            .launcher
+            .view()
+            .rows
+            .iter()
+            .map(|r| r.id.clone())
+            .collect::<Vec<_>>(),
+        before
+    );
+    assert_eq!(
+        control.handle(Command::Activate(Modifiers::default())),
+        Outcome::Local
+    );
+    assert_eq!(
+        control.launcher.edit.as_ref().unwrap().replacement,
+        Some([0, 5])
+    );
+    control.handle(Command::Commit("Claude".into()));
+    assert_eq!(control.launcher.query, "Claude");
+    assert!(control.launcher.edit.as_ref().unwrap().preedit.is_none());
+    assert_eq!(control.launcher.edit.as_ref().unwrap().caret, Some(6));
+}
+
+#[test]
+fn field_selection_insertion_and_deletion_never_split_a_surrogate_pair() {
+    use bboxy450_term::launcher::CaretMove;
+    let mut control = controller();
+    control.handle(Command::Query("A😀B".into()));
+    control.handle(Command::SetCaret {
+        at: 3,
+        extend: false,
+    });
+    control.handle(Command::MoveCaret {
+        motion: CaretMove::Left,
+        extend: true,
+    });
+    assert_eq!(control.launcher.edit.as_ref().unwrap().select, Some([1, 3]));
+    control.handle(Command::Insert("界".into()));
+    assert_eq!(control.launcher.query, "A界B");
+    control.handle(Command::Backspace);
+    assert_eq!(control.launcher.query, "AB");
+    control.handle(Command::Delete);
+    assert_eq!(control.launcher.query, "A");
+    control.handle(Command::Query("😀".into()));
+    assert_eq!(
+        control.handle(Command::SetCaret {
+            at: 1,
+            extend: false
+        }),
+        Outcome::Local
+    );
+    assert_eq!(control.launcher.edit.as_ref().unwrap().caret, Some(2));
+}
+
+#[test]
+fn cancelling_composition_restores_committed_text_and_the_selection() {
+    let mut control = controller();
+    control.handle(Command::Query("zsh".into()));
+    control.handle(Command::SelectAll);
+    control.handle(Command::Preedit {
+        text: "你好".into(),
+        caret: None,
+    });
+    assert!(control.launcher.edit.as_ref().unwrap().hide_caret);
+    assert_eq!(control.handle(Command::Escape), Outcome::Changed);
+    assert_eq!(control.launcher.query, "zsh");
+    assert_eq!(control.launcher.edit.as_ref().unwrap().select, Some([0, 3]));
 }
 
 #[test]

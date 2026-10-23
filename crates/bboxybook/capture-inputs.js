@@ -96,6 +96,31 @@
       const child=textDiag(span);child.font_diagnostics.source='input-css-font-probe';mirror.remove();
       return {kind:'control',rect:bounds(node),children:[child]};
     };
+    // Geometry evidence only: the native field consumes value/edit/font inputs,
+    // never these browser positions. Include the caret pseudo-element and IME
+    // underline, which have no ordinary child box to be found by parts().
+    const editParts=(wrapper,key)=>{
+      const field=wrapper.querySelector('.edit-field'),out=[],add=(part,n)=>{
+        if(!n.textContent)return; // empty flex spans paint no text and have no baseline
+        const d=textDiag(n);
+        // .sel is inline-flex: a zero-height marker is cross-centred rather
+        // than baseline-aligned. Read the text range and the measured ascent.
+        if(getComputedStyle(n).display.includes('flex')){const range=document.createRange();range.selectNodeContents(n);d.font_diagnostics.baseline=range.getBoundingClientRect().y-n.getBoundingClientRect().y+d.font_diagnostics.ascent;d.font_diagnostics.source='inline-flex-text-range';}
+        out.push({...d,key:key+'/'+part});
+      };
+      const spans=[...field.children],plain=spans.filter(n=>n.classList.contains('ed-t'));
+      add('prefix',plain[0]);add('suffix',plain[1]);
+      const selected=field.querySelector('.ed-sel');if(selected){out.push({key:key+'/selection',rect:bounds(selected)});add('selected',selected);}
+      const ph=field.querySelector('.ed-ph');if(ph)add('placeholder',ph);
+      const ime=field.querySelector('.ed-ime');
+      if(ime){
+        const caret=ime.querySelector('.ed-caret'),nodes=[...ime.childNodes];
+        for(const [part,n] of [['preedit-prefix',nodes[nodes.indexOf(caret)-1]],['preedit-suffix',nodes[nodes.indexOf(caret)+1]]])if(n?.nodeType===Node.TEXT_NODE&&n.textContent)out.push({...rawTextDiag(n),key:key+'/'+part});
+        const d=textDiag(ime),r=d.rect;out.push({key:key+'/underline',rect:{x:r.x,y:r.y+d.font_diagnostics.baseline+3,w:r.w,h:1}});
+      }
+      const caret=field.querySelector('.ed-caret');if(caret){const r=bounds(caret),s=getComputedStyle(caret,'::after');out.push({key:key+'/caret',rect:{x:r.x+parseFloat(s.left),y:r.y+parseFloat(s.top),w:parseFloat(s.width),h:parseFloat(s.height)}});}
+      return out;
+    };
     const group=nodes=>{
       const rects=nodes.map(bounds),x=Math.min(...rects.map(r=>r.x)),y=Math.min(...rects.map(r=>r.y));
       return {kind:'stack',rect:{x,y,w:Math.max(...rects.map(r=>r.x+r.w))-x,h:Math.max(...rects.map(r=>r.y+r.h))-y},children:nodes.map(n=>({kind:'box',rect:bounds(n),children:[textDiag(n.querySelector('.ui-text'))]}))};
@@ -132,6 +157,7 @@
         result.options=call.args[0]||{};const panel=node.querySelector('.ui-input');
         result.children=[{kind:'box',rect:bounds(panel),children:[...panel.children].map(n=>n.tagName==='INPUT'?inputDiag(n):diag(n))}];
         for(const child of node.children)if(child!==panel)result.children.push(textDiag(child));
+        if(result.options.edit){const wrapper=panel.querySelector('.ui-edit');result.editing=[{key:'input/control',rect:bounds(wrapper)},...editParts(wrapper,'input/edit')];const child=[...panel.children].indexOf(wrapper);result.children[0].children[child].children=result.editing.slice(1);}
       }
       return result;
     };
@@ -345,7 +371,10 @@
       }));};
       const nm=C.rollName(C.rng('roll'+(opts.seed||1))),input=node.querySelector('input');
       const diagnostics=parts(node,'picker');
-      diagnostics.push({...inputDiag(input).children[0],key:'picker/inrow/input/text'});
+      if(opts.edit){
+        for(let i=diagnostics.length-1;i>=0;i--)if(diagnostics[i].key.startsWith('picker/inrow/ui-edit'))diagnostics.splice(i,1);
+        diagnostics.push({key:'picker/inrow/input',rect:bounds(input)},...editParts(input.parentElement,'picker/inrow/input/edit'));
+      }else diagnostics.push({...inputDiag(input).children[0],key:'picker/inrow/input/text'});
       if(node.closest('.spot-back')){
         const nums=[...node.querySelectorAll('.opt .num')];let index=0;
         for(const p of diagnostics.filter(p=>p.key.match(/^picker\/div\/opt\d*\/num$/))){
@@ -369,7 +398,7 @@
         }
       }
       return {version:1,layer:'launchers',spotlight:!!node.closest('.spot-back'),host:bounds(node),
-        args:{items:tree(opts.items||C.LAUNCH),query:opts.query||'',path:opts.path||[],placeholder:opts.placeholder||'new seat · type to filter',cap:opts.cap||null,name:nm,swatch:color(C.seatColor({key:nm}),node),actions:Array.isArray(opts.actions)?opts.actions:[['Open','↵'],['Into','→'],['Back','←'],['Reroll','⌘R']]},
+        args:{items:tree(opts.items||C.LAUNCH),query:opts.query||'',edit:opts.edit||null,path:opts.path||[],placeholder:opts.placeholder||'new seat · type to filter',cap:opts.cap||null,name:nm,swatch:color(C.seatColor({key:nm}),node),actions:Array.isArray(opts.actions)?opts.actions:[['Open','↵'],['Into','→'],['Back','←'],['Reroll','⌘R']]},
         banner:grid?{host:bounds(banner),tree:grid.args[0],focused_key:grid.args[1],title:banner.querySelector('.txt .big').textContent,anchor_color:color(C.seatColor(grid.args[0].a),node)}:null,
         parts:diagnostics};
     }

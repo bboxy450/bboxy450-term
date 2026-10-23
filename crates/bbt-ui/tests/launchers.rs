@@ -44,6 +44,7 @@ fn launch() -> Launcher {
         actions: vec![("Open".into(), "↵".into())],
         cap: None,
         spotlight: true,
+        edit: None,
     }
 }
 #[test]

@@ -9,7 +9,8 @@ mod log;
 mod scene;
 
 use bboxy450_term::launcher::{
-    Command as LauncherCommand, Controller as LauncherController, Outcome as LauncherOutcome,
+    CaretMove, Command as LauncherCommand, Controller as LauncherController,
+    Outcome as LauncherOutcome,
 };
 use bbt_proto::{SeatId, View};
 use bbt_rt::{HitchMeter, Latest, Phases, UiInbox, UiMsg};
@@ -339,6 +340,34 @@ fn route_key(
     };
     let pick = input_modifiers(mods);
     let local = match key {
+        Key::Named(NamedKey::ArrowRight) if (command && !mods.alt_key()) || mods.shift_key() => {
+            LauncherCommand::MoveCaret {
+                motion: if command {
+                    CaretMove::End
+                } else {
+                    CaretMove::Right
+                },
+                extend: mods.shift_key(),
+            }
+        }
+        Key::Named(NamedKey::ArrowLeft) if (command && !mods.alt_key()) || mods.shift_key() => {
+            LauncherCommand::MoveCaret {
+                motion: if command {
+                    CaretMove::Start
+                } else {
+                    CaretMove::Left
+                },
+                extend: mods.shift_key(),
+            }
+        }
+        Key::Named(NamedKey::Home) => LauncherCommand::MoveCaret {
+            motion: CaretMove::Start,
+            extend: mods.shift_key(),
+        },
+        Key::Named(NamedKey::End) => LauncherCommand::MoveCaret {
+            motion: CaretMove::End,
+            extend: mods.shift_key(),
+        },
         Key::Named(NamedKey::ArrowUp) => LauncherCommand::Up,
         Key::Named(NamedKey::ArrowDown) => LauncherCommand::Down,
         Key::Named(NamedKey::Tab) if mods.shift_key() => LauncherCommand::Up,
@@ -347,12 +376,11 @@ fn route_key(
         Key::Named(NamedKey::ArrowLeft) => LauncherCommand::Left,
         Key::Named(NamedKey::Enter) if !repeat => LauncherCommand::Activate(pick),
         Key::Named(NamedKey::Escape) if !repeat => LauncherCommand::Escape,
-        Key::Named(NamedKey::Backspace) if !query.is_empty() => {
-            let mut query = query.to_owned();
-            query.pop();
-            LauncherCommand::Query(query)
-        }
         Key::Named(NamedKey::Backspace) => LauncherCommand::Backspace,
+        Key::Named(NamedKey::Delete) => LauncherCommand::Delete,
+        Key::Character(value) if command && value.eq_ignore_ascii_case("a") => {
+            LauncherCommand::SelectAll
+        }
         Key::Character(value)
             if (command || mods.control_key()) && value.eq_ignore_ascii_case("r") && !repeat =>
         {
@@ -372,14 +400,20 @@ fn route_key(
             }
         }
         Key::Character(value) if !command && !mods.control_key() => {
-            LauncherCommand::Query(format!("{query}{}", text.unwrap_or(value)))
+            LauncherCommand::Insert(text.unwrap_or(value).into())
         }
         Key::Named(NamedKey::Space) if !command && !mods.control_key() => {
-            LauncherCommand::Query(format!("{query} "))
+            LauncherCommand::Insert(" ".into())
         }
         _ => return RoutedKey::Local,
     };
     RoutedKey::Launcher(local)
+}
+
+fn preedit_command(text: String, cursor: Option<(usize, usize)>) -> LauncherCommand {
+    // winit reports UTF-8 bytes; the retained field follows UTF-16 indices.
+    let caret = cursor.and_then(|(at, _)| text.get(..at).map(|s| s.encode_utf16().count()));
+    LauncherCommand::Preedit { text, caret }
 }
 
 /// Public item records, with the provider projection kept authoritative. Picks
@@ -545,6 +579,7 @@ fn new_launcher(model: Option<&bboxy450_term::model::Model>, used: usize) -> Lau
                 ..Default::default()
             }),
             spotlight: true,
+            edit: None,
         },
         0,
     )
@@ -569,6 +604,7 @@ struct App {
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
     pointer: [f32; 2],
+    query_dragging: bool,
     backend_lost: bool,
     render_context: Option<tokio::sync::oneshot::Sender<live::RenderContext>>,
     closing: bool,
@@ -616,13 +652,14 @@ impl App {
         if let Some(window) = &self.window {
             window.set_ime_allowed(true);
         }
-        self.logger
-            .write("launcher open; query gap: caret, selection and IME preedit are not wired yet");
+        self.query_dragging = false;
+        self.logger.write("launcher open");
         self.request_redraw();
     }
     fn close_launcher(&mut self) {
         self.launcher = None;
         self.launcher_layout = None;
+        self.query_dragging = false;
         if let Some(window) = &self.window {
             window.set_ime_allowed(false);
         }
@@ -632,11 +669,17 @@ impl App {
         let Some(launcher) = &mut self.launcher else {
             return;
         };
+        let pointer_edit = matches!(command, LauncherCommand::SetCaret { .. });
         let outcome = launcher.handle(command);
         match outcome {
             LauncherOutcome::Close => self.close_launcher(),
             LauncherOutcome::Changed => {
-                self.launcher_layout = None;
+                // Pointer selection changes neither query nor row membership.
+                // Retain those hit regions until redraw so a second motion
+                // before the frame cannot lose the drag's final position.
+                if !pointer_edit {
+                    self.launcher_layout = None;
+                }
                 self.request_redraw();
             }
             LauncherOutcome::Pick { id, modifiers } => {
@@ -837,7 +880,7 @@ impl App {
         );
         if self.launcher.is_some() {
             window.set_ime_allowed(true);
-            self.logger.write("debug launcher open; query gap: caret, selection and IME preedit are not wired yet");
+            self.logger.write("debug launcher open");
         }
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::METAL,
@@ -1105,9 +1148,10 @@ impl App {
             .map(|launcher| self.scene.launcher_layout(logical, &launcher.launcher))
             .transpose()?;
         if let Some(launcher) = &self.launcher_layout {
+            let caret = launcher.candidate_area();
             self.window.as_ref().unwrap().set_ime_cursor_area(
-                winit::dpi::LogicalPosition::new(launcher.query.x, launcher.query.y),
-                winit::dpi::LogicalSize::new(launcher.query.w, launcher.query.h),
+                winit::dpi::LogicalPosition::new(caret.x, caret.y),
+                winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
         }
         phases.layout = start.elapsed();
@@ -1480,6 +1524,18 @@ impl ApplicationHandler<UiEvent> for App {
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                if self.query_dragging {
+                    if let (Some(layout), Some(launcher)) = (&self.launcher_layout, &self.launcher)
+                    {
+                        let at = self.scene.query_index(
+                            layout,
+                            &launcher.launcher.query,
+                            self.pointer[0],
+                        );
+                        self.launcher_command(LauncherCommand::SetCaret { at, extend: true });
+                    }
+                    return;
+                }
                 if let Some(index) = self
                     .launcher_layout
                     .as_ref()
@@ -1495,7 +1551,18 @@ impl ApplicationHandler<UiEvent> for App {
             } => {
                 if self.launcher.is_some() {
                     if let Some(layout) = &self.launcher_layout {
-                        if let Some(index) = layout.row_at(self.pointer) {
+                        if layout.query_contains(self.pointer) {
+                            let at = self.scene.query_index(
+                                layout,
+                                &self.launcher.as_ref().unwrap().launcher.query,
+                                self.pointer[0],
+                            );
+                            self.query_dragging = true;
+                            self.launcher_command(LauncherCommand::SetCaret {
+                                at,
+                                extend: self.modifiers.shift_key(),
+                            });
+                        } else if let Some(index) = layout.row_at(self.pointer) {
                             self.launcher_command(LauncherCommand::ActivateAt {
                                 index,
                                 modifiers: input_modifiers(self.modifiers),
@@ -1515,13 +1582,20 @@ impl ApplicationHandler<UiEvent> for App {
                     self.focus_action(FocusAction::Activate(*id, FocusOrigin::Pane));
                 }
             }
+            WindowEvent::MouseInput {
+                state: ElementState::Released,
+                button: MouseButton::Left,
+                ..
+            } => self.query_dragging = false,
+            WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
+                self.launcher_command(preedit_command(text, cursor));
+            }
+            WindowEvent::Ime(Ime::Disabled) => self.launcher_command(LauncherCommand::Preedit {
+                text: String::new(),
+                caret: None,
+            }),
             WindowEvent::Ime(Ime::Commit(text)) => {
-                if let Some(launcher) = &self.launcher {
-                    self.launcher_command(LauncherCommand::Query(format!(
-                        "{}{text}",
-                        launcher.launcher.query
-                    )));
-                }
+                self.launcher_command(LauncherCommand::Commit(text));
             }
             WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
                 self.focus.controller.key_pressed(Instant::now());
@@ -2187,6 +2261,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .then(|| new_launcher(None, 0)),
         launcher_layout: None,
         pointer: [0.; 2],
+        query_dragging: false,
         backend_lost: false,
         render_context: (!fake && !animate).then_some(render_context),
         closing: false,
@@ -2730,6 +2805,24 @@ mod launcher_host_tests {
     use super::*;
     use bbt_ui_model::{Axis, Seat, SplitNode, Swarm, SwarmId, Tab, TabId};
 
+    #[test]
+    fn ime_preedit_converts_utf8_cursor_bytes_to_utf16_without_committing() {
+        assert_eq!(
+            preedit_command("A😀界".into(), Some((5, 5))),
+            LauncherCommand::Preedit {
+                text: "A😀界".into(),
+                caret: Some(3)
+            }
+        );
+        assert_eq!(
+            preedit_command("😀".into(), Some((1, 1))),
+            LauncherCommand::Preedit {
+                text: "😀".into(),
+                caret: None
+            }
+        );
+    }
+
     fn fixture() -> UiModel {
         let swarm = SwarmId::from_u128(1);
         UiModel::new(
@@ -2857,11 +2950,11 @@ mod launcher_host_tests {
         );
         assert_eq!(
             route(Key::Character("界".into()), plain, false, Some("z")),
-            RoutedKey::Launcher(LauncherCommand::Query("z界".into()))
+            RoutedKey::Launcher(LauncherCommand::Insert("界".into()))
         );
         assert_eq!(
             route(Key::Named(NamedKey::Backspace), plain, true, Some("z界")),
-            RoutedKey::Launcher(LauncherCommand::Query("z".into()))
+            RoutedKey::Launcher(LauncherCommand::Backspace)
         );
         assert_eq!(
             route_key(
