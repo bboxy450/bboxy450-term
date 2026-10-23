@@ -245,6 +245,14 @@ briefs Executors from the specs, never from this note.
     request path (touches every caller in logic for a fake); sleeping in
     the writer thread (blocks all seats).
 
+26. **Terminals own every plain key (2026-10-23, Oracle finding in
+    [[gui-components]] §4.4).** With a terminal pane focused, Tab, arrows
+    and every other plain key go to the PTY; pane navigation is ⌘⌥ arrows
+    (spatial) and ⌘⌥ Tab (tree order); plain Tab and arrows navigate only
+    in the launcher, overlays, text fields and app chrome. Rejected: plain
+    Tab/arrows for pane navigation (steals them from shells and TUIs);
+    a modal "navigation mode" (one more state the operator must notice).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
