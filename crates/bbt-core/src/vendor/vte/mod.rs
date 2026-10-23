@@ -80,6 +80,14 @@ impl Parser {
 }
 
 impl<const OSC_RAW_BUF_SIZE: usize> Parser<OSC_RAW_BUF_SIZE> {
+    pub(crate) fn retained_heap_bytes(&self) -> usize {
+        self.osc_raw.capacity()
+    }
+
+    pub(crate) fn release_spare_capacity(&mut self) {
+        self.osc_raw.shrink_to_fit();
+    }
+
     #[inline]
     fn params(&self) -> &Params {
         &self.params

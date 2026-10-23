@@ -655,6 +655,47 @@ impl Scene {
         ops.extend(self.overlay(size, hud));
         ops
     }
+    /// Notices use the same row coordinates and clip as the prepared cell grid.
+    /// These are layout/paint commands only; replay and pages remain on IO.
+    pub fn history_foreground(
+        &self,
+        model: &bboxy450_term::model::Model,
+        bounds: &[(SeatId, Rect)],
+        scale: f32,
+    ) -> Result<Vec<c::Paint>, String> {
+        let mut ops = vec![];
+        if !scale.is_finite() || scale <= 0. {
+            return Ok(ops);
+        }
+        let ctx = ui::Context::new(model.ui.window.theme, ui::Density::Cozy);
+        for (seat, body) in bounds {
+            let (Some(history), Some(frame)) = (model.history.get(seat), model.frames.get(seat))
+            else {
+                continue;
+            };
+            if history.screen.rows == 0 {
+                continue;
+            }
+            for gap in &history.gaps {
+                let Some(rect) = history_row_rect(
+                    *body,
+                    [frame.width, frame.height],
+                    history.screen.rows,
+                    gap.row,
+                    scale,
+                ) else {
+                    continue;
+                };
+                let key = format!("pane/history/{seat}/{}/gap", gap.from);
+                let marker = bbt_ui::modules::pane::gap_marker(&key, None, rect.h);
+                let layout = marker
+                    .layout(rect, ctx, &self.metrics)
+                    .map_err(|error| format!("history marker: {error}"))?;
+                ops.extend(c::paint(&layout, ctx));
+            }
+        }
+        Ok(ops)
+    }
     /// The perf HUD (Cmd+Opt+F), top right as the lab's perf.html floats it over the app.
     pub fn overlay(&self, size: [f32; 2], hud: Option<&PerfHud>) -> Vec<c::Paint> {
         let Some(hud) = hud else { return vec![] };
@@ -668,9 +709,49 @@ impl Scene {
     }
 }
 
+fn history_row_rect(
+    body: Rect,
+    grid: [u32; 2],
+    rows: usize,
+    row: usize,
+    scale: f32,
+) -> Option<Rect> {
+    if rows == 0 || row >= rows || !scale.is_finite() || scale <= 0. {
+        return None;
+    }
+    let body = body.normalized();
+    // Match draw_pane's device origin and scissor, including fractional layouts.
+    let x = (body.x * scale).round().max(0.) / scale;
+    let top = (body.y * scale).round().max(0.) / scale;
+    let width = (grid[0] as f32).min((body.w * scale).floor().max(0.)) / scale;
+    let bottom = top + (body.h * scale).floor().max(0.) / scale;
+    let row_height = grid[1] as f32 / scale / rows as f32;
+    let y = top + row as f32 * row_height;
+    let height = row_height.min((bottom - y).max(0.));
+    (width > 0. && height > 0.).then_some(Rect::new(x, y, width, height))
+}
+
 #[cfg(test)]
 mod depth_tests {
     use super::*;
+
+    #[test]
+    fn historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales() {
+        let body = Rect::new(10.3, 20.3, 100.8, 33.8);
+        assert_eq!(
+            history_row_rect(body, [100, 36], 3, 1, 1.),
+            Some(Rect::new(10., 32., 100., 12.))
+        );
+        assert_eq!(
+            history_row_rect(body, [200, 72], 3, 1, 2.),
+            Some(Rect::new(10.5, 32.5, 100., 12.))
+        );
+        assert_eq!(
+            history_row_rect(body, [200, 72], 3, 2, 2.),
+            Some(Rect::new(10.5, 44.5, 100., 9.5))
+        );
+        assert!(history_row_rect(body, [200, 72], 3, 3, 2.).is_none());
+    }
 
     /// Pane rects (layouts after the title bar and the sidebar).
     fn panes(scene: &Scene) -> Vec<Rect> {

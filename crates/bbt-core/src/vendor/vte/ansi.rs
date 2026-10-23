@@ -285,6 +285,15 @@ pub struct Processor<T: Timeout = StdSyncHandler> {
 /// Handler.
 
 impl<T: Timeout> Processor<T> {
+    pub(crate) fn retained_heap_bytes(&self) -> usize {
+        self.state.sync_state.buffer.capacity() + self.parser.retained_heap_bytes()
+    }
+
+    pub(crate) fn release_spare_capacity(&mut self) {
+        self.state.sync_state.buffer.shrink_to_fit();
+        self.parser.release_spare_capacity();
+    }
+
     /// Whether a synchronized-output batch is waiting for completion or timeout.
     pub fn sync_pending(&self) -> bool {
         self.state.sync_state.timeout.pending_timeout()

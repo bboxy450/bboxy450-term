@@ -1,0 +1,18 @@
+Decision40e own target/worktree cleanup after completed exact NORMAL.
+{
+  "id": "1935433447944716be914a71d60dc576",
+  "argv": [
+    "env",
+    "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/c1c3-review-dev",
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "cwd": "/private/tmp/sable-c1c3-h2c7tke9/ci-dimensions-d6d49d5",
+  "started_utc": "2026-10-23T21:52:07.341066+00:00",
+  "pid": 5805,
+  "exit": 0,
+  "elapsed_seconds": 905.3304589590407,
+  "log": "/private/tmp/sable-c1c3-h2c7tke9/cmd-1935433447944716be914a71d60dc576.log",
+  "sha256": "185da381a9405d7bb25bd988d78a42236288f6a4c16a21fe74a70f2a78ae89b3"
+}
+ALLOCATED_BYTES_FREED 2904395776

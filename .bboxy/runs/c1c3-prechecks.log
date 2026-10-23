@@ -1,0 +1,2296 @@
+C1c-3 completed prechecks, failures preserved. These are development checks; exact detached CI is separate.
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-core --locked --test history -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T19:21:24.531189+00:00
+OWNED_COMMAND_PID 20942
+   Compiling proc-macro2 v1.0.107
+   Compiling serde_core v1.0.229
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling serde v1.0.229
+   Compiling parking_lot_core v0.9.12
+   Compiling cfg-if v1.0.5
+   Compiling scopeguard v1.2.0
+   Compiling zmij v1.0.23
+   Compiling smallvec v1.16.3
+   Compiling lock_api v0.4.14
+   Compiling memchr v2.8.3
+   Compiling serde_json v1.0.154
+   Compiling log v0.4.34
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling itoa v1.0.18
+   Compiling unicode-width v0.2.2
+   Compiling syn v3.0.9
+   Compiling parking_lot v0.12.5
+   Compiling bitflags v2.13.2
+   Compiling serde_derive v1.0.229
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Finished `test` profile [unoptimized] target(s) in 5.59s
+     Running tests/history.rs (target/dev/debug/deps/history-26b6de9a114f77a2)
+
+running 1 test
+50 bounded core histories: requested_heap=17335490 conservative_heap=17335490
+test bounded_history_windows_checkpoint_compatibility_and_heap_accounting ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+EXIT 0 elapsed_seconds=5.870 PID=20942
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-core --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T19:24:17.656431+00:00
+OWNED_COMMAND_PID 25727
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:390:42
+    |
+390 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:401:28
+    |
+401 |         let mut expected = Storage {
+    |                            ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:433:42
+    |
+433 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:444:28
+    |
+444 |         let mut expected = Storage {
+    |                            ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:473:42
+    |
+473 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:484:24
+    |
+484 |         let expected = Storage {
+    |                        ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:509:42
+    |
+509 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:520:24
+    |
+520 |         let expected = Storage {
+    |                        ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:551:42
+    |
+551 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:569:24
+    |
+569 |         let expected = Storage {
+    |                        ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:603:42
+    |
+603 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:621:24
+    |
+621 |         let expected = Storage {
+    |                        ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:645:42
+    |
+645 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:656:24
+    |
+656 |         let expected = Storage {
+    |                        ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:695:42
+    |
+695 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:713:34
+    |
+713 |         let shrinking_expected = Storage {
+    |                                  ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:734:32
+    |
+734 |         let growing_expected = Storage {
+    |                                ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:756:42
+    |
+756 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:785:32
+    |
+785 |         let expected_storage = Storage {
+    |                                ^^^^^^^ missing `spare_rows`
+
+error[E0063]: missing field `spare_rows` in initializer of `Storage<_>`
+   --> crates/bbt-core/src/vendor/alacritty/grid/storage.rs:799:42
+    |
+799 |         let mut storage: Storage<char> = Storage {
+    |                                          ^^^^^^^ missing `spare_rows`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `bbt-core` (lib test) due to 20 previous errors
+EXIT 101 elapsed_seconds=1.363 PID=25727
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-core --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T19:24:41.857341+00:00
+OWNED_COMMAND_PID 26035
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Finished `test` profile [unoptimized] target(s) in 1.80s
+     Running unittests src/lib.rs (target/dev/debug/deps/bbt_core-32a79808c8606055)
+
+running 109 tests
+test vendor::alacritty::grid::storage::tests::rotate ... ok
+test vendor::alacritty::grid::storage::tests::indexing ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate_wrap_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::grow_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::indexing_above_inner_len - should panic ... ok
+test vendor::alacritty::grid::storage::tests::shrink_then_grow ... ok
+test vendor::alacritty::grid::storage::tests::initialize ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning ... ok
+test vendor::alacritty::grid::storage::tests::with_capacity ... ok
+test vendor::alacritty::grid::storage::tests::grow_after_zero ... ok
+test vendor::alacritty::grid::tests::accurate_size_hint ... ok
+test vendor::alacritty::grid::tests::grow_reflow ... ok
+test vendor::alacritty::grid::tests::grow_reflow_multiline ... ok
+test vendor::alacritty::grid::tests::grow_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::scroll_down ... ok
+test vendor::alacritty::grid::tests::scroll_up ... ok
+test vendor::alacritty::grid::tests::shrink_reflow ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_twice ... ok
+test vendor::alacritty::grid::tests::test_iter ... ok
+test vendor::alacritty::index::tests::add ... ok
+test vendor::alacritty::index::tests::add_clamp ... ok
+test vendor::alacritty::grid::tests::scroll_down_with_history ... ok
+test vendor::alacritty::index::tests::add_grid_clamp ... ok
+test vendor::alacritty::index::tests::add_none_clamp ... ok
+test vendor::alacritty::index::tests::add_wrap ... ok
+test vendor::alacritty::index::tests::location_ordering ... ok
+test vendor::alacritty::index::tests::sub ... ok
+test vendor::alacritty::index::tests::sub_grid_clamp ... ok
+test vendor::alacritty::index::tests::sub_clamp ... ok
+test vendor::alacritty::index::tests::sub_none_clamp ... ok
+test vendor::alacritty::index::tests::sub_wrap ... ok
+test vendor::alacritty::term::cell::tests::cell_size_is_below_cap ... ok
+test vendor::alacritty::term::cell::tests::line_length_works ... ok
+test vendor::alacritty::term::cell::tests::line_length_works_with_wrapline ... ok
+test vendor::alacritty::term::tests::damage_cursor_movements ... ok
+test vendor::alacritty::term::tests::clear_saved_lines ... ok
+test vendor::alacritty::term::tests::input_line_drawing_character ... ok
+test vendor::alacritty::term::tests::parse_cargo_version ... ok
+test vendor::alacritty::term::tests::damage_public_usage ... ok
+test vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset ... ok
+test vendor::vte::ansi::tests::contrast ... ok
+test vendor::alacritty::term::tests::clearing_viewport_keeps_history_position ... ok
+test vendor::vte::ansi::tests::mixed_sync_escape ... ok
+test vendor::alacritty::term::tests::window_title ... ok
+test vendor::vte::ansi::tests::parse_control_attribute ... ok
+test vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing ... ok
+test vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke ... ok
+test vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_invalid_number ... ok
+test vendor::vte::ansi::tests::parse_invalid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_color ... ok
+test vendor::vte::ansi::tests::parse_number_too_large ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors ... ok
+test vendor::vte::ansi::tests::parse_osc4_set_color ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_csi ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_esc ... ok
+test vendor::vte::ansi::tests::parse_truecolor_attr ... ok
+test vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos ... ok
+test vendor::vte::ansi::tests::parse_valid_number ... ok
+test vendor::alacritty::term::tests::full_damage ... ok
+test vendor::vte::ansi::tests::parse_valid_rgb_colors ... ok
+test vendor::vte::ansi::tests::partial_sync_updates ... ok
+test vendor::vte::ansi::tests::parse_zsh_startup ... ok
+test vendor::vte::tests::c1s ... ok
+test vendor::vte::tests::csi_reset ... ok
+test vendor::vte::tests::csi_subparameters ... ok
+test vendor::vte::ansi::tests::sync_bsu_with_esu ... ok
+test vendor::vte::tests::dcs_reset ... ok
+test vendor::vte::tests::esc_reset ... ok
+test vendor::vte::tests::esc_reset_intermediates ... ok
+test vendor::vte::tests::exceed_max_buffer_size ... ok
+test vendor::vte::tests::execute_anywhere ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos ... ok
+test vendor::vte::tests::intermediate_reset_on_dcs_exit ... ok
+test vendor::vte::tests::osc_c0_st_terminated ... ok
+test vendor::vte::tests::parse_csi_max_params ... ok
+test vendor::vte::tests::parse_csi_params_ignore_long_params ... ok
+test vendor::vte::tests::invalid_utf8 ... ok
+test vendor::vte::tests::osc_bell_terminated ... ok
+test vendor::vte::tests::parse_csi_params_leading_semicolon ... ok
+test vendor::vte::tests::parse_dcs ... ok
+test vendor::vte::tests::parse_dcs_max_params ... ok
+test vendor::vte::tests::osc_containing_string_terminator ... ok
+test vendor::vte::tests::params_buffer_filled_with_subparam ... ok
+test vendor::vte::tests::parse_csi_params_trailing_semicolon ... ok
+test vendor::vte::tests::parse_empty_osc ... ok
+test vendor::vte::tests::parse_osc ... ok
+test vendor::vte::tests::partial_invalid_utf8 ... ok
+test vendor::vte::tests::parse_long_csi_param ... ok
+test vendor::vte::tests::parse_osc_max_params ... ok
+test vendor::vte::tests::parse_osc_with_utf8_arguments ... ok
+test vendor::vte::tests::partial_invalid_utf8_split ... ok
+test vendor::vte::tests::partial_utf8 ... ok
+test vendor::vte::tests::partial_utf8_into_esc ... ok
+test vendor::vte::tests::partial_utf8_separating_utf8 ... ok
+test vendor::vte::tests::unicode ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos ... ok
+test kitty_keyboard_invariant ... ok
+test vendor::alacritty::term::tests::grid_serde ... ok
+test vendor::vte::ansi::tests::sync_bursts_buffer ... ok
+
+test result: ok. 109 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/checkpoint.rs (target/dev/debug/deps/checkpoint-2915dd2369d7993f)
+
+running 7 tests
+test osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st ... ok
+test viewport_only_drops_existing_history_even_while_the_primary_is_inactive ... ok
+test saved_cursor_and_inactive_primary_screen_survive_checkpoint ... ok
+test synchronized_output_buffer_and_preceding_character_survive_checkpoint ... ok
+test incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook ... ok
+test checkpoint_retains_an_incomplete_csi_and_utf8_codepoint ... ok
+test red_foreground_survives_4096_bytes_and_a_durable_checkpoint ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/history.rs (target/dev/debug/deps/history-26b6de9a114f77a2)
+
+running 1 test
+test bounded_history_windows_checkpoint_compatibility_and_heap_accounting ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/resize.rs (target/dev/debug/deps/resize-44822d6a48ce9d0c)
+
+running 1 test
+test resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_core
+
+running 2 tests
+test crates/bbt-core/src/lib.rs - (line 3) ... ok
+test crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2403) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.37s; merged doctests compilation took 0.18s
+EXIT 0 elapsed_seconds=3.387 PID=26035
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bbt-core/src/lib.rs crates/bbt-core/src/vendor/alacritty/grid/mod.rs crates/bbt-core/src/vendor/alacritty/grid/row.rs crates/bbt-core/src/vendor/alacritty/grid/storage.rs crates/bbt-core/src/vendor/alacritty/term/mod.rs crates/bbt-core/src/vendor/alacritty/term/cell.rs crates/bbt-core/src/vendor/vte/ansi.rs crates/bbt-core/src/vendor/vte/mod.rs crates/bbt-core/tests/history.rs crates/bboxy450-term/src/scrollback.rs crates/bboxy450-term/src/model.rs crates/bboxy450-term/src/grids.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/lib.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/src/main.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T19:33:31.294396+00:00
+OWNED_COMMAND_PID 40551
+EXIT 0 elapsed_seconds=0.120 PID=40551
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo check -p bboxy450-term --all-targets --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T19:33:31.469258+00:00
+OWNED_COMMAND_PID 40564
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+    Checking cfg-if v1.0.5
+    Checking typenum v1.20.1
+   Compiling serde_core v1.0.229
+   Compiling version_check v0.9.5
+    Checking subtle v2.6.1
+   Compiling serde v1.0.229
+    Checking const-oid v0.9.6
+   Compiling jobserver v0.1.35
+   Compiling find-msvc-tools v0.1.15
+    Checking log v0.4.34
+   Compiling shlex v2.0.1
+   Compiling zerocopy v0.8.63
+   Compiling generic-array v0.14.7
+   Compiling libm v0.2.16
+   Compiling cc v1.9.0
+   Compiling autocfg v1.5.1
+    Checking objc2-encode v4.1.0
+    Checking base64ct v1.8.3
+    Checking memchr v2.8.3
+    Checking smallvec v1.16.3
+   Compiling num-traits v0.2.19
+   Compiling thiserror v2.0.21
+   Compiling cfg_aliases v0.2.2
+    Checking pem-rfc7468 v0.7.0
+    Checking itoa v1.0.18
+   Compiling objc2 v0.6.5
+    Checking foldhash v0.2.0
+   Compiling crc32fast v1.5.3
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+    Checking hashbrown v0.17.1
+   Compiling radium v0.7.0
+    Checking tap v1.0.1
+    Checking getrandom v0.2.17
+    Checking cpufeatures v0.2.17
+   Compiling serde_json v1.0.154
+    Checking wyz v0.5.1
+    Checking rand_core v0.6.4
+    Checking zmij v1.0.23
+    Checking funty v2.0.0
+    Checking equivalent v1.0.3
+    Checking base16ct v0.2.0
+    Checking indexmap v2.14.2
+   Compiling sha2-asm v0.6.4
+    Checking bytes v1.12.1
+   Compiling semver v1.0.28
+    Checking bitflags v2.13.2
+    Checking bitvec v1.1.1
+    Checking block2 v0.6.2
+    Checking dispatch2 v0.3.1
+    Checking unicode-width v0.2.2
+   Compiling pkg-config v0.3.34
+   Compiling rustc_version v0.4.1
+    Checking scopeguard v1.2.0
+    Checking objc2-core-foundation v0.3.2
+    Checking once_cell v1.21.4
+    Checking lock_api v0.4.14
+    Checking parking_lot_core v0.9.12
+    Checking hybrid-array v0.4.15
+    Checking simd-adler32 v0.3.10
+    Checking parking_lot v0.12.5
+    Checking rustc-hash v1.1.0
+    Checking adler2 v2.0.1
+   Compiling getrandom v0.3.4
+   Compiling winnow v1.0.4
+    Checking errno v0.3.14
+   Compiling naga v30.0.1
+   Compiling strsim v0.11.1
+    Checking crypto-common v0.2.2
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking block-buffer v0.12.1
+    Checking core-foundation-sys v0.8.7
+    Checking pin-project-lite v0.2.17
+    Checking bit-vec v0.9.1
+   Compiling ident_case v1.0.1
+   Compiling arrayvec v0.7.8
+   Compiling winnow v0.7.15
+   Compiling fnv v1.0.7
+    Checking const-oid v0.10.2
+    Checking raw-window-handle v0.6.2
+   Compiling toml_writer v1.1.3+spec-1.1.0
+    Checking digest v0.11.3
+    Checking bit-set v0.10.0
+    Checking ff v0.13.1
+    Checking miniz_oxide v0.9.1
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+    Checking group v0.13.0
+   Compiling darling_core v0.20.11
+    Checking codespan-reporting v0.13.1
+    Checking zlib-rs v0.6.8
+    Checking static_assertions v1.1.0
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling float-cmp v0.9.0
+   Compiling objc-sys v0.3.5
+    Checking objc2-foundation v0.3.2
+   Compiling serde_spanned v1.1.2
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling bytemuck v1.25.2
+    Checking unicode-ident v1.0.27
+    Checking rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling zeroize_derive v1.5.0
+   Compiling zerocopy-derive v0.8.63
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking flate2 v1.1.10
+    Checking naga-types v30.0.1
+    Checking wgpu-types v30.0.1
+    Checking zeroize v1.9.1
+   Compiling strict-num v0.1.1
+    Checking rand_core v0.9.5
+   Compiling polycool v0.4.0
+    Checking der v0.7.10
+    Checking objc2-metal v0.3.2
+   Compiling darling_macro v0.20.11
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking inout v0.1.4
+    Checking crypto-bigint v0.5.5
+    Checking digest v0.10.7
+    Checking cipher v0.4.4
+   Compiling curve25519-dalek v4.1.3
+    Checking hmac v0.12.1
+    Checking signature v2.2.0
+    Checking hkdf v0.12.4
+    Checking sha2 v0.10.9
+    Checking rfc6979 v0.4.0
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+    Checking spki v0.7.3
+   Compiling wgpu-hal v30.0.1
+   Compiling cfg_aliases v0.1.1
+    Checking pkcs8 v0.10.2
+    Checking spin v0.9.9
+   Compiling thiserror v1.0.69
+   Compiling crossbeam-utils v0.8.23
+    Checking serdect v0.2.0
+   Compiling arrayref v0.3.9
+   Compiling num-bigint-dig v0.8.6
+    Checking sec1 v0.7.3
+   Compiling tiny-skia-path v0.12.0
+    Checking elliptic-curve v0.13.8
+    Checking lazy_static v1.5.1
+   Compiling kurbo v0.13.1
+   Compiling nix v0.28.0
+    Checking num-iter v0.1.46
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+    Checking universal-hash v0.5.1
+   Compiling darling v0.20.11
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+   Compiling thiserror-impl v1.0.69
+   Compiling tokio-macros v2.7.2
+   Compiling miniz_oxide v0.8.9
+    Checking signal-hook-registry v1.4.8
+   Compiling fdeflate v0.3.7
+    Checking socket2 v0.6.5
+    Checking mio v1.2.4
+    Checking libloading v0.8.9
+    Checking opaque-debug v0.3.1
+   Compiling zstd-safe v8.2.0
+   Compiling siphasher v1.0.4
+    Checking cursor-icon v1.2.0
+    Checking profiling v1.0.18
+    Checking base64 v0.22.1
+   Compiling vcpkg v0.2.15
+   Compiling anyhow v1.0.104
+   Compiling httparse v1.10.1
+   Compiling rustversion v1.0.23
+   Compiling unicode-segmentation v1.13.3
+    Checking objc2-core-graphics v0.3.2
+   Compiling convert_case v0.10.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling svgtypes v0.16.1
+   Compiling png v0.18.1
+    Checking tokio v1.54.1
+    Checking polyval v0.6.2
+   Compiling derive_builder_core v0.20.2
+    Checking objc2 v0.5.3
+    Checking serde-big-array v0.5.1
+   Compiling simplecss v0.2.2
+    Checking aes v0.8.4
+    Checking objc2-quartz-core v0.3.2
+    Checking dbl v0.3.2
+    Checking chacha20 v0.10.2
+    Checking ppv-lite86 v0.2.21
+    Checking half v2.7.1
+   Compiling curve25519-dalek v5.0.0
+    Checking euclid v0.22.14
+    Checking keccak v0.1.6
+    Checking rand_chacha v0.3.1
+    Checking raw-window-metal v1.1.0
+    Checking rand_chacha v0.9.0
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling wgpu-core v30.0.1
+   Compiling imagesize v0.15.0
+    Checking rand v0.8.8
+    Checking rand v0.9.5
+   Compiling pico-args v0.5.0
+    Checking byteorder v1.5.0
+   Compiling data-url v0.3.2
+   Compiling litrs v1.0.1
+   Compiling regex-syntax v0.8.11
+   Compiling heck v0.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling crc24 v0.1.6
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling document-features v0.2.12
+   Compiling usvg v0.48.1
+    Checking ulid v1.2.1
+    Checking lyon_geom v1.0.20
+    Checking sha3 v0.10.9
+    Checking rand v0.10.3
+   Compiling bitfields-impl v1.0.3
+    Checking cmac v0.7.2
+   Compiling regex-automata v0.4.18
+    Checking crossbeam-queue v0.3.14
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling derive_builder_macro v0.20.2
+   Compiling tiny-skia v0.12.0
+    Checking block2 v0.5.1
+    Checking ghash v0.5.1
+    Checking filedescriptor v0.8.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking sha1 v0.11.0
+    Checking ed25519 v2.2.3
+    Checking sha1 v0.10.7
+    Checking blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+   Compiling rgb v0.8.53
+   Compiling futures-macro v0.3.34
+   Compiling foreign-types-macros v0.2.4
+    Checking core-foundation v0.9.4
+    Checking http v1.5.0
+    Checking password-hash v0.5.0
+    Checking serial2 v0.2.38
+   Compiling wgpu v30.0.1
+    Checking futures-core v0.3.34
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking foreign-types-shared v0.3.1
+    Checking signature v3.0.0
+    Checking shell-words v1.1.1
+    Checking data-encoding v2.11.1
+    Checking futures-task v0.3.34
+    Checking foldhash v0.1.5
+    Checking dispatch v0.2.0
+    Checking downcast-rs v1.2.1
+    Checking bitflags v1.3.2
+    Checking slab v0.4.12
+    Checking objc2-foundation v0.2.2
+    Checking core-graphics-types v0.1.3
+    Checking portable-pty v0.9.0
+    Checking hashbrown v0.15.5
+    Checking futures-util v0.3.34
+   Compiling regex v1.13.1
+    Checking tungstenite v0.30.0
+    Checking ed25519 v3.0.0
+    Checking foreign-types v0.5.0
+    Checking walkdir v2.5.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking zstd v0.14.3
+   Compiling resvg v0.48.1
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking ed25519-dalek v2.2.0
+    Checking cx448 v0.1.1
+    Checking bitfields v1.0.3
+    Checking aes-gcm v0.10.3
+    Checking derive_builder v0.20.2
+    Checking snafu v0.9.2
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking eax v0.5.0
+    Checking derive_more v2.1.1
+    Checking lyon_path v1.0.19
+    Checking dsa v0.6.3
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking aes-kw v0.2.1
+    Checking x25519-dalek v2.0.1
+    Checking k256 v0.13.4
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking wgpu-naga-bridge v30.0.1
+    Checking p256 v0.13.2
+    Checking ocb3 v0.1.0
+    Checking sha2 v0.11.1
+    Checking cfb-mode v0.8.2
+    Checking idea v0.5.1
+    Checking cast5 v0.11.1
+    Checking des v0.8.1
+    Checking twofish v0.7.1
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking block-padding v0.3.3
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking notify-types v2.1.0
+    Checking hashlink v0.12.2
+    Checking fsevent-sys v4.1.0
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+   Compiling winit v0.30.13
+    Checking fallible-iterator v0.3.0
+    Checking tracing-core v0.1.36
+    Checking fixedbitset v0.5.7
+    Checking float_next_after v1.0.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking ryu v1.0.23
+    Checking unsafe-libyaml v0.2.11
+    Checking replace_with v0.1.8
+    Checking hex v0.4.3
+    Checking petgraph v0.8.3
+    Checking lyon_tessellation v1.0.22
+    Checking tracing v0.1.44
+    Checking rusqlite v0.40.2
+    Checking ed25519-dalek v3.0.0
+    Checking notify v8.2.0
+    Checking serde_yaml v0.9.34+deprecated
+    Checking security-framework v3.7.0
+    Checking tokio-tungstenite v0.30.0
+    Checking objc2-app-kit v0.2.2
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking core-graphics v0.23.2
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking objc2-core-text v0.3.2
+    Checking pollster v0.4.0
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking dpi v0.1.2
+   Compiling rustix v1.1.5
+    Checking smol_str v0.2.2
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking objc2-app-kit v0.3.2
+    Checking fastrand v2.5.0
+    Checking pgp v0.21.0
+    Checking tempfile v3.27.0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+warning: unused import: `Dimensions`
+  --> crates/bboxy450-term/src/scrollback.rs:10:22
+   |
+10 | use bbt_core::{Cell, Dimensions, Term};
+   |                      ^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bboxy450-term` (lib) generated 1 warning (run `cargo fix --lib -p bboxy450-term` to apply 1 suggestion)
+warning: `bboxy450-term` (lib test) generated 1 warning (1 duplicate)
+    Finished `dev` profile [unoptimized] target(s) in 25.26s
+EXIT 0 elapsed_seconds=25.321 PID=40564
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/scrollback.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/tests/scrollback.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T19:42:46.360535+00:00
+OWNED_COMMAND_PID 53280
+EXIT 0 elapsed_seconds=0.045 PID=53280
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --locked --test scrollback -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T19:42:46.481142+00:00
+OWNED_COMMAND_PID 53292
+   Compiling typenum v1.20.1
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+   Compiling libc v0.2.191
+   Compiling serde_core v1.0.229
+   Compiling zeroize v1.9.1
+   Compiling zerocopy v0.8.63
+   Compiling objc2-encode v4.1.0
+   Compiling libm v0.2.16
+   Compiling smallvec v1.16.3
+   Compiling base64ct v1.8.3
+   Compiling foldhash v0.2.0
+   Compiling tap v1.0.1
+   Compiling radium v0.7.0
+   Compiling hashbrown v0.17.1
+   Compiling objc2 v0.6.5
+   Compiling wyz v0.5.1
+   Compiling base16ct v0.2.0
+   Compiling pem-rfc7468 v0.7.0
+   Compiling funty v2.0.0
+   Compiling equivalent v1.0.3
+   Compiling generic-array v0.14.7
+   Compiling bytemuck v1.25.2
+   Compiling der v0.7.10
+   Compiling num-traits v0.2.19
+   Compiling bitvec v1.1.1
+   Compiling indexmap v2.14.2
+   Compiling getrandom v0.2.17
+   Compiling block-buffer v0.10.4
+   Compiling cpufeatures v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling inout v0.1.4
+   Compiling bytes v1.12.1
+   Compiling crypto-common v0.1.7
+   Compiling once_cell v1.21.4
+   Compiling digest v0.10.7
+   Compiling cipher v0.4.4
+   Compiling block2 v0.6.2
+   Compiling sha2-asm v0.6.4
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling parking_lot_core v0.9.12
+   Compiling crypto-bigint v0.5.5
+   Compiling spki v0.7.3
+   Compiling hkdf v0.12.4
+   Compiling hybrid-array v0.4.15
+   Compiling sha2 v0.10.9
+   Compiling parking_lot v0.12.5
+   Compiling pkcs8 v0.10.2
+   Compiling rustc-hash v1.1.0
+   Compiling naga-types v30.0.1
+   Compiling serde v1.0.229
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling rfc6979 v0.4.0
+   Compiling errno v0.3.14
+   Compiling core-foundation-sys v0.8.7
+   Compiling const-oid v0.10.2
+   Compiling pin-project-lite v0.2.17
+   Compiling dispatch2 v0.3.1
+   Compiling bit-vec v0.9.1
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-set v0.10.0
+   Compiling getrandom v0.3.4
+   Compiling arrayvec v0.7.8
+   Compiling serdect v0.2.0
+   Compiling codespan-reporting v0.13.1
+   Compiling static_assertions v1.1.0
+   Compiling objc2-core-foundation v0.3.2
+   Compiling sec1 v0.7.3
+   Compiling zlib-rs v0.6.8
+   Compiling rand_core v0.10.1
+   Compiling ff v0.13.1
+   Compiling wgpu-types v30.0.1
+   Compiling group v0.13.0
+   Compiling rand_core v0.9.5
+   Compiling num-integer v0.1.47
+   Compiling elliptic-curve v0.13.8
+   Compiling digest v0.11.3
+   Compiling cpufeatures v0.3.1
+   Compiling spin v0.9.9
+   Compiling objc-sys v0.3.5
+   Compiling getrandom v0.4.3
+   Compiling lazy_static v1.5.1
+   Compiling polycool v0.4.0
+   Compiling signal-hook-registry v1.4.8
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling num-iter v0.1.46
+   Compiling universal-hash v0.5.1
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.4
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling opaque-debug v0.3.1
+   Compiling thiserror v1.0.69
+   Compiling polyval v0.6.2
+   Compiling kurbo v0.13.1
+   Compiling objc2 v0.5.3
+   Compiling ecdsa v0.16.9
+   Compiling primeorder v0.13.6
+   Compiling tokio v1.54.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling curve25519-dalek v4.1.3
+   Compiling crossbeam-utils v0.8.23
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling rand_chacha v0.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling naga v30.0.1
+   Compiling rand v0.8.8
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling rand v0.9.5
+   Compiling chacha20 v0.10.2
+   Compiling serde-big-array v0.5.1
+   Compiling objc2-foundation v0.3.2
+   Compiling aes v0.8.4
+   Compiling euclid v0.22.14
+   Compiling tiny-skia-path v0.12.0
+   Compiling num-bigint-dig v0.8.6
+   Compiling keccak v0.1.6
+   Compiling dbl v0.3.2
+   Compiling byteorder v1.5.0
+   Compiling sha3 v0.10.9
+   Compiling cmac v0.7.2
+   Compiling ulid v1.2.1
+   Compiling rand v0.10.3
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling lyon_geom v1.0.20
+   Compiling zstd-safe v8.2.0
+   Compiling block2 v0.5.1
+   Compiling crossbeam-queue v0.3.14
+   Compiling svgtypes v0.16.1
+   Compiling nix v0.28.0
+   Compiling ghash v0.5.1
+   Compiling filedescriptor v0.8.3
+   Compiling httparse v1.10.1
+   Compiling anyhow v1.0.104
+   Compiling sha1 v0.11.0
+   Compiling serdect v0.3.0
+   Compiling core-foundation v0.9.4
+   Compiling pkcs1 v0.7.5
+   Compiling ed25519 v2.2.3
+   Compiling http v1.5.0
+   Compiling blake2 v0.10.6
+   Compiling sha1 v0.10.7
+   Compiling password-hash v0.5.0
+   Compiling serial2 v0.2.38
+   Compiling roxmltree v0.21.1
+   Compiling futures-task v0.3.34
+   Compiling data-encoding v2.11.1
+   Compiling foldhash v0.1.5
+   Compiling shell-words v1.1.1
+   Compiling objc2-metal v0.3.2
+   Compiling foreign-types-shared v0.3.1
+   Compiling bitflags v1.3.2
+   Compiling slab v0.4.12
+   Compiling futures-core v0.3.34
+   Compiling flate2 v1.1.10
+   Compiling downcast-rs v1.2.1
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling signature v3.0.0
+   Compiling dispatch v0.2.0
+   Compiling futures-util v0.3.34
+   Compiling walkdir v2.5.0
+   Compiling ed25519 v3.0.0
+   Compiling portable-pty v0.9.0
+   Compiling objc2-foundation v0.2.2
+   Compiling png v0.18.1
+   Compiling tungstenite v0.30.0
+   Compiling usvg v0.48.1
+   Compiling core-graphics-types v0.1.3
+   Compiling foreign-types v0.5.0
+   Compiling hashbrown v0.15.5
+   Compiling num_enum v0.7.6
+   Compiling bitfields v1.0.3
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling tiny-skia v0.12.0
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling ed25519-dalek v2.2.0
+   Compiling cx448 v0.1.1
+   Compiling dsa v0.6.3
+   Compiling libsqlite3-sys v0.38.2
+   Compiling aes-gcm v0.10.3
+   Compiling derive_builder v0.20.2
+   Compiling lyon_path v1.0.19
+   Compiling zstd v0.14.3
+   Compiling eax v0.5.0
+   Compiling curve25519-dalek v5.0.0
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling derive_more v2.1.1
+   Compiling crc24 v0.1.6
+   Compiling snafu v0.9.2
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling p521 v0.13.3
+   Compiling k256 v0.13.4
+   Compiling p256 v0.13.2
+   Compiling p384 v0.13.1
+   Compiling ocb3 v0.1.0
+   Compiling sha2 v0.11.1
+   Compiling security-framework-sys v2.17.0
+   Compiling core-foundation v0.10.1
+   Compiling notify-types v2.1.0
+   Compiling cast5 v0.11.1
+   Compiling idea v0.5.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling hashlink v0.12.2
+   Compiling rgb v0.8.53
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling hex v0.4.3
+   Compiling ryu v1.0.23
+   Compiling tracing-core v0.1.36
+   Compiling unsafe-libyaml v0.2.11
+   Compiling replace_with v0.1.8
+   Compiling float_next_after v1.0.0
+   Compiling fallible-iterator v0.3.0
+   Compiling fixedbitset v0.5.7
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling petgraph v0.8.3
+   Compiling tracing v0.1.44
+   Compiling lyon_tessellation v1.0.22
+   Compiling rusqlite v0.40.2
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling resvg v0.48.1
+   Compiling objc2-app-kit v0.2.2
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling raw-window-metal v1.1.0
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling wgpu-hal v30.0.1
+   Compiling security-framework v3.7.0
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling core-graphics v0.23.2
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling pollster v0.4.0
+   Compiling dpi v0.1.2
+   Compiling smol_str v0.2.2
+   Compiling objc2-app-kit v0.3.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling rustix v1.1.5
+   Compiling pgp v0.21.0
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling winit v0.30.13
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 22.71s
+     Running tests/scrollback.rs (target/dev/debug/deps/scrollback-4a9890f9d4452b7b)
+
+running 1 test
+20k seek: top=393.125µs, capture-prefix-to-live=55.125917ms, seek-row10000=28.623458ms, longest_parse_turn=1.520542ms
+50 watched at top: requested_heap=11169422, conservative_heap=11893542, budget=200000000
+test scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+EXIT 0 elapsed_seconds=23.428 PID=53292
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bbt-core/src/vendor/alacritty/term/cell.rs crates/bboxy450-term/src/scrollback.rs crates/bboxy450-term/src/live.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T19:47:02.100942+00:00
+OWNED_COMMAND_PID 58954
+EXIT 0 elapsed_seconds=0.145 PID=58954
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 BBOXY_TEST_CUSTODY=memory cargo test -p bboxy450-term --locked scroll -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T19:47:02.296559+00:00
+OWNED_COMMAND_PID 58965
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 11.33s
+     Running unittests src/lib.rs (target/dev/debug/deps/bboxy450_term-603d461a0d3908ae)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/dev/debug/deps/bboxy450_term-9cdabeef1996de7a)
+
+running 4 tests
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases ... ok
+test scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 48 filtered out; finished in 0.01s
+
+     Running tests/cockpit.rs (target/dev/debug/deps/cockpit-f73b032d63f15f85)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/custody.rs (target/dev/debug/deps/custody-b3d54f90b255a2f3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/hosts.rs (target/dev/debug/deps/hosts-49fde8c1570c4a21)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/launcher.rs (target/dev/debug/deps/launcher-48712b61d2b6a87b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (target/dev/debug/deps/lifecycle-2b0b8e73d9e8cd63)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/r5_stall.rs (target/dev/debug/deps/r5_stall-2c2bc719a49f98fd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/recovery.rs (target/dev/debug/deps/recovery-996f93ca805bb66f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/scrollback.rs (target/dev/debug/deps/scrollback-4a9890f9d4452b7b)
+
+running 1 test
+20k seek: top=474.958µs, capture-prefix-to-live=57.634917ms, seek-row10000=29.258291ms, longest_parse_turn=1.534541ms
+50 watched at top: requested_heap=11169422, conservative_heap=11322542, budget=200000000
+test scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+EXIT 0 elapsed_seconds=14.025 PID=58965
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --locked scroll -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:09:03.947931+00:00
+OWNED_COMMAND_PID 91558
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 23.55s
+     Running unittests src/lib.rs (target/dev/debug/deps/bboxy450_term-603d461a0d3908ae)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/dev/debug/deps/bboxy450_term-9cdabeef1996de7a)
+
+running 4 tests
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases ... ok
+test scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 48 filtered out; finished in 0.01s
+
+     Running tests/cockpit.rs (target/dev/debug/deps/cockpit-f73b032d63f15f85)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/custody.rs (target/dev/debug/deps/custody-b3d54f90b255a2f3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/hosts.rs (target/dev/debug/deps/hosts-49fde8c1570c4a21)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/launcher.rs (target/dev/debug/deps/launcher-48712b61d2b6a87b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (target/dev/debug/deps/lifecycle-2b0b8e73d9e8cd63)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/r5_stall.rs (target/dev/debug/deps/r5_stall-2c2bc719a49f98fd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/recovery.rs (target/dev/debug/deps/recovery-996f93ca805bb66f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/scrollback.rs (target/dev/debug/deps/scrollback-4a9890f9d4452b7b)
+
+running 1 test
+
+thread 'scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded' (18893489) panicked at crates/bboxy450-term/tests/scrollback.rs:242:22:
+history peer starved behind long seek
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded ... FAILED
+
+failures:
+
+failures:
+    scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+error: test failed, to rerun pass `-p bboxy450-term --test scrollback`
+EXIT 101 elapsed_seconds=27.197 PID=91558
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/scrollback.rs crates/bboxy450-term/tests/scrollback.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/model.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/grids.rs crates/bboxy450-term/src/cockpit.rs crates/bbt-ui/src/modules/pane.rs crates/bbt-core/tests/history.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:12:03.607540+00:00
+OWNED_COMMAND_PID 97946
+EXIT 0 elapsed_seconds=0.156 PID=97946
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --locked scroll -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:12:09.871928+00:00
+OWNED_COMMAND_PID 98183
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+error[E0433]: cannot find `scrollback` in the crate root
+    --> crates/bboxy450-term/src/live.rs:1397:33
+     |
+1397 |                 request: crate::scrollback::Request::top(),
+     |                                 ^^^^^^^^^^ could not find `scrollback` in the crate root
+
+error[E0433]: cannot find `scrollback` in the crate root
+    --> crates/bboxy450-term/src/live.rs:1423:33
+     |
+1423 |                 request: crate::scrollback::Request {
+     |                                 ^^^^^^^^^^ could not find `scrollback` in the crate root
+
+error[E0433]: cannot find `scrollback` in the crate root
+    --> crates/bboxy450-term/src/live.rs:1424:36
+     |
+1424 |                     anchor: crate::scrollback::Anchor::Live,
+     |                                    ^^^^^^^^^^ could not find `scrollback` in the crate root
+
+error[E0433]: cannot find `scrollback` in the crate root
+    --> crates/bboxy450-term/src/live.rs:1454:33
+     |
+1454 |                 request: crate::scrollback::Request::top(),
+     |                                 ^^^^^^^^^^ could not find `scrollback` in the crate root
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+EXIT 101 elapsed_seconds=12.300 PID=98183
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --locked scroll -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:12:33.349930+00:00
+OWNED_COMMAND_PID 98706
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 4.43s
+     Running unittests src/lib.rs (target/dev/debug/deps/bboxy450_term-603d461a0d3908ae)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/dev/debug/deps/bboxy450_term-9cdabeef1996de7a)
+
+running 5 tests
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases ... ok
+test scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane ... ok
+owned scroll supervisor=98836 logic=98844
+cockpit ready: supervisor=98836 logic=98844
+seat 01M5N69SKG01TJN3PHMT70GGM5 activity=Idle process=Running { pid: 98845 }
+GUI operation 01M5N69SQHP835XZAQ0JN1ESYV accepted
+GUI operation 01M5N69SS2QGQ155HJFX9ME3S5 accepted
+GUI operation 01M5N69STV6AC3WVPNRY9FSKF3 accepted
+GUI operation 01M5N69SVFF9TF7ATY74MGXP39 accepted
+GUI operation 01M5N69SW23SQGVZAGKDB4M6RA accepted
+GUI operation 01M5N69SWRZCACBH7NQC46GYP9 accepted
+GUI operation 01M5N69SX9NYA2KN39Q0QB07ZT accepted
+GUI operation 01M5N69SYXD1SCDTQ00JAYMNT6 accepted
+GUI operation 01M5N69T06NVD2DJ7Q8R4W1K8N accepted
+PASS actual GetHistory/IO/Metal preparation: first row line1 after 47.703083ms
+PASS actual capture-prefix seek: historical/live rows join without a duplicated or missing row
+GUI operation 01M5N69V2229PXETWNSCSX7KKV accepted
+GUI operation 01M5N69V3B0CP76SCPK0QWHVDQ accepted
+GUI operation 01M5N69V55DGE9MKN60ARE1F0D accepted
+PASS input returns live and unwatch releases historical display
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+PASS scroll integration shutdown: owned children reaped
+test live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 48 filtered out; finished in 2.88s
+
+     Running tests/cockpit.rs (target/dev/debug/deps/cockpit-f73b032d63f15f85)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/custody.rs (target/dev/debug/deps/custody-b3d54f90b255a2f3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/hosts.rs (target/dev/debug/deps/hosts-49fde8c1570c4a21)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/launcher.rs (target/dev/debug/deps/launcher-48712b61d2b6a87b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (target/dev/debug/deps/lifecycle-2b0b8e73d9e8cd63)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/r5_stall.rs (target/dev/debug/deps/r5_stall-2c2bc719a49f98fd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/recovery.rs (target/dev/debug/deps/recovery-996f93ca805bb66f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/scrollback.rs (target/dev/debug/deps/scrollback-4a9890f9d4452b7b)
+
+running 1 test
+20k seek: top=1.175167ms, capture-prefix-to-live=54.875792ms, seek-row10000=27.148041ms, longest_parse_turn=2.129667ms
+50 watched at top: requested_heap=27238288, conservative_heap=53704374, budget=200000000
+test scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+EXIT 0 elapsed_seconds=9.909 PID=98706
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/scrollback.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:14:02.007609+00:00
+OWNED_COMMAND_PID 1536
+EXIT 0 elapsed_seconds=0.108 PID=1536
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:14:43.909138+00:00
+OWNED_COMMAND_PID 2645
+   Compiling winnow v1.0.4
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking tokio v1.54.1
+    Checking futures-core v0.3.34
+    Checking futures-sink v0.3.34
+   Compiling pulldown-cmark v0.13.4
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mermaid)
+    Checking unicase v2.10.0
+    Checking unicode-segmentation v1.13.3
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Checking futures-util v0.3.34
+   Compiling hashbrown v0.17.1
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+    Checking serde_spanned v1.1.2
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking termcolor v1.4.1
+    Checking glob v0.3.4
+    Checking aho-corasick v1.1.5
+    Checking regex-syntax v0.8.11
+    Checking proc-macro2 v1.0.107
+   Compiling indexmap v2.14.2
+    Checking quote v1.0.47
+    Checking syn v2.0.119
+    Checking toml_parser v1.1.5+spec-1.1.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking toml_edit v0.25.17+spec-1.1.0
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking proc-macro-crate v3.5.0
+    Checking trybuild v1.0.120
+    Checking regex-automata v0.4.18
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-yarn-macros)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking regex v1.13.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking tokio-tungstenite v0.30.0
+    Checking tokio-util v0.7.19
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-yarn)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+error: usage of `contains_key` followed by `insert` on a `BTreeMap`
+   --> crates/bboxy450-term/src/scrollback.rs:529:9
+    |
+529 | /         if !self.seats.contains_key(&seat) {
+530 | |             if request.anchor != Anchor::Top && request.lines <= 0 {
+531 | |                 return Ok(());
+...   |
+535 | |             self.seats.insert(seat, playback);
+536 | |         }
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `-D clippy::map-entry` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+help: try
+    |
+529 ~         if let std::collections::btree_map::Entry::Vacant(e) = self.seats.entry(seat) {
+530 +             if request.anchor != Anchor::Top && request.lines <= 0 {
+531 +                 return Ok(());
+532 +             }
+533 +             let mut playback = Playback::new(view, sequence, screen.clone())?;
+534 +             playback.goal = Goal::BehindLive(0);
+535 +             e.insert(playback);
+536 +         }
+    |
+
+error: very complex type used. Consider factoring parts into `type` definitions
+   --> crates/bboxy450-term/src/scrollback.rs:669:31
+    |
+669 |     pub fn step(&mut self) -> Option<(SeatId, Result<Option<Arc<Historical>>, &'static str>)> {
+    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#type_complexity
+    = note: `-D clippy::type-complexity` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
+
+error: could not compile `bboxy450-term` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bboxy450-term` (lib test) due to 2 previous errors
+EXIT 101 elapsed_seconds=33.364 PID=2645
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:15:45.968967+00:00
+OWNED_COMMAND_PID 5005
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 3.54s
+EXIT 0 elapsed_seconds=3.716 PID=5005
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-term --locked scroll -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:16:20.128256+00:00
+OWNED_COMMAND_PID 7459
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 54.59s
+     Running unittests src/lib.rs (target/dev/debug/deps/bboxy450_term-603d461a0d3908ae)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/dev/debug/deps/bboxy450_term-9cdabeef1996de7a)
+
+running 5 tests
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases ... ok
+test scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane ... ok
+owned scroll supervisor=10287 logic=10394
+cockpit ready: supervisor=10287 logic=10394
+initial identity status: LocalDev, reason=None
+seat 01M5N6J8AFT5WXYCRV4A0M9R0C activity=Idle process=Running { pid: 10432 }
+GUI operation 01M5N6J8K731NXYX42ZHZSNB2C accepted
+GUI operation 01M5N6J8PDDQ0TFPBF36C5PDC9 accepted
+GUI operation 01M5N6J8QPGWX7Z45K6G1624QE accepted
+GUI operation 01M5N6J8RGAW5H00JZRWN4GXVC accepted
+GUI operation 01M5N6J8SNBQEBD1CSKKPP1Y5A accepted
+GUI operation 01M5N6J8VE5BRZK160R796SKW3 accepted
+GUI operation 01M5N6J8WE838GFNK8HB0B7TAN accepted
+GUI operation 01M5N6J8XG3BN6K6QWGZGHJ5Q6 accepted
+GUI operation 01M5N6J8Z9WSJE89E0Y6NFN3FC accepted
+PASS actual GetHistory/IO/Metal preparation: first row line1 after 57.713625ms
+PASS actual capture-prefix seek: historical/live rows join without a duplicated or missing row
+GUI operation 01M5N6JA8QRZ8V2B955E2E4M7C accepted
+GUI operation 01M5N6JAAV097V6TDJ5D6X3SZ6 accepted
+GUI operation 01M5N6JACQAMGNCXVBJSKMBR15 accepted
+PASS input returns live and unwatch releases historical display
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+PASS scroll integration shutdown: owned children reaped
+test live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 50 filtered out; finished in 3.66s
+
+     Running tests/cockpit.rs (target/dev/debug/deps/cockpit-f73b032d63f15f85)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/custody.rs (target/dev/debug/deps/custody-b3d54f90b255a2f3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/hosts.rs (target/dev/debug/deps/hosts-49fde8c1570c4a21)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/launcher.rs (target/dev/debug/deps/launcher-48712b61d2b6a87b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (target/dev/debug/deps/lifecycle-2b0b8e73d9e8cd63)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/r5_stall.rs (target/dev/debug/deps/r5_stall-2c2bc719a49f98fd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/recovery.rs (target/dev/debug/deps/recovery-996f93ca805bb66f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/scrollback.rs (target/dev/debug/deps/scrollback-4a9890f9d4452b7b)
+
+running 1 test
+20k seek: top=1.157584ms, capture-prefix-to-live=131.704083ms, seek-row10000=73.668584ms, longest_parse_turn=9.04175ms
+50 watched at top: requested_heap=27238288, conservative_heap=53761974, budget=200000000
+test scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+EXIT 0 elapsed_seconds=61.645 PID=7459
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-ui --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:18:16.908724+00:00
+OWNED_COMMAND_PID 12387
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling serde_json v1.0.154
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Finished `test` profile [unoptimized] target(s) in 10.66s
+     Running unittests src/lib.rs (target/dev/debug/deps/bbt_ui-db19cecb1613b39f)
+
+running 5 tests
+test modules::pane::tests::constant_pane_border_keeps_activity_from_changing_height ... ok
+test modules::pane::tests::gap_marker_fits_one_row_and_centers_its_hairlines_without_a_spacer ... ok
+test modules::perf_hud::tests::lab_records_round_trip_and_idle_frames_stay_stubs ... ok
+test rim_never_covers_text ... ok
+test glow_never_moves_layout ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/atoms.rs (target/dev/debug/deps/atoms-4c380753e51a216c)
+
+running 5 tests
+test a_waiting_kind_background_and_text_receive_dimming_once ... ok
+test hairline_is_one_physical_pixel_and_spinner_phase_is_explicit ... ok
+test glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloured ... ok
+test kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice ... ok
+test icons_keep_the_requested_logical_name_bounds_and_tint ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/components.rs (target/dev/debug/deps/components-3e05261facce78ab)
+
+running 19 tests
+test a_retained_box_keeps_its_own_glow_state_until_after_its_content ... ok
+test box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout ... ok
+test a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height ... ok
+test column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine ... ok
+test field_marks_use_utf16_boundaries_and_keep_preedit_out_of_intrinsic_size ... ok
+test floating_shadow_paints_over_outside_hair_without_a_foreground_duplicate ... ok
+test image_has_square_intrinsics_a_baseline_and_validated_asset_geometry ... ok
+test inline_middle_uses_the_parent_x_height_without_moving_the_content_box ... ok
+test intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero ... ok
+test mixed_text_runs_align_baselines_and_keep_selection_metadata ... ok
+test wrapping_and_ellipsis_use_the_allocated_width ... ok
+test mixed_type_rows_share_a_baseline ... ok
+test modal_highlight_stays_on_the_fill_inside_its_outside_border ... ok
+test natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps ... ok
+test nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms ... ok
+test path_fill_survives_retained_layout_and_theme_resolution ... ok
+test path_uses_declared_viewport_and_keeps_its_retained_stroke ... ok
+test rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin ... ok
+test scroll_offset_clamps_and_every_child_draw_is_clipped ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/documents.rs (target/dev/debug/deps/documents-92a81a7f9a9b3061)
+
+running 5 tests
+test unsupported_diagram_preserves_source_instead_of_a_partial_drawing ... ok
+test short_code_cells_center_within_the_keys_padded_grid_row ... ok
+test modal_retains_explicit_scroll_and_leaves_actions_as_visual_data ... ok
+test diagram_state_is_serializable_and_drawing_never_scales_to_the_document ... ok
+test document_metadata_and_unsigned_or_broken_evidence_remain_visible ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/flow.rs (target/dev/debug/deps/flow-efc15698d27d0034)
+
+running 4 tests
+test text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_spaces ... ok
+test nowrap_space_between_and_exact_fit_do_not_create_extra_rows ... ok
+test default_text_and_fitting_flow_keep_the_stack_geometry ... ok
+test flow_wraps_in_source_order_with_independent_gaps_and_shared_row_baselines ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/graphs.rs (target/dev/debug/deps/graphs-b9b73c10da4278bd)
+
+running 6 tests
+test annotated_links_preserve_source_identity_display_and_weight ... ok
+test graph_projects_live_and_blocked_tasks_without_inferring_authority ... ok
+test work_tree_counts_terminal_items_and_keeps_artifacts_and_invariants_as_leaves ... ok
+test subscriptions_wrap_at_available_width_without_changing_patterns ... ok
+test provenance_and_history_respect_signed_flags_and_bounded_reverse_order ... ok
+test channels_compose_published_edges_at_true_size_and_scroll_in_the_viewport ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/italic.rs (target/dev/debug/deps/italic-5f8cab235f70efe8)
+
+running 1 test
+test italic_is_backward_compatible_and_reaches_measurement_and_draw_records ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/launchers.rs (target/dev/debug/deps/launchers-82abf581ee5942f3)
+
+running 6 tests
+test typed_virtual_descent_and_explicit_paths_select_the_same_placement_level ... ok
+test lexical_tiers_are_stable_and_every_word_must_match ... ok
+test legacy_launcher_delegates_without_hand_painting ... ok
+test enter_picks_is_a_defaulted_public_constructor_input ... ok
+test cap_keeps_navigation_available_and_dims_completed_launch_row_groups ... ok
+test compact_selection_is_twenty_eight_percent_accent_over_surface ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/links.rs (target/dev/debug/deps/links-69a4de0e6957af68)
+
+running 1 test
+test all_link_states_render_and_unavailable_launcher_rows_cannot_activate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/masks.rs (target/dev/debug/deps/masks-b51ca4bcb80c7d2c)
+
+running 1 test
+test mask_keeps_layout_and_translates_local_coordinates_only_when_painted ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/measurement_cache.rs (target/dev/debug/deps/measurement_cache-d9f2c9ec6ef07619)
+
+running 3 tests
+test flow_keeps_distinct_node_sizes_while_reusing_min_content_queries ... ok
+test independent_passes_observe_changed_measurements_and_nodes ... ok
+test nesting_does_not_repeat_leaf_measurement_at_the_same_constraint ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/overlays.rs (target/dev/debug/deps/overlays-7e37f50814ca7bd3)
+
+running 2 tests
+test blur_parameters_round_trip_and_keep_the_backdrop_separate_from_foreground_fill ... ok
+test overlay_centres_the_panel_and_narrow_bounds_reflow_its_content ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/panes.rs (target/dev/debug/deps/panes-a5770a0dc1ca09e7)
+
+running 2 tests
+test pane_height_is_content_or_minimum_and_an_unavailable_gap_never_invents_a_range ... ok
+test pane_preserves_history_content_and_capability_actions_while_disconnected ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/provider_settings.rs (target/dev/debug/deps/provider_settings-ce3a70d94896e710)
+
+running 2 tests
+test settings_accepts_live_link_records_and_legacy_four_field_cloud_records ... ok
+test every_link_state_roundtrips_and_renders_in_both_settings_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/scroll_windowing.rs (target/dev/debug/deps/scroll_windowing-7eeac145ec81d5bb)
+
+running 8 tests
+test invalid_style_or_gap_keeps_the_fallback_layout_error_instead_of_panicking ... ok
+test nested_ancestors_keep_full_material_group_and_clip_rectangles ... ok
+test undeclared_content_uses_the_original_full_layout_without_measurement_shortcuts ... ok
+test anchor_survives_insert_remove_and_width_density_changes_by_stable_identity ... ok
+test fractional_prefix_keeps_solver_addition_order_even_when_extent_sum_rounds_differently ... ok
+test real_sidebar_falls_back_for_a_variable_extra_and_anchors_survive_rebuilds ... ok
+test measurement_is_bounded_by_the_window_with_exact_extent_and_geometry ... ok
+test real_thousand_open_sidebar_matches_full_visible_geometry_and_extent_to_the_bit ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s
+
+     Running tests/seat_rows.rs (target/dev/debug/deps/seat_rows-3d0b1410dd0df97b)
+
+running 6 tests
+test subagents_filter_finished_work_and_overflow_after_seven ... ok
+test flex_max_violation_freezes_before_redistributing_remaining_space ... ok
+test seat_identity_authority_and_activity_stay_independent_when_name_shrinks ... ok
+test compact_artifact_row_preserves_natural_chip_height_outside_its_flow_slot ... ok
+test naturally_sized_text_is_not_truncated_by_float_subtraction ... ok
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/settings.rs (target/dev/debug/deps/settings-3dc2e8b59d359121)
+
+running 5 tests
+test account_projects_the_pinned_identity_and_recovery_limits_without_actions ... ok
+test draft_harness_never_claims_an_inferred_ready_state_can_submit ... ok
+test records_roundtrip_with_ordered_custom_harnesses_and_roles ... ok
+test role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view ... ok
+test custom_role_order_and_defaults_drive_the_changed_marker ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/streams.rs (target/dev/debug/deps/streams-29799639c0030656)
+
+running 6 tests
+test collapsed_epics_and_bounded_newest_first_external_lane_use_model_state ... ok
+test chronology_foreign_authority_and_unknown_delivery_remain_independent ... ok
+test ended_subagent_holds_the_target_and_hides_the_delivery_ladder ... ok
+test routed_chips_keep_the_oracle_tint_visible_and_unknown_is_a_dashed_hollow_mark ... ok
+test unread_marks_stay_round_and_compressed_chips_clip_their_text ... ok
+test message_body_reflows_with_width_without_changing_the_model ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/style.rs (target/dev/debug/deps/style-59bc9565d7415ae7)
+
+running 5 tests
+test malformed_override_data_fails_instead_of_silently_changing_the_style ... ok
+test positioned_shadow_round_trips_validates_and_preserves_custom_defaults ... ok
+test token_references_and_nontrivial_overrides_round_trip_and_resolve_late ... ok
+test glow_state_round_trips_and_rejects_invalid_shader_inputs ... ok
+test presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/swarms.rs (target/dev/debug/deps/swarms-a9734a6f49c6e60b)
+
+running 6 tests
+test css_filter_uses_luminance_saturation_and_preserves_layout ... ok
+test caption_line_limit_preserves_two_lines_and_marks_truncated_content ... ok
+test a_literal_hyphen_is_a_wrap_opportunity_and_min_content_survives_flex_shrink ... ok
+test unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper ... ok
+test collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_material ... ok
+test sidebar_scroll_and_phone_handle_use_the_supplied_viewport_without_reordering_cards ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/tabs.rs (target/dev/debug/deps/tabs-d1c1e7c6b03de250)
+
+running 6 tests
+test state_color_wins_over_focus_and_a_single_cell_keeps_the_grid_wrapper ... ok
+test grid_preserves_ratio_nested_axis_and_big_root_gap ... ok
+test deeply_nested_grids_shrink_to_zero_but_their_cells_keep_the_two_pixel_minimum ... ok
+test single_seat_reduces_to_the_accepted_row_and_keeps_its_children ... ok
+test expanded_tab_has_indented_seats_and_only_a_parent_shortcut ... ok
+test collapsed_rollup_is_stable_worst_first_and_capped ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/title_bars.rs (target/dev/debug/deps/title_bars-f1ba9fa1954187af)
+
+running 3 tests
+test old_titlebar_is_a_component_delegate ... ok
+test narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls ... ok
+test blur_filters_only_identity_and_dots_while_sidebar_state_changes_its_toggle ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/widgets.rs (target/dev/debug/deps/widgets-f480799b6d6d23da)
+
+running 4 tests
+test pressed_button_scales_visually_without_changing_its_flow_slot ... ok
+test empty_input_keeps_its_control_height_and_invalid_input_keeps_its_error_caption ... ok
+test side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout ... ok
+test list_and_table_allocate_only_visible_rows_and_keep_full_scroll_extent ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=16.431 PID=12387
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/src/scrollback.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:18:49.281942+00:00
+OWNED_COMMAND_PID 13494
+EXIT 0 elapsed_seconds=0.181 PID=13494
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxy450-term --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:18:54.408288+00:00
+OWNED_COMMAND_PID 13711
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 5.14s
+EXIT 0 elapsed_seconds=5.202 PID=13711
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/scene.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:20:17.488178+00:00
+OWNED_COMMAND_PID 16413
+EXIT 0 elapsed_seconds=0.161 PID=16413
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxy450-term --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:20:24.152916+00:00
+OWNED_COMMAND_PID 16597
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 16.85s
+EXIT 0 elapsed_seconds=16.955 PID=16597
+
+$ python3 /private/tmp/sable-c1c3-h2c7tke9/native-scroll.py
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:21:07.607985+00:00
+OWNED_COMMAND_PID 17686
+NATIVE_ROOT /private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew OWNED_APP_PID 17687
+cockpit ready: supervisor=17705 logic=17707
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 36.187ms cpu=38.201ms drain=0.009 layout=0.716 draw=1.289 encode=36.187 present_wait=0.087
+first frame: native scene presented, seats=0
+seat 01M5N6SD6D28W6YDAPWBNJM7YA activity=Idle process=Running { pid: 17791 }
+ui input: Locate { seat: SeatId(Ulid(2167346338023779343201493257875496906)), where_: Both }
+GUI operation 01M5N6SDC15BTH524C9CVJT573 accepted
+GUI operation 01M5N6SDH6AF9DV1MPK8DXYCD6 accepted
+GUI operation 01M5N6SDJTA3WEDHRNRDYF59RW accepted
+GUI operation 01M5N6SDKP272N3JB3YF7PX8R1 accepted
+GUI operation 01M5N6SDMEG3WKS2N9AJ2ZTXDF accepted
+GUI operation 01M5N6SDN3AFSZ05FPXAZ4MJA9 accepted
+GUI operation 01M5N6SDT4KK5A1DCT4KYHY3MJ accepted
+GUI operation 01M5N6SDVP4RJDVP45WTQ5W9SC accepted
+GUI operation 01M5N6SDW37WDZBPBQFFHNTFPP accepted
+GUI operation 01M5N6SDY30XSFHZJ1QNY0BYJY accepted
+GUI operation 01M5N6SDYEZWPBQN9WHD99TY0X accepted
+GUI operation 01M5N6SE49JJDEGVFCHF1D9H0M accepted
+GUI operation 01M5N6SE4P2GMMXQCZY29AR13E accepted
+GUI operation 01M5N6SE59YVVC59EAK9243CKK accepted
+capture /private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/scroll.png: Ok(())
+GUI operation 01M5N6SEB17NCP9HT6YJVT50FZ accepted
+GUI operation 01M5N6SFK60P5HMAACRDERRR2W accepted
+GUI operation 01M5N6SGBDW8D7VBYGC0W6A60R accepted
+GUI operation 01M5N6SH4S6NCEXNXG74KC79A8 accepted
+scroll verification start: frame=15
+hitch frame=18 phase=encode 14.521ms cpu=21.935ms drain=0.008 layout=4.916 draw=2.490 encode=14.521 present_wait=0.098
+grid-hash /private/tmp/sable-c1c3-h2c7tke9/native-scroll-9s71gcew/scroll.grid.json: Ok(())
+app close requested; stopping IO owner
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+
+APP_EXIT 0 ELAPSED 14.81274295799085
+PASS_NATIVE_FIRST_ROW line 00001 FNV 72cb2631446c7055 LIVE_FNV 9f530641f9ae4238
+PASS_NATIVE_OWNED_CHILDREN_REAPED
+EXIT 0 elapsed_seconds=15.013 PID=17686
+
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:22:53.307360+00:00
+OWNED_COMMAND_PID 19870
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Finished `dev` profile [unoptimized] target(s) in 3.14s
+EXIT 0 elapsed_seconds=3.334 PID=19870
+
+$ python3 /private/tmp/sable-c1c3-h2c7tke9/native-scroll.py /private/tmp/sable-c1c3-h2c7tke9/bboxy450-term-ci
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:32:20.107259+00:00
+OWNED_COMMAND_PID 38374
+NATIVE_ROOT /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64 OWNED_APP_PID 38376
+cockpit ready: supervisor=38385 logic=38386
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+hitch frame=1 phase=encode 289.059ms cpu=290.137ms drain=0.002 layout=0.713 draw=0.363 encode=289.059 present_wait=0.047
+first frame: native scene presented, seats=0
+grid-hash /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.grid.json: Ok(())
+ui input: Locate { seat: SeatId(Ulid(2167347147647840490461354912854909952)), where_: Both }
+GUI operation 01M5N7DVF7DWW0EXJGY3M81F2B accepted
+capture /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.png: Ok(())
+GUI operation 01M5N7DVG6ZPSAT3BQ7XG9V2J2 accepted
+GUI operation 01M5N7DVH21XT5MJ7BGJP9X31M accepted
+GUI operation 01M5N7DVHMVDQR94NBZANCDRCP accepted
+GUI operation 01M5N7DVJDBRKDNZQKD61HWYPM accepted
+GUI operation 01M5N7DVJW3TKDW9GQNEDD4Z8D accepted
+GUI operation 01M5N7DVK2PDHQN5XZQNZAH5B3 accepted
+GUI operation 01M5N7DVKBAR1EM222ZXAPHMFY accepted
+GUI operation 01M5N7DVMN4907JXAFAVFNHDKX accepted
+GUI operation 01M5N7DVN9P6BGZ7B0JHEFQ1T8 accepted
+GUI operation 01M5N7DVP8CZZ2EBDVKTCVT265 accepted
+scroll verification start: frame=11
+grid-hash /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.grid.json: Ok(())
+capture /private/tmp/sable-c1c3-h2c7tke9/native-scroll-g9zkcm64/scroll.png: Ok(())
+logic: orderly shutdown requested
+app close requested; stopping IO owner
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+
+APP_EXIT 0 ELAPSED 21.13218537499779
+PASS_NATIVE_FIRST_ROW line 00001 FNV 72cb2631446c7055 LIVE_FNV 7354a6513b901c58
+PASS_NATIVE_OWNED_CHILDREN_REAPED
+EXIT 0 elapsed_seconds=21.432 PID=38374
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/live.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:33:58.800722+00:00
+OWNED_COMMAND_PID 41769
+EXIT 0 elapsed_seconds=0.209 PID=41769
+
+$ env CARGO_TARGET_DIR=/private/tmp/ci-sable-c1c3-final.V3fKxq/target CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true cargo clippy --workspace --all-targets --locked -- -D warnings
+CWD /private/tmp/ci-sable-c1c3-final.V3fKxq/tree
+UTC 2026-10-23T20:39:35.395526+00:00
+OWNED_COMMAND_PID 58175
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling serde_core v1.0.229
+    Checking cfg-if v1.0.5
+   Compiling serde v1.0.229
+    Checking memchr v2.8.3
+   Compiling zmij v1.0.23
+    Checking itoa v1.0.18
+   Compiling serde_json v1.0.154
+   Compiling winnow v1.0.4
+    Checking log v0.4.34
+   Compiling winnow v0.7.15
+   Compiling toml_writer v1.1.3+spec-1.1.0
+    Checking smallvec v1.16.3
+    Checking typenum v1.20.1
+   Compiling zerocopy v0.8.63
+   Compiling parking_lot_core v0.9.12
+    Checking unicode-width v0.2.2
+   Compiling version_check v0.9.5
+    Checking scopeguard v1.2.0
+    Checking foldhash v0.2.0
+    Checking lock_api v0.4.14
+   Compiling generic-array v0.14.7
+    Checking hashbrown v0.17.1
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+    Checking equivalent v1.0.3
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling num-traits v0.2.19
+    Checking cursor-icon v1.2.0
+   Compiling crc32fast v1.5.3
+    Checking indexmap v2.14.2
+    Checking pin-project-lite v0.2.17
+   Compiling thiserror v2.0.21
+    Checking once_cell v1.21.4
+    Checking subtle v2.6.1
+    Checking simd-adler32 v0.3.10
+    Checking getrandom v0.2.17
+    Checking rand_core v0.6.4
+    Checking adler2 v2.0.1
+    Checking miniz_oxide v0.9.1
+    Checking parking_lot v0.12.5
+    Checking zlib-rs v0.6.8
+    Checking const-oid v0.9.6
+    Checking core-foundation-sys v0.8.7
+    Checking ryu v1.0.23
+    Checking unsafe-libyaml v0.2.11
+    Checking objc2-encode v4.1.0
+   Compiling cfg_aliases v0.2.2
+   Compiling objc2 v0.6.5
+    Checking bytes v1.12.1
+    Checking bitflags v2.13.2
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+    Checking base64 v0.22.1
+    Checking errno v0.3.14
+    Checking cpufeatures v0.2.17
+    Checking rustc-hash v1.1.0
+   Compiling naga v30.0.1
+    Checking raw-window-handle v0.6.2
+    Checking bit-vec v0.9.1
+    Checking signal-hook-registry v1.4.8
+    Checking socket2 v0.6.5
+    Checking mio v1.2.4
+    Checking bit-set v0.10.0
+    Checking flate2 v1.1.10
+    Checking codespan-reporting v0.13.1
+    Checking static_assertions v1.1.0
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling jobserver v0.1.35
+   Compiling wgpu-hal v30.0.1
+    Checking float-cmp v0.9.0
+    Checking libloading v0.8.9
+    Checking strict-num v0.1.1
+    Checking dispatch2 v0.3.1
+    Checking block2 v0.6.2
+    Checking arrayref v0.3.9
+    Checking profiling v1.0.18
+    Checking base64ct v1.8.3
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling cc v1.9.0
+    Checking euclid v0.22.14
+   Compiling wgpu-core v30.0.1
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking siphasher v1.0.4
+    Checking objc2-core-foundation v0.3.2
+   Compiling arrayvec v0.7.8
+   Compiling litrs v1.0.1
+   Compiling wgpu v30.0.1
+    Checking png v0.18.1
+    Checking simplecss v0.2.2
+    Checking roxmltree v0.21.1
+   Compiling document-features v0.2.12
+    Checking pico-args v0.5.0
+    Checking data-url v0.3.2
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling tokio-macros v2.7.2
+    Checking imagesize v0.15.0
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-ui-model)
+   Compiling bytemuck v1.25.2
+    Checking tokio v1.54.1
+   Compiling polycool v0.4.0
+    Checking pem-rfc7468 v0.7.0
+    Checking float_next_after v1.0.0
+   Compiling sha2-asm v0.6.4
+   Compiling kurbo v0.13.1
+    Checking naga-types v30.0.1
+   Compiling tiny-skia-path v0.12.0
+    Checking wgpu-types v30.0.1
+    Checking rgb v0.8.53
+   Compiling objc-sys v0.3.5
+   Compiling pkg-config v0.3.34
+    Checking pollster v0.4.0
+   Compiling zeroize_derive v1.5.0
+   Compiling zerocopy-derive v0.8.63
+    Checking objc2-foundation v0.3.2
+   Compiling svgtypes v0.16.1
+    Checking zeroize v1.9.1
+    Checking der v0.7.10
+   Compiling aho-corasick v1.1.5
+   Compiling radium v0.7.0
+    Checking serde_yaml v0.9.34+deprecated
+    Checking bbt-ui v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-ui)
+    Checking serde-big-array v0.5.1
+    Checking bbt-core v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-core)
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking digest v0.10.7
+    Checking lyon_geom v1.0.20
+    Checking inout v0.1.4
+    Checking tiny-skia v0.12.0
+    Checking cipher v0.4.4
+    Checking lyon_path v1.0.19
+    Checking spki v0.7.3
+   Compiling regex-syntax v0.8.11
+    Checking lyon_tessellation v1.0.22
+   Compiling getrandom v0.3.4
+   Compiling usvg v0.48.1
+    Checking pkcs8 v0.10.2
+    Checking tap v1.0.1
+    Checking wyz v0.5.1
+    Checking objc2 v0.5.3
+    Checking sha2 v0.10.9
+    Checking objc2-metal v0.3.2
+    Checking hmac v0.12.1
+   Compiling futures-macro v0.3.34
+   Compiling crossbeam-utils v0.8.23
+    Checking futures-task v0.3.34
+    Checking funty v2.0.0
+    Checking slab v0.4.12
+    Checking futures-core v0.3.34
+    Checking futures-sink v0.3.34
+    Checking base16ct v0.2.0
+    Checking futures-util v0.3.34
+    Checking block2 v0.5.1
+    Checking resvg v0.48.1
+    Checking rand_core v0.9.5
+    Checking bitvec v1.1.1
+    Checking signature v2.2.0
+   Compiling foreign-types-macros v0.2.4
+    Checking core-foundation v0.9.4
+    Checking foreign-types-shared v0.3.1
+   Compiling semver v1.0.28
+   Compiling regex-automata v0.4.18
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking objc2-foundation v0.2.2
+    Checking core-graphics-types v0.1.3
+    Checking foreign-types v0.5.0
+   Compiling rustc_version v0.4.1
+    Checking serdect v0.2.0
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling winit v0.30.13
+    Checking tracing-core v0.1.36
+    Checking rand_core v0.10.1
+   Compiling getrandom v0.4.3
+    Checking crossbeam-queue v0.3.14
+    Checking tracing v0.1.44
+    Checking sec1 v0.7.3
+    Checking core-graphics v0.23.2
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+   Compiling cfg_aliases v0.1.1
+    Checking dpi v0.1.2
+   Compiling thiserror v1.0.69
+    Checking smol_str v0.2.2
+   Compiling nix v0.28.0
+    Checking ff v0.13.1
+    Checking group v0.13.0
+   Compiling thiserror-impl v1.0.69
+   Compiling anyhow v1.0.104
+    Checking elliptic-curve v0.13.8
+   Compiling zstd-safe v8.2.0
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking bbt-rt v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-rt)
+    Checking rfc6979 v0.4.0
+   Compiling strsim v0.11.1
+    Checking const-oid v0.10.2
+   Compiling ident_case v1.0.1
+   Compiling fnv v1.0.7
+   Compiling darling_core v0.20.11
+    Checking serial2 v0.2.38
+    Checking half v2.7.1
+    Checking ppv-lite86 v0.2.21
+    Checking rand_chacha v0.9.0
+    Checking rand v0.9.5
+    Checking objc2-core-graphics v0.3.2
+   Compiling regex v1.13.1
+    Checking filedescriptor v0.8.3
+    Checking digest v0.11.3
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+    Checking rand_chacha v0.3.1
+    Checking ecdsa v0.16.9
+    Checking ulid v1.2.1
+   Compiling curve25519-dalek v4.1.3
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+   Compiling num-bigint-dig v0.8.6
+    Checking spin v0.9.9
+    Checking num-iter v0.1.46
+    Checking lazy_static v1.5.1
+    Checking rand v0.8.8
+    Checking primeorder v0.13.6
+    Checking ctr v0.9.2
+    Checking universal-hash v0.5.1
+    Checking aead v0.5.2
+    Checking bbt-mermaid v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-mermaid)
+    Checking portable-pty v0.9.0
+   Compiling unicode-segmentation v1.13.3
+   Compiling rustix v1.1.5
+   Compiling vcpkg v0.2.15
+   Compiling httparse v1.10.1
+    Checking opaque-debug v0.3.1
+   Compiling rustversion v1.0.23
+   Compiling pulldown-cmark v0.13.4
+    Checking polyval v0.6.2
+   Compiling libsqlite3-sys v0.38.2
+    Checking objc2-app-kit v0.2.2
+   Compiling convert_case v0.10.0
+    Checking chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+    Checking aes v0.8.4
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking dbl v0.3.2
+    Checking keccak v0.1.6
+   Compiling darling_macro v0.20.11
+   Compiling heck v0.5.0
+   Compiling crc24 v0.1.6
+    Checking unicase v2.10.0
+   Compiling unicode-xid v0.2.6
+    Checking byteorder v1.5.0
+   Compiling darling v0.20.11
+   Compiling derive_more-impl v2.1.1
+   Compiling derive_builder_core v0.20.2
+    Checking raw-window-metal v1.1.0
+   Compiling snafu-derive v0.9.2
+    Checking sha3 v0.10.9
+    Checking cmac v0.7.2
+    Checking rand v0.10.3
+   Compiling derive_builder_macro v0.20.2
+   Compiling bitfields-impl v1.0.3
+    Checking ghash v0.5.1
+    Checking sha1 v0.11.0
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking blake2 v0.10.6
+    Checking sha1 v0.10.7
+   Compiling num_enum_derive v0.7.6
+    Checking password-hash v0.5.0
+    Checking http v1.5.0
+    Checking foldhash v0.1.5
+    Checking data-encoding v2.11.1
+    Checking fastrand v2.5.0
+    Checking same-file v1.0.6
+    Checking signature v3.0.0
+    Checking walkdir v2.5.0
+    Checking ed25519 v3.0.0
+    Checking bitfields v1.0.3
+    Checking tempfile v3.27.0
+    Checking snafu v0.9.2
+    Checking hashbrown v0.15.5
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking derive_more v2.1.1
+    Checking sha1-checked v0.10.0
+    Checking tungstenite v0.30.0
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking aes-gcm v0.10.3
+    Checking derive_builder v0.20.2
+    Checking dsa v0.6.3
+    Checking eax v0.5.0
+    Checking x25519-dalek v2.0.1
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking aes-kw v0.2.1
+    Checking ocb3 v0.1.0
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking p256 v0.13.2
+    Checking k256 v0.13.4
+    Checking sha2 v0.11.1
+    Checking bbt-proto v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-proto)
+    Checking des v0.8.1
+    Checking cast5 v0.11.1
+    Checking cfb-mode v0.8.2
+    Checking idea v0.5.1
+    Checking twofish v0.7.1
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking block-padding v0.3.3
+    Checking notify-types v2.1.0
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking fsevent-sys v4.1.0
+    Checking hashlink v0.12.2
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+    Checking fallible-iterator v0.3.0
+    Checking hex v0.4.3
+    Checking fallible-streaming-iterator v0.1.9
+    Checking replace_with v0.1.8
+    Checking fixedbitset v0.5.7
+    Checking security-framework v3.7.0
+    Checking petgraph v0.8.3
+    Checking notify v8.2.0
+    Checking ed25519-dalek v3.0.0
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-doc v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bboxy450-term)
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking objc2-app-kit v0.3.2
+    Checking bboxy-firehose v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+    Checking tokio-util v0.7.19
+    Checking termcolor v1.4.1
+    Checking glob v0.3.4
+    Checking wgpu-naga-bridge v30.0.1
+   Compiling toml_edit v0.25.17+spec-1.1.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking pgp v0.21.0
+   Compiling proc-macro-crate v3.5.0
+    Checking trybuild v1.0.120
+   Compiling bbt-yarn-macros v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-yarn-macros)
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking bbt-yarn v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-yarn)
+    Checking zstd v0.14.3
+    Checking bbt-supervisor v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-supervisor)
+    Checking bbt-render v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-render)
+    Checking rusqlite v0.40.2
+    Checking bbt-mux v0.0.1 (/private/tmp/ci-sable-c1c3-final.V3fKxq/tree/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 1m 25s
+EXIT 0 elapsed_seconds=85.357 PID=58175
+
+$ rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T20:46:28.351013+00:00
+OWNED_COMMAND_PID 69567
+EXIT 0 elapsed_seconds=0.293 PID=69567

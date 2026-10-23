@@ -183,9 +183,10 @@ code, .mono { font-family: var(--font-mono); }
 @keyframes spin { to { transform: rotate(360deg); } }
 .seat-row .restarted { font-size: var(--t-tiny); line-height: 14px; padding: 0 5px; border-radius: var(--r-tag); white-space: nowrap; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); animation: restarted-out 4s var(--ease, ease) forwards; }
 @keyframes restarted-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
-.gap-mark { display: flex; align-items: center; gap: var(--s4); margin: 0 0 var(--s3); white-space: nowrap; font-size: var(--t-small); color: var(--fg-dim); }
+/* scrollback gap and resumed markers are exactly one terminal row, no spacer, so the cells after them stay on the row grid (Sable, C1c-3) */
+.gap-mark { display: flex; align-items: center; gap: var(--s4); height: 1lh; margin: 0; white-space: nowrap; color: var(--fg-dim); }   /* 1lh: the terminal's own line box */
 .gap-mark i { flex: 1; height: 1px; background: var(--hair); min-width: 12px; }
-.gap-mark span { flex: none; letter-spacing: .02em; }
+.gap-mark span { flex: none; letter-spacing: .02em; font-size: var(--t-small); line-height: 1; }
 .pane .term .cur { display: inline-block; width: 7px; height: 12px; background: var(--fg); vertical-align: -2px; }
 
 /* picker */

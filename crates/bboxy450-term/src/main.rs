@@ -14,6 +14,7 @@ use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
     Outcome as LauncherOutcome,
 };
+use bboxy450_term::scrollback::Request as ScrollRequest;
 use bbt_proto::{SeatId, View};
 use bbt_rt::{HitchMeter, Latest, Phases, UiInbox, UiMsg};
 use bbt_ui_model::{
@@ -34,7 +35,7 @@ use winit::platform::macos::MonitorHandleExtMacOS;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{ElementState, Ime, MouseButton, WindowEvent},
+    event::{ElementState, Ime, MouseButton, MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy},
     keyboard::{Key, KeyCode, ModifiersState, NamedKey, PhysicalKey},
     window::{Window, WindowId},
@@ -53,6 +54,8 @@ pub enum UiEvent {
     BackendReady,
     SmokeDeadline,
     VerifyGridDeadline,
+    VerifyScrollTop,
+    VerifyClose,
     VerifyFailed(String),
     Capture,
     StallPoll,
@@ -204,8 +207,16 @@ enum RoutedKey {
     ToggleHud,
     Launcher(LauncherCommand),
     Pane(Navigation),
+    Scroll(ScrollKey),
     Terminal(Vec<u8>),
     Local,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ScrollKey {
+    PageUp,
+    PageDown,
+    Top,
+    Live,
 }
 fn input_modifiers(mods: ModifiersState) -> Modifiers {
     Modifiers {
@@ -332,6 +343,18 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         } else {
             RoutedKey::ToggleHud
         };
+    }
+    if query.is_none() && mods.shift_key() && !command && !mods.alt_key() && !mods.control_key() {
+        let motion = match key {
+            Key::Named(NamedKey::PageUp) => Some(ScrollKey::PageUp),
+            Key::Named(NamedKey::PageDown) => Some(ScrollKey::PageDown),
+            Key::Named(NamedKey::Home) => Some(ScrollKey::Top),
+            Key::Named(NamedKey::End) => Some(ScrollKey::Live),
+            _ => None,
+        };
+        if let Some(motion) = motion {
+            return RoutedKey::Scroll(motion);
+        }
     }
     let navigation = match key {
         Key::Named(NamedKey::ArrowLeft) => NavigationKey::Arrow(Direction::Left),
@@ -642,6 +665,7 @@ struct App {
     pane_sizes: BTreeMap<SeatId, (u64, u16, u16)>,
     pane_bounds: Vec<(SeatId, Rect)>,
     focus_bounds: Vec<(SeatId, Rect)>,
+    scroll_wheel: Option<(SeatId, f64)>,
     focus: FocusState,
     spawn_results_seen: BTreeMap<bbt_mux::Ulid, bboxy450_term::model::SpawnOutcome>,
     launcher: Option<LauncherController>,
@@ -779,6 +803,21 @@ impl App {
             self.logger.write(self.admission_refusals.report());
         }
         self.request_redraw();
+    }
+    fn scroll_pane(&mut self, seat: SeatId, request: ScrollRequest) {
+        let Some(generation) = self
+            .live_state
+            .as_ref()
+            .and_then(|model| model.ui.seats.get(&seat))
+            .map(|seat| seat.process_generation)
+        else {
+            return;
+        };
+        self.queue(live::UiMsg::Scroll {
+            seat,
+            generation,
+            request,
+        });
     }
     fn flush_commands(&mut self) {
         if let Some(sender) = &self.live_commands {
@@ -1254,6 +1293,19 @@ impl App {
                 self.launcher_layout.as_ref()
             },
         );
+        let pane_overlay = if let Some(model) = &self.live_state {
+            let mut ops = self
+                .scene
+                .history_foreground(model, &self.pane_bounds, scale)?;
+            ops.extend(self.scene.foreground(
+                logical,
+                self.launcher_layout.as_ref(),
+                overlay.as_ref(),
+            ));
+            ops
+        } else {
+            vec![]
+        };
         phases.draw = start.elapsed();
         if self.animate {
             if fifo {
@@ -1276,11 +1328,7 @@ impl App {
             self.live_state.as_ref().map(|model| gpu::Panes {
                 model,
                 bounds: &self.pane_bounds,
-                overlay: self.scene.foreground(
-                    logical,
-                    self.launcher_layout.as_ref(),
-                    overlay.as_ref(),
-                ),
+                overlay: pane_overlay,
             }),
         )? {
             phases.encode = encode;
@@ -1436,6 +1484,16 @@ impl ApplicationHandler<UiEvent> for App {
                 self.capture_pending = true;
                 self.request_redraw();
             }
+            UiEvent::VerifyScrollTop => {
+                self.logger.write(format!(
+                    "scroll verification start: frame={}",
+                    self.meter.total_frames()
+                ));
+                self.verify.scroll_frame = Some(self.meter.total_frames());
+                self.verify.scroll_due = true;
+                self.verify();
+            }
+            UiEvent::VerifyClose => self.request_close(event_loop),
             UiEvent::VerifyGridDeadline => {
                 if self.verify.grid_size.is_some() && !self.verify.grid_ready && !self.closing {
                     let error = format!(
@@ -1696,6 +1754,40 @@ impl ApplicationHandler<UiEvent> for App {
                     self.launcher_command(LauncherCommand::Hover(index));
                 }
             }
+            WindowEvent::MouseWheel { delta, .. } if self.launcher.is_none() => {
+                if let Some((seat, rect)) = self.focus_bounds.iter().find(|(_, rect)| {
+                    self.pointer[0] >= rect.x
+                        && self.pointer[0] < rect.right()
+                        && self.pointer[1] >= rect.y
+                        && self.pointer[1] < rect.bottom()
+                }) {
+                    let seat = *seat;
+                    let rows = self
+                        .live_state
+                        .as_ref()
+                        .and_then(|model| model.screens.get(&seat))
+                        .map_or(1, |screen| screen.rows.max(1));
+                    let lines = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => f64::from(y),
+                        MouseScrollDelta::PixelDelta(position) => {
+                            let scale = self.window.as_ref().map_or(1., |w| w.scale_factor());
+                            position.y / (f64::from(rect.h) / rows as f64 * scale).max(1.)
+                        }
+                    };
+                    if lines.is_finite() {
+                        let remainder = self.scroll_wheel.get_or_insert((seat, 0.));
+                        if remainder.0 != seat {
+                            *remainder = (seat, 0.);
+                        }
+                        remainder.1 += lines;
+                        let whole = remainder.1.trunc() as i64;
+                        remainder.1 -= whole as f64;
+                        if whole != 0 {
+                            self.scroll_pane(seat, ScrollRequest::lines(whole));
+                        }
+                    }
+                }
+            }
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 button: MouseButton::Left,
@@ -1821,6 +1913,23 @@ impl ApplicationHandler<UiEvent> for App {
                     RoutedKey::Pane(navigation) => {
                         self.focus_action(FocusAction::Navigate(navigation))
                     }
+                    RoutedKey::Scroll(motion) => {
+                        if let Some(seat) = self.focus.stage.as_ref().and_then(|s| s.focused) {
+                            let page = self
+                                .live_state
+                                .as_ref()
+                                .and_then(|model| model.screens.get(&seat))
+                                .map_or(1, |screen| screen.rows.saturating_sub(1).max(1))
+                                as i64;
+                            let request = match motion {
+                                ScrollKey::PageUp => ScrollRequest::lines(page),
+                                ScrollKey::PageDown => ScrollRequest::lines(-page),
+                                ScrollKey::Top => ScrollRequest::top(),
+                                ScrollKey::Live => ScrollRequest::live(),
+                            };
+                            self.scroll_pane(seat, request);
+                        }
+                    }
                     RoutedKey::Terminal(bytes) => {
                         // No terminal input before the focused live Screen supplies modes.
                         if modes.is_some()
@@ -1885,7 +1994,7 @@ impl AdmissionRefusals {
 
 fn queue_pending(
     pending: &mut VecDeque<live::UiMsg>,
-    message: live::UiMsg,
+    mut message: live::UiMsg,
 ) -> Result<(), AdmissionRefused> {
     if let live::UiMsg::Input { bytes, .. } = &message {
         let mut input_bytes = 0;
@@ -1920,7 +2029,30 @@ fn queue_pending(
             return Err(AdmissionRefused::Input);
         }
     }
+    if let live::UiMsg::Scroll {
+        seat,
+        generation,
+        request,
+    } = &mut message
+        && let Some(index) = pending
+            .iter()
+            .position(|old| matches!(old, live::UiMsg::Scroll { seat: id, .. } if id == seat))
+        && let Some(live::UiMsg::Scroll {
+            generation: old_generation,
+            request: mut old,
+            ..
+        }) = pending.remove(index)
+        && old_generation == *generation
+    {
+        old.merge(*request);
+        *request = old;
+    }
     match &message {
+        // An admitted key returns live before it is delivered. Older scroll
+        // intents are superseded, so a later wheel delta cannot inherit their
+        // Top anchor across this input while the worker is backpressured.
+        live::UiMsg::Input { seat, .. } => pending
+            .retain(|old| !matches!(old,live::UiMsg::Scroll {seat:old_seat,..} if old_seat==seat)),
         live::UiMsg::Resize { seat, .. } => pending.retain(
             |old| !matches!(old, live::UiMsg::Resize { seat: old_seat, .. } if old_seat == seat),
         ),
@@ -1928,7 +2060,9 @@ fn queue_pending(
         // ordering. Keep only the latest set and sizes of its visible panes.
         live::UiMsg::Watched(panes) => pending.retain(|old| match old {
             live::UiMsg::Watched(_) => false,
-            live::UiMsg::Resize { seat, .. } => panes.iter().any(|(id, _)| id == seat),
+            live::UiMsg::Resize { seat, .. } | live::UiMsg::Scroll { seat, .. } => {
+                panes.iter().any(|(id, _)| id == seat)
+            }
             _ => true,
         }),
         message
@@ -2054,6 +2188,8 @@ Debug and verification only, never for normal use:
   --theme light|dark   terminal palette for live verification (default: dark)
   --grid-size COLSxROWS fit one live pane by resizing the real window; 10s deadline
   --grid-hash          write actual visible-screen hashes to PNG's .grid.json
+  --scroll-top-after SECS scroll panes to the capture's first row (0..300)
+  --quit-after SECS    close this verification instance cleanly (0..300)
   BBOXY_VERIFY_INPUT   env: bytes typed into each new seat once, \\n sent as Return
   --smoke, --fake-source, --animate, --cadence-test, --pacing MODE: frozen scenes and pacing probes";
 
@@ -2071,6 +2207,11 @@ struct Verify {
     grid_hash: bool,
     grid_ready: bool,
     capture_started: bool,
+    scroll_after: Option<Duration>,
+    quit_after: Option<Duration>,
+    scroll_due: bool,
+    scrolled: std::collections::BTreeSet<(SeatId, u64)>,
+    scroll_frame: Option<u64>,
 }
 impl Verify {
     fn from_args(args: &[String]) -> Result<Self, String> {
@@ -2100,6 +2241,18 @@ impl Verify {
         let grid_size = required("--grid-size")?
             .map(parse_verify_grid)
             .transpose()?;
+        let seconds = |flag: &str| -> Result<Option<Duration>, String> {
+            required(flag)?
+                .map(|value| {
+                    value
+                        .parse::<u64>()
+                        .ok()
+                        .filter(|seconds| *seconds <= 300)
+                        .map(Duration::from_secs)
+                        .ok_or_else(|| format!("verification-invalid-delay: {flag} {value}"))
+                })
+                .transpose()
+        };
         Ok(Self {
             spawn: value("--spawn-zsh")
                 .and_then(|n| n.parse().ok())
@@ -2113,6 +2266,8 @@ impl Verify {
             theme,
             grid_size,
             grid_hash: args.iter().any(|arg| arg == "--grid-hash"),
+            scroll_after: seconds("--scroll-top-after")?,
+            quit_after: seconds("--quit-after")?,
             ..Default::default()
         })
     }
@@ -2132,6 +2287,18 @@ impl App {
             for _ in 0..self.verify.spawn {
                 self.queue(live::UiMsg::SpawnZsh);
             }
+            for (after, event) in [
+                (self.verify.scroll_after, UiEvent::VerifyScrollTop),
+                (self.verify.quit_after, UiEvent::VerifyClose),
+            ] {
+                if let Some(after) = after {
+                    let proxy = self.proxy.clone();
+                    bbt_rt::handle().spawn(async move {
+                        tokio::time::sleep(after).await;
+                        let _ = proxy.send_event(event);
+                    });
+                }
+            }
         }
         if self.verify.grid_size.is_some() && !self.verify.grid_ready {
             return;
@@ -2147,6 +2314,23 @@ impl App {
                 tokio::time::sleep(after).await;
                 let _ = proxy.send_event(UiEvent::Capture);
             });
+        }
+        if self.verify.scroll_due {
+            let panes: Vec<_> = self
+                .live_state
+                .iter()
+                .flat_map(|m| {
+                    m.screens.keys().filter_map(|seat| {
+                        let generation = m.ui.seats.get(seat)?.process_generation;
+                        (!self.verify.scrolled.contains(&(*seat, generation)))
+                            .then_some((*seat, generation))
+                    })
+                })
+                .collect();
+            for (seat, generation) in panes {
+                self.verify.scrolled.insert((seat, generation));
+                self.scroll_pane(seat, ScrollRequest::top());
+            }
         }
         let Some(bytes) = self.verify.input.clone() else {
             return;
@@ -2209,26 +2393,40 @@ impl App {
         };
         let bounds = self.pane_bounds.clone();
         let frame_number = self.meter.total_frames();
+        let scroll_meter=self.verify.scroll_frame.map(|start| {
+            let first=frame_number.saturating_sub(self.meter.samples().len() as u64);
+            let samples:Vec<_>=self.meter.samples().iter().enumerate().filter(|(index,_)|first+*index as u64>=start)
+                .map(|(_,sample)|sample.phases.cpu().as_secs_f64()*1000.).collect();
+            serde_json::json!({"first_frame":start+1,"last_frame":frame_number,"samples":samples.len(),
+                "cpu_max_ms":samples.iter().copied().fold(0.,f64::max),"cpu_ms":samples})
+        });
         let logger = self.logger.clone();
         let proxy = self.proxy.clone();
         bbt_rt::handle().spawn(async move {
             let panes: Vec<_> = bounds
                 .iter()
                 .filter_map(|(seat, rect)| {
-                    let screen = model.screens.get(seat)?;
+                    let live = model.screens.get(seat)?;
+                    let historical=model.history.get(seat);
+                    let screen=historical.map_or(live,|history|&history.screen);
                     let frame = model.frames.get(seat)?;
-                    Some(
-                    serde_json::json!({"seat":bbt_mux::Ulid::from(seat.0.0).to_string(),"cols":screen.cols,"rows":screen.rows,
+                    let mut pane=serde_json::json!({"seat":bbt_mux::Ulid::from(seat.0.0).to_string(),"cols":screen.cols,"rows":screen.rows,
                     "cursor":screen.cursor,"modes":screen.modes,"fnv1a64":screen_hash(screen),
                     "crop":[(rect.x*scale).round() as u32,(rect.y*scale).round() as u32,
                         frame.width.min((rect.w*scale).floor() as u32),
-                        frame.height.min((rect.h*scale).floor() as u32)]}),
-                    )
+                        frame.height.min((rect.h*scale).floor() as u32)]});
+                    if let Some(history)=historical {
+                        let lines:Vec<String>=screen.cells.iter().map(|row|row.iter().map(|cell|cell.c).collect::<String>().trim_end().to_owned()).collect();
+                        pane["history"]=serde_json::json!({"lines":lines,"live_fnv1a64":screen_hash(live),
+                            "gaps":history.gaps.iter().map(|gap|serde_json::json!({"row":gap.row,"from":gap.from,"to":gap.to})).collect::<Vec<_>>()});
+                    }
+                    Some(pane)
                 })
                 .collect();
             let theme = match model.ui.window.theme { Theme::Dark => "dark", Theme::Light => "light" };
-            let report = serde_json::json!({"schema":"bboxy-firehose-screen-v1","png":png,
+            let mut report = serde_json::json!({"schema":"bboxy-firehose-screen-v1","png":png,
                 "theme":theme,"scale":scale,"frame":frame_number,"panes":panes});
+            if let Some(scroll_meter)=scroll_meter {report["scroll_meter"]=scroll_meter;}
             let path = png.with_extension("grid.json");
             let result = tokio::fs::write(&path, serde_json::to_vec_pretty(&report).unwrap()).await;
             logger.write(format!("grid-hash {}: {result:?}", path.display()));
@@ -2444,6 +2642,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         pane_sizes: BTreeMap::new(),
         pane_bounds: vec![],
         focus_bounds: vec![],
+        scroll_wheel: None,
         focus: FocusState::default(),
         spawn_results_seen: BTreeMap::new(),
         launcher: args
@@ -2871,7 +3070,7 @@ mod input_tests {
                 }
                 live::UiMsg::Watched(panes) => watched = panes,
                 live::UiMsg::SpawnZsh | live::UiMsg::Spawn { .. } => spawns += 1,
-                live::UiMsg::ConsumeSpawn { .. } => {}
+                live::UiMsg::ConsumeSpawn { .. } | live::UiMsg::Scroll { .. } => {}
                 live::UiMsg::Messaging { .. } | live::UiMsg::Task { .. } => {
                     panic!("pane admission fixture produced a messaging intent")
                 }
@@ -2994,6 +3193,122 @@ mod input_tests {
             ),
             None
         );
+    }
+}
+
+#[cfg(test)]
+mod scroll_input_tests {
+    use super::*;
+
+    #[test]
+    fn admitted_input_resets_a_queued_scroll_anchor_and_refusal_does_not() {
+        let seat = SeatId::from_u128(1);
+        let scroll = |request| live::UiMsg::Scroll {
+            seat,
+            generation: 1,
+            request,
+        };
+        let input = |bytes: Vec<u8>| live::UiMsg::Input {
+            seat,
+            generation: 1,
+            id: bbt_mux::Ulid::new(),
+            bytes,
+        };
+        let mut pending = VecDeque::new();
+        queue_pending(&mut pending, scroll(ScrollRequest::top())).unwrap();
+        queue_pending(&mut pending, input(b"x".to_vec())).unwrap();
+        queue_pending(&mut pending, scroll(ScrollRequest::lines(1))).unwrap();
+        assert_eq!(pending.len(), 2);
+        assert!(matches!(pending.front(),Some(live::UiMsg::Input {bytes,..}) if bytes==b"x"));
+        assert!(
+            matches!(pending.back(),Some(live::UiMsg::Scroll {request,..}) if *request==ScrollRequest::lines(1)),
+            "a post-key wheel step starts behind live, not at an older Top anchor"
+        );
+        pending.clear();
+        queue_pending(&mut pending, scroll(ScrollRequest::top())).unwrap();
+        assert_eq!(
+            queue_pending(&mut pending, input(vec![0; PENDING_INPUT_BYTES + 1])),
+            Err(AdmissionRefused::Input)
+        );
+        assert!(
+            matches!(pending.front(),Some(live::UiMsg::Scroll {request,..}) if *request==ScrollRequest::top()),
+            "a refused key must not alter the pending viewport intent"
+        );
+    }
+
+    #[test]
+    fn scroll_shortcuts_stay_local_for_repeats_and_kitty_releases() {
+        for (key, physical, motion) in [
+            (NamedKey::PageUp, KeyCode::PageUp, ScrollKey::PageUp),
+            (NamedKey::PageDown, KeyCode::PageDown, ScrollKey::PageDown),
+            (NamedKey::Home, KeyCode::Home, ScrollKey::Top),
+            (NamedKey::End, KeyCode::End, ScrollKey::Live),
+        ] {
+            let mut state = keyboard::State::default();
+            let mut input = keyboard::Input {
+                logical_key: Key::Named(key),
+                unmodified_key: Key::Named(key),
+                physical_key: PhysicalKey::Code(physical),
+                text: None,
+                text_all_modifiers: None,
+                location: winit::keyboard::KeyLocation::Standard,
+                state: ElementState::Pressed,
+                repeat: false,
+                modifiers: keyboard::Modifiers {
+                    state: ModifiersState::SHIFT,
+                    locks: Default::default(),
+                },
+            };
+            assert_eq!(
+                route_input(&mut state, &input, 31 << 18, None),
+                RoutedKey::Scroll(motion)
+            );
+            input.repeat = true;
+            assert_eq!(
+                route_input(&mut state, &input, 31 << 18, None),
+                RoutedKey::Scroll(motion)
+            );
+            input.state = ElementState::Released;
+            input.modifiers.state = ModifiersState::empty();
+            assert_eq!(
+                route_input(&mut state, &input, 31 << 18, None),
+                RoutedKey::Local
+            );
+        }
+    }
+
+    #[test]
+    fn ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane() {
+        let seat = SeatId::from_u128(1);
+        let mut pending = VecDeque::new();
+        let scroll = |generation, request| live::UiMsg::Scroll {
+            seat,
+            generation,
+            request,
+        };
+        queue_pending(&mut pending, scroll(1, ScrollRequest::top())).unwrap();
+        for _ in 0..60_000 {
+            queue_pending(&mut pending, scroll(1, ScrollRequest::lines(-1))).unwrap();
+            assert_eq!(pending.len(), 1);
+        }
+        assert!(
+            matches!(pending.front(), Some(live::UiMsg::Scroll {request, ..})
+            if request.anchor == bboxy450_term::scrollback::Anchor::Top && request.lines == -60_000)
+        );
+        queue_pending(&mut pending, scroll(2, ScrollRequest::lines(3))).unwrap();
+        assert!(
+            matches!(pending.front(), Some(live::UiMsg::Scroll {generation: 2,request, ..})
+            if *request == ScrollRequest::lines(3))
+        );
+        queue_pending(&mut pending, scroll(2, ScrollRequest::live())).unwrap();
+        queue_pending(&mut pending, scroll(2, ScrollRequest::lines(1))).unwrap();
+        assert!(
+            matches!(pending.front(), Some(live::UiMsg::Scroll {request, ..})
+            if request.anchor == bboxy450_term::scrollback::Anchor::Live && request.lines == 1)
+        );
+        queue_pending(&mut pending, live::UiMsg::Watched(vec![])).unwrap();
+        assert_eq!(pending.len(), 1);
+        assert!(matches!(pending.front(), Some(live::UiMsg::Watched(_))));
     }
 }
 

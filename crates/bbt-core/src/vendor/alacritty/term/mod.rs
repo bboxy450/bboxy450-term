@@ -403,6 +403,31 @@ impl<T> Term<T> {
         self.mark_fully_damaged();
     }
 
+    pub(crate) fn set_spare_rows(&mut self, rows: usize) {
+        self.grid.set_spare_rows(rows);
+        self.inactive_grid.set_spare_rows(rows);
+    }
+
+    pub(crate) fn retained_heap_bytes(&self) -> usize {
+        self.grid.retained_heap_bytes(Cell::retained_extra_bytes)
+            + self
+                .inactive_grid
+                .retained_heap_bytes(Cell::retained_extra_bytes)
+            + self.tabs.tabs.capacity()
+            + self.damage.lines.capacity() * mem::size_of::<LineDamageBounds>()
+            + self.title.as_ref().map_or(0, String::capacity)
+            + self.title_stack.capacity() * mem::size_of::<Option<String>>()
+            + self
+                .title_stack
+                .iter()
+                .flatten()
+                .map(String::capacity)
+                .sum::<usize>()
+            + self.keyboard_mode_stack.capacity() * mem::size_of::<KeyboardModes>()
+            + self.inactive_keyboard_mode_stack.capacity() * mem::size_of::<KeyboardModes>()
+            + self.config.semantic_escape_chars.capacity()
+    }
+
     #[inline]
     pub fn scroll_display(&mut self, scroll: Scroll)
     where

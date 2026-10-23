@@ -67,6 +67,12 @@ pub enum UiMsg {
         cols: u16,
         rows: u16,
     },
+    /// Local history navigation; IO fetches capture pages without changing Watch.
+    Scroll {
+        seat: SeatId,
+        generation: u64,
+        request: crate::scrollback::Request,
+    },
     Watched(Vec<(SeatId, View)>),
 }
 impl UiMsg {
