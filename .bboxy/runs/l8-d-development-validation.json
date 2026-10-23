@@ -1,0 +1,378 @@
+{
+  "d-app-09-state.json": {
+    "started": 1792775989.765159,
+    "runs": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bboxy450-term",
+          "--locked",
+          "--test",
+          "launcher",
+          "--test",
+          "cockpit",
+          "--test",
+          "recovery",
+          "--test",
+          "custody"
+        ],
+        "started": 1792775989.7651699,
+        "pid": 96525,
+        "exit": 0,
+        "finished": 1792776028.693515
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bboxy450-term",
+          "--locked",
+          "--lib",
+          "model::tests"
+        ],
+        "started": 1792776028.694856,
+        "pid": 97087,
+        "exit": 0,
+        "finished": 1792776029.695777
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bboxy450-term",
+          "--locked",
+          "--bin",
+          "bboxy450-term"
+        ],
+        "started": 1792776029.696098,
+        "pid": 97097,
+        "exit": 0,
+        "finished": 1792776034.336641
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bbt-proto",
+          "--locked"
+        ],
+        "started": 1792776034.338832,
+        "pid": 97273,
+        "exit": 0,
+        "finished": 1792776039.303756
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bbt-mux",
+          "--locked",
+          "--lib",
+          "mcp::journal::tests"
+        ],
+        "started": 1792776039.30444,
+        "pid": 97383,
+        "exit": 0,
+        "finished": 1792776062.6831481
+      }
+    ],
+    "exit": 0,
+    "finished": 1792776062.6836631
+  },
+  "d-clippy-01-state.json": {
+    "started": 1792776098.90881,
+    "runs": [
+      {
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "started": 1792776098.9088142,
+        "pid": 99541,
+        "exit": 0,
+        "finished": 1792776128.729955
+      }
+    ],
+    "exit": 0,
+    "finished": 1792776128.730853
+  },
+  "d-compile-01-state.json": {
+    "pid": 58637,
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--all-targets",
+      "--no-run"
+    ],
+    "target": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-placement-dev",
+    "started": 1792774668.637663,
+    "exit": 0,
+    "finished": 1792774707.3736918
+  },
+  "d-focused-03-state.json": {
+    "started": 1792775396.163433,
+    "runs": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bbt-mux",
+          "--locked",
+          "--lib",
+          "identity::io::debug_tests"
+        ],
+        "started": 1792775396.163435,
+        "pid": 81923,
+        "exit": 101,
+        "finished": 1792775423.7636049
+      }
+    ]
+  },
+  "d-focused-04-state.json": {
+    "started": 1792775466.96079,
+    "runs": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bbt-mux",
+          "--locked",
+          "--lib",
+          "identity::io::debug_tests"
+        ],
+        "started": 1792775466.9607959,
+        "pid": 82920,
+        "exit": 0,
+        "finished": 1792775502.103932
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bbt-mux",
+          "--locked",
+          "--test",
+          "provider_gui"
+        ],
+        "started": 1792775502.105243,
+        "pid": 83481,
+        "exit": 101,
+        "finished": 1792775541.53859
+      }
+    ],
+    "exit": 101
+  },
+  "d-focused-05-state.json": {
+    "started": 1792775586.395522,
+    "runs": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bbt-mux",
+          "--locked",
+          "--test",
+          "provider_gui"
+        ],
+        "started": 1792775586.395526,
+        "pid": 86772,
+        "exit": 101,
+        "finished": 1792775633.095416
+      }
+    ],
+    "exit": 101
+  },
+  "d-focused-06-state.json": {
+    "started": 1792775708.849864,
+    "runs": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bbt-mux",
+          "--locked",
+          "--test",
+          "provider_gui"
+        ],
+        "started": 1792775708.849867,
+        "pid": 89960,
+        "exit": 101,
+        "finished": 1792775753.671532
+      }
+    ],
+    "exit": 101
+  },
+  "d-focused-07-state.json": {
+    "started": 1792775788.8409338,
+    "runs": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bboxy450-term",
+          "--locked",
+          "--lib",
+          "--bin",
+          "bboxy450-term",
+          "--test",
+          "launcher",
+          "--test",
+          "cockpit",
+          "--test",
+          "recovery",
+          "--test",
+          "custody"
+        ],
+        "started": 1792775788.840938,
+        "pid": 91467,
+        "exit": 101,
+        "finished": 1792775871.311879
+      }
+    ],
+    "exit": 101
+  },
+  "d-provider-08-state.json": {
+    "started": 1792775959.223531,
+    "runs": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bbt-mux",
+          "--locked",
+          "--test",
+          "provider_gui"
+        ],
+        "started": 1792775959.223538,
+        "pid": 95599,
+        "exit": 101,
+        "finished": 1792775967.9475148
+      }
+    ],
+    "exit": 101
+  },
+  "d-provider-10-state.json": {
+    "started": 1792776057.7034419,
+    "runs": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "bbt-mux",
+          "--locked",
+          "--test",
+          "provider_gui"
+        ],
+        "started": 1792776057.703445,
+        "pid": 97837,
+        "exit": 0,
+        "finished": 1792776068.2880378
+      }
+    ],
+    "exit": 0,
+    "finished": 1792776068.288488
+  },
+  "d-pure-tests-01-state.json": {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--lib",
+      "--bin",
+      "bboxy450-term",
+      "--test",
+      "launcher"
+    ],
+    "started": 1792774852.9997902,
+    "pid": 64143,
+    "exit": 101,
+    "finished": 1792774856.396814
+  },
+  "d-pure-tests-02-state.json": {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--lib",
+      "--bin",
+      "bboxy450-term",
+      "--test",
+      "launcher"
+    ],
+    "started": 1792775084.6430678,
+    "pid": 73249,
+    "exit": 101,
+    "finished": 1792775133.0570052
+  },
+  "d-relaunch-01-state.json": {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--test",
+      "cockpit",
+      "same_run_directory_relaunches_and_spawns_after_orderly_shutdown",
+      "--",
+      "--exact",
+      "--nocapture"
+    ],
+    "started": 1792774880.348358,
+    "pid": 65644,
+    "exit": 101,
+    "finished": 1792774884.1213062
+  },
+  "d-release-fixture-state.json": {
+    "target": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-placement-release",
+    "started": 1792775824.085212,
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-mux",
+      "--locked",
+      "--lib",
+      "--release",
+      "identity::io::release_tests"
+    ],
+    "profile": {
+      "release_opt_level": 0,
+      "debug_assertions": false,
+      "lto": false,
+      "debug": 0
+    },
+    "pid": 92106,
+    "exit": 0,
+    "finished": 1792775949.346606,
+    "logical_bytes_removed": 572032506,
+    "target_removed": true
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "source": "3d212730de7e6af2ef308dc7783172f2f1642187",
+  "path": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-placement/bin/bboxybook-3d21273",
+  "sha256": "05d6801785c799303cf1786ace603ab176dcb4b62192297027912619a29aa6c1",
+  "bytes": 17171552,
+  "purpose": "retain exact-gate headless binary only until default byte-proof is complete; CI target still auto-removes",
+  "created": 1792778626.625673
+}

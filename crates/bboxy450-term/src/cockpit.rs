@@ -33,12 +33,19 @@ pub enum UiMsg {
     /// Declarative launch inputs only. IO supplies cwd, swarm and backend role
     /// defaults before using the existing GUI Spawn action.
     Spawn {
+        id: bbt_mux::Ulid,
+        swarm: Option<bbt_proto::SwarmId>,
+        placement: Option<bbt_proto::seat_state::Placement>,
         harness_kind: String,
         name: Option<String>,
         location: bbt_proto::Where,
     },
     /// Compatibility for the existing verification and default-shell callers.
     SpawnZsh,
+    /// UI consumed this retained result; no additional GUI socket RPC.
+    ConsumeSpawn {
+        id: bbt_mux::Ulid,
+    },
     Input {
         seat: SeatId,
         generation: u64,
@@ -171,7 +178,7 @@ impl GuiIo {
             return Err(invalid("GUI connection closed"));
         }
         let bytes = json_frame(&GuiRequest {
-            version: 1,
+            version: bbt_proto::gui::VERSION,
             capability: self.capability,
             action,
         })?;
@@ -584,6 +591,7 @@ impl Session {
                 GuiReply::Identity(identity) => self.endpoint.identity = identity,
                 GuiReply::Error { reason, .. } => return Err(invalid(reason)),
                 GuiReply::Seat(_)
+                | GuiReply::Spawned { .. }
                 | GuiReply::Update { .. }
                 | GuiReply::Ok { .. }
                 | GuiReply::Hosts(_)
@@ -817,7 +825,10 @@ mod gui_io_tests {
             for index in 0..COUNT {
                 let bytes = read_line(&mut reader).await.unwrap().unwrap();
                 let request: GuiRequest = serde_json::from_slice(&bytes).unwrap();
-                assert_eq!((request.version, request.capability), (1, capability));
+                assert_eq!(
+                    (request.version, request.capability),
+                    (bbt_proto::gui::VERSION, capability)
+                );
                 let GuiAction::Input {
                     seat,
                     generation,

@@ -36,23 +36,33 @@ const COMMAND_CAPACITY: usize = 64;
 /// Pure translation on the IO side. UI inputs never choose argv, cwd, role
 /// authority or a process handle; the existing backend validates the spec.
 fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
-    let (harness_kind, name, location) = match message {
+    let (harness_kind, name, location, selected_swarm, placement) = match message {
         UiMsg::Spawn {
             harness_kind,
             name,
             location,
-        } => (harness_kind.as_str(), name.clone(), location.clone()),
-        UiMsg::SpawnZsh => ("zsh", None, Where::Local),
+            swarm,
+            placement,
+            ..
+        } => (
+            harness_kind.as_str(),
+            name.clone(),
+            location.clone(),
+            *swarm,
+            placement.clone(),
+        ),
+        UiMsg::SpawnZsh => ("zsh", None, Where::Local, None, None),
         _ => return None,
     };
     Some(SpawnSpec {
-        swarm: SwarmId::from_u128(swarm.0),
+        swarm: selected_swarm.unwrap_or_else(|| SwarmId::from_u128(swarm.0)),
         harness_kind: harness_kind.into(),
         name,
         role: None,
         cwd: cwd.to_string_lossy().into_owned(),
         location,
         resume: None,
+        placement,
     })
 }
 
@@ -401,6 +411,10 @@ async fn run(
                         logger.write(format!("GUI writer stopped: {error}"));
                         backend_lost(Some(error.to_string()));
                         lost = true;
+                        if Arc::make_mut(&mut model).spawns_disconnected(&error.to_string()) {
+                            updates.publish(model.clone());
+                        }
+                        outgoing.retain(|action| !matches!(action, GuiAction::Spawn { .. }));
                         break;
                     }
                 }
@@ -416,11 +430,28 @@ async fn run(
                 }, if (lost && retained.len() < COMMAND_CAPACITY) || (!lost && outgoing.is_empty())=>match command {
                     Some(message) if lost=>retained.push_back(message),
                     Some(message)=> {
+                    let message=match message {
+                        UiMsg::SpawnZsh=>UiMsg::Spawn {id:Ulid::new(),swarm:None,placement:None,harness_kind:"zsh".into(),name:None,location:Where::Local},
+                        message=>message,
+                    };
                     in_flight=Some(message);
                     match in_flight.as_ref().unwrap() {
-                    message @ (UiMsg::SpawnZsh | UiMsg::Spawn {..})=>queue_action(&mut outgoing, GuiAction::Spawn {
-                        spec:spawn_spec(message,swarm,&cwd).expect("spawn intent branch"),
-                    }),
+                    message @ UiMsg::Spawn {id,..}=> {
+                        let spec=spawn_spec(message,swarm,&cwd).expect("spawn intent branch");
+                        match Arc::make_mut(&mut model).request_spawn(*id,spec.clone()) {
+                            Ok(true)=> {
+                                queue_action(&mut outgoing,GuiAction::Spawn {id:*id,spec});
+                                publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            }
+                            Ok(false)=>logger.write(format!("spawn {id} already retained; not automatically resubmitted")),
+                            Err(reason)=>logger.write(format!("spawn {id} refused: {reason}")),
+                        }
+                    },
+                    UiMsg::SpawnZsh=>unreachable!("normalized at IO admission"),
+                    UiMsg::ConsumeSpawn {id}=> {
+                        Arc::make_mut(&mut model).consume_spawn(*id);
+                        publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                    },
                     UiMsg::Input {seat,generation,id,bytes}=>queue_action(&mut outgoing, GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()}),
                     UiMsg::Resize {seat,generation,cols,rows}=> {
                         if seats.get(&Ulid(seat.0.0)).is_some_and(|metadata| metadata.state.generation==*generation) {
@@ -461,6 +492,9 @@ async fn run(
                         GuiReply::Identity(next)=> {
                             if identity!=next {
                                 identity=next;
+                                 for (id,spec) in Arc::make_mut(&mut model).resume_held_spawns() {
+                                     queue_action(&mut outgoing,GuiAction::Spawn {id,spec});
+                                 }
                                 logger.write(format!("identity status: {:?}",identity.state));
                                 publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                             }
@@ -482,6 +516,14 @@ async fn run(
                             seats.insert(seat.record.id,seat);
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         }
+                         GuiReply::Spawned {op,seat}=> {
+                             if Arc::make_mut(&mut model).spawned(op,seat) {
+                                 if !seats.contains_key(&Ulid(seat.0.0)) {
+                                     queue_action(&mut outgoing,GuiAction::ListSeats);
+                                 }
+                                 publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                             }
+                         }
                         GuiReply::Update {seat,update}=> {
                             let (view,sequence)=match &update {
                                 Update::Snapshot {snapshot}=>(snapshot.view,snapshot.sequence),
@@ -503,6 +545,9 @@ async fn run(
                         GuiReply::Ok {op}=>logger.write(format!("GUI operation {op} accepted")),
                         GuiReply::Error {op,reason}=> {
                             controls.refused(&reason,Instant::now());
+                             if Arc::make_mut(&mut model).spawn_rejected(op,reason.clone()) {
+                                 publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                             }
                             logger.write(format!("GUI operation {op} rejected: {reason}"));
                         }
                         GuiReply::History {..}=>logger.write("history reply deferred to C1c"),
@@ -510,13 +555,21 @@ async fn run(
                     cockpit::Event::Exited {process,status}=> {
                         let reason=format!("{process} exited: {status}");
                         logger.write(&reason);
-                        if !lost { backend_lost(Some(reason)); }
+                         if !lost { backend_lost(Some(reason.clone())); }
                         lost=true;
+                         if Arc::make_mut(&mut model).spawns_disconnected(&reason) {
+                             updates.publish(model.clone());
+                         }
+                         outgoing.retain(|action| !matches!(action,GuiAction::Spawn {..}));
                     }
                     cockpit::Event::Disconnected(reason)=> {
                         logger.write(format!("GUI disconnected: {reason}"));
-                        if !lost { backend_lost(Some(reason)); }
+                         if !lost { backend_lost(Some(reason.clone())); }
                         lost=true;
+                         if Arc::make_mut(&mut model).spawns_disconnected(&reason) {
+                             updates.publish(model.clone());
+                         }
+                         outgoing.retain(|action| !matches!(action,GuiAction::Spawn {..}));
                     }
                 }
             }
@@ -528,6 +581,10 @@ async fn run(
                 backend_lost(Some(error.to_string()));
             }
             lost = true;
+            if Arc::make_mut(&mut model).spawns_disconnected(&error.to_string()) {
+                updates.publish(model.clone());
+            }
+            outgoing.retain(|action| !matches!(action, GuiAction::Spawn { .. }));
             if let Some(message) = in_flight.take() {
                 if let UiMsg::Watched(panes) = &message {
                     for (seat, _) in panes {
@@ -848,6 +905,9 @@ mod tests {
             },
         ] {
             let message = UiMsg::Spawn {
+                id: bbt_mux::Ulid::new(),
+                swarm: None,
+                placement: None,
                 harness_kind: "codex".into(),
                 name: Some("named seat".into()),
                 location: location.clone(),
@@ -864,6 +924,9 @@ mod tests {
             assert_eq!(serde_json::from_value::<SpawnSpec>(wire).unwrap(), spec);
         }
         let generic = UiMsg::Spawn {
+            id: bbt_mux::Ulid::new(),
+            swarm: None,
+            placement: None,
             harness_kind: "zsh".into(),
             name: None,
             location: Where::Local,
@@ -876,6 +939,9 @@ mod tests {
         // Unsupported kinds reach the existing backend rejection, never a
         // shell fallback or a command guessed from a label.
         let unsupported = UiMsg::Spawn {
+            id: bbt_mux::Ulid::new(),
+            swarm: None,
+            placement: None,
             harness_kind: "pi".into(),
             name: None,
             location: Where::Local,
@@ -1065,6 +1131,9 @@ mod tests {
         let mut current = Arc::new(Model::default());
         sender
             .send(UiMsg::Spawn {
+                id: bbt_mux::Ulid::new(),
+                swarm: None,
+                placement: None,
                 harness_kind: "pi".into(),
                 name: None,
                 location: Where::Local,
@@ -1073,6 +1142,9 @@ mod tests {
             .unwrap();
         sender
             .send(UiMsg::Spawn {
+                id: bbt_mux::Ulid::new(),
+                swarm: None,
+                placement: None,
                 harness_kind: "zsh".into(),
                 name: Some("generic shell".into()),
                 location: Where::Local,

@@ -216,7 +216,7 @@ impl Wire {
         let writer = tokio::spawn(async move {
             while let Some(action) = requests.recv().await {
                 let request = GuiRequest {
-                    version: 1,
+                    version: bbt_proto::gui::VERSION,
                     capability: endpoint.capability,
                     action,
                 };

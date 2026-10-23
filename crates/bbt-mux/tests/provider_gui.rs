@@ -18,6 +18,29 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::io::{AsyncWriteExt, BufReader};
+
+fn prepare_gui_identity(root: &std::path::Path, key: &ed25519_dalek::SigningKey) {
+    // Explicit fixture custody: the supplied key is available at both fixture
+    // addresses, without touching the login Keychain or inventing a device id.
+    struct Provided<'a>(&'a ed25519_dalek::SigningKey);
+    impl bbt_mux::identity::DeviceKeyStore for Provided<'_> {
+        fn custody(&self) -> bbt_mux::identity::Custody {
+            bbt_mux::identity::Custody::Memory
+        }
+        fn load(&self, _: Ulid) -> bbt_mux::identity::Result<Option<ed25519_dalek::SigningKey>> {
+            Ok(Some(self.0.clone()))
+        }
+        fn create(&self, _: Ulid, _: &ed25519_dalek::SigningKey) -> bbt_mux::identity::Result<()> {
+            Err(bbt_mux::identity::PendingReason::JournalConflict)
+        }
+    }
+    let bbt_mux::identity::LocalIssuerOutcome::Ready(saved) =
+        bbt_mux::identity::local_dev_issuer_with_store(root, &Provided(key))
+    else {
+        panic!("explicit GUI fixture identity unavailable")
+    };
+    assert_eq!(saved.verifying_key(), key.verifying_key());
+}
 #[derive(Default)]
 struct ManualClock(AtomicU64);
 impl Clock for ManualClock {
@@ -54,7 +77,7 @@ impl Gui {
     }
     async fn send(&mut self, action: GuiAction) {
         let mut bytes = serde_json::to_vec(&GuiRequest {
-            version: 1,
+            version: bbt_proto::gui::VERSION,
             capability: self.capability,
             action,
         })
@@ -73,6 +96,16 @@ impl Gui {
         .unwrap();
         serde_json::from_slice(&bytes).unwrap()
     }
+    async fn spawn(&mut self, id: Ulid, spec: bbt_proto::SpawnSpec) -> Result<SeatId, String> {
+        self.send(GuiAction::Spawn { id, spec }).await;
+        loop {
+            match self.recv().await {
+                GuiReply::Spawned { op, seat } if op == id => return Ok(seat),
+                GuiReply::Error { op, reason } if op == id => return Err(reason),
+                _ => {}
+            }
+        }
+    }
     async fn input(&mut self, seat: Ulid, text: &str) {
         let id = Ulid::new();
         self.send(GuiAction::Input {
@@ -90,6 +123,179 @@ impl Gui {
             }
         }
     }
+}
+
+#[test]
+fn operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch() {
+    use bbt_mux::{
+        identity::{Custody, DeviceKeyStore, PendingReason},
+        store::Store,
+    };
+    use bbt_proto::seat_state::{Placement, Side};
+    #[derive(Default)]
+    struct Keys(std::sync::Mutex<std::collections::BTreeMap<Ulid, ed25519_dalek::SigningKey>>);
+    impl DeviceKeyStore for Keys {
+        fn custody(&self) -> Custody {
+            Custody::Memory
+        }
+        fn load(&self, id: Ulid) -> bbt_mux::identity::Result<Option<ed25519_dalek::SigningKey>> {
+            Ok(self.0.lock().unwrap().get(&id).cloned())
+        }
+        fn create(
+            &self,
+            id: Ulid,
+            key: &ed25519_dalek::SigningKey,
+        ) -> bbt_mux::identity::Result<()> {
+            use std::collections::btree_map::Entry;
+            match self.0.lock().unwrap().entry(id) {
+                Entry::Vacant(entry) => {
+                    entry.insert(key.clone());
+                    Ok(())
+                }
+                Entry::Occupied(_) => Err(PendingReason::JournalConflict),
+            }
+        }
+    }
+    let temp = tempfile::tempdir().unwrap();
+    let repository = temp.path().join(".bboxy");
+    std::fs::create_dir(&repository).unwrap();
+    let config = LogicConfig {
+        run_dir: temp.path().join("run"),
+        repository,
+        ring: Default::default(),
+    };
+    // Recovery validates predecessor rings under the supervisor socket's
+    // parent, which is the same run directory logic uses for seat storage.
+    let supervisor_root = object_dir(temp.path(), "run").unwrap();
+    let supervisor = || Config {
+        socket_path: Some(supervisor_root.join("mux.sock")),
+        journal_directory: Some(supervisor_root.join("journal")),
+        ..Default::default()
+    };
+    let server = Supervisor::start(supervisor()).unwrap();
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let keys = Arc::new(Keys::default());
+    let start = |server: &Supervisor| {
+        Logic::start_custodied_with_store(
+            server.connect().unwrap(),
+            config.clone(),
+            keys.clone(),
+            rt.handle(),
+        )
+        .unwrap()
+    };
+    let logic = start(&server);
+    let device = rt
+        .block_on(logic.client.identity_status())
+        .unwrap()
+        .device_id
+        .unwrap();
+    let spec = bbt_proto::SpawnSpec {
+        swarm: bbt_proto::SwarmId::from_u128(77),
+        harness_kind: "zsh".into(),
+        name: Some("operator replay".into()),
+        role: None,
+        cwd: temp.path().to_string_lossy().into_owned(),
+        location: bbt_proto::Where::Local,
+        resume: None,
+        placement: Some(Placement::NewTab {
+            tab: bbt_proto::TabId::from_u128(78),
+        }),
+    };
+    let op = Ulid::new();
+    let mut gui = rt.block_on(Gui::open(&logic));
+    let seat = rt.block_on(gui.spawn(op, spec.clone())).unwrap();
+    let first = rt.block_on(logic.client.gui_seat(Ulid(seat.0.0))).unwrap();
+    let ProcessStatus::Running { pid: first_pid } = first.state.process else {
+        panic!("first process is not running")
+    };
+    drop(gui);
+    let mut gui = rt.block_on(Gui::open(&logic));
+    assert_eq!(rt.block_on(gui.spawn(op, spec.clone())).unwrap(), seat);
+    let mut changed = spec.clone();
+    changed.name = Some("conflicting reuse".into());
+    assert!(
+        rt.block_on(gui.spawn(op, changed))
+            .unwrap_err()
+            .contains("conflict")
+    );
+    assert_eq!(rt.block_on(logic.client.gui_seats()).unwrap().len(), 1);
+    let account = SqliteStore::open(&object_dir(&config.run_dir, "account").unwrap()).unwrap();
+    let saved: serde_json::Value =
+        serde_json::from_slice(&account.get(&format!("control/op/{op}")).unwrap().unwrap())
+            .unwrap();
+    assert_eq!(saved["actor"], serde_json::json!({"device_id":device}));
+    assert_eq!(
+        saved["result"]["structuredContent"]["seat"],
+        serde_json::json!(Ulid(seat.0.0))
+    );
+    // Simulate a crash after durable admission but before outcome publication.
+    let unknown = Ulid::new();
+    let args = serde_json::to_value(&spec).unwrap();
+    account.put(&format!("control/op/{unknown}"),&serde_json::to_vec(&serde_json::json!({
+        "actor":{"device_id":device},"tool":"gui_spawn", "args_digest":bbt_mux::store::digest(&serde_json::to_vec(&args).unwrap()),
+        "result":{"isError":true,"structuredContent":{"error":{"code":"unknown","message":"fixture admitted before crash"}}}
+    })).unwrap()).unwrap();
+    assert!(
+        rt.block_on(gui.spawn(unknown, spec.clone()))
+            .unwrap_err()
+            .starts_with("unknown:")
+    );
+    drop(gui);
+    logic.shutdown().unwrap();
+    let logic = start(&server);
+    let mut gui = rt.block_on(Gui::open(&logic));
+    assert_eq!(rt.block_on(gui.spawn(op, spec.clone())).unwrap(), seat);
+    let recovered = rt.block_on(logic.client.gui_seat(Ulid(seat.0.0))).unwrap();
+    assert_eq!(
+        recovered.state.process,
+        ProcessStatus::Running { pid: first_pid }
+    );
+    assert_eq!(rt.block_on(logic.client.gui_seats()).unwrap().len(), 1);
+    drop(gui);
+    logic.shutdown().unwrap();
+    server.shutdown().unwrap();
+    let server = Supervisor::start(supervisor()).unwrap();
+    let logic = start(&server);
+    rt.block_on(logic.client.recover_seats()).unwrap();
+    let recovered = rt.block_on(logic.client.gui_seat(Ulid(seat.0.0))).unwrap();
+    assert_eq!(recovered.state.generation, first.state.generation + 1);
+    let ProcessStatus::Running { pid: second_pid } = recovered.state.process else {
+        panic!("recovered process is not running")
+    };
+    assert_ne!(first_pid, second_pid);
+    let mut gui = rt.block_on(Gui::open(&logic));
+    assert_eq!(rt.block_on(gui.spawn(op, spec.clone())).unwrap(), seat);
+    assert!(
+        rt.block_on(gui.spawn(unknown, spec.clone()))
+            .unwrap_err()
+            .starts_with("unknown:")
+    );
+    let mut stale = spec;
+    stale.placement = Some(Placement::Split {
+        tab: bbt_proto::TabId::from_u128(78),
+        target: seat,
+        target_generation: first.state.generation,
+        side: Side::Right,
+    });
+    assert!(
+        rt.block_on(gui.spawn(Ulid::new(), stale))
+            .unwrap_err()
+            .contains("placement_anchor_changed")
+    );
+    let seats = rt.block_on(logic.client.gui_seats()).unwrap();
+    assert_eq!(seats.len(), 1);
+    assert_eq!(
+        seats[0].state.process,
+        ProcessStatus::Running { pid: second_pid }
+    );
+    drop(gui);
+    logic.shutdown().unwrap();
+    server.shutdown().unwrap();
 }
 fn wait_text(
     rt: &tokio::runtime::Runtime,
@@ -139,6 +345,7 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
         .unwrap();
     let clock = Arc::new(ManualClock::default());
     let key = ed25519_dalek::SigningKey::from_bytes(&[42; 32]);
+    prepare_gui_identity(&config.run_dir, &key);
     let logic = Logic::start_with_providers(
         fixture_providers(server.connect().unwrap(), [], clock.clone()).unwrap(),
         config.clone(),
@@ -167,6 +374,7 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
             .all(|h| h.state == HostState::Connecting)
     );
     let spawn = |name: &str, location| GuiAction::Spawn {
+        id: bbt_mux::Ulid::new(),
         spec: bbt_proto::SpawnSpec {
             swarm: bbt_proto::SwarmId::from_u128(7),
             harness_kind: "zsh".into(),
@@ -175,6 +383,7 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
             cwd: temp.path().to_string_lossy().into(),
             location,
             resume: None,
+            placement: None,
         },
     };
     rt.block_on(gui.send(spawn(

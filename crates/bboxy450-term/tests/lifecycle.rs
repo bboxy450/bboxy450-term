@@ -68,6 +68,7 @@ fn position(seat: &GuiSeat) -> Position {
 async fn spawn(session: &mut Session, root: &Path) -> GuiSeat {
     session
         .send(GuiAction::Spawn {
+            id: bbt_mux::Ulid::new(),
             spec: SpawnSpec {
                 swarm: SwarmId::from_u128(77),
                 harness_kind: "zsh".into(),
@@ -76,6 +77,7 @@ async fn spawn(session: &mut Session, root: &Path) -> GuiSeat {
                 cwd: root.to_string_lossy().into(),
                 location: Where::Local,
                 resume: None,
+                placement: None,
             },
         })
         .await
@@ -174,7 +176,7 @@ impl Observer {
             .unwrap();
         let (read, mut write) = stream.into_split();
         let mut bytes = serde_json::to_vec(&GuiRequest {
-            version: 1,
+            version: bbt_proto::gui::VERSION,
             capability: session.endpoint.capability,
             action: GuiAction::ListSeats,
         })

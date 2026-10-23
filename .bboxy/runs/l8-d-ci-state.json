@@ -1,0 +1,22 @@
+{
+  "source": "3d212730de7e6af2ef308dc7783172f2f1642187",
+  "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/ci-nyx-l8d-riv551j9",
+  "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-l8d-target-o65m12ri",
+  "parity_out": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-placement/parity-3d21273",
+  "log": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-placement/d-ci-3d21273.log",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "created": 1792776255.164345,
+  "pid": 4111,
+  "started": 1792776256.254956,
+  "exit": 0,
+  "finished": 1792778698.9787169,
+  "logical_bytes_removed": 2571693261,
+  "target_removed": true,
+  "worktree_remove_exit": 0,
+  "worktree_remove_stderr": "",
+  "worktree_removed": true
+}

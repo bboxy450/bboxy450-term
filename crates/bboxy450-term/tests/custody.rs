@@ -63,7 +63,7 @@ impl DeviceKeyStore for Store {
 
 async fn send(writer: &mut OwnedWriteHalf, capability: [u8; 32], action: GuiAction) {
     let mut line = serde_json::to_vec(&GuiRequest {
-        version: 1,
+        version: bbt_proto::gui::VERSION,
         capability,
         action,
     })
@@ -160,6 +160,49 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
     assert_eq!(initial.state, GuiIdentityState::Pending);
     assert!(initial.reason.unwrap().contains("Keychain"));
 
+    let spawn_id = Ulid::new();
+    let spawn_spec = bbt_proto::SpawnSpec {
+        swarm: bbt_proto::SwarmId::from_u128(71),
+        harness_kind: "zsh".into(),
+        name: Some("held operator spawn".into()),
+        role: None,
+        cwd: root.path().to_string_lossy().into_owned(),
+        location: bbt_proto::Where::Local,
+        resume: None,
+        placement: None,
+    };
+    send(
+        &mut write,
+        endpoint.capability,
+        GuiAction::Spawn {
+            id: spawn_id,
+            spec: spawn_spec.clone(),
+        },
+    )
+    .await;
+    loop {
+        let reply = receive(&mut read).await;
+        if let GuiReply::Error { op, reason } = &reply
+            && *op == spawn_id
+        {
+            assert!(reason.starts_with("held:"));
+            break;
+        }
+        apply(reply, &mut grids, &mut write, endpoint.capability).await;
+    }
+    assert!(logic.client.gui_seats().await.unwrap().is_empty());
+    let account = bbt_mux::store::sqlite::SqliteStore::open(
+        &bbt_mux::store::object_dir(root.path(), "account").unwrap(),
+    )
+    .unwrap();
+    use bbt_mux::store::Store as _;
+    assert!(
+        account
+            .get(&format!("control/op/{spawn_id}"))
+            .unwrap()
+            .is_none()
+    );
+
     let mut launch = LaunchSpec::new("/bin/zsh", root.path());
     launch.args = vec![
         "-f".into(),
@@ -244,6 +287,28 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
     })
     .await
     .expect("30s identity recovery did not reach the GUI connection");
+    // This was definitely held before admission, so releasing the same request
+    // is safe. Unknown admitted attempts, tested separately, never relaunch.
+    send(
+        &mut write,
+        endpoint.capability,
+        GuiAction::Spawn {
+            id: spawn_id,
+            spec: spawn_spec,
+        },
+    )
+    .await;
+    let spawned = loop {
+        let reply = receive(&mut read).await;
+        if let GuiReply::Spawned { op, seat } = &reply {
+            assert_eq!(*op, spawn_id);
+            break *seat;
+        }
+        apply(reply, &mut grids, &mut write, endpoint.capability).await;
+    };
+    let spawned = logic.client.gui_seat(Ulid(spawned.0.0)).await.unwrap();
+    assert_eq!(spawned.record.role.class, bbt_mux::registry::Class::Worker);
+    assert_eq!(spawned.record.role.name, "executor");
     let Response::Messages { page } = logic
         .client
         .messaging(

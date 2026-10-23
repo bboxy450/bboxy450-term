@@ -6,6 +6,9 @@ use crate::seat_state::{GuiSeat, SpawnSpec, text_id};
 use crate::{SeatId, Update, View};
 pub type Row = Vec<bbt_core::Cell>;
 
+/// The admitted GUI schema, including correlated spawn operations.
+pub const VERSION: u16 = 2;
+
 /// Ordered capture history. Sequence numbers are capture cursors, never row IDs.
 /// Non-output capture records have empty bytes, preserving their cursor slots.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,6 +77,7 @@ pub enum GuiAction {
         rows: u16,
     },
     Spawn {
+        id: Ulid,
         spec: SpawnSpec,
     },
     ScheduleClose {
@@ -118,6 +122,11 @@ pub enum GuiReply {
         update: Update,
     },
     Seat(GuiSeat),
+    Spawned {
+        op: Ulid,
+        #[serde(with = "text_id")]
+        seat: SeatId,
+    },
     Ok {
         op: Ulid,
     },

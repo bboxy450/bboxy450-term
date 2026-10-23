@@ -86,6 +86,107 @@ fn selected(controller: &Controller) -> Option<&str> {
     view.rows.get(view.selected).map(|item| item.id.as_str())
 }
 
+fn focused_model() -> Model {
+    use bbt_ui_model::{Model as UiModel, Seat, SeatId, SplitNode, Swarm, SwarmId, Tab, TabId};
+    let mut seat = Seat::new(
+        SeatId::from_u128(2),
+        SwarmId::from_u128(1),
+        [0; 32],
+        "anchor",
+        "zsh",
+    );
+    seat.process_generation = 7;
+    Model {
+        ui: UiModel::new(
+            vec![Swarm::new(
+                SwarmId::from_u128(1),
+                "swarm",
+                vec![Tab::new(
+                    TabId::from_u128(3),
+                    "tab",
+                    SplitNode::Leaf(seat.id),
+                )],
+            )],
+            vec![seat],
+        )
+        .unwrap(),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn placement_pick_captures_the_ui_stage_and_generation_before_any_reply() {
+    use bbt_proto::seat_state::{Placement, Side};
+    let mut model = focused_model();
+    let stage = model.ui.window.stage.clone();
+    let (root, swarm, captured) = bboxy450_term::launcher::captured_placement(
+        "ssh:rig:codex:right",
+        Default::default(),
+        Some(&model),
+        Some(&stage),
+    );
+    assert_eq!(root, "ssh:rig:codex");
+    assert_eq!(swarm, stage.swarm);
+    assert_eq!(
+        captured,
+        Placement::Split {
+            tab: stage.tab.unwrap(),
+            target: stage.focused.unwrap(),
+            target_generation: 7,
+            side: Side::Right
+        }
+    );
+    model
+        .ui
+        .seats
+        .get_mut(&stage.focused.unwrap())
+        .unwrap()
+        .process_generation = 8;
+    model.ui.window.stage.focused = None;
+    assert!(matches!(
+        captured,
+        Placement::Split {
+            target_generation: 7,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn explicit_placement_rows_override_modifiers_and_empty_stage_opens_a_tab() {
+    use bbt_proto::seat_state::{Placement, Side};
+    let model = focused_model();
+    let mods = Modifiers {
+        command: true,
+        shift: true,
+        ..Default::default()
+    };
+    let (_, _, tab) =
+        bboxy450_term::launcher::captured_placement("codex:tab", mods, Some(&model), None);
+    assert!(matches!(tab, Placement::NewTab { .. }));
+    let (_, _, right) =
+        bboxy450_term::launcher::captured_placement("codex:right", mods, Some(&model), None);
+    assert!(matches!(
+        right,
+        Placement::Split {
+            side: Side::Right,
+            ..
+        }
+    ));
+    let (_, _, bottom) =
+        bboxy450_term::launcher::captured_placement("codex", mods, Some(&model), None);
+    assert!(matches!(
+        bottom,
+        Placement::Split {
+            side: Side::Bottom,
+            ..
+        }
+    ));
+    let (_, _, empty) =
+        bboxy450_term::launcher::captured_placement("codex:right", Default::default(), None, None);
+    assert!(matches!(empty, Placement::NewTab { .. }));
+}
+
 #[test]
 fn typed_descent_then_right_commits_the_existing_projection_path() {
     let mut control = controller();

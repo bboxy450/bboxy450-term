@@ -1,0 +1,712 @@
+{
+  "directory": "/Users/feral/mydev/bboxy450-term-nyx/target/l8-placement-dev",
+  "reason": "development checks finished; frozen full CI uses its own active target; retire only my inactive dev cache",
+  "started": 1792777905.874518,
+  "free_before": 5183582208,
+  "binaries": [
+    {
+      "path": "target/l8-placement-dev/debug/bboxy450-term",
+      "bytes": 84229120,
+      "sha256": "7c6974841dd72eb2c51e57c4c00fe64581780b0e951f7fa5f4c186a6b0a02a2d"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libbytemuck_derive-52921f5585118c6f.dylib",
+      "bytes": 3415072,
+      "sha256": "71dbd909614264ad6b220742be516e1a0961ef0e54707e59b10e606c766a3d6c"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/bboxy450_term-603d461a0d3908ae",
+      "bytes": 30426112,
+      "sha256": "8270ec8c76e5f87d327135dd83a370c74a25a84b1e15c44761672539ca7425e7"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/bbt_mux-00d1004b51669608",
+      "bytes": 40119440,
+      "sha256": "04f7e5eb5513993eddb640621e8f976bccaaab2357f7f97df34bf587a3fe52d7"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libtokio_macros-109b685cdf8b2abd.dylib",
+      "bytes": 3034112,
+      "sha256": "dac8a3793d8a0200d2ade0414a803c65a37d46cc6a7618a098931003f9a693bc"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libserde_derive-ee8f5fd8872935be.dylib",
+      "bytes": 3621136,
+      "sha256": "f7466904433721f81205e1ddd165aa20390369ef68e27d8bce2ac1b3369a236b"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libbitfields_impl-b6e13749d89d4f36.dylib",
+      "bytes": 3376656,
+      "sha256": "fa2f92ebd37c246b60d3b7a971f571b7f18855e533b4d882f6d87017f9bc0b66"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libzerocopy_derive-1a693cac3a71b5f7.dylib",
+      "bytes": 4008864,
+      "sha256": "d221da0e31f69c904685ed84ed8fb60a4ae5170fbc94a8228af12f20649b0475"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/identity_local-ae42c551a05a4128",
+      "bytes": 38936960,
+      "sha256": "cfe99bd171e71d6c52438b0320ecf6cde2d38d7e473112a76decc391d10e54c8"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libsnafu_derive-45376088cc4c128e.dylib",
+      "bytes": 4408480,
+      "sha256": "c6f1ea8c1f5c19215dcc1849c575445bc25c08a80aea08b9d19a150f12107d55"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/custody-b3d54f90b255a2f3",
+      "bytes": 43057616,
+      "sha256": "4c726119f19e02e3420481e69fc8b42566e9291c5d96edc87c259c1d7fe000e0"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libserde_derive-63b66c6edaad6542.dylib",
+      "bytes": 4394208,
+      "sha256": "a5557b1aa4c5cd91dfe1acaaf586135773889942b18149ce8e54907bb520523b"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libthiserror_impl-3627ecb9aa4d2ad8.dylib",
+      "bytes": 3410976,
+      "sha256": "d9c6d53d2cc969d828bd8b51f9a3c6e08b6f411fb0ffd203942cb0c70edc11fd"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libnum_enum_derive-9b000b0e16f79e1c.dylib",
+      "bytes": 3259888,
+      "sha256": "83d297eeb272ef752962fe92251e7288f408ecab3769e98ce6fe2f3829508eea"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libderive_more_impl-925b0d69f23264fb.dylib",
+      "bytes": 3981648,
+      "sha256": "7c3d1048a7c15499a318fd51564ce071173aa8d7b6f428d2b8e08cb3e2091679"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/launcher-48712b61d2b6a87b",
+      "bytes": 3791584,
+      "sha256": "e4da4fd8457eb030c2b2425c01c575bcaa529d88443e0ed8d3e19cbf3fd178b4"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libdocument_features-16ee647f69e046c7.dylib",
+      "bytes": 897616,
+      "sha256": "b89970cfdd66887bd057f4c85636507e3abb60895a0474016042fc5fca75e7c1"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/bbt_proto-c0821a435b5491dc",
+      "bytes": 7300672,
+      "sha256": "4e37252ffe65f55e40969bcd8607cbc8b14d6f0ad458bdd6f45aa77b3826393a"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libthiserror_impl-d3e97090a9603a73.dylib",
+      "bytes": 3479712,
+      "sha256": "fe997c31adbeab57a90c99e77ab915d8bd928cc0558ce09b7d985aebf72e15a6"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/provider_gui-33fa0b81e7878e76",
+      "bytes": 43125088,
+      "sha256": "e58c413e85bda6d3e0e565f8fbf553afc490d05df52fa82147d80d2ffcf65acd"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/librustversion-a89e8b19bfd9c00d.dylib",
+      "bytes": 730144,
+      "sha256": "260f1437c11ddc126fd0f2b440fcc71aa8814cf5926155f11633a7bead352ca7"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/recovery-996f93ca805bb66f",
+      "bytes": 10621744,
+      "sha256": "4d34a432ee807006d496bcac23ba5203e4d0463c8d3e771f5908c07624e6c29a"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libdarling_macro-a5ca47127c625759.dylib",
+      "bytes": 4213472,
+      "sha256": "523b91685006628c95de9dd1760e594148d99a6a6dbb9fef313e48e06d61ae1b"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/bboxy450_term-9cdabeef1996de7a",
+      "bytes": 35916528,
+      "sha256": "af07800a392ff4ec6c7d490b5dda6aaf974583d570a4b59b97ea0f7993ecf1ac"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/identity-48af9c586c4981ba",
+      "bytes": 39303856,
+      "sha256": "c3a5a555fccf6840dd602c4467837583ca355985e87b632b7fa28cb8b530ebbe"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libforeign_types_macros-61e537e99dbb8101.dylib",
+      "bytes": 2553984,
+      "sha256": "c07698864b596657d53ecc9a168fae042ff2c2a6dbc159ada07cce7e54f9870d"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libfutures_macro-fe70d6a3a74cac1c.dylib",
+      "bytes": 2714336,
+      "sha256": "34d76359e140771391b8b856e32274560bc4ecdf3ccd3a173e22289c8b658293"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/bboxy450_term-39f342c73313801a",
+      "bytes": 84229120,
+      "sha256": "7c6974841dd72eb2c51e57c4c00fe64581780b0e951f7fa5f4c186a6b0a02a2d"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/identity_io-da7c1637c7a9a114",
+      "bytes": 14266192,
+      "sha256": "6e01417520c975c5e17f51af5c9eca927472e3a0ce906d2e6d46e063a120bcc7"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/lifecycle-2b0b8e73d9e8cd63",
+      "bytes": 8558624,
+      "sha256": "96f6f4883653dfa0c612a8ee4af36dc6f2c36b082a1ece0053c36c6a1a65eb19"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libderive_builder_macro-47f5efdc1023e776.dylib",
+      "bytes": 3613696,
+      "sha256": "1f0c6b1f9d49a4c4ce2bc40969be23df1f5cc85d554e8caf9efe6d9a8e1f7ca3"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/libzeroize_derive-2e7a15ef5e37b573.dylib",
+      "bytes": 3160864,
+      "sha256": "417df6f217104ad782be0ee79f11ac3b15ac3351f5afb7fe5718a3c41f4d2826"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/hosts-49fde8c1570c4a21",
+      "bytes": 4354832,
+      "sha256": "510f471af599a2157ce1ad499189271e8b7e6afa9c6c4ac0f896a362f2e16085"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/deps/cockpit-f73b032d63f15f85",
+      "bytes": 8456128,
+      "sha256": "8de1c0967a1defecc1e6aab5f3f0b94ac2c2e2ab6cf3ab015df7cc73c3e348c8"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/libsqlite3-sys-5ebd29c16a83ca94/build_script_build-5ebd29c16a83ca94",
+      "bytes": 2839088,
+      "sha256": "d95b20e1ebcc5dc3baac704159dda0bcbd214fd38f46eed00140e9f8bac9b60f"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/libsqlite3-sys-5ebd29c16a83ca94/build-script-build",
+      "bytes": 2839088,
+      "sha256": "d95b20e1ebcc5dc3baac704159dda0bcbd214fd38f46eed00140e9f8bac9b60f"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_core-599fd0b9b9458c18/build_script_build-599fd0b9b9458c18",
+      "bytes": 562352,
+      "sha256": "496229f5f045e59022998f1285924d5446bc761df95b910728787eab9c92c06c"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_core-599fd0b9b9458c18/build-script-build",
+      "bytes": 562352,
+      "sha256": "496229f5f045e59022998f1285924d5446bc761df95b910728787eab9c92c06c"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/wgpu-2713de22acef1d26/build_script_build-2713de22acef1d26",
+      "bytes": 664704,
+      "sha256": "5dbda8a4905c4f752000c8b7338bed5b9fe4e2ad17a3bd8a65c2136a988cdab6"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/wgpu-2713de22acef1d26/build-script-build",
+      "bytes": 664704,
+      "sha256": "5dbda8a4905c4f752000c8b7338bed5b9fe4e2ad17a3bd8a65c2136a988cdab6"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/crc24-ce897c9f22f4ab3f/build_script_tablegen-ce897c9f22f4ab3f",
+      "bytes": 485936,
+      "sha256": "c49c482d999963aef8b18c0d1c77ab16152cad3f6154d24f5a282468f38a0a39"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/crc24-ce897c9f22f4ab3f/build-script-tablegen",
+      "bytes": 485936,
+      "sha256": "c49c482d999963aef8b18c0d1c77ab16152cad3f6154d24f5a282468f38a0a39"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/getrandom-5f2da94cfbea684b/build_script_build-5f2da94cfbea684b",
+      "bytes": 565632,
+      "sha256": "3e339cb547474a8e20f8efe736da3056e8067add463b001572aa9598c31bda33"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/getrandom-5f2da94cfbea684b/build-script-build",
+      "bytes": 565632,
+      "sha256": "3e339cb547474a8e20f8efe736da3056e8067add463b001572aa9598c31bda33"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/parking_lot_core-31ba1ef30426639b/build_script_build-31ba1ef30426639b",
+      "bytes": 480416,
+      "sha256": "32377d6fdf6b425cd8977600ce547d1030718a14085c18db1b4fe6454d5d5c7a"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/parking_lot_core-31ba1ef30426639b/build-script-build",
+      "bytes": 480416,
+      "sha256": "32377d6fdf6b425cd8977600ce547d1030718a14085c18db1b4fe6454d5d5c7a"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/crossbeam-utils-e25e103911971b54/build_script_build-e25e103911971b54",
+      "bytes": 508960,
+      "sha256": "9e7f251a5152ac57619e9a3a9071ea9a780ace522eb12168207a2562c6b56a80"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/crossbeam-utils-e25e103911971b54/build-script-build",
+      "bytes": 508960,
+      "sha256": "9e7f251a5152ac57619e9a3a9071ea9a780ace522eb12168207a2562c6b56a80"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/wgpu-core-a02d0eb6c3e7b05e/build_script_build-a02d0eb6c3e7b05e",
+      "bytes": 573632,
+      "sha256": "6281139632318ebe03962cabca9fe636b9d78655b2b468fdb72ecfef467ba5cd"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/wgpu-core-a02d0eb6c3e7b05e/build-script-build",
+      "bytes": 573632,
+      "sha256": "6281139632318ebe03962cabca9fe636b9d78655b2b468fdb72ecfef467ba5cd"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde-673531f35633c61f/build-script-build",
+      "bytes": 561808,
+      "sha256": "1d0bd2c6efbe974206450b6281e14aa36a535f574e98e46694257abd1b2a6f7b"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde-673531f35633c61f/build_script_build-673531f35633c61f",
+      "bytes": 561808,
+      "sha256": "1d0bd2c6efbe974206450b6281e14aa36a535f574e98e46694257abd1b2a6f7b"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/num-bigint-dig-358634c89a4f2e58/build_script_build-358634c89a4f2e58",
+      "bytes": 435696,
+      "sha256": "8c0f6c674b47559e97945fbc370abaa5b4f002f29a9cba9b73ef155ab01a5149"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/num-bigint-dig-358634c89a4f2e58/build-script-build",
+      "bytes": 435696,
+      "sha256": "8c0f6c674b47559e97945fbc370abaa5b4f002f29a9cba9b73ef155ab01a5149"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/proc-macro2-7de3d156ce9ab82b/build_script_build-7de3d156ce9ab82b",
+      "bytes": 587392,
+      "sha256": "bb40d544ab28caf7c52cf79fa65ddd92e25f4f9526805be8caae44d6121b4cf0"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/proc-macro2-7de3d156ce9ab82b/build-script-build",
+      "bytes": 587392,
+      "sha256": "bb40d544ab28caf7c52cf79fa65ddd92e25f4f9526805be8caae44d6121b4cf0"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/wgpu-hal-d3425b638f5b7794/build_script_build-d3425b638f5b7794",
+      "bytes": 572976,
+      "sha256": "476c1e7a59cc7237a0ab2ff9bd59a60b317fb40f865d2b20868a65a03bf38e59"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/wgpu-hal-d3425b638f5b7794/build-script-build",
+      "bytes": 572976,
+      "sha256": "476c1e7a59cc7237a0ab2ff9bd59a60b317fb40f865d2b20868a65a03bf38e59"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zerocopy-a40ce8b539712bad/build_script_build-a40ce8b539712bad",
+      "bytes": 622448,
+      "sha256": "754b844c4151941e958e8bb7ffd2aacf89e39464bed0e5c785715c6862b998ee"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zerocopy-a40ce8b539712bad/build-script-build",
+      "bytes": 622448,
+      "sha256": "754b844c4151941e958e8bb7ffd2aacf89e39464bed0e5c785715c6862b998ee"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zmij-1ca154611561605d/build-script-build",
+      "bytes": 535760,
+      "sha256": "7ba70b294d61120228d6813ead73db7b6af26bcbb6be05487b2c8f26db0b4853"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zmij-1ca154611561605d/build_script_build-1ca154611561605d",
+      "bytes": 535760,
+      "sha256": "7ba70b294d61120228d6813ead73db7b6af26bcbb6be05487b2c8f26db0b4853"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/rustversion-f5d6825f976483cd/build_script_build-f5d6825f976483cd",
+      "bytes": 590768,
+      "sha256": "41337c249e041ad4541f37273267a23a634523532bf0a5f7bfea31b94de011d0"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/rustversion-f5d6825f976483cd/build-script-build",
+      "bytes": 590768,
+      "sha256": "41337c249e041ad4541f37273267a23a634523532bf0a5f7bfea31b94de011d0"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_json-8ed871ccf68e3701/build_script_build-8ed871ccf68e3701",
+      "bytes": 437120,
+      "sha256": "604c396c3a36bacd98809fe8b591eb0a9bdac878964fc8c10e4d9b53d04f5cc7"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_json-8ed871ccf68e3701/build-script-build",
+      "bytes": 437120,
+      "sha256": "604c396c3a36bacd98809fe8b591eb0a9bdac878964fc8c10e4d9b53d04f5cc7"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/generic-array-f681ee8e3d2f1477/build-script-build",
+      "bytes": 611856,
+      "sha256": "da9f2ae8eae784890f517f4795f3e14a609c08ea7022db9d2682ba0fb1548ee3"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/generic-array-f681ee8e3d2f1477/build_script_build-f681ee8e3d2f1477",
+      "bytes": 611856,
+      "sha256": "da9f2ae8eae784890f517f4795f3e14a609c08ea7022db9d2682ba0fb1548ee3"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bbt-ui-model-d28c61900083fcac/build_script_build-d28c61900083fcac",
+      "bytes": 1756928,
+      "sha256": "61c06c49167f04397c43b024fafa3b9458ee53f1b0d6fe4abb985f563e947926"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bbt-ui-model-d28c61900083fcac/build-script-build",
+      "bytes": 1756928,
+      "sha256": "61c06c49167f04397c43b024fafa3b9458ee53f1b0d6fe4abb985f563e947926"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_core-397e6f054d2b6211/build_script_build-397e6f054d2b6211",
+      "bytes": 562352,
+      "sha256": "32023c63ab1a567ea143652fcb1b5634d3d7bacf971f70d57f6e5b4acfb73131"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_core-397e6f054d2b6211/build-script-build",
+      "bytes": 562352,
+      "sha256": "32023c63ab1a567ea143652fcb1b5634d3d7bacf971f70d57f6e5b4acfb73131"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bboxy450-term-66edeef488f21b67/build_script_build-66edeef488f21b67",
+      "bytes": 4993456,
+      "sha256": "e07ddc7af99384b79abc42e84798764b98490d492e588396330f2e3f7af6020d"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bboxy450-term-66edeef488f21b67/build-script-build",
+      "bytes": 4993456,
+      "sha256": "e07ddc7af99384b79abc42e84798764b98490d492e588396330f2e3f7af6020d"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/proc-macro2-60186e72b9b74d6f/build_script_build-60186e72b9b74d6f",
+      "bytes": 587392,
+      "sha256": "00c36ed04b35cd2ebeb22097f3ce7aaf25fa9f5cd42297a3e1650a46ec23de88"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/proc-macro2-60186e72b9b74d6f/build-script-build",
+      "bytes": 587392,
+      "sha256": "00c36ed04b35cd2ebeb22097f3ce7aaf25fa9f5cd42297a3e1650a46ec23de88"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/sha2-asm-853c5bbb2b150e7d/build_script_build-853c5bbb2b150e7d",
+      "bytes": 2320432,
+      "sha256": "1d47201c4f080b2e77036008f8c2e74493851af11140133eeeba268b1f074466"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/sha2-asm-853c5bbb2b150e7d/build-script-build",
+      "bytes": 2320432,
+      "sha256": "1d47201c4f080b2e77036008f8c2e74493851af11140133eeeba268b1f074466"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/libc-70101426781082a8/build_script_build-70101426781082a8",
+      "bytes": 655984,
+      "sha256": "1e343b497cafa1a9afd53d281ece98062ed1d5a39028188f134b529b45876823"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/libc-70101426781082a8/build-script-build",
+      "bytes": 655984,
+      "sha256": "1e343b497cafa1a9afd53d281ece98062ed1d5a39028188f134b529b45876823"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/anyhow-f952e8ef2869827d/build-script-build",
+      "bytes": 585792,
+      "sha256": "edc8ee54ec3920e0fd8f631091923d992da73363c226e08b154464081c1fde3e"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/anyhow-f952e8ef2869827d/build_script_build-f952e8ef2869827d",
+      "bytes": 585792,
+      "sha256": "edc8ee54ec3920e0fd8f631091923d992da73363c226e08b154464081c1fde3e"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/naga-9c6f5d3bd0889407/build_script_build-9c6f5d3bd0889407",
+      "bytes": 509664,
+      "sha256": "584eb7a6f21452bd80e7768c1fdff8dff3f596e9f81add4615b812cfec2c93a3"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/naga-9c6f5d3bd0889407/build-script-build",
+      "bytes": 509664,
+      "sha256": "584eb7a6f21452bd80e7768c1fdff8dff3f596e9f81add4615b812cfec2c93a3"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/crc32fast-4927e30c936c4337/build_script_build-4927e30c936c4337",
+      "bytes": 535168,
+      "sha256": "df1d8e484a00d84e680b1a9cee2a1ed998e995bd380f96af160ed2b52f046140"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/crc32fast-4927e30c936c4337/build-script-build",
+      "bytes": 535168,
+      "sha256": "df1d8e484a00d84e680b1a9cee2a1ed998e995bd380f96af160ed2b52f046140"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/rustix-852bb95295e486a7/build_script_build-852bb95295e486a7",
+      "bytes": 587872,
+      "sha256": "f3c4a06ac2443d8317f9d80db7abb5a3e75e0a28e28dc227731e843f4bef1cec"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/rustix-852bb95295e486a7/build-script-build",
+      "bytes": 587872,
+      "sha256": "f3c4a06ac2443d8317f9d80db7abb5a3e75e0a28e28dc227731e843f4bef1cec"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zstd-sys-032fb7119471706b/build_script_build-032fb7119471706b",
+      "bytes": 2784224,
+      "sha256": "9d62f3f088de9ec84198cc36c28d6ef0c980b46e0f3f16650db554769151867e"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zstd-sys-032fb7119471706b/build-script-build",
+      "bytes": 2784224,
+      "sha256": "9d62f3f088de9ec84198cc36c28d6ef0c980b46e0f3f16650db554769151867e"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zerocopy-0c009b231bc450a3/build_script_build-0c009b231bc450a3",
+      "bytes": 622448,
+      "sha256": "f8817db1fe079ad31c740c0819a9f158ed32ffe5d3e1c585fb0c69b8e11f62e0"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zerocopy-0c009b231bc450a3/build-script-build",
+      "bytes": 622448,
+      "sha256": "f8817db1fe079ad31c740c0819a9f158ed32ffe5d3e1c585fb0c69b8e11f62e0"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/getrandom-ff891e3fb2c69b2e/build_script_build-ff891e3fb2c69b2e",
+      "bytes": 480416,
+      "sha256": "863e00faeafac1db8ffce1a32dd1fa36934e6dad82bd066235907a7f854620c8"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/getrandom-ff891e3fb2c69b2e/build-script-build",
+      "bytes": 480416,
+      "sha256": "863e00faeafac1db8ffce1a32dd1fa36934e6dad82bd066235907a7f854620c8"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/curve25519-dalek-45a3b09bd5d67ab8/build_script_build-45a3b09bd5d67ab8",
+      "bytes": 700608,
+      "sha256": "e957e88c8e4ea440fd7219f598cacb11a117016cce7a995b57a7f8e90221adc6"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/curve25519-dalek-45a3b09bd5d67ab8/build-script-build",
+      "bytes": 700608,
+      "sha256": "e957e88c8e4ea440fd7219f598cacb11a117016cce7a995b57a7f8e90221adc6"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/httparse-f0196704fd0bef5d/build_script_build-f0196704fd0bef5d",
+      "bytes": 593360,
+      "sha256": "f37b78ec267c17da8ed98cccf08524eef0ed707ac979975fe3a73f728eb576d4"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/httparse-f0196704fd0bef5d/build-script-build",
+      "bytes": 593360,
+      "sha256": "f37b78ec267c17da8ed98cccf08524eef0ed707ac979975fe3a73f728eb576d4"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/objc-sys-c6977d6e708687a1/build-script-build",
+      "bytes": 462640,
+      "sha256": "93073af538ae0d98941dc2dfdd8abe70f4fd104783c449700afd8c9cce67f2b6"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/objc-sys-c6977d6e708687a1/build_script_build-c6977d6e708687a1",
+      "bytes": 462640,
+      "sha256": "93073af538ae0d98941dc2dfdd8abe70f4fd104783c449700afd8c9cce67f2b6"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_core-6645ece8adb1926c/build_script_build-6645ece8adb1926c",
+      "bytes": 562352,
+      "sha256": "989e3605a34a02714edb2e0b83018c2b5cccfbb03a1b3e244e59ee54c0059160"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_core-6645ece8adb1926c/build-script-build",
+      "bytes": 562352,
+      "sha256": "989e3605a34a02714edb2e0b83018c2b5cccfbb03a1b3e244e59ee54c0059160"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zstd-safe-eb2c21d212105b6c/build_script_build-eb2c21d212105b6c",
+      "bytes": 438112,
+      "sha256": "b728ca575b5172fa296b2acb57fd4e3682375e0dd54567af250aae338f208822"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/zstd-safe-eb2c21d212105b6c/build-script-build",
+      "bytes": 438112,
+      "sha256": "b728ca575b5172fa296b2acb57fd4e3682375e0dd54567af250aae338f208822"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde-948b612586ba569a/build_script_build-948b612586ba569a",
+      "bytes": 561808,
+      "sha256": "9b9eb5b0d8b717511dffa291b33d08d99adaf75524a47b9689a654c33afa47a6"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde-948b612586ba569a/build-script-build",
+      "bytes": 561808,
+      "sha256": "9b9eb5b0d8b717511dffa291b33d08d99adaf75524a47b9689a654c33afa47a6"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/curve25519-dalek-f9e3e77054cbd3a1/build_script_build-f9e3e77054cbd3a1",
+      "bytes": 697856,
+      "sha256": "e4e3e4c92d9cc591a2de33b8287032cb8c38a9609d9208056de08650e679fe88"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/curve25519-dalek-f9e3e77054cbd3a1/build-script-build",
+      "bytes": 697856,
+      "sha256": "e4e3e4c92d9cc591a2de33b8287032cb8c38a9609d9208056de08650e679fe88"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/thiserror-540820442d71c763/build_script_build-540820442d71c763",
+      "bytes": 612208,
+      "sha256": "37ddaac915c0ac72256decaa3ab501b4ede1b4357184ee3e1550760ebc14ac04"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/thiserror-540820442d71c763/build-script-build",
+      "bytes": 612208,
+      "sha256": "37ddaac915c0ac72256decaa3ab501b4ede1b4357184ee3e1550760ebc14ac04"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/pulldown-cmark-860ea0f46a6ec16c/build_script_build-860ea0f46a6ec16c",
+      "bytes": 432240,
+      "sha256": "d4e5411b95a74911592bf8e4ccdfd3b14c2a32f72bbca2460a8659b68254ad98"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/pulldown-cmark-860ea0f46a6ec16c/build-script-build",
+      "bytes": 432240,
+      "sha256": "d4e5411b95a74911592bf8e4ccdfd3b14c2a32f72bbca2460a8659b68254ad98"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bboxy450-term-0ce1141abd7d46ee/build_script_build-0ce1141abd7d46ee",
+      "bytes": 4993456,
+      "sha256": "bca8ae55fd242adf4cad54c0eb8cd390d6c886be775d886bdbad18adba3f493b"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bboxy450-term-0ce1141abd7d46ee/build-script-build",
+      "bytes": 4993456,
+      "sha256": "bca8ae55fd242adf4cad54c0eb8cd390d6c886be775d886bdbad18adba3f493b"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/radium-93b1a92a49677e37/build_script_build-93b1a92a49677e37",
+      "bytes": 464112,
+      "sha256": "1f6505da01c224a84dd2bab75c86bc3f2015567052027c430500a5f4420d3e26"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/radium-93b1a92a49677e37/build-script-build",
+      "bytes": 464112,
+      "sha256": "1f6505da01c224a84dd2bab75c86bc3f2015567052027c430500a5f4420d3e26"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/thiserror-69268a767eb7f1f7/build_script_build-69268a767eb7f1f7",
+      "bytes": 565856,
+      "sha256": "dbcdf106a27bcbdb0ffa58f55b01d90dd3247de703d46e2a674df5c17292ca81"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/thiserror-69268a767eb7f1f7/build-script-build",
+      "bytes": 565856,
+      "sha256": "dbcdf106a27bcbdb0ffa58f55b01d90dd3247de703d46e2a674df5c17292ca81"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/winit-ba38f54b4059ae7a/build_script_build-ba38f54b4059ae7a",
+      "bytes": 553712,
+      "sha256": "714ec73c32be5bfa824d15e1e7d2903c6882080cb19ef9876ca1faabc648726d"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/winit-ba38f54b4059ae7a/build-script-build",
+      "bytes": 553712,
+      "sha256": "714ec73c32be5bfa824d15e1e7d2903c6882080cb19ef9876ca1faabc648726d"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/quote-5894dd74abcf821f/build_script_build-5894dd74abcf821f",
+      "bytes": 533696,
+      "sha256": "9b8c0bc7c5cf090c62da3569992f3cc130401e16e7100af43a2bf60982bc24a2"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/quote-5894dd74abcf821f/build-script-build",
+      "bytes": 533696,
+      "sha256": "9b8c0bc7c5cf090c62da3569992f3cc130401e16e7100af43a2bf60982bc24a2"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/libm-680c4603d7314d05/build_script_build-680c4603d7314d05",
+      "bytes": 540752,
+      "sha256": "2f55136e812c6ba0ec124b8e5aaa4c5a500897d4f9f389c62428ca7c2bd25a9c"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/libm-680c4603d7314d05/build-script-build",
+      "bytes": 540752,
+      "sha256": "2f55136e812c6ba0ec124b8e5aaa4c5a500897d4f9f389c62428ca7c2bd25a9c"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bboxybook-f99f9ad58476997f/build_script_build-f99f9ad58476997f",
+      "bytes": 4993456,
+      "sha256": "3338e050733344529b11d4ce6f1a98938b31cd20a44eccaff5b163a96bb28f6e"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bboxybook-f99f9ad58476997f/build-script-build",
+      "bytes": 4993456,
+      "sha256": "3338e050733344529b11d4ce6f1a98938b31cd20a44eccaff5b163a96bb28f6e"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/nix-301a3fe4e287f071/build_script_build-301a3fe4e287f071",
+      "bytes": 554192,
+      "sha256": "4ee411147658b07f43727ca8524d83cb877e0ec902dd33a50f6e66d0789135f7"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/nix-301a3fe4e287f071/build-script-build",
+      "bytes": 554192,
+      "sha256": "4ee411147658b07f43727ca8524d83cb877e0ec902dd33a50f6e66d0789135f7"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/libc-4827d232788ebc0e/build_script_build-4827d232788ebc0e",
+      "bytes": 656016,
+      "sha256": "b51dc8973f044b0c19aa9e8b74a49daa2dbd3ebe930047b99b607e2d64db2c4f"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/libc-4827d232788ebc0e/build-script-build",
+      "bytes": 656016,
+      "sha256": "b51dc8973f044b0c19aa9e8b74a49daa2dbd3ebe930047b99b607e2d64db2c4f"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/quote-ae6d8124786aa7a2/build_script_build-ae6d8124786aa7a2",
+      "bytes": 533696,
+      "sha256": "5653e8746332039bb2b877be84260abd087532dc5bfa0944e92f1b42fadcb72f"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/quote-ae6d8124786aa7a2/build-script-build",
+      "bytes": 533696,
+      "sha256": "5653e8746332039bb2b877be84260abd087532dc5bfa0944e92f1b42fadcb72f"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/num-traits-37b5b7b2ecbd3ac3/build_script_build-37b5b7b2ecbd3ac3",
+      "bytes": 755808,
+      "sha256": "4ed3b7cfb28889b37405edfb6da0c23d18edaa7be8e66f2bdb40fa35fcf5d0dc"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/num-traits-37b5b7b2ecbd3ac3/build-script-build",
+      "bytes": 755808,
+      "sha256": "4ed3b7cfb28889b37405edfb6da0c23d18edaa7be8e66f2bdb40fa35fcf5d0dc"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_json-299f9768dc51ee9a/build-script-build",
+      "bytes": 437120,
+      "sha256": "a686e52a3c0dc4f61f0e4499810d4f8d9e1d84005e13044c4f9a6d9cb8e6ab03"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/serde_json-299f9768dc51ee9a/build_script_build-299f9768dc51ee9a",
+      "bytes": 437120,
+      "sha256": "a686e52a3c0dc4f61f0e4499810d4f8d9e1d84005e13044c4f9a6d9cb8e6ab03"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bbt-ui-model-0bf123705837ce5a/build-script-build",
+      "bytes": 1757040,
+      "sha256": "df0e801e7858d2902314e0a324c05cc9cdb50b0b98104da5a74c3070d4257340"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/bbt-ui-model-0bf123705837ce5a/build_script_build-0bf123705837ce5a",
+      "bytes": 1757040,
+      "sha256": "df0e801e7858d2902314e0a324c05cc9cdb50b0b98104da5a74c3070d4257340"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/objc2-7085355acedc99f0/build_script_build-7085355acedc99f0",
+      "bytes": 456992,
+      "sha256": "0acae35892a4a95eba88bf4ae0245c1f041e204ce6646de9c03e7e82627e8102"
+    },
+    {
+      "path": "target/l8-placement-dev/debug/build/objc2-7085355acedc99f0/build-script-build",
+      "bytes": 456992,
+      "sha256": "0acae35892a4a95eba88bf4ae0245c1f041e204ce6646de9c03e7e82627e8102"
+    }
+  ],
+  "logical_bytes_freed": 2046348652,
+  "finished": 1792777908.380105,
+  "free_after": 6833967104,
+  "removed": true
+}

@@ -16,9 +16,11 @@ async fn start(root: &Path) -> Session {
     // leaves the environment of parallel Rust tests untouched.
     let executable = root.join("test-app");
     let binary = env!("CARGO_BIN_EXE_bboxy450-term").replace('\'', "'\\''");
+    let custody = root.join("fixture-custody");
+    let custody = custody.to_string_lossy().replace('\'', "'\\''");
     tokio::fs::write(
         &executable,
-        format!("#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec '{binary}' \"$@\"\n"),
+        format!("#!/bin/sh\nBBOXY_TEST_CUSTODY='fixture:{custody}' exec '{binary}' \"$@\"\n"),
     )
     .await
     .unwrap();
@@ -52,6 +54,7 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
         .collect();
     session
         .send(GuiAction::Spawn {
+            id: bbt_mux::Ulid::new(),
             spec: SpawnSpec {
                 swarm: SwarmId::from_u128(swarm.0),
                 harness_kind: "zsh".into(),
@@ -60,6 +63,7 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
                 cwd: root.to_string_lossy().into_owned(),
                 location: Where::Local,
                 resume: None,
+                placement: None,
             },
         })
         .await
@@ -69,6 +73,7 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
             match session.receive().await.unwrap() {
                 GuiReply::Seat(seat) if !known.contains(&seat.record.id) => break seat,
                 GuiReply::Seat(_)
+                | GuiReply::Spawned { .. }
                 | GuiReply::Ok { .. }
                 | GuiReply::Hosts(_)
                 | GuiReply::HostState { .. } => {}
@@ -163,7 +168,10 @@ async fn gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames()
             & 0o777,
         0o600
     );
-    for (version, capability) in [(2, session.endpoint.capability), (1, [0; 32])] {
+    for (version, capability) in [
+        (bbt_proto::gui::VERSION - 1, session.endpoint.capability),
+        (bbt_proto::gui::VERSION, [0; 32]),
+    ] {
         let stream = tokio::net::UnixStream::connect(&path).await.unwrap();
         let (read, mut write) = stream.into_split();
         let mut bytes = serde_json::to_vec(&GuiRequest {
@@ -174,14 +182,41 @@ async fn gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames()
         .unwrap();
         bytes.push(b'\n');
         write.write_all(&bytes).await.unwrap();
+        let mut reader = BufReader::new(read);
+        if capability == session.endpoint.capability {
+            let reply = read_line(&mut reader).await.unwrap().unwrap();
+            assert!(matches!(
+                serde_json::from_slice::<GuiReply>(&reply).unwrap(),
+                GuiReply::Error { reason, .. } if reason == "GUI socket version mismatch"
+            ));
+        }
         assert!(
-            tokio::time::timeout(Duration::from_secs(3), read_line(&mut BufReader::new(read)))
+            tokio::time::timeout(Duration::from_secs(3), read_line(&mut reader))
                 .await
                 .unwrap()
                 .unwrap()
                 .is_none()
         );
     }
+    // Admission is decoded before the action: a v1 Spawn has no op id and
+    // cannot deserialize as the current action, but still gets the named refusal.
+    let stream = tokio::net::UnixStream::connect(&path).await.unwrap();
+    let (read, mut write) = stream.into_split();
+    let mut bytes = serde_json::to_vec(&serde_json::json!({
+        "version": bbt_proto::gui::VERSION - 1,
+        "capability": session.endpoint.capability,
+        "action": {"kind":"Spawn","body":{"spec":{}}}
+    }))
+    .unwrap();
+    bytes.push(b'\n');
+    write.write_all(&bytes).await.unwrap();
+    let mut reader = BufReader::new(read);
+    let reply = read_line(&mut reader).await.unwrap().unwrap();
+    assert!(matches!(
+        serde_json::from_slice::<GuiReply>(&reply).unwrap(),
+        GuiReply::Error { reason, .. } if reason == "GUI socket version mismatch"
+    ));
+    assert!(read_line(&mut reader).await.unwrap().is_none());
     for bytes in [b"{".to_vec(), vec![b'x'; 1024 * 1024 + 1]] {
         let stream = tokio::net::UnixStream::connect(&path).await.unwrap();
         let (read, mut write) = stream.into_split();
