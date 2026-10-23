@@ -342,6 +342,20 @@ briefs Executors from the specs, never from this note.
     binding to the GUI connection id (gone on reconnect); binding to the
     logic process generation (gone on restart, and spawn has no target
     generation to bind to).
+    **Amendment (same day, Nyx's finding that `identity/status.rs:193-215`
+    returns `device_id: None` for LocalDev and unenrolled Pending):** the
+    device id is **born at first launch, not at enrollment**. ID1 §1 creates
+    the device key with its ULID in `DeviceKeyStore` custody and records it
+    in the account journal before any root certification; enrollment
+    certifies that key, it does not create it. So `Operator { device_id }`
+    uses the custody device ULID for every issuer kind, LocalDev and
+    Pending included, and `identity/status` must expose it from the custody
+    record, not from the enrollment state. Memory custody (tests, debug
+    opt-in) has a fresh device per process by #17, so its journal is
+    per-process, which is the stated intent. The only case with no device
+    id is a custody **hold** (ID1d: store unavailable at start); then GUI
+    operations queue as `Held` exactly like messaging sends and release on
+    recovery. No nil, random or seat fallback, ever.
 
 32. **The kitty keyboard protocol is a core terminal invariant (operator,
     2026-10-23, verbatim: "also for terminals we should adotp Kitty keyboard
