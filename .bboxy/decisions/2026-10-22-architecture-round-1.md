@@ -266,6 +266,18 @@ briefs Executors from the specs, never from this note.
     a layout revision (a race the operator would see as a seat landing in
     the wrong split).
 
+28. **`verify_result` is structured and `task_accept` checks it field by
+    field (2026-10-23, Oracle, W2.5d).** `verify_result = {command,
+    exit_code, evidence: [{criterion, reference}]}`. Acceptance requires
+    `command` equal to the task's `verify`, `exit_code` 0, and, when the
+    task lists acceptance criteria, one evidence entry per criterion. Task
+    swarm scope is the registry swarm of `assignee` and `delegated_by`,
+    which must match each other and the caller; never from a path. Rejected:
+    a free-text evidence blob (nothing to check against); trusting the
+    reported command string without comparing it to `verify` (a passing
+    `true` would accept anything); swarm from the task's path (paths move,
+    registry rows do not).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate

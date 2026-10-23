@@ -50,9 +50,9 @@ flowchart LR
 | `message_send`, `message_list`, `message_receipts`, `message_ack` | `messaging::api::Request::{Send, List, Receipts, Acknowledge}` | O E C within grants |
 | `ch_ls`, `ch_subscribe`, `ch_unsubscribe`, `ch_link`, `ch_pause`, `ch_grant` | `Request::{Ls, Subscribe, Unsubscribe, Link, Pause, Grant}` | O; E C for ls, subscribe, unsubscribe |
 | `seat_mute`, `seat_unmute` | `Request::Mute`; **deferred from W2.5c to W2.5e by Oracle ruling (2026-10-23), operator-side controls** | O |
-| `task_delegate`, `task_reassign`, `task_accept`, `task_reject` | frontmatter rewrite in the task file, then a `Body::Task{event}` message to the seat (`M/messaging/wire.rs:46`) so W2.4 delivery evidence applies. `task_accept` is refused unless `verify_result` is recorded at exit 0 ([[work-items]] Rules) | O |
+| `task_delegate`, `task_reassign`, `task_accept`, `task_reject` | frontmatter rewrite in the task file, then a `Body::Task{event}` message to the seat (`M/messaging/wire.rs:46`) so W2.4 delivery evidence applies. `task_accept` is refused unless the recorded `verify_result = {command, exit_code, evidence}` has `command` equal to the task's `verify`, `exit_code` 0, and one evidence entry per listed acceptance criterion; swarm scope from the registry swarm of `assignee` and `delegated_by`, matching each other and the caller, never from a path (decision #28) | O |
 | `task_status`, `task_list` | index | O; E C own tasks |
-| `task_report` | frontmatter `status: reported`, evidence block appended, `Body::Task{event: report}` to `delegated_by` | E C own task; O |
+| `task_report` | frontmatter `status: reported`, `verify_result {command, exit_code, evidence: [{criterion, reference}]}` recorded, `Body::Task{event: report}` to `delegated_by` | E C own task; O |
 | `artifact_claim` | write `.bboxy/artifacts/<ulid>.md`, link from the task | O E C |
 | `graph_read` | execution, communication, task, markdown from the index projections (`M/index.rs:320-392`) | O; E C task and markdown, own items |
 
