@@ -3,7 +3,12 @@
 //! Everything in this module runs on bbt-io or in a private non-UI process.
 //! Capabilities travel over inherited pipes and are never put in argv or logs.
 
-use std::{path::PathBuf, process::Stdio, time::Duration};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    path::PathBuf,
+    process::Stdio,
+    time::Duration,
+};
 
 use bbt_mux::{
     logic::{Logic, LogicConfig, SocketSupervisor},
@@ -73,7 +78,7 @@ impl Config {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct SupervisorReady {
     socket: PathBuf,
     capability: [u8; 32],
@@ -82,6 +87,8 @@ struct SupervisorReady {
 struct LogicBootstrap {
     config: Config,
     supervisor: SupervisorReady,
+    #[serde(default)]
+    recover_seats: bool,
 }
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
@@ -231,7 +238,7 @@ pub fn private_entry(args: &[String]) -> Option<Result<()>> {
 }
 
 // EOF is not an instruction to kill seats after a GUI crash. An explicit stop
-// is used on orderly app shutdown; restart/reconnection belongs to C1c.
+// is used on orderly app shutdown; Session owns child restart/reconnection.
 async fn wait_for_stop(reader: &mut BufReader<tokio::io::Stdin>) -> Result<()> {
     loop {
         match read_line(reader).await? {
@@ -297,6 +304,9 @@ async fn logic_main() -> Result<()> {
         },
         bbt_rt::handle(),
     )?;
+    if bootstrap.recover_seats {
+        logic.client.recover_seats().await?;
+    }
     let endpoint = logic.client.gui_endpoint().await?;
     write_json(
         &mut tokio::io::stdout(),
@@ -323,13 +333,38 @@ pub struct Session {
     pub supervisor: Child,
     pub logic: Child,
     pub endpoint: LogicReady,
+    config: Config,
+    supervisor_ready: SupervisorReady,
     // Child::wait closes Child.stdin on its first poll, even when cancelled.
-    // Keep the control pipes outside Child while observing process exits.
     supervisor_control: Option<tokio::process::ChildStdin>,
     logic_control: Option<tokio::process::ChildStdin>,
     io: GuiIo,
+    watches: BTreeMap<SeatId, View>,
+    restoring: VecDeque<GuiAction>,
+    deferred: VecDeque<Event>,
+    // Startup belongs to this task, never to a cancellable event() future.
+    recovery: Option<tokio::task::JoinHandle<Result<Recovered>>>,
+    recovery_failed: bool,
     supervisor_exited: bool,
     logic_exited: bool,
+    disconnected: bool,
+}
+struct StartedSupervisor {
+    child: Child,
+    control: Option<tokio::process::ChildStdin>,
+    ready: SupervisorReady,
+}
+struct StartedLogic {
+    child: Child,
+    control: Option<tokio::process::ChildStdin>,
+    endpoint: LogicReady,
+    io: GuiIo,
+}
+struct Recovered {
+    supervisor: Option<StartedSupervisor>,
+    logic: StartedLogic,
+    seats: Vec<GuiSeat>,
+    watches: BTreeMap<SeatId, View>,
 }
 /// Socket and process notifications consumed by the app's IO owner.
 pub enum Event {
@@ -340,108 +375,268 @@ pub enum Event {
     },
     Disconnected(String),
 }
+impl Drop for Session {
+    fn drop(&mut self) {
+        if let Some(task) = &self.recovery {
+            task.abort();
+        }
+    }
+}
 impl Session {
     /// Spawn both private processes and connect their admitted GUI endpoint.
     pub async fn start(config: Config) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
-        let mut supervisor = child(&config, "supervisor")?;
-        write_json(supervisor.stdin.as_mut().unwrap(), &config).await?;
-        let mut output = BufReader::new(supervisor.stdout.take().unwrap());
-        let line = tokio::time::timeout(STARTUP_TIMEOUT, read_line(&mut output))
-            .await
-            .map_err(|_| invalid("supervisor startup timed out waiting for its readiness line"))??
-            .ok_or_else(|| invalid("supervisor exited during startup"))?;
-        let ready: SupervisorReady = serde_json::from_slice(&line)?;
-        let mut logic = child(&config, "logic")?;
-        write_json(
-            logic.stdin.as_mut().unwrap(),
-            &LogicBootstrap {
-                config,
-                supervisor: ready,
-            },
-        )
-        .await?;
-        let mut output = BufReader::new(logic.stdout.take().unwrap());
-        let line = tokio::time::timeout(STARTUP_TIMEOUT, read_line(&mut output))
-            .await
-            .map_err(|_| invalid("logic startup timed out waiting for its readiness line"))??
-            .ok_or_else(|| invalid("logic exited during startup"))?;
-        let endpoint: LogicReady = serde_json::from_slice(&line)?;
-        let stream = UnixStream::connect(endpoint.root.join("gui.sock")).await?;
-        let io = GuiIo::new(stream, endpoint.capability);
-        let supervisor_control = supervisor.stdin.take();
-        let logic_control = logic.stdin.take();
+        let supervisor = start_supervisor(&config).await?;
+        let logic = start_logic(&config, &supervisor.ready, false).await?;
         Ok(Self {
-            supervisor,
-            logic,
-            endpoint,
-            supervisor_control,
-            logic_control,
-            io,
+            config,
+            supervisor_ready: supervisor.ready,
+            supervisor: supervisor.child,
+            supervisor_control: supervisor.control,
+            logic: logic.child,
+            logic_control: logic.control,
+            endpoint: logic.endpoint,
+            io: logic.io,
+            watches: BTreeMap::new(),
+            restoring: VecDeque::new(),
+            deferred: VecDeque::new(),
+            recovery: None,
+            recovery_failed: false,
             supervisor_exited: false,
             logic_exited: false,
+            disconnected: false,
         })
     }
-    /// Non-blocking enqueue of one request. Busy means the caller must retain
-    /// and retry the action while draining events, with the same input ID.
-    /// The async signature preserves the IO-owner API; it performs no await.
+    /// Non-blocking enqueue; Busy retains the caller's action and input ID.
+    /// Recovery never writes on the task which drains incoming replies.
     pub async fn send(&mut self, action: GuiAction) -> Result<()> {
-        self.io.try_send(action)
+        if self.disconnected || self.recovery.is_some() {
+            return Err(invalid("backend reconnecting; retain request"));
+        }
+        if self.flush_restoring()? {
+            return Err(Box::new(Busy));
+        }
+        let result = self.io.try_send(action.clone());
+        if result.is_ok() {
+            match action {
+                GuiAction::Watch { seat, view } => { self.watches.insert(seat, view); }
+                GuiAction::Unwatch { seat } => { self.watches.remove(&seat); }
+                _ => {}
+            }
+        } else if self.io.disconnected || self.io.outgoing.is_closed() {
+            self.disconnect()?;
+        }
+        result
     }
-    /// An owned capacity notification for the IO owner's select, even when no
-    /// reply arrives. It does not borrow Session, so event() stays polled too.
+    /// Owned capacity notification; event() and close remain polled alongside it.
     pub fn writer_ready(&self) -> impl std::future::Future<Output = Result<()>> + Send + use<> {
         self.io.writer_ready()
     }
+    // One finite restoration diff, bounded by the last watched pane set. Drain
+    // it through the existing bounded writer before admitting later UI actions.
+    fn flush_restoring(&mut self) -> Result<bool> {
+        while let Some(action) = self.restoring.front() {
+            match self.io.try_send(action.clone()) {
+                Ok(()) => { self.restoring.pop_front(); }
+                Err(error) if error.is::<Busy>() => return Ok(true),
+                Err(error) => { self.disconnect()?; return Err(error); }
+            }
+        }
+        Ok(false)
+    }
     pub async fn receive(&mut self) -> Result<GuiReply> {
-        match self.event().await? {
-            Event::Reply(reply) => Ok(*reply),
-            Event::Disconnected(reason) => Err(invalid(reason)),
-            Event::Exited { process, status } => {
-                Err(invalid(format!("{process} exited: {status}")))
+        loop {
+            match self.event().await? {
+                Event::Reply(reply) => return Ok(*reply),
+                Event::Disconnected(reason) if self.recovery_failed => return Err(invalid(reason)),
+                _ => {}
             }
         }
     }
-    /// Channel receive and Child::wait are cancellation-safe. The dedicated
-    /// reader retains partial NDJSON frames when a UI command wins the select.
+    /// Cancellation leaves the stored recovery task and its handshake alive.
     pub async fn event(&mut self) -> Result<Event> {
-        tokio::select! {
-            event=self.io.event() => Ok(event),
-            status=self.supervisor.wait(), if !self.supervisor_exited => {
-                self.supervisor_exited = true;
-                Ok(Event::Exited {process:"supervisor",status:status?})
-            }
-            status=self.logic.wait(), if !self.logic_exited => {
-                self.logic_exited = true;
-                Ok(Event::Exited {process:"logic",status:status?})
-            }
-            else => std::future::pending().await,
+        if let Some(event) = self.deferred.pop_front() { return Ok(event); }
+        self.next_event().await
+    }
+    fn disconnect(&mut self) -> Result<()> {
+        self.disconnected = true;
+        self.io.disconnected = true;
+        self.io.reader_task.abort();
+        self.io.writer_task.abort();
+        if !self.logic_exited { self.logic.start_kill()?; }
+        Ok(())
+    }
+    fn restart_if_ready(&mut self) {
+        if !self.logic_exited || self.recovery.is_some() || self.recovery_failed { return; }
+        let config = self.config.clone();
+        let ready = self.supervisor_ready.clone();
+        let replace_supervisor = self.supervisor_exited;
+        let watches = self.watches.clone();
+        self.recovery = Some(tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::timeout(STARTUP_TIMEOUT, recover(config, ready, replace_supervisor, watches))
+                .await.map_err(|_| invalid("recovery startup timed out"))?
+        }));
+    }
+    async fn next_event(&mut self) -> Result<Event> {
+        loop {
+            self.restart_if_ready();
+            let writer_blocked = if self.disconnected { false } else { self.flush_restoring()? };
+            let writer_ready = self.io.writer_ready();
+            return tokio::select! {
+                biased;
+                status=self.supervisor.wait(), if !self.supervisor_exited => {
+                    self.supervisor_exited = true;
+                    if let Some(task) = self.recovery.take() { task.abort(); }
+                    self.disconnect()?;
+                    self.restart_if_ready();
+                    Ok(Event::Exited {process:"supervisor",status:status?})
+                }
+                status=self.logic.wait(), if !self.logic_exited => {
+                    self.logic_exited = true;
+                    self.disconnected = true;
+                    self.io.disconnected = true;
+                    self.io.reader_task.abort();
+                    self.io.writer_task.abort();
+                    self.restart_if_ready();
+                    Ok(Event::Exited {process:"logic",status:status?})
+                }
+                result=async { self.recovery.as_mut().unwrap().await }, if self.recovery.is_some() => {
+                    self.recovery = None;
+                    match result.map_err(|error| invalid(format!("recovery task stopped: {error}")))? {
+                        Ok(recovered) => {
+                            if let Some(supervisor) = recovered.supervisor {
+                                self.supervisor = supervisor.child;
+                                self.supervisor_control = supervisor.control;
+                                self.supervisor_ready = supervisor.ready;
+                            }
+                            let logic = recovered.logic;
+                            self.logic = logic.child;
+                            self.logic_control = logic.control;
+                            self.endpoint = logic.endpoint;
+                            self.io = logic.io;
+                            self.watches = recovered.watches;
+                            self.restoring = self.watches.iter().map(|(seat,view)| GuiAction::Watch {seat:*seat,view:*view}).collect();
+                            self.supervisor_exited = false;
+                            self.logic_exited = false;
+                            self.disconnected = false;
+                            self.deferred.push_back(Event::Reply(Box::new(GuiReply::Identity(self.endpoint.identity.clone()))));
+                            Ok(Event::Reply(Box::new(GuiReply::Seats(recovered.seats))))
+                        }
+                        Err(error) => {
+                            self.recovery_failed = true;
+                            Ok(Event::Disconnected(format!("recovery failed: {error}")))
+                        }
+                    }
+                }
+                ready=writer_ready, if writer_blocked && !self.disconnected => { ready?; continue; }
+                event=self.io.event(), if !self.disconnected => {
+                    if matches!(event,Event::Disconnected(_)) { self.disconnect()?; }
+                    Ok(event)
+                }
+                else => std::future::pending().await,
+            };
         }
     }
-    /// Obtain the initial catalogue before any views are watched.
+    /// Obtain the catalogue before any views are watched.
     pub async fn list(&mut self) -> Result<Vec<GuiSeat>> {
         self.send(GuiAction::ListSeats).await?;
         loop {
             match self.receive().await? {
                 GuiReply::Seats(seats) => return Ok(seats),
                 GuiReply::Identity(identity) => self.endpoint.identity = identity,
-                GuiReply::Error { reason, .. } => return Err(invalid(reason)),
-                GuiReply::Seat(_) | GuiReply::Update { .. } => {}
+                GuiReply::Error {reason,..} => return Err(invalid(reason)),
+                GuiReply::Seat(_) | GuiReply::Update {..} | GuiReply::Ok {..} => {}
                 _ => return Err(invalid("unexpected GUI startup reply")),
             }
         }
     }
-    /// Stop and reap both children, attempting both even if the first fails.
+    /// Abort startup before stopping and reaping both installed children.
     pub async fn shutdown(mut self) -> Result<()> {
-        let logic = stop_child(&mut self.logic, &mut self.logic_control, "logic").await;
-        let supervisor = stop_child(
-            &mut self.supervisor,
-            &mut self.supervisor_control,
-            "supervisor",
-        )
-        .await;
+        if let Some(task) = self.recovery.take() {
+            task.abort();
+            if let Ok(Ok(mut recovered)) = task.await {
+                let _ = stop_child(&mut recovered.logic.child,&mut recovered.logic.control,"logic").await;
+                if let Some(mut supervisor) = recovered.supervisor {
+                    let _ = stop_child(&mut supervisor.child,&mut supervisor.control,"supervisor").await;
+                }
+            }
+        }
+        let logic = stop_child(&mut self.logic,&mut self.logic_control,"logic").await;
+        let supervisor = stop_child(&mut self.supervisor,&mut self.supervisor_control,"supervisor").await;
         logic.and(supervisor)
     }
+}
+
+async fn start_supervisor(config: &Config) -> Result<StartedSupervisor> {
+    let mut child = child(config, "supervisor")?;
+    write_json(child.stdin.as_mut().unwrap(), config).await?;
+    let mut output = BufReader::new(child.stdout.take().unwrap());
+    let line = tokio::time::timeout(STARTUP_TIMEOUT, read_line(&mut output))
+        .await
+        .map_err(|_| invalid("supervisor startup timed out waiting for its readiness line"))??
+        .ok_or_else(|| invalid("supervisor exited during startup"))?;
+    let ready = serde_json::from_slice(&line)?;
+    let control = child.stdin.take();
+    Ok(StartedSupervisor {
+        child,
+        control,
+        ready,
+    })
+}
+async fn start_logic(
+    config: &Config,
+    ready: &SupervisorReady,
+    recover_seats: bool,
+) -> Result<StartedLogic> {
+    let mut child = child(config, "logic")?;
+    write_json(
+        child.stdin.as_mut().unwrap(),
+        &LogicBootstrap {
+            config: config.clone(),
+            supervisor: ready.clone(),
+            recover_seats,
+        },
+    )
+    .await?;
+    let mut output = BufReader::new(child.stdout.take().unwrap());
+    let line = tokio::time::timeout(STARTUP_TIMEOUT, read_line(&mut output))
+        .await
+        .map_err(|_| invalid("logic startup timed out waiting for its readiness line"))??
+        .ok_or_else(|| invalid("logic exited during startup"))?;
+    let endpoint: LogicReady = serde_json::from_slice(&line)?;
+    let stream = UnixStream::connect(endpoint.root.join("gui.sock")).await?;
+    let io = GuiIo::new(stream, endpoint.capability);
+    let control = child.stdin.take();
+    Ok(StartedLogic {child,control,endpoint,io})
+}
+async fn recover(
+    config: Config,
+    ready: SupervisorReady,
+    replace_supervisor: bool,
+    watches: BTreeMap<SeatId, View>,
+) -> Result<Recovered> {
+    let supervisor = if replace_supervisor { Some(start_supervisor(&config).await?) } else { None };
+    let ready = supervisor.as_ref().map_or(&ready, |supervisor| &supervisor.ready);
+    let mut logic = start_logic(&config,ready,replace_supervisor).await?;
+    logic.io.try_send(GuiAction::ListSeats)?;
+    let seats = loop {
+        match logic.io.event().await {
+            Event::Reply(reply) => match *reply {
+                GuiReply::Seats(seats) => break seats,
+                GuiReply::Identity(identity) => logic.endpoint.identity=identity,
+                GuiReply::Error {reason,..} => return Err(invalid(reason)),
+                _ => {}
+            },
+            Event::Disconnected(reason) => return Err(invalid(reason)),
+            Event::Exited {process,status} => return Err(invalid(format!("{process} exited: {status}"))),
+        }
+    };
+    let watches = watches.keys().filter_map(|seat| {
+        let record = &seats.iter().find(|item|item.record.id.0==seat.0.0)?.record;
+        Some((*seat,View {seat:record.id,generation:record.generation,view_generation:bbt_mux::Ulid::new()}))
+    }).collect();
+    Ok(Recovered {supervisor,logic,seats,watches})
 }
 
 async fn read_replies(read: OwnedReadHalf, sender: mpsc::Sender<Result<GuiReply>>) {

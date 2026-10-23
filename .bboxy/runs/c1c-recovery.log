@@ -1,0 +1,48 @@
+C1c-1 RECOVERY — in-progress checkpoint, not a handoff.
+Owner: Sable Embertail <EXECUTOR>; writing tree bboxy450-term-exec3, exec3.
+Base after start fetch/rebase: 54d9e0f. All changes currently confined to approved paths.
+
+Authorization / decisions (ICQ DM UUIDs):
+57376d1c-0c6c-4ca3-b451-647122f1f0a4 — recovery first, close/undo/history separate handoff.
+8fabbfa2-8d2f-4458-8e14-0819a08b1b8b — Aster adds mandatory displayed generation to Input/Resize; C1c enforces stale rejection after C1i.
+11aaf77f-bb99-485e-99f4-5fb508e525c7 — supervisor admission scope expanded after W1.2d; no ring/writer/journal edits.
+4b2ff9de-f1e4-4b9c-a909-e58e54bdd07d — exact Spawn retry remains same PID; conflicting same-generation launch rejected.
+7a9ebb80-eef6-49fd-842a-422af3e9365c — known durable predecessor generation required, unknown generation2 rejected, generation gap rejected.
+b982f9fd-e586-455b-aba2-514aea93f641 — one live.rs Error-arm hunk for stale-input notice, Aster review before gate. Aster reported current notice seam differs; awaiting correction.
+
+Verification so far (real output, commands and statuses in c1c-commands.log):
+- First cargo check: 101, two incomplete SeatSize initializers. Fixed with Default pixels.
+- cargo check -p bboxy450-term --locked: 0.
+- First recovery suite: 101, 2 passed /1 failed. Logic-only same PID+generation, rewatch, new view, post-restart echo and 250ms ack hold passed. Pending-recovery shutdown passed. Supervisor recovery rejected generation2 at current first-generation admission; NOT claimed complete.
+- First strict crate clippy: 101, collapsible_if in fixture; corrected.
+- Strict crate/all-target clippy after correction and added admission fixture: 0.
+- Targeted logic recovery after cancellation/send refactor: 0, 1 passed.
+- Targeted held-readiness cancellation/reap: 0, 1 passed; recorded replacement PID65160 reaped.
+- Existing app cockpit integration suite: 0, 5 passed, including both child exits, modes/admission/framing, shutdown after cancelled exit watch and same-root relaunch.
+- git diff --check: 0.
+
+Unfinished / not checked yet:
+- Supervisor recovery and admission tests need W1.2d and approved supervisor admission.
+- Mandatory generation rejection needs C1i merge first. No schema hunk taken from Aster.
+- UI stale-input notice seam pending clarification; no visual code edited.
+- No final strict workspace clippy or exact-commit clean CI yet; no parity per Oracle's explicit C1c-1 scope.
+- No actual native Claude/Codex process launched: isolated executable fixtures record real --resume / resume argv, pending supervisor pass. All integration wrappers use BBOXY_TEST_CUSTODY=memory, no real Keychain mutation.
+
+Mechanisms:
+- Session retains Config/readiness, watches, child control pipes and a stored recovery task. Cancellation cannot lose a partial child handshake. Wire readers stay bounded (8 replies). Known loss returns promptly to IO's bounded retained queue. Failed startup produces a held disconnected state rather than repeatedly advancing process generations. Shutdown aborts pending startup and reaps installed children.
+- Logic-only restart preserves supervisor/PTYS and process generations; refreshed catalogue and authoritative watch snapshots are delivered on the existing Event::Reply seam.
+- Supervisor recovery implementation saves explicit cwd/role/overlay inputs (never inherited environment), replays committed prior ring into Playback, changes process generation, resets the new capture cursor and records an explicit loss gap. It rebuilds overlays/capabilities and uses existing launch planner resume flags. Old rings remain separate for later history work.
+- Natural process exit marks launch state non-running, so general recovery does not deliberately resurrect it. Close/history retained-view behavior belongs C1c-2, not claimed here.
+
+Deliberately untouched: Rook's catch_up/journal configuration, Aster's live/grids/model/scene producers, writer/ring/journal formats, main branch, native approval state, publication/release work.
+
+Later checkpoint updates:
+322b5741-65aa-403f-8909-ee19d8f54abc / b16dee50-213b-4b9b-af77-5614afe154ab — Oracle allows existing Ring::open repair only after dead supervisor reaped and after an existing committed/previous marker check. Empty directories cannot establish prior-generation existence; unknown admission cannot create any ring. Derive root from socket parent and pin that layout in test. UI stale-input notice requirement withdrawn: named log + count only, NO live.rs edits.
+- Logic recovery now also checks predecessor markers before Ring::open, and refuses missing/corrupt predecessor provenance instead of creating an empty ring. Confirmed process-running state is stored only after successful attachment, not before a launch attempt.
+- Mux regression suite: exit0, 93 passed /0 failed /11 ignored (14 result lines including doctests); elapsed123.322s. This is a development preflight, not exact-final-commit CI.
+- Logic-only test now proves both watched and unwatched PTY PIDs/generations survive; exit0, elapsed6.25s.
+- Echo assertions now require an exact output line, not a command echo substring.
+- Admission fixture pins run/seat-ID/ring-N layout and covers missing predecessor, empty predecessor, skipped generation, conflicting same-generation launch, and exact same-PID retry. Not yet run because the required W1.2d admission parent is not landed.
+- Every socket write error now triggers recovery even if reader EOF never arrives. An ambiguous Spawn attempt is consumed as SpawnOutcomeUnknown, so the IO retained queue cannot duplicate the launch automatically.
+- Read-only diagnostic command `git log -4 --oneline /dev/null` was a mistyped path and exited128; no mutation. A failed apply_patch SeatSize context match changed nothing, then the corrected edit/check succeeded. Earlier source discovery used a missing guessed capture.rs path and a nonmatching zsh glob; those failed reads changed nothing.
+- Latest development check after provenance guard / exact-line echo changes: app recovery subset 3 passed, exit0 (32.405s), explicitly excluding the 2 tests awaiting supervisor admission; strict crate/all-target clippy exit0 (12.782s). No acceptance claim for excluded supervisor tests.

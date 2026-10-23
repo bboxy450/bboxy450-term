@@ -37,6 +37,7 @@ pub struct LogicConfig {
 }
 
 enum Command {
+    RecoverSeats(oneshot::Sender<Result<()>>),
     ControlCatalogue(Ulid, u64, oneshot::Sender<Result<serde_json::Value>>),
     ControlCall(
         Ulid,
@@ -125,6 +126,16 @@ pub struct LogicClient {
     pub bus: BusHandle,
 }
 impl LogicClient {
+    /// Resume missing local processes after the app has replaced the supervisor.
+    /// A logic-only restart must not call this: its PTYs are still owned.
+    pub async fn recover_seats(&self) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::RecoverSeats(tx))
+            .await
+            .map_err(|_| invalid("logic stopped"))?;
+        rx.await.map_err(|_| invalid("logic stopped"))?
+    }
     /// Portable status only; key custody stays inside the identity runtime.
     pub async fn gui_identity(&self) -> Result<bbt_proto::GuiIdentity> {
         let (tx, rx) = oneshot::channel();
@@ -607,6 +618,15 @@ struct LegacySaved {
     cwd: Option<String>,
     gap: Option<String>,
 }
+// Only explicit launch context is persisted; inherited environment is never
+// captured. A new overlay supplies fresh endpoint capabilities on every launch.
+#[derive(Serialize, Deserialize)]
+struct RecoveryLaunch {
+    cwd: PathBuf,
+    role_prompt: String,
+    user_home: PathBuf,
+    user_zdotdir: Option<PathBuf>,
+}
 struct ViewState {
     info: SeatInfo,
     adapter: Session,
@@ -970,6 +990,14 @@ impl Worker {
             Playback::restore(RingSaved::decode(&bytes)?)
         } else {
             let mut state = Playback::new(info.seat, info.generation, info.size);
+            if let Some(bytes) = SqliteStore::open(&directory)?.get("restart_checkpoint")?
+                && !bytes.is_empty()
+            {
+                let saved = RingSaved::decode(&bytes)?;
+                if saved.generation == info.generation {
+                    state = Playback::restore(saved);
+                }
+            }
             // Migrate W2.2's bridge without claiming its missing byte history.
             if let Some(hash) = SqliteStore::open(&directory)?.get("checkpoint")? {
                 let old: LegacySaved = serde_json::from_slice(
@@ -1104,6 +1132,10 @@ impl Worker {
                 changed_at: Instant::now(),
             },
         );
+        SqliteStore::open(&directory)?.put(
+            "process_running",
+            if info.exited.is_some() { b"0" } else { b"1" },
+        )?;
         self.persist_native_session(info.seat)?;
         // Historical frames have no live effects or visible intermediate state.
         // Cold capture no longer needs checkpoint progress to keep reading, so
@@ -1208,7 +1240,7 @@ impl Worker {
         }
         let endpoint = self.ensure_endpoint(record.id, record.generation)?;
         let root = object_dir(&self.config.run_dir, &format!("seat-{}", record.id))?;
-        let plan = crate::adapters::launch::plan(
+        let mut plan = crate::adapters::launch::plan(
             &harness,
             &crate::adapters::LaunchContext {
                 seat: &record,
@@ -1225,6 +1257,27 @@ impl Worker {
         )?;
         record.harness_session_id = plan.harness_session_id;
         let store = SqliteStore::open(&root)?;
+        if let Some(bytes) = store.get("restart_checkpoint")?
+            && !bytes.is_empty()
+        {
+            let saved = RingSaved::decode(&bytes)?;
+            if saved.generation == record.generation {
+                plan.spec.size = crate::SeatSize {
+                    cols: saved.cols.try_into()?,
+                    rows: saved.rows.try_into()?,
+                    ..Default::default()
+                };
+            }
+        }
+        store.put(
+            "recovery_launch",
+            &serde_json::to_vec(&RecoveryLaunch {
+                cwd: options.cwd,
+                role_prompt: options.role_prompt,
+                user_home: options.user_home,
+                user_zdotdir: options.user_zdotdir,
+            })?,
+        )?;
         store.put("adapter_record", &serde_json::to_vec(&harness)?)?;
         store.put(
             "adapter_overlay",
@@ -1233,6 +1286,99 @@ impl Worker {
         // On an ambiguous spawn keep the overlay; deleting it could break a child
         // that actually started. Reconciliation uses the original durable seat ID.
         self.spawn(record, plan.spec)
+    }
+    fn recover_seats(&mut self) -> Result<()> {
+        for mut record in self.registry.list()? {
+            if record.location != crate::registry::Location::Local
+                || record.lifecycle != Lifecycle::Open
+                || self.views.contains_key(&record.id)
+            {
+                continue;
+            }
+            let root = object_dir(&self.config.run_dir, &format!("seat-{}", record.id))?;
+            let store = SqliteStore::open(&root)?;
+            if store.get("process_running")?.as_deref() != Some(b"1") {
+                continue;
+            }
+            let Some(bytes) = store.get("recovery_launch")? else {
+                continue;
+            };
+            let context: RecoveryLaunch = serde_json::from_slice(&bytes)?;
+            let previous = record.generation;
+            let ring_root = root.join(format!("ring-{previous}"));
+            // The old supervisor is already reaped. Reopening its ring rejects
+            // torn/uncommitted suffixes and replays only durable capture.
+            if !ring_root.join("committed").is_file() && !ring_root.join("previous").is_file() {
+                return Err(invalid(format!(
+                    "RecoveryUnavailable: seat {} has no committed predecessor generation {previous}",
+                    record.id
+                )));
+            }
+            let mut state = crate::ring::Ring::open(
+                &ring_root,
+                record.id,
+                previous,
+                0,
+                self.config.ring.clone(),
+            )?
+            .replay()?;
+            let retained = format!(
+                "generation {previous}, committed through capture sequence {} ({} bytes)",
+                state.sequence, state.byte_end
+            );
+            record.generation = previous
+                .checked_add(1)
+                .ok_or_else(|| invalid("generation exhausted"))?;
+            let resume = record.harness_session_id.is_some()
+                && matches!(record.harness_kind.as_str(), "claude" | "codex");
+            let harness = if resume {
+                serde_json::from_slice(
+                    &store
+                        .get("adapter_record")?
+                        .ok_or_else(|| invalid("missing resume harness"))?,
+                )?
+            } else {
+                record.harness_kind = "zsh".into();
+                record.harness_session_id = None;
+                HarnessRecord::builtin("zsh")?
+            };
+            state.generation = record.generation;
+            state.gap = Some(format!(
+                "restarted; retained {retained}; uncommitted output unavailable{}",
+                state
+                    .gap
+                    .as_ref()
+                    .map_or(String::new(), |gap| format!("; {gap}"))
+            ));
+            state.sequence = 0;
+            state.byte_end = 0;
+            state.index.clear();
+            store.put("restart_checkpoint", &state.saved().encode()?)?;
+            store.put("previous_ring", &previous.to_le_bytes())?;
+            self.registry.update(record.id, |saved| {
+                *saved = record.clone();
+                Ok(())
+            })?;
+            let cwd = state
+                .cwd
+                .as_ref()
+                .map(PathBuf::from)
+                .filter(|path| path.is_absolute() && path.is_dir())
+                .unwrap_or(context.cwd);
+            self.launch(
+                record,
+                harness,
+                crate::adapters::launch::LaunchOptions {
+                    cwd,
+                    role_prompt: context.role_prompt,
+                    executable: std::env::current_exe()?,
+                    user_home: context.user_home,
+                    user_zdotdir: context.user_zdotdir,
+                    resume,
+                },
+            )?;
+        }
+        Ok(())
     }
     fn spawn(&mut self, record: SeatRecord, spec: LaunchSpec) -> Result<SeatInfo> {
         check_size(spec.size.cols as usize, spec.size.rows as usize)?;
@@ -1411,6 +1557,8 @@ impl Worker {
         }
         self.persist_native_session(id)?;
         if matches!(event, Event::Exited { .. }) && self.registry.get(id).is_ok() {
+            SqliteStore::open(&object_dir(&self.config.run_dir, &format!("seat-{id}"))?)?
+                .put("process_running", b"0")?;
             self.registry.exited(id, generation)?;
         }
         if let Event::Exited { status, .. } = &event {
@@ -2007,6 +2155,10 @@ impl Worker {
                     }
                     Command::ControlCall(id, generation, call, reply) => {
                         let result = self.control_call(id, generation, call);
+                        let _ = reply.send(result);
+                    }
+                    Command::RecoverSeats(reply) => {
+                        let result = self.recover_seats();
                         let _ = reply.send(result);
                     }
                     Command::GuiSpawn(spec, reply) => {
