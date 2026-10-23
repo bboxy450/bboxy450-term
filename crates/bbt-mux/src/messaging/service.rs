@@ -377,6 +377,83 @@ impl Messaging {
             _ => unreachable!(),
         }
     }
+    /// Terminal-authored task wakes retain the admitted sender's role and all
+    /// W2.4 destination/receipt rules; ordinary Send cannot construct this body.
+    pub(crate) fn task_event(
+        &mut self,
+        from: Ulid,
+        generation: u64,
+        mut request: SendRequest,
+        body: Body,
+        now: u64,
+    ) -> Result<StoredMessage> {
+        request.validate()?;
+        let Body::Task { event, summary, .. } = &body else {
+            return Err(invalid("task producer requires a Task body"));
+        };
+        if request.kind != MessageKind::Task
+            || request.text != *summary
+            || !matches!(
+                event.as_str(),
+                "delegate" | "release" | "accept" | "reject" | "report"
+            )
+        {
+            return Err(invalid("invalid task producer request"));
+        }
+        let record = self.record(from, generation)?;
+        if event != "report" && record.role.class != Class::Oracle {
+            return Err(invalid("task control requires oracle-class authority"));
+        }
+        request.destination = super::tree::normalize(&request.destination, false)?;
+        super::tree::sink(&request.destination)?;
+        self.sync_seat(&record)?;
+        if let Some(old) = self.swarm(record.swarm)?.ledger.existing(&request, from)? {
+            if old.envelope.body != body {
+                return Err(invalid("task message ID body conflict"));
+            }
+            return Ok(old);
+        }
+        let routes = self.swarm(record.swarm)?.tree.resolve(
+            Actor::Seat {
+                seat: from,
+                class: record.role.class,
+            },
+            &request.destination,
+            MessageKind::Task,
+            record.role.class,
+            request.priority,
+        )?;
+        self.check_recipients(record.swarm, &routes)?;
+        if let Some(reason) = self.keys.signing_hold() {
+            return Err(invalid(format!("task signing held: {reason}")));
+        }
+        if self.keys.ready_issuer().is_none() {
+            return Err(invalid("task signing held: identity pending"));
+        }
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let epoch = policy(&tx, &record)?;
+        let envelope = mint(
+            &tx,
+            self.keys.as_ref(),
+            &record,
+            &request,
+            body,
+            Issue {
+                epoch,
+                now,
+                operator_direct: false,
+            },
+        )?;
+        tx.commit()?;
+        let held = record.muted.then_some("sender muted");
+        let message = self
+            .swarm(record.swarm)?
+            .ledger
+            .accept(&request, &envelope, &routes, held, now)?;
+        self.reconcile(now)?;
+        Ok(message)
+    }
     fn send_inner(
         &mut self,
         from: Ulid,

@@ -1,0 +1,19 @@
+COMMAND ['cargo', 'check', '--locked', '-p', 'bbt-mux', '--all-targets']
+   Compiling sha2-asm v0.6.4
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking portable-pty v0.9.0
+    Checking rusqlite v0.40.2
+    Checking notify v8.2.0
+    Checking sha2 v0.10.9
+    Checking p256 v0.13.2
+    Checking ed25519-dalek v2.2.0
+    Checking p521 v0.13.3
+    Checking k256 v0.13.4
+    Checking dsa v0.6.3
+    Checking p384 v0.13.1
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking pgp v0.21.0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 7.61s
+EXIT 0; elapsed 7.659s

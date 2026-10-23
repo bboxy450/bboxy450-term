@@ -4,6 +4,11 @@ pub mod bridge;
 pub(crate) mod journal;
 pub(crate) mod messaging;
 pub(crate) mod tools;
+pub(crate) mod work_items;
+
+pub(crate) fn mutation(tool: &str) -> bool {
+    messaging::mutation(tool) || work_items::mutation(tool)
+}
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};

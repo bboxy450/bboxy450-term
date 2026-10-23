@@ -210,7 +210,7 @@ impl Bridge {
                 };
                 // The model can set tool arguments; native clients need not
                 // expose custom request metadata to support an explicit retry.
-                let argument_id = if super::messaging::mutation(tool) {
+                let argument_id = if super::mutation(tool) {
                     match args.as_object_mut().unwrap().remove("op_id") {
                         Some(value) => match value
                             .as_str()
@@ -230,7 +230,7 @@ impl Bridge {
                         return Some(rpc_error(id, -32602, "op_id argument/_meta mismatch"));
                     }
                     (Some(value), _) | (_, Some(value)) => value,
-                    (None, None) if super::messaging::mutation(tool) => {
+                    (None, None) if super::mutation(tool) => {
                         return Some(rpc_error(
                             id,
                             -32602,

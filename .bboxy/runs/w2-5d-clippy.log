@@ -1,0 +1,60 @@
+COMMAND ['cargo', 'clippy', '--locked', '-p', 'bbt-mux', '--all-targets', '--', '-D', 'warnings']
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error: unneeded unit expression
+    --> crates/bbt-mux/src/logic.rs:1024:21
+     |
+1024 |                     ()
+     |                     ^^ help: remove the final `()`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unused_unit
+     = note: `-D clippy::unused-unit` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::unused_unit)]`
+
+error: large size difference between variants
+   --> crates/bbt-mux/src/mcp/work_items.rs:160:1
+    |
+160 | /   pub(crate) enum Effect {
+161 | | /     Task {
+162 | | |         document: Document,
+163 | | |         action: Action,
+164 | | |     },
+    | | |_____- the largest variant contains at least 576 bytes
+165 | | /     Artifact {
+166 | | |         claim: Claim,
+167 | | |         task: Option<Document>,
+168 | | |     },
+    | | |_____- the second-largest variant contains at least 272 bytes
+169 | |   }
+    | |___^ the entire enum is at least 576 bytes
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#large_enum_variant
+    = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+    |
+163 -         action: Action,
+163 +         action: Box<Action>,
+    |
+
+error: could not compile `bbt-mux` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bbt-mux` (lib test) due to 2 previous errors
+EXIT 101; elapsed 4.262s
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking dsa v0.6.3
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking pgp v0.21.0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 5.99s
+EXIT 0; elapsed 6.084s
+COMMAND ['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings']
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 21.36s
+EXIT 0; elapsed 21.625s

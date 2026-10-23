@@ -198,6 +198,14 @@ pub struct Index {
     document_reads: usize,
 }
 
+/// A checked write expects either these exact source bytes or a new path.
+pub(crate) struct Update {
+    pub path: String,
+    pub metadata: Value,
+    pub body: String,
+    pub expected: Option<String>,
+}
+
 impl Index {
     pub fn open(root: &Path, store: SqliteStore) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
@@ -438,12 +446,69 @@ impl Index {
     pub fn write(
         &self,
         path: &str,
-        mut metadata: Value,
+        metadata: Value,
         body: &str,
         seat: Ulid,
         key: &SigningKey,
     ) -> Result<()> {
+        self.write_inner(
+            Update {
+                path: path.into(),
+                metadata,
+                body: body.into(),
+                expected: None,
+            },
+            seat,
+            key,
+            false,
+        )
+    }
+    /// Read current bounded bytes without trusting the watcher's cached copy.
+    pub(crate) fn current(&self, path: &str) -> Result<Option<Document>> {
         bbt_rt::assert_not_ui_thread();
+        use std::os::unix::fs::OpenOptionsExt;
+        let destination = self.destination(path)?;
+        let file = match std::fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+            .open(destination)
+        {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(error) => return Err(error.into()),
+        };
+        if !file.metadata()?.is_file() {
+            return Err(invalid("document must be a regular file"));
+        }
+        let mut bytes = Vec::new();
+        file.take(MAX_DOCUMENT + 1).read_to_end(&mut bytes)?;
+        if bytes.len() as u64 > MAX_DOCUMENT {
+            return Err(invalid("document exceeds write bound"));
+        }
+        Ok(Some(Document::parse(path, &String::from_utf8(bytes)?)))
+    }
+    /// Reject a detected editor conflict; creation never replaces an existing file.
+    pub(crate) fn apply(&self, mut update: Update, seat: Ulid, key: &SigningKey) -> Result<()> {
+        if update.metadata["id"]
+            .as_str()
+            .and_then(|id| id.parse::<Ulid>().ok())
+            .is_none()
+            || update.metadata["type"].as_str().is_none_or(str::is_empty)
+        {
+            return Err(invalid("frontmatter requires id and type"));
+        }
+        let timestamp: String = self.store.connection()?.query_row(
+            "SELECT strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+            [],
+            |row| row.get(0),
+        )?;
+        update.metadata["updated"] = json!(timestamp);
+        if update.expected.is_none() {
+            update.metadata["created"] = json!(timestamp);
+        }
+        self.write_inner(update, seat, key, true)
+    }
+    fn destination(&self, path: &str) -> Result<PathBuf> {
         let path = Path::new(path);
         if path.is_absolute()
             || path
@@ -453,6 +518,43 @@ impl Index {
         {
             return Err(invalid("write must be a relative Markdown path"));
         }
+        let mut destination = self.root.clone();
+        for component in path.components() {
+            destination.push(component);
+            match destination.symlink_metadata() {
+                Ok(metadata) if metadata.file_type().is_symlink() => {
+                    return Err(invalid("symlink in document path"));
+                }
+                Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                    return Err(error.into());
+                }
+                _ => (),
+            }
+        }
+        Ok(destination)
+    }
+    fn unchanged(&self, update: &Update) -> Result<()> {
+        let current = self.current(&update.path)?;
+        if current.as_ref().map(|doc| doc.digest.as_str()) != update.expected.as_deref() {
+            return Err(invalid("document changed before write"));
+        }
+        Ok(())
+    }
+    fn write_inner(
+        &self,
+        mut update: Update,
+        seat: Ulid,
+        key: &SigningKey,
+        guarded: bool,
+    ) -> Result<()> {
+        bbt_rt::assert_not_ui_thread();
+        let destination = self.destination(&update.path)?;
+        if guarded {
+            self.unchanged(&update)?;
+        }
+        let metadata = &mut update.metadata;
+        let body = &update.body;
+        let path = Path::new(&update.path);
         let map = metadata
             .as_object_mut()
             .ok_or_else(|| invalid("frontmatter must be a mapping"))?;
@@ -470,7 +572,6 @@ impl Index {
         pae.extend(format!(" {} ", payload.len()).as_bytes());
         pae.extend(payload.as_bytes());
         metadata["provenance"] = json!({"digest":format!("sha256:{body_digest}"),"frontmatter_digest":format!("sha256:{front_digest}"),"signer":format!("seat:{seat}"),"sig":base64::engine::general_purpose::STANDARD.encode(key.sign(&pae).to_bytes())});
-        let destination = self.root.join(path);
         let parent = destination.parent().ok_or_else(|| invalid("no parent"))?;
         std::fs::create_dir_all(parent)?;
         if !parent.canonicalize()?.starts_with(&self.root)
@@ -498,6 +599,14 @@ impl Index {
         if !log_dir.canonicalize()?.starts_with(&self.root) {
             return Err(invalid("activity log escapes index root"));
         }
+        let projection_path = log_dir.join(format!("{day}.jsonl"));
+        if log_dir.symlink_metadata()?.file_type().is_symlink()
+            || projection_path
+                .symlink_metadata()
+                .is_ok_and(|m| m.file_type().is_symlink())
+        {
+            return Err(invalid("symlink in activity log path"));
+        }
         let mut intent = Draft::new(
             format!(
                 "doc/{}/write_prepared",
@@ -509,25 +618,42 @@ impl Index {
         intent.seat = Some(seat);
         let prepared = events.append(intent, key)?;
         metadata["provenance"]["log"] = json!(format!(".bboxy/log/{day}.jsonl#{}", prepared.seq));
+        let document_id = metadata["id"].as_str().unwrap_or("legacy").to_owned();
         let temp = parent.join(format!(".{}.tmp", Ulid::new()));
+        struct Temporary(PathBuf);
+        impl Drop for Temporary {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_file(&self.0);
+            }
+        }
         use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
+            .mode(0o600)
             .open(&temp)?;
-        write!(
-            file,
-            "---\n{}---\n{body}",
-            serde_yaml::to_string(&metadata)?
-        )?;
+        let _temporary = Temporary(temp.clone());
+        let rendered = format!("---\n{}---\n{body}", serde_yaml::to_string(metadata)?);
+        if rendered.len() as u64 > MAX_DOCUMENT {
+            return Err(invalid("document exceeds write bound"));
+        }
+        file.write_all(rendered.as_bytes())?;
         file.sync_all()?;
-        std::fs::rename(temp, &destination)?;
+        // This catches edits during preparation. External editors do not share
+        // a lock, so their rename after this check remains a documented race.
+        self.destination(&update.path)?;
+        if guarded {
+            self.unchanged(&update)?;
+        }
+        if guarded && update.expected.is_none() {
+            std::fs::hard_link(&temp, &destination)?;
+        } else {
+            std::fs::rename(&temp, &destination)?;
+        }
         std::fs::File::open(parent)?.sync_all()?;
         let mut completed = Draft::new(
-            format!(
-                "doc/{}/written",
-                metadata["id"].as_str().unwrap_or("legacy")
-            ),
+            format!("doc/{document_id}/written"),
             "mux/document",
             json!({"activity":"write_applied","prepared":prepared.event.id,"generated":[format!("sha256:{body_digest}")]}),
         );
@@ -536,7 +662,7 @@ impl Index {
         let mut projection = std::fs::OpenOptions::new()
             .append(true)
             .create(true)
-            .open(log_dir.join(format!("{day}.jsonl")))?;
+            .open(projection_path)?;
         for envelope in [prepared, completed] {
             serde_json::to_writer(&mut projection, &envelope)?;
             projection.write_all(b"\n")?;
@@ -636,6 +762,119 @@ impl FileWatch {
 mod tests {
     use super::*;
     use std::time::{Duration, Instant, UNIX_EPOCH};
+
+    #[test]
+    fn checked_writer_keeps_editor_changes_and_refuses_symlink_escapes() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        let index = Index::open(
+            &root,
+            SqliteStore::open(&temp.path().join("index")).unwrap(),
+        )
+        .unwrap();
+        let seat = Ulid::new();
+        let key = SigningKey::from_bytes(&[73; 32]);
+        let path = "tasks/fixture.md";
+        let metadata = json!({"id":Ulid::new(),"type":"task","status":"running"});
+        index
+            .apply(
+                Update {
+                    path: path.into(),
+                    metadata: metadata.clone(),
+                    body: "first\n".into(),
+                    expected: None,
+                },
+                seat,
+                &key,
+            )
+            .unwrap();
+        let before = index.current(path).unwrap().unwrap();
+        std::fs::write(root.join(path), "operator edit\n").unwrap();
+        assert!(
+            index
+                .apply(
+                    Update {
+                        path: path.into(),
+                        metadata: metadata.clone(),
+                        body: "must not replace edit".into(),
+                        expected: Some(before.digest)
+                    },
+                    seat,
+                    &key
+                )
+                .unwrap_err()
+                .to_string()
+                .contains("changed")
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join(path)).unwrap(),
+            "operator edit\n"
+        );
+        let outside = temp.path().join("outside");
+        std::fs::create_dir(&outside).unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("escape")).unwrap();
+        assert!(
+            index
+                .apply(
+                    Update {
+                        path: "escape/never.md".into(),
+                        metadata,
+                        body: "never".into(),
+                        expected: None
+                    },
+                    seat,
+                    &key
+                )
+                .is_err()
+        );
+        assert!(std::fs::read_dir(outside).unwrap().next().is_none());
+    }
+
+    #[test]
+    fn checked_creation_has_one_winner_and_does_not_overwrite_it() {
+        let temp = tempfile::tempdir().unwrap();
+        let index = Arc::new(
+            Index::open(
+                &temp.path().join(".bboxy"),
+                SqliteStore::open(&temp.path().join("index")).unwrap(),
+            )
+            .unwrap(),
+        );
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let id = Ulid::new();
+        let workers: Vec<_> = (0..2)
+            .map(|n| {
+                let index = index.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    index.apply(
+                        Update {
+                            path: "artifact.md".into(),
+                            metadata: json!({"id":id,"type":"artifact"}),
+                            body: format!("creator {n}\n"),
+                            expected: None,
+                        },
+                        Ulid::new(),
+                        &SigningKey::from_bytes(&[n + 30; 32]),
+                    )
+                })
+            })
+            .collect();
+        let successes = workers
+            .into_iter()
+            .map(|w| usize::from(w.join().unwrap().is_ok()))
+            .sum::<usize>();
+        assert_eq!(successes, 1);
+        assert!(
+            index
+                .current("artifact.md")
+                .unwrap()
+                .unwrap()
+                .body
+                .starts_with("creator ")
+        );
+    }
 
     fn scan_and_ack(index: &mut Index) -> Vec<Draft> {
         let events = index.scan().unwrap();

@@ -942,6 +942,42 @@ impl Worker {
         let (actor, record) = self.control_actor(id, generation)?;
         call.validate()?;
         let journal = self.control_journal(id)?;
+        if crate::mcp::work_items::handles(&call.tool)
+            || matches!(call.tool.as_str(), "orient" | "graph_read")
+        {
+            self.scan()?;
+        }
+        if crate::mcp::work_items::handles(&call.tool) {
+            // Resolve current Markdown and assignment before disclosing a
+            // retained result, including after a task was reassigned.
+            return match crate::mcp::work_items::prepare(&self.index, &self.registry, &actor, &call)
+            {
+                Ok(crate::mcp::work_items::Prepared::Read(value)) => journal.checked_authorized(
+                    &actor,
+                    &call,
+                    crate::mcp::success(call.op_id, value),
+                    |old| {
+                        crate::mcp::work_items::retained_allowed(
+                            &self.index,
+                            &self.registry,
+                            &actor,
+                            &call,
+                            old,
+                        )
+                    },
+                ),
+                Ok(crate::mcp::work_items::Prepared::Effect(effect)) => {
+                    journal.effect(&actor, &call, || {
+                        self.control_work_item(&actor, &call, *effect)
+                    })
+                }
+                Err(reason) => journal.checked(
+                    &actor,
+                    &call,
+                    crate::mcp::error(call.op_id, "rejected", &reason),
+                ),
+            };
+        }
         match crate::mcp::messaging::request(&actor, &call) {
             Ok(Some(request)) if crate::mcp::messaging::mutation(&call.tool) => {
                 journal.effect(&actor, &call, || {
@@ -964,9 +1000,115 @@ impl Worker {
                     Ok(value) => crate::mcp::success(call.op_id, value),
                     Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
                 };
-                journal.checked(&actor, &call, value)
+                journal.checked_authorized(&actor, &call, value, |old| {
+                    crate::mcp::tools::retained_documents(&self.index, &actor, &record, &call, old)
+                })
             }
         }
+    }
+    fn control_work_item(
+        &mut self,
+        actor: &crate::mcp::Actor,
+        call: &crate::mcp::Call,
+        effect: crate::mcp::work_items::Effect,
+    ) -> serde_json::Value {
+        let plan = match crate::mcp::work_items::plan(effect, actor, call) {
+            Ok(plan) => plan,
+            Err(reason) => return crate::mcp::error(call.op_id, "rejected", &reason),
+        };
+        let keys = self.identity.keys();
+        if let Some(reason) = keys.signing_hold() {
+            return crate::mcp::error(
+                call.op_id,
+                "held",
+                &format!("work-item signing held: {reason}"),
+            );
+        }
+        let key = match keys.leaf(actor.seat_id, actor.process_generation) {
+            Ok(key) if keys.ready_issuer().is_some() => key,
+            _ => {
+                return crate::mcp::error(
+                    call.op_id,
+                    "held",
+                    "work-item signing held: identity pending",
+                );
+            }
+        };
+        // Validate every source before the first write of a multi-file claim.
+        for update in &plan.writes {
+            match self.index.current(&update.path) {
+                Ok(current) if current.as_ref().map(|d| &d.digest) == update.expected.as_ref() => {}
+                Ok(_) => {
+                    return crate::mcp::error(
+                        call.op_id,
+                        "conflict",
+                        "document changed before write",
+                    );
+                }
+                Err(error) => return crate::mcp::error(call.op_id, "rejected", &error.to_string()),
+            }
+        }
+        let mut completed = Vec::new();
+        let paths: Vec<_> = plan
+            .writes
+            .iter()
+            .map(|w| format!(".bboxy/{}", w.path))
+            .collect();
+        for update in plan.writes {
+            if self.index.apply(update, actor.seat_id, &key).is_err() {
+                return crate::mcp::error(
+                    call.op_id,
+                    "unknown",
+                    &format!(
+                        "work-item write outcome unknown; inspect paths {paths:?}; no automatic redispatch"
+                    ),
+                );
+            }
+        }
+        for wake in plan.wakes {
+            let mut request = crate::messaging::wire::SendRequest::text(
+                format!("seats/{}/inbox", wake.to),
+                wake.summary.clone(),
+            );
+            request.id = wake.id;
+            request.kind = crate::messaging::wire::MessageKind::Task;
+            request.attachments = vec![format!("[[{}]]", wake.task_id)];
+            let body = crate::messaging::wire::Body::Task {
+                task_id: wake.task_id,
+                event: wake.event,
+                path: wake.path,
+                summary: wake.summary,
+            };
+            match self.messaging.task_event(
+                actor.seat_id,
+                actor.process_generation,
+                request,
+                body,
+                now_ms(),
+            ) {
+                Ok(message) => completed.push(message.envelope.id),
+                Err(_) => {
+                    return crate::mcp::error(
+                        call.op_id,
+                        "unknown",
+                        &format!(
+                            "frontmatter written; Task wake {} outcome unknown; completed {completed:?}; inspect {paths:?} and receipts; no automatic redispatch",
+                            wake.id
+                        ),
+                    );
+                }
+            }
+        }
+        if self.scan().is_err() {
+            return crate::mcp::error(
+                call.op_id,
+                "unknown",
+                &format!(
+                    "work-item projection unavailable; inspect {paths:?} and messages {completed:?}"
+                ),
+            );
+        }
+        crate::mcp::success(call.op_id, plan.data)
     }
     fn control_message(
         &mut self,

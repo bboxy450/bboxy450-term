@@ -223,7 +223,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 12);
+    assert_eq!(tools.len(), 16);
     assert!(
         tools
             .iter()
@@ -965,8 +965,8 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 12);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 15);
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 16);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 23);
     for tool in [
         "ch_link",
         "ch_pause",
@@ -1293,4 +1293,635 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
             .len(),
         1
     );
+}
+
+// Work-item fixtures deliberately use local zsh PTYs and fixture MCP clients.
+// They prove the protocol/terminal path, not a real model's first-turn behavior.
+impl Fixture {
+    fn task_file(&self, metadata: Value) -> bbt_mux::index::Document {
+        let path = self
+            .config
+            .repository
+            .join(format!(".bboxy/tasks/{}.md", self.task));
+        std::fs::write(
+            &path,
+            format!(
+                "---\n{}---\nOriginal brief: keep this body.\n",
+                serde_yaml::to_string(&metadata).unwrap()
+            ),
+        )
+        .unwrap();
+        self.task_document()
+    }
+    fn task_document(&self) -> bbt_mux::index::Document {
+        let path = format!("tasks/{}.md", self.task);
+        bbt_mux::index::Document::parse(
+            &path,
+            &std::fs::read_to_string(self.config.repository.join(".bboxy").join(&path)).unwrap(),
+        )
+    }
+    fn task_metadata(&self) -> Value {
+        json!({"id":self.task,"type":"task","title":"Fixture: quotes ' and colon: retained","status":"running",
+            "assignee":format!("seat:{}",self.own.id),"delegated_by":format!("seat:{}",self.oracle.id),
+            "verify":"true","allowed_paths":["fixture/**"],"custom":{"nested":["untouched",42]}})
+    }
+    fn task_path(&self) -> String {
+        format!(".bboxy/tasks/{}.md", self.task)
+    }
+    fn report(&self, result: Value) -> Value {
+        self.mutate(self.own.id,Ulid::new(),"task_report",json!({"task_path":self.task_path(),"summary":"Fixture report: verified","verify_result":result}))
+    }
+}
+fn verification(command: &str, exit: i32, evidence: Value) -> Value {
+    json!({"command":command,"exit_code":exit,"evidence":evidence})
+}
+fn assert_item_signature(doc: &bbt_mux::index::Document, seat: Ulid) {
+    use base64::Engine;
+    use bbt_mux::messaging::keys::{LocalSeatKeys, SeatKeys};
+    use ed25519_dalek::{Signature, Verifier};
+    let mut front = doc.metadata.clone();
+    let provenance = front.as_object_mut().unwrap().remove("provenance").unwrap();
+    let front_hash = bbt_mux::store::digest(serde_yaml::to_string(&front).unwrap().as_bytes());
+    let body_hash = bbt_mux::store::digest(doc.body.as_bytes());
+    assert_eq!(
+        provenance["frontmatter_digest"],
+        format!("sha256:{front_hash}")
+    );
+    assert_eq!(provenance["digest"], format!("sha256:{body_hash}"));
+    assert_eq!(provenance["signer"], format!("seat:{seat}"));
+    let mut signed = b"DSSEv1 13 bboxy/item/v1 128 ".to_vec();
+    signed.extend(format!("{front_hash}{body_hash}").as_bytes());
+    let signature = Signature::try_from(
+        base64::engine::general_purpose::STANDARD
+            .decode(provenance["sig"].as_str().unwrap())
+            .unwrap()
+            .as_slice(),
+    )
+    .unwrap();
+    LocalSeatKeys::new(key())
+        .leaf(seat, 1)
+        .unwrap()
+        .verifying_key()
+        .verify(&signed, &signature)
+        .unwrap();
+}
+
+#[test]
+fn mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts() {
+    for harness in ["fixture-Claude", "fixture-Codex"] {
+        let mut f = Fixture::new();
+        let mut metadata = f.task_metadata();
+        metadata["assignee"] = json!("none");
+        metadata["status"] = json!("open");
+        let original = f.task_file(metadata);
+        let delegate = data(f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_delegate",
+            json!({"task_path":f.task_path(),"seat_id":f.own.id,"role":"executor"}),
+        ));
+        assert_eq!(delegate["task_status"], "claimed");
+        let mut bridge = f.bridge(f.own.id);
+        assert!(rpc(&mut bridge,1,"initialize",json!({"protocolVersion":"2025-11-25","clientInfo":{"name":harness,"version":"1"},"capabilities":{}})).get("error").is_none());
+        let orient = rpc(
+            &mut bridge,
+            2,
+            "tools/call",
+            json!({"name":"orient","arguments":{}}),
+        );
+        assert!(
+            orient["result"]["structuredContent"]["tasks"]
+                .to_string()
+                .contains(&f.task.to_string())
+        );
+        let op = Ulid::new();
+        let args = json!({"op_id":op,"task_path":f.task_path(),"summary":format!("{harness}: fixture report"),"commit":"0123456789012345678901234567890123456789","verify_result":verification("true",0,json!([]))});
+        let first = rpc(
+            &mut bridge,
+            3,
+            "tools/call",
+            json!({"name":"task_report","arguments":args}),
+        );
+        assert_eq!(data(first["result"].clone())["task_status"], "reported");
+        let source = f.task_document();
+        assert!(source.body.starts_with(&original.body));
+        assert_eq!(source.metadata["custom"], original.metadata["custom"]);
+        assert_eq!(source.metadata["updated_by"], format!("seat:{}", f.own.id));
+        assert_eq!(source.metadata["verify_result"]["exit_code"], 0);
+        assert_item_signature(&source, f.own.id);
+        assert_eq!(
+            rpc(
+                &mut bridge,
+                4,
+                "tools/call",
+                json!({"name":"task_report","arguments":args})
+            )["result"],
+            first["result"]
+        );
+        let message: Ulid = first["result"]["structuredContent"]["message_ids"][0]
+            .as_str()
+            .unwrap()
+            .parse()
+            .unwrap();
+        let inbox = data(f.call(f.oracle.id, Ulid::new(), "message_list", json!({})));
+        let notice = inbox["page"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["envelope"]["id"] == message.to_string())
+            .unwrap();
+        assert_eq!(notice["envelope"]["kind"], "task");
+        assert_eq!(notice["envelope"]["body"]["event"], "report");
+        assert_eq!(notice["envelope"]["body"]["task_id"], f.task.to_string());
+        assert_eq!(notice["envelope"]["priority_class"], "worker");
+        let receipts = data(f.call(
+            f.own.id,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":message}),
+        ));
+        assert!(!receipts["page"]["items"].as_array().unwrap().is_empty());
+        data(f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "message_ack",
+            json!({"message":message}),
+        ));
+        let receipts = data(f.call(
+            f.own.id,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":message}),
+        ));
+        assert_eq!(
+            receipts["page"]["items"][0]["evidence"],
+            json!(bbt_mux::adapters::Evidence::ApplicationAcknowledged)
+        );
+        let audits = f.audits(f.own.id, 2);
+        assert_eq!(audits[0].event.payload["tool"], "orient");
+        assert_eq!(audits[1].event.payload["tool"], "task_report");
+        f.restart();
+        assert_eq!(
+            f.mutate(f.own.id, op, "task_report", {
+                let mut a = args.clone();
+                a.as_object_mut().unwrap().remove("op_id");
+                a
+            }),
+            first["result"]
+        );
+        assert_eq!(f.task_document().digest, source.digest);
+        let changed = f.mutate(
+            f.own.id,
+            op,
+            "task_report",
+            json!({"task_path":f.task_path(),"summary":"different"}),
+        );
+        assert_eq!(changed["structuredContent"]["error"]["code"], "conflict");
+    }
+}
+
+#[test]
+fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only() {
+    let f = Fixture::new();
+    let mut metadata = f.task_metadata();
+    metadata["acceptance"] = json!(["criterion 1",{"criterion":"specs/fixture.md:7","spec":"specs/fixture.md","line":7}]);
+    f.task_file(metadata);
+    let accept = || {
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_accept",
+            json!({"task_path":f.task_path()}),
+        )
+    };
+    assert_eq!(accept()["isError"], true);
+    data(f.report(verification("true", 9, json!([]))));
+    assert!(accept().to_string().contains("exit_code"));
+    data(f.report(verification("different command", 0, json!([]))));
+    assert!(accept().to_string().contains("does not match"));
+    data(f.report(verification(
+        "true",
+        0,
+        json!([{"criterion":"criterion 1","reference":"fixture.log:1 — exit 0"}]),
+    )));
+    assert!(accept().to_string().contains("specs/fixture.md:7"));
+    assert_eq!(f.task_document().metadata["status"], "reported");
+    data(f.report(verification(
+        "true",
+        0,
+        json!([
+            {"criterion":"criterion 1","reference":"fixture.rs:1"},
+            {"criterion":"specs/fixture.md:7","reference":"fixture.log:2"}
+        ]),
+    )));
+    assert_eq!(
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "task_accept",
+            json!({"task_path":f.task_path()})
+        )["isError"],
+        true
+    );
+    assert_eq!(data(accept())["task_status"], "accepted");
+    assert_eq!(f.task_document().metadata["status"], "accepted");
+    // Legacy tasks without a criteria list still need the exact command and zero.
+    f.task_file(f.task_metadata());
+    data(f.report(verification("true", 0, json!([]))));
+    assert_eq!(data(accept())["task_status"], "accepted");
+    f.task_file(f.task_metadata());
+    data(f.report(verification("true", 0, json!([]))));
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_reject",
+        json!({"task_path":f.task_path(),"reason":"fixture evidence incomplete"}),
+    ));
+    assert_eq!(
+        f.task_document().metadata["rejection"]["reason"],
+        "fixture evidence incomplete"
+    );
+    let mut args = json!({"task_path":f.task_path(),"summary":"missing result"});
+    let op = Ulid::new();
+    args["op_id"] = json!(op);
+    let mut bridge = f.bridge(f.own.id);
+    initialize(&mut bridge);
+    data(
+        rpc(
+            &mut bridge,
+            2,
+            "tools/call",
+            json!({"name":"task_report","arguments":args}),
+        )["result"]
+            .clone(),
+    );
+    assert!(f.task_document().metadata.get("verify_result").is_none());
+    assert!(accept().to_string().contains("recorded verify_result"));
+}
+
+#[test]
+fn mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let old_read = Ulid::new();
+    let old_list = Ulid::new();
+    let old_orient = Ulid::new();
+    let old_graph = Ulid::new();
+    data(f.call(f.own.id, old_list, "task_list", json!({})));
+    data(f.call(f.own.id, old_orient, "orient", json!({})));
+    data(f.call(f.own.id, old_graph, "graph_read", json!({"graph":"task"})));
+    data(f.call(f.own.id, old_read, "task_status", json!({"task_id":f.task})));
+    let changed = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_reassign",
+        json!({"task_path":f.task_path(),"seat_id":f.peer.id}),
+    ));
+    assert_eq!(changed["message_ids"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        f.task_document().metadata["assignee"],
+        format!("seat:{}", f.peer.id)
+    );
+    assert_eq!(
+        f.call(f.own.id, old_read, "task_status", json!({"task_id":f.task}))["isError"],
+        true
+    );
+    for (op, tool, args) in [
+        (old_list, "task_list", json!({})),
+        (old_orient, "orient", json!({})),
+        (old_graph, "graph_read", json!({"graph":"task"})),
+    ] {
+        assert_eq!(
+            f.call(f.own.id, op, tool, args)["isError"],
+            true,
+            "retained {tool} must not disclose a released task"
+        );
+    }
+    assert_eq!(
+        f.report(verification("true", 0, json!([])))["isError"],
+        true
+    );
+    let orient = data(f.call(f.own.id, Ulid::new(), "orient", json!({})));
+    assert_eq!(orient["tasks"]["items"].as_array().unwrap().len(), 0);
+    data(f.call(
+        f.peer.id,
+        Ulid::new(),
+        "task_status",
+        json!({"task_path":f.task_path()}),
+    ));
+    let tasks = data(f.call(f.peer.id, Ulid::new(), "task_list", json!({})));
+    assert_eq!(tasks["items"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        f.call(
+            f.peer.id,
+            Ulid::new(),
+            "task_list",
+            json!({"assignee":f.own.id})
+        )["isError"],
+        true
+    );
+    for id in [f.own.id, f.peer.id] {
+        let inbox = data(f.call(id, Ulid::new(), "message_list", json!({})));
+        assert!(
+            inbox["page"]["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|m| m["envelope"]["kind"] == "task")
+        );
+    }
+    for (assignee, delegator) in [
+        (
+            json!(format!("seat:{}", f.outside.id)),
+            json!(format!("seat:{}", f.oracle.id)),
+        ),
+        (json!("none"), Value::Null),
+    ] {
+        let mut meta = f.task_metadata();
+        meta["assignee"] = assignee;
+        meta["delegated_by"] = delegator;
+        f.task_file(meta);
+        assert_eq!(
+            f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "task_status",
+                json!({"task_path":f.task_path()})
+            )["isError"],
+            true
+        );
+    }
+    let mut meta = f.task_metadata();
+    meta["assignee"] = json!("none");
+    f.task_file(meta);
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_delegate",
+        json!({"task_path":f.task_path(),"seat_id":f.own.id}),
+    ));
+    let before = f.task_document().digest;
+    for (tool, args) in [
+        (
+            "task_report",
+            json!({"task_path":f.task_path(),"summary":"spoof","caller":f.oracle.id}),
+        ),
+        (
+            "task_report",
+            json!({"task_path":"../escape.md","summary":"escape"}),
+        ),
+        (
+            "task_delegate",
+            json!({"task_path":f.task_path(),"seat_id":f.outside.id}),
+        ),
+        (
+            "task_delegate",
+            json!({"task_path":f.task_path(),"seat_id":f.own.id,"role":"oracle"}),
+        ),
+    ] {
+        assert_eq!(
+            f.mutate(
+                if tool == "task_report" {
+                    f.own.id
+                } else {
+                    f.oracle.id
+                },
+                Ulid::new(),
+                tool,
+                args
+            )["isError"],
+            true
+        );
+    }
+    assert_eq!(f.task_document().digest, before);
+    assert!(
+        f.runtime
+            .block_on(f.client().control_call(
+                f.own.id,
+                2,
+                Call {
+                    op_id: Ulid::new(),
+                    tool: "task_report".into(),
+                    args: json!({"task_path":f.task_path(),"summary":"stale"})
+                }
+            ))
+            .is_err()
+    );
+}
+
+#[test]
+fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content() {
+    let mut f = Fixture::new();
+    let original = f.task_file(f.task_metadata());
+    let op = Ulid::new();
+    let args = json!({"kind":"pr","ref":"https://invalid.example/review/123?literal=':","digest":format!("sha256:{}","a".repeat(64)),"task":f.task_path()});
+    let first = f.mutate(f.own.id, op, "artifact_claim", args.clone());
+    let claimed = data(first.clone());
+    assert_eq!(claimed["artifact_id"], op.to_string());
+    let path = f
+        .config
+        .repository
+        .join(format!(".bboxy/artifacts/{op}.md"));
+    let source = std::fs::read_to_string(&path).unwrap();
+    let artifact = bbt_mux::index::Document::parse(&format!("artifacts/{op}.md"), &source);
+    assert_eq!(
+        artifact.metadata["produced_by"],
+        format!("seat:{}", f.own.id)
+    );
+    assert_eq!(artifact.metadata["for"], json!([format!("[[{}]]", f.task)]));
+    assert_item_signature(&artifact, f.own.id);
+    let task = f.task_document();
+    assert_eq!(task.body, original.body);
+    assert_eq!(task.metadata["custom"], original.metadata["custom"]);
+    assert_eq!(task.metadata["artifacts"], json!([format!("[[{op}]]")]));
+    assert_item_signature(&task, f.own.id);
+    assert_eq!(
+        f.mutate(f.own.id, op, "artifact_claim", args.clone()),
+        first
+    );
+    f.restart();
+    assert_eq!(
+        f.mutate(f.own.id, op, "artifact_claim", args.clone()),
+        first
+    );
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), source);
+    assert_eq!(f.task_document().digest, task.digest);
+    assert_eq!(
+        f.mutate(
+            f.own.id,
+            op,
+            "artifact_claim",
+            json!({"kind":"file","ref":"changed"})
+        )["structuredContent"]["error"]["code"],
+        "conflict"
+    );
+    assert_eq!(
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "artifact_claim",
+            json!({"kind":"file","ref":"fixture","produced_by":f.oracle.id})
+        )["isError"],
+        true
+    );
+    let index_log = EventLog::open(&f.config.run_dir.join("index")).unwrap();
+    assert!(index_log.verify_chain().unwrap() >= 4);
+}
+
+#[test]
+fn mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file() {
+    let mut f = Fixture::new();
+    f.task_file(f.task_metadata());
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":format!("seats/{}/inbox",f.oracle.id),"seat":f.own.id,"rights":[]}),
+    ));
+    let op = Ulid::new();
+    let args = json!({"task_path":f.task_path(),"summary":"written but wake denied","verify_result":verification("true",0,json!([]))});
+    let unknown = f.mutate(f.own.id, op, "task_report", args.clone());
+    assert_eq!(unknown["structuredContent"]["status"], "unknown");
+    assert!(unknown.to_string().contains("frontmatter written"));
+    let written = f.task_document();
+    assert_eq!(written.metadata["status"], "reported");
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":format!("seats/{}/inbox",f.oracle.id),"seat":f.own.id,"rights":["write"]}),
+    ));
+    f.restart();
+    assert_eq!(f.mutate(f.own.id, op, "task_report", args), unknown);
+    assert_eq!(f.task_document().digest, written.digest);
+    assert!(
+        data(f.call(f.oracle.id, Ulid::new(), "message_list", json!({})))["page"]["items"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+#[ignore = "acceptance driver supplies the prebuilt bbt-doc corpus test binary"]
+fn mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    data(f.report(verification("true", 0, json!([]))));
+    data(f.mutate(
+        f.own.id,
+        Ulid::new(),
+        "artifact_claim",
+        json!({"kind":"file","ref":"fixture: artifact","task":f.task_path()}),
+    ));
+    let binary =
+        std::env::var_os("BBOXY_DOC_CORPUS_TEST_BINARY").expect("prebuild the bbt-doc corpus test");
+    let output = std::process::Command::new(binary)
+        .args(["--exact", "real_bboxy_frontmatter_parses", "--nocapture"])
+        .env("BBOXY_DOC_CORPUS_ROOT", &f.config.repository)
+        .output()
+        .unwrap();
+    println!(
+        "writer corpus child exit {:?}\n{}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("0 parse errors"));
+}
+
+#[test]
+fn mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted() {
+    let mut f = Fixture::new();
+    let original = f.task_file(f.task_metadata());
+    let db = rusqlite::Connection::open(f.config.run_dir.join("index/events.sqlite")).unwrap();
+    db.execute_batch(&format!("CREATE TRIGGER fixture_task_write_failure BEFORE INSERT ON events WHEN NEW.subject='doc/{}/write_prepared' BEGIN SELECT RAISE(ABORT,'fixture task write failure'); END;",f.task)).unwrap();
+    let op = Ulid::new();
+    let args = json!({"kind":"file","ref":"fixture artifact","task":f.task_path()});
+    let unknown = f.mutate(f.own.id, op, "artifact_claim", args.clone());
+    assert_eq!(unknown["structuredContent"]["status"], "unknown");
+    let artifact_path = f
+        .config
+        .repository
+        .join(format!(".bboxy/artifacts/{op}.md"));
+    let written = std::fs::read_to_string(&artifact_path).unwrap();
+    assert_eq!(f.task_document().digest, original.digest);
+    db.execute_batch("DROP TRIGGER fixture_task_write_failure")
+        .unwrap();
+    drop(db);
+    f.restart();
+    assert_eq!(f.mutate(f.own.id, op, "artifact_claim", args), unknown);
+    assert_eq!(std::fs::read_to_string(artifact_path).unwrap(), written);
+    assert_eq!(f.task_document().digest, original.digest);
+}
+
+#[test]
+fn mcp_work_item_audit_admission_failure_executes_no_frontmatter_write() {
+    let f = Fixture::new();
+    let original = f.task_file(f.task_metadata());
+    // Open the actual per-seat journal through a read before installing its
+    // controlled fault. Its failed admission transaction must roll back.
+    data(f.call(
+        f.own.id,
+        Ulid::new(),
+        "task_status",
+        json!({"task_path":f.task_path()}),
+    ));
+    let db = rusqlite::Connection::open(
+        f.config
+            .run_dir
+            .join(format!("seat-{}/object.sqlite", f.own.id)),
+    )
+    .unwrap();
+    db.execute_batch("CREATE TRIGGER fixture_work_audit_failure BEFORE INSERT ON kv WHEN substr(NEW.key,1,14)='control/audit/' BEGIN SELECT RAISE(ABORT,'fixture audit failure'); END;").unwrap();
+    let result = f.runtime.block_on(f.client().control_call(
+        f.own.id,
+        1,
+        Call {
+            op_id: Ulid::new(),
+            tool: "task_report".into(),
+            args: json!({"task_path":f.task_path(),"summary":"must not write"}),
+        },
+    ));
+    assert!(result.is_err());
+    assert_eq!(f.task_document().digest, original.digest);
+    db.execute_batch("DROP TRIGGER fixture_work_audit_failure")
+        .unwrap();
+}
+
+#[test]
+fn mcp_work_item_signing_hold_keeps_the_original_file_and_terminals() {
+    struct Denied;
+    impl bbt_mux::identity::DeviceKeyStore for Denied {
+        fn custody(&self) -> bbt_mux::identity::Custody {
+            bbt_mux::identity::Custody::Memory
+        }
+        fn load(&self, _: Ulid) -> bbt_mux::identity::Result<Option<SigningKey>> {
+            Err(bbt_mux::identity::PendingReason::KeychainInteractionRequired)
+        }
+        fn create(&self, _: Ulid, _: &SigningKey) -> bbt_mux::identity::Result<()> {
+            Err(bbt_mux::identity::PendingReason::KeychainInteractionRequired)
+        }
+    }
+    let mut f = Fixture::new();
+    let original = f.task_file(f.task_metadata());
+    f.logic.take().unwrap().shutdown().unwrap();
+    f.logic = Some(
+        Logic::start_custodied_with_store(
+            f.supervisor.as_ref().unwrap().connect().unwrap(),
+            f.config.clone(),
+            std::sync::Arc::new(Denied),
+            f.runtime.handle(),
+        )
+        .unwrap(),
+    );
+    let held = f.report(verification("true", 0, json!([])));
+    assert_eq!(held["structuredContent"]["error"]["code"], "held");
+    assert!(held.to_string().contains("signing held"));
+    assert_eq!(f.task_document().digest, original.digest);
+    assert_eq!(f.runtime.block_on(f.client().gui_seats()).unwrap().len(), 4);
 }

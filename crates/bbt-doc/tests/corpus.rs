@@ -51,7 +51,11 @@ fn frontmatter_errors(root: &Path) -> io::Result<(usize, Vec<String>)> {
 
 #[test]
 fn real_bboxy_frontmatter_parses() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    // A subprocess fixture can check actual mux-authored files without writing
+    // into this repository. Ordinary corpus gates retain the real root.
+    let root = std::env::var_os("BBOXY_DOC_CORPUS_ROOT")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."));
     let (count, errors) = frontmatter_errors(&root).unwrap();
     assert!(count > 0, "the real .bboxy corpus must not be empty");
     assert!(errors.is_empty(), "{}", errors.join("\n"));
