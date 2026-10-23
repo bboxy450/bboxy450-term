@@ -1,0 +1,15 @@
+source_sha=53c7d5b91090651f03638d93fafc624b03b40fa4
+binary_sha256=f368c4ee61dd97dd7af761770a5473b139e797f67957926723da693a6c917a50
+$ BBOXY_TEST_CUSTODY=memory /Users/feral/mydev/bboxy450-term-exec5/target/w2-5b-smoke-53c7d5b/bboxy450-term --smoke
+Standalone: no concurrent build/test command owned by this session.
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+smoke bootstrap: early producer handled before GPU ready
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=15
+idle probe settling: producer_done=true queued=false redraw_pending=false frames=21 callbacks=21
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=11.819ms p99=13.329ms samples=21 warm_encode_p50=10.855ms warm_encode_p99=12.008ms
+
+exit=0 elapsed_seconds=13.779

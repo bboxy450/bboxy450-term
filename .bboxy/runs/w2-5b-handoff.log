@@ -1,0 +1,55 @@
+Kestrel Voidwing <EXECUTOR> — W2.5b handoff
+Frozen source: 53c7d5b91090651f03638d93fafc624b03b40fa4 (exec5, base a0da5b0).
+Oracle91717c41 explicitly froze this source; R11 is left for Oracle's merged-tree verification.
+The follow-up evidence commit changes .bboxy/runs/w2-5b-* only; its SHA is supplied in the DM.
+
+Provenance
+- Rook's a2318fc81c54fce31a787b33b6991a369af35d19 source delta is preserved as ad72ad851688c3cd18ff45f88e10f6c56017496b after signed rebase (original imported commit2e60267).
+- Stable source patch ID dc80d69a49864b274f2500c4407630b92552de86 matches Rook. His author/date and native resume planner are preserved; no parked W2.5a evidence imported.
+- 8b475f28c91cbefb1c1b0378ac36bd467f8f2764 adds fixture acceptance and initial evidence. 53c7d5b records the initial gate failure. All three signatures verify with machine fingerprint9B07E849480C68328CA20684844ECC0587DE7AB0.
+
+Files and mechanisms
+- crates/bbt-mux/src/adapters/launch.rs:57 — include_str role/class-expanded skill template.
+- launch.rs:68 — Claude per-launch MCP JSON, plugin manifest and skill tree, using existing private write helper (0600) and 0700 directories.
+- launch.rs:181 — --mcp-config and --plugin-dir added beside existing settings/hooks/prompt/session flags. A following option terminates the variadic MCP argument; no strict MCP flag.
+- launch.rs:223 — Codex MCP command/args/env_vars and role prompt plus skill in per-invocation developer_instructions. Existing hooks, notify and resume path retained.
+- crates/bbt-mux/src/adapters/skills/bboxy450/SKILL.md:1 — orient -> task_* -> message_* -> artifact_claim, catalogue discovery, DM scope, real exits/provenance, original op IDs, storage versus model receipt; missing tools are reported.
+- crates/bbt-mux/tests/seat_wiring.rs:55 — actual fixture clients launched through Logic::spawn_harness with supplied LaunchOptions.role_prompt and an explicit fixture key; validates inherited admission identity, private overlay modes, exit status, cleanup and untouched fixture configuration.
+- seat_wiring.rs:183 — next-generation planner uses a new overlay/socket/capability and retains the existing Claude/Codex native resume arguments.
+- crates/bbt-mux/tests/fixtures/seat_wiring.py:51 — JSON/TOML parsing independent of the Rust encoder; checks all lifecycle-hook paths and skill ordering, invokes the configured local mock MCP/hook/notify executable, records argv without the capability, and waits for owner release.
+- crates/bbt-mux/tests/adapters.rs:329 — existing no-bypass assertion checks actual CLI/config values, excluding arbitrary developer instruction prose (the skill says "bypassing"; that prose is not a switch).
+- .bboxy/runs/w2-5b-{focused,clippy,commands}.log — actual commands, argv and outcomes including failures.
+- w2-5b-{claude,codex}-{help,version}.log — installed client flag/version evidence (Claude2.1.304, Codex0.163.0). Help trailing whitespace normalized.
+- w2-5b-config-{before,after}.log — complete protected-path digest/mode manifests; w2-5b-config-post-gate.log confirms unchanged after final checks.
+- w2-5b-{ci,gate-state,provenance}.log — original failed gate, cleanup and source/signature provenance.
+- w2-5b-{invariants,ci-rebased,rebased-gate-state}.log — exact frozen-source clean checks and cleanup.
+- w2-5b-{smoke-artifact,smoke-alone-1,smoke-alone-2,standalone-state}.log — exact binary provenance, two standalone probes, recorded PIDs and clean worktree removal.
+
+Commands and actual outcomes
+- git fetch origin; git rebase --gpg-sign origin/main: exit0 at start and pre-gate; changed-base rebase onto a0da5b0 exit0. No rebase after explicit freeze91717c41.
+- git cherry-pick -S a2318fc: exit0; exact-path staging and signed commits: exit0. git verify-commit / patch-id: exit0, matching source delta.
+- codex --version / --help and claude --version / --help: exit0; help/version only, no model/service call.
+- scoped rustfmt --edition2024 --config skip_children=true: exit0. Final source diff check: exit0.
+- cargo test --locked -p bbt-mux --test seat_wiring --test adapters --test mcp -- --nocapture: first exit101 (new fixture incorrectly read Snapshot.exit); next exit101 (bypass substring assertion hit skill prose); corrected final exit0: adapters11/0, MCP6/0/1 ignored, wiring2/0. Failures retained in focused.log.
+- cargo clippy --workspace --all-targets --locked -- -D warnings: exit0; also passed inside both clean CI runs.
+- Fixture diff -r before/.claude home/.claude and before/.codex home/.codex: exit0, empty output. Real protected snapshot comparison: exit0, 1697 entries unchanged before/after and after final native checks.
+- First exact clean ci-local on f7a62e7: exit1/616.840s at smoke R2 (idle frames6/callbacks6/updates20). Build, strict Clippy, workspace tests and UI lint passed; invariants not reached. No failure erased or called a pass.
+- Standalone default invariants on clean53c7d5b: exit0/114.109s; 6 checks pass, 4 named slow skips.
+- Exact clean ci-local on53c7d5b, BBOXY_TEST_CUSTODY=memory and a unique private CARGO_TARGET_DIR: exit0/553.294s, "ci-local: all gates passed". Includes workspace strict Clippy/tests, UI lint, smoke and default invariants.
+- Native smoke alone twice, same retained exact-gate binary and restored clean53c7d5b source: exit0/13.962s and exit0/13.779s; both idle frames0/callbacks0/updates20. Oracle704b3bb4 requested these. The original R2 cause remains unproven.
+- Both private gate targets deleted immediately after their command sequences; both worktrees removed exit0. Standalone worktree initial/final git status empty, removed exit0. No peer directories/processes touched.
+
+Acceptance evidence
+1. Both fixture harness processes observe MCP/hooks/skill on FIRST Logic launch with correct quoted paths and supplied role prompt. focused.log records actual argv; fixture code independently parses JSON/TOML and checks the launched child admission environment without logging its capability.
+2. Protected real paths per spec5.3 are unchanged: 1697 entries, both canonical manifests SHA256 ef97d28142aabe97f48508669f04546d38399be3cbff6873155806808571ed34. Fixture diff-r trees also unchanged. No real harness was launched, so these fixtures create no real client session/transcript files.
+3. Strict Clippy0, clean exact CI0, two standalone smoke0; raw failure retained and Oracle disposition followed. Final CI log SHA25671804fc2798947e4c8b53656edba11f424a5ca50c84a9d77904ae1996fe36ca0.
+4. Real-harness first-turn orient/task_report is UNPROVEN, as briefed; installed-client interop test stays ignored. task_report itself waits for W2.5d.
+
+Gaps / deliberately unchanged
+- Settings role hydration stays with L8/7.9 per Oracle08a659f6; only the supplied LaunchOptions.role_prompt contract is proven.
+- Codex per-session skill path remains unverified; the documented inline developer_instructions fallback is used.
+- Native harness hook-trust approval is not exercised or bypassed. MCP tool expansion, task/message/artifact mutations, real GPG enrollment and real Keychain acceptance were not run.
+- No logic.rs, app, proto, renderer, Cargo manifest/lock or user config edits. Sable's C1c-2 Adapter trait cleanup and single resume planner are preserved. zsh/generic behavior is unchanged.
+- Default parity/scale slow gates remain skipped; no UI/render change requires --parity here.
+- Exploratory read-only shell batches retained combined statuses rather than every inner command status; critical build/test/gate/probe/config-diff outcomes are explicit. A missing guessed logger.rs read and the initial help-whitespace diagnostic are documented in commands.log.
+- exec5 retains pre-existing untracked older-track logs; they were not staged, deleted or claimed clean. All current-track source/records are signed; no push or merge performed.

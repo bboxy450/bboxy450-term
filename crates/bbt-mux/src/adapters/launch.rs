@@ -54,6 +54,47 @@ fn write(path: &Path, bytes: &[u8]) -> Result<()> {
 fn quote(text: &str) -> String {
     format!("'{}'", text.replace('\'', "'\\''"))
 }
+fn skill(context: &LaunchContext<'_>) -> Result<String> {
+    Ok(include_str!("skills/bboxy450/SKILL.md")
+        .replace(
+            "{{ROLE_NAME}}",
+            &serde_json::to_string(&context.seat.role.name)?,
+        )
+        .replace(
+            "{{ROLE_CLASS}}",
+            &serde_json::to_string(&context.seat.role.class)?,
+        ))
+}
+fn claude_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<PathBuf> {
+    write(
+        &overlay.join("mcp.json"),
+        &serde_json::to_vec(&serde_json::json!({"mcpServers":{"bboxy":{
+            "command":context.executable,"args":["mcp"]
+        }}}))?,
+    )?;
+    let plugin = overlay.join("bboxy450");
+    for dir in [
+        plugin.join(".claude-plugin"),
+        plugin.join("skills/bboxy450"),
+    ] {
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(dir)?;
+    }
+    write(
+        &plugin.join(".claude-plugin/plugin.json"),
+        &serde_json::to_vec(&serde_json::json!({
+            "name":"bboxy450","version":env!("CARGO_PKG_VERSION"),
+            "description":"Seat control and coordination through the local bboxy MCP server"
+        }))?,
+    )?;
+    write(
+        &plugin.join("skills/bboxy450/SKILL.md"),
+        skill(context)?.as_bytes(),
+    )?;
+    Ok(plugin)
+}
 pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<LaunchPlan> {
     bbt_rt::assert_not_ui_thread();
     record.validate()?;
@@ -137,11 +178,16 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                     &serde_json::json!({"crossSessionInbound":"accept","hooks":hooks}),
                 )?,
             )?;
+            let plugin = claude_wiring(&overlay, context)?;
             spec.args.extend([
                 "--append-system-prompt".into(),
                 context.role_prompt.into(),
                 "--settings".into(),
                 settings.to_string_lossy().into(),
+                "--mcp-config".into(),
+                overlay.join("mcp.json").to_string_lossy().into(),
+                "--plugin-dir".into(),
+                plugin.to_string_lossy().into(),
                 "--name".into(),
                 context.seat.name.clone(),
             ]);
@@ -178,9 +224,16 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 "-c".into(),
                 format!(
                     "developer_instructions={}",
-                    serde_json::to_string(context.role_prompt)?
+                    serde_json::to_string(&format!("{}\n\n{}", context.role_prompt, skill(context)?))?
                 ),
+                "-c".into(),
+                format!("mcp_servers.bboxy.command={}", serde_json::to_string(context.executable)?),
+                "-c".into(),
+                "mcp_servers.bboxy.args=[\"mcp\"]".into(),
+                "-c".into(),
+                "mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\"]".into(),
             ]);
+            notes.push("Codex skill text is in per-launch developer_instructions; a per-session skill path remains unverified");
             if record.hooks {
                 let notify = serde_json::json!([
                     context.executable.to_string_lossy(),

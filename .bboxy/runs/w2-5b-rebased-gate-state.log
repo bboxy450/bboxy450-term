@@ -1,0 +1,16 @@
+source_sha=53c7d5b91090651f03638d93fafc624b03b40fa4
+worktree=/private/tmp/ci-kestrel-w2-5b-53c7d5b-83wmdmpc
+target=/private/tmp/ci-kestrel-w2-5b-53c7d5b-83wmdmpc/target
+Preparing worktree (detached HEAD 53c7d5b)
+Updating files:  71% (1384/1931)Updating files:  72% (1391/1931)Updating files:  73% (1410/1931)Updating files:  74% (1429/1931)Updating files:  75% (1449/1931)Updating files:  76% (1468/1931)Updating files:  77% (1487/1931)Updating files:  78% (1507/1931)Updating files:  79% (1526/1931)Updating files:  80% (1545/1931)Updating files:  81% (1565/1931)Updating files:  82% (1584/1931)Updating files:  83% (1603/1931)Updating files:  84% (1623/1931)Updating files:  85% (1642/1931)Updating files:  86% (1661/1931)Updating files:  87% (1680/1931)Updating files:  88% (1700/1931)Updating files:  89% (1719/1931)Updating files:  90% (1738/1931)Updating files:  91% (1758/1931)Updating files:  92% (1777/1931)Updating files:  93% (1796/1931)Updating files:  94% (1816/1931)Updating files:  95% (1835/1931)Updating files:  96% (1854/1931)Updating files:  97% (1874/1931)Updating files:  98% (1893/1931)Updating files:  99% (1912/1931)Updating files: 100% (1931/1931)Updating files: 100% (1931/1931), done.
+HEAD is now at 53c7d5b test: record first seat wiring gate and R2 smoke failure
+worktree_add_exit=0
+initial_git_status=''
+w2-5b-invariants.log_pid=81187
+w2-5b-invariants.log_exit=0
+w2-5b-ci-rebased.log_pid=88457
+w2-5b-ci-rebased.log_exit=0
+private_target_deleted=true
+worktree_remove_exit=0
+w2-5b-invariants.log_sha256=2f69ef8e57e21f013e6a6a700515b51c72abd2c52bccb62193d76ec381ce2f28
+w2-5b-ci-rebased.log_sha256=71804fc2798947e4c8b53656edba11f424a5ca50c84a9d77904ae1996fe36ca0

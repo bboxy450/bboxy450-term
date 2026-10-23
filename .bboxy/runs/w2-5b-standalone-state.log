@@ -1,0 +1,15 @@
+source_sha=53c7d5b91090651f03638d93fafc624b03b40fa4
+artifact_sha256=f368c4ee61dd97dd7af761770a5473b139e797f67957926723da693a6c917a50
+worktree=/private/tmp/ci-kestrel-w2-5b-53c7d5b-83wmdmpc
+Preparing worktree (detached HEAD 53c7d5b)
+HEAD is now at 53c7d5b test: record first seat wiring gate and R2 smoke failure
+worktree_add_exit=0
+initial_status=''
+smoke1_pid=12956
+smoke1_exit=0
+smoke2_pid=13313
+smoke2_exit=0
+final_status=''
+worktree_remove_exit=0
+w2-5b-smoke-alone-1.log_sha256=6a12ed81bbc3d9191eb217f0a5eb3ad5b528cf54f674e6ebb332f973acace3bc
+w2-5b-smoke-alone-2.log_sha256=8de4e0c510f58326eef8577c6c5ce0080ec84c6e56a741b7b1f05ac32e94df69

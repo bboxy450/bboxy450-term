@@ -326,6 +326,8 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
             .spec
             .args
             .iter()
+            // Instruction prose can say "never bypass"; it is not a CLI switch.
+            .filter(|a| !a.starts_with("developer_instructions="))
             .any(|a| a.contains("bypass") || a.contains("trusted_hash"))
     );
     codex.cleanup().unwrap();

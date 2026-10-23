@@ -1,0 +1,34 @@
+W2.5b brief2edbf40f, Executor Kestrel, solewritingexec5. Plan beforecode; no source edits yet. Spec w2-5-mcp-and-seat-wiring section3/5/7 and cockpit W2.5b clause read. Parked rook-w2-5b sourcea2318fc/evidence2a04ea7 read only, patch onlylaunch.rs and skillasset.
+Initial date/status/spec/AGENTS/graph/gitshow/diff/rg reads0; fetch0; signedrebase0; graph stale roster noted, latestOracleassignment governs W2.5b. Latest channel5471 requires936de7a (W1.2f root fix, no socket waiver), willrebasebeforegate. ICQCLAIM/Oracleack/Rookhandoverrequest preview0/send0, receipts stored not receiptby model.
+Local Codex0.163.0 --version0/--help0 confirms per-invocation -c TOML overrides; Claude version/help0 confirms session-only --plugin-dir and --mcp-config. Toolmetadata query overly broad printed GitHub metadata (no GitHub actions executed); narrowed officialdocs search metadata returnednone. Read-only roleprompt grep ended1 (no matches in MCP); GUIlaunch still role_prompt:String::new at logic.rs2155; Role onlyname/class. This gap will be sent inplan.
+$ codex --version (help/version only, no service call)
+exit=0
+$ codex --help (help/version only, no service call)
+exit=0
+$ claude --version (help/version only, no service call)
+exit=0
+$ claude --help (help/version only, no service call)
+exit=0
+$ git rebase --gpg-sign origin/main
+Successfully rebased and updated refs/heads/exec5.
+
+exit=0
+Rebase includes936de7a0; plan3b403205 dry-run0/send0 (recipient-stored); source-only cherry-pick -S a2318fc0 ->2e60267. Rook handover b61dfa44 received5479; inbox cursor5479. Protected config digest snapshot0 (no contents logged); Python tomllib available0. Official MCP env_vars verified https://learn.chatgpt.com/docs/extend/mcp?surface=cli (STDIO env_vars names forward local environment); local pinned CLI help primary for -c/Claude flags.
+$ cargo test --locked -p bbt-mux --test seat_wiring --test adapters --test mcp -- --nocapture — exit 101; full output .bboxy/runs/w2-5b-focused.log
+$ cargo test --locked -p bbt-mux --test seat_wiring --test adapters --test mcp -- --nocapture — exit 101; full output .bboxy/runs/w2-5b-focused.log
+$ cargo test --locked -p bbt-mux --test seat_wiring --test adapters --test mcp -- --nocapture — exit 0; full output .bboxy/runs/w2-5b-focused.log
+$ cargo clippy --workspace --all-targets --locked -- -D warnings — exit 0; full output .bboxy/runs/w2-5b-clippy.log
+Protected real config post-fixture comparison: 1697 entries, 0 changes; runtime/session exclusions: ~/.claude/projects/, ~/.claude/sessions/, ~/.claude/history.jsonl, ~/.codex/sessions/, ~/.codex/archived_sessions/, ~/.codex/history.jsonl, ~/.codex/state_*.sqlite*, ~/.codex/log/; only exact protected paths in spec5.3 compared.
+Plan approved Oracle08a659f6; inbox cursor5484. Scope: supplied role_prompt end-to-end, Settings hydrationL8, real-first-turnUNPROVEN, task_reportW2.5d, Codexinline-skill fallback. Rookack24fd755c preview0/send0. Progress345f7acf preview0/send0.
+Scoped rustfmt launch.rs/seat_wiring.rs0; git diff --check0. Read-only rg found no nested AGENTS in mux; no extra local instructions. First focused failure101 was fixture Snapshot.exit (wrong API), second101 broad bypass prose falsepositive; fixed test scope, final19 passed/1 ignored exit0. No production source touched except declared Rook overlay delta.
+Pre-commit cached diff --check reported four whitespace-only lines from verbatim codex --help (combined shell exit0 because diffstat followed it; inner check status was not captured). Normalized help trailing whitespace; canonical config JSON one entry per line retains every digest, modes and names. Both canonical manifests have identical digest/content.
+git verify-commit 2e60267 and f7a62e7: each0, fingerprint9B07E849480C68328CA20684844ECC0587DE7AB0. git show + git patch-id --stable0 for a2318fc/2e60267: both dc80d69a49864b274f2500c4407630b92552de86. Scope diffstat/name-only0; code delta only launch, skill asset and fixture tests.
+git add exact12 paths0; git diff --cached --check0 after CLI whitespace normalization; signed commit f7a62e70; git fetch origin0; git rebase --gpg-sign origin/main0 (up to date); both signatures G. Clean detached exact source f7a62e7ca264f577a91e4651f3afca5956d7ab3e ci-local exit=1; target deleted and worktree remove exit=0; see gate-state/ci logs.
+First exact clean CI f7a62e7: exit1/616.84s, build0/clippy0/tests0/UIlint0; smoke R2 fails idle frames6/callbacks6/updates20. Remaining invariants not reached. No waiver assumed. Failure DM2231fd81 preview0/send0. Private target deleted and worktree removed0.
+Post-gate fetch0 discovered main a0da5b0 (C1c-2), no app main/renderer changes; read git log/diff0, R2 main.rs610-748 and invariant frontmatter0. Rebase required before any handoff.
+First gate evidence signed b7a3a6b0; git rebase --gpg-sign origin/main0 ->53c7d5b on a0da5b0. Fresh clean rebased gate: invariants exit=0, ci-local exit=0; target deleted/worktree remove=0; see rebased-gate-state.
+Oracle704b3bb4 requires two standalone smoke probes; Oracle91717c41 freezes53c7d5b (no R11 rebase, Oracle verifies merge). Native retained exact-gate binary f368c4ee...; restored same clean source worktree, standalone smoke1 exit=0, smoke2 exit=0, worktree remove=0. No app/render edits or desktop automation.
+Final protected config comparison0,1697 entries unchanged after both gates/probes; before/after canonical manifest sha256 ef97d28142aabe97f48508669f04546d38399be3cbff6873155806808571ed34. Read-only guess logger.rs absent reported rg diagnostic2 inside combined tail-call0; located actual log.rs with rg --files0/read0.
+ICQ failure2231fd81, rebase-noticef5686404, R2ack628ba000: all preview0/send0, recipient-stored only; Oracle704b3bb4 smoke ruling and91717c41 freeze observed. Last received inbox cursor5537 (never advanced from own send receipts).
+Current source53c7d5b, tests8b475f2, original Rook deltaad72ad8: each G with fingerprint9B07E849480C68328CA20684844ECC0587DE7AB0 after signed rebase; no rebase after frozen head per Oracle91717c41. No third CI attempt.
+Final record staging diff --check exit2: generated config-post-gate log had a surplus EOF blank line. Record commit239c861 exit0 had already followed that diagnostic; trimmed only the generated comparison summary EOF, restaged exact two record paths and signed-amended. Frozen source53c7d5b and raw CI/smoke log bytes unchanged.

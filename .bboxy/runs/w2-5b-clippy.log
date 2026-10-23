@@ -1,0 +1,15 @@
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Finished `dev` profile [optimized] target(s) in 22.55s
+
+exit=0 elapsed_seconds=22.699
