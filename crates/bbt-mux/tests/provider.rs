@@ -148,6 +148,7 @@ impl SupervisorConnection for RecordingLink {
             Action::ReadRing { attachment, .. } => (Some(attachment.seat), "history"),
             Action::PublishCheckpoint { attachment, .. } => (Some(attachment.seat), "checkpoint"),
             Action::Input { attachment, .. } => (Some(attachment.seat), "input"),
+            Action::Resize { attachment, .. } => (Some(attachment.seat), "resize"),
             Action::InputContext { attachment } => (Some(attachment.seat), "input-context"),
             Action::GuardedInput { attachment, .. } => (Some(attachment.seat), "guarded-input"),
             Action::ScheduleClose { attachment, .. } => (Some(attachment.seat), "close"),
@@ -201,8 +202,16 @@ fn logic_routes_real_seats_recovery_history_ownership_and_close_by_location() {
         .enable_all()
         .build()
         .unwrap();
-    let local = Supervisor::start(Config::default()).unwrap();
-    let remote = Supervisor::start(Config::default()).unwrap();
+    let local = Supervisor::start(Config {
+        journal_directory: Some(temp.path().join("local-journal")),
+        ..Config::default()
+    })
+    .unwrap();
+    let remote = Supervisor::start(Config {
+        journal_directory: Some(temp.path().join("remote-journal")),
+        ..Config::default()
+    })
+    .unwrap();
     let trace: Trace = Default::default();
     let host = HostId::Ssh {
         host: "build-box".into(),
@@ -254,12 +263,23 @@ fn logic_routes_real_seats_recovery_history_ownership_and_close_by_location() {
         spec.args = vec![
             "-f".into(),
             "-c".into(),
-            format!("printf '{name}\\n'; read -r ignored"),
+            format!("printf '{name}\\n'; while read -r line; do printf 'R:%s\\n' \"$line\"; done"),
         ];
         let id = spec.seat;
         let mut record = SeatRecord::new(id, swarm, name, "zsh");
         record.location = location.clone();
         runtime.block_on(logic.client.spawn(record, spec)).unwrap();
+        runtime
+            .block_on(logic.client.gui_resize(id, 94, 27))
+            .unwrap();
+        let receipt = runtime
+            .block_on(
+                logic
+                    .client
+                    .gui_input(id, Ulid::new(), b"host-routed\n".to_vec()),
+            )
+            .unwrap();
+        assert_eq!(receipt.state, bbt_mux::InputState::PtyWritten);
         let until = std::time::Instant::now() + Duration::from_secs(5);
         let snapshot = loop {
             let snapshot = runtime.block_on(logic.client.snapshot(id, 1)).unwrap();
@@ -270,7 +290,7 @@ fn logic_routes_real_seats_recovery_history_ownership_and_close_by_location() {
                 .flatten()
                 .map(|cell| cell.c)
                 .collect();
-            if text.contains(name) {
+            if text.contains(name) && text.contains("R:host-routed") {
                 break snapshot;
             }
             assert!(
@@ -338,6 +358,8 @@ fn logic_routes_real_seats_recovery_history_ownership_and_close_by_location() {
         "recovery",
         "history",
         "checkpoint",
+        "input",
+        "resize",
         "close",
         "undo",
     ] {
@@ -354,6 +376,6 @@ fn logic_routes_real_seats_recovery_history_ownership_and_close_by_location() {
             .any(|(link, _, kind)| link == &host && *kind == "owned")
     );
     println!(
-        "D1a: real local and SSH-labelled PTYs route spawn/capture/history/ownership/close through distinct links; records retain location"
+        "D1a: real local and SSH-labelled PTYs route spawn/input/resize/capture/history/ownership/close through distinct links and private host journals; records retain location"
     );
 }
