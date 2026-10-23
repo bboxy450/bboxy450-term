@@ -5,7 +5,7 @@ title: every key a pane receives is encoded once, by the kitty keyboard protocol
 status: active
 slow: true
 gate: pending-k1
-check: cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a key that reaches the PTY by a second path, or encoded against a stale mode, is a terminal that lies to the program inside it
 links:
   - { to: "[[terminal-core]]", rel: constrains }
