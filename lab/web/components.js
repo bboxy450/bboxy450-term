@@ -194,7 +194,8 @@
     return svgMark(RING + fill, 'f' + Math.round(frac * 100));
   }
   const crossMark = () => svgMark('<path d="M-4.2,-4.2L4.2,4.2M4.2,-4.2L-4.2,4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>', 'cross');
-  const checkMark = () => svgMark('<path d="M-4.8,0.4L-1.5,3.7L4.8,-3.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', 'check');
+  // check points centred on the origin: ink y spans ±(3.55 + stroke/2)
+  const checkMark = () => svgMark('<path d="M-4.8,0.25L-1.5,3.55L4.8,-3.55" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', 'check');
   const slashMark = () => svgMark(RING + '<path d="M-4.24,4.24L4.24,-4.24" stroke="currentColor" stroke-width="1.5"/>', 'slash');
   const TASK_MARK = { open: () => circleMark(0), claimed: () => circleMark(.25), running: () => circleMark(.5), reported: () => circleMark(.75), accepted: () => circleMark(1), done: checkMark, rejected: crossMark, blocked: slashMark };
   const taskMark = st => (TASK_MARK[st] || TASK_MARK.open)();
