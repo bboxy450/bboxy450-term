@@ -386,7 +386,10 @@ briefs Executors from the specs, never from this note.
     archived crate (a retired identity's archive is not a supply chain);
     adopting everywhere at once (logic's Worker loop is mid-churn and sync);
     renaming the grammar (the KTR codes and agent guide are the value).
-    Names rejected: litter, ears, pounce, purr.
+    Names rejected: litter, ears, pounce, purr. Timing (operator, same
+    day): "document this design into our docs first; maybe useful now or
+    later": the design is in [[yarn]] §0; Y1 runs when a loop needs it or
+    an Executor is free, not ahead of the cockpit tracks.
 
 ## Specs to touch (Architect, in this order)
 
