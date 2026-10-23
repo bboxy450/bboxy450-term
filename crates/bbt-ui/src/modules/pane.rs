@@ -23,6 +23,7 @@ pub enum Span {
         parts: Vec<(String, String, bool)>,
     },
 }
+
 #[derive(Debug, Clone)]
 pub struct Resumed {
     pub generation: u64,
@@ -256,11 +257,7 @@ fn span(value: &Span) -> c::Element {
 }
 impl Pane {
     pub fn height(&self) -> f32 {
-        let border = if self.strip.seat.activity == Activity::Active {
-            TOKENS.strip.border_active
-        } else {
-            TOKENS.strip.border_idle
-        } as f32;
+        let border = TOKENS.strip.border_idle as f32;
         let notices = usize::from(self.gap_from.is_some()) + usize::from(self.resumed.is_some());
         let content = TOKENS.strip.height as f32
             + 2. * STYLE.spacing.s4 as f32
@@ -525,5 +522,47 @@ impl Pane {
                 overlays,
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::modules::seat_row::SeatRow;
+    use bbt_ui_model::WaitKind;
+
+    #[test]
+    fn constant_pane_border_keeps_activity_from_changing_height() {
+        let mut pane = Pane {
+            strip: Strip::new(SeatRow::new("pane", "Vesper Greywind", "claude")),
+            lines: vec![
+                vec![Span::Cursor {
+                    key: "cursor".into()
+                }];
+                5
+            ],
+            gap_from: None,
+            resumed: None,
+            min_height: 110.,
+            unfocused: false,
+            reconnecting: false,
+            reconnected: false,
+            glow_seed: None,
+            opacity: 1.,
+            lane: TOKENS.glow.lane as f32,
+        };
+        for activity in [
+            Activity::Idle,
+            Activity::Active,
+            Activity::Waiting(WaitKind::Permission),
+            Activity::Waiting(WaitKind::Question),
+            Activity::Waiting(WaitKind::Auth),
+            Activity::Errored,
+        ] {
+            pane.strip.seat.activity = activity;
+            // The lab's five 18px rows, 16px padding and 22px strip occupy
+            // a 130px border box at every activity (two constant 1px edges).
+            assert_eq!(pane.height(), 130., "activity {activity:?}");
+        }
     }
 }

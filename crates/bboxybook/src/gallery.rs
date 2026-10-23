@@ -370,6 +370,7 @@ pub fn parity_cases() -> Vec<Case> {
     out.extend(crate::streams::cases());
     out.extend(crate::graphs::cases());
     out.extend(crate::settings::cases());
+    out.extend(crate::perf::cases());
     out.extend(crate::documents::cases());
     out.extend(crate::paths::cases());
     out
@@ -466,7 +467,7 @@ mod tests {
         assert_eq!(layers, BTreeSet::from([
             "materials", "style", "atoms", "components", "floating-surfaces",
             "seat-row", "tabs", "swarms", "panes", "titlebars", "launchers",
-            "streams", "graphs", "settings", "documents", "paths",
+            "streams", "graphs", "settings", "perf", "documents", "paths",
         ]));
         assert!(paths.contains("components/button-cozy-dark.png"));
         assert!(paths.contains("components/edge-fade-cozy-dark.png"));
