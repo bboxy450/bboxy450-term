@@ -8,17 +8,20 @@ mod live;
 mod log;
 mod scene;
 
+use bbt_proto::{SeatId, View};
 use bbt_rt::{HitchMeter, Latest, Phases, UiInbox, UiMsg};
+use bbt_ui_model::layout::Rect;
 use display_link::{Clock, DisplayLink, Mode};
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use winit::platform::macos::MonitorHandleExtMacOS;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{ElementState, WindowEvent},
+    event::{ElementState, MouseButton, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy},
-    keyboard::{KeyCode, ModifiersState, PhysicalKey},
+    keyboard::{Key, KeyCode, ModifiersState, NamedKey, PhysicalKey},
     window::{Window, WindowId},
 };
 
@@ -31,6 +34,8 @@ pub enum UiEvent {
     EndAnimation,
     Quit,
     BackendStopped(Result<(), String>),
+    BackendLost(String),
+    BackendReady,
     SmokeDeadline,
 }
 struct Wake(EventLoopProxy<UiEvent>);
@@ -65,7 +70,13 @@ struct App {
     updates: Arc<Latest<usize>>,
     live_updates: Arc<Latest<Arc<bboxy450_term::model::Model>>>,
     live_state: Option<Arc<bboxy450_term::model::Model>>,
-    live_commands: Option<tokio::sync::mpsc::Sender<live::UiMsg>>,
+    live_commands: Option<live::CommandSender>,
+    pending_commands: VecDeque<live::UiMsg>,
+    watched: Vec<(SeatId, View)>,
+    pane_sizes: BTreeMap<SeatId, (u64, u16, u16)>,
+    pane_bounds: Vec<(SeatId, Rect)>,
+    pointer: [f32; 2],
+    backend_lost: bool,
     render_context: Option<tokio::sync::oneshot::Sender<live::RenderContext>>,
     closing: bool,
     smoke_bootstrap: Option<tokio::sync::oneshot::Sender<()>>,
@@ -93,17 +104,102 @@ struct App {
     idle_start: Option<(Instant, u64, u64)>,
     error: Option<String>,
     capture: Option<std::path::PathBuf>,
+    capture_pending: bool,
+    pending_resize: Option<LogicalSize<f64>>,
     animate: bool,
     cadence_test: bool,
     animation_start: Option<(Instant, u64)>,
     frozen_ms: f32,
 }
 impl App {
+    fn queue(&mut self, message: live::UiMsg) {
+        if self.closing || self.live_commands.is_none() {
+            return;
+        }
+        queue_pending(&mut self.pending_commands, message);
+        self.request_redraw();
+    }
+    fn flush_commands(&mut self) {
+        if let Some(sender) = &self.live_commands {
+            if flush_pending(sender, &mut self.pending_commands, self.backend_lost).is_err() {
+                self.backend_lost = true;
+                self.scene.backend_lost();
+            } else if !self.backend_lost && !self.pending_commands.is_empty() {
+                self.request_redraw();
+            }
+        }
+    }
+    fn watch_panes(&mut self, bounds: &[(SeatId, Rect)], scale: f32) {
+        if self.live_commands.is_none() {
+            return;
+        }
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        let mut watched: Vec<_> = bounds
+            .iter()
+            .filter_map(|(id, _)| {
+                let generation = model.ui.seats.get(id)?.process_generation;
+                let view = self
+                    .watched
+                    .iter()
+                    .find(|(old_id, view)| old_id == id && view.generation == generation)
+                    .map(|(_, view)| *view)
+                    .unwrap_or(View {
+                        seat: bbt_mux::Ulid::from(id.0.0),
+                        generation,
+                        view_generation: bbt_mux::Ulid::new(),
+                    });
+                Some((*id, view))
+            })
+            .collect();
+        // IO uses the first visible pane as focus; membership is still a set.
+        watched.sort_by_key(|(id, _)| Some(*id) != self.scene.focused());
+        let mut sizes = Vec::new();
+        for (id, rect) in bounds {
+            let Some(metadata) = model.ui.seats.get(id) else {
+                continue;
+            };
+            let cell = model.frames.get(id).zip(model.screens.get(id)).map_or(
+                [8., 15.],
+                |(frame, screen)| {
+                    [
+                        frame.width as f32 / screen.cols.max(1) as f32 / scale,
+                        frame.height as f32 / screen.rows.max(1) as f32 / scale,
+                    ]
+                },
+            );
+            let size = (
+                metadata.process_generation,
+                (rect.w / cell[0]).floor().clamp(1., 512.) as u16,
+                (rect.h / cell[1]).floor().clamp(1., 256.) as u16,
+            );
+            if self.pane_sizes.get(id) != Some(&size) {
+                sizes.push((*id, size));
+            }
+        }
+        if watched != self.watched {
+            self.watched = watched.clone();
+            self.queue(live::UiMsg::Watched(watched));
+        }
+        self.pane_sizes
+            .retain(|id, _| bounds.iter().any(|(visible, _)| visible == id));
+        for (seat, (generation, cols, rows)) in sizes {
+            self.pane_sizes.insert(seat, (generation, cols, rows));
+            self.queue(live::UiMsg::Resize {
+                seat,
+                generation,
+                cols,
+                rows,
+            });
+        }
+    }
     fn request_close(&mut self, event_loop: &ActiveEventLoop) {
         if self.closing {
             return;
         }
         self.closing = true;
+        self.pending_commands.clear();
         self.logger.write("app close requested; stopping IO owner");
         if self.live_commands.take().is_none() {
             event_loop.exit();
@@ -283,6 +379,7 @@ impl App {
             self.scene.set_model(&state);
             self.live_state = Some(state);
         }
+        self.flush_commands();
     }
     fn demo(&mut self) {
         if !self.fake || self.demo_started {
@@ -327,6 +424,37 @@ impl App {
         if size.width == 0 || size.height == 0 {
             return Ok(());
         }
+        // Reconfigure at the frame boundary. AppKit may enqueue Resized from
+        // inside another native callback; surface configuration can itself
+        // dispatch AppKit events and must not nest that resize callback.
+        if self
+            .gpu
+            .as_ref()
+            .is_some_and(|gpu| gpu.config.width != size.width || gpu.config.height != size.height)
+        {
+            // Detach the display link and its old-size drawables before
+            // reconfiguring the layer, then bind it to the new size.
+            self.pacer.take();
+            self.gpu.as_mut().unwrap().resize(size.width, size.height);
+            let gpu = self.gpu.as_ref().unwrap();
+            let display = self
+                .window
+                .as_ref()
+                .unwrap()
+                .current_monitor()
+                .map_or(0, |monitor| monitor.native_id());
+            let pacer = DisplayLink::new(
+                &gpu.surface,
+                display,
+                self.maximum_hz,
+                self.inbox.dirty.source(4),
+                self.pacing,
+            )?;
+            pacer.set_active(self.animate && !self.occluded)?;
+            self.pacer = Some(pacer);
+            self.clock.pause();
+            self.request_redraw();
+        }
         let mut phases = Phases::default();
         let start = Instant::now();
         self.drain();
@@ -348,6 +476,9 @@ impl App {
         let layouts = self
             .scene
             .layout(logical, self.animation_start.is_some() || self.animate)?;
+        let bounds = self.scene.pane_bounds(&layouts);
+        self.watch_panes(&bounds, scale);
+        self.pane_bounds = bounds;
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
             let sample = self.meter.samples().back();
@@ -361,7 +492,12 @@ impl App {
             )
         });
         let start = Instant::now();
-        let ops = self.scene.paint(&layouts, logical, overlay.as_deref());
+        let live = self.live_state.is_some();
+        let ops = self.scene.paint(
+            &layouts,
+            logical,
+            if live { None } else { overlay.as_deref() },
+        );
         phases.draw = start.elapsed();
         if self.animate {
             if fifo {
@@ -381,6 +517,11 @@ impl App {
             self.frozen_ms,
             tick.and_then(|tick| tick.drawable),
             self.meter.total_frames() + 1,
+            self.live_state.as_ref().map(|model| gpu::Panes {
+                model,
+                bounds: &self.pane_bounds,
+                overlay: scene::Scene::overlay(logical, overlay.as_deref()),
+            }),
         )? {
             phases.encode = encode;
             phases.present_wait = wait;
@@ -419,12 +560,14 @@ impl App {
                 }
             }
             if (!self.fake || self.last_update == 20)
-                && let Some(path) = self.capture.take()
+                && self.capture_pending
+                && let Some(path) = &self.capture
             {
+                self.capture_pending = false;
                 self.gpu
                     .as_ref()
                     .unwrap()
-                    .capture(path, self.logger.clone());
+                    .capture(path.clone(), self.logger.clone());
             }
             if self.fake && self.last_update == 20 && !self.idle_scheduled {
                 self.idle_scheduled = true;
@@ -432,6 +575,7 @@ impl App {
             }
         }
         if (self.animate && fifo)
+            || (!self.backend_lost && !self.pending_commands.is_empty())
             || !self.inbox.messages.is_empty()
             || !self.inbox.output.is_empty()
         {
@@ -441,6 +585,13 @@ impl App {
     }
 }
 impl ApplicationHandler<UiEvent> for App {
+    fn about_to_wait(&mut self, _: &ActiveEventLoop) {
+        if let Some(size) = self.pending_resize.take()
+            && let Some(window) = &self.window
+        {
+            let _ = window.request_inner_size(size);
+        }
+    }
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         event_loop.set_control_flow(ControlFlow::Wait);
         if self.window.is_none()
@@ -592,6 +743,19 @@ impl ApplicationHandler<UiEvent> for App {
                 Ok(()) => event_loop.exit(),
                 Err(error) => self.fail(error, event_loop),
             },
+            UiEvent::BackendLost(reason) => {
+                self.logger
+                    .write(format!("backend lost; retaining last pane frame: {reason}"));
+                self.backend_lost = true;
+                self.scene.backend_lost();
+                self.request_redraw();
+            }
+            UiEvent::BackendReady => {
+                self.backend_lost = false;
+                self.scene.backend_ready();
+                self.flush_commands();
+                self.request_redraw();
+            }
         }
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
@@ -600,11 +764,14 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_close(event_loop);
             }
             WindowEvent::Resized(size) => {
+                if self.capture.is_some() {
+                    self.logger.write(format!(
+                        "verification window resize: {}x{} physical pixels",
+                        size.width, size.height
+                    ));
+                }
                 if let Some(pacer) = &self.pacer {
                     pacer.clear();
-                }
-                if let Some(gpu) = &mut self.gpu {
-                    gpu.resize(size.width, size.height);
                 }
                 self.request_redraw();
             }
@@ -623,7 +790,60 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
+            WindowEvent::CursorMoved { position, .. } => {
+                let scale = self
+                    .window
+                    .as_ref()
+                    .map_or(1., |window| window.scale_factor()) as f32;
+                self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+            }
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Left,
+                ..
+            } => {
+                if let Some((id, _)) = self.pane_bounds.iter().find(|(_, rect)| {
+                    self.pointer[0] >= rect.x
+                        && self.pointer[0] < rect.right()
+                        && self.pointer[1] >= rect.y
+                        && self.pointer[1] < rect.bottom()
+                }) {
+                    self.scene.focus(*id);
+                    self.request_redraw();
+                }
+            }
             WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
+                // Verification-only resize exercises the real OS Resized event
+                // on borderless windows whose native edge is hard to grab.
+                if self.capture.is_some()
+                    && self.modifiers.super_key()
+                    && self.modifiers.shift_key()
+                    && event.physical_key == PhysicalKey::Code(KeyCode::KeyR)
+                    && !event.repeat
+                {
+                    if let Some(window) = &self.window {
+                        let width = window.inner_size().width as f64 / window.scale_factor();
+                        let size = if width > 1200. {
+                            LogicalSize::new(1200., 760.)
+                        } else {
+                            LogicalSize::new(1600., 960.)
+                        };
+                        self.pending_resize = Some(size);
+                    }
+                    return;
+                }
+                // The existing --capture path can be refreshed after an
+                // interactive verification scene (no readback on the UI).
+                if self.capture.is_some()
+                    && self.modifiers.super_key()
+                    && self.modifiers.shift_key()
+                    && event.physical_key == PhysicalKey::Code(KeyCode::KeyS)
+                    && !event.repeat
+                {
+                    self.capture_pending = true;
+                    self.request_redraw();
+                    return;
+                }
                 if event.physical_key == PhysicalKey::Code(KeyCode::KeyQ)
                     && self.modifiers.super_key()
                     && !event.repeat
@@ -636,11 +856,9 @@ impl ApplicationHandler<UiEvent> for App {
                     && !self.modifiers.alt_key()
                     && !self.modifiers.shift_key()
                     && !event.repeat
-                    && let Some(commands) = &self.live_commands
-                    && let Err(error) = commands.try_send(live::UiMsg::SpawnZsh)
                 {
-                    self.logger
-                        .write(format!("new seat request rejected: {error}"));
+                    self.queue(live::UiMsg::SpawnZsh);
+                    return;
                 }
                 if event.physical_key == PhysicalKey::Code(KeyCode::KeyF)
                     && self.modifiers.super_key()
@@ -649,6 +867,23 @@ impl ApplicationHandler<UiEvent> for App {
                     self.overlay = !self.overlay;
                     self.logger.write(format!("hitch overlay={}", self.overlay));
                     self.request_redraw();
+                    return;
+                }
+                if let Some(seat) = self.scene.focused()
+                    && let Some(generation) = self
+                        .live_state
+                        .as_ref()
+                        .and_then(|model| model.ui.seats.get(&seat))
+                        .map(|seat| seat.process_generation)
+                    && let Some(bytes) =
+                        terminal_input(&event.logical_key, event.text.as_deref(), self.modifiers)
+                {
+                    self.queue(live::UiMsg::Input {
+                        seat,
+                        generation,
+                        id: bbt_mux::Ulid::new(),
+                        bytes,
+                    });
                 }
             }
             WindowEvent::RedrawRequested => {
@@ -660,8 +895,105 @@ impl ApplicationHandler<UiEvent> for App {
         }
     }
 }
+fn queue_pending(pending: &mut VecDeque<live::UiMsg>, message: live::UiMsg) {
+    // Native text input arrives as key events. Combine an undelivered run in
+    // this frame, keeping its first id stable across full-queue retries.
+    if let live::UiMsg::Input {
+        seat,
+        generation,
+        bytes,
+        ..
+    } = &message
+        && let Some(live::UiMsg::Input {
+            seat: old_seat,
+            generation: old_generation,
+            bytes: old_bytes,
+            ..
+        }) = pending.back_mut()
+        && seat == old_seat
+        && generation == old_generation
+        && old_bytes.len() + bytes.len() <= 16 * 1024
+    {
+        old_bytes.extend_from_slice(bytes);
+        return;
+    }
+    pending.push_back(message);
+}
+fn flush_pending(
+    sender: &tokio::sync::mpsc::Sender<live::UiMsg>,
+    pending: &mut VecDeque<live::UiMsg>,
+    paused: bool,
+) -> Result<(), ()> {
+    if paused {
+        return Ok(());
+    }
+    while let Some(message) = pending.pop_front() {
+        match sender.try_send(message) {
+            Ok(()) => {}
+            Err(tokio::sync::mpsc::error::TrySendError::Full(message)) => {
+                pending.push_front(message);
+                return Ok(());
+            }
+            Err(tokio::sync::mpsc::error::TrySendError::Closed(message)) => {
+                pending.push_front(message);
+                return Err(());
+            }
+        }
+    }
+    Ok(())
+}
+fn terminal_input(key: &Key, text: Option<&str>, modifiers: ModifiersState) -> Option<Vec<u8>> {
+    if modifiers.super_key() {
+        return None;
+    }
+    let value: &[u8] = match key {
+        Key::Named(NamedKey::Enter) => b"\r",
+        Key::Named(NamedKey::Space) => b" ",
+        Key::Named(NamedKey::Backspace) => b"\x7f",
+        Key::Named(NamedKey::Tab) if modifiers.shift_key() => b"\x1b[Z",
+        Key::Named(NamedKey::Tab) => b"\t",
+        Key::Named(NamedKey::Escape) => b"\x1b",
+        Key::Named(NamedKey::ArrowUp) => b"\x1b[A",
+        Key::Named(NamedKey::ArrowDown) => b"\x1b[B",
+        Key::Named(NamedKey::ArrowRight) => b"\x1b[C",
+        Key::Named(NamedKey::ArrowLeft) => b"\x1b[D",
+        Key::Named(NamedKey::Home) => b"\x1b[H",
+        Key::Named(NamedKey::End) => b"\x1b[F",
+        Key::Named(NamedKey::Delete) => b"\x1b[3~",
+        Key::Named(NamedKey::PageUp) => b"\x1b[5~",
+        Key::Named(NamedKey::PageDown) => b"\x1b[6~",
+        Key::Character(value) if modifiers.control_key() => {
+            let ascii = value.as_bytes();
+            if ascii.len() == 1 && matches!(ascii[0], b'@'..=b'_' | b'a'..=b'z' | b' ') {
+                return Some(vec![ascii[0] & 0x1f]);
+            }
+            return None;
+        }
+        Key::Character(value) => text.unwrap_or(value).as_bytes(),
+        _ => return None,
+    };
+    let mut bytes = Vec::with_capacity(value.len() + usize::from(modifiers.alt_key()));
+    if modifiers.alt_key() {
+        bytes.push(0x1b);
+    }
+    bytes.extend_from_slice(value);
+    Some(bytes)
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    if hook_args.iter().any(|arg| arg == "--capture") {
+        std::panic::set_hook(Box::new(|info| {
+            eprintln!(
+                "verification panic payload: {:?}; location: {:?}",
+                info.payload()
+                    .downcast_ref::<&str>()
+                    .copied()
+                    .or_else(|| info.payload().downcast_ref::<String>().map(String::as_str)),
+                info.location()
+            );
+            eprintln!("{}", std::backtrace::Backtrace::force_capture());
+        }));
+    }
     if let Some(result) = bboxy450_term::cockpit::private_entry(&hook_args) {
         return result.map_err(|error| error as Box<dyn std::error::Error>);
     }
@@ -736,6 +1068,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         live_updates,
         live_state: None,
         live_commands,
+        pending_commands: VecDeque::new(),
+        watched: vec![],
+        pane_sizes: BTreeMap::new(),
+        pane_bounds: vec![],
+        pointer: [0.; 2],
+        backend_lost: false,
         render_context: (!fake && !animate).then_some(render_context),
         closing: false,
         smoke_bootstrap: None,
@@ -767,6 +1105,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         idle_start: None,
         error: None,
         capture,
+        capture_pending: true,
+        pending_resize: None,
         animate,
         cadence_test,
         animation_start: None,
@@ -800,5 +1140,106 @@ mod smoke_tests {
         assert!(!quiet.ready(true, true, (23, 23)));
         assert!(!quiet.ready(true, false, (23, 23)));
         assert!(quiet.ready(true, false, (23, 23)));
+    }
+}
+
+#[cfg(test)]
+mod input_tests {
+    use super::*;
+    #[test]
+    fn text_bursts_keep_byte_order_first_id_and_generation_boundaries() {
+        let seat = SeatId::from_u128(42);
+        let first = bbt_mux::Ulid::new();
+        let mut pending = VecDeque::new();
+        for (generation, id, bytes) in [
+            (7, first, b"echo ".to_vec()),
+            (7, bbt_mux::Ulid::new(), b"hi\r".to_vec()),
+            (8, bbt_mux::Ulid::new(), b"new".to_vec()),
+        ] {
+            queue_pending(
+                &mut pending,
+                live::UiMsg::Input {
+                    seat,
+                    generation,
+                    id,
+                    bytes,
+                },
+            );
+        }
+        assert_eq!(pending.len(), 2);
+        assert!(
+            matches!(pending.pop_front().unwrap(), live::UiMsg::Input { generation: 7, id, bytes, .. } if id == first && bytes == b"echo hi\r")
+        );
+        assert!(
+            matches!(pending.pop_front().unwrap(), live::UiMsg::Input { generation: 8, bytes, .. } if bytes == b"new")
+        );
+    }
+    #[test]
+    fn input_queued_while_backend_is_lost_survives_resume_and_a_full_queue() {
+        let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
+        let seat = SeatId::from_u128(42);
+        let ids = [bbt_mux::Ulid::new(), bbt_mux::Ulid::new()];
+        let mut pending = VecDeque::new();
+        for (id, bytes) in ids.into_iter().zip([b"first".to_vec(), b"second".to_vec()]) {
+            pending.push_back(live::UiMsg::Input {
+                seat,
+                generation: 7,
+                id,
+                bytes,
+            });
+        }
+        flush_pending(&sender, &mut pending, true).unwrap();
+        assert_eq!(pending.len(), 2);
+        assert!(receiver.try_recv().is_err());
+        flush_pending(&sender, &mut pending, false).unwrap();
+        assert_eq!(pending.len(), 1);
+        assert!(
+            matches!(receiver.try_recv().unwrap(), live::UiMsg::Input { generation: 7, id, bytes, .. } if id == ids[0] && bytes == b"first")
+        );
+        flush_pending(&sender, &mut pending, false).unwrap();
+        assert!(pending.is_empty());
+        assert!(
+            matches!(receiver.try_recv().unwrap(), live::UiMsg::Input { generation: 7, id, bytes, .. } if id == ids[1] && bytes == b"second")
+        );
+    }
+    #[test]
+    fn operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell() {
+        let plain = ModifiersState::empty();
+        assert_eq!(
+            terminal_input(&Key::Named(NamedKey::Enter), None, plain),
+            Some(vec![b'\r'])
+        );
+        assert_eq!(
+            terminal_input(&Key::Named(NamedKey::Space), Some(" "), plain),
+            Some(vec![b' '])
+        );
+        assert_eq!(
+            terminal_input(&Key::Named(NamedKey::Backspace), None, plain),
+            Some(vec![0x7f])
+        );
+        assert_eq!(
+            terminal_input(
+                &Key::Character("c".into()),
+                Some("c"),
+                ModifiersState::CONTROL
+            ),
+            Some(vec![3])
+        );
+        assert_eq!(
+            terminal_input(&Key::Character("界".into()), Some("界"), plain),
+            Some("界".as_bytes().to_vec())
+        );
+        assert_eq!(
+            terminal_input(&Key::Named(NamedKey::ArrowLeft), None, plain),
+            Some(b"\x1b[D".to_vec())
+        );
+        assert_eq!(
+            terminal_input(
+                &Key::Character("t".into()),
+                Some("t"),
+                ModifiersState::SUPER
+            ),
+            None
+        );
     }
 }

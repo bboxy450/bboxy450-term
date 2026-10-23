@@ -185,6 +185,7 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
         endpoint.capability,
         GuiAction::Input {
             seat,
+            generation: record.generation,
             id: Ulid::new(),
             bytes: b"held-probe\n".to_vec(),
         },

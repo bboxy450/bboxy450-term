@@ -1,6 +1,9 @@
 //! Surface ownership stays with winit; device setup runs on the shared IO runtime.
 use crate::budget::GpuSample;
 use crate::display_link::Drawable;
+use bboxy450_term::model::{self, DrawCtx, Model};
+use bbt_proto::{Screen, SeatId};
+use bbt_render::cells::terminal::PreparedGrid;
 use bbt_render::{
     chrome::{ChromeRenderer, ChromeTarget, group, materials as m},
     device::DeviceContext,
@@ -9,6 +12,7 @@ use bbt_ui::{self as ui, components::Paint};
 use bbt_ui_model::{
     STYLE, TOKENS,
     draw::{Color, DrawList},
+    layout::Rect,
 };
 use block2::RcBlock;
 use objc2::rc::Retained;
@@ -21,7 +25,9 @@ use objc2_metal::{
 use objc2_quartz_core::CAMetalDrawable;
 use std::time::{Duration, Instant};
 use std::{
+    collections::BTreeMap,
     ptr::NonNull,
+    sync::Arc,
     sync::mpsc::{self, Receiver, SyncSender},
 };
 
@@ -93,6 +99,16 @@ struct FrameTime {
     /// external texture, a draw hook): no frosted blur is reused (backdrop_keys).
     external_before: bool,
 }
+pub struct Panes<'a> {
+    pub model: &'a Model,
+    pub bounds: &'a [(SeatId, Rect)],
+    pub overlay: Option<Paint>,
+}
+struct CellTexture {
+    screen: Arc<Screen>,
+    frame: Arc<PreparedGrid>,
+    texture: wgpu::Texture,
+}
 pub struct Gpu {
     pub surface: wgpu::Surface<'static>,
     pub config: wgpu::SurfaceConfiguration,
@@ -100,6 +116,7 @@ pub struct Gpu {
     materials: m::Pass,
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
+    cells: BTreeMap<SeatId, CellTexture>,
     gpu_sender: SyncSender<GpuSample>,
     gpu_samples: Receiver<GpuSample>,
 }
@@ -213,6 +230,7 @@ impl Gpu {
             materials,
             target,
             backdrop,
+            cells: BTreeMap::new(),
             gpu_sender,
             gpu_samples,
         })
@@ -288,6 +306,7 @@ impl Gpu {
         time_ms: f32,
         drawable: Option<Drawable>,
         frame_id: u64,
+        panes: Option<Panes<'_>>,
     ) -> Result<Option<(Duration, Duration)>, String> {
         let acquire = Instant::now();
         let frame = if let Some(drawable) = drawable {
@@ -375,6 +394,25 @@ impl Gpu {
             &mut encoder,
         )
         .map_err(|e| e.to_string())?;
+        if let Some(panes) = panes {
+            self.draw_cells(&panes, scale, &mut encoder);
+            if let Some(overlay) = panes.overlay {
+                encode_ops(
+                    &mut self.renderer,
+                    &self.materials,
+                    &self.target,
+                    &self.backdrop,
+                    vec![overlay],
+                    FrameTime {
+                        scale,
+                        time_ms,
+                        external_before: true,
+                    },
+                    &mut encoder,
+                )
+                .map_err(|e| e.to_string())?;
+            }
+        }
         let surface_view = frame.texture().create_view(&Default::default());
         clear(&surface_view, &mut encoder);
         self.renderer
@@ -427,6 +465,82 @@ impl Gpu {
         let present = Instant::now();
         frame.present(&self.renderer.context)?;
         Ok(Some((encoded, wait + present.elapsed())))
+    }
+    fn draw_cells(&mut self, panes: &Panes<'_>, scale: f32, encoder: &mut wgpu::CommandEncoder) {
+        self.cells
+            .retain(|id, _| panes.bounds.iter().any(|(visible, _)| visible == id));
+        for (id, rect) in panes.bounds {
+            let (Some(screen), Some(frame)) =
+                (panes.model.screens.get(id), panes.model.frames.get(id))
+            else {
+                continue;
+            };
+            let changed = self.cells.get(id).is_none_or(|old| {
+                !Arc::ptr_eq(&old.screen, screen) || !Arc::ptr_eq(&old.frame, frame)
+            });
+            if changed {
+                let old = self.cells.remove(id);
+                let texture = old
+                    .filter(|old| {
+                        old.texture.width() == frame.width && old.texture.height() == frame.height
+                    })
+                    .map(|old| old.texture)
+                    .unwrap_or_else(|| {
+                        texture(&self.renderer.context.device, [frame.width, frame.height])
+                    });
+                let view = texture.create_view(&wgpu::TextureViewDescriptor {
+                    format: Some(FORMAT.add_srgb_suffix()),
+                    ..Default::default()
+                });
+                clear(&view, encoder);
+                model::draw_pane(
+                    screen,
+                    Rect::new(
+                        0.,
+                        0.,
+                        frame.width as f32 / scale,
+                        frame.height as f32 / scale,
+                    ),
+                    &mut DrawCtx {
+                        frame,
+                        encoder,
+                        target: &view,
+                        scale,
+                    },
+                );
+                self.cells.insert(
+                    *id,
+                    CellTexture {
+                        screen: screen.clone(),
+                        frame: frame.clone(),
+                        texture,
+                    },
+                );
+            }
+            let cached = &self.cells[id];
+            let x = (rect.x * scale).round().max(0.) as u32;
+            let y = (rect.y * scale).round().max(0.) as u32;
+            let width = ((rect.w * scale).floor().max(0.) as u32)
+                .min(frame.width)
+                .min(self.config.width.saturating_sub(x));
+            let height = ((rect.h * scale).floor().max(0.) as u32)
+                .min(frame.height)
+                .min(self.config.height.saturating_sub(y));
+            if width > 0 && height > 0 {
+                encoder.copy_texture_to_texture(
+                    cached.texture.as_image_copy(),
+                    wgpu::TexelCopyTextureInfo {
+                        origin: wgpu::Origin3d { x, y, z: 0 },
+                        ..self.target.as_image_copy()
+                    },
+                    wgpu::Extent3d {
+                        width,
+                        height,
+                        depth_or_array_layers: 1,
+                    },
+                );
+            }
+        }
     }
 }
 

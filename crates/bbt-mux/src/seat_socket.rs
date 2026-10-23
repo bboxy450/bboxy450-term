@@ -251,12 +251,12 @@ async fn gui_session(
                                 views.get_mut(&seat).ok_or_else(||invalid("seat is not watched"))?.stream.applied(view,sequence)?;
                                 Ok(GuiReply::Ok {op})
                             }
-                            GuiAction::Input {seat,id,bytes}=> {
+                            GuiAction::Input {seat,generation:_,id,bytes}=> {
                                 let receipt=client.gui_input(Ulid::from(seat.0.0),id,bytes).await?;
                                 if receipt.state==crate::InputState::PartialUnknown {return Err(invalid("input result is partial/unknown; keep the original id"));}
                                 Ok(GuiReply::Ok {op:id})
                             }
-                            GuiAction::Resize {seat,cols,rows}=> {
+                            GuiAction::Resize {seat,generation:_,cols,rows}=> {
                                 client.gui_resize(Ulid::from(seat.0.0),cols,rows).await?;
                                 Ok(GuiReply::Ok {op})
                             }
@@ -543,6 +543,7 @@ mod gui_tests {
                 capability: endpoint.capability,
                 action: GuiAction::Input {
                     seat,
+                    generation: view.generation,
                     id: Ulid::new(),
                     bytes: b"probe\n".to_vec(),
                 },
@@ -585,6 +586,7 @@ mod gui_tests {
                 capability: endpoint.capability,
                 action: GuiAction::Resize {
                     seat,
+                    generation: view.generation,
                     cols: 0,
                     rows: 1024,
                 },

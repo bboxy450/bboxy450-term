@@ -51,12 +51,15 @@ pub enum GuiAction {
     Input {
         #[serde(with = "text_id")]
         seat: SeatId,
+        /// Process generation displayed when the operator produced this input.
+        generation: u64,
         id: Ulid,
         bytes: Vec<u8>,
     },
     Resize {
         #[serde(with = "text_id")]
         seat: SeatId,
+        generation: u64,
         cols: u16,
         rows: u16,
     },
@@ -184,5 +187,29 @@ mod tests {
         let mut bad = value;
         bad["body"]["seat"] = serde_json::json!("not-a-seat");
         assert!(serde_json::from_value::<GuiAction>(bad).is_err());
+    }
+    #[test]
+    fn input_and_resize_require_an_explicit_displayed_generation() {
+        let seat = SeatId::from_u128(42);
+        for action in [
+            GuiAction::Input {
+                seat,
+                generation: 7,
+                id: Ulid::new(),
+                bytes: b"hi\r".to_vec(),
+            },
+            GuiAction::Resize {
+                seat,
+                generation: 7,
+                cols: 80,
+                rows: 24,
+            },
+        ] {
+            let mut value = serde_json::to_value(action).unwrap();
+            assert_eq!(value["body"]["generation"], 7);
+            assert!(serde_json::from_value::<GuiAction>(value.clone()).is_ok());
+            value["body"].as_object_mut().unwrap().remove("generation");
+            assert!(serde_json::from_value::<GuiAction>(value).is_err());
+        }
     }
 }
