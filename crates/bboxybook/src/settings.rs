@@ -1,4 +1,5 @@
 //! Settings fixture host. Browser child diagnostics never enter native layout.
+pub(crate) use crate::components::CachedMetrics as Metrics;
 use crate::{
     Result,
     gallery::{self, Case},
@@ -12,50 +13,6 @@ use bbt_ui_model::{
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::Path};
 
-// Per-layout memoization keeps repeated intrinsic probes from rasterizing the
-// same label thousands of times. Values still come from the native font host.
-type FontKey = (u32, u16, bool, bool, u32);
-type WidthKey = (String, u32, u16, bool, bool, u32);
-#[derive(Default)]
-pub(crate) struct Metrics {
-    widths: std::cell::RefCell<BTreeMap<WidthKey, f32>>,
-    fonts: std::cell::RefCell<BTreeMap<FontKey, [f32; 2]>>,
-}
-fn metric_key(s: &bbt_ui_model::layout::TextStyle) -> (u32, u16, bool, bool, u32) {
-    (
-        s.size.to_bits(),
-        s.weight,
-        s.mono,
-        s.italic,
-        s.tracking_em.to_bits(),
-    )
-}
-impl bbt_ui_model::layout::TextMeasure for Metrics {
-    fn width(&self, v: &str, s: &bbt_ui_model::layout::TextStyle) -> f32 {
-        let a = metric_key(s);
-        let key = (v.into(), a.0, a.1, a.2, a.3, a.4);
-        if let Some(v) = self.widths.borrow().get(&key) {
-            return *v;
-        }
-        let v = bbt_ui_model::layout::TextMeasure::width(&crate::components::Metrics, v, s);
-        self.widths.borrow_mut().insert(key, v);
-        v
-    }
-}
-impl c::Measure for Metrics {
-    fn font_metrics(&self, s: &bbt_ui_model::layout::TextStyle) -> [f32; 2] {
-        let key = metric_key(s);
-        if let Some(v) = self.fonts.borrow().get(&key) {
-            return *v;
-        }
-        let v = c::Measure::font_metrics(&crate::components::Metrics, s);
-        self.fonts.borrow_mut().insert(key, v);
-        v
-    }
-    fn x_height(&self, s: &bbt_ui_model::layout::TextStyle) -> f32 {
-        c::Measure::x_height(&crate::components::Metrics, s)
-    }
-}
 pub const STATES: &[&str] = &[
     "Account",
     "Cloud",
@@ -256,9 +213,10 @@ pub fn paint_legacy(r: Rect, state: &str, draw: &DrawCtx, out: &mut DrawList) {
         ..Default::default()
     };
     let ctx = ui::Context::new(draw.theme, draw.density);
+    let metrics = Metrics::default();
     let layout = view
-        .element(ctx, &crate::components::Metrics, r.w, r.h)
-        .layout(r, ctx, &crate::components::Metrics)
+        .element(ctx, &metrics, r.w, r.h)
+        .layout(r, ctx, &metrics)
         .expect("Settings composition");
     crate::components::append_draw(c::paint_with_draw(&layout, *draw), out)
         .expect("Settings paint");
