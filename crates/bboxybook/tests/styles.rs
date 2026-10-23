@@ -59,14 +59,14 @@ fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
 #[test]
 fn style_matrix_is_canonical_and_every_preset_renders_on_the_native_device() {
     let cases = styles::cases();
-    assert_eq!(cases.len(), 112); // Fourteen Style records, across four densities and two themes.
+    assert_eq!(cases.len(), 120); // Fifteen Style records, across four densities and two themes.
     assert_eq!(
         cases
             .iter()
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        112
+        120
     );
     assert!(
         cases

@@ -481,14 +481,9 @@ impl App {
         self.pane_bounds = bounds;
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
-            let sample = self.meter.samples().back();
-            let last = sample.map_or(Phases::default(), |s| s.phases);
-            let interval = sample.and_then(|s| s.interval).unwrap_or_default();
-            let ms = |duration: Duration| duration.as_secs_f64() * 1000.;
-            format!(
-                "frames {} · {:.1} Hz · interval {:.2}ms · CPU p99 {:.2}ms\ndrain {:.2} layout {:.2} draw {:.2}ms\nencode {:.2} present {:.2}ms · update {}",
-                self.meter.total_frames(), if interval.is_zero(){0.}else{1./interval.as_secs_f64()},ms(interval), ms(self.meter.cpu_percentile(0.99)),
-                ms(last.drain), ms(last.layout), ms(last.draw), ms(last.encode), ms(last.present_wait), self.last_update,
+            perf_hud(
+                self.meter
+                    .perf_record(Instant::now(), self.budget.gpu_mean(bbt_rt::HUD_FRAMES)),
             )
         });
         let start = Instant::now();
@@ -496,7 +491,7 @@ impl App {
         let ops = self.scene.paint(
             &layouts,
             logical,
-            if live { None } else { overlay.as_deref() },
+            if live { None } else { overlay.as_ref() },
         );
         phases.draw = start.elapsed();
         if self.animate {
@@ -520,7 +515,7 @@ impl App {
             self.live_state.as_ref().map(|model| gpu::Panes {
                 model,
                 bounds: &self.pane_bounds,
-                overlay: scene::Scene::overlay(logical, overlay.as_deref()),
+                overlay: self.scene.overlay(logical, overlay.as_ref()),
             }),
         )? {
             phases.encode = encode;
@@ -979,6 +974,51 @@ fn terminal_input(key: &Key, text: Option<&str>, modifiers: ModifiersState) -> O
     bytes.extend_from_slice(value);
     Some(bytes)
 }
+/// The meter's window in the HUD's record shape (the lab's field names).
+fn perf_hud(r: bbt_rt::PerfRecord) -> bbt_ui::modules::perf_hud::PerfHud {
+    use bbt_ui::modules::perf_hud::{PerfCpu, PerfFrame, PerfHitch, PerfHud, PerfPhases};
+    let phases = |p: [f64; 5]| PerfPhases {
+        drain: p[0],
+        layout: p[1],
+        draw: p[2],
+        encode: p[3],
+        present_wait: p[4],
+    };
+    PerfHud {
+        hz: r.hz,
+        interval_ms: r.interval_ms,
+        budget_ms: r.budget_ms,
+        cpu: PerfCpu {
+            p50: r.cpu_p50,
+            p99: r.cpu_p99,
+        },
+        gpu_ms: r.gpu_ms,
+        phases: phases(r.phases),
+        frames: r
+            .frames
+            .into_iter()
+            .map(|f| match f {
+                bbt_rt::HudFrame::Busy { phases: p, hitch } => PerfFrame {
+                    phases: phases(p),
+                    idle: false,
+                    hitch: hitch.map(Into::into),
+                },
+                bbt_rt::HudFrame::Idle => PerfFrame {
+                    idle: true,
+                    ..Default::default()
+                },
+            })
+            .collect(),
+        hitch: r.hitch.map(|(phase, ms, frame)| PerfHitch {
+            phase: phase.into(),
+            ms,
+            frame,
+        }),
+        late: r.late,
+        idle_ms: r.idle_ms,
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
     if hook_args.iter().any(|arg| arg == "--capture") {

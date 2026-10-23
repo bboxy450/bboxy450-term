@@ -29,6 +29,22 @@ impl Budget {
             frame.gpu = Some(sample.time);
         }
     }
+    /// Mean GPU span (ms) over the last `frames` paired samples; 0 before any pair.
+    pub fn gpu_mean(&self, frames: usize) -> f64 {
+        let gpu: Vec<f64> = self
+            .0
+            .iter()
+            .rev()
+            .filter_map(|s| s.gpu)
+            .take(frames)
+            .map(|t| t.as_secs_f64() * 1000.)
+            .collect();
+        if gpu.is_empty() {
+            0.
+        } else {
+            gpu.iter().sum::<f64>() / gpu.len() as f64
+        }
+    }
     pub fn report(&self) -> String {
         let mut gpu = Vec::new();
         let mut total = Vec::new();

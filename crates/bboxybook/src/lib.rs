@@ -16,6 +16,7 @@ pub mod panes;
 pub mod parity;
 pub mod paths;
 pub mod seat_rows;
+pub mod perf;
 pub mod settings;
 pub mod shaders;
 pub mod streams;

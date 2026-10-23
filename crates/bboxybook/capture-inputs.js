@@ -42,7 +42,7 @@
       components = value;
       for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
         'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard',
-      'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker', 'settingsPage', 'docView', 'docModal']) {
+      'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker', 'settingsPage', 'docView', 'docModal', 'perfHud']) {
         const original = value[name];
         if (typeof original !== 'function') continue;
         value[name] = function (...args) {
@@ -183,6 +183,23 @@
       const diagrams=[...(call.args[0].body||'').matchAll(/```mermaid[^\n]*\n([\s\S]*?)\n```/g)].map((match,i)=>{const source=match[1],show_source=[...view.querySelectorAll('.dgfig')][i]?.querySelector('.seg .on')?.textContent==='Source';try{return {source,graph:C.parseMermaid(source),show_source};}catch(error){return {source,error:String(error.message||error)};}});
       const md=view.querySelector('.md'),ms=getComputedStyle(md),cv=document.createElement('canvas'),mc=cv.getContext('2d');mc.font=ms.font;const chProbe=document.createElement('span');chProbe.style.cssText='display:block;width:1ch;height:0';md.append(chProbe);const ch={font:ms.font,zero:mc.measureText('0').width,unit:chProbe.getBoundingClientRect().width,font_kerning:ms.fontKerning,font_optical:ms.fontOpticalSizing};chProbe.remove();
       return JSON.parse(JSON.stringify({version:1,layer:'documents',frames:[{view:{document:call.args[0],modal,seat_name:call.args[1]?.seat?.name||null,viewport:[innerWidth,innerHeight],diagrams},host,parts:diagnostics,textBounds,probes,ch}]}));
+    }
+    if(window.bboxyPerfFixture){
+      // F5 perf HUD: the meter record each C.perfHud received, and hand-picked parts (the 600 bar phases stay pixel-only).
+      const huds=calls.filter(c=>c.name==='perfHud'&&c.node?.isConnected&&root.contains(c.node));
+      if(!huds.length)throw Error('perfHud constructor missing');
+      const frames=huds.map((call,h)=>{
+        const node=call.node,diagnostics=[],p='hud'+h;
+        const add=(key,n,text=false)=>{if(!n)throw Error('Missing perf part '+key);diagnostics.push(text?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});};
+        add(p,node);
+        const head=node.querySelector('.perf-head');add(p+'/head',head);add(p+'/head/b',head.querySelector('b'),true);add(p+'/head/span',head.querySelector('span'),true);
+        const spark=node.querySelector('.perf-spark'),bars=spark.querySelectorAll('.perf-bar');add(p+'/spark',spark);add(p+'/bar0',bars[0]);add(p+'/bar'+(bars.length-1),bars[bars.length-1]);add(p+'/budget',spark.querySelector('.perf-budget'));
+        [...node.querySelectorAll('.perf-ph')].forEach((r,i)=>{add(p+'/ph'+i,r);add(p+'/ph'+i+'/icon',r.querySelector('i'));add(p+'/ph'+i+'/label',r.querySelector('span'),true);add(p+'/ph'+i+'/value',r.querySelector('b'),true);});
+        const foot=node.querySelector('.perf-foot');add(p+'/foot',foot);[...foot.children].forEach((s,i)=>add(p+'/foot'+i,s,true));
+        node.dataset.bboxyPerf='';
+        return {record:call.args[0],host:bounds(node),parts:diagnostics};
+      });
+      return JSON.parse(JSON.stringify({version:1,layer:'perf',frames}));
     }
     if(window.bboxySettingsFixture){
       const call=calls.find(c=>c.name==='settingsPage'&&c.node?.isConnected&&root.contains(c.node));

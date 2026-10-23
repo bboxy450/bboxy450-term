@@ -74,7 +74,7 @@ impl Case {
         )
     }
 }
-fn slug(s: &str) -> String {
+pub fn slug(s: &str) -> String {
     let mut result = String::new();
     for c in s.chars() {
         if c.is_ascii_alphanumeric() {

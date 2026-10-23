@@ -15,6 +15,8 @@ pub fn replay_images(out: &Path, cases: &[Case]) -> Result<usize> {
             crate::documents::render_case(&mut renderer,case)?
         } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="settings") {
             crate::settings::render_case(&mut renderer,case)?
+        } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="perf") {
+            crate::perf::render_case(&mut renderer,case)?
         } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="graphs") {
             crate::graphs::render_case(&mut renderer,case)?
         } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="streams") {
@@ -102,6 +104,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     snapshots.extend(crate::streams::snapshots(cases)?);
     snapshots.extend(crate::graphs::snapshots(cases)?);
     snapshots.extend(crate::settings::snapshots(cases)?);
+    snapshots.extend(crate::perf::snapshots(cases)?);
     snapshots.extend(crate::documents::snapshots(cases)?);
     snapshots.extend(crate::paths::snapshots(cases)?);
     if !snapshots.is_empty() {
@@ -154,7 +157,7 @@ impl CasePolicy {
             || f.is_some_and(|f| {
                 matches!(
                     f["layer"].as_str(),
-                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams" | "graphs" | "settings" | "documents")
+                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams" | "graphs" | "settings" | "perf" | "documents")
                 )
             })
         {
@@ -184,6 +187,8 @@ impl CasePolicy {
                 if crate::documents::has_diagram_body(case) { "Document figure chrome; engine canvas height removed from comparison coordinates only (renderer 4.4c); raw diagram pixels advisory" } else { "DocumentModal and static document views; public document records, native layout, shared enclosing backdrop" }
             } else if f.is_some_and(|f|f["layer"]=="settings") {
                 "Settings; public records and outer viewport only, read-mostly controls"
+            } else if f.is_some_and(|f|f["layer"]=="perf") {
+                "Perf HUD; public meter records and outer position only, module-owned width; flash animations finished"
             } else if f.is_some_and(|f|f["layer"]=="graphs") {
                 "GraphTab cards; public records, independent native geometry; demo backdrop shared"
             } else if f.is_some_and(|f|f["layer"]=="streams") {
