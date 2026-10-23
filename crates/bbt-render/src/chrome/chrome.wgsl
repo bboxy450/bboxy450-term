@@ -30,7 +30,15 @@ fn shade(v:Vertex)->vec4f {
     }
     // CSS inset highlights start inside the border and paint beneath its stroke.
     if i.params.w>0.0&&p.y<i.rect.y+i.params.y+1.5&&d< -i.params.y {c=vec4f(mix(c.rgb,vec3f(1),i.params.w),c.a);}
-    if i.params.y>0.0&&kind<2u {let edge=clamp(d+i.params.y+0.5,0.0,1.0);c=mix(c,i.stroke,edge);}
+    if i.params.y>0.0&&kind<2u {
+        let edge=clamp(d+i.params.y+0.5,0.0,1.0);
+        // CSS paints the border over the fill. Composite premultiplied colour,
+        // then return straight colour for the final source-over blend.
+        let border_alpha=i.stroke.a*edge;
+        let fill_alpha=c.a*(1.0-border_alpha);
+        let alpha=border_alpha+fill_alpha;
+        c=vec4f((i.stroke.rgb*border_alpha+c.rgb*fill_alpha)/max(alpha,0.000001),alpha);
+    }
     let alpha=c.a*a;
     return vec4f(c.rgb,alpha);
 }

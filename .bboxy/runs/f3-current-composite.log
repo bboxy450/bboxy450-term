@@ -1,0 +1,268 @@
+F3 — current border source-over / coverage proof — Velvet Vulpine <EXECUTOR>
+Date: 2026-10-23T18:30:21.593529+00:00
+Oracle authorization98bd2caa; original checkpoint746a9c7 ported narrowly after F4b landed2faa4a9. Original ghost-border brief, no broader source work.
+Source chrome.wgsl:34 — stroke alpha times inner coverage composites OVER the full background fill in premultiplied sRGB. Convert to straight RGB for the existing source-over blend; outer coverage applies once at finalalpha.
+F4b highlight remains before the stroke and inset by border width. No materials/cache/arena/layout/token/tolerance changes.
+Existing chrome/mod.rs GPU test adds transparent/translucent/opaque fills and0/.5/1borderalpha at fractional outer/inner rounded-cornercoverage plus fullycovered border/fill points.
+BeforeGPUregression actualexit101: transparentfill andborderalpha.5, pixel11,10 red47 vs expected25.500002 (tolerance2). After complete renderlibrary61/0 includes newcoverage and acceptedF4b highlight test.
+Buildbboxybook0; strictalltargetrenderClippy-Dwarnings0; changedfileRustfmt0; diff--check0.
+Before fullbaseline51c3cce has identical productionrender/UI/book/model/doc/mermaid sources to main2faa4a9 and EXACT normalized cargo tree -p bboxybook -e features --locked outputs. Yarn workspace/lock additions and Mermaid tests do not affect the book resolvedgraph.
+Scope uses frozen acceptedF4b cases/web/backdrops:128components+120style+32materials=280. No newcapture. Render10.297s exit0; strictcompare3.778s exit0;248required/measured,0unproven/mismatches.
+Same8Materialadvisories before/after;0introduced. Changed-pixel fractions: components72improved/56same/0worse; style56improved/64same/0worse; materials32same. All248native layoutrecords EXACTLY equal.
+Ghost sample components/button-cozy-dark.png pixel120,103: web37,40,69; before33,36,64; after37,40,68. OneblueLSB residual is reported, no per-channel compensation or policy change.
+Viewed crop target/f3-current-2faa4a9/inspection/ghost-hover.png; per-file hashes and samples in scope-metrics.json. Full clean CI and allcurrent native attribution remain pending at this checkpoint.
+Coordination: Seraph f05257b3 confirms no code overlap with G1; G1 touches materials/pane/style and will change pane pixels. Whoever lands second must rebase/gate the merged base. Nyx notified0db140a4.
+Diagnostics: reading old checkpoint logs from currentbranch returned1 (notpresent); corrected with git show746a9c7:path. A duplicate completed inbox tool poll was rejected; no process or file effect. No verification failure is hidden.
+Notcheckedhere: fullcurrent1768/1664gate, ignoredKeychain, --slow, manualdesktop, fullDPR2/fractional matrix. GPU fractionalAA probe explicitly covered.
+COMMAND_RESULTS
+{
+  "border-red": {
+    "phase": "finished",
+    "source_head": "2faa4a9abea18828031f9bf1de91b304e4b93b0b",
+    "working_diff_sha256": "337dd436cf6ac4776ea90f1f0107d58294bd7119aff230057a90ee6226450032",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-render",
+      "--locked",
+      "--lib",
+      "chrome::tests::translucent_border_composites_over_fill_at_fractional_coverage",
+      "--",
+      "--exact"
+    ],
+    "wrapper_pid": 3615,
+    "started_utc": "2026-10-23T18:20:46.849290+00:00",
+    "child_pid": 3640,
+    "exit": 101,
+    "seconds": 64.986
+  },
+  "renderer-green": {
+    "phase": "finished",
+    "source_head": "2faa4a9abea18828031f9bf1de91b304e4b93b0b",
+    "working_diff_sha256": "a57e2afaf81b231d7a0e601d0844a26ed027c84ed6a1e95abc32f5f45d344eba",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-render",
+      "--locked",
+      "--lib"
+    ],
+    "wrapper_pid": 7014,
+    "started_utc": "2026-10-23T18:22:34.996246+00:00",
+    "child_pid": 7028,
+    "exit": 0,
+    "seconds": 8.079
+  },
+  "border-after": {
+    "phase": "finished",
+    "source_head": "2faa4a9abea18828031f9bf1de91b304e4b93b0b",
+    "working_diff_sha256": "a57e2afaf81b231d7a0e601d0844a26ed027c84ed6a1e95abc32f5f45d344eba",
+    "command": [
+      "cargo",
+      "build",
+      "-p",
+      "bboxybook",
+      "--locked"
+    ],
+    "wrapper_pid": 9162,
+    "started_utc": "2026-10-23T18:23:57.843963+00:00",
+    "child_pid": 9176,
+    "exit": 0,
+    "seconds": 70.603,
+    "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/bboxybook-border-after",
+    "binary_sha256": "3136c3523e595318c07e21493cffced425eb376ffc3ccbe10f2c4373b256d829"
+  },
+  "clippy-render": {
+    "phase": "finished",
+    "source_head": "2faa4a9abea18828031f9bf1de91b304e4b93b0b",
+    "working_diff_sha256": "a57e2afaf81b231d7a0e601d0844a26ed027c84ed6a1e95abc32f5f45d344eba",
+    "command": [
+      "cargo",
+      "clippy",
+      "-p",
+      "bbt-render",
+      "--all-targets",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "wrapper_pid": 10734,
+    "started_utc": "2026-10-23T18:25:23.291925+00:00",
+    "child_pid": 10775,
+    "exit": 0,
+    "seconds": 14.978
+  }
+}
+SCOPED_COMMAND_RESULTS
+{
+  "phase": "finished",
+  "label": "after",
+  "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/bboxybook-border-after",
+  "binary_sha256": "3136c3523e595318c07e21493cffced425eb376ffc3ccbe10f2c4373b256d829",
+  "source_head": "2faa4a9abea18828031f9bf1de91b304e4b93b0b",
+  "wrapper_pid": 10732,
+  "commands": [
+    {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/bboxybook-border-after",
+        "render",
+        "--all",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/after/native",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/scope/cases.json"
+      ],
+      "exit": 0,
+      "seconds": 10.297
+    },
+    {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/bboxybook-border-after",
+        "compare",
+        "--strict-geometry",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/after",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/scope/cases.json"
+      ],
+      "exit": 0,
+      "seconds": 3.778
+    }
+  ],
+  "child_pid": 11206,
+  "statuses": {
+    "review pixels": 8,
+    "within policy": 272
+  },
+  "modules": {
+    "components": {
+      "within policy": 128
+    },
+    "style": {
+      "within policy": 120
+    },
+    "materials": {
+      "review pixels": 8,
+      "within policy": 24
+    }
+  },
+  "report_sha256": "66965716023d344ffa93603987887544b2022e954f49673e1c5e0243d1e2181c",
+  "exit": 0
+}
+METRICS
+{
+  "same_inputs_from": "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-parity-51c3cce",
+  "cases": 280,
+  "modules": {
+    "materials": {
+      "cases": 32,
+      "before_reviews": 8,
+      "after_reviews": 8,
+      "improved": 0,
+      "unchanged": 32,
+      "worsened": 0,
+      "new_review_keys": []
+    },
+    "style": {
+      "cases": 120,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "improved": 56,
+      "unchanged": 64,
+      "worsened": 0,
+      "new_review_keys": []
+    },
+    "components": {
+      "cases": 128,
+      "before_reviews": 0,
+      "after_reviews": 0,
+      "improved": 72,
+      "unchanged": 56,
+      "worsened": 0,
+      "new_review_keys": []
+    }
+  },
+  "native_geometry_rows_exact": 248,
+  "new_reviews": 0,
+  "point": [
+    120,
+    103
+  ],
+  "crop": [
+    80,
+    90,
+    240,
+    122
+  ],
+  "nearest_scale": 3,
+  "sample_sources": [
+    {
+      "label": "WEB",
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-parity-51c3cce/web/components/button-cozy-dark.png",
+      "sha256": "f9be0c056b8f6398ed93b80cdd133235f7d168c5d26fe5e40c3ce0bb7499230a",
+      "sample": [
+        37,
+        40,
+        69,
+        255
+      ]
+    },
+    {
+      "label": "BEFORE",
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-parity-51c3cce/native/components/button-cozy-dark.png",
+      "sha256": "8d248c4f6dcb1bd731fe1427ad6d3351c648c28a076bb4151448026b0b870df6",
+      "sample": [
+        33,
+        36,
+        64,
+        255
+      ]
+    },
+    {
+      "label": "AFTER",
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/after/native/components/button-cozy-dark.png",
+      "sha256": "4b4605468afa26ae37252809f26b18bb9013c3928d20119e93130db691337f4f",
+      "sample": [
+        37,
+        40,
+        68,
+        255
+      ]
+    },
+    {
+      "label": "DIFF",
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/after/diff/components/button-cozy-dark.png",
+      "sha256": "dd956027513b05cc2e4aaee4176883e2ab1248cfa73a65bbe9f8b2191e034e98",
+      "sample": [
+        24,
+        24,
+        24,
+        255
+      ]
+    }
+  ],
+  "note": "Blue remains one LSB below web after correct source-over; no channel compensation or tolerance edits."
+}
+BASELINE_SOURCE_PROOF
+{
+  "before_source": "51c3cce870306c936a29a0862c94b51e2461ae4f",
+  "current_source": "2faa4a9abea18828031f9bf1de91b304e4b93b0b",
+  "production_render_source_diff_bytes": 0,
+  "normalized_feature_tree_equal": true,
+  "feature_tree_sha256": "09b8ce98330d680e1dfe904b8bd05ec4fd9d4029afb08f9bbc277340224ff4d7",
+  "commands": [
+    "cargo tree -p bboxybook -e features --locked at both sources, exits0",
+    "git diff 51c3cce..HEAD -- production render sources, exit0 and0bytes"
+  ],
+  "note": "Yarn workspace membership/lock additions and Mermaid test fixtures do not alter the resolved bboxybook feature/dependency tree."
+}
+PRIVATE_DEV_TARGET_CLEANUP
+{
+  "target": "/tmp/velvet-f3-dev-2faa4a9",
+  "allocated_bytes_removed": 971403264,
+  "target_deleted": true,
+  "free_gib": 7.83
+}
