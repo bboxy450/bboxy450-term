@@ -1,0 +1,109 @@
+Final source ffb148c. Swarms native from the clean exact-commit CI binary. Web inputs reused from the 506e63a clean capture; lab/design files are unchanged between those sources.
+
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/136
+sidebar/10-seats-touch-dark.png: windowed diagnostics omitted 35 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-touch-light.png: windowed diagnostics omitted 35 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-comfortable-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-comfortable-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-cozy-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-cozy-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-compact-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-compact-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-touch-dark.png: windowed diagnostics omitted 218 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-touch-light.png: windowed diagnostics omitted 218 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-comfortable-dark.png: windowed diagnostics omitted 151 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-comfortable-light.png: windowed diagnostics omitted 151 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-cozy-dark.png: windowed diagnostics omitted 116 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-cozy-light.png: windowed diagnostics omitted 116 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-compact-dark.png: windowed diagnostics omitted 62 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-compact-light.png: windowed diagnostics omitted 62 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-touch-dark.png: windowed diagnostics omitted 581 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-touch-light.png: windowed diagnostics omitted 581 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-comfortable-dark.png: windowed diagnostics omitted 503 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-comfortable-light.png: windowed diagnostics omitted 503 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-cozy-dark.png: windowed diagnostics omitted 474 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-cozy-light.png: windowed diagnostics omitted 474 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-compact-dark.png: windowed diagnostics omitted 446 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-compact-light.png: windowed diagnostics omitted 446 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-touch-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-touch-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-comfortable-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-comfortable-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-cozy-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-cozy-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-compact-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-compact-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/10-seats-touch-dark.png: windowed diagnostics omitted 27 entirely clipped parts (listed in layouts.json)
+sidebar-v2/10-seats-touch-light.png: windowed diagnostics omitted 27 entirely clipped parts (listed in layouts.json)
+sidebar-v2/10-seats-comfortable-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/10-seats-comfortable-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/10-seats-cozy-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/10-seats-cozy-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/10-seats-compact-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/10-seats-compact-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/100-seats-touch-dark.png: windowed diagnostics omitted 216 entirely clipped parts (listed in layouts.json)
+sidebar-v2/100-seats-touch-light.png: windowed diagnostics omitted 216 entirely clipped parts (listed in layouts.json)
+sidebar-v2/100-seats-comfortable-dark.png: windowed diagnostics omitted 148 entirely clipped parts (listed in layouts.json)
+sidebar-v2/100-seats-comfortable-light.png: windowed diagnostics omitted 148 entirely clipped parts (listed in layouts.json)
+sidebar-v2/100-seats-cozy-dark.png: windowed diagnostics omitted 114 entirely clipped parts (listed in layouts.json)
+sidebar-v2/100-seats-cozy-light.png: windowed diagnostics omitted 114 entirely clipped parts (listed in layouts.json)
+sidebar-v2/100-seats-compact-dark.png: windowed diagnostics omitted 59 entirely clipped parts (listed in layouts.json)
+sidebar-v2/100-seats-compact-light.png: windowed diagnostics omitted 59 entirely clipped parts (listed in layouts.json)
+sidebar-v2/1000-seats-touch-dark.png: windowed diagnostics omitted 579 entirely clipped parts (listed in layouts.json)
+sidebar-v2/1000-seats-touch-light.png: windowed diagnostics omitted 579 entirely clipped parts (listed in layouts.json)
+sidebar-v2/1000-seats-comfortable-dark.png: windowed diagnostics omitted 501 entirely clipped parts (listed in layouts.json)
+sidebar-v2/1000-seats-comfortable-light.png: windowed diagnostics omitted 501 entirely clipped parts (listed in layouts.json)
+sidebar-v2/1000-seats-cozy-dark.png: windowed diagnostics omitted 465 entirely clipped parts (listed in layouts.json)
+sidebar-v2/1000-seats-cozy-light.png: windowed diagnostics omitted 465 entirely clipped parts (listed in layouts.json)
+sidebar-v2/1000-seats-compact-dark.png: windowed diagnostics omitted 436 entirely clipped parts (listed in layouts.json)
+sidebar-v2/1000-seats-compact-light.png: windowed diagnostics omitted 436 entirely clipped parts (listed in layouts.json)
+sidebar-v2/phone-sheet-touch-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/phone-sheet-touch-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/phone-sheet-comfortable-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/phone-sheet-comfortable-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/phone-sheet-cozy-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/phone-sheet-cozy-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/phone-sheet-compact-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar-v2/phone-sheet-compact-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-nyx/target/r10/ci-swarms-final/native/layouts.json
+rendered 136 PNGs to /Users/feral/mydev/bboxy450-term-nyx/target/r10/ci-swarms-final/native
+parity: 136 cases, 0 review; /Users/feral/mydev/bboxy450-term-nyx/target/r10/ci-swarms-final/index.html
+parity gate: pass (0 pixel reviews advisory)
+
+F5 perf 48, accepted reference source 4fa924d; candidate ffb148c — render and strict compare exit 0.
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-perf-candidate/native/layouts.json
+rendered 48 PNGs to /Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-perf-candidate/native
+parity: 48 cases, 0 review; /Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-perf-candidate/index.html
+parity gate: pass (0 pixel reviews advisory)
+
+F5 HUD Style 8: independent accepted-source 4fa924d baseline (same UI/lab sources as Seraph 1d9102b), candidate ffb148c; both strict compares exit 0.
+Baseline accepted source: 4fa924d2fb1f2dbc21b4fdcf0961d94abf644a00, clean detached own CI worktree. Requests mirror styles.rs:19-40, Hud only, asserted 8 cases.
+command: ['cargo', 'build', '-p', 'bboxybook', '--locked']
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bboxybook)
+    Finished `dev` profile [optimized] target(s) in 16.04s
+exit=0
+command: ['node', 'crates/bboxybook/capture.mjs', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base/requested.json']
+web: 8/8 captured; 0 failures
+exit=0
+command: ['/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/bboxybook', 'render', '--all', '--out', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base/native', '--manifest', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base/cases.json']
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base/native/layouts.json
+rendered 8 PNGs to /Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base/native
+exit=0
+command: ['/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/bboxybook', 'compare', '--strict-geometry', '--out', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base', '--manifest', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base/cases.json']
+parity: 8 cases, 0 review; /Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base/index.html
+parity gate: pass (0 pixel reviews advisory)
+exit=0
+command: ['/Users/feral/mydev/bboxy450-term-nyx/target/r10/bboxybook-ci-ffb148c', 'render', '--all', '--out', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-candidate/native', '--manifest', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base/cases.json']
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-candidate/native/layouts.json
+rendered 8 PNGs to /Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-candidate/native
+exit=0
+command: ['/Users/feral/mydev/bboxy450-term-nyx/target/r10/bboxybook-ci-ffb148c', 'compare', '--strict-geometry', '--out', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-candidate', '--manifest', '/Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-base/cases.json']
+parity: 8 cases, 0 review; /Users/feral/mydev/bboxy450-term-nyx/target/r10/f5-style-candidate/index.html
+parity gate: pass (0 pixel reviews advisory)
+exit=0

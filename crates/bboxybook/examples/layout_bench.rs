@@ -8,8 +8,8 @@
 //! Warm (default) retains the app-equivalent measurement cache after 3 warmups.
 //! Cold empties it before each layout; uncached preserves the R7/R8 method.
 use bboxybook::{components, gallery::Case, launchers, swarms};
-use bbt_ui::components::Measure;
-use bbt_ui_model::layout::{TextMeasure, TextStyle};
+use bbt_ui::components::{self as c, Measure};
+use bbt_ui_model::layout::{Rect, TextMeasure, TextStyle};
 use std::cell::Cell;
 use std::{
     hint::black_box,
@@ -21,6 +21,95 @@ enum Mode {
     Uncached,
     Cold,
     Warm,
+}
+
+fn full_layout(e: &mut c::Element) {
+    match e {
+        c::Element::ScrollView(s) => {
+            if let c::Element::FixedHeight { content, .. } = s.content.as_mut() {
+                *s.content = std::mem::replace(content.as_mut(), c::Element::Spacer);
+            }
+        }
+        c::Element::FixedHeight { content, .. }
+        | c::Element::Named { content, .. }
+        | c::Element::Filter { content, .. } => full_layout(content),
+        c::Element::Box(b) => {
+            for item in &mut b.children {
+                full_layout(&mut item.element);
+            }
+        }
+        c::Element::Stack(s) => {
+            for item in &mut s.children {
+                full_layout(&mut item.element);
+            }
+        }
+        _ => {}
+    }
+}
+fn verify_windowing(
+    root: &c::Element,
+    bounds: Rect,
+    ctx: bbt_ui::Context,
+    measure: &dyn Measure,
+) -> bboxybook::Result<serde_json::Value> {
+    use std::collections::BTreeMap;
+    fn collect<'a>(
+        n: &'a c::Layout,
+        clip: Option<Rect>,
+        names: &mut BTreeMap<String, (&'a c::Layout, bool)>,
+        scrolls: &mut Vec<String>,
+    ) {
+        if let c::LayoutKind::Named(key) = &n.kind {
+            let visible = clip.is_some_and(|c| {
+                n.rect.x < c.right()
+                    && n.rect.right() > c.x
+                    && n.rect.y < c.bottom()
+                    && n.rect.bottom() > c.y
+            });
+            names.insert(key.clone(), (n, visible));
+        }
+        let clip = if let c::LayoutKind::ScrollView { content, offset } = n.kind {
+            scrolls.push(format!(
+                "{:?}:{:?}:{:?}",
+                n.rect,
+                content.map(f32::to_bits),
+                offset.map(f32::to_bits)
+            ));
+            Some(n.rect)
+        } else {
+            clip
+        };
+        for child in &n.children {
+            collect(child, clip, names, scrolls);
+        }
+    }
+    let mut full = root.clone();
+    full_layout(&mut full);
+    let full = full.layout(bounds, ctx, measure)?;
+    let windowed = root.layout(bounds, ctx, measure)?;
+    let (mut a, mut b, mut sa, mut sb) = (BTreeMap::new(), BTreeMap::new(), vec![], vec![]);
+    collect(&full, None, &mut a, &mut sa);
+    collect(&windowed, None, &mut b, &mut sb);
+    if sa != sb {
+        return Err("windowed viewport, offset or total extent differs".into());
+    }
+    for (key, (n, visible)) in &a {
+        let other = b.get(key);
+        if *visible && other.is_none() {
+            return Err(format!("visible part omitted: {key}").into());
+        }
+        if let Some((other, _)) = other {
+            let bits = |n: &c::Layout| {
+                [n.rect.x, n.rect.y, n.rect.w, n.rect.h, n.baseline].map(f32::to_bits)
+            };
+            if bits(n) != bits(other) || format!("{:?}", n.kind) != format!("{:?}", other.kind) {
+                return Err(format!("part geometry differs: {key}").into());
+            }
+        }
+    }
+    Ok(
+        serde_json::json!({"full_named":a.len(),"windowed_named":b.len(),"visible_named":a.values().filter(|(_,v)|*v).count(),"extents":sa,"visible_geometry_bit_identical":true}),
+    )
 }
 struct Counted {
     mode: Mode,
@@ -103,13 +192,23 @@ fn main() -> bboxybook::Result<()> {
         "warm" => Mode::Warm,
         _ => return Err("--mode must be uncached, cold or warm".into()),
     };
-    let (root, bounds) = if case.component == "launcher" || case.component == "picker" {
+    let build = Instant::now();
+    let (mut root, bounds) = if case.component == "launcher" || case.component == "picker" {
         launchers::element_case(case)?
     } else {
         swarms::element_case(case)?
     };
+    let construction_ms = build.elapsed().as_secs_f64() * 1000.;
+    if args.iter().any(|s| s == "--full") {
+        full_layout(&mut root);
+    }
     let ctx = components::context(case);
     let measure = Counted::new(mode);
+    let verification = if args.iter().any(|s| s == "--verify-windowing") {
+        Some(verify_windowing(&root, bounds, ctx, &measure)?)
+    } else {
+        None
+    };
     for _ in 0..3 {
         measure.prepare();
         black_box(root.layout(bounds, ctx, &measure)?);
@@ -147,6 +246,8 @@ fn main() -> bboxybook::Result<()> {
         "{}",
         serde_json::json!({
             "case":key,"mode":mode_name,"iterations":count,"warmups":3,
+            "full_layout":args.iter().any(|s|s=="--full"),"construction_ms":construction_ms,
+            "windowing_verification":verification,
             "build":if cfg!(debug_assertions){"debug"}else{"release"},
             "p50_us":percentile(0.5),"p99_us":percentile(0.99),
             "p50_ms":percentile(0.5)/1000.,"p99_ms":percentile(0.99)/1000.,

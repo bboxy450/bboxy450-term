@@ -1,0 +1,26 @@
+Owned paths only. Completed private CI worktree /tmp/ci-nyx-r10-506e63a removed after its checks and the accepted-source F5 baseline run.
+{
+  "removed": "/Users/feral/mydev/bboxy450-term-nyx/target/r10-dev",
+  "allocated_file_bytes": 891039744,
+  "free_before": 18103861248,
+  "free_after": 18984898560,
+  "ci_target_untouched": "target/r10-ci-506e63a"
+}
+{
+  "removed": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a",
+      "allocated_file_bytes": 3156480000,
+      "free_before": 13715914752,
+      "free_after": 16691245056
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/r10-build",
+      "allocated_file_bytes": 647081984,
+      "free_before": 16691245056,
+      "free_after": 17306017792
+    }
+  ],
+  "kept": "all accepted galleries, final ffb148c matrix, CI/Flow/swarms/F5 galleries, binaries, inputs and proofs"
+}
+Replay binaries retained in target/r10: bboxybook-release-ffb148c, layout-bench-release-ffb148c, bboxybook-ci-ffb148c, bboxybook-baseline-4fa924d. Accepted R6/R8/R9 galleries untouched. Final R10 matrix and CI/F5 gallery artifacts retained.
