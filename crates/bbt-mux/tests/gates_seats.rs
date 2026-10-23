@@ -285,6 +285,20 @@ impl Rig {
     fn stop(self) -> u64 {
         let disk = disk_bytes(self.run.path());
         self.logic.shutdown().unwrap();
+        // Stop all owned fixture producers before joining any of them. Killing
+        // one child and waiting while hundreds keep writing makes teardown
+        // accumulate minutes of unmeasured output and can exhaust the disk.
+        let client = self.supervisor.connect().unwrap();
+        let bbt_mux::Reply::Seats { seats } =
+            client.request(bbt_mux::Action::ListOwnedSeats).unwrap()
+        else {
+            panic!("fixture seat list reply mismatch")
+        };
+        for seat in seats.into_iter().filter(|seat| seat.exited.is_none()) {
+            let attachment = client.attach(seat.seat, seat.generation).unwrap();
+            client.kill(&attachment).unwrap();
+        }
+        drop(client);
         self.supervisor.shutdown().unwrap();
         if std::env::var_os("GATE_KEEP_RUN").is_some() {
             eprintln!("GATE retained owned fixture {}", self.run.keep().display());

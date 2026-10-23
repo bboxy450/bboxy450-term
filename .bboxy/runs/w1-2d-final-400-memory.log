@@ -1,0 +1,35 @@
+SOURCE 0b142eaa141e0858f193788af658b01206439bef
+COMMAND cargo test --release --locked -p bbt-mux --test gates_seats gate_memory -- --ignored --nocapture --test-threads=1
+ENV {'GATE_SEATS': '400', 'GATE_RATE': '32kB/s', 'GATE_SECONDS': '60', 'GATE_KEEP_RUN': '1', 'GATE_RUN_DIR': '/Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs'}
+OWN_CARGO_PID=4927
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 22.48s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0: replacing existing signature
+
+running 1 test
+test gate_memory ... GATE spawn progress=25/400 elapsed_s=0.929
+GATE spawn progress=50/400 elapsed_s=1.882
+GATE spawn progress=75/400 elapsed_s=2.915
+GATE spawn progress=100/400 elapsed_s=4.199
+GATE spawn progress=125/400 elapsed_s=5.367
+GATE spawn progress=150/400 elapsed_s=6.581
+GATE spawn progress=175/400 elapsed_s=7.978
+GATE spawn progress=200/400 elapsed_s=9.454
+GATE spawn progress=225/400 elapsed_s=11.029
+GATE spawn progress=250/400 elapsed_s=12.770
+GATE spawn progress=275/400 elapsed_s=14.953
+GATE spawn progress=300/400 elapsed_s=17.040
+GATE spawn progress=325/400 elapsed_s=19.335
+GATE spawn progress=350/400 elapsed_s=22.007
+GATE spawn progress=375/400 elapsed_s=24.966
+GATE spawn progress=400/400 elapsed_s=28.426
+GATE capture seats=400 load_wall_s=61.657 writer_busy_fraction=0.2625 busy_replies=0 heartbeat_max_ms=1902.935 commit_p99_upper_ms=7.000 commit_max_ms=62.960
+GATE retained owned fixture /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-lHSztX
+GATE memory value=776.141 unit=MiB budget=none MEASURED ptmx_max=999 seats=400 rate=32kB/s load_s=60 baseline_mib=12.2 peak_mib=776.1 per_seat_kib=1955.6 spawn_s=28.4 sample_seat_records=6039 sync_s=0.0 marker_s=0.0 sample_seat_full=238 disk_peak_mib=1170.5 observed_s=90.246 writer_busy_s=26.608 writer_s_per_wall_s=0.295 commit_rounds=5004 commit_p99_upper_ms=7.000 commit_max_ms=62.960 logic_alive=true
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 331.57s
+
+CHILD_EXIT=0; WALL_SECONDS=354.420
