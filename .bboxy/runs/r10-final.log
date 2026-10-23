@@ -1,0 +1,27 @@
+R10 HANDOFF — implementation and checks complete; final ci-local has one explicitly accepted external failure.
+Code commits: 506e63aa07bea263ce605266b3e560f3e739c4f8 and ffb148cefa1daa9cd5f4bec56e12c63230ad6158; branch nyx-r10; own worktree bboxy450-term-nyx. Both signed with the machine key.
+Verified frozen source ffb148c is based on accepted main 4fa924d. Current main 1d9102b adds supervisor child reaping only; UI, renderer, lab and design sources have no overlapping changes. Oracle 41c62306 explicitly accepts the ffb148c gate with the named backend failure; this handoff preserves that verified source.
+
+Mechanism: components.rs:623 FixedHeight annotations; :1113 sequential local f32 prefixes, viewport + one-row/paint-outset overscan; :1175 only intersecting fixed column children laid out, complete ancestors/materials/clips retained. Unknown height uses existing full layout.
+Anchors: components.rs:1329/1347 stable identity + intra-item pixel offset; nearest surviving old neighbour, following on ties. sidebar.rs:22/45 provides caller-owned anchor capture/rebuild, including width/density changes. No app fields or variable-height/revision cache.
+Producer: swarm_card.rs:14 declares only fixed Style heights and exactly summed fixed columns; any unknown child leaves its ancestors undeclared. Invalid Style/gap input preserves normal layout validation errors.
+Diagnostics: swarms.rs:367 filters only declared-window descendants with web rects entirely outside that viewport; every case lists omitted keys/rects/count. Partly visible and unrelated parts always remain compared. Guard test plus 8 windowing tests pass.
+
+Release timing method: retained tree, app-equivalent cached metrics, 3 warmups; excludes construction, cache clearing, Layout destruction, GPU and IO. Before warm N100, main after warm N1000, cold N30. No full-frame claim.
+Launcher control: before p50/p99 0.797167/2.262542 ms; after 0.651875/10.475042 ms. Constructor/layout path unchanged, no Launcher speedup claimed.
+Canonical sidebar: before 1.813291/6.999709 ms; after 0.401208/13.805625 ms; cold 5.093667/19.4875 ms.
+1000-open: before 44.357792/130.956167 ms; initial after 0.262292/6.512958 ms; final ffb148c recheck 0.290209/18.512833 ms. Cold 5.175167/12.142041 ms. Warm p50 <=2 ms held; tails remain unresolved on this busy host, never dismissed as noise.
+Construction was sampled separately at 6.168792 to 13.048291 ms, not included in the layout timing and not a construction improvement claim.
+Final 1000-open exactness: 11194 full named parts ->211 retained, 186 visible, every visible rect/baseline and all retained geometry bit-identical; extent 245x32767, viewport 245x528, offset [0,0]. Warm width/font queries 697/416, zero native shape calls. Visible-scale profile retained; stop under 2 ms, no additional optimisation proposed.
+
+Verification: full frozen 1624/1624 PNG identity; 1576 geometry records, zero retained changes; surface JSON exact; all72 frozen swarm native full/windowed checks exact. Swarms136 strict 0 reviews. F5 separate56 pixels and geometry exact, strict0 reviews. See r10-regression.log and r10-parity.log.
+506e63a clean exact ci-local --parity on Flow: exit0, all gates passed (633 passed results including invariant reruns,14 ignored;7 invariants,3 named slow skips). Actual raw log r10-ci-506e63a-flow.log.
+ffb148c clean exact ci-local --parity: raw exit101 at mux socket_request_flood_replays_exact_output_and_delivers_exit_to_logic (socket_backlog.rs:129, InvalidData logic stopped after10000 requests). Workspace build and strict all-target Clippy already passed. Raw log r10-ci-ffb148c.log:1086-1109.
+Disposition: Oracle 41c62306-b633-451e-b6f8-fe1528adf612 names this as the known Rook-owned load flake (also seen by Aster); accepts this one external failure because 506e63a passed and the only later changes are UI validation + its test. No backend code or test suppression changed.
+All checks not reached after that failure were run separately on clean ffb148c: UI/model/book tests exit0; renderer/rt/supervisor tests exit0; UI IO lint0; app smoke0; invariants --parity/Flow0,7 checks/3 slow skips. Separate logs retain exact commands and results; final ci-local exit remains101, not relabelled as0.
+One focused backend reproduction had already finished before the skip instruction was read: exit0 in60.04s,64MiB+13 exact bytes/SHA in r10-socket-focused.log. No further reproduction; Rook owns diagnosis.
+Earlier local failures: E0502 in new test insertion fixed; replace_box Clippy finding fixed without allow; trailing evidence-log EOF whitespace corrected before the gated source. Invalid-Style declaration panic found in review fixed as ffb148c with regression test.
+
+Evidence and review paths: target/r10/ci-swarms-final/index.html; target/r10/ci-final-flow/index.html; target/r10/f5-perf-candidate/index.html; target/r10/f5-style-candidate/index.html; target/r10/ffb148c-native/layouts.json. Outputs and proof JSONs retained.
+Deliberately untouched: renderer, app, dependencies/lock, variable-height cache, revision seams, input/focus, and backend socket diagnosis. Existing callers still own their scroll offset; anchor API is explicit. No code pushed or merged by this Executor.
+HUD Style still has no manifest selection/standing gate; the required8 were verified explicitly using the public factory. That CLI/gate gap was reported, not expanded into R10.

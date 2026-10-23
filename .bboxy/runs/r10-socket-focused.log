@@ -1,0 +1,47 @@
+   Compiling zerocopy v0.8.63
+   Compiling log v0.4.34
+   Compiling smallvec v1.16.3
+   Compiling hashbrown v0.17.1
+   Compiling zlib-rs v0.6.8
+   Compiling mio v1.2.4
+   Compiling tungstenite v0.30.0
+   Compiling portable-pty v0.9.0
+   Compiling notify v8.2.0
+   Compiling parking_lot_core v0.9.12
+   Compiling parking_lot v0.12.5
+   Compiling bbt-core v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-core)
+   Compiling tokio v1.54.1
+   Compiling indexmap v2.14.2
+   Compiling hashlink v0.12.2
+   Compiling rusqlite v0.40.2
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling petgraph v0.8.3
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.8.8
+   Compiling rand v0.9.5
+   Compiling flate2 v1.1.10
+   Compiling bbt-rt v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-rt)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling ulid v1.2.1
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-supervisor)
+   Compiling num-bigint-dig v0.8.6
+   Compiling bbt-proto v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-proto)
+   Compiling rsa v0.9.10
+   Compiling dsa v0.6.3
+   Compiling pgp v0.21.0
+   Compiling bbt-mux v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 28.59s
+     Running tests/socket_backlog.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/socket_backlog-b85444e384592457)
+
+running 1 test
+socket backlog: owned_pid=42728 seat=01M5KT6YTY841MXVKAPHSVR6YJ
+socket backlog: 10000 requests completed in 1.282615791s
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic has been running for over 60 seconds
+socket backlog: requests=10000, exact_bytes=67108877, sha256=9ce315ede056aaa42a4a7f6dba33c1e82ae80b2d8932f01221b8af579187f844, exit_sequence=4106, logic_replayed_records=4103
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 60.04s
+
+# Recorded command exit=0; finished before the Oracle skip instruction was read.

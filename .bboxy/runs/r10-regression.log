@@ -1,0 +1,48 @@
+R10 regression proof — final source ffb148cefa1daa9cd5f4bec56e12c63230ad6158
+Frozen catalog: 1624/1624 PNGs byte-identical to accepted R9; zero missing or changed.
+Geometry: 1576 records; zero retained changes. Surface layouts JSON byte-identical.
+32 windowed cases; 5172 retained parts exact and 5172 entirely clipped parts explicitly listed. Every partly visible part remains compared.
+Full/native layouts: target/r10/ffb148c-native/layouts.json SHA256 ad3bc659c37afbd9ca65ffee55390b187b00bd22d8f6b9da3ab961b53a9f1ac5
+Detailed image hashes, every omitted key/web rect and viewport: target/r10/catalog-proof-final.json SHA256 dbe9bd238d37fe241d037ef716dd98036f1259067f14c86f6ed56b41d8138d37
+Exact full/windowed native check for all 72 frozen swarm cases: target/r10/frozen-visible-geometry-proof.json SHA256 1abd5f972d6f8d1693e7a556f3b2332b1c408e8a833755f5147e8e8f46ef208f
+Real 1000-open case: {"extents": ["Rect { x: 40.0, y: 254.6875, w: 245.0, h: 528.0 }:[1131741184, 1191181824]:[0, 0]"], "full_named": 11194, "visible_geometry_bit_identical": true, "visible_named": 186, "windowed_named": 211}
+Fresh swarms 136 (72 current +64 historical), 0 reviews; strict compare exit 0. target/r10/ci-swarms-final/index.html
+F5 separate: 56/56 PNGs and all 56 geometry records exactly equal to Seraph fresh accepted-source cuts (perf 4fa924d, HUD Style 1d9102b). Both candidate strict compares: 0 reviews, exit 0.
+F5 per-file hashes: target/r10/f5-final-proof.json SHA256 a73e4bc14dcb6d1d92f5505ebb282f85b57403430d132485153803b4d23147bd
+HUD independent 4fa924d capture agrees with peer 1d9102b after key ordering and actual backdrop-content hashing. No UI/render/lab/design code changes exist between those accepted sources.
+The first peer HUD selection returned 0 cases: manifest exports the legacy registry before --component filtering. Corrected by exactly mirroring public styles::cases (styles.rs:19-40); asserted 8 requests and captures, not a zero-case pass. No CLI code changes in R10.
+Visual read: sidebar/1000-seats-cozy-dark.png, owned frozen gallery; upright names, state marks, complete swarm chrome and clipped lower rows. Byte proof, rather than visual judgement, gates identity.
+
+Per-case omission counts (complete lists stay in layouts.json and catalog-proof-final.json):
+sidebar/10-seats-touch-dark.png — omitted 35; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/10-seats-touch-light.png — omitted 35; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/10-seats-comfortable-dark.png — omitted 0; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/10-seats-comfortable-light.png — omitted 0; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/10-seats-cozy-dark.png — omitted 0; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/10-seats-cozy-light.png — omitted 0; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/10-seats-compact-dark.png — omitted 0; viewport [23.0, 45.0, 205.0, 528.0]
+sidebar/10-seats-compact-light.png — omitted 0; viewport [23.0, 45.0, 205.0, 528.0]
+sidebar/100-seats-touch-dark.png — omitted 218; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/100-seats-touch-light.png — omitted 218; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/100-seats-comfortable-dark.png — omitted 151; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/100-seats-comfortable-light.png — omitted 151; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/100-seats-cozy-dark.png — omitted 116; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/100-seats-cozy-light.png — omitted 116; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/100-seats-compact-dark.png — omitted 62; viewport [23.0, 45.0, 205.0, 528.0]
+sidebar/100-seats-compact-light.png — omitted 62; viewport [23.0, 45.0, 205.0, 528.0]
+sidebar/1000-seats-touch-dark.png — omitted 581; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/1000-seats-touch-light.png — omitted 581; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/1000-seats-comfortable-dark.png — omitted 503; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/1000-seats-comfortable-light.png — omitted 503; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/1000-seats-cozy-dark.png — omitted 474; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/1000-seats-cozy-light.png — omitted 474; viewport [23.0, 45.0, 245.0, 528.0]
+sidebar/1000-seats-compact-dark.png — omitted 446; viewport [23.0, 45.0, 205.0, 528.0]
+sidebar/1000-seats-compact-light.png — omitted 446; viewport [23.0, 45.0, 205.0, 528.0]
+sidebar/phone-sheet-touch-dark.png — omitted 0; viewport [472.0, 317.25, 304.0, 295.75]
+sidebar/phone-sheet-touch-light.png — omitted 0; viewport [472.0, 317.25, 304.0, 295.75]
+sidebar/phone-sheet-comfortable-dark.png — omitted 0; viewport [472.0, 317.25, 304.0, 295.75]
+sidebar/phone-sheet-comfortable-light.png — omitted 0; viewport [472.0, 317.25, 304.0, 295.75]
+sidebar/phone-sheet-cozy-dark.png — omitted 0; viewport [472.0, 317.25, 304.0, 295.75]
+sidebar/phone-sheet-cozy-light.png — omitted 0; viewport [472.0, 317.25, 304.0, 295.75]
+sidebar/phone-sheet-compact-dark.png — omitted 0; viewport [472.0, 317.25, 304.0, 295.75]
+sidebar/phone-sheet-compact-light.png — omitted 0; viewport [472.0, 317.25, 304.0, 295.75]

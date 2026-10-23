@@ -1,0 +1,24 @@
+Signed follow-up ffb148c: Style/gap declaration failures leave the subtree undeclared, preserving the existing layout error instead of panicking in the height producer. Valid-input height/layout equations are unchanged. The measured Layout code in components.rs is byte-unchanged from 506e63a.
+
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling memchr v2.8.3
+   Compiling serde_json v1.0.154
+   Compiling syn v3.0.9
+   Compiling serde_derive v1.0.229
+   Compiling serde v1.0.229
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-ui)
+    Finished `release` profile [optimized] target(s) in 12.91s
+     Running tests/scroll_windowing.rs (target/r10-build/release/deps/scroll_windowing-c6299c561ea05c1c)
+
+running 8 tests
+test anchor_survives_insert_remove_and_width_density_changes_by_stable_identity ... ok
+test invalid_style_or_gap_keeps_the_fallback_layout_error_instead_of_panicking ... ok
+test undeclared_content_uses_the_original_full_layout_without_measurement_shortcuts ... ok
+test nested_ancestors_keep_full_material_group_and_clip_rectangles ... ok
+test fractional_prefix_keeps_solver_addition_order_even_when_extent_sum_rounds_differently ... ok
+test real_sidebar_falls_back_for_a_variable_extra_and_anchors_survive_rebuilds ... ok
+test measurement_is_bounded_by_the_window_with_exact_extent_and_geometry ... ok
+test real_thousand_open_sidebar_matches_full_visible_geometry_and_extent_to_the_bit ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s

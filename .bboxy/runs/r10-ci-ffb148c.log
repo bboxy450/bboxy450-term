@@ -1,0 +1,1109 @@
+exact commit: ffb148cefa1daa9cd5f4bec56e12c63230ad6158
+initial git status: clean
+command: sh scripts/ci-local.sh --parity; BBOXYBOOK_GALLERY=flow; custody=memory; own retained target from completed gate; default O1/debug guards
+layering: held
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 23.79s
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-render)
+    Checking bbt-rt v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-rt)
+    Checking bbt-supervisor v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-supervisor)
+    Checking bbt-doc v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-doc)
+    Checking bbt-proto v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-proto)
+    Checking bboxybook v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bboxybook)
+    Checking bbt-mux v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bboxy450-term)
+    Checking bboxy-firehose v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bboxy-firehose)
+    Finished `dev` profile [optimized] target(s) in 14.60s
+   Compiling bboxy450-term v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bboxy450-term)
+   Compiling bboxybook v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bboxybook)
+   Compiling bbt-doc v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-doc)
+   Compiling bbt-ui v0.0.1 (/private/tmp/ci-nyx-r10-506e63a/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 30.75s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bboxy_firehose-e37029a581a5db6d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bboxy_firehose-95bd166ff32b6564)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/cli-7c9115fd81009409)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s
+
+     Running tests/corpus.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/corpus-2e8cd9d70f8eba0b)
+
+running 3 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bboxy450_term-f8b74dd6f95fc227)
+
+running 7 tests
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bboxy450_term-a75b34c48fa29254)
+
+running 16 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test scene::lane_tests::the_lane_sets_gutter_and_inset_and_relayouts_at_runtime ... ok
+test scene::lane_tests::pane_rects_are_identical_across_activity_states ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+cockpit ready: supervisor=35915 logic=35918
+seat 01M5KSWRCQGCCRBTF3J49GFE3T activity=Idle process=Running { pid: 35920 }
+seat 01M5KSWRCQGCCRBTF3J49GFE3T activity=Idle process=Running { pid: 35920 }
+GUI operation 01M5KSWRFA2R15M6TS3PVV9F08 accepted
+GUI operation 01M5KSWRGHJ5Y6042NBA17S4FC accepted
+GUI operation 01M5KSWRGE30MP48JEDNPMK1T9 accepted
+GUI operation 01M5KSWRHSRAF56HD61D0Z3RPB accepted
+GUI operation 01M5KSWRHKTZVQE9CM199VR6HE accepted
+GUI operation 01M5KSWRK5W5VGFV0KQWSHCPSD accepted
+seat 01M5KSWRCQGCCRBTF3J49GFE3T activity=Active process=Running { pid: 35920 }
+GUI operation 01M5KSWRKT0MN5FVPFEES2RRN3 accepted
+GUI operation 01M5KSWRM4KZW20PA80387DMRS accepted
+GUI operation 01M5KSWRM48VPTVH8F5JRCPJ50 accepted
+GUI operation 01M5KSWRM4RDYBAZC2ZVZJ43A1 accepted
+GUI operation 01M5KSWRM46VSC2SZE6CYSVAXJ accepted
+GUI operation 01M5KSWRM46EG1S6PXY9XZVHZ0 accepted
+GUI operation 01M5KSWRM4KA555YAH32XZ1P0D accepted
+GUI operation 01M5KSWRM4MGC6SE3PX6775E3Z accepted
+GUI operation 01M5KSWRM4GAT3913JE7BBAZXV accepted
+GUI operation 01M5KSWRM4JRRAGAEQ5CV5WE4H accepted
+GUI operation 01M5KSWRM4S50BD7HVQZFDYND9 accepted
+GUI operation 01M5KSWRM42K4YG4W38JGMHT8R accepted
+GUI operation 01M5KSWRM4C90BWCQ5QKWWW62R accepted
+GUI operation 01M5KSWRM4NGFVHRN2DCJDTCF6 accepted
+GUI operation 01M5KSWRM4D3MRFP1TF41Z0YFK accepted
+GUI operation 01M5KSWRM4DA30W0ZWPVNZCCKE accepted
+GUI operation 01M5KSWRM44ATDBFSBKFDVT7HA accepted
+GUI operation 01M5KSWRM4FCNHH972843FNWY1 accepted
+GUI operation 01M5KSWRM4NJME3R0YWTYMS48H accepted
+GUI operation 01M5KSWRM4N2JDNXQTHYKDFZC4 accepted
+GUI operation 01M5KSWRM4J74GXQNC11YER0F9 accepted
+GUI operation 01M5KSWRM4JNCYXZ5Z1ESBJBN5 accepted
+GUI operation 01M5KSWRM4MPJC6Z98BGX6651S accepted
+GUI operation 01M5KSWRM441GFA1YZ6VBK0T2C accepted
+GUI operation 01M5KSWRM4P6QERVEPB0P0ZGYB accepted
+GUI operation 01M5KSWRM4VHJFKQJBQX4GFPV9 accepted
+GUI operation 01M5KSWRM413GC4PNEJYQNR2DX accepted
+GUI operation 01M5KSWRM40GZ48FY86FWFJSX6 accepted
+GUI operation 01M5KSWRM4M3N3YB1W2K5DMSY7 accepted
+GUI operation 01M5KSWRM4RWFW48DZERMDFJEH accepted
+GUI operation 01M5KSWRM48ZZAG0N82JF3FHYW accepted
+GUI operation 01M5KSWRM4VFCQXB3TTQ9RT34D accepted
+GUI operation 01M5KSWRM4MEQBKJ567YJGD3QC accepted
+GUI operation 01M5KSWRM46X3HFSRJS2YBKR08 accepted
+GUI operation 01M5KSWRM4MZP8T1VM8Q5YTWWP accepted
+GUI operation 01M5KSWRM47AQDW13H8W0KSNH5 accepted
+GUI operation 01M5KSWRM4MH42ND5W0E1YX4Q6 accepted
+GUI operation 01M5KSWRM4E3910RG2S4TFM2MF accepted
+GUI operation 01M5KSWRM4ZKKRZPM4BTZGNQHX accepted
+GUI operation 01M5KSWRM4H6MMG8G5TQVHEDX7 accepted
+GUI operation 01M5KSWRM46XGHBRJY818BZSJF accepted
+GUI operation 01M5KSWRM4WW3X0AV746K1VVX5 accepted
+GUI operation 01M5KSWRM403Q886ED9WD887EK accepted
+GUI operation 01M5KSWRM42P7CFE68QSNBRMRX accepted
+GUI operation 01M5KSWRM4Z8C2BNYC8857P5F8 accepted
+GUI operation 01M5KSWRM4Y6APE9AJTHCYYSA4 accepted
+GUI operation 01M5KSWRM4ZTF85HZH92D83J55 accepted
+GUI operation 01M5KSWRM4953Q40B90CKQKZ7G accepted
+GUI operation 01M5KSWRM4JTSR12VSJS1N2AV3 accepted
+GUI operation 01M5KSWRM4FFRV5NMNEQVTVMCT accepted
+GUI operation 01M5KSWRM4GDYDAPG0JNN7D3BD accepted
+GUI operation 01M5KSWRM4VWY8CXXNCKE25P99 accepted
+GUI operation 01M5KSWRM4CAHPS13Q4CRWJMJE accepted
+GUI operation 01M5KSWRM4PNJZGXZF9XS0QMNC accepted
+GUI operation 01M5KSWRM4BSDANMEB8AMY3FTE accepted
+GUI operation 01M5KSWRM4VGJ1DCPXZP60H2CX accepted
+GUI operation 01M5KSWRM42DHPMJ9M78ENZ9J0 accepted
+GUI operation 01M5KSWRM4C7KZ4TZGGTG6ZC8K accepted
+GUI operation 01M5KSWRM4BSXCZ2RW777Y9DXG accepted
+GUI operation 01M5KSWRM4SF432R7A43GZ6ZSR accepted
+GUI operation 01M5KSWRM4FRSF02SQ7F1KTJGV accepted
+GUI operation 01M5KSWRM47E3JAAJ5QSEJ4SJ7 accepted
+GUI operation 01M5KSWRM44ASHXV5NW27NR9QW accepted
+GUI operation 01M5KSWRM4SD1Z9Y21DRP86CXE accepted
+GUI operation 01M5KSWRM4HE0T90Z9SGQ4P2H0 accepted
+GUI operation 01M5KSWRM439VEC1H37TKFD0MY accepted
+GUI operation 01M5KSWRM4WBSGESD8MB2MFAKM accepted
+GUI operation 01M5KSWRM4WB1N3VYV24YHH20X accepted
+GUI operation 01M5KSWRM44MBAMMAG1S0QXZCX accepted
+GUI operation 01M5KSWRM4YBG652M364WVT535 accepted
+GUI operation 01M5KSWRM4QQEE3QGBBA185BDF accepted
+GUI operation 01M5KSWRM49ZR0C713PERM8WSB accepted
+GUI operation 01M5KSWRM42308KVTVHQWP6V3Q accepted
+GUI operation 01M5KSWRM4WTE1AFAGHQ1C49QN accepted
+GUI operation 01M5KSWRM4M3GCJHNT6CZ5ZB0A accepted
+GUI operation 01M5KSWRM4CDPKV8NEQEYXDPAZ accepted
+GUI operation 01M5KSWRM4144R7MANKTVQJ5G8 accepted
+GUI operation 01M5KSWRM4GJN1DKW2PGPYYQNA accepted
+GUI operation 01M5KSWRM4KKJ3X25P6Q6RF5BZ accepted
+GUI operation 01M5KSWRM4V71238WBJGCNHXBQ accepted
+GUI operation 01M5KSWRM4SEGC1H42KSF9YAM7 accepted
+GUI operation 01M5KSWRM5P6R9EAFK5QD8RPCR accepted
+GUI operation 01M5KSWRM5WKED5SEM5ZDBR5M4 accepted
+GUI operation 01M5KSWRM5VW6FP289J03NGYFD accepted
+GUI operation 01M5KSWRM5D7EEHF5EF23Q5DBS accepted
+GUI operation 01M5KSWRM5ZJTWJCKB2544QN0K accepted
+GUI operation 01M5KSWRM5S2FF1QH2KGRM38M8 accepted
+GUI operation 01M5KSWRM5XYP9YMF0WYMMFB5J accepted
+GUI operation 01M5KSWRM5CT44E1FPCAQTP6WC accepted
+GUI operation 01M5KSWRM5JQ0V4KZGDHHD4K03 accepted
+GUI operation 01M5KSWRM5PC3RHASY04G04SCS accepted
+GUI operation 01M5KSWRM5TYGPR2M4QDEGP9KP accepted
+GUI operation 01M5KSWRM5WGR8NGX0NV4926JA accepted
+GUI operation 01M5KSWRM5CE4G7T7N75V3SRH4 accepted
+GUI operation 01M5KSWRM5T355XM18SQGCRB5P accepted
+GUI operation 01M5KSWRM5P1167CTFYVPXCG6X accepted
+GUI operation 01M5KSWRM5EDFSGDCVZN58S234 accepted
+GUI operation 01M5KSWRM55SRWM1C2MZQCYA2E accepted
+GUI operation 01M5KSWRM5CP2EGV952GN76S8M accepted
+GUI operation 01M5KSWRM5PPHYTE7191K99KRP accepted
+GUI operation 01M5KSWRM5E6X6FMZC5GMKAJQ6 accepted
+GUI operation 01M5KSWRM5VNZPENAGQ3F3NF1T accepted
+GUI operation 01M5KSWRM5373Y8NQSGEV59HEW accepted
+GUI operation 01M5KSWRM5SYK8KB2G8HA0RMS1 accepted
+GUI operation 01M5KSWRM5FG4CGM2PP79ZV9ZH accepted
+GUI operation 01M5KSWRM5KYCJA39YWTNF3VRK accepted
+GUI operation 01M5KSWRM58936NMM2BE9QBV0A accepted
+GUI operation 01M5KSWRM5GMKM1JBNGRNAV3S6 accepted
+GUI operation 01M5KSWRM5QS6BX5F8Z9CB9SKA accepted
+GUI operation 01M5KSWRM5F3TFP8VACCCN4P01 accepted
+GUI operation 01M5KSWRM5W58BGKZXG8C9WFYX accepted
+GUI operation 01M5KSWRM599ZPEBMSXQG6Q839 accepted
+GUI operation 01M5KSWRM5J2HBDTP8YCG8WDM5 accepted
+GUI operation 01M5KSWRM5ZY5NY8NXA7FE00P3 accepted
+GUI operation 01M5KSWRM5A1CP0YTC8YGWH06S accepted
+GUI operation 01M5KSWRM5JRGMB5VA4D0WW3G6 accepted
+GUI operation 01M5KSWRM5BJEJ5AH4S8S7D5D4 accepted
+GUI operation 01M5KSWRM5K0888FPDZ8TGM14H accepted
+GUI operation 01M5KSWRM5FTCM8964SR92J0AP accepted
+GUI operation 01M5KSWRM5P7KEM3C3H7K8Y1QB accepted
+GUI operation 01M5KSWRM51NVEE8AC25ZMCSYP accepted
+GUI operation 01M5KSWRM5T10187WXBD612JMN accepted
+GUI operation 01M5KSWRM5Z2JTNW7SPTM4YP10 accepted
+GUI operation 01M5KSWSG8WR5BXG4W4T5JE749 accepted
+GUI operation 01M5KSWRM5MPQHT82C6DCH8NX6 accepted
+GUI operation 01M5KSWRM56ZN2JWB79K4K7CKE accepted
+GUI operation 01M5KSWRM5VQR1X06AGD07CGW1 accepted
+GUI operation 01M5KSWRM5BHKB77JAY504HKG2 accepted
+GUI operation 01M5KSWRM58GQVEJP74TSY6E0Q accepted
+GUI operation 01M5KSWRM59YKTSW8Y01MSMWEJ accepted
+GUI operation 01M5KSWRM5VS3RKW652RTNM95C accepted
+GUI operation 01M5KSWRM55P2X4VAM7HCAJH6P accepted
+GUI operation 01M5KSWRM5QNVY1V14CWCHPYYB accepted
+GUI operation 01M5KSWRM5WEM0JCVP69J8THBC accepted
+GUI operation 01M5KSWRM518YE7VSKPJNTEKH6 accepted
+GUI operation 01M5KSWRM5SVCYNG98CT1YP2J9 accepted
+GUI operation 01M5KSWRM5Q329H0XNSX9RJ9KJ accepted
+GUI operation 01M5KSWRM53NW0QJVS26TT6DF3 accepted
+GUI operation 01M5KSWRM5THPR9NTCCM2XC1PT accepted
+GUI operation 01M5KSWRM5TCBDJ2VZTKN1B2VC accepted
+GUI operation 01M5KSWRM5APT49HYDDJ1JCK98 accepted
+GUI operation 01M5KSWRM54QEH96P1ZM35SF8B accepted
+GUI operation 01M5KSWRM57ZF5G0JRR2Q79ST6 accepted
+GUI operation 01M5KSWRM55D1S71RA4MB41J1R accepted
+GUI operation 01M5KSWRM5VYD2WSBN9706PN4H accepted
+GUI operation 01M5KSWRM5ESQB3BQ16G5HVQVZ accepted
+GUI operation 01M5KSWRM5RW0SKEE5P5PBGJWW accepted
+GUI operation 01M5KSWRM5ZSJGRS3V0RREXP6G accepted
+GUI operation 01M5KSWRM5WY39SYDBER4SDKJS accepted
+GUI operation 01M5KSWRM55Y4MJ0ZJBWV9GS82 accepted
+GUI operation 01M5KSWRM5NNAKKAAW9KHVDXGZ accepted
+GUI operation 01M5KSWRM5ME0865QXMX6A4Q3C accepted
+GUI operation 01M5KSWRM5WRXGQZE16RZBS4JP accepted
+GUI operation 01M5KSWRM5AXW2Y1R95BKXXX16 accepted
+GUI operation 01M5KSWRM5ZMV18GJ9VJFYJGJK accepted
+GUI operation 01M5KSWRM5KJZ9JGPVHHZCKC06 accepted
+GUI operation 01M5KSWRM57B5DES9196PH7D3E accepted
+GUI operation 01M5KSWRM5WJJ6X5NH6JMZQ11Q accepted
+GUI operation 01M5KSWRM5WZD94HJ3DTXDQEFF accepted
+GUI operation 01M5KSWRM595JG5BSWG0X651RF accepted
+GUI operation 01M5KSWRM53JSWER1293E0B0Z4 accepted
+GUI operation 01M5KSWRM5ZGBBZYS34ZAJ9KS5 accepted
+GUI operation 01M5KSWRM5YP8ND1XMYDX6JKA0 accepted
+GUI operation 01M5KSWRM5HVJ1HMMP6KGTY79R accepted
+GUI operation 01M5KSWRM5FWHAMVPGA72PQ1SB accepted
+GUI operation 01M5KSWRM54DXA69WSCCX4P2HP accepted
+GUI operation 01M5KSWRM506EWFYP51SJHMS9N accepted
+GUI operation 01M5KSWRM5XKVXZTG8BMGE2XGF accepted
+GUI operation 01M5KSWRM5STPB3S7479QXTXH3 accepted
+GUI operation 01M5KSWRM5Y3JVND7BS5ZKFGPG accepted
+GUI operation 01M5KSWRM571T5EKN88Q2D2RME accepted
+GUI operation 01M5KSWRM5HEGR7N9DBF4VQ25A accepted
+GUI operation 01M5KSWRM5BQ9YC6K7HSMHAYWJ accepted
+GUI operation 01M5KSWRM5E1PDPFB3J7V1QEGM accepted
+GUI operation 01M5KSWRM5YXSZ9FBW440VAPM9 accepted
+GUI operation 01M5KSWRM5GKN9WERBH1XM5ZJT accepted
+GUI operation 01M5KSWRM5WV9RZKBM5T8HAZ3N accepted
+GUI operation 01M5KSWRM5XQD9SA7DTWJBCG6H accepted
+GUI operation 01M5KSWRM5ETY4Y2PA1NX5DKYF accepted
+GUI operation 01M5KSWRM5PCD6ANKCD2F0JKR0 accepted
+GUI operation 01M5KSWRM5NX0R147TPS1QERHF accepted
+GUI operation 01M5KSWRM5GM9TA79CFC9RX188 accepted
+GUI operation 01M5KSWRM5RT711PP7YV5ZQDYD accepted
+GUI operation 01M5KSWRM5BRTKCCQPR5D062Q9 accepted
+GUI operation 01M5KSWRM5QKF5NWBMWT161MA8 accepted
+GUI operation 01M5KSWRM5CA861WY9TCC9BXMH accepted
+GUI operation 01M5KSWRM507T7XKWGE8N9VA6Y accepted
+GUI operation 01M5KSWRM5V0JD978KWFHKSFKN accepted
+GUI operation 01M5KSWRM543RVEBJYXRN53GVC accepted
+GUI operation 01M5KSWRT9ETJGGHYG5V6V6NZY accepted
+GUI operation 01M5KSWRT9YGKAPE8MCBED316B accepted
+GUI operation 01M5KSWRT9TD2GSV45P1PFNYR4 accepted
+GUI operation 01M5KSWRT9TWNTTA93WVA1FGZZ accepted
+GUI operation 01M5KSWRT9J2S7S5F3S1CB65DJ accepted
+GUI operation 01M5KSWRT9N3NYCQ14N6NH23ZY accepted
+GUI operation 01M5KSWRT9FGDMSW68PPHWMQQ8 accepted
+GUI operation 01M5KSWRT99FG5112HBCD41M75 accepted
+GUI operation 01M5KSWRT92A9EB2H0S6HHMPFR accepted
+GUI operation 01M5KSWRT9S2T9XWQM7P32EH8M accepted
+GUI operation 01M5KSWRT9YVFQR1FNRYQHK12T accepted
+GUI operation 01M5KSWRT91S7D8NP3891MWD0Y accepted
+GUI operation 01M5KSWRT91G62M1M9YQ0VRH9P accepted
+GUI operation 01M5KSWRT9WM2JDQMD9T7QZA26 accepted
+GUI operation 01M5KSWRT9PVGKHP1G1CY4THJR accepted
+GUI operation 01M5KSWRT9ZZ3BFGBVASFTJABR accepted
+GUI operation 01M5KSWRT9DZ0BA751RZNHPBFT accepted
+GUI operation 01M5KSWRT9ENHX41S2DJXSSFB4 accepted
+GUI operation 01M5KSWRT9HY8KDT501GYSRPH6 accepted
+GUI operation 01M5KSWRT9VRRSAWA0AN1DEMDM accepted
+GUI operation 01M5KSWRT9G0DCQ1WRDRWRVKNC accepted
+GUI operation 01M5KSWRT9AEHCJTKE54J6462Y accepted
+GUI operation 01M5KSWRT9C2QKV9BD7Y41AZA9 accepted
+GUI operation 01M5KSWRT99Q3H9BPCC8XTGKDW accepted
+GUI operation 01M5KSWRT9K60HJPFF8H2CFRPS accepted
+GUI operation 01M5KSWRT9AXSA40ME4FH7GQH1 accepted
+GUI operation 01M5KSWRT98NATGHXFDG313ZN9 accepted
+GUI operation 01M5KSWS0T7K2VRZXXTS4ZP19A accepted
+GUI operation 01M5KSWS0T723JQDSPZ014K66T accepted
+GUI operation 01M5KSWS0T1GT273BAR51C6V93 accepted
+GUI operation 01M5KSWS0THGWW1KW8M5CGA6EM accepted
+GUI operation 01M5KSWS0TBH2RWW34VBAXVYCM accepted
+GUI operation 01M5KSWS0THJ52JVE784HPDC9J accepted
+GUI operation 01M5KSWS0T6JZADGYNCMQT03NA accepted
+GUI operation 01M5KSWS0TP4D16TEC801XHCCE accepted
+GUI operation 01M5KSWS0TQKNVCSKV8Y4MHGH8 accepted
+GUI operation 01M5KSWS0TP919C1XK4VMDKERD accepted
+GUI operation 01M5KSWS0TZRG3BQQT6P3YW10G accepted
+GUI operation 01M5KSWS0TQX699V2TDTZ7C72F accepted
+GUI operation 01M5KSWS0TF8C19468N584NBVF accepted
+GUI operation 01M5KSWS0T5V917Y6S8DDM9YN4 accepted
+GUI operation 01M5KSWS0T9H5AA835J2ZSH69N accepted
+GUI operation 01M5KSWS0T522YPJFT9148YK7C accepted
+GUI operation 01M5KSWS0TE7N5ZDPPFJVXYS2M accepted
+GUI operation 01M5KSWS0T0M65QGCDJJBSYP0H accepted
+GUI operation 01M5KSWS0TPKPD826WDYSE5R7H accepted
+GUI operation 01M5KSWTAM314M1HNMR7YPMDX4 accepted
+GUI operation 01M5KSWS0TMW4H32AHF8H2Z10D accepted
+GUI operation 01M5KSWS0TECH4XZT1N68N3FKE accepted
+GUI operation 01M5KSWS0T50M9ZCG4MSHRVJGR accepted
+GUI operation 01M5KSWS0TJQ4HAZVEMB8MKBAT accepted
+GUI operation 01M5KSWS0T887W4DRRKF8YZ338 accepted
+GUI operation 01M5KSWS0TY6HNM502NKQGKZ7P accepted
+GUI operation 01M5KSWS0TYY5161W5F989GMH3 accepted
+GUI operation 01M5KSWS0TNFTQ2R8QW97FTQYS accepted
+GUI operation 01M5KSWS0T9F72R86DK82P7KDM accepted
+GUI operation 01M5KSWS7H4BZ9ACE8F80N928Y accepted
+GUI operation 01M5KSWS7HY7BXA2MW7QNSWEGJ accepted
+GUI operation 01M5KSWS7H08TK8T3N09E1YBPB accepted
+GUI operation 01M5KSWS7H74580Z3Q67A31N1E accepted
+GUI operation 01M5KSWS7HMNRF7B47E4S5MR7V accepted
+GUI operation 01M5KSWS7H97SHCBJ0A56G0YQC accepted
+GUI operation 01M5KSWS7HQQDMMYY0FB31SPAQ accepted
+GUI operation 01M5KSWS7HSVJE77YH58VDV33S accepted
+GUI operation 01M5KSWS7H2CEJFYBZD6XYK76K accepted
+GUI operation 01M5KSWS7HRP704EVEQS2FC98J accepted
+GUI operation 01M5KSWS7HYW3FAQ5AKA6TWAG1 accepted
+GUI operation 01M5KSWS7HK88KKE57P8C9T39Y accepted
+GUI operation 01M5KSWS7H26YQ03DPYSV1TK7H accepted
+GUI operation 01M5KSWS7H0FVV7RQDCEAM5BBP accepted
+GUI operation 01M5KSWS7HJBG5WJTXDA9ZKSY8 accepted
+GUI operation 01M5KSWTGCVQZTBTD73VRAKSYX accepted
+seat 01M5KSWRCQGCCRBTF3J49GFE3T activity=Idle process=Running { pid: 35920 }
+GUI operation 01M5KSWTHN6NJXMR4EFJ9FM87J accepted
+GUI operation 01M5KSWTHNDD3C3XZVFQDAMAAS accepted
+GUI operation 01M5KSWTJ7QJG23WDXGRRY0CEP accepted
+GUI operation 01M5KSWTJAJWV9P9CCD67KXJAC accepted
+GUI operation 01M5KSWTJPM98TW6AH6JVHQA9D accepted
+seat 01M5KSWRCQGCCRBTF3J49GFE3T activity=Idle process=Running { pid: 35920 }
+GUI operation 01M5KSWTKGYAZCDSH1GHSPSGRB accepted
+GUI operation 01M5KSWTKSZE40KNQHPGN65P81 accepted
+GUI operation 01M5KSWTMNAAEC8N9H3GKWC87D accepted
+GUI operation 01M5KSWTMVK3GBPV2XGG8BHTKD accepted
+GUI operation 01M5KSWTN52HNM3PMWZD1BQT0B accepted
+GUI operation 01M5KSWTN6XQ3ETG58DWEQ5HPY accepted
+GUI operation 01M5KSWTNKTJG4NYSQ6PW30302 accepted
+seat 01M5KSWRCQGCCRBTF3J49GFE3T activity=Idle process=Running { pid: 35920 }
+GUI operation 01M5KSWTPQP1WN909T4W8E8R8P accepted
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.17s
+
+     Running tests/cockpit.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/cockpit-6397b5eece3ef667)
+
+running 5 tests
+logic: orderly shutdown requested
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+     Running tests/custody.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/custody-6b710164916018d1)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.08s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bboxybook-ade3129ab0fc882c)
+
+running 13 tests
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test documents::diagram_policy_tests::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test swarms::diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.93s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bboxybook-9265e2ca39b65e20)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/atoms-f618475c49275791)
+
+running 3 tests
+test icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage ... ok
+test icon_size_gallery_renders_at_one_and_two_device_pixels_per_point ... ok
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests/blending.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/blending-1d27d27686ad07f9)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/clipping.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/clipping-263083728e3478d4)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/components.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/components-f59d0bc0403d9b74)
+
+running 4 tests
+test component_cases_are_canonical_and_box_gallery_covers_materials_and_radii ... ok
+test a_retained_group_keeps_material_coverage_and_filters_the_completed_layer ... ok
+test retained_image_preserves_asset_colour_rounding_and_group_filtering ... ok
+test retained_scroll_content_moves_but_never_paints_outside_the_viewport ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/documents.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/documents-cf277159c7b7def9)
+
+running 4 tests
+test document_matrix_covers_all_types_and_both_modal_presentations_and_source ... ok
+test native_document_layout_consumes_public_records_not_css_or_child_geometry ... ok
+test document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records ... ok
+test every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.45s
+
+     Running tests/fixtures.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/fixtures-f84288539346a72c)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/graphs.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/graphs-2c59f3b369ce7251)
+
+running 4 tests
+test former_graph_and_provenance_hand_painters_are_removed ... ok
+test graph_matrix_covers_each_live_card_and_the_empty_swarm ... ok
+test channel_layout_never_consumes_browser_svg_diagnostics ... ok
+test graph_layout_is_driven_by_records_not_browser_child_positions ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/icon_filter.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/icon_filter-93b2805963cd7bc2)
+
+running 1 test
+test icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/launchers.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/launchers-343e47cfb04a7d25)
+
+running 3 tests
+test matrix_has_every_current_lab_state_and_separate_historical_keys ... ok
+test a_machine_subtitle_with_room_stays_on_one_line ... ok
+test geometry_uses_constructor_values_instead_of_child_dom_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/materials.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/materials-b35d5fb0c143f823)
+
+running 3 tests
+test source_over_glow_keeps_destination_alpha ... ok
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/metrics.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/metrics-05c4b2d538a850ab)
+
+running 3 tests
+test cache_hits_preserve_native_float_bits_and_instance_lifetime ... ok
+test every_app_font_key_field_including_float_bits_is_distinct ... ok
+test cached_coretext_values_match_the_raw_host_bit_for_bit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/overlays.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/overlays-18c0fc16bfda569b)
+
+running 2 tests
+test layer_matrix_distinguishes_full_primitives_from_module_surfaces ... ok
+test overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/panes.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/panes-a6f0c53f3ffb5c8b)
+
+running 4 tests
+test legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted ... ok
+test pane_registry_pairs_every_current_and_historical_case_without_collisions ... ok
+test legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip ... ok
+test native_panes_ignore_child_web_bounds_and_font_diagnostics ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/parity_gate.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/parity_gate-0fe0334fd7686f2e)
+
+running 6 tests
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_reference_does_not_hide_missing_geometry ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test historical_geometry_review_exits_zero ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running tests/perf.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/perf-df673526a379a1a1)
+
+running 2 tests
+test perf_cases_cover_six_states_with_ascii_slugs ... ok
+test hud_width_is_the_spark_and_every_part_is_named ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/render.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/render-0d5ccd0502124813)
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.68s
+
+     Running tests/seat_rows.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/seat_rows-0c36e185d3dc1b0d)
+
+running 2 tests
+test seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures ... ok
+test child_dom_rectangles_and_css_metrics_are_diagnostics_only ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/settings.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/settings-a060476349eb1131)
+
+running 3 tests
+test placeholder_settings_hand_painter_is_removed ... ok
+test settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme ... ok
+test settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/shaders.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/shaders-8f53a5eba6e99156)
+
+running 2 tests
+test lane_quad_and_parameters_are_validated ... ok
+test lane_effects_never_leave_the_lane ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.62s
+
+     Running tests/shadow.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/shadow-39ca2e30ee34b407)
+
+running 2 tests
+test css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box ... ok
+test positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/streams.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/streams-01fa76821f30dd33)
+
+running 3 tests
+test old_stream_painter_is_deleted_in_favor_of_the_retained_composition ... ok
+test stream_matrix_covers_every_current_state_and_labels_legacy_cases ... ok
+test stream_layout_consumes_public_entries_but_never_browser_child_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/styles.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/styles-08e705aaf7a372bb)
+
+running 2 tests
+test per_node_glow_drives_state_grade_and_seed_without_changing_the_box ... ok
+test style_matrix_is_canonical_and_every_preset_renders_on_the_native_device ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+
+     Running tests/swarms.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/swarms-12495b4bd4d649da)
+
+running 3 tests
+test old_swarm_card_and_sidebar_hand_painters_are_gone ... ok
+test swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys ... ok
+test captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/tabs.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/tabs-f9b254ef7444e372)
+
+running 3 tests
+test old_module_and_json_painters_delegate_to_the_retained_compositions ... ok
+test all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions ... ok
+test tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/title_bars.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/title_bars-d3001fec6e761566)
+
+running 2 tests
+test titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only ... ok
+test native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/widgets.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/widgets-41c935272f6f0a58)
+
+running 3 tests
+test control_matrix_has_canonical_keys_and_all_constructor_families ... ok
+test transparent_layout_border_does_not_cut_the_background_fill ... ok
+test thousand_row_views_clip_output_and_the_table_header_stays_fixed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.50s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bbt_core-348ec8df8d490e01)
+
+running 108 tests
+test vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate_wrap_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate ... ok
+test vendor::alacritty::grid::storage::tests::indexing ... ok
+test vendor::alacritty::grid::storage::tests::shrink_then_grow ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning ... ok
+test vendor::alacritty::grid::storage::tests::grow_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::with_capacity ... ok
+test vendor::alacritty::grid::storage::tests::initialize ... ok
+test vendor::alacritty::grid::storage::tests::grow_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::indexing_above_inner_len - should panic ... ok
+test vendor::alacritty::grid::tests::scroll_down ... ok
+test vendor::alacritty::grid::tests::scroll_up ... ok
+test vendor::alacritty::grid::tests::grow_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::grow_reflow ... ok
+test vendor::alacritty::grid::tests::grow_reflow_multiline ... ok
+test vendor::alacritty::grid::tests::accurate_size_hint ... ok
+test vendor::alacritty::grid::tests::shrink_reflow ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::scroll_down_with_history ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_twice ... ok
+test vendor::alacritty::grid::tests::test_iter ... ok
+test vendor::alacritty::index::tests::add ... ok
+test vendor::alacritty::index::tests::add_clamp ... ok
+test vendor::alacritty::index::tests::add_grid_clamp ... ok
+test vendor::alacritty::index::tests::add_none_clamp ... ok
+test vendor::alacritty::index::tests::add_wrap ... ok
+test vendor::alacritty::index::tests::location_ordering ... ok
+test vendor::alacritty::index::tests::sub ... ok
+test vendor::alacritty::index::tests::sub_clamp ... ok
+test vendor::alacritty::index::tests::sub_grid_clamp ... ok
+test vendor::alacritty::index::tests::sub_none_clamp ... ok
+test vendor::alacritty::index::tests::sub_wrap ... ok
+test vendor::alacritty::term::cell::tests::cell_size_is_below_cap ... ok
+test vendor::alacritty::term::cell::tests::line_length_works ... ok
+test vendor::alacritty::term::cell::tests::line_length_works_with_wrapline ... ok
+test vendor::alacritty::term::tests::damage_cursor_movements ... ok
+test vendor::alacritty::term::tests::input_line_drawing_character ... ok
+test vendor::alacritty::term::tests::clearing_viewport_keeps_history_position ... ok
+test vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset ... ok
+test vendor::alacritty::term::tests::parse_cargo_version ... ok
+test vendor::alacritty::term::tests::clear_saved_lines ... ok
+test vendor::alacritty::term::tests::damage_public_usage ... ok
+test vendor::vte::ansi::tests::contrast ... ok
+test vendor::vte::ansi::tests::parse_control_attribute ... ok
+test vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing ... ok
+test vendor::vte::ansi::tests::mixed_sync_escape ... ok
+test vendor::alacritty::term::tests::window_title ... ok
+test vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke ... ok
+test vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_invalid_number ... ok
+test vendor::vte::ansi::tests::parse_invalid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_number_too_large ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_color ... ok
+test vendor::vte::ansi::tests::parse_osc4_set_color ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_csi ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_esc ... ok
+test vendor::vte::ansi::tests::parse_truecolor_attr ... ok
+test vendor::alacritty::term::tests::grid_serde ... ok
+test vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_valid_number ... ok
+test vendor::vte::ansi::tests::parse_valid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_zsh_startup ... ok
+test vendor::vte::ansi::tests::partial_sync_updates ... ok
+test vendor::vte::ansi::tests::sync_bsu_with_esu ... ok
+test vendor::vte::tests::c1s ... ok
+test vendor::vte::tests::csi_subparameters ... ok
+test vendor::vte::tests::csi_reset ... ok
+test vendor::vte::tests::dcs_reset ... ok
+test vendor::vte::tests::esc_reset ... ok
+test vendor::vte::tests::esc_reset_intermediates ... ok
+test vendor::vte::tests::exceed_max_buffer_size ... ok
+test vendor::vte::tests::execute_anywhere ... ok
+test vendor::vte::tests::intermediate_reset_on_dcs_exit ... ok
+test vendor::vte::tests::invalid_utf8 ... ok
+test vendor::vte::tests::osc_bell_terminated ... ok
+test vendor::vte::tests::osc_c0_st_terminated ... ok
+test vendor::vte::tests::osc_containing_string_terminator ... ok
+test vendor::vte::tests::params_buffer_filled_with_subparam ... ok
+test vendor::vte::tests::parse_csi_max_params ... ok
+test vendor::vte::tests::parse_csi_params_ignore_long_params ... ok
+test vendor::vte::tests::parse_csi_params_leading_semicolon ... ok
+test vendor::vte::tests::parse_csi_params_trailing_semicolon ... ok
+test vendor::alacritty::term::tests::full_damage ... ok
+test vendor::vte::tests::parse_dcs ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos ... ok
+test vendor::vte::tests::parse_dcs_max_params ... ok
+test vendor::vte::tests::parse_empty_osc ... ok
+test vendor::vte::tests::parse_long_csi_param ... ok
+test vendor::vte::tests::parse_osc ... ok
+test vendor::vte::tests::parse_osc_max_params ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos ... ok
+test vendor::vte::tests::parse_osc_with_utf8_arguments ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos ... ok
+test vendor::vte::tests::partial_invalid_utf8 ... ok
+test vendor::vte::tests::partial_invalid_utf8_split ... ok
+test vendor::vte::tests::partial_utf8 ... ok
+test vendor::vte::tests::partial_utf8_into_esc ... ok
+test vendor::vte::tests::partial_utf8_separating_utf8 ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos ... ok
+test vendor::vte::tests::unicode ... ok
+test vendor::vte::ansi::tests::sync_bursts_buffer ... ok
+
+test result: ok. 108 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/checkpoint.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/checkpoint-6527d8f6d8b42b26)
+
+running 7 tests
+test viewport_only_drops_existing_history_even_while_the_primary_is_inactive ... ok
+test osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st ... ok
+test saved_cursor_and_inactive_primary_screen_survive_checkpoint ... ok
+test incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook ... ok
+test synchronized_output_buffer_and_preceding_character_survive_checkpoint ... ok
+test checkpoint_retains_an_incomplete_csi_and_utf8_codepoint ... ok
+test red_foreground_survives_4096_bytes_and_a_durable_checkpoint ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/resize.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/resize-b291b95d234b489f)
+
+running 1 test
+test resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bbt_doc-89ce6354ae4d06aa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/corpus.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/corpus-139cbc45a247d3fd)
+
+running 2 tests
+test corpus_gate_rejects_nested_malformed_frontmatter_with_path_and_source_line ... ok
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/layout.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/layout-8511f2ea4b243a64)
+
+running 7 tests
+test structured_frontmatter_links_project_to_chips_and_keep_the_original_mapping ... ok
+test long_paths_and_emoji_wrap_at_grapheme_boundaries_without_rewriting_source ... ok
+test real_mermaid_is_a_drawing_card_and_wide_code_scrolls_without_scaling ... ok
+test matching_leading_h1_is_hidden_only_with_a_header_and_original_source_stays_intact ... ok
+test document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables ... ok
+test table_columns_keep_unbroken_words_and_scroll_when_their_minima_do_not_fit ... ok
+test modal_body_override_preserves_the_shell_and_does_not_claim_yaml_signatures_verify ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/markdown.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/markdown-462e70767a3952e8)
+
+running 5 tests
+test wikilinks_retain_labels_weights_and_do_not_activate_inside_code ... ok
+test malformed_metadata_and_html_remain_visible_source ... ok
+test commonmark_builds_nested_blocks_and_keeps_original_utf8_offsets ... ok
+test metadata_errors_use_markdown_lines_including_delimiter_bom_and_crlf ... ok
+test gfm_tables_footnotes_links_and_mermaid_are_semantic_records ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/mermaid.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/mermaid-e7d439bde8f45a76)
+
+running 6 tests
+test geometry_uses_ui_fonts_and_true_size_and_retains_document_link_targets ... ok
+test sequence_keeps_duplicate_participants_notes_activations_and_frame_dividers ... ok
+test circle_markers_are_hollow_at_both_ends ... ok
+test figure_source_state_and_unsupported_syntax_keep_the_original_source_readable ... ok
+test lab_diagram_inputs_stay_aligned_and_supported_cases_use_the_native_engine ... ok
+test every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bbt_mermaid-680f5ab4c870925d)
+
+running 11 tests
+test layered::tests::pav_keeps_order_and_gaps ... ok
+test flowchart::tests::shapes_groups_classes_and_subgraph_endpoints ... ok
+test state::tests::notes_sit_beside_their_state ... ok
+test text::tests::cleans_quotes_breaks_and_entities ... ok
+test state::tests::states_transitions_and_composites ... ok
+test state::tests::rejects_unsupported ... ok
+test flowchart::tests::rejects_unsupported ... ok
+test flowchart::tests::links ... ok
+test sequence::tests::parses_messages_notes_and_blocks ... ok
+test text::tests::statements_keep_quoted_newlines ... ok
+test sequence::tests::rejects_unsupported ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/fixtures-78626ccb56d08cdc)
+
+running 11 tests
+test multi_edges_take_distinct_paths ... ok
+test subgraph_direction_is_honoured_unless_linked_outside ... ok
+test unsupported_syntax_is_an_error ... ok
+test fixture_counts ... ok
+test everything_inside_the_size ... ok
+test every_fixture_lays_out ... ok
+test no_overlapping_nodes ... ok
+test edges_start_and_end_on_borders ... ok
+test clusters_hold_members_and_exclude_others ... ok
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+test layout_is_deterministic ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/bbt_mux-04716ee7683b571b)
+
+running 11 tests
+test identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test identity::io::debug_tests::debug_without_override_selects_keychain ... ok
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+
+test result: ok. 10 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.51s
+
+     Running tests/adapters.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/adapters-4f3fe6a4a4483503)
+
+running 11 tests
+test adapters_custom_harness_cadence_and_reported_idle_never_create_readiness ... ok
+test adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows ... ok
+test adapters_codex_native_readiness_and_hooks_only_subagents ... ok
+test adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields ... ok
+test adapters_native_claude_socket_writes_priority_without_claiming_consumption ... ok
+test adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping ... ok
+test adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reuse ... ok
+test adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect ... ok
+test adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary ... ok
+test adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallback ... ok
+test adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/capture_busy.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/capture_busy-551272bb0d1ca998)
+
+running 2 tests
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+test large_capture_catchup_yields_to_control_between_history_pages ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.38s
+
+     Running tests/gates_seats.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/gates_seats-1ccd20c2ec9522aa)
+
+running 4 tests
+test gate_bus ... ignored, C1d gate 2: sh scripts/gates.sh bus
+test gate_memory ... ignored, C1d gate 1: sh scripts/gates.sh memory
+test gate_poller ... ignored, C1d gate 3: sh scripts/gates.sh poller
+test disk_guard_abort_terminates_owned_children_and_removes_the_run ... ok
+
+test result: ok. 1 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+     Running tests/identity.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/identity-4f707b995ace90fa)
+
+running 14 tests
+test identity_keychain_device_local_item_and_cleanup ... ignored, uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+test identity_device_without_root_certification_is_refused_before_seat_issuance ... ok
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+test identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history ... ok
+test identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs ... ok
+test identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts ... ok
+test identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences ... ok
+test identity_status_is_available_as_data_through_the_bounded_logic_client ... ok
+test identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history ... ok
+test identity_bootstrap_external_certification_and_custody ... ok
+test identity_hold_range_stays_ephemeral_until_throwaway_device_enrollment_then_closes ... ok
+test identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count ... ok
+test identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons ... ok
+
+test result: ok. 13 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.50s
+
+     Running tests/identity_io.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/identity_io-0735e8269ff13f2a)
+
+running 4 tests
+test memory_custody_process_fixture ... ignored, spawned-process fixture, invoked by debug_process_override_uses_only_memory_custody
+test interaction_required_is_pending_without_a_prompt_or_replacement ... ok
+test debug_process_override_uses_only_memory_custody ... ok
+test stuck_custody_has_a_two_second_bound_and_retry_does_not_add_workers ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 4.02s
+
+     Running tests/identity_local.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/identity_local-a058a7b6b3b17f0b)
+
+running 7 tests
+test concurrent_creators_read_one_atomic_winner ... ok
+test unavailable_and_missing_custody_hold_without_replacement_or_secret_file ... ok
+test old_random_pin_is_not_silently_replaced ... ok
+test bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes ... ok
+test held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_routes ... ok
+test stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs ... ok
+test pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.15s
+
+     Running tests/logic.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/logic-eb454b5f44c99746)
+
+running 11 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test ring_capture_throughput_with_logic_running_and_stopped ... ignored, cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+test a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity ... ok
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 9 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 18.16s
+
+     Running tests/mcp.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/mcp-bf7c96e2d7d15d59)
+
+running 7 tests
+test mcp_installed_claude_and_codex_call_orient ... ignored, live installed-client interop; BBOXY_TEST_EXE must name the built app
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_unread_is_unknown_and_application_ack_is_a_separate_count ... ok
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+
+test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.85s
+
+     Running tests/measurements.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/measurements-62312254dd649188)
+
+running 2 tests
+test file_descriptors_at_200_live_seats_and_sqlite_objects ... ignored, finite 200-live-seat descriptor measurement
+test recursive_cte_vs_petgraph_and_thousand_subscriber_fanout ... ignored, finite synthetic 10k-document / 100k-link measurement
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/messaging-04922faa653b2f9e)
+
+running 15 tests
+test live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence ... ok
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route ... ok
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception ... ok
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo ... ok
+test recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen ... ok
+test ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... ok
+test supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+test live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+     Running tests/provider.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/provider-531f77c2829f7f2b)
+
+running 3 tests
+test local_provider_preserves_the_existing_link_and_rejects_unknown_hosts ... ok
+test location_namespaces_select_one_link_and_only_the_local_link_waits ... ok
+test logic_routes_real_seats_recovery_history_ownership_and_close_by_location ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/provider_fake.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/provider_fake-926c5915bdeff83f)
+
+running 3 tests
+test all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt ... ok
+test fixture_is_the_host_source_and_invalid_scripts_are_rejected ... ok
+test headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.64s
+
+     Running tests/ring.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/ring-4021e46265ea7955)
+
+running 9 tests
+test ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation ... ok
+test ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor ... ok
+test ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell ... ok
+test ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes ... ok
+test ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay ... ok
+test ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again ... ok
+test ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects ... ok
+test ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index ... ok
+test ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.04s
+
+     Running tests/socket_backlog.rs (/Users/feral/mydev/bboxy450-term-nyx/target/r10-ci-506e63a/debug/deps/socket_backlog-13331fbdcac33167)
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... FAILED
+
+failures:
+
+---- socket_request_flood_replays_exact_output_and_delivers_exit_to_logic stdout ----
+socket backlog: owned_pid=39237 seat=01M5KT0Q0WD44HDYAV1CSJ9ZRF
+socket backlog: 10000 requests completed in 1.53094125s
+
+thread 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic' (12618413) panicked at crates/bbt-mux/tests/socket_backlog.rs:129:73:
+called `Result::unwrap()` on an `Err` value: Custom { kind: InvalidData, error: "logic stopped" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    socket_request_flood_replays_exact_output_and_delivers_exit_to_logic
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.21s
+
+error: test failed, to rerun pass `-p bbt-mux --test socket_backlog`
+
+ci-local exit=101
