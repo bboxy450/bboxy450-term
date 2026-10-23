@@ -1,0 +1,45 @@
+SOURCE 10a50ca2a5b6bf6026e3598724ee577c0c37818b
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', 'gate_memory', '--', '--ignored', '--nocapture', '--test-threads=1']
+GATE_SEATS=400 GATE_RATE=32kB/s GATE_SECONDS=60; max PTYs=999, margin32
+OWN_CARGO_PID=40738
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 19.87s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0: replacing existing signature
+
+running 1 test
+test gate_memory ... GATE spawn progress=25/400 elapsed_s=0.857
+GATE spawn progress=50/400 elapsed_s=1.779
+GATE spawn progress=75/400 elapsed_s=2.778
+GATE spawn progress=100/400 elapsed_s=3.893
+GATE spawn progress=125/400 elapsed_s=5.037
+GATE spawn progress=150/400 elapsed_s=6.240
+GATE spawn progress=175/400 elapsed_s=7.502
+GATE spawn progress=200/400 elapsed_s=8.808
+GATE spawn progress=225/400 elapsed_s=10.134
+GATE spawn progress=250/400 elapsed_s=11.912
+GATE spawn progress=275/400 elapsed_s=13.692
+GATE spawn progress=300/400 elapsed_s=15.371
+GATE spawn progress=325/400 elapsed_s=17.135
+GATE spawn progress=350/400 elapsed_s=18.916
+GATE spawn progress=375/400 elapsed_s=20.783
+GATE spawn progress=400/400 elapsed_s=23.072
+GATE capture seats=400 load_wall_s=60.061 writer_busy_fraction=0.5161 busy_replies=0 heartbeat_max_ms=554.955 commit_p99_upper_ms=7.000 commit_max_ms=180.542
+GATE retained owned fixture /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-s7OIN7
+GATE memory value=607.047 unit=MiB budget=none MEASURED ptmx_max=999 seats=400 rate=32kB/s load_s=60 baseline_mib=12.0 peak_mib=826.7 per_seat_kib=1523.2 spawn_s=23.1 sample_seat_records=7380 sync_s=0.0 marker_s=0.0 sample_seat_full=299 disk_peak_mib=1162.7 observed_s=83.174 writer_busy_s=40.560 writer_s_per_wall_s=0.488 commit_rounds=6143 commit_p99_upper_ms=7.000 commit_max_ms=180.542 logic_alive=true
+
+thread 'gate_memory' (10050044) panicked at crates/bbt-mux/tests/gates_seats.rs:383:5:
+capture writer exceeds 50% busy: 0.5161359900960814
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    gate_memory
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 83.77s
+
+error: test failed, to rerun pass `-p bbt-mux --test gates_seats`
+CHILD_EXIT=101; WALL_SECONDS=104.032
