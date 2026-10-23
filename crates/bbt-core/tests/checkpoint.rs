@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
+
 use std::sync::{Arc, Mutex};
 
 use bbt_core::{Checkpoint, Color, Column, Dimensions, Line, NamedColor, Rgb, Term};

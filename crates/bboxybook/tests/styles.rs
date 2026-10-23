@@ -81,7 +81,7 @@ fn style_matrix_is_canonical_and_every_preset_renders_on_the_native_device() {
             let image = styles::preview(&mut renderer, &Style::new(preset), ctx).unwrap();
             assert_eq!(image.len(), 360 * 180 * 4);
             assert!(
-                image.chunks_exact(4).all(|p| p[3] == 255),
+                image.as_chunks::<4>().0.iter().all(|p| p[3] == 255),
                 "foreground composition must preserve the opaque fixture"
             );
             let hash = image.iter().fold(0xcbf29ce484222325u64, |hash, &v| {

@@ -1,0 +1,11 @@
+rebased_parent: 1b1a80edd471c36412133c8abce6d73d9491052e
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+    Finished `dev` profile [unoptimized] target(s) in 8.92s
+
+exit: 0
+elapsed_seconds: 9.074

@@ -1,0 +1,40 @@
+P5 — mechanical strict-lint cleanup; base dfe46c2ce9d147ad008067cd7eb148b9e126f1d8.
+crates/bbt-render/src/chrome/paths.rs:241 — triangle traversal uses as_chunks::<3>().0; complete triples and remainder handling unchanged.
+crates/bbt-render/src/chrome/paths.rs:311 — boundary traversal uses the same fixed-array chunk API.
+crates/bbt-render/src/headless.rs:366 — Vacant HashMap entry inserts the glyph/missing-glyph cache value once; rasterization/atlas/error paths unchanged.
+crates/bbt-mux/tests/messaging.rs:515 — remove unused mut from the closure binding; fixture behavior unchanged.
+crates/bbt-render/tests/smoke.rs:15 — iterate complete four-byte pixel arrays; expected RGBA unchanged.
+crates/bbt-render/tests/terminal.rs:41 — fixed-array pixel chunks for color/premultiplication assertions.
+crates/bbt-render/tests/terminal.rs:47 — same fixed-array traversal for alpha bound assertions.
+crates/bbt-render/tests/terminal.rs:162 — fixed-array pixel zip for cursor comparison; complete pixels/remainder behavior unchanged.
+crates/bboxybook/tests/atoms.rs:165 — fixed-array pixel traversal; opacity assertion unchanged.
+crates/bboxybook/tests/materials.rs:242 — fixed-array pixel zip; alpha-preservation assertion unchanged.
+crates/bboxybook/tests/styles.rs:84 — fixed-array pixel traversal; opacity assertion unchanged.
+crates/bbt-core/tests/checkpoint.rs:1 — standing integration-test exemption for fixture locks, per runtime.md:16; no runtime/UI allow added.
+scripts/ci-local.sh:12 — exact cargo clippy --workspace --all-targets --locked -- -D warnings immediately after build; set -e makes warnings fatal.
+No semantic fixes needed or applied.
+Commands and actual exits:
+cargo clippy --workspace --all-targets --locked -- -D warnings — 101 initially, three renderer warnings (p5-clippy-preflight.log).
+Same command after renderer fixes — 101, unused mut in messaging test (p5-clippy-render-fixes.log).
+Same command after mut removal — 101, smoke test chunks_exact (p5-clippy-fixture-fix.log).
+cargo clippy --workspace --all-targets --locked --keep-going -- -D warnings — 101, remaining test chunks_exact and checkpoint fixture locks (p5-clippy-all-targets.log).
+Exact strict command after all fixes — 101, exemption annotation was mistakenly placed at EOF (p5-clippy-final.log); corrected to file start.
+Exact strict command after correction — 0, no warnings, 0.309 s (p5-clippy-corrected-final.log).
+sh -n scripts/ci-local.sh — 0.
+git diff --check — 0.
+Gap: no runtime tests/clean full CI launched under Oracle STOP cb28251c. Wait for ID1e on main, then rebase and run exact-SHA clean CI with its own target. P3 frozen headless verification continues independently. P5 handoff is not claimed.
+
+Post-STOP/rebase addendum:
+ID1e 0a21099831967cbea4fc27023ff239e6bb30393d is an ancestor of current main; STOP lifted by 2c94e8bc.
+Rebased onto 1b1a80edd471c36412133c8abce6d73d9491052e with signed commit; identical messaging.rs mut removal dropped from final diff because ID1e already contains it. Custody code was not modified. Main also removed the dev Cargo signing runner; preserved that decision.
+Exact strict workspace/all-target Clippy after rebase — 0, no warnings, 9.074 s (p5-clippy-rebased.log).
+Pending: clean exact-SHA CI with BBOXY_TEST_CUSTODY=memory and scoped paths parity (renderer changes are mechanical). No full all-gallery regression claimed for P5.
+
+First clean exact-SHA CI and owner fix:
+Source 2e9b2d322641545507988fdf4b1f85e135b9eb44, detached /tmp/velvet-p5-ci-2e9b2d3, private /tmp/velvet-p5-target-2e9b2d3.
+BBOXY_TEST_CUSTODY=memory BBOXYBOOK_GALLERY=paths sh scripts/ci-local.sh --parity — 101, 650.343 s; build and exact strict Clippy passed, identity suite 12 passed/1 failed/1 ignored before parity was reached. Full log: /tmp/velvet-p5-ci-2e9b2d3.log. Private target and detached worktree removed after evidence collection.
+Failure: crates/bbt-mux/tests/identity.rs:1143, explicit SharedKeys fixture expected "test custody", but the old global-env label returned "memory custody (debug)".
+Same-binary A/B in p5-identity-memory-ab.log: compile 0/113.923 s; targeted test with memory env 101, with env unset 0, binary SHA256 unchanged. Both use explicit fixture keys, not real Keychain custody.
+Oracle assigned the semantic correction to Kestrel as ID1f; no identity source or assertion was changed in P5.
+Accepted ID1f 593f7ac4eb09214aaef051de9c3c90b467c0979d derives the label from the selected store. Signed rebase onto that exact parent completed; nine mechanical source/script files remain in P5's diff.
+Retry is pending the Oracle's disk hold until Rook's 967-seat run releases its target. The retry will use memory custody and scoped paths parity; its real result must be reported separately from the failed first run.

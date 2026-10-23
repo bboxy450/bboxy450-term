@@ -9,6 +9,7 @@ set -eu
 export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}" CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}" CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
 sh scripts/layering.sh
 cargo build --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 sh scripts/ui-lint.sh
 sh scripts/invariants.sh "$@"

@@ -12,7 +12,7 @@ fn metal_quad_and_80_by_24_cell_backgrounds() {
     let solid = Scene::solid([17, 83, 201, 255], 67, 31);
     let rgba = render_to_rgba(&solid, 67, 31).unwrap();
     assert_eq!(rgba.len(), 67 * 31 * 4);
-    assert!(rgba.chunks_exact(4).all(|p| p == [17, 83, 201, 255]));
+    assert!(rgba.as_chunks::<4>().0.iter().all(|p| *p == [17, 83, 201, 255]));
     write_png(output("quad.png"), &rgba, 67, 31).unwrap();
     let mut scene = Scene::smoke(FontConfig::default(), false).unwrap();
     scene.text.clear();

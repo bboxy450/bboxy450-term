@@ -1,0 +1,62 @@
+source_sha: dfe46c2ce9d147ad008067cd7eb148b9e126f1d8
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+owned_clippy_pid: 31688
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mermaid)
+    Checking unicase v2.10.0
+    Checking pulldown-cmark v0.13.4
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+error: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:241:29
+    |
+241 |     for tri in mesh.indices.chunks_exact(3) {
+    |                             ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+    = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: using `chunks_exact` with a constant chunk size
+   --> crates/bbt-render/src/chrome/paths.rs:311:31
+    |
+311 |     for tri in result.indices.chunks_exact(3) {
+    |                               ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<3>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+   --> crates/bbt-render/src/headless.rs:366:13
+    |
+366 | /             if !cache.contains_key(&ch) {
+367 | |                 let glyph = match font.rasterize(ch)? {
+368 | |                     Some(raster) => Some(PlacedGlyph {
+369 | |                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+...   |
+375 | |                 cache.insert(ch, glyph);
+376 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#map_entry
+    = note: `-D clippy::map-entry` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+help: try
+    |
+366 ~             if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(ch) {
+367 +                 let glyph = match font.rasterize(ch)? {
+368 +                     Some(raster) => Some(PlacedGlyph {
+369 +                         rect: atlas.insert(raster.width, raster.height, &raster.mask)?,
+370 +                         left: raster.left,
+371 +                         top: raster.top,
+372 +                     }),
+373 +                     None => None,
+374 +                 };
+375 +                 e.insert(glyph);
+376 +             }
+    |
+
+error: could not compile `bbt-render` (lib) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+exit: 101
+elapsed_seconds: 4.804

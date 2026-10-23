@@ -1,0 +1,19 @@
+$ cargo clippy --workspace --all-targets --locked -- -D warnings
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy-firehose)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+error: using `chunks_exact` with a constant chunk size
+  --> crates/bbt-render/tests/smoke.rs:15:18
+   |
+15 |     assert!(rgba.chunks_exact(4).all(|p| p == [17, 83, 201, 255]));
+   |                  ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#chunks_exact_to_as_chunks
+   = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: could not compile `bbt-render` (test "smoke") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+
+exit: 101
+elapsed_seconds: 4.097

@@ -38,13 +38,13 @@ fn coretext_fallback_styles_and_emoji_have_real_coverage() {
     assert!(
         emoji
             .pixels
-            .chunks_exact(4)
+            .as_chunks::<4>().0.iter()
             .any(|p| p[3] > 0 && (p[0] != p[1] || p[1] != p[2]))
     );
     assert!(
         emoji
             .pixels
-            .chunks_exact(4)
+            .as_chunks::<4>().0.iter()
             .all(|p| p[0] <= p[3] && p[1] <= p[3] && p[2] <= p[3])
     );
 }
@@ -159,8 +159,8 @@ fn cursor_shapes_and_bad_snapshots_are_observable() {
         counts.push(
             image
                 .rgba
-                .chunks_exact(4)
-                .zip(empty.chunks_exact(4))
+                .as_chunks::<4>().0.iter()
+                .zip(empty.as_chunks::<4>().0)
                 .filter(|(a, b)| a != b)
                 .count(),
         );
