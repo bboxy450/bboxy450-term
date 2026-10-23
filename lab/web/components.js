@@ -1150,7 +1150,8 @@
     const isNav = it => !!(it.seat || it.swarm || it.graphOpen || it.settingsOpen || it.section === 'Navigate' || it.section === 'Swarms' || it.kind === 'Navigate' || it.kind === 'Open');
     const capped = it => !!opts.cap && !isNav(it);
     const flashCap = () => { const b = list.querySelector('.capnote'); if (b) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); } };
-    const pick = (it, ev) => { if (!it || it.down) return; if (capped(it) && !it.children) return flashCap(); if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
+    // capped: refuse anything that would launch (a leaf, or a parent whose Enter picks); → still dives into a parent
+    const pick = (it, ev) => { if (!it || it.down) return; if (capped(it) && (!it.children || it.enterPicks)) return flashCap(); if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
     function draw() {
       list.innerHTML = ''; crumbs.innerHTML = '';
       for (const c of path()) crumbs.append(el('span', { class: 'crumb' }, c.label));
