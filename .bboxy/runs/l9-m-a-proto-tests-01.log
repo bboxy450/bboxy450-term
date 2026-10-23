@@ -1,0 +1,40 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling serde_core v1.0.229
+   Compiling quote v1.0.47
+   Compiling serde v1.0.229
+   Compiling zerocopy v0.8.63
+   Compiling getrandom v0.3.4
+   Compiling smallvec v1.16.3
+   Compiling scopeguard v1.2.0
+   Compiling memchr v2.8.3
+   Compiling unicode-width v0.2.2
+   Compiling lock_api v0.4.14
+   Compiling rand_core v0.9.5
+   Compiling parking_lot_core v0.9.12
+   Compiling log v0.4.34
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-ui-model)
+   Compiling parking_lot v0.12.5
+   Compiling syn v3.0.9
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling serde_derive v1.0.229
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.5
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling ulid v1.2.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-core)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-proto)
+    Finished `test` profile [unoptimized] target(s) in 4.82s
+     Running tests/messaging.rs (target/l9-m-a-dev/debug/deps/messaging-1db86fbf3c269eda)
+
+running 4 tests
+test gui_messaging_wraps_the_existing_payload_and_correlates_its_reply ... ok
+test existing_messaging_requests_keep_their_tags_and_nested_fields ... ok
+test existing_stored_message_and_receipt_pages_keep_their_wire_shape ... ok
+test carried_messages_preserve_canonical_decimal_counters ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

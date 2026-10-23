@@ -1,0 +1,47 @@
+   Compiling winnow v1.0.4
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-core)
+    Checking tokio v1.54.1
+    Checking futures-core v0.3.34
+    Checking futures-sink v0.3.34
+   Compiling pulldown-cmark v0.13.4
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-mermaid)
+    Checking unicase v2.10.0
+    Checking unicode-segmentation v1.13.3
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxybook)
+    Checking futures-util v0.3.34
+   Compiling hashbrown v0.17.1
+    Checking toml_datetime v1.1.2+spec-1.1.0
+   Compiling indexmap v2.14.2
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-term)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy-firehose)
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling target-triple v1.0.1
+    Checking serde_spanned v1.1.2
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking termcolor v1.4.1
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking glob v0.3.4
+    Checking aho-corasick v1.1.5
+    Checking regex-syntax v0.8.11
+    Checking proc-macro2 v1.0.107
+   Compiling proc-macro-crate v3.5.0
+    Checking trybuild v1.0.120
+    Checking quote v1.0.47
+    Checking syn v2.0.119
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-yarn-macros)
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-ui-model)
+    Checking regex-automata v0.4.18
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-rt)
+    Checking tokio-tungstenite v0.30.0
+    Checking tokio-util v0.7.19
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-supervisor)
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-yarn)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-render)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-proto)
+    Checking regex v1.13.1
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-doc)
+    Finished `dev` profile [unoptimized] target(s) in 17.07s

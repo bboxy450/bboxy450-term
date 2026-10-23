@@ -1,0 +1,9 @@
+    Blocking waiting for file lock on package cache
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 0.85s
+     Running tests/identity.rs (target/l9-m-a-dev/debug/deps/identity-48af9c586c4981ba)
+
+running 1 test
+test identity_operator_uses_the_current_device_grant_and_refuses_seat_or_local_authority ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.15s

@@ -1,0 +1,227 @@
+{
+  "id": "01M5N61RZNPP603PKMV36YQ90P",
+  "source_sha": "59e5614f6c95ea18d1c64e917f442954f7fe55ce",
+  "source_parent": "16b4c98798ee2bfecff6373e7370c47d51146a7a",
+  "ci_status": "passed",
+  "ci_slot": 2,
+  "logs": {
+    "l9-m-a-check-01.log": {
+      "bytes": 16124,
+      "sha256": "c56a3a1956aa89fed1d94ae92b52217a179fb9e307db064dae7a1e00c4cda184"
+    },
+    "l9-m-a-check-02.log": {
+      "bytes": 1756,
+      "sha256": "a072b8409538d88d99b366c1203264057b013ed88ef6f7d9407606101bc85a66"
+    },
+    "l9-m-a-gui-tests-01.log": {
+      "bytes": 7025,
+      "sha256": "38f9aed4b872eab04ae1748404fcac02730780c2342b5c88c1fc9d7a7d6e5a63"
+    },
+    "l9-m-a-gui-tests-02.log": {
+      "bytes": 1026,
+      "sha256": "5bfe96727e83e65d51a17327828ae5db4a8a137adaa61a78abc1ec1caed54898"
+    },
+    "l9-m-a-gui-tests-03.log": {
+      "bytes": 407,
+      "sha256": "5564cd3a6bfb2e6cf770872d90a2571ce82222ea3e20a95ac3be7b1f772a7113",
+      "raw_bytes": 408,
+      "raw_sha256": "318d79ab1107f830756b7727c21539719c8018ef32d947c7197f3b482cd545ae",
+      "normalization": "remove empty lines at EOF only"
+    },
+    "l9-m-a-proto-tests-01.log": {
+      "bytes": 1639,
+      "sha256": "fb64dfa762d48bd9378b5724ff04c6001f482a09ac942675ced49d1341d402fc",
+      "raw_bytes": 1640,
+      "raw_sha256": "15c37b139d0a05b156a9752fd124bcf273a707f8316656fb07e43e5e677ff59b",
+      "normalization": "remove empty lines at EOF only"
+    },
+    "l9-m-a-proto-tests-02.log": {
+      "bytes": 817,
+      "sha256": "63077096ca3690456f32c80e158a91a6cb84d06ca4cd88faaa47fa6b5d5a7384",
+      "raw_bytes": 818,
+      "raw_sha256": "ca4bdc254fa939a851373c89f968ece323a3f0401fab8621c25d0d0ce0ff0fba",
+      "normalization": "remove empty lines at EOF only"
+    },
+    "l9-m-a-messaging-tests-01.log": {
+      "bytes": 1833,
+      "sha256": "f8e27b542f15837387ea67e9ccd37e123e32df304df91eaebf9823650ff362bf",
+      "raw_bytes": 1834,
+      "raw_sha256": "e461a1e7d7aaa29f56f2577670d7a42704d99cc2b713388b65a9e0add7e0e69a",
+      "normalization": "remove empty lines at EOF only"
+    },
+    "l9-m-a-operator-identity-tests-01.log": {
+      "bytes": 491,
+      "sha256": "98d90efc0c36bfcf0ed611efc92f1aab4da57a7b1b1ac129aead9c291a80152f",
+      "raw_bytes": 492,
+      "raw_sha256": "5b645bb4498ff3c7992e49e08b20ae28fcabb230bf90a99ca74e1959759a3adc",
+      "normalization": "remove empty lines at EOF only"
+    },
+    "l9-m-a-regression-tests-01.log": {
+      "bytes": 54716,
+      "sha256": "1055b5f7330e78a6bf4906ff126d498b6b3be31773960cea089c30709b77ee7c",
+      "raw_bytes": 54717,
+      "raw_sha256": "0fb709c44ed3675404d2046f98f060de25e8a9b720329d215b8e8673513ee596",
+      "normalization": "remove empty lines at EOF only"
+    },
+    "l9-m-a-clippy-01.log": {
+      "bytes": 2429,
+      "sha256": "9eced25303e50549842f8a08acbe72c5a5071ca0ba07a4758c93785c71533fdb"
+    },
+    "l9-m-a-ci-59e5614.log": {
+      "bytes": 152565,
+      "sha256": "e23d1be34d2b48e0230d628d5e883ac785068cec261125bf324f04b33d164d18"
+    },
+    "l9-m-a-ci-59e5614.json": {
+      "bytes": 824,
+      "sha256": "07bea30cf559317848702251dfc2f9533bcc5b6e0295561d5757a5292fa62f32"
+    }
+  },
+  "dev_cache_cleanup": {
+    "at_unix": 1792785649.46691,
+    "removed": [
+      "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-a-dev"
+    ],
+    "allocated_bytes": 2971344896,
+    "free_before": 28251148288,
+    "free_after": 31102062592,
+    "reason": "completed own dev tests/clippy; clean CI uses a private target",
+    "retained_logs": true
+  },
+  "regression": {
+    "passed": 288,
+    "failed": 0,
+    "ignored": 16,
+    "note": "development run before rebase; code later committed as 516bb92"
+  },
+  "strict_clippy": {
+    "exit_code": 0,
+    "source_sha": "59e5614f6c95ea18d1c64e917f442954f7fe55ce"
+  },
+  "ci": {
+    "source_sha": "59e5614f6c95ea18d1c64e917f442954f7fe55ce",
+    "worktree": "/tmp/ci-nyx-l9-m-a-59e5614",
+    "target": "/tmp/nyx-l9-m-a-ci-59e5614",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "gate_slot": 2,
+    "grant_message": "70f913d9-57b0-4350-b227-c108f2a8f51e",
+    "started": 1792785754.839547,
+    "free_before": 30994436096,
+    "env": {
+      "CARGO_TARGET_DIR": "/tmp/nyx-l9-m-a-ci-59e5614",
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_PROFILE_DEV_DEBUG": "0",
+      "CARGO_PROFILE_TEST_DEBUG": "0",
+      "BBOXY_TEST_CUSTODY": "memory"
+    },
+    "pid": 78151,
+    "exit_code": 0,
+    "finished": 1792786605.974598,
+    "git_status_after": "",
+    "target_allocated_bytes": 2786639872,
+    "target_removed": true,
+    "free_after": 26577092608,
+    "log_sha256": "e23d1be34d2b48e0230d628d5e883ac785068cec261125bf324f04b33d164d18"
+  },
+  "main_at_handoff": "a817a9dfac285327115dfa29effa3ff9196ec773",
+  "wire_review": {
+    "requested_message": "1cab0875-a948-4804-968c-45bd358ba101",
+    "peer": "Rook Ashwhisker",
+    "status": "requested; no response observed at record time"
+  },
+  "source_files": [
+    "crates/bboxy450-term/src/cockpit.rs",
+    "crates/bboxy450-term/src/live.rs",
+    "crates/bboxy450-term/src/main.rs",
+    "crates/bbt-mux/src/adapters/mod.rs",
+    "crates/bbt-mux/src/adapters/observe.rs",
+    "crates/bbt-mux/src/identity/chain.rs",
+    "crates/bbt-mux/src/identity/status.rs",
+    "crates/bbt-mux/src/logic.rs",
+    "crates/bbt-mux/src/mcp/journal.rs",
+    "crates/bbt-mux/src/mcp/messaging.rs",
+    "crates/bbt-mux/src/mcp/mod.rs",
+    "crates/bbt-mux/src/mcp/seats.rs",
+    "crates/bbt-mux/src/mcp/tools.rs",
+    "crates/bbt-mux/src/mcp/work_items.rs",
+    "crates/bbt-mux/src/messaging/api.rs",
+    "crates/bbt-mux/src/messaging/keys.rs",
+    "crates/bbt-mux/src/messaging/ledger.rs",
+    "crates/bbt-mux/src/messaging/service.rs",
+    "crates/bbt-mux/src/messaging/tree.rs",
+    "crates/bbt-mux/src/messaging/wire.rs",
+    "crates/bbt-mux/src/provenance/artifacts.rs",
+    "crates/bbt-mux/src/provenance/author.rs",
+    "crates/bbt-mux/src/seat_socket.rs",
+    "crates/bbt-mux/tests/identity.rs",
+    "crates/bbt-mux/tests/mcp.rs",
+    "crates/bbt-mux/tests/messaging.rs",
+    "crates/bbt-proto/src/gui.rs",
+    "crates/bbt-proto/src/lib.rs",
+    "crates/bbt-proto/src/messaging.rs",
+    "crates/bbt-proto/tests/messaging.rs"
+  ],
+  "main_changes_during_gate": [
+    "a817a9d comments: two follow-ups on the plugin spec revision 2 (edc5dc5)",
+    "85d7275 l9: decision #38 (g), a GUI filter change migrates the lane consumer, never restarts it",
+    "edc5dc5 plugins: revision 2 answers the red-team review; 18 of 19 comments resolved with replies, suite-prefix stays the operator's",
+    "0899cb0 comments: red-team review of the plugin spec and research at 16b4c98 (decision #41, first RFC loop run)",
+    "aee9fda arch: RFC loop outside the cockpit: commit-signed records with inferred author grade until agents run as seats"
+  ],
+  "acceptance": {
+    "gui_dm": "ci log:1918: authenticated gui.sock DM is device-signed (nil seat, generation 0, operator/Oracle), journaled as Operator; reconnect and logic restart replay the same Stored and leave one ledger row; changed arguments under the same operation id are refused.",
+    "scope": "same GUI integration test: explicit seat/swarm destination mismatch and wrong-swarm receipt reads are refused by name.",
+    "task_verification": "same GUI integration test: GUI Delegate plus seat MCP Report; GUI Accept refuses missing recorded verify_result and succeeds for matching command and exit 0; metadata is device DSSE signed with honest local-dev kind; List/Status and operation replay pass.",
+    "operator_verification": "ci log:1832 and :1942: valid signatures with incorrect role/generation, wrong grant/epoch/time, foreign local device and local-dev at a pinned certified receiver are refused.",
+    "bus_position": "ci log:1945 plus GUI integration: canonical message publication position persists across reopen, differs from ledger sequence, encodes large sequence as a decimal string, refuses a conflicting second position, and operator receipt is retained.",
+    "ci": "ci-local exit 0 in clean detached exact-source worktree, private target removed; smoke idle frames/callbacks 0; invariants 10 checks / 0 failures / 4 named skips."
+  },
+  "development_failures": [
+    {
+      "log": "l9-m-a-check-01.log",
+      "exit_code": 101,
+      "cause": "DTO move required Route recipient field and EnvelopeExt imports; fixed."
+    },
+    {
+      "log": "l9-m-a-check-02.log",
+      "exit_code": 101,
+      "cause": "Existing main.rs test fixture needed Messaging/Task exhaustiveness arms; fixed."
+    },
+    {
+      "log": "l9-m-a-gui-tests-01.log",
+      "exit_code": 101,
+      "cause": "Local-dev authority read identity/issuer; corrected to real identity/local-issuer by 2fcd54b, with no fake record."
+    },
+    {
+      "log": "l9-m-a-gui-tests-02.log",
+      "exit_code": 101,
+      "cause": "New test requested SQLite COUNT as usize; changed fixture count to i64."
+    }
+  ],
+  "not_checked": [
+    "No UI/compose rendering or events lane, EventAck/read-mark implementation: L9-M-b/c scope.",
+    "No parity/scale gate requested for this backend-only delta; normal CI slot granted in 70f913d9.",
+    "Wire review remains pending; receipt of the review request is not review completion."
+  ],
+  "ci_worktree_removed": true,
+  "evidence_frontmatter_check": {
+    "command": "ruby YAML.safe_load and id/type validation of l9-m-a-handoff.md",
+    "exit_code": 0
+  },
+  "record_log_whitespace": {
+    "initial_diff_check_exit": 2,
+    "cause": "raw Cargo development logs ended in blank lines",
+    "normalized_committed_copies": [
+      "l9-m-a-gui-tests-03.log",
+      "l9-m-a-proto-tests-01.log",
+      "l9-m-a-proto-tests-02.log",
+      "l9-m-a-messaging-tests-01.log",
+      "l9-m-a-operator-identity-tests-01.log",
+      "l9-m-a-regression-tests-01.log"
+    ],
+    "ci_log_is_byte_exact": true,
+    "final_diff_check_exit": 0
+  }
+}
