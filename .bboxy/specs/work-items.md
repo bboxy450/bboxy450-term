@@ -31,7 +31,7 @@ review: boundary fidelity against [[gui-components]] §2c   # task, optional: ju
 check: sh scripts/layering.sh            # invariant: the command; exit 0 means held
 cost: an upward edge welds a library to the product   # invariant: one line
 created: 2026-10-21T19:04:00Z
-updated: 2026-10-23T23:41:02Z
+updated: 2026-10-23T23:45:07Z
 ---
 ```
 
@@ -39,7 +39,7 @@ Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]
 
 ## Store (operator, 2026-10-23, [[d47-decision-nodes]])
 
-A record is one file and the file is the object: one decision, one comment, one research record, one spec, one task. The git tree under `.bboxy/` is the store, the first and for now the only backend. The schema never assumes a path: identity is the ULID `id`, addressing is the slug or the id, a version is the content digest, a relation is a link by slug. A binary or remote store can hold the same objects later behind the same reads and writes; nothing pluggable is built now ("KISS for now so we can keep developing our system").
+A record is one file and the file is the object: one decision, one comment, one research record, one spec, one task. The git tree under `.bboxy/` is the store, the first and for now the only backend. The schema never assumes a path: identity is the ULID `id`, addressing is the slug, the id or the **number** (`number: N`, one global sequence across every type, allocated as max + 1 at creation, unique or the records push fails; `[[#N]]` resolves to it; [[d48-every-record-has-a-number]]), a version is the content digest, a relation is a link by slug or by `#N`. A binary or remote store can hold the same objects later behind the same reads and writes; nothing pluggable is built now ("KISS for now so we can keep developing our system").
 
 ## Types
 

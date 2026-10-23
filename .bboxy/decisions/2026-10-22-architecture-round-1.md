@@ -8,7 +8,7 @@ links:
   - { to: "[[layering]]", rel: invariant }
   - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
 created: 2026-10-22T19:02:24Z
-updated: 2026-10-23T23:37:35Z
+updated: 2026-10-23T23:45:07Z
 ---
 # Architecture decisions, round 1
 
@@ -744,6 +744,12 @@ briefs Executors from the specs, never from this note.
     the git tree is the first store (operator, 2026-10-23).** The first
     decision written as its own node; the sweep of 1 to 46 is briefed from
     it.
+
+48. [[d48-every-record-has-a-number]] — **every record carries a number,
+    one global sequence continuing from the decisions (operator,
+    2026-10-23: "everything needs to have a # to it").** `number` in every
+    frontmatter, unique across types, `[[#N]]` resolves to it; existing
+    records are numbered by the sweep from 49.
 
 ## Specs to touch (Architect, in this order)
 
