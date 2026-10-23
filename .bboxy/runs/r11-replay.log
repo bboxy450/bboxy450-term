@@ -1,0 +1,33 @@
+# R11 byte-identity, release bboxybook replay-images, sha256 per PNG
+# A) before main 1d9102b vs after R11 0b5a40b: R4b's 1808-case manifests (exec3/target/r4b, backdrops on disk) + F5 perf 48 + hud Style 8
+#    + fresh captures from 1d9102b of paths 48, graphs 64, documents 136, masks 8, flow 40, streams 280
+capture paths exit=0 web: 48/48 captured; 0 failures
+capture graphs exit=0 web: 64/64 captured; 0 failures
+capture settings exit=0 web: 72/72 captured; 0 failures
+capture documents exit=0 web: 136/136 captured; 0 failures
+capture masks exit=0 web: 8/8 captured; 0 failures
+capture flow exit=0 web: 40/40 captured; 0 failures
+capture streams exit=0 web: 280/280 captured; 0 failures
+replay 1 ~/mydev/bboxy450-term-exec3/target/r4b/manifests/part-0.json before=0 after=0 replayed 451 images; geometry not requested | replayed 451 images; geometry not requested
+replay 2 ~/mydev/bboxy450-term-exec3/target/r4b/manifests/part-1.json before=0 after=0 replayed 452 images; geometry not requested | replayed 452 images; geometry not requested
+replay 3 ~/mydev/bboxy450-term-exec3/target/r4b/manifests/part-2.json before=0 after=0 replayed 453 images; geometry not requested | replayed 453 images; geometry not requested
+replay 4 ~/mydev/bboxy450-term-exec3/target/r4b/manifests/part-3.json before=0 after=0 replayed 452 images; geometry not requested | replayed 452 images; geometry not requested
+replay 5 <scratch>/f5-cut/perf/cases.json before=0 after=0 replayed 48 images; geometry not requested | replayed 48 images; geometry not requested
+replay 6 <scratch>/f5-cut/style/cases.json before=0 after=0 replayed 8 images; geometry not requested | replayed 8 images; geometry not requested
+replay 7 <scratch>/r11-cat/documents/cases.json before=0 after=0 replayed 136 images; geometry not requested | replayed 136 images; geometry not requested
+replay 8 <scratch>/r11-cat/flow/cases.json before=0 after=0 replayed 40 images; geometry not requested | replayed 40 images; geometry not requested
+replay 9 <scratch>/r11-cat/graphs/cases.json before=0 after=0 replayed 64 images; geometry not requested | replayed 64 images; geometry not requested
+replay 10 <scratch>/r11-cat/masks/cases.json before=0 after=0 replayed 8 images; geometry not requested | replayed 8 images; geometry not requested
+replay 11 <scratch>/r11-cat/paths/cases.json before=0 after=0 replayed 48 images; geometry not requested | replayed 48 images; geometry not requested
+replay 12 <scratch>/r11-cat/settings/cases.json before=1 after=1 bboxybook: invalid length 5, expected fewer elements in array | bboxybook: invalid length 5, expected fewer elements in array
+replay 13 <scratch>/r11-cat/streams/cases.json before=0 after=0 replayed 280 images; geometry not requested | replayed 280 images; geometry not requested
+sha256 per PNG: before 2440, after 2440, missing 0, extra 0, byte-different 0
+#    settings 72 did not replay on 1d9102b in EITHER build: the 1d9102b lab emits 5-element cloud rows (LinkState, lab 3d32b3d)
+#    while native Settings expected 4 until D1c c8dba61; a main-side gap at that commit, not R11. Covered in B.
+# B) before main 21347b5 vs after R11 8b75d7a (rebased; no bbt-render change on main between 1d9102b and 21347b5):
+capture settings exit=0 web: 72/72 captured; 0 failures
+replay settings before=0 after=0 replayed 72 images; geometry not requested | replayed 72 images; geometry not requested
+capture providers exit=0 web: 96/96 captured; 0 failures
+replay providers before=0 after=0 replayed 96 images; geometry not requested | replayed 96 images; geometry not requested
+sha256 per PNG: before 168, after 168, missing 0, extra 0, byte-different 0
+# total: 2440 + 168 = 2608 PNGs, byte-different 0

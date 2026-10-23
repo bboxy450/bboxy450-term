@@ -1,5 +1,7 @@
-//! Bounded coverage cache: glyphs and minimal overlapping components, never lines.
-use super::text_glyphs::{self as glyphs, Key, Mask};
+//! Bounded coverage cache: glyphs and minimal overlapping components, never line
+//! bitmaps. Shaped lines (glyph keys and origins, no pixels) are cached separately,
+//! so an unchanged string never reaches CoreText again.
+use super::text_glyphs::{self as glyphs, Key, Mask, Shape};
 use crate::{
     Result,
     atlas::{AtlasRect, GlyphAtlas},
@@ -25,6 +27,9 @@ pub struct Stats {
     pub component_requests: u64,
     pub overlap_requests: u64,
     pub max_component_glyphs: usize,
+    pub shape_entries: usize,
+    pub shape_hits: u64,
+    pub shape_misses: u64,
 }
 pub(super) struct Part {
     pub id: u64,
@@ -38,6 +43,23 @@ pub(super) struct Line {
     pub advance: f32,
     pub parts: Vec<Part>,
 }
+/// Everything shaping reads: the string, the resolved font inputs, tracking and case,
+/// the ellipsis limit, device scale, x phase, and the font-set epoch.
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct ShapeKey {
+    value: String,
+    pixels: u32,
+    weight: u16,
+    mono: bool,
+    italic: bool,
+    tracking: u32,
+    uppercase: bool,
+    max_width: Option<u32>,
+    scale: u32,
+    phase: u32,
+    epoch: u64,
+}
+const SHAPE_BUDGET: usize = 512;
 struct Entry {
     id: u64,
     mask: Arc<Mask>,
@@ -57,6 +79,9 @@ pub(super) struct Cache {
     clock: u64,
     next_id: u64,
     totals: Stats,
+    shapes: HashMap<ShapeKey, (Arc<Shape>, u64)>,
+    shape_scale: u32,
+    epoch: u64,
 }
 impl Cache {
     pub fn new() -> Result<Self> {
@@ -84,6 +109,9 @@ impl Cache {
             clock: 0,
             next_id: 0,
             totals: Stats::default(),
+            shapes: HashMap::new(),
+            shape_scale: 0,
+            epoch: 0,
         })
     }
     fn get(&mut self, key: Key) -> Result<(u64, Arc<Mask>)> {
@@ -118,7 +146,7 @@ impl Cache {
         scale: f32,
         phase: f32,
     ) -> Result<Line> {
-        let shape = glyphs::shape(value, style, max_width, scale, phase)?;
+        let shape = self.shape(value, style, max_width, scale, phase)?;
         let mut atoms = Vec::with_capacity(shape.glyphs.len());
         let mut bounds = Vec::with_capacity(shape.glyphs.len());
         for placed in &shape.glyphs {
@@ -165,6 +193,57 @@ impl Cache {
             advance: shape.advance,
             parts,
         })
+    }
+
+    /// Fonts may have changed (installed, removed or reconfigured): reshape everything.
+    pub fn invalidate_fonts(&mut self) {
+        self.epoch += 1;
+        self.shapes.clear();
+    }
+    fn shape(
+        &mut self,
+        value: &str,
+        style: TextStyle,
+        max_width: Option<f32>,
+        scale: f32,
+        phase: f32,
+    ) -> Result<Arc<Shape>> {
+        if scale.to_bits() != self.shape_scale {
+            self.shape_scale = scale.to_bits();
+            self.invalidate_fonts();
+        }
+        let key = ShapeKey {
+            value: value.to_owned(),
+            pixels: style.pixels().to_bits(),
+            weight: style.weight,
+            mono: style.mono,
+            italic: style.italic,
+            tracking: style.tracking_em.to_bits(),
+            uppercase: style.uppercase,
+            max_width: max_width.map(f32::to_bits),
+            scale: scale.to_bits(),
+            phase: phase.to_bits(),
+            epoch: self.epoch,
+        };
+        self.clock += 1;
+        if let Some((shape, last_use)) = self.shapes.get_mut(&key) {
+            self.totals.shape_hits += 1;
+            *last_use = self.clock;
+            return Ok(shape.clone());
+        }
+        self.totals.shape_misses += 1;
+        let shape = Arc::new(glyphs::shape(value, style, max_width, scale, phase)?);
+        if self.shapes.len() >= SHAPE_BUDGET
+            && let Some(oldest) = self
+                .shapes
+                .iter()
+                .min_by_key(|(_, (_, last_use))| *last_use)
+                .map(|(key, _)| key.clone())
+        {
+            self.shapes.remove(&oldest);
+        }
+        self.shapes.insert(key, (shape.clone(), self.clock));
+        Ok(shape)
     }
 
     fn oldest(&self, pinned: &HashSet<u64>, placed_only: bool) -> Option<u64> {
@@ -276,6 +355,7 @@ impl Cache {
     }
     pub fn stats(&self) -> Stats {
         let mut stats = self.totals;
+        stats.shape_entries = self.shapes.len();
         stats.atlas_size = self.atlas.size();
         stats.cached_mask_bytes = self.bytes;
         for (key, entry) in &self.entries {
@@ -296,6 +376,123 @@ impl Cache {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    fn same(a: &Line, b: &Line) -> bool {
+        (a.width, a.height, a.advance.to_bits(), a.parts.len())
+            == (b.width, b.height, b.advance.to_bits(), b.parts.len())
+            && a.parts
+                .iter()
+                .zip(&b.parts)
+                .all(|(p, q)| (p.id, p.offset, p.size) == (q.id, q.offset, q.size))
+    }
+    #[test]
+    fn unchanged_lines_reuse_their_shape_and_every_input_is_in_the_key() {
+        let mut cache = Cache::new().unwrap();
+        let style = TextStyle::default();
+        let first = cache
+            .line("Vesper · 9.13 ms", style, None, 2., 0.25)
+            .unwrap();
+        let again = cache
+            .line("Vesper · 9.13 ms", style, None, 2., 0.25)
+            .unwrap();
+        assert!(same(&first, &again));
+        let stats = cache.stats();
+        assert_eq!((stats.shape_misses, stats.shape_hits), (1, 1));
+        let variants: [(&str, TextStyle, Option<f32>, f32); 8] = [
+            ("Vesper · 9.14 ms", style, None, 0.25),
+            (
+                "Vesper · 9.13 ms",
+                TextStyle {
+                    weight: 600,
+                    ..style
+                },
+                None,
+                0.25,
+            ),
+            (
+                "Vesper · 9.13 ms",
+                TextStyle {
+                    mono: true,
+                    ..style
+                },
+                None,
+                0.25,
+            ),
+            (
+                "Vesper · 9.13 ms",
+                TextStyle {
+                    italic: true,
+                    ..style
+                },
+                None,
+                0.25,
+            ),
+            (
+                "Vesper · 9.13 ms",
+                TextStyle {
+                    tracking_em: 0.1,
+                    ..style
+                },
+                None,
+                0.25,
+            ),
+            (
+                "Vesper · 9.13 ms",
+                TextStyle {
+                    uppercase: true,
+                    ..style
+                },
+                None,
+                0.25,
+            ),
+            ("Vesper · 9.13 ms", style, Some(40.), 0.25),
+            ("Vesper · 9.13 ms", style, None, 0.5),
+        ];
+        for (value, style, max_width, phase) in variants {
+            cache.line(value, style, max_width, 2., phase).unwrap();
+        }
+        let stats = cache.stats();
+        assert_eq!((stats.shape_misses, stats.shape_hits), (9, 1));
+        assert_eq!(stats.shape_entries, 9);
+    }
+    #[test]
+    fn shapes_evict_least_recent_and_clear_on_scale_or_font_change() {
+        let mut cache = Cache::new().unwrap();
+        let style = TextStyle::default();
+        for i in 0..=SHAPE_BUDGET {
+            cache.line(&i.to_string(), style, None, 1., 0.).unwrap();
+        }
+        assert_eq!(cache.stats().shape_entries, SHAPE_BUDGET);
+        let misses = cache.stats().shape_misses;
+        cache.line("0", style, None, 1., 0.).unwrap();
+        assert_eq!(
+            cache.stats().shape_misses,
+            misses + 1,
+            "the oldest shape was evicted"
+        );
+        cache
+            .line(&SHAPE_BUDGET.to_string(), style, None, 1., 0.)
+            .unwrap();
+        assert_eq!(
+            cache.stats().shape_misses,
+            misses + 1,
+            "the newest shape stayed"
+        );
+
+        let at1 = cache.line("scale", style, None, 1., 0.).unwrap();
+        cache.line("scale", style, None, 2., 0.).unwrap();
+        assert_eq!(
+            cache.stats().shape_entries,
+            1,
+            "a scale change clears shapes"
+        );
+        let back = cache.line("scale", style, None, 1., 0.).unwrap();
+        assert!(same(&at1, &back));
+        let misses = cache.stats().shape_misses;
+        cache.invalidate_fonts();
+        assert_eq!(cache.stats().shape_entries, 0);
+        cache.line("scale", style, None, 1., 0.).unwrap();
+        assert_eq!(cache.stats().shape_misses, misses + 1);
+    }
     #[test]
     fn reordered_text_reuses_cached_glyph_phases() {
         let mut cache = Cache::new().unwrap();
