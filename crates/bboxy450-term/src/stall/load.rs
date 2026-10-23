@@ -143,6 +143,20 @@ struct RingWitness {
     gap: Option<bbt_mux::ring::HistoryGap>,
     sampled_after_timeout_ms: f64,
     error: Option<String>,
+    queries: Vec<RingQuery>,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct RingQuery {
+    kind: &'static str,
+    from: Option<u64>,
+    to: Option<u64>,
+    started_after_timeout_ms: f64,
+    dispatched_after_timeout_ms: Option<f64>,
+    finished_after_timeout_ms: f64,
+    next: Option<u64>,
+    gap: Option<bbt_mux::ring::HistoryGap>,
+    error: Option<String>,
 }
 
 #[derive(Default)]
@@ -173,16 +187,68 @@ impl RingProbe {
         }
     }
 
-    fn tail(&self, seat: Ulid, deadline: Instant, row: &mut RingWitness) -> Result<(), String> {
+    fn query(
+        &self,
+        action: Action,
+        deadline: Instant,
+        started: Instant,
+        row: &mut RingWitness,
+    ) -> Result<Reply, String> {
+        let (kind, from, to) = match &action {
+            Action::RingRecovery { .. } => ("RingRecovery", None, None),
+            Action::ReadRing { from, to, .. } => ("ReadRing", Some(*from), Some(*to)),
+            _ => return Err("diagnostic rejected a non-read-only action".into()),
+        };
+        let elapsed = || started.elapsed().as_secs_f64() * 1000.;
+        let mut query = RingQuery {
+            kind,
+            from,
+            to,
+            started_after_timeout_ms: elapsed(),
+            dispatched_after_timeout_ms: None,
+            finished_after_timeout_ms: 0.,
+            next: None,
+            gap: None,
+            error: None,
+        };
+        let result = diagnostic_lock(&self.client, deadline)
+            .and_then(|mut client| {
+                query.dispatched_after_timeout_ms = Some(elapsed());
+                client.request(action).map_err(|e| e.to_string())
+            })
+            .map_err(|error| format!("{kind}: {error}"));
+        query.finished_after_timeout_ms = elapsed();
+        match &result {
+            Ok(Reply::RingHistory { history }) => {
+                query.next = history.next;
+                query.gap = history.gap.clone();
+            }
+            Err(error) => query.error = Some(error.clone()),
+            _ => {}
+        }
+        row.queries.push(query);
+        result
+    }
+
+    fn tail(
+        &self,
+        seat: Ulid,
+        deadline: Instant,
+        started: Instant,
+        row: &mut RingWitness,
+    ) -> Result<(), String> {
         let attachment = io_lock(&self.attachments)
             .get(&seat)
             .cloned()
             .ok_or("no attachment observed on the admitted connection")?;
-        let reply = diagnostic_lock(&self.client, deadline)?
-            .request(Action::RingRecovery {
+        let reply = self.query(
+            Action::RingRecovery {
                 attachment: attachment.clone(),
-            })
-            .map_err(|e| e.to_string())?;
+            },
+            deadline,
+            started,
+            row,
+        )?;
         let Reply::RingRecovery { status, .. } = reply else {
             return Err("unexpected ring status reply".into());
         };
@@ -210,13 +276,16 @@ impl RingProbe {
             if Instant::now() >= deadline {
                 return Err("ring diagnostic deadline reached".into());
             }
-            let reply = diagnostic_lock(&self.client, deadline)?
-                .request(Action::ReadRing {
+            let reply = self.query(
+                Action::ReadRing {
                     attachment: attachment.clone(),
                     from: next,
                     to,
-                })
-                .map_err(|e| e.to_string())?;
+                },
+                deadline,
+                started,
+                row,
+            )?;
             let Reply::RingHistory { history } = reply else {
                 return Err("unexpected ring history reply".into());
             };
@@ -267,7 +336,7 @@ impl RingProbe {
                 // Existing Client RPCs have a 5s bound; one already-started RPC can
                 // outlast this collection budget. No request is started after it.
                 let result = if Instant::now() < deadline {
-                    self.tail(seat, deadline, &mut row)
+                    self.tail(seat, deadline, started, &mut row)
                 } else {
                     Err("ring diagnostic collection budget exhausted".into())
                 };
@@ -1438,10 +1507,9 @@ mod tests {
     impl SupervisorConnection for ScriptedConnection {
         fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
             io_lock(&self.calls).push(action);
-            Ok(self
-                .replies
+            self.replies
                 .pop_front()
-                .expect("unexpected diagnostic request"))
+                .ok_or_else(|| bbt_mux::store::invalid("scripted Busy"))
         }
         fn receive(&mut self, _: Duration) -> bbt_mux::store::Result<Option<Event>> {
             Ok(None)
@@ -1541,6 +1609,7 @@ mod tests {
                 .tail(
                     Ulid::from(1),
                     Instant::now() + Duration::from_secs(60),
+                    Instant::now(),
                     &mut row,
                 )
                 .unwrap();
@@ -1552,6 +1621,19 @@ mod tests {
             assert_eq!(row.captured_sequence, Some(2));
             assert_eq!(row.committed_sequence, Some(1));
             assert!(row.tail_complete);
+            assert_eq!(row.queries.len(), 3);
+            assert_eq!(row.queries[0].kind, "RingRecovery");
+            assert_eq!(row.queries[1].next, Some(2));
+            assert_eq!(row.queries[2].from, Some(2));
+            assert_eq!(row.queries[2].gap.is_some(), gap);
+            for query in &row.queries {
+                assert!(
+                    query.started_after_timeout_ms <= query.dispatched_after_timeout_ms.unwrap()
+                );
+                assert!(
+                    query.dispatched_after_timeout_ms.unwrap() <= query.finished_after_timeout_ms
+                );
+            }
             let calls = io_lock(&calls);
             assert_eq!(calls.len(), 4);
             assert!(matches!(&calls[1], Action::RingRecovery { .. }));
@@ -1573,6 +1655,7 @@ mod tests {
             .tail(
                 Ulid::from(1),
                 Instant::now() + Duration::from_secs(60),
+                Instant::now(),
                 &mut row,
             )
             .err();
@@ -1585,6 +1668,30 @@ mod tests {
         assert_eq!(rows[&Ulid::from(1)].paused_in_examined_tail, Some(false));
         assert!(rows[&Ulid::from(2)].error.is_some());
         assert_eq!(rows[&Ulid::from(2)].paused_in_examined_tail, None);
+    }
+
+    #[test]
+    fn busy_ring_page_names_its_query_and_stays_unknown() {
+        let (probe, _) = scripted_probe(vec![]);
+        let rows = probe.collect(vec![Ulid::from(1)], Instant::now());
+        let row = &rows[&Ulid::from(1)];
+        assert_eq!(row.queries.len(), 2);
+        assert!(
+            row.queries[1]
+                .error
+                .as_ref()
+                .unwrap()
+                .contains("ReadRing: scripted Busy")
+        );
+        assert!(
+            row.error
+                .as_ref()
+                .unwrap()
+                .contains("ReadRing: scripted Busy")
+        );
+        assert_eq!(row.captured_sequence, Some(2));
+        assert_eq!(row.paused_in_examined_tail, None);
+        assert!(!row.tail_complete);
     }
 
     #[test]
