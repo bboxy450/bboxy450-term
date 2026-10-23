@@ -13,6 +13,57 @@ pub struct LineMask {
     pub mask: Vec<u8>,
 }
 
+/// Logical CoreText advances and typographic bounds, with no bitmap or draw.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextMetrics {
+    pub advance: f32,
+    pub ascent: f32,
+    pub descent: f32,
+    pub leading: f32,
+}
+
+#[cfg(target_os = "macos")]
+struct NativeMetrics {
+    advance: f64,
+    ascent: f64,
+    descent: f64,
+    leading: f64,
+}
+#[cfg(target_os = "macos")]
+impl NativeMetrics {
+    fn logical(&self) -> TextMetrics {
+        TextMetrics {
+            advance: self.advance as f32,
+            ascent: self.ascent as f32,
+            descent: self.descent as f32,
+            leading: self.leading as f32,
+        }
+    }
+}
+#[cfg(target_os = "macos")]
+fn typographic_bounds(line: &objc2_core_text::CTLine) -> NativeMetrics {
+    let (mut ascent, mut descent, mut leading) = (0., 0., 0.);
+    let advance = unsafe { line.typographic_bounds(&mut ascent, &mut descent, &mut leading) };
+    NativeMetrics {
+        advance,
+        ascent,
+        descent,
+        leading,
+    }
+}
+
+/// Shape chrome text without allocating a bitmap, reading coverage or drawing
+/// glyphs. The same line construction and scalar conversions serve painting.
+#[cfg(target_os = "macos")]
+pub fn measure(text: &str, style: TextStyle, max_width: Option<f32>) -> Result<TextMetrics> {
+    let line = logical_line(text, style, max_width)?;
+    Ok(typographic_bounds(&line).logical())
+}
+#[cfg(not(target_os = "macos"))]
+pub fn measure(_: &str, _: TextStyle, _: Option<f32>) -> Result<TextMetrics> {
+    Err("chrome text metrics require CoreText".into())
+}
+
 // The UI font has a CSS wght axis. Menlo uses CoreText's discrete faces.
 #[cfg(target_os = "macos")]
 fn upright_font(
@@ -177,29 +228,19 @@ pub(super) struct ShapedLine {
     pub runs: Vec<GlyphRun>,
 }
 #[cfg(target_os = "macos")]
-pub(super) fn shape_at(
+fn logical_line(
     text: &str,
     style: TextStyle,
     max_width: Option<f32>,
-    scale: f32,
-    phase_x: f32,
-) -> Result<ShapedLine> {
+) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTLine>> {
     use objc2_core_foundation::{
-        CFArray, CFAttributedString, CFBoolean, CFDictionary, CFNumber, CFRange, CFRetained,
-        CFString, CFType, CGPoint,
+        CFAttributedString, CFBoolean, CFDictionary, CFNumber, CFRetained, CFString, CFType,
     };
     use objc2_core_text::{
-        CTFont, CTLine, CTRun, kCTFontAttributeName, kCTForegroundColorFromContextAttributeName,
+        CTLine, kCTFontAttributeName, kCTForegroundColorFromContextAttributeName,
         kCTKernAttributeName,
     };
-    use std::ptr::{self, NonNull};
-    if !scale.is_finite()
-        || !(0.5..=4.).contains(&scale)
-        || !phase_x.is_finite()
-        || !(0. ..1.).contains(&phase_x)
-    {
-        return Err("invalid chrome raster scale or phase".into());
-    }
+    use std::ptr;
     let font = native_font(style)?;
     let kern = CFNumber::new_f64(f64::from(style.tracking_em * style.pixels()));
     let mut keys = unsafe {
@@ -255,9 +296,35 @@ pub(super) fn shape_at(
             }
         }
     }
-    let (mut ascent, mut descent, mut leading) = (0.0, 0.0, 0.0);
-    let advance =
-        unsafe { line.typographic_bounds(&mut ascent, &mut descent, &mut leading) } as f32;
+    Ok(line)
+}
+
+#[cfg(target_os = "macos")]
+pub(super) fn shape_at(
+    text: &str,
+    style: TextStyle,
+    max_width: Option<f32>,
+    scale: f32,
+    phase_x: f32,
+) -> Result<ShapedLine> {
+    use objc2_core_foundation::{
+        CFArray, CFDictionary, CFRange, CFRetained, CFString, CFType, CGPoint,
+    };
+    use objc2_core_text::{CTFont, CTRun, kCTFontAttributeName};
+    use std::ptr::NonNull;
+    if !scale.is_finite()
+        || !(0.5..=4.).contains(&scale)
+        || !phase_x.is_finite()
+        || !(0. ..1.).contains(&phase_x)
+    {
+        return Err("invalid chrome raster scale or phase".into());
+    }
+    let line = logical_line(text, style, max_width)?;
+    // Keep the raster canvas arithmetic in its original f64 precision. Layout
+    // consumes f32 fields, but rounding them before ceil could change coverage.
+    let native = typographic_bounds(&line);
+    let (ascent, descent) = (native.ascent, native.descent);
+    let advance = native.advance as f32;
     let width = ((advance * scale).ceil() as u32 + 5).max(1);
     let height = (((ascent + descent) * f64::from(scale)).ceil() as u32 + 4).max(1);
     if width > 16_384 || height > 2_048 {
@@ -377,6 +444,66 @@ pub fn rasterize_at(_: &str, _: TextStyle, _: Option<f32>, _: f32, _: f32) -> Re
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn measurement_matches_painted_metrics_bit_for_bit() {
+        use bbt_ui_model::draw::TypeScale;
+        let mut cases = 0;
+        for size in [9., 12.5, 13.5, 19.] {
+            for mono in [false, true] {
+                for italic in [false, true] {
+                    for weight in [400, 500, 600, 700] {
+                        for tracking_em in [0., 0.08] {
+                            for uppercase in [false, true] {
+                                let style = TextStyle {
+                                    scale: TypeScale::Custom(size),
+                                    mono,
+                                    italic,
+                                    weight,
+                                    tracking_em,
+                                    uppercase,
+                                };
+                                for text in [
+                                    "",
+                                    "AV fi",
+                                    "leading trailing ",
+                                    "e\u{301} a\u{308}",
+                                    "مرحبا",
+                                    "বাংলা",
+                                    "許可 漢字",
+                                    "♔ ⌘1 🚀",
+                                ] {
+                                    for max in [None, Some(0.), Some(45.), Some(240.)] {
+                                        let metrics = measure(text, style, max).unwrap();
+                                        for scale in [1., 2.] {
+                                            let painted =
+                                                rasterize(text, style, max, scale).unwrap();
+                                            assert_eq!(
+                                                [metrics.advance, metrics.ascent, metrics.descent]
+                                                    .map(f32::to_bits),
+                                                [painted.advance, painted.ascent, painted.descent]
+                                                    .map(f32::to_bits),
+                                                "geometry changed: {text:?}, {style:?}, max={max:?}, scale={scale}"
+                                            );
+                                            cases += 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(cases, 16_384);
+    }
+    #[test]
+    fn measurement_does_not_require_a_raster_canvas() {
+        let text = "W".repeat(10_000);
+        let metrics = measure(&text, TextStyle::default(), None).unwrap();
+        assert!(metrics.advance > 16_384.);
+        assert!(metrics.ascent > 0. && metrics.descent >= 0.);
+        assert!(rasterize(&text, TextStyle::default(), None, 1.).is_err());
+    }
     #[test]
     fn italic_uses_real_family_faces_and_keeps_exact_ui_weight() {
         use objc2_core_foundation::{CFDictionary, CFNumber, CFRetained};

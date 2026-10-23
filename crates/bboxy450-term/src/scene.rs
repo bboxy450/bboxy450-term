@@ -62,7 +62,7 @@ impl TextMeasure for Metrics {
         if let Some(width) = self.widths.borrow().get(&key) {
             return *width;
         }
-        let width = bbt_render::chrome::text::rasterize(text, font(style), None, 1.)
+        let width = bbt_render::chrome::text::measure(text, font(style), None)
             .expect("native font")
             .advance;
         self.widths.borrow_mut().insert(key, width);
@@ -75,7 +75,7 @@ impl c::Measure for Metrics {
         if let Some(metrics) = self.fonts.borrow().get(&key) {
             return *metrics;
         }
-        let metrics = bbt_render::chrome::text::rasterize("Hg", font(style), None, 1.)
+        let metrics = bbt_render::chrome::text::measure("Hg", font(style), None)
             .expect("native font metrics");
         let result = [metrics.ascent, metrics.descent];
         self.fonts.borrow_mut().insert(key, result);

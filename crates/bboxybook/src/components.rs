@@ -29,7 +29,7 @@ fn font(style: &MeasureStyle) -> TextStyle {
 }
 impl TextMeasure for Metrics {
     fn width(&self, text: &str, style: &MeasureStyle) -> f32 {
-        bbt_render::chrome::text::rasterize(text, font(style), None, 1.)
+        bbt_render::chrome::text::measure(text, font(style), None)
             .expect("native component font")
             .advance
     }
@@ -40,7 +40,7 @@ impl c::Measure for Metrics {
     }
 
     fn font_metrics(&self, style: &MeasureStyle) -> [f32; 2] {
-        let m = bbt_render::chrome::text::rasterize("Hg", font(style), None, 1.)
+        let m = bbt_render::chrome::text::measure("Hg", font(style), None)
             .expect("native component font metrics");
         [m.ascent, m.descent]
     }
