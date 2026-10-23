@@ -437,6 +437,57 @@ impl ChromeRenderer {
                     ];
                     instances.push(item);
                 }
+                Prim::TextShadow {
+                    origin,
+                    text,
+                    style,
+                    max_width,
+                    shadow,
+                } => {
+                    shadow.validate()?;
+                    if text.is_empty() || shadow.color.0[3] <= 0. {
+                        continue;
+                    }
+                    let physical_x = (origin[0] + shadow.offset[0]) * scale;
+                    let phase = physical_x.rem_euclid(1.);
+                    let line = self.text.shadow_line(
+                        text,
+                        *style,
+                        *max_width,
+                        scale,
+                        phase,
+                        shadow.blur_radius * 0.5 * scale,
+                    )?;
+                    if line.advance <= 0. {
+                        continue;
+                    }
+                    let left = physical_x.floor() - 2.;
+                    let top = ((origin[1]
+                        + shadow.offset[1]
+                        + (style.pixels() * 1.4 - line.height as f32 / scale) * 0.5)
+                        * scale)
+                        .round();
+                    for part in line.parts {
+                        // A text shadow is ink overflow, not a larger line box.
+                        // Only the inherited clip bounds its padded coverage.
+                        let x = left + part.offset[0] as f32;
+                        let y = top + part.offset[1] as f32;
+                        let w = part.size[0] as f32;
+                        let h = part.size[1] as f32;
+                        if x >= clip.0.right() * scale
+                            || y >= clip.0.bottom() * scale
+                            || x + w <= clip.0.x * scale
+                            || y + h <= clip.0.y * scale
+                        {
+                            continue;
+                        }
+                        let mut item = make(Rect::default(), shadow.color, 2.0, clip);
+                        item.rect = [x, y, w, h];
+                        glyph_instances.push((instances.len(), part.id, [0.; 2]));
+                        instances.push(item);
+                        self.text.record_shadow_quad();
+                    }
+                }
                 Prim::Text {
                     origin,
                     text,
@@ -1238,6 +1289,198 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn text_shadow_uses_cached_glyph_coverage_beneath_translucent_text() {
+        use bbt_ui_model::draw::{TextShadow, TextStyle, TypeScale};
+        const W: usize = 64;
+        const H: usize = 48;
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let style = TextStyle {
+            scale: TypeScale::Custom(12.),
+            weight: 700,
+            mono: true,
+            ..Default::default()
+        };
+        let origin = [20.25, 14.];
+        let foreground = Color([0.8, 0.2, 0.5, 0.7]);
+        let make = |background: Color, foreground: Color, shadow: Option<TextShadow>| {
+            let mut list = DrawList::default();
+            list.rect(Rect::new(0., 0., W as f32, H as f32), 0., background);
+            if let Some(shadow) = shadow {
+                list.push(Prim::TextShadow {
+                    origin,
+                    text: "?".into(),
+                    style,
+                    max_width: None,
+                    shadow,
+                });
+            }
+            list.push(Prim::Text {
+                origin,
+                text: "?".into(),
+                style,
+                max_width: None,
+                color: foreground,
+            });
+            list
+        };
+        let mask_image = renderer
+            .render_to_rgba(
+                &make(Color::BLACK, Color::WHITE, None),
+                W as u32,
+                H as u32,
+                1.,
+            )
+            .unwrap();
+        let mask: Vec<f64> = mask_image
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| f64::from(p[0]) / 255.)
+            .collect();
+        // Independent 2-D convolution of the GPU-readback glyph, rather than
+        // the production cache's separable blur or a bounding rectangle.
+        let blurred = |radius: f64| {
+            if radius == 0. {
+                return mask.clone();
+            }
+            let sigma = radius * 0.5;
+            let support = (3. * sigma).ceil() as isize;
+            let weight = |x: isize| (-0.5 * (x as f64 / sigma).powi(2)).exp();
+            let total: f64 = (-support..=support).map(weight).sum();
+            let mut out = vec![0.; W * H];
+            for y in 0..H {
+                for x in 0..W {
+                    for dy in -support..=support {
+                        for dx in -support..=support {
+                            let sx = x as isize + dx;
+                            let sy = y as isize + dy;
+                            if (0..W as isize).contains(&sx) && (0..H as isize).contains(&sy) {
+                                out[y * W + x] +=
+                                    mask[sy as usize * W + sx as usize] * weight(dx) * weight(dy)
+                                        / (total * total);
+                            }
+                        }
+                    }
+                }
+            }
+            out
+        };
+        let soft = blurred(6.);
+        for background in [Color([0.08, 0.1, 0.15, 1.]), Color([0.95, 0.94, 0.99, 1.])] {
+            for (blur_radius, offset) in [(0., [2., 1.]), (6., [0., 0.]), (6., [2., 1.])] {
+                let shadow = TextShadow {
+                    color: Color([0.9, 0.6, 0.1, 0.65]),
+                    blur_radius,
+                    offset,
+                };
+                let pixels = renderer
+                    .render_to_rgba(
+                        &make(background, foreground, Some(shadow)),
+                        W as u32,
+                        H as u32,
+                        1.,
+                    )
+                    .unwrap();
+                let coverage = if blur_radius == 0. { &mask } else { &soft };
+                for y in 0..H {
+                    for x in 0..W {
+                        let sx = x as isize - offset[0] as isize;
+                        let sy = y as isize - offset[1] as isize;
+                        let a = if (0..W as isize).contains(&sx) && (0..H as isize).contains(&sy) {
+                            coverage[sy as usize * W + sx as usize] * f64::from(shadow.color.0[3])
+                        } else {
+                            0.
+                        };
+                        let f = mask[y * W + x] * f64::from(foreground.0[3]);
+                        for channel in 0..3 {
+                            let under = f64::from(shadow.color.0[channel]) * a
+                                + f64::from(background.0[channel]) * (1. - a);
+                            let expected =
+                                (f64::from(foreground.0[channel]) * f + under * (1. - f)) * 255.;
+                            let actual = pixels[(y * W + x) * 4 + channel];
+                            assert!(
+                                (f64::from(actual) - expected).abs() <= 3.,
+                                "shadow blur {blur_radius}, offset {offset:?}, pixel {x},{y}, channel {channel}: {actual} vs {expected}"
+                            );
+                        }
+                        assert_eq!(pixels[(y * W + x) * 4 + 3], 255);
+                    }
+                }
+            }
+        }
+        let changed = TextShadow {
+            color: Color([0.2, 0.4, 0.9, 0.4]),
+            blur_radius: 6.,
+            offset: [-1., 2.],
+        };
+        let before = renderer.text_cache_stats().coverage;
+        let image = renderer
+            .render_to_rgba(
+                &make(Color::BLACK, foreground, Some(changed)),
+                W as u32,
+                H as u32,
+                1.,
+            )
+            .unwrap();
+        let first = renderer.text_cache_stats().coverage;
+        let repeated = renderer
+            .render_to_rgba(
+                &make(Color::BLACK, foreground, Some(changed)),
+                W as u32,
+                H as u32,
+                1.,
+            )
+            .unwrap();
+        let second = renderer.text_cache_stats().coverage;
+        assert_eq!(image, repeated);
+        assert_eq!(
+            (before.misses, before.shadow_blurs, before.cached_mask_bytes),
+            (first.misses, first.shadow_blurs, first.cached_mask_bytes),
+            "color and integer offset reuse the mask"
+        );
+        assert_eq!(
+            (first.misses, first.shadow_blurs, first.cached_mask_bytes),
+            (second.misses, second.shadow_blurs, second.cached_mask_bytes)
+        );
+        assert_eq!(first.shadow_quads - before.shadow_quads, 1);
+        assert_eq!(second.shadow_quads - first.shadow_quads, 1);
+        let transparent = TextShadow {
+            color: Color::TRANSPARENT,
+            ..changed
+        };
+        let before_transparent = renderer.text_cache_stats().coverage;
+        assert_eq!(
+            renderer
+                .render_to_rgba(
+                    &make(Color::BLACK, foreground, Some(transparent)),
+                    W as u32,
+                    H as u32,
+                    1.
+                )
+                .unwrap(),
+            renderer
+                .render_to_rgba(
+                    &make(Color::BLACK, foreground, None),
+                    W as u32,
+                    H as u32,
+                    1.
+                )
+                .unwrap()
+        );
+        let after = renderer.text_cache_stats().coverage;
+        assert_eq!(
+            (
+                before_transparent.shadow_quads,
+                before_transparent.shadow_blurs
+            ),
+            (after.shadow_quads, after.shadow_blurs)
+        );
+        eprintln!(
+            "text-shadow probe: before={before:?}; after-color-offset={first:?}; repeated={second:?}; before-transparent={before_transparent:?}; transparent={after:?}"
+        );
+    }
+
     #[test]
     fn translucent_border_composites_over_fill_at_fractional_coverage() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();

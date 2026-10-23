@@ -72,6 +72,24 @@ pub struct TextRun {
     pub value: String,
     pub style: crate::style::Text,
 }
+/// An optional glyph-mask shadow; it contributes ink, never layout size.
+#[derive(Debug, Clone, Copy)]
+pub struct TextShadow {
+    pub color: crate::Paint,
+    pub blur_radius: f32,
+    pub offset: [f32; 2],
+}
+impl TextShadow {
+    fn resolve(self, ctx: Context) -> crate::style::Result<bbt_ui_model::draw::TextShadow> {
+        let shadow = bbt_ui_model::draw::TextShadow {
+            color: Color(self.color.resolve(ctx)?),
+            blur_radius: self.blur_radius,
+            offset: self.offset,
+        };
+        shadow.validate()?;
+        Ok(shadow)
+    }
+}
 #[derive(Debug, Clone)]
 pub struct Text {
     pub runs: Vec<TextRun>,
@@ -84,6 +102,7 @@ pub struct Text {
     pub inline: bool,
     /// Per-line placement within the text's own assigned box.
     pub align: Alignment,
+    pub shadow: Option<TextShadow>,
 }
 impl Text {
     pub fn new(value: impl Into<String>, style: crate::style::Text) -> Self {
@@ -98,6 +117,7 @@ impl Text {
             selectable: true,
             inline: false,
             align: Alignment::Start,
+            shadow: None,
         }
     }
 }
@@ -211,6 +231,7 @@ impl EditingText {
                     }],
                     selectable: false,
                     ellipsis: false,
+                    shadow: None,
                 },
                 children: vec![],
             }
@@ -459,6 +480,7 @@ pub enum Element {
     },
     Glyph {
         kind_colors: crate::atoms::KindColors,
+        shadow: Option<TextShadow>,
         activity: bbt_ui_model::Activity,
         grade: bbt_ui_model::Grade,
         color: crate::Paint,
@@ -532,6 +554,7 @@ pub enum LayoutKind {
         runs: Vec<PositionedRun>,
         selectable: bool,
         ellipsis: bool,
+        shadow: Option<bbt_ui_model::draw::TextShadow>,
     },
     Stack,
     ScrollView {
@@ -1107,6 +1130,7 @@ impl Element {
             }
             Self::Glyph {
                 kind_colors,
+                shadow,
                 activity,
                 grade,
                 color,
@@ -1126,7 +1150,7 @@ impl Element {
                     grade: *grade,
                     seat_color: Color(color.resolve(ctx)?),
                 }
-                .paint_with_kind_colors(
+                .paint_with_kind_colors_and_shadow(
                     scaled,
                     &crate::atoms::AtomCtx {
                         draw,
@@ -1135,6 +1159,11 @@ impl Element {
                     },
                     &mut list,
                     *kind_colors,
+                    shadow.map(|s| s.resolve(ctx)).transpose()?.map(|mut s| {
+                        s.blur_radius *= scale;
+                        s.offset = s.offset.map(|v| v * scale);
+                        s
+                    }),
                 );
                 return Ok(Layout {
                     rect: scaled,
@@ -1154,6 +1183,7 @@ impl Element {
                         runs,
                         selectable: t.selectable,
                         ellipsis: t.ellipsis,
+                        shadow: t.shadow.map(|s| s.resolve(ctx)).transpose()?,
                     },
                     vec![],
                 )
@@ -1688,11 +1718,15 @@ fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
                 shadow.offset = shadow.offset.map(|v| v * scale);
             }
         }
-        LayoutKind::Text { runs, .. } => {
+        LayoutKind::Text { runs, shadow, .. } => {
             for run in runs {
                 run.rect = rect(run.rect);
                 run.style.size *= scale;
                 run.line_height *= scale;
+            }
+            if let Some(shadow) = shadow {
+                shadow.blur_radius *= scale;
+                shadow.offset = shadow.offset.map(|v| v * scale);
             }
         }
         _ => {}
@@ -2390,16 +2424,20 @@ fn paint_contents(
                 });
             }
         }
-        LayoutKind::Text { runs, ellipsis, .. } => {
+        LayoutKind::Text {
+            runs,
+            ellipsis,
+            shadow,
+            ..
+        } => {
             let mut list = list_with_clips(clips);
-            for run in runs {
-                list.push(Prim::Text {
-                    origin: [
+            let inputs = |run: &PositionedRun| {
+                (
+                    [
                         run.rect.x,
                         run.rect.y + (run.line_height - run.style.size * 1.4) * 0.5,
                     ],
-                    text: run.text.clone().into(),
-                    style: TextStyle {
+                    TextStyle {
                         scale: TypeScale::Custom(run.style.size),
                         weight: run.style.weight,
                         mono: run.style.mono,
@@ -2408,8 +2446,32 @@ fn paint_contents(
                         uppercase: false,
                     },
                     // Avoid truncating a naturally sized run on float subtraction noise.
-                    max_width: (*ellipsis && run.rect.right() > node.rect.right() + 0.001)
+                    (*ellipsis && run.rect.right() > node.rect.right() + 0.001)
                         .then_some((node.rect.right() - run.rect.x).max(0.)),
+                )
+            };
+            // All run shadows stay beneath all foreground text in this element.
+            if let Some(shadow) = shadow {
+                let mut shadow = *shadow;
+                shadow.color = color(shadow.color.0, draw, opacity);
+                for run in runs {
+                    let (origin, style, max_width) = inputs(run);
+                    list.push(Prim::TextShadow {
+                        origin,
+                        text: run.text.clone().into(),
+                        style,
+                        max_width,
+                        shadow,
+                    });
+                }
+            }
+            for run in runs {
+                let (origin, style, max_width) = inputs(run);
+                list.push(Prim::Text {
+                    origin,
+                    text: run.text.clone().into(),
+                    style,
+                    max_width,
                     color: color(run.style.color, draw, opacity),
                 });
             }
@@ -2420,6 +2482,9 @@ fn paint_contents(
             for primitive in &atom.primitives {
                 let mut p = primitive.clone();
                 match &mut p {
+                    Prim::TextShadow { shadow, .. } => {
+                        shadow.color = draw.color(shadow.color).alpha(opacity);
+                    }
                     Prim::Text { color: c, .. }
                     | Prim::Icon { color: c, .. }
                     | Prim::Hairline { color: c, .. }

@@ -1,0 +1,356 @@
+Native waiting glyph shadow — Velvet Vulpine <EXECUTOR>
+2026-10-23T21:09:34.130357+00:00
+Brief c2326ca6; on-spec/native ruling d668cde0; CPU-cached R8 shape approved 785dc42e, including the four default-only Glyph callers. Shared-file coordination: Seraph ae290a9f and Nyx 39be6791/d6c9054b confirm no overlapping renderer/atoms/components edits; TaskRow is untouched.
+One general Prim::TextShadow, optional retained Glyph/Text property. Actual glyph/ink-overlap coverage is zero-padded and separably Gaussian blurred on a cache miss (sigma = blur radius / 2 in device pixels), then stored under glyph/phase/scale/sigma in the existing bounded R8 atlas/LRU. Color and integer translation add no cache key. Existing foreground and WGSL/material paths are unchanged; one extra flat quad per visible shadowed coverage component, no extra pass.
+SeatRow waiting glyph requests amber, 6px blur, [0,0] offset as lab.css:257; kind text inherits it. Other Glyph callers default None. Grade and ancestor-opacity fields are checked; Text shadow color is independent of foreground alpha. Shadow is ink overflow and does not affect layout.
+Sources: https://drafts.csswg.org/css-text-decor-3/#text-shadow-property ; https://drafts.csswg.org/css-backgrounds-3/#shadow-blur . CSS permits per-glyph shadowing; no whole-string bitmap cache was introduced.
+GPU regression uses an independent 2-D convolution of a GPU-readback glyph mask on light/dark backgrounds, blur 0/6, integer offsets, quarter-pixel source phase, translucent foreground/shadow, transparent skip and repeated-frame identity/cache reuse. Dedicated new probe is at DPR1; no new full DPR2/fractional-DPR shadow matrix is claimed.
+Real GPU probe at 12px “?”: one blur, 780 shadow-mask bytes / 876 total coverage bytes, 2 total misses; changed color/integer offset and repeats leave misses/blurs/bytes unchanged, with exactly one additional emitted shadow quad per render. Transparent shadow adds zero quads/blur. Full counters below.
+Post-rim baseline: exact signed main 16b4c98798ee2bfecff6373e7370c47d51146a7a, clean detached worktree, memory custody, own target: ci-local --parity exit 0, 3243.590s. 1768 current, 1664 required/measured, 0 unproven/mismatches, 174 advisory. Duplex passed first try; no external exception used. Raw /tmp/velvet-seat-wait-baseline-16b4c98.log lines3125/3126/3135/3137/3140 show geometry/gate/all-gates/real-exit/target-deleted.
+Baseline report target/seat-wait-baseline-16b4c98/report.json SHA256 50eaa61ac6c4930ac4c60c8d479bef3cfb5f7edcd0d3ce198536f4efd47df9de; report/inputs/layouts and per-PNG hash index retained. Whole baseline PNGs retired per Oracle; 232-case SeatRow snapshot retained separately for this in-flight scope. Slot released via c2af8b7f.
+Scoped native replay: 232 cases, 232 measured, 0 unproven/mismatches, reviews 2 -> 0, 0 new. All 232 per-case native layout records compare equal. Native RGBA: 16 changed/improved, 216 identical, 0 worse. Both themes cropped/viewed in inspection/waiting-{dark,light}-halo-after.png (WEB|BEFORE|AFTER|DIFF).
+Target dark changed fraction 2.1482076% -> 1.4947833%; light 2.0385233% -> 1.5175227%, unchanged 2% budget and channel tolerance 8. No lab, token, budget, alpha-tuning or compensation edit.
+Final global exact-source ci-local --parity remains pending; scoped success is not a global no-new-key claim. New full gates require an Oracle slot; standing limit is TWO per f8d19a3b/AGENTS 1dec6b6.
+Failures kept: first renderer compile exit101 (empty Mask reference clone and wrong TextCacheStats wrapper access); corrected, fully qualified GPU test selects 1/pass. Its initial unqualified --exact command never ran tests due to that compile failure. First scoped strict Clippy exit101 (test chunks_exact iterator); fixed to as_chunks, strict rerun exit0. One multi-file patch failed verification before writing, then corrected. Read-path/search errors are in the diagnosis log.
+Not checked here: global candidate gallery after the shadow change, full final clean CI, ignored Keychain or --slow seats, manual desktop. No app/process/identity/TaskRow implementation changes.
+
+COMMAND_RESULTS
+ui-first: exit 0, 46.147s — ["cargo", "test", "-p", "bbt-ui", "--locked", "--test", "atoms", "--test", "seat_rows"]
+  log SHA256 840ea4708bc8aab7c1f26c35d4d34219a1695bf2870fa2f93b67b87c1f44af6e; diff 21ab578fdcb8328a046c29f83b04634f0e499a431c37b9475c49366fc66ef84a
+render-first: exit 101, 234.519s — ["cargo", "test", "-p", "bbt-render", "--locked", "--lib", "text_shadow_uses_cached_glyph_coverage_beneath_translucent_text", "--", "--exact", "--nocapture"]
+  log SHA256 c065a5e9298a402c5234435d841855bcd08cc349c5a40b1923ec1ea2dc6f3d49; diff 69ffcb2dad0538d43e7b7b51c7d6abc3e8bc95c5a96952dc3f210a7fdd612f1c
+render-qualified: exit 0, 11.191s — ["cargo", "test", "-p", "bbt-render", "--locked", "--lib", "chrome::tests::text_shadow_uses_cached_glyph_coverage_beneath_translucent_text", "--", "--exact", "--nocapture"]
+  log SHA256 ce0c9020fd4d19e25b39e002552200ecb5d2be128f8122cf6f6d403b80363e4a; diff 7184bfab0d8ada72a1ddc2142637389a7b11bcc6c98a27d34bf7c768f0228743
+renderer-all: exit 0, 20.768s — ["cargo", "test", "-p", "bbt-render", "--locked", "--lib"]
+  log SHA256 72040e2e5d47a4d95c3e22e973339f27c577af044e62728476cd673ffaf23be9; diff 7184bfab0d8ada72a1ddc2142637389a7b11bcc6c98a27d34bf7c768f0228743
+ui-model-all: exit 0, 83.783s — ["cargo", "test", "-p", "bbt-ui-model", "-p", "bbt-ui", "--locked"]
+  log SHA256 6f3fadb64c666afda7cf8feca87087c2436fd4def6a7ebb9ffd4c88dda01c31b; diff 7184bfab0d8ada72a1ddc2142637389a7b11bcc6c98a27d34bf7c768f0228743
+clippy-scope: exit 101, 66.787s — ["cargo", "clippy", "-p", "bbt-ui-model", "-p", "bbt-ui", "-p", "bbt-render", "--all-targets", "--locked", "--", "-D", "warnings"]
+  log SHA256 c9ef1409eeea62d98d948e7f7414b96c33ec693459f88aef6a40e37ba68ef85f; diff 7184bfab0d8ada72a1ddc2142637389a7b11bcc6c98a27d34bf7c768f0228743
+clippy-scope-fixed: exit 0, 10.698s — ["cargo", "clippy", "-p", "bbt-ui-model", "-p", "bbt-ui", "-p", "bbt-render", "--all-targets", "--locked", "--", "-D", "warnings"]
+  log SHA256 f14730a10ae973cd4a1461fa16904dfbe6a6f3cbb818c66805ecd47c16d7aa06; diff d86efce0277eb212e3e0a80e1ec8600bdd40c911101d8f822852f58780c15f44
+book-build: exit 0, 183.017s — ["cargo", "build", "-p", "bboxybook", "--locked"]
+  log SHA256 2cd7cbbde8b79d7d4a17a8ec84608a93e464afb246299552402d11fcf1f26a7a; diff d86efce0277eb212e3e0a80e1ec8600bdd40c911101d8f822852f58780c15f44
+scope: exit 0, 4.098s — ["/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/bboxybook-shadow-after", "render", "--all", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/after/native", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/before/cases.json"]
+scope: exit 0, 2.268s — ["/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/bboxybook-shadow-after", "compare", "--strict-geometry", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/after", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/before/cases.json"]
+
+GPU_COUNTERS
+text-shadow probe: before=Stats { atlas_size: 512, atlas_mask_pixels: 876, cached_mask_bytes: 876, glyph_entries: 2, overlap_entries: 0, atlas_entries: 2, hits: 16, misses: 2, evictions: 0, rebuilds: 0, component_requests: 13, overlap_requests: 0, max_component_glyphs: 1, shape_entries: 1, shape_hits: 12, shape_misses: 1, shadow_requests: 6, shadow_blurs: 1, shadow_quads: 6, shadow_mask_bytes: 780 }; after-color-offset=Stats { atlas_size: 512, atlas_mask_pixels: 876, cached_mask_bytes: 876, glyph_entries: 2, overlap_entries: 0, atlas_entries: 2, hits: 19, misses: 2, evictions: 0, rebuilds: 0, component_requests: 15, overlap_requests: 0, max_component_glyphs: 1, shape_entries: 1, shape_hits: 14, shape_misses: 1, shadow_requests: 7, shadow_blurs: 1, shadow_quads: 7, shadow_mask_bytes: 780 }; repeated=Stats { atlas_size: 512, atlas_mask_pixels: 876, cached_mask_bytes: 876, glyph_entries: 2, overlap_entries: 0, atlas_entries: 2, hits: 22, misses: 2, evictions: 0, rebuilds: 0, component_requests: 17, overlap_requests: 0, max_component_glyphs: 1, shape_entries: 1, shape_hits: 16, shape_misses: 1, shadow_requests: 8, shadow_blurs: 1, shadow_quads: 8, shadow_mask_bytes: 780 }; before-transparent=Stats { atlas_size: 512, atlas_mask_pixels: 876, cached_mask_bytes: 876, glyph_entries: 2, overlap_entries: 0, atlas_entries: 2, hits: 22, misses: 2, evictions: 0, rebuilds: 0, component_requests: 17, overlap_requests: 0, max_component_glyphs: 1, shape_entries: 1, shape_hits: 16, shape_misses: 1, shadow_requests: 8, shadow_blurs: 1, shadow_quads: 8, shadow_mask_bytes: 780 }; transparent=Stats { atlas_size: 512, atlas_mask_pixels: 876, cached_mask_bytes: 876, glyph_entries: 2, overlap_entries: 0, atlas_entries: 2, hits: 24, misses: 2, evictions: 0, rebuilds: 0, component_requests: 19, overlap_requests: 0, max_component_glyphs: 1, shape_entries: 1, shape_hits: 18, shape_misses: 1, shadow_requests: 8, shadow_blurs: 1, shadow_quads: 8, shadow_mask_bytes: 780 }
+
+SCOPE_METRICS
+{
+  "cases": 232,
+  "before_reviews": 2,
+  "after_reviews": 0,
+  "new_reviews": [],
+  "layouts_exact": 232,
+  "layout_changed": [],
+  "pixel_changed": [
+    "seat-row/waiting-compact-light.png",
+    "seat-row/focused-state-compact-light.png",
+    "seat-row/waiting-compact-dark.png",
+    "seat-row/focused-state-compact-dark.png",
+    "seat-row/waiting-cozy-light.png",
+    "seat-row/focused-state-cozy-light.png",
+    "seat-row/waiting-cozy-dark.png",
+    "seat-row/focused-state-cozy-dark.png",
+    "seat-row/waiting-comfortable-light.png",
+    "seat-row/focused-state-comfortable-light.png",
+    "seat-row/waiting-comfortable-dark.png",
+    "seat-row/focused-state-comfortable-dark.png",
+    "seat-row/waiting-touch-dark.png",
+    "seat-row/focused-state-touch-dark.png",
+    "seat-row/waiting-touch-light.png",
+    "seat-row/focused-state-touch-light.png"
+  ],
+  "pixel_identical": [
+    "seat-row/long-names-compact-light.png",
+    "seat-row/long-names-compact-dark.png",
+    "seat-row/subagents-12-compact-light.png",
+    "seat-row/subagents-12-compact-dark.png",
+    "seat-row/errored-compact-light.png",
+    "seat-row/active-compact-light.png",
+    "seat-row/idle-compact-light.png",
+    "seat-row/bug-rows-compact-dark.png",
+    "seat-row/bug-rows-compact-light.png",
+    "seat-row/idle-compact-dark.png",
+    "seat-row/active-compact-dark.png",
+    "seat-row/errored-compact-dark.png",
+    "seat-row/unread-badge-compact-light.png",
+    "seat-row/muted-held-compact-light.png",
+    "seat-row/unread-badge-compact-dark.png",
+    "seat-row/muted-held-compact-dark.png",
+    "seat-row/subagents-12-cozy-light.png",
+    "seat-row/subagents-12-cozy-dark.png",
+    "seat-row/invariant-chips-compact-dark.png",
+    "seat-row/invariant-chips-compact-light.png",
+    "seat-row/bug-rows-cozy-dark.png",
+    "seat-row/bug-rows-cozy-light.png",
+    "seat-row/subtitle-opt-in-compact-light.png",
+    "seat-row/subtitle-opt-in-compact-dark.png",
+    "seat-row/subagents-12-comfortable-light.png",
+    "seat-row/subagents-12-comfortable-dark.png",
+    "seat-row/subtitle-opt-in-cozy-light.png",
+    "seat-row/bug-rows-comfortable-dark.png",
+    "seat-row/bug-rows-comfortable-light.png",
+    "seat-row/subagents-claude-compact-light.png",
+    "seat-row/invariant-chips-cozy-dark.png",
+    "seat-row/subtitle-opt-in-cozy-dark.png",
+    "seat-row/subagents-claude-compact-dark.png",
+    "seat-row/invariant-chips-cozy-light.png",
+    "seat-row/subtitle-opt-in-comfortable-light.png",
+    "seat-row/subtitle-opt-in-comfortable-dark.png",
+    "seat-row/task-states-cozy-light.png",
+    "seat-row/task-states-comfortable-light.png",
+    "seat-row/task-states-cozy-dark.png",
+    "seat-row/task-states-comfortable-dark.png",
+    "seat-row/remote-links-compact-light.png",
+    "seat-row/remote-links-compact-dark.png",
+    "seat-row/noise-hint-compact-dark.png",
+    "seat-row/noise-hint-compact-light.png",
+    "seat-row/invariant-chips-comfortable-dark.png",
+    "seat-row/invariant-chips-comfortable-light.png",
+    "seat-row/subagents-claude-cozy-light.png",
+    "seat-row/subagents-claude-cozy-dark.png",
+    "seat-row/task-states-compact-light.png",
+    "seat-row/task-states-compact-dark.png",
+    "seat-row/listeners-compact-light.png",
+    "seat-row/errored-cozy-light.png",
+    "seat-row/active-cozy-light.png",
+    "seat-row/idle-cozy-light.png",
+    "seat-row/listeners-compact-dark.png",
+    "seat-row/idle-cozy-dark.png",
+    "seat-row/active-cozy-dark.png",
+    "seat-row/errored-cozy-dark.png",
+    "seat-row/unread-badge-cozy-dark.png",
+    "seat-row/unread-badge-cozy-light.png",
+    "seat-row/subagents-codex-compact-light.png",
+    "seat-row/subagents-claude-comfortable-dark.png",
+    "seat-row/subagents-codex-compact-dark.png",
+    "seat-row/subagents-claude-comfortable-light.png",
+    "seat-row/unread-badge-comfortable-dark.png",
+    "seat-row/errored-comfortable-light.png",
+    "seat-row/active-comfortable-light.png",
+    "seat-row/idle-comfortable-light.png",
+    "seat-row/unread-badge-comfortable-light.png",
+    "seat-row/idle-comfortable-dark.png",
+    "seat-row/active-comfortable-dark.png",
+    "seat-row/errored-comfortable-dark.png",
+    "seat-row/subagents-codex-cozy-light.png",
+    "seat-row/subagents-codex-cozy-dark.png",
+    "seat-row/restarted-compact-light.png",
+    "seat-row/restarted-compact-dark.png",
+    "seat-row/subagents-codex-comfortable-light.png",
+    "seat-row/subagents-codex-comfortable-dark.png",
+    "seat-row/subtitle-opt-in-touch-light.png",
+    "seat-row/subtitle-opt-in-touch-dark.png",
+    "seat-row/unmuted-still-held-compact-light.png",
+    "seat-row/unmuted-still-held-compact-dark.png",
+    "seat-row/remote-links-cozy-light.png",
+    "seat-row/remote-links-cozy-dark.png",
+    "seat-row/muted-held-cozy-dark.png",
+    "seat-row/muted-held-cozy-light.png",
+    "seat-row/noise-hint-cozy-dark.png",
+    "seat-row/noise-hint-cozy-light.png",
+    "seat-row/remote-links-comfortable-light.png",
+    "seat-row/remote-links-comfortable-dark.png",
+    "seat-row/noise-hint-comfortable-dark.png",
+    "seat-row/listeners-cozy-light.png",
+    "seat-row/noise-hint-comfortable-light.png",
+    "seat-row/listeners-cozy-dark.png",
+    "seat-row/muted-held-comfortable-dark.png",
+    "seat-row/muted-held-comfortable-light.png",
+    "seat-row/subagent-menu-compact-light.png",
+    "seat-row/subagent-menu-compact-dark.png",
+    "seat-row/subagent-menu-comfortable-dark.png",
+    "seat-row/subagent-menu-comfortable-light.png",
+    "seat-row/listeners-comfortable-light.png",
+    "seat-row/subagent-menu-cozy-light.png",
+    "seat-row/subagent-menu-cozy-dark.png",
+    "seat-row/listeners-comfortable-dark.png",
+    "seat-row/zsh-seat-cozy-light.png",
+    "seat-row/zsh-seat-cozy-dark.png",
+    "seat-row/zsh-seat-comfortable-light.png",
+    "seat-row/zsh-seat-comfortable-dark.png",
+    "seat-row/unmuted-still-held-cozy-light.png",
+    "seat-row/unmuted-still-held-cozy-dark.png",
+    "seat-row/restarted-cozy-light.png",
+    "seat-row/restarted-cozy-dark.png",
+    "seat-row/artifacts-compact-dark.png",
+    "seat-row/artifacts-compact-light.png",
+    "seat-row/restarted-comfortable-light.png",
+    "seat-row/restarted-comfortable-dark.png",
+    "seat-row/artifacts-cozy-light.png",
+    "seat-row/artifacts-cozy-dark.png",
+    "seat-row/artifacts-comfortable-light.png",
+    "seat-row/artifacts-comfortable-dark.png",
+    "seat-row/muted-held-touch-dark.png",
+    "seat-row/long-names-cozy-light.png",
+    "seat-row/unmuted-still-held-comfortable-light.png",
+    "seat-row/unmuted-still-held-comfortable-dark.png",
+    "seat-row/long-names-cozy-dark.png",
+    "seat-row/muted-held-touch-light.png",
+    "seat-row/authority-forked-compact-light.png",
+    "seat-row/authority-revoked-compact-light.png",
+    "seat-row/authority-expired-compact-light.png",
+    "seat-row/authority-expired-compact-dark.png",
+    "seat-row/authority-forked-compact-dark.png",
+    "seat-row/authority-revoked-compact-dark.png",
+    "seat-row/noise-hint-touch-dark.png",
+    "seat-row/artifacts-touch-dark.png",
+    "seat-row/artifacts-touch-light.png",
+    "seat-row/zsh-seat-compact-light.png",
+    "seat-row/noise-hint-touch-light.png",
+    "seat-row/zsh-seat-compact-dark.png",
+    "seat-row/task-states-touch-dark.png",
+    "seat-row/task-states-touch-light.png",
+    "seat-row/unread-badge-touch-dark.png",
+    "seat-row/long-names-comfortable-light.png",
+    "seat-row/unread-badge-touch-light.png",
+    "seat-row/unmuted-still-held-touch-dark.png",
+    "seat-row/unmuted-still-held-touch-light.png",
+    "seat-row/long-names-comfortable-dark.png",
+    "seat-row/long-names-touch-light.png",
+    "seat-row/long-names-touch-dark.png",
+    "seat-row/idle-touch-dark.png",
+    "seat-row/active-touch-dark.png",
+    "seat-row/errored-touch-dark.png",
+    "seat-row/errored-touch-light.png",
+    "seat-row/active-touch-light.png",
+    "seat-row/idle-touch-light.png",
+    "seat-row/remote-links-touch-dark.png",
+    "seat-row/authority-forked-cozy-light.png",
+    "seat-row/authority-revoked-cozy-light.png",
+    "seat-row/authority-expired-cozy-light.png",
+    "seat-row/authority-expired-cozy-dark.png",
+    "seat-row/authority-forked-cozy-dark.png",
+    "seat-row/authority-revoked-cozy-dark.png",
+    "seat-row/remote-links-touch-light.png",
+    "seat-row/listeners-touch-dark.png",
+    "seat-row/authority-forked-comfortable-light.png",
+    "seat-row/authority-revoked-comfortable-light.png",
+    "seat-row/authority-expired-comfortable-light.png",
+    "seat-row/authority-expired-comfortable-dark.png",
+    "seat-row/authority-forked-comfortable-dark.png",
+    "seat-row/authority-revoked-comfortable-dark.png",
+    "seat-row/listeners-touch-light.png",
+    "seat-row/row-menu-worker-compact-light.png",
+    "seat-row/row-menu-worker-compact-dark.png",
+    "seat-row/restarted-touch-dark.png",
+    "seat-row/restarted-touch-light.png",
+    "seat-row/bug-rows-touch-dark.png",
+    "seat-row/bug-rows-touch-light.png",
+    "seat-row/row-menu-operator-compact-light.png",
+    "seat-row/row-menu-role-flyout-compact-light.png",
+    "seat-row/row-menu-operator-compact-dark.png",
+    "seat-row/row-menu-role-flyout-compact-dark.png",
+    "seat-row/subagents-claude-touch-dark.png",
+    "seat-row/row-menu-worker-cozy-light.png",
+    "seat-row/row-menu-worker-cozy-dark.png",
+    "seat-row/subagents-claude-touch-light.png",
+    "seat-row/invariant-chips-touch-dark.png",
+    "seat-row/row-menu-worker-comfortable-light.png",
+    "seat-row/row-menu-worker-comfortable-dark.png",
+    "seat-row/invariant-chips-touch-light.png",
+    "seat-row/row-menu-operator-cozy-light.png",
+    "seat-row/row-menu-role-flyout-cozy-light.png",
+    "seat-row/row-menu-operator-cozy-dark.png",
+    "seat-row/row-menu-role-flyout-cozy-dark.png",
+    "seat-row/subagent-menu-touch-dark.png",
+    "seat-row/row-menu-operator-comfortable-light.png",
+    "seat-row/row-menu-role-flyout-comfortable-light.png",
+    "seat-row/row-menu-operator-comfortable-dark.png",
+    "seat-row/row-menu-role-flyout-comfortable-dark.png",
+    "seat-row/subagent-menu-touch-light.png",
+    "seat-row/subagents-codex-touch-dark.png",
+    "seat-row/subagents-codex-touch-light.png",
+    "seat-row/authority-expired-touch-dark.png",
+    "seat-row/authority-forked-touch-dark.png",
+    "seat-row/authority-revoked-touch-dark.png",
+    "seat-row/subagents-12-touch-light.png",
+    "seat-row/authority-forked-touch-light.png",
+    "seat-row/authority-revoked-touch-light.png",
+    "seat-row/authority-expired-touch-light.png",
+    "seat-row/subagents-12-touch-dark.png",
+    "seat-row/row-menu-worker-touch-dark.png",
+    "seat-row/row-menu-worker-touch-light.png",
+    "seat-row/row-menu-operator-touch-dark.png",
+    "seat-row/row-menu-role-flyout-touch-dark.png",
+    "seat-row/row-menu-operator-touch-light.png",
+    "seat-row/row-menu-role-flyout-touch-light.png",
+    "seat-row/zsh-seat-touch-light.png",
+    "seat-row/zsh-seat-touch-dark.png"
+  ],
+  "improved": [
+    "seat-row/waiting-compact-light.png",
+    "seat-row/focused-state-compact-light.png",
+    "seat-row/waiting-compact-dark.png",
+    "seat-row/focused-state-compact-dark.png",
+    "seat-row/waiting-cozy-light.png",
+    "seat-row/focused-state-cozy-light.png",
+    "seat-row/waiting-cozy-dark.png",
+    "seat-row/focused-state-cozy-dark.png",
+    "seat-row/waiting-comfortable-light.png",
+    "seat-row/focused-state-comfortable-light.png",
+    "seat-row/waiting-comfortable-dark.png",
+    "seat-row/focused-state-comfortable-dark.png",
+    "seat-row/waiting-touch-dark.png",
+    "seat-row/focused-state-touch-dark.png",
+    "seat-row/waiting-touch-light.png",
+    "seat-row/focused-state-touch-light.png"
+  ],
+  "worsened": [],
+  "report_sha256": "c933071853477b64d6d5ba4cd86757067ccc05554dbba40f18a38592ab677280"
+}
+
+RETIREMENT
+{
+  "started_utc": "2026-10-23T20:39:35.979359+00:00",
+  "authorization": "eed22c4f-7331-4f51-b352-5ff851e4b8f7: merged galleries may retire with hashes/reports; F3 accepted b450a99",
+  "pid": 58181,
+  "free_before": 13129330688,
+  "files_removed": 12584,
+  "allocated_bytes_unlinked": 403898368,
+  "logical_bytes_unlinked": 376960220,
+  "roots": [
+    "/Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/web",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/native",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/diff",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/backdrops",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/legacy",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/after/native",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/f3-current-2faa4a9/after/diff"
+  ],
+  "finished_utc": "2026-10-23T20:39:42.760944+00:00",
+  "free_after": 11218436096,
+  "index_sha256": "c6d01ea2ff89036c5e4cff8cd867004c43d05439e199f8bb7e81ee774a94073c",
+  "preserved": "all reports/manifests/layout JSON/text assets, crops, both waiting PNG fixtures, f4b baseline, active baseline/dev targets"
+}
+{
+  "authorization": "4fe76d6c: keep report.json, not PNGs, after baseline; scoped in-flight SeatRow copy kept separately",
+  "started_utc": "2026-10-23T21:00:14.969927+00:00",
+  "files": 12084,
+  "allocated_bytes_unlinked": 397172736,
+  "logical_bytes_unlinked": 371434472,
+  "report_sha256": "50eaa61ac6c4930ac4c60c8d479bef3cfb5f7edcd0d3ce198536f4efd47df9de",
+  "finished_utc": "2026-10-23T21:00:18.457533+00:00",
+  "index_sha256": "decd0369c3a717a63be9fc610a89c2ab6c4009f1e83dce0b5d4ed0ce795f2f6b",
+  "free_gib": 33.638
+}
+
+ARTIFACT_SHA256
+88a1e5a90141efe0d5651dfd688f3a1ab05cf7bbd61289fe13e6144d7a1fdfd7  target/seat-wait-16b4c98/bboxybook-shadow-after
+c933071853477b64d6d5ba4cd86757067ccc05554dbba40f18a38592ab677280  target/seat-wait-16b4c98/after/report.json
+5d8376e507ecb84f10ae599cf3656e01ece41d4518caedadcc1c7ec2e72c77c6  target/seat-wait-16b4c98/scope-metrics.json
+ac035ee309fdf81b04cb35f5e4aec32e9159b8e1dfcb9929babfcb9ca4693538  target/seat-wait-16b4c98/after/command-results.json
+abd1c5ff73aeb1dd97e1d56848f5cf80c20bd792c0f0b593f7e32b5f554078ba  target/seat-wait-16b4c98/inspection/waiting-dark-halo-after.png
+9bbdc33732960258dd843cdb9b379ffa05267e426e6d44ecd12f9137f54f20bf  target/seat-wait-16b4c98/inspection/waiting-light-halo-after.png
+d93ddcc67f39f235b3c73f5835dedfd7246a66efb4fe05acf46ec6aad677d255  /tmp/velvet-seat-wait-baseline-16b4c98.log
+
+DEV_TARGET_CLEANUP
+{
+  "target": "/tmp/velvet-seat-wait-dev-16b4c98",
+  "allocated_bytes_removed": 1086980096,
+  "target_deleted": true,
+  "utc": "2026-10-23T21:09:35.169137+00:00"
+}

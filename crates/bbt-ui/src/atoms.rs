@@ -2,7 +2,7 @@
 //! Atoms emit the shared draw list; they own no layout tree, clock, input or device.
 use bbt_ui_model::{
     Activity, Grade, STYLE, TOKENS, WaitKind,
-    draw::{Color, DrawCtx, DrawList, Prim, TextStyle, TypeScale},
+    draw::{Color, DrawCtx, DrawList, Prim, TextShadow, TextStyle, TypeScale},
     layout::{Rect, TextMeasure, TextStyle as MeasureStyle},
 };
 
@@ -26,14 +26,36 @@ impl AtomCtx<'_> {
         )
     }
     fn label(&self, out: &mut DrawList, r: Rect, text: &str, style: TextStyle, color: Color) {
+        self.label_with_shadow(out, r, text, style, color, None);
+    }
+    fn label_with_shadow(
+        &self,
+        out: &mut DrawList,
+        r: Rect,
+        text: &str,
+        style: TextStyle,
+        color: Color,
+        shadow: Option<TextShadow>,
+    ) {
         // The chrome text primitive's line box is 1.4 em; centre that line, not its ink.
         let w = self.width(text, style);
+        let origin = [
+            r.x + (r.w - w) * 0.5,
+            r.y + (r.h - style.pixels() * 1.4) * 0.5,
+        ];
+        let text: std::sync::Arc<str> = text.into();
+        if let Some(shadow) = shadow {
+            out.push(Prim::TextShadow {
+                origin,
+                text: text.clone(),
+                style,
+                max_width: None,
+                shadow,
+            });
+        }
         out.push(Prim::Text {
-            origin: [
-                r.x + (r.w - w) * 0.5,
-                r.y + (r.h - style.pixels() * 1.4) * 0.5,
-            ],
-            text: text.into(),
+            origin,
+            text,
             style,
             max_width: None,
             color,
@@ -95,6 +117,25 @@ impl Glyph {
         out: &mut DrawList,
         kind_colors: KindColors,
     ) {
+        self.paint_with_kind_colors_and_shadow(r, ctx, out, kind_colors, None);
+    }
+    pub fn paint_with_kind_colors_and_shadow(
+        &self,
+        r: Rect,
+        ctx: &AtomCtx<'_>,
+        out: &mut DrawList,
+        kind_colors: KindColors,
+        shadow: Option<TextShadow>,
+    ) {
+        let grade_alpha = if self.grade == Grade::Inferred {
+            0.72
+        } else {
+            1.
+        };
+        let shadow = shadow.map(|mut shadow| {
+            shadow.color = ctx.draw.color(shadow.color).alpha(grade_alpha);
+            shadow
+        });
         let color = ctx
             .draw
             .color(match self.activity {
@@ -103,18 +144,14 @@ impl Glyph {
                 Activity::Waiting(_) => Color::hex(TOKENS.color.state.waiting),
                 Activity::Errored => Color::hex(TOKENS.color.state.errored),
             })
-            .alpha(if self.grade == Grade::Inferred {
-                0.72
-            } else {
-                1.
-            });
+            .alpha(grade_alpha);
         let symbol = match self.activity {
             Activity::Active => "●",
             Activity::Idle => "○",
             Activity::Waiting(_) => "◐",
             Activity::Errored => "✕",
         };
-        ctx.label(
+        ctx.label_with_shadow(
             out,
             r,
             symbol,
@@ -124,6 +161,7 @@ impl Glyph {
                 ..Default::default()
             },
             color,
+            shadow,
         );
         let hair = STYLE.material.hairline_px as f32;
         if self.grade == Grade::Shim {
@@ -189,12 +227,13 @@ impl Glyph {
                 3.5,
                 override_color(kind_colors.background, background),
             );
-            ctx.label(
+            ctx.label_with_shadow(
                 out,
                 mark,
                 text,
                 style,
                 override_color(kind_colors.foreground, color),
+                shadow,
             );
         }
     }

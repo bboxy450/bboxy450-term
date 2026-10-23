@@ -1,4 +1,7 @@
-#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
+#![allow(
+    clippy::disallowed_methods,
+    reason = "test/fixture IO, not the UI thread"
+)]
 use bbt_ui::{
     self as ui, components as c,
     modules::seat_row::{SeatRow, Subagent, named},
@@ -21,6 +24,58 @@ impl c::Measure for Metrics {
 }
 fn context() -> ui::Context {
     ui::Context::new(ui::Theme::Dark, ui::Density::Cozy)
+}
+
+#[test]
+fn waiting_halo_does_not_move_the_row_or_its_glyph_at_any_density() {
+    for theme in [ui::Theme::Dark, ui::Theme::Light] {
+        for density in [
+            ui::Density::Touch,
+            ui::Density::Comfortable,
+            ui::Density::Cozy,
+            ui::Density::Compact,
+        ] {
+            let ctx = ui::Context::new(theme, density);
+            let mut row = SeatRow::new("row0", "Vesper Greywind", "claude");
+            row.shortcut = Some("⌘1".into());
+            let idle = row
+                .element(ctx)
+                .layout(Rect::new(0., 0., 300., 0.), ctx, &Metrics)
+                .unwrap();
+            row.activity = Activity::Waiting(WaitKind::Question);
+            let waiting = row
+                .element(ctx)
+                .layout(Rect::new(0., 0., 300., 0.), ctx, &Metrics)
+                .unwrap();
+            assert_eq!(idle.rect, waiting.rect);
+            assert_eq!(
+                find(&idle, "right/glyph").unwrap().rect,
+                find(&waiting, "right/glyph").unwrap().rect
+            );
+            let c::LayoutKind::Atom(list) =
+                &find(&waiting, "right/glyph").unwrap().children[0].kind
+            else {
+                panic!("glyph atom")
+            };
+            assert_eq!(
+                list.primitives
+                    .iter()
+                    .filter(|p| matches!(p, Prim::TextShadow { .. }))
+                    .count(),
+                2
+            );
+            let c::LayoutKind::Atom(list) = &find(&idle, "right/glyph").unwrap().children[0].kind
+            else {
+                panic!("glyph atom")
+            };
+            assert!(
+                !list
+                    .primitives
+                    .iter()
+                    .any(|p| matches!(p, Prim::TextShadow { .. }))
+            );
+        }
+    }
 }
 fn find<'a>(l: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
     if matches!(&l.kind,c::LayoutKind::Named(n) if n==key) {

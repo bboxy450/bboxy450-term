@@ -1,0 +1,86 @@
+Waiting compact SeatRow diagnosis — Velvet Vulpine <EXECUTOR>
+UTC: 2026-10-23T20:11:55.633947+00:00
+Brief c2326ca6-f456-4ef5-9236-2f3df8ca5b72: clear waiting-compact dark/light, no new review keys, geometry clean. Native module/shared paint at proven cause; scope ruling requested before broader API edits.
+Base: signed origin/main 16b4c98798ee2bfecff6373e7370c47d51146a7a, descendant of alive-rim 9c9246b. exec6 rebase returned 0.
+Baseline slot 4fe76d6c-bfea-4350-95e5-0cb85505e9fc: clean detached CI --parity on 16b4c98 is RUNNING, own target and recorded PIDs; no final baseline verdict yet. If cockpit duplex alone fails: retry only that test once, preserve original CI exit and report unreached stages separately.
+Initial crop triplets use retained F3 852fc6e pixels, before the rim; they are diagnostic, not the new accepted baseline.
+lab/web/lab.css:257 — .seat-row.waiting .glyph adds text-shadow: 0 0 6px var(--c-waiting). Both main glyph and inherited kind mark compute rgb(255,180,84) 0px 0px 6px.
+crates/bbt-ui/src/modules/seat_row.rs:550 — standard c::Element::Glyph; crates/bbt-ui/src/atoms.rs:101-196 — text, grade ring and kind background/text, no glyph-mask text shadow.
+Current 16b4c98 headless control capture is RGBA-identical to F3 web for both target cases. Diagnostic DOM override removes only text-shadow; no tracked reference, token, tolerance or product source was edited.
+Dark: 2.1482076% changed -> 1.4947833%; light: 2.0385233% -> 1.5175227%. Both diagnostic no-shadow images compare within unchanged 2% policy. Geometry results and every inspected glyph rectangle are unchanged.
+The underlying native omission is established; no written ruling makes the lab selector off-spec. Correct native glyph-mask shadow requires a retained representation outside the module-only scope. Oracle diagnosis/scope request b92c1ad0-0a06-4e1f-b53b-f09633f794ac is pending.
+All four diagnostic capture/compare commands returned 0; this is not a product fix or acceptance gate. Native images compared are the saved F3 render; the new post-rim native baseline remains pending.
+Probe browser processes use isolated profiles, own recorded exact PIDs, and normal capture.mjs cleanup. No desktop/browser-session attachment.
+Read diagnostics: guessed cockpit task path rg returned 2, corrected via rg --files to .bboxy/tasks/2026-10-22-c-cockpit.md; guessed layout.rs rg returned 2 (other search results valid); guessed capture.js read returned 1, corrected via rg --files to capture.mjs. No verification failure is hidden.
+
+COMMAND_RESULTS
+[
+  {
+    "mode": "control",
+    "argv": [
+      "node",
+      "/tmp/velvet-seat-wait-shadow-probe.mjs",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/probe/control",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/probe/requested.json"
+    ],
+    "started_utc": "2026-10-23T20:06:30.951981+00:00",
+    "pid": 87309,
+    "exit": 0,
+    "seconds": 23.151
+  },
+  {
+    "mode": "control",
+    "argv": [
+      "/Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/bboxybook-852fc6e",
+      "compare",
+      "--strict-geometry",
+      "--out",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/probe/control",
+      "--manifest",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/probe/control/cases.json"
+    ],
+    "started_utc": "2026-10-23T20:06:54.104864+00:00",
+    "pid": 88152,
+    "exit": 0,
+    "seconds": 0.569
+  },
+  {
+    "mode": "none",
+    "argv": [
+      "node",
+      "/tmp/velvet-seat-wait-shadow-probe.mjs",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/probe/none",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/probe/requested.json"
+    ],
+    "started_utc": "2026-10-23T20:06:54.674905+00:00",
+    "pid": 88155,
+    "exit": 0,
+    "seconds": 22.611
+  },
+  {
+    "mode": "none",
+    "argv": [
+      "/Users/feral/mydev/bboxy450-term-exec6/target/f3-parity-852fc6e-retry/bboxybook-852fc6e",
+      "compare",
+      "--strict-geometry",
+      "--out",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/probe/none",
+      "--manifest",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-16b4c98/probe/none/cases.json"
+    ],
+    "started_utc": "2026-10-23T20:07:17.286697+00:00",
+    "pid": 89017,
+    "exit": 0,
+    "seconds": 0.337
+  }
+]
+
+PROBE_SUMMARY
+{"control_fraction": 0.021482075976457998, "control_rgba_identical_to_F3_web": true, "control_web_sha256": "540ef4d733f6d8e1ab12582136c0ae2d938b981377fa92aa3e4de79c4a3039a3", "geometry_equal": true, "key": "seat-row/waiting-compact-dark.png", "none_web_sha256": "db579eee4a171eb29e811bb17817c8abf17c30d6d0ab476902bb6e227723cd16", "without_shadow_fraction": 0.014947833065810594, "without_shadow_status": "within policy"}
+{"control_fraction": 0.020385232744783308, "control_rgba_identical_to_F3_web": true, "control_web_sha256": "a2efd8adb52fa1a8370109a1b11e56b9e15523ed59a643eb271794fc0564757b", "geometry_equal": true, "key": "seat-row/waiting-compact-light.png", "none_web_sha256": "09311eb477bcd527069d16a2bd1c05d6cf4682605c5bf52b2704c1484b46a2b0", "without_shadow_fraction": 0.015175227394328517, "without_shadow_status": "within policy"}
+
+ARTIFACT_SHA256
+10b31b36f07dc2cf99c40b5193e91480da83e75126e4d770c8b4a1f365719545  target/seat-wait-16b4c98/probe/isolation.json
+049131c9a3a16b669facc6a03d0c3ea16b6e0347fab19f8656aefaa141b1f100  target/seat-wait-16b4c98/probe/command-results.json
+a01b49943a0192a435c344db3eda5fc64ca1ca0dea92efec2fe21affe128a442  target/seat-wait-16b4c98/inspection/f3-waiting-compact-dark-crop.png
+a7cb789879874dd39c845eb413057488353ebbff7dc117bf1ae17c8381fa568e  target/seat-wait-16b4c98/inspection/f3-waiting-compact-light-crop.png

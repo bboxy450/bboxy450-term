@@ -174,6 +174,29 @@ impl TextStyle {
     }
 }
 
+/// One CSS text shadow. Blur is a logical-pixel radius; it never affects layout.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TextShadow {
+    pub color: Color,
+    pub blur_radius: f32,
+    pub offset: Pt,
+}
+impl TextShadow {
+    pub fn validate(self) -> Result<(), &'static str> {
+        if !self.blur_radius.is_finite()
+            || self.blur_radius < 0.
+            || self
+                .offset
+                .iter()
+                .chain(self.color.0.iter())
+                .any(|v| !v.is_finite())
+        {
+            return Err("invalid text shadow");
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Prim {
     /// Vector path; fill precedes stroke, with retained tessellation for each.
@@ -220,6 +243,14 @@ pub enum Prim {
         max_width: Option<f32>,
         color: Color,
     },
+    /// Glyph coverage beneath its foreground text, with the same shaping inputs.
+    TextShadow {
+        origin: Pt,
+        text: Arc<str>,
+        style: TextStyle,
+        max_width: Option<f32>,
+        shadow: TextShadow,
+    },
     Icon {
         rect: Rect,
         icon: Arc<str>,
@@ -240,6 +271,33 @@ pub enum Prim {
 #[cfg(test)]
 mod color_tests {
     use super::Color;
+    #[test]
+    fn text_shadow_accepts_negative_offsets_but_not_invalid_blur_or_coordinates() {
+        let shadow = super::TextShadow {
+            color: Color::WHITE,
+            blur_radius: 0.,
+            offset: [-2., 1.],
+        };
+        assert!(shadow.validate().is_ok());
+        for blur_radius in [-1., f32::NAN, f32::INFINITY] {
+            assert!(
+                super::TextShadow {
+                    blur_radius,
+                    ..shadow
+                }
+                .validate()
+                .is_err()
+            );
+        }
+        assert!(
+            super::TextShadow {
+                offset: [f32::NAN, 0.],
+                ..shadow
+            }
+            .validate()
+            .is_err()
+        );
+    }
     #[test]
     fn valid_rgb_boundary_colours_round_trip_inside_the_unit_gamut() {
         for value in [

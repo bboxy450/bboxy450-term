@@ -322,6 +322,7 @@ impl Strip {
                 "pane/strip/glyph",
                 c::Element::Glyph {
                     activity: seat.activity,
+                    shadow: None,
                     grade: seat.grade,
                     color: ui::Paint::solid(seat.color(ctx)),
                     size: 11.,

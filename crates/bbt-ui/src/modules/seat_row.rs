@@ -548,6 +548,13 @@ impl SeatRow {
                 "glyph",
                 c::Element::Glyph {
                     kind_colors: Default::default(),
+                    shadow: matches!(self.activity, Activity::Waiting(_)).then_some(
+                        c::TextShadow {
+                            color: ui::Paint::solid(rgba(TOKENS.color.state.waiting)),
+                            blur_radius: 6.,
+                            offset: [0.; 2],
+                        },
+                    ),
                     activity: self.activity,
                     grade: self.grade,
                     color: ui::Paint::solid(color),
@@ -706,6 +713,7 @@ impl SeatRow {
                     "glyph",
                     c::Element::Glyph {
                         kind_colors: Default::default(),
+                        shadow: None,
                         activity: agent.activity,
                         grade: if self.harness == "codex" {
                             Grade::Shim
