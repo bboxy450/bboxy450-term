@@ -31,11 +31,15 @@ review: boundary fidelity against [[gui-components]] §2c   # task, optional: ju
 check: sh scripts/layering.sh            # invariant: the command; exit 0 means held
 cost: an upward edge welds a library to the product   # invariant: one line
 created: 2026-10-21T19:04:00Z
-updated: 2026-10-21T21:40:00Z
+updated: 2026-10-23T23:45:07Z
 ---
 ```
 
 Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]]` anywhere in frontmatter or body resolve to items in `.bboxy/` by id or slug; plain URLs and repo paths are links too. The terminal indexes both the typed `links` and inline wikilinks into one graph. The filename is `<type>s/<date>-<slug>.md`; the id in the frontmatter is the identity, the filename is for humans.
+
+## Store (operator, 2026-10-23, [[d47-decision-nodes]])
+
+A record is one file and the file is the object: one decision, one comment, one research record, one spec, one task. The git tree under `.bboxy/` is the store, the first and for now the only backend. The schema never assumes a path: identity is the ULID `id`, addressing is the slug, the id or the **number** (`number: N`, one global sequence across every type, allocated as max + 1 at creation, unique or the records push fails; `[[#N]]` resolves to it; [[d48-every-record-has-a-number]]), a version is the content digest, a relation is a link by slug or by `#N`. A binary or remote store can hold the same objects later behind the same reads and writes; nothing pluggable is built now ("KISS for now so we can keep developing our system").
 
 ## Types
 
@@ -47,7 +51,7 @@ Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]
 | bug | a defect with a reproduction | open, claimed, running, reported, fixed, wontfix, duplicate | `[[task\|blocks]]`, `[[spec\|violates]]`, `[[invariant\|violates]]` |
 | note | knowledge: runs, runbooks, evidence | none (always current until superseded) | anything |
 | invariant | a property that holds before and after every change, **with the command that checks it**; the thing bugs are checked against and specs may not contradict. No command, no invariant: then it is a preference and lives in a note | active, retired | `[[spec\|constrains]]`, `[[bug\|violated-by]]` |
-| decision | a numbered record of alternatives, choice, reason and date, written when the decision is made ([[2026-10-22-architecture-round-1]] is the first) | proposed, decided, superseded | `[[spec\|changes]]`, `[[invariant\|creates]]` |
+| decision | a numbered record of alternatives, choice, reason and date, written when the decision is made, **one file per decision** `d<N>-<slug>.md` with `number`, `status: decided \| amended \| superseded`, `decided`, `operator` (a list of verbatim words), and links `decides`, `constrains`, `evidence`, `answers`, `amends`, `supersedes` ([[d47-decision-nodes]]; [[2026-10-22-architecture-round-1]] is the index of the first 46) | proposed, decided, superseded | `[[spec\|changes]]`, `[[invariant\|creates]]` |
 | proposal | an RFC: motivation, design, alternatives, open questions; reviewed by red-team comments, closed by a decision that creates or changes a spec (operator, 2026-10-23: "proposal should also be a document type, then we can do entire RFC") | draft, review, accepted, rejected, withdrawn | `[[spec\|changes]]`, `[[decision\|decided-by]]`, `[[research\|evidence]]` |
 | comment | one review remark on one document version: `on: [[doc]]`, `on_digest` (the reviewed version's digest), `anchor` (section or line), `kind: question \| objection \| suggestion \| approval`; written by a seat and signed by its leaf like every record (operator: "comment should be a document type as well") | open, resolved, withdrawn | `[[doc\|on]]`, `[[comment\|resolves]]` |
 | research | truth compression: `file:line — mechanism` and `source — fact` pointers with sources, never prose summaries; what a spec cites as its evidence (operator, 2026-10-23: "research should be a document type as well"; the files in `research/` take `type: research` on their next touch) | none (always current until superseded) | `[[spec\|evidence-for]]` |

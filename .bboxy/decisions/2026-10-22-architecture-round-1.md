@@ -8,9 +8,11 @@ links:
   - { to: "[[layering]]", rel: invariant }
   - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
 created: 2026-10-22T19:02:24Z
-updated: 2026-10-22T19:02:24Z
+updated: 2026-10-23T23:45:07Z
 ---
 # Architecture decisions, round 1
+
+**This file is the index.** From decision 47 on, every decision is its own node, `d<N>-<slug>.md` in this folder ([[d47-decision-nodes]], operator 2026-10-23); entries 1 to 46 move out in a sweep that leaves a one-line pointer under an anchor per number here, so every old link keeps landing.
 
 Asked by Corvin Duskmantle <ARCHITECT>, answered by the operator on 2026-10-22,
 from the six items Vesper Greywind <ORACLE> flagged as needing an architect.
@@ -737,6 +739,17 @@ briefs Executors from the specs, never from this note.
     when its facade arrives, never silently extended. Rejected: refactoring
     the three exceptions now (velocity; nothing else runs on a second OS
     yet); a rule without a check (a preference).
+
+47. [[d47-decision-nodes]] — **one file per decision; records are objects,
+    the git tree is the first store (operator, 2026-10-23).** The first
+    decision written as its own node; the sweep of 1 to 46 is briefed from
+    it.
+
+48. [[d48-every-record-has-a-number]] — **every record carries a number,
+    one global sequence continuing from the decisions (operator,
+    2026-10-23: "everything needs to have a # to it").** `number` in every
+    frontmatter, unique across types, `[[#N]]` resolves to it; existing
+    records are numbered by the sweep from 49.
 
 ## Specs to touch (Architect, in this order)
 
